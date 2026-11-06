@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mad4b.com/schemas/faore/company.capabilities.v1.schema.json",
+  "title": "company.capabilities.v1",
+  "type": "object",
+  "properties": {
+    "contract": {
+      "type": "string",
+      "const": "company.capabilities.v1"
+    },
+    "company_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "staging",
+        "production",
+        "development"
+      ]
+    },
+    "site_uuid": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "message_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "delivery_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sent_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "sequence_number": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "payload": {
+      "type": "object",
+      "properties": {
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "version",
+              "health"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "version": {
+                "type": "string",
+                "minLength": 1
+              },
+              "health": {
+                "enum": [
+                  "healthy",
+                  "degraded",
+                  "unavailable"
+                ]
+              },
+              "provider_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "supported_operations": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          }
+        },
+        "manifest_version": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "capabilities",
+        "manifest_version"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "contract",
+    "company_id",
+    "environment",
+    "site_uuid",
+    "message_id",
+    "delivery_id",
+    "sent_at",
+    "sequence_number",
+    "payload"
+  ],
+  "additionalProperties": false
+}

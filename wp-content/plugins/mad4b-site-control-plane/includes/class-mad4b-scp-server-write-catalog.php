@@ -8,6 +8,8 @@ trait MAD4B_SCP_Server_Write_Catalog {
 			array(
 				'mad4b/content-get-post', 'mad4b/content-update-post',
 				'mad4b/content-job-create', 'mad4b/content-job-transition', 'mad4b/content-job-cancel',
+                // Staging-only, admin-scoped source sync request. Actual SCP Write authorization still applies.
+                'mad4b/hub-source-sync-request',
 				'mad4b/intent-registry-reconcile', 'mad4b/draft-apply', 'mad4b/data-processing-record-decision', 'mad4b/rights-record-apply', 'mad4b/data-processing-profile-apply', 'mad4b/data-processing-bound-decision-record', 'mad4b/rights-takedown-apply', 'mad4b/scheduler-backlog-enqueue', 'mad4b/scheduler-backlog-claim-next', 'mad4b/scheduler-backlog-heartbeat', 'mad4b/scheduler-backlog-complete', 'mad4b/scheduler-backlog-reconcile', 'mad4b/decommission-quiesce-apply', 'mad4b/decommission-resume-apply', 'mad4b/decommission-finalize-apply', 'mad4b/portability-import-quarantine-apply',
 			),
 			array(
@@ -20,6 +22,12 @@ trait MAD4B_SCP_Server_Write_Catalog {
                 // Staging-only media permission and the global write kill switch.
                 // Never surface this as an unreviewed direct ChatGPT step-up.
                 'mad4b/attachment-transfer',
+                // Provider connection refresh already has a reviewed Staging-only
+                // grant, but must also be mounted in the SAME governed Write
+                // inventory for ticket planning, central authorization and
+                // candidate binding to agree. This does NOT grant execution:
+                // approved one-time ticket + verified owner OAuth still required.
+                'mad4b/provider-connection-refresh',
                 'mad4b/native-recovery-start', 'mad4b/native-recovery-cleanup',
                 'mad4b/deployment-binding-setup-apply', 'mad4b/deployment-binding-native-apply',
                 // Exact Staging-native bootstrap was previously visible only
@@ -43,6 +51,16 @@ trait MAD4B_SCP_Server_Write_Catalog {
 			&& function_exists( 'wp_has_ability' )
 			&& wp_has_ability( MAD4B_SCP_AI_Approval::ABILITY ) ) {
 			$candidates[] = MAD4B_SCP_AI_Approval::ABILITY;
+		}
+		// Canonical classification only: the existing Universal VPS queue
+		// Ability retains its own permission callback, registered-contract
+		// validation, executor selection and receipt checks. This does NOT
+		// create an Agent Grant or authorize arbitrary shell operations.
+		if ( class_exists( 'MAD4B_Hub_Universal_VPS_V1' )
+			&& function_exists( 'wp_has_ability' )
+			&& MAD4B_Hub_Universal_VPS_V1::scoped()
+			&& wp_has_ability( 'mad4b/hub-universal-vps-enqueue' ) ) {
+			$candidates[] = 'mad4b/hub-universal-vps-enqueue';
 		}
 		// This one-purpose Ability is available only on the exact enrolled central
 		// Staging host. General mad4b/hub-bulk-enqueue stays unmounted.
@@ -82,29 +100,6 @@ trait MAD4B_SCP_Server_Write_Catalog {
 		ksort( $result, SORT_STRING );
 		if ( $cacheable ) self::$registered_adapter_write_candidates_cache = $result;
 		return $result;
-	}
-
-	/**
-	 * One read-only provider snapshot of the effective, currently mounted Write
-	 * inventory. An unregistered/uncertified Adapter cannot become a grant
-	 * target by supplying an Ability name alone.
-	 */
-	public static function live_write_provider_snapshot() {
-		$runtime = self::write_tools();
-		$core = array_fill_keys( self::core_write_candidates(), true );
-		$adapters = self::registered_adapter_write_candidates();
-		$providers = array();
-		foreach ( $runtime as $ability ) {
-			$ability = (string) $ability;
-			if ( isset( $core[ $ability ] ) ) {
-				$providers[ $ability ] = 'core';
-			} elseif ( isset( $adapters[ $ability ] ) && '' !== (string) $adapters[ $ability ] ) {
-				$providers[ $ability ] = (string) $adapters[ $ability ];
-			}
-			// Unknown provider remains unmounted; no invented grant authority.
-		}
-		ksort( $providers, SORT_STRING );
-		return $providers;
 	}
 
 	public static function catalog_external_write_tools() {

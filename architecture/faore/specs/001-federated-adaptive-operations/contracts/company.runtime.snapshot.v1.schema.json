@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mad4b.com/schemas/faore/company.runtime.snapshot.v1.schema.json",
+  "title": "company.runtime.snapshot.v1",
+  "type": "object",
+  "properties": {
+    "contract": {
+      "type": "string",
+      "const": "company.runtime.snapshot.v1"
+    },
+    "company_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "staging",
+        "production",
+        "development"
+      ]
+    },
+    "site_uuid": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "message_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "delivery_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sent_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "sequence_number": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "payload": {
+      "type": "object",
+      "properties": {
+        "current_generation": {
+          "type": "string",
+          "minLength": 1
+        },
+        "health": {
+          "enum": [
+            "healthy",
+            "degraded",
+            "unavailable"
+          ]
+        },
+        "drift_summary": {
+          "type": "object"
+        },
+        "desired_generation": {
+          "type": "string"
+        },
+        "rollback_generation": {
+          "type": "string"
+        },
+        "compatible_range": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "current_generation",
+        "health"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "contract",
+    "company_id",
+    "environment",
+    "site_uuid",
+    "message_id",
+    "delivery_id",
+    "sent_at",
+    "sequence_number",
+    "payload"
+  ],
+  "additionalProperties": false
+}

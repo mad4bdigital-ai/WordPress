@@ -1,0 +1,344 @@
+{
+  "contract": "mad4b.company-reconcile.dynamic-skill-policy.v1",
+  "core_skills": [
+    "site:_site:wordpress-site-diagnostics",
+    "workflow:change-safety:wordpress-change-safety",
+    "workflow:company-reconcile:content-jobs-ui-reconcile",
+    "workflow:release-orchestration:wordpress-release-orchestration"
+  ],
+  "default_dimensions": [
+    "backend",
+    "ci_cd",
+    "content",
+    "data",
+    "deployment",
+    "devops",
+    "frontend",
+    "infrastructure",
+    "interactions",
+    "market",
+    "observability",
+    "qa",
+    "security",
+    "translations"
+  ],
+  "dimension_skills": {
+    "backend": [
+      "workflow:content-authoring:wordpress-content-authoring"
+    ],
+    "ci_cd": [
+      "workflow:release-orchestration:wordpress-release-orchestration"
+    ],
+    "commerce": [],
+    "content": [
+      "workflow:archive-audit:wordpress-archive-audit"
+    ],
+    "data": [
+      "workflow:content-authoring:wordpress-content-authoring"
+    ],
+    "deployment": [
+      "workflow:release-orchestration:wordpress-release-orchestration",
+      "workflow:change-safety:wordpress-change-safety"
+    ],
+    "devops": [
+      "workflow:release-orchestration:wordpress-release-orchestration",
+      "workflow:change-safety:wordpress-change-safety"
+    ],
+    "forms": [],
+    "frontend": [
+      "workflow:frontend-quality:wordpress-frontend-impact-audit",
+      "workflow:browser-acceptance:wordpress-browser-acceptance"
+    ],
+    "infrastructure": [
+      "site:_site:wordpress-site-diagnostics"
+    ],
+    "integrations": [
+      "connection:mad4b-chatgpt:wordpress-connection-diagnostics"
+    ],
+    "interactions": [
+      "workflow:browser-acceptance:wordpress-browser-acceptance"
+    ],
+    "market": [
+      "workflow:frontend-quality:wordpress-frontend-impact-audit"
+    ],
+    "media": [
+      "adapter:media:wordpress-media-delivery-audit"
+    ],
+    "observability": [
+      "workflow:browser-acceptance:wordpress-browser-acceptance"
+    ],
+    "performance": [],
+    "qa": [
+      "workflow:browser-acceptance:wordpress-browser-acceptance"
+    ],
+    "security": [
+      "workflow:change-safety:wordpress-change-safety"
+    ],
+    "seo": [],
+    "translations": [
+      "workflow:browser-acceptance:wordpress-browser-acceptance",
+      "site:_site:wordpress-site-diagnostics"
+    ]
+  },
+  "execution_stage": [
+    "start_company",
+    "company_reconcile",
+    "reconcile_repair"
+  ],
+  "external_discovery": {
+    "allowed_provenance_required": [
+      "repository",
+      "path",
+      "blob_sha",
+      "source_url"
+    ],
+    "candidate_review_required": true,
+    "github_search_allowed": true,
+    "never_auto_execute": true,
+    "never_auto_install": true,
+    "selection_from_untrusted_remote_sources": "not_mandatory_without_local_review",
+    "sources": [
+      "github",
+      "web_search"
+    ],
+    "state": "recommendation_only",
+    "unknown_family_policy": "HOLD_AND_DISCOVER_NO_WRITE",
+    "web_search_allowed": true
+  },
+  "external_recommendation_catalog": [
+    {
+      "blob_sha": "531bb8f085950cf0823296610b7d6350a918b0c6",
+      "dimensions": [
+        "devops",
+        "ci_cd",
+        "deployment",
+        "qa"
+      ],
+      "path": "skills/ci-cd-and-automation/SKILL.md",
+      "repository": "addyosmani/agent-skills",
+      "source": "github",
+      "source_url": "https://github.com/addyosmani/agent-skills/blob/main/skills/ci-cd-and-automation/SKILL.md",
+      "status": "REVIEW_REQUIRED_NOT_INSTALLED"
+    },
+    {
+      "blob_sha": "84d9cb373467fe0e15236e190833ecc90f840c38",
+      "dimensions": [
+        "observability",
+        "infrastructure",
+        "devops"
+      ],
+      "path": "skills/observability-and-instrumentation/SKILL.md",
+      "repository": "addyosmani/agent-skills",
+      "source": "github",
+      "source_url": "https://github.com/addyosmani/agent-skills/blob/main/skills/observability-and-instrumentation/SKILL.md",
+      "status": "REVIEW_REQUIRED_NOT_INSTALLED"
+    }
+  ],
+  "max_active_plugins": 250,
+  "max_selected_skills": 36,
+  "never_confers_execution_grant": true,
+  "plugin_families": {
+    "astra": {
+      "dimensions": [
+        "frontend",
+        "interactions"
+      ],
+      "prefixes": [
+        "astra-addon/",
+        "astra-pro/"
+      ],
+      "skills": [
+        "workflow:frontend-quality:wordpress-frontend-impact-audit"
+      ]
+    },
+    "bitflows": {
+      "dimensions": [
+        "backend",
+        "integrations"
+      ],
+      "prefixes": [
+        "bitflows/"
+      ],
+      "skills": [
+        "provider:bitflows:bitflows-automation-diagnostics"
+      ]
+    },
+    "elementor": {
+      "dimensions": [
+        "frontend",
+        "content",
+        "interactions"
+      ],
+      "prefixes": [
+        "elementor/",
+        "elementor-pro/"
+      ],
+      "skills": [
+        "provider:elementor:elementor-dynamic-content"
+      ]
+    },
+    "fluentforms": {
+      "dimensions": [
+        "forms",
+        "frontend",
+        "backend"
+      ],
+      "prefixes": [
+        "fluentform/",
+        "fluent-forms/",
+        "fluentformpro/"
+      ],
+      "skills": [
+        "provider:fluentforms:fluentforms-workflow-diagnostics"
+      ]
+    },
+    "jet-engine": {
+      "dimensions": [
+        "backend",
+        "frontend",
+        "data"
+      ],
+      "prefixes": [
+        "jet-engine/"
+      ],
+      "skills": [
+        "provider:jet-engine:jetengine-content-modeling"
+      ]
+    },
+    "jet-smart-filters": {
+      "dimensions": [
+        "frontend",
+        "interactions"
+      ],
+      "prefixes": [
+        "jet-smart-filters/"
+      ],
+      "skills": [
+        "provider:jet-smart-filters:jetsmartfilters-query-audit"
+      ]
+    },
+    "jetformbuilder": {
+      "dimensions": [
+        "forms",
+        "backend"
+      ],
+      "prefixes": [
+        "jetformbuilder/"
+      ],
+      "skills": [
+        "provider:jetformbuilder:jetformbuilder-form-diagnostics"
+      ]
+    },
+    "litespeed": {
+      "dimensions": [
+        "performance",
+        "frontend"
+      ],
+      "prefixes": [
+        "litespeed-cache/"
+      ],
+      "skills": [
+        "adapter:litespeed:litespeed-cache-diagnostics"
+      ]
+    },
+    "mad4b-commerce": {
+      "dimensions": [
+        "commerce",
+        "backend",
+        "frontend"
+      ],
+      "prefixes": [
+        "mad4b-commerce/"
+      ],
+      "skills": [
+        "provider:woocommerce:woocommerce-catalog-diagnostics"
+      ]
+    },
+    "rank-math": {
+      "dimensions": [
+        "seo",
+        "backend",
+        "frontend"
+      ],
+      "prefixes": [
+        "seo-by-rank-math/",
+        "rank-math-pro/"
+      ],
+      "skills": [
+        "provider:rank-math:rankmath-seo-audit"
+      ]
+    },
+    "woocommerce": {
+      "dimensions": [
+        "backend",
+        "commerce",
+        "data"
+      ],
+      "prefixes": [
+        "woocommerce/",
+        "woocommerce-subscriptions/"
+      ],
+      "skills": [
+        "provider:woocommerce:woocommerce-catalog-diagnostics"
+      ]
+    },
+    "wp-import-export": {
+      "dimensions": [
+        "backend",
+        "data"
+      ],
+      "prefixes": [
+        "wp-all-import/",
+        "wp-all-export/",
+        "wp-import-export-lite/"
+      ],
+      "skills": [
+        "provider:wp-import-export:wp-import-export-governed-operations"
+      ]
+    },
+    "wpml": {
+      "dimensions": [
+        "translations",
+        "frontend"
+      ],
+      "prefixes": [
+        "sitepress-multilingual-cms/",
+        "wpml-string-translation/",
+        "wpml-media-translation/",
+        "woocommerce-multilingual/"
+      ],
+      "skills": [
+        "provider:wpml:wpml-translation-audit"
+      ]
+    }
+  },
+  "policy_extensible_without_php_changes": true,
+  "postapply_missing_native_provider_receipt": "UNTESTED",
+  "preflight_missing_required_skill": "HOLD",
+  "repair_intent_remains_plannable": true,
+  "source_inventory_not_target_proof": true,
+  "target_inventory_verification": "require_native_target_readback_before_publication",
+  "valid_dimensions": [
+    "backend",
+    "ci_cd",
+    "commerce",
+    "content",
+    "data",
+    "deployment",
+    "devops",
+    "forms",
+    "frontend",
+    "infrastructure",
+    "integrations",
+    "interactions",
+    "market",
+    "media",
+    "observability",
+    "performance",
+    "qa",
+    "security",
+    "seo",
+    "translations"
+  ],
+  "version": 2
+}

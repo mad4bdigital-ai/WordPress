@@ -13,6 +13,18 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * are explicitly isolated from that recovery machinery.
  */
 final class MAD4B_SCP_REST_Compatibility {
+    private static function registered_security_guard_site(): bool {
+        if (!class_exists('MAD4B_SCP_Site_Profile', false)) return false;
+        $profile = MAD4B_SCP_Site_Profile::status();
+        return is_array($profile)
+            && ($profile['configured'] ?? false) === true
+            && ($profile['origin_match'] ?? false) === true
+            && ($profile['deployment_binding_match'] ?? false) === true
+            && ($profile['environment_match'] ?? false) === true
+            && ($profile['foreign_profile_detected'] ?? true) === false
+            && ($profile['profile_authority_quarantined'] ?? true) === false;
+    }
+
 	const CONTRACT = 'mad4b.rest-compatibility.v2';
 	const WPML_ROUTE = '/wpml/v1/rest/status';
 	const MAX_HOOK_CALLBACKS = 200;
@@ -254,6 +266,21 @@ final class MAD4B_SCP_REST_Compatibility {
 		$external_wpml_verified = ! $external_wpml_required || ( ! empty( $external_wpml['observed'] ) && ! empty( $external_wpml['verified'] ) && empty( $external_wpml['stale'] ) );
 		$control_plane_on_rest_enabled = ! empty( $rest_enabled_hooks['control_plane_detected'] );
 		$control_plane_on_rest_auth = ! empty( $rest_auth_hooks['control_plane_detected'] );
+        // One exact Staging account-suspension guard is not an OAuth/REST
+        // takeover. Keep the guard active; report any other callback as a blocker.
+        $account_suspension_guard_only = false;
+        if ( self::registered_security_guard_site()
+            && 1 === (int) ( $rest_auth_hooks['control_plane_callback_count'] ?? 0 )
+            && empty( $rest_auth_hooks['truncated'] ) ) {
+            foreach ( $rest_auth_hooks['callbacks'] as $hook_callback ) {
+                if ( empty( $hook_callback['control_plane'] ) ) continue;
+                $account_suspension_guard_only =
+                    'MAD4B_SCP_Company_User_Lifecycle::guardREST' === (string) ( $hook_callback['callback'] ?? '' )
+                    && 95 === (int) ( $hook_callback['priority'] ?? -1 )
+                    && 'class-mad4b-scp-company-user-lifecycle.php' === basename( (string) ( $hook_callback['file'] ?? '' ) );
+            }
+        }
+        $unapproved_control_plane_rest_auth = $control_plane_on_rest_auth && ! $account_suspension_guard_only;
 		$expected_rest_scope = array(
 			'/mcp/mad4b-read', '/mcp/mad4b-chatgpt', '/mcp/mad4b-enrollment', '/mcp/mad4b-content',
 			'/mcp/mad4b-write', '/mcp/mad4b-admin', '/mcp/mad4b-breakglass',
@@ -270,7 +297,7 @@ final class MAD4B_SCP_REST_Compatibility {
 		$local_checks = array(
 			'rest_enabled' => $rest_enabled,
 			'control_plane_not_on_rest_enabled_hook' => ! $control_plane_on_rest_enabled,
-			'control_plane_not_on_rest_authentication_hook' => ! $control_plane_on_rest_auth,
+			'control_plane_not_on_rest_authentication_hook' => ! $unapproved_control_plane_rest_auth,
 			'control_plane_does_not_block_wpml_rest' => empty( $wpml['control_plane_block_detected'] ),
 			'mcp_recovery_scope_evaluated' => self::$mcp_recovery_scope_evaluated,
 			'mcp_recovery_scoped_to_mad4b_routes' => $mcp_recovery_scoped,
@@ -295,7 +322,9 @@ final class MAD4B_SCP_REST_Compatibility {
 			'rest_enabled' => $rest_enabled,
 			'control_plane_disables_rest' => ! $rest_enabled && $control_plane_on_rest_enabled,
 			'control_plane_filters_rest_enabled' => $control_plane_on_rest_enabled,
-			'control_plane_filters_rest_authentication_errors' => $control_plane_on_rest_auth,
+			'control_plane_filters_rest_authentication_errors' => $unapproved_control_plane_rest_auth,
+            'control_plane_rest_authentication_hook_raw_detected' => $control_plane_on_rest_auth,
+            'account_suspension_rest_guard_preserved' => $account_suspension_guard_only,
 			'rest_enabled_hook' => $rest_enabled_hooks,
 			'rest_authentication_errors_hook' => $rest_auth_hooks,
 			'control_plane_rest_pre_dispatch_scope' => $expected_rest_scope,

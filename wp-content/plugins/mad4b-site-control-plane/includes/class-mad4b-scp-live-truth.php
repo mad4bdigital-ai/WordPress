@@ -12,6 +12,18 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * only; tenant identity is site_uuid + profile revision/digest + exact origin.
  */
 final class MAD4B_SCP_Live_Truth {
+    private static function registered_security_guard_site(): bool {
+        if (!class_exists('MAD4B_SCP_Site_Profile', false)) return false;
+        $profile = MAD4B_SCP_Site_Profile::status();
+        return is_array($profile)
+            && ($profile['configured'] ?? false) === true
+            && ($profile['origin_match'] ?? false) === true
+            && ($profile['deployment_binding_match'] ?? false) === true
+            && ($profile['environment_match'] ?? false) === true
+            && ($profile['foreign_profile_detected'] ?? true) === false
+            && ($profile['profile_authority_quarantined'] ?? true) === false;
+    }
+
 	const CONTRACT = 'mad4b.live-truth.v2';
 	const FRESHNESS_OPTION = 'mad4b_scp_write_runtime_certification_freshness_v1';
 
@@ -155,7 +167,15 @@ final class MAD4B_SCP_Live_Truth {
 					'subject_fingerprint' => $fingerprint,
 				) );
 				if ( is_wp_error( $bound ) ) $subject_blockers[] = $bound->get_error_code() . ':user:' . $user_id;
-				elseif ( (int) $bound['id'] !== (int) $agent['id'] ) $subject_blockers[] = 'oauth_subject_bound_to_other_agent:user:' . $user_id;
+				elseif ( (int) $bound['id'] !== (int) $agent['id'] ) {
+                    // The same WordPress user's exact delegated Agent is a valid
+                    // OAuth owner. No grants or subject bindings are changed here.
+                    $same_user_delegation = class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
+                        && MAD4B_SCP_Staging_Write_Authority::is_exact_delegated_oauth_agent( $bound, $user_id );
+                    if ( ! $same_user_delegation ) {
+                        $subject_blockers[] = 'oauth_subject_bound_to_other_agent:user:' . $user_id;
+                    }
+                }
 			}
 		}
 		if ( $eligible && ! empty( $subject_blockers ) ) $blockers[] = 'oauth_subject_binding_incomplete';
@@ -789,14 +809,23 @@ final class MAD4B_SCP_Live_Truth {
 	private static function control_plane_hook_present( $hook_name ) {
 		global $wp_filter;
 		if ( ! isset( $wp_filter[ $hook_name ] ) || ! is_object( $wp_filter[ $hook_name ] ) || ! isset( $wp_filter[ $hook_name ]->callbacks ) || ! is_array( $wp_filter[ $hook_name ]->callbacks ) ) return false;
-		foreach ( $wp_filter[ $hook_name ]->callbacks as $callbacks ) {
+		foreach ( $wp_filter[ $hook_name ]->callbacks as $priority => $callbacks ) {
 			if ( ! is_array( $callbacks ) ) continue;
 			foreach ( $callbacks as $entry ) {
 				$callable = is_array( $entry ) && isset( $entry['function'] ) ? $entry['function'] : null;
 				$class = '';
 				if ( is_array( $callable ) && isset( $callable[0] ) ) $class = is_object( $callable[0] ) ? get_class( $callable[0] ) : (string) $callable[0];
 				elseif ( is_string( $callable ) ) $class = $callable;
-				if ( 0 === strpos( $class, 'MAD4B_SCP_' ) ) return true;
+				// Preserve only the exact Staging staff-suspension security guard.
+                // All other Control Plane REST authentication filters are hazards.
+                if ( 'rest_authentication_errors' === $hook_name
+                    && self::registered_security_guard_site()
+                    && 95 === (int) $priority
+                    && is_array( $callable )
+                    && 2 === count( $callable )
+                    && 'MAD4B_SCP_Company_User_Lifecycle' === $class
+                    && 'guardREST' === (string) $callable[1] ) continue;
+                if ( 0 === strpos( $class, 'MAD4B_SCP_' ) ) return true;
 			}
 		}
 		return false;

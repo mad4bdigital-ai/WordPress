@@ -223,8 +223,13 @@ final class MAD4B_SCP_Recovery_Route_Resolver {
                 }
             }
         }
+        $global_runtime_recovery = class_exists('MAD4B_SCP_Global_Runtime_Lifecycle')
+            ? MAD4B_SCP_Global_Runtime_Lifecycle::observe_native_lane('recovery_route',
+                array('authority_blockers'=>$authority_blockers,'blockers'=>$clean,
+                    'recommended_route'=>$recommended)) : null;
         return array(
             'contract' => self::CONTRACT,
+            'global_runtime_recovery' => $global_runtime_recovery,
             'goal' => $goal,
             'resolved_goal' => $resolved_goal,
             'category_inferred_from_blockers' => '' !== $inferred,

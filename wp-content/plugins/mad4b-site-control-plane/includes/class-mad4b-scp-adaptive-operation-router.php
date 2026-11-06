@@ -588,6 +588,11 @@ final class MAD4B_SCP_Adaptive_Operation_Router {
                     'planner' => $sources['operation']['planner'] ?? '',
                     'executor' => $sources['operation']['executor'] ?? '' ) : null,
             'failure_resolution' => $failure,
+            'global_runtime_dispatch' => class_exists('MAD4B_SCP_Global_Runtime_Lifecycle')
+                ? MAD4B_SCP_Global_Runtime_Lifecycle::observe_native_lane('adaptive_dispatcher',
+                    array('route_eligible'=>$ready,'write_uncertain'=>$write_in_doubt,
+                        'dependency_blocker'=>$dependency_blocker,
+                        'failure_state'=>(string)($failure['state']??''))) : null,
             'alternate_recovery_routes' => $recovery,
             'transport_options' => $transport_options,
             'selection_strategy' => 'live_registered_ability_metadata_schema_pinned_canonical_lane',

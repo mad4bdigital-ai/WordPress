@@ -68,7 +68,33 @@ final class MAD4B_SCP_Staging_Write_Planning_Guard {
 			if ( ! MAD4B_SCP_Policy::can_mutate() ) return new WP_Error( 'mad4b_mutation_disabled', 'Governed write authority is required to create an approval plan.' );
 			if ( ! class_exists( 'MAD4B_SCP_Authorization' ) ) return new WP_Error( 'mad4b_authorization_unavailable', 'MAD4B central authorization is unavailable.' );
 
-			$decision = MAD4B_SCP_Authorization::authorize_mutation( self::ABILITY, 'mad4b-admin', 'core', $input );
+			// A user-owned OAuth Agent may initiate a PENDING ticket only.
+			// Never substitute the governed execution Agent for the verified
+			// initiator at central mutation authorization.
+			$principal = class_exists( 'MAD4B_SCP_Identity_Context' )
+				? MAD4B_SCP_Identity_Context::current() : null;
+			if ( is_wp_error( $principal ) ) return $principal;
+			if ( is_array( $principal ) && 'oauth' === (string) ( $principal['subject_type'] ?? '' ) ) {
+				if ( 'oauth2_bearer' !== (string) ( $principal['auth_method'] ?? '' )
+					|| ! class_exists( 'MAD4B_SCP_Delegation_Mode' )
+					|| ! class_exists( 'MAD4B_SCP_Agent_Registry' ) )
+					return new WP_Error( 'mad4b_planner_initiator_unverified', 'Exact verified OAuth initiator is required.' );
+				$user = MAD4B_SCP_Delegation_Mode::authenticated_user( $principal );
+				if ( ! $user || ! user_can( $user, 'manage_options' ) )
+					return new WP_Error( 'mad4b_planner_initiator_not_admin', 'The verified OAuth initiator must be an enrolled WordPress administrator.' );
+				$initiator = MAD4B_SCP_Agent_Registry::resolve_agent( $principal );
+				if ( is_wp_error( $initiator ) ) return $initiator;
+				if ( ! MAD4B_SCP_Staging_Write_Authority::is_exact_delegated_oauth_agent( $initiator, (int) $user->ID ) )
+					return new WP_Error( 'mad4b_planner_delegated_agent_mismatch', 'The initiating OAuth Agent must belong to the verified WordPress user.' );
+				$permission = MAD4B_SCP_Agent_Registry::exact_grant( (int) $initiator['id'], 'mad4b-write', self::ABILITY, 'core' );
+				if ( is_wp_error( $permission ) ) return $permission;
+			}
+
+			// approval-plan is mounted on the governed write lane, and the
+			// exact, environment-bound NHI entitlement lives on mad4b-write.
+			// Requiring a second mad4b-admin grant here contradicts the
+			// registered execution lane; it must never create admin authority.
+			$decision = MAD4B_SCP_Authorization::authorize_mutation( self::ABILITY, 'mad4b-write', 'core', $input );
 			return is_wp_error( $decision ) ? $decision : true;
 		};
 

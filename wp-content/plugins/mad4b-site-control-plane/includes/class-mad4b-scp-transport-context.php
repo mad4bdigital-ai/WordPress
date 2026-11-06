@@ -154,6 +154,19 @@ final class MAD4B_SCP_Transport_Context {
 			return $original;
 		}
 
+		// Explicit local Operator dispatch shares the existing exact mad4b-write
+		// Agent Grant for this SINGLE bounded queue Ability. The host actor and
+		// local transport are independently checked; no grant/approval minted.
+		if ( 'mad4b-vps-local' === $current
+			&& 'mad4b/hub-universal-vps-enqueue' === $ability_name ) {
+			$verified = MAD4B_SCP_Servers::can_vps_local_transport();
+			if ( true !== $verified || 'mad4b-write' !== $declared_server_id
+				|| ! MAD4B_SCP_Servers::ability_is_mounted( $current, $ability_name )
+				|| ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $ability_name ) )
+				return new WP_Error( 'mad4b_vps_local_write_binding_denied',
+					'Exact local host Operator, declared Write lane and mounted Ability required.' );
+			return 'mad4b-write';
+		}
 		if ( ! MAD4B_SCP_Servers::ability_is_mounted( $current, $ability_name ) ) {
 			return new WP_Error( 'mad4b_transport_ability_not_mounted', 'The requested ability is not mounted on the active MCP transport server.' );
 		}

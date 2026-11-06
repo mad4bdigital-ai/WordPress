@@ -1,0 +1,27 @@
+name: MAD4B Company Settings Source Convergence
+on:
+  pull_request:
+    paths:
+      - 'wp-content/mu-plugins/00*-mad4b-lifecycle-access.php'
+      - 'wp-content/mu-plugins/14*-mad4b-*.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'packages/mad4b-shared-product-core/mu-plugins/**'
+      - 'ops/mad4b-company-live-convergence-20261106/**'
+      - '.github/workflows/mad4b-company-settings-source-convergence.yml'
+  push:
+    paths:
+      - 'wp-content/mu-plugins/00*-mad4b-lifecycle-access.php'
+      - 'wp-content/mu-plugins/14*-mad4b-*.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'packages/mad4b-shared-product-core/mu-plugins/**'
+      - 'ops/mad4b-company-live-convergence-20261106/**'
+      - '.github/workflows/mad4b-company-settings-source-convergence.yml'
+jobs:
+  static-convergence:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate canonical sources, Skills v17, policies, and host-cache scope
+        run: python3 ops/mad4b-company-live-convergence-20261106/tests/test_source_convergence.py

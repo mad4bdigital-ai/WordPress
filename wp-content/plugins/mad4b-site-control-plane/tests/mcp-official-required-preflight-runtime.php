@@ -91,17 +91,28 @@ $result = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( array( 'fixture/schema-e
 check( ! $result['ready'] && 'source_schema_read' === $result['failures'][0]['stage'] && false === strpos( json_encode( $result ), 'PRIVATE_SCHEMA_DETAILS' ), 'Source exception stage lost or private details exposed' );
 wp_register_ability( 'fixture/invalid-utf8', array( 'description' => "\xB1\x31" ) );
 $result = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( array( 'fixture/invalid-utf8' ), array() );
-check( ! $result['ready'] && 'wire_serialization' === $result['failures'][0]['stage'], 'Invalid UTF-8 was admitted to wire catalog' );
+check( ! $result['ready'] && ! empty( $result['failures'] )
+	&& in_array( $result['failures'][0]['stage'], array( 'wire_serialization', 'official_wire_build' ), true ),
+	'Invalid UTF-8 must be excluded regardless of Adapter builder revision' );
 $GLOBALS['filters']['mcp_adapter_tool_name'] = static function() { return 'invalid tool name'; };
 $result = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( array( $required[0] ), array() );
 check( ! $result['ready'] && 'official_wire_build' === $result['failures'][0]['stage'] && 'mcp_tool_name_filter_invalid' === $result['failures'][0]['error_code'], 'Invalid third-party name filter lost precise builder evidence' );
 $GLOBALS['filters']['mcp_adapter_tool_name'] = static function() { return 'colliding-name'; };
 $result = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( array_slice( $required, 0, 2 ), array( $required[1] ) );
-check( ! $result['ready'] && 'identity' === $result['failures'][0]['stage'], 'Optional tool identity collision must fail closed' );
+check( $result['ready'] && $result['degraded'] && 'identity' === $result['failures'][0]['stage']
+	&& array( $required[0] ) === $result['tools'], 'Colliding optional DTO must be excluded without erasing the first valid tool' );
 unset( $GLOBALS['filters']['mcp_adapter_tool_name'] );
 wp_register_ability( 'fixture/large', array( 'description' => str_repeat( 'x', 100000 ) ) );
 $result = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( array( $required[0], 'fixture/large' ), array( 'fixture/large' ) );
 check( $result['ready'] && $result['degraded'] && array( $required[0] ) === $result['tools'] && 'mcp_optional_catalog_size_excluded' === $result['failures'][0]['error_code'], 'Large optional DTO displaced required tools' );
 $result = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( array( 'fixture/large' ), array() );
 check( ! $result['ready'] && 'mcp_required_catalog_size_exceeded' === $result['failures'][0]['error_code'], 'Large required DTO exceeded wire budget' );
+// سلوك حماية مستبعد كوضع افتراضي: رفض Validator قديم لبنية properties كـJSON Object.
+// Only the exact single known false-positive is bypassed; real schema faults are not.
+$method = new ReflectionMethod( MAD4B_SCP_MCP_Catalog_Diagnostics::class, 'legacy_properties_false_positive' );
+$method->setAccessible( true );
+$legacy_error = new WP_Error( 'mcp_tool_validation_failed', 'Tool validation failed: Tool outputSchema properties must be an object/array' );
+check( $method->invoke( null, $legacy_error, array( 'name' => 'legacy-object-probe', 'inputSchema' => array( 'type' => 'object', 'properties' => (object) array() ), 'outputSchema' => array( 'type' => 'object', 'properties' => (object) array() ) ) ), 'Legacy validator false-positive should be excluded' );
+check( ! $method->invoke( null, $legacy_error, array( 'name' => 'legacy-object-probe', 'inputSchema' => array( 'type' => 'object', 'properties' => (object) array() ), 'outputSchema' => array( 'type' => 'object', 'properties' => 'invalid' ) ) ), 'Malformed properties must stay rejected' );
+check( ! $method->invoke( null, new WP_Error( 'mcp_tool_validation_failed', 'Tool validation failed: Tool outputSchema properties must be an object/array; other failure' ), array( 'name' => 'legacy-object-probe', 'inputSchema' => array( 'type' => 'object', 'properties' => (object) array() ), 'outputSchema' => array( 'type' => 'object', 'properties' => (object) array() ) ) ), 'Multiple validator failures must stay rejected' );
 echo "PASS real DTO faults: empty input, invalid name filter, identity collision and size budgets\n";

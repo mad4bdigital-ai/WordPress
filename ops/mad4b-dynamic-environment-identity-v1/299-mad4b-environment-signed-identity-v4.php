@@ -17,7 +17,24 @@ final class MAD4B_Environment_Signed_Identity_V4 {
             untrailingslashit(home_url('/'))==='https://tours.dev.mad4b.com';
     }
     public static function permission():bool {
+        // REST / browser owner route only. WP-CLI has its own exact
+        // registered native principal, not an impersonated WordPress user.
         return self::enabled()&&current_user_can('manage_options');
+    }
+    public static function native_permission():bool {
+        if (!self::enabled() || !defined('WP_CLI') || !WP_CLI
+            || PHP_SAPI!=='cli'
+            || !function_exists('posix_geteuid') || posix_geteuid()!==0
+            || get_current_user_id()!==0
+            || !class_exists('MAD4B_Native_VPS_Principal_V1',false)
+            || !class_exists('MAD4B_Central_VPS_Broker_V1',false)
+            || get_option(MAD4B_Central_VPS_Broker_V1::HOST_ID,'')!==
+                MAD4B_Native_VPS_Principal_V1::HOST) return false;
+        $scope=MAD4B_Native_VPS_Principal_V1::scope();
+        $enrolled=MAD4B_Native_VPS_Principal_V1::existing();
+        return is_array($scope) && !empty($scope)
+            && is_array($enrolled)
+            && MAD4B_Native_VPS_Principal_V1::ledger($enrolled,$scope);
     }
     public static function trust_option(string $company,string $environment):string {
         if(!preg_match('/^[a-z][a-z0-9-]{2,47}$/D',$company) ||
@@ -94,6 +111,9 @@ final class MAD4B_Environment_Signed_Identity_V4 {
     }
     public static function verify(string $company,string $env) {
         if(!self::permission())return self::issue('mad4b_environment_admin_required',403);
+        return self::verify_exact_challenge($company,$env);
+    }
+    private static function verify_exact_challenge(string $company,string $env) {
         $target=self::target($company,$env);
         if(!$target)return self::issue('mad4b_environment_exact_target_missing',404);
         $key=self::trust($company,$env);
@@ -153,6 +173,92 @@ final class MAD4B_Environment_Signed_Identity_V4 {
             return self::issue('mad4b_environment_proof_persistence_failed',503);
         return self::status($company,$env);
     }
+    /**
+     * Native WordPress-less identity refresh: signed remote challenge, not a
+     * company job, an operation grant, or a replacement for Original 305.
+     * Read-only target; only the verified proof is cached at Central.
+     */
+    public static function native_refresh_needed(array $state):bool {
+        if (($state['centrally_verified']??false)!==true)return true;
+        $stamp=isset($state['verified_at'])
+            ?strtotime((string)$state['verified_at']):false;
+        return $stamp===false || $stamp<1 || time()-$stamp>=18*3600;
+    }
+    private static function native_refresh_one(string $company,string $environment):array {
+        $before=self::status($company,$environment);
+        $result=$before;
+        $changed=false;
+        if (self::native_refresh_needed($before)) {
+            $result=self::verify_exact_challenge($company,$environment);
+            if (is_wp_error($result))
+                return ['company'=>$company,'environment'=>$environment,
+                    'state'=>'SIGNED_V4_REFRESH_FAILED',
+                    'reason'=>$result->get_error_code(),
+                    'centrally_verified'=>false,'proof_refreshed'=>false];
+            $changed=($result['centrally_verified']??false)===true;
+        }
+        return ['company'=>$company,'environment'=>$environment,
+            'state'=>$result['state']??'UNKNOWN',
+            'centrally_verified'=>$result['centrally_verified']??false,
+            'proof_refreshed'=>$changed];
+    }
+    public static function native_cli($args,$assoc):void {
+        $action=(string)($args[0]??'');
+        if (count($args)!==1 ||
+            !in_array($action,['status','refresh-due','refresh-all-due'],true))
+            WP_CLI::error('EXACT_NATIVE_V4_ACTION_REQUIRED');
+        if (!self::native_permission())
+            WP_CLI::error('ENROLLED_NATIVE_HOST_PRINCIPAL_REQUIRED');
+        if ($action==='refresh-all-due') {
+            if ($assoc)WP_CLI::error('REFRESH_ALL_REQUIRES_NO_ARGUMENTS');
+            $sites=get_option('mad4b_portfolio_environment_sites_v1',[]);
+            if (!is_array($sites))WP_CLI::error('ENVIRONMENT_REGISTRY_INVALID');
+            $results=[];
+            ksort($sites,SORT_STRING);
+            foreach ($sites as $key=>$row) {
+                if (!is_string($key) ||
+                    !preg_match('/^([a-z][a-z0-9-]{2,47}):staging$/D',$key,$m) ||
+                    !is_array($row) || ($row['environment']??'')!=='staging')
+                    continue;
+                $results[]=self::native_refresh_one($m[1],'staging');
+            }
+            $all=!empty($results);
+            foreach ($results as $entry)
+                if (($entry['centrally_verified']??false)!==true)$all=false;
+            WP_CLI::line(wp_json_encode([
+                'contract'=>'mad4b.environment.native-v4-refresh.v1',
+                'state'=>$all?'SIGNED_V4_FLEET_CURRENT':'SIGNED_V4_FLEET_PARTIAL',
+                'targets'=>$results,'all_verified'=>$all,
+                'native_principal_verified'=>true,
+                'wordpress_user_required'=>false,
+                'company_grant_created'=>false,'job_submitted'=>false,
+                'target_mutated'=>false
+            ],JSON_UNESCAPED_SLASHES));
+            return;
+        }
+        if (array_keys($assoc)!==['company','environment'])
+            WP_CLI::error('EXACT_COMPANY_ENVIRONMENT_REQUIRED');
+        $company=(string)$assoc['company'];
+        $environment=(string)$assoc['environment'];
+        if (!preg_match('/^[a-z][a-z0-9-]{2,47}$/D',$company)
+            || $environment!=='staging')
+            WP_CLI::error('EXACT_STAGING_COMPANY_REQUIRED');
+        if ($action==='status') {
+            $status=self::status($company,$environment);
+            $row=['company'=>$company,'environment'=>$environment,
+                'state'=>$status['state']??'UNKNOWN',
+                'centrally_verified'=>$status['centrally_verified']??false,
+                'proof_refreshed'=>false];
+        } else {
+            $row=self::native_refresh_one($company,$environment);
+        }
+        WP_CLI::line(wp_json_encode(array_merge([
+            'contract'=>'mad4b.environment.native-v4-refresh.v1',
+            'native_principal_verified'=>true,
+            'wordpress_user_required'=>false,
+            'company_grant_created'=>false,'job_submitted'=>false,
+            'target_mutated'=>false],$row),JSON_UNESCAPED_SLASHES));
+    }
     public static function rest_status(WP_REST_Request $request) {
         return new WP_REST_Response(self::status((string)$request['company'],
             (string)$request['environment']),200);
@@ -163,6 +269,9 @@ final class MAD4B_Environment_Signed_Identity_V4 {
     }
     public static function boot():void {
         if(!self::enabled())return;
+        if(defined('WP_CLI') && WP_CLI && class_exists('WP_CLI'))
+            WP_CLI::add_command('mad4b environment-signed-v4-native',
+                [__CLASS__,'native_cli']);
         add_action('rest_api_init',static function(){
             $path='/company-environments/(?P<company>[a-z][a-z0-9-]{2,47})/(?P<environment>staging)/signed-v4';
             register_rest_route(self::API,$path,[

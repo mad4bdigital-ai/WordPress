@@ -42,6 +42,8 @@ final class MAD4B_SCP_Admin_Query_Performance_UI {
 		if ( ! empty( $status['maintenance_job_health']['reconciliation_required'] ) ) echo '<div class="notice notice-warning"><p>' . esc_html__( 'The maintenance worker exceeded its lease. Reconciliation is required before another attempt; refreshing this page does not retry the operation.', 'mad4b-site-control-plane' ) . '</p></div>';
 		echo '<p><a class="button" href="' . esc_url( admin_url( 'admin.php?page=' . self::PAGE_SLUG ) ) . '">' . esc_html__( 'Refresh persisted status', 'mad4b-site-control-plane' ) . '</a></p>';
 
+		if ( class_exists( 'MAD4B_SCP_Core_Web_Vitals', false ) ) MAD4B_SCP_Core_Web_Vitals::render_admin_section();
+
 		$indexes = isset( $status['indexes'] ) && is_array( $status['indexes'] ) ? $status['indexes'] : array();
 		if ( $indexes ) {
 			echo '<h2>' . esc_html__( 'Index status', 'mad4b-site-control-plane' ) . '</h2>';

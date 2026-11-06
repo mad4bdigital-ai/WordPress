@@ -1,0 +1,10 @@
+[Unit]
+Description=Watch MAD4B Wayfatours Tour display preference save events
+After=local-fs.target
+
+[Path]
+PathModified=/opt/wayfa-rebuild-20261102/site-copy/wp-content/.mad4b-tour-rate-cache-purge.signal
+Unit=mad4b-wayfa-tour-rate-cache-purge.service
+
+[Install]
+WantedBy=multi-user.target

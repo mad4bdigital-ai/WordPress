@@ -46,7 +46,7 @@ $lookup = array();
 foreach ( $x['sources'] as $row ) $lookup[$row['source_id']] = $row;
 $assert( $lookup['wordpress_abilities']['observed_count'] === 2, 'WordPress source count was omitted' );
 $assert( $lookup['operation_registry']['coverage_state'] === 'PARTIAL_OR_UNAVAILABLE', 'Operation registry gaps were hidden' );
-$assert( $lookup['managed_skills']['coverage_state'] === 'TRUNCATED_OR_UNKNOWN', 'Skill scan ceiling was hidden' );
+$assert( $lookup['managed_skills']['coverage_state'] === 'INVENTORIED_NOT_CERTIFIED', 'Unbounded inventory should not be misclassified as truncated' );
 $assert( $lookup['remote_operation_parity']['coverage_state'] === 'PARTIAL_OR_REJECTED', 'Rejected operation registration was hidden' );
 $assert( $lookup['host_authorized_external_federation']['coverage_state'] === 'EXTERNAL_ATTESTATION_REQUIRED', 'Unconnected external federation was invented' );
 $assert( !$x['complete_federation_proven'] && !$x['mutation_performed'], 'Source inventory claimed authorization' );

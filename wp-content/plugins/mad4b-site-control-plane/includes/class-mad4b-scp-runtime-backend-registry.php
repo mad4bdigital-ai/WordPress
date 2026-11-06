@@ -7,13 +7,13 @@ if ( ! defined( 'ABSPATH' ) ) exit;
  */
 final class MAD4B_SCP_Runtime_Backend_Registry {
  const CONTRACT = 'mad4b.runtime-backend-registry.v1';
- const TYPES = array('local_php','docker','ssh','https_runner','queue_worker','custom');
+ const TYPES = array('local_php','docker','ssh','vps_stdio','https_runner','queue_worker','custom');
  const PRESETS = array(
-  'shared_hosting'=>array('local_php','https_runner','queue_worker'),
+  'shared_hosting'=>array('local_php','vps_stdio','https_runner','queue_worker'),
   'managed_wordpress'=>array('https_runner','queue_worker','local_php'),
-  'vps'=>array('docker','local_php','ssh','https_runner','queue_worker'),
-  'containerized'=>array('docker','https_runner','queue_worker'),
-  'external_runner'=>array('https_runner','queue_worker','ssh'),
+  'vps'=>array('docker','vps_stdio','local_php','ssh','https_runner','queue_worker'),
+  'containerized'=>array('docker','vps_stdio','https_runner','queue_worker'),
+  'external_runner'=>array('vps_stdio','https_runner','queue_worker','ssh'),
  );
  public static function default_preset($name) {
   return self::PRESETS[$name] ?? self::PRESETS['shared_hosting'];
@@ -61,6 +61,7 @@ final class MAD4B_SCP_Runtime_Backend_Registry {
     'authorized'=>true===($v['authorized']??false),
     'isolation_verified'=>true===($v['isolation_verified']??false),
     'identity_verified'=>true===($v['identity_verified']??false),
+    'read_probe_observed'=>true===($v['read_probe_observed']??false),
     'last_probe_at'=>max(0,(int)($v['last_probe_at']??0)),
     'backoff_until'=>max(0,(int)($v['backoff_until']??0)),
     'latency_ms'=>max(0,min(60000,(int)($v['latency_ms']??60000))),
@@ -101,6 +102,7 @@ final class MAD4B_SCP_Runtime_Backend_Registry {
    'type'=>$r['type'],'discovered'=>$r['discovered'],'configured'=>$r['configured'],
    'reachable'=>$r['reachable'],'certified'=>$r['certified'],
    'authorized'=>$r['authorized'],'ready'=>self::ready($r,'runtime.status.read'),
+   'read_probe_observed'=>$r['read_probe_observed'],
    'operations'=>$r['operations'],'backoff_active'=>$r['backoff_until']>time()
   );
   return array('contract'=>self::CONTRACT,'preset'=>isset(self::PRESETS[$preset])?$preset:'shared_hosting',
@@ -111,6 +113,35 @@ final class MAD4B_SCP_Runtime_Backend_Registry {
   if(function_exists('apply_filters')) $candidates=apply_filters('mad4b_runtime_backend_candidates',array());
   $preset=function_exists('get_option')?(string)get_option('mad4b_runtime_backend_preset','shared_hosting'):'shared_hosting';
   return self::snapshot($candidates,$preset);
+ }
+ /** Fresh site-bound STDIO inventory/read canary. A transient is
+  * discovery only; it can never grant host identity or operation authority.
+  */
+ public static function local_stdio_read_observation() {
+  if(!function_exists('get_transient')
+   || !class_exists('MAD4B_SCP_Site_Profile',false))return false;
+  $probe=get_transient('mad4b_vps_mcp_stdio_probe_v1');
+  $site=MAD4B_SCP_Site_Profile::status();
+  if(!is_array($probe)||!is_array($site))return false;
+  $now=time();
+  return ($probe['contract']??'')==='mad4b.vps-mcp-stdio-read-probe.v1'
+    && ($site['contract']??'')==='mad4b.site-profile.v2'
+    && !empty($site['origin_match']) && !empty($site['environment_match'])
+    && !empty($site['deployment_binding_match'])
+    && is_string($probe['site_uuid']??null)
+    && hash_equals((string)($site['site_uuid']??''),$probe['site_uuid'])
+    && ($probe['canonical_origin']??'')===($site['canonical_origin']??'')
+    && ($probe['environment']??'')===($site['environment']??'')
+    && is_int($probe['observed_at']??null)
+    && $probe['observed_at']>$now-300 && $probe['observed_at']<=$now+5
+    && (int)($probe['tool_count']??0)>0 && (int)($probe['tool_count']??0)<=1200
+    && is_string($probe['read_tool_name']??null)
+    && 1===preg_match('/^[a-z][a-z0-9._-]{2,95}$/D',$probe['read_tool_name'])
+    && is_string($probe['readback_sha256']??null)
+    && 1===preg_match('/^[a-f0-9]{64}$/D',$probe['readback_sha256'])
+    && ($probe['read_tool_verified']??null)===true
+    && ($probe['oauth_used']??null)===false
+    && ($probe['mutation_performed']??null)===false;
  }
  public static function builtin_candidates($candidates) {
   if(!is_array($candidates)) $candidates=array();
@@ -123,12 +154,15 @@ final class MAD4B_SCP_Runtime_Backend_Registry {
    'authorized'=>false,'identity_verified'=>!empty($host['non_root_verified']),
    'isolation_verified'=>!empty($host['normal_no_network_execution_ready'])
   );
-  foreach(array('isolated_vps_runner'=>'https_runner','ssh_host_runner'=>'ssh','isolated_docker_runner'=>'docker') as $id=>$type) {
+  $stdio_observed=self::local_stdio_read_observation();
+  foreach(array('isolated_vps_runner'=>'vps_stdio','ssh_host_runner'=>'ssh','isolated_docker_runner'=>'docker') as $id=>$type) {
    $row=$host['external_backends'][$id]??array();
    $candidates[$id]=array(
     'type'=>$type,'operations'=>array('runtime.status.read','php.lint'),
-    'discovered'=>!empty($row['discovered']),'configured'=>!empty($row['configured']),
-    'reachable'=>!empty($row['live_available_observed']),
+    'discovered'=>!empty($row['discovered'])||($id==='isolated_vps_runner'&&$stdio_observed),
+    'configured'=>!empty($row['configured'])||($id==='isolated_vps_runner'&&$stdio_observed),
+    'reachable'=>!empty($row['live_available_observed'])||($id==='isolated_vps_runner'&&$stdio_observed),
+    'read_probe_observed'=>$id==='isolated_vps_runner'&&$stdio_observed,
     'certified'=>false,'authorized'=>false,'identity_verified'=>false,'isolation_verified'=>false
    );
   }

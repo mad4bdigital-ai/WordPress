@@ -1,0 +1,51 @@
+{
+  "contract": "mad4b.faore.live-read-only-deployment.v1",
+  "date": "2026-11-05",
+  "deployment": {
+    "added_module": "includes/class-mad4b-scp-faore-staging-canary-inspection.php",
+    "backup_path": "/opt/mad4b-company-transport/native-operator-v1/backups/faore-read-only-publish-20261105T145803Z",
+    "changed_existing_files": [
+      "mad4b-site-control-plane.php"
+    ],
+    "live_exact_source": {
+      "includes/class-mad4b-scp-faore-staging-canary-inspection.php": {
+        "exact_git_source_match": true,
+        "sha256": "09cabac435a12b4b5a76e515208fb572ac83359f7b81f3650b3cb3fcecbee8b9"
+      },
+      "mad4b-site-control-plane.php": {
+        "exact_git_source_match": true,
+        "sha256": "d9bcaabea02aa69618b2b008cba02fd9b29c6cf0eea3f5f059c128498a18b77a"
+      }
+    },
+    "original_loader_sha256": "688ba578248ad40dadddc7ecf18b2bd13b9e5476637a99d7d747d63dd0befc18",
+    "state": "PUBLISHED_AND_LIVE_READBACK_VERIFIED"
+  },
+  "github_pushed": false,
+  "host_operator_denied_apply": "UNCHANGED_NOT_RETRIED",
+  "live_verification": {
+    "class_loaded": true,
+    "faore_python_tests_passed": 123,
+    "http_wp_json_status": 200,
+    "mutation_performed": false,
+    "native313_timer_active": true,
+    "option_present": false,
+    "php_syntax_bootstrap": "PASS",
+    "php_syntax_module": "PASS",
+    "plan_ability_registered": true,
+    "plan_readback_error": null,
+    "rollback_verified": false,
+    "stdio_timer_active": true,
+    "verify_ability_registered": true,
+    "verify_readback_error": null,
+    "write_ability_registered": false
+  },
+  "production_mutated": false,
+  "site": {
+    "company": "tours-central",
+    "environment": "staging",
+    "origin": "https://tours.dev.mad4b.com",
+    "site_uuid": "e5e64bca-ed62-48d2-b2b3-dff693cd702a"
+  },
+  "source_commit": "c95f27d",
+  "write_scope": "READ_ONLY_NO_AUTHORITY_CHANGE"
+}

@@ -389,7 +389,7 @@
       ]
     },
     "context/brand-draft-create": {
-      "provider": "google_drive_context",
+      "provider": "core",
       "mode": "exact_paths",
       "brand_paths": [
         "content"
@@ -402,7 +402,7 @@
       ]
     },
     "context/brand-draft-append": {
-      "provider": "google_drive_context",
+      "provider": "core",
       "mode": "exact_paths",
       "brand_paths": [
         "content"

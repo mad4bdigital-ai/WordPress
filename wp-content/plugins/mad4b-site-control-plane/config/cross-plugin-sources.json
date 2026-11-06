@@ -30,7 +30,7 @@
     },
     {
       "id": "dynamic-filter-seo-bridge",
-      "label": "Dynamic Filter SEO Bridge — tenant-neutral source",
+      "label": "Dynamic Filter SEO Bridge \u2014 tenant-neutral source",
       "repository": "mad4bdigital-ai/WordPress",
       "plugin_subdirectory": "wp-content/plugins/dynamic-filter-seo-bridge",
       "plugin_file": "dynamic-filter-seo-bridge/dynamic-filter-seo-bridge.php",

@@ -20,7 +20,7 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 	const RECOVERY_ABILITY = 'mad4b/chatgpt-tool-projection-recovery-plan';
 	const APPLY_ABILITY = 'mad4b/chatgpt-tool-projection-apply';
 	const CONFIRMATION = 'APPLY CHATGPT TOOL PROJECTION';
-	const MAX_SELECTED = 64;
+	const MAX_CHANGE_BATCH = 64; // Per request, not a total stored registry limit.
 
 	private static $booted = false;
 
@@ -185,7 +185,7 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 			'ability_names' => array(
 				'type' => 'array',
 				'minItems' => 0,
-				'maxItems' => self::MAX_SELECTED,
+				'maxItems' => self::MAX_CHANGE_BATCH,
 				'uniqueItems' => true,
 				'items' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 191, 'pattern' => '^[A-Za-z0-9._+\\/-]+$' ),
 			),
@@ -218,7 +218,6 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		}
 		$state['revision'] = isset( $state['revision'] ) ? max( 0, (int) $state['revision'] ) : 0;
 		$state['abilities'] = isset( $state['abilities'] ) && is_array( $state['abilities'] ) ? $state['abilities'] : array();
-		if ( count( $state['abilities'] ) > self::MAX_SELECTED ) { $state['abilities'] = array(); $state['quarantine_reason'] = 'registry_size_exceeded'; }
 		return $state;
 	}
 
@@ -491,6 +490,8 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 
 	private static function desired_names( array $input ) {
 		$requested = isset( $input['ability_names'] ) && is_array( $input['ability_names'] ) ? array_values( array_unique( array_map( 'strval', $input['ability_names'] ) ) ) : array();
+		if ( count( $requested ) > self::MAX_CHANGE_BATCH ) return new WP_Error( 'mad4b_chatgpt_projection_change_batch_too_large', 'Use multiple bounded add/remove operations to update the projection registry.' );
+		if ( count( $requested ) > self::MAX_CHANGE_BATCH ) return new WP_Error( 'mad4b_chatgpt_projection_change_batch_too_large', 'Use multiple bounded add/remove operations to update an unlimited projection registry.' );
 		sort( $requested, SORT_STRING );
 		$mode = isset( $input['mode'] ) ? sanitize_key( (string) $input['mode'] ) : 'replace';
 		if ( ! in_array( $mode, array( 'replace', 'add', 'remove' ), true ) ) $mode = 'replace';
@@ -500,7 +501,6 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		else $desired = $requested;
 		$desired = array_values( array_unique( array_map( 'strval', $desired ) ) );
 		sort( $desired, SORT_STRING );
-		if ( count( $desired ) > self::MAX_SELECTED ) return new WP_Error( 'mad4b_chatgpt_projection_selection_too_large', 'Dynamic projection selection exceeds the bounded registry size.' );
 		return $desired;
 	}
 
@@ -627,7 +627,7 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		$binding_match = self::binding_matches( $state );
 		$eligible = array();
 		$excluded = array();
-		foreach ( array_slice( $saved, 0, self::MAX_SELECTED ) as $ability_name ) {
+		foreach ( $saved as $ability_name ) {
 			$row = self::planning_row( $ability_name );
 			if ( is_wp_error( $row ) ) {
 				$excluded[ $ability_name ] = array( $row->get_error_code() );
@@ -1026,12 +1026,14 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 			'ability_contract_scan_count' => $returned,
 			'full_projection_scan_performed' => $include_preflight,
 			'budgets' => array(
-				'max_selected' => self::MAX_SELECTED,
-				'max_tools' => MAD4B_SCP_MCP_Catalog_Diagnostics::MAX_TOOLS,
-				'max_serialized_tool_bytes' => MAD4B_SCP_MCP_Catalog_Diagnostics::MAX_SERIALIZED_TOOL_BYTES,
+				'max_selected' => null,
+                'max_change_batch' => self::MAX_CHANGE_BATCH,
+				'max_tools' => null,
+				'max_serialized_tool_bytes' => null,
+				'max_single_tool_schema_bytes' => MAD4B_SCP_MCP_Catalog_Budget::limits()['max_bytes'],
 				'status_page_max' => 25,
 				'status_default_page' => 10,
-				'schema_size_policy' => 'bounded_direct_projection_with_dispatcher_fallback',
+				'schema_size_policy' => 'unbounded_total_with_bounded_per_tool_schema_and_paged_gateway',
 				'status_policy' => 'summary_first_opt_in_deep_scan',
 			),
 			'abilities_page' => array(
