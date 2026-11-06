@@ -44,6 +44,7 @@ final class MAD4B_SCP_Admin_Query_Performance_UI {
 
 		if ( class_exists( 'MAD4B_SCP_Core_Web_Vitals', false ) ) MAD4B_SCP_Core_Web_Vitals::render_admin_section();
 		self::render_selective_cache_release();
+		self::render_css_strategy_status();
 
 		$indexes = isset( $status['indexes'] ) && is_array( $status['indexes'] ) ? $status['indexes'] : array();
 		if ( $indexes ) {
@@ -92,6 +93,39 @@ final class MAD4B_SCP_Admin_Query_Performance_UI {
 		echo '</tbody></table>';
 	}
 
+	/** Read-only CSS delivery gates; this view never enables risky CSS modes. */
+	private static function render_css_strategy_status() {
+		$read = static function($key) { $v=get_option('litespeed.conf.' . $key, '0'); return $v === '1' || $v === 1 || $v === true ? 'on' : 'off'; };
+		$ucss=$read('optm-ucss');
+		$async=$read('optm-css_async');
+		$plan=class_exists('MAD4B_Predictive_CSS_Plan_V2', false)
+			? MAD4B_Predictive_CSS_Plan_V2::summary() : array();
+		echo '<h2>CSS optimization — UCSS / CCSS delivery gates</h2>';
+		echo '<p>These are current runtime states, not activation controls. UCSS reduces unused styles. Critical CSS provides above-the-fold styles when async loading is verified. Device-specific LCP and interaction evidence are required before rollout.</p>';
+		echo '<table class="widefat striped" style="max-width:960px"><tbody>';
+		self::row('LiteSpeed Generate UCSS', strtoupper($ucss));
+		self::row('LiteSpeed UCSS Inline', strtoupper($read('optm-ucss_inline')) . ($ucss === 'off' ? ' (inactive until UCSS is enabled)' : ''));
+		self::row('LiteSpeed Load CSS Async / CCSS', strtoupper($async));
+		self::row('LiteSpeed Inline CSS Async Library', strtoupper($read('optm-css_async_inline')) . ($async === 'off' ? ' (inactive until Async is enabled)' : ''));
+		self::row('MAD4B Verified Critical CSS', strtoupper((string)get_option('mad4b_perf_critical_css_v1','off')));
+		self::row('MAD4B Predictive CSS plan', (string)($plan['release'] ?? 'none') . ' / ' . (string)($plan['runtime'] ?? 'off'));
+		echo '</tbody></table>';
+		$routes=(array)($plan['routes'] ?? array());
+		if ($routes) {
+			echo '<table class="widefat striped" style="max-width:960px"><thead><tr><th>Route</th><th>Device</th><th>Gate</th><th>Baseline LCP</th><th>Async LCP</th><th>Critical gzip</th></tr></thead><tbody>';
+			foreach ($routes as $entry) {
+				if (!is_array($entry)) continue;
+				$values=array($entry['path']??'', $entry['device']??'', $entry['performance_gate']??'unverified',
+					isset($entry['baseline_lcp_ms']) ? (int)$entry['baseline_lcp_ms'] . ' ms' : '—',
+					isset($entry['async_lcp_ms']) ? (int)$entry['async_lcp_ms'] . ' ms' : '—',
+					isset($entry['critical_gzip_bytes']) ? (int)$entry['critical_gzip_bytes'] . ' B' : '—');
+				echo '<tr>'; foreach ($values as $value) echo '<td>' . esc_html((string)$value) . '</td>'; echo '</tr>';
+			}
+			echo '</tbody></table>';
+		}
+		echo '<p>UCSS and CCSS must be verified for every public language and device, including interactive JetEngine, Swiper and JetSmartFilters states. Never infer a CrUX Passed verdict from these lab samples.</p>';
+	}
+
 	private static function row( $label, $value ) {
 		echo '<tr><th style="width:260px">' . esc_html( $label ) . '</th><td><code>' . esc_html( (string) $value ) . '</code></td></tr>';
 	}
@@ -101,3 +135,4 @@ MAD4B_SCP_Admin_Query_Performance_UI::boot();
 
 // Routes are declared without booting menus or provider lifecycle on frontend requests.
 if ( class_exists( 'MAD4B_SCP_Admin_Route_Registry', false ) ) MAD4B_SCP_Admin_Route_Registry::register( MAD4B_SCP_Admin_Query_Performance_UI::PAGE_SLUG, 'manage_options' );
+
