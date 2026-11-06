@@ -123,3 +123,7 @@ jobs:
           php "$base/staging-write-candidate-binding-runtime.php"
           php "$base/schema-migration-runtime-contract.php"
           php "$base/undo-intent-fault-injection.php"
+          python3 "$base/site-profile-feature-reenrollment-contract.py"
+          php "$base/site-profile-feature-reenrollment-runtime.php"
+          php "$base/mcp-class-provenance-runtime.php"
+          node "$base/admin-settings-persistence-runtime.mjs"
