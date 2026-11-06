@@ -4,7 +4,7 @@
   "source_control": "mad4bdigital-ai/WordPress",
   "environment_overlay": "wayfatours-production + tours-dev-staging",
   "sha256": {
-    "ops/mad4b-company-live-convergence-20261106/README.md": "c7330ff219b15fcbe8d47573cdb0fe826639c02865fbd13412bca6eb975d9b27",
+    "ops/mad4b-company-live-convergence-20261106/README.md": "8aa936985051bfd410191dc0b6695522b44b92e17bb54602b96308fba3b7ba37",
     "ops/mad4b-company-live-convergence-20261106/host-cache/mad4b-wayfa-tour-rate-cache-purge.path": "ff0485c0c32eb2f3e9ca33db1dc42558954ff118b152b71063e3a804f6d794a9",
     "ops/mad4b-company-live-convergence-20261106/host-cache/mad4b-wayfa-tour-rate-cache-purge.service": "514ed80836015f92beb00c6dd86ae4a03eb641bde1b8baf050bb7bdb15299a80",
     "ops/mad4b-company-live-convergence-20261106/host-cache/purge-wayfa-tour-rate-public-cache.py": "1a627d89e7d43fa0155b00fe138f1c45abc783ebbccfcd77105414632d7de179",
@@ -61,6 +61,8 @@
     "wp-content/plugins/mad4b-site-control-plane/tests/context-media-normalization-runtime.php": "3f5159506719695fb603292d6f318600de1834a3662297b4901630e11b8a8008",
     "wp-content/plugins/mad4b-site-control-plane/tests/dependency-certified-runtime-contract.py": "e5a59eebbccee9e602c74857e7a4e97cbbc909816a6a700b20bef4e5dcfdf890",
     "wp-content/plugins/mad4b-site-control-plane/tests/gateway-regression-runtime.php": "f8b14624a4152d63e131a1ce67e9d1f2b8d5ec170ef16fea98c2c513e5d02cf7",
-    "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-authority-contract.py": "2f9252ee559dca99e6537ce4c5081e7a1c790fa5e6336ce6af005ef3fc9b0124"
+    "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-authority-contract.py": "2f9252ee559dca99e6537ce4c5081e7a1c790fa5e6336ce6af005ef3fc9b0124",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-full-staging-authority.php": "d662b9b96c7c2e64cdef9d813b58c13988d51ad2b5b788381ae20d101289a662",
+    "wp-content/plugins/mad4b-site-control-plane/tests/full-staging-authority-contract.py": "79b7a0191f5a950f29f6bd28bd19d3e46ccf2d51fe3e2c5b2f50f7c1c3a9f8b3"
   }
 }

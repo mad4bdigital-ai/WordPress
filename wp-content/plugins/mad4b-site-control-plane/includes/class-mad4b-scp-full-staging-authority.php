@@ -617,6 +617,10 @@ final class MAD4B_SCP_Full_Staging_Authority {
 		if ( is_wp_error( $developer_breakglass_plan ) ) return $developer_breakglass_plan;
 
 		$hard_blockers = array();
+		// A separately active generic Raw SQL Breakglass may never be bundled
+		// into Full Staging Authority convergence. Reporting this as a hard
+		// blocker protects BOTH WP-CLI and remote apply, not only MCP tools/list.
+		if ( self::generic_raw_sql_breakglass_gate_enabled() ) $hard_blockers[] = 'mad4b_full_authority_raw_sql_breakglass_denied';
 		if ( isset( $write_plan['global_registry_wildcard_grants'] ) && (int) $write_plan['global_registry_wildcard_grants'] > 0 ) $hard_blockers[] = 'global_registry_wildcard_grants';
 		if ( isset( $write_plan['current_agent_wildcard_grants'] ) && (int) $write_plan['current_agent_wildcard_grants'] > 0 ) $hard_blockers[] = 'current_agent_wildcard_grants';
 		if ( isset( $write_plan['unreviewed_stale_allow_grants_count'] ) && (int) $write_plan['unreviewed_stale_allow_grants_count'] > 0 ) $hard_blockers[] = 'unreviewed_stale_write_authority';
