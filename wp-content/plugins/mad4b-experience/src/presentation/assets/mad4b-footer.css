@@ -1,0 +1,449 @@
+/* Company footer: use Elementor Brand Kit tokens instead of a copied palette. */
+.elementor-location-footer .mad4b-footer-root {
+  background: var(--e-global-color-primary, #102D40);
+  color: var(--e-global-color-0ce0fb4, #fff);
+  padding-block: clamp(36px,5vw,64px) 20px;
+  padding-inline: clamp(20px,4vw,52px);
+}
+.elementor-location-footer .mad4b-footer-root :is(h2,h3,h4,a,small,p) {
+  color: inherit;
+}
+.elementor-location-footer .mad4b-footer-root a {
+  text-decoration: none;
+  text-underline-offset: 4px;
+}
+.elementor-location-footer .mad4b-footer-root a:hover,
+.elementor-location-footer .mad4b-footer-root a:focus-visible {
+  color: var(--e-global-color-accent, #B48A46);
+  text-decoration: underline;
+}
+.elementor-location-footer .mad4b-footer-root a:focus-visible {
+  outline: 2px solid var(--e-global-color-accent, #B48A46);
+  outline-offset: 4px;
+}
+.elementor-location-footer .mad4b-footer-logo-image {
+  max-width: min(220px,100%);
+  height: auto;
+  object-fit: contain;
+}
+.elementor-location-footer .mad4b-footer-logo-monochrome {
+  filter: brightness(0) invert(1);
+}
+.elementor-location-footer .mad4b-footer-wordmark {
+  font-size: clamp(1.35rem,2vw,1.8rem);
+  font-weight: 800;
+  letter-spacing: .015em;
+  color: #fff;
+}
+.elementor-location-footer .mad4b-footer-brand p {
+  max-width: 33ch;
+  color: #DCE6E5;
+  font-size: .925rem;
+  line-height: 1.6;
+  margin: 14px 0 0;
+}
+.elementor-location-footer .mad4b-footer-legal {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: .925rem;
+}
+.elementor-location-footer ul.mad4b-footer-payments {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.elementor-location-footer .mad4b-footer-payments li {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 70px;
+  height: 42px;
+  background: #fff;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 6px;
+  padding: 5px 8px;
+}
+.elementor-location-footer .mad4b-footer-payments img {
+  display: block;
+  max-width: 100%;
+  max-height: 30px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+.elementor-location-footer .mad4b-footer-copyright {
+  color: #DCE6E5;
+  font-size: .85rem;
+  line-height: 1.6;
+}
+.elementor-location-footer .mad4b-footer-root .wpml-ls {
+  max-width: 260px;
+}
+.elementor-location-footer .mad4b-footer-root .wpml-ls :is(.wpml-ls-item-toggle,.wpml-ls-sub-menu) {
+  background: var(--e-global-color-secondary, #204C50);
+  border-color: rgba(255,255,255,.22);
+  color: #fff;
+}
+.elementor-location-footer .mad4b-footer-root .wpml-ls a {
+  color: #fff;
+}
+.elementor-location-footer .mad4b-footer-root .wpml-ls a:hover {
+  background: var(--e-global-color-secondary, #204C50);
+  color: var(--e-global-color-accent, #B48A46);
+}
+html[dir="rtl"] .elementor-location-footer .mad4b-footer-legal {
+  align-items: flex-start;
+  text-align: start;
+}
+@media(max-width:767px) {
+  .elementor-location-footer .mad4b-footer-root {
+    padding-block: 30px 16px;
+    padding-inline: 22px;
+  }
+  .elementor-location-footer .mad4b-footer-payments li {
+    width: 66px;
+    height: 40px;
+  }
+}
+.elementor-location-footer .mad4b-footer-bottom {
+  background: var(--e-global-color-primary, #102D40);
+  color: #DCE6E5;
+  padding: 6px clamp(20px,4vw,52px) 18px;
+}
+.elementor-location-footer .mad4b-footer-bottom .elementor-divider-separator {
+  border-color: rgba(255,255,255,.24);
+}
+.elementor-location-footer .mad4b-footer-root .elementor-heading-title {
+  color: #fff;
+  font-size: clamp(1rem,1.25vw,1.125rem);
+  font-weight: 700;
+  margin: 0 0 12px;
+}
+.elementor-location-footer .mad4b-footer-root .elementor-widget-shortcode,
+.elementor-location-footer .mad4b-footer-root .elementor-shortcode {
+  width: 100%;
+}
+/* Elementor boxed Grid applies responsive columns on .e-con-inner, not on the root. */
+@media (max-width:767px) {
+  .elementor-location-footer .mad4b-footer-root > .e-con-inner {
+    grid-template-columns: minmax(0,1fr) !important;
+  }
+  .elementor-location-footer .mad4b-footer-col {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  .elementor-location-footer .mad4b-footer-root .wpml-ls {
+    max-width: 100% !important;
+  }
+}
+
+/* Footer contrast/Kit tagline revision 2026-11-04 */
+/* Footer language selector: high-contrast states scoped away from header. */
+.elementor-location-footer .mad4b-footer-root .elementor-widget-wpml-language-switcher .wpml-elementor-ls,
+.elementor-location-footer .mad4b-footer-root .elementor-widget-wpml-language-switcher .wpml-ls-legacy-dropdown {
+  width: min(100%, 278px) !important;
+  max-width: 100% !important;
+}
+.elementor-location-footer .mad4b-footer-root .wpml-ls-legacy-dropdown > ul,
+.elementor-location-footer .mad4b-footer-root .wpml-ls-legacy-dropdown > ul > li {
+  width: 100% !important;
+}
+.elementor-location-footer .mad4b-footer-root .elementor-widget-wpml-language-switcher .wpml-ls-legacy-dropdown .wpml-ls-current-language > a.wpml-ls-item-toggle {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 9px;
+  width: 100% !important;
+  min-height: 48px;
+  padding: 10px 39px 10px 15px !important;
+  border: 1.5px solid var(--e-global-color-a558f6f, #D4B483) !important;
+  border-radius: 10px !important;
+  background: var(--e-global-color-secondary, #204C50) !important;
+  color: #fff !important;
+  font-size: 15px !important;
+  line-height: 1.35 !important;
+  font-weight: 700 !important;
+  box-shadow: 0 3px 11px rgba(0,0,0,.12);
+  text-decoration: none !important;
+  transition: background-color .18s ease, border-color .18s ease, color .18s ease, box-shadow .18s ease;
+}
+.elementor-location-footer .mad4b-footer-root .wpml-ls-legacy-dropdown .wpml-ls-current-language > a.wpml-ls-item-toggle :is(span,.wpml-ls-native) {
+  color: inherit !important;
+}
+.elementor-location-footer .mad4b-footer-root .elementor-widget-wpml-language-switcher .wpml-ls-legacy-dropdown .wpml-ls-current-language > a.wpml-ls-item-toggle:is(:hover,:focus-visible),
+.elementor-location-footer .mad4b-footer-root .elementor-widget-wpml-language-switcher .wpml-ls-legacy-dropdown .wpml-ls-current-language:hover > a.wpml-ls-item-toggle,
+.elementor-location-footer .mad4b-footer-root .elementor-widget-wpml-language-switcher .wpml-ls-legacy-dropdown .wpml-ls-current-language > a.wpml-ls-item-toggle[aria-expanded="true"] {
+  background: var(--e-global-color-accent, #B48A46) !important;
+  color: var(--e-global-color-primary, #102D40) !important;
+  border-color: var(--e-global-color-accent, #B48A46) !important;
+  box-shadow: 0 5px 18px rgba(0,0,0,.2);
+}
+.elementor-location-footer .mad4b-footer-root .elementor-widget-wpml-language-switcher .wpml-ls-legacy-dropdown a:focus-visible {
+  outline: 2px solid #FFFFFF !important;
+  outline-offset: 3px !important;
+}
+.elementor-location-footer .mad4b-footer-root .wpml-ls-legacy-dropdown .wpml-ls-sub-menu {
+  width: 100% !important;
+  max-height: 300px;
+  overflow-y: auto;
+  background: var(--e-global-color-80789f7, #F9F7F5) !important;
+  border: 1px solid var(--e-global-color-a558f6f, #D4B483) !important;
+  border-radius: 10px;
+  box-shadow: 0 12px 28px rgba(0,0,0,.22);
+  padding: 6px !important;
+  margin-top: 6px !important;
+  z-index: 1000;
+}
+.elementor-location-footer .mad4b-footer-root .wpml-ls-legacy-dropdown .wpml-ls-sub-menu > li {
+  padding: 0 !important;
+  background: transparent !important;
+}
+.elementor-location-footer .mad4b-footer-root .elementor-widget-wpml-language-switcher .wpml-ls-legacy-dropdown .wpml-ls-sub-menu a.wpml-ls-link {
+  display: flex !important;
+  align-items: center !important;
+  width: 100% !important;
+  min-height: 42px;
+  gap: 8px;
+  padding: 9px 12px !important;
+  color: var(--e-global-color-primary, #102D40) !important;
+  background: transparent !important;
+  border-radius: 7px !important;
+  font-size: 14px !important;
+  line-height: 1.35 !important;
+  font-weight: 600 !important;
+  text-decoration: none !important;
+}
+.elementor-location-footer .mad4b-footer-root .wpml-ls-legacy-dropdown .wpml-ls-sub-menu a.wpml-ls-link :is(span,.wpml-ls-native,.wpml-ls-display) {
+  color: inherit !important;
+}
+.elementor-location-footer .mad4b-footer-root .elementor-widget-wpml-language-switcher .wpml-ls-legacy-dropdown .wpml-ls-sub-menu a.wpml-ls-link:is(:hover,:focus-visible),
+.elementor-location-footer .mad4b-footer-root .elementor-widget-wpml-language-switcher .wpml-ls-legacy-dropdown .wpml-ls-sub-menu li:hover > a.wpml-ls-link {
+  background: var(--e-global-color-accent, #B48A46) !important;
+  color: var(--e-global-color-primary, #102D40) !important;
+}
+.elementor-location-footer .mad4b-footer-root .wpml-ls-legacy-dropdown .wpml-ls-flag {
+  display: inline-block !important;
+  flex-shrink: 0;
+  height: 15px !important;
+  width: 23px !important;
+  object-fit: cover;
+  border-radius: 2px;
+  border: 1px solid rgba(16,45,64,.18);
+  margin-inline-end: 5px !important;
+}
+html[dir="rtl"] .elementor-location-footer .mad4b-footer-root .wpml-ls-legacy-dropdown .wpml-ls-current-language > a.wpml-ls-item-toggle {
+  padding: 10px 15px 10px 39px !important;
+}
+@media (max-width:767px) {
+  .elementor-location-footer .mad4b-footer-root .elementor-widget-wpml-language-switcher .wpml-elementor-ls,
+  .elementor-location-footer .mad4b-footer-root .elementor-widget-wpml-language-switcher .wpml-ls-legacy-dropdown {width:min(100%,300px)!important;}
+}
+@media (prefers-reduced-motion:reduce) {
+  .elementor-location-footer .mad4b-footer-root .wpml-ls-item-toggle {transition:none!important;}
+}
+/* Full-size control: Elementor widget's inherited width was only 76px. */
+.elementor-location-footer .mad4b-footer-root .mad4b-footer-languages .elementor-widget-wpml-language-switcher {
+  width: min(100%, 278px) !important;
+  min-width: min(100%, 238px);
+  max-width: 100% !important;
+  align-self: flex-start !important;
+}
+.elementor-location-footer .mad4b-footer-root .mad4b-footer-languages .wpml-elementor-ls,
+.elementor-location-footer .mad4b-footer-root .mad4b-footer-languages .wpml-ls-legacy-dropdown {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+.elementor-location-footer .mad4b-footer-root .mad4b-footer-languages .wpml-ls-legacy-dropdown > ul > li > a.wpml-ls-item-toggle {
+  min-width: 100% !important;
+}
+.elementor-location-footer .mad4b-footer-root .mad4b-footer-languages {
+  min-width: 0 !important;
+}
+.elementor-location-footer .mad4b-footer-root .mad4b-footer-brand .mad4b-footer-kit-tagline {
+  margin: 14px 0 0 !important;
+  color: var(--e-global-color-bmenmut, #DCE6E5) !important;
+  font-size: clamp(14px, 1.04vw, 16px);
+  line-height: 1.62;
+  font-weight: 400;
+  letter-spacing: .01em;
+  max-width: 35ch;
+  overflow-wrap: anywhere;
+}
+/* Layout correction: inherited Elementor 25% widths inside CSS Grid
+ * constrained each column to 76px even on large desktops. */
+.elementor-location-footer .mad4b-footer-root > .e-con-inner {
+  column-gap: clamp(20px, 2.4vw, 34px) !important;
+  row-gap: 28px !important;
+}
+.elementor-location-footer .mad4b-footer-root > .e-con-inner > .mad4b-footer-col {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  align-self: start;
+}
+@media (min-width:1025px) {
+  .elementor-location-footer .mad4b-footer-root > .e-con-inner {
+    grid-template-columns: repeat(4,minmax(0,1fr)) !important;
+  }
+}
+@media (min-width:768px) and (max-width:1024px) {
+  .elementor-location-footer .mad4b-footer-root > .e-con-inner {
+    grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+  }
+}
+@media (max-width:767px) {
+  .elementor-location-footer .mad4b-footer-root > .e-con-inner {
+    grid-template-columns: minmax(0,1fr) !important;
+  }
+}
+
+
+/* Structural footer alignment and drop-up WPML menu fix. */
+/* Footer layout: correct shared class ownership and dropdown geometry. */
+.elementor-location-footer .mad4b-footer-root > .e-con-inner {
+  padding-block: 0 !important;
+}
+.elementor-location-footer .mad4b-footer-root > .e-con-inner > .mad4b-footer-col {
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+  align-content: flex-start !important;
+}
+.elementor-location-footer .mad4b-footer-root .mad4b-footer-col > .elementor-widget-heading {
+  width: 100% !important;
+  align-self: stretch !important;
+  text-align: start !important;
+  margin: 0 0 12px !important;
+}
+.elementor-location-footer .mad4b-footer-root .mad4b-footer-col > .elementor-widget-heading .elementor-heading-title {
+  display:block;
+  text-align:start !important;
+  margin:0 !important;
+  line-height:1.3;
+}
+.elementor-location-footer .mad4b-footer-root .mad4b-footer-col.mad4b-footer-payments {
+  display:flex !important;
+  flex-direction:column !important;
+  flex-wrap:nowrap !important;
+  align-items:flex-start !important;
+  gap:0 !important;
+}
+.elementor-location-footer .mad4b-footer-root .mad4b-footer-col.mad4b-footer-payments > .elementor-widget-shortcode {
+  width:100% !important;
+  margin:0 !important;
+}
+.elementor-location-footer .mad4b-footer-root ul.mad4b-footer-payments {
+  display:flex !important;
+  flex-direction:row !important;
+  align-items:center !important;
+  justify-content:flex-start !important;
+  flex-wrap:wrap !important;
+  gap:10px !important;
+  width:100%;
+  margin:0 !important;
+  padding:0 !important;
+  list-style:none !important;
+}
+.elementor-location-footer .mad4b-footer-root .mad4b-footer-col.mad4b-footer-languages {
+  z-index:9;
+}
+.elementor-location-footer .mad4b-footer-root .wpml-ls-legacy-dropdown > ul > li {
+  position:relative !important;
+}
+.elementor-location-footer .mad4b-footer-root .wpml-ls-legacy-dropdown .wpml-ls-sub-menu {
+  top:auto !important;
+  bottom:calc(100% + 6px) !important;
+  margin:0 !important;
+  transform:none !important;
+}
+
+/* Header social Icon List replicated in Footer, language-specific Elementor
+ * widget; preserves the header's dynamic JetEngine social URL tags. */
+.elementor-location-footer .mad4b-footer-root .elementor-element-f7c09ab {
+  margin: 16px 0 0 !important;
+  padding: 0 !important;
+  width: auto !important;
+  align-self: flex-start !important;
+  max-width: 100% !important;
+  flex-grow: 0 !important;
+}
+.elementor-location-footer .mad4b-footer-root .elementor-element-f7c09ab .elementor-icon-list-items {
+  display: flex !important;
+  flex-flow: row wrap !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 10px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  list-style: none !important;
+}
+.elementor-location-footer .mad4b-footer-root .elementor-element-f7c09ab .elementor-icon-list-item {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 42px !important;
+  height: 42px !important;
+  border: 1px solid rgba(255,255,255,.44) !important;
+  border-radius: 50% !important;
+  background: rgba(255,255,255,.065) !important;
+  display: inline-flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  line-height: 1 !important;
+  transition: background-color .18s, border-color .18s, transform .18s;
+}
+.elementor-location-footer .mad4b-footer-root .elementor-element-f7c09ab .elementor-icon-list-item > a,
+.elementor-location-footer .mad4b-footer-root .elementor-element-f7c09ab .elementor-icon-list-item > .elementor-icon-list-icon {
+  display: inline-flex !important;
+  width: 100% !important;
+  height: 100% !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: inherit !important;
+}
+.elementor-location-footer .mad4b-footer-root .elementor-element-f7c09ab .elementor-icon-list-icon {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  color: #fff !important;
+}
+.elementor-location-footer .mad4b-footer-root .elementor-element-f7c09ab .elementor-icon-list-icon :is(svg,i) {
+  color: inherit !important;
+  fill: currentColor !important;
+  width: 19px !important;
+  height: 19px !important;
+  font-size: 19px !important;
+}
+.elementor-location-footer .mad4b-footer-root .elementor-element-f7c09ab .elementor-icon-list-text {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+}
+.elementor-location-footer .mad4b-footer-root .elementor-element-f7c09ab .elementor-icon-list-item:is(:hover,:focus-within) {
+  background: var(--e-global-color-accent, #B48A46) !important;
+  border-color: var(--e-global-color-accent, #B48A46) !important;
+  transform: translateY(-1px);
+}
+.elementor-location-footer .mad4b-footer-root .elementor-element-f7c09ab .elementor-icon-list-item:is(:hover,:focus-within) .elementor-icon-list-icon {
+  color: var(--e-global-color-primary, #102D40) !important;
+}
+.elementor-location-footer .mad4b-footer-root .elementor-element-f7c09ab a:focus-visible {
+  outline: 2px solid #fff !important;
+  outline-offset: 3px !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .elementor-location-footer .mad4b-footer-root .elementor-element-f7c09ab .elementor-icon-list-item {transition: none !important;}
+}

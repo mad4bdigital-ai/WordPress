@@ -1,0 +1,84 @@
+name: MAD4B Public Render Runtime Performance Contracts
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'wp-content/mu-plugins/mad4b-render-query-governor.php'
+      - 'wp-content/mu-plugins/mad4b-selective-render-policy.json'
+      - 'wp-content/mu-plugins/mad4b-jet-static-dynamic-css-bypass.php'
+      - 'wp-content/plugins/mad4b-commerce/modules/commerce/210-mad4b-tourism-source-view.php'
+      - 'wp-content/plugins/destinations-compatibility/includes/activation.php'
+      - 'wp-content/plugins/mad4b-platform/modules/operations/company-brand-context.php'
+      - 'wp-content/mu-plugins/406-mad4b-shared-performance-parity.php'
+      - 'wp-content/mu-plugins/414-mad4b-stable-listing-css-identity.php'
+      - 'wp-content/mu-plugins/415-mad4b-critical-css-orchestrator.php'
+      - 'wp-content/mu-plugins/mad4b-page-dependency-cache.php'
+      - 'wp-content/mu-plugins/mad4b-published-content-scope-cache.php'
+      - 'tests/test_mad4b_shared_first_paint_portable_v1.php'
+      - 'tests/test_mad4b_predictive_css_tenant_isolation_v1.php'
+      - 'tests/test_mad4b_critical_css_company_guard_v1.php'
+      - 'tests/test_mad4b_stable_css_company_scope_v1.php'
+      - 'docs/MAD4B-RENDER-BIDIRECTIONAL-CHECKPOINT-20261107.md'
+      - 'tests/test_mad4b_company_brand_memo_v1.php'
+      - 'ops/systemd/**'
+      - 'tests/test_mad4b_query_governor_css_v1.php'
+      - 'tests/test_mad4b_tourism_host_memo_v1.php'
+      - 'tests/test_mad4b_destination_activation_memo_v1.php'
+      - 'tests/test_mad4b_static_css_bypass_v1.php'
+      - '.github/workflows/mad4b-render-runtime-performance.yml'
+permissions:
+  contents: read
+jobs:
+  cache-render-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+      - name: PHP syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          for path in wp-content/mu-plugins/mad4b-render-query-governor.php \
+                      wp-content/mu-plugins/mad4b-jet-static-dynamic-css-bypass.php \
+                      wp-content/plugins/mad4b-commerce/modules/commerce/210-mad4b-tourism-source-view.php \
+                      wp-content/plugins/destinations-compatibility/includes/activation.php \
+                      wp-content/plugins/mad4b-platform/modules/operations/company-brand-context.php; do
+            php -l "$path"
+          done
+      - name: Invalidation, WPML, destination and CSS contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          for type in _elementor_data _elementor_page_settings; do
+            MAD4B_REAL_META="$type" \
+            MAD4B_QUERY_GOVERNOR_SOURCE="$PWD/wp-content/mu-plugins/mad4b-render-query-governor.php" \
+              php tests/test_mad4b_query_governor_css_v1.php
+          done
+          MAD4B_TOURISM_SOURCE_FILE="$PWD/wp-content/plugins/mad4b-commerce/modules/commerce/210-mad4b-tourism-source-view.php" \
+            php tests/test_mad4b_tourism_host_memo_v1.php
+          MAD4B_DEST_MEMO_SOURCE="$PWD/wp-content/plugins/destinations-compatibility/includes/activation.php" \
+            php tests/test_mad4b_destination_activation_memo_v1.php
+          MAD4B_CSS_BYPASS_SOURCE="$PWD/wp-content/mu-plugins/mad4b-jet-static-dynamic-css-bypass.php" \
+            php tests/test_mad4b_static_css_bypass_v1.php
+          MAD4B_BRAND_SOURCE="$PWD/wp-content/plugins/mad4b-platform/modules/operations/company-brand-context.php" \
+            php tests/test_mad4b_company_brand_memo_v1.php
+      - name: Public fragment manifest and warm scheduling checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m json.tool wp-content/mu-plugins/mad4b-selective-render-policy.json > /dev/null
+          python3 ops/systemd/mad4b-visitor-load-admission.py --selftest
+      - name: Tenant portable performance and cache contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in 406-mad4b-shared-performance-parity.php 414-mad4b-stable-listing-css-identity.php 415-mad4b-critical-css-orchestrator.php mad4b-page-dependency-cache.php mad4b-published-content-scope-cache.php; do
+            php -l "wp-content/mu-plugins/$file"
+          done
+          MAD4B_PERF_SOURCE="$PWD/wp-content/mu-plugins/406-mad4b-shared-performance-parity.php" php tests/test_mad4b_shared_first_paint_portable_v1.php
+          MAD4B_CRITICAL_PORTABLE_SOURCE="$PWD/wp-content/mu-plugins/415-mad4b-critical-css-orchestrator.php" php tests/test_mad4b_predictive_css_tenant_isolation_v1.php
+          MAD4B_CRITICAL_CSS_SOURCE="$PWD/wp-content/mu-plugins/415-mad4b-critical-css-orchestrator.php" php tests/test_mad4b_critical_css_company_guard_v1.php
+          MAD4B_STABLE_CSS_SOURCE="$PWD/wp-content/mu-plugins/414-mad4b-stable-listing-css-identity.php" php tests/test_mad4b_stable_css_company_scope_v1.php
+          MAD4B_PAGE_DEP_FILE="$PWD/wp-content/mu-plugins/mad4b-page-dependency-cache.php" MAD4B_PUBLISHED_SCOPE_FILE="$PWD/wp-content/mu-plugins/mad4b-published-content-scope-cache.php" php tests/test_mad4b_page_dependency_cache_v1.php

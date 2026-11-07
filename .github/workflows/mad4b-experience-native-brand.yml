@@ -1,0 +1,59 @@
+name: MAD4B Experience and Bidirectional Company Portability
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-experience/**'
+      - 'wp-content/plugins/mad4b-distribution-connectors/**'
+      - 'wp-content/mu-plugins/mad4b-jetblog-mobile-lazy-canary.php'
+      - 'wp-content/mu-plugins/assets/mad4b-jetblog-lazy-mobile.js'
+      - 'wp-content/mu-plugins/mad4b-secondary-listing-lazy.php'
+      - 'wp-content/mu-plugins/mad4b-company-browser-html-policy.php'
+      - 'tests/test_mad4b_browser_html_company_policy.php'
+      - 'tests/test_mad4b_experience_canonical_origin.php'
+      - 'tests/test_mad4b_jetblog_company_policy.php'
+      - 'tests/test_mad4b_secondary_query_visibility.php'
+      - 'tests/test_mad4b_distribution_activation_guard.php'
+permissions:
+  contents: read
+jobs:
+  portability-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+      - name: PHP and JS syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          find wp-content/plugins/mad4b-experience wp-content/plugins/mad4b-distribution-connectors -name '*.php' -print0 | xargs -0 -n1 php -l
+          php -l wp-content/mu-plugins/mad4b-jetblog-mobile-lazy-canary.php
+          php -l wp-content/mu-plugins/mad4b-secondary-listing-lazy.php
+          php -l wp-content/mu-plugins/mad4b-company-browser-html-policy.php
+          node --check wp-content/mu-plugins/assets/mad4b-jetblog-lazy-mobile.js
+          node --check wp-content/plugins/mad4b-distribution-connectors/assets/catalog-workbench.js
+          node --check wp-content/plugins/mad4b-distribution-connectors/assets/distribution-console.js
+      - name: Company identity in Staging and Production
+        shell: bash
+        run: |
+          set -euo pipefail
+          MAD4B_NATIVE_BRAND_SOURCE="$PWD/wp-content/plugins/mad4b-experience/src/presentation/modules/375-mad4b-native-company-brand-context.php" php tests/test_mad4b_native_brand_context_v1.php
+          for env in staging production; do
+            MAD4B_SCOPE_ENV="$env" MAD4B_SCOPE_SOURCE="$PWD/wp-content/plugins/mad4b-experience/src/shared/class-mad4b-experience-site-scope.php" php tests/test_mad4b_experience_canonical_origin.php
+          done
+      - name: JetBlog and visibility and external delivery fail-closed
+        shell: bash
+        run: |
+          set -euo pipefail
+          MAD4B_TEST_WP_PLUGIN_DIR="$PWD/wp-content/plugins" MAD4B_TEST_MU_DIR="$PWD/wp-content/mu-plugins" MAD4B_JETBLOG_PORTABLE_SOURCE="$PWD/wp-content/mu-plugins/mad4b-jetblog-mobile-lazy-canary.php" php tests/test_mad4b_jetblog_company_policy.php
+          MAD4B_SECONDARY_LAZY_SOURCE="$PWD/wp-content/mu-plugins/mad4b-secondary-listing-lazy.php" php tests/test_mad4b_secondary_query_visibility.php
+          MAD4B_DISTRIBUTION_SOURCE="$PWD/wp-content/plugins/mad4b-distribution-connectors/includes/class-mad4b-distribution-activation.php" php tests/test_mad4b_distribution_activation_guard.php
+          MAD4B_BROWSER_POLICY_SOURCE="$PWD/wp-content/mu-plugins/mad4b-company-browser-html-policy.php" php tests/test_mad4b_browser_html_company_policy.php
+      - name: Manifests
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -r 'json_decode(file_get_contents("wp-content/plugins/mad4b-experience/mad4b-portability.json"),true,512,JSON_THROW_ON_ERROR);'
+          php -r 'json_decode(file_get_contents("wp-content/plugins/mad4b-distribution-connectors/mad4b-portability.json"),true,512,JSON_THROW_ON_ERROR);'

@@ -1,0 +1,62 @@
+{
+  "contract": "mad4b.plugin-portability-profile.v1",
+  "plugin": "mad4b-experience",
+  "scope": "tenant-portable",
+  "activation_policy": "required_if_source_active",
+  "environment_policy": "any_registered_wordpress_environment",
+  "configuration_source": "per_site_wordpress_settings_api",
+  "feature_defaults": "preserve_existing_presentation_and_visitor_option_keys",
+  "features": [
+    "chatbotx-elementor-kit",
+    "mobile-scroll-action",
+    "tour-inquiry-sidebar",
+    "jetengine-count-locale",
+    "archive-mobile-dock",
+    "featured-listing-banner",
+    "city-visible-image",
+    "layout-switcher-compatibility",
+    "sticky-hover-protection",
+    "theme-footer",
+    "trust-support-dynamic",
+    "tenant-option-bridge",
+    "uael-critical-css",
+    "city-first-card-lcp",
+    "wpml-flag-preload-trim",
+    "city-card-intermediate-image",
+    "newsletter-image-css-sync",
+    "fluent-phone-brand-and-dial",
+    "visitor-switchers-locale",
+    "company-brand-context"
+  ],
+  "groups": {
+    "presentation": 13,
+    "performance": 5,
+    "visitor": 2
+  },
+  "optional_provider_integrations": [
+    "elementor",
+    "fluentform",
+    "fluentformpro",
+    "jet-engine",
+    "jet-smart-filters",
+    "sitepress-multilingual-cms",
+    "woocommerce"
+  ],
+  "sensitive_central_authority_not_included": true,
+  "financial_or_customer_data_automatic_write": false,
+  "reconciliation": "source_file_sha256_and_exact_tenant_site_uuid_readback",
+  "tenant_installation_requires_original_authorized_site_write": true,
+  "company_specific_legacy_mu_replacements": [
+    {
+      "legacy_file": "357-wayfa-options-source-bridge.php",
+      "replacement": "src/presentation/modules/374-mad4b-tenant-option-canonical-bridge.php",
+      "conflict_policy": "legacy MU remains the sole hook owner while present; detach only after target identity, field mappings and native plugin activation are verified",
+      "replacement_activation_check": "Wayfa_Options_Source_Bridge class reflection must resolve to the tenant portable module, never the old MU",
+      "original_authorized_target_write_required": true,
+      "target_values_not_overwritten_by_source_demo": true,
+      "target_wpml_languages_preserved": true,
+      "unbound_fields_must_stay_read_only": true,
+      "reconcile_contract": "mad4b.tenant-option-canonical-bridge.v1"
+    }
+  ]
+}

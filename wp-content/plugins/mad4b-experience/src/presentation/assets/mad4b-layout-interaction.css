@@ -1,0 +1,10 @@
+/*
+ * Behavioral control only. The original JetEngine Layout Switcher stylesheet
+ * disables clicks during AJAX; allow genuine user clicks so the last requested
+ * layout is queued. No visual colors, sizes or Elementor styling live here.
+ */
+.je-layout-switcher.je-layout-switcher--loading .je-layout-switcher__btn,
+.je-layout-switcher.je-layout-switcher--loading .je-layout-switcher__btn--active {
+  pointer-events: auto !important;
+  cursor: progress;
+}
