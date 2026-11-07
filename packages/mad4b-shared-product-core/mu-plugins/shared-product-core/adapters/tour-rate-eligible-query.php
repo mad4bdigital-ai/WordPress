@@ -4,7 +4,7 @@
  * currently eligible general-audience price through the original pricing
  * engine. No price, policy or order mutation.
  */
-if (!defined('ABSPATH') || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
+if (!defined('ABSPATH') || !((defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true) || (defined('MAD4B_PRESENTATION_RUNTIME_ENABLED') && MAD4B_PRESENTATION_RUNTIME_ENABLED===true))) return;
 
 /**
  * Source of truth for the native Tour Rates query and its filter facets.
@@ -34,6 +34,8 @@ function shared_product_eligible_tour_rate_ids($tour_id): array {
  foreach($candidate_ids as $rate_id){
   $rate_id=absint($rate_id);
   if(!$rate_id || (string)get_post_meta($rate_id,'stop_sale',true)==='1')continue;
+  if(function_exists('shared_product_cruise_rate_program_valid_v1')
+    && !shared_product_cruise_rate_program_valid_v1($tour_id,$rate_id))continue;
   foreach(['single','double','triple'] as $occupancy){
    $quote=pricing_audience_quote($rate_id,'general',$occupancy);
    if(($quote['status']??null)!=='available')continue;
