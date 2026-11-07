@@ -1,0 +1,35 @@
+{
+  "contract": "mad4b.render-query.public-fragments.v1",
+  "site_host": "tours.dev.mad4b.com",
+  "environment": "staging",
+  "status": "active",
+  "ttl_seconds": 300,
+  "templates": {
+    "45938": {
+      "elementor_sha256": "b67f5ca6a165df9690b246597510cde3d8b01ad98e2a186bf6835cd47c2dc499",
+      "taxonomies": [
+        "destinations"
+      ]
+    },
+    "45929": {
+      "elementor_sha256": "822a0e04450c1b46e6c66112d836175ca0e98b69921810c3bf46391e565ebcbf",
+      "taxonomies": [
+        "destinations"
+      ]
+    },
+    "45927": {
+      "elementor_sha256": "31d952e43bcd6aea33eb43ddd213d054433e528608f6d2a8882db3e330974e56",
+      "taxonomies": [
+        "destinations"
+      ]
+    },
+    "48562": {
+      "elementor_sha256": "3e4944b150f9e21facc1e6f680f687306c7873c5f121bcbafef25e88aa2197d4",
+      "taxonomies": [
+        "destinations"
+      ],
+      "mobile_only": true,
+      "activation": "header_canary"
+    }
+  }
+}
