@@ -6,6 +6,12 @@ on:
       - 'ops/mad4b-runtime-policy-reconcile-v2/**'
       - '.github/workflows/mad4b-runtime-policy-reconcile-v2.yml'
   workflow_dispatch:
+  push:
+    branches:
+      - master
+    paths:
+      - 'ops/mad4b-runtime-policy-reconcile-v2/**'
+      - '.github/workflows/mad4b-runtime-policy-reconcile-v2.yml'
 
 permissions:
   contents: read
