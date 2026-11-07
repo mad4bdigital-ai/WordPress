@@ -1,0 +1,29 @@
+name: MAD4B Experience Native Brand Context Contracts
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-experience/**'
+      - 'tests/test_mad4b_native_brand_context_v1.php'
+      - 'tests/test_mad4b_experience_canonical_origin.php'
+      - '.github/workflows/mad4b-experience-native-brand.yml'
+permissions:
+  contents: read
+jobs:
+  experience-brand:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+      - name: PHP syntax and company-brand context contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          find wp-content/plugins/mad4b-experience -name '*.php' -print0 | xargs -0 -n1 php -l
+          MAD4B_NATIVE_BRAND_SOURCE="$PWD/wp-content/plugins/mad4b-experience/src/presentation/modules/375-mad4b-native-company-brand-context.php" \
+            php tests/test_mad4b_native_brand_context_v1.php
+          MAD4B_PRESENTATION_BOOTSTRAP="$PWD/wp-content/plugins/mad4b-experience/src/presentation/bootstrap.php" \
+            php tests/test_mad4b_experience_canonical_origin.php
+          php -r 'json_decode(file_get_contents("wp-content/plugins/mad4b-experience/mad4b-portability.json"),true,512,JSON_THROW_ON_ERROR);'
