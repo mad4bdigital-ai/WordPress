@@ -7,13 +7,13 @@
   "source_sha256": {
     "schema-contract.py": "78cef9e2a9364f4836ec032606836ae379e8a6083ac124dfd3aebeb900b439ac",
     "original-wpcli-executor.py": "fa2de819b07123594b324c1ea1107cb96fd3cf8332fd705d96aa7cb8f8f0ba8b",
-    "independent-readback.py": "dd72e9f7c53fc02e8501a70a721c0fb1c8d73168cfe775cd6e0f9abf1612d994",
-    "schema-receipt-resume.py": "db38334ce0fe9451b0c00cf0ba265ace96b47ad94c55bc82761346c5162c4642",
+    "independent-readback.py": "005bd48f6bd63468be9129f0e20a099f342cbbd696e3113491dc4d255c0ebafd",
+    "schema-receipt-resume.py": "c4236283f6a57374a9f3b4664e3df9ad6b940f7bae99ffd6f7b1723eb95b7905",
     "test_schema_receipt_resume.py": "014775e772fc8de62cd2f66d4c64ba9cd7b4c0ceee515278b12113e81f493e69",
     "claimed-job-worker.py": "665c3db7521d429ab9db15a502597f9769225a77fbc21d58330ec7cafcaede76",
     "vps-broker-exact-authority.py": "bd8351579353dd53b2eaa42a5baab76a7991938d3853d492e5652a8f22fdfb75",
     "native-vps-client-principal.py": "ebb4971efef114e5b984a9c9ea60d46b5fe7250db9991b5d94cd61708651dc26",
     "test_schema_signed_authority_busy.py": "bb869f5c07258eaa143310ae89fbb2eb4233d7528de1150de7ace71acb1d5bad",
-    "test_worker_central_capacity.py": "9601ddc31d89b940f5adb2ec2873a9b327419aa3694144697c171add10b93c7b"
+    "test_worker_central_capacity.py": "70fc4ce0d4e740600178004a7a9b1a4d9e11e375064257abbc7cea2429f9a026"
   }
 }

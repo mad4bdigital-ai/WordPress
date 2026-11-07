@@ -84,6 +84,11 @@ def main(job):
   raise RuntimeError('FRESH_INDEPENDENT_SCHEMA_JSON_INVALID') from exc
  if digest!=r.get('output_sha256') or digest!=r.get('expected_readback_sha256'):
   raise RuntimeError('INDEPENDENT_SCHEMA_OUTPUT_HASH_MISMATCH')
+ # Actor discovery may occupy multiple costly Central WP-CLI slots.
+ # Verify the enrolled identity BEFORE issuing a short-lived independent
+ # signature; keep the live, original 312 and target PHP hash checks above.
+ from wpcli_dynamic_actor import resolve_actor
+ actor=resolve_actor()
  now=int(time.time());v={
   'contract':'mad4b.native-313-independent-host-proof.v1','job_id':job,
   'company':r['company'],'environment':r['environment'],'site_uuid':r['site_uuid'],
@@ -99,8 +104,6 @@ def main(job):
  # remains the authority; --user alone never creates a Job or a Grant.
  from pathlib import Path as _P
  sys.path.insert(0,'/opt/mad4b-company-transport')
- from wpcli_dynamic_actor import resolve_actor
- actor=resolve_actor()
  payload=base64.b64encode(json.dumps(v,separators=(',',':')).encode()).decode()
  q=subprocess.run(WP()+['--user='+str(actor),'mad4b','native-313-proof',
   'ingest','--payload='+payload],capture_output=True,text=True,timeout=30,check=False)

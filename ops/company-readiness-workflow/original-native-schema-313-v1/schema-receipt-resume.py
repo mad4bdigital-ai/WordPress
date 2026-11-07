@@ -106,7 +106,7 @@ def resume(job):
  receipt_hash=hashlib.sha256(blob).hexdigest()
  if proof is False or proof is None:
   independent=subprocess.run([sys.executable,str(BASE/'independent-readback.py'),'--job',job],
-      capture_output=True,text=True,timeout=70,check=False)
+      capture_output=True,text=True,timeout=115,check=False)
   if independent.returncode:
    raise RuntimeError('INDEPENDENT_HOST_READBACK_DELIVERY_DEFERRED_OR_DENIED')
   result=json.loads(independent.stdout.strip().splitlines()[-1])

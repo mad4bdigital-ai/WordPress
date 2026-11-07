@@ -47,6 +47,13 @@ class WorkerCapacityRegression(unittest.TestCase):
   work=[('a'*32,'schema.readback.resume'),('b'*32,'read')]
   claimed=[{'job_id':'a'*32,'expires_epoch':1180},{'job_id':'b'*32,'expires_epoch':1550}]
   self.assertEqual(W.prioritize_claimed_work(work,claimed,1000)[0],('b'*32,'read'))
+ def test_independent_313_proof_signed_after_enrolled_actor(self):
+  source=(P.parent/'schema-readback-v1/independent-readback.py').read_text()
+  self.assertLess(source.index('actor=resolve_actor()'),source.index('now=int(time.time());v={'))
+  self.assertLess(source.index('now=int(time.time());v={'),source.index("v['signature']=base64.b64encode(key.sign(raw)).decode()"))
+  self.assertLess(source.index("v['signature']=base64.b64encode(key.sign(raw)).decode()"),source.index("'ingest','--payload='+payload"))
+  self.assertIn("a=authority.verify(job,r['target_id'],r['command_sha256'])",source)
+  self.assertIn("if digest!=r.get('output_sha256')",source)
  def test_minimum_360_second_original_start_window_unchanged(self):
   source=P.read_text()
   self.assertIn("time.time()+360:continue",source)

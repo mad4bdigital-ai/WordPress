@@ -49,3 +49,11 @@ Host-side original `claimed-job-worker.py` now classifies the **exact** Central 
 The native worker now prioritizes a **pre-existing root-only Schema host receipt** when the already-claimed original owner Job has **190–600 seconds remaining**. Its execution is **receipt-only**, and it never repeats a reserved target Schema command. Otherwise the existing scheduling priority for new eligible one-shot tasks is retained. The standard 360-second initial execution guard, original 312 signed authority and 190-second receipt-delivery guard are unchanged. Added three read-only regressions, bringing the native/schema safety suite to **25/25 PASS**.
 
 This change does not create a certificate. Only exact signed 313 proof and Central persisted readback can close the Job.
+
+## Independent 313 signing timing and bounded receipt-only recovery
+
+The independent verifier now performs current enrolled WordPress actor discovery **before creating the short-lived Ed25519 proof**. The proof continues to be created only after original signed 312 authority checks and an independently recomputed live target schema digest. All scope and signature verification are retained; no owner authority is forged.
+
+`schema-receipt-resume.py` now waits up to **115 seconds** for the separate independent proof child (formerly 70 seconds), without extending the signed owner Job or overriding its >=180-second receipt-only eligibility check. The original Native worker retains the >=360-second start window for an unexecuted target command. Read-only regressions **26/26 PASS**.
+
+Fresh owner-created Schema Job `64bd8a4f9400ece44c43a19e8a763858` succeeded at exact one-shot host Schema execution (root-only reservation and immutable `EXECUTED_PENDING_INDEPENDENT_READBACK` host receipt). Central accepted original signed 312 receipt `PENDING_INDEPENDENT_NATIVE_READBACK` with `host_signed_attestation_received=true`. Independent 313 proof was **still pending** at the last check; never equate that receipt to a 313 certificate. No target command is replayed.
