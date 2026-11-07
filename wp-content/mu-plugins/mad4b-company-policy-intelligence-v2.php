@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Company Policy Intelligence
  * Description: Policy anomalies, Content Readiness source, local policy health, and registry-scoped company reporting.
- * Version: 2.1.1
+ * Version: 2.1.2
  */
 defined('ABSPATH') || exit;
 final class MAD4B_Company_Policy_Intelligence_V2 {
@@ -97,29 +97,64 @@ final class MAD4B_Company_Policy_Intelligence_V2 {
         return is_array($raw)?$raw:[];
     }
     public static function company_rollup(): array {
-        $rows=[];$reports=get_option(self::REPORTS,[]);
+        $rows=[];$seen=[];$unique=[];
+        $reports=get_option(self::REPORTS,[]);
         if(!is_array($reports))$reports=[];
-        foreach(self::registered() as $code=>$row){
-            if(!is_string($code)||!is_array($row))continue;
+        $directory=class_exists('MAD4B_Company_Environment_Registry_V2')
+            ?MAD4B_Company_Environment_Registry_V2::discover():[];
+        if(!is_array($directory))$directory=[];
+        $localOrigin=untrailingslashit(home_url('/'));
+        foreach($directory as $code=>$company) {
+            if(!is_string($code)||!is_array($company))continue;
+            foreach((array)($company['environments']??[]) as $environment=>$env) {
+                if(!is_array($env)||!in_array($environment,['staging','production'],true))continue;
+                $key=$code.':'.$environment;$seen[$key]=true;$unique[$code]=true;
+                $uuid=(string)($env['site_uuid']??'');
+                $origin=untrailingslashit((string)($env['canonical_origin']??''));
+                $isLocal=($origin!=='' && $origin===$localOrigin);
+                $receipt=$reports[$key]??$reports[$code]??null;
+                $matched=is_array($receipt)&&$uuid!==''&&$uuid===($receipt['site_uuid']??null)
+                    &&($receipt['origin']??null)===$origin;
+                $identity=(bool)($env['authorized_connections']['signed_identity']['centrally_verified']??false);
+                $rows[]=['company_code'=>$code,'environment'=>$environment,
+                    'site_uuid'=>$uuid?:null,
+                    'status'=>$isLocal?'local_live':($matched?'registry_matched_received_not_313_certified':
+                        ($identity?'awaiting_company_report':'identity_unverified_no_report')),
+                    'registry_revision'=>$isLocal
+                        ?(int)(self::local_summary()['revision']??0)
+                        :($matched?(int)$receipt['revision']:null),
+                    'open_gaps'=>$isLocal
+                        ?(int)(self::summary()['open_gaps']??0)
+                        :($matched?(int)$receipt['open_gaps']:null),
+                    'received_at'=>$isLocal?gmdate('c'):($matched?($receipt['received_at']??null):null),
+                    'original_313_certified'=>false];
+            }
+        }
+        // The Company Manager may have a verified binding not yet represented
+        // in the environment discovery catalogue.
+        foreach(self::registered() as $code=>$row) {
+            if(!is_string($code)||!is_array($row)||isset($unique[$code]))continue;
             $binding=MAD4B_Company_Portfolio_Manager_V1::company_binding($code);
             if(is_wp_error($binding))continue;
-            $receipt=$reports[$code]??null;
-            $rows[]=['company_code'=>$code,
+            $unique[$code]=true;$rows[]=[
+                'company_code'=>$code,'environment'=>'registered_environment_unspecified',
                 'site_uuid'=>$binding['company_site_uuid'],
-                'status'=>is_array($receipt)?'registry_matched_received_not_313_certified':'awaiting_company_report',
-                'registry_revision'=>is_array($receipt)?(int)$receipt['revision']:null,
-                'open_gaps'=>is_array($receipt)?(int)$receipt['open_gaps']:null,
-                'received_at'=>$receipt['received_at']??null,
-                'original_313_certified'=>false];
+                'status'=>'awaiting_company_report','registry_revision'=>null,
+                'open_gaps'=>null,'received_at'=>null,'original_313_certified'=>false];
         }
-        $local=self::local_summary();
-        $rows[]=['company_code'=>'this-site','site_uuid'=>null,'status'=>'local_live',
-                 'registry_revision'=>$local['revision']??0,
-                 'open_gaps'=>$local['intelligence']['open_gaps']??0,
-                 'received_at'=>gmdate('c'),'original_313_certified'=>false];
+        if(!in_array('local_live',array_column($rows,'status'),true)){
+            $local=self::local_summary();
+            $rows[]=['company_code'=>'this-site','environment'=>'staging',
+                'site_uuid'=>$local['site_uuid']??null,'status'=>'local_live',
+                'registry_revision'=>$local['revision']??0,
+                'open_gaps'=>$local['open_gaps']??0,
+                'received_at'=>gmdate('c'),'original_313_certified'=>false];
+        }
         return ['contract'=>'mad4b.company-policy-rollup.v2','observed_at'=>gmdate('c'),
-            'companies'=>$rows,'company_count'=>count($rows),
-            'remote_313_certified'=>0,'source'=>'local_and_registry_matched_receipts_only'];
+            'companies'=>$rows,'company_count'=>count($unique),
+            'environment_count'=>count($rows),
+            'remote_313_certified'=>0,
+            'source'=>'environment_registry_plus_local_and_matched_receipts'];
     }
     /**
      * Local authenticated central collector. Company identity must be
@@ -182,9 +217,9 @@ final class MAD4B_Company_Policy_Intelligence_V2 {
         echo '<p>Local policy execution remains inside each company. Remote companies appear only after a registry-matched receipt.</p>';
         echo '<h2>Local</h2><p>Revision <strong>'.(int)($r['revision']??0).
              '</strong> · Open native Rate gaps <strong>'.(int)($r['intelligence']['open_gaps']??0).'</strong></p>';
-        echo '<h2>Company rollup</h2><table class="widefat striped"><thead><tr><th>Company</th><th>Evidence</th><th>Policy revision</th><th>Open gaps</th><th>Received UTC</th></tr></thead><tbody>';
+        echo '<h2>Company rollup</h2><table class="widefat striped"><thead><tr><th>Company</th><th>Environment</th><th>Evidence</th><th>Policy revision</th><th>Open gaps</th><th>Received UTC</th></tr></thead><tbody>';
         foreach($companies['companies'] as $c){
-            echo '<tr><td>'.esc_html($c['company_code']).'</td><td>'.esc_html($c['status']).'</td><td>'.
+            echo '<tr><td>'.esc_html($c['company_code']).'</td><td>'.esc_html($c['environment']??'—').'</td><td>'.esc_html($c['status']).'</td><td>'.
               esc_html((string)($c['registry_revision']??'—')).'</td><td>'.esc_html((string)($c['open_gaps']??'—')).
               '</td><td>'.esc_html((string)($c['received_at']??'—')).'</td></tr>';
         }
