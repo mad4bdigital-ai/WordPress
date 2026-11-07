@@ -41,7 +41,7 @@ Primary symptom: screenshots show uncached mobile HTML 15–54s and JetBlog AJAX
 - Actual fragment lifecycle before TTL change: one public Home sample found 45938 native builds 20 (~3.26s), 45929 native builds 5 (~0.78s). A subsequent sample served 42 calls of 45938, 6 of 45929, and 6 of 45927 from Redis; this proves fragment reuse, not a total TTFB improvement.
 - Homepage and Tours archive HTTP 200 after deployment, no new sampled PHP Fatal; original JetEngine/JETBLOG plugin files, prices and Production unchanged.
 - Cache-hit HTML ~0.08-0.09s TTFB in a few observations. Uncached requests still about 9-14s and one 19s under changing host load. These readings are not matched controlled pre/post trials; no claimed regression or gain.
-- WordPress WP-CLI runtime readback of new fragment TTL was blocked once by legitimate STAGING_WPCLI_BUSY. Filesystem policy JSON and code lints were independently confirmed, but independent runtime readback remains a follow-up.
+- WP-CLI runtime readback initially encountered STAGING_WPCLI_BUSY. A later legitimate WP-CLI slot returned ttl=300, status=active, template IDs [45938,45929,45927,48562] and external_object_cache=true. Independent runtime TTL verification is now PASS.
 
 ## Safety and rollback
 
@@ -54,3 +54,4 @@ Primary symptom: screenshots show uncached mobile HTML 15–54s and JetBlog AJAX
 ## Further work
 
 Main cold WordPress Elementor/JetEngine/WPML renderer is not yet fast; profile repeated dynamic CSS generation (all 114 CSS calls were genuinely dynamic in the sampled Home request), front-end visible-element query work, noncached article/tour layouts and WP-CLI demand in a controlled quiet window. Keep old and new rendering parity tests, signed AJAX behavior and Rate/Quote boundaries.
+
