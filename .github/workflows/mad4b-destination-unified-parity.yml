@@ -5,12 +5,14 @@ on:
       - 'packages/mad4b-shared-product-core/mu-plugins/shared-product-core/adapters/presentation-destination-term-v1.php'
       - 'ops/mad4b-company-live-convergence-20261106/wayfa-destination-unified/**'
       - 'ops/mad4b-company-live-convergence-20261106/tests/test_destination_hierarchy_scope.php'
+      - 'wp-content/mu-plugins/mad4b-destination-context-cache-isolation.php'
       - '.github/workflows/mad4b-destination-unified-parity.yml'
   push:
     paths:
       - 'packages/mad4b-shared-product-core/mu-plugins/shared-product-core/adapters/presentation-destination-term-v1.php'
       - 'ops/mad4b-company-live-convergence-20261106/wayfa-destination-unified/**'
       - 'ops/mad4b-company-live-convergence-20261106/tests/test_destination_hierarchy_scope.php'
+      - 'wp-content/mu-plugins/mad4b-destination-context-cache-isolation.php'
       - '.github/workflows/mad4b-destination-unified-parity.yml'
 jobs:
   source-and-policy-tests:
@@ -23,6 +25,7 @@ jobs:
         run: |
           set -eu
           php -l packages/mad4b-shared-product-core/mu-plugins/shared-product-core/adapters/presentation-destination-term-v1.php
+          php -l wp-content/mu-plugins/mad4b-destination-context-cache-isolation.php
           for f in ops/mad4b-company-live-convergence-20261106/wayfa-destination-unified/*.php; do php -l "$f"; done
       - name: Validate hierarchy visibility and Featured isolation
         run: php ops/mad4b-company-live-convergence-20261106/tests/test_destination_hierarchy_scope.php
@@ -44,5 +47,9 @@ jobs:
           assert 'wpml_object_id' in ui and "'elementor_library'" in ui
           assert 'mad4b_wayfa_destination_unified_enabled()' in ui
           assert 'MAD4B_COMMERCE_RUNTIME_ENABLED' not in ui
+          cache=Path('wp-content/mu-plugins/mad4b-destination-context-cache-isolation.php').read_text()
+          assert 'pre_option_elementor_element_cache_ttl' in cache
+          assert "is_tax('destinations')" in cache
+          assert 'wp_cache_flush' not in cache and 'is_front_page' not in cache
           print('PASS read-only portable destination UI and WPML inheritance')
           PY
