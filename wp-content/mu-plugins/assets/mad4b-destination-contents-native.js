@@ -273,3 +273,42 @@
     },{once:true});
   }
 })();
+
+/*
+ * Elementor Pro's sticky handler uses jQuery.clone() to create a non-visible
+ * layout spacer. Retain its dimensions/content, but make its descendants
+ * non-interactive and remove duplicate ID attributes. The native Elementor
+ * TOC separately excludes elementor-sticky__spacer through its editor
+ * setting, so cloned headings are not presented as duplicate sections.
+ */
+(function () {
+  'use strict';
+  if (!document.body || !document.body.classList.contains('tax-destinations')) return;
+  var spacerSelector = '.elementor-sticky__spacer';
+  function sanitize(spacer) {
+    if (!spacer || !spacer.matches || !spacer.matches(spacerSelector)) return;
+    if (!spacer.querySelector('h1,h2,h3,h4,h5,h6')) return;
+    spacer.setAttribute('aria-hidden', 'true');
+    spacer.setAttribute('inert', '');
+    if (spacer.hasAttribute('id')) spacer.removeAttribute('id');
+    spacer.querySelectorAll('[id]').forEach(function (node) {
+      node.removeAttribute('id');
+    });
+    spacer.setAttribute('data-mad4b-sticky-ghost', '1');
+  }
+  function inspect(node) {
+    if (!node || node.nodeType !== 1) return;
+    if (node.matches(spacerSelector)) sanitize(node);
+    else if (node.closest && node.closest(spacerSelector)) {
+      sanitize(node.closest(spacerSelector));
+    }
+    node.querySelectorAll(spacerSelector).forEach(sanitize);
+  }
+  inspect(document.body);
+  var watcher = new MutationObserver(function (changes) {
+    changes.forEach(function (change) {
+      change.addedNodes.forEach(inspect);
+    });
+  });
+  watcher.observe(document.body, {childList:true,subtree:true});
+})();
