@@ -42,13 +42,28 @@ MAD4B_MU_File_Resolver_V1::init($mad4b_ordered);
 // Fast anonymous public shells never bootstrap the signed central Broker/SSH
 // execution lane. REST, admin, authenticated, cron, CLI and all other routes
 // keep the exact complete original 377-entry ordered map.
+// WordPress-generated allowlist: published pages, articles, destinations
+// and categories. Missing/malformed registry fails safe to full bootstrap.
+$mad4b_public_registry_file=WPMU_PLUGIN_DIR.'/assets/mad4b-public-route-registry-v1.php';
+$mad4b_public_registry_path=strtolower((string)parse_url(
+    (string)($_SERVER['REQUEST_URI']??''),PHP_URL_PATH));
+$mad4b_public_registry=array();
+if(is_file($mad4b_public_registry_file)){
+    $mad4b_public_loaded=require $mad4b_public_registry_file;
+    if(is_array($mad4b_public_loaded))$mad4b_public_registry=$mad4b_public_loaded;
+}
+$mad4b_public_registry_match=isset($mad4b_public_registry[$mad4b_public_registry_path]);
 $mad4b_public_control_slice = (
     (!defined('WP_CLI') || !WP_CLI)
     && (($_SERVER['REQUEST_METHOD']??'GET')==='GET' || ($_SERVER['REQUEST_METHOD']??'GET')==='HEAD')
     && empty($_SERVER['QUERY_STRING'])
     && empty($_SERVER['HTTP_AUTHORIZATION'])
     && !preg_match('/(?:wordpress_logged_in_|wordpress_sec_|wp_woocommerce_session_)/', (string)($_SERVER['HTTP_COOKIE']??''))
-    && preg_match('~^/(?:ar/|fr/|de/|es/|it/)?(?:tours-and-activities/[-A-Za-z0-9_%]{1,200}/)?$~D', (string)($_SERVER['REQUEST_URI']??''))===1
+    && (
+      preg_match('~^/(?:ar/|fr/|de/|es/|it/)?(?:tours-and-activities/[-A-Za-z0-9_%]{1,200}/)?$~D',
+        (string)($_SERVER['REQUEST_URI']??''))===1
+      || $mad4b_public_registry_match
+    )
 );
 $mad4b_public_defer = [
     '305-mad4b-central-ssh-command-intake.php'=>true,
@@ -85,4 +100,6 @@ foreach($mad4b_ordered as $mad4b_item){
  if(!is_file($mad4b_path))throw new RuntimeException('MAD4B_ORDERED_MODULE_MISSING:'.$mad4b_name);
  require_once $mad4b_path;
 }
-unset($mad4b_file,$mad4b_ordered,$mad4b_item,$mad4b_name,$mad4b_relative,$mad4b_path,$mad4b_original,$mad4b_public_control_slice,$mad4b_public_defer);
+unset($mad4b_file,$mad4b_ordered,$mad4b_item,$mad4b_name,$mad4b_relative,$mad4b_path,$mad4b_original,$mad4b_public_control_slice,$mad4b_public_defer,
+ $mad4b_public_registry_file,$mad4b_public_registry_path,
+ $mad4b_public_registry,$mad4b_public_loaded,$mad4b_public_registry_match);

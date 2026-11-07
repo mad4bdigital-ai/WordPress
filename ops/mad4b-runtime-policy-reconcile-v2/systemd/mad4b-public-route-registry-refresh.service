@@ -1,0 +1,17 @@
+[Unit]
+Description=MAD4B published public URL registry reconciliation on Tours.dev staging
+After=docker.service network-online.target
+Requires=docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/flock -w 22 /run/lock/mad4b-public-route-registry.lock /usr/bin/python3 /opt/mad4b-company-provisioning/bin/mad4b-public-route-registry-refresh-v1.py
+TimeoutStartSec=155
+Nice=16
+CPUQuota=35%
+IOSchedulingClass=idle
+NoNewPrivileges=true
+UMask=0077
+StandardOutput=journal
+StandardError=journal

@@ -1,4 +1,4 @@
-# MAD4B Runtime & Policy Reconcile v2.3
+# MAD4B Runtime & Policy Reconcile v2.4
 
 Source-backed release package from both tested Hostinger deployments.
 Company-specific DB, credentials, private host bindings and absolute
@@ -27,8 +27,24 @@ site-specific environment paths are not included as configuration artifacts.
 The package does not auto-grant or silently expand executor authority.
 
 
-## Anonymous public rendering lane (v2.3)
+## Anonymous public rendering lane (v2.4)
 Only GET/HEAD for clean public home and published-tour paths bypasses
 14 central Broker/SSH modules. REST, WP-CLI, authenticated, query and
 other requests retain the full 377-module load. The router and approved
 control-plane modules are hash-pinned in the live policy.
+
+## Source-backed route inventory (v2.4)
+- WordPress eval-file publishes the known public URL inventory to a
+  compiled PHP allowlist, not a broad URL regex.
+- Exclude checkout, cart, account, favourites, booking, REST, login and
+  webhooks. All unrecognized paths receive the original 377-module boot.
+- The source route registry refreshes every 30 minutes from published
+  WordPress content. A failed refresh leaves the prior verified registry.
+- Regenerated route data is deployment-specific and not shipped as
+  GitHub configuration; code and compiler hashes are pinned.
+- The observer verifies registry size, no private paths, timer activity,
+  and the exact source router file SHA.
+
+The rate query/Elementor templates deliberately retain context-aware
+dynamic rendering. Do not cache rate HTML across WooCommerce sessions,
+markets or currencies without independent pricing parity proof.

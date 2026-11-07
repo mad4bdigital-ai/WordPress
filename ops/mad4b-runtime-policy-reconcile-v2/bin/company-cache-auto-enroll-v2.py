@@ -97,7 +97,7 @@ def main():
  ap.add_argument('--report',default=str(ROOT/'reports/cache-auto-enrollment-current.json'))
  a=ap.parse_args()
  p=Path(a.policy);policy=json.loads(p.read_text())
- assert policy.get('version')=='2.3.0' and policy.get('release_contract')=='mad4b.runtime-policy-release.v2'
+ assert policy.get('version')=='2.4.0' and policy.get('release_contract')=='mad4b.runtime-policy-release.v2'
  rows=[]
  directory=Path(a.manifests)
  for file in sorted(directory.glob('*.json')):

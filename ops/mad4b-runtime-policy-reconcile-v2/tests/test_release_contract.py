@@ -9,6 +9,13 @@ class ReleaseTests(unittest.TestCase):
   self.assertEqual(m['required_runtime_map_entries'],377)
   self.assertEqual(m['ttl_seconds'],1800)
   self.assertEqual(m['public_control_deferred_module_count'],14)
+  self.assertEqual(m['policy_version'],'2.4.0')
+  self.assertEqual(m['public_route_refresh_seconds'],1800)
+  for key,name in [('public_route_registry_compiler_sha256','mad4b-public-route-registry-compile-v1.py'),
+                   ('public_route_registry_refresher_sha256','mad4b-public-route-registry-refresh-v1.py')]:
+   self.assertEqual(hashlib.sha256((ROOT/'bin'/name).read_bytes()).hexdigest(),m[key])
+  self.assertEqual(hashlib.sha256((ROOT/'overlays/mu-plugins/assets/mad4b-public-route-source-v1.php').read_bytes()).hexdigest(),m['public_route_source_sha256'])
+
   self.assertEqual(hashlib.sha256((ROOT/'overlays/mu-plugins/00-0-mad4b-runtime-router.php').read_bytes()).hexdigest(),m['runtime_router_sha256'])
   for name,digest in m['public_modules_sha256'].items():
    p=ROOT/'overlays/mu-plugins'/name
@@ -40,6 +47,17 @@ class ReleaseTests(unittest.TestCase):
    if not f.is_file() or f.suffix not in ('.php','.py','.json','.md','.service','.timer','.path'):continue
    s=f.read_text(errors='replace')
    self.assertNotRegex(s,'-----BEGIN (?:OPENSSH|RSA|PRIVATE) KEY-----')
+ def test_compiled_routes_reject_personal_endpoints(self):
+  import importlib.util
+  f=ROOT/'bin/mad4b-public-route-registry-compile-v1.py'
+  spec=importlib.util.spec_from_file_location('mad4b_routes',f)
+  module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+  for slug in ['/account/','/my-account/','/cart/','/checkout/','/favourites/',
+               '/ar/checkout/','/wp-json/','/booking/confirm/','/payment/','/login/']:
+   self.assertFalse(module.eligible(slug,{'type':'page'}),slug)
+  for path,kind in [('/about-us/','page'),('/destination/africa-containent/egypt/','tax:destinations'),
+                    ('/category/interests/adventure/','tax:category'),('/','page')]:
+   self.assertTrue(module.eligible(path,{'type':kind}),path)
  def test_auto_enroll_deny_by_default(self):
   s=(ROOT/'bin/company-cache-auto-enroll-v2.py').read_text()
   for check in ('MOUNT_UNTRUSTED','PROJECT_ID_INVALID','ALREADY_LINKED_ROOT','MODULE_PIN_MISMATCH','CONTAINER_NOT_FOUND'):

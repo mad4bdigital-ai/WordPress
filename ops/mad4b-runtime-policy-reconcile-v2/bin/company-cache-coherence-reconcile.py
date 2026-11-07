@@ -4,6 +4,7 @@ Read-only: no flush, purge, WP writes, config edits or credentials in reports.
 Runs on enrolled companies, detects drift and new company enrollment.
 """
 from __future__ import annotations
+import time
 import argparse,datetime as dt,hashlib,json,os,re,subprocess,sys
 from pathlib import Path
 ROOT=Path('/opt/mad4b-company-provisioning')
@@ -108,6 +109,29 @@ def check(policy,site,spec,fpm,previous=None):
     if edge_map_digest(cfg)!=spec.get('edge_maps_sha256'):
         issues.append('EDGE_TRACKING_MAP_RELEASE_DRIFT')
     if site=='tours-dev':
+        registry_spec=policy.get('public_route_registry',{})
+        registry_file=mu/registry_spec.get('router_registry_file','')
+        for path_key,sha_key in [('compiler','compiler_sha256'),('refresh','refresh_sha256')]:
+            target=Path(registry_spec.get(path_key,''))
+            if not target.is_file() or hashlib.sha256(target.read_bytes()).hexdigest()!=registry_spec.get(sha_key):
+                issues.append('ROUTE_REGISTRY_GENERATOR_DRIFT_'+path_key.upper())
+        if not registry_file.is_file():
+            issues.append('PUBLIC_ROUTE_REGISTRY_MISSING')
+        else:
+            routes=registry_file.read_text()
+            count=routes.count("'=>true,")
+            if count<registry_spec.get('minimum_eligible_routes',150):
+                issues.append('PUBLIC_ROUTE_REGISTRY_TOO_SMALL')
+            if any("'/"+part+"/'=>true," in routes for part in registry_spec.get('private_path_tokens',[])):
+                issues.append('PUBLIC_ROUTE_REGISTRY_HAS_PRIVATE_PATH')
+            if time.time()-registry_file.stat().st_mtime>registry_spec.get('max_stale_seconds',5400):
+                warnings.append('PUBLIC_ROUTE_REGISTRY_STALE')
+        state=Path(registry_spec.get('report',''))
+        if not state.is_file() or json.loads(state.read_text()).get('result')!='PASS':
+            issues.append('PUBLIC_ROUTE_REGISTRY_REFRESH_UNVERIFIED')
+        timer_state=command(['systemctl','is-active',registry_spec.get('timer','')],timeout=6)
+        if timer_state.stdout.strip()!='active':
+            issues.append('PUBLIC_ROUTE_REGISTRY_TIMER_INACTIVE')
         pinned_router=policy['runtime_dependency_preflight'].get('approved_router_sha256','')
         router=mu/'00-0-mad4b-runtime-router.php'
         if not router.is_file() or hashlib.sha256(router.read_bytes()).hexdigest()!=pinned_router:
@@ -253,7 +277,7 @@ def main():
     policy_path=Path(args.policy);report_path=Path(args.report);history_path=Path(args.history)
     pol=json.loads(policy_path.read_text())
     assert pol['contract']=='mad4b.company-cache-coherence-desired-state.v1'
-    assert pol.get('version')=='2.3.0'
+    assert pol.get('version')=='2.4.0'
     assert pol.get('release_contract')=='mad4b.runtime-policy-release.v2'
     fpm=opcache()
     previous={}
