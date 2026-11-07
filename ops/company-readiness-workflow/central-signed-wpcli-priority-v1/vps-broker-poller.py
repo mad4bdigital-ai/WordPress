@@ -85,7 +85,20 @@ def wp_call(args, timeout=35):
         # never for a missing signature or real permission rejection.
         if "STAGING_WPCLI_BUSY:" in (out.stderr or ""):
             raise RetryableWPCLIBusy("STAGING_WPCLI_BUSY")
-        raise RuntimeError("WPCLI_FAILURE_" + str(out.returncode))
+        # Emit only a bounded enumerated failure reason; never include the
+        # signed request args, nonce, signature, WordPress output or secrets.
+        reasons={
+            'Central host runtime unavailable':'CENTRAL_HOST_RUNTIME_UNAVAILABLE',
+            'Central WP-CLI host principal required':'CENTRAL_PRINCIPAL_REQUIRED',
+            'signed_host_heartbeat_rejected':'HEARTBEAT_SIGNATURE_REJECTED',
+            'signed_host_heartbeat_replay':'HEARTBEAT_NONCE_REPLAY',
+            'heartbeat_storage_failed':'HEARTBEAT_STORAGE_FAILED',
+            'WP_CLI command not registered':'ORIGINAL_BROKER_COMMAND_UNREGISTERED'
+        }
+        error=(out.stderr or '')
+        reason=next((code for signal,code in reasons.items() if signal in error),
+                    'UNCLASSIFIED_CENTRAL_WPCLI_FAILURE')
+        raise RuntimeError("WPCLI_FAILURE_" + str(out.returncode) + ':' + reason)
     lines = [s for s in out.stdout.splitlines() if s.lstrip().startswith("{")]
     if not lines:
         raise RuntimeError("NO_JSON_RECEIPT")

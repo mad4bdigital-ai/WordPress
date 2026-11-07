@@ -14,6 +14,12 @@ class BrokerCongestionRegression(unittest.TestCase):
  def call(self,result):
   with patch.object(B,'with_actor',side_effect=lambda a:a),patch.object(B.subprocess,'run',return_value=result):
    return B.wp_call(['status'])
+ def test_heartbeat_signature_reject_has_only_bounded_machine_code(self):
+  with self.assertRaisesRegex(RuntimeError,'WPCLI_FAILURE_1:HEARTBEAT_SIGNATURE_REJECTED'):
+   self.call(self.run_result(1,stderr='Error: signed_host_heartbeat_rejected'))
+ def test_principal_denial_has_only_bounded_machine_code(self):
+  with self.assertRaisesRegex(RuntimeError,'WPCLI_FAILURE_1:CENTRAL_PRINCIPAL_REQUIRED'):
+   self.call(self.run_result(1,stderr='Error: Central WP-CLI host principal required'))
  def test_busy_code_1_is_deferred(self):
   with self.assertRaises(B.RetryableWPCLIBusy):
    self.call(self.run_result(1,stderr='STAGING_WPCLI_BUSY: two active WordPress CLI sessions; retry later.\n'))
