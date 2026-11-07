@@ -1,6 +1,7 @@
 <?php
 /** Existing CPT rate generator: no new price store, no implicit publication. */
-if (!defined('ABSPATH') || wp_get_environment_type() !== 'local' || !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+require_once __DIR__.'/rate-authoring-policy.php';
+if(!defined('ABSPATH')||!mad4b_rate_authoring_enabled())return;
 
 require_once __DIR__.'/accommodation-assignment.php';
 
@@ -28,7 +29,7 @@ final class Shared_Product_Rate_Generation {
  public static function prepare($input) {
   if(!is_array($input))return new WP_Error('rate_generator_input_invalid');
   $allowed=['kind','parent_id','unit_id','amount','currency','price_unit','valid_from','valid_to',
-   'single_factor','double_factor','triple_factor','package_term_id','program_term_id','season_term_id','seed_origin','seed_source_rate_id','rate_scope',
+   'pricing_locale_mode','pricing_language','single_factor','double_factor','triple_factor','package_term_id','program_term_id','season_term_id','seed_origin','seed_source_rate_id','rate_scope',
    'min_nights','max_nights','max_adults','max_children','inventory_policy',
    'supplier_sku','supplier_cost','pricing_rule_kind','pricing_rule_value',
    'accommodation_assignment_mode','accommodation_stage_source_rate_id'];
@@ -61,7 +62,7 @@ final class Shared_Product_Rate_Generation {
     return new WP_Error('rate_generator_pricing_rule_kind_invalid');
    $ruleValue=self::money($input['pricing_rule_value']??null);
    if(is_wp_error($ruleValue))return new WP_Error('rate_generator_pricing_rule_value_invalid');
-   if(!function_exists('BookingExperience\supplier_price_proposal'))
+   if(!function_exists('BookingExperience'.chr(92).'supplier_price_proposal'))
     return new WP_Error('rate_generator_supplier_engine_unavailable');
    $domain=match($kind){'tour'=>'tour','accommodation'=>'accommodation','transport'=>'transportation'};
    $supplierProposal=BookingExperience\supplier_price_proposal([
@@ -91,6 +92,25 @@ final class Shared_Product_Rate_Generation {
   $meta=[];$params=['kind'=>$kind,'parent_id'=>(int)$id,'price_unit'=>$unit,
     'amount'=>$money,'currency'=>$currency,'valid_from'=>$from,'valid_to'=>$to];
   if($kind==='tour'){
+   // Backward compatible: omitting the option or explicitly selecting
+   // 'inherit' follows the original generator and preserves its fingerprint.
+   // A localized override is opt-in; it never overwrites inherited Rates.
+   $localeMode=$input['pricing_locale_mode']??'inherit';
+   if(!is_string($localeMode)||!in_array($localeMode,['inherit','independent'],true))
+     return new WP_Error('rate_generator_locale_mode_invalid');
+   if($localeMode==='independent'){
+    $detail=apply_filters('wpml_post_language_details',null,(int)$id);
+    $language=is_array($detail)?($detail['language_code']??''):null;
+    if(!is_string($language)||!preg_match('/^[a-z]{2}(?:-[a-z]{2})?$/D',$language))
+      return new WP_Error('rate_generator_parent_language_unverified');
+    $requested=$input['pricing_language']??$language;
+    if(!is_string($requested)||$requested!==$language)
+      return new WP_Error('rate_generator_locale_parent_mismatch');
+    $params['pricing_locale_mode']='independent';
+    $params['pricing_language']=$language;
+   }elseif(isset($input['pricing_language'])&&$input['pricing_language']!==''){
+    return new WP_Error('rate_generator_locale_override_required');
+   }
    $factors=[];
    foreach(['single','double','triple'] as $tier){
     $raw=$input[$tier.'_factor']??'1';
@@ -146,6 +166,11 @@ final class Shared_Product_Rate_Generation {
     'tour_rate_end_date'=>(string)strtotime($to.' 00:00:00 UTC'),
     'base_currency'=>$currency,'unit_type'=>$unit,'is_on_sale'=>'0'];
    foreach($factors as $tier=>$factor)$meta[$tier.'_price']=number_format((float)$money*(float)$factor,2,'.','');
+   if($localeMode==='independent'){
+    $meta['_shared_generated_locale_policy']='independent';
+    $meta['_shared_generated_locale_language']=$language;
+    $meta['_shared_generated_price_authority']='explicit_locale_amount_and_currency';
+   }
    if($package)$meta['related_package_term_id']=$package;
    if($program)$meta['related_program_term_id']=$program;
    if($season)$meta['_shared_generation_season_term_id']=$season;
@@ -156,6 +181,12 @@ final class Shared_Product_Rate_Generation {
    if($source===false)return new WP_Error('accommodation_assignment_source_rate_invalid');
    if($assignmentMode==='manual'&&$source)return new WP_Error('accommodation_assignment_manual_source_conflict');
    if($assignmentMode==='auto'){
+    // Some early MU loaders evaluate this helper before their runtime grant.
+    // A previously skipped include must not produce a fatal on Staging.
+    if(!function_exists('shared_product_accommodation_assignment'))
+      require __DIR__.'/accommodation-assignment.php';
+    if(!function_exists('shared_product_accommodation_assignment'))
+      return new WP_Error('rate_generator_assignment_provider_unavailable');
     $assignment=shared_product_accommodation_assignment((int)$id,(int)$source,(int)$package);if(is_wp_error($assignment))return $assignment;
     $params['accommodation_assignment']=$assignment;
     $meta['accommodation_assignment_mode']='auto';
@@ -173,7 +204,7 @@ final class Shared_Product_Rate_Generation {
    $unitId=filter_var($input['unit_id']??null,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
    if($unitId===false||$unitId===null||get_post_type($unitId)!=='units'||get_post_status($unitId)!=='publish')
      return new WP_Error('rate_generator_accommodation_unit_invalid');
-   if(!function_exists('BookingExperience\\booking_experience_stay_context'))
+   if(!function_exists('BookingExperience'.chr(92).'booking_experience_stay_context'))
      return new WP_Error('rate_generator_stay_relation_provider_missing');
    $related=BookingExperience\booking_experience_stay_context($id,$unitId);
    if(is_wp_error($related))return $related;
@@ -223,6 +254,14 @@ final class Shared_Product_Rate_Generation {
    $params['supplier_pricing']=$supplierContext;
    $meta['_shared_generation_supplier_proposal']=$supplierProposal;
   }
+  // Policy provenance is advisory. Existing amount/currency and fingerprint authority remain unchanged.
+  $policyDecision=null;
+  if(function_exists('mad4b_company_adaptive_pricing_resolve') && $kind!=='transport'){
+   $policyDecision=mad4b_company_adaptive_pricing_resolve(
+    $kind==='tour'?(int)$id:0,$kind==='accommodation'?(int)$id:0,0,
+    absint($input['program_term_id']??0));
+   $meta['_mad4b_policy_decision_v2']=$policyDecision;
+  }
   $key=hash('sha256',wp_json_encode(['schema'=>self::SCHEMA,'parameters'=>$params]));
   $meta[self::META]=$key;
   $meta['_shared_generation_schema']=self::SCHEMA;
@@ -231,6 +270,7 @@ final class Shared_Product_Rate_Generation {
   $title=__('Draft generated rate','woocommerce').' · '.get_the_title($id).' · '.$from.' – '.$to;
   return ['schema'=>self::SCHEMA,'kind'=>$kind,'post_type'=>$rateType,'parent_id'=>(int)$id,
     'fingerprint'=>$key,'parameters'=>$params,'meta'=>$meta,'post_title'=>$title,
+    'company_policy_decision'=>$policyDecision,
     'post_status'=>'draft','commercial_ready'=>false,'checkout_ready'=>false,
     'requires_review'=>true,'warnings'=>['Rates are drafts with stop_sale enabled','Availability, inventory and supplier approval are not inferred']];
  }
@@ -354,8 +394,8 @@ final class Shared_Product_Rate_Generation {
   * providers; never grant publication, inventory or Checkout authority.
   */
  public static function selection_inspect($input){
-  if(!current_user_can('manage_woocommerce'))return new WP_Error('rate_choice_permission_denied');
-  if(wp_get_environment_type()!=='local'||!is_array($input))return new WP_Error('rate_choice_context_invalid');
+  if(!\MAD4B_Lifecycle_Access::can('commerce_manage_pricing'))return new WP_Error('rate_choice_permission_denied');
+  if(!mad4b_rate_authoring_enabled()||!is_array($input))return new WP_Error('rate_choice_context_invalid');
   $allowed=['kind','parent_id','unit_id','service_date','checkout','rooms','adults','children',
     'audience','occupancy','package_term_id','rate_scope','rate_id'];
   if(array_diff(array_keys($input),$allowed))return new WP_Error('rate_choice_context_fields_unknown');
@@ -443,7 +483,7 @@ final class Shared_Product_Rate_Generation {
      elseif(($quote['checkout_ready']??null)!==false)$error='stay_quote_safety_contract_invalid';
     }
    }else{
-    if(!function_exists('BookingExperience\transport_rate_eligible'))$error='transport_source_provider_missing';
+    if(!function_exists('BookingExperience'.chr(92).'transport_rate_eligible'))$error='transport_source_provider_missing';
     else{
      $src=BookingExperience\transport_rate_eligible($id,$day,$scope);
      if(is_wp_error($src))$error=$src->get_error_code();
@@ -464,6 +504,9 @@ final class Shared_Product_Rate_Generation {
       (count($eligible)===1?'one_rate_candidate':'explicit_rate_selection_required'));
   return ['schema'=>'shared-rate-choice-inspection.v1','kind'=>$kind,'parent_id'=>(int)$parent,
    'service_date'=>$day,'status'=>$status,'selected_rate_id'=>$selected,
+   'company_policy_decision'=>function_exists('mad4b_company_adaptive_pricing_resolve')&&$kind!=='transport'
+       ?mad4b_company_adaptive_pricing_resolve($kind==='tour'?(int)$parent:0,
+          $kind==='accommodation'?(int)$parent:0,$rateId?:0,0):null,
    'eligible'=>$eligible,'excluded'=>$excluded,'candidate_count'=>count($eligible),
    'operator_review_required'=>count($eligible)!==1||!$selected,
    'native_quote_owner'=>['tour'=>'shared_product_booking_v2_preview',
@@ -475,11 +518,27 @@ final class Shared_Product_Rate_Generation {
  }
  /** Recheck explicit Rate against native owner immediately before a price-only preview. */
  public static function quote_for_explicit_rate($input){
-  if(!current_user_can('manage_woocommerce'))return new WP_Error('rate_quote_permission_denied');
-  if(wp_get_environment_type()!=='local'||!is_array($input))return new WP_Error('rate_quote_context_invalid');
+  if(!\MAD4B_Lifecycle_Access::can('commerce_manage_pricing'))return new WP_Error('rate_quote_permission_denied');
+  if(!mad4b_rate_authoring_enabled()||!is_array($input))return new WP_Error('rate_quote_context_invalid');
   $allowed=['kind','parent_id','rate_id','service_date','checkout','unit_id','rooms',
    'adults','children','persons','audience','occupancy','package_term_id','rate_scope'];
   if(array_diff(array_keys($input),$allowed))return new WP_Error('rate_quote_unexpected_fields');
+  // A governed Property Rate may be auto-selected for an operator's
+  // price-only quote when the company policy is dynamic/hybrid and a
+  // fully specified stay has exactly one native-valid rate candidate.
+  $autoHotel=null;
+  if(($input['kind']??'')==='accommodation' && empty($input['rate_id']) &&
+     function_exists('mad4b_policy_hotel_rate_select_v2')) {
+   $autoHotel=mad4b_policy_hotel_rate_select_v2([
+    'property_id'=>(int)($input['parent_id']??0),
+    'unit_id'=>(int)($input['unit_id']??0),
+    'checkin'=>$input['service_date']??'','checkout'=>$input['checkout']??'',
+    'rooms'=>(int)($input['rooms']??1),'adults'=>(int)($input['adults']??2),
+    'children'=>(int)($input['children']??0),
+   ]);
+   if(is_wp_error($autoHotel))return $autoHotel;
+   $input['rate_id']=$autoHotel['rate_id'];
+  }
   $rate=filter_var($input['rate_id']??null,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
   if($rate===false)return new WP_Error('rate_quote_explicit_rate_required');
   $persons=filter_var($input['persons']??2,FILTER_VALIDATE_INT,['options'=>['min_range'=>1,'max_range'=>99]]);
@@ -512,7 +571,7 @@ final class Shared_Product_Rate_Generation {
    $currency=is_array($native)?($native['currency']??null):null;
    $availability=is_array($native)?($native['inventory_status']??'not_checked_price_only'):'not_checked_price_only';
   }else{
-   if(!function_exists('BookingExperience\\transport_rate_preview'))return new WP_Error('rate_quote_transport_provider_missing');
+   if(!function_exists('BookingExperience'.chr(92).'transport_rate_preview'))return new WP_Error('rate_quote_transport_provider_missing');
    $native=BookingExperience\transport_rate_preview($parent,['persons'=>$persons],$day,
      $rate,$input['rate_scope']??'tour_component');
    $total=is_array($native)?($native['preview_price']??null):null;
@@ -527,7 +586,7 @@ final class Shared_Product_Rate_Generation {
   $priceApproval='domain_price_approval_not_verified';
   $priceApprovalRevision=0;
   if($kind==='transport'){
-   if(!function_exists('BookingExperience\\transport_rate_approval_verified')||
+   if(!function_exists('BookingExperience'.chr(92).'transport_rate_approval_verified')||
       !BookingExperience\transport_rate_approval_verified($rate))
     return new WP_Error('rate_quote_transport_price_approval_stale');
    $priceApprovalRevision=(int)($native['approval_revision']??0);
@@ -558,6 +617,8 @@ final class Shared_Product_Rate_Generation {
     'native_provider'=>$provider,'native_status'=>(string)($native['status']??'unknown'),
     'inventory_status'=>$availability,
     'rate_source_sha256'=>$sourceFingerprint,
+    'company_policy_decision'=>$check['company_policy_decision']??null,
+    'company_hotel_auto_rate'=>$autoHotel,
     'price_only'=>true,'native_price_approval_state'=>$priceApproval,
     'native_price_approval_revision'=>$priceApprovalRevision,
     'supplier_approval_verified'=>false,
@@ -608,7 +669,7 @@ final class Shared_Product_Rate_Generation {
    }
    $warnings[]='accommodation_board_and_supplier_policy_review';
   }else{
-   if(function_exists('BookingExperience\transport_rate_approval_verified')&&
+   if(function_exists('BookingExperience'.chr(92).'transport_rate_approval_verified')&&
       !BookingExperience\transport_rate_approval_verified($id))
     $blockers[]='transport_price_approval_missing_or_stale';
    $warnings[]='transport_schedule_and_supplier_capacity_review';
@@ -639,9 +700,11 @@ final class Shared_Product_Rate_Generation {
    'status'=>empty($blockers)?'source_requires_commercial_approval':'incomplete_draft_or_rate'];
  }
  public static function create($input) {
-  if(!current_user_can('manage_woocommerce'))return new WP_Error('rate_generator_permission_denied');
-  if(wp_get_environment_type()!=='local')return new WP_Error('rate_generator_nonlab_denied');
+  if(!\MAD4B_Lifecycle_Access::can('commerce_manage_pricing'))return new WP_Error('rate_generator_permission_denied');
+  if(!mad4b_rate_authoring_enabled())
+   return new WP_Error('rate_generator_authoring_disabled');
   $plan=self::prepare($input);if(is_wp_error($plan))return $plan;
+  $type=get_post_type_object($plan['post_type']);if(!current_user_can('edit_post',(int)$plan['parent_id'])||!$type||!current_user_can($type->cap->create_posts))return new WP_Error('rate_generator_object_permission_denied');
   // Unique wp_options key is an atomic mutex across PHP processes.
   // Locks never authorize publication; stale locks fail closed for operator review.
   $lockKey='shared_rate_generation_lock_'.$plan['fingerprint'];
@@ -679,6 +742,36 @@ final class Shared_Product_Rate_Generation {
    if(is_wp_error($assigned)||!has_term((int)$plan['parameters']['season_term_id'],'season',$created)){
     wp_delete_post($created,true);
     return new WP_Error('rate_generator_season_save_failed');
+   }
+  }
+  if($plan['kind']==='tour'){
+   $independent=($plan['parameters']['pricing_locale_mode']??'')==='independent';
+   $parentLanguage=apply_filters('wpml_post_language_details',null,(int)$plan['parent_id']);
+   $lang=$independent?$plan['parameters']['pricing_language']:
+     (is_array($parentLanguage)?($parentLanguage['language_code']??null):null);
+   // Both the inherited/default and override drafts belong to the selected
+   // translated Tour; only override changes the price-provenance fingerprint.
+   if(is_string($lang)&&preg_match('/^[a-z]{2}(?:-[a-z]{2})?$/D',$lang)){
+    do_action('wpml_set_element_language_details',[
+     'element_id'=>(int)$created,'element_type'=>'post_tour-rates',
+     'trid'=>false,'language_code'=>$lang,'source_language_code'=>null
+    ]);
+    $detail=apply_filters('wpml_post_language_details',null,(int)$created);
+    if(!is_array($detail)||($detail['language_code']??'')!==$lang){
+     wp_delete_post($created,true);
+     return new WP_Error('rate_generator_locale_binding_failed');
+    }
+   }elseif($independent){
+    wp_delete_post($created,true);
+    return new WP_Error('rate_generator_parent_language_unverified');
+   }
+   // WordPress/WPML can remap the linked parent on insert. Rebind once,
+   // then validate for both modes; do not touch source price or other Rates.
+   if((int)get_post_meta($created,'related_tour_id',true)!==(int)$plan['parent_id'])
+     update_post_meta($created,'related_tour_id',(int)$plan['parent_id']);
+   if((int)get_post_meta($created,'related_tour_id',true)!==(int)$plan['parent_id']){
+    wp_delete_post($created,true);
+    return new WP_Error('rate_generator_locale_parent_binding_failed');
    }
   }
   if(get_post_type($created)!==$plan['post_type']||get_post_status($created)!=='draft'||

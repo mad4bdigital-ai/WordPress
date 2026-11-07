@@ -1,6 +1,11 @@
 <?php
-/** Booking Configuration v2 schema contract. Lab only. No cart hooks or writes. */
-if (!defined('ABSPATH') || !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+/** Booking Configuration v2: server-only validated price preview, not checkout authority. */
+if (!defined('ABSPATH'))return;
+$mad4bBookingPreviewEnabled=(defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true)
+ || ((defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true)
+  && (defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true));
+if (!$mad4bBookingPreviewEnabled)return;
+require_once __DIR__.'/rate-date-eligibility-readonly-v1.php';
 require_once __DIR__.'/extra-source-quote.php';
 /** Optional passenger gender for supplier manifests; never a pricing or eligibility authority. */
 function shared_product_booking_gender_choices() {
@@ -22,9 +27,21 @@ function shared_product_booking_v2_validate($payload) {
  if(!$id||get_post_type($id)!=='tours-and-activities'||get_post_status($id)!=='publish')return new WP_Error('booking_v2_invalid_tour');
  $source=$payload['source']??null;if(!in_array($source,['rate','direct'],true))return new WP_Error('booking_v2_source');
  $rate=$payload['rate_id']??null;
+ $policyRateReceipt=null;
+ // Source selection is automatic only for price-only previews with one
+ // unambiguous, native-verified published Rate. Requests keep explicit Rates.
+ if($source==='rate' && ($rate===null||$rate==='') &&
+    in_array(($payload['booking_intent']??'quote'),['quote','inquiry'],true) &&
+    function_exists('mad4b_policy_auto_rate_select_v2')){
+  $auto=mad4b_policy_auto_rate_select_v2($payload);
+  if(is_wp_error($auto))return $auto;
+  $rate=$auto['rate_id'];$policyRateReceipt=$auto['receipt'];
+ }
  if($source==='rate'){
   $rate=filter_var($rate,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
   if(!$rate||get_post_type($rate)!=='tour-rates'||get_post_status($rate)!=='publish'||(int)get_post_meta($rate,'related_tour_id',true)!==$id)return new WP_Error('booking_v2_rate_mismatch');
+  $locale=shared_product_rate_locale_decision((int)$rate,(int)$id);
+  if(!$locale['allowed'])return new WP_Error('booking_v2_'.$locale['reason']);
  }elseif($rate!==null)return new WP_Error('booking_v2_direct_rate_forbidden');
  $intent=$payload['booking_intent']??'quote';if(!in_array($intent,['inquiry','quote','request','instant'],true))return new WP_Error('booking_v2_intent_invalid');
  $date=$payload['travel_date']??null;
@@ -158,7 +175,7 @@ function shared_product_booking_v2_validate($payload) {
   if($age_receipt['stay_children'] && in_array($intent,['request','instant'],true))
    return new WP_Error('booking_v2_age_pricing_not_certified');
  }
- return ['schema_version'=>2,'tour_id'=>$id,'source'=>$source,'rate_id'=>$rate,'travel_date'=>$date,'audience'=>$audience,'occupancy'=>$occupancy,'quantities'=>array_map('intval',$q),'extras'=>$clean,'selections'=>array_map('intval',$selections),'booking_mode'=>$booking_mode,'group_size'=>$group_size,'tier_id'=>$tier_id,'package_pricing_apply'=>$package_apply,'booking_taxonomy'=>$modes,'travel_season'=>$season,'traveller_nationalities'=>$passport,'traveller_genders'=>$genders,'booking_intent'=>$intent,'age_policy_receipt'=>$age_receipt];
+ return ['schema_version'=>2,'tour_id'=>$id,'source'=>$source,'rate_id'=>$rate,'travel_date'=>$date,'audience'=>$audience,'occupancy'=>$occupancy,'quantities'=>array_map('intval',$q),'extras'=>$clean,'selections'=>array_map('intval',$selections),'booking_mode'=>$booking_mode,'group_size'=>$group_size,'tier_id'=>$tier_id,'package_pricing_apply'=>$package_apply,'booking_taxonomy'=>$modes,'travel_season'=>$season,'traveller_nationalities'=>$passport,'traveller_genders'=>$genders,'booking_intent'=>$intent,'age_policy_receipt'=>$age_receipt,'policy_rate_selection_receipt'=>$policyRateReceipt];
 }
 
 
@@ -181,16 +198,6 @@ function shared_product_booking_v2_cart_identity($configuration, $cart_product_i
 }
 
 
-/** Inclusive calendar-day Rate eligibility; dates are UTC timestamps in the existing CPT. */
-function shared_product_booking_v2_rate_covers_date($rate_id,$travel_date) {
- if(!is_string($travel_date)||!preg_match('/^\\d{4}-\\d{2}-\\d{2}$/D',$travel_date))return false;
- $start=(int)get_post_meta($rate_id,'tour_rate_start_date',true);
- $end=(int)get_post_meta($rate_id,'tour_rate_end_date',true);
- if(!$start||!$end||$end<$start)return false;
- $day=strtotime($travel_date.' 12:00:00 UTC');
- if(!$day)return false;
- return gmdate('Y-m-d',$start)<=$travel_date && gmdate('Y-m-d',$end)>=$travel_date;
-}
 /** Validate an Extra Rate without bypassing its configured pricing strategy. */
 function shared_product_booking_v2_extra_rate_preview($parent,$extra,$audience,$occupancy,$quantities,$date,$currency) {
  $rate=(int)($extra['rate_id']??0);
@@ -314,7 +321,7 @@ function shared_product_booking_v2_preview($payload) {
     $total=round($total-$old+(float)$pr['amount'],2);
    }
   }
-  return ['schema_version'=>2,'tour_id'=>$c['tour_id'],'currency'=>$currency,'total'=>round($total,2),'lines'=>$lines,'availability_status'=>'not_checked_price_only','inventory_required_for_price'=>false,'checkout_ready'=>false,'status'=>'preview_only_not_cart_authority','schedule_decision'=>$eligibility??null,'age_policy_receipt'=>$c['age_policy_receipt']];
+  return ['schema_version'=>2,'tour_id'=>$c['tour_id'],'currency'=>$currency,'total'=>round($total,2),'lines'=>$lines,'availability_status'=>'not_checked_price_only','inventory_required_for_price'=>false,'checkout_ready'=>false,'status'=>'preview_only_not_cart_authority','schedule_decision'=>$eligibility??null,'age_policy_receipt'=>$c['age_policy_receipt'],'policy_rate_selection_receipt'=>$c['policy_rate_selection_receipt']??null];
  }
  $date=$c['travel_date'];
  if($date!==null){
@@ -391,5 +398,5 @@ function shared_product_booking_v2_preview($payload) {
    $sum=round($sum-$old+(float)$pr['amount'],2);
   }
  }
- return ['schema_version'=>2,'tour_id'=>$c['tour_id'],'currency'=>$currency,'total'=>round($sum,2),'lines'=>$lines,'availability_status'=>'not_checked_price_only','inventory_required_for_price'=>false,'checkout_ready'=>false,'status'=>'preview_only_not_cart_authority','schedule_decision'=>$eligibility??null,'age_policy_receipt'=>$c['age_policy_receipt']];
+ return ['schema_version'=>2,'tour_id'=>$c['tour_id'],'currency'=>$currency,'total'=>round($sum,2),'lines'=>$lines,'availability_status'=>'not_checked_price_only','inventory_required_for_price'=>false,'checkout_ready'=>false,'status'=>'preview_only_not_cart_authority','schedule_decision'=>$eligibility??null,'age_policy_receipt'=>$c['age_policy_receipt'],'policy_rate_selection_receipt'=>$c['policy_rate_selection_receipt']??null];
 }
