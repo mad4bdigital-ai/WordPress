@@ -8,6 +8,8 @@ on:
       - 'wp-content/mu-plugins/mad4b-jet-static-dynamic-css-bypass.php'
       - 'wp-content/plugins/mad4b-commerce/modules/commerce/210-mad4b-tourism-source-view.php'
       - 'wp-content/plugins/destinations-compatibility/includes/activation.php'
+      - 'wp-content/plugins/mad4b-platform/modules/operations/company-brand-context.php'
+      - 'tests/test_mad4b_company_brand_memo_v1.php'
       - 'ops/systemd/**'
       - 'tests/test_mad4b_query_governor_css_v1.php'
       - 'tests/test_mad4b_tourism_host_memo_v1.php'
@@ -31,7 +33,8 @@ jobs:
           for path in wp-content/mu-plugins/mad4b-render-query-governor.php \
                       wp-content/mu-plugins/mad4b-jet-static-dynamic-css-bypass.php \
                       wp-content/plugins/mad4b-commerce/modules/commerce/210-mad4b-tourism-source-view.php \
-                      wp-content/plugins/destinations-compatibility/includes/activation.php; do
+                      wp-content/plugins/destinations-compatibility/includes/activation.php \
+                      wp-content/plugins/mad4b-platform/modules/operations/company-brand-context.php; do
             php -l "$path"
           done
       - name: Invalidation, WPML, destination and CSS contracts
@@ -49,6 +52,8 @@ jobs:
             php tests/test_mad4b_destination_activation_memo_v1.php
           MAD4B_CSS_BYPASS_SOURCE="$PWD/wp-content/mu-plugins/mad4b-jet-static-dynamic-css-bypass.php" \
             php tests/test_mad4b_static_css_bypass_v1.php
+          MAD4B_BRAND_SOURCE="$PWD/wp-content/plugins/mad4b-platform/modules/operations/company-brand-context.php" \
+            php tests/test_mad4b_company_brand_memo_v1.php
       - name: Public fragment manifest and warm scheduling checks
         shell: bash
         run: |
