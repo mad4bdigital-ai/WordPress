@@ -102,7 +102,13 @@ def plan(args: argparse.Namespace) -> dict:
         doc["revision"] = max(1, int(old.get("revision", 1)))
         if doc["status"] not in {"canary", "active"}:
             raise ValueError("unexpected existing company status")
-    data = (json.dumps(doc, ensure_ascii=False, indent=2) + "\n").encode()
+        # Existing active company policies are authoritative. The reconciler
+        # must be idempotent, not silently overwrite even formatting changes.
+        if old != doc:
+            raise ValueError("company policy has independent settings; reconcile explicitly")
+        data = deployed_policy.read_bytes()
+    else:
+        data = (json.dumps(doc, ensure_ascii=False, indent=2) + "\n").encode()
     return {
         "contract": "mad4b.company-elementor-gate-enrollment.v1",
         "site_root": str(site),
