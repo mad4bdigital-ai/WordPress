@@ -63,6 +63,25 @@ def unreserved_schema_preflight_busy(job,operation,returncode,stderr):
         str(stderr or '')))
 
 
+def prioritize_claimed_work(work, claimed, now):
+    """Finish already-executed Schema proof first only near expiry.
+
+    This is ordering, not authority: all 312 checks, receipt equality and
+    original expiry guards still run in the independently signed executor.
+    """
+    expiry={r.get('job_id'):r.get('expires_epoch') for r in claimed
+            if isinstance(r,dict) and isinstance(r.get('expires_epoch'),int)}
+    def priority(item):
+        job,operation=item
+        remaining=expiry.get(job,0)-now
+        if operation=='schema.readback.resume' and 190<remaining<=600:
+            return (0,remaining)
+        if operation!='schema.readback.resume':
+            return (1,0)
+        return (2,0)
+    return sorted(work,key=priority)
+
+
 def safe_capability_error(exc):
     # Preserve bounded machine status only; never log signed payloads or secrets.
     code=str(exc)
@@ -185,7 +204,7 @@ def main():
  # A previously executed schema read is important, but cannot starve a
  # currently authorized one-shot operation. Only receipt delivery is retried;
  # never reexecute a reserved target command.
- work.sort(key=lambda item: item[1]=='schema.readback.resume')
+ work=prioritize_claimed_work(work,d['claimed'],time.time())
  if not work:
   # The signed plugin.install capability heartbeat is owned by the
   # independent root-only capability timer, NOT the original Job worker.

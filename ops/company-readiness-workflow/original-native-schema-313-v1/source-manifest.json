@@ -10,10 +10,10 @@
     "independent-readback.py": "dd72e9f7c53fc02e8501a70a721c0fb1c8d73168cfe775cd6e0f9abf1612d994",
     "schema-receipt-resume.py": "db38334ce0fe9451b0c00cf0ba265ace96b47ad94c55bc82761346c5162c4642",
     "test_schema_receipt_resume.py": "014775e772fc8de62cd2f66d4c64ba9cd7b4c0ceee515278b12113e81f493e69",
-    "claimed-job-worker.py": "bdb6b24dfd90f57084b294cb8951f31385d1698b146f575c5fb6cf7b4fa783ba",
+    "claimed-job-worker.py": "665c3db7521d429ab9db15a502597f9769225a77fbc21d58330ec7cafcaede76",
     "vps-broker-exact-authority.py": "bd8351579353dd53b2eaa42a5baab76a7991938d3853d492e5652a8f22fdfb75",
     "native-vps-client-principal.py": "ebb4971efef114e5b984a9c9ea60d46b5fe7250db9991b5d94cd61708651dc26",
     "test_schema_signed_authority_busy.py": "bb869f5c07258eaa143310ae89fbb2eb4233d7528de1150de7ace71acb1d5bad",
-    "test_worker_central_capacity.py": "d93e25401f21de7994569f6e1cfea1a3ceb5b1f8d953d13b5433ffc93ad80369"
+    "test_worker_central_capacity.py": "9601ddc31d89b940f5adb2ec2873a9b327419aa3694144697c171add10b93c7b"
   }
 }

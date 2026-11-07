@@ -43,3 +43,9 @@ These source-only files are not a new host enrollment, owner Grant, or 313 certi
 Host-side original `claimed-job-worker.py` now classifies the **exact** Central capacity codes `CENTRAL_WORDPRESS_BUSY`, `WPCLI_DYNAMIC_ACTOR_BUSY`, and `CENTRAL_WPCLI_SLOT_BUSY_DEFERRED` as retryable. It also defers a Schema executor error **only when** the executor explicitly reports one of these codes and no root-only Job reservation or Host receipt exists. Existing reservation/receipt still forces reconciliation; no target command is replayed.
 
 `test_worker_central_capacity.py` supplies 7 read-only tests. All Schema and original signed authority regressions: **22/22 PASS**. The original >=360-second safe execution start window and owner-authorized 305/312 scope remain unchanged. This is not an Independent 313 certificate.
+
+## Urgent original Schema 312 receipt delivery — 2026-11-07
+
+The native worker now prioritizes a **pre-existing root-only Schema host receipt** when the already-claimed original owner Job has **190–600 seconds remaining**. Its execution is **receipt-only**, and it never repeats a reserved target Schema command. Otherwise the existing scheduling priority for new eligible one-shot tasks is retained. The standard 360-second initial execution guard, original 312 signed authority and 190-second receipt-delivery guard are unchanged. Added three read-only regressions, bringing the native/schema safety suite to **25/25 PASS**.
+
+This change does not create a certificate. Only exact signed 313 proof and Central persisted readback can close the Job.

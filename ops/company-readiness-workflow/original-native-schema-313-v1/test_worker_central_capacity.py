@@ -35,6 +35,18 @@ class WorkerCapacityRegression(unittest.TestCase):
        'ORIGINAL_NATIVE_313_STOPPED:CENTRAL_SIGNED_AUTHORITY_PREFLIGHT_REJECTED'))
    self.assertFalse(W.unreserved_schema_preflight_busy(JOB,'schema.readback',1,BUSY))
    self.assertFalse(W.unreserved_schema_preflight_busy('bad-id','schema.readback',2,BUSY))
+ def test_urgent_schema_receipt_precedes_unexecuted_home(self):
+  work=[('b'*32,'read'),('a'*32,'schema.readback.resume')]
+  claimed=[{'job_id':'b'*32,'expires_epoch':1500},{'job_id':'a'*32,'expires_epoch':1400}]
+  self.assertEqual(W.prioritize_claimed_work(work,claimed,1000)[0],('a'*32,'schema.readback.resume'))
+ def test_nonurgent_schema_receipt_does_not_starve_new_jobs(self):
+  work=[('a'*32,'schema.readback.resume'),('b'*32,'read')]
+  claimed=[{'job_id':'a'*32,'expires_epoch':1900},{'job_id':'b'*32,'expires_epoch':1700}]
+  self.assertEqual(W.prioritize_claimed_work(work,claimed,1000)[0],('b'*32,'read'))
+ def test_nearly_expired_below_minimum_not_prioritized(self):
+  work=[('a'*32,'schema.readback.resume'),('b'*32,'read')]
+  claimed=[{'job_id':'a'*32,'expires_epoch':1180},{'job_id':'b'*32,'expires_epoch':1550}]
+  self.assertEqual(W.prioritize_claimed_work(work,claimed,1000)[0],('b'*32,'read'))
  def test_minimum_360_second_original_start_window_unchanged(self):
   source=P.read_text()
   self.assertIn("time.time()+360:continue",source)
