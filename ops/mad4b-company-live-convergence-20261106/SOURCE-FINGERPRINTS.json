@@ -38,7 +38,7 @@
     "wp-content/plugins/mad4b-site-control-plane/skill-seeds/wordpress-site-diagnostics/SKILL.md": "0c5cfb095889f41252ba8039076304ef8fb99cdffb97c03136f6b01158b0e9eb",
     "packages/mad4b-shared-product-core/source-files.sha256": "4ae412f48753bb168354c9cfe055b4bbb9b0e2892d6635b3f22222c10ae66fc9",
     "wp-content/plugins/mad4b-site-control-plane/config/egress-policy.json": "706b936f81e5d56bca491e2f792bb03b278f68eb7bac03a3757622192a5eb32d",
-    ".github/workflows/mad4b-company-settings-source-convergence.yml": "c3fbdd51b4a8e41bfed739afc301dff1988cce367e2d1e3c329aa0f0b2fc41eb",
+    ".github/workflows/mad4b-company-settings-source-convergence.yml": "7fe26e5affe5b8647ea99fc3c9fac85fd0887d3fe4a1c4867d61cc5735f61450",
     "ops/company-readiness-workflow/host-provisioning-runtime-v1/patches/mad4b-experience-footer-coexistence-20261106.patch": "c1fd00228a3adec7fff2500498aab10ce919c1f672e85f95579f09fe14ec28b0",
     "ops/company-readiness-workflow/host-provisioning-runtime-v1/patches/README-experience-footer-coexistence-20261106.md": "558f5f206336cfd6cd210d8af8931d36c828492c4bd5f9ac361d97be602fbd18",
     "ops/company-readiness-workflow/host-provisioning-runtime-v1/live-only-module-snapshots/mad4b-experience/src/presentation/bootstrap.php": "470b00846323ee5b22f1634991b752196d92f38942983b3c4210b556452a0061",

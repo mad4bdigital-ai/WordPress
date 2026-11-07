@@ -49,6 +49,8 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Validate canonical sources, Skills v17, policies, and host-cache scope
         run: python3 ops/mad4b-company-live-convergence-20261106/tests/test_source_convergence.py
+      - name: Verify company-local readiness and gallery source fingerprints
+        run: python3 ops/mad4b-company-live-convergence-20261106/tests/test_readiness_gallery_source_manifest.py
       - name: Verify Experience footer coexistence patch and source SHA
         run: python3 ops/company-readiness-workflow/host-provisioning-runtime-v1/tests/test_experience_footer_coexistence_patch.py
       - name: Install pinned signature-verification test dependency
@@ -84,6 +86,14 @@ jobs:
         with:
           php-version: ${{ matrix.php }}
           coverage: none
+      - name: Verify company-scoped scheduled readiness and gallery presentation
+        if: matrix.php == '8.3'
+        run: |
+          set -eu
+          tests=ops/mad4b-company-live-convergence-20261106/tests
+          php "$tests/test_unified_readiness_context.php" staging
+          php "$tests/test_unified_readiness_context.php" production
+          php "$tests/test_gallery_advisory_runtime.php"
       - name: Verify governed read-only Skill registration and QA20 source verification
         run: |
           set -eu

@@ -309,7 +309,16 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                     get_post_status($object_id)==='publish' &&
                     (string)(apply_filters('wpml_post_language_details',null,$object_id)['language_code']??'')===
                       (string)apply_filters('wpml_default_language',null);
-                $valid=$wpmlPriorityValid && is_array($row) && ($dfsb||$localization||$performance||$pricing||$structural) &&
+                // Media source reuse is advisory, validated against its exact
+                // provider, published tour identity and medium severity.
+                // It does not authorize a ContentJob or block the gallery.
+                $gallery=$source==='mad4b-tour-gallery-diagnostics' &&
+                    $code==='media_gallery_reused_across_tours' &&
+                    $type==='tours-and-activities' && $object_id>0 &&
+                    get_post_type($object_id)===$type &&
+                    get_post_status($object_id)==='publish' &&
+                    ($row['severity']??'')==='medium';
+                $valid=$wpmlPriorityValid && is_array($row) && ($dfsb||$localization||$performance||$pricing||$structural||$gallery) &&
                     hash_equals($expected,$id) &&
                     in_array($row['severity']??'',array('critical','high','medium','low'),true) &&
                     is_string($row['label']??null) &&
@@ -681,6 +690,11 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         $type=$issue['post_type']??'';$code=$issue['code']??'';
         // Rotating UI scans are intentionally partial. Do not auto-resolve a
         // structural issue for a source template omitted from this scan window.
+        // Only resolve gallery-reuse advisories when the source-provider scan
+        // participates in this reconciliation. A missing provider cannot
+        // silently close previously discovered media quality observations.
+        if (($issue['source']??'')==='mad4b-tour-gallery-diagnostics')
+            return has_filter('mad4b/content_readiness/external_issues')!==false;
         if(str_starts_with((string)$code,'loc_ui_') &&
            ($issue['source']??'')==='mad4b-locale-structural-health')
             return class_exists('MAD4B_WPML_Visible_UI_Alerts_V1') &&
