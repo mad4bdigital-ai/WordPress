@@ -5,6 +5,7 @@ on:
     paths:
       - 'wp-content/mu-plugins/mad4b-destination-contents-widget.php'
       - 'wp-content/mu-plugins/mad4b-destination-locale-fallback.php'
+      - 'patches/mad4b-platform/**'
       - 'wp-content/mu-plugins/assets/mad4b-destination-contents-native.js'
       - 'wp-content/mu-plugins/assets/mad4b-destination-contents-native.css'
       - 'wp-content/mu-plugins/assets/class-mad4b-destination-contents-widget.php'
@@ -27,6 +28,8 @@ jobs:
         run: node tests/destination-contents/sticky-spacer.spec.cjs
       - name: Test locale fallback without recursive WPML calls
         run: php tests/destination-contents/localization.spec.php
+      - name: Check runtime inheritance and WPML dynamic heading translations
+        run: php tests/destination-contents/runtime-dynamic.spec.php
       - name: Lint JavaScript and PHP
         run: |
           node --check wp-content/mu-plugins/assets/mad4b-destination-contents-native.js
