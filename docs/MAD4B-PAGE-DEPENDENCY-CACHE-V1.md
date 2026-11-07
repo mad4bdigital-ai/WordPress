@@ -52,7 +52,7 @@ Template and listing changes invalidate their direct tracked dependency nodes. O
 Admin-only read-only summary:
 GET /wp-json/mad4b-policy/v2/page-dependencies
 
-The query epoch adapter uses mad4b/render_query/query_version at priority 30, after the existing Published Content Scope filter; this preserves any legacy generation. Neither the Query Governor source code nor the current Post Type epochs were rewritten.
+As of Hybrid v0.5.0, the query version pipeline picks exactly one query-key authority: proven dependency graph at priority 30 or the old Post Type/Taxonomy scope at priority 20. Legacy epochs remain operational, but certified queries no longer include them.
 
 ## Nginx FastCGI boundary
 
@@ -108,3 +108,20 @@ The existing Post Type / Taxonomy epoch still influences Query Cache keys. Selec
 ## Redis epoch integration proof
 
 The manual WP-CLI transaction was extended to seed stale epoch=1 keys in the actual persistent external object cache, call the live selective invalidator, then read fresh scoped epochs. Verified: external_object_cache=true, related page epoch=2, related query epoch=2, unrelated page epoch=1, and zero QA database rows after ROLLBACK. The test removes its scoped Redis keys after rollback. This proves key invalidation and cache readback through WordPress, not Nginx FastCGI HTML purge.
+
+
+## Hybrid v0.5.0 — default coexistence
+
+Deployed on Tours.dev Staging, November 7, 2026. Default strategy is hybrid. Backward-compatible page_fragment_query also uses certified dependency selection. page_only leaves Query Cache with legacy scopes. legacy_post_type forces the original Post Type engine.
+
+For safe public posts and terms queries, the Published Content Scope filter checks whether the Page Dependency Graph has a complete matching query manifest and every required predicate edge, valid for longer than the result TTL plus 120 seconds. If verified, the old type-wide suffix is omitted and the Graph adds a standalone hybrid-graph-v1 key containing the exact query identity, guard generation and per-query epoch. If not verified, the existing Post Type suffix remains, and the Graph does not append its own version. This avoids redundant invalidation.
+
+The proof has a 90-second memoization cap, rejects unsupported query shapes and requires Redis persistent object caching. Exceeding the graph invalidation fanout or a failed epoch write rotates a shared dependency safety generation, ensuring a missed invalidation does not keep old certified Query keys. Unknown=no_cache disables unproven Query caching; unknown=legacy_scope preserves caching through the existing legacy engine.
+
+Company Management can select Hybrid, Page-only, or Legacy via content.cache.dependency in Dynamic Policy Registry. Query-specific overrides use scope=query and integer Query ID, with the same authenticated REST rules and expected revisions. Listing/widget overrides apply when the internal Query object supplies those identifiers.
+
+The existing fragment renderer retains its native term and template keys. Page HTML is still owned by Nginx FastCGI (30-second homepage, 15-second Tours archive) and is not immediately purged. Rates, Quotes and private/market-dependent requests remain outside public Query caching.
+
+Verification: 42/42 isolated PHP fixtures passed. The actual WordPress integration test built a synthetic query manifest and reverse edges under a database transaction and showed that a complete query used the Hybrid key without a Post Type suffix, an unproven query retained Legacy, and a near-expiry manifest fell back to Legacy. Per-query Registry rules validated without saving any active rule. Registry revision was 0, and the transaction left no QA rows. Reproduce with tests/manual/test_mad4b_hybrid_cache_live_transaction.php.
+
+Rollback: switch content.cache.dependency.strategy to legacy_post_type by a company-scoped Active rule or a company-local maintenance setting. Leave legacy invalidation hooks and graph tables in place. Do not delete FastCGI files based on guessed URL keys.

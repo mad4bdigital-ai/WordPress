@@ -4,7 +4,11 @@ on:
   pull_request:
     paths:
       - 'wp-content/mu-plugins/mad4b-page-dependency-cache.php'
+      - 'wp-content/mu-plugins/mad4b-published-content-scope-cache.php'
+      - 'wp-content/mu-plugins/mad4b-company-policy-registry-v2.php'
+      - 'wp-content/mu-plugins/mad4b-company-policy-rest-v2.php'
       - 'tests/test_mad4b_page_dependency_cache_v1.php'
+      - 'tests/manual/test_mad4b_hybrid_cache_live_transaction.php'
       - 'docs/MAD4B-PAGE-DEPENDENCY-CACHE-V1.md'
       - '.github/workflows/mad4b-page-dependency-cache-v1.yml'
   push:
@@ -26,11 +30,16 @@ jobs:
       - name: PHP syntax
         run: |
           php -l wp-content/mu-plugins/mad4b-page-dependency-cache.php
+          php -l wp-content/mu-plugins/mad4b-published-content-scope-cache.php
+          php -l wp-content/mu-plugins/mad4b-company-policy-registry-v2.php
+          php -l wp-content/mu-plugins/mad4b-company-policy-rest-v2.php
           php -l tests/test_mad4b_page_dependency_cache_v1.php
+          php -l tests/manual/test_mad4b_hybrid_cache_live_transaction.php
           php -l tests/manual/test_mad4b_page_dependency_live_transaction.php
       - name: Isolated graph/selector tests
         shell: bash
         run: |
           set -euo pipefail
           MAD4B_PAGE_DEP_FILE="$PWD/wp-content/mu-plugins/mad4b-page-dependency-cache.php" \
+          MAD4B_PUBLISHED_SCOPE_FILE="$PWD/wp-content/mu-plugins/mad4b-published-content-scope-cache.php" \
           php tests/test_mad4b_page_dependency_cache_v1.php

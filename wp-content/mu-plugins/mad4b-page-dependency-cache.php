@@ -2,12 +2,12 @@
 /**
  * Plugin Name: MAD4B Page Dependency Cache Graph
  * Description: Local page, fragment and query dependency index, selective epochs, safe fallback and receipts.
- * Version: 0.4.3
+ * Version: 0.5.0
  */
 defined('ABSPATH') || exit;
 
 final class MAD4B_Page_Dependency_Cache {
-    const VERSION = '0.4.3';
+    const VERSION = '0.5.0';
     const OPTION = 'mad4b_page_dependency_cache_v1';
     const RECEIPTS = 'mad4b_page_dependency_receipts_v1';
     const GROUP = 'mad4b-page-dependency-v1';
@@ -23,15 +23,15 @@ final class MAD4B_Page_Dependency_Cache {
     private static bool $unknown = false;
 
     public static function defaults(): array {
-        return ['strategy'=>'page_fragment_query','unknown'=>'legacy_scope',
+        return ['strategy'=>'hybrid','unknown'=>'legacy_scope',
             'refresh'=>'off','collect'=>'on','ttl_hours'=>48,'max_refresh'=>2];
     }
-    public static function policy(): array {
+    public static function policy(array $context=[]): array {
         $raw=get_option(self::OPTION,[]);
         $legacy=array_replace(self::defaults(),is_array($raw)?$raw:[]);
         if(class_exists('MAD4B_Company_Policy_Registry_V2')){
             $resolved=MAD4B_Company_Policy_Registry_V2::resolve(
-                'content.cache.dependency',[],[
+                'content.cache.dependency',$context,[
                     'strategy'=>$legacy['strategy'],'unknown'=>$legacy['unknown'],
                     'refresh'=>$legacy['refresh']]);
             $legacy=array_replace($legacy,$resolved['values']);
@@ -45,9 +45,10 @@ final class MAD4B_Page_Dependency_Cache {
             'policy_id'=>'content.cache.dependency',
             'fields'=>[
                 'strategy'=>['type'=>'enum','options'=>[
-                    'page_fragment_query'=>'Page + Fragment + Query (default)',
-                    'page_only'=>'Page graph only',
-                    'legacy_post_type'=>'Legacy Post Type epochs']],
+                    'hybrid'=>'Hybrid: certified Query Dependency + safe Post Type fallback (default)',
+                    'page_fragment_query'=>'Legacy Page + Fragment + Query tracking (compatibility)',
+                    'page_only'=>'Page graph only; Query Cache keeps legacy scope',
+                    'legacy_post_type'=>'Post Type Cache only']],
                 'unknown'=>['type'=>'enum','options'=>[
                     'legacy_scope'=>'Fallback to legacy scope when coverage is unknown',
                     'no_cache'=>'Disable persistent query cache when unknown']],
@@ -55,7 +56,7 @@ final class MAD4B_Page_Dependency_Cache {
                     'off'=>'Do not schedule automatic warming',
                     'low_priority'=>'Warm at most two eligible affected pages']],
             ],
-            'allowed_scopes'=>['company','template_family','listing','widget'],
+            'allowed_scopes'=>['company','template_family','listing','widget','query'],
         ];
         return $providers;
     }
@@ -273,10 +274,11 @@ final class MAD4B_Page_Dependency_Cache {
     }
     public static function unknown_query_policy($query): void {
         if(!self::ready()||!is_object($query)||empty($query->cache_query))return;
-        $p=self::policy();
+        $p=self::policy(['query_id'=>absint($query->id??0)]);
         if(($p['unknown']??'')!=='no_cache'||($p['strategy']??'')==='legacy_post_type')return;
         $signature=self::query_signature($query);
-        if(!$signature['supported']){
+        $decision=['cache'=>true,'ttl'=>max(300,(int)($query->cache_expires??900))];
+        if(empty($signature['supported'])||self::authority($query,$decision)!=='dependency'){
             $query->cache_query=false;
             $query->cache_expires=0;
         }
@@ -297,13 +299,74 @@ final class MAD4B_Page_Dependency_Cache {
         self::$queries[$qKey]=$info['dependencies'];
         foreach($info['dependencies'] as $dep)self::depend($dep);
     }
-    /** Add a scoped query epoch without replacing the existing safety epoch. */
-    public static function query_version($version,$query,$decision): string {
-        if(!self::ready()||empty($decision['cache'])
-            ||(self::policy()['strategy']??'')!=='page_fragment_query')return (string)$version;
+    /** Resolve the actual cache-key owner. No graph proof means safe legacy. */
+    public static function authority($query,array $decision): string {
+        if(!self::ready() || empty($decision['cache']) || !is_object($query))
+            return 'legacy';
+        if(class_exists('MAD4B_Published_Content_Scope_Cache',false)
+           && !MAD4B_Published_Content_Scope_Cache::hybrid_eligible())return 'legacy';
+        $id=absint($query->id??0);
+        if(!$id)return 'legacy';
+        $ctx=['query_id'=>$id];
+        foreach(['listing_id','widget_id','template_family_id'] as $k){
+            $value=$query->$k??null;
+            if($k==='widget_id'){
+                if(is_string($value)&&preg_match('/^[a-z0-9_-]{1,64}$/D',$value))$ctx[$k]=$value;
+            }elseif(is_numeric($value)&&absint($value)>0)$ctx[$k]=absint($value);
+        }
+        $p=self::policy($ctx);
+        if(!in_array(($p['strategy']??'legacy_post_type'),['hybrid','page_fragment_query'],true))
+            return 'legacy';
         $info=self::query_signature($query);
-        if(!$info['supported'])return (string)$version;
-        return (string)$version.':pdep:'.self::epoch($info['hash']);
+        if(empty($info['supported']) || empty($info['dependencies']))return 'legacy';
+        if(!wp_using_ext_object_cache())return 'legacy';
+        // A cached Query result can outlive a missing manifest. Require every
+        // predicate edge to remain valid longer than the result's own TTL.
+        $ttl=max(300,min(30*DAY_IN_SECONDS,(int)($decision['ttl']??900)));
+        $proofKey='authority-'.$info['hash'].'-'.$ttl;
+        $memo=wp_cache_get($proofKey,self::GROUP);
+        if($memo==='complete')return 'dependency';
+        if($memo==='unproven')return 'legacy';
+        global $wpdb;$pages=self::table('pages');$edges=self::table('edges');
+        $horizon=$ttl+120;
+        $row=$wpdb->get_row($wpdb->prepare(
+            "SELECT coverage FROM $pages WHERE page_hash=%s AND node_kind='query'
+             AND coverage='complete' AND expires_at>DATE_ADD(UTC_TIMESTAMP(),INTERVAL %d SECOND)",
+            $info['hash'],$horizon),ARRAY_A);
+        if(!is_array($row)){
+            wp_cache_set($proofKey,'unproven',self::GROUP,30);
+            return 'legacy';
+        }
+        $required=array_values(array_unique(array_map([self::class,'hash'],$info['dependencies'])));
+        $placeholders=implode(',',array_fill(0,count($required),'%s'));
+        $params=array_merge([$info['hash']],$required,[$horizon]);
+        $matched=(int)$wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(DISTINCT dep_hash) FROM $edges
+             WHERE page_hash=%s AND dep_hash IN ($placeholders)
+               AND expires_at>DATE_ADD(UTC_TIMESTAMP(),INTERVAL %d SECOND)",...$params));
+        if($matched!==count($required)||$wpdb->last_error!==''){
+            wp_cache_set($proofKey,'unproven',self::GROUP,30);
+            return 'legacy';
+        }
+        wp_cache_set($proofKey,'complete',self::GROUP,90);
+        return 'dependency';
+    }
+    public static function guard_epoch(): string {
+        return (string)get_option('mad4b_page_dependency_guard_epoch_v1','initial');
+    }
+    private static function emergency_guard(string $reason): void {
+        $new=hash('sha256',microtime(true).'|'.wp_rand(1,PHP_INT_MAX).'|'.$reason);
+        update_option('mad4b_page_dependency_guard_epoch_v1',substr($new,0,20),false);
+        do_action('mad4b/page_dependency/guard_bumped',$reason);
+    }
+    /** In hybrid mode the old type-wide epoch is replaced for proven queries. */
+    public static function query_version($version,$query,$decision): string {
+        if(self::authority($query,(array)$decision)!=='dependency')return (string)$version;
+        $info=self::query_signature($query);
+        if(empty($info['supported']))return (string)$version;
+        // Hybrid namespace prevents reuse of pre-migration mixed-key cache.
+        return (string)$version.':hybrid-graph-v1:'.self::guard_epoch().
+            ':'.substr($info['hash'],0,18).':'.self::epoch($info['hash']);
     }
     public static function epoch(string $hash): int {
         if(!self::ready()||!preg_match('/^[a-f0-9]{64}$/D',$hash))return 1;
@@ -390,6 +453,11 @@ final class MAD4B_Page_Dependency_Cache {
         $deps=array_values(array_unique(array_filter($deps,static fn($d)=>is_string($d)&&
             strlen($d)<=190&&preg_match('/^[a-z0-9:._|\/-]+$/i',$d))));
         if(!$deps)return ['status'=>'unknown','affected'=>0,'fallback'=>true];
+        if(count($deps)>160){
+            self::emergency_guard('dependency_list_overflow');
+            return ['status'=>'dependency_list_overflow','affected'=>0,'fallback'=>true,
+                'hybrid_guard_bumped'=>true];
+        }
         $hashes=array_map([self::class,'hash'],$deps);
         global $wpdb;$pages=self::table('pages');$edges=self::table('edges');
         $placeholders=implode(',',array_fill(0,count($hashes),'%s'));
@@ -400,16 +468,29 @@ final class MAD4B_Page_Dependency_Cache {
                AND p.expires_at>UTC_TIMESTAMP() LIMIT ".(self::MAX_PAGES+1),
              ...$hashes);
         $hits=$wpdb->get_results($sql,ARRAY_A);
-        if(!is_array($hits))$hits=[];
+        if(!is_array($hits) || $wpdb->last_error!==''){
+            self::emergency_guard('graph_lookup_failed');
+            return ['status'=>'graph_lookup_failed','affected'=>0,'fallback'=>true,
+                'hybrid_guard_bumped'=>true];
+        }
         $overflow=count($hits)>self::MAX_PAGES;
-        if($overflow)return ['status'=>'graph_overflow','affected'=>0,'fallback'=>true];
+        if($overflow){
+            self::emergency_guard('graph_overflow');
+            return ['status'=>'graph_overflow','affected'=>0,'fallback'=>true,
+                'hybrid_guard_bumped'=>true];
+        }
         $unknown=false;$changed=[];
         foreach($hits as $row){
             if(($row['coverage']??'unknown')!=='complete')$unknown=true;
             $hash=(string)$row['page_hash'];
-            $wpdb->query($wpdb->prepare(
+            $changedRows=$wpdb->query($wpdb->prepare(
                 "UPDATE $pages SET epoch=epoch+1,updated_at=UTC_TIMESTAMP()
                  WHERE page_hash=%s",$hash));
+            if($changedRows!==1){
+                self::emergency_guard('epoch_update_failed');
+                return ['status'=>'epoch_update_failed','affected'=>count($changed),
+                    'fallback'=>true,'hybrid_guard_bumped'=>true];
+            }
             wp_cache_delete('epoch-'.$hash,self::GROUP);
             wp_cache_delete('persist-throttle-'.$hash,self::GROUP);
             $changed[]=['kind'=>$row['node_kind'],'path'=>$row['page_path'],'hash'=>$hash];
@@ -515,7 +596,10 @@ final class MAD4B_Page_Dependency_Cache {
         global $wpdb;
         $out=['contract'=>'mad4b.page-dependency.status.v1','version'=>self::VERSION,
             'policy'=>self::policy(),'schema_ready'=>self::ready(),
-            'fastcgi'=>'bounded_ttl_no_purge','cache_authority'=>'existing_WordPress_and_JetEngine'];
+            'fastcgi'=>'bounded_ttl_no_purge',
+            'cache_authority'=>'hybrid_certified_query_or_legacy',
+            'hybrid_guard_epoch'=>self::guard_epoch(),
+            'note'=>'Fragments use existing template/term keys; FastCGI remains TTL-based.'];
         if(self::ready()){
             $pages=self::table('pages');$edges=self::table('edges');
             $out['pages']=(int)$wpdb->get_var("SELECT COUNT(*) FROM $pages WHERE node_kind='page' AND expires_at>UTC_TIMESTAMP()");

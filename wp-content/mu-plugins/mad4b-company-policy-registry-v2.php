@@ -141,7 +141,7 @@ final class MAD4B_Company_Policy_Registry_V2 {
     private static function matches(array $rule,array $ctx): bool {
         $scope=$rule['scope']??'';
         if ($scope!=='company') {
-            $map=['template_family'=>'template_family_id','listing'=>'listing_id','widget'=>'widget_id',
+            $map=['template_family'=>'template_family_id','listing'=>'listing_id','widget'=>'widget_id','query'=>'query_id',
                   'program'=>'program_term_id','season'=>'season_id','tour'=>'tour_id',
                   'property'=>'property_id','rate'=>'rate_id'];
             if (!isset($map[$scope]) || (string)($ctx[$map[$scope]]??'') !== (string)($rule['scope_id']??'')) return false;
@@ -159,7 +159,7 @@ final class MAD4B_Company_Policy_Registry_V2 {
     }
     private static function scope_weight(string $scope): int {
         return ['company'=>0,'template_family'=>10,'program'=>10,'season'=>15,'listing'=>20,
-                'property'=>20,'tour'=>25,'widget'=>30,'rate'=>35][$scope]??0;
+                'property'=>20,'tour'=>25,'widget'=>30,'rate'=>35,'query'=>45][$scope]??0;
     }
     public static function resolve(string $policy_id, array $context=[], array $defaults=[]): array {
         $store=self::state();$rank=-999999;$chosen=null;

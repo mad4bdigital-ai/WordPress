@@ -18,26 +18,44 @@ function sanitize_key($value){return preg_replace('/[^a-z0-9_-]/','',strtolower(
 class FakeDB {
     public string $prefix='wp_';
     public string $term_taxonomy='wp_term_taxonomy';
+    public string $last_error='';
     public function prepare($q,...$args){return $q;}
-    public function get_var($q){return 1;}
+    public function get_var($q){
+        if(str_contains($q,'COUNT(DISTINCT dep_hash)'))
+            return $GLOBALS['proof_edge_count']??0;
+        return 1;
+    }
+    public function get_row($q,$mode=ARRAY_A){
+        return !empty($GLOBALS['proof_is_complete'])?['coverage'=>'complete']:null;
+    }
     public function get_col($q){return [14,15];}
-    public function get_results($q,$mode=ARRAY_A){return [];}
+    public function get_results($q,$mode=ARRAY_A){
+        return !empty($GLOBALS['force_overflow'])
+            ?array_fill(0,82,['page_hash'=>str_repeat('a',64),'page_path'=>'/qa/',
+                'node_kind'=>'query','coverage'=>'complete']):[];
+    }
 }
 function get_post_type($id){return 'tours-and-activities';}
 function get_post_type_object($type){return (object)['public'=>true];}
+function get_taxonomy($name){return (object)['public'=>true];}
+function wp_using_ext_object_cache(){return true;}
+function wp_rand($min,$max){return $min;}
+function get_current_user_id(){return 1;}
 function update_option($key,$value,$autoload=false){$GLOBALS['opts'][$key]=$value;return true;}
 function do_action($name,...$args){}
 $wpdb=new FakeDB();
 $selector=getenv('MAD4B_PAGE_DEP_FILE');
 if(!$selector)throw new Exception('MAD4B_PAGE_DEP_FILE missing');
 require $selector;
+$scopeFile=getenv('MAD4B_PUBLISHED_SCOPE_FILE');
+if($scopeFile)require $scopeFile;
 $GLOBALS['asserts']=0;
 function test_case($name,$condition) {
  if(!$condition)throw new RuntimeException('FAIL '.$name);
  $GLOBALS['asserts']++;
  echo 'PASS '.$name."\n";
 }
-test_case('default strategy page fragment query',MAD4B_Page_Dependency_Cache::policy()['strategy']==='page_fragment_query');
+test_case('default strategy hybrid',MAD4B_Page_Dependency_Cache::policy()['strategy']==='hybrid');
 test_case('unknown dependency safe fallback',MAD4B_Page_Dependency_Cache::policy()['unknown']==='legacy_scope');
 test_case('warming disabled until approved',MAD4B_Page_Dependency_Cache::policy()['refresh']==='off');
 $p=MAD4B_Page_Dependency_Cache::provider([]);
@@ -82,10 +100,50 @@ test_case('impact preview refuses unsupported key',
     MAD4B_Page_Dependency_Cache::impact_preview('orders:12')['status']==='invalid_dependency');
 test_case('impact preview remains read only',
     MAD4B_Page_Dependency_Cache::impact_preview('post:60623')['mutation_performed']===false);
-$result=MAD4B_Page_Dependency_Cache::query_version('gen-0',$approved,['cache'=>true]);
-test_case('query epoch appended while preserving existing generation',str_starts_with($result,'gen-0:pdep:'));
+$result=MAD4B_Page_Dependency_Cache::query_version('gen-0',$approved,['cache'=>true,'ttl'=>900]);
+test_case('unproven graph retains legacy generation',$result==='gen-0');
+test_case('unproven authority is legacy',
+    MAD4B_Page_Dependency_Cache::authority($approved,['cache'=>true,'ttl'=>900])==='legacy');
+if($scopeFile){
+    $oldVersion=MAD4B_Published_Content_Scope_Cache::query_version('base',$approved,['cache'=>true,'ttl'=>900]);
+    test_case('legacy fallback keeps post-type-or-taxonomy epoch',str_contains($oldVersion,':scope:'));
+}
+// The certified graph has both the exact query node and the exact expected
+// predicate edges, with expiry beyond the requested query cache lifetime.
+$known=(object)['id'=>999,'query_type'=>'posts','final_query'=>$approved->final_query];
+$signature=$ref->invoke(null,$known);
+$GLOBALS['proof_is_complete']=true;
+$GLOBALS['proof_edge_count']=count($signature['dependencies']);
+$decision=['cache'=>true,'ttl'=>900];
+test_case('complete query graph becomes dependency authority',
+    MAD4B_Page_Dependency_Cache::authority($known,$decision)==='dependency');
+$legacyKey=$scopeFile
+    ? MAD4B_Published_Content_Scope_Cache::query_version('base',$known,$decision)
+    : 'base';
+test_case('certified query skips type-wide epoch',$legacyKey==='base');
+$key=MAD4B_Page_Dependency_Cache::query_version($legacyKey,$known,$decision);
+test_case('certified query gets standalone graph namespace',
+    str_contains($key,':hybrid-graph-v1:')&&!str_contains($key,':scope:'));
+test_case('certified graph ignores unrelated published type epoch',
+    MAD4B_Page_Dependency_Cache::query_version($legacyKey,$known,$decision)===$key);
+$GLOBALS['proof_is_complete']=false;
+$GLOBALS['proof_edge_count']=0;
 test_case('uncacheable query leaves generation unchanged',MAD4B_Page_Dependency_Cache::query_version('gen-0',$approved,['cache'=>false])==='gen-0');
 test_case('unknown query leaves generation unchanged',MAD4B_Page_Dependency_Cache::query_version('gen-0',$unknown,['cache'=>true])==='gen-0');
+$GLOBALS['opts'][MAD4B_Page_Dependency_Cache::OPTION]=['strategy'=>'legacy_post_type'];
+test_case('operator can select Post Type only',
+    MAD4B_Page_Dependency_Cache::authority($known,$decision)==='legacy');
+$GLOBALS['opts'][MAD4B_Page_Dependency_Cache::OPTION]=['strategy'=>'hybrid'];
+if($scopeFile){
+    $GLOBALS['opts'][MAD4B_Published_Content_Scope_Cache::OPTION]=['status'=>'paused'];
+    test_case('global legacy policy disables graph authority',
+        MAD4B_Page_Dependency_Cache::authority($known,$decision)==='legacy');
+    unset($GLOBALS['opts'][MAD4B_Published_Content_Scope_Cache::OPTION]);
+}
+test_case('provider exposes hybrid mode',
+    isset(MAD4B_Page_Dependency_Cache::provider([])['page-dependency-cache']['fields']['strategy']['options']['hybrid']));
+test_case('per-query override scope supported',
+    in_array('query',MAD4B_Page_Dependency_Cache::provider([])['page-dependency-cache']['allowed_scopes'],true));
 test_case('deterministic key stable',MAD4B_Page_Dependency_Cache::hash('post:44')===MAD4B_Page_Dependency_Cache::hash('post:44'));
 $GLOBALS['opts'][MAD4B_Page_Dependency_Cache::OPTION]=['unknown'=>'no_cache'];
 $unknownCached=(object)['id'=>11,'query_type'=>'sql','cache_query'=>true,'cache_expires'=>900,
@@ -95,7 +153,14 @@ test_case('unknown source no_cache enforced',$unknownCached->cache_query===false
 $knownCached=(object)['id'=>11,'query_type'=>'posts','cache_query'=>true,'cache_expires'=>900,
   'final_query'=>['post_type'=>['tours-and-activities']]];
 MAD4B_Page_Dependency_Cache::unknown_query_policy($knownCached);
-test_case('supported public query remains cached',$knownCached->cache_query===true);
+test_case('unproven query with no_cache is uncached',
+    $knownCached->cache_query===false&&$knownCached->cache_expires===0);
+$GLOBALS['opts'][MAD4B_Page_Dependency_Cache::OPTION]=['strategy'=>'legacy_post_type','unknown'=>'no_cache'];
+$legacyCached=(object)['id'=>12,'query_type'=>'posts','cache_query'=>true,'cache_expires'=>900,
+    'final_query'=>['post_type'=>['tours-and-activities']]];
+MAD4B_Page_Dependency_Cache::unknown_query_policy($legacyCached);
+test_case('explicit Post Type strategy still controls legacy cache',$legacyCached->cache_query===true);
+$GLOBALS['opts'][MAD4B_Page_Dependency_Cache::OPTION]=['strategy'=>'hybrid'];
 $collect=new ReflectionProperty(MAD4B_Page_Dependency_Cache::class,'collecting');
 $collect->setValue(true);
 $widget=new class {
@@ -118,4 +183,14 @@ MAD4B_Page_Dependency_Cache::observe_query($approved);
 $unknownProp=new ReflectionProperty(MAD4B_Page_Dependency_Cache::class,'unknown');
 test_case('query collection budget marks coverage unknown',$unknownProp->getValue()===true);
 $collect->setValue(false);
+// Proof of safe failure: excessive reverse-index fan-out cannot leave
+// certified Query Cache on an unchanged generation.
+$GLOBALS['force_overflow']=true;
+$guardBefore=MAD4B_Page_Dependency_Cache::guard_epoch();
+$overflow=MAD4B_Page_Dependency_Cache::invalidate(['post:99999998'],'qa_test');
+test_case('overflow refuses unbounded selective invalidation',
+    ($overflow['status']??'')==='graph_overflow' && $overflow['fallback']===true);
+test_case('overflow rotates hybrid safety generation',
+    MAD4B_Page_Dependency_Cache::guard_epoch()!==$guardBefore);
+$GLOBALS['force_overflow']=false;
 echo 'PASS '.$GLOBALS['asserts']." GRAPH FIXTURES\n";

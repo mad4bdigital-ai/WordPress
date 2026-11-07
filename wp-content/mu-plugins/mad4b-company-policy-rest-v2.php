@@ -378,7 +378,7 @@ final class MAD4B_Company_Policy_REST_V2 {
         // A local assignment is just a versioned policy at a specific local
         // company, Tour, hotel, Listing or Rate scope. No remote mutation here.
         if(!isset($body['scope'])||!in_array($body['scope'],[
-            'company','template_family','listing','widget','program','season','tour','property','rate'
+            'company','template_family','listing','widget','query','program','season','tour','property','rate'
         ],true))return self::problem('policy_assignment_scope_required',422);
         $result=self::mutate('create',$body);
         if(is_wp_error($result))return $result;
@@ -395,7 +395,7 @@ final class MAD4B_Company_Policy_REST_V2 {
         return is_wp_error($result)?$result:rest_ensure_response($result);
     }
     private static function valid_context(array $ctx): bool {
-        $idFields=['template_family_id','listing_id','widget_id','program_term_id','season_id',
+        $idFields=['template_family_id','listing_id','widget_id','query_id','program_term_id','season_id',
             'tour_id','property_id','rate_id','items'];
         $enums=[
             'device'=>['mobile','tablet','desktop'],
