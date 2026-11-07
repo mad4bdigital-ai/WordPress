@@ -14,6 +14,15 @@ class SchemaReceiptRecoveryTests(unittest.TestCase):
  def setUpClass(cls):
   cls.res=load('schema_receipt_recovery_test','schema-receipt-resume.py')
   cls.exe=load('schema_original_execution_test','original-wpcli-executor.py')
+ def test_independent_machine_denial_is_bounded(self):
+  self.assertEqual(self.res.independent_failure_code('INDEPENDENT_313_READBACK_DENIED:ORIGINAL_313_INDEPENDENT_INGEST_DENIED'),
+    'INDEPENDENT_HOST_READBACK_ORIGINAL_313_INDEPENDENT_INGEST_DENIED')
+ def test_independent_payload_text_never_returned(self):
+  self.assertEqual(self.res.independent_failure_code('secret: private signing nonce=12345'),
+    'INDEPENDENT_HOST_READBACK_NO_MACHINE_REASON')
+ def test_independent_timeout_is_distinct(self):
+  source=(ROOT/'schema-receipt-resume.py').read_text()
+  self.assertIn("raise RuntimeError('INDEPENDENT_HOST_READBACK_TIMEOUT')",source)
  def test_receipt_enforced_root_only(self):
   with tempfile.TemporaryDirectory() as d:
    p=pathlib.Path(d)/'receipt'

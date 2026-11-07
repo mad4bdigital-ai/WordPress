@@ -35,6 +35,13 @@ def existing_central(job,engine):
  except (ValueError,IndexError,TypeError) as exc:
   raise RuntimeError('CENTRAL_RECEIPT_RECORD_FORMAT_INVALID') from exc
 
+def independent_failure_code(stderr):
+    # Only stable machine error tokens. Never echo signed payloads, signatures,
+    # WordPress output or original subprocess stderr.
+    match=re.search(r'INDEPENDENT_313_READBACK_DENIED:([A-Z][A-Z0-9_]{3,68})',str(stderr or ''))
+    return 'INDEPENDENT_HOST_READBACK_'+match.group(1) if match else 'INDEPENDENT_HOST_READBACK_NO_MACHINE_REASON'
+
+
 def matching(row,record,keys):
  return isinstance(row,dict) and all(row.get(k)==record.get(k) for k in keys)
 
@@ -105,10 +112,13 @@ def resume(job):
  proof=central.get('proof')
  receipt_hash=hashlib.sha256(blob).hexdigest()
  if proof is False or proof is None:
-  independent=subprocess.run([sys.executable,str(BASE/'independent-readback.py'),'--job',job],
-      capture_output=True,text=True,timeout=115,check=False)
+  try:
+   independent=subprocess.run([sys.executable,str(BASE/'independent-readback.py'),'--job',job],
+       capture_output=True,text=True,timeout=115,check=False)
+  except subprocess.TimeoutExpired as exc:
+   raise RuntimeError('INDEPENDENT_HOST_READBACK_TIMEOUT') from exc
   if independent.returncode:
-   raise RuntimeError('INDEPENDENT_HOST_READBACK_DELIVERY_DEFERRED_OR_DENIED')
+   raise RuntimeError(independent_failure_code(independent.stderr))
   result=json.loads(independent.stdout.strip().splitlines()[-1])
   if not (result.get('state')=='INDEPENDENT_HOST_READBACK_PROOF_STORED'
       and result.get('job_id')==job and result.get('native_receipt_sha256')==receipt_hash
