@@ -2,12 +2,12 @@
 /**
  * Plugin Name: MAD4B Company Dynamic Policy Registry v2
  * Description: Tenant-local, versioned provider policies and deterministic context decisions; native engines retain amount and rendering authority.
- * Version: 2.2.0
+ * Version: 2.2.1
  */
 defined('ABSPATH') || exit;
 
 final class MAD4B_Company_Policy_Registry_V2 {
-    public const VERSION = '2.2.0';
+    public const VERSION = '2.2.1';
     public const OPTION = 'mad4b_company_policy_registry_v2';
     private static array $providers = [];
     private static array $last = [];
@@ -28,6 +28,8 @@ final class MAD4B_Company_Policy_Registry_V2 {
                     'prefetch_px' => ['type'=>'int','min'=>0,'max'=>2500],
                     'rows' => ['type'=>'int','min'=>1,'max'=>6],
                 ],
+                'conditions'=>['content_family'=>['destination','transportation','unit','property','blog','tour','other','unknown'],
+                    'data_dependency'=>['independent','parent_object','rate_sensitive','unknown']],
                 'allowed_scopes' => ['company','template_family','listing','widget'],
             ],
             'native-rate-arbitration' => [
@@ -105,15 +107,20 @@ final class MAD4B_Company_Policy_Registry_V2 {
         }
         if (!$fields) return new WP_Error('policy_values_required');
         $conditions=[];
-        foreach (['device','placement','query_kind','language','component'] as $key) {
+        foreach (['device','placement','query_kind','language','component','content_family','data_dependency'] as $key) {
             $value=sanitize_key((string)($raw['conditions'][$key]??''));
             if ($value !== '') $conditions[$key]=$value;
         }
         foreach (['device'=>['mobile','tablet','desktop'],
                   'placement'=>['below_fold','above_fold','unknown'],
                   'query_kind'=>['grid','slider','query_builder'],
-                  'component'=>['base','hotel']] as $key=>$allowed)
+                  'component'=>['base','hotel'],
+                  'content_family'=>['destination','transportation','unit','property','blog','tour','other','unknown'],
+                  'data_dependency'=>['independent','parent_object','rate_sensitive','unknown']] as $key=>$allowed)
             if (isset($conditions[$key])&&!in_array($conditions[$key],$allowed,true)) return new WP_Error('policy_condition_invalid_'.$key);
+        if ($spec['policy_id']!=='listing.render.adaptive' &&
+            (isset($conditions['content_family'])||isset($conditions['data_dependency'])))
+            return new WP_Error('policy_render_condition_wrong_provider');
         if (isset($raw['conditions']['min_items']) && $raw['conditions']['min_items']!=='') {
             $n=filter_var($raw['conditions']['min_items'],FILTER_VALIDATE_INT,['options'=>['min_range'=>0,'max_range'=>5000]]);
             if ($n===false) return new WP_Error('policy_min_items_invalid');
@@ -174,7 +181,7 @@ final class MAD4B_Company_Policy_Registry_V2 {
             'origin'=>$chosen?'active_versioned_rule':'existing_company_policy',
             'context'=>array_intersect_key($context,array_flip([
                 'device','placement','query_kind','component','listing_id','widget_id','tour_id',
-                'property_id','rate_id','season_id','program_term_id','language'
+                'property_id','rate_id','season_id','program_term_id','language','content_family','data_dependency'
             ])),
         ];
         $receipt['decision_id']=substr(hash('sha256',wp_json_encode([$receipt,$effective])),0,20);
@@ -279,6 +286,11 @@ final class MAD4B_Company_Policy_Registry_V2 {
                 ?$settings['mad4b_placement']:'unknown',
             'language'=>(string)apply_filters('wpml_current_language',''),
         ];
+        $context=apply_filters('mad4b/policy_registry/render_context',$context,$settings);
+        if(!is_array($context)) $context=[];
+        foreach(['content_family'=>['destination','transportation','unit','property','blog','tour','other','unknown'],
+                 'data_dependency'=>['independent','parent_object','rate_sensitive','unknown']] as $field=>$allowed)
+             if(!in_array($context[$field]??'', $allowed,true))$context[$field]='unknown';
         return self::resolve('listing.render.adaptive',$context,[
             'strategy'=>$p['listing_mode']??'ajax_only','prefetch_px'=>$px,'rows'=>$rows]);
     }
@@ -339,7 +351,10 @@ final class MAD4B_Company_Policy_Registry_V2 {
         echo '</select> <label>Priority <input name="rule[priority]" type="number" min="-100" max="100" value="0"></label></td></tr>';
         echo '<tr><th>Conditions</th><td>';
         foreach(['device'=>'Device: mobile/tablet/desktop','placement'=>'Placement: below_fold/above_fold/unknown',
-                 'query_kind'=>'Type: grid/slider/query_builder','component'=>'Pricing component: base/hotel',
+                 'query_kind'=>'Type: grid/slider/query_builder',
+                 'content_family'=>'Content: destination/transportation/unit/property/blog/tour/other/unknown',
+                 'data_dependency'=>'Dependency: independent/parent_object/rate_sensitive/unknown',
+                 'component'=>'Pricing component: base/hotel',
                  'language'=>'Language code','min_items'=>'Minimum items'] as $k=>$label)
             echo '<label style="display:inline-block;margin:3px 12px 3px 0">'.esc_html($label).' <input name="rule[conditions]['.esc_attr($k).']" size="12"></label>';
         echo '</td></tr><tr><th>Validity (UTC)</th><td><input type="date" name="rule[valid_from]"> to <input type="date" name="rule[valid_to]"></td></tr>';
