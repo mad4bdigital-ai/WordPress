@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Destination WPML Locale Fallback
  * Description: Localizes unlinked Elementor template strings without overriding linked WPML translations or site-specific editor customizations.
- * Version: 1.0.0
+ * Version: 1.1.0
  */
 defined('ABSPATH') || exit;
 
@@ -88,7 +88,7 @@ final class MAD4B_Destination_Locale_Fallback {
     }
 
     public static function dynamic_heading_translate($translated, $text, $domain) {
-        if ($domain !== 'default' || !is_tax('destinations')) return $translated;
+        if ($domain !== 'default' || !is_tax('destinations') || $translated !== $text) return $translated;
         $lang = self::lang();
         $map = [
             'Explore %s & Nearby Destinations' => [
@@ -115,6 +115,21 @@ final class MAD4B_Destination_Locale_Fallback {
         $before = (string)($params['before'] ?? '');
         $after = (string)($params['after'] ?? '');
         $patterns = [
+            'ar' => [
+                'about'=>['نبذة عن ',''], 'attractions'=>['استكشف معالم ',' السياحية'],
+                'zones'=>['مناطق وأحياء ',''], 'cities'=>['أهم المدن التي تستحق الزيارة في ',''],
+                'states'=>['محافظات وولايات ',''], 'related'=>['',' - مقالات ذات صلة'],
+            ],
+            'es' => [
+                'about'=>['Acerca de ',''], 'attractions'=>['Explora las atracciones de ',''],
+                'zones'=>['',' zonas y áreas'], 'cities'=>['',' ciudades imprescindibles'],
+                'states'=>['',' provincias y estados'], 'related'=>['',' artículos relacionados'],
+            ],
+            'it' => [
+                'about'=>['Informazioni su ',''], 'attractions'=>['Esplora le attrazioni di ',''],
+                'zones'=>['',' zone e aree'], 'cities'=>['',' città da visitare'],
+                'states'=>['',' province e stati'], 'related'=>['',' articoli correlati'],
+            ],
             'fr' => [
                 'about'=>['À propos de ',''], 'attractions'=>['Découvrez les attractions de ',''],
                 'zones'=>['', ' : quartiers et zones'], 'cities'=>['', ' : villes incontournables'],
@@ -141,7 +156,7 @@ final class MAD4B_Destination_Locale_Fallback {
     }
 
     public static function editor_data($nodes, $post_id) {
-        if (!is_array($nodes) || !in_array((int)$post_id, [45891, 45774, 45886], true)) return $nodes;
+        if (!is_array($nodes) || !in_array((int)$post_id, [45891, 45774, 45886, 48542, 48544, 56096, 56106, 56108, 56110], true)) return $nodes;
         $lang = self::lang();
         if ($lang === 'en') return $nodes;
         static $inProgress = false;
@@ -168,10 +183,24 @@ final class MAD4B_Destination_Locale_Fallback {
                             }
                         }
                     }
-                    if (in_array((int)$post_id, [45774,45886], true) && in_array($lang, ['fr','de'], true)) {
+                    if (in_array((int)$post_id, [45774,45886,48542,48544,56096,56106,56108,56110], true)
+                        && in_array($lang, ['ar','fr','de','it','es'], true)) {
                         if ((int)$post_id === 45774 && $id === 'f10db4f' &&
                             ($settings['title'] ?? '') === 'Destination Contents') {
                             $settings['title'] = $lang === 'fr' ? 'Sommaire de la destination' : 'Reiseziel-Inhalte';
+                        }
+                        if ($id === 'f10db4f' && empty($settings['exclude_headings_by_selector'])) {
+                            $settings['exclude_headings_by_selector'] = '.elementor-sticky__spacer';
+                        }
+                        if ($id === 'c52b494' && ($settings['title'] ?? '') === 'Explore Regional Attractions') {
+                            $headings = [
+                                'ar'=>'استكشف معالم المنطقة السياحية',
+                                'es'=>'Explora las atracciones regionales',
+                                'it'=>'Esplora le attrazioni della regione',
+                                'fr'=>'Découvrez les attractions régionales',
+                                'de'=>'Entdecken Sie regionale Sehenswürdigkeiten',
+                            ];
+                            $settings['title'] = $headings[$lang] ?? $settings['title'];
                         }
                         if (isset($settings['__dynamic__']['title']) && is_string($settings['__dynamic__']['title'])) {
                             $settings['__dynamic__']['title'] =
