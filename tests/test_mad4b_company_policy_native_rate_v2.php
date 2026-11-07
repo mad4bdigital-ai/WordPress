@@ -32,13 +32,17 @@ function shared_product_booking_v2_preview($p){
     if(in_array($id,$GLOBALS['native_fail']??[],true))return new WP_Error('native_rejected');
     return ['total'=>($id===101?100:120),'currency'=>'USD','checkout_ready'=>false];
 }
+function apply_filters($name,$value){return $value;}
 function abk_accommodation_shadow_quote($p){
     if(in_array((int)$p['rate_id'],$GLOBALS['native_fail']??[],true))return new WP_Error('provider_rejected');
-    return ['total'=>250,'currency'=>'USD','checkout_ready'=>false];
+    return ['total'=>($p['rate_id']===301?250:350),'currency'=>'USD','checkout_ready'=>false];
 }
 function do_action($name,...$args){}
 class MAD4B_Company_Policy_Registry_V2 {
   public static function pricing($tour,$hotel,$rate=0,$program=0,$season=0) {return ['strategy'=>'hybrid','hotel_component_strategy'=>'dynamic_hotel_rates','decision_receipts'=>[]];}
+  public static function resolve($policy,$context=[],$defaults=[]) {
+    return ['values'=>['mode'=>$GLOBALS['rate_choice_mode']??'unambiguous_only'],'receipt'=>['rule_id'=>'fixture']];
+  }
 }
 $selector=getenv('MAD4B_TEST_POLICY_SELECTOR')
     ?:dirname(__DIR__).'/wp-content/mu-plugins/mad4b-company-pricing-native-selection-v2.php';
@@ -55,6 +59,11 @@ $GLOBALS['tour_rates']=[101];$GLOBALS['hotel_rates']=[301];$GLOBALS['stops']=[];
 run_case('unique native rate',101,mad4b_policy_auto_rate_select_v2($base));
 $GLOBALS['tour_rates']=[101,102];
 run_case('equal candidates ambiguous','mad4b_rate_ambiguous',mad4b_policy_auto_rate_select_v2($base));
+$GLOBALS['rate_choice_mode']='lowest_verified';
+run_case('lowest audited native quote',101,mad4b_policy_auto_rate_select_v2($base));
+$GLOBALS['rate_choice_mode']='highest_verified';
+run_case('highest audited native quote',102,mad4b_policy_auto_rate_select_v2($base));
+$GLOBALS['rate_choice_mode']='unambiguous_only';
 $GLOBALS['native_fail']=[102];
 run_case('native rejection excludes invalid',101,mad4b_policy_auto_rate_select_v2($base));
 $GLOBALS['native_fail']=[];
@@ -67,6 +76,11 @@ $hotel=['property_id'=>601,'unit_id'=>602,'checkin'=>'2026-11-07','checkout'=>'2
 run_case('hotel component native quote',301,mad4b_policy_hotel_rate_select_v2($hotel));
 $GLOBALS['hotel_rates']=[301,302];
 run_case('hotel ambiguity','mad4b_hotel_rate_ambiguous',mad4b_policy_hotel_rate_select_v2($hotel));
+$GLOBALS['rate_choice_mode']='lowest_verified';
+run_case('lowest native hotel component',301,mad4b_policy_hotel_rate_select_v2($hotel));
+$GLOBALS['rate_choice_mode']='highest_verified';
+run_case('highest native hotel component',302,mad4b_policy_hotel_rate_select_v2($hotel));
+$GLOBALS['rate_choice_mode']='unambiguous_only';
 $bad=$hotel;$bad['checkout']='2026-11-07';
 run_case('invalid stay date','mad4b_hotel_context_invalid',mad4b_policy_hotel_rate_select_v2($bad));
-echo "PASS 8 TESTS\n";
+echo "PASS 12 TESTS\n";

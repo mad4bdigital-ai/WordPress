@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Company Policy Intelligence
  * Description: Policy anomalies, Content Readiness source, local policy health, and registry-scoped company reporting.
- * Version: 2.1.2
+ * Version: 2.2.0
  */
 defined('ABSPATH') || exit;
 final class MAD4B_Company_Policy_Intelligence_V2 {
@@ -13,6 +13,10 @@ final class MAD4B_Company_Policy_Intelligence_V2 {
         'mad4b_rate_no_eligible_candidate'=>['code'=>'policy_rate_no_valid','severity'=>'high','label'=>'No native eligible Tour Rate for the requested date or options'],
         'mad4b_rate_ambiguous'=>['code'=>'policy_rate_ambiguous','severity'=>'high','label'=>'Multiple equally eligible Tour Rates need pricing review'],
         'mad4b_rate_candidates_limit'=>['code'=>'policy_rate_limit','severity'=>'medium','label'=>'Too many Tour Rates to resolve an unambiguous choice'],
+        'mad4b_rate_currency_ambiguous'=>['code'=>'policy_rate_currency','severity'=>'high','label'=>'Multiple native Rate currencies prevent automatic price comparison'],
+        'mad4b_hotel_no_valid_rate'=>['code'=>'policy_hotel_no_valid','severity'=>'high','label'=>'No valid Property Rate for selected hotel, unit and dates'],
+        'mad4b_hotel_rate_ambiguous'=>['code'=>'policy_hotel_ambiguous','severity'=>'high','label'=>'Multiple Property Rates require an explicit pricing choice'],
+        'mad4b_hotel_currency_ambiguous'=>['code'=>'policy_hotel_currency','severity'=>'high','label'=>'Multiple Property Rate currencies prevent automatic comparison'],
         'mad4b_rate_native_provider_unavailable'=>['code'=>'policy_rate_provider_missing','severity'=>'high','label'=>'Native Booking v2 Rate source is not available'],
     ];
 
@@ -22,17 +26,19 @@ final class MAD4B_Company_Policy_Intelligence_V2 {
     }
     public static function on_gap(string $reason,array $detail=[]): void {
         if(!isset(self::GAP_MAP[$reason]))return;
-        $tour=absint($detail['tour_id']??0);
-        if(!$tour || get_post_type($tour)!=='tours-and-activities' || get_post_status($tour)!=='publish')return;
+        $hotel=str_starts_with($reason,'mad4b_hotel_');
+        $type=$hotel?'properties':'tours-and-activities';
+        $object=absint($detail[$hotel?'property_id':'tour_id']??0);
+        if(!$object || get_post_type($object)!==$type || get_post_status($object)!=='publish')return;
         $spec=self::GAP_MAP[$reason];$code=$spec['code'];
-        $key=hash('sha256',get_current_blog_id().'|tours-and-activities|'.$tour.'|'.$code);
+        $key=hash('sha256',get_current_blog_id().'|'.$type.'|'.$object.'|'.$code);
         $throttle='mad4b_policy_gap_'.substr($key,0,25);
         if(get_transient($throttle))return;
         set_transient($throttle,'1',HOUR_IN_SECONDS);
         $gaps=self::gaps();
         $previous=$gaps[$key]??null;
         $gaps[$key]=[
-          'id'=>$key,'post_type'=>'tours-and-activities','object_id'=>$tour,
+          'id'=>$key,'post_type'=>$type,'object_id'=>$object,
           'code'=>$code,'severity'=>$spec['severity'],'label'=>$spec['label'],
           'source'=>'mad4b-policy-intelligence',
           'first_seen'=>$previous['first_seen']??gmdate('c'),
@@ -51,8 +57,20 @@ final class MAD4B_Company_Policy_Intelligence_V2 {
         $tour=absint($receipt['tour_id']??0);
         if(!$tour)return;
         $gaps=self::gaps();$changed=false;
-        foreach(self::GAP_MAP as $spec){
+        foreach(self::GAP_MAP as $reason=>$spec){
+            if(str_starts_with($reason,'mad4b_hotel_'))continue;
             $key=hash('sha256',get_current_blog_id().'|tours-and-activities|'.$tour.'|'.$spec['code']);
+            if(isset($gaps[$key])){unset($gaps[$key]);$changed=true;}
+        }
+        if($changed)update_option(self::STORE,$gaps,false);
+    }
+    public static function on_hotel_selected(array $receipt): void {
+        $property=absint($receipt['property_id']??0);
+        if(!$property)return;
+        $gaps=self::gaps();$changed=false;
+        foreach(self::GAP_MAP as $reason=>$spec) {
+            if(!str_starts_with($reason,'mad4b_hotel_'))continue;
+            $key=hash('sha256',get_current_blog_id().'|properties|'.$property.'|'.$spec['code']);
             if(isset($gaps[$key])){unset($gaps[$key]);$changed=true;}
         }
         if($changed)update_option(self::STORE,$gaps,false);
@@ -61,9 +79,11 @@ final class MAD4B_Company_Policy_Intelligence_V2 {
         if(!is_array($issues))$issues=[];
         foreach(self::gaps() as $row){
             if(!is_array($row)||!in_array($row['code']??'',
-               ['policy_rate_no_valid','policy_rate_ambiguous','policy_rate_limit','policy_rate_provider_missing'],true))continue;
-            $tour=absint($row['object_id']??0);
-            if(!$tour||get_post_status($tour)!=='publish'||get_post_type($tour)!=='tours-and-activities')continue;
+               ['policy_rate_no_valid','policy_rate_ambiguous','policy_rate_limit','policy_rate_provider_missing',
+                'policy_rate_currency','policy_hotel_no_valid','policy_hotel_ambiguous','policy_hotel_currency'],true))continue;
+            $id=absint($row['object_id']??0);$type=(string)($row['post_type']??'');
+            if(!$id||!in_array($type,['tours-and-activities','properties'],true)
+                ||get_post_status($id)!=='publish'||get_post_type($id)!==$type)continue;
             $issues[]=array_intersect_key($row,array_flip(['id','post_type','object_id','code','severity','label','source']));
         }
         return $issues;
@@ -228,6 +248,7 @@ final class MAD4B_Company_Policy_Intelligence_V2 {
     public static function boot(): void {
         add_action('mad4b/policy_rate_selection/gap',[self::class,'on_gap'],10,2);
         add_action('mad4b/policy_rate_selection/selected',[self::class,'on_rate_selected']);
+        add_action('mad4b/policy_hotel_rate_selection/selected',[self::class,'on_hotel_selected']);
         add_filter('mad4b/content_readiness/external_issues',[self::class,'content_issues'],30,2);
         add_action('rest_api_init',[self::class,'routes']);
         add_action('admin_menu',[self::class,'menu'],94);

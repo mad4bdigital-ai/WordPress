@@ -287,12 +287,14 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                 // The MAD4B Policy Intelligence provider owns only these
                 // bounded native Rate-selection gaps for published Tours.
                 $companyPolicy = $source==='mad4b-policy-intelligence' &&
-                    $type==='tours-and-activities' && $object_id>0 &&
+                    in_array($type,['tours-and-activities','properties'],true) && $object_id>0 &&
                     get_post_type($object_id)===$type &&
                     get_post_status($object_id)==='publish' &&
                     in_array($code,[
                         'policy_rate_no_valid','policy_rate_ambiguous',
-                        'policy_rate_limit','policy_rate_provider_missing'
+                        'policy_rate_limit','policy_rate_provider_missing',
+                        'policy_rate_currency','policy_hotel_no_valid',
+                        'policy_hotel_ambiguous','policy_hotel_currency'
                     ],true);
                 // Preserve scoring only for the exact DFSB WPML gap contract.
                 // Other external feeds cannot supply priority/triage metadata.
@@ -750,12 +752,14 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
             // Never resolve a source issue when its scanner is disconnected.
             return has_filter('mad4b/content_readiness/external_issues')!==false;
         }
-        if(str_starts_with($code,'policy_rate_') &&
+        if((str_starts_with($code,'policy_rate_')||str_starts_with($code,'policy_hotel_')) &&
            ($issue['source']??'')==='mad4b-policy-intelligence') {
             return class_exists('MAD4B_Company_Policy_Intelligence_V2')
                 && in_array($code,[
                     'policy_rate_no_valid','policy_rate_ambiguous',
-                    'policy_rate_limit','policy_rate_provider_missing'
+                    'policy_rate_limit','policy_rate_provider_missing',
+                    'policy_rate_currency','policy_hotel_no_valid',
+                    'policy_hotel_ambiguous','policy_hotel_currency'
                 ],true);
         }
         if(str_starts_with($code,'ccr_')) {

@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Policy Native Rate Selection
  * Description: Safe auto-choice of an unambiguous published Tour Rate before native Booking v2 price-only previews.
- * Version: 2.1.1
+ * Version: 2.2.0
  */
 defined('ABSPATH') || exit;
 final class MAD4B_Policy_Native_Rate_Selection_V2 {
@@ -97,7 +97,27 @@ final class MAD4B_Policy_Native_Rate_Selection_V2 {
         usort($valid,static fn($a,$b)=>($b['score']<=>$a['score'])?:($a['rate_id']<=>$b['rate_id']));
         $best=$valid[0];
         $ties=array_values(array_filter($valid,static fn($c)=>$c['score']===$best['score']));
-        if(count($ties)>1)return self::error('mad4b_rate_ambiguous',[
+        $choice=['values'=>['mode'=>'unambiguous_only'],'receipt'=>null];
+        if(class_exists('MAD4B_Company_Policy_Registry_V2')) {
+            $choice=MAD4B_Company_Policy_Registry_V2::resolve('pricing.rate.choice',[
+                'tour_id'=>$tour,'program_term_id'=>$program,'season_id'=>$season,
+                'component'=>'base','effective_date'=>$date,
+                'language'=>(string)apply_filters('wpml_current_language',''),
+            ],['mode'=>'unambiguous_only']);
+        }
+        $mode=$choice['values']['mode']??'unambiguous_only';
+        if(count($ties)>1 && in_array($mode,['lowest_verified','highest_verified'],true)){
+            $currencies=array_unique(array_column($ties,'currency'));
+            if(count($currencies)!==1)return self::error('mad4b_rate_currency_ambiguous',[
+                'tour_id'=>$tour,'candidate_count'=>count($ties)]);
+            usort($ties,static fn($a,$b)=>($mode==='lowest_verified'
+                ?($a['amount']<=>$b['amount']):($b['amount']<=>$a['amount']))
+                ?:($a['rate_id']<=>$b['rate_id']));
+            if(abs($ties[0]['amount']-$ties[1]['amount'])>0.009)$best=$ties[0];
+            else return self::error('mad4b_rate_ambiguous',[
+                'tour_id'=>$tour,'candidate_count'=>count($ties),
+                'reason'=>'equal_native_quote_total_after_arbitration']);
+        } elseif(count($ties)>1) return self::error('mad4b_rate_ambiguous',[
             'tour_id'=>$tour,'travel_date'=>$date,'candidate_count'=>count($ties),
             'candidate_ids'=>array_column($ties,'rate_id'),
             'reason'=>'multiple_equally_specific_native_valid_rates',
@@ -107,6 +127,7 @@ final class MAD4B_Policy_Native_Rate_Selection_V2 {
             'tour_id'=>$tour,'rate_id'=>$best['rate_id'],'travel_date'=>$date,
             'currency'=>$best['currency'],'amount'=>$best['amount'],
             'policy_strategy'=>$policy['strategy']??'native','policy_receipts'=>$policy['decision_receipts']??[],
+            'rate_arbitration_mode'=>$mode,'rate_arbitration_receipt'=>$choice['receipt'],
             'candidate_count'=>count($valid),'excluded_counts'=>$excluded,'score'=>$best['score'],
             'native_quote_authority'=>'shared_product_booking_v2_preview',
             'checkout_ready'=>false,'published_amount_changed'=>false,
@@ -163,17 +184,36 @@ final class MAD4B_Policy_Native_Rate_Selection_V2 {
             $valid[]=['rate_id'=>$id,'amount'=>(float)$amount,'currency'=>$currency];
         }
         if(!$valid)return self::error('mad4b_hotel_no_valid_rate',['property_id'=>$property,'excluded'=>$excluded]);
-        if(count($valid)!==1)
+        $choice=['values'=>['mode'=>'unambiguous_only'],'receipt'=>null];
+        if(class_exists('MAD4B_Company_Policy_Registry_V2')){
+            $choice=MAD4B_Company_Policy_Registry_V2::resolve('pricing.rate.choice',[
+                'property_id'=>$property,'component'=>'hotel','effective_date'=>$checkin
+            ],['mode'=>'unambiguous_only']);
+        }
+        $mode=$choice['values']['mode']??'unambiguous_only';
+        if(count($valid)>1 && in_array($mode,['lowest_verified','highest_verified'],true)){
+            if(count(array_unique(array_column($valid,'currency')))!==1)
+                return self::error('mad4b_hotel_currency_ambiguous',['property_id'=>$property]);
+            usort($valid,static fn($a,$b)=>($mode==='lowest_verified'
+                ?($a['amount']<=>$b['amount']):($b['amount']<=>$a['amount']))
+                ?:($a['rate_id']<=>$b['rate_id']));
+            if(abs($valid[0]['amount']-$valid[1]['amount'])<=0.009)
+                return self::error('mad4b_hotel_rate_ambiguous',['property_id'=>$property,
+                    'reason'=>'equal_native_hotel_quote_after_arbitration']);
+        }elseif(count($valid)!==1)
             return self::error('mad4b_hotel_rate_ambiguous',['property_id'=>$property,
                 'candidate_ids'=>array_column($valid,'rate_id')]);
         $v=$valid[0];
-        return ['contract'=>'mad4b.policy-hotel-rate-choice.v2','status'=>'native_hotel_component_selected',
+        $receipt=['contract'=>'mad4b.policy-hotel-rate-choice.v2','status'=>'native_hotel_component_selected',
             'property_id'=>$property,'unit_id'=>$unit,'rate_id'=>$v['rate_id'],
             'total'=>$v['amount'],'currency'=>$v['currency'],
             'pricing_strategy'=>$strategy,'decision_receipts'=>$policy['decision_receipts']??[],
+            'rate_arbitration_mode'=>$mode,'rate_arbitration_receipt'=>$choice['receipt'],
             'native_provider'=>'abk_accommodation_shadow_quote',
             'component_only'=>true,'booking_total_changed'=>false,
             'inventory_reserved'=>false,'checkout_ready'=>false];
+        do_action('mad4b/policy_hotel_rate_selection/selected',$receipt);
+        return $receipt;
     }
 }
 function mad4b_policy_auto_rate_select_v2(array $payload): array|WP_Error {

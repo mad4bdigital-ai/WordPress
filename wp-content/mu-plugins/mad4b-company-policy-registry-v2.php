@@ -2,12 +2,12 @@
 /**
  * Plugin Name: MAD4B Company Dynamic Policy Registry v2
  * Description: Tenant-local, versioned provider policies and deterministic context decisions; native engines retain amount and rendering authority.
- * Version: 2.0.1
+ * Version: 2.2.0
  */
 defined('ABSPATH') || exit;
 
 final class MAD4B_Company_Policy_Registry_V2 {
-    public const VERSION = '2.0.1';
+    public const VERSION = '2.2.0';
     public const OPTION = 'mad4b_company_policy_registry_v2';
     private static array $providers = [];
     private static array $last = [];
@@ -29,6 +29,18 @@ final class MAD4B_Company_Policy_Registry_V2 {
                     'rows' => ['type'=>'int','min'=>1,'max'=>6],
                 ],
                 'allowed_scopes' => ['company','template_family','listing','widget'],
+            ],
+            'native-rate-arbitration' => [
+                'label' => 'Native Rate Selection / Ambiguity Policy',
+                'policy_id' => 'pricing.rate.choice',
+                'fields' => [
+                    'mode' => ['type'=>'enum','options'=>[
+                        'unambiguous_only'=>'Only choose a uniquely valid Rate (default)',
+                        'lowest_verified'=>'Lowest native-validated quote when currencies match',
+                        'highest_verified'=>'Highest native-validated quote when currencies match',
+                    ]],
+                ],
+                'allowed_scopes' => ['company','program','season','tour','property'],
             ],
             'shared-commerce-pricing' => [
                 'label' => 'Shared Product Core / Commerce Pricing Source',
@@ -127,7 +139,8 @@ final class MAD4B_Company_Policy_Registry_V2 {
                   'property'=>'property_id','rate'=>'rate_id'];
             if (!isset($map[$scope]) || (string)($ctx[$map[$scope]]??'') !== (string)($rule['scope_id']??'')) return false;
         }
-        $today=gmdate('Y-m-d');
+        $today=isset($ctx['effective_date']) && is_string($ctx['effective_date'])
+            && self::valid_day($ctx['effective_date']) ? $ctx['effective_date'] : gmdate('Y-m-d');
         if ((!empty($rule['valid_from']) && $today < $rule['valid_from'])
             ||(!empty($rule['valid_to']) && $today > $rule['valid_to'])) return false;
         foreach ((array)($rule['conditions']??[]) as $key=>$value) {
