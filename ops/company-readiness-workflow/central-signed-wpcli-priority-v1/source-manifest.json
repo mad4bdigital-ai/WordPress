@@ -19,8 +19,8 @@
     "test_wpcli_signed_priority.py": "0dcfda96ac5201eddd8e026501f7a399672ebc432b9b32e18e54614994272671",
     "70-signed-wpcli-priority.conf": "572e750c9adbbc48934537f972fde23697d36c1c0b581d1fef47607e67a527b2",
     "50-original-signed-wpcli-priority.conf": "5fc96f847e924f076b88df96028c946c6368b4a8b1953de8e33cb06fd496d0d2",
-    "vps-broker-poller.py": "b513f77575770273785bcda49fee577b5b8b05105c22de2ebe281c9c47a42a5c",
-    "test_vps_broker_busy.py": "d9d48b118bad9f8fa6aff9990ef4a59f24f1ef3a1bdff0e09134ad97fb645ce2",
+    "vps-broker-poller.py": "b28cf3382bd6407ab9d5d826fe71a96bf9119b4188623801d3d1c7caae41a2c6",
+    "test_vps_broker_busy.py": "49a3636c0574ad535faa151e5d13abeca1eb8ee150f6680c8d82fb21831e4542",
     "mad4b-faore-stdio-observe-priority.conf": "e38653c04d121b2350f655282b56c609efb100cebe7f69b520c1eb9dd2124b15",
     "mad4b-company-self-healing-priority.conf": "e38653c04d121b2350f655282b56c609efb100cebe7f69b520c1eb9dd2124b15"
   },

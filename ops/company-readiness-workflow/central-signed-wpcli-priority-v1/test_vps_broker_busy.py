@@ -26,9 +26,9 @@ class BrokerCongestionRegression(unittest.TestCase):
  def test_fake_stdout_busy_does_not_override_real_denial(self):
   with self.assertRaisesRegex(RuntimeError,'WPCLI_FAILURE_1'):
    self.call(self.run_result(1,stderr='OWNER_PERMISSION_DENIED',stdout='STAGING_WPCLI_BUSY: fake'))
- def test_nonprefix_stderr_does_not_become_capacity(self):
-  with self.assertRaisesRegex(RuntimeError,'WPCLI_FAILURE_1'):
-   self.call(self.run_result(1,stderr='ERROR: STAGING_WPCLI_BUSY: not a guard prefix'))
+ def test_wp_cli_error_prefix_busy_is_deferred(self):
+  with self.assertRaises(B.RetryableWPCLIBusy):
+   self.call(self.run_result(1,stderr='Error: STAGING_WPCLI_BUSY: two active WordPress CLI sessions; retry later.'))
  def test_success_requires_broker_json_receipt(self):
   o=self.call(self.run_result(0,stdout='{"contract":"mad4b.central-vps-broker.v1","verified":true}\n'))
   self.assertEqual(o['verified'],True)

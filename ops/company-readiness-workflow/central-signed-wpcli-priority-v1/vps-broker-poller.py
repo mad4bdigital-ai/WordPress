@@ -80,7 +80,10 @@ def wp_call(args, timeout=35):
         # The original WordPress two-slot guard emits an exact, stderr-only
         # machine code; the Docker/WP-CLI wrapper may report exit 1 or 75.
         # Capacity never becomes signed authority, execution, or heartbeat.
-        if any(line.startswith("STAGING_WPCLI_BUSY:") for line in (out.stderr or "").splitlines()):
+        # WordPress CLI wrappers may prefix the admission message with
+        # "Error:"; defer only on the original guard token in stderr,
+        # never for a missing signature or real permission rejection.
+        if "STAGING_WPCLI_BUSY:" in (out.stderr or ""):
             raise RetryableWPCLIBusy("STAGING_WPCLI_BUSY")
         raise RuntimeError("WPCLI_FAILURE_" + str(out.returncode))
     lines = [s for s in out.stdout.splitlines() if s.lstrip().startswith("{")]
