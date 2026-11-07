@@ -30,7 +30,7 @@ Playwright Chromium, Pixel 10 emulation 412x924, mobile/touch, JavaScript and ne
 - DB confirms published translation sets for EN/AR/FR/DE/ES/IT for front page 35138 and tour 60629.
 - Public Home EN and AR returned HTTP 200. AR HTML dir=rtl, 7 correct alternate hreflang entries. FR first mobile fetch timed out at 21s, while a later warmed desktop request returned HTTP 200 / FastCGI HIT at ~0.02s; another locale requested as MISS showed ~10.8s origin TTFB. This is not full real-browser parity for six languages.
 - Nginx homepage locale cache already has background_update+use_stale updating and 30s TTL. It is not absent; cold and missing microcache entries still require slow PHP generation. The query/device/currency/cookie/auth bypass rules were left unchanged.
-- The mobile Tours Archive Filter drawer was opened successfully. H1 remained and 84 listing elements stayed rendered. No visible checkbox could be safely selected by the QA harness; therefore filter result AJAX roundtrip remains UNVERIFIED. No false PASS.
+- The mobile Tours Archive Filter drawer was opened successfully. H1 remained and 84 listing elements stayed rendered. The real JetSmartFilters sorting control was set to "By Recommended"; the resulting admin-ajax.php request returned HTTP 200, and the 84 card containers/H1 remained. This **proves the sorting AJAX interaction completed**, not the correctness of each order. No visible checkbox was available to automate a destination/category filter, so full filter predicate/result parity remains UNVERIFIED.
 - The separate JetBlog responsive offscreen initial AJAX patch remains present; the current browser harness strips query strings from captured request URLs, therefore its "jetblog_xhr_count=0" must not be treated as proof the widget did or did not send a POST.
 
 ## Existing PR #770 live checks
@@ -41,7 +41,7 @@ Playwright Chromium, Pixel 10 emulation 412x924, mobile/touch, JavaScript and ne
 
 ## Remaining acceptance gates
 1. Obtain stable, noncontended server slots; run repeated cache-controlled Lighthouse or browser traces for Home/Archive/Tour and separate LCP/CLS/INP, at least 3 cold/warm samples per page and compare p50/p75.
-2. Execute a real JetSmartFilters selection/sort/AJAX cycle, not just opening the mobile accordion, and verify no stale multilingual results.
+2. Sorting AJAX completed with HTTP 200; still verify the resulting order and perform a non-sorting JetSmartFilters predicate selection in EN/AR/FR without stale result/locale leakage.
 3. Test translated FR/DE/ES/IT URLs and Arabic RTL interactions in a real browser; SQL linkage alone does not prove frontend parity.
 4. Resolve repeated live PHP-FPM max_children saturation and native Elementor/WPML render slowness. New 30s FastCGI MISS paths can still take 10–50+ seconds. Do not increase worker count or globally lengthen cache without controlled load and invalidation proof.
 5. Trigger GitHub Actions through an authorized Actions-write path and review results. Keep PR Draft and Production unchanged.
