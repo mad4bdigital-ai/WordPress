@@ -37,3 +37,9 @@ Unit tests are not proof of a new signed 313; runtime proof must be produced by 
 - These changes do **not** complete or extend an expired Job and do not override the minimum remaining lifetime before one-shot execution.
 
 These source-only files are not a new host enrollment, owner Grant, or 313 certificate.
+
+## Capacity regression for the original Native 313 worker (7 November 2026)
+
+Host-side original `claimed-job-worker.py` now classifies the **exact** Central capacity codes `CENTRAL_WORDPRESS_BUSY`, `WPCLI_DYNAMIC_ACTOR_BUSY`, and `CENTRAL_WPCLI_SLOT_BUSY_DEFERRED` as retryable. It also defers a Schema executor error **only when** the executor explicitly reports one of these codes and no root-only Job reservation or Host receipt exists. Existing reservation/receipt still forces reconciliation; no target command is replayed.
+
+`test_worker_central_capacity.py` supplies 7 read-only tests. All Schema and original signed authority regressions: **22/22 PASS**. The original >=360-second safe execution start window and owner-authorized 305/312 scope remain unchanged. This is not an Independent 313 certificate.

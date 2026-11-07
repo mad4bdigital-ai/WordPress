@@ -38,6 +38,31 @@ def operation_digests():
 
 class TransientCentralReadBusy(RuntimeError):pass
 
+def is_retryable_central_capacity(exc):
+    """Only exact central capacity codes, never authorization denials."""
+    return isinstance(exc,TransientCentralReadBusy) or (
+        isinstance(exc,RuntimeError) and str(exc) in (
+            'CENTRAL_WORDPRESS_BUSY',
+            'WPCLI_DYNAMIC_ACTOR_BUSY',
+            'CENTRAL_WPCLI_SLOT_BUSY_DEFERRED'))
+
+
+def unreserved_schema_preflight_busy(job,operation,returncode,stderr):
+    """Only a provably unreserved read-only Schema preflight may defer.
+
+    A host reservation or receipt may mean the one-shot target command ran;
+    never convert such an error to a retryable execution failure.
+    """
+    if operation!='schema.readback' or returncode!=2 or not HEX32.fullmatch(job):
+        return False
+    if (ROOT/'reserved'/(job+'.reserved')).exists() or (ROOT/'receipts'/(job+'.json')).exists():
+        return False
+    return bool(re.search(
+        r'(?:^|\n)ORIGINAL_NATIVE_313_STOPPED:'
+        r'(?:CENTRAL_WORDPRESS_BUSY|WPCLI_DYNAMIC_ACTOR_BUSY|CENTRAL_WPCLI_SLOT_BUSY_DEFERRED)\s*$',
+        str(stderr or '')))
+
+
 def safe_capability_error(exc):
     # Preserve bounded machine status only; never log signed payloads or secrets.
     code=str(exc)
@@ -196,6 +221,8 @@ def main():
   raise RuntimeError('ORIGINAL_EXECUTOR_TIMEOUT_320S_RECEIPT_RECONCILIATION_REQUIRED:'
     +('HOST_312_RECEIPT_EXISTS' if receipt_seen else 'HOST_RECEIPT_NOT_OBSERVED')) from exc
  if result.returncode:
+  if unreserved_schema_preflight_busy(job,operation,result.returncode,result.stderr):
+   raise TransientCentralReadBusy('SCHEMA_PREFLIGHT_CENTRAL_WPCLI_BUSY')
   raise RuntimeError(safe_executor_failure(result.returncode,result.stderr))
  r=json.loads(result.stdout.strip().splitlines()[-1])
  if not(r.get('state')=='WPCLI_NATIVE_EXECUTION_READBACK_VERIFIED' and
@@ -207,8 +234,7 @@ def main():
 if __name__=='__main__':
  try:main()
  except Exception as exc:
-  if isinstance(exc,TransientCentralReadBusy) or (isinstance(exc,RuntimeError)
-      and str(exc)=='CENTRAL_WPCLI_SLOT_BUSY_DEFERRED'):
+  if is_retryable_central_capacity(exc):
    print(json.dumps({'state':'CENTRAL_WPCLI_BUSY_DEFERRED',
     'jobs_claimed':0,'jobs_executed':0,'grants_created':0,
     'production_mutated':False,'receipt_certified':False}))
