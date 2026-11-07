@@ -20,6 +20,28 @@ class BrokerCongestionRegression(unittest.TestCase):
  def test_principal_denial_has_only_bounded_machine_code(self):
   with self.assertRaisesRegex(RuntimeError,'WPCLI_FAILURE_1:CENTRAL_PRINCIPAL_REQUIRED'):
    self.call(self.run_result(1,stderr='Error: Central WP-CLI host principal required'))
+ def test_signed_payload_generated_after_wordpress_identity_preflight(self):
+  stages=[]
+  def bind(x):
+   stages.append('identity_verified')
+   return ['original-broker-cli']
+  def signed():
+   stages.append('signed_after_identity')
+   return ['heartbeat','--host=srv2030908']
+  def run(argv,**kwargs):
+   stages.append('signed_request_sent')
+   self.assertEqual(argv,['original-broker-cli','heartbeat','--host=srv2030908'])
+   return self.run_result(0,stdout='{"verified":true}\n')
+  with patch.object(B,'with_actor',side_effect=bind),patch.object(B.subprocess,'run',side_effect=run):
+   self.assertTrue(B.wp_call([],signed_builder=signed)['verified'])
+  self.assertEqual(stages,['identity_verified','signed_after_identity','signed_request_sent'])
+ def test_signed_builder_cannot_send_unapproved_or_mixed_action(self):
+  with patch.object(B,'with_actor',return_value=['original-broker-cli']),patch.object(B.subprocess,'run') as run:
+   with self.assertRaisesRegex(RuntimeError,'SIGNED_BROKER_PAYLOAD_SHAPE_INVALID'):
+    B.wp_call(['pending'],signed_builder=lambda:['heartbeat'])
+   with self.assertRaisesRegex(RuntimeError,'SIGNED_BROKER_ACTION_INVALID'):
+    B.wp_call([],signed_builder=lambda:['install'])
+   run.assert_not_called()
  def test_busy_code_1_is_deferred(self):
   with self.assertRaises(B.RetryableWPCLIBusy):
    self.call(self.run_result(1,stderr='STAGING_WPCLI_BUSY: two active WordPress CLI sessions; retry later.\n'))

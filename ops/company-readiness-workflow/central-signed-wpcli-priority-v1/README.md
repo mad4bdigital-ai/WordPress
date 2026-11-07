@@ -46,3 +46,7 @@ The exact host private signing key is never included in this PR.
 ## Additional optional read-only observers
 
 `mad4b-faore-stdio-observe.service` and `mad4b-company-self-healing.service` are read-only diagnostic/observation services outside the original eleven registered scheduler tasks. These exact existing systemd services now each have an `ExecCondition` that defers **new** observations while an original signed 305–313 WordPress Job is time-eligible. No current observer is terminated; no underlying unit ExecStart, timer cadence, signer or WordPress two-slot guard is changed. Admission hints are never treated as authorization. Do not apply the condition to write-capable services without their own safety review.
+
+## Late signing after exact owner identity preflight
+
+Original signed 306 heartbeat and claim messages have a 45-second signed validity. The previous poller signed **before** discovering the enrolled Central WordPress container and actor, which can consume the signature lifetime under concurrent WP-CLI load. The current poller invokes the existing `with_actor(WP_BASE)` identity preflight first, then creates a fresh nonce, issued/expires timestamps and exact Ed25519 signature immediately before the original WordPress action. It does not cache owner identity, reuse signatures, skip grant checks or bypass the WordPress two-slot guard. Two new regression cases establish the exact ordering and reject unapproved actions, bringing Broker tests to 11/11 PASS.

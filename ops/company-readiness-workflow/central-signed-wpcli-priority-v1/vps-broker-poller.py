@@ -72,8 +72,20 @@ class RetryableWPCLIBusy(RuntimeError):
     """Exact WordPress WP-CLI admission contention, never an authority grant."""
 
 
-def wp_call(args, timeout=35):
-    cmd = with_actor(WP_BASE + args)
+def wp_call(args, timeout=35, signed_builder=None):
+    # Resolve the exact enrolled WordPress target and admin first. Signed
+    # 45-second host messages MUST be created after this potentially slow
+    # WP-CLI preflight; never reuse an old nonce or cached owner session.
+    if signed_builder is None:
+        cmd = with_actor(WP_BASE + args)
+    else:
+        if args:
+            raise RuntimeError("SIGNED_BROKER_PAYLOAD_SHAPE_INVALID")
+        cmd = with_actor(WP_BASE)
+        payload = signed_builder()
+        if not isinstance(payload,list) or not payload or payload[0] not in ("heartbeat","claim"):
+            raise RuntimeError("SIGNED_BROKER_ACTION_INVALID")
+        cmd += payload
     out = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout,
                          env={**os.environ, "LC_ALL":"C"}, check=False)
     if out.returncode != 0:
@@ -117,13 +129,15 @@ def audit(event, **details):
         os.fsync(f.fileno())
 
 def heartbeat():
-    now = int(time.time())
-    nonce = secrets.token_hex(16)
-    expiry = now + 45
-    signature = sign([CONTRACT, "heartbeat", HOST, nonce, now, expiry])
-    result = wp_call(["heartbeat", "--host="+HOST, "--nonce="+nonce,
-                      "--issued="+str(now), "--expires="+str(expiry),
-                      "--signature="+signature])
+    def signed_heartbeat():
+        now = int(time.time())
+        nonce = secrets.token_hex(16)
+        expiry = now + 45
+        signature = sign([CONTRACT, "heartbeat", HOST, nonce, now, expiry])
+        return ["heartbeat", "--host="+HOST, "--nonce="+nonce,
+                "--issued="+str(now), "--expires="+str(expiry),
+                "--signature="+signature]
+    result = wp_call([], signed_builder=signed_heartbeat)
     if result.get("host_id") != HOST or result.get("verified") is not True:
         raise RuntimeError("CENTRAL_HEARTBEAT_READBACK_MISMATCH")
     audit("HEARTBEAT_VERIFIED", host_id=HOST, central_at=result.get("at"))
@@ -165,15 +179,17 @@ def poll(limit):
         # Record intent before claim. A failed or ambiguous claim is NOT an
         # execution receipt, and never causes command replay.
         audit("CLAIM_ATTEMPTED",job_id=job_id,company=name,host_id=HOST)
-        issued = int(time.time())
-        expiry = issued + 45
-        nonce = secrets.token_hex(16)
-        signature = sign([CONTRACT, "claim", job_id, name,
-            job["site_uuid"],job["environment"],HOST,nonce,issued,expiry])
+        def signed_claim():
+            issued = int(time.time())
+            expiry = issued + 45
+            nonce = secrets.token_hex(16)
+            signature = sign([CONTRACT, "claim", job_id, name,
+                job["site_uuid"],job["environment"],HOST,nonce,issued,expiry])
+            return ["claim", "--job="+job_id, "--nonce="+nonce,
+                    "--issued="+str(issued), "--expires="+str(expiry),
+                    "--signature="+signature]
         try:
-            claimed = wp_call(["claim", "--job="+job_id, "--nonce="+nonce,
-                "--issued="+str(issued), "--expires="+str(expiry),
-                "--signature="+signature], timeout=45)
+            claimed = wp_call([], timeout=45, signed_builder=signed_claim)
             if (claimed.get("job_id") != job_id or claimed.get("state") !=
                 "BROKER_CLAIMED_PENDING_INDEPENDENT_HOST_AUTHORITY"):
                 raise RuntimeError("INVALID_CLAIM_READBACK")
