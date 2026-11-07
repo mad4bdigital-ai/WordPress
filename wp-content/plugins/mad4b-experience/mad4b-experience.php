@@ -2,15 +2,16 @@
 /**
  * Plugin Name: MAD4B Experience
  * Description: Modular presentation, performance and visitor UX for all registered company environments.
- * Version: 1.2.6
+ * Version: 1.2.7
  * Requires PHP: 8.0
  * Text Domain: mad4b-experience
  */
 defined('ABSPATH')||exit;
 final class MAD4B_Experience {
- const VERSION='1.2.6';
+ const VERSION='1.2.7';
  const MODULE_GROUPS=['presentation'=>13,'performance'=>5,'visitor'=>2];
  public static function boot():void {
+  require_once __DIR__.'/src/shared/class-mad4b-experience-site-scope.php';
   require_once __DIR__.'/src/presentation/bootstrap.php';
   require_once __DIR__.'/src/visitor/bootstrap.php';
   add_action('admin_menu',[__CLASS__,'menu']);

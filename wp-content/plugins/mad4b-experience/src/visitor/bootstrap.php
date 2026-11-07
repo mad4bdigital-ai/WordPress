@@ -11,27 +11,9 @@ final class MAD4B_Visitor_Experience {
  const OPTION='mad4b-visitor-experience_features_v1';
  const MODULES=['fluent-phone-brand-and-dial'=>'348-mad4b-fluent-phone-brand-and-dial.php','visitor-switchers-locale'=>'350-mad4b-visitor-switchers-locale.php'];
  public static function bound():bool {
-  static $cached=null;
-  if($cached!==null)return $cached;
-  $home=rtrim(strtolower((string)home_url('/')),'/');
-  $scheme=(string)wp_parse_url($home,PHP_URL_SCHEME);
-  if(!in_array($scheme,['http','https'],true))return $cached=false;
-  // Public production sites require HTTPS; local/dev may use native HTTP.
-  if(wp_get_environment_type()==='production'&&$scheme!=='https')return $cached=false;
-  if(defined('MAD4B_TENANT_ORIGIN') && $home!==rtrim(strtolower((string)MAD4B_TENANT_ORIGIN),'/'))return $cached=false;
-  if(defined('MAD4B_TENANT_ENVIRONMENT') &&
-     wp_get_environment_type()!==(string)MAD4B_TENANT_ENVIRONMENT)return $cached=false;
-  if(defined('MAD4B_TENANT_SITE_UUID')) {
-   $uuid=(string)MAD4B_TENANT_SITE_UUID;
-   if(!wp_is_uuid($uuid))return $cached=false;
-   $profile=get_option('mad4b_scp_brand_context_profile_v1',[]);
-   if(is_array($profile)&&isset($profile['site_uuid'])&&$profile['site_uuid']!==$uuid)return $cached=false;
-   if(class_exists('MAD4B_SCP_Site_Profile',false) && method_exists('MAD4B_SCP_Site_Profile','site_uuid')
-      && MAD4B_SCP_Site_Profile::site_uuid()!==$uuid)return $cached=false;
-  }
-  return $cached=true;
+  return MAD4B_Experience_Site_Scope_V1::bound();
  }
- public static function enabled(string $feature):bool {
+  public static function enabled(string $feature):bool {
   if(!self::bound() || !isset(self::MODULES[$feature]))return false;
   $settings=get_option(self::OPTION,[]);
   return !is_array($settings) || !array_key_exists($feature,$settings) || (bool)$settings[$feature];

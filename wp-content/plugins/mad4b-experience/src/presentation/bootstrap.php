@@ -11,34 +11,9 @@ final class MAD4B_Presentation_Experience {
  const OPTION='mad4b-presentation-experience_features_v1';
  const MODULES=['chatbotx-elementor-kit'=>'343-mad4b-chatbotx-elementor-kit.php','mobile-scroll-action'=>'344-mad4b-mobile-scroll-action.php','tour-inquiry-sidebar'=>'347-mad4b-tour-inquiry-sidebar-sticky.php','jetengine-count-locale'=>'356-mad4b-jetengine-count-locale.php','archive-mobile-dock'=>'363-mad4b-archive-single-mobile-dock.php','featured-listing-banner'=>'364-mad4b-featured-listing-banner-parity.php','city-visible-image'=>'366-mad4b-city-visible-image.php','layout-switcher-compatibility'=>'369-layout-switcher-compatibility.php','sticky-hover-protection'=>'371-mad4b-sticky-hover-protection.php','theme-footer'=>'372-mad4b-footer-look-feel.php','trust-support-dynamic'=>'373-mad4b-trust-support-dynamic.php','tenant-option-bridge'=>'374-mad4b-tenant-option-canonical-bridge.php','company-brand-context'=>'375-mad4b-native-company-brand-context.php','uael-critical-css'=>'performance/307-mad4b-uael-critical-css-policy.php','city-first-card-lcp'=>'performance/310-mad4b-city-slider-lcp-preload.php','wpml-flag-preload-trim'=>'performance/329-mad4b-home-wpml-flag-preload-trim.php','city-card-intermediate-image'=>'performance/jet-city-slider-image-size.php','newsletter-image-css-sync'=>'performance/newsletter-image-options-cache-sync.php'];
  public static function bound():bool {
-  static $cached=null;
-  if($cached!==null)return $cached;
-  // MAD4B_TENANT_ORIGIN binds the canonical company, not a WPML route.
-  // home_url('/') may be https://wayfatours.com/es/ under Spanish;
-  // using it here silently disables all presentation providers on non-default
-  // languages. Use the actual stored site identity, with a safe fallback only
-  // for an empty installation option; keep HTTPS, environment and UUID guards.
-  $canonical=get_option('home','');
-  $home=rtrim(strtolower((string)(is_string($canonical)&&$canonical!==''
-    ? $canonical : home_url('/'))),'/');
-  $scheme=(string)wp_parse_url($home,PHP_URL_SCHEME);
-  if(!in_array($scheme,['http','https'],true))return $cached=false;
-  // Public production sites require HTTPS; local/dev may use native HTTP.
-  if(wp_get_environment_type()==='production'&&$scheme!=='https')return $cached=false;
-  if(defined('MAD4B_TENANT_ORIGIN') && $home!==rtrim(strtolower((string)MAD4B_TENANT_ORIGIN),'/'))return $cached=false;
-  if(defined('MAD4B_TENANT_ENVIRONMENT') &&
-     wp_get_environment_type()!==(string)MAD4B_TENANT_ENVIRONMENT)return $cached=false;
-  if(defined('MAD4B_TENANT_SITE_UUID')) {
-   $uuid=(string)MAD4B_TENANT_SITE_UUID;
-   if(!wp_is_uuid($uuid))return $cached=false;
-   $profile=get_option('mad4b_scp_brand_context_profile_v1',[]);
-   if(is_array($profile)&&isset($profile['site_uuid'])&&$profile['site_uuid']!==$uuid)return $cached=false;
-   if(class_exists('MAD4B_SCP_Site_Profile',false) && method_exists('MAD4B_SCP_Site_Profile','site_uuid')
-      && MAD4B_SCP_Site_Profile::site_uuid()!==$uuid)return $cached=false;
-  }
-  return $cached=true;
+  return MAD4B_Experience_Site_Scope_V1::bound();
  }
- public static function site_uuid():string {
+  public static function site_uuid():string {
   $p=get_option('mad4b_scp_brand_context_profile_v1',[]);
   $profile=is_array($p)?(string)($p['site_uuid']??''):'';
   $uuid=defined('MAD4B_TENANT_SITE_UUID')?(string)MAD4B_TENANT_SITE_UUID:$profile;
