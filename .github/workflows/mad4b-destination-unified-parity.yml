@@ -1,0 +1,48 @@
+name: MAD4B Destination Unified Presentation Parity
+on:
+  pull_request:
+    paths:
+      - 'packages/mad4b-shared-product-core/mu-plugins/shared-product-core/adapters/presentation-destination-term-v1.php'
+      - 'ops/mad4b-company-live-convergence-20261106/wayfa-destination-unified/**'
+      - 'ops/mad4b-company-live-convergence-20261106/tests/test_destination_hierarchy_scope.php'
+      - '.github/workflows/mad4b-destination-unified-parity.yml'
+  push:
+    paths:
+      - 'packages/mad4b-shared-product-core/mu-plugins/shared-product-core/adapters/presentation-destination-term-v1.php'
+      - 'ops/mad4b-company-live-convergence-20261106/wayfa-destination-unified/**'
+      - 'ops/mad4b-company-live-convergence-20261106/tests/test_destination_hierarchy_scope.php'
+      - '.github/workflows/mad4b-destination-unified-parity.yml'
+jobs:
+  source-and-policy-tests:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint shared source and portable presentation adapter
+        run: |
+          set -eu
+          php -l packages/mad4b-shared-product-core/mu-plugins/shared-product-core/adapters/presentation-destination-term-v1.php
+          for f in ops/mad4b-company-live-convergence-20261106/wayfa-destination-unified/*.php; do php -l "$f"; done
+      - name: Validate hierarchy visibility and Featured isolation
+        run: php ops/mad4b-company-live-convergence-20261106/tests/test_destination_hierarchy_scope.php
+      - name: Verify portable WPML and tenant scope without a live site
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          base=Path('ops/mad4b-company-live-convergence-20261106/wayfa-destination-unified')
+          canonical=Path('packages/mad4b-shared-product-core/mu-plugins/shared-product-core/adapters/presentation-destination-term-v1.php').read_text()
+          portable=(base/'presentation-destination-term-v1.php').read_text()
+          stem='final class Shared_Product_Destination_Term_Presentation_v1 {'
+          assert canonical.split(stem,1)[1]==portable.split(stem,1)[1]
+          assert 'MAD4B_COMMERCE_RUNTIME_ENABLED' in canonical and 'SHARED_PRODUCT_LAB_ONLY' not in canonical
+          entry=(base/'419-mad4b-wayfa-destination-unified-presentation.php').read_text()
+          ui=(base/'registry-destination-presentation-ui.php').read_text()
+          assert "const MAD4B_DESTINATION_UNIFIED_MODE = 'live';" in entry
+          for field in ('MAD4B_TENANT_ORIGIN','MAD4B_TENANT_SITE_UUID','MAD4B_TENANT_ENVIRONMENT','MAD4B_SCP_Site_Profile'):
+              assert field in entry
+          assert 'wpml_object_id' in ui and "'elementor_library'" in ui
+          assert 'mad4b_wayfa_destination_unified_enabled()' in ui
+          assert 'MAD4B_COMMERCE_RUNTIME_ENABLED' not in ui
+          print('PASS read-only portable destination UI and WPML inheritance')
+          PY
