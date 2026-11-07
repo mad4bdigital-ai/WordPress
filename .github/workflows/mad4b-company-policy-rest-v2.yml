@@ -1,0 +1,49 @@
+name: MAD4B Company Policy REST v2 Contract
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'wp-content/mu-plugins/mad4b-company-policy-rest-v2.php'
+      - 'wp-content/mu-plugins/mad4b-company-policy-registry-v2.php'
+      - 'wp-content/mu-plugins/mad4b-company-adaptive-controls.php'
+      - 'tests/test_mad4b_company_policy_rest_v2.php'
+      - 'docs/MAD4B-COMPANY-POLICY-REST-V2.md'
+      - '.github/workflows/mad4b-company-policy-rest-v2.yml'
+  push:
+    branches:
+      - master
+    paths:
+      - 'wp-content/mu-plugins/mad4b-company-policy-rest-v2.php'
+      - 'tests/test_mad4b_company_policy_rest_v2.php'
+      - '.github/workflows/mad4b-company-policy-rest-v2.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  policy-rest-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+      - name: PHP syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/mu-plugins/mad4b-company-policy-rest-v2.php
+          php -l wp-content/mu-plugins/mad4b-company-policy-registry-v2.php
+          php -l wp-content/mu-plugins/mad4b-company-adaptive-controls.php
+          php -l tests/test_mad4b_company_policy_rest_v2.php
+      - name: Isolated REST contract and revision CAS tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          MAD4B_POLICY_REGISTRY_FILE="$PWD/wp-content/mu-plugins/mad4b-company-policy-registry-v2.php" \
+          MAD4B_POLICY_ADAPTIVE_FILE="$PWD/wp-content/mu-plugins/mad4b-company-adaptive-controls.php" \
+          MAD4B_POLICY_REST_FILE="$PWD/wp-content/mu-plugins/mad4b-company-policy-rest-v2.php" \
+          php tests/test_mad4b_company_policy_rest_v2.php

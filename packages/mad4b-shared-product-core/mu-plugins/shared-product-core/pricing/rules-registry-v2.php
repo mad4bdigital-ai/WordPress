@@ -1,6 +1,6 @@
 <?php
 /** Central rule catalog and traceable Booking v2 quote. Lab, read-only. */
-if(!defined('ABSPATH')||!defined('SHARED_PRODUCT_LAB_ONLY')||!SHARED_PRODUCT_LAB_ONLY)return;
+if(!defined('ABSPATH')||(!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true))return;
 function shared_product_pricing_rules_catalog_v2(){
  return [
  'source'=>['phase'=>'base','authority'=>'source-resolution-policy','state'=>'partial'],
@@ -52,6 +52,15 @@ function shared_product_pricing_quote_contract_v2($configuration){
  }
  if(abs(round($sum,2)-(float)$quote['total'])>0.009)return new WP_Error('rules_v2_components_not_balanced');
  foreach(['source','tour_mode','audience','occupancy','price_unit','fx'] as $factor)$used[]=['factor'=>$factor,'status'=>'delegated_to_existing_resolver'];
+ if(function_exists('mad4b_company_adaptive_pricing_resolve')){
+  $decision=mad4b_company_adaptive_pricing_resolve(
+   (int)$validated['tour_id'],absint($validated['selections']['property_id']??0),
+   absint($validated['rate_id']??0),absint($validated['selections']['program_term_id']??0));
+  $used[]=['factor'=>'company_pricing_source','status'=>'resolved_from_versioned_policy',
+           'strategy'=>$decision['strategy'],'base_strategy'=>$decision['base_strategy'],
+           'hotel_component_strategy'=>$decision['hotel_component_strategy'],
+           'decision_receipts'=>$decision['decision_receipts']];
+ }
  if($validated['booking_mode']!==null)$used[]=['factor'=>'booking_mode','selected'=>$validated['booking_mode'],
   'taxonomy'=>$validated['booking_taxonomy']['taxonomy'],'terms'=>$validated['booking_taxonomy']['terms'],'status'=>'validated'];
  $mkt=shared_product_market_current_context();
