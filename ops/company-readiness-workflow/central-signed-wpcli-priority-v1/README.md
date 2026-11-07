@@ -43,3 +43,6 @@ The live original `vps-broker-poller.py` previously only deferred on `returncode
 `test_vps_broker_busy.py` provides 7/7 regressions covering both busy exit codes, real denials, fake stdout busy text, receipt typing, and missing JSON. A deferral **is not** a signed heartbeat or an Independent 313 certificate.
 
 The exact host private signing key is never included in this PR.
+## Additional optional read-only observers
+
+`mad4b-faore-stdio-observe.service` and `mad4b-company-self-healing.service` are read-only diagnostic/observation services outside the original eleven registered scheduler tasks. These exact existing systemd services now each have an `ExecCondition` that defers **new** observations while an original signed 305–313 WordPress Job is time-eligible. No current observer is terminated; no underlying unit ExecStart, timer cadence, signer or WordPress two-slot guard is changed. Admission hints are never treated as authorization. Do not apply the condition to write-capable services without their own safety review.
