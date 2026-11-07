@@ -2,12 +2,12 @@
 /**
  * Plugin Name: MAD4B Page Dependency Cache Graph
  * Description: Local page, fragment and query dependency index, selective epochs, safe fallback and receipts.
- * Version: 0.4.1
+ * Version: 0.4.3
  */
 defined('ABSPATH') || exit;
 
 final class MAD4B_Page_Dependency_Cache {
-    const VERSION = '0.4.1';
+    const VERSION = '0.4.3';
     const OPTION = 'mad4b_page_dependency_cache_v1';
     const RECEIPTS = 'mad4b_page_dependency_receipts_v1';
     const GROUP = 'mad4b-page-dependency-v1';
@@ -187,7 +187,7 @@ final class MAD4B_Page_Dependency_Cache {
         $termIds=$wpdb->get_col($wpdb->prepare(
             "SELECT term_id FROM {$wpdb->term_taxonomy}
              WHERE term_taxonomy_id IN ($placeholders)",...$all));
-        $deps=['post:'.$postId,'query_pt:'.$type];
+        $deps=['post:'.$postId,'query_pt:'.$type,'query_taxonomy:'.$tax];
         foreach((array)$termIds as $tid){
             $tid=absint($tid);
             $deps[]='term:'.$tax.':'.$tid;
@@ -200,41 +200,76 @@ final class MAD4B_Page_Dependency_Cache {
             return ['supported'=>false];
         $type=(string)$query->query_type;
         if(!in_array($type,['posts','terms'],true))return ['supported'=>false];
-        $args=(array)$query->final_query;
-        $deps=['query_id:'.(int)$query->id];
+        $args=$query->final_query;
+        $id=absint($query->id);
+        if(!$id)return ['supported'=>false];
+        $deps=['query_id:'.$id];
         if($type==='posts'){
+            // Metadata-driven membership/order can change without save_post;
+            // never certify such a query from post+term hooks alone.
+            foreach(['meta_query','meta_key','meta_value','meta_value_num',
+                'comment_count','suppress_filters','post_password'] as $key)
+                if(!empty($args[$key]))return ['supported'=>false];
+            $orderby=$args['orderby']??'date';
+            if(is_array($orderby) || (is_string($orderby)
+                && preg_match('/(?:meta|rand|comment|relevance|price|rating|views|stock)/i',$orderby)))
+                return ['supported'=>false];
+            $statuses=array_values(array_unique((array)($args['post_status']??['publish'])));
+            if(count($statuses)!==1||$statuses[0]!=='publish')return ['supported'=>false];
             $types=(array)($args['post_type']??[]);
-            if(!$types)return ['supported'=>false];
+            if(!$types||count($types)>5)return ['supported'=>false];
             foreach($types as $pt){
                 if(!is_string($pt)||!preg_match('/^[a-z0-9_-]{2,60}$/D',$pt)
                     ||preg_match('/(?:rate|booking|order|price|product|customer|stock|supplier)/i',$pt))
                     return ['supported'=>false];
-                $deps[]='query_pt:'.$pt;
             }
-            $taxes=(array)($args['tax_query']??[]);
-            foreach($taxes as $item){
-                if(!is_array($item)||!isset($item['taxonomy']))continue;
-                $tax=(string)$item['taxonomy'];
-                if(!preg_match('/^[a-z0-9_-]{2,60}$/D',$tax))return ['supported'=>false];
-                $terms=(array)($item['terms']??[]);
-                if(($item['field']??'term_id')!=='term_id'||!$terms
-                    ||!in_array(($item['operator']??'IN'),['IN'],true))
-                    return ['supported'=>false];
-                foreach($terms as $term){
-                    if(!is_numeric($term))return ['supported'=>false];
-                    $deps[]='query_tax:'.$tax.':'.absint($term);
+            $taxes=$args['tax_query']??[];
+            if(!is_array($taxes))return ['supported'=>false];
+            $filterCount=0;
+            foreach($taxes as $key=>$item) {
+                if($key==='relation'){
+                    if($item!=='AND')return ['supported'=>false];
+                    continue;
                 }
+                // Nested OR/NOT IN and non-term-ID operators need broader
+                // fallback; a missed future member would serve stale data.
+                if(!is_array($item)||!isset($item['taxonomy']))return ['supported'=>false];
+                $tax=(string)$item['taxonomy'];
+                if(!preg_match('/^[a-z0-9_-]{2,60}$/D',$tax)
+                    ||($item['field']??'term_id')!=='term_id'
+                    ||($item['operator']??'IN')!=='IN')return ['supported'=>false];
+                $terms=$item['terms']??null;
+                if(!is_array($terms)||!$terms||count($terms)>40)return ['supported'=>false];
+                foreach($terms as $term){
+                    if(!(is_int($term)&&$term>0) &&
+                       !(is_string($term)&&ctype_digit($term)&&(int)$term>0))
+                        return ['supported'=>false];
+                    $deps[]='query_tax:'.$tax.':'.(int)$term;
+                }
+                ++$filterCount;
+                if($filterCount>5)return ['supported'=>false];
             }
+            // Unfiltered membership may change whenever any post of a type
+            // changes. Tax-filtered membership changes are tracked by its
+            // old/new term IDs on save and set_object_terms.
+            if($filterCount===0)
+                foreach($types as $pt)$deps[]='query_pt:'.$pt;
         }else{
             $taxes=(array)($args['taxonomy']??[]);
-            if(!$taxes)return ['supported'=>false];
+            if(!$taxes||count($taxes)>10)return ['supported'=>false];
+            // Term visibility can depend on associated post counts. The
+            // taxonomy-wide invalidation hook tracks those updates.
             foreach($taxes as $tax){
-                if(!is_string($tax)||!preg_match('/^[a-z0-9_-]{2,60}$/D',$tax))return ['supported'=>false];
+                if(!is_string($tax)||!preg_match('/^[a-z0-9_-]{2,60}$/D',$tax))
+                    return ['supported'=>false];
                 $deps[]='query_taxonomy:'.$tax;
             }
         }
-        $signature=self::hash($type.'|'.(int)$query->id.'|'.wp_json_encode($args));
-        return ['supported'=>true,'hash'=>$signature,'dependencies'=>array_values(array_unique($deps))];
+        $encoded=wp_json_encode($args);
+        if(!is_string($encoded)||strlen($encoded)>12288)return ['supported'=>false];
+        return ['supported'=>true,
+            'hash'=>self::hash($type.'|'.$id.'|'.$encoded),
+            'dependencies'=>array_values(array_unique($deps))];
     }
     public static function unknown_query_policy($query): void {
         if(!self::ready()||!is_object($query)||empty($query->cache_query))return;
@@ -297,6 +332,20 @@ final class MAD4B_Page_Dependency_Cache {
         $lock='persist-'.$hash;
         $throttle='persist-throttle-'.$hash;
         if(wp_cache_get($throttle,self::GROUP))return false;
+        if($kind==='query') {
+            // Bound steady-state MariaDB growth. Existing verified query
+            // nodes can be refreshed even after the cap is reached.
+            $count=wp_cache_get('query-node-budget',self::GROUP);
+            if(!is_int($count)) {
+                $count=(int)$wpdb->get_var("SELECT COUNT(*) FROM $pages WHERE node_kind='query'");
+                wp_cache_set('query-node-budget',$count,self::GROUP,120);
+            }
+            if($count>=8000) {
+                $exists=$wpdb->get_var($wpdb->prepare(
+                    "SELECT 1 FROM $pages WHERE page_hash=%s LIMIT 1",$hash));
+                if(!$exists)return false;
+            }
+        }
         if(!wp_cache_add($lock,1,self::GROUP,25))return false;
         try{
             $wpdb->query('START TRANSACTION');
@@ -316,6 +365,7 @@ final class MAD4B_Page_Dependency_Cache {
             if($wpdb->last_error!==''){ $wpdb->query('ROLLBACK');return false; }
             $wpdb->query('COMMIT');
             wp_cache_set($throttle,1,self::GROUP,$kind==='query'?1800:120);
+            if($kind==='query')wp_cache_delete('query-node-budget',self::GROUP);
             return true;
         }finally{wp_cache_delete($lock,self::GROUP);}
     }
@@ -439,6 +489,7 @@ final class MAD4B_Page_Dependency_Cache {
         $deps=['post:'.$postId,'query_pt:'.$type];
         $taxonomies=get_object_taxonomies($type,'names');
         foreach((array)$taxonomies as $tax){
+            $deps[]='query_taxonomy:'.$tax;
             $terms=wp_get_object_terms($postId,$tax,['fields'=>'ids']);
             if(is_wp_error($terms))continue;
             foreach(array_slice((array)$terms,0,40) as $term)
@@ -474,10 +525,43 @@ final class MAD4B_Page_Dependency_Cache {
         $out['recent_receipts']=array_slice((array)get_option(self::RECEIPTS,[]),-5);
         return $out;
     }
+    public static function impact_preview(string $dependency): array {
+        if(!self::ready())return ['status'=>'schema_not_ready','mutation_performed'=>false];
+        if(!preg_match('/^(?:post:[1-9][0-9]*|template:[1-9][0-9]*|listing:[1-9][0-9]*|term:[a-z0-9_-]+:[1-9][0-9]*|query_pt:[a-z0-9_-]+|query_id:[1-9][0-9]*)$/D',$dependency))
+            return ['status'=>'invalid_dependency','mutation_performed'=>false];
+        global $wpdb;$pages=self::table('pages');$edges=self::table('edges');
+        $hash=self::hash($dependency);
+        $sql=$wpdb->prepare(
+            "SELECT p.page_path,p.language,p.device,p.node_kind,p.coverage,p.epoch
+             FROM $edges e JOIN $pages p ON p.page_hash=e.page_hash
+             WHERE e.dep_hash=%s AND e.expires_at>UTC_TIMESTAMP()
+               AND p.expires_at>UTC_TIMESTAMP()
+             ORDER BY p.node_kind,p.page_path LIMIT 51",$hash);
+        $rows=$wpdb->get_results($sql,ARRAY_A);
+        if(!is_array($rows))$rows=[];
+        $truncated=count($rows)>50;
+        return ['contract'=>'mad4b.page-dependency.impact-preview.v1',
+            'dependency'=>$dependency,'observed_matches'=>min(50,count($rows)),
+            'truncated'=>$truncated,'nodes'=>array_slice($rows,0,50),
+            'coverage'=>'partial_unknown_requires_legacy_fallback',
+            'fastcgi'=>'ttl_only_no_purge','mutation_performed'=>false];
+    }
     public static function expose(): void {
         register_rest_route('mad4b-policy/v2','/page-dependencies',[
             'methods'=>'GET','permission_callback'=>static fn()=>current_user_can('manage_options'),
             'callback'=>static fn()=>rest_ensure_response(self::summary()),
+        ]);
+        register_rest_route('mad4b-policy/v2','/page-dependencies/impact',[
+            'methods'=>'GET','permission_callback'=>static fn()=>current_user_can('manage_options'),
+            'callback'=>static function(WP_REST_Request $request){
+                $dependency=(string)$request->get_param('dependency');
+                if(strlen($dependency)>190)
+                    return new WP_Error('mad4b_page_dependency_invalid','Invalid dependency',['status'=>422]);
+                $result=self::impact_preview($dependency);
+                if(($result['status']??'')==='invalid_dependency')
+                    return new WP_Error('mad4b_page_dependency_invalid','Unsupported dependency',['status'=>422]);
+                return rest_ensure_response($result);
+            },
         ]);
     }
     public static function admin_panel(): void {
@@ -508,6 +592,7 @@ final class MAD4B_Page_Dependency_Cache {
         add_action('save_post',[self::class,'event_post'],49);
         add_action('save_post',[self::class,'event_template'],50);
         add_action('set_object_terms',[self::class,'terms_changed'],55,6);
+        add_action('created_term',[self::class,'event_term'],45,3);
         add_action('edited_term',[self::class,'event_term'],45,3);
         add_action('deleted_term',[self::class,'event_term'],45,3);
         add_action('rest_api_init',[self::class,'expose']);

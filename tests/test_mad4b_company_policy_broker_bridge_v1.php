@@ -29,7 +29,9 @@ class MAD4B_Company_Environment_Registry_V2 {
  return ['wayfatours'=>['environments'=>['staging'=>[
  'site_uuid'=>'00000000-0000-4000-8000-000000000001',
  'canonical_origin'=>'https://wayfatours.example',
- 'authorized_connections'=>['signed_identity'=>['centrally_verified'=>true]]
+ 'authorized_connections'=>['signed_identity'=>['centrally_verified'=>true]],
+ 'write_authorized'=>false,
+ 'capabilities'=>['content.write'=>['execute_authorized'=>false]]
  ]]]];
  }
 }
@@ -46,7 +48,9 @@ if(!$source)throw new Exception('MAD4B_BROKER_BRIDGE_FILE not set');
 require $source;
 $targets=MAD4B_Company_Policy_Broker_Bridge::targets();
 check('dynamic target recognized',count($targets)===1);
-check('identity verified target',$targets[0]['executor_allowed']);
+check('verified identity permits planning',$targets[0]['planning_eligible']);
+check('identity cannot authorize remote mutation',$targets[0]['executor_allowed']===false);
+check('target write authority remains closed',$targets[0]['write_authorized']===false);
 $req=[
  'company_code'=>'wayfatours','environment'=>'staging',
  'site_uuid'=>'00000000-0000-4000-8000-000000000001',
@@ -73,4 +77,4 @@ $wrong=$req;$wrong['idempotency_key']='policy-other-site-v1';$wrong['site_uuid']
 check('wrong target cannot be planned',code(MAD4B_Company_Policy_Broker_Bridge::plan($wrong))==='policy_broker_target_binding_unverified');
 $active=$req;$active['idempotency_key']='policy-active-qa-v1';$active['policy']['state']='active';
 check('auto activation denied',code(MAD4B_Company_Policy_Broker_Bridge::plan($active))==='policy_broker_automatic_active_not_allowed');
-echo "PASS 11 BROKER PLAN FIXTURES\n";
+echo "PASS 13 BROKER PLAN FIXTURES\n";

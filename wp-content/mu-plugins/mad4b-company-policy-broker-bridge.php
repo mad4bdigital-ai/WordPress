@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Company Policy Broker Contract Bridge
  * Description: Company-scoped REST policy distribution plans for original broker execution; no unapproved remote mutations.
- * Version: 0.1.1
+ * Version: 0.1.2
  */
 defined('ABSPATH') || exit;
 final class MAD4B_Company_Policy_Broker_Bridge {
@@ -28,9 +28,13 @@ final class MAD4B_Company_Policy_Broker_Bridge {
                 $uuid=(string)($row['site_uuid']??'');
                 $origin=(string)($row['canonical_origin']??'');
                 $identity=(bool)($row['authorized_connections']['signed_identity']['centrally_verified']??false);
+                $write=(bool)($row['write_authorized']??false)
+                    && (bool)($row['capabilities']['content.write']['execute_authorized']??false);
                 $out[]=['company_code'=>$company,'environment'=>$env,'site_uuid'=>$uuid,
                     'canonical_origin'=>$origin,'identity_verified'=>$identity,
-                    'executor_allowed'=>$identity && $origin!=='' && $uuid!=='',
+                    'planning_eligible'=>$identity && $origin!=='' && $uuid!=='',
+                    // Identity.read evidence never implies execution permission.
+                    'executor_allowed'=>$write,'write_authorized'=>$write,
                     'report_state'=>'not_a_broker_receipt'];
             }
         }

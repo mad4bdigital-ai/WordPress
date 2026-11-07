@@ -1,4 +1,4 @@
-# MAD4B Page Dependency Cache — Staging rollout 0.4.1
+# MAD4B Page Dependency Cache — Staging rollout 0.4.3
 
 ## Purpose
 
@@ -83,3 +83,13 @@ Remaining milestones: complete synthetic selective transaction, improve query me
 - To stay on legacy behavior: set strategy=legacy_post_type.
 - If unknown metadata or query shape cannot be proved, preserve native Query Governor safety and legacy invalidation.
 - Removing the MU file does not delete any content, Rate, booking or related WordPress option. The graph tables remain dormant and can be cleaned up by an explicit migration; do not delete while another worker may still use them.
+
+## v0.4.3 precision and observability updates
+
+- Creation of a new Term triggers scoped term/query invalidation.
+- Filtered public post queries use matching positive term-ID dependencies rather than post-type membership; unfiltered post queries retain post-type membership.
+- Nested taxonomy predicates, OR/NOT IN, meta-dependent ranks, ambiguous statuses and sensitive sources remain unproven and use the legacy safety path.
+- A cap of 8,000 query-node rows bounds the stored reverse graph; existing nodes may still update after the cap. With unknown coverage, the legacy fallback stays active.
+- Admin-only read-only impact endpoint: GET /wp-json/mad4b-policy/v2/page-dependencies/impact?dependency=post:60623. It returns at most 50 observed node matches and never mutates the graph.
+- Direct MariaDB QA transaction verified 2 affected nodes, 1 unrelated node retaining its epoch, and zero rows after rollback. This verifies the SQL semantics only, not PHP/Redis/FastCGI end-to-end acceptance.
+- Updated isolated graph fixtures: 29 PASS.

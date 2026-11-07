@@ -31,8 +31,10 @@ $wpdb=new FakeDB();
 $selector=getenv('MAD4B_PAGE_DEP_FILE');
 if(!$selector)throw new Exception('MAD4B_PAGE_DEP_FILE missing');
 require $selector;
+$GLOBALS['asserts']=0;
 function test_case($name,$condition) {
  if(!$condition)throw new RuntimeException('FAIL '.$name);
+ $GLOBALS['asserts']++;
  echo 'PASS '.$name."\n";
 }
 test_case('default strategy page fragment query',MAD4B_Page_Dependency_Cache::policy()['strategy']==='page_fragment_query');
@@ -49,7 +51,12 @@ $approved=(object)['id'=>33,'query_type'=>'posts','final_query'=>[
     'orderby'=>'date','order'=>'DESC']];
 $valid=$ref->invoke(null,$approved);
 test_case('filtered posts query supported',$valid['supported']===true);
-test_case('post type membership tracked',in_array('query_pt:tours-and-activities',$valid['dependencies'],true));
+test_case('filtered query omits broad post-type membership',
+    !in_array('query_pt:tours-and-activities',$valid['dependencies'],true));
+$plain=(object)['id'=>34,'query_type'=>'posts','final_query'=>[
+    'post_type'=>['tours-and-activities'],'post_status'=>'publish']];
+test_case('unfiltered query retains post type membership',
+    in_array('query_pt:tours-and-activities',$ref->invoke(null,$plain)['dependencies'],true));
 test_case('destination term 14 membership tracked',in_array('query_tax:destinations:14',$valid['dependencies'],true));
 test_case('destination term 15 membership tracked',in_array('query_tax:destinations:15',$valid['dependencies'],true));
 $invalid=(object)['id'=>19,'query_type'=>'posts','final_query'=>[
@@ -60,6 +67,21 @@ test_case('unknown custom SQL rejected',$ref->invoke(null,$unknown)['supported']
 $term=(object)['id'=>18,'query_type'=>'terms','final_query'=>[
     'taxonomy'=>['destinations'],'hide_empty'=>true]];
 test_case('term query membership recorded',in_array('query_taxonomy:destinations',$ref->invoke(null,$term)['dependencies'],true));
+$meta=(object)['id'=>36,'query_type'=>'posts','final_query'=>[
+ 'post_type'=>['tours-and-activities'],'meta_key'=>'rank','orderby'=>'meta_value_num']];
+test_case('meta-ranked query is unproven',$ref->invoke(null,$meta)['supported']===false);
+$or=(object)['id'=>37,'query_type'=>'posts','final_query'=>[
+ 'post_type'=>['tours-and-activities'],'tax_query'=>[
+ 'relation'=>'OR',['taxonomy'=>'destinations','terms'=>[14],'field'=>'term_id']]]];
+test_case('OR taxonomy query falls back',$ref->invoke(null,$or)['supported']===false);
+$nest=(object)['id'=>38,'query_type'=>'posts','final_query'=>[
+ 'post_type'=>['tours-and-activities'],'tax_query'=>[
+ [['taxonomy'=>'destinations','terms'=>[14],'field'=>'term_id']]]]];
+test_case('nested taxonomy query falls back',$ref->invoke(null,$nest)['supported']===false);
+test_case('impact preview refuses unsupported key',
+    MAD4B_Page_Dependency_Cache::impact_preview('orders:12')['status']==='invalid_dependency');
+test_case('impact preview remains read only',
+    MAD4B_Page_Dependency_Cache::impact_preview('post:60623')['mutation_performed']===false);
 $result=MAD4B_Page_Dependency_Cache::query_version('gen-0',$approved,['cache'=>true]);
 test_case('query epoch appended while preserving existing generation',str_starts_with($result,'gen-0:pdep:'));
 test_case('uncacheable query leaves generation unchanged',MAD4B_Page_Dependency_Cache::query_version('gen-0',$approved,['cache'=>false])==='gen-0');
@@ -96,4 +118,4 @@ MAD4B_Page_Dependency_Cache::observe_query($approved);
 $unknownProp=new ReflectionProperty(MAD4B_Page_Dependency_Cache::class,'unknown');
 test_case('query collection budget marks coverage unknown',$unknownProp->getValue()===true);
 $collect->setValue(false);
-echo 'PASS 23 GRAPH FIXTURES\n';
+echo 'PASS '.$GLOBALS['asserts']." GRAPH FIXTURES\n";

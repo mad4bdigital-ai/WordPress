@@ -1,4 +1,4 @@
-# MAD4B Company Policy Broker Bridge — planning contract v0.1.0
+# MAD4B Company Policy Broker Bridge — planning contract v0.1.2
 
 The bridge lives as a local MU component at wp-content/mu-plugins/mad4b-company-policy-broker-bridge.php.
 
@@ -56,3 +56,7 @@ This is a planning integration, not finished cross-company distribution. Do not 
 - No central Broker job was created and no production company was modified.
 
 Remaining execution: bind an existing Original 305/306 native job class to the stored intent and local authenticated policy REST request, then verify target-local 312 and Original 313. This must be done with an actually authorized owner/company executor session, not WP-CLI --user spoofing or an invented token.
+
+## v0.1.2 authority separation
+
+The broker target listing reports identity_verified and planning_eligible independently from executor_allowed/write_authorized. A signed identity.read result does not imply a remote write grant. If the original environment registry reports write_authorized=false or content.write.execute_authorized=false, executor_allowed remains false. Planning a Draft intent is possible when identity is independently verified, but execution is not authorized by this plan.
