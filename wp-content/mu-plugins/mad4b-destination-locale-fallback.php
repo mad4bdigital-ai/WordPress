@@ -187,7 +187,12 @@ final class MAD4B_Destination_Locale_Fallback {
                         && in_array($lang, ['ar','fr','de','it','es'], true)) {
                         if ((int)$post_id === 45774 && $id === 'f10db4f' &&
                             ($settings['title'] ?? '') === 'Destination Contents') {
-                            $settings['title'] = $lang === 'fr' ? 'Sommaire de la destination' : 'Reiseziel-Inhalte';
+                            $labels = [
+                                'ar'=>'محتويات الوجهة', 'fr'=>'Sommaire de la destination',
+                                'de'=>'Reiseziel-Inhalte', 'it'=>'Contenuti della destinazione',
+                                'es'=>'Contenido del destino',
+                            ];
+                            $settings['title'] = $labels[$lang] ?? $settings['title'];
                         }
                         if ($id === 'f10db4f' && empty($settings['exclude_headings_by_selector'])) {
                             $settings['exclude_headings_by_selector'] = '.elementor-sticky__spacer';
