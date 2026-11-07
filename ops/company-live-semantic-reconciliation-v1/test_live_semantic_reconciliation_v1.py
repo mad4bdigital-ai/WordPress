@@ -58,6 +58,28 @@ class LiveSemanticDetection(unittest.TestCase):
         self.assertTrue(any(x['field']=='source_language' and
                             x['rate_id']==row['id'] for x in result['wpml_rate_semantic_drift']))
 
+    def test_historical_repairs_are_verified_against_runtime_not_only_receipts(self):
+        target=copy.deepcopy(self.wayfa)
+        manifest=json.loads((ROOT/'reports/rate-program-perf-deep-review-20261107/package-fk-repair-manifest.json').read_text())
+        target['observations']['rates']['published_rate_details']=[
+            {'id':r['id'],'package_term_id':manifest['target_term']} for r in manifest['records']]
+        observations=m.receipt_milestones(self.source,target)
+        self.assertEqual(observations['program_query_316_to_programs']['state'],'VERIFIED_CURRENT')
+        self.assertEqual(observations['package_level_rates']['state'],'VERIFIED_CURRENT')
+        self.assertEqual(observations['wpml_rate_sibling_link']['state'],'VERIFIED_CURRENT')
+        target['observations']['rates']['published_rate_details'][0]['package_term_id']=0
+        observations=m.receipt_milestones(self.source,target)
+        self.assertEqual(observations['package_level_rates']['state'],'DRIFT_DETECTED')
+
+    def test_fastcgi_policy_readback_not_cache_hit_claim(self):
+        config=json.loads((ROOT/'policies/live-semantic-discovery-sites-v1.json').read_text())
+        source=m.nginx_cache_readback(config['source'])
+        target=m.nginx_cache_readback(config['targets'][0])
+        self.assertIn(1800,source['public_ttl_seconds_observed'])
+        self.assertIn(1800,target['public_ttl_seconds_observed'])
+        self.assertFalse(source['cache_hit_verified'])
+        self.assertFalse(target['cache_hit_verified'])
+
     def test_semantic_digest_ignores_capture_clock(self):
         target=copy.deepcopy(self.wayfa)
         target['captured_utc']='2030-10-10T10:10:10Z'
