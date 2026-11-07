@@ -104,3 +104,7 @@ wp --path=/var/www/html --skip-themes eval-file tests/manual/test_mad4b_page_dep
 Verified real Staging response: pass=true, affected=2, unrelated_page_epoch=1, related_page_epoch=2, query_epoch=2, rollback_clean=true, qa_rows_after=0.
 
 The existing Post Type / Taxonomy epoch still influences Query Cache keys. Selective graph epochs work, but the legacy broad invalidation remains on as a fallback. Removing it requires additional predicate/WPML/fragment/FastCGI acceptance.
+
+## Redis epoch integration proof
+
+The manual WP-CLI transaction was extended to seed stale epoch=1 keys in the actual persistent external object cache, call the live selective invalidator, then read fresh scoped epochs. Verified: external_object_cache=true, related page epoch=2, related query epoch=2, unrelated page epoch=1, and zero QA database rows after ROLLBACK. The test removes its scoped Redis keys after rollback. This proves key invalidation and cache readback through WordPress, not Nginx FastCGI HTML purge.

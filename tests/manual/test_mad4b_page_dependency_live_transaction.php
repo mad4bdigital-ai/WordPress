@@ -27,15 +27,29 @@ try {
       'dep_key'=>$dep,'expires_at'=>$expires]);
    if($n!==1)throw new Exception('INSERT_EDGE_FAILED');
  }
+ // Emulate an already cached old epoch in persistent Redis, then prove
+ // invalidate() removes that exact scoped key before reading the fresh SQL.
+ $group='mad4b-page-dependency-v1';
+ wp_cache_set('epoch-'.$two,1,$group,300);
+ wp_cache_set('epoch-'.$three,1,$group,300);
  $receipt=MAD4B_Page_Dependency_Cache::invalidate([$dep1,$qdep],'qa_test');
+ $redisEpochB=MAD4B_Page_Dependency_Cache::epoch($two);
+ $redisEpochC=MAD4B_Page_Dependency_Cache::epoch($three);
+ $redisEpochA=MAD4B_Page_Dependency_Cache::epoch($one);
  $ea=(int)$wpdb->get_var($wpdb->prepare("SELECT epoch FROM $pages WHERE page_hash=%s",$one));
  $eb=(int)$wpdb->get_var($wpdb->prepare("SELECT epoch FROM $pages WHERE page_hash=%s",$two));
  $ec=(int)$wpdb->get_var($wpdb->prepare("SELECT epoch FROM $pages WHERE page_hash=%s",$three));
- $ok=$receipt['affected']===2 && $ea===1 && $eb===2 && $ec===2 && $receipt['fallback']===true;
+ $ok=$receipt['affected']===2 && $ea===1 && $eb===2 && $ec===2
+   && $redisEpochA===1 && $redisEpochB===2 && $redisEpochC===2
+   && $receipt['fallback']===true;
  echo wp_json_encode(['test'=>'reverse-index-selective-qa','pass'=>$ok,
   'affected'=>$receipt['affected'],'unrelated_page_epoch'=>$ea,
   'related_page_epoch'=>$eb,'query_epoch'=>$ec,
   'unknown_fallback'=>$receipt['fallback'],
+  'external_object_cache'=>wp_using_ext_object_cache(),
+  'redis_epoch_unrelated'=>$redisEpochA,
+  'redis_epoch_related_page'=>$redisEpochB,
+  'redis_epoch_query'=>$redisEpochC,
   'real_content_modified'=>false],JSON_UNESCAPED_SLASHES)."\n";
 }catch(Throwable $t){$ok=false;echo 'ERROR='.get_class($t).':'.$t->getMessage()."\n";}
 $wpdb->query('ROLLBACK');
