@@ -1,0 +1,26 @@
+{
+  "contract": "mad4b.plugin-portability-profile.v1",
+  "plugin": "mad4b-distribution-connectors",
+  "scope": "tenant-portable",
+  "activation_policy": "required_if_source_active",
+  "environment_policy": "any_registered_wordpress_environment",
+  "tenant_installation_requires_original_authorized_site_write": true,
+  "sensitive_central_authority_not_included": true,
+  "financial_or_customer_data_automatic_write": false,
+  "dependencies": [
+    "meta-catalog-feed-mapper-pro",
+    "mad4b-tour-price-distribution-v1",
+    "mad4b-tour-destination-structured-data"
+  ],
+  "on_company_create": "local_provision_idempotent",
+  "on_reconcile": "preserve_company_local_settings_and_credentials",
+  "connection_default": "not_connected",
+  "external_sending_default": false,
+  "credential_backend": "company_local_encrypted_wordpress_salts",
+  "external_vault_required": false,
+  "credential_option": "mad4b_distribution_local_secrets_v1",
+  "credential_option_portable": false,
+  "credential_clone_policy": "never_copy_between_companies",
+  "company_secret_binding": "wp_site_home_and_blog_id",
+  "external_channel_enrollment_required": true
+}
