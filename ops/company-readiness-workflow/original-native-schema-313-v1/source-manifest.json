@@ -1,0 +1,19 @@
+{
+  "contract": "mad4b.original-native-schema-313-source-snapshot.v1",
+  "observed_utc": "2026-11-06",
+  "source_only": true,
+  "production_mutated_by_git_commit": false,
+  "original_313_certified_by_commit": false,
+  "source_sha256": {
+    "schema-contract.py": "78cef9e2a9364f4836ec032606836ae379e8a6083ac124dfd3aebeb900b439ac",
+    "original-wpcli-executor.py": "fa2de819b07123594b324c1ea1107cb96fd3cf8332fd705d96aa7cb8f8f0ba8b",
+    "independent-readback.py": "005bd48f6bd63468be9129f0e20a099f342cbbd696e3113491dc4d255c0ebafd",
+    "schema-receipt-resume.py": "447fb9dbf02a8dbb99b2d2e15dc046b6c8824524407a15053cc650cc6b225d5f",
+    "test_schema_receipt_resume.py": "4e287281575bc1b0596c6c2199edd4b0b59f1666ab62e8f2070ec5afd4032beb",
+    "claimed-job-worker.py": "665c3db7521d429ab9db15a502597f9769225a77fbc21d58330ec7cafcaede76",
+    "vps-broker-exact-authority.py": "bd8351579353dd53b2eaa42a5baab76a7991938d3853d492e5652a8f22fdfb75",
+    "native-vps-client-principal.py": "ebb4971efef114e5b984a9c9ea60d46b5fe7250db9991b5d94cd61708651dc26",
+    "test_schema_signed_authority_busy.py": "bb869f5c07258eaa143310ae89fbb2eb4233d7528de1150de7ace71acb1d5bad",
+    "test_worker_central_capacity.py": "70fc4ce0d4e740600178004a7a9b1a4d9e11e375064257abbc7cea2429f9a026"
+  }
+}
