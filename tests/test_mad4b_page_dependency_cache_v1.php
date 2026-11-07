@@ -1,6 +1,7 @@
 <?php
 define('ABSPATH','/qa');
 define('DAY_IN_SECONDS',86400);
+define('ARRAY_A','ARRAY_A');
 $GLOBALS['opts']=['mad4b_page_dependency_schema_v1'=>'installed'];
 $GLOBALS['cache']=[];
 function add_action($name,$callback,$priority=10,$args=1){}
@@ -16,9 +17,16 @@ function wp_cache_delete($key,$group=''){unset($GLOBALS['cache'][$group][$key]);
 function sanitize_key($value){return preg_replace('/[^a-z0-9_-]/','',strtolower((string)$value));}
 class FakeDB {
     public string $prefix='wp_';
+    public string $term_taxonomy='wp_term_taxonomy';
     public function prepare($q,...$args){return $q;}
     public function get_var($q){return 1;}
+    public function get_col($q){return [14,15];}
+    public function get_results($q,$mode=ARRAY_A){return [];}
 }
+function get_post_type($id){return 'tours-and-activities';}
+function get_post_type_object($type){return (object)['public'=>true];}
+function update_option($key,$value,$autoload=false){$GLOBALS['opts'][$key]=$value;return true;}
+function do_action($name,...$args){}
 $wpdb=new FakeDB();
 $selector=getenv('MAD4B_PAGE_DEP_FILE');
 if(!$selector)throw new Exception('MAD4B_PAGE_DEP_FILE missing');
@@ -76,4 +84,16 @@ MAD4B_Page_Dependency_Cache::elementor_widget($widget);
 $edgesProp=new ReflectionProperty(MAD4B_Page_Dependency_Cache::class,'edges');
 test_case('Elementor template dependency observed',isset($edgesProp->getValue()['template:48562']));
 $collect->setValue(false);
-echo 'PASS 20 GRAPH FIXTURES\n';
+MAD4B_Page_Dependency_Cache::terms_changed(60623,[],[110],'destinations',false,[100]);
+$receipts=$GLOBALS['opts'][MAD4B_Page_Dependency_Cache::RECEIPTS]??[];
+$receipt=end($receipts);
+test_case('old destination membership invalidated',in_array('query_tax:destinations:14',$receipt['dependencies']??[],true));
+test_case('new destination membership invalidated',in_array('query_tax:destinations:15',$receipt['dependencies']??[],true));
+$collect->setValue(true);
+$queriesProp=new ReflectionProperty(MAD4B_Page_Dependency_Cache::class,'queries');
+$queriesProp->setValue(array_fill_keys(range(1,24),['query_pt:tours-and-activities']));
+MAD4B_Page_Dependency_Cache::observe_query($approved);
+$unknownProp=new ReflectionProperty(MAD4B_Page_Dependency_Cache::class,'unknown');
+test_case('query collection budget marks coverage unknown',$unknownProp->getValue()===true);
+$collect->setValue(false);
+echo 'PASS 23 GRAPH FIXTURES\n';
