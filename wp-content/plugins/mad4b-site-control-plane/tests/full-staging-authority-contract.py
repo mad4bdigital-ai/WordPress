@@ -69,6 +69,15 @@ required = [
 ]
 for marker in required:
     assert marker in full, marker
+# Mere MCP projection exclusion is insufficient: the canonical plan itself
+# must hard-block both host CLI and remote apply before any authority mutation.
+plan_only=full.split('public static function plan()',1)[1].split('public static function apply(',1)[0]
+raw_sql_deny="if ( self::generic_raw_sql_breakglass_gate_enabled() ) $hard_blockers[] = 'mad4b_full_authority_raw_sql_breakglass_denied';"
+assert raw_sql_deny in plan_only, 'Raw SQL breakglass must be a hard blocker in the canonical Plan'
+assert plan_only.index(raw_sql_deny) < plan_only.index("'ready_to_apply' => empty( $hard_blockers )"), 'Raw SQL denial must precede Plan readiness'
+apply_only=full.split('public static function apply(',1)[1].split('private static function developer_apply_input',1)[0]
+assert "empty( $plan['ready_to_apply'] )" in apply_only, 'Apply must reject hard blockers before convergence'
+
 
 for marker in (
     "private static function developer_execution_projection( array $developer_status )",

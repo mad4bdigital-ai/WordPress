@@ -62,6 +62,7 @@ class Ability {
  function execute() { throw new RuntimeException( 'Forbidden callback reached' ); }
 }
 require __DIR__ . '/../includes/class-mad4b-scp-ability-contract-inspector.php';
+require __DIR__ . '/../includes/class-mad4b-scp-mcp-catalog-budget.php';
 require __DIR__ . '/../includes/class-mad4b-scp-chatgpt-tool-projection.php';
 require __DIR__ . '/../includes/class-mad4b-scp-ability-catalog-transport.php';
 $name = 'fixture/breakglass'; $GLOBALS['abilities'][$name] = new Ability(); $GLOBALS['identity_checks'] = 0; $GLOBALS['projection_seal_requirements'] = array();

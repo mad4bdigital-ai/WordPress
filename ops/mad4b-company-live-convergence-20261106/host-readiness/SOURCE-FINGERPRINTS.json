@@ -1,0 +1,14 @@
+{
+  "contract": "mad4b.content-readiness-gallery-source.v1",
+  "source_only": true,
+  "sha256": {
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli-execution-context.php": "c0bef598085a29a3977e11818b53168ad095501dc5b3fae8ab8b0c619e0995eb",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli-readiness.php": "3242bd0236e19f6901078fd7c98e1a59444326205759b319dd9ccd0c1a36ae2a",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php": "f2a754c78801e1940b4d7edf68be3cae674c34af36cebe7d3b0691027eae2db7",
+    "wp-content/mu-plugins/mad4b-tour-gallery-presentation.php": "92607f8e88198935cc68b4e63d0a05b8ca436a258a59dc6dd6129eed39fc1108",
+    "ops/mad4b-company-live-convergence-20261106/host-readiness/mad4b-wayfa-readiness-scan.py": "d03d12e0c0ef6f91a77aacbf61d3bc3d9ccde6e34438d12aac9c6c7b5cb2a28e",
+    "ops/mad4b-company-live-convergence-20261106/host-readiness/README.md": "762ead7d8d01788e2ef4ff93a2dc252689a290a8b90e0ec517aadaf4466cee4f",
+    "ops/mad4b-company-live-convergence-20261106/tests/test_unified_readiness_context.php": "446230e359fa239294771f892802df377e24fac7381b99bd8441bbe2dcf28542",
+    "ops/mad4b-company-live-convergence-20261106/tests/test_gallery_advisory_runtime.php": "d664f32e297010a9d053cdfb633a6cc418f6e476c62289143f39d3d878b32fec"
+  }
+}

@@ -1,0 +1,24 @@
+--- a/src/presentation/bootstrap.php
++++ b/src/presentation/bootstrap.php
+@@ -54,10 +54,21 @@
+   // Legacy MU loaders may include modules from portable-modules/ before
+   // ordinary plugins load. During reconciliation they remain sole hook owners.
+   // This is runtime coexistence, not a permanent dependency on MU packaging.
+   $included=array_fill_keys(get_included_files(),true);
+   foreach(self::MODULES as $feature=>$module) {
++   // Footer remains owned by the active legacy bridge until a separate
++   // authorized migration. Do not declare its class twice, regardless of
++   // ordinary-plugin load order. Once legacy is inactive, this module loads.
++   if($feature==='theme-footer') {
++    $active=(array)get_option('active_plugins',[]);
++    $network=(array)get_site_option('active_sitewide_plugins',[]);
++    foreach(array_merge($active,array_keys($network)) as $plugin) {
++     if(is_string($plugin)&&str_starts_with($plugin,'mad4b-footer-bridge/'))continue 2;
++    }
++    if(class_exists('MAD4B_Footer_LookFeel',false))continue;
++   }
+    $filename=basename($module);
+    $old=WPMU_PLUGIN_DIR.'/'.$filename;
+    if(is_file($old))continue;
+    $legacy=realpath(WPMU_PLUGIN_DIR.'/portable-modules/'.$filename);
+    if(is_string($legacy)&&isset($included[$legacy]))continue;

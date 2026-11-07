@@ -23,6 +23,13 @@ async function fixture(responseKind = 'success', profile = false, refreshMode = 
   const selector = refreshMode ? '#mad4b-workspace' : '';
   const form = {
     dataset: {},
+    requestSubmit(submitter) {
+      // Native requestSubmit preserves required-field validation and any selected submitter.
+      fallback++;
+      assert.equal(controls[0].disabled, false);
+      assert.equal(controls[8].disabled, true);
+      assert.equal(submitter ?? null, null);
+    },
     closest: () => form,
     setAttribute() {},
     removeAttribute() {},
@@ -116,8 +123,7 @@ async function fixture(responseKind = 'success', profile = false, refreshMode = 
       HTMLFormElement: {
         prototype: {
           submit() {
-            fallback++;
-            assert.equal(controls[0].disabled, false);
+            throw new Error('Unsafe HTMLFormElement.prototype.submit must never bypass native validation');
           }
         }
       }

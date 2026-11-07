@@ -243,8 +243,14 @@ final class MAD4B_SCP_MCP_Runtime_Recovery {
 		if ( ! $cli && ! $cron && '' === $convergence_lease && ( ! $authorized_admin || is_wp_error( $authorization ) ) ) return new WP_Error( 'mad4b_mcp_repair_lifecycle_required', 'An authorized repair lifecycle is required.' );
 		if ( $explicit_conflict && ( is_wp_error( $authorization ) || ! is_string( $authorization ) || ! hash_equals( $expected_unmanaged_sha256, strtolower( $authorization ) ) ) ) return new WP_Error( 'mad4b_mcp_conflict_repair_stale_plan', 'Conflict recovery authorization no longer matches the observed MU bootstrap.' );
 		if ( ! MAD4B_SCP_Site_Profile::nonproduction_governed( 'managed_runtime' ) ) return new WP_Error( 'mad4b_mcp_repair_profile_ineligible', 'Exact non-production managed-runtime enrollment is required.' );
-		$integrity = MAD4B_SCP_Dependency_Manager::mcp_adapter_disk_integrity();
-		if ( empty( $integrity['ready'] ) ) return new WP_Error( 'mcp_adapter_integrity_mismatch', 'Restore the certified MCP Adapter before recovery.' );
+        // Updates do not need a pre-registered version. On an unknown version
+        // verify the official WordPress.org release on this maintenance
+        // lifecycle, not on a live MCP/OAuth protocol request.
+		$integrity = MAD4B_SCP_Dependency_Manager::mcp_adapter_disk_integrity( true );
+		if ( empty( $integrity['ready'] ) ) return new WP_Error( 'mcp_adapter_integrity_mismatch', 'Installed MCP Adapter files are invalid or differ from the official release.' );
+        if ( empty( $integrity['source_verified'] ) )
+            return new WP_Error( 'mcp_adapter_official_source_unverified',
+                'The installed version is supported for discovery; wait for independent official release verification before privileged runtime recovery.' );
 		$own_lease = '' === $convergence_lease;
 		$lease = $own_lease ? MAD4B_SCP_Runtime_Maintenance_Lease::acquire( 'mcp_runtime_recovery' ) : $convergence_lease;
 		if ( is_wp_error( $lease ) ) return $lease;

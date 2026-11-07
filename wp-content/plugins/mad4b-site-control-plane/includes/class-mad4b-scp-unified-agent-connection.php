@@ -383,6 +383,15 @@ final class MAD4B_SCP_Unified_Agent_Connection {
         $ready = self::site_ready();
         $app = self::credential_available();
         $oauth = MAD4B_SCP_ChatGPT_Connection_Admin_UI::status();
+        // Restore the saved UI choices only for this exact site, user and environment.
+        $receipt_current = ! empty( $receipt['site_fingerprint'] )
+            && is_string( $receipt['site_fingerprint'] )
+            && hash_equals( hash( 'sha256', self::site_id() . '|' . home_url( '/' ) ), $receipt['site_fingerprint'] )
+            && get_current_user_id() === (int) ( $receipt['wp_user_id'] ?? 0 )
+            && $env === (string) ( $receipt['environment'] ?? '' );
+        $saved_agent = $receipt_current ? (string) ( $receipt['agent_public_id'] ?? '' ) : '';
+        $saved_method = $receipt_current && in_array( (string) ( $receipt['authentication'] ?? '' ),
+            array( 'oauth', 'application_password', 'both' ), true ) ? (string) $receipt['authentication'] : 'oauth';
         echo '<section class="card" style="max-width:1080px;padding:18px 22px;margin:18px 0 24px">';
         echo '<h2>Connect AI Agent <small style="font-weight:400">— MAD4B Unified Connection Setup</small></h2>';
         echo '<p>Pick an existing Agent or create one when you confirm. Authentication and site policies are evaluated for this runtime; no UUID or OAuth keys to enter.</p>';
@@ -407,17 +416,20 @@ final class MAD4B_SCP_Unified_Agent_Connection {
         echo '<p><label for="mad4b-agent-choice"><strong>1. Agent identity</strong></label><br>';
         echo '<select id="mad4b-agent-choice" name="agent" style="min-width:300px">';
         foreach ( $agents as $agent ) {
-            echo '<option value="' . esc_attr( $agent['public_id'] ) . '">' . esc_html( $agent['label'] ) . ' (' . esc_html( $agent['status'] ) . ')</option>';
+            echo '<option value="' . esc_attr( $agent['public_id'] ) . '"'
+                . selected( $saved_agent, (string) $agent['public_id'], false )
+                . '>' . esc_html( $agent['label'] ) . ' (' . esc_html( $agent['status'] ) . ')</option>';
         }
         echo '<option value="new"' . selected( empty( $agents ), true, false ) . '>Create ChatGPT Governed Agent</option></select></p>';
         echo '<p><label for="mad4b-agent-method"><strong>2. Authentication</strong></label><br>';
         echo '<select name="auth_method" id="mad4b-agent-method">';
-        echo '<option value="oauth">OAuth 2.0 — recommended</option>';
-        echo '<option value="application_password"' . disabled( ! $app || (bool) $record, true, false ) . '>Application Password — trusted integration (secure Vault)</option>';
-        echo '<option value="both"' . disabled( ! $app || (bool) $record, true, false ) . '>Both — independent credentials</option></select></p>';
+        echo '<option value="oauth"' . selected( $saved_method, 'oauth', false ) . '>OAuth 2.0 — recommended</option>';
+        echo '<option value="application_password"' . selected( $saved_method, 'application_password', false ) . disabled( ! $app || (bool) $record, true, false ) . '>Application Password — trusted integration (secure Vault)</option>';
+        echo '<option value="both"' . selected( $saved_method, 'both', false ) . disabled( ! $app || (bool) $record, true, false ) . '>Both — independent credentials</option></select></p>';
         echo '<p><strong>3. Runtime permissions</strong> — automatically detect read abilities; never grant write, production or breakglass permissions in this wizard. Existing execution policies remain authoritative.</p>';
         echo '<p><label><input type="checkbox" name="approve_connection" value="1" required> I approve connecting this Agent on the detected site and environment.</label></p>';
         echo '<p><label><input type="checkbox" name="approve_password" value="1"> I explicitly approve creating my own WordPress Application Password in the configured external Vault (only if selected above).</label></p>';
+        echo '<p><small>Agent and authentication fields display the previously saved selections. Consent checkboxes intentionally reset after submission; selecting or saving these fields does not grant Write authority.</small></p>';
         submit_button( 'Connect & Activate', 'primary', 'submit', false, $ready ? array() : array( 'disabled' => 'disabled' ) );
         echo '</form>';
         if ( $record ) {

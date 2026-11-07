@@ -6,7 +6,7 @@
  * objects, term relations, and section eligibility from canonical term data.
  */
 defined('ABSPATH')||exit;
-if(wp_get_environment_type()!=='local'||!defined('SHARED_PRODUCT_LAB_ONLY')||!SHARED_PRODUCT_LAB_ONLY)return;
+if((!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || !MAD4B_COMMERCE_RUNTIME_ENABLED)||!defined('MAD4B_COMMERCE_RUNTIME_ENABLED')||!MAD4B_COMMERCE_RUNTIME_ENABLED)return;
 final class Shared_Product_Destination_Term_Presentation_v1 {
  const ARCHIVE_DOCUMENTS=[45649,48558];
  const TEMPLATES=[45799,45774,45886];
@@ -95,11 +95,14 @@ final class Shared_Product_Destination_Term_Presentation_v1 {
   * Strict native_destinations_sale_term_enabled() remains authoritative ONLY
   * for sales navigation and checkout-oriented interfaces.
   */
- public static function eligible(WP_Term $term,string $lang):bool {
+ /**
+  * Public hierarchy navigation is distinct from editorial Featured cards.
+  * A public, activated term inside an approved country/governorate remains
+  * browsable even if it has not been chosen as a Featured marketing tile.
+  * Never publish or infer hidden terms, nor mutate term metadata here.
+  */
+ private static function eligible_published_scope(WP_Term $term,string $lang):bool {
   if(!self::activation($term))return false;
-  if(!in_array((string)get_term_meta($term->term_id,'is_featured',true),['1','true'],true))return false;
-  if(!function_exists('native_destinations_term_has_featured_image')||
-     !native_destinations_term_has_featured_image($term))return false;
   if(!function_exists('native_destination_configured'))return false;
   $approvedCountries=array_map(static fn($x)=>(int)$x['id'],native_destination_configured($lang));
   $rootpath=array_merge([$term->term_id],array_map('intval',get_ancestors($term->term_id,'destinations','taxonomy')));
@@ -117,6 +120,18 @@ final class Shared_Product_Destination_Term_Presentation_v1 {
   }
   return true;
  }
+ public static function eligible_for_hierarchy(WP_Term $term,string $lang):bool {
+  return self::eligible_published_scope($term,$lang);
+ }
+ public static function eligible(WP_Term $term,string $lang):bool {
+  if(!self::eligible_published_scope($term,$lang))return false;
+  // Featured / image ownership gate remains applicable to commercial and
+  // curated discovery cards, never to the relational destination tree.
+  if(!in_array((string)get_term_meta($term->term_id,'is_featured',true),['1','true'],true))return false;
+  if(!function_exists('native_destinations_term_has_featured_image')||
+     !native_destinations_term_has_featured_image($term))return false;
+  return true;
+ }
  public static function eligible_for_sale(WP_Term $term,string $lang):bool {
   return self::eligible($term,$lang) && function_exists('native_destinations_sale_term_enabled')
     && native_destinations_sale_term_enabled($term->term_id,$lang);
@@ -127,7 +142,7 @@ final class Shared_Product_Destination_Term_Presentation_v1 {
    $term=WP_Term::get_instance((int)$id);
    if(!$term||$term->taxonomy!=='destinations')continue;
    if($targetType!==null&&(string)get_term_meta($id,'destination_type',true)!==$targetType)continue;
-   if(!self::eligible($term,$lang))continue;
+   if(!self::eligible_for_hierarchy($term,$lang))continue;
    $selected[$term->term_id]=$term;
   }
   uasort($selected,static fn($a,$b)=>strcasecmp($a->name,$b->name));

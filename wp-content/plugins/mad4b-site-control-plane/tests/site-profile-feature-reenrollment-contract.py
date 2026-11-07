@@ -88,6 +88,7 @@ for marker in (
     "acceptance_enabled",
     "skills_enabled",
     "site_urls_match_enrollment()",
+    "preg_match( '/^[a-z][a-z0-9_-]{1,31}$/D'",
     "current_environment()",
     "chatgpt_app_id()",
     "build_provenance_status()",
@@ -101,7 +102,7 @@ for marker in (
     "mad4b/site-profile-feature-reenrolled",
     "restore_profile",
     "array( 'staging', 'production' )",
-    "mad4b_site_profile_feature_reenroll_environment_denied",
+    "mad4b_site_profile_feature_reenroll_environment_invalid",
     "public static function chatgpt_step_up_tools()",
     "'production_mutation_allowed' => true",
 ):

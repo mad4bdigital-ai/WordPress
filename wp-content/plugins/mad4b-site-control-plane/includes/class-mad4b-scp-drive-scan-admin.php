@@ -14,17 +14,26 @@ final class MAD4B_SCP_Drive_Scan_Admin {
     'expected_provider_inventory_digest'=>$input['expected_provider_inventory_digest']??'',
     'expected_registry_revision'=>$input['expected_registry_revision']??-1));
   }
-  return MAD4B_SCP_Brand_Context_Builder::source_scan_plan(array('source_id'=>$source,'resumable'=>true,'scan_cursor'=>$cursor,'restart_scan'=>'1'===($input['restart_scan']??'')));
+  $result=MAD4B_SCP_Brand_Context_Builder::source_scan_plan(array('source_id'=>$source,'resumable'=>true,'scan_cursor'=>$cursor,'restart_scan'=>'1'===($input['restart_scan']??'')));
+  if(!is_wp_error($result) && is_array($result)){
+   $result['auto_scan']=!empty($input['auto_scan']);
+   $result['auto_step_count']=min(100,max(0,(int)($input['auto_step_count']??0)));
+  }
+  return $result;
  }
  public static function render( array $plan ) {
   echo '<div class="wrap"><h1>'.esc_html__('Source inventory progress','mad4b-site-control-plane').'</h1>';
   echo '<p>'.esc_html(empty($plan['scan_complete'])?'The inventory is incomplete. Continue the next bounded step; no Context assets have been changed.':'The inventory is complete. Review the changes before applying. Brand asset approval remains separate.').'</p>';
   foreach(array('new_files'=>'New files','changed_files'=>'Changed files','missing_files'=>'Missing files')as$key=>$label)
    echo '<p>'.esc_html($label).': '.esc_html((string)count($plan[$key]??array())).'</p>';
-  echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
+  $auto=!empty($plan['auto_scan']) && empty($plan['scan_complete']);
+  $autocount=(int)($plan['auto_step_count']??0);
+  if($auto && $autocount>=100)echo '<p>'.esc_html__('Automatic scan paused after 100 bounded steps; manually continue to restart another batch.','mad4b-site-control-plane').'</p>';
+  echo '<form id="mad4b-drive-scan-continue" method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
   wp_nonce_field(MAD4B_SCP_Context_Admin_UI::ACTION_SCAN_SOURCE);
   $fields=array('action'=>MAD4B_SCP_Context_Admin_UI::ACTION_SCAN_SOURCE,'resumable'=>'1',
    'source_id'=>$plan['source_id'],'scan_cursor'=>$plan['continuation']['scan_cursor']??'');
+  if($auto && $autocount<100){$fields['auto_scan']='1';$fields['auto_step_count']=(string)($autocount+1);}
   if(!empty($plan['scan_complete'])){
    $fields+=array('scan_operation'=>'apply','expected_plan_sha256'=>$plan['plan_sha256'],
     'expected_provider_inventory_digest'=>$plan['provider_inventory_digest'],'expected_registry_revision'=>$plan['registry_revision']);
@@ -33,7 +42,13 @@ final class MAD4B_SCP_Drive_Scan_Admin {
   }
   foreach($fields as$key=>$value)echo '<input type="hidden" name="'.esc_attr($key).'" value="'.esc_attr((string)$value).'">';
   submit_button(empty($plan['scan_complete'])?__('Continue inventory','mad4b-site-control-plane'):__('Apply reviewed inventory','mad4b-site-control-plane'));
-  echo '</form><form method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
+  echo '</form>';
+  if($auto && $autocount<100){
+   echo '<p>'.esc_html__('Scanning one bounded page per request. Leave this tab open to continue; no assets are auto-approved.','mad4b-site-control-plane').'</p>';
+   echo '<p><a href="'.esc_url(admin_url('admin.php?page=mad4b-control-plane-context&tab=sources')).'">'.esc_html__('Pause scan and return to Sources','mad4b-site-control-plane').'</a></p>';
+   echo '<script>(function(){var f=document.getElementById("mad4b-drive-scan-continue");if(!f)return;setTimeout(function(){if(document.visibilityState==="visible"&&document.body.contains(f))f.submit();},1200);})();</script>';
+  }
+  echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
   wp_nonce_field(MAD4B_SCP_Context_Admin_UI::ACTION_SCAN_SOURCE);
   foreach(array('action'=>MAD4B_SCP_Context_Admin_UI::ACTION_SCAN_SOURCE,'source_id'=>$plan['source_id'],'scan_cursor'=>$plan['continuation']['scan_cursor']??'','resumable'=>'1','restart_scan'=>'1')as$key=>$value)
    echo '<input type="hidden" name="'.esc_attr($key).'" value="'.esc_attr((string)$value).'">';

@@ -184,7 +184,15 @@ final class MAD4B_SCP_Agent_Registry {
 		$encoded = wp_json_encode( $constraints ); if ( false === $encoded || strlen( $encoded ) > 16384 ) return new WP_Error( 'mad4b_grant_constraints_invalid', 'Resource constraints are invalid or too large.' );
 		$now = self::now();
 		$ok = $wpdb->insert( $t['grants'], array( 'agent_id' => (int) $agent['id'], 'effect' => $effect, 'server_id' => $server_id, 'ability_name' => $ability_name, 'provider' => $provider, 'resource_schema_version' => 'v1', 'resource_constraints' => $encoded, 'environment' => $environment, 'created_by' => get_current_user_id(), 'created_at' => $now, 'updated_at' => $now ), array( '%d','%s','%s','%s','%s','%s','%s','%s','%d','%s','%s' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		return false === $ok ? new WP_Error( 'mad4b_grant_create_failed', 'Exact grant could not be created.', array( 'db_error' => $wpdb->last_error ) ) : true;
+		if ( false === $ok ) return new WP_Error( 'mad4b_grant_create_failed', 'Exact grant could not be created.', array( 'db_error' => $wpdb->last_error ) );
+        // Broadcast only after a durable original grant insert. This event is
+        // diagnostic; no event listener may manufacture a principal or approve.
+        do_action( 'mad4b_provider_authority_changed', array(
+            'action' => 'exact_grant_created', 'agent_id' => (int) $agent['id'],
+            'server_id' => $server_id, 'ability_name' => $ability_name,
+            'provider' => $provider, 'environment' => $environment
+        ) );
+        return true;
 	}
 
 	public static function grants_for_agent( $agent_id, $server_id = '' ) {
@@ -202,7 +210,9 @@ final class MAD4B_SCP_Agent_Registry {
 		$where = array( 'id' => $grant_id, 'agent_id' => (int) $agent['id'], 'effect' => 'allow' ); $formats = array( '%d','%d','%s' );
 		if ( '' !== $server_id ) { $where['server_id'] = $server_id; $formats[] = '%s'; }
 		$deleted = $wpdb->delete( $t['grants'], $where, $formats ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		return false === $deleted ? new WP_Error( 'mad4b_grant_revoke_failed', 'Managed allow grant could not be revoked.', array( 'db_error' => $wpdb->last_error ) ) : true;
+		if ( false === $deleted ) return new WP_Error( 'mad4b_grant_revoke_failed', 'Managed allow grant could not be revoked.', array( 'db_error' => $wpdb->last_error ) );
+        if ( $deleted > 0 ) do_action( 'mad4b_provider_authority_changed', array( 'action' => 'grant_revoked', 'agent_id' => (int) $agent['id'], 'grant_id' => $grant_id ) );
+        return true;
 	}
 
 	public static function resolve_agent( array $identity ) {

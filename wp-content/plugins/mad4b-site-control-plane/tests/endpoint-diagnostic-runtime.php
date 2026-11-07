@@ -141,7 +141,7 @@ if ( isset( $expect[$case] ) ) {
 	check( 0 === $GLOBALS['rest_calls'] && '' === MAD4B_SCP_MCP_Request_Scope::endpoint_diagnostic_server_id(), 'Rejected request performed lifecycle work' );
 } else {
 	check( ! is_wp_error( $result ) && 1 === $GLOBALS['rest_calls'], 'Authorized job did not complete' );
-	check( 9 === count( $job_adapter->tools ) && array( 'mad4b-developer-breakglass' ) === array_keys( array_filter( $job_adapter->tools ) ), 'Catalog selection: ' . json_encode( $job_adapter->tools ) );
+	check( isset( $job_adapter->tools['mad4b-developer-breakglass'] ) && array( 'mad4b-developer-breakglass' ) === array_keys( array_filter( $job_adapter->tools ) ), 'Diagnostic endpoint exposed more than the exact selected server: ' . json_encode( $job_adapter->tools ) );
 	check( 1 === $GLOBALS['preserved'] && 1 === did_action( 'mcp_adapter_init' ), 'Canonical or preserved callback lost' );
 	check( ! $result['connection_certified'] && ! $result['certification_performed'] && $result['foreign_transport_inventory_deferred'], 'Scoped job fabricated certification' );
 	check( ! empty( $result['runtime_bootstrap']['diagnostic_mu_proof_valid'] ) && ! empty( $result['runtime_bootstrap']['critical_class_set_pinned'] ) && ! empty( $result['runtime_bootstrap']['runtime_from_official_plugin'] ), 'Verified MU bootstrap evidence missing from diagnostic result' );

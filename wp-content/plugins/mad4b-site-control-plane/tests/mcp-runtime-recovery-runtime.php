@@ -65,7 +65,7 @@ class MAD4B_SCP_Site_Profile {
 	); }
 }
 class MAD4B_SCP_MCP_Request_Scope { static function current_request_is_protocol_hotpath() { return 'protocol' === $GLOBALS['case']; } static function current_request_is_endpoint_diagnostic_job() { return 'diagnostic' === $GLOBALS['case']; } }
-class MAD4B_SCP_Dependency_Manager { static function mcp_adapter_disk_integrity() { return array( 'ready' => 'integrity' !== $GLOBALS['case'] ); } static function mcp_adapter_plugin_identity( $refresh=false ) { return array( 'plugin_file' => 'renamed-mcp/mcp-adapter.php', 'ambiguous' => false, 'candidate_count' => 1 ); } }
+class MAD4B_SCP_Dependency_Manager { static function mcp_adapter_disk_integrity() { $verified = 'integrity' !== $GLOBALS['case']; return array( 'ready' => $verified, 'source_verified' => $verified ); } static function mcp_adapter_plugin_identity( $refresh=false ) { return array( 'plugin_file' => 'renamed-mcp/mcp-adapter.php', 'ambiguous' => false, 'candidate_count' => 1 ); } }
 class MAD4B_SCP_Endpoint_Diagnostic { static function build_fingerprint() { return 'current-build'; } }
 class MAD4B_SCP_Runtime_Maintenance_Lease {
 	static function acquire( $owner ) { $GLOBALS['lease_acquired']=true; return 'lease_busy' === $GLOBALS['case'] ? new WP_Error( 'lease_busy' ) : 'fenced-token'; }

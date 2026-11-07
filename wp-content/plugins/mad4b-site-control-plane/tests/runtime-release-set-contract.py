@@ -23,7 +23,7 @@ handoff = json.loads((CONFIG / "staging-deployment-handoff.json").read_text(enco
 protocol = json.loads((CONFIG / "mcp-protocol-profiles.json").read_text(encoding="utf-8"))
 
 require(policy.get("contract") == "mad4b.runtime-release-policy.v1", "runtime release policy contract mismatch")
-require(policy.get("target_adapter_version") == "0.7.0", "runtime release policy target must be MCP Adapter 0.7.0")
+require(policy.get("target_adapter_version") == "0.7.1", "runtime release policy target must be MCP Adapter 0.7.1")
 require(policy.get("update_order") == ["control_plane", "mcp_adapter"], "runtime release update order must cross a reboot boundary")
 require(policy.get("pair_certification_required") is True, "exact pair certification must remain required")
 require(policy.get("exact_provider_profile_required") is True, "exact provider profile must remain required")

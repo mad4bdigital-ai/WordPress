@@ -163,10 +163,10 @@ for marker in [
 
 # Direct tools/list schemas are bounded independently from chunked catalog transport.
 for marker in [
-    "MAX_SERIALIZED_TOOL_BYTES",
+    "per_tool_serialized_bytes_limit",
     "mcp_optional_catalog_size_excluded",
     "mcp_required_catalog_size_exceeded",
-    "bounded_serialized_tool_bytes",
+    "bounded_single_tool_schema_unbounded_total",
 ]:
     require(marker in DIAG, f"serialized tools/list byte budget invariant missing: {marker}")
 

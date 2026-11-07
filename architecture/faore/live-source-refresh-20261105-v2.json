@@ -1,0 +1,18 @@
+{
+  "contract": "mad4b.faore.source-reconciliation.readback.v1",
+  "source": "central-staging-live-code",
+  "only_php_source": true,
+  "staging_site_mutated": false,
+  "entries": [
+    {
+      "file": "class-mad4b-scp-context-admin-ui.php",
+      "previous_sha256": "8e81a95d258ef12a6a539afc23447cc0335d1f5f6cb38106f8192bfd6003f585",
+      "new_live_sha256": "eb0caac9dd0ed3699b90ffa2c62aff7426fab21191ded14a8462b87f3a218ac1"
+    },
+    {
+      "file": "class-mad4b-scp-context-authority.php",
+      "previous_sha256": "95358b266597caa81dbb7de3101c43a7d77a687a4c3fba9ecdc004fd814cab31",
+      "new_live_sha256": "d918f851f5e95a0c26c14c2366344e2a2d7e47adca58020b6cc6d693fea1e39a"
+    }
+  ]
+}

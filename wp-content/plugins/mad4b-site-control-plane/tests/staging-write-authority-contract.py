@@ -911,7 +911,14 @@ for marker in [
 for marker in [
     "const CONTRACT = 'mad4b.staging-write-planning-guard.v2'",
     "const ABILITY = 'mad4b/approval-plan'",
-    "MAD4B_SCP_Authorization::authorize_mutation( self::ABILITY, 'mad4b-admin', 'core', $input )",
+    # Approval planning creates a pending write ticket on the governed write
+    # server, not the legacy admin-only lane. Do not weaken owner/OAuth/NHI checks.
+    "MAD4B_SCP_Authorization::authorize_mutation( self::ABILITY, 'mad4b-write', 'core', $input )",
+    "MAD4B_SCP_Policy::can_mutate()",
+    "MAD4B_SCP_Agent_Registry::exact_grant( (int) $initiator['id'], 'mad4b-write', self::ABILITY, 'core' )",
+    "MAD4B_SCP_Staging_Write_Authority::is_exact_delegated_oauth_agent( $initiator, (int) $user->ID )",
+    "'oauth2_bearer' !== (string) ( $principal['auth_method'] ?? '' )",
+    "MAD4B_SCP_Staging_Write_Planning_Guard::validate_remote_plan_input( $input )",
     "'ability:' . self::ABILITY",
     "planner_approval_exception",
     "validate_remote_plan_input",

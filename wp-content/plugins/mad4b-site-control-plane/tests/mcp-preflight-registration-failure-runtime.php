@@ -62,7 +62,7 @@ check( false === strpos( json_encode( $row ), '/PRIVATE/PATH' ), 'raw server con
 $adapter->error = null;
 $adapter->reject = false; $invoke();
 $row = MAD4B_SCP_Servers::registration_status()['mad4b-chatgpt'];
-check( 'mcp_required_tool_preflight_failed' === $row['error'] && ! $row['catalog_evidence']['ready'], 'adapter success cannot overrule required preflight failure' );
+check( 'mcp_catalog_empty' === $row['error'] && ! $row['catalog_evidence']['ready'], 'adapter success cannot overrule required preflight failure' );
 check( array() === MAD4B_SCP_MCP_Catalog_Diagnostics::classification_snapshot(), 'failed preflight never freezes a ready classification' );
 check( array() === $adapter->tools && 0 === $row['catalog_evidence']['tool_count'], 'failed preflight creates only a route, preserving failure evidence' );
 foreach ( array( true, array(), array( 'tool' => 'invalid' ), array( 'tool' => new stdClass() ) ) as $malformed ) {

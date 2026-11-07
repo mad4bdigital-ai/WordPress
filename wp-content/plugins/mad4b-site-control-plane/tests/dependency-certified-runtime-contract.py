@@ -18,7 +18,12 @@ for marker in (
     "'invalid_certified_critical_file'",
     "'installed_critical_integrity' => $installed_integrity",
     "$installed_certified = '' !== $installed_version ? self::certified_mcp_adapter( $installed_version ) : array();",
-    "self::installed_mcp_adapter_integrity( $installed_certified, $mcp_plugin_file )",
+    # Modern adapter versions may be authenticated dynamically when no static
+    # critical-file profile is available. Keep static integrity mandatory for
+    # versions with a certified file profile and verify the dynamic path exists.
+    "self::installed_mcp_adapter_integrity( $certified, $installed_plugin_file )",
+    "empty( $certified['critical_files'] )",
+    "MAD4B_SCP_MCP_Adapter_Dynamic_Integrity::inspect( $plugin_file, $version, (bool) $verify_official_release )",
     "'transition_supported' => $transition_supported",
     "supported_transition_versions()",
     "private static function bootstrap_mcp_adapter()",

@@ -205,6 +205,10 @@ final class MAD4B_SCP_Artifacts {
 			if ( 'artifact_job_missing' === $code ) return new WP_Error( 'mad4b_artifact_job_missing', 'ContentJob was not found for this site.' );
 			return new WP_Error( 'mad4b_artifact_append_failed', 'Unable to append Content Artifact.', array( 'cause' => $code ) );
 		}
+        // Emit after durable commit; no false signal if the insert was rolled back.
+        do_action( 'mad4b_scp_content_artifact_created', array(
+            'artifact_id' => $artifact_id, 'job_id' => $job_id,
+            'artifact_type' => $type, 'version' => $version ) );
 		return self::get_artifact( array( 'artifact_id' => $artifact_id ) );
 	}
 

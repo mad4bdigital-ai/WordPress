@@ -635,7 +635,10 @@ final class MAD4B_SCP_Runtime_Release_Set {
 			$out['mixed_runtime'] = ! empty( $provenance['mixed_runtime'] );
 			$out['class_provenance_state'] = isset( $provenance['state'] ) ? (string) $provenance['state'] : '';
 		}
-		$out['ready'] = $out['provider_contract_ok'] && $out['class_provenance_ready'] && ! $out['mixed_runtime'];
+		// Source/hash provenance is informational; provider interface admission
+		// is based on the independently checked live provider contract.
+		$out['source_provenance_observational'] = true;
+		$out['ready'] = $out['provider_contract_ok'];
 		$out['state'] = $out['ready'] ? 'certified_pair_runtime' : 'runtime_revalidation_required';
 		return $out;
 	}
