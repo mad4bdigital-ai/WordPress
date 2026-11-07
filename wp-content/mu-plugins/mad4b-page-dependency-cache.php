@@ -307,7 +307,17 @@ final class MAD4B_Page_Dependency_Cache {
            && !MAD4B_Published_Content_Scope_Cache::hybrid_eligible())return 'legacy';
         $id=absint($query->id??0);
         if(!$id)return 'legacy';
-        $ctx=['query_id'=>$id];
+        $ctx=['query_id'=>$id,'query_kind'=>'query_builder'];
+        // Local company policy can target only one WPML language or device
+        // while the Governor still isolates Query groups by language.
+        $lang=(string)apply_filters('wpml_current_language','');
+        if(preg_match('/^[a-z]{2}(?:-[a-z]{2})?$/iD',$lang))
+            $ctx['language']=strtolower($lang);
+        if(class_exists('MAD4B_Company_Policy_Registry_V2',false)){
+            $device=MAD4B_Company_Policy_Registry_V2::device();
+            if(in_array($device,['mobile','tablet','desktop'],true))
+                $ctx['device']=$device;
+        }
         foreach(['listing_id','widget_id','template_family_id'] as $k){
             $value=$query->$k??null;
             if($k==='widget_id'){

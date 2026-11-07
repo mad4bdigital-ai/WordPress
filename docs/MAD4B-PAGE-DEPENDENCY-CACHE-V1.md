@@ -125,3 +125,7 @@ The existing fragment renderer retains its native term and template keys. Page H
 Verification: 42/42 isolated PHP fixtures passed. The actual WordPress integration test built a synthetic query manifest and reverse edges under a database transaction and showed that a complete query used the Hybrid key without a Post Type suffix, an unproven query retained Legacy, and a near-expiry manifest fell back to Legacy. Per-query Registry rules validated without saving any active rule. Registry revision was 0, and the transaction left no QA rows. Reproduce with tests/manual/test_mad4b_hybrid_cache_live_transaction.php.
 
 Rollback: switch content.cache.dependency.strategy to legacy_post_type by a company-scoped Active rule or a company-local maintenance setting. Leave legacy invalidation hooks and graph tables in place. Do not delete FastCGI files based on guessed URL keys.
+
+### Hybrid policy localization refinement
+
+The Hybrid authority resolver also passes the server-resolved WPML language, device class, Query ID and Query Builder kind into Dynamic Policy Registry. This lets a company apply an Active strategy override to a specific Query or a specific language/device without allowing an arbitrary visitor input to select the policy. Query result keys remain isolated by the Query Governor's existing language namespace; Nginx FastCGI remains separately device-scoped.
