@@ -1,0 +1,25 @@
+--- a/wp-content/plugins/mad4b-platform/modules/operations/registry-destination-presentation-ui.php
++++ b/wp-content/plugins/mad4b-platform/modules/operations/registry-destination-presentation-ui.php
+@@ -254,10 +254,20 @@
+       $gov=Shared_Product_Destination_Term_Presentation_v1::ancestor($term,'state_governorate');
+       if(!$gov && get_term_meta($term->term_id,'destination_type',true)==='state_governorate')$gov=$term;
+       if(!$gov){return;}
+-      echo esc_html(sprintf(__('Explore Attractions Around %s','default'),$gov->name));
++      $original='Explore Attractions Around %s';
++      $label=__($original,'default');
++      if(class_exists('MAD4B_Destination_Locale_Fallback',false)){
++       $label=MAD4B_Destination_Locale_Fallback::dynamic_heading_translate($label,$original,'default');
++      }
++      echo esc_html(sprintf($label,$gov->name));
+       return;
+     }
+-    echo esc_html(sprintf(__('Explore %s & Nearby Destinations','default'),$term->name));
++    $original='Explore %s & Nearby Destinations';
++    $label=__($original,'default');
++    if(class_exists('MAD4B_Destination_Locale_Fallback',false)){
++     $label=MAD4B_Destination_Locale_Fallback::dynamic_heading_translate($label,$original,'default');
++    }
++    echo esc_html(sprintf($label,$term->name));
+    }
+   }
+  }
