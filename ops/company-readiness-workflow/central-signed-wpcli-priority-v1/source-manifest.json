@@ -1,0 +1,30 @@
+{
+  "contract": "mad4b.central-signed-wpcli-priority-source.v1",
+  "source_only": true,
+  "provenance": "VPS deployed source, 2026-11-07 (Africa/Cairo)",
+  "files": {
+    "wpcli-signed-priority.py": "/opt/mad4b-company-provisioning/bin/wpcli-signed-priority.py",
+    "wpcli-site-scheduler.py": "/opt/mad4b-company-provisioning/bin/wpcli-site-scheduler.py",
+    "test_wpcli_signed_priority.py": "/opt/mad4b-company-provisioning/bin/test_wpcli_signed_priority.py",
+    "70-signed-wpcli-priority.conf": "/etc/systemd/system/mad4b-company-original-313-worker.service.d/70-signed-wpcli-priority.conf",
+    "50-original-signed-wpcli-priority.conf": "/etc/systemd/system/mad4b-dispatch-telemetry.service.d/50-original-signed-wpcli-priority.conf",
+    "vps-broker-poller.py": "/opt/mad4b-company-transport/broker-v1/vps-broker-poller.py",
+    "test_vps_broker_busy.py": "/opt/mad4b-company-transport/broker-v1/test_vps_broker_busy.py",
+    "mad4b-faore-stdio-observe-priority.conf": "/etc/systemd/system/mad4b-faore-stdio-observe.service.d/60-original-signed-wpcli-priority.conf",
+    "mad4b-company-self-healing-priority.conf": "/etc/systemd/system/mad4b-company-self-healing.service.d/60-original-signed-wpcli-priority.conf"
+  },
+  "live_sha256": {
+    "wpcli-signed-priority.py": "87b0cc79823c528d88f37e7941ab26f919c50b57ef91dc954adf715a9d25f63e",
+    "wpcli-site-scheduler.py": "e3a342bac6ebf44461bc9c2556a993b3699566387378ffbb4fc26e0220196edc",
+    "test_wpcli_signed_priority.py": "0dcfda96ac5201eddd8e026501f7a399672ebc432b9b32e18e54614994272671",
+    "70-signed-wpcli-priority.conf": "572e750c9adbbc48934537f972fde23697d36c1c0b581d1fef47607e67a527b2",
+    "50-original-signed-wpcli-priority.conf": "5fc96f847e924f076b88df96028c946c6368b4a8b1953de8e33cb06fd496d0d2",
+    "vps-broker-poller.py": "6a618e898a478f0cfc38fc1b8b01bea48141e4c66661b3ca84abbc22b2756018",
+    "test_vps_broker_busy.py": "0ee7cc5cc7b14be9885b0d786d9e813ab43a520404aa9baa6f62f0eccbb08727",
+    "mad4b-faore-stdio-observe-priority.conf": "e38653c04d121b2350f655282b56c609efb100cebe7f69b520c1eb9dd2124b15",
+    "mad4b-company-self-healing-priority.conf": "e38653c04d121b2350f655282b56c609efb100cebe7f69b520c1eb9dd2124b15"
+  },
+  "original_305_312_313_grants_changed": false,
+  "original_313_job_certified_by_source_commit": false,
+  "wpcli_concurrency_limit_unchanged": 2
+}
