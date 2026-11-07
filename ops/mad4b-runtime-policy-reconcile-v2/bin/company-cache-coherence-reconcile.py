@@ -108,6 +108,10 @@ def check(policy,site,spec,fpm,previous=None):
     if edge_map_digest(cfg)!=spec.get('edge_maps_sha256'):
         issues.append('EDGE_TRACKING_MAP_RELEASE_DRIFT')
     if site=='tours-dev':
+        pinned_router=policy['runtime_dependency_preflight'].get('approved_router_sha256','')
+        router=mu/'00-0-mad4b-runtime-router.php'
+        if not router.is_file() or hashlib.sha256(router.read_bytes()).hexdigest()!=pinned_router:
+            issues.append('PUBLIC_CONTROL_ROUTER_RELEASE_DRIFT')
         approved=policy['runtime_dependency_preflight']['approved_control_modules_sha256']
         for name,sha in approved.items():
             path=root/'wp-content/plugins/mad4b-platform/modules/compat'/name
@@ -249,7 +253,7 @@ def main():
     policy_path=Path(args.policy);report_path=Path(args.report);history_path=Path(args.history)
     pol=json.loads(policy_path.read_text())
     assert pol['contract']=='mad4b.company-cache-coherence-desired-state.v1'
-    assert pol.get('version')=='2.2.0'
+    assert pol.get('version')=='2.3.0'
     assert pol.get('release_contract')=='mad4b.runtime-policy-release.v2'
     fpm=opcache()
     previous={}

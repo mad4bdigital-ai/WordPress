@@ -1,4 +1,4 @@
-# MAD4B Runtime & Policy Reconcile v2.2
+# MAD4B Runtime & Policy Reconcile v2.3
 
 Source-backed release package from both tested Hostinger deployments.
 Company-specific DB, credentials, private host bindings and absolute
@@ -25,3 +25,10 @@ site-specific environment paths are not included as configuration artifacts.
    or restart production PHP without a verified rollback.
 
 The package does not auto-grant or silently expand executor authority.
+
+
+## Anonymous public rendering lane (v2.3)
+Only GET/HEAD for clean public home and published-tour paths bypasses
+14 central Broker/SSH modules. REST, WP-CLI, authenticated, query and
+other requests retain the full 377-module load. The router and approved
+control-plane modules are hash-pinned in the live policy.

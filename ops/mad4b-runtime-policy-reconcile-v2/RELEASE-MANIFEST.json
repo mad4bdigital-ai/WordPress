@@ -1,6 +1,6 @@
 {
   "contract": "mad4b.runtime-policy-github-source-package.v2",
-  "policy_version": "2.2.0",
+  "policy_version": "2.3.0",
   "release_contract": "mad4b.runtime-policy-release.v2",
   "scope": "GitHub source snapshot only; runtime company bindings not included",
   "required_runtime_map_entries": 377,
@@ -15,5 +15,8 @@
   },
   "runtime_map_sha256": "80c9f2a6aaeaa1330117ce896fab6e33552d0b93fd12c57b52c814486699aeb2",
   "ttl_seconds": 1800,
-  "auto_enrollment_trigger": "provisioner cache-warm manifest plus timer"
+  "auto_enrollment_trigger": "provisioner cache-warm manifest plus timer",
+  "runtime_router_sha256": "e05db2d96eb613f74ec474a6533f31c24ff6310961b2a523ff5cb0f7934c45d7",
+  "public_control_deferred_module_count": 14,
+  "router_scope": "anonymous_readonly_public_home_and_tour"
 }

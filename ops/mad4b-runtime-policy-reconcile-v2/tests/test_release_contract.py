@@ -8,6 +8,8 @@ class ReleaseTests(unittest.TestCase):
   m=json.loads((ROOT/'RELEASE-MANIFEST.json').read_text())
   self.assertEqual(m['required_runtime_map_entries'],377)
   self.assertEqual(m['ttl_seconds'],1800)
+  self.assertEqual(m['public_control_deferred_module_count'],14)
+  self.assertEqual(hashlib.sha256((ROOT/'overlays/mu-plugins/00-0-mad4b-runtime-router.php').read_bytes()).hexdigest(),m['runtime_router_sha256'])
   for name,digest in m['public_modules_sha256'].items():
    p=ROOT/'overlays/mu-plugins'/name
    self.assertTrue(p.is_file())
@@ -31,6 +33,8 @@ class ReleaseTests(unittest.TestCase):
    self.assertIn('MAD4B_MU_File_Resolver_V1::path',s)
   b=(ROOT/'overlays/mu-plugins/00-0-mad4b-runtime-router.php').read_text()
   self.assertIn("MAD4B_MU_Map_Contract_V1::current",b)
+  self.assertIn('$mad4b_public_control_slice',b)
+  self.assertEqual(len(re.findall(r"^\s*'[0-9]{3}-[^']+\.php'=>true,$",b,re.M)),14)
  def test_no_sensitive_fixtures(self):
   for f in ROOT.rglob('*'):
    if not f.is_file() or f.suffix not in ('.php','.py','.json','.md','.service','.timer','.path'):continue
