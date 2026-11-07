@@ -8,6 +8,12 @@ Source: tours.dev.mad4b.com Staging. Tenant: wayfatours.com Production.
 - JetBlog Mobile Initial AJAX Defer 0.3.0: identical PHP/JS source on both sites. Its previous Staging-exclusive gate was replaced with company-bound Site Scope, anonymous mobile GET, pinned unchanged vendor SHA and a company-local option. On Staging default ON; on Production default OFF pending browser/AJAX acceptance. Public query parameters cannot activate it.
 - Secondary Listing Lazy 1.0.3: semantic Query Has Items guard copied from Tours.dev to Wayfatours. Prevents automatically deferring listings in conditionally visible Elementor sections. Explicit native JetEngine lazy settings remain respected.
 
+## Portable public Browser HTML cache policy (currently Staging-only enabled)
+- Browser HTML Cache Policy v1.2.0 uses the canonical company identity and site-specific WPML active/default languages, not the former hardcoded Tours.dev host and six language list.
+- Company option mad4b_browser_html_public_v1 retains the old Staging default ON, but is OFF by default in Production until cache-key, FastCGI, WooCommerce session and multilingual parity are verified.
+- No new Production cache headers are emitted. Existing X-MAD4B-Cache-Eligibility public-static-v1 is still a mandatory prerequisite, and all current private/cookie/currency/auth checks are retained.
+- 13 locale/policy/disabled-company tests passed in both PHP containers; WordPress confirmed Wayfatours Production enabled=false and native EN+ES HTTP 200.
+
 ## Copied from Wayfatours to Tours.dev
 - Distribution Connectors 1.6.2: exactly 8 added/updated code and CSS files, six PHP lint PASS; two new runtime classes Catalog Data Epoch and Distribution Activation were confirmed loaded on Tours.dev.
 - Actual channel/provider activation still requires rights, real verified provider receipt, approved account and real send adapter; the isolated 6-case fail-closed contract passed. No external sends performed.
