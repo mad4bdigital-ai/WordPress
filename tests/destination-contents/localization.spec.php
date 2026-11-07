@@ -59,4 +59,21 @@ foreach($expected as $lang=>$title) {
  check($untouched===$base,'Touched unrelated Elementor template');
  $count++;
 }
+
+$destination_title_map_cases=[
+ 'ar'=>'محتويات الوجهة',
+ 'fr'=>'Sommaire de la destination',
+ 'de'=>'Reiseziel-Inhalte',
+ 'it'=>'Contenuti della destinazione',
+ 'es'=>'Contenido del destino'
+];
+foreach($destination_title_map_cases as $lang=>$expectedTitle) {
+ $GLOBALS['mad4b_test_language']=$lang;
+ $nav=[['elType'=>'widget','id'=>'f10db4f','settings'=>['title'=>'Destination Contents']]];
+ $mapped=MAD4B_Destination_Locale_Fallback::editor_data($nav,45774);
+ check(($mapped[0]['settings']['title']??'')===$expectedTitle,'Wrong destination heading for '.$lang);
+ $existing=[['elType'=>'widget','id'=>'f10db4f','settings'=>['title'=>'Editor-owned '.$lang]]];
+ $preserved=MAD4B_Destination_Locale_Fallback::editor_data($existing,45774);
+ check(($preserved[0]['settings']['title']??'')==='Editor-owned '.$lang,'Overwrote localized destination title '.$lang);
+}
 echo "MAD4B_LOCALE_REGRESSION_PASS languages=$count overrides_preserved=6 nonmatching_templates_unchanged=6\n";
