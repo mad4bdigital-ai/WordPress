@@ -83,7 +83,15 @@ assert priority_manifest['source_only'] is True
 assert priority_manifest['wpcli_concurrency_limit_unchanged']==2
 assert priority_manifest['original_305_312_313_grants_changed'] is False
 assert priority_manifest['original_313_job_certified_by_source_commit'] is False
-assert len(priority_manifest['live_sha256'])==4
+expected_priority_sources = {
+    'wpcli-signed-priority.py', 'wpcli-site-scheduler.py',
+    'test_wpcli_signed_priority.py', '70-signed-wpcli-priority.conf',
+    '50-original-signed-wpcli-priority.conf', 'vps-broker-poller.py',
+    'test_vps_broker_busy.py', 'mad4b-faore-stdio-observe-priority.conf',
+    'mad4b-company-self-healing-priority.conf',
+}
+assert set(priority_manifest['live_sha256'])==expected_priority_sources
+assert set(priority_manifest['files'])==expected_priority_sources
 for name,digest in priority_manifest['live_sha256'].items():
     assert '/' not in name and (priority_root/name).is_file(),name
     assert hashlib.sha256((priority_root/name).read_bytes()).hexdigest()==digest,name

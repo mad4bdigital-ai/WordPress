@@ -67,6 +67,7 @@ jobs:
           priority=ops/company-readiness-workflow/central-signed-wpcli-priority-v1
           heartbeat=ops/company-readiness-workflow/host-provisioning-runtime-v1
           python3 -B "$priority/test_wpcli_signed_priority.py"
+          python3 ops/mad4b-company-live-convergence-20261106/tests/test_broker_busy_hermetic.py
           python3 -B "$priority/wpcli-signed-priority.py" selftest
           python3 -B "$heartbeat/tests/test_plugin_install_heartbeat_cadence.py"
   runtime-contracts:
