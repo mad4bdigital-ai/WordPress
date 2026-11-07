@@ -1,0 +1,33 @@
+name: MAD4B Runtime Policy Reconcile Source Contract
+
+on:
+  pull_request:
+    paths:
+      - 'ops/mad4b-runtime-policy-reconcile-v2/**'
+      - '.github/workflows/mad4b-runtime-policy-reconcile-v2.yml'
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+    paths:
+      - 'ops/mad4b-runtime-policy-reconcile-v2/**'
+      - '.github/workflows/mad4b-runtime-policy-reconcile-v2.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  offline-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python offline release contract tests
+        run: python3 -m unittest discover -s ops/mad4b-runtime-policy-reconcile-v2/tests -v
+      - name: Syntax validation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m compileall -q ops/mad4b-runtime-policy-reconcile-v2/bin
+          find ops/mad4b-runtime-policy-reconcile-v2/overlays -name '*.php' -print0 | xargs -0 -n1 php -l
+          git diff --check

@@ -1,0 +1,28 @@
+{
+  "auto_enrollment_trigger": "provisioner cache-warm manifest plus timer",
+  "contract": "mad4b.runtime-policy-github-source-package.v2",
+  "dynamic_registry_scope": "published WordPress pages posts tours destinations categories; exclude private paths",
+  "policy_version": "2.4.0",
+  "public_control_deferred_module_count": 14,
+  "public_modules_sha256": {
+    "417-mad4b-public-cookie-contract.php": "8b02b95b53251288663c48c5da6e116cb80671b08f8c42d1f875ad1de46dafa2",
+    "420-mad4b-favourites-no-autoadd.php": "dc3ca24ae040dacaec22fa40243763ea90373bb70281eb72dedf67fce91bdc2b",
+    "421-mad4b-favourites-element-cache-isolation.php": "f048573cb649f4382af01d727fae1d4d7747c2f8cef4718df97fc52b885c08bc"
+  },
+  "public_route_refresh_seconds": 1800,
+  "public_route_registry_compiler_sha256": "91af063362d06e9918ee4b43aa767a5bd495c189fa19cd7cb9575d4b5030c951",
+  "public_route_registry_contract": "mad4b.public-route-registry-refresh.v1",
+  "public_route_registry_refresher_sha256": "a52702056b7d74a6f0088c068330816f5d5297240582463db7da513082cbfe13",
+  "public_route_source_sha256": "1c6019a14a97c25b802478a04aad015ba6f725144ee1f2f906f347858f9fa298",
+  "release_contract": "mad4b.runtime-policy-release.v2",
+  "required_runtime_map_entries": 377,
+  "router_scope": "anonymous_readonly_public_home_and_tour",
+  "runtime_control_sha256": {
+    "305-mad4b-central-ssh-command-intake.php": "f9ad49d9aee65eeca37f7448e3f1913cb871a4025ca6ea82858881a047d5a302",
+    "306-mad4b-central-vps-broker.php": "3a2408d28e2309972d9bc1a47c57b739290bfc4e685802cdcd8a03346179507f"
+  },
+  "runtime_map_sha256": "80c9f2a6aaeaa1330117ce896fab6e33552d0b93fd12c57b52c814486699aeb2",
+  "runtime_router_sha256": "1c856c0391eb940cf89ee166b262a191477390abb66e89428e33a2920e9bad34",
+  "scope": "GitHub source snapshot only; runtime company bindings not included",
+  "ttl_seconds": 1800
+}
