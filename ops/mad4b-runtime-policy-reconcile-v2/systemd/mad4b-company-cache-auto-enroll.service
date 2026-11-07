@@ -1,0 +1,17 @@
+[Unit]
+Description=MAD4B company cache policy enrollment after provisioning manifest discovery
+After=docker.service network-online.target
+Requires=docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/flock -w 20 /run/lock/mad4b-company-cache-coherence.lock /usr/bin/python3 /opt/mad4b-company-provisioning/bin/company-cache-auto-enroll-v2.py --apply
+TimeoutStartSec=105
+Nice=15
+CPUQuota=35%
+IOSchedulingClass=idle
+NoNewPrivileges=true
+UMask=0077
+StandardOutput=journal
+StandardError=journal

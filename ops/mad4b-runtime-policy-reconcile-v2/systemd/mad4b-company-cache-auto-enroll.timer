@@ -1,0 +1,12 @@
+[Unit]
+Description=Fallback company cache enrollment reconcile every 30 minutes
+
+[Timer]
+OnBootSec=11min
+OnUnitInactiveSec=30min
+RandomizedDelaySec=90s
+AccuracySec=30s
+Unit=mad4b-company-cache-auto-enroll.service
+
+[Install]
+WantedBy=timers.target
