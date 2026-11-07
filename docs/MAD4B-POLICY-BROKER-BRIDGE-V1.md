@@ -51,7 +51,7 @@ This is a planning integration, not finished cross-company distribution. Do not 
 
 ## Verification
 
-- 11 isolated regression assertions PASS: target discovery, verified identity, anonymous denial, create/readback, revision pin, no remote mutation, original Broker authority, idempotent replay, changed-payload rejection, cross-company UUID rejection and unauthorized Active policy blocking.
+- 13 isolated regression assertions PASS: target discovery, verified identity, anonymous denial, create/readback, revision pin, no remote mutation, original Broker authority, idempotent replay, changed-payload rejection, cross-company UUID rejection and unauthorized Active policy blocking.
 - Live Nginx/WordPress returned HTTP 401 for anonymous GET /broker/targets and POST /broker/plans.
 - No central Broker job was created and no production company was modified.
 

@@ -27,6 +27,7 @@ jobs:
         run: |
           php -l wp-content/mu-plugins/mad4b-page-dependency-cache.php
           php -l tests/test_mad4b_page_dependency_cache_v1.php
+          php -l tests/manual/test_mad4b_page_dependency_live_transaction.php
       - name: Isolated graph/selector tests
         shell: bash
         run: |

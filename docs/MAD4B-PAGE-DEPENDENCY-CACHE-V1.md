@@ -91,5 +91,16 @@ Remaining milestones: complete synthetic selective transaction, improve query me
 - Nested taxonomy predicates, OR/NOT IN, meta-dependent ranks, ambiguous statuses and sensitive sources remain unproven and use the legacy safety path.
 - A cap of 8,000 query-node rows bounds the stored reverse graph; existing nodes may still update after the cap. With unknown coverage, the legacy fallback stays active.
 - Admin-only read-only impact endpoint: GET /wp-json/mad4b-policy/v2/page-dependencies/impact?dependency=post:60623. It returns at most 50 observed node matches and never mutates the graph.
-- Direct MariaDB QA transaction verified 2 affected nodes, 1 unrelated node retaining its epoch, and zero rows after rollback. This verifies the SQL semantics only, not PHP/Redis/FastCGI end-to-end acceptance.
+- Direct MariaDB QA and the real WordPress Page Dependency invalidate() test both verified two affected nodes, one unrelated node retaining epoch 1, and zero remaining QA rows after rollback. PHP-to-MariaDB behavior is proven; Redis key invalidation, real HTML, and FastCGI remain unverified.
 - Updated isolated graph fixtures: 29 PASS.
+
+## Reproducible WordPress integration QA
+
+The isolated manual test is in tests/manual/test_mad4b_page_dependency_live_transaction.php. It inserts three unique QA graph nodes under a database transaction, invokes the actual Page Dependency invalidator, checks two matching epochs and one unrelated epoch, then rolls the data back. It uses an isolated query dependency instead of an actual Tour post-type key. No published Tour or Rate is modified.
+
+Run on authorized Staging with an available WP-CLI slot:
+wp --path=/var/www/html --skip-themes eval-file tests/manual/test_mad4b_page_dependency_live_transaction.php
+
+Verified real Staging response: pass=true, affected=2, unrelated_page_epoch=1, related_page_epoch=2, query_epoch=2, rollback_clean=true, qa_rows_after=0.
+
+The existing Post Type / Taxonomy epoch still influences Query Cache keys. Selective graph epochs work, but the legacy broad invalidation remains on as a fallback. Removing it requires additional predicate/WPML/fragment/FastCGI acceptance.
