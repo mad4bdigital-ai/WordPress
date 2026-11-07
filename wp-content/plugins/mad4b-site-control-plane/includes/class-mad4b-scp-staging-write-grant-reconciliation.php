@@ -192,10 +192,45 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 				'mad4b/runtime-release-set-apply' => 'core',
 				'mad4b/staging-offline-attestor-enroll-apply' => 'core',
 				'mad4b/taxonomy-update-term' => 'core',
-				'mad4b/translation-link-posts' => 'core',
-				'mad4b/translation-set-post-language' => 'core',
+				'mad4b/translation-link-posts' => 'translation',
+				'mad4b/translation-set-post-language' => 'translation',
 				'media/import-external' => 'media',
 				'media/remote-import-apply' => 'media',
+
+			// 2026-11-07 read-only Staging inventory reconciliation:
+			// the registered mad4b-write server mounts 121 exact providers;
+			// all 19 pairs below ALREADY possess exact current-environment
+			// allows on the enrolled source site, but fresh CI Sites fail
+			// admission because this source-reviewed eligibility table lags
+			// the code-owned first-party provider catalog. These entries
+			// restore *eligibility for exact owner-reviewed reconciliation*,
+			// not a new grant, standing delegation or operation authorization.
+			// Preserve OAuth step-up, exact plan digest, candidate identity,
+			// same-site owner, per-ability execution checks and audit.
+			// Never inherit these pairs onto Production or Breakglass.
+			'context/native-owner-transfer-apply' => 'google_drive_context',
+			'mad4b/approval-plan' => 'core',
+			'mad4b/content-job-cancel' => 'core',
+			'mad4b/content-job-create' => 'core',
+			'mad4b/content-job-transition' => 'core',
+			'mad4b/content-update-post' => 'core',
+			'mad4b/data-processing-record-decision' => 'core',
+			// High-impact operations remain individually gated by native
+			// target/path/SQL allowlists, the original one-time ticket and
+			// current-environment permission_callback. This policy alone
+			// cannot execute an operation or mint a wildcard grant.
+			'mad4b/database-update' => 'core',
+			'mad4b/draft-apply' => 'core',
+			'mad4b/filesystem-patch' => 'core',
+			'mad4b/filesystem-write' => 'core',
+			'mad4b/firecrawl-research-capture' => 'core',
+			'mad4b/intent-registry-reconcile' => 'core',
+			'mad4b/mutation-undo' => 'core',
+			'mad4b/plugin-activate' => 'core',
+			'mad4b/plugin-deactivate' => 'core',
+			'mad4b/provider-canary-execute' => 'core',
+			// The two existing Staging WPML pairs above now match the
+			// registered translation provider (not core).
 			);
 			// Only a registered, exact central Staging diagnostic may receive a
 			// separately approved core grant. General Hub enqueue remains forbidden.

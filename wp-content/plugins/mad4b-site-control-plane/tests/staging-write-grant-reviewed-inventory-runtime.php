@@ -46,8 +46,8 @@ $expected = array(
     'mad4b/runtime-release-set-apply' => 'core',
     'mad4b/staging-offline-attestor-enroll-apply' => 'core',
     'mad4b/taxonomy-update-term' => 'core',
-    'mad4b/translation-link-posts' => 'core',
-    'mad4b/translation-set-post-language' => 'core',
+    'mad4b/translation-link-posts' => 'translation',
+    'mad4b/translation-set-post-language' => 'translation',
     'media/import-external' => 'media',
     'media/remote-import-apply' => 'media',
 );
