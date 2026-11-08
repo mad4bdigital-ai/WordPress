@@ -1,0 +1,9 @@
+[Unit]
+Description=Audit MAD4B full cache purge callsites every 30 minutes
+[Timer]
+OnBootSec=3min
+OnUnitInactiveSec=30min
+AccuracySec=60s
+Unit=mad4b-cache-native-full-purge-guard.service
+[Install]
+WantedBy=timers.target
