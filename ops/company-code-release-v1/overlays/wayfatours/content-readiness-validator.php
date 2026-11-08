@@ -521,9 +521,11 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                 if($site!=='' && $post_id>0
                     && hash_equals($site,(string)($e['site_uuid']??''))
                     && preg_match('/^[a-f0-9]{64}$/D',(string)($e['source_sha256']??''))) {
-                    $policy=class_exists('MAD4B_SCP_Context_Authority',false)
-                        ?MAD4B_SCP_Context_Authority::review_policy():array();
-                    $mode=(string)($policy['mode']??'human_only');
+                    $policy=class_exists('MAD4B_Media_Review_Hierarchy_V1',false)
+                        ?MAD4B_Media_Review_Hierarchy_V1::effective():array();
+                    $mode=!empty($policy['policy_ready'])
+                        ?(string)$policy['mode']
+                        :(string)(MAD4B_SCP_Context_Authority::review_policy()['mode']??'human_only');
                     // WPML siblings belong to one original media family.
                     // Do not create two Content Jobs for identical gallery
                     // content when EN and ES share one tour/gallery.
