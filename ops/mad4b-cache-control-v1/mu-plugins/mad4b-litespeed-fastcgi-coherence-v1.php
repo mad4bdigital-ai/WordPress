@@ -2,14 +2,16 @@
 /**
  * Plugin Name: MAD4B LiteSpeed → FastCGI Selective Coherence
  * Description: Map explicit LiteSpeed URL/Post purge events onto site-local Nginx FastCGI path generations; never purge all or flush Redis.
- * Version: 1.0.0
+ * Version: 1.1.0
  */
 defined('ABSPATH') || exit;
 if (!class_exists('MAD4B_LiteSpeed_FastCGI_Coherence_V1',false)) {
 final class MAD4B_LiteSpeed_FastCGI_Coherence_V1 {
-    public const VERSION='1.0.0';
+    public const VERSION='1.1.0';
     public const RECEIPTS='mad4b_litespeed_fastcgi_receipts_v1';
-    private const MAX_PATHS=60;
+    private const BATCH_PATHS=60;
+    private const MAX_PATHS=300;
+    public const GAPS='mad4b_litespeed_fastcgi_unresolved_gaps_v1';
     private static array $paths=[];
     private static array $events=[];
     private static bool $overflow=false;
@@ -74,7 +76,8 @@ final class MAD4B_LiteSpeed_FastCGI_Coherence_V1 {
                 'litespeed_purged_link','litespeed_purged_post','litespeed_purged_frontpage'],
             'scope'=>'site_local_public_paths_only',
             'global_litespeed_purge_all'=>'NOT_MAPPED_TO_FASTCGI',
-            'redis_flush_allowed'=>false,'batch_max'=>self::MAX_PATHS,
+            'redis_flush_allowed'=>false,'batch_max'=>self::BATCH_PATHS,'request_max'=>self::MAX_PATHS,
+            'unresolved_gap'=>get_option(self::GAPS,[]),
             'recent_receipts'=>array_reverse((array)get_option(self::RECEIPTS,[]))];
     }
 
@@ -87,19 +90,50 @@ final class MAD4B_LiteSpeed_FastCGI_Coherence_V1 {
         self::$finished=true;
         if (!self::$overflow && !self::$paths)return;
         $paths=array_keys(self::$paths);
-        $result=self::$overflow?
-            ['status'=>'batch_overflow_skipped','versioned'=>0]:
-            MAD4B_Cache_Control_V1::socket_purge($paths);
+        $versioned=0;$batch_count=0;$failed_batches=0;
+        $result=['status'=>'batch_overflow_skipped','versioned'=>0];
+        if (!self::$overflow) {
+            foreach(array_chunk($paths,self::BATCH_PATHS) as $chunk) {
+                $batch_count++;
+                try {
+                    $r=MAD4B_Cache_Control_V1::socket_purge($chunk);
+                } catch (\Throwable $error) {
+                    // Failure must not break WordPress shutdown or trigger a broad purge.
+                    $r=['status'=>'socket_exception','versioned'=>0];
+                }
+                $count=is_array($r)?(int)($r['versioned']??0):0;
+                if (!is_array($r) || ($r['status']??'')!=='ok' ||
+                    $count!==count($chunk)) {
+                    $failed_batches++;
+                    // Keep trying other independently bounded batches.
+                } else $versioned+=$count;
+            }
+            $result=['status'=>$failed_batches?'partial_batch_failure':'ok',
+                'versioned'=>$versioned,'batch_count'=>$batch_count,
+                'failed_batches'=>$failed_batches];
+        }
+        $gap=self::$overflow || $failed_batches>0;
         $receipt=[
             'contract'=>'mad4b.lsc.fastcgi.receipt.v1',
             'at_utc'=>gmdate('c'),
             'events'=>array_keys(self::$events),
             'paths_count'=>count($paths),'sample_paths'=>array_slice($paths,0,6),
             'result'=>$result,'redis_flushed'=>false,
-            'global_invalidation_performed'=>false
+            'global_invalidation_performed'=>false,
+            'invalidation_gap'=>$gap
         ];
-        // Keep the previous 20 status receipts, never store credentials or
-        // customer payloads; preserve existing source cache authority.
+        if ($gap) {
+            // Persist a visible ticket; do NOT silently issue a site-wide purge.
+            update_option(self::GAPS,[
+                'status'=>$result['status'],
+                'created_at_utc'=>$receipt['at_utc'],
+                'known_paths'=>$paths,
+                'truncated_unknown_paths'=>self::$overflow,
+                'verified_paths'=>$versioned,
+                'manual_review_required'=>true
+            ],false);
+            do_action('mad4b/cache_control/fastcgi_invalidation_gap',$receipt);
+        }
         $rows=(array)get_option(self::RECEIPTS,[]);
         $rows[]=$receipt;
         update_option(self::RECEIPTS,array_slice($rows,-20),false);
@@ -119,6 +153,11 @@ final class MAD4B_LiteSpeed_FastCGI_Coherence_V1 {
         echo '<p>URL, published Post and static Front Page purge events selectively version Nginx FastCGI paths. No Redis flush, no blanket HTML purge.</p>';
         echo '<p><strong>Global LiteSpeed Purge All:</strong> Not mapped to FastCGI. Use MAD4B Cache Control for an explicitly previewed URL scope.</p>';
         echo '<p><a href="'.esc_url(admin_url('tools.php?page=mad4b-cache-lifecycle')).'">MAD4B Cache Control</a></p>';
+        $gap=get_option(self::GAPS,[]);
+        if (is_array($gap) && !empty($gap['manual_review_required']))
+            echo '<div class="notice notice-warning"><p>Unresolved FastCGI invalidation gap: '.
+                esc_html((string)($gap['status']??'unknown')).
+                '. Inspect the affected scope using MAD4B Cache Control. No global purge was issued.</p></div>';
         echo '<h2>Recent bridge receipts</h2><table class="widefat striped"><thead><tr><th>UTC</th><th>Event</th><th>Paths</th><th>Versioned</th><th>Status</th></tr></thead><tbody>';
         foreach(array_slice($s['recent_receipts'],0,10) as $r)
             echo '<tr><td>'.esc_html($r['at_utc']??'').'</td><td>'.
@@ -139,3 +178,4 @@ final class MAD4B_LiteSpeed_FastCGI_Coherence_V1 {
 }
 MAD4B_LiteSpeed_FastCGI_Coherence_V1::boot();
 }
+

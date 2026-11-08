@@ -30,6 +30,8 @@ jobs:
           php "$ROOT/tests/test_preview_confirm_contract.php" "$ROOT/mu-plugins/mad4b-cache-control-v1.php"
           php "$ROOT/tests/test_saved_batch_no_socket.php" "$ROOT/mu-plugins/mad4b-cache-control-v1.php" "$ROOT/tests/saved-tour-routes.json"
           php "$ROOT/tests/lsc-fastcgi-pure-contract.php" "$ROOT/mu-plugins/mad4b-litespeed-fastcgi-coherence-v1.php"
+          php "$ROOT/tests/lsc-fastcgi-pure-contract.php" "$ROOT/mu-plugins/mad4b-litespeed-fastcgi-coherence-v1.php" batch
+          php "$ROOT/tests/lsc-fastcgi-pure-contract.php" "$ROOT/mu-plugins/mad4b-litespeed-fastcgi-coherence-v1.php" partial
           php "$ROOT/tests/lsc-fastcgi-pure-contract.php" "$ROOT/mu-plugins/mad4b-litespeed-fastcgi-coherence-v1.php" overflow
           php "$ROOT/tests/test-safe-public-html.php" "$ROOT/mu-plugins/mad4b-safe-public-html-purge-v1.php"
           git diff --check
@@ -39,4 +41,5 @@ jobs:
           python3 -m py_compile ops/mad4b-cache-control-v1/bin/company-cache-control-readiness-v1.py
           python3 ops/mad4b-cache-control-v1/tools/mad4b-nginx-public-html-epoch-v1.py --selftest
           python3 ops/mad4b-cache-control-v1/tools/mad4b-safe-public-cache-callsite-guard-v1.py --selftest
+          python3 ops/mad4b-cache-control-v1/tools/mad4b-cache-purge-origin-inventory-v1.py --selftest
           python3 -m py_compile ops/mad4b-cache-control-v1/tools/mad4b-nginx-public-html-epoch-v1.py ops/mad4b-cache-control-v1/tools/mad4b-safe-public-cache-callsite-guard-v1.py

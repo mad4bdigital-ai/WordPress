@@ -26,8 +26,15 @@ $result=$cls::purge_public_html('qa_fixtures');
 if(($result['status']??'')!=='public_html_purge_queued'
   ||\LiteSpeed\Purge::$page_only!==1 ||\LiteSpeed\Purge::$global_all!==0)
    throw new \RuntimeException('VENDOR_FULL_PURGE_EXECUTED');
-if(file_get_contents($cls::signal_file())!=="MAD4B_SAFE_PUBLIC_HTML_ALL_V1\n")
+$signal=file_get_contents($cls::signal_file());
+if(!preg_match('/^MAD4B_SAFE_PUBLIC_HTML_ALL_V2\n[a-f0-9]{24}\n$/D',$signal))
  throw new \RuntimeException('SIGNAL_INCORRECT');
+if(($result['request_id']??'')!==trim(explode("\n",$signal)[1]))
+ throw new \RuntimeException('REQUEST_ID_NOT_CORRELATED');
+$again=$cls::purge_public_html('idempotent');
+if(($again['request_id']??'')!==$result['request_id'] ||
+ $again['status']!=='already_queued_in_request' || \LiteSpeed\Purge::$page_only!==1)
+ throw new \RuntimeException('DUPLICATE_REQUEST_ID_NOT_STABLE');
 unlink($cls::signal_file());
 symlink('/etc/passwd',$cls::signal_file());
 $before=\LiteSpeed\Purge::$page_only;
@@ -40,3 +47,4 @@ rmdir(WP_CONTENT_DIR.'/.mad4b-purge');
 rmdir(WP_CONTENT_DIR);
 echo "SAFE_PUBLIC_HTML_PURE_TEST_PASS page_only=1 global_object_flush=0 symlink_denied=1\n";
 }
+

@@ -17,7 +17,8 @@ SITES={
 }
 STATE=Path('/var/lib/mad4b-public-html-epoch')
 MARK='# MAD4B_PUBLIC_HTML_GLOBAL_EPOCH_V1'
-TRIGGER=b'MAD4B_SAFE_PUBLIC_HTML_ALL_V1\n'
+TRIGGER_V1=b'MAD4B_SAFE_PUBLIC_HTML_ALL_V1\n'
+TRIGGER_V2=re.compile(rb'^MAD4B_SAFE_PUBLIC_HTML_ALL_V2\n([0-9a-f]{24})\n$')
 RE=r'(?m)^(?P<indent>\s*fastcgi_cache_key\s+")(?P<key>[^"]*)(?P<end>";\s*)$'
 RE_EPOCH=re.compile(r'(?m)^(?P<a>\s*default\s+")(?P<val>(?:\|g[0-9a-f]{12})?)(?P<b>";)\s*$')
 def timestamp():return datetime.datetime.now(datetime.timezone.utc).isoformat()
@@ -101,6 +102,12 @@ def write_receipt(site,body):
     STATE.mkdir(mode=0o700,parents=True,exist_ok=True)
     atomic(STATE/f'{site}.json',json.dumps(body,indent=2,sort_keys=True).encode()+b'\n',0o600)
 
+def parse_signal(raw:bytes):
+    if raw==TRIGGER_V1:return None
+    match=TRIGGER_V2.fullmatch(raw)
+    if not match:raise RuntimeError('UNRECOGNIZED_PURGE_SIGNAL')
+    return match.group(1).decode('ascii')
+
 def main():
     ap=argparse.ArgumentParser()
     ap.add_argument('--site',choices=SITES)
@@ -115,15 +122,24 @@ def main():
         try:conf_with_epoch(transformed)
         except ValueError:pass
         else:raise AssertionError('duplicate_enrollment_accepted')
+        assert parse_signal(TRIGGER_V1) is None
+        assert parse_signal(b'MAD4B_SAFE_PUBLIC_HTML_ALL_V2\n0123456789abcdef01234567\n')=='0123456789abcdef01234567'
+        try:parse_signal(b'MAD4B_SAFE_PUBLIC_HTML_ALL_V2\n../unsafe\n')
+        except RuntimeError:pass
+        else:raise AssertionError('INVALID_SIGNAL_ACCEPTED')
         print('GLOBAL_EPOCH_SELFTEST_PASS');return
     site=args.site
     if not site:ap.error('--site required')
     cfg=SITES[site];signal=cfg['signal'];conf=cfg['conf'];container=cfg['container']
     old_state=json.loads((STATE/f'{site}.json').read_text()) if (STATE/f'{site}.json').is_file() else {}
     x=os.lstat(signal)
-    if not stat.S_ISREG(x.st_mode) or x.st_uid!=33 or x.st_size!=len(TRIGGER):
+    if not stat.S_ISREG(x.st_mode) or x.st_uid!=33 or not (len(TRIGGER_V1)<=x.st_size<=128):
         raise RuntimeError('UNSAFE_SITE_SIGNAL')
-    if signal.read_bytes()!=TRIGGER:raise RuntimeError('UNRECOGNIZED_PURGE_SIGNAL')
+    raw_signal=signal.read_bytes()
+    after=os.lstat(signal)
+    if after.st_mtime_ns!=x.st_mtime_ns or after.st_size!=x.st_size:
+        raise RuntimeError('SIGNAL_CHANGED_DURING_READ')
+    request_id=parse_signal(raw_signal)
     prev=int(old_state.get('processed_mtime_ns',0))
     if x.st_mtime_ns<=prev:
         print('NO_NEW_PUBLIC_PURGE_SIGNAL');return
@@ -144,7 +160,7 @@ def main():
         except Exception:pass
         raise
     result={'contract':'mad4b.public-html.global-epoch.v1','site':site,'utc':timestamp(),
-            'status':'ok','old_config_sha256':sha(content),'new_config_sha256':sha(new),
+            'status':'ok','request_id':request_id,'old_config_sha256':sha(content),'new_config_sha256':sha(new),
             'new_epoch':'g'+epoch,'processed_mtime_ns':x.st_mtime_ns,
             'last_rotated_unix':int(time.time()),'nginx_validation':'PASS',
             'redis_mutated':False,'cache_keys_rotated_sitewide':True,
@@ -153,3 +169,4 @@ def main():
     atomic(cfg['status'],json.dumps(result,sort_keys=True).encode()+b'\n',0o640)
     print(json.dumps(result,sort_keys=True))
 if __name__=='__main__':main()
+
