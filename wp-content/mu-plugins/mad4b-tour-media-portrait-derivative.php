@@ -53,7 +53,10 @@ final class MAD4B_Tour_Media_Portrait_Derivative_V1 {
         if($have!==$need)return self::err('mad4b_portrait_locale_family_incomplete');
         foreach($alt as $lang=>$v)if(!is_string($v)||mb_strlen($v)<30||mb_strlen($v)>190
             ||wp_strip_all_tags($v)!==$v)return self::err('mad4b_portrait_alt_text_invalid');
-        $review=(array)MAD4B_SCP_Context_Authority::review_policy();
+        $review=class_exists('MAD4B_Media_Review_Hierarchy_V1',false)
+            ?MAD4B_Media_Review_Hierarchy_V1::effective():[];
+        if(empty($review['policy_ready']))
+            return self::err('mad4b_portrait_media_policy_inheritance_unready');
         if(!preg_match('/^[a-f0-9]{64}$/D',(string)$m['review_evidence_sha256']))
             return self::err('mad4b_portrait_visual_evidence_invalid');
         $hash=hash('sha256',wp_json_encode([$site['site_uuid'],$pid,$source,$m['source_sha256'],$crop]));
@@ -70,11 +73,14 @@ final class MAD4B_Tour_Media_Portrait_Derivative_V1 {
             'wpml_locales'=>array_keys($family),
             'derivative_relative_path'=>$rel,
             'review_policy'=>$review['mode']??'human_only',
+            'review_policy_source'=>$review['source']??'unknown',
+            'review_policy_fingerprint'=>$review['policy_fingerprint']??'',
             'source_image_origin_certified'=>false,
             'review_source'=>'visual_observation_without_photo_provenance'];
         if(!$create){$result['status']='dry_run_ready';return $result;}
-        if(($review['mode']??'human_only')!=='ai_only')
-            return self::err('mad4b_portrait_human_approval_required');
+        if(($review['mode']??'human_only')!=='ai_only'
+           ||MAD4B_Media_Review_Hierarchy_V1::effective()['policy_fingerprint']!==$review['policy_fingerprint'])
+            return self::err('mad4b_portrait_review_policy_change_or_manual_review_required');
         $lock=MAD4B_SCP_Distributed_Lock::catalog_name('media-portrait:'.$site['site_uuid'].':'.$pid);
         $held=MAD4B_SCP_Distributed_Lock::acquire($lock);
         if(is_wp_error($held))return $held;
