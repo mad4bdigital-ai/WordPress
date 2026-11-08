@@ -9,8 +9,16 @@ if (!class_exists('MAD4B_Company_Hostinger_CDN_Operation_V1', false)) {
 final class MAD4B_Company_Hostinger_CDN_Operation_V1 {
     const RECEIPT = 'mad4b_company_hostinger_cdn_operation_v1';
     const KNOWLEDGE = 'mad4b_company_hostinger_cdn_knowledge_v1';
+    const ROUTES = 'mad4b_company_hostinger_two_route_bindings_v1';
+    const PROPOSALS = 'mad4b_company_hostinger_connection_proposals_v1';
+    const HOST_ACCOUNTS = array(
+        'hosting-1'=>'cloud-startup',
+        'hosting-2'=>'allroyalegypt',
+        'hosting-3'=>'egypttourgates',
+    );
     public static function boot() {
         add_action('admin_menu', array(__CLASS__, 'menu'), 99);
+        add_action('admin_post_mad4b_hostinger_propose_connection', array(__CLASS__, 'save_connection_proposal'));
         add_action('wp_abilities_api_categories_init', function () {
             if (function_exists('wp_register_ability_category')) {
                 wp_register_ability_category('mad4b-hostinger-cdn',
@@ -75,6 +83,79 @@ final class MAD4B_Company_Hostinger_CDN_Operation_V1 {
         );
         return $items;
     }
+
+    private static function enrolled_company_sites() {
+        if (!class_exists('MAD4B_Company_Environment_Registry_V2', false)) return array();
+        $registry=MAD4B_Company_Environment_Registry_V2::discover();
+        $out=array();
+        foreach ((array)$registry as $company=>$row) {
+            foreach ((array)($row['environments']??array()) as $env=>$site) {
+                if (!is_array($site) || !in_array($env,array('production','staging'),true)) continue;
+                $origin=(string)($site['canonical_origin']??'');
+                $parts=wp_parse_url($origin);
+                if (!is_array($parts) || ($parts['scheme']??'')!=='https' ||
+                    empty($parts['host']) || isset($parts['user']) || isset($parts['pass']) ||
+                    isset($parts['port']) || isset($parts['query']) || isset($parts['fragment']) ||
+                    !in_array($parts['path']??'',array('','/'),true)) continue;
+                $out[$company.':'.$env]=array('company_id'=>$company,
+                    'environment'=>$env,'origin'=>$origin,
+                    'site_uuid'=>$site['site_uuid']??null);
+            }
+        }
+        return $out;
+    }
+    public static function save_connection_proposal() {
+        if (!class_exists('MAD4B_Company_Portfolio_Manager_V1',false) ||
+            !MAD4B_Company_Portfolio_Manager_V1::staging() ||
+            !current_user_can('manage_options') || !current_user_can('activate_plugins')) {
+            wp_die('Company Manager administrator required', '', array('response'=>403));
+        }
+        check_admin_referer('mad4b_hostinger_binding_proposal_v1');
+        $scope=sanitize_text_field(wp_unslash((string)($_POST['company_scope']??'')));
+        $target=sanitize_key(wp_unslash((string)($_POST['ssh_target']??'')));
+        $candidate=strtolower(trim(sanitize_text_field(wp_unslash((string)($_POST['api_website_domain']??'')))));
+        $sites=self::enrolled_company_sites();
+        if (!isset($sites[$scope]) || !array_key_exists($target,self::HOST_ACCOUNTS) ||
+            !is_string($candidate) || strlen($candidate)>253 ||
+            !filter_var($candidate,FILTER_VALIDATE_DOMAIN,FILTER_FLAG_HOSTNAME) ||
+            preg_match('/[\/:@?#]/', $candidate)) {
+            wp_die('Invalid company or provider binding candidate', '', array('response'=>422));
+        }
+        $site=$sites[$scope];
+        $rows=get_option(self::PROPOSALS,array());
+        if (!is_array($rows))$rows=array();
+        $rows[$scope]=array(
+            'company_id'=>$site['company_id'],
+            'environment'=>$site['environment'],
+            'origin'=>$site['origin'],
+            'company_site_uuid'=>$site['site_uuid'],
+            'ssh_target'=>$target,
+            'api_account_alias'=>self::HOST_ACCOUNTS[$target],
+            'api_website_domain_candidate'=>$candidate,
+            'status'=>'PROPOSED_PENDING_EXTERNAL_SSH_AND_API_WEBSITE_VERIFICATION',
+            'proposed_utc'=>gmdate('c')
+        );
+        update_option(self::PROPOSALS,$rows,false);
+        wp_safe_redirect(add_query_arg(array(
+            'page'=>'mad4b-company-hostinger-cdn-operations',
+            'binding_proposed'=>1
+        ),admin_url('admin.php')));
+        exit;
+    }
+    public static function connections() {
+        $routing=get_option(self::ROUTES,array());
+        $proposals=get_option(self::PROPOSALS,array());
+        if (!is_array($routing))$routing=array();
+        if (!is_array($proposals))$proposals=array();
+        return array(
+            'contract'=>'mad4b.company-hostinger-connections.v1',
+            'routing_state'=>$routing['contract']??'NOT_PROJECTED',
+            'observed_utc'=>$routing['utc']??null,
+            'routes'=>$routing['sites']??array(),
+            'proposals'=>$proposals,
+            'proposals_are_authorizing'=>false,
+        );
+    }
     public static function status() {
         $data = get_option(self::RECEIPT, array());
         $knowledge = get_option(self::KNOWLEDGE, array());
@@ -92,6 +173,7 @@ final class MAD4B_Company_Hostinger_CDN_Operation_V1 {
             'companies' => $data['companies'] ?? array(),
             'provider_edge_purge_called' => $data['provider_edge_purge_called'] ?? false,
             'native_313_receipt' => false,
+            'connection_routing' => self::connections(),
             'knowledge_id' => (string)($knowledge['knowledge_id'] ?? ''),
             'operation_summary' => (string)($knowledge['problem'] ?? ''),
             'next_step' => (string)($knowledge['remediation']['provider_action'] ?? ''),
@@ -118,6 +200,45 @@ final class MAD4B_Company_Hostinger_CDN_Operation_V1 {
                 '</td></tr>';
         }
         echo '</tbody></table>';
+        $connections=self::connections();
+        echo '<h2>Internal Company Identity &amp; External Host Routing</h2>';
+        echo '<p>Internal: Company Environment Registry. External: pinned Registry Infra SSH and Hostinger API website binding. A proposed account reference is not a credential or authorization grant.</p>';
+        echo '<table class="widefat striped"><thead><tr><th>Company / Environment</th><th>Canonical origin</th><th>SSH</th><th>Hostinger API</th><th>Composite routing</th></tr></thead><tbody>';
+        foreach ((array)$connections['routes'] as $scope=>$record) {
+            if (!is_array($record))continue;
+            $route=$record['routes']['company.cache.hostinger.refresh']??array();
+            echo '<tr><td>'.esc_html((string)$scope).'</td><td>'.
+                esc_html((string)($record['canonical_origin']??'')).'</td><td>'.
+                esc_html((string)($record['ssh_target']??'')).': '.
+                esc_html(!empty($record['ssh_verified'])?'VERIFIED':'NOT_VERIFIED').'</td><td>'.
+                esc_html((string)($record['api_account_alias']??'')).': '.
+                esc_html((string)($record['api_state']??'UNKNOWN')).'</td><td>'.
+                esc_html((string)($route['state']??'UNKNOWN')).'</td></tr>';
+        }
+        echo '</tbody></table>';
+        if(class_exists('MAD4B_Company_Portfolio_Manager_V1',false) &&
+           MAD4B_Company_Portfolio_Manager_V1::staging() &&
+           current_user_can('activate_plugins')) {
+            echo '<h3>Propose a company-site Hostinger/SSH binding</h3>';
+            echo '<p>Saved proposals are verified by the external Registry Infra worker. They never contain an API token or SSH private key, and do not enable writes.</p>';
+            if (isset($_GET['binding_proposed']))echo '<div class="notice notice-success"><p>Binding proposal recorded; awaiting independent external verification.</p></div>';
+            echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
+            echo '<input type="hidden" name="action" value="mad4b_hostinger_propose_connection">';
+            wp_nonce_field('mad4b_hostinger_binding_proposal_v1');
+            echo '<p><label>Company site <select name="company_scope" required>';
+            foreach (self::enrolled_company_sites() as $scope=>$site) {
+                echo '<option value="'.esc_attr((string)$scope).'">'.esc_html((string)$scope).' — '.esc_html((string)$site['origin']).'</option>';
+            }
+            echo '</select></label></p>';
+            echo '<p><label>Registered SSH/Hostinger account <select name="ssh_target" required>';
+            foreach (self::HOST_ACCOUNTS as $target=>$alias) {
+                echo '<option value="'.esc_attr($target).'">'.esc_html($target.' / '.$alias).'</option>';
+            }
+            echo '</select></label></p>';
+            echo '<p><label>Hostinger website domain (metadata only) <input name="api_website_domain" type="text" maxlength="253" required placeholder="example.com"></label></p>';
+            submit_button('Save binding proposal — external verification required');
+            echo '</form>';
+        }
         echo '<h2>Operational Knowledge</h2><p><strong>' .
              esc_html($status['knowledge_id']) . '</strong>: ' .
              esc_html($status['operation_summary']) . '</p><p>' .

@@ -5,6 +5,7 @@ from pathlib import Path
 BASE=Path('/opt/mad4b-company-provisioning')
 RECEIPT=BASE/'reports/company-hostinger-cdn-operation-current.json'
 KNOWLEDGE=BASE/'knowledge/hostinger-cdn/hostinger-cdn-ssh-invalidation-v1.json'
+ROUTING=BASE/'reports/company-hostinger-two-route-bindings-current.json'
 CONTAINER='php-wkgtkzta35wkkgouwt6ruljc'
 EXPECTED_ORIGIN='https://tours.dev.mad4b.com'
 def wp(script):
@@ -29,6 +30,14 @@ def main():
         for key,val in doc['companies'].items()
       }
     }
+    routes=json.loads(ROUTING.read_text())
+    assert routes['contract']=='mad4b.company-hostinger-two-route-bindings.v1'
+    assert 0<len(routes['sites'])<=100
+    routing_age=(datetime.datetime.now(datetime.timezone.utc)-datetime.datetime.fromisoformat(routes['utc'])).total_seconds()
+    if not 0<=routing_age<3600:raise RuntimeError('STALE_HOSTINGER_ROUTING_EVIDENCE')
+    route_projection={'contract':routes['contract'],'utc':routes['utc'],
+       'site_count':routes['site_count'],'sites':routes['sites'],
+       'websites_verified_through_api':routes['websites_verified_through_api']}
     know={'knowledge_id':kb['knowledge_id'],'problem':kb['problem'],
           'remediation':{'provider_action':kb['remediation']['provider_action']}}
     # Site identity precondition, then update only isolated nonautoload options;
@@ -36,6 +45,7 @@ def main():
     for option,value in (
       ('mad4b_company_hostinger_cdn_operation_v1',safe),
       ('mad4b_company_hostinger_cdn_knowledge_v1',know),
+      ('mad4b_company_hostinger_two_route_bindings_v1',route_projection),
     ):
         encoded=base64.b64encode(json.dumps(value,ensure_ascii=False,separators=(',',':')).encode()).decode()
         php=(
@@ -44,17 +54,22 @@ def main():
           '$value=json_decode(base64_decode('+json.dumps(encoded)+'),true);'
           'if(!is_array($value)){throw new RuntimeException("INVALID_PROJECTED_JSON");}'
           'update_option('+json.dumps(option)+',$value,false);'
-          'echo get_option('+json.dumps(option)+')["'+('run_id' if option.endswith('operation_v1') else 'knowledge_id')+'"];'
+          'echo get_option('+json.dumps(option)+')["'+('run_id' if option.endswith('operation_v1') else ('contract' if option.endswith('bindings_v1') else 'knowledge_id'))+'"];'
         )
         reported=wp(php)
-        expected=doc['run_id'] if option.endswith('operation_v1') else kb['knowledge_id']
+        expected=doc['run_id'] if option.endswith('operation_v1') else (routes['contract'] if option.endswith('bindings_v1') else kb['knowledge_id'])
         if expected not in reported:raise RuntimeError('CENTRAL_OPTION_READBACK_NOT_VERIFIED')
     # Read final display through the actual MU plugin rather than trusting the option.
     answer=wp('echo wp_json_encode(MAD4B_Company_Hostinger_CDN_Operation_V1::status());')
     parsed=json.loads(answer.splitlines()[-1])
-    if parsed['run_id']!=doc['run_id'] or parsed['knowledge_id']!=kb['knowledge_id']:
+    if (parsed['run_id']!=doc['run_id'] or parsed['knowledge_id']!=kb['knowledge_id'] or
+        parsed['connection_routing']['routing_state']!=routes['contract'] or
+        len(parsed['connection_routing']['routes'])!=len(routes['sites'])):
         raise RuntimeError('CENTRAL_MANAGER_VIEW_READBACK_MISMATCH')
     print(json.dumps({'central_company_manager':'Tours.dev Staging',
       'projected_run_id':doc['run_id'],'state':parsed['state'],'companies':len(parsed['companies']),
-      'knowledge_id':parsed['knowledge_id'],'native_313_receipt':False}))
+      'knowledge_id':parsed['knowledge_id'],'routed_sites':len(routes['sites']),
+      'ssh_verified_sites':sum(row['ssh_verified'] for row in routes['sites'].values()),
+      'api_verified_sites':sum(row['api_site_verified'] for row in routes['sites'].values()),
+      'native_313_receipt':False}))
 if __name__=='__main__':main()
