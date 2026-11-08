@@ -65,6 +65,21 @@ class ReadinessTests(unittest.TestCase):
         m.socket_state=lambda *a:{'state':'SERVICE_NOT_ACTIVE'}
         self.assertEqual(m.site_observation('a',self.spec,self.expected)['state'],'DRIFT')
 
+    def test_pinned_registry_unknown_upgrade_drift(self):
+        expected=hashlib.sha256(self.registry.read_bytes()).hexdigest()
+        self.registry.write_text('unexpected new registry')
+        r=m.site_observation('wayfa',self.spec,self.expected,registry_hash=expected)
+        self.assertEqual(r['state'],'DRIFT')
+        self.assertEqual(r['registry_integrity'],'HASH_DRIFT')
+        self.assertEqual(self.registry.read_text(),'unexpected new registry')
+
+    def test_pinned_bridge_missing_drift(self):
+        self.spec['bridge']=str(self.plugin.parent/'missing-bridge.php')
+        r=m.site_observation('wayfa',self.spec,self.expected,
+                             bridge_hash=hashlib.sha256(b'expected bridge').hexdigest())
+        self.assertEqual(r['state'],'DRIFT')
+        self.assertEqual(r['bridge_integrity'],'MISSING_OR_UNSAFE')
+
     def test_atomic_report_mode_is_private(self):
         target=Path(self.temp.name)/'out.json'
         m.write_json_atomic(target,{'contract':'test','private':True})
