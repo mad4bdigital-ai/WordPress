@@ -1,0 +1,17 @@
+[Unit]
+Description=MAD4B Cloud Startup WordPress domains and cache capabilities inventory (read-only SSH)
+After=network-online.target
+Wants=network-online.target
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/flock -n /run/lock/mad4b-hostinger-cloud-startup-inventory.lock /usr/bin/python3 /opt/mad4b-company-provisioning/bin/company-hostinger-cloud-startup-inventory-v1.py
+TimeoutStartSec=240
+Nice=15
+CPUWeight=10
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=/opt/mad4b-company-provisioning/reports /run/lock
+UMask=0077
+StandardOutput=journal
+StandardError=journal

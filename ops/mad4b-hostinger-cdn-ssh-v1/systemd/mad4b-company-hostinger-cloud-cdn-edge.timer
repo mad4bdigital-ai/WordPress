@@ -1,0 +1,9 @@
+[Unit]
+Description=Half-hour Hostinger Cloud CDN private-context isolation check
+[Timer]
+OnBootSec=9min
+OnUnitInactiveSec=30min
+AccuracySec=1min
+Unit=mad4b-company-hostinger-cloud-cdn-edge.service
+[Install]
+WantedBy=timers.target

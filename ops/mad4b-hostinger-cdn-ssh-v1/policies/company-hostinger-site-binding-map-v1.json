@@ -1,0 +1,13 @@
+{
+  "contract": "mad4b.company-hostinger-site-binding-map.v1",
+  "sites": [
+    {"company_id":"tourism-almallahgroup","environment":"production","origin":"https://tourism.almallahgroup-mg.com","ssh_target":"hosting-1","ssh_username":"u338416126","ssh_root":"/home/u338416126/domains/almallahgroup-mg.com/public_html/tourism.almallahgroup-mg.com","api_account_alias":"cloud-startup","api_website_domain_candidate":"almallahgroup-mg.com"},
+    {"company_id":"all-royal-egypt","environment":"production","origin":"https://www.allroyalegypt.com","ssh_target":"hosting-2","ssh_username":"u948953904","ssh_root":"/home/u948953904/domains/allroyalegypt.com/public_html","api_account_alias":"allroyalegypt","api_website_domain_candidate":"allroyalegypt.com"},
+    {"company_id":"all-royal-egypt","environment":"staging","origin":"https://staging.allroyalegypt.com","ssh_target":"hosting-2","ssh_username":"u948953904","ssh_root":"/home/u948953904/domains/allroyalegypt.com/public_html/staging","api_account_alias":"allroyalegypt","api_website_domain_candidate":"allroyalegypt.com"},
+    {"company_id":"egypt-tour-gates","environment":"production","origin":"https://egypttourgates.com","ssh_target":"hosting-3","ssh_username":"u783534439","ssh_root":"/home/u783534439/domains/egypttourgates.com/public_html","api_account_alias":"egypttourgates","api_website_domain_candidate":"egypttourgates.com"},
+    {"company_id":"egypt-tour-gates","environment":"staging","origin":"https://staging.egypttourgates.com","ssh_target":"hosting-3","ssh_username":"u783534439","ssh_root":"/home/u783534439/domains/egypttourgates.com/public_html/staging","api_account_alias":"egypttourgates","api_website_domain_candidate":"egypttourgates.com"}
+  ],
+  "api_status": "NO_PROVIDER_WEBSITE_CONFIRMED",
+  "api_website_domain_candidate_is_not_authorization": true,
+  "ssh_identity_is_not_cdn_api_identity": true
+}

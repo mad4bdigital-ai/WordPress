@@ -1,0 +1,9 @@
+[Unit]
+Description=Hourly read-only Cloud Startup WordPress and LiteSpeed site discovery
+[Timer]
+OnBootSec=10min
+OnUnitInactiveSec=1h
+AccuracySec=2min
+Unit=mad4b-company-hostinger-cloud-startup-inventory.service
+[Install]
+WantedBy=timers.target
