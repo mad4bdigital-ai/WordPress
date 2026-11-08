@@ -1,0 +1,12 @@
+[Unit]
+Description=Periodically correlate Redis flush counts with sanitized PHP source traces
+
+[Timer]
+OnBootSec=7min
+OnUnitInactiveSec=5min
+AccuracySec=45s
+RandomizedDelaySec=20s
+Unit=mad4b-redis-flush-origin-observe.service
+
+[Install]
+WantedBy=timers.target

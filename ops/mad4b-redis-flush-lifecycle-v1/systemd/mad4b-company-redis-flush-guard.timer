@@ -1,0 +1,12 @@
+[Unit]
+Description=Check Redis full-flush guard desired state across enrolled companies
+
+[Timer]
+OnBootSec=8min
+OnUnitInactiveSec=30min
+AccuracySec=60s
+RandomizedDelaySec=50s
+Unit=mad4b-company-redis-flush-guard.service
+
+[Install]
+WantedBy=timers.target
