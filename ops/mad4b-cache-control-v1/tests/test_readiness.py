@@ -96,6 +96,37 @@ class ReadinessTests(unittest.TestCase):
         self.assertEqual(r['state'],'DRIFT')
         self.assertEqual(r['litespeed_fastcgi_bridge_integrity'],'MISSING_OR_UNSAFE')
 
+    def test_safe_html_unknown_hash_drift(self):
+        safe=self.plugin.parent/'safe-html.php'
+        safe.write_text('unexpected module')
+        self.spec['safe_html_plugin']=str(safe)
+        expected=hashlib.sha256(b'approved code').hexdigest()
+        r=m.site_observation('company',self.spec,self.expected,safe_html_hash=expected)
+        self.assertEqual(r['state'],'DRIFT')
+        self.assertEqual(r['safe_public_html_integrity'],'HASH_DRIFT')
+
+    def test_nginx_global_epoch_missing_or_unrecognized(self):
+        safe=self.plugin.parent/'safe-html.php'
+        safe.write_text('approved code')
+        self.spec['safe_html_plugin']=str(safe)
+        self.spec['nginx_conf']=str(self.plugin.parent/'not-enrolled.conf')
+        self.spec['global_epoch_key_count']=1
+        expected=hashlib.sha256(safe.read_bytes()).hexdigest()
+        r=m.site_observation('company',self.spec,self.expected,safe_html_hash=expected)
+        self.assertEqual(r['state'],'DRIFT')
+        self.assertEqual(r['nginx_global_epoch_integrity'],'MISSING_OR_UNSAFE')
+
+    def test_nginx_global_epoch_valid_config(self):
+        safe=self.plugin.parent/'safe-html.php'
+        safe.write_text('approved code')
+        conf=self.plugin.parent/'nginx.conf'
+        conf.write_text("""# MAD4B_PUBLIC_HTML_GLOBAL_EPOCH_V1 BEGIN\nmap $host $mad4b_public_html_global_epoch { default ""; }\n# MAD4B_PUBLIC_HTML_GLOBAL_EPOCH_V1 END\nfastcgi_cache_key "$host|$mad4b_fastcgi_version$mad4b_public_html_global_epoch";\n""")
+        self.spec.update(safe_html_plugin=str(safe),nginx_conf=str(conf),global_epoch_key_count=1)
+        expected=hashlib.sha256(safe.read_bytes()).hexdigest()
+        r=m.site_observation('company',self.spec,self.expected,safe_html_hash=expected)
+        self.assertEqual(r['state'],'PASS')
+        self.assertEqual(r['nginx_global_epoch_integrity'],'PASS')
+
     def test_atomic_report_mode_is_private(self):
         target=Path(self.temp.name)/'out.json'
         m.write_json_atomic(target,{'contract':'test','private':True})
