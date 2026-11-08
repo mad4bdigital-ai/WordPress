@@ -2,13 +2,13 @@
 /**
  * Plugin Name: MAD4B Cache Control
  * Description: Safe, preview-first, policy-aware selective FastCGI path invalidation. Does not flush Redis.
- * Version: 1.1.0
+ * Version: 1.1.1
  */
 defined('ABSPATH') || exit;
 
 if (!class_exists('MAD4B_Cache_Control_V1', false)) {
 final class MAD4B_Cache_Control_V1 {
-    const VERSION = '1.1.0';
+    const VERSION = '1.1.1';
     const PAGE = 'mad4b-cache-lifecycle';
     const RECEIPTS = 'mad4b_cache_control_receipts_v1';
     const MAX_PATHS = 80;
@@ -43,7 +43,31 @@ final class MAD4B_Cache_Control_V1 {
         return $obj && !empty($obj->public);
     }
 
-    /** Accepts only site-owned WordPress permalink paths, not arbitrary URLs. */
+    /**
+     * Canonical public path validator. Pure: it must never call home_url(),
+     * whose result can vary by WPML/market/visitor on admin POST requests.
+     * Reject encoded ASCII (reserved bytes/dot/slash/private suffix tricks)
+     * while permitting valid UTF-8 percent-encoded non-ASCII slugs.
+     */
+    public static function is_safe_public_path($path): bool {
+        if (!is_string($path) || $path==='' || strlen($path)>500 ||
+            $path[0]!=='/' || !preg_match('~^/[A-Za-z0-9_%/.-]*$~D',$path) ||
+            strpos($path,'//')!==false ||
+            preg_match('~(?:^|/)\.\.?(/|$)~',$path) ||
+            preg_match('/%(?![0-9a-fA-F]{2})/',$path) ||
+            preg_match('/%[0-7][0-9a-fA-F]/i',$path))
+            return false;
+        $decoded=rawurldecode($path);
+        if (preg_match('//u',$decoded)!==1 ||
+            preg_match('/[\x00-\x1f\x7f]/',$decoded) ||
+            preg_match('~(?:^|/)\.\.?(/|$)~',$decoded) ||
+            strpos($decoded,'//')!==false ||
+            preg_match('~/(?:[a-z]{2,5}/)?(?:wp-admin|wp-login\.php|wp-json|cart|checkout|my-account|account|order-pay|order-received|payment|booking)(?:/|$)~i',$decoded))
+            return false;
+        return true;
+    }
+
+    /** Accept only absolute, same-origin WordPress permalinks. */
     public static function path_from_url($url): ?string {
         if (!is_string($url) || strlen($url)>1024) return null;
         $parts=wp_parse_url($url);
@@ -55,21 +79,7 @@ final class MAD4B_Cache_Control_V1 {
             isset($parts['user'])||isset($parts['pass'])||isset($parts['query'])||isset($parts['fragment']))
             return null;
         $path=(string)($parts['path']??'/');
-        $decoded=rawurldecode($path);
-        // Reject encoded slashes, dot segments and double encoding before
-        // Nginx/WordPress URL normalization can reinterpret an approved path.
-        if (preg_match('/%(?![0-9a-fA-F]{2})/',$path) ||
-            preg_match('/%(?:00|2e|2f|23|25|3f|5c)/i',$path) ||
-            preg_match('//u',$decoded)!==1 ||
-            preg_match('/[\\x00-\\x1f\\x7f]/',$decoded))
-            return null;
-        if ($path==='' || $path[0]!=='/' || strlen($path)>500 ||
-            !preg_match('~^/[A-Za-z0-9_%/.-]*$~D',$path) ||
-            strpos($path,'//')!==false || preg_match('~(?:^|/)\.\.?(/|$)~',$path) ||
-            preg_match('~/(?:[a-z]{2,5}/)?(?:wp-admin|wp-login\.php|wp-json|cart|checkout|my-account|account|order-pay|order-received|payment|booking)(?:/|$)~i',$path))
-            return null;
-        // This bridge accepts only public canonical paths, with no personalized query.
-        return $path;
+        return self::is_safe_public_path($path) ? $path : null;
     }
 
     private static function is_private_commerce_page(int $id): bool {
@@ -282,10 +292,7 @@ final class MAD4B_Cache_Control_V1 {
         if (!$paths || count($paths)>self::MAX_PATHS)
             return ['status'=>'invalid_batch','paths'=>0];
         foreach ($paths as $path) {
-            if (!is_string($path)||strlen($path)>500||
-                !preg_match('~^/[A-Za-z0-9_%/.-]*$~D',$path)||
-                strpos($path,'//')!==false||preg_match('~(?:^|/)\.\.?(/|$)~',$path)
-                || self::path_from_url(home_url($path))!==$path)
+            if (!self::is_safe_public_path($path))
                 return ['status'=>'invalid_path','paths'=>0];
         }
         $socket=WP_CONTENT_DIR.'/.mad4b-purge/origin.sock';
