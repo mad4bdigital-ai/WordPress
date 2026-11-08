@@ -7,7 +7,7 @@ function home_url($path='/'){return 'https://example.test'.$path;}
 function wp_parse_url($value){return parse_url($value);}
 require $argv[1];
 $base='https://example.test';
-$valid=['/','/ar/','/tours-and-activities/egypt-trip/','/es/tours-and-activities/egypt-trip/'];
+$valid=['/','/ar/','/tours-and-activities/egypt-trip/','/es/tours-and-activities/egypt-trip/','/%D8%A7%D9%84%D9%85%D8%B5%D8%B1/'];
 foreach($valid as $path) {
     if(MAD4B_Cache_Control_V1::path_from_url($base.$path)!==$path)
         throw new RuntimeException('Valid route rejected: '.$path);
@@ -17,11 +17,20 @@ $blocked=[
 'https://example.test/checkout/',
 'https://example.test/es/checkout/',
 'https://example.test/ar/cart/',
+'https://example.test/it/order-pay/',
+'https://example.test/fr/my-account/',
 'https://example.test/fr/wp-json/orders',
 'https://example.test/wp-admin/',
 'https://example.test/blog/?customer=123',
 'https://example.test/../wp-admin/',
 'https://example.test/tour//duplicate/',
+'https://example.test/es/%2e%2e/checkout/',
+'https://example.test/%252e%252e/checkout/',
+'https://example.test/ar/checkout%2fsecret',
+'https://example.test/ar/%00checkout/',
+'https://example.test/ar/%ZZ-invalid/',
+'https://example.test:8080/tour/',
+'http://example.test/tour/',
 ];
 foreach($blocked as $url) {
     if(MAD4B_Cache_Control_V1::path_from_url($url)!==null)
