@@ -35,12 +35,12 @@ INSTRUMENTATION={
   'wrapper':'/opt/hostinger-migrations/hosting-3/etg-commerce-staging/site-copy/wp-content/plugins/litespeed-cache/src/object.lib.php',
   'wrapper_sha256':'fba4fa7189d1506eac28fed65cfc2d415a52448dd482b364812f837bcfca6867',
   'emitter':'/opt/hostinger-migrations/hosting-3/etg-commerce-staging/site-copy/wp-content/mu-plugins/000-mad4b-redis-flush-provenance.php',
-  'emitter_sha256':'21c90f47b191b7aaaabb62e632f6a21f21b1b8d12d5c7671fa779ef4a4b1e42b'},
+  'emitter_sha256':'91bed2eb68ec74ed0780a41237d8219dd5884d2eff5912729234e1f4a02cb6a3'},
  'wayfatours':{
   'wrapper':'/opt/wayfa-rebuild-20261102/site-copy/wp-content/plugins/litespeed-cache/src/object.lib.php',
   'wrapper_sha256':'fba4fa7189d1506eac28fed65cfc2d415a52448dd482b364812f837bcfca6867',
   'emitter':'/opt/wayfa-rebuild-20261102/site-copy/wp-content/mu-plugins/000-mad4b-redis-flush-provenance.php',
-  'emitter_sha256':'041f30fd3f2b624bb27dd2bd0454d24e6532050cc6e27420b5f5ca031b2b47d9'}
+  'emitter_sha256':'22f2a5b8228b7237440fc8f9fb85b6dd7c96da8a8f395870e6d5da16aaf2ac18'}
 }
 
 
@@ -101,6 +101,11 @@ def validate_event(obj,site):
  if obj.get('execution') not in ALLOWED_EXEC or obj.get('command') not in ALLOWED_COMMAND:
   raise ValueError('EVENT_INVALID_EXECUTION')
  if type(obj.get('successful')) is not bool:raise ValueError('EVENT_RESULT_INVALID')
+ kind=obj.get('event_kind','cache_flush_result')
+ if kind not in ('cache_flush_result','purge_intent'):
+  raise ValueError('EVENT_KIND_UNRECOGNIZED')
+ if kind=='purge_intent' and obj.get('successful') is not False:
+  raise ValueError('PURGE_INTENT_CANNOT_CLAIM_SUCCESS')
  for key in ('script_basename','caller_basename','workflow'):
   val=obj.get(key)
   if not isinstance(val,str) or not SAFE_WORD.fullmatch(val):
@@ -111,9 +116,11 @@ def validate_event(obj,site):
  if any(not isinstance(x,str) or not SAFE_FRAME.fullmatch(x) for x in frames):
   raise ValueError('EVENT_FRAME_UNSAFE')
  # Never use unvalidated extra event fields in archived or reported content.
- return {k:obj[k] for k in (
+ result={k:obj[k] for k in (
   'contract','event_id','timestamp_utc','site','execution','command',
   'script_basename','caller_basename','workflow','successful','frames')}
+ result['event_kind']=kind
+ return result
 
 
 def collect_events(site):
@@ -179,59 +186,113 @@ def atomically_write(path,obj):
   if os.path.exists(temp):os.unlink(temp)
 
 
+def _utc_age_seconds(iso, now):
+    if not isinstance(iso,str) or not iso:
+        return None
+    try:
+        stamp=dt.datetime.fromisoformat(iso.replace('Z','+00:00'))
+        return max(0.0,(now-stamp).total_seconds())
+    except (ValueError,TypeError,OverflowError):
+        return None
+
+
 def reconcile(previous,site,stats,events):
- old=previous.get('sites',{}).get(site,{})
- same_run=stats['run_id']==old.get('run_id')
- known='run_id' in old
- delta=None
- if same_run:
-  delta=max(0,stats['flushdb_calls']-int(old.get('flushdb_calls',0)))
-  delta+=max(0,stats['flushall_calls']-int(old.get('flushall_calls',0)))
- identifiers=[{'time':e['timestamp_utc'],'script':e['script_basename'],
-    'caller_file':e['caller_basename'],'workflow':e['workflow'],
-    'execution':e['execution'],'command':e['command'],
-    'event_id':e['event_id'],'successful':e['successful']} for e in events[-30:]]
- new_good=[x for x in identifiers if x['successful']]
- backlog=old.get('pending_successful_events',[])
- if not isinstance(backlog,list):backlog=[]
- previous_unmatched=int(old.get('pending_unattributed_delta',0))
- if not known or not same_run:
-  status='REDIS_RESTART_REBASELINE' if known else 'FIRST_BASELINE_NO_CAUSAL_CLAIM'
-  new_pending=new_good
-  unmatched=0
- else:
-  pending=[*backlog,*new_good]
-  expected=delta+previous_unmatched
-  matched=pending[:expected]
-  new_pending=pending[expected:]
-  unmatched=max(0,expected-len(pending))
-  named=[x for x in matched if
-     x.get('script') not in ('unknown','unrecognized','stdin')
-     or x.get('caller_file') not in ('unknown',None)
-     or x.get('workflow')!='unassigned']
-  if unmatched:
-   status='UNATTRIBUTED_FLUSH_ALERT' if previous_unmatched else 'PENDING_ATTRIBUTION'
-  elif matched and len(named)<len(matched):
-   status='FLUSH_SOURCE_UNRESOLVED_ALERT'
-  elif matched:
-   status='PHP_FLUSH_CORRELATED_WITH_REDIS_COUNTER'
-  elif new_pending:
-   status='PENDING_COUNTER_CONFIRMATION'
-  else:
-   status='NO_NEW_FLUSH'
- if len(new_pending)>60:
-  status='PROVENANCE_EVENT_BACKLOG_ALERT'
-  new_pending=new_pending[-60:]
- return {**stats,'status':status,'count_delta':delta,
-  'captured_event_count':len(events),
-  'successful_php_flush_count':len(new_good),
-  'captured_named_callers':sum(
-     x['script'] not in ('unknown','unrecognized','stdin')
-     or x.get('caller_file') not in ('unknown',None)
-     or x['workflow']!='unassigned' for x in new_good),
-  'pending_unattributed_delta':unmatched,
-  'pending_successful_events':new_pending,
-  'recent_callers':identifiers}
+    """Never use a future PHP event to close an already-confirmed incident.
+
+    A new counter increment gets one poll of arrival grace; if the PHP
+    callback is missing after that poll, the incident is permanently open
+    until reviewed, never silently attributed to unrelated later activity.
+    """
+    old=previous.get('sites',{}).get(site,{})
+    same_run=stats['run_id']==old.get('run_id')
+    known='run_id' in old
+    now=dt.datetime.now(dt.timezone.utc)
+    seen_now=now.isoformat()
+    delta=None
+    if same_run:
+        delta=max(0,stats['flushdb_calls']-int(old.get('flushdb_calls',0)))
+        delta+=max(0,stats['flushall_calls']-int(old.get('flushall_calls',0)))
+    identifiers=[{'time':e['timestamp_utc'],'script':e['script_basename'],
+      'caller_file':e['caller_basename'],'workflow':e['workflow'],
+      'execution':e['execution'],'command':e['command'],
+      'event_id':e['event_id'],'successful':e['successful'],
+      'event_kind':e.get('event_kind','cache_flush_result')} for e in events[-30:]]
+    new_good=[x for x in identifiers if
+      x['successful'] and x['event_kind']=='cache_flush_result']
+    purge_intents=[x for x in identifiers if x['event_kind']=='purge_intent']
+    backlog=old.get('pending_successful_events',[])
+    if not isinstance(backlog,list):backlog=[]
+    event_age=_utc_age_seconds(old.get('pending_event_first_seen_utc'),now)
+    if event_age is not None and event_age>120:
+        backlog=[]
+    prior_unmatched=max(0,int(old.get('pending_unattributed_delta',0)))
+    polls=old.get('pending_attribution_polls')
+    confirmed=max(0,int(old.get('confirmed_unattributed_count',0)))
+    # Upgrade existing v2 incidents: they are already older than the grace
+    # period and cannot be "repaired" by any new incoming event.
+    if prior_unmatched and not isinstance(polls,int):
+        confirmed+=prior_unmatched
+        prior_unmatched=0
+    old_window_age=_utc_age_seconds(old.get('pending_attribution_first_seen_utc'),now)
+    if prior_unmatched and (
+        (old_window_age is not None and old_window_age>120) or
+        (polls>=1 and not new_good)):
+        # Keep one chance for an event that reached the log after its Redis
+        # counter, but never allow a distant later event to erase old proof.
+        confirmed+=prior_unmatched
+        prior_unmatched=0
+    candidates=[*backlog,*new_good]
+    if not known or not same_run:
+        activity='REDIS_RESTART_REBASELINE' if known else 'FIRST_BASELINE_NO_CAUSAL_CLAIM'
+        new_pending=candidates
+        unmatched=0
+        new_polls=0
+        since=None
+    else:
+        needed=(delta or 0)+prior_unmatched
+        matched=candidates[:needed]
+        new_pending=candidates[needed:]
+        unmatched=max(0,needed-len(candidates))
+        new_polls=1 if unmatched else 0
+        since=seen_now if unmatched else None
+        named=[x for x in matched if
+          x.get('script') not in ('unknown','unrecognized','stdin')
+          or x.get('caller_file') not in ('unknown',None)
+          or x.get('workflow')!='unassigned']
+        if unmatched:
+            activity='PENDING_ATTRIBUTION'
+        elif matched and len(named)<len(matched):
+            activity='FLUSH_SOURCE_UNRESOLVED_ALERT'
+        elif matched:
+            activity='PHP_FLUSH_CORRELATED_WITH_REDIS_COUNTER'
+        elif new_pending:
+            activity='PENDING_COUNTER_CONFIRMATION'
+        else:
+            activity='NO_NEW_FLUSH'
+    if len(new_pending)>60:
+        activity='PROVENANCE_EVENT_BACKLOG_ALERT'
+        new_pending=new_pending[-60:]
+    status='UNATTRIBUTED_FLUSH_ALERT' if confirmed>0 else activity
+    return {**stats,'status':status,'latest_activity':activity,'count_delta':delta,
+      'captured_event_count':len(events),
+      'purge_intent_count':len(purge_intents),
+      'recent_purge_intents':[{
+        'utc':x['time'],'caller_file':x.get('caller_file','unknown'),
+        'workflow':x.get('workflow','unassigned')
+      } for x in purge_intents[-10:]],
+      'successful_php_flush_count':len(new_good),
+      'captured_named_callers':sum(
+         x['script'] not in ('unknown','unrecognized','stdin')
+         or x.get('caller_file') not in ('unknown',None)
+         or x['workflow']!='unassigned' for x in new_good),
+      'confirmed_unattributed_count':confirmed,
+      'pending_unattributed_delta':unmatched,
+      'pending_attribution_polls':new_polls,
+      'pending_attribution_first_seen_utc':since,
+      'pending_successful_events':new_pending,
+      'pending_event_first_seen_utc':(old.get('pending_event_first_seen_utc')
+         if backlog else seen_now) if new_pending else None,
+      'recent_callers':identifiers}
 
 
 def main():
@@ -302,7 +363,8 @@ def main():
     'classification':status,'last_caller':caller,
     'flushdb_calls':reading.get('flushdb_calls','unknown'),
     'flushall_calls':reading.get('flushall_calls','unknown'),
-    'count_delta':reading.get('count_delta','unknown')}
+    'count_delta':reading.get('count_delta','unknown'),
+    'purge_intent_count':reading.get('purge_intent_count',0)}
   statuspath=Path(SITES[site]['file']).with_name('redis-flush-status-v2.json')
   # Host owns the target; the PHP user can only read the safe, small summary.
   fd,temporary=tempfile.mkstemp(prefix='.redis-flush-status-',dir=statuspath.parent)

@@ -8,10 +8,11 @@
 defined('ABSPATH') || exit;
 if (!defined('MAD4B_REDIS_FLUSH_SITE')) define('MAD4B_REDIS_FLUSH_SITE','wayfatours');
 if (!function_exists('mad4b_redis_flush_origin_record_v2')) {
- function mad4b_redis_flush_origin_record_v2($result): void {
+ function mad4b_redis_flush_origin_record_v2($result, string $event_kind='cache_flush_result'): void {
   try {
    $site = defined('MAD4B_REDIS_FLUSH_SITE') ? (string)MAD4B_REDIS_FLUSH_SITE : 'unenrolled';
    if (!in_array($site, ['tours-dev','wayfatours'], true)) return;
+   if (!in_array($event_kind, ['cache_flush_result','purge_intent'], true)) return;
    $base = WP_CONTENT_DIR.'/mu-plugins/.mad4b-host-telemetry/redis-flush-events-v2.jsonl';
    if (is_link($base) || !is_file($base)) return;
    $execution = defined('WP_CLI') && WP_CLI ? 'wpcli'
@@ -65,7 +66,8 @@ if (!function_exists('mad4b_redis_flush_origin_record_v2')) {
     'script_basename'=>$script,
     'caller_basename'=>$caller,
     'workflow'=>$workflow,
-    'successful'=>($result===true),
+    'successful'=>($event_kind==='purge_intent') ? false : ($result===true),
+    'event_kind'=>$event_kind,
     'frames'=>$trace
    ];
    $line=json_encode($record,JSON_UNESCAPED_SLASHES|JSON_INVALID_UTF8_SUBSTITUTE);
@@ -103,6 +105,11 @@ if (!function_exists('mad4b_redis_flush_admin_status_v2')) {
  }
 }
 if (function_exists('add_action')) {
+ // LiteSpeed emits this before its direct Object_Cache::flush() call.
+ // Record an INTENT, not a Redis outcome; never mislabel it as success.
+ add_action('litespeed_purged_all_object', static function(): void {
+  mad4b_redis_flush_origin_record_v2(false, 'purge_intent');
+ }, 1, 0);
  add_action('admin_menu', static function(): void {
   add_management_page('MAD4B Redis Flush Provenance','Redis Flush Provenance',
     'manage_options','mad4b-redis-flush-provenance-v2', static function(): void {
