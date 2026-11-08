@@ -1,0 +1,63 @@
+--- a/tours-dev/stack/nginx.conf
++++ b/tours-dev/stack/nginx.conf
+@@ -1,2 +1,7 @@
++# MAD4B_PUBLIC_HTML_GLOBAL_EPOCH_V1 BEGIN
++map $host $mad4b_public_html_global_epoch {
++    default "";
++}
++# MAD4B_PUBLIC_HTML_GLOBAL_EPOCH_V1 END
+ # MAD4B Tour CSS Delivery: version-aware browser cache.
+ map $arg_mad4b_ev $mad4b_elementor_css_ttl {
+@@ -186,5 +191,5 @@
+    auth_request /__mad4b_path_generation;
+    auth_request_set $mad4b_path_etag $sent_http_etag;
+-   fastcgi_cache_key "$host|$request_uri|$request_method|$mad4b_device_class$mad4b_fastcgi_version";
++   fastcgi_cache_key "$host|$request_uri|$request_method|$mad4b_device_class$mad4b_fastcgi_version$mad4b_public_html_global_epoch";
+    fastcgi_cache_methods GET HEAD;
+    fastcgi_cache_valid 200 60s;
+@@ -220,5 +225,5 @@
+    auth_request /__mad4b_path_generation;
+    auth_request_set $mad4b_path_etag $sent_http_etag;
+-   fastcgi_cache_key "mad4b-ua-family-$mad4b_home_css_key_epoch|$host|$request_uri|$request_method|$mad4b_device_class|$mad4b_render_ua_family$mad4b_fastcgi_version";
++   fastcgi_cache_key "mad4b-ua-family-$mad4b_home_css_key_epoch|$host|$request_uri|$request_method|$mad4b_device_class|$mad4b_render_ua_family$mad4b_fastcgi_version$mad4b_public_html_global_epoch";
+    fastcgi_cache_methods GET HEAD;
+    fastcgi_cache_valid 200 1800s;
+@@ -251,5 +256,5 @@
+    auth_request /__mad4b_path_generation;
+    auth_request_set $mad4b_path_etag $sent_http_etag;
+-   fastcgi_cache_key "mad4b-ua-family-$mad4b_home_css_key_epoch|$host|$request_uri|$request_method|$mad4b_device_class|$mad4b_render_ua_family$mad4b_fastcgi_version";
++   fastcgi_cache_key "mad4b-ua-family-$mad4b_home_css_key_epoch|$host|$request_uri|$request_method|$mad4b_device_class|$mad4b_render_ua_family$mad4b_fastcgi_version$mad4b_public_html_global_epoch";
+    fastcgi_cache_methods GET HEAD;
+    fastcgi_cache_valid 200 1800s;
+@@ -282,5 +287,5 @@
+    auth_request /__mad4b_path_generation;
+    auth_request_set $mad4b_path_etag $sent_http_etag;
+-   fastcgi_cache_key "mad4b-ua-family-v3|$host|$request_uri|$request_method|$mad4b_device_class|$mad4b_render_ua_family$mad4b_fastcgi_version";
++   fastcgi_cache_key "mad4b-ua-family-v3|$host|$request_uri|$request_method|$mad4b_device_class|$mad4b_render_ua_family$mad4b_fastcgi_version$mad4b_public_html_global_epoch";
+    fastcgi_cache_methods GET HEAD;
+    fastcgi_cache_valid 200 1800s;
+@@ -384,5 +389,5 @@
+    auth_request /__mad4b_path_generation;
+    auth_request_set $mad4b_path_etag $sent_http_etag;
+-   fastcgi_cache_key "mad4b-public-general-v1|$host|$request_uri|$request_method|$mad4b_device_class|$mad4b_render_ua_family$mad4b_fastcgi_version";
++   fastcgi_cache_key "mad4b-public-general-v1|$host|$request_uri|$request_method|$mad4b_device_class|$mad4b_render_ua_family$mad4b_fastcgi_version$mad4b_public_html_global_epoch";
+    fastcgi_cache_methods GET HEAD;
+    fastcgi_cache_valid 200 1800s;
+--- a/wayfatours/stack/nginx.conf
++++ b/wayfatours/stack/nginx.conf
+@@ -1,3 +1,8 @@
+ map_hash_bucket_size 128;
++# MAD4B_PUBLIC_HTML_GLOBAL_EPOCH_V1 BEGIN
++map $host $mad4b_public_html_global_epoch {
++    default "";
++}
++# MAD4B_PUBLIC_HTML_GLOBAL_EPOCH_V1 END
+ # MAD4B content-versioned Elementor post CSS: bounded cache, other URLs unchanged.
+ map $arg_mad4b_ev $mad4b_elementor_css_ttl {
+@@ -333,5 +338,5 @@
+     auth_request /__mad4b_path_generation;
+     auth_request_set $mad4b_path_etag $sent_http_etag;
+-    fastcgi_cache_key "$wayfa_html_device_key$wayfa_home_firstpaint_epoch$mad4b_fastcgi_version";
++    fastcgi_cache_key "$wayfa_html_device_key$wayfa_home_firstpaint_epoch$mad4b_fastcgi_version$mad4b_public_html_global_epoch";
+     # A stale copy should never wait for the slow PHP renewal.
+     fastcgi_cache_lock on;
