@@ -22,11 +22,14 @@ jobs:
           set -euo pipefail
           ROOT=ops/mad4b-cache-control-v1
           php -l "$ROOT/mu-plugins/mad4b-cache-control-v1.php"
+          php -l "$ROOT/mu-plugins/mad4b-litespeed-fastcgi-coherence-v1.php"
           php -l "$ROOT/overlays/mad4b-company-policy-registry-v2.php"
           php -l "$ROOT/overlays/mad4b-policy-registry-admin-bridge-v1.php"
           php "$ROOT/tests/test_cache_control_contract.php" "$ROOT/mu-plugins/mad4b-cache-control-v1.php"
           php "$ROOT/tests/test_preview_confirm_contract.php" "$ROOT/mu-plugins/mad4b-cache-control-v1.php"
           php "$ROOT/tests/test_saved_batch_no_socket.php" "$ROOT/mu-plugins/mad4b-cache-control-v1.php" "$ROOT/tests/saved-tour-routes.json"
+          php "$ROOT/tests/lsc-fastcgi-pure-contract.php" "$ROOT/mu-plugins/mad4b-litespeed-fastcgi-coherence-v1.php"
+          php "$ROOT/tests/lsc-fastcgi-pure-contract.php" "$ROOT/mu-plugins/mad4b-litespeed-fastcgi-coherence-v1.php" overflow
           git diff --check
       - name: Pure-Python readiness contract and syntax
         run: |
