@@ -45,7 +45,7 @@ def socket_state(path:Path,service:str)->dict:
         else 'SERVICE_NOT_ACTIVE','systemd':state}
 
 
-def site_observation(name:str,spec:dict,source_hash:str,registry_hash:str='',bridge_hash:str='')->dict:
+def site_observation(name:str,spec:dict,source_hash:str,registry_hash:str='',bridge_hash:str='',lsc_bridge_hash:str='')->dict:
     file=Path(spec['plugin'])
     reg=Path(spec['registry'])
     actual=safe_file_check(file,source_hash)
@@ -55,17 +55,22 @@ def site_observation(name:str,spec:dict,source_hash:str,registry_hash:str='',bri
     bridge_status=(safe_file_check(Path(spec['bridge']),bridge_hash) if bridge_hash
                    and spec.get('bridge') else
                    ('NOT_PINNED' if not bridge_hash else 'MISSING'))
+    lsc_bridge_status=(safe_file_check(Path(spec['lsc_bridge']),lsc_bridge_hash)
+        if lsc_bridge_hash and spec.get('lsc_bridge') else
+        ('NOT_PINNED' if not lsc_bridge_hash else 'MISSING'))
     sock=socket_state(Path(spec['socket']),spec['socket_unit'])
     coverage=('REGISTRY_V2_SHA_VERIFIED' if registry_status=='PASS' else
               'REGISTRY_V2_FILE_PRESENT' if found else 'LOCAL_FALLBACK_ONLY')
     integrity=(actual=='PASS' and sock['state']=='PASS' and
                (not registry_hash or registry_status=='PASS') and
-               (not bridge_hash or bridge_status=='PASS'))
+               (not bridge_hash or bridge_status=='PASS') and
+               (not lsc_bridge_hash or lsc_bridge_status=='PASS'))
     state=('DRIFT' if not integrity else
         ('PASS' if found else 'DEGRADED_INHERITANCE'))
     return {'state':state,'plugin':actual,'socket':sock,
         'registry_integrity':registry_status,
         'bridge_integrity':bridge_status,
+        'litespeed_fastcgi_bridge_integrity':lsc_bridge_status,
         'inheritance_coverage':coverage,
         'runtime_registry_resolution_verified_this_poll':False,
         'safe_read_only':True,
@@ -104,14 +109,15 @@ def main():
     source_check=safe_file_check(source,expected)
     registry_hash=policy.get('registry_sha256','')
     bridge_hash=policy.get('bridge_sha256','')
+    lsc_bridge_hash=policy.get('lsc_bridge_sha256','')
     if any(not isinstance(value,str) or len(value)!=64 or
            any(c not in '0123456789abcdef' for c in value)
-           for value in (registry_hash,bridge_hash)):
+           for value in (registry_hash,bridge_hash,lsc_bridge_hash)):
         raise ValueError('registry_or_bridge_pin_invalid')
     status={}
     for name,spec in policy['sites'].items():
         try:
-            status[name]=site_observation(name,spec,expected,registry_hash,bridge_hash)
+            status[name]=site_observation(name,spec,expected,registry_hash,bridge_hash,lsc_bridge_hash)
         except Exception as exc:
             status[name]={'state':'UNAVAILABLE','reason':type(exc).__name__}
     summary={key:sum(v['state']==key for v in status.values())
