@@ -35,8 +35,14 @@ final class MAD4B_Tour_Media_Governed_Apply_V1 {
         if(!is_string($m['expected_plan_fingerprint'])
            ||!hash_equals($plan['plan_fingerprint'],$m['expected_plan_fingerprint']))
             return self::error('mad4b_media_apply_plan_drift');
-        $review=MAD4B_SCP_Context_Authority::review_policy();
-        $mode=(string)($review['mode']??'human_only');
+        // Media photo review is separately inheritable from Company
+        // Management. Do not change Brand Context general approval grants.
+        // No synced exact policy means HOLD, not implicit AI permission.
+        $media_policy=class_exists('MAD4B_Media_Review_Hierarchy_V1',false)
+            ?MAD4B_Media_Review_Hierarchy_V1::effective():[];
+        if(empty($media_policy['policy_ready']))
+            return self::error('mad4b_media_policy_inheritance_unready');
+        $mode=(string)($media_policy['mode']??'human_only');
         $actor=(array)$m['review'];
         $expectedReview=['method','contact_sheet_sha256','representation','provenance_status','notes'];
         $rkeys=array_keys($actor);sort($rkeys);sort($expectedReview);
@@ -189,6 +195,8 @@ final class MAD4B_Tour_Media_Governed_Apply_V1 {
             'target_locales'=>array_keys($family),'changes'=>$changed,
             'affected_posts'=>array_keys($ids),
             'review_evidence'=>$actor,
+            'review_policy_fingerprint'=>$media_policy['policy_fingerprint'],
+            'review_policy_source'=>$media_policy['source'],
             'vertical_pending'=>$vertical===0,
             'approval_permits_apply'=>$mode==='ai_only',
             'image_originality_verified'=>false,
@@ -255,6 +263,46 @@ final class MAD4B_Tour_Media_Governed_Apply_V1 {
             }
         }
     }
+    private static function purge_exact_public_tours(array $ids):array {
+        $host=(string)wp_parse_url(home_url('/'),PHP_URL_HOST);
+        $paths=[];
+        foreach(array_unique(array_map('intval',$ids)) as $pid){
+            if($pid<1||get_post_type($pid)!=='tours-and-activities'
+               ||get_post_status($pid)!=='publish')continue;
+            $url=get_permalink($pid);
+            $details=apply_filters('wpml_post_language_details',null,$pid);
+            $lang=is_array($details)?(string)($details['language_code']??''):'';
+            if(preg_match('/^[a-z]{2}$/D',$lang))
+                $url=apply_filters('wpml_permalink',$url,$lang,true);
+            if(!is_string($url)||wp_parse_url($url,PHP_URL_HOST)!==$host)continue;
+            $path=(string)wp_parse_url($url,PHP_URL_PATH);
+            if(strlen($path)>350||
+               !preg_match('#^/(?:[a-z]{2}/)?tours-and-activities/[a-z0-9/_%-]+/$#iD',$path))
+                continue;
+            $paths[$path]=true;
+        }
+        $paths=array_keys($paths);
+        if(!$paths||count($paths)>24)
+            return ['status'=>'no_exact_tour_paths','paths_count'=>count($paths)];
+        $socket_path=WP_CONTENT_DIR.'/.mad4b-purge/origin.sock';
+        if(!file_exists($socket_path)||is_link($socket_path))
+            return ['status'=>'host_path_coordinator_unavailable','paths'=>$paths];
+        $fd=@stream_socket_client('unix://'.$socket_path,$errno,$err,2);
+        if(!$fd)return ['status'=>'host_path_coordinator_unreachable','paths'=>$paths];
+        stream_set_timeout($fd,5);
+        $request=wp_json_encode($paths,JSON_UNESCAPED_SLASHES)."\n";
+        $written=fwrite($fd,$request);
+        $reply=$written===strlen($request)
+            ?json_decode((string)fgets($fd,4096),true):null;
+        fclose($fd);
+        if(!is_array($reply)||($reply['status']??'')!=='ok')
+            return ['status'=>'host_path_coordinator_receipt_invalid','paths'=>$paths];
+        return ['status'=>'ok','paths'=>$paths,'paths_count'=>count($paths),
+            'versioned'=>(int)($reply['versioned']??0),
+            'removed'=>(int)($reply['removed']??0),
+            'duration_ms'=>(float)($reply['duration_ms']??0),
+            'global_epoch_rotated'=>false,'redis_flushed'=>false];
+    }
     private static function refresh(array $ids):void {
         foreach($ids as $id){
             wp_cache_delete((int)$id,'post_meta');
@@ -277,7 +325,9 @@ final class MAD4B_Tour_Media_Governed_Apply_V1 {
         try {
             $fresh=self::inspect($m);
             if(is_wp_error($fresh))return $fresh;
-            if($fresh['changes']!==$prepared['changes'])
+            if($fresh['changes']!==$prepared['changes']
+                ||$fresh['review_policy_fingerprint']!==$prepared['review_policy_fingerprint']
+                ||$fresh['review_mode']!==$prepared['review_mode'])
                 return self::error('mad4b_media_apply_concurrent_change');
             $token=wp_generate_uuid4();
             $option=self::BACKUP_PREFIX.str_replace('-','',$token);
@@ -287,7 +337,10 @@ final class MAD4B_Tour_Media_Governed_Apply_V1 {
                 'plan_fingerprint'=>$prepared['plan']['plan_fingerprint'],
                 'changes'=>$prepared['changes'],'affected_posts'=>$prepared['affected_posts'],
                 'written_at'=>gmdate('c'),'review_mode'=>$prepared['review_mode'],
-                'review_evidence'=>$m['review'],'status'=>'applied',
+                'review_evidence'=>$m['review'],
+                'review_policy_fingerprint'=>$prepared['review_policy_fingerprint'],
+                'review_policy_source'=>$prepared['review_policy_source'],
+                'status'=>'applied',
             ];
             $started=$wpdb->query('START TRANSACTION');
             if($started===false)return self::error('mad4b_media_apply_transaction_failed');
@@ -303,9 +356,13 @@ final class MAD4B_Tour_Media_Governed_Apply_V1 {
                 return self::error('mad4b_media_apply_transaction_rolled_back',$e->getMessage());
             }
             self::refresh($prepared['affected_posts']);
+            $cache=self::purge_exact_public_tours($prepared['affected_posts']);
             $audit=MAD4B_SCP_Audit::record('mad4b/tour-media-governed-applied',[
                 'site_uuid'=>$site,'post_id'=>$id,'rollback_token'=>$token,
-                'review_source'=>'ai_visual_review_under_site_policy',
+                'review_source'=>'ai_visual_review_under_inherited_media_policy',
+                'review_policy_fingerprint'=>$prepared['review_policy_fingerprint'],
+                'review_policy_source'=>$prepared['review_policy_source'],
+                'exact_public_html_purge'=>$cache,
                 'review_evidence_sha256'=>$m['review']['contact_sheet_sha256'],
                 'candidate_gallery'=>$prepared['gallery_ids'],
                 'site_languages'=>$prepared['target_locales'],
@@ -321,6 +378,7 @@ final class MAD4B_Tour_Media_Governed_Apply_V1 {
                 'wpml_locales'=>$prepared['target_locales'],
                 'gallery_ids'=>$prepared['gallery_ids'],
                 'vertical_pending'=>$prepared['vertical_pending'],
+                'exact_public_html_purge'=>$cache,
                 'audit_receipt_ok'=>!is_wp_error($audit),
                 'originality_verified'=>false
             ];
@@ -361,15 +419,18 @@ final class MAD4B_Tour_Media_Governed_Apply_V1 {
                 return self::error('mad4b_media_rollback_failed',$e->getMessage());
             }
             self::refresh($backup['affected_posts']);
+            $cache=self::purge_exact_public_tours($backup['affected_posts']);
             $audit=MAD4B_SCP_Audit::record('mad4b/tour-media-governed-rollback',[
                 'site_uuid'=>$backup['site_uuid'],
                 'source_post_id'=>$backup['source_post_id'],
                 'rollback_token'=>$token,
                 'reverted_rows'=>count($backup['changes']),
+                'exact_public_html_purge'=>$cache,
                 'audit_actor'=>'root_host_wpcli'
             ]);
             return ['status'=>'rolled_back','rollback_token'=>$token,
                 'reverted_rows'=>count($backup['changes']),
+                'exact_public_html_purge'=>$cache,
                 'audit_receipt_ok'=>!is_wp_error($audit)];
         }finally{MAD4B_SCP_Distributed_Lock::release($lock);}
     }
