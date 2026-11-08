@@ -7,6 +7,7 @@ observer. No Redis monitor, key enumeration, WP mutation or log of PHP args.
 import argparse
 import datetime as dt
 import fcntl
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -26,6 +27,38 @@ SITES={
   'redis':'redis-guxhp9y6vgh7oouuw8plxrlr',
   'file':'/opt/wayfa-rebuild-20261102/site-copy/wp-content/mu-plugins/.mad4b-host-telemetry/redis-flush-events-v2.jsonl'},
 }
+
+# Observation-only SHA allowlist. Unknown LiteSpeed upgrades create an alert;
+# this observer NEVER repairs, replaces, or rolls back vendor code.
+INSTRUMENTATION={
+ 'tours-dev':{
+  'wrapper':'/opt/hostinger-migrations/hosting-3/etg-commerce-staging/site-copy/wp-content/plugins/litespeed-cache/src/object.lib.php',
+  'wrapper_sha256':'fba4fa7189d1506eac28fed65cfc2d415a52448dd482b364812f837bcfca6867',
+  'emitter':'/opt/hostinger-migrations/hosting-3/etg-commerce-staging/site-copy/wp-content/mu-plugins/000-mad4b-redis-flush-provenance.php',
+  'emitter_sha256':'21c90f47b191b7aaaabb62e632f6a21f21b1b8d12d5c7671fa779ef4a4b1e42b'},
+ 'wayfatours':{
+  'wrapper':'/opt/wayfa-rebuild-20261102/site-copy/wp-content/plugins/litespeed-cache/src/object.lib.php',
+  'wrapper_sha256':'fba4fa7189d1506eac28fed65cfc2d415a52448dd482b364812f837bcfca6867',
+  'emitter':'/opt/wayfa-rebuild-20261102/site-copy/wp-content/mu-plugins/000-mad4b-redis-flush-provenance.php',
+  'emitter_sha256':'041f30fd3f2b624bb27dd2bd0454d24e6532050cc6e27420b5f5ca031b2b47d9'}
+}
+
+
+def instrumentation_integrity(site):
+    # Read-only SHA check; original Release Guard policy is unchanged.
+    expected=INSTRUMENTATION[site]
+    details={}
+    for kind in ('wrapper','emitter'):
+        file=Path(expected[kind])
+        if not file.is_file() or file.is_symlink():
+            details[kind]='MISSING_OR_UNSAFE_FILE'
+            continue
+        digest=hashlib.sha256(file.read_bytes()).hexdigest()
+        details[kind]='PASS' if digest==expected[kind+'_sha256'] else 'HASH_DRIFT'
+    return {'state':'PASS' if all(x=='PASS' for x in details.values())
+            else 'PROVENANCE_HOOK_DRIFT_ALERT','components':details}
+
+
 REDIS_INFO=r"""export REDISCLI_AUTH="$(sed -n 's/^requirepass[[:space:]]\+//p' /usr/local/etc/redis/redis.conf | head -1)"
 redis-cli --no-auth-warning INFO commandstats | awk -F, '
 /^cmdstat_flushdb:/{print $1;db=1}
@@ -229,6 +262,14 @@ def main():
    result={'status':'ATTRIBUTION_OBSERVER_UNAVAILABLE',
      'failure_type':type(exc).__name__}
    alerts.append({'site':site,'reason':'ATTRIBUTION_OBSERVER_UNAVAILABLE'})
+  try:
+   integrity=instrumentation_integrity(site)
+  except (OSError,ValueError):
+   integrity={'state':'PROVENANCE_HOOK_DRIFT_ALERT',
+     'components':{'readback':'UNAVAILABLE'}}
+  result['instrumentation_integrity']=integrity
+  if integrity['state']!='PASS':
+   alerts.append({'site':site,'reason':'PROVENANCE_HOOK_DRIFT_ALERT'})
   out['sites'][site]=result
  out['alerts']=alerts
  out['verdict']='ALERT' if alerts else 'PASS'
@@ -240,7 +281,8 @@ def main():
  # Publish a small site-specific readback for WordPress admin only.
  for site,reading in out['sites'].items():
   status=reading.get('status','ATTRIBUTION_OBSERVER_UNAVAILABLE')
-  if status.endswith('_ALERT') or status=='ATTRIBUTION_OBSERVER_UNAVAILABLE':
+  if status.endswith('_ALERT') or status=='ATTRIBUTION_OBSERVER_UNAVAILABLE' or (
+      reading.get('instrumentation_integrity',{}).get('state')!='PASS'):
    user_state='ALERT'
   elif status.startswith('PENDING_'):
    user_state='PENDING'
@@ -253,6 +295,8 @@ def main():
    (None,'unknown','unrecognized','stdin') else actor.get('caller_file'))
   if not caller or caller=='unknown':caller=actor.get('workflow','unassigned')
   if not caller or caller=='unassigned':caller='not identified'
+  integrity_status=reading.get('instrumentation_integrity',{}).get('state')
+  if integrity_status!='PASS':status='PROVENANCE_HOOK_DRIFT_ALERT'
   mini={'contract':'mad4b.redis-flush-site-status.v2',
     'observed_utc':out['observed_utc'],'site':site,'status':user_state,
     'classification':status,'last_caller':caller,
