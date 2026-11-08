@@ -1,0 +1,38 @@
+name: MAD4B Pricing Cache Inheritance
+
+on:
+  pull_request:
+    paths:
+      - 'ops/mad4b-pricing-cache-inheritance-v1/**'
+      - '.github/workflows/mad4b-pricing-cache-inheritance.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'ops/mad4b-pricing-cache-inheritance-v1/**'
+      - '.github/workflows/mad4b-pricing-cache-inheritance.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  blueprint-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python release and event-denial contracts
+        run: |
+          python3 -m compileall -q ops/mad4b-pricing-cache-inheritance-v1/bin
+          python3 -m unittest discover -s ops/mad4b-pricing-cache-inheritance-v1/tests -p 'test_*.py' -v
+      - name: PHP source lint and standalone inheritance safety test
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=ops/mad4b-pricing-cache-inheritance-v1
+          php -v
+          find "$ROOT/overlays" -name '*.php' -print0 | xargs -0 -n1 php -l
+          php -l "$ROOT/tests/pricing-policy-inheritance-standalone.php"
+          php "$ROOT/tests/pricing-policy-inheritance-standalone.php"
+      - name: Repository whitespace check
+        run: git diff --check

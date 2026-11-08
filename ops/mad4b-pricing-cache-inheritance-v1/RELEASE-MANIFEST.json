@@ -1,0 +1,35 @@
+{
+  "contract": "mad4b.pricing-cache-source-package.v1",
+  "default_blueprint_ttl_seconds": 1800,
+  "invalidation_model": "option/postmeta/term change -> signed site-local event -> 100-path host socket batches",
+  "maximum_ttl_seconds": 2400,
+  "normalised_mode_policy_and_source_selection_cached": true,
+  "pinned_php_files_sha256": {
+    "mu-plugins/assets/mad4b-pricing-cache-public-paths.php": "872a616a47cbb5076a29d0047fc15c41dfc92629560c9368312db49f2c6aed95",
+    "mu-plugins/mad4b-pricing-cache-inheritance.php": "24e2d22d97332c17621147640e77ee70914bc31d382aef14238ff99e99315ce8",
+    "mu-plugins/shared-product-core/pricing/jetengine-policy-provider.php": "cc64ce31eb5ba4080fcf24955895bf9875c5d623c94cf87e808c1e430b863549",
+    "mu-plugins/shared-product-core/pricing/source-resolution-policy.php": "eb303fc386294dd3bc99c9f183ac22dc0e442a2139cc0682763afba31f6a84ab"
+  },
+  "price_quotes_cached": false,
+  "rate_html_cached": false,
+  "release_version": "1.1.0",
+  "required_native_dependencies": [
+    "WPML",
+    "JetEngine",
+    "Redis Object Cache",
+    "existing original pricing core",
+    "host path generation socket"
+  ],
+  "scope": "source-backed twin company deployment; company local cache options never copied",
+  "source_function_patches": [
+    "shared_product_mode_policies",
+    "shared_product_price_source_policy"
+  ],
+  "source_policy_site_hosting": "per-company site policy stored in WordPress; not a GitHub config file",
+  "tours_dev_staging": "implemented",
+  "wayfatours_production": "implemented",
+  "wpml_routes_tested": {
+    "source": 857,
+    "wayfa": 408
+  }
+}
