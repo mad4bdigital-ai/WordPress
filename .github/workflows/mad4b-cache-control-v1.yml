@@ -24,6 +24,7 @@ jobs:
           php -l "$ROOT/mu-plugins/mad4b-cache-control-v1.php"
           php "$ROOT/tests/test_cache_control_contract.php" "$ROOT/mu-plugins/mad4b-cache-control-v1.php"
           php "$ROOT/tests/test_preview_confirm_contract.php" "$ROOT/mu-plugins/mad4b-cache-control-v1.php"
+          php "$ROOT/tests/test_saved_batch_no_socket.php" "$ROOT/mu-plugins/mad4b-cache-control-v1.php" "$ROOT/tests/saved-tour-routes.json"
           git diff --check
       - name: Pure-Python readiness contract and syntax
         run: |
