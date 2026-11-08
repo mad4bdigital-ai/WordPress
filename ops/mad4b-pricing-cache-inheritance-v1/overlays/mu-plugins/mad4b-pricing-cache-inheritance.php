@@ -302,7 +302,7 @@ final class MAD4B_Pricing_Cache_Inheritance_V1 {
             'resources'=>$out,'metrics'=>self::metrics(),
             'pricing_policy_admin'=>admin_url('admin.php?page=etg-dynamic-pricing-controls'),
             'cache_lifecycle_admin'=>admin_url('admin.php?page=mad4b-cache-lifecycle'),
-            'cache_policy_admin'=>admin_url('admin.php?page=mad4b-pricing-cache-inheritance')];
+            'cache_policy_admin'=>admin_url('tools.php?page=mad4b-pricing-cache-inheritance')];
     }
     public static function menu(): void {
         add_submenu_page('tools.php','Pricing Cache Inheritance','Pricing Cache Inheritance',

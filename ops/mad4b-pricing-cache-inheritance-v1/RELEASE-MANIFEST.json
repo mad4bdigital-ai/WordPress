@@ -6,7 +6,7 @@
   "normalised_mode_policy_and_source_selection_cached": true,
   "pinned_php_files_sha256": {
     "mu-plugins/assets/mad4b-pricing-cache-public-paths.php": "872a616a47cbb5076a29d0047fc15c41dfc92629560c9368312db49f2c6aed95",
-    "mu-plugins/mad4b-pricing-cache-inheritance.php": "24e2d22d97332c17621147640e77ee70914bc31d382aef14238ff99e99315ce8",
+    "mu-plugins/mad4b-pricing-cache-inheritance.php": "efbdd61ff01275817af455ea6e12ea168c94e74aca3bf019e22235b687a938b4",
     "mu-plugins/shared-product-core/pricing/jetengine-policy-provider.php": "cc64ce31eb5ba4080fcf24955895bf9875c5d623c94cf87e808c1e430b863549",
     "mu-plugins/shared-product-core/pricing/source-resolution-policy.php": "eb303fc386294dd3bc99c9f183ac22dc0e442a2139cc0682763afba31f6a84ab"
   },
