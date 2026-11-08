@@ -2,13 +2,13 @@
 /**
  * Plugin Name: MAD4B Cache Control
  * Description: Safe, preview-first, policy-aware selective FastCGI path invalidation. Does not flush Redis.
- * Version: 1.0.0
+ * Version: 1.1.0
  */
 defined('ABSPATH') || exit;
 
 if (!class_exists('MAD4B_Cache_Control_V1', false)) {
 final class MAD4B_Cache_Control_V1 {
-    const VERSION = '1.0.0';
+    const VERSION = '1.1.0';
     const PAGE = 'mad4b-cache-lifecycle';
     const RECEIPTS = 'mad4b_cache_control_receipts_v1';
     const MAX_PATHS = 80;
