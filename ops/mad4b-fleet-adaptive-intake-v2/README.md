@@ -50,3 +50,15 @@ Do not claim any original resource write was executed. Do not infer that an auth
 - Central WP CLI acceptance: nested typed values, encrypted-at-rest, secret-pattern denial, replay rejection, agent auto->save->status and anonymous-actor isolation all PASS.
 - Re-deployed the identical v2.2.2 code to ETG and ARE Staging through registered SSH with independent source-SHA readback and ability registration.
 - Direct ChatGPT MCP session and company post-upgrade interactive save remain not independently verified. Original write executor is unchanged.
+
+## v2.2.2: Native Write original-lane restoration
+
+Root cause: exact mad4b/fleet-intake-auto, -plan and -save Abilities were registered with mcp.surface=write and canonical authorization checks, but MAD4B_SCP_Server_Write_Catalog::core_write_candidates() did not include them. The descriptor reported original_lane_not_mounted. The status Ability remains read-only.
+
+Fix: exactly these three first-party Staging-enabled, enrolled-site-bound abilities are added to the original mad4b-write candidate catalog. The code verifies registered Ability names, MAD4B Site Profile enrollment, canonical origin, staging environment and matching company Site UUID. It does not change annotations to read, issue grants, approve writes, bypass MAD4B_SCP_Abilities::write_execute or run the original resource operation.
+
+Live: Tours.dev, ARE Staging and ETG Staging each returned execution_provider=core, execution_lane=write and execution_eligible=true for these three, while status remained read. Remote changes were SHA-checked, backed up and verified over registered SSH. Evidence: /opt/mad4b-company-provisioning/reports/fleet-adaptive-native-write-mount-20261108/.
+
+SOURCE RECONCILIATION: the VPS Site Control Plane source is newer and diverges from the tracked GitHub wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-write-catalog.php. This change adds only the guarded intake block to the tracked repository file and preserves its other content. The exact before/after files and central source hash are backed up outside the webroot in /opt/mad4b-company-provisioning/reports/fleet-adaptive-native-write-mount-20261108/. Never overwrite the VPS source from stale GitHub without reconciling.
+
+Direct ChatGPT site connector authorization and an authorized native Write transaction remain separate acceptance checks. Catalogue registration alone does not prove those passed.
