@@ -1,0 +1,13 @@
+[Unit]
+Description=MAD4B Central/Company Media Policy and Telemetry Sync
+
+[Timer]
+OnBootSec=12min
+OnUnitInactiveSec=15min
+RandomizedDelaySec=120s
+AccuracySec=30s
+Persistent=false
+Unit=mad4b-media-review-fleet-sync.service
+
+[Install]
+WantedBy=timers.target
