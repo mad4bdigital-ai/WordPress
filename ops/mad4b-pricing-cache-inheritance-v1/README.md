@@ -52,3 +52,10 @@ their own authorized service registration after Company Provisioning.
 Do not overwrite any site-local policy option or customer pricing data
 while distributing this package. Rollback original PHP files using the
 VPS snapshots and disable new host watcher units if necessary.
+
+## Policy cache context v1.2 — source-only until approved deployment
+
+- Blueprints take a validated Tour/Rate/Program/Season context, and Redis keys are separated by effective TTL and inheritance trace.
+- `private_only` and `disabled` override Redis reads and preserve the original quote computation.
+- Original functions accept backward-compatible optional contexts. Version 1.2 must be verified on Tours.dev first and is **not yet deployed**.
+- Wayfatours has a distinct Booking v2 file: apply the small contextual call-site change, never overwrite that file from Tours.dev.

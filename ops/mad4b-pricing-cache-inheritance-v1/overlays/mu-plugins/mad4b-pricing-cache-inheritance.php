@@ -2,12 +2,12 @@
 /**
  * Plugin Name: MAD4B Pricing-Aware Cache Inheritance
  * Description: Scope-aware policy blueprint caching and immutable/dynamic classification, never quote HTML or amounts.
- * Version: 1.1.0
+ * Version: 1.2.0
  */
 defined('ABSPATH') || exit;
 if (!class_exists('MAD4B_Pricing_Cache_Inheritance_V1', false)) {
 final class MAD4B_Pricing_Cache_Inheritance_V1 {
-    public const VERSION='1.1.0';
+    public const VERSION='1.2.0';
     public const OPTION='mad4b_pricing_cache_inheritance_v1';
     private const GROUP='mad4b-pricing-blueprints-v1';
     private static array $counters=['hit'=>0,'miss'=>0,'bypass'=>0,'stored'=>0,'fail'=>0];
@@ -164,6 +164,18 @@ final class MAD4B_Pricing_Cache_Inheritance_V1 {
         return $snapshot;
     }
 
+    private static function blueprint_partition(array $context,array $plan): string {
+        // Partition reusable policy blueprints by identity, effective TTL
+        // and inheritance. No quote, customer or payment data goes in keys.
+        $ctx=self::context($context);
+        $keys=['tour_id','rate_id','program_term_id','season_id',
+            'tour_mode','language','device'];
+        $scope=array_intersect_key($ctx,array_flip($keys));
+        return substr(hash('sha256',wp_json_encode([
+            'scope'=>$scope,'ttl_seconds'=>(int)$plan['ttl_seconds'],
+            'inheritance'=>$plan['inheritance']
+        ])),0,32);
+    }
     private static function source_fingerprint(): ?string {
         // Saved policy definitions are part of the key: a changed admin option
         // cannot reuse an old result, including updates during the same request.
@@ -190,7 +202,7 @@ final class MAD4B_Pricing_Cache_Inheritance_V1 {
         if (!is_string($encoded)||strlen($encoded)>150000)return null;
         return hash('sha256',$encoded);
     }
-    public static function memoize_mode_policies(callable $build) {
+    public static function memoize_mode_policies(callable $build,array $context=[]) {
         $allowed=wp_using_ext_object_cache() && !is_admin() && !wp_doing_ajax()
             && ($_SERVER['REQUEST_METHOD']??'GET')==='GET'
             && (!(defined('REST_REQUEST') && REST_REQUEST))
@@ -203,13 +215,13 @@ final class MAD4B_Pricing_Cache_Inheritance_V1 {
         if (!$allowed) {
             ++self::$counters['bypass'];return $build();
         }
-        $plan=self::decision('mode_policy_definition');
+        $plan=self::decision('mode_policy_definition',$context);
         if (!$plan['cacheable']) {
             ++self::$counters['bypass'];return $build();
         }
         $fingerprint=self::source_fingerprint();
         if (!$fingerprint) {++self::$counters['fail'];return $build();}
-        $key='policy-mode-'.substr($fingerprint,0,48);
+        $key='policy-mode-'.substr(hash('sha256',$fingerprint.'|'.self::blueprint_partition($context,$plan)),0,48);
         $stored=wp_cache_get($key,self::GROUP);
         if (is_array($stored) && ($stored['contract']??'')===self::VERSION
             && ($stored['digest']??'')===$fingerprint && is_array($stored['value']??null)) {
@@ -228,7 +240,7 @@ final class MAD4B_Pricing_Cache_Inheritance_V1 {
             ++self::$counters['stored'];
         return $value;
     }
-    public static function memoize_source_policy(string $mode, callable $build) {
+    public static function memoize_source_policy(string $mode,callable $build,array $context=[]) {
         $mode=sanitize_key($mode);
         $cache_allowed=wp_using_ext_object_cache() && !is_admin() && !wp_doing_ajax()
             && ($_SERVER['REQUEST_METHOD']??'GET')==='GET'
@@ -237,11 +249,11 @@ final class MAD4B_Pricing_Cache_Inheritance_V1 {
             && !has_filter('pre_option_etg-dynamic-pricing-controls_shared_price_source_mode_rows')
             && !has_filter('option_etg-dynamic-pricing-controls_shared_price_source_mode_rows');
         if(!$cache_allowed){++self::$counters['bypass'];return $build();}
-        $plan=self::decision('pricing_source_definition',['tour_mode'=>$mode]);
+        $plan=self::decision('pricing_source_definition',array_replace($context,['tour_mode'=>$mode]));
         if(!$plan['cacheable']){++self::$counters['bypass'];return $build();}
         $fingerprint=self::source_fingerprint();
         if(!$fingerprint){++self::$counters['fail'];return $build();}
-        $digest=hash('sha256',$fingerprint.'|source|'.$mode);
+        $digest=hash('sha256',$fingerprint.'|source|'.$mode.'|'.self::blueprint_partition(array_replace($context,['tour_mode'=>$mode]),$plan));
         $key='policy-source-'.substr($digest,0,48);
         $stored=wp_cache_get($key,self::GROUP);
         if(is_array($stored)&&($stored['contract']??'')===self::VERSION

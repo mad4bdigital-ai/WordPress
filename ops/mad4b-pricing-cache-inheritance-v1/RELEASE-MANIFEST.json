@@ -6,13 +6,13 @@
   "normalised_mode_policy_and_source_selection_cached": true,
   "pinned_php_files_sha256": {
     "mu-plugins/assets/mad4b-pricing-cache-public-paths.php": "872a616a47cbb5076a29d0047fc15c41dfc92629560c9368312db49f2c6aed95",
-    "mu-plugins/mad4b-pricing-cache-inheritance.php": "efbdd61ff01275817af455ea6e12ea168c94e74aca3bf019e22235b687a938b4",
-    "mu-plugins/shared-product-core/pricing/jetengine-policy-provider.php": "cc64ce31eb5ba4080fcf24955895bf9875c5d623c94cf87e808c1e430b863549",
-    "mu-plugins/shared-product-core/pricing/source-resolution-policy.php": "eb303fc386294dd3bc99c9f183ac22dc0e442a2139cc0682763afba31f6a84ab"
+    "mu-plugins/mad4b-pricing-cache-inheritance.php": "c8f691b9c4593b130328865776944cc7130bfba7d830cb588adc9c94fe408801",
+    "mu-plugins/shared-product-core/pricing/jetengine-policy-provider.php": "ee4e9091692b351d74e84c73eab25e9aa0ef0902a874f378a1564cd44cb8e4f4",
+    "mu-plugins/shared-product-core/pricing/source-resolution-policy.php": "1ae8e9efb9526d729c0ea977a9c5da1702c4c941256597088e6692357746180e"
   },
   "price_quotes_cached": false,
   "rate_html_cached": false,
-  "release_version": "1.1.0",
+  "release_version": "1.2.0",
   "required_native_dependencies": [
     "WPML",
     "JetEngine",
@@ -23,13 +23,23 @@
   "scope": "source-backed twin company deployment; company local cache options never copied",
   "source_function_patches": [
     "shared_product_mode_policies",
-    "shared_product_price_source_policy"
+    "shared_product_price_source_policy",
+    "shared_product_resolve_price_sources"
   ],
   "source_policy_site_hosting": "per-company site policy stored in WordPress; not a GitHub config file",
-  "tours_dev_staging": "implemented",
-  "wayfatours_production": "implemented",
+  "tours_dev_staging": "v1.1 live; v1.2 source prepared, not deployed",
+  "wayfatours_production": "v1.1 live; v1.2 source prepared, not deployed",
   "wpml_routes_tested": {
     "source": 857,
     "wayfa": 408
-  }
+  },
+  "scope_context": [
+    "tour_id",
+    "rate_id",
+    "program_term_id",
+    "season_id",
+    "tour_mode",
+    "language",
+    "device"
+  ]
 }

@@ -65,10 +65,10 @@ function shared_product_apply_mode_defaults_v1($configured){
  }
  return $configured;
 }
-function shared_product_mode_policies(){
+function shared_product_mode_policies($cache_context=[]){
  if(class_exists('MAD4B_Pricing_Cache_Inheritance_V1',false))
   return MAD4B_Pricing_Cache_Inheritance_V1::memoize_mode_policies(
-    static fn()=>shared_product_mode_policies_uncached());
+    static fn()=>shared_product_mode_policies_uncached(),is_array($cache_context)?$cache_context:[]);
  return shared_product_mode_policies_uncached();
 }
 function shared_product_mode_policies_uncached(){

@@ -14,6 +14,16 @@ class WP_Term {
 function is_wp_error($x):bool{return $x instanceof WP_Error;}
 function add_filter(...$args):void{}
 function add_action(...$args):void{}
+function wp_using_ext_object_cache():bool{return true;}
+function is_admin():bool{return false;}
+function wp_doing_ajax():bool{return false;}
+function has_filter(...$args){return false;}
+function wp_get_environment_type():string{return 'staging';}
+function get_current_blog_id():int{return 1;}
+function determine_locale():string{return 'en_US';}
+function wp_json_encode($v,$flags=0){return json_encode($v,$flags);}
+function wp_cache_get($key,$group){return $GLOBALS['mock_cache'][$group][$key]??false;}
+function wp_cache_set($key,$value,$group,$ttl){$GLOBALS['mock_cache'][$group][$key]=$value;$GLOBALS['cache_ttl'][$group][$key]=$ttl;return true;}
 function wp_is_mobile():bool{return false;}
 function absint($x):int{return abs((int)$x);}
 function sanitize_key(string $s):string{return preg_replace('/[^a-z0-9_-]/','',strtolower($s));}
@@ -84,6 +94,25 @@ foreach([
 }
 $registry=$cls::registry_provider([]);
 check(isset($registry['pricing-cache-inheritance']['fields']['policy_ttl']),'provider fields missing');
+$_SERVER['REQUEST_METHOD']='GET';
+$GLOBALS['mock_options']['mad4b_pricing_cache_inheritance_v1']['rates'][8]=['policy_ttl'=>200];
+$GLOBALS['mock_cache']=[];$GLOBALS['cache_ttl']=[];
+$ctx=['tour_id'=>7,'rate_id'=>8,'tour_mode'=>'tour'];
+$calls=0;
+$build=static function()use(&$calls){++$calls;return ['tour'=>['strategy'=>'rate_occupancy']];};
+$one=$cls::memoize_mode_policies($build,$ctx);
+$two=$cls::memoize_mode_policies($build,$ctx);
+check($one===$two && $calls===1,'rate scope cache hit not observed');
+$ttls=array_values($GLOBALS['cache_ttl']['mad4b-pricing-blueprints-v1']??[]);
+check(in_array(200,$ttls,true),'Rate TTL not applied to Redis');
+$global=$cls::memoize_mode_policies($build,['tour_mode'=>'tour']);
+check($calls===2,'Global and Rate scopes collided');
+$GLOBALS['mock_options']['mad4b_pricing_cache_inheritance_v1']['rates'][8]=['mode'=>'private_only'];
+$previous=count($GLOBALS['mock_cache']['mad4b-pricing-blueprints-v1']??[]);
+$private=$cls::memoize_mode_policies($build,$ctx);
+check($calls===3,'Private override reused Redis');
+check(count($GLOBALS['mock_cache']['mad4b-pricing-blueprints-v1']??[])===$previous,'Private override wrote Redis');
+check($private===$one,'Native policy definition changed');
 echo json_encode(['contract'=>'mad4b.pricing-cache-portable-tests.v1',
   'inheritance_cases'=>count($expect),'dynamic_bypasses'=>count($matrix),
   'scope_validation'=>7,'status'=>'PASS'])."\n";

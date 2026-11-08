@@ -4,10 +4,10 @@ if (!defined('ABSPATH'))return;
 $mad4bSourcePolicyEnabled=(defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true)
  || (defined('MAD4B_PRESENTATION_RUNTIME_ENABLED') && MAD4B_PRESENTATION_RUNTIME_ENABLED===true);
 if (!$mad4bSourcePolicyEnabled)return;
-function shared_product_price_source_policy($mode='') {
+function shared_product_price_source_policy($mode='',$cache_context=[]) {
  if(class_exists('MAD4B_Pricing_Cache_Inheritance_V1',false))
   return MAD4B_Pricing_Cache_Inheritance_V1::memoize_source_policy((string)$mode,
-    static fn()=>shared_product_price_source_policy_uncached($mode));
+    static fn()=>shared_product_price_source_policy_uncached($mode),is_array($cache_context)?$cache_context:[]);
  return shared_product_price_source_policy_uncached($mode);
 }
 function shared_product_price_source_policy_uncached($mode='') {
@@ -25,9 +25,9 @@ function shared_product_price_source_policy_uncached($mode='') {
  foreach(['tie_break'=>['direct','rate'],'fallback'=>['next_valid','strict'],'visibility'=>['winner','both']] as $key=>$allowed)if(!in_array($default[$key],$allowed,true))return new WP_Error('invalid_source_policy_choice');
  return $default;
 }
-function shared_product_resolve_price_sources($candidates,$mode='') {
+function shared_product_resolve_price_sources($candidates,$mode='',$cache_context=[]) {
  if(!is_array($candidates)||array_diff(array_keys($candidates),['direct','rate']))return new WP_Error('invalid_source_candidates');
- $policy=shared_product_price_source_policy($mode);if(is_wp_error($policy))return $policy;
+ $policy=shared_product_price_source_policy($mode,$cache_context);if(is_wp_error($policy))return $policy;
  $rank=['direct','rate'];usort($rank,static function($a,$b)use($policy){$wa=$policy[$a.'_weight'];$wb=$policy[$b.'_weight'];return $wa===$wb?($a===$policy['tie_break']?-1:1):($wa>$wb?-1:1);});
  $valid=[];foreach($rank as $source){$v=$candidates[$source]??null;if(is_array($v)&&isset($v['amount'],$v['currency'])&&is_numeric($v['amount'])&&is_finite((float)$v['amount'])&&(float)$v['amount']>=0&&is_string($v['currency'])&&preg_match('/^[A-Z]{3}$/D',$v['currency']))$valid[$source]=$v;}
  $preferred=$rank[0];if(!isset($valid[$preferred])&&$policy['fallback']==='strict')return new WP_Error('preferred_price_source_unavailable');
