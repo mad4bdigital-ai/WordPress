@@ -8,6 +8,7 @@ defined('ABSPATH') || exit;
 require_once __DIR__.'/class-mad4b-scp-readiness-workflow-options.php';
 require_once __DIR__.'/class-mad4b-scp-content-completeness.php';
 require_once __DIR__.'/class-mad4b-scp-brand-experience-quality.php';
+require_once __DIR__.'/class-mad4b-scp-presentation-integrity.php';
 
 final class MAD4B_SCP_Content_Readiness_Alerts {
     const VERSION = '1.0.0';
@@ -166,7 +167,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                 }
                 $media=$cfg['media_fields'][$type]??'';
                 if ($media && !self::has_media($id,$media))
-                    $issues[]=self::issue($type,$id,'media_source_unverified','medium','Missing approved media in source field '.$media.'; import licensed media or review the source');
+                    $issues[]=self::issue($type,$id,'media_source_unverified','medium','Missing approved media in source field '.$media.'; review the media source and destination relevance');
                 if ($media && !empty($cfg['media_reuse_threshold']) && $cfg['media_reuse_threshold']>=2) {
                     $raw=get_post_meta($id,$media,true);
                     if (is_array($raw) && count($raw)>0) {
@@ -212,7 +213,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                 foreach ($group as $shared_id) {
                     $issues[]=self::issue(get_post_type($shared_id),$shared_id,
                         'media_source_shared_across_records','medium',
-                        'The same media gallery is reused across multiple content records; verify licensing and source');
+                        'The same media gallery is reused across multiple content records; verify destination relevance and media provenance');
                 }
             }
         }
@@ -303,6 +304,39 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                 $faqGap=$source==='mad4b-taxonomy-faq' && $type==='site' &&
                     $object_id===0 && ($row['severity']??'')==='medium' &&
                     preg_match('/^faq_term_missing_(?:destinations|tour-types|tour-styles|season|good-for|duration-options|attractions-types|tour_categories)_[1-9][0-9]{0,8}$/D',$code);
+                // MAD4B Media Origin Integrity is a read-only provider.
+                // Accept only the exact source, fixed issue codes and current
+                // company/post/sha evidence; never accept external mutations.
+                $mediaOriginCodes=array(
+                    'media_foreign_upload_origin'=>'high',
+                    'media_local_attachment_missing'=>'high',
+                    'media_local_attachment_ambiguous'=>'medium',
+                    'media_duplicate_attachment_records'=>'medium',
+                    'media_gallery_shared_across_tours'=>'high',
+                    'media_presentation_images_shared'=>'high',
+                    'media_gallery_destination_review'=>'high',
+                    'media_reference_malformed'=>'medium',
+                );
+                $moEvidence=is_array($row['source_evidence']??null)
+                    ?$row['source_evidence']:array();
+                $mediaOrigin=$source==='mad4b-media-origin-integrity'
+                    && isset($mediaOriginCodes[$code])
+                    && ($row['severity']??'')===$mediaOriginCodes[$code]
+                    && $type==='tours-and-activities' && $object_id>0
+                    && get_post_type($object_id)===$type
+                    && get_post_status($object_id)==='publish'
+                    && class_exists('MAD4B_Media_Origin_Integrity_V1',false)
+                    && ($moEvidence['contract']??'')==='mad4b.media-origin-integrity.v1'
+                    && ($moEvidence['post_type']??'')===$type
+                    && (int)($moEvidence['post_id']??0)===$object_id
+                    && (string)($moEvidence['site_uuid']??'')===(string)
+                        MAD4B_SCP_Site_Profile::site_uuid()
+                    && preg_match('/^[a-f0-9]{64}$/D',
+                        (string)($moEvidence['source_sha256']??''))
+                    && isset($moEvidence['publication_authorized'])
+                    && $moEvidence['publication_authorized']===false
+                    && isset($moEvidence['media_replacement_authorized'])
+                    && $moEvidence['media_replacement_authorized']===false;
                 // Governed first-party Elementor Copy Coverage advisory only.
                 // No job creation, arbitrary source, authorization change, or publishing.
                 $elementorCopy=$source==='mad4b-elementor-copy-coverage' &&
@@ -315,7 +349,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                         (str_contains($code,'catalog_fallback_en_')?95:
                         (str_contains($code,'same_as_source_')?78:75))) &&
                     ($row['severity']??'')===($row['priority']>=95?'high':'medium');
-                $valid=is_array($row) && ($dfsb||$localization||$performance||$pricing||$ratePlan||$gallery||$gttd||$homeCopy||$faqGap||$elementorCopy) &&
+                $valid=is_array($row) && ($dfsb||$localization||$performance||$pricing||$ratePlan||$gallery||$gttd||$homeCopy||$faqGap||$mediaOrigin||$elementorCopy) &&
                     hash_equals($expected,$id) &&
                     in_array($row['severity']??'',array('critical','high','medium','low'),true) &&
                     is_string($row['label']??null) &&
@@ -331,6 +365,31 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                 );
                 if($homeCopy)$issues[count($issues)-1]['priority']=$row['priority'];
                 if($elementorCopy)$issues[count($issues)-1]['priority']=$row['priority'];
+                if($mediaOrigin){
+                    $keep=array(
+                        'contract','site_uuid','brand_id','post_type','post_id',
+                        'source_sha256','gallery_fingerprint_sha256','fields',
+                        'source_hosts','foreign_reference_count','unique_foreign_paths',
+                        'local_unique_attachment_paths','missing_local_paths',
+                        'ambiguous_local_paths','equivalent_attachment_record_surplus',
+                        'shared_by_tour_families','shared_visual_fields',
+                        'shared_presentation_field_count','title_destination_signals',
+                        'filename_destination_signals','labeled_gallery_paths',
+                        'filename_signal_disjoint_paths','destination_review_candidate',
+                        'location_evidence_is_filename_only','total_references',
+                        'local_match_is_not_editorial_approval',
+                        'provenance_unverified','remote_content_not_fetched',
+                        'publication_authorized','media_replacement_authorized',
+                    );
+                    $issues[count($issues)-1]['source_evidence']=
+                        array_intersect_key($moEvidence,array_flip($keep));
+                    $issues[count($issues)-1]['priority']=
+                        $code==='media_gallery_destination_review'?94:
+                        ($code==='media_gallery_shared_across_tours'?95:
+                        ($code==='media_presentation_images_shared'?95:
+                        ($code==='media_local_attachment_missing'?92:
+                        ($code==='media_foreign_upload_origin'?89:62))));
+                }
                 if($gttd){
                     $clean=[];
                     foreach(['price','fees_and_taxes','occupancy','availability','checkout_match'] as $name) {
@@ -358,6 +417,10 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         $brandQuality=MAD4B_SCP_Brand_Experience_Quality::discover($cfg);
         if(empty($brandQuality['complete']))$complete=false;
         else $issues=array_merge($issues,(array)$brandQuality['issues']);
+        // Source-scoped audit + fresh browser readback; no browser work on GET.
+        $presentation=MAD4B_SCP_Presentation_Integrity_V1::discover();
+        if(empty($presentation['complete']))$complete=false;
+        else $issues=array_merge($issues,(array)$presentation['issues']);
         if(count($issues)>self::MAX_ISSUES)$complete=false;
         return array('contract'=>'mad4b.content-readiness.discovery.v1','complete'=>$complete,
             'post_counts'=>$counts,'scanned'=>$scanned,'issues'=>$issues,
@@ -439,6 +502,81 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                     ];
                 }
             }
+            // Media integrity findings are source-backed ContentJob intake
+            // requests, not automatically published or blindly rewritten URLs.
+            // Dedup key is scoped to exact company, post and metadata digest.
+            if(($row['source']??'')==='mad4b-media-origin-integrity'
+                && in_array((string)($row['code']??''),array(
+                    'media_gallery_destination_review',
+                    'media_gallery_shared_across_tours',
+                    'media_presentation_images_shared',
+                    'media_foreign_upload_origin',
+                    'media_local_attachment_missing',
+                    'media_local_attachment_ambiguous',
+                    'media_duplicate_attachment_records'),true)) {
+                $e=(array)($row['source_evidence']??array());
+                $site=class_exists('MAD4B_SCP_Site_Profile',false)
+                    ?(string)MAD4B_SCP_Site_Profile::site_uuid():'';
+                $post_id=(int)($row['object_id']??0);
+                if($site!=='' && $post_id>0
+                    && hash_equals($site,(string)($e['site_uuid']??''))
+                    && preg_match('/^[a-f0-9]{64}$/D',(string)($e['source_sha256']??''))) {
+                    $policy=class_exists('MAD4B_SCP_Context_Authority',false)
+                        ?MAD4B_SCP_Context_Authority::review_policy():array();
+                    $mode=(string)($policy['mode']??'human_only');
+                    // WPML siblings belong to one original media family.
+                    // Do not create two Content Jobs for identical gallery
+                    // content when EN and ES share one tour/gallery.
+                    $default_language=(string)apply_filters(
+                        'wpml_default_language','en');
+                    $canonical=(int)apply_filters('wpml_object_id',
+                        $post_id,'tours-and-activities',false,$default_language);
+                    if($canonical<=0 || get_post_status($canonical)!=='publish')
+                        $canonical=$post_id;
+                    $language_details=apply_filters(
+                        'wpml_post_language_details',null,$post_id);
+                    $source_language=sanitize_key((string)(
+                        is_array($language_details)
+                        ?($language_details['language_code']??''):''));
+                    $shared_gallery_code=in_array((string)$row['code'],array(
+                        'media_gallery_shared_across_tours',
+                        'media_presentation_images_shared',
+                        'media_foreign_upload_origin',
+                        'media_duplicate_attachment_records'),true);
+                    $snapshot=$shared_gallery_code
+                        ?(string)($e['gallery_fingerprint_sha256']??'')
+                        :(string)$e['source_sha256'];
+                    $dedup=hash('sha256',$site.'|'.$canonical.'|'.
+                        $row['code'].'|'.$snapshot);
+                    $new[$key]['content_job_request']=array(
+                        'contract'=>'mad4b.media-integrity-contentjob-intake.v1',
+                        'status'=>(!empty($previous['content_job_id'])
+                            &&($previous['source_evidence']['source_sha256']??'')
+                              ===$e['source_sha256'])?'LINKED':'PRIORITY_INTAKE',
+                        'source_issue_id'=>$key,
+                        'gap_code'=>(string)$row['code'],
+                        'priority'=>(int)($row['priority']??80),
+                        'site_uuid'=>$site,'brand_id'=>(string)($e['brand_id']??''),
+                        'post_type'=>'tours-and-activities',
+                        'source_post_id'=>$post_id,
+                        'canonical_post_id'=>$canonical,
+                        'source_language'=>$source_language,
+                        'deduplication_scope'=>'canonical_tour_media_family',
+                        'source_sha256'=>(string)$e['source_sha256'],
+                        'gallery_sha256'=>(string)($e['gallery_fingerprint_sha256']??''),
+                        'content_type'=>'media_review',
+                        'review_mode_inherited'=>$mode,
+                        'deduplication_key'=>$dedup,
+                        'recommended_action'=>'compare_actual_photographs_with_tour_and_brand_context_then_select_verified_local_assets',
+                        'original_meta_preserved'=>true,
+                        'requires_governed_content_job_admission'=>true,
+                        'requires_current_brand_context'=>true,
+                        'requires_photographic_relevance_review'=>true,
+                        'publication_authorized'=>false,
+                        'media_replacement_authorized'=>false,
+                    );
+                }
+            }
         }
         // Only close rules evaluated by this scan; removing a configured rule
         // must not silently resolve its pre-existing open issues.
@@ -462,6 +600,10 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         return self::summary($new);
     }
     private static function rule_enabled_for($issue,$cfg) {
+        if (($issue['source']??'')==='mad4b-presentation-integrity')
+            return str_starts_with((string)($issue['code']??''),'pres_browser_')
+                ? MAD4B_SCP_Presentation_Integrity_V1::browser_covered()
+                : MAD4B_SCP_Presentation_Integrity_V1::covered();
         if(($issue['source']??'')==='mad4b-brand-experience')
             return class_exists('MAD4B_SCP_Brand_Experience_Quality',false);
         if(($issue['source']??'')==='mad4b-google-ttd-pricing' &&
@@ -470,6 +612,9 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                 has_filter('mad4b/content_readiness/external_issues')!==false;
         if(($issue['source']??'')==='mad4b-tour-gallery-diagnostics')
             return has_filter('mad4b/content_readiness/external_issues')!==false;
+        if(($issue['source']??'')==='mad4b-media-origin-integrity')
+            return class_exists('MAD4B_Media_Origin_Integrity_V1',false)
+                && has_filter('mad4b/content_readiness/external_issues')!==false;
         if(($issue['source']??'')==='mad4b-rate-planner')return false; // Planner owns covered-source closure.
         if(($issue['source']??'')==='mad4b-home-translation')
             return has_filter('mad4b/content_readiness/external_issues')!==false;
