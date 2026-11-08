@@ -595,5 +595,7 @@ final class MAD4B_Lifecycle_Orchestrator {
 }
 require_once __DIR__ . '/class-mad4b-unified-governed-lifecycle-policy.php';
 require_once __DIR__ . '/class-mad4b-lifecycle-native-receipt.php';
+require_once __DIR__ . '/class-mad4b-lifecycle-source-reissue-admin.php';
+add_action('plugins_loaded',['MAD4B_Lifecycle_Source_Reissue_Admin','boot'],122);
 add_action('plugins_loaded',['MAD4B_Lifecycle_Native_Receipt','boot'],121);
 add_action('plugins_loaded',['MAD4B_Lifecycle_Orchestrator','boot'],120);
