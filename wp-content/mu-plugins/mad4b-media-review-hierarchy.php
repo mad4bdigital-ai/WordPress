@@ -168,17 +168,24 @@ final class MAD4B_Media_Review_Hierarchy_V1 {
             return ['ready'=>false,'applied_tour_families'=>null];
         if(count($rows)>300)return ['ready'=>false,
             'applied_tour_families'=>null,'reason'=>'receipt_cap_exceeded'];
-        $active=[];$rollback=0;
+        $active=[];$rollback=0;$latest_seen=[];
         foreach($rows as $raw){
             $r=maybe_unserialize($raw);
             if(!is_array($r)||($r['contract']??'')!=='mad4b.tour-media-rollback.v1'
                ||($r['site_uuid']??'')!==$site['site_uuid'])continue;
             $post=absint($r['source_post_id']??0);
             if(!$post||get_post_type($post)!=='tours-and-activities')continue;
+            // Receipts arrive newest first. The newest receipt for each
+            // canonical tour determines its CURRENT write state.
+            if(isset($latest_seen[$post]))continue;
+            $latest_seen[$post]=true;
             if(($r['status']??'')==='rolled_back')$rollback++;
             elseif(($r['status']??'')==='applied')$active[$post]=true;
         }
+        $ids=array_map('intval',array_keys($active));
+        sort($ids,SORT_NUMERIC);
         return ['ready'=>true,'applied_tour_families'=>count($active),
+            'applied_tour_ids'=>$ids,
             'rollback_receipts'=>$rollback,
             'audited_media_apply_records_scanned'=>count($rows),
             'current_frontend_status_not_implied'=>true];
