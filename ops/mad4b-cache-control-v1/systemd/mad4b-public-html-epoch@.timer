@@ -1,0 +1,9 @@
+[Unit]
+Description=Check for approved company-scoped HTML cache epoch trigger on %i
+[Timer]
+OnBootSec=30sec
+OnUnitInactiveSec=45sec
+AccuracySec=10sec
+Unit=mad4b-public-html-epoch@%i.service
+[Install]
+WantedBy=timers.target
