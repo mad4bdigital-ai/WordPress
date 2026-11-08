@@ -387,8 +387,10 @@ class CodeReleaseTests(unittest.TestCase):
         script = cmds[-1][-1]
         self.assertIn('mad4b.content-readiness.discovery.v1', script)
         self.assertIn('mad4b-elementor-copy-coverage', script)
-        self.assertIn('apply_filters("mad4b/content_readiness/external_issues",[])',
-                      script)
+        self.assertIn('apply_filters("mad4b/content_readiness/external_issues",'
+                      '[],["post_types"=>["elementor_library"]])', script)
+        self.assertNotIn('apply_filters("mad4b/content_readiness/external_issues",[])',
+                         script)
         self.assertNotIn('$r["complete"]', script)
         self.assertNotIn("exit(3);'\n            'echo", script)
 

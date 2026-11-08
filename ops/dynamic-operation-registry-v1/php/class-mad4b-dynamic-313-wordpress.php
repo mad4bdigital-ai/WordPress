@@ -38,23 +38,39 @@ final class MAD4B_Dynamic_WP_313_Readback_V1 {
 
     public static function status():array {
         $trusted=self::trusted();
+        $config=is_file(__DIR__.'/config.php') ? require __DIR__.'/config.php' : [];
+        $original313=count($trusted)>0 && is_array($config)
+            && ($config['original_313_finalizer_connected']??null)===true
+            && class_exists('MAD4B_Native_WPCLI_Receipt_Verifier_V1',false)
+            && is_callable(['MAD4B_Native_WPCLI_Receipt_Verifier_V1','supports_dynamic_v4'])
+            && MAD4B_Native_WPCLI_Receipt_Verifier_V1::supports_dynamic_v4();
+        // Central 313 can prove its own readiness, not a remote VPS flag.
+        // Original 306 independently verifies the Host signer, root-only
+        // stores, original 313 resumer timer, exact Job and signed release
+        // Grant BEFORE it claims or executes any dynamic operation.
+        $centralReady=$original313
+            && ($trusted['provider']['operation_id']??'')==='company.code.release'
+            && (int)($trusted['provider']['version']??0)>=3
+            && ($trusted['provider']['evidence_schema']??'')==='code_release.v2'
+            && ($trusted['evidence_schema']['schema_id']??'')==='code_release.v2'
+            && class_exists('MAD4B_Central_VPS_Broker_V1',false)
+            && class_exists('MAD4B_Broker_Exact_SSH_Authority_V1',false)
+            && class_exists('MAD4B_Broker_Remote_SSH_Receipt_V1',false)
+            && function_exists('sodium_crypto_sign_verify_detached')
+            && strlen((string)base64_decode(
+                (string)get_option(MAD4B_Central_VPS_Broker_V1::PUBKEY,''),true
+            ))===SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES;
         return [
             'contract'=>self::CONTRACT,
             'first_party_proof_enrolled'=>count($trusted)>0,
-            'original_313_finalizer_connected'=>
-                count($trusted)>0 &&
-                ($config=is_file(__DIR__.'/config.php') ? require __DIR__.'/config.php' : []) &&
-                is_array($config) &&
-                ($config['original_313_finalizer_connected']??null)===true &&
-                class_exists('MAD4B_Native_WPCLI_Receipt_Verifier_V1',false) &&
-                MAD4B_Native_WPCLI_Receipt_Verifier_V1::supports_dynamic_v4(),
+            'original_313_finalizer_connected'=>$original313,
             'independent_verifier_ready'=>
                 isset($trusted['independent_verifier_public_key_b64']) &&
                 is_string($trusted['independent_verifier_public_key_b64']),
             'dynamic_proof_ingest_ready'=>count($trusted)>0,
-            // End-to-end original host receipt writer and policy must also
-            // be installed and independently verified before 306 dispatch.
-            'operational_ready'=>false,
+            // This is Central's independently checkable readiness only.
+            // Original 306 requires separate Host+signed-Grant checks.
+            'operational_ready'=>$centralReady,
             'operation_id'=>$trusted['provider']['operation_id']??null,
             'job_issued'=>false,
             'grant_issued'=>false,

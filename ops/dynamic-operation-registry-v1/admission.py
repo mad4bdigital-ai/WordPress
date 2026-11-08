@@ -80,10 +80,23 @@ def resolve_claimed(
                      "ORIGINAL_306_JOB_IDENTITY_INVALID")
     digest = index.command_sha256(operation_id, plan_sha256)
     for key in ("company", "environment", "site_uuid"):
-        registry.require(
-            plan.get(key) == original_job.get(key) ==
-            original_pending.get(key),
-            "ORIGINAL_306_SCOPE_MISMATCH:" + key)
+        registry.require(plan.get(key) == original_job.get(key),
+                         "ORIGINAL_306_SCOPE_MISMATCH:" + key)
+    # A genuine original 306 Claim is available before execution.
+    # The original 313 PENDING_INDEPENDENT_NATIVE_READBACK only exists
+    # AFTER the Host executor; accepting/requiring it before execution
+    # would create a circular dependency or encourage fabricated receipts.
+    registry.require(
+        original_pending.get("contract")=="mad4b.central-vps-broker.v1" and
+        original_pending.get("state")==
+            "BROKER_CLAIMED_PENDING_INDEPENDENT_HOST_AUTHORITY" and
+        original_pending.get("host_id")==HOST and
+        original_pending.get("production_mutation_performed") is False and
+        type(original_pending.get("claimed_epoch")) is int and
+        original_pending.get("claimed_epoch")==original_job.get("claimed_epoch") and
+        isinstance(original_pending.get("nonce"),str) and
+        JOB.fullmatch(original_pending["nonce"]) is not None,
+        "ORIGINAL_SIGNED_306_CLAIM_RECORD_NOT_VERIFIED")
     registry.require(
         original_job.get("origin") in (None, plan.get("origin")) and
         original_job.get("operation") == "company.remote.wpcli.full" and
@@ -93,12 +106,15 @@ def resolve_claimed(
         original_job.get("command_sha256") == digest and
         original_job.get("state") ==
         "BROKER_CLAIMED_PENDING_INDEPENDENT_HOST_AUTHORITY" and
-        original_pending.get("broker_host_id") == HOST and
-        original_pending.get("target_host_id") == HOST,
+        original_job.get("broker_host_id")==HOST and
+        original_job.get("target_host_id")==HOST and
+        original_job.get("executed") is False,
         "ORIGINAL_306_COMMAND_NOT_CLAIMED")
     instant = int(time.time()) if now is None else now
-    registry.require(type(original_pending.get("expires_epoch")) is int and
-                     original_pending["expires_epoch"] > instant + 120,
+    registry.require(type(original_job.get("expires_epoch")) is int and
+                     original_job["expires_epoch"] > instant + 120 and
+                     original_job.get("claimed_epoch") <= instant and
+                     original_job.get("claimed_epoch") > instant - 3600,
                      "ORIGINAL_306_CLAIM_EXPIRES_SOON")
     return {
         "contract":"mad4b.dynamic-306-claimed-admission.v1",

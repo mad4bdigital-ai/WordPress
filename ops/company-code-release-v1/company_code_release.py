@@ -411,7 +411,11 @@ def php_lint(plan: dict) -> None:
             'if(!is_array($r)||($r["contract"]??"")!=='
             '"mad4b.content-readiness.discovery.v1"'
             '||!is_array($r["issues"]??null))exit(3);'
-            '$advisories=apply_filters("mad4b/content_readiness/external_issues",[]);'
+            # The two-argument Content Readiness hook is shared by Gallery,
+            # Pricing, Localization, Media Origin and Style Parity. Use an
+            # Elementor-only policy to avoid duplicate full-tour scans here.
+            '$advisories=apply_filters("mad4b/content_readiness/external_issues",'
+            '[],["post_types"=>["elementor_library"]]);'
             'if(!is_array($advisories))exit(4);'
             'foreach($advisories as $a){'
             'if(($a["source"]??"")!=="mad4b-elementor-copy-coverage")continue;'

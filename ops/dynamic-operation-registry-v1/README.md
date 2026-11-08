@@ -104,3 +104,36 @@ A missing grant, stale target, wrong provider, imported Python from an
 unregistered location, or reused reservation stops the Job without claiming
 it. Neither the operation Registry nor status of Central 313 can issue a Grant
 or stand in for the authenticated owner request.
+
+### No manual Central 313 operational flag (2026-11-08)
+
+The original Central 313 v4 check now derives `operational_ready` from its
+actual loaded provider v3 / evidence-schema v2, independent native v4 bridge,
+Broker 306/312 classes and the live original Broker public signing key. The
+actual original 306 Worker, still a separate first-party trust boundary,
+checks the protected Host independent verifier key against the Registry,
+original signer and Resumer files, active original Worker/Resumer timers,
+root-only plan/grant/receipt stores and protected Host release policy.
+
+This readiness is **NOT an authorization grant**. Every dynamic Job still
+requires a separately admitted original 305 request, signed 312 authority,
+original exact-scope root-only Plan, live target preimage, and Job-bound signed
+Broker release Grant before 306 Claim/Apply, followed by genuine signed 313.
+No fixed environment-name exemptions; changes are matched by enrolled target.
+The v5 Private Draft provider and all previously registered 306 operations
+remain intact. The first-party source guard pins the latest active worker and
+refuses to overwrite unknown newer code.
+
+### Original 306 Claim precedes native Host pending 313 (live regression)
+
+An original Code Release Job can be signed and claimed by the real Broker
+before Host execution. Therefore WordPress has an original Broker `CLAIM`
+record, but **not yet** the `PENDING_INDEPENDENT_NATIVE_READBACK` record;
+that record is generated only after Host Apply. The dynamic selector reads
+actual original `JOB` and `CLAIM` fields, requires exact Job ID/host/nonce,
+matching claim timestamps, unexecuted status, original command SHA and scope,
+then rechecks original independently signed 312 before reserving or executing.
+It never manufactures or pre-fills any 313 pending receipt. Later original
+313 verifies the genuinely persisted Host readback and creates the final
+central receipt. Tests cover forged/missing claims, clock drift, premature
+313 pending records and exact signing continuity.

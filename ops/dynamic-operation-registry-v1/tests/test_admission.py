@@ -28,16 +28,21 @@ class DynamicClaimTests(unittest.TestCase):
             "command_format":"wpcli.argv.json.v1",
             "command_sha256":self.reg.command_sha256("company.code.release",
                                                     self.plan["plan_sha256"]),
+            "broker_host_id":"srv2030908",
+            "target_host_id":"srv2030908",
+            "executed":False,
+            "claimed_epoch":int(time.time())-30,
+            "expires_epoch":int(time.time())+700,
             "state":"BROKER_CLAIMED_PENDING_INDEPENDENT_HOST_AUTHORITY",
         }
         self.pending={
+            "contract":"mad4b.central-vps-broker.v1",
             "job_id":self.job["job_id"],
-            "company":self.job["company"],
-            "environment":self.job["environment"],
-            "site_uuid":self.job["site_uuid"],
-            "broker_host_id":"srv2030908",
-            "target_host_id":"srv2030908",
-            "expires_epoch":int(time.time())+700,
+            "host_id":"srv2030908",
+            "nonce":"b"*32,
+            "claimed_epoch":self.job["claimed_epoch"],
+            "state":"BROKER_CLAIMED_PENDING_INDEPENDENT_HOST_AUTHORITY",
+            "production_mutation_performed":False,
         }
         self.original={
             "contract":"mad4b.broker-exact-ssh-authority.v1",
@@ -93,8 +98,25 @@ class DynamicClaimTests(unittest.TestCase):
             a.verify_claimed_312(x,self.original)
 
     def test_306_scope_drift_rejected(self):
-        self.pending["site_uuid"]="0"*36
-        with self.assertRaisesRegex(r.RegistryDenied,"SCOPE_MISMATCH"):
+        self.pending["host_id"]="not-original-host"
+        with self.assertRaisesRegex(r.RegistryDenied,"CLAIM_RECORD_NOT_VERIFIED"):
+            self.candidate()
+
+    def test_313_pending_record_cannot_replace_original_broker_claim(self):
+        self.pending={"job_id":self.job["job_id"],
+                      "state":"PENDING_INDEPENDENT_NATIVE_READBACK",
+                      "command_sha256":self.job["command_sha256"]}
+        with self.assertRaisesRegex(r.RegistryDenied,"CLAIM_RECORD_NOT_VERIFIED"):
+            self.candidate()
+
+    def test_306_original_claim_mutation_denied(self):
+        self.pending["production_mutation_performed"]=True
+        with self.assertRaisesRegex(r.RegistryDenied,"CLAIM_RECORD_NOT_VERIFIED"):
+            self.candidate()
+
+    def test_broker_claim_timestamp_mismatch_denied(self):
+        self.pending["claimed_epoch"]=self.job["claimed_epoch"]-20
+        with self.assertRaisesRegex(r.RegistryDenied,"CLAIM_RECORD_NOT_VERIFIED"):
             self.candidate()
 
     def test_306_command_drift_denied(self):

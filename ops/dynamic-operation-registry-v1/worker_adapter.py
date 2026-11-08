@@ -91,7 +91,7 @@ def execute_claimed(original_job: dict, original_pending: dict) -> dict:
     m=index.resolve(operation)
     handler=Path(checked["handler_path"])
     registry.require(registry.sha(registry.protected_file(
-        handler,index.root,max_bytes=2_000_000)) ==
+        handler,index.root,maximum=2_000_000)) ==
         m["handler"]["sha256"],"HANDLER_CHANGED_AFTER_ADMISSION")
     # Original job is reserved BEFORE execution, so timeout can never replay
     # an uncertain WordPress mutation. No operator may delete this as a retry.
