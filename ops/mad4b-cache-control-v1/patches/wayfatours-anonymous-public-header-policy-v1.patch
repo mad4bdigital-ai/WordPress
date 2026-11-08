@@ -1,0 +1,29 @@
+--- a/wayfatours/stack/nginx.conf
++++ b/wayfatours/stack/nginx.conf
+@@ -196,15 +196,22 @@
+ }
+ map $upstream_http_set_cookie $wayfa_response_sets_cookie {
+     default 1;
+     "" 0;
+ }
+-map "$wayfa_html_no_cache_path|$wayfa_html_no_cache_request|$wayfa_not_public_response|$wayfa_upstream_cache_veto|$wayfa_response_sets_cookie|$upstream_http_x_wayfa_public_page" $wayfa_browser_html_policy {
+-    # Any private/context-bearing/non-opted-in HTML is never browser-cached.
++# Browser-shared public cache applies only to WordPress-approved, cookie-free HTML.
++# Safe tracking/WPML cookie class remains private; sensitive HTML remains no-store.
++map $http_cookie $wayfa_browser_cookie_free {
++    default 0;
++    "" 1;
++}
++map "$wayfa_html_no_cache_path|$wayfa_html_no_cache_request|$wayfa_not_public_response|$wayfa_upstream_cache_veto|$wayfa_response_sets_cookie|$upstream_http_x_wayfa_public_page|$wayfa_browser_cookie_free" $wayfa_browser_html_policy {
+     default "private, no-store, max-age=0";
+-    "0|0|0|0|0|1" "private, max-age=1800, must-revalidate";
+-    "0|0|0|0|0|T" "private, max-age=1800, must-revalidate";
++    "0|0|0|0|0|1|1" "public, max-age=1800, must-revalidate";
++    "0|0|0|0|0|T|1" "public, max-age=1800, must-revalidate";
++    "0|0|0|0|0|1|0" "private, max-age=1800, must-revalidate";
++    "0|0|0|0|0|T|0" "private, max-age=1800, must-revalidate";
+ }
+ 
+ map $wayfa_browser_html_policy $wayfa_browser_vary_cookie {
+     default "";
+     ~. "Cookie";
