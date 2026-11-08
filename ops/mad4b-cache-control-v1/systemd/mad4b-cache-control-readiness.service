@@ -1,0 +1,16 @@
+[Unit]
+Description=MAD4B WordPress Cache Control policy inheritance and FastCGI socket readiness (read-only)
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/flock -w 8 /run/lock/mad4b-cache-control-readiness.lock /usr/bin/python3 /opt/mad4b-company-provisioning/bin/company-cache-control-readiness-v1.py --strict
+TimeoutStartSec=55
+Nice=15
+CPUQuota=15%
+IOSchedulingClass=idle
+NoNewPrivileges=true
+UMask=0077
+StandardOutput=journal
+StandardError=journal
