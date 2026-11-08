@@ -103,7 +103,19 @@ final class MAD4B_Unified_Governed_Lifecycle_Policy {
                 .'<td>'.esc_html(implode(', ',$step['depends_on'])).'</td>'
                 .'<td><code>'.esc_html($step['ability']??'source-owned').'</code></td>'
                 .'<td>'.esc_html($step['reason']).'</td></tr>';
-            echo '</tbody></table><p>No mutations were performed by this inspection.</p>';
+            echo '</tbody></table>';
+            $intelligence=$plan['dependency_intelligence']??[];
+            if(!empty($intelligence['graph_valid'])){
+                echo '<h2>Dependency Intelligence</h2><p>Original policy nodes: '
+                    .esc_html((string)$intelligence['nodes'])
+                    .' · Longest dependency chain (steps, not time): '
+                    .esc_html((string)$intelligence['longest_dependency_chain_steps'])
+                    .' · Independently ready reads: '
+                    .esc_html((string)count($intelligence['ready_independent_read_nodes']))
+                    .'</p><p>Planning only; no WordPress content impact, execution'
+                    .' authorization or public-page acceptance is inferred.</p>';
+            } else echo '<p>Dependency graph verification unavailable.</p>';
+            echo '<p>No mutations were performed by this inspection.</p>';
         }
         echo '</div>';
     }
@@ -123,6 +135,70 @@ final class MAD4B_Unified_Governed_Lifecycle_Policy {
         return ['state'=>'BLOCKED_DEPENDENCY','retry_write'=>false,
             'action'=>'discover_or_repair_missing_dependency'];
     }
+    /** Deterministic, read-only dependency analysis of the ORIGINAL policy DAG. */
+    public static function dependency_intelligence(array $steps): array {
+        $nodes=[];$children=[];
+        foreach($steps as $row){
+            $id=(string)($row['id']??'');
+            if($id===''||isset($nodes[$id]))
+                return ['contract'=>'mad4b.lifecycle-dependency-intelligence.v1',
+                    'graph_valid'=>false,'reason'=>'duplicate_or_missing_id','dispatch_authorized'=>false];
+            $nodes[$id]=$row;
+            $children[$id]=[];
+        }
+        foreach($nodes as $id=>$row)
+            foreach((array)($row['depends_on']??[]) as $parent){
+                if(!isset($nodes[$parent]))
+                    return ['contract'=>'mad4b.lifecycle-dependency-intelligence.v1',
+                        'graph_valid'=>false,'reason'=>'unresolved_dependency','dispatch_authorized'=>false];
+                $children[$parent][]=$id;
+            }
+        $indegree=[];$distance=[];$walk=[];
+        foreach($nodes as $id=>$row){
+            $indegree[$id]=count((array)($row['depends_on']??[]));
+            $distance[$id]=1;
+        }
+        foreach($indegree as $id=>$degree)if($degree===0)$walk[]=$id;
+        $cursor=0;$order=[];
+        while(isset($walk[$cursor])){
+            $id=$walk[$cursor++];$order[]=$id;
+            foreach($children[$id] as $child){
+                $distance[$child]=max($distance[$child],$distance[$id]+1);
+                if(--$indegree[$child]===0)$walk[]=$child;
+            }
+        }
+        if(count($order)!==count($nodes))
+            return ['contract'=>'mad4b.lifecycle-dependency-intelligence.v1',
+                'graph_valid'=>false,'reason'=>'dependency_cycle','dispatch_authorized'=>false];
+        $impact=[];
+        foreach(array_reverse($order) as $id){
+            $set=[];
+            foreach($children[$id] as $child) {
+                $set[$child]=true;
+                foreach($impact[$child]??[] as $desc)$set[$desc]=true;
+            }
+            $impact[$id]=array_keys($set);
+        }
+        $pending=[];$read_ready=[];
+        foreach($nodes as $id=>$node) {
+            if(($node['state']??'')==='READY'&&
+                ($node['execution_kind']??'read')==='read')$read_ready[]=$id;
+            if(($node['state']??'')!=='READY')$pending[]=$id;
+        }
+        return ['contract'=>'mad4b.lifecycle-dependency-intelligence.v1',
+            'graph_valid'=>true,'nodes'=>count($nodes),
+            'topological_order'=>$order,
+            'longest_dependency_chain_steps'=>$distance?max($distance):0,
+            'impacted_descendants'=>$impact,
+            'ready_independent_read_nodes'=>$read_ready,
+            'pending_nodes'=>$pending,
+            'impact_scope'=>'original_policy_steps_only',
+            'wordpress_content_dependencies_proven'=>false,
+            'wpml_routes_revalidated'=>false,
+            'dependency_runtime_executed'=>false,
+            'dispatch_authorized'=>false];
+    }
+
     public static function plan($resolution) {
         if(!is_array($resolution)||!in_array(($resolution['goal']??''),['seo','media','content','company'],true)
            ||($resolution['site']??'')!=='https://tours.dev.mad4b.com/')
@@ -169,6 +245,81 @@ final class MAD4B_Unified_Governed_Lifecycle_Policy {
             if($kind==='external')$row['source_owned_scoring_required']=true;
             $steps[]=$row;$by_id[$id]=$row;
         }
+        // Global non-blocking state projection: normal DAG precedence is not
+        // BLOCKED_DEPENDENCY, and write planning never issues native authority.
+        // Existing conservative plan remains the fallback until Control Plane
+        // carrying the shared global contract has been installed.
+        if(class_exists('MAD4B_SCP_Global_Runtime_Lifecycle')) {
+            $global_nodes=[];$source_evidence=[];
+            // resolve() already performed the original WordPress object,
+            // ContentJob and company scope readback. Its bound digest is the
+            // authoritative context receipt for this read-only DAG view.
+            $context_digest=(string)($resolution['resolution_sha256']??'');
+            if(preg_match('/^[a-f0-9]{64}$/D',$context_digest)) {
+                $source_evidence['context']=[
+                    'status'=>'verified','native_source_confirmed'=>true,
+                    'exact_target_bound'=>true,'readback_confirmed'=>true,
+                    'receipt_digest'=>$context_digest,
+                ];
+            }
+            foreach($graph as $node) {
+                $registered=$node['ability']===null ? null :
+                    (function_exists('wp_has_ability') && wp_has_ability($node['ability']));
+                $global_nodes[]=[
+                    'id'=>$node['id'],'label'=>$node['label'],
+                    'kind'=>$node['execution_kind'],'depends_on'=>$node['depends_on'],
+                    'ability_registered'=>$registered,
+                    'requires_source_owner'=>in_array($node['execution_kind'],['external','release'],true),
+                ];
+                // This denial comes only from the original compatibility
+                // provider certification, not from a guessed write gate.
+                if($resolution['goal']==='seo' && $node['id']==='write_meta'
+                   && in_array('provider_write_not_certified',$auth,true)) {
+                    $source_evidence['write_meta']=[
+                        'status'=>'denied','native_source_confirmed'=>true,
+                    ];
+                }
+            }
+            $shared=MAD4B_SCP_Global_Runtime_Lifecycle::evaluate($global_nodes,$source_evidence);
+            if(!is_wp_error($shared)) {
+                $states_by_id=[];
+                foreach($shared['steps'] as $global_step)
+                    $states_by_id[$global_step['id']]=$global_step;
+                foreach($steps as &$step) {
+                    $source=$states_by_id[$step['id']];
+                    $step['state']=$source['state'];
+                    $step['reason']=$source['reason'];
+                    $step['blocked_by']=$source['waiting_on'];
+                    $step['verified']=$source['native_receipt_verified'];
+                    $step['dispatch_candidate']=$source['dispatch_candidate'];
+                }
+                unset($step);
+                return [
+                    'contract'=>self::CONTRACT,'policy_version'=>'1.1.0-staging',
+                    'global_contract'=>$shared['contract'],
+                    'goal'=>$resolution['goal'],'state'=>$shared['state'],
+                    'available_states'=>MAD4B_SCP_Global_Runtime_Lifecycle::STATES,
+                    'steps'=>$steps,
+                    'ready_independent_steps'=>$shared['ready_steps'],
+                    'pending_steps'=>$shared['waiting_steps'],
+                    'waiting_steps'=>$shared['waiting_steps'],
+                    'blocked_steps'=>$shared['blocked_steps'],
+                    'recovering_steps'=>$shared['recovering_steps'],
+                    'authority_blockers'=>$auth,
+                    'parallel_read_tasks_allowed'=>count($shared['ready_steps'])>1,
+                    'ordinary_wait_is_not_blocking'=>true,
+                    'readiness_not_write_permission'=>true,
+                    'provider_write_executed'=>false,
+                    'provider_mutation_receipt'=>null,
+                    'native_verification_complete'=>false,
+                    'automatic_retry_of_unknown_writes'=>false,
+                    'production_mutation_allowed'=>false,
+                    'delivery_release_approved'=>false,
+                    'dependency_intelligence'=>self::dependency_intelligence($steps),
+                    'source_resolution_sha256'=>$resolution['resolution_sha256']??'',
+                ];
+            }
+        }
         $ready=array_values(array_map(
             static fn($s)=>$s['id'],
             array_filter($steps,static fn($s)=>$s['state']==='READY')));
@@ -193,7 +344,8 @@ final class MAD4B_Unified_Governed_Lifecycle_Policy {
             'automatic_retry_of_unknown_writes'=>false,
             'production_mutation_allowed'=>false,
             'delivery_release_approved'=>false,
-            'source_resolution_sha256'=>$resolution['resolution_sha256']??'',
+            'dependency_intelligence'=>self::dependency_intelligence($steps),
+                    'source_resolution_sha256'=>$resolution['resolution_sha256']??'',
         ];
     }
 }
