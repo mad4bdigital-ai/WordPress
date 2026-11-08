@@ -390,8 +390,10 @@ final class MAD4B_Tour_Media_Reconcile_V1 {
         $previous_gallery=(string)get_post_meta($id,'gallery',true);
         $foreign_gallery=str_contains($previous_gallery,'/uploads/')
             &&!str_contains($previous_gallery,wp_parse_url(home_url('/'),PHP_URL_HOST));
-        $review=class_exists('MAD4B_SCP_Context_Authority',false)
-            ?MAD4B_SCP_Context_Authority::review_policy():[];
+        $review=class_exists('MAD4B_Media_Review_Hierarchy_V1',false)
+            ?MAD4B_Media_Review_Hierarchy_V1::effective()
+            :(class_exists('MAD4B_SCP_Context_Authority',false)
+                ?MAD4B_SCP_Context_Authority::review_policy():[]);
         $brand=class_exists('MAD4B_SCP_Context_Authority',false)
             ?MAD4B_SCP_Context_Authority::profile():[];
         $recommend=self::recommendations($catalog['items']??[],$fields);
