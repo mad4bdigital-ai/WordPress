@@ -59,3 +59,7 @@ VPS snapshots and disable new host watcher units if necessary.
 - `private_only` and `disabled` override Redis reads and preserve the original quote computation.
 - Original functions accept backward-compatible optional contexts. Version 1.2 must be verified on Tours.dev first and is **not yet deployed**.
 - Wayfatours has a distinct Booking v2 file: apply the small contextual call-site change, never overwrite that file from Tours.dev.
+
+## Site-specific core call-site integration (v1.2)
+
+The updated Redis wrappers by themselves are backward compatible; scoped Tour/Rate behavior becomes effective only when call sites pass validated context. The checked-in `tools/apply_contextual_pricing_calls.py` has an exact-replacement, dry-run-first integration plan for strategy resolution, financial policy, Booking v2, source arbitration, Rate Planner, and Extra adapters. It preserves each site's entire Booking v2 file (including different Last Minute behavior), modifies no pricing amount formulas, and creates exact rollback backups only with an explicit `--apply --backup-dir`. Deployment should run on Tours.dev Staging first, compare 5+ price fixtures and multilingual quote parity, then separately check Wayfatours Production. Never deploy this source package just because the GitHub PR exists.
