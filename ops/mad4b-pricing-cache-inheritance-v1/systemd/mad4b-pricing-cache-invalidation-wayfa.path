@@ -1,0 +1,10 @@
+[Unit]
+Description=Watch actual WordPress Pricing Policy changes for wayfa
+After=local-fs.target
+
+[Path]
+PathModified=/opt/wayfa-rebuild-20261102/site-copy/wp-content/.mad4b-pricing-policy-change.signal
+Unit=mad4b-pricing-cache-invalidation-wayfa.service
+
+[Install]
+WantedBy=multi-user.target
