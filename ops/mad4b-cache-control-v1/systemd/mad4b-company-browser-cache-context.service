@@ -1,0 +1,18 @@
+[Unit]
+Description=MAD4B dynamic public/private HTML browser cache decision contract, read-only fleet audit
+After=network-online.target docker.service
+Wants=network-online.target
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/flock -n /run/lock/mad4b-company-browser-cache-context.lock /usr/bin/python3 /opt/mad4b-company-provisioning/bin/company-browser-cache-context-reconcile-v1.py --strict --entry-point systemd_timer
+TimeoutStartSec=240
+Nice=15
+CPUQuota=25%
+CPUWeight=10
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/mad4b-company-provisioning/reports /run/lock
+UMask=0077
+StandardOutput=journal
+StandardError=journal

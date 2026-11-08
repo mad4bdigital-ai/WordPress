@@ -43,4 +43,6 @@ jobs:
           python3 ops/mad4b-cache-control-v1/tools/mad4b-safe-public-cache-callsite-guard-v1.py --selftest
           python3 ops/mad4b-cache-control-v1/tools/mad4b-cache-purge-origin-inventory-v1.py --selftest
           python3 ops/mad4b-cache-control-v1/tools/mad4b-nginx-fastcgi-cache-owner-guard-v1.py --selftest
+          python3 ops/mad4b-cache-control-v1/tools/company-browser-cache-context-reconcile-v1.py --selftest
+          python3 -m py_compile ops/mad4b-cache-control-v1/tools/company-browser-cache-context-reconcile-v1.py
           python3 -m py_compile ops/mad4b-cache-control-v1/tools/mad4b-nginx-public-html-epoch-v1.py ops/mad4b-cache-control-v1/tools/mad4b-safe-public-cache-callsite-guard-v1.py

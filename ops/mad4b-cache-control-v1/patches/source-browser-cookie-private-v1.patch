@@ -1,0 +1,28 @@
+--- a/tours-dev/stack/nginx.conf
++++ b/tours-dev/stack/nginx.conf
+@@ -93,15 +93,23 @@
+ map "$http_x_mad4b_bypass_cache$http_x_wp_nonce$http_x_mad4b_currency$http_x_geo_country$http_cf_ipcountry$http_x_forwarded_geo_country$http_x_requested_with$http_x_mad4b_css_priority$http_x_mad4b_css_selective_control$http_x_mad4b_css_combine_canary$http_x_mad4b_critical_css_ab$http_x_mad4b_webfont_ab$http_x_mad4b_widget_probe$http_x_mad4b_range_audit$http_x_mad4b_locale_probe$http_x_mad4b_dynamic_css$http_x_mad4b_market_context$http_x_mad4b_passport$http_x_country_code$http_x_geoip_country" $company_perf_has_context_headers { default 1; "" 0; }
+ map "$company_perf_wrong_host$mad4b_effective_cookie_unsafe_v2$company_perf_has_auth$company_perf_has_query$company_perf_unsafe_method$company_perf_has_context_headers" $company_perf_skip { default 1; "000000" 0; }
+ # END MAD4B COMPANY PERFORMANCE PRESET
+ # A/B browser policy: noncached native/canary responses, no shared browser cache.
+ # MAD4B HTML browser+origin TTL 1800s for verified public pages only; private fail-closed.
+ # WordPress's private and Set-Cookie states remain private, fail-closed.
+-map "$company_perf_skip|$company_perf_no_origin_optin|$company_perf_upstream_private|$company_perf_private_policy|$upstream_http_set_cookie" $mad4b_browser_html_coherence {
++# MAD4B unified browser-cache contract: request safety and WordPress opt-in
++# determine eligibility; only genuinely cookie-free HTML may be browser-public.
++# Allowed analytics/WPML cookies remain private without bypassing FastCGI.
++map $http_cookie $mad4b_browser_cookie_free {
++    default 0;
++    "" 1;
++}
++map "$company_perf_skip|$company_perf_no_origin_optin|$company_perf_upstream_private|$company_perf_private_policy|$upstream_http_set_cookie|$mad4b_browser_cookie_free" $mad4b_browser_html_coherence {
+     default "private, no-store, max-age=0";
+-    "0|0|0|0|" "public, max-age=1800, must-revalidate";
++    "0|0|0|0||1" "public, max-age=1800, must-revalidate";
++    "0|0|0|0||0" "private, max-age=1800, must-revalidate";
+ }
+ map $http_x_mad4b_dynamic_css $mad4b_css_probe_no_store {
+  default "";
+  "native-v1" "private, no-store, max-age=0";
+  "canary-v1" "private, no-store, max-age=0";
+ }
