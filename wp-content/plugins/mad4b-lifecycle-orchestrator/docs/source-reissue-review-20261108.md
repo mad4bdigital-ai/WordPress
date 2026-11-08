@@ -2,7 +2,7 @@
 
 ## Context
 
-This change proposes a narrow, staging-only administrative operation for the original Content Hub Queue. On 8 November 2026 the **live** Tours.dev Staging plugin is version `0.4.0-lifecycle-intelligence-staging`, while the source feature branch still declares `0.3.1-native-receipt-staging`. **Do not deploy this older branch or plugin wholesale over the live site.** Reconcile live changes and review an exact release candidate first.
+This change proposes a narrow, staging-only administrative operation for the original Content Hub Queue. In this PR, the source-feature branch's main plugin and Unified Lifecycle Policy have been updated from their older `0.3.1` baselines to match the current live Tours.dev Staging `0.4.0-lifecycle-intelligence-staging` source (except for the new explicitly guarded admin bootstrap lines). The native receipt file already matched, and the original WP-CLI source readback has been added. **This is still only a review candidate, not permission to deploy:** preserve the live Staging version, perform an exact artifact SHA comparison and authorized release review, and never auto-deploy this PR to Production.
 
 The observed original Queue has 541 `runtime_resolve` tasks QUEUED. Read-only WordPress proof classifies 304 stale ContentJob revisions and 237 matching revisions requiring original policy Context Evidence checks. The exact unclaimed canary old two-task Batch is still ACTIVE, with zero attempts and no active leases. An original read-only plan (ContentJob revision 1 → 2) passed original Workflow Origin, Original Context Evidence, and Single Flight, but previous attempts to write this Queue and deploy an administrator handler were blocked by execution safety controls. No write or 313 receipt was produced.
 
@@ -22,7 +22,7 @@ On any uncertain step, require reconciliation. Never resume stale original tasks
 - Python source-only assertions cover action ordering, admin authority, nonce and preimage, independent source checks, no direct SQL writes, negative no-resume, no forged 313.
 - Previous local Spec Kit tests **199/199** passed on the candidate; those are not a site execution proof.
 - No Production source, ContentJob, Rate, WPML or WooCommerce mutation is part of this PR.
-- Original live Source and GitHub feature branch have version drift; preserve current live 0.4 code and obtain source owner review, exact staging deployment gate and original release approval before applying.
+- The core source files are now reconciled to the verified live v0.4 Staging source in this PR; owner review, exact staging deployment gate, no regression CI, and original release approval remain mandatory before applying.
 - Final acceptance requires an **actual** original administrator reissue receipt, an original VPS Queue Claim and Finish pair, and separately an exact original signed 305→306→312→313 job and independent 313 receipt. A successful Queue execution cannot satisfy 313.
 
 Local tracked review reference: `c7db6f3911e8710d6a314020d7c383bd2fe409ce`; no live site content changed as a result of this PR.
