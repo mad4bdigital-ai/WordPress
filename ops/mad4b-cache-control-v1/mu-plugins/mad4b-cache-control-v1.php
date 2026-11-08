@@ -50,10 +50,19 @@ final class MAD4B_Cache_Control_V1 {
         $home=wp_parse_url(home_url('/'));
         if (!is_array($parts)||!is_array($home)||
             strtolower((string)($parts['host']??''))!==strtolower((string)($home['host']??''))||
-            !in_array(strtolower((string)($parts['scheme']??'')),['http','https'],true)||
+            strtolower((string)($parts['scheme']??''))!==strtolower((string)($home['scheme']??'https'))||
+            (int)($parts['port']??0)!==(int)($home['port']??0)||
             isset($parts['user'])||isset($parts['pass'])||isset($parts['query'])||isset($parts['fragment']))
             return null;
         $path=(string)($parts['path']??'/');
+        $decoded=rawurldecode($path);
+        // Reject encoded slashes, dot segments and double encoding before
+        // Nginx/WordPress URL normalization can reinterpret an approved path.
+        if (preg_match('/%(?![0-9a-fA-F]{2})/',$path) ||
+            preg_match('/%(?:00|2e|2f|23|25|3f|5c)/i',$path) ||
+            preg_match('//u',$decoded)!==1 ||
+            preg_match('/[\\x00-\\x1f\\x7f]/',$decoded))
+            return null;
         if ($path==='' || $path[0]!=='/' || strlen($path)>500 ||
             !preg_match('~^/[A-Za-z0-9_%/.-]*$~D',$path) ||
             strpos($path,'//')!==false || preg_match('~(?:^|/)\.\.?(/|$)~',$path) ||
@@ -263,8 +272,9 @@ final class MAD4B_Cache_Control_V1 {
         $preview=self::preview_target($selection);
         if (isset($preview['error']))self::redirect_error($preview['error']);
         $token=bin2hex(random_bytes(16));
-        set_transient('mad4b_cc_'.$token,['uid'=>get_current_user_id(),
-            'preview'=>$preview,'created'=>time()],self::TTL);
+        if (!set_transient('mad4b_cc_'.$token,['uid'=>get_current_user_id(),
+            'preview'=>$preview,'created'=>time()],self::TTL))
+            self::redirect_error('preview_store_unavailable');
         wp_safe_redirect(self::url(['preview'=>$token]));exit;
     }
 
@@ -297,6 +307,36 @@ final class MAD4B_Cache_Control_V1 {
             'removed'=>(int)($reply['removed']??0)];
     }
 
+    /**
+     * Pure authorization-context check. No socket operation, no user mutation.
+     * The WordPress handler still requires manage_options and a valid nonce.
+     */
+    public static function preview_access_state($data,int $uid,int $now): string {
+        if (!is_array($data) || !isset($data['uid'],$data['created']) ||
+            (int)$data['uid']!==$uid || $uid<=0)
+            return 'preview_expired';
+        if (!is_int($data['created']) || $data['created']>$now ||
+            $now-$data['created']>self::TTL)
+            return 'preview_expired';
+        $saved=$data['preview']??null;
+        if (!is_array($saved) || !is_string($saved['selection']??null) ||
+            !is_array($saved['paths']??null))
+            return 'preview_invalid';
+        return 'ok';
+    }
+
+    public static function preview_fingerprint_matches($stored,$fresh): bool {
+        if (!is_array($stored) || !is_array($fresh) ||
+            isset($fresh['error']) || !is_string($stored['fingerprint']??null) ||
+            !is_string($fresh['fingerprint']??null) ||
+            !preg_match('/^[a-f0-9]{64}$/D',$stored['fingerprint']) ||
+            !preg_match('/^[a-f0-9]{64}$/D',$fresh['fingerprint']))
+            return false;
+        return hash_equals($stored['fingerprint'],$fresh['fingerprint']) &&
+            ($stored['selection']??null)===($fresh['selection']??null) &&
+            ($stored['paths']??null)===($fresh['paths']??null);
+    }
+
     public static function request_apply(): void {
         if (!current_user_can('manage_options'))wp_die('Forbidden','Forbidden',['response'=>403]);
         $token=isset($_POST['preview_token'])&&is_scalar($_POST['preview_token'])
@@ -305,16 +345,15 @@ final class MAD4B_Cache_Control_V1 {
         check_admin_referer('mad4b_cache_control_apply_'.$token);
         $key='mad4b_cc_'.$token;
         $data=get_transient($key);
-        if (!is_array($data)||($data['uid']??0)!==get_current_user_id()||
-            time()-(int)($data['created']??0)>self::TTL)
-            self::redirect_error('preview_expired');
+        $state=self::preview_access_state($data,get_current_user_id(),time());
+        if ($state!=='ok')self::redirect_error($state);
         // Consume once, before any socket call.
         delete_transient($key);
         $stored=$data['preview']??null;
         if (!is_array($stored)||!is_string($stored['selection']??null))
             self::redirect_error('preview_invalid');
         $fresh=self::preview_target($stored['selection']);
-        if (isset($fresh['error']) || ($fresh['fingerprint']??'')!==($stored['fingerprint']??''))
+        if (!self::preview_fingerprint_matches($stored,$fresh))
             self::redirect_error('policy_or_paths_changed_preview_again');
         $response=self::socket_purge($fresh['paths']);
         $receipt=['contract'=>'mad4b.cache-control.fastcgi-path-generation.v1',
@@ -368,7 +407,8 @@ final class MAD4B_Cache_Control_V1 {
             sanitize_text_field(wp_unslash((string)$_GET['preview'])):'';
         $stored=preg_match('/^[a-f0-9]{32}$/D',$preview_token)?
             get_transient('mad4b_cc_'.$preview_token):null;
-        if (!is_array($stored) || ($stored['uid']??0)!==get_current_user_id())$stored=null;
+        if (self::preview_access_state($stored,get_current_user_id(),time())!=='ok')
+            $stored=null;
         $receipt_id=isset($_GET['receipt'])&&is_scalar($_GET['receipt'])?
             sanitize_text_field(wp_unslash((string)$_GET['receipt'])):'';
         echo '<div class="wrap"><h1>MAD4B Cache Control</h1>';
