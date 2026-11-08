@@ -1,0 +1,47 @@
+name: MAD4B Redis Flush Lifecycle
+
+on:
+  pull_request:
+    paths:
+      - 'ops/mad4b-redis-flush-lifecycle-v1/**'
+      - '.github/workflows/mad4b-redis-flush-lifecycle.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'ops/mad4b-redis-flush-lifecycle-v1/**'
+      - '.github/workflows/mad4b-redis-flush-lifecycle.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  safety-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python offline tests
+        run: |
+          python3 -m unittest discover -s ops/mad4b-redis-flush-lifecycle-v1/tests -p 'test_*.py' -v
+          python3 -m compileall -q ops/mad4b-redis-flush-lifecycle-v1/bin ops/mad4b-redis-flush-lifecycle-v1/tools
+      - name: Verify published source digests
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib,json
+          root=Path('ops/mad4b-redis-flush-lifecycle-v1')
+          data=json.loads((root/'RELEASE-MANIFEST.json').read_text())
+          assert data['contract']=='mad4b.redis-flush-lifecycle-source-package.v1'
+          for name,expected in data['files_sha256'].items():
+              actual=hashlib.sha256((root/name).read_bytes()).hexdigest()
+              assert expected==actual,name
+          print('SOURCE_MANIFEST_PASS',len(data['files_sha256']))
+          PY
+      - name: PHP syntax and diff validation
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -v
+          find ops/mad4b-redis-flush-lifecycle-v1 -name '*.php' -print0 | xargs -0 -n1 php -l
+          git diff --check
