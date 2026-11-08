@@ -10,6 +10,7 @@ import datetime as dt
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import stat
 import subprocess
@@ -45,7 +46,7 @@ def socket_state(path:Path,service:str)->dict:
         else 'SERVICE_NOT_ACTIVE','systemd':state}
 
 
-def site_observation(name:str,spec:dict,source_hash:str,registry_hash:str='',bridge_hash:str='',lsc_bridge_hash:str='')->dict:
+def site_observation(name:str,spec:dict,source_hash:str,registry_hash:str='',bridge_hash:str='',lsc_bridge_hash:str='',safe_html_hash:str='')->dict:
     file=Path(spec['plugin'])
     reg=Path(spec['registry'])
     actual=safe_file_check(file,source_hash)
@@ -58,19 +59,40 @@ def site_observation(name:str,spec:dict,source_hash:str,registry_hash:str='',bri
     lsc_bridge_status=(safe_file_check(Path(spec['lsc_bridge']),lsc_bridge_hash)
         if lsc_bridge_hash and spec.get('lsc_bridge') else
         ('NOT_PINNED' if not lsc_bridge_hash else 'MISSING'))
+    safe_html_status=(safe_file_check(Path(spec['safe_html_plugin']),safe_html_hash)
+        if safe_html_hash and spec.get('safe_html_plugin') else
+        ('NOT_PINNED' if not safe_html_hash else 'MISSING'))
+    epoch_status='NOT_PINNED'
+    if safe_html_hash:
+        config=Path(spec.get('nginx_conf','/not-enrolled'))
+        expected_keys=int(spec.get('global_epoch_key_count',0))
+        if not config.is_file() or config.is_symlink():
+            epoch_status='MISSING_OR_UNSAFE'
+        else:
+            content=config.read_text(errors='replace')
+            matches=re.findall(
+                r'fastcgi_cache_key\s+"[^"]*\$mad4b_public_html_global_epoch";',content)
+            valid_map=(content.count('# MAD4B_PUBLIC_HTML_GLOBAL_EPOCH_V1 BEGIN')==1 and
+                       content.count('# MAD4B_PUBLIC_HTML_GLOBAL_EPOCH_V1 END')==1 and
+                       'map $host $mad4b_public_html_global_epoch {' in content)
+            epoch_status=('PASS' if valid_map and expected_keys>0 and
+                          len(matches)==expected_keys else 'GLOBAL_EPOCH_CONFIG_DRIFT')
     sock=socket_state(Path(spec['socket']),spec['socket_unit'])
     coverage=('REGISTRY_V2_SHA_VERIFIED' if registry_status=='PASS' else
               'REGISTRY_V2_FILE_PRESENT' if found else 'LOCAL_FALLBACK_ONLY')
     integrity=(actual=='PASS' and sock['state']=='PASS' and
                (not registry_hash or registry_status=='PASS') and
                (not bridge_hash or bridge_status=='PASS') and
-               (not lsc_bridge_hash or lsc_bridge_status=='PASS'))
+               (not lsc_bridge_hash or lsc_bridge_status=='PASS') and
+               (not safe_html_hash or (safe_html_status=='PASS' and epoch_status=='PASS')))
     state=('DRIFT' if not integrity else
         ('PASS' if found else 'DEGRADED_INHERITANCE'))
     return {'state':state,'plugin':actual,'socket':sock,
         'registry_integrity':registry_status,
         'bridge_integrity':bridge_status,
         'litespeed_fastcgi_bridge_integrity':lsc_bridge_status,
+        'safe_public_html_integrity':safe_html_status,
+        'nginx_global_epoch_integrity':epoch_status,
         'inheritance_coverage':coverage,
         'runtime_registry_resolution_verified_this_poll':False,
         'safe_read_only':True,
@@ -110,14 +132,15 @@ def main():
     registry_hash=policy.get('registry_sha256','')
     bridge_hash=policy.get('bridge_sha256','')
     lsc_bridge_hash=policy.get('lsc_bridge_sha256','')
+    safe_html_hash=policy.get('safe_html_sha256','')
     if any(not isinstance(value,str) or len(value)!=64 or
            any(c not in '0123456789abcdef' for c in value)
-           for value in (registry_hash,bridge_hash,lsc_bridge_hash)):
+           for value in (registry_hash,bridge_hash,lsc_bridge_hash,safe_html_hash)):
         raise ValueError('registry_or_bridge_pin_invalid')
     status={}
     for name,spec in policy['sites'].items():
         try:
-            status[name]=site_observation(name,spec,expected,registry_hash,bridge_hash,lsc_bridge_hash)
+            status[name]=site_observation(name,spec,expected,registry_hash,bridge_hash,lsc_bridge_hash,safe_html_hash)
         except Exception as exc:
             status[name]={'state':'UNAVAILABLE','reason':type(exc).__name__}
     summary={key:sum(v['state']==key for v in status.values())
