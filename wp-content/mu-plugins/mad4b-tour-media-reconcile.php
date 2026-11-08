@@ -177,7 +177,9 @@ final class MAD4B_Tour_Media_Reconcile_V1 {
             $w=(int)($meta['width']??0);$h=(int)($meta['height']??0);
             if($w<480||$h<300){$reject['too_small']++;continue;}
             $trid=apply_filters('wpml_element_trid',null,$aid,'post_attachment');
-            $locales=$trid?apply_filters('wpml_get_element_translations',[],$trid,'post_attachment'):[];
+            $locales=class_exists('MAD4B_WPML_Attachment_Family_Readback_V1',false)
+                ?MAD4B_WPML_Attachment_Family_Readback_V1::translations($aid)
+                :($trid?apply_filters('wpml_get_element_translations',[],$trid,'post_attachment'):[]);
             $linked=[];
             foreach($family as $lang=>$pid){
                 $t=isset($locales[$lang])&&is_object($locales[$lang])
@@ -242,8 +244,10 @@ final class MAD4B_Tour_Media_Reconcile_V1 {
                 $unique[$fingerprint]=$entry;
         }
         $ranked=array_values($unique);
+        // Keep portrait-specific assets in the bounded catalog even though
+        // they are intentionally not optimal Featured hero candidates.
         usort($ranked,static fn($a,$b)=>
-            ($b['role_scores']['featured']<=>$a['role_scores']['featured'])
+            (max($b['role_scores'])<=>max($a['role_scores']))
             ?:($a['canonical_attachment_id']<=>$b['canonical_attachment_id']));
         return [
             'complete'=>$complete,
