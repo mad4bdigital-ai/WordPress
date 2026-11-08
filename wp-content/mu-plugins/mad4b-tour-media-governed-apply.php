@@ -114,12 +114,35 @@ final class MAD4B_Tour_Media_Governed_Apply_V1 {
                 $old=(string)get_post_meta($attachment,'_wp_attachment_image_alt',true);
                 $post_title=(string)get_the_title($pid);
                 $canonical_title=(string)get_the_title($id);
-                if($old!==''&&$old!==$post_title &&$old!==$canonical_title
-                   && $old!==$alt)
+                // Imported media often inherit an abbreviated tour title
+                // rather than an image description (sometimes the EN title
+                // in every WPML locale). Only replace these demonstrable
+                // generic title prefixes; preserve meaningful editorial Alt.
+                $decode=static fn($v)=>trim(html_entity_decode(
+                    (string)$v,ENT_QUOTES|ENT_HTML5,'UTF-8'));
+                $old_normalized=$decode($old);
+                $local_title_normalized=$decode($post_title);
+                $canonical_title_normalized=$decode($canonical_title);
+                // Near-identical translated tour-title variants must not
+                // be treated as original image descriptions. Example:
+                // "Tour Piramidi di Giza di Mezza Giornata" vs
+                // "Tour Piramidi di Giza e Sfinge di Mezza Giornata".
+                $similarity=0.0;
+                similar_text($old_normalized,$local_title_normalized,$similarity);
+                $generic_title_alt=mb_strlen($old_normalized)>=18 && (
+                    mb_stripos($local_title_normalized,$old_normalized)===0 ||
+                    mb_stripos($canonical_title_normalized,$old_normalized)===0 ||
+                    (mb_strlen($old_normalized)>=22 && $similarity>=80.0)
+                );
+                if($old!=='' &&$old!==$post_title
+                   &&$old!==$canonical_title &&$old!==$alt
+                   &&!$generic_title_alt)
                     return self::error('mad4b_media_apply_existing_editorial_alt_preserved');
                 $updates[$attachment.':_wp_attachment_image_alt']=[
                     'post_id'=>$attachment,'field'=>'_wp_attachment_image_alt',
-                    'old'=>$old,'new'=>$alt,'target'=>'attachment_alt'];
+                    'old'=>$old,'new'=>$alt,'target'=>'attachment_alt',
+                    'old_present'=>metadata_exists('post',$attachment,
+                        '_wp_attachment_image_alt')];
                 $ids[$attachment]=true;
             }
             // A portrait crop may be a tour-local verified derivative used
@@ -182,14 +205,54 @@ final class MAD4B_Tour_Media_Governed_Apply_V1 {
                 "SELECT meta_id,meta_value FROM {$wpdb->postmeta}
                  WHERE post_id=%d AND meta_key=%s FOR UPDATE",
                 $change['post_id'],$change['field']),ARRAY_A);
-            if(!is_array($rows)||count($rows)!==1
-                ||!hash_equals((string)$rows[0]['meta_value'],(string)$old))
-                throw new RuntimeException('mad4b_media_apply_row_conflict:'.$change['post_id'].':'.$change['field']);
-            $n=$wpdb->query($wpdb->prepare(
-                "UPDATE {$wpdb->postmeta} SET meta_value=%s
-                 WHERE meta_id=%d AND BINARY meta_value = BINARY %s",
-                $new,(int)$rows[0]['meta_id'],$old));
-            if($n!==1)throw new RuntimeException('mad4b_media_apply_cas_update_failed');
+            // WPML imports can leave 2+ identical Post Meta rows for a
+            // translated JetEngine field. Their multiplicity is preserved:
+            // update EVERY identical row under one transaction, never choose
+            // the first row silently or collapse rows irreversibly.
+            // Divergent duplicate values remain a hard conflict.
+            $alt_missing_from_start=$change['target']==='attachment_alt'
+                &&array_key_exists('old_present',$change)
+                &&$change['old_present']===false;
+            // New imported media often have no Alt row at all.
+            // Create exactly one record. Reverse rollback deletes that
+            // new record, restoring *absence*, not a new empty row.
+            if($alt_missing_from_start &&!$reverse &&!$rows &&$old===''){
+                $n=$wpdb->query($wpdb->prepare(
+                    "INSERT INTO {$wpdb->postmeta} (post_id,meta_key,meta_value)
+                     VALUES (%d,%s,%s)",
+                    $change['post_id'],$change['field'],$new));
+                if($n!==1)
+                    throw new RuntimeException('mad4b_media_apply_missing_alt_insert_failed');
+                continue;
+            }
+            if($alt_missing_from_start &&$reverse){
+                if(!is_array($rows)||count($rows)!==1
+                   ||!hash_equals((string)$rows[0]['meta_value'],(string)$old))
+                    throw new RuntimeException('mad4b_media_apply_rollback_missing_alt_conflict');
+                $n=$wpdb->query($wpdb->prepare(
+                    "DELETE FROM {$wpdb->postmeta}
+                     WHERE meta_id=%d AND BINARY meta_value = BINARY %s",
+                    (int)$rows[0]['meta_id'],$old));
+                if($n!==1)
+                    throw new RuntimeException('mad4b_media_apply_rollback_missing_alt_delete_failed');
+                continue;
+            }
+            if(!is_array($rows)||!$rows||count($rows)>8)
+                throw new RuntimeException('mad4b_media_apply_row_count_invalid:'.
+                    $change['post_id'].':'.$change['field']);
+            foreach($rows as $row){
+                if(!hash_equals((string)$row['meta_value'],(string)$old))
+                    throw new RuntimeException('mad4b_media_apply_row_conflict:'.
+                        $change['post_id'].':'.$change['field']);
+            }
+            foreach($rows as $row){
+                $n=$wpdb->query($wpdb->prepare(
+                    "UPDATE {$wpdb->postmeta} SET meta_value=%s
+                     WHERE meta_id=%d AND BINARY meta_value = BINARY %s",
+                    $new,(int)$row['meta_id'],$old));
+                if($n!==1)
+                    throw new RuntimeException('mad4b_media_apply_cas_update_failed');
+            }
         }
     }
     private static function refresh(array $ids):void {
