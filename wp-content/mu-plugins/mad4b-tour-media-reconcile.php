@@ -210,10 +210,24 @@ final class MAD4B_Tour_Media_Reconcile_V1 {
                  +min(18,(int)floor($w/170))
                  +($w>=1200?5:0)+($ratio>=1.3?4:0)
                  +min(35,count($matches)*12);
+            // Exact company-local portrait derivatives have an existing
+            // image source, immutable source hash, verified WPML family and
+            // portrait geometry. Keep them in the bounded output even for
+            // high-volume tours whose landscape Gallery candidates fill
+            // the first 24 slots.
+            $derived_source=(int)get_post_meta($aid,
+                '_mad4b_portrait_source_attachment_id',true);
+            $derivative_key=(string)get_post_meta($aid,
+                '_mad4b_portrait_derivative_key',true);
+            $is_local_portrait=$derived_source>0
+                &&get_post_type($derived_source)==='attachment'
+                &&preg_match('/^[a-f0-9]{64}$/D',$derivative_key)
+                &&$ratio<=0.95 &&$h>=800;
             $role_relevance=[
                 'featured'=>$ratio>=1.3&&$w>=900?$score+20:($ratio>=1.1?$score:$score-20),
                 'gallery'=>$score,
-                'vertical'=>$ratio<=0.95&&$h>=800?$score+20:$score-20,
+                'vertical'=>($ratio<=0.95&&$h>=800?$score+20:$score-20)
+                    +($is_local_portrait?130:0),
                 'grid'=>$w>=800&&$h>=500?$score+12:$score-12,
             ];
             $all[]=[
@@ -230,6 +244,8 @@ final class MAD4B_Tour_Media_Reconcile_V1 {
                 'source_post_id'=>$id,'locale_attachments'=>$linked,
                 'role_scores'=>$role_relevance,
                 'editorial_visual_verified'=>false,
+                'portrait_derived_from_local_attachment'=>$is_local_portrait
+                    ?$derived_source:null,
                 'photographic_origin_verified'=>false,
                 'media_rights_verified'=>false,
                 'is_ai_generated'=>null,
