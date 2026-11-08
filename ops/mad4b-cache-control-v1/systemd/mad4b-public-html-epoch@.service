@@ -1,0 +1,12 @@
+[Unit]
+Description=MAD4B safe public HTML global FastCGI cache epoch on %i
+After=docker.service
+Requires=docker.service
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /usr/local/libexec/mad4b-nginx-public-html-epoch-v1.py --site %i
+TimeoutStartSec=40
+NoNewPrivileges=true
+UMask=0077
+PrivateTmp=true
+ProtectSystem=full
