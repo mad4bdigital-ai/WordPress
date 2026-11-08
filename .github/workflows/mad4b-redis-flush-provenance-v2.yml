@@ -1,0 +1,31 @@
+name: MAD4B Redis Flush Provenance v2
+
+on:
+  pull_request:
+    paths:
+      - 'ops/mad4b-redis-flush-provenance-v2/**'
+      - '.github/workflows/mad4b-redis-flush-provenance-v2.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  safety-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Offline Python tests
+        run: |
+          python3 -m unittest discover -s ops/mad4b-redis-flush-provenance-v2/tests -p 'test_*.py' -v
+      - name: PHP source checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=ops/mad4b-redis-flush-provenance-v2
+          php -l "$ROOT/overlays/tours-dev/000-mad4b-redis-flush-provenance.php"
+          php -l "$ROOT/overlays/wayfatours/000-mad4b-redis-flush-provenance.php"
+          php "$ROOT/tests/test-emitter.php" "$ROOT/overlays/tours-dev/000-mad4b-redis-flush-provenance.php"
+          php "$ROOT/tests/test-emitter.php" "$ROOT/overlays/wayfatours/000-mad4b-redis-flush-provenance.php"
+          git diff --check

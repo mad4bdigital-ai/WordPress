@@ -1,0 +1,18 @@
+--- a/src/object.lib.php
++++ b/src/object.lib.php
+@@ -301,8 +301,13 @@
+  */
+ function wp_cache_flush() {
+ 	global $wp_object_cache;
+-
+-	return $wp_object_cache->flush();
++	$result = $wp_object_cache->flush();
++	// MAD4B: provenance after the actual cache operation, never blocking it.
++	if (function_exists('mad4b_redis_flush_origin_record_v2')) {
++		try { mad4b_redis_flush_origin_record_v2($result); }
++		catch (\Throwable $ignored) { /* Never change native cache semantics. */ }
++	}
++	return $result;
+ }
+ 
+ /**
