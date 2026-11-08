@@ -1,0 +1,9 @@
+[Unit]
+Description=Every 3 minutes audit or repair only enrolled FastCGI cache root ownership
+[Timer]
+OnBootSec=2min
+OnUnitInactiveSec=3min
+AccuracySec=30s
+Unit=mad4b-nginx-fastcgi-cache-owner-guard.service
+[Install]
+WantedBy=timers.target

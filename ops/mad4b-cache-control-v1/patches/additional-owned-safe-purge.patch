@@ -1,0 +1,108 @@
+--- a/source/plugins/mad4b-commerce/modules/compat/tour-content-layout-control.php
++++ b/source/plugins/mad4b-commerce/modules/compat/tour-content-layout-control.php
+@@ -282,7 +282,7 @@
+    wp_die('Global layout could not be saved and verified.','Settings not saved',['response'=>500]);
+   $changed=$previous!==$order;
+   // Only purge full-page caches after a verified, real state change.
+-  if($changed&&has_action('litespeed_purge_all'))do_action('litespeed_purge_all');
++  if($changed&&has_action('mad4b/public_html/safe_purge_all'))do_action('mad4b/public_html/safe_purge_all', 'tour_content_layout');
+   wp_safe_redirect(admin_url('edit.php?post_type=tours-and-activities&page=mad4b-tour-layout&updated='.($changed?'1':'unchanged')));exit;
+  }
+  static function init():void {
+--- a/wayfa/plugins/mad4b-commerce/modules/compat/tour-content-layout-control.php
++++ b/wayfa/plugins/mad4b-commerce/modules/compat/tour-content-layout-control.php
+@@ -282,7 +282,7 @@
+    wp_die('Global layout could not be saved and verified.','Settings not saved',['response'=>500]);
+   $changed=$previous!==$order;
+   // Only purge full-page caches after a verified, real state change.
+-  if($changed&&has_action('litespeed_purge_all'))do_action('litespeed_purge_all');
++  if($changed&&has_action('mad4b/public_html/safe_purge_all'))do_action('mad4b/public_html/safe_purge_all', 'tour_content_layout');
+   wp_safe_redirect(admin_url('edit.php?post_type=tours-and-activities&page=mad4b-tour-layout&updated='.($changed?'1':'unchanged')));exit;
+  }
+  static function init():void {
+--- a/source/plugins/mad4b-commerce/modules/compat/tour-rate-language-policy.php
++++ b/source/plugins/mad4b-commerce/modules/compat/tour-rate-language-policy.php
+@@ -233,7 +233,7 @@
+   if(get_option(self::GLOBAL,null)!==$value || get_option(self::FALLBACK,null)!==$fallback)
+     wp_die('Rate settings readback differs from requested values. Reload before editing.','Settings readback failed',['response'=>500]);
+   $changed=($before_mode!==$value || $before_fallback!==$fallback);
+-  if($changed)do_action('litespeed_purge_all');
++  if($changed)do_action('mad4b/public_html/safe_purge_all', 'tour_rate_language_policy');
+   wp_safe_redirect(admin_url('edit.php?post_type=tours-and-activities&page=mad4b-rate-language-policy&updated='.($changed?'1':'unchanged')));
+   exit;
+  }
+--- a/wayfa/plugins/mad4b-commerce/modules/compat/tour-rate-language-policy.php
++++ b/wayfa/plugins/mad4b-commerce/modules/compat/tour-rate-language-policy.php
+@@ -233,7 +233,7 @@
+   if(get_option(self::GLOBAL,null)!==$value || get_option(self::FALLBACK,null)!==$fallback)
+     wp_die('Rate settings readback differs from requested values. Reload before editing.','Settings readback failed',['response'=>500]);
+   $changed=($before_mode!==$value || $before_fallback!==$fallback);
+-  if($changed)do_action('litespeed_purge_all');
++  if($changed)do_action('mad4b/public_html/safe_purge_all', 'tour_rate_language_policy');
+   wp_safe_redirect(admin_url('edit.php?post_type=tours-and-activities&page=mad4b-rate-language-policy&updated='.($changed?'1':'unchanged')));
+   exit;
+  }
+--- a/source/plugins/mad4b-experience/src/presentation/modules/373-mad4b-trust-support-dynamic.php
++++ b/source/plugins/mad4b-experience/src/presentation/modules/373-mad4b-trust-support-dynamic.php
+@@ -127,7 +127,7 @@
+         if($option!==self::PAGE || !self::fields_changed($old,$new))return;
+         if(class_exists('Elementor\Plugin',false) && isset(\Elementor\Plugin::$instance->files_manager))
+             \Elementor\Plugin::$instance->files_manager->clear_cache();
+-        do_action('litespeed_purge_all');
++        do_action('mad4b/public_html/safe_purge_all', 'trust_support_dynamic');
+     }
+     public static function boot():void {
+         add_filter('jet-engine/options-pages/raw-fields',[__CLASS__,'option_fields'],96,2);
+--- a/wayfa/plugins/mad4b-experience/src/presentation/modules/373-mad4b-trust-support-dynamic.php
++++ b/wayfa/plugins/mad4b-experience/src/presentation/modules/373-mad4b-trust-support-dynamic.php
+@@ -127,7 +127,7 @@
+         if($option!==self::PAGE || !self::fields_changed($old,$new))return;
+         if(class_exists('Elementor\Plugin',false) && isset(\Elementor\Plugin::$instance->files_manager))
+             \Elementor\Plugin::$instance->files_manager->clear_cache();
+-        do_action('litespeed_purge_all');
++        do_action('mad4b/public_html/safe_purge_all', 'trust_support_dynamic');
+     }
+     public static function boot():void {
+         add_filter('jet-engine/options-pages/raw-fields',[__CLASS__,'option_fields'],96,2);
+--- a/source/plugins/mad4b-experience/src/presentation/modules/374-mad4b-tenant-option-canonical-bridge.php
++++ b/source/plugins/mad4b-experience/src/presentation/modules/374-mad4b-tenant-option-canonical-bridge.php
+@@ -510,7 +510,7 @@
+             // Elementor source CSS is rebuilt from the actual target docs.
+             if(class_exists('Elementor\\Plugin',false))
+                 \Elementor\Plugin::instance()->files_manager->clear_cache();
+-            do_action('litespeed_purge_all');
++            do_action('mad4b/public_html/safe_purge_all', 'tenant_option_canonical_bridge');
+             return null;
+         }catch(Throwable $e){
+             error_log('[MAD4B canonical tenant bridge] '.$e->getMessage());
+--- a/wayfa/plugins/mad4b-experience/src/presentation/modules/374-mad4b-tenant-option-canonical-bridge.php
++++ b/wayfa/plugins/mad4b-experience/src/presentation/modules/374-mad4b-tenant-option-canonical-bridge.php
+@@ -510,7 +510,7 @@
+             // Elementor source CSS is rebuilt from the actual target docs.
+             if(class_exists('Elementor\\Plugin',false))
+                 \Elementor\Plugin::instance()->files_manager->clear_cache();
+-            do_action('litespeed_purge_all');
++            do_action('mad4b/public_html/safe_purge_all', 'tenant_option_canonical_bridge');
+             return null;
+         }catch(Throwable $e){
+             error_log('[MAD4B canonical tenant bridge] '.$e->getMessage());
+--- a/source/plugins/mad4b-experience/src/presentation/modules/performance/newsletter-image-options-cache-sync.php
++++ b/source/plugins/mad4b-experience/src/presentation/modules/performance/newsletter-image-options-cache-sync.php
+@@ -26,6 +26,6 @@
+ 
+     // Newsletter is an embedded template on home, destination, and other
+     // Elementor surfaces. A page-local purge cannot cover these consumers.
+-    do_action('litespeed_purge_all');
++    do_action('mad4b/public_html/safe_purge_all', 'newsletter_image_cache_sync');
+ }, 100, 2);
+ 
+--- a/wayfa/plugins/mad4b-experience/src/presentation/modules/performance/newsletter-image-options-cache-sync.php
++++ b/wayfa/plugins/mad4b-experience/src/presentation/modules/performance/newsletter-image-options-cache-sync.php
+@@ -26,6 +26,6 @@
+ 
+     // Newsletter is an embedded template on home, destination, and other
+     // Elementor surfaces. A page-local purge cannot cover these consumers.
+-    do_action('litespeed_purge_all');
++    do_action('mad4b/public_html/safe_purge_all', 'newsletter_image_cache_sync');
+ }, 100, 2);
+ 

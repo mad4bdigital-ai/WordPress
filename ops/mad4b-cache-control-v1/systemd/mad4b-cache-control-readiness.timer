@@ -1,0 +1,12 @@
+[Unit]
+Description=Audit MAD4B WordPress Cache Control inheritance every 30 minutes
+
+[Timer]
+OnBootSec=4min
+OnUnitInactiveSec=30min
+AccuracySec=60s
+RandomizedDelaySec=30s
+Unit=mad4b-cache-control-readiness.service
+
+[Install]
+WantedBy=timers.target

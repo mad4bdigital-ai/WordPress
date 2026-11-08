@@ -1,0 +1,207 @@
+--- a/source/mu-plugins/mad4b-need-help-native-visibility.php
++++ b/source/mu-plugins/mad4b-need-help-native-visibility.php
+@@ -157,7 +157,7 @@
+         if (!$changed)return;
+         // Invalidate only on changed support destinations, including
+         // switching between two valid URLs, not cosmetic settings saves.
+-        do_action('litespeed_purge_all');
++        do_action('mad4b/public_html/safe_purge_all', 'mad4b_need_help_native_visibility');
+         $signal=WP_CONTENT_DIR.'/.mad4b-home-reviews-purge.signal';
+         if (is_writable(WP_CONTENT_DIR))
+             @file_put_contents($signal,gmdate('c').' need-help-destination-change'."\n",LOCK_EX);
+--- a/source/plugins/mad4b-platform/modules/operations/registry-service-public-access.php
++++ b/source/plugins/mad4b-platform/modules/operations/registry-service-public-access.php
+@@ -260,7 +260,7 @@
+ },90);
+ /** Recompute cached visitor pages whenever the authoritative Option Page changes. */
+ add_action('update_option_service-activation',static function($previous,$next):void{
+- if($previous!==$next)do_action('litespeed_purge_all');
++ if($previous!==$next)do_action('mad4b/public_html/safe_purge_all', 'registry_service_public_access');
+ },10,2);
+ 
+ /**
+--- a/source/plugins/mad4b-platform/modules/compat/341-mad4b-tour-query-mega-tree.php
++++ b/source/plugins/mad4b-platform/modules/compat/341-mad4b-tour-query-mega-tree.php
+@@ -421,7 +421,7 @@
+   if(!self::scope())return;
+   self::invalidate_public_tree_cache();
+   // HTML page caches have their own existing invalidation path.
+-  do_action('litespeed_purge_all');
++  do_action('mad4b/public_html/safe_purge_all', '341_mad4b_tour_query_mega_tree');
+  }
+  public static function boot():void {
+   if(!self::scope())return;
+--- a/source/plugins/mad4b-platform/modules/compat/product-navigation.php
++++ b/source/plugins/mad4b-platform/modules/compat/product-navigation.php
+@@ -149,7 +149,7 @@
+ // Elementor output caching must never freeze a policy/language projection.
+ add_filter('elementor/element/is_dynamic_content',function($dynamic,$raw){return $dynamic || str_contains($raw['settings']['_css_classes']??'','product-navigation-generated') || str_contains($raw['settings']['_css_classes']??'','product-native-navigation');},20,2);
+ add_action('updated_option',function($name){if(in_array($name,['service-activation','product_navigation_sources'],true)){ // WordPress already invalidates the changed option; keep HTML purge only.
+- do_action('litespeed_purge_all');}},20,1);
++ do_action('mad4b/public_html/safe_purge_all', 'product_navigation');}},20,1);
+ // Header option images can retain an old origin after a local copy. Resolve only
+ // the site-icon dynamic image, and only when the exact uploaded file exists.
+ add_filter('elementor/widget/render_content',function($html,$widget){
+--- a/source/plugins/mad4b-platform/modules/presentation/product-navigation-native-destinations.php
++++ b/source/plugins/mad4b-platform/modules/presentation/product-navigation-native-destinations.php
+@@ -397,7 +397,7 @@
+ 
+ add_action('updated_option',static function($name){
+  if($name==='destination-activation'){
+-  do_action('litespeed_purge_all');
++  do_action('mad4b/public_html/safe_purge_all', 'product_navigation_native_destinations');
+  }
+ },40,1);
+ 
+--- a/source/plugins/mad4b-platform/modules/presentation/098-service-visibility-elementor.php
++++ b/source/plugins/mad4b-platform/modules/presentation/098-service-visibility-elementor.php
+@@ -108,7 +108,7 @@
+ // Every saved activation change invalidates cached public presentation and SEO output.
+ add_action('update_option_service-activation',static function($previous,$current){
+  if($previous===$current)return;
+- do_action('litespeed_purge_all');
++ do_action('mad4b/public_html/safe_purge_all', '098_service_visibility_elementor');
+  if(class_exists('RankMath\\Sitemap\\Cache'))\RankMath\Sitemap\Cache::invalidate_storage();
+  // WordPress already invalidates the changed option cache. Never flush all Redis keys.
+ },15,2);
+--- a/source/plugins/mad4b-platform/modules/diagnostics/100-global-offers-lab.php
++++ b/source/plugins/mad4b-platform/modules/diagnostics/100-global-offers-lab.php
+@@ -81,7 +81,7 @@
+  return $walk($elements);
+ },1200,2);
+ // Changes to settings, campaigns or scheduled offer windows must not serve stale banners.
+-$global_offer_purge=static function(){do_action('litespeed_purge_all');}; // Public HTML only; no Redis FLUSHDB.
++$global_offer_purge=static function(){do_action('mad4b/public_html/safe_purge_all', '100_global_offers_lab');}; // Public HTML only; no Redis FLUSHDB.
+ add_action('update_option_global-offers',$global_offer_purge,20);
+ add_action('save_post_offer-campaign',$global_offer_purge,30);
+ add_action('before_delete_post',static function($id)use($global_offer_purge){if(get_post_type($id)==='offer-campaign')$global_offer_purge();});
+--- a/wayfa/mu-plugins/mad4b-need-help-native-visibility.php
++++ b/wayfa/mu-plugins/mad4b-need-help-native-visibility.php
+@@ -157,7 +157,7 @@
+         if (!$changed)return;
+         // Invalidate only on changed support destinations, including
+         // switching between two valid URLs, not cosmetic settings saves.
+-        do_action('litespeed_purge_all');
++        do_action('mad4b/public_html/safe_purge_all', 'mad4b_need_help_native_visibility');
+         $signal=WP_CONTENT_DIR.'/.mad4b-home-reviews-purge.signal';
+         if (is_writable(WP_CONTENT_DIR))
+             @file_put_contents($signal,gmdate('c').' need-help-destination-change'."\n",LOCK_EX);
+--- a/wayfa/mu-plugins/004-wayfa-service-visibility-elementor.php
++++ b/wayfa/mu-plugins/004-wayfa-service-visibility-elementor.php
+@@ -108,7 +108,7 @@
+ // Every saved activation change invalidates cached public presentation and SEO output.
+ add_action('update_option_service-activation',static function($previous,$current){
+  if($previous===$current)return;
+- do_action('litespeed_purge_all');
++ do_action('mad4b/public_html/safe_purge_all', '004_wayfa_service_visibility_elementor');
+  if(class_exists('RankMath\\Sitemap\\Cache'))\RankMath\Sitemap\Cache::invalidate_storage();
+  // WordPress handles targeted option invalidation.
+ },15,2);
+--- a/wayfa/mu-plugins/portable-modules/341-mad4b-tour-query-mega-tree.php
++++ b/wayfa/mu-plugins/portable-modules/341-mad4b-tour-query-mega-tree.php
+@@ -376,7 +376,7 @@
+   // WordPress invalidates changed term relationships, and MAD4B's
+   // page-dependency hooks handle affected HTML paths. Do not erase
+   // every company's site-local Redis object cache on one term edit.
+-  if(function_exists('do_action'))do_action('litespeed_purge_all');
++  if(function_exists('do_action'))do_action('mad4b/public_html/safe_purge_all', '341_mad4b_tour_query_mega_tree');
+  }
+  public static function boot():void {
+   if(!self::scope())return;
+--- a/wayfa/mu-plugins/product-navigation-native-destinations.php
++++ b/wayfa/mu-plugins/product-navigation-native-destinations.php
+@@ -397,7 +397,7 @@
+ 
+ add_action('updated_option',static function($name){
+  if($name==='destination-activation'){
+-  do_action('litespeed_purge_all');
++  do_action('mad4b/public_html/safe_purge_all', 'product_navigation_native_destinations');
+  }
+ },40,1);
+ 
+--- a/wayfa/mu-plugins/356-mad4b-brand-pattern-library.php
++++ b/wayfa/mu-plugins/356-mad4b-brand-pattern-library.php
+@@ -113,8 +113,8 @@
+         $instance=\Elementor\Plugin::instance();
+         if(isset($instance->files_manager))$instance->files_manager->clear_cache();
+     }
+-    if(has_action('litespeed_purge_all')) {
+-        do_action('litespeed_purge_all','MAD4B Brand Pattern Library updated');
++    if(has_action('mad4b/public_html/safe_purge_all')) {
++        do_action('mad4b/public_html/safe_purge_all', '356_mad4b_brand_pattern_library');
+     }
+ }
+ add_action('update_option_look-and-feel','mad4b_brand_pattern_library_invalidate',10,3);
+--- a/wayfa/mu-plugins/product-navigation.php
++++ b/wayfa/mu-plugins/product-navigation.php
+@@ -128,7 +128,7 @@
+ // Elementor output caching must never freeze a policy/language projection.
+ add_filter('elementor/element/is_dynamic_content',function($dynamic,$raw){return $dynamic || str_contains($raw['settings']['_css_classes']??'','product-navigation-generated') || str_contains($raw['settings']['_css_classes']??'','product-native-navigation');},20,2);
+ // service-activation has its own owner above. Refresh public output only when navigation source changes.
+-add_action('updated_option',function($name){if($name==='product_navigation_sources'){do_action('litespeed_purge_all');}},20,1);
++add_action('updated_option',function($name){if($name==='product_navigation_sources'){do_action('mad4b/public_html/safe_purge_all', 'product_navigation');}},20,1);
+ // Header option images can retain an old origin after a local copy. Resolve only
+ // the site-icon dynamic image, and only when the exact uploaded file exists.
+ add_filter('elementor/widget/render_content',function($html,$widget){
+--- a/source/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-litespeed-adapter.php
++++ b/source/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-litespeed-adapter.php
+@@ -214,8 +214,17 @@
+     }
+     public function purge_all() {
+         if ( ! $this->is_available() ) return $this->unavailable_error();
+-        do_action( 'litespeed_purge_all' );
+-        MAD4B_SCP_Audit::record( 'litespeed/purge-all', array() );
+-        return array( 'purged' => true, 'scope' => 'all' );
++        if ( ! class_exists( 'MAD4B_Safe_Public_HTML_Purge_V1', false ) )
++            return new WP_Error( 'mad4b_safe_html_purge_unavailable',
++                'Safe public HTML cache controller is not enrolled.' );
++        $r = MAD4B_Safe_Public_HTML_Purge_V1::purge_public_html( 'mad4b_scp_public_html_only' );
++        if ( ! in_array( $r['status'] ?? '', array( 'public_html_purge_queued', 'already_queued_in_request' ), true ) )
++            return new WP_Error( 'mad4b_safe_html_purge_failed',
++                'Public HTML cache invalidation could not be queued.' );
++        MAD4B_SCP_Audit::record( 'litespeed/purge-public-html',
++            array( 'scope' => 'public_html_only', 'object_cache_preserved' => true ) );
++        return array( 'purged' => false, 'queued' => true,
++            'scope' => 'public_html_only', 'redis_flushed' => false,
++            'fastcgi_host_receipt' => 'pending' );
+     }
+ }
+--- a/wayfa/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-litespeed-adapter.php
++++ b/wayfa/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-litespeed-adapter.php
+@@ -214,8 +214,17 @@
+     }
+     public function purge_all() {
+         if ( ! $this->is_available() ) return $this->unavailable_error();
+-        do_action( 'litespeed_purge_all' );
+-        MAD4B_SCP_Audit::record( 'litespeed/purge-all', array() );
+-        return array( 'purged' => true, 'scope' => 'all' );
++        if ( ! class_exists( 'MAD4B_Safe_Public_HTML_Purge_V1', false ) )
++            return new WP_Error( 'mad4b_safe_html_purge_unavailable',
++                'Safe public HTML cache controller is not enrolled.' );
++        $r = MAD4B_Safe_Public_HTML_Purge_V1::purge_public_html( 'mad4b_scp_public_html_only' );
++        if ( ! in_array( $r['status'] ?? '', array( 'public_html_purge_queued', 'already_queued_in_request' ), true ) )
++            return new WP_Error( 'mad4b_safe_html_purge_failed',
++                'Public HTML cache invalidation could not be queued.' );
++        MAD4B_SCP_Audit::record( 'litespeed/purge-public-html',
++            array( 'scope' => 'public_html_only', 'object_cache_preserved' => true ) );
++        return array( 'purged' => false, 'queued' => true,
++            'scope' => 'public_html_only', 'redis_flushed' => false,
++            'fastcgi_host_receipt' => 'pending' );
+     }
+ }
+--- a/source/plugins/mad4b-platform/modules/services/fix-taxonomy-counts-dynamic.php
++++ b/source/plugins/mad4b-platform/modules/services/fix-taxonomy-counts-dynamic.php
+@@ -379,10 +379,9 @@
+                 clean_term_cache( array_map( 'intval', $term_ids ), $taxonomy, false );
+             }
+             if ( defined( 'NK_TAX_COUNT_ALLOW_FULL_CACHE_PURGE' ) && NK_TAX_COUNT_ALLOW_FULL_CACHE_PURGE ) {
+-                if ( function_exists( 'wp_cache_flush' ) ) {
+-                    wp_cache_flush();
+-                }
+-                do_action( 'litespeed_purge_all' );
++                // The native term and taxonomy caches were cleaned above.
++                // Refresh public HTML without flushing the shared Redis DB.
++                do_action( 'mad4b/public_html/safe_purge_all', 'taxonomy_counts_repaired' );
+             }
+         }
+ 

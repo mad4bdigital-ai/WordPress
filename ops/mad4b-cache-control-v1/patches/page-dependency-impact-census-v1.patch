@@ -1,0 +1,49 @@
+--- a/mad4b-page-dependency-cache.php
++++ b/mad4b-page-dependency-cache.php
+@@ -756,6 +756,46 @@
+         $out['recent_receipts']=array_slice((array)get_option(self::RECEIPTS,[]),-5);
+         return $out;
+     }
++    /**
++     * Exact read-only graph census for cache invalidation previews.
++     * It does not change page epochs, cache groups or FastCGI generations.
++     * A graph with unknown coverage is never certified as complete.
++     */
++    public static function impact_census(string $dependency): array {
++        if (!self::ready())return ['status'=>'schema_not_ready','mutation_performed'=>false];
++        if (!preg_match('/^(?:post:[1-9][0-9]*|template:[1-9][0-9]*|listing:[1-9][0-9]*|term:[a-z0-9_-]+:[1-9][0-9]*|query_pt:[a-z0-9_-]+|query_id:[1-9][0-9]*)$/D',$dependency))
++            return ['status'=>'invalid_dependency','mutation_performed'=>false];
++        global $wpdb;
++        $pages=self::table('pages');$edges=self::table('edges');
++        $hash=self::hash($dependency);
++        $query=$wpdb->prepare(
++            "SELECT p.node_kind,p.coverage,COUNT(*) AS total,
++                COUNT(DISTINCT p.page_path) AS distinct_paths
++             FROM $edges e JOIN $pages p ON p.page_hash=e.page_hash
++             WHERE e.dep_hash=%s AND e.expires_at>UTC_TIMESTAMP()
++               AND p.expires_at>UTC_TIMESTAMP()
++             GROUP BY p.node_kind,p.coverage",$hash);
++        $rows=$wpdb->get_results($query,ARRAY_A);
++        if(!is_array($rows) || $wpdb->last_error!=='')
++            return ['status'=>'graph_read_unavailable','mutation_performed'=>false];
++        $groups=[];$total=0;$unknown=0;
++        foreach($rows as $row) {
++            $kind=(string)($row['node_kind']??'unknown');
++            $coverage=(string)($row['coverage']??'unknown');
++            $n=max(0,(int)($row['total']??0));
++            $groups[]=['kind'=>$kind,'coverage'=>$coverage,
++                       'nodes'=>$n,'distinct_paths'=>max(0,(int)($row['distinct_paths']??0))];
++            $total+=$n;
++            if($coverage!=='complete')$unknown+=$n;
++        }
++        return ['contract'=>'mad4b.page-dependency.impact-census.v1',
++            'status'=>'ok','dependency'=>$dependency,'total_nodes'=>$total,
++            'unknown_coverage_nodes'=>$unknown,
++            'complete_nodes'=>$total-$unknown,
++            'all_nodes_proven_complete'=>$total>0 && $unknown===0,
++            'groups'=>$groups,'mutation_performed'=>false];
++    }
++
+     public static function impact_preview(string $dependency): array {
+         if(!self::ready())return ['status'=>'schema_not_ready','mutation_performed'=>false];
+         if(!preg_match('/^(?:post:[1-9][0-9]*|template:[1-9][0-9]*|listing:[1-9][0-9]*|term:[a-z0-9_-]+:[1-9][0-9]*|query_pt:[a-z0-9_-]+|query_id:[1-9][0-9]*)$/D',$dependency))

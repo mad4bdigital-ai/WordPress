@@ -1,0 +1,14 @@
+[Unit]
+Description=MAD4B two-company Nginx FastCGI cache-root ownership integrity and limited repair
+After=docker.service
+Requires=docker.service
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/flock -n /run/lock/mad4b-nginx-fastcgi-cache-owner-guard.lock /usr/bin/python3 /usr/local/libexec/mad4b-nginx-fastcgi-cache-owner-guard-v1.py --repair
+TimeoutStartSec=60
+Nice=12
+CPUQuota=20%
+NoNewPrivileges=true
+UMask=0077
+StandardOutput=journal
+StandardError=journal

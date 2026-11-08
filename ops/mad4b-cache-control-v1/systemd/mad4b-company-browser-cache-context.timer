@@ -1,0 +1,9 @@
+[Unit]
+Description=Half-hour MAD4B browser HTML cache decision contract drift audit
+[Timer]
+OnBootSec=6min
+OnUnitInactiveSec=30min
+AccuracySec=1min
+Unit=mad4b-company-browser-cache-context.service
+[Install]
+WantedBy=timers.target
