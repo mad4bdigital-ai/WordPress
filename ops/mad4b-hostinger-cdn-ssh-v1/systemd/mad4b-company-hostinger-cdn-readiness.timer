@@ -1,0 +1,9 @@
+[Unit]
+Description=MAD4B remote Hostinger CDN safety and TTL drift monitor every 30 minutes
+[Timer]
+OnBootSec=8min
+OnUnitInactiveSec=30min
+AccuracySec=1min
+Unit=mad4b-company-hostinger-cdn-readiness.service
+[Install]
+WantedBy=timers.target
