@@ -54,8 +54,8 @@ b378f362f0bfdad2a5652dc44a3d88d1822c31a3a7f9eef81bdd1b96e419377d  shared-product
 331b2ae561827f46c682890b2db22973cd4ca25ebe53996f2dd5e690c0720918  shared-product-core/adapters/tour-rate-ajax-context.php
 6ec9f175cb60e16505c5f4b64fe86ef0cb92d5bd215029f5380c9744cd3db6ce  shared-product-core/adapters/tour-rate-availability-query-isolation.php
 aec1cd5ef20b5283be1aa54a4f399d7ceb30917fb5b771949d514c5f8fa02958  shared-product-core/adapters/tour-rate-dynamic-search.php
-62cee082e51d5d45d5c22ad7b2c46e4deb4971e417f0dd11d0912c2bdd1dded2  shared-product-core/adapters/tour-rate-eligible-query.php
-5595129c1f9699f40ee8558cb025e51b79bdd2c97e950ba9db01a344e0fe6bc7  shared-product-core/adapters/tour-rate-facets-from-query.php
+aabda81ed386fda46cd7df980183f0fee51c8ded89ebdac9628b93b886a7ad95  shared-product-core/adapters/tour-rate-eligible-query.php
+b9b1a426f8615fec324b5684566268bec690955e457f75796bc804b82b9e190b  shared-product-core/adapters/tour-rate-facets-from-query.php
 5452245f68c5617513aff5617d9318eacc50781c5fd2d6e938cb2c9250347749  shared-product-core/adapters/tour-rate-filter-url-context.php
 7da04251db005c4f2c53959e7bbc674a685661f4eac64fe840af97cb524b5596  shared-product-core/adapters/tour-rate-package-filter-options.php
 5c351d7a742a23680003550da571a1186d2bb7c32fac1be81c2c4ea04e992b95  shared-product-core/adapters/tour-rate-related-options.php
