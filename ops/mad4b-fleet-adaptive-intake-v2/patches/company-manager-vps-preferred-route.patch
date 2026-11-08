@@ -1,0 +1,30 @@
+--- a/wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-site-operations.php
++++ b/wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-site-operations.php
+@@ -75,13 +75,20 @@
+             'native_worker_operation'=>'mad4b company-site-ops',
+             'reconciler'=>'Company Management -> exact site WP-CLI -> original local operation -> receipt',
+             'receipt_claim'=>'original_site_owned_readback_not_original_313',
+-            'routing_policy'=>[
+-                'candidate_lanes'=>['local_wpcli','vps_client_mcp_cross_ssh','native_host_runner'],
+-                'lane_readiness'=>'verified_by_host_worker_at_dispatch_not_inferred',
+-                'route_selection'=>'exact_company_environment_uuid_origin',
+-                'fallback'=>'pre_dispatch_only_same_target_no_replay_after_attempt',
+-                'remote_write_requires_original_signed_grant'=>true
+-            ]
++            'routing_policy'=>class_exists('MAD4B_Company_Central_Preferred_Router_V1',false)
++                ? MAD4B_Company_Central_Preferred_Router_V1::routing_policy(
++                    $company,$environment,$operation)
++                : [
++                    'state'=>'ROUTER_NOT_LOADED',
++                    'preferred_lane'=>null,
++                    'candidate_lanes'=>['vps_client_mcp_cross_ssh','company_manager_connected_api'],
++                    'default_authorization'=>'company_manager_oauth',
++                    'remote_write_requires_original_signed_grant'=>true,
++                    'fallback'=>'pre_dispatch_only_same_target_no_replay_after_attempt'
++                  ],
++            'default_grant_authorization'=>'company_manager_oauth',
++            'oauth_route_is_not_original_313_write_grant'=>true,
++            'transport_choice_is_not_original_mutation_authority'=>true
+         ];
+     }
+     private static function lock() {

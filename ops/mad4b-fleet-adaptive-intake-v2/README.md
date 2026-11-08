@@ -76,3 +76,17 @@ A single bounded ETG original enrollment grant reconciliation with nonproduction
 The deploy script under tools/ is intended to take an enrolled Staging company_id. It rejects unknown sites, non-Staging, changed baseline SHA and noncanonical source. The full release builder / deployer scripts document the specific rc.123 to rc.124 transition and must not be reused blindly on a later package version.
 
 Remaining acceptance path: operator or owner exact-scoped grant reconciliation with fresh plan, verified candidate binding, authenticated ChatGPT original Write transaction, readback and original central receipt. The narrow auto-approved mode cannot create previously unsealed grants. Authentication, exact origin and original permission gates must remain intact.
+
+## Central routing v1 — VPS Client first, Company Manager OAuth default
+
+The original MAD4B unified router is authoritative for host transport, while MAD4B Company Manager is the default interactive authorization/grant owner. These are separate decisions: a successful pinned SSH session is never a WordPress write grant, OAuth approval alone is never an SSH route, and a route projection never issues a 313 receipt.
+
+The host tool company-central-vps-preferred-route-v1.py enumerates enrolled targets from the live Central Company Environment Registry and validates each original Host Operator and native router scope. For remote Staging sites it requires both the original cross_ssh_wpcli route's verified WordPress Site UUID/origin/environment and the original VPS MCP Client native-read receipt EXACT_NATIVE_SITE_READ_VERIFIED. That proves transport readiness, not write permission. Center's own site uses local VPS WP-CLI. Missing Site UUID or failed pinned host proof returns no execution transport.
+
+The root-owned projection is republished to the original Central WordPress options only if every company identity still matches the central registry. It expires after 30 minutes; the 10-minute systemd timer refreshes it. No SSH keys, OAuth tokens, passwords, sensitive form inputs or original write approvals appear in that projection.
+
+The MU plugin 321-mad4b-central-preferred-route.php registers authenticated read-only mad4b/company-operation-route-plan Ability and /mad4b-company-management/v1/operation-route-plan REST. Routes for write operations report TRANSPORT_READY_WRITE_AUTHORITY_REQUIRED with default company_manager_oauth. The Company Manager patch integrates the same advisory into the original Company Site Operations REST/Ability plan. Existing signed execution and native 305->306->312->313 flow are unchanged.
+
+Live acceptance: registered ETG/ARE Staging each return VPS Client MCP Cross-SSH as preferred, Center Staging returns local WP-CLI, production scopes with missing canonical Site UUID return WAITING_ENROLLED_SITE_IDENTITY. Original VPS Client identity readback PASS for both Staging companies; 0 writes, 0 grants, 0 generated 313 receipts. Anonymous central REST returned 401. A 10-minute refresh timer is active on the VPS.
+
+This routing module is intended to be generalized to new companies by Company Environment Registry enrollment and Original Host Scope enrollment, with no per-company code changes. It must never fabricate site IDs or compensate for missing OAuth approval by impersonating a WordPress user with SSH.

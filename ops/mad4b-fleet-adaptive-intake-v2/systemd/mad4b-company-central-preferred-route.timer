@@ -1,0 +1,13 @@
+[Unit]
+Description=Refresh verified MAD4B Company Router preference every 10 minutes
+
+[Timer]
+OnBootSec=90s
+OnUnitInactiveSec=10min
+RandomizedDelaySec=30s
+AccuracySec=30s
+Persistent=true
+Unit=mad4b-company-central-preferred-route.service
+
+[Install]
+WantedBy=timers.target
