@@ -1,0 +1,38 @@
+--- Wayfa/live/control-plane.php
++++ Wayfa/proposed/control-plane.php
+@@ -300,11 +300,23 @@
+                 // tours.dev; otherwise the whole readiness scan stops at its
+                 // first valid FAQ issue and cannot persist newer alerts.
+                 $faqGap=$source==='mad4b-taxonomy-faq' && $type==='site' &&
+                     $object_id===0 && ($row['severity']??'')==='medium' &&
+                     preg_match('/^faq_term_missing_(?:destinations|tour-types|tour-styles|season|good-for|duration-options|attractions-types|tour_categories)_[1-9][0-9]{0,8}$/D',$code);
+-                $valid=is_array($row) && ($dfsb||$localization||$performance||$pricing||$ratePlan||$gallery||$gttd||$homeCopy||$faqGap) &&
++                // Governed first-party Elementor Copy Coverage advisory only.
++                // No job creation, arbitrary source, authorization change, or publishing.
++                $elementorCopy=$source==='mad4b-elementor-copy-coverage' &&
++                    $object_id>0 && $type==='elementor_library' &&
++                    get_post_type($object_id)==='elementor_library' &&
++                    get_post_status($object_id)==='publish' &&
++                    preg_match('/^elm_copy_(?:hero_static_locale|catalog_fallback_en|same_as_source|filter_week_typo)_(?:en|es|fr|de|it|ar)_[a-f0-9]{12}$/D',$code) &&
++                    is_int($row['priority']??null) &&
++                    $row['priority']===(str_contains($code,'hero_static_locale_')?100:
++                        (str_contains($code,'catalog_fallback_en_')?95:
++                        (str_contains($code,'same_as_source_')?78:75))) &&
++                    ($row['severity']??'')===($row['priority']>=95?'high':'medium');
++                $valid=is_array($row) && ($dfsb||$localization||$performance||$pricing||$ratePlan||$gallery||$gttd||$homeCopy||$faqGap||$elementorCopy) &&
+                     hash_equals($expected,$id) &&
+                     in_array($row['severity']??'',array('critical','high','medium','low'),true) &&
+                     is_string($row['label']??null) &&
+                     trim($row['label'])!=='' && strlen($row['label'])<=240 &&
+                     !isset($row['status']) && !isset($row['board_task_id']) &&
+@@ -315,10 +327,11 @@
+                     'id'=>$id,'post_type'=>$type,'object_id'=>$object_id,'code'=>$code,
+                     'severity'=>$row['severity'],'label'=>sanitize_text_field($row['label']),
+                     'source'=>$source
+                 );
+                 if($homeCopy)$issues[count($issues)-1]['priority']=$row['priority'];
++                if($elementorCopy)$issues[count($issues)-1]['priority']=$row['priority'];
+                 if($gttd){
+                     $clean=[];
+                     foreach(['price','fees_and_taxes','occupancy','availability','checkout_match'] as $name) {
+                         $item=$row['source_evidence']['checklist'][$name]??null;
