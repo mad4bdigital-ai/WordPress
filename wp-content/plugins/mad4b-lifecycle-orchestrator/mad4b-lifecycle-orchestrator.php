@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Lifecycle Orchestrator
  * Description: Central staging-only event and manual runtime coordination; never grants provider write permissions.
- * Version: 0.3.1-native-receipt-staging
+ * Version: 0.4.0-lifecycle-intelligence-staging
  * Author: MAD4B
  */
 defined('ABSPATH') || exit;
@@ -364,7 +364,11 @@ final class MAD4B_Lifecycle_Orchestrator {
         $fresh=get_option($key,false);
         if(!is_array($fresh)||($fresh['state']??'')!==$row['state'])
             return self::err('journal_readback_failed');
-        if($row['state']==='RECOVERING'&&$row['attempts']<3)
+        // Read-only dependency recheck shares the original bounded 3-attempt
+        // Cron lane; it never replays a native provider mutation.
+        if(in_array($row['state'],['RECOVERING','BLOCKED_DEPENDENCY'],true)
+           &&$row['attempts']<3 &&(int)($row['retry_after']??0)>time()
+           &&!wp_next_scheduled(self::CRON,[$id]))
             wp_schedule_single_event($row['retry_after'],self::CRON,[$id]);
         // Provider readiness can be rechecked twice on bounded backoff.
         // Never auto-retry a rejected mutation or fake certification.
@@ -378,6 +382,201 @@ final class MAD4B_Lifecycle_Orchestrator {
             $wpdb->get_var($wpdb->prepare('SELECT RELEASE_LOCK(%s)',$mutex));
         }
     }
+    /** Canonical, source-derived correlation envelope. Does not create jobs or replay identity. */
+    public static function event_contract(array $row): array {
+        $event=is_array($row['event']??null)?$row['event']:[];
+        $source=is_array($row['source_receipt']??null)?$row['source_receipt']:[];
+        $id=(string)($row['event_id']??'');
+        return [
+            'contract'=>'mad4b.lifecycle-event.v1',
+            'correlation_id'=>preg_match('/^[a-f0-9]{64}$/D',$id)?$id:'',
+            'event_id'=>$id,
+            'site_origin'=>'https://tours.dev.mad4b.com',
+            'environment'=>'staging',
+            'goal'=>(string)($event['goal']??''),
+            'target_kind'=>(string)($event['target_kind']??''),
+            'target_id'=>(int)($event['target_id']??0),
+            'company_code'=>(string)($event['company_code']??''),
+            'content_job_id'=>(string)($event['job_id']??''),
+            'manager_id'=>(string)($event['manager_id']??''),
+            'event_type'=>(string)($event['event_type']??''),
+            'source_revision_key'=>(string)($event['event_key']??''),
+            'source_job_revision'=>isset($source['revision'])?(int)$source['revision']:null,
+            'actor_user_id'=>(int)($event['actor_user_id']??0),
+            'source_state'=>(string)($row['state']??''),
+            'source_receipt_scope'=>(string)($row['verification_scope']??''),
+            'source_receipt_verified'=>($row['state']??'')==='VERIFIED'
+                 && is_array($row['verification']??null),
+            'created_at'=>(string)($row['created_at']??''),
+            'updated_at'=>(string)($row['updated_at']??''),
+            'idempotency_derived_from_original_event_id'=>true,
+            'original_provider_owns_execution'=>true,
+            'execution_authority_issued'=>false,
+            'publication_verified'=>false,
+        ];
+    }
+
+    /** Routes through existing provider and Bulk Queue, never a second executor. */
+    public static function execution_routing_view(array $row): array {
+        $event=(array)($row['event']??[]);
+        $resolution=(array)($row['resolution']??[]);
+        $goal=(string)($event['goal']??'');
+        $state=(string)($row['state']??'');
+        $lane=$goal==='content'?'MAD4B_Hub_Bulk_Jobs_Queue':
+          ($goal==='company'?'MAD4B_Company_Portfolio_Manager_V1':
+          ($goal==='seo'?'Rank_Math_native_provider':
+          ($goal==='media'?'WordPress_Media_native_provider':'UNRESOLVED')));
+        $needs_receipt=in_array($state,['RUNNING','NEEDS_RECONCILIATION'],true);
+        $hold=$state==='BLOCKED_AUTHORITY'?'AUTHORITY_HOLD':
+          ($needs_receipt?'ORIGINAL_RECEIPT_READBACK_REQUIRED':
+          ($state==='VERIFIED'?'NO_REDISPATCH_SOURCE_RECEIPT_PRESENT':
+           'ORIGINAL_PROVIDER_SELECTION_REQUIRED'));
+        return [
+            'contract'=>'mad4b.lifecycle-execution-routing.v1',
+            'goal'=>$goal,'provider_lane'=>$lane,
+            'source_job_id'=>(string)($event['job_id']??''),
+            'original_queue_or_provider_owns_claim'=>true,
+            'original_content_queue_eligible'=>$goal==='content'
+                 && (string)($event['job_id']??'')!=='',
+            'selected_executor'=>null,
+            'executor_capacity_confirmed'=>false,
+            'original_wpcli_principal_confirmed'=>false,
+            'native_313_write_certified'=>false,
+            'automatic_fallback_authorized'=>false,
+            'recommended_state'=>$hold,
+            'provider_family'=>(string)($resolution['provider_family']??''),
+            'executed_by_intelligence'=>false,
+            'task_reassigned'=>false,
+        ];
+    }
+
+    /** Fail-closed recovery decision; only original bounded readback can auto retry. */
+    public static function recovery_view(array $row,int $now=0): array {
+        if($now<=0)$now=time();
+        $state=(string)($row['state']??'');
+        $attempts=max(0,(int)($row['attempts']??0));
+        $retry=(int)($row['retry_after']??0);
+        $safe=in_array($state,['RECOVERING','BLOCKED_DEPENDENCY'],true)
+             && $attempts<3 && $retry>$now;
+        $next=$state==='VERIFIED'?'NO_ACTION_ALREADY_SOURCE_VERIFIED':
+           ($state==='NEEDS_RECONCILIATION'?'READ_EXACT_ORIGINAL_POSTSTATE':
+           ($state==='RUNNING'?'WAIT_ORIGINAL_EXECUTOR_RECEIPT':
+           ($state==='BLOCKED_AUTHORITY'?'REQUIRE_ORIGINAL_ADMIN_OR_OWNER_GRANT':
+           ($safe?'SCHEDULE_ORIGINAL_READ_ONLY_RECHECK':
+           'NO_AUTOMATIC_RETRY'))));
+        return [
+            'contract'=>'mad4b.lifecycle-recovery.v1',
+            'state'=>$state,'attempts'=>$attempts,
+            'max_read_attempts'=>3,
+            'retry_after'=>$retry,
+            'read_only_retry_eligible'=>$safe,
+            'recommended_action'=>$next,
+            'unknown_mutation_replay_allowed'=>false,
+            'new_authority_issued'=>false,
+            'provider_compensation_executed'=>false,
+            'original_receipt_required_for_write_replay'=>true,
+        ];
+    }
+
+    /** Match the original Artifact provider's sorted JSON digest, without writes. */
+    private static function artifact_canonical($value) {
+        if(!is_array($value))return $value;
+        if($value && array_keys($value)!==range(0,count($value)-1))
+            ksort($value,SORT_STRING);
+        foreach($value as $key=>$item)$value[$key]=self::artifact_canonical($item);
+        return $value;
+    }
+    public static function artifact_readback(array $row): array {
+        $event=(array)($row['event']??[]);
+        $job=(string)($event['job_id']??'');
+        $out=['contract'=>'mad4b.lifecycle-native-artifact-readback.v1',
+            'job_id'=>$job,'verified'=>false,'active_artifact_count'=>0,
+            'artifact_refs'=>[],'provider_mutation_performed'=>false,
+            'publication_proven'=>false,'reason'=>'source_receipt_or_provider_missing'];
+        if(($row['state']??'')!=='VERIFIED'
+           ||($row['verification_scope']??'')!=='content_job_terminal_transition_only'
+           ||!preg_match('/^[a-f0-9-]{36}$/D',$job)
+           ||!class_exists('MAD4B_SCP_Artifacts',false))
+            return $out;
+        $result=MAD4B_SCP_Artifacts::list_artifacts(['job_id'=>$job]);
+        if(is_wp_error($result)||!is_array($result)||
+           ($result['job_id']??'')!==$job
+           ||($result['mutation_performed']??true)!==false
+           ||!is_array($result['items']??null)) {
+            $out['reason']='original_artifact_provider_unavailable_or_mismatched';
+            return $out;
+        }
+        $count=0;
+        foreach($result['items'] as $a) {
+            if(!is_array($a)||($a['job_id']??'')!==$job
+               ||($a['status']??'')!=='active'
+               ||(int)($a['version']??0)<1
+               ||!is_array($a['payload']??null)
+               ||!preg_match('/^[a-f0-9]{64}$/D',(string)($a['content_sha256']??'')))
+                continue;
+            $encoded=wp_json_encode(self::artifact_canonical($a['payload']),
+                JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
+            if(!is_string($encoded)||!hash_equals((string)$a['content_sha256'],
+                hash('sha256',$encoded)))continue;
+            ++$count;
+            if(count($out['artifact_refs'])<12)
+                $out['artifact_refs'][]=[
+                    'artifact_type'=>(string)($a['artifact_type']??''),
+                    'version'=>(int)$a['version'],
+                    'content_sha256'=>(string)$a['content_sha256']];
+        }
+        $out['active_artifact_count']=$count;
+        $out['verified']=$count>0;
+        $out['reason']=$count>0?'original_artifact_integrity_readback':
+            'no_active_source_integrity_verified_artifact';
+        return $out;
+    }
+
+    /** Read-only proof projection. Legacy VERIFIED never equals end-to-end acceptance. */
+    public static function closure_view(array $row): array {
+        $event=is_array($row['event']??null)?$row['event']:[];
+        $receipt=is_array($row['verification']??null)?$row['verification']:[];
+        $goal=(string)($event['goal']??'');
+        $source_verified=($row['state']??'')==='VERIFIED'
+            && ($row['verification_scope']??'')==='content_job_terminal_transition_only'
+            && ($receipt['scope']??'')==='content_job_terminal_transition_only'
+            && ($receipt['content_job_transition_verified']??false)===true
+            && ($receipt['post_publication_verified']??true)===false
+            && ($receipt['provider_seo_write_verified']??true)===false
+            && isset($receipt['job_revision']);
+        $artifact=$source_verified?self::artifact_readback($row):[
+            'verified'=>false,'active_artifact_count'=>0,'artifact_refs'=>[],
+            'reason'=>'source_transition_not_verified',
+            'provider_mutation_performed'=>false,'publication_proven'=>false];
+        $artifact_verified=$source_verified&&$artifact['verified']===true;
+        $next=$artifact_verified?'PUBLICATION_HTTP_AND_BROWSER_PROOF_REQUIRED':
+            ($source_verified?'ORIGINAL_ARTIFACT_READBACK_REQUIRED':
+            (($row['state']??'')==='BLOCKED_AUTHORITY'?'ORIGINAL_EXECUTOR_AUTHORITY_REQUIRED':
+             'SOURCE_AND_PROVIDER_EVIDENCE_REQUIRED'));
+        return [
+            'contract'=>self::CONTRACT.'.closure.v1',
+            'source_event_id'=>(string)($row['event_id']??''),
+            'goal'=>$goal,
+            'target_kind'=>(string)($event['target_kind']??''),
+            'company_code'=>(string)($event['company_code']??''),
+            'source_revision_key'=>(string)($event['event_key']??''),
+            'scoped_receipt'=>(string)($row['verification_scope']??''),
+            'content_job_terminal_transition_verified'=>$source_verified,
+            'provider_execution_receipt_verified'=>false,
+            'artifact_verified'=>$artifact_verified,
+            'artifact_readback'=>$artifact,
+            'publication_confirmed'=>false,
+            'public_page_readback_verified'=>false,
+            'browser_functional_acceptance_verified'=>false,
+            'end_to_end_accepted'=>false,
+            'state'=>$artifact_verified?'PARTIAL_PUBLICATION_PROOF_REQUIRED':
+                ($source_verified?'PARTIAL_ARTIFACT_PROOF_REQUIRED':'NOT_FUNCTIONALLY_ACCEPTED'),
+            'next_required_evidence'=>$next,
+            'acceptance_derived_from_local_verified'=>false,
+            'execution_dispatched_by_projection'=>false,
+        ];
+    }
+
     public static function status($input=[],$internal=false) {
         if(!$internal&&!self::can_read())return self::err('read_denied');
         $id=(string)($input['event_id']??'');
@@ -399,6 +598,10 @@ final class MAD4B_Lifecycle_Orchestrator {
             'resolution'=>$row['resolution'],
             'verification_scope'=>$row['verification_scope']??'',
             'verification'=>$row['verification']??null,
+            'canonical_event'=>self::event_contract($row),
+            'execution_routing'=>self::execution_routing_view($row),
+            'recovery'=>self::recovery_view($row),
+            'functional_closure'=>self::closure_view($row),
             'provider_mutation_performed'=>false,
             'verified'=>($row['state']==='VERIFIED'&&is_array($row['verification']??null)),
             'manual_handoff_required'=>in_array($row['state'],['READY','BLOCKED_AUTHORITY'],true),
@@ -595,5 +798,7 @@ final class MAD4B_Lifecycle_Orchestrator {
 }
 require_once __DIR__ . '/class-mad4b-unified-governed-lifecycle-policy.php';
 require_once __DIR__ . '/class-mad4b-lifecycle-native-receipt.php';
+require_once __DIR__ . '/class-mad4b-lifecycle-source-reissue-admin.php';
+add_action('plugins_loaded',['MAD4B_Lifecycle_Source_Reissue_Admin','boot'],122);
 add_action('plugins_loaded',['MAD4B_Lifecycle_Native_Receipt','boot'],121);
 add_action('plugins_loaded',['MAD4B_Lifecycle_Orchestrator','boot'],120);
