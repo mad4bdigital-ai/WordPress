@@ -62,6 +62,8 @@ jobs:
           PY
       - name: Standalone data and Repeater context contracts
         run: php packages/mad4b-shared-product-core/tests/offline-contract-smoke.php
+      - name: Verify Commerce and Presentation runtime isolation
+        run: php packages/mad4b-shared-product-core/tests/presentation-runtime-contract.php
       - name: Booking cart quote input-shape regression
         run: php packages/mad4b-shared-product-core/tests/booking-cart-regression.php
       - name: Require source-only release flag
@@ -88,11 +90,11 @@ jobs:
       - name: Bundle exact source tree only
         run: |
           cd packages/mad4b-shared-product-core
-          tar -czf ../../mad4b-shared-product-core-0.1.0-dev.20261028-SOURCE-ONLY.tar.gz \
+          tar -czf ../../mad4b-shared-product-core-0.1.0-dev.20261108-SOURCE-ONLY.tar.gz \
             mu-plugins release-manifest.json source-files.sha256 README.md
       - uses: actions/upload-artifact@v4
         with:
           name: mad4b-shared-product-core-source-only
-          path: mad4b-shared-product-core-0.1.0-dev.20261028-SOURCE-ONLY.tar.gz
+          path: mad4b-shared-product-core-0.1.0-dev.20261108-SOURCE-ONLY.tar.gz
           if-no-files-found: error
           retention-days: 14
