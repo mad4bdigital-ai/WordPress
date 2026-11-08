@@ -1,0 +1,32 @@
+{
+  "cache_warm_started_from_current_redis_epoch": true,
+  "complete_root_cause_identification": false,
+  "contract": "mad4b.redis-flush-lifecycle-source-package.v1",
+  "files_sha256": {
+    "README.md": "b7d7f01eda76aaed45b32a3295969a5f6f4639c46716f83df4d754ddb3d12c21",
+    "bin/company-redis-flush-guard-reconcile-v1.py": "0eabf35d51d6ff25d43245cddef21b4bca934749456ee22216edf883147dcd14",
+    "bin/company-redis-flush-origin-observe-v1.py": "e2887ab48874ea52ea4c3461291df46b3a06a9cd055722b56c9d54d8571d6592",
+    "bin/company-redis-flush-probe-expire-v1.py": "73b0e412b050d64ea4aedffe16bdf702ee949ea80c89ee0a0eb3186f47c5a52a",
+    "bin/mad4b-property-type-fix-scoped.php": "d143322158dc7c63b5fa4d0ba72e241745be9708fdb83675865c2f9d322d747c",
+    "bin/mad4b-public-object-cache-warm.py": "d30bc39516e75d6d41d5cce7729000af107b08e1b0d3f0f50a7e4f3a8f6a4119",
+    "systemd/mad4b-company-redis-flush-guard.service": "ff20b5ff3d0a2655a1693171e5b6855a033707b567f7ee3eb16c5302d3d782dd",
+    "systemd/mad4b-company-redis-flush-guard.timer": "a187c447160ecdff028f2f116ca0567abb1e8b8bd7fe9f534e22545fb584f0d5",
+    "systemd/mad4b-redis-flush-origin-observe.service": "f75d4f2f5b5447f74687d0bddcfb453a351473ad7ef2f08233f3f9c7c2b69a15",
+    "systemd/mad4b-redis-flush-origin-observe.timer": "268b7ab1eb763738058837d77845c336e5e6e76aaa7fc85c89ae5cacbdf5449d",
+    "tests/fixtures/legacy-property-cache-script.php": "5fcafede2f33345718f9ea30fec03be18227b279d9120116f6b0cd1d8ee18f4b",
+    "tests/test_company_redis_flush_guard.py": "420a5ac851d945bc38e1857fda73aa79d4f2b85cae77723060886286919a6348",
+    "tests/test_invalidation_contract.py": "bf36ad8b4ec0f0155494c90efc4eb9e4aac02a623c1702c8114f2faee5186069",
+    "tests/test_legacy_noop_patch.py": "6e8a3d3e3b285df3e3806eaab7ad3084f3699eddb5bd52e3dd1ee2aa134524a9",
+    "tests/test_redis_flush_epoch.py": "1d05a323653d22b8f6201fa6572788721c5d12f3a14d5c69a83d0e1c6c1f5005",
+    "tools/patch_legacy_noop_guards.py": "56438d41da3a7e45e9ea54a7a5a0806b44771e962cb1482edbb0f2385e2e9f61"
+  },
+  "live_release_guard": "site-local pinned hashes; do not copy tenant config",
+  "production_write_acceptance_test_complete": false,
+  "redis_full_flush_commands_permitted_in_release": false,
+  "release_version": "1.0.0",
+  "runtime_deployed_on_both_companies": true,
+  "source_sites": [
+    "tours-dev",
+    "wayfatours"
+  ]
+}

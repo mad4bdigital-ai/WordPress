@@ -1,0 +1,16 @@
+[Unit]
+Description=MAD4B Redis flush safeguards and known-safe company runtime script reconciliation
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/flock -w 10 /run/lock/mad4b-company-redis-flush-guard.lock /usr/bin/python3 /opt/mad4b-company-provisioning/bin/company-redis-flush-guard-reconcile-v1.py --apply --strict
+TimeoutStartSec=90
+Nice=15
+NoNewPrivileges=true
+UMask=0077
+CPUQuota=25%
+IOSchedulingClass=idle
+StandardOutput=journal
+StandardError=journal
