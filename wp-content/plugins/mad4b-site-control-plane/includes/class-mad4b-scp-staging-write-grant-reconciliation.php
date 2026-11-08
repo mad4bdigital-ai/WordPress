@@ -111,6 +111,13 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 				// mad4b_attachment_transfer capability, upload_files and mutation
 				// kill-switch gates. An exact NHI grant never bypasses them.
 				'mad4b/attachment-transfer' => 'core',
+				// Exact reviewed Staging abilities. Inclusion only makes a future
+				// plan eligible; it never creates a grant or bypasses owner approval.
+				'mad4b/firecrawl-research-capture' => 'core',
+				'mad4b/fleet-intake-auto' => 'core',
+				'mad4b/fleet-intake-plan' => 'core',
+				'mad4b/fleet-intake-save' => 'core',
+
 				// Only the exact reversible JetSmartFilters metadata writer.
 				// Its behavioral certificate makes it inventory-eligible, but a
 				// grant is never issued without a fresh source/profile/inventory
