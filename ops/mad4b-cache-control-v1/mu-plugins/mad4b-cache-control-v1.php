@@ -2,13 +2,13 @@
 /**
  * Plugin Name: MAD4B Cache Control
  * Description: Safe, preview-first, policy-aware selective FastCGI path invalidation. Does not flush Redis.
- * Version: 1.1.1
+ * Version: 1.2.1
  */
 defined('ABSPATH') || exit;
 
 if (!class_exists('MAD4B_Cache_Control_V1', false)) {
 final class MAD4B_Cache_Control_V1 {
-    const VERSION = '1.1.1';
+    const VERSION = '1.2.1';
     const PAGE = 'mad4b-cache-lifecycle';
     const RECEIPTS = 'mad4b_cache_control_receipts_v1';
     const MAX_PATHS = 80;
@@ -160,11 +160,72 @@ final class MAD4B_Cache_Control_V1 {
         ];
     }
 
-    public static function preview_target(string $selection): array {
+    /**
+     * Only publicly routable archives from taxonomy terms DIRECTLY assigned
+     * to the selected published tour translation. Uncertain dependency-graph
+     * nodes never enter this list.
+     */
+    private static function direct_tour_archives(int $tour_id,string $language,array $lang_codes,string $selected_taxonomy): array {
+        if (get_post_status($tour_id)!=='publish' ||
+            get_post_type($tour_id)!=='tours-and-activities')
+            return ['paths'=>[],'labels'=>[],'skipped'=>0,'error'=>'tour_not_eligible'];
+        $paths=[];$labels=[];$skipped=0;$seen=0;
+        $taxonomies=get_object_taxonomies('tours-and-activities','objects');
+        if (!isset($taxonomies[$selected_taxonomy]) ||
+            !self::safe_taxonomy($selected_taxonomy))
+            return ['paths'=>[],'labels'=>[],'skipped'=>0,'error'=>'archive_taxonomy_not_public'];
+        foreach ([$selected_taxonomy=>$taxonomies[$selected_taxonomy]] as $taxonomy=>$obj) {
+            $terms=wp_get_post_terms($tour_id,$taxonomy,['fields'=>'all']);
+            if (is_wp_error($terms) || !is_array($terms))continue;
+            foreach ($terms as $term) {
+                if (!$term instanceof WP_Term)continue;
+                if (++$seen>120)
+                    return ['paths'=>[],'labels'=>[],'skipped'=>$skipped,
+                            'error'=>'direct_archive_term_budget_exceeded'];
+                $url=get_term_link($term);
+                if (is_wp_error($url) || !is_string($url)){$skipped++;continue;}
+                if (has_filter('wpml_permalink'))
+                    $url=apply_filters('wpml_permalink',$url,$language);
+                $path=self::path_from_url($url);
+                if ($path===null || $path==='/' || $path==='/'.$language.'/') {
+                    $skipped++;continue;
+                }
+                $segments=explode('/',trim($path,'/'));
+                if (count($segments)<2) {$skipped++;continue;}
+                // Reject a URL localized for another language, even if WPML
+                // returned a nonempty but context-dependent term link.
+                $head=$segments[0];
+                $default=(string)apply_filters('wpml_default_language','en');
+                if (($language!==$default && $head!==$language) ||
+                    ($language===$default && $head!==$default &&
+                     in_array($head,$lang_codes,true))) {
+                    $skipped++;continue;
+                }
+                if (!isset($paths[$path])) {
+                    $paths[$path]=true;
+                    $labels[$path]=['language'=>$language,'label'=>$term->name,
+                        'id'=>(int)$term->term_id,'kind'=>'direct_taxonomy_archive',
+                        'taxonomy'=>$taxonomy];
+                }
+            }
+        }
+        return ['paths'=>$paths,'labels'=>$labels,'skipped'=>$skipped,'error'=>null];
+    }
+
+    public static function preview_target(string $selection,string $archive_taxonomy=''): array {
         $entity=self::parse_selection($selection);
         if (isset($entity['error']))return $entity;
-        $paths=[];$skipped=[];$labels=[];
+        $paths=[];$skipped=[];$labels=[];$archivePaths=[];$archiveSkipped=0;
         $codes=self::lang_codes();
+        if ($archive_taxonomy!=='') {
+            if ($entity['kind']!=='post' ||
+                $entity['post_type']!=='tours-and-activities' ||
+                !preg_match('/^[a-z][a-z0-9_-]{1,50}$/D',$archive_taxonomy) ||
+                !in_array($archive_taxonomy,get_object_taxonomies('tours-and-activities'),true) ||
+                !self::safe_taxonomy($archive_taxonomy))
+                return ['error'=>'archive_taxonomy_not_public'];
+        }
+        $include_archives=$archive_taxonomy!=='';
         foreach ($codes as $language) {
             $id=(int)$entity['id'];
             if (has_filter('wpml_object_id')) {
@@ -197,7 +258,21 @@ final class MAD4B_Cache_Control_V1 {
                 continue;
             }
             $paths[$path]=true;
-            $labels[$path]=['language'=>$language,'label'=>sanitize_text_field($title),'id'=>$id];
+            $labels[$path]=['language'=>$language,'label'=>sanitize_text_field($title),'id'=>$id,
+                'kind'=>'selected_object'];
+            if ($include_archives) {
+                $linked=self::direct_tour_archives($id,$language,$codes,$archive_taxonomy);
+                if ($linked['error'])
+                    return ['error'=>$linked['error']];
+                $archiveSkipped+=(int)$linked['skipped'];
+                foreach ($linked['paths'] as $archivePath=>$yes) {
+                    if (!isset($paths[$archivePath])) {
+                        $paths[$archivePath]=true;
+                        $labels[$archivePath]=$linked['labels'][$archivePath];
+                        $archivePaths[$archivePath]=true;
+                    }
+                }
+            }
         }
         // Independently include the source canonical URL even when WPML filters
         // are unavailable in the administrative context.
@@ -224,6 +299,11 @@ final class MAD4B_Cache_Control_V1 {
             return ['error'=>'no_safe_public_paths'];
         $policy=self::source_policy($entity);
         $preview=['contract'=>'mad4b.cache-control.preview.v1',
+            'archive_scope'=>$include_archives?'direct_assigned_taxonomy':'selected_object_only',
+            'archive_taxonomy'=>$archive_taxonomy,
+            'archive_paths'=>array_keys($archivePaths),
+            'archive_count'=>count($archivePaths),
+            'archive_candidates_skipped'=>$archiveSkipped,
             'selection'=>$selection,'entity'=>$entity,'policy'=>$policy,
             'paths'=>array_keys($paths),'labels'=>$labels,'skipped'=>$skipped,
             'notes'=>['FastCGI path key rotation only; no Redis flush or browser cache purge',
@@ -233,8 +313,13 @@ final class MAD4B_Cache_Control_V1 {
             $dep=$entity['kind']==='post'?'post:'.$entity['id']:
                  'term:'.$entity['taxonomy'].':'.$entity['id'];
             $impact=MAD4B_Page_Dependency_Cache::impact_preview($dep);
+            $census=method_exists('MAD4B_Page_Dependency_Cache','impact_census') ?
+                MAD4B_Page_Dependency_Cache::impact_census($dep) : [];
             $preview['dependency_impact']=[
                 'matches'=>(int)($impact['observed_matches']??0),
+                'exact_nodes'=>(int)($census['total_nodes']??($impact['observed_matches']??0)),
+                'unknown_nodes'=>(int)($census['unknown_coverage_nodes']??0),
+                'exact_census_ready'=>($census['status']??'')==='ok',
                 'truncated'=>(bool)($impact['truncated']??false),
                 'coverage'=>$impact['coverage']??'unknown',
                 'sample_paths'=>array_slice(array_values(array_unique(array_filter(array_map(
@@ -243,7 +328,9 @@ final class MAD4B_Cache_Control_V1 {
                 'automatically_included'=>false];
         }
         $preview['fingerprint']=hash('sha256',wp_json_encode([
-            $preview['selection'],$preview['paths'],$preview['policy'],
+            $preview['selection'],$preview['archive_scope'],$preview['archive_taxonomy'],
+            $preview['archive_paths'],
+            $preview['paths'],$preview['policy'],
             $preview['dependency_impact']??null]));
         return $preview;
     }
@@ -279,7 +366,10 @@ final class MAD4B_Cache_Control_V1 {
             elseif ($manual_kind==='post')$selection='post:'.(int)$manual_id;
             else self::redirect_error('invalid_manual_kind');
         }
-        $preview=self::preview_target($selection);
+        $archive_taxonomy=isset($_POST['archive_taxonomy']) &&
+            is_scalar($_POST['archive_taxonomy']) ?
+            sanitize_key(wp_unslash((string)$_POST['archive_taxonomy'])):'';
+        $preview=self::preview_target($selection,$archive_taxonomy);
         if (isset($preview['error']))self::redirect_error($preview['error']);
         $token=bin2hex(random_bytes(16));
         if (!set_transient('mad4b_cc_'.$token,['uid'=>get_current_user_id(),
@@ -359,14 +449,19 @@ final class MAD4B_Cache_Control_V1 {
         $stored=$data['preview']??null;
         if (!is_array($stored)||!is_string($stored['selection']??null))
             self::redirect_error('preview_invalid');
-        $fresh=self::preview_target($stored['selection']);
+        $fresh=self::preview_target($stored['selection'],
+            (string)($stored['archive_taxonomy']??''));
         if (!self::preview_fingerprint_matches($stored,$fresh))
             self::redirect_error('policy_or_paths_changed_preview_again');
         $response=self::socket_purge($fresh['paths']);
         $receipt=['contract'=>'mad4b.cache-control.fastcgi-path-generation.v1',
             'id'=>bin2hex(random_bytes(8)),'at'=>gmdate('c'),
             'uid'=>get_current_user_id(),'selection'=>$fresh['selection'],
-            'paths'=>$fresh['paths'],'policy_source'=>$fresh['policy']['registry'],
+            'paths'=>$fresh['paths'],
+            'archive_scope'=>$fresh['archive_scope'],
+            'archive_taxonomy'=>$fresh['archive_taxonomy'],
+            'archive_count'=>$fresh['archive_count'],
+            'policy_source'=>$fresh['policy']['registry'],
             'policy_strategy'=>$fresh['policy']['strategy'],
             'result'=>$response,'redis_flushed'=>false,
             'coverage'=>'selected_paths_only_not_full_dependency_coverage'];
@@ -421,7 +516,7 @@ final class MAD4B_Cache_Control_V1 {
         echo '<div class="wrap"><h1>MAD4B Cache Control</h1>';
         echo '<p>Policy-aware FastCGI path generation. This does not flush Redis, change rates, or bypass private checkout rules.</p>';
         echo '<p><a href="'.esc_url(admin_url('tools.php?page=mad4b-pricing-cache-inheritance')).'">Pricing Cache Inheritance</a>';
-        if (class_exists('MAD4B_Company_Adaptive_Controls',false))
+        if (class_exists('MAD4B_Company_Policy_Registry_V2',false))
             echo ' | <a href="'.esc_url(admin_url('options-general.php?page=mad4b-company-adaptive-controls')).'">Dynamic Policy Registry</a>';
         echo '</p>';
         $local_policy=self::source_policy(['kind'=>'post','post_type'=>'page','id'=>0]);
@@ -453,12 +548,15 @@ final class MAD4B_Cache_Control_V1 {
                 ($policy['company_scope_active']?'active':'inactive/fallback').'</p>';
             echo '<p>Dependency policy: '.esc_html($policy['dependency_strategy']).
                 ' · Unknown dependencies: '.esc_html($policy['dependency_unknown_fallback']).'</p>';
-            echo '<p><strong>Only the following public URLs will be versioned:</strong></p>';
+            echo '<p><strong>Only the following public URLs will be versioned:</strong> '.
+                (int)count($p['paths']).' paths; '.
+                (int)$p['archive_count'].' opt-in direct taxonomy archive paths.</p>';
             echo '<table class="widefat striped"><thead><tr><th>Language</th><th>Page</th><th>Path</th></tr></thead><tbody>';
             foreach ($p['paths'] as $path) {
                 $label=$p['labels'][$path]??[];
                 echo '<tr><td>'.esc_html($label['language']??'').'</td><td>'.
-                    esc_html($label['label']??'').'</td><td><code>'.esc_html($path).'</code></td></tr>';
+                    esc_html($label['label']??'').'</td><td><code>'.esc_html($path).'</code> '.
+                    (in_array($path,$p['archive_paths'],true)?'<em>(direct taxonomy archive)</em>':'').'</td></tr>';
             }
             echo '</tbody></table>';
             foreach ($p['skipped'] as $skip)
@@ -466,8 +564,11 @@ final class MAD4B_Cache_Control_V1 {
             if (isset($p['dependency_impact'])) {
                 $impact=$p['dependency_impact'];
                 echo '<p><strong>Dependency graph (read-only):</strong> '.
-                    (int)$impact['matches'].' matching nodes. Coverage '.
-                    esc_html($impact['coverage']).'; related pages are NOT automatically purged.</p>';
+                    ($impact['exact_census_ready']?(int)$impact['exact_nodes'].' total nodes, '.
+                        (int)$impact['unknown_nodes'].' unverified':'at least '.
+                        (int)$impact['matches'].' sample nodes').
+                    '. Coverage '.esc_html($impact['coverage']).
+                    '; unknown graph nodes are NEVER included automatically.</p>';
                 if ($impact['sample_paths'])
                     echo '<p>Related examples: '.esc_html(implode(', ',$impact['sample_paths'])).'</p>';
             }
@@ -498,6 +599,15 @@ final class MAD4B_Cache_Control_V1 {
             '<option value="term">Taxonomy term</option></select> ';
         echo '<input type="number" min="1" name="manual_id" placeholder="Post or term ID"> ';
         echo '<input type="text" maxlength="50" name="manual_tax" placeholder="taxonomy slug (for term)"></p>';
+        echo '<p><label for="mad4b-cc-archive-taxonomy">Optional: directly assigned Tour archives</label><br>';
+        echo '<select name="archive_taxonomy" id="mad4b-cc-archive-taxonomy">';
+        echo '<option value="">Tour paths only (recommended default)</option>';
+        foreach (get_object_taxonomies('tours-and-activities','objects') as $tax=>$obj) {
+            if (!self::safe_taxonomy((string)$tax))continue;
+            echo '<option value="'.esc_attr($tax).'">'.
+                esc_html($obj->labels->singular_name??$tax).' ('.esc_html($tax).')</option>';
+        }
+        echo '</select> <span class="description">One taxonomy per operation. Not all graph nodes.</span></p>';
         submit_button('Preview FastCGI Invalidation','secondary','submit',false);
         echo '</form><hr><h2>Policy inheritance and safety</h2>';
         echo '<p>Pricing and quote calculations stay with the native engine. Cache decisions are resolved per company, but a missing policy registry is shown explicitly rather than silently assumed.</p>';
