@@ -16,11 +16,16 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: PHP syntax and localized private URL safeguards
+      - name: PHP syntax and pure preview/URL contracts
         shell: bash
         run: |
           set -euo pipefail
           ROOT=ops/mad4b-cache-control-v1
           php -l "$ROOT/mu-plugins/mad4b-cache-control-v1.php"
           php "$ROOT/tests/test_cache_control_contract.php" "$ROOT/mu-plugins/mad4b-cache-control-v1.php"
+          php "$ROOT/tests/test_preview_confirm_contract.php" "$ROOT/mu-plugins/mad4b-cache-control-v1.php"
           git diff --check
+      - name: Pure-Python readiness contract and syntax
+        run: |
+          python3 -m unittest discover -s ops/mad4b-cache-control-v1/tests -p 'test_readiness.py' -v
+          python3 -m py_compile ops/mad4b-cache-control-v1/bin/company-cache-control-readiness-v1.py
