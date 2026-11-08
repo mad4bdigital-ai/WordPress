@@ -80,6 +80,22 @@ class ReadinessTests(unittest.TestCase):
         self.assertEqual(r['state'],'DRIFT')
         self.assertEqual(r['bridge_integrity'],'MISSING_OR_UNSAFE')
 
+    def test_litespeed_fastcgi_bridge_sha_drift_detected(self):
+        file=self.plugin.parent/'lscbridge.php'
+        file.write_text('unexpected updated module')
+        self.spec['lsc_bridge']=str(file)
+        expected=hashlib.sha256(b'known approved module').hexdigest()
+        r=m.site_observation('wayfa',self.spec,self.expected,lsc_bridge_hash=expected)
+        self.assertEqual(r['state'],'DRIFT')
+        self.assertEqual(r['litespeed_fastcgi_bridge_integrity'],'HASH_DRIFT')
+
+    def test_litespeed_fastcgi_bridge_missing_alerts(self):
+        self.spec['lsc_bridge']=str(self.plugin.parent/'not-installed.php')
+        expected=hashlib.sha256(b'known approved module').hexdigest()
+        r=m.site_observation('wayfa',self.spec,self.expected,lsc_bridge_hash=expected)
+        self.assertEqual(r['state'],'DRIFT')
+        self.assertEqual(r['litespeed_fastcgi_bridge_integrity'],'MISSING_OR_UNSAFE')
+
     def test_atomic_report_mode_is_private(self):
         target=Path(self.temp.name)/'out.json'
         m.write_json_atomic(target,{'contract':'test','private':True})
