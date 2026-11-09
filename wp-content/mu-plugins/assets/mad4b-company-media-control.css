@@ -63,3 +63,12 @@
  .mad4b-company-control .mc-current-state{grid-template-columns:1fr}
  .mad4b-company-control .mc-current-state>div+div{border-left:0;border-top:1px solid #dae5ed}
 }
+
+.mad4b-company-control .mc-advanced{border:1px solid #d7e1ec;border-radius:12px;background:#fff;margin-top:0;overflow:hidden}
+.mad4b-company-control .mc-advanced>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;cursor:pointer;list-style:revert;padding:17px 21px;font-size:15px;font-weight:650;color:#1b3c5a}
+.mad4b-company-control .mc-advanced>summary:hover{background:#f6f9fc}
+.mad4b-company-control .mc-advanced>summary:focus-visible{outline:2px solid #2469bc;outline-offset:-3px}
+.mad4b-company-control .mc-advanced>summary small{font-size:12px;font-weight:500;color:#6b5a26}
+.mad4b-company-control .mc-advanced .mc-grid{padding:0 15px 15px}
+.mad4b-company-control .mc-advanced .mc-section{margin-bottom:0;padding:16px 18px;border-radius:10px}
+@media(max-width:782px){.mad4b-company-control .mc-advanced>summary{align-items:flex-start}.mad4b-company-control .mc-advanced .mc-grid{padding:0 10px 10px}.mad4b-company-control .mc-advanced .mc-section{padding:14px}}
