@@ -600,17 +600,15 @@ final class MAD4B_SCP_Read_Consistency {
 		}
 
 		$subject_blockers = array();
-		$runtime_checks = isset( $sections['runtime']['checks'] ) && is_array( $sections['runtime']['checks'] ) ? $sections['runtime']['checks'] : array();
-		// Historical managed-Skills checkpoint is not live certification.
-		// Never mislabel it as a live failure. The independent Skills Ability
-		// remains the canonical source of actual live readiness.
-		if ( isset( $runtime_checks['write_authority'] ) ) {
-			$summary = isset( $runtime_checks['write_authority']['summary'] ) &&
-				is_array( $runtime_checks['write_authority']['summary'] )
-				? $runtime_checks['write_authority']['summary'] : array();
-			if ( empty( $summary['effective_authority_ready'] ) )
-				$subject_blockers[] = 'write_authority_not_effective';
-		}
+		$identity_checks = isset( $sections['identity']['checks'] ) && is_array( $sections['identity']['checks'] ) ? $sections['identity']['checks'] : array();
+		// Read-session evidence requires the same generation and bound Read identity.
+		// A stale Write grant, optional certification, or Adapter version mismatch
+		// is NOT a reason to invalidate otherwise coherent Read evidence.
+		if ( empty( $identity_checks['site_profile']['summary']['exact_profile_bound'] )
+			|| ( $identity_checks['build']['state'] ?? '' ) !== 'ready'
+			|| ( $identity_checks['connection']['summary']['ready'] ?? null ) !== true
+			|| ( $identity_checks['reconnect']['summary']['ready'] ?? null ) !== true )
+			$subject_blockers[] = 'read_identity_not_ready';
 		$subject_blockers = array_values( array_unique( $subject_blockers ) );
 		$operator_summary = self::session_safe_operator_summary( $sections, $partial, $subject_blockers, $after );
 		$valid_for_session_evidence_merge = ! $partial && empty( $subject_blockers );
@@ -642,6 +640,7 @@ final class MAD4B_SCP_Read_Consistency {
 			'valid_for_session_evidence_merge' => $valid_for_session_evidence_merge,
 			'valid_for_release_merge' => false,
 			'merge_scope' => 'session_safe_subject_evidence_only',
+			'readiness_scope' => 'diagnostics_report_not_execution_authorization',
 			'deep_acceptance_required' => true,
 			'subject_blockers' => $subject_blockers,
 			'operator_summary' => $operator_summary,
@@ -701,6 +700,44 @@ final class MAD4B_SCP_Read_Consistency {
 		$topology_ready = array_key_exists( 'ready', $topology ) && null !== $topology['ready'] ? (bool) $topology['ready'] : null;
 		$read_your_writes = array_key_exists( 'read_your_writes', $topology ) && null !== $topology['read_your_writes'] ? (bool) $topology['read_your_writes'] : null;
 		$protocol_ready = array_key_exists( 'ready', $protocol ) && null !== $protocol['ready'] ? (bool) $protocol['ready'] : null;
+		// PERMANENT REPORTING CONTRACT: unscoped WordPress diagnostics can
+		// observe Rank Math's embedded WP\\MCP namespace. Only an original
+		// scoped MU-pinned request can certify MAD4B MCP endpoint readiness.
+		// Never turn the plain WP-CLI runtime class origin into an MCP outage.
+		$canonical_protocol_evaluated = ! empty( $protocol['canonical_mcp_runtime_evaluated'] );
+		$canonical_protocol_ready = $canonical_protocol_evaluated
+			? (bool) ( $protocol['canonical_mcp_ready'] ?? false ) : null;
+
+		// PERMANENT BEHAVIOR CONTRACT: Runtime / read / write are independent.
+		// A missing write grant, stale candidate or optional Skills certificate
+		// MUST NOT turn a healthy authenticated read into a runtime outage.
+		// This is diagnostic projection only, never an execution grant.
+		$identity = isset( $sections['identity']['checks'] ) && is_array( $sections['identity']['checks'] )
+			? $sections['identity']['checks'] : array();
+		$site_bound = ! empty( $identity['site_profile']['summary']['exact_profile_bound'] );
+		$build_loaded = isset( $identity['build']['state'] ) && 'ready' === $identity['build']['state'];
+		$connection_read_ready = isset( $identity['connection']['subject_ready'] ) && true === $identity['connection']['subject_ready'];
+		$reconnect_read_ready = isset( $identity['reconnect']['subject_ready'] ) && true === $identity['reconnect']['subject_ready'];
+		$runtime_ready = $site_bound && $build_loaded;
+		$read_ready = $runtime_ready && $connection_read_ready && $reconnect_read_ready;
+		$write_scope_ready = $read_ready && true === $write_ready && true === $candidate_match &&
+			true === $grant_snapshot_ready && true === $topology_ready &&
+			true === $read_your_writes;
+		$readiness = array(
+			'contract' => 'mad4b.independent-readiness.v1',
+			'runtime_ready' => $runtime_ready,
+			'read_ready' => $read_ready,
+			'write_authority_ready' => $write_scope_ready,
+			'write_operation_specific_authorization_still_required' => true,
+			'optional_skill_certification_is_not_runtime_gate' => true,
+			'read_does_not_require_write_grants' => true,
+			'protocol_transport_ready' => true === $protocol_ready,
+			'canonical_mcp_evaluated_in_this_request' => $canonical_protocol_evaluated,
+			'canonical_mcp_ready_in_this_request' => $canonical_protocol_ready,
+			'provider_embedded_classes_outside_mcp_scope_are_expected' => ! $canonical_protocol_evaluated,
+			'mutation_performed' => false,
+			'authorizing' => false,
+		);
 
 		$reasons = self::bounded_scalar_list( $subject_blockers, 12 );
 		$actions = array();
@@ -708,22 +745,18 @@ final class MAD4B_SCP_Read_Consistency {
 		if ( false === $adapter_lifecycle_ready ) {
 			$reasons[] = 'adapter_ability_lifecycle_incomplete';
 			$actions[] = 'repair_adapter_ability_lifecycle_registration';
-			$blocking = true;
 		}
 		if ( false === $write_ready ) {
 			$reasons[] = 'write_authority_not_current';
 			$actions[] = 'reconcile_exact_staging_write_authority';
-			$blocking = true;
 		}
 		if ( false === $candidate_match ) {
 			$reasons[] = 'runtime_authority_candidate_not_reconciled';
 			$actions[] = 'reconcile_exact_staging_write_authority';
-			$blocking = true;
 		}
 		if ( false === $grant_snapshot_ready ) {
 			$reasons[] = 'exact_write_grants_not_current';
 			$actions[] = 'reconcile_exact_staging_write_authority';
-			$blocking = true;
 		}
 		foreach ( isset( $write['current_readiness_blockers'] ) && is_array( $write['current_readiness_blockers'] ) ? $write['current_readiness_blockers'] : array() as $reason ) {
 			$reason = sanitize_key( (string) $reason );
@@ -732,7 +765,6 @@ final class MAD4B_SCP_Read_Consistency {
 		if ( false === $topology_ready || false === $read_your_writes ) {
 			$reasons[] = 'database_topology_not_write_safe';
 			$actions[] = 'inspect_database_writer_topology';
-			$blocking = true;
 		}
 		foreach ( isset( $topology['blockers'] ) && is_array( $topology['blockers'] ) ? $topology['blockers'] : array() as $reason ) {
 			$reason = sanitize_key( (string) $reason );
@@ -742,7 +774,6 @@ final class MAD4B_SCP_Read_Consistency {
 			$reasons[] = 'mcp_protocol_profile_not_ready';
 			if ( ! empty( $protocol['blocker'] ) ) $reasons[] = sanitize_key( (string) $protocol['blocker'] );
 			$actions[] = 'deploy_exact_certified_runtime_release';
-			$blocking = true;
 		}
 		if ( null === $skills_ready ) {
 			$reasons[] = 'skills_live_validation_deferred';
@@ -768,6 +799,10 @@ final class MAD4B_SCP_Read_Consistency {
 			$reasons[] = 'diagnostics_partial';
 			$actions[] = 'query_one_generation_bound_bundle';
 		}
+		// Treat per-operation admission and exact MCP version as separate lanes.
+		$blocking = ! $read_ready;
+		if ( ! $runtime_ready ) $reasons[] = 'runtime_identity_not_ready';
+		if ( ! $read_ready ) $reasons[] = 'read_identity_not_ready';
 		$reasons = array_values( array_unique( self::bounded_scalar_list( $reasons, 16 ) ) );
 		$actions = array_values( array_unique( self::bounded_scalar_list( $actions, 8 ) ) );
 		$state = $blocking ? 'BLOCKED' : ( ! empty( $reasons ) ? 'DEGRADED' : 'HEALTHY' );
@@ -777,7 +812,24 @@ final class MAD4B_SCP_Read_Consistency {
 			'effective_environment' => isset( $snapshot['environment'] ) ? sanitize_key( (string) $snapshot['environment'] ) : '',
 			'reasons' => $reasons,
 			'next_actions' => $actions,
+			'readiness' => $readiness,
+			'readiness_lanes' => array(
+				'runtime' => $runtime_ready ? 'READY' : 'BLOCKED',
+				'read' => $read_ready ? 'READY' : 'BLOCKED',
+				'write' => $write_scope_ready ? 'PRECHECK_READY' : 'BLOCKED',
+				'exact_protocol_certified' => $protocol_ready,
+				'canonical_mcp_scope_evaluated' => $canonical_protocol_evaluated,
+				'canonical_mcp_ready' => $canonical_protocol_ready,
+				'protocol_observation_does_not_authorize_writes' => true,
+				'write_preflight_ready' => $write_scope_ready,
+				'write_execution_authorized' => false,
+				'authority_policy' => 'evaluate_each_write_ability_at_execution',
+			),
+			'deferred_checks' => null === $skills_ready ? array( 'skills_live_validation_deferred' ) : array(),
 			'signals' => array(
+				'runtime_ready' => $runtime_ready,
+				'read_ready' => $read_ready,
+				'write_scope_ready' => $write_scope_ready,
 				'adapter_lifecycle_ready' => $adapter_lifecycle_ready,
 				'adapter_lifecycle_missing_abilities' => self::bounded_scalar_list(
 					isset( $adapter_lifecycle['missing_abilities'] ) && is_array( $adapter_lifecycle['missing_abilities'] ) ? $adapter_lifecycle['missing_abilities'] : array(),

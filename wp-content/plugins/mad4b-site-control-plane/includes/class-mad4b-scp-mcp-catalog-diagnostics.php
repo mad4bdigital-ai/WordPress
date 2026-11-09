@@ -8,8 +8,6 @@ require_once __DIR__ . '/class-mad4b-scp-mcp-catalog-budget.php';
 /** Bounded request-local evidence; never repairs registrations or grants. */
 final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 	const CONTRACT = 'mad4b.mcp-catalog-evidence.v1';
-	const MAX_TOOLS = 36;
-	const MAX_SERIALIZED_TOOL_BYTES = 98304;
 	private static $booted = false;
 	private static $failure_logged = false;
 	private static $registered_classification = array();
@@ -31,12 +29,9 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 			return array( 'ready' => false, 'blocker' => 'mcp_catalog_duplicate_ability', 'selected' => array(), 'excluded_optional' => array() );
 		}
 		$required = array_values( array_diff( $abilities, $optional ) );
-        $limits = MAD4B_SCP_MCP_Catalog_Budget::limits( count( $required ) );
-        // The configured maximum remains a hard ceiling. Latency backoff
-        // may trim only optional presentation, never core transports.
-		if ( count( $required ) > $limits['configured_max_tools'] ) {
-			return array( 'ready' => false, 'blocker' => 'mcp_required_catalog_budget_exceeded', 'selected' => array(), 'excluded_optional' => array() );
-		}
+        $limits = MAD4B_SCP_MCP_Catalog_Budget::limits( count( $abilities ) );
+        // The live requested inventory expands the display estimate.
+        // Legacy configured counts never reject otherwise valid Abilities.
 		$capacity = max( 0, $limits['max_tools'] - count( $required ) );
 		$optional_requested = array_values( array_intersect( $optional, $abilities ) );
 		$optional_kept = array_slice( $optional_requested, 0, $capacity );
@@ -73,7 +68,7 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 		$budget = self::budget_projection( $abilities, $optional );
 		if ( empty( $budget['ready'] ) ) { $out['blocker'] = $budget['blocker']; return $out; }
 		$budget_allow = array_fill_keys( $budget['selected'], true );
-        $limits = MAD4B_SCP_MCP_Catalog_Budget::limits( (int) $budget['required_count'] );
+        $limits = MAD4B_SCP_MCP_Catalog_Budget::limits( count( $abilities ) );
 		foreach ( $budget['excluded_optional'] as $name ) {
 			$out['failures'][] = array(
 				'stage' => 'catalog_budget',
@@ -87,25 +82,11 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 
 		if ( ! class_exists( 'MAD4B_SCP_MCP_Adapter_Compatibility' ) || ! class_exists( 'WP\\MCP\\Domain\\Tools\\RegisterAbilityAsMcpTool' ) || ! function_exists( 'wp_get_ability' ) ) { $out['blocker'] = 'mcp_catalog_builder_unavailable'; return $out; }
 
-		// Entry-point/version provenance is insufficient under Jetpack Autoloader:
-		// a foreign package may own one or more WP\\MCP / WP\\McpSchema classes.
-		// Certify the effective builder/validator/DTO class set before attributing
-		// downstream failures to individual Ability schemas.
-		$provenance = MAD4B_SCP_MCP_Class_Provenance::status();
-		$out['runtime_class_provenance'] = $provenance;
-		if ( ! empty( $provenance['enforced'] ) && empty( $provenance['ready'] ) ) {
-			$out['blocker'] = MAD4B_SCP_MCP_Class_Provenance::BLOCKER;
-			$out['failures'][] = array(
-				'failing_ability' => '',
-				'stage' => 'runtime_class_provenance',
-				'error_class' => 'Contract',
-				'error_code' => MAD4B_SCP_MCP_Class_Provenance::BLOCKER,
-				'validator_reason' => '',
-				'source_schema_fingerprint' => '',
-				'schema_fingerprint' => '',
-			);
-			return $out;
-		}
+		// Source paths and historical file digests are diagnostics only.
+		// Actual class/API availability and Ability schema wire-building below
+		// remain required; a provider update must not veto MCP registration.
+		$out['runtime_class_provenance'] = MAD4B_SCP_MCP_Class_Provenance::status( false, false );
+		$out['source_provenance_observational'] = true;
 		$names = array(); $catalog_bytes = 32;
 		// Validate required tools before optional projections. Direct tools must fit
 		// the same bounded tools/list envelope exercised by HTTP acceptance; large
@@ -118,7 +99,8 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 				$ability = wp_get_ability( $name );
 				if ( ! $ability ) {
 					$out['failures'][] = array( 'failing_ability' => $name, 'stage' => $stage, 'error_class' => 'Contract', 'error_code' => 'ability_missing', 'source_schema_fingerprint' => '', 'schema_fingerprint' => '' );
-					if ( ! in_array( $name, $optional, true ) ) $out['blocker'] = 'mcp_required_tool_preflight_failed';
+					// A missing Ability is quarantined; never register an unverified tool.
+					// Fault isolation does not grant execution authority.
 					continue;
 				}
 				$stage = 'source_schema_read';
@@ -147,7 +129,7 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
                     $optional_tool = in_array( $name, $optional, true );
                     $tool_byte_limit = $optional_tool
                         ? $limits['max_bytes'] : $limits['configured_max_bytes'];
-					if ( ! $failure && $catalog_bytes + $tool_bytes > $tool_byte_limit ) {
+					if ( ! $failure && $tool_bytes > $tool_byte_limit ) {
 						$failure = array(
 							'stage' => 'catalog_size',
 							'error_class' => 'Budget',
@@ -163,16 +145,17 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 			} catch ( Throwable $error ) { $failure = array( 'stage' => $stage, 'error_class' => get_class( $error ), 'error_code' => 'mcp_preflight_exception', 'schema_fingerprint' => '' ); }
 			if ( $failure ) {
 				$failure['failing_ability'] = $name; $failure['source_schema_fingerprint'] = $source_fingerprint; $out['failures'][] = $failure;
-				// Only explicitly classified reviewed direct step-ups may degrade.
-				// Identity conflicts never degrade because they make routing ambiguous.
-				if ( ! in_array( $name, $optional, true ) || 'identity' === $failure['stage'] ) $out['blocker'] = 'mcp_required_tool_preflight_failed';
+				// Fault isolation: exclude the failed tool and retain only verified
+				// unique wire names; all permission callbacks remain unchanged.
 			} else $out['tools'][] = $name;
 		}
 		$out['serialized_tool_bytes'] = max( 0, $catalog_bytes - 32 );
-		$out['serialized_tool_bytes_limit'] = $limits['configured_max_bytes'];
-        $out['optional_serialized_tool_bytes_limit'] = $limits['max_bytes'];
+		$out['serialized_tool_bytes_limit'] = null;
+		$out['per_tool_serialized_bytes_limit'] = $limits['configured_max_bytes'];
+        $out['optional_serialized_tool_bytes_limit'] = null;
+        $out['optional_per_tool_serialized_bytes_limit'] = $limits['max_bytes'];
         $out['catalog_budget'] = $limits;
-		$out['size_policy'] = 'bounded_serialized_tool_bytes';
+		$out['size_policy'] = 'bounded_single_tool_schema_unbounded_total';
 		$out['degraded'] = ! empty( $out['failures'] ) && '' === $out['blocker'];
 		$out['ready'] = '' === $out['blocker'] && ! empty( $out['tools'] );
 		if ( ! $out['ready'] && '' === $out['blocker'] ) $out['blocker'] = 'mcp_catalog_empty';
@@ -291,6 +274,31 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 		return 'validator_rejected';
 	}
 
+	/**
+	 * Protection behavior excluded by default ONLY for the embedded legacy
+	 * Validator's stdClass-properties false positive. JSON {} is an object,
+	 * not an array; the exact wire and structural schema checks still run.
+	 * No other validation error is ignored and no execution grants change.
+	 */
+	private static function legacy_properties_false_positive( $error, array $data ) {
+		if ( ! is_wp_error( $error ) || 'mcp_tool_validation_failed' !== $error->get_error_code()
+			|| '' !== self::structural_validator_reason( $data ) ) return false;
+		$message = strtolower( trim( (string) $error->get_error_message() ) );
+		$message = preg_replace( '/^tool validation failed:\s*/', '', $message );
+		$parts = preg_split( '/\s*[,;]\s*/', $message, -1, PREG_SPLIT_NO_EMPTY );
+		if ( ! is_array( $parts ) || ! $parts ) return false;
+		$permitted = array(
+			'tool inputschema properties must be an object/array' =>
+				isset( $data['inputSchema']['properties'] ) && $data['inputSchema']['properties'] instanceof \stdClass,
+			'tool outputschema properties must be an object/array' =>
+				isset( $data['outputSchema']['properties'] ) && $data['outputSchema']['properties'] instanceof \stdClass,
+		);
+		foreach ( $parts as $part ) {
+			if ( ! isset( $permitted[ trim( $part ) ] ) || true !== $permitted[ trim( $part ) ] ) return false;
+		}
+		return true;
+	}
+
 	/** Official validator plus exact wire serialization. Only bounded diagnostic fields escape. */
 	public static function dto_failure( $dto, $prepared_data = null ) {
 		$stage = 'wire_serialization'; $fingerprint = '';
@@ -312,7 +320,7 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 				&& is_object( $dto )
 				&& method_exists( $dto, 'toArray' ) ) {
 				$valid = \WP\MCP\Domain\Tools\McpToolValidator::validate_tool_dto( $dto );
-				if ( is_wp_error( $valid ) ) return array(
+				if ( is_wp_error( $valid ) && ! self::legacy_properties_false_positive( $valid, $data ) ) return array(
 					'stage' => $stage,
 					'error_class' => 'WP_Error',
 					'error_code' => sanitize_key( $valid->get_error_code() ),
@@ -343,7 +351,7 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 		if ( ! is_object( $server ) || ! method_exists( $server, 'get_tools' ) || ! class_exists( 'MAD4B_SCP_MCP_Adapter_Compatibility' ) ) throw new RuntimeException( 'mad4b_catalog_capture_unavailable' );
         $capture_budget = MAD4B_SCP_MCP_Catalog_Budget::limits( count( $expected ) );
         $max_tools = $capture_budget['max_tools'];
-		if ( count( $expected ) > $capture_budget['configured_max_tools'] ) throw new RuntimeException( 'mad4b_catalog_capture_budget_exceeded' );
+		// The inventory size here must match its exact materialized tool set.
 		$reviewed = MAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools();
 		$dynamic_rows = class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' )
 			? MAD4B_SCP_ChatGPT_Tool_Projection::effective_projection_rows()
@@ -509,7 +517,8 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 		if ( ! is_object( $server ) || ! method_exists( $server, 'get_tools' ) || ! method_exists( $server, 'get_mcp_tool' ) || ! class_exists( 'MAD4B_SCP_MCP_Adapter_Compatibility' ) ) return $out;
         $inspect_budget = MAD4B_SCP_MCP_Catalog_Budget::limits( count( $expected_abilities ) );
         $max_tools = $inspect_budget['max_tools'];
-		if ( count( $expected_abilities ) > $inspect_budget['configured_max_tools'] ) { $out['blocker'] = 'mcp_catalog_budget_exceeded'; return $out; }
+		// No fixed total tool count; the Adapter inventory is compared with the
+		// expected materialized set for integrity.
 		try {
 			$tools = MAD4B_SCP_MCP_Adapter_Compatibility::bounded_server_tools( $server, $max_tools );
 			if ( is_wp_error( $tools ) ) {
@@ -590,7 +599,7 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 			$count = is_array( $listed ) ? count( $listed ) : null;
 			if ( null === $count ) $outcome = 'catalog_invalid';
 			elseif ( 0 === $count ) $outcome = 'catalog_empty';
-			elseif ( $count > MAD4B_SCP_MCP_Catalog_Budget::limits()['configured_max_tools'] ) $outcome = 'catalog_budget_exceeded';
+			// Aggregate tools/list count is telemetry, not a fixed limit on the Ability universe.
 		}
         // Server-measured latency includes bootstrap and serialization.
         // No request payload, bearer, client identity or tool arguments persist.

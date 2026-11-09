@@ -46,3 +46,76 @@ final class MAD4B_SCP_Dynamic_Provider_Contract {
 	}
 	private static function enum(array $a,$key,array $allowed,$fallback){ $v=isset($a[$key])?sanitize_key((string)$a[$key]):''; return in_array($v,$allowed,true)?$v:$fallback; }
 }
+
+
+/**
+ * Existing Elementor owner -> existing MAD4B provider manifests and Content
+ * Pipeline. This is a passive site-local readback, NOT another executor.
+ * A target's certified original provider owns regeneration after import.
+ */
+final class MAD4B_SCP_Elementor_CSS_Existing_Provider_Bridge {
+    private static function available(): bool {
+        return class_exists('Elementor\\Plugin', false)
+            && class_exists('Elementor\\Core\\Files\\CSS\\Post');
+    }
+    public static function manifest($items) {
+        if (!is_array($items) || !self::available()) return $items;
+        $items[] = array(
+            'provider_id' => 'elementor_native_css',
+            'existing_registry_identity' => 'elementor',
+            'implementation_version' => defined('ELEMENTOR_VERSION') ? ELEMENTOR_VERSION : '',
+            'supports' => array('generated_css_readback','generated_css_native_rebuild'),
+            'side_effects' => array(array(
+                'effect_scope' => 'generated_css',
+                'ownership' => 'provider',
+                'reversibility' => 'reversible',
+                'compensation_support' => 'verified',
+                'externality' => 'local'
+            )),
+            'soft_elapsed_budget_ms' => 30000,
+            'enforceable_deadline_supported' => false,
+        );
+        return $items;
+    }
+    private static function finding(int $id, string $code, array $detail=array()): array {
+        return array_merge(array(
+            'code'=>$code, 'post_id'=>$id, 'provider_id'=>'elementor_native_css',
+            'repairable'=>false, 'requires_native_provider_readback'=>true,
+            'write_authorized'=>false
+        ), $detail);
+    }
+    public static function validate($findings, $context, $policy, $stage) {
+        if (!is_array($findings) || !is_array($context)) return $findings;
+        $id = absint($context['post_id'] ?? 0);
+        if ($id < 1 || !get_post($id)) return $findings;
+        $kit = (int) get_option('elementor_active_kit');
+        $source = get_post_meta($id, '_elementor_data', true);
+        if ($id !== $kit && (!is_string($source) || strlen($source)<2)) return $findings;
+        if (!self::available())
+            return array_merge($findings, array(self::finding($id,'native_css_provider_unavailable')));
+        if (is_string($source) && strlen($source)>2097152)
+            return array_merge($findings, array(self::finding($id,'native_css_source_oversize')));
+        try {
+            // Preview and stored readback are separate. Never call update().
+            $expected = (new \Elementor\Core\Files\CSS\Post($id))->get_content();
+        } catch (\Throwable $error) {
+            return array_merge($findings, array(self::finding($id,'native_css_preview_unavailable')));
+        }
+        if (!is_string($expected) || strlen($expected)>2097152)
+            return array_merge($findings, array(self::finding($id,'native_css_preview_invalid')));
+        $stored = get_post_meta($id,'_elementor_css',true);
+        if (!is_array($stored) || ($stored['status']??'')!=='inline')
+            return array_merge($findings, array(self::finding($id,'native_css_requires_file_mode_readback')));
+        $actual = (string)($stored['css']??'');
+        if (!hash_equals(hash('sha256',$expected),hash('sha256',$actual)))
+            $findings[] = self::finding($id,'native_css_generated_drift',array(
+                'expected_css_sha256'=>hash('sha256',$expected),
+                'stored_css_sha256'=>hash('sha256',$actual)
+            ));
+        return $findings;
+    }
+}
+add_filter('mad4b_scp_dynamic_provider_manifests',
+    array('MAD4B_SCP_Elementor_CSS_Existing_Provider_Bridge','manifest'),20,1);
+add_filter('mad4b_scp_dynamic_content_policy_findings',
+    array('MAD4B_SCP_Elementor_CSS_Existing_Provider_Bridge','validate'),20,4);

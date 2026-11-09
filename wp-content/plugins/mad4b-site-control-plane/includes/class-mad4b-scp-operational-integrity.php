@@ -106,8 +106,10 @@ final class MAD4B_SCP_Operational_Integrity {
             return new WP_Error( 'mad4b_integrity_checkpoint_stale', 'Site, brand, actor or revision changed during the operation.' );
         }
         if ( $mutation ) {
-            if ( ! class_exists( 'MAD4B_SCP_Policy' ) || ! method_exists( 'MAD4B_SCP_Policy', 'can_mutate' ) ||
-                true !== MAD4B_SCP_Policy::can_mutate() ) {
+            if ( ( ! class_exists( 'MAD4B_SCP_Policy' ) || ! method_exists( 'MAD4B_SCP_Policy', 'can_mutate' ) ||
+                true !== MAD4B_SCP_Policy::can_mutate() )
+                && !( class_exists( 'MAD4B_Native_Origin_Content_Jobs_V1', false )
+                    && MAD4B_Native_Origin_Content_Jobs_V1::checkpoint_admitted( $expected ) ) ) {
                 return new WP_Error( 'mad4b_integrity_authorization_revoked', 'Mutation authority is no longer effective.' );
             }
         }

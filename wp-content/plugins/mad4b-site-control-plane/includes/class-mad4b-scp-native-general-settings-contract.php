@@ -31,10 +31,7 @@ final class MAD4B_SCP_Native_General_Settings_Contract {
     }
 
     public static function boot() {
-        // Standalone PHP contract fixtures may load the plugin without WP hooks.
-        if (function_exists('add_filter')) {
-            add_filter('allowed_options', [__CLASS__, 'allowed_options'], PHP_INT_MAX, 1);
-        }
+        add_filter('allowed_options', [__CLASS__, 'allowed_options'], PHP_INT_MAX, 1);
     }
 }
 MAD4B_SCP_Native_General_Settings_Contract::boot();

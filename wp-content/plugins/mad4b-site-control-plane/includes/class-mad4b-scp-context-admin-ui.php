@@ -17,12 +17,14 @@ final class MAD4B_SCP_Context_Admin_UI {
 	const ACTION_DISCONNECT_GOOGLE = 'mad4b_context_google_disconnect';
 	const ACTION_MANUAL_GOOGLE_REVOCATION = 'mad4b_context_google_manual_revocation';
 	const ACTION_SELECT_SOURCE = 'mad4b_context_select_source';
+    const ACTION_RECYCLE_FOREIGN = 'mad4b_context_recycle_foreign';
 	const ACTION_SCAN_SOURCE = 'mad4b_context_scan_source';
 	const ACTION_REVIEW_ASSET = 'mad4b_context_review_asset';
 	const ACTION_REVIEW_BATCH = 'mad4b_context_review_batch';
 	const ACTION_SAVE_REVIEW_POLICY = 'mad4b_context_review_policy_save';
 	const ACTION_REMOVE_SOURCE = 'mad4b_context_remove_source';
 	const ACTION_UPDATE_SOURCE_POLICY = 'mad4b_context_update_source_policy';
+    const ACTION_UPDATE_EXISTING_FOLDER = 'mad4b_context_update_existing_folder';
 
 	private static $booted = false;
 
@@ -30,6 +32,8 @@ final class MAD4B_SCP_Context_Admin_UI {
 		if ( self::$booted ) return;
 		self::$booted = true;
 		MAD4B_SCP_Admin_Route_Registry::schedule_submenu( array( __CLASS__, 'register_page' ), 45 );
+		// Read-only demo Context state on Company and Content Hub admin surfaces.
+		add_action( 'admin_notices', array( __CLASS__, 'render_company_context_notice' ), 25 );
 		foreach ( array(
 			self::ACTION_SAVE_PROFILE => 'handle_save_profile',
 			self::ACTION_SAVE_GOOGLE => 'handle_save_google',
@@ -44,15 +48,17 @@ final class MAD4B_SCP_Context_Admin_UI {
 			self::ACTION_DISCONNECT_GOOGLE => 'handle_disconnect_google',
 			self::ACTION_MANUAL_GOOGLE_REVOCATION => 'handle_manual_google_revocation',
 			self::ACTION_SELECT_SOURCE => 'handle_select_source',
+            self::ACTION_RECYCLE_FOREIGN => 'handle_recycle_foreign',
 			self::ACTION_SCAN_SOURCE => 'handle_scan_source',
 			self::ACTION_REVIEW_ASSET => 'handle_review_asset',
 			self::ACTION_REVIEW_BATCH => 'handle_review_batch',
 			self::ACTION_SAVE_REVIEW_POLICY => 'handle_save_review_policy',
 			self::ACTION_REMOVE_SOURCE => 'handle_remove_source',
 			self::ACTION_UPDATE_SOURCE_POLICY => 'handle_update_source_policy',
+            self::ACTION_UPDATE_EXISTING_FOLDER => 'handle_update_existing_folder',
 		) as $action => $method ) {
 			add_action( 'admin_post_' . $action, array( __CLASS__, $method ) );
-			if ( in_array( $action, array( self::ACTION_SAVE_PROFILE, self::ACTION_SAVE_GOOGLE, self::ACTION_SAVE_GOOGLE_DEDICATED, self::ACTION_SAVE_GOOGLE_AUTH_MODE, self::ACTION_SAVE_GOOGLE_GRANTS, self::ACTION_REVIEW_ASSET, self::ACTION_SAVE_REVIEW_POLICY, self::ACTION_UPDATE_SOURCE_POLICY ), true ) ) add_action( 'wp_ajax_' . $action, array( __CLASS__, $method ) );
+			if ( in_array( $action, array( self::ACTION_SAVE_PROFILE, self::ACTION_SAVE_GOOGLE, self::ACTION_SAVE_GOOGLE_DEDICATED, self::ACTION_SAVE_GOOGLE_AUTH_MODE, self::ACTION_SAVE_GOOGLE_GRANTS, self::ACTION_REVIEW_ASSET, self::ACTION_SAVE_REVIEW_POLICY, self::ACTION_UPDATE_SOURCE_POLICY, self::ACTION_UPDATE_EXISTING_FOLDER ), true ) ) add_action( 'wp_ajax_' . $action, array( __CLASS__, $method ) );
 		}
 	}
 
@@ -303,6 +309,26 @@ final class MAD4B_SCP_Context_Admin_UI {
                 'Source onboarding preflight definition could not be loaded.' );
     }
 
+    public static function handle_recycle_foreign() {
+        self::require_admin(self::ACTION_RECYCLE_FOREIGN);
+        if ( empty($_POST['confirm_exact_foreign_recycle'])
+            || '1' !== (string)wp_unslash($_POST['confirm_exact_foreign_recycle']) ) {
+            self::redirect_result(new WP_Error('mad4b_recycle_confirmation_required',
+                'Confirm archival before removing verified foreign records from the active registry.'),
+                'sources','');
+        }
+        $revision=isset($_POST['expected_registry_revision'])
+            ? absint(wp_unslash($_POST['expected_registry_revision'])) : -1;
+        $digest=isset($_POST['expected_inventory_sha256'])
+            && is_string($_POST['expected_inventory_sha256'])
+            ? sanitize_text_field(wp_unslash($_POST['expected_inventory_sha256'])) : '';
+        $result=MAD4B_SCP_Context_Authority::foreign_recycle_apply(array(
+            'expected_registry_revision'=>$revision,
+            'expected_inventory_sha256'=>$digest
+        ));
+        self::redirect_result($result,'sources','foreign_recycled_archived');
+    }
+
 	public static function handle_select_source() {
 		self::require_admin( self::ACTION_SELECT_SOURCE );
 		$mode = isset( $_POST['source_mode'] ) ? sanitize_key( wp_unslash( $_POST['source_mode'] ) ) : 'governed';
@@ -344,6 +370,85 @@ final class MAD4B_SCP_Context_Admin_UI {
 		self::redirect_result( $result, 'sources', 'source_selected' );
 	}
 
+    /** A no-op settings submit should not invalidate other open settings forms. */
+    private static function existing_folder_settings_unchanged( array $source, array $settings ) {
+        return 'google_drive'===(string)($source['provider']??'')
+            && isset($settings['expected_registry_revision'])
+            && (int)$settings['expected_registry_revision']===MAD4B_SCP_Context_Authority::registry_revision()
+            && hash_equals((string)($source['external_root_id']??''),
+                (string)($settings['expected_external_root_id']??''))
+            && hash_equals((string)($source['mode']??''),
+                (string)($settings['expected_source_mode']??''))
+            && hash_equals((string)($source['write_policy']??''),
+                (string)($settings['write_policy']??''))
+            && (bool)($source['recursive']??false)===($settings['recursive']??null);
+    }
+
+    public static function handle_update_existing_folder() {
+        self::require_admin_request(self::ACTION_UPDATE_EXISTING_FOLDER);
+        $source_id=isset($_POST['source_id']) ? sanitize_text_field(wp_unslash($_POST['source_id'])) : '';
+        $folder=isset($_POST['expected_external_root_id'])
+            ? sanitize_text_field(wp_unslash($_POST['expected_external_root_id'])) : '';
+        $settings=array(
+            'expected_registry_revision'=>isset($_POST['expected_registry_revision'])
+                ? absint(wp_unslash($_POST['expected_registry_revision'])):-1,
+            'expected_external_root_id'=>$folder,
+            'expected_source_mode'=>isset($_POST['expected_source_mode'])
+                ? sanitize_key(wp_unslash($_POST['expected_source_mode'])):'',
+            'write_policy'=>isset($_POST['write_policy'])
+                ? sanitize_key(wp_unslash($_POST['write_policy'])):'',
+            'recursive'=>!empty($_POST['recursive']),
+            'write_policy_confirmed'=>!empty($_POST['write_policy_confirmed']),
+            'recursive_scope_confirmed'=>!empty($_POST['recursive_scope_confirmed']),
+        );
+        $existing=MAD4B_SCP_Context_Authority::source($source_id);
+        $no_change=is_array($existing)
+            && self::existing_folder_settings_unchanged($existing,$settings);
+        $result=$no_change ? $existing
+            : MAD4B_SCP_Context_Authority::update_existing_google_folder($source_id,$settings);
+        if($no_change && (int)$settings['expected_registry_revision']!==
+            MAD4B_SCP_Context_Authority::registry_revision())
+            $result=new WP_Error('mad4b_context_existing_folder_revision_stale',
+                'Source settings changed while checking the saved values. Reload before saving again.');
+        if(!is_wp_error($result)){
+            $saved=MAD4B_SCP_Context_Authority::source($source_id);
+            if(!$saved || (string)($saved['write_policy']??'')!==$settings['write_policy']
+                || !hash_equals((string)($saved['external_root_id']??''),$folder)
+                || (bool)($saved['recursive']??false)!==$settings['recursive']){
+                $result=new WP_Error('mad4b_context_existing_folder_readback_mismatch',
+                    'Folder settings were written but persisted readback did not match. Review current settings.');
+            }
+        }
+        if ( self::is_ajax_request() ) {
+            if ( is_wp_error( $result ) ) wp_send_json_error( array(
+                'code'=>sanitize_key($result->get_error_code()),
+                'message'=>$result->get_error_message()
+            ),422 );
+            $saved=MAD4B_SCP_Context_Authority::source($source_id);
+            if ( !is_array($saved) || (string)$saved['write_policy']!==$settings['write_policy']
+                || (bool)$saved['recursive']!==$settings['recursive']
+                || (string)$saved['external_root_id']!==$folder ) {
+                wp_send_json_error(array('code'=>'mad4b_context_existing_folder_readback_mismatch',
+                    'message'=>'The saved source could not be verified from the current registry.'),500);
+            }
+            wp_send_json_success(array(
+                'message'=>$no_change
+                    ? __('Already saved — no settings changed.','mad4b-site-control-plane')
+                    : __('Existing folder settings saved and verified.','mad4b-site-control-plane'),
+                'changed'=>!$no_change,
+                'persistence_verified'=>true,
+                'readback'=>array('source_id'=>$source_id,'write_policy'=>(string)$saved['write_policy'],
+                    'recursive'=>(bool)$saved['recursive'],
+                    'registry_revision'=>MAD4B_SCP_Context_Authority::registry_revision()),
+                'view_readback'=>MAD4B_SCP_Admin_Settings_Persistence::view_readback(
+                    'context-existing-folder-'.$source_id,
+                    self::existing_folder_view_fields($saved)
+                )
+            ));
+        }
+        self::redirect_result($result,'google-drive','source_settings_updated',array('folder'=>$folder));
+    }
+
 	public static function handle_update_source_policy() {
 		self::require_admin_request( self::ACTION_UPDATE_SOURCE_POLICY );
 		$source_id = isset( $_POST['source_id'] ) ? strtolower( trim( sanitize_text_field( wp_unslash( $_POST['source_id'] ) ) ) ) : '';
@@ -380,7 +485,10 @@ final class MAD4B_SCP_Context_Admin_UI {
 			require_once __DIR__ . '/class-mad4b-scp-drive-scan-admin.php';
 			$result = MAD4B_SCP_Drive_Scan_Admin::step( wp_unslash( $_POST ) );
 			if ( is_wp_error( $result ) ) self::redirect_result( $result, 'sources', '' );
-			if ( 'apply' === ( $_POST['scan_operation'] ?? '' ) ) self::redirect_result( $result, 'assets', 'source_scanned' );
+            if ( in_array( (string)($_POST['scan_operation']??''), array('apply','apply_partial'), true ) )
+                self::redirect_result( $result,
+                    'apply_partial' === (string)($_POST['scan_operation']??'')?'sources':'assets',
+                    'apply_partial' === (string)($_POST['scan_operation']??'')?'source_scanned_partial':'source_scanned' );
 			require_once ABSPATH . 'wp-admin/admin-header.php';
 			MAD4B_SCP_Drive_Scan_Admin::render( $result );
 			require_once ABSPATH . 'wp-admin/admin-footer.php';
@@ -390,9 +498,12 @@ final class MAD4B_SCP_Context_Admin_UI {
         if ( 'wordpress_media' === ( $source['provider'] ?? '' ) ) {
             $types = isset( $_POST['mime_types'] ) && is_array( $_POST['mime_types'] )
                 ? array_map( 'sanitize_text_field', wp_unslash( $_POST['mime_types'] ) )
-                : ( isset( $_POST['media_mime_scope'] ) ? array() : array( 'application/pdf', 'text/plain', 'text/markdown', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel.sheet.macroEnabled.12', 'text/csv' ) );
-            $result = MAD4B_SCP_Context_Source_Pipeline::scan_complete( $source_id, array( 'mime_types' => $types ) );
-            self::redirect_result( $result, 'assets', 'source_scanned' );
+                : ( isset( $_POST['media_mime_scope'] ) ? array() : array( 'application/pdf', 'text/plain', 'text/markdown', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel.sheet.macroEnabled.12', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/csv' ) );
+            $result = MAD4B_SCP_WordPress_Media_Context::begin_scan( $types );
+            if ( is_wp_error($result) ) self::redirect_result( $result, 'sources', '' );
+            wp_safe_redirect( add_query_arg( array( 'page'=>'mad4b-wp-media-context',
+                'scan_session'=>(string)$result['scan_session'] ), admin_url('tools.php') ) );
+            exit;
         }
 		$scan = MAD4B_SCP_Google_Drive_Context::scan_folder( $source['external_root_id'], ! empty( $source['recursive'] ) );
 		if ( is_wp_error( $scan ) ) self::redirect_result( $scan, 'sources', '' );
@@ -677,6 +788,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 		// Re-read the source of truth on every page load. A plugin update must
 		// never make an unresolved provider OAuth revoke look like stale UI cache.
 		self::render_live_context_reconciliation();
+		self::render_ownership_lifecycle();
 		if ( class_exists( 'MAD4B_SCP_Admin_Experience' ) ) MAD4B_SCP_Admin_Experience::tabs( self::PAGE_SLUG, $tabs, $tab );
 		if ( 'overview' === $tab ) self::render_overview();
 		if ( 'google-drive' === $tab ) self::render_google_drive();
@@ -693,6 +805,145 @@ final class MAD4B_SCP_Context_Admin_UI {
 	 * authority. Never clear pending revoke, quarantined ownership or provider
 	 * certification on upgrade. An update may repair code, not external consent.
 	 */
+    /**
+     * Show an accurate, site-scoped lifecycle rather than an unqualified blocker.
+     * Counts come from current Site Profile Context Authority aggregate only.
+     * A quarantined record is never assigned to a new folder here.
+     */
+    private static function ownership_lifecycle_snapshot() {
+        if ( ! current_user_can( 'manage_options' )
+            || ! class_exists( 'MAD4B_SCP_Context_Authority', false ) ) return null;
+        $context = MAD4B_SCP_Context_Authority::status();
+        if ( ! is_array( $context ) ) return null;
+        $lifecycle = isset( $context['ownership_reconciliation_lifecycle'] )
+            && is_array( $context['ownership_reconciliation_lifecycle'] )
+            ? $context['ownership_reconciliation_lifecycle'] : array();
+        if ( 'mad4b.context-ownership-lifecycle.v1' === ( $lifecycle['contract'] ?? '' )
+            && true === ( $lifecycle['read_only'] ?? false )
+            && false === ( $lifecycle['ownership_transfer_authorized'] ?? true ) ) {
+            $sources = max( 0, (int) ( $lifecycle['quarantined_source_count'] ?? 0 ) );
+            $assets = max( 0, (int) ( $lifecycle['quarantined_asset_count'] ?? 0 ) );
+        } else {
+            // Backward-compatible readback; never interpret absent data as a transfer.
+            $sources = max( 0, (int) ( $context['quarantined_source_record_count'] ?? 0 ) );
+            $assets = max( 0, (int) ( $context['quarantined_asset_record_count'] ?? 0 ) );
+        }
+        $archive = is_array($context['foreign_recycle_archive'] ?? null)
+            ? $context['foreign_recycle_archive'] : array();
+        $archived_sources = max(0,(int)($archive['archived_sources'] ?? 0));
+        $archived_assets = max(0,(int)($archive['archived_assets'] ?? 0));
+        $archived_integrity = true === ($archive['integrity_verified'] ?? false);
+        return array(
+            'state' => $sources+$assets > 0 ? 'AWAITING_LEGACY_OWNER_REVIEW'
+                : (!$archived_integrity ? 'RECYCLE_ARCHIVE_INTEGRITY_RECOVERY_REQUIRED'
+                    : ($archived_sources+$archived_assets > 0
+                        ? 'RECYCLED_ARCHIVED_OWNER_RECONCILIATION_PENDING'
+                        : 'NO_CURRENT_QUARANTINE')),
+            'source_count' => $sources,
+            'asset_count' => $assets,
+            'archived_sources' => $archived_sources,
+            'archived_assets' => $archived_assets,
+            'archive_integrity_verified' => $archived_integrity,
+            'active_sources' => max( 0, (int) ( $context['governed_source_count'] ?? 0 )
+                + (int) ( $context['task_source_count'] ?? 0 ) ),
+            'site_scope' => 'CURRENT_SITE_PROFILE_ONLY',
+            'authority_granted' => false,
+            'ownership_migrated' => false,
+        );
+    }
+
+    /** Context-wide, actionable read-only status: discover, review, assign, verify. */
+    private static function render_ownership_lifecycle() {
+        $scope = self::ownership_lifecycle_snapshot();
+        if ( ! is_array( $scope ) ) return;
+        $pending = 'AWAITING_LEGACY_OWNER_REVIEW' === $scope['state'];
+        $recycled = 'RECYCLED_ARCHIVED_OWNER_RECONCILIATION_PENDING' === $scope['state'];
+        echo '<section id="mad4b-context-ownership-lifecycle" class="mad4b-scp-panel mad4b-context-ownership-lifecycle" aria-labelledby="mad4b-ownership-title">';
+        echo '<h2 id="mad4b-ownership-title">' . esc_html__( 'Source Ownership Lifecycle', 'mad4b-site-control-plane' ) . '</h2>';
+        echo '<p><strong>' . esc_html( $scope['state'] ) . '</strong> · '
+            . esc_html( sprintf( __( '%1$d earlier source(s), %2$d asset(s) still in live quarantine.', 'mad4b-site-control-plane' ),
+                $scope['source_count'], $scope['asset_count'] ) ) . '</p>';
+        if ($recycled) {
+            echo '<p><strong>' . esc_html( sprintf(
+                __( 'Recycled and backed up: %1$d source(s) · %2$d asset(s). Archive integrity: verified.', 'mad4b-site-control-plane' ),
+                $scope['archived_sources'],$scope['archived_assets'] ) ) . '</strong></p>';
+        }
+        echo '<ol class="mad4b-context-ownership-steps">';
+        $steps = $recycled ? array(
+            __( 'Inventory and verify exact foreign Site/Brand identity', 'mad4b-site-control-plane' ),
+            __( 'Back up the original registry and exact asset records', 'mad4b-site-control-plane' ),
+            __( 'Recycle foreign references into protected recovery archive', 'mad4b-site-control-plane' ),
+            __( 'Verify clean active registry; keep owner reassignment separate', 'mad4b-site-control-plane' ),
+        ) : array(
+            __( 'Inventory: isolate historical records from active sources', 'mad4b-site-control-plane' ),
+            __( 'Review: inspect lineage and original source ownership', 'mad4b-site-control-plane' ),
+            __( 'Resolve: archive foreign references without reassigning ownership', 'mad4b-site-control-plane' ),
+            __( 'Readback: verify registry cleanup, then retry the selected folder', 'mad4b-site-control-plane' ),
+        );
+        foreach ( $steps as $i => $label ) {
+            echo '<li' . ( $pending && 1 === $i ? ' aria-current="step"' : '' ) . '>'
+                . ( $pending && 1 === $i ? '<strong>' : '' ) . esc_html( $label )
+                . ( $pending && 1 === $i ? '</strong>' : '' ) . '</li>';
+        }
+        echo '</ol>';
+        if ( $pending ) {
+            echo '<p>' . esc_html__( 'Current action: review the existing source lineage. No bulk adoption, deletion, source write or company distribution is authorized by this notice.', 'mad4b-site-control-plane' ) . '</p>';
+            echo '<p><a class="button button-secondary" href="' . esc_url( self::tab_url( 'sources' ) ) . '">'
+                . esc_html__( 'Open Source Ownership Review', 'mad4b-site-control-plane' ) . '</a> '
+                . '<code>context/legacy-owner-transfer-discover</code></p>';
+        } elseif ( $recycled ) {
+            echo '<p>' . esc_html__( 'Cleanup complete for this Site Profile. The original foreign-owner records remain recoverable in a protected archive; assigning them to their original company is a separate identity-verified process.', 'mad4b-site-control-plane' ) . '</p>';
+            echo '<p><a class="button button-secondary" href="' . esc_url(self::tab_url('google-drive')) . '">'
+                . esc_html__( 'Choose a new site-specific folder', 'mad4b-site-control-plane' ) . '</a></p>';
+        } elseif ( 'RECYCLE_ARCHIVE_INTEGRITY_RECOVERY_REQUIRED' === $scope['state'] ) {
+            echo '<p>' . esc_html__( 'Archived data integrity could not be verified. Check the protected recycle archive before onboarding another source.', 'mad4b-site-control-plane' ) . '</p>';
+        } else {
+            echo '<p>' . esc_html__( 'No active quarantine or archived foreign references were found. Source preflight still verifies exact folder identity.', 'mad4b-site-control-plane' ) . '</p>';
+        }
+        echo '<p class="description">' . esc_html__( 'Scope: this Site Profile only. When used on the central demo, company brand libraries and Content Jobs must remain separately assigned through Company Manager and Content Hub.', 'mad4b-site-control-plane' ) . '</p>';
+        echo '</section>';
+    }
+
+    /**
+     * Lightweight cross-surface status for central Company and Content Hub.
+     * Never read another tenant's registry or offer an ownership-transfer button.
+     */
+    public static function render_company_context_notice() {
+        if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) return;
+        $page = isset( $_GET['page'] ) && is_string( $_GET['page'] )
+            ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
+        $post_type = isset( $_GET['post_type'] ) && is_string( $_GET['post_type'] )
+            ? sanitize_key( wp_unslash( $_GET['post_type'] ) ) : '';
+        if ( ! in_array( $page, array( 'mad4b-company', 'mad4b-company-workspace' ), true )
+            && ! in_array( $post_type, array( 'mad4b_hub_nile', 'mad4b_hub_content' ), true ) ) return;
+        $scope = self::ownership_lifecycle_snapshot();
+        if ( ! is_array( $scope )
+            || !in_array($scope['state'],array(
+                'AWAITING_LEGACY_OWNER_REVIEW',
+                'RECYCLED_ARCHIVED_OWNER_RECONCILIATION_PENDING',
+                'RECYCLE_ARCHIVE_INTEGRITY_RECOVERY_REQUIRED'),true) ) return;
+        if ( 'RECYCLED_ARCHIVED_OWNER_RECONCILIATION_PENDING' === $scope['state'] ) {
+            echo '<div class="notice notice-info mad4b-ownership-company-notice" role="status"><p><strong>'
+                . esc_html__( 'Demo Context cleanup complete', 'mad4b-site-control-plane' )
+                . '</strong> · ' . esc_html(sprintf(
+                    __( '%1$d source(s), %2$d asset(s) safely recycled; the active Site Context is clean.', 'mad4b-site-control-plane' ),
+                    $scope['archived_sources'],$scope['archived_assets']))
+                . ' <a href="' . esc_url(self::tab_url('sources')) . '">'
+                . esc_html__( 'View recycle lifecycle', 'mad4b-site-control-plane' )
+                . '</a></p><p>' . esc_html__( 'Company brand ownership and Content Jobs remain independent of the demo archive.', 'mad4b-site-control-plane' ) . '</p></div>';
+            return;
+        }
+        echo '<div class="notice notice-warning mad4b-ownership-company-notice" role="status"><p><strong>'
+            . esc_html__( 'Site Brand Context — ownership review pending', 'mad4b-site-control-plane' )
+            . '</strong> · '
+            . esc_html( sprintf( __( '%1$d source(s), %2$d asset(s) quarantined on this Site Profile.', 'mad4b-site-control-plane' ),
+                $scope['source_count'], $scope['asset_count'] ) )
+            . ' <a href="' . esc_url( self::tab_url( 'sources' ) ) . '">'
+            . esc_html__( 'Review ownership lifecycle', 'mad4b-site-control-plane' ) . '</a></p><p>'
+            . esc_html__( 'This does not imply any company-wide Google Drive grant or Content Job failure. Brand folders must be bound per company, independently of this Site Profile.', 'mad4b-site-control-plane' )
+            . '</p></div>';
+    }
+
 	private static function render_live_context_reconciliation() {
 		if ( ! class_exists( 'MAD4B_SCP_Google_Drive_Context' ) || ! class_exists( 'MAD4B_SCP_Context_Authority' ) ) return;
 		$google = MAD4B_SCP_Google_Drive_Context::connection_status();
@@ -737,11 +988,22 @@ final class MAD4B_SCP_Context_Admin_UI {
 						. ( ! empty( $google['write_available'] ) ? 'Read + Write' : 'Read-only' ) )
 					: 'Connect or repair Google access' ) );
 		$site = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
+        $owner_lifecycle = isset( $status['ownership_reconciliation_lifecycle'] )
+            && is_array( $status['ownership_reconciliation_lifecycle'] )
+            ? $status['ownership_reconciliation_lifecycle'] : array();
+        $owner_hold = ! empty( $owner_lifecycle['review_required'] );
+        $folder_stage_detail = $owner_hold
+            ? sprintf( __( 'Ownership review: %1$d source(s) and %2$d asset(s) pending', 'mad4b-site-control-plane' ),
+                (int) ( $owner_lifecycle['quarantined_source_count'] ?? 0 ),
+                (int) ( $owner_lifecycle['quarantined_asset_count'] ?? 0 ) )
+            : ( $status['governed_source_count']
+                ? $status['governed_source_count'] . ' governed source(s)'
+                : 'Choose a governed folder' );
 		$stages = array(
 			array( 'label' => 'Site Profile', 'detail' => ! empty( $site['configured'] ) && ! empty( $site['origin_match'] ) ? 'Enrolled to this origin' : 'Enroll this site first', 'state' => ! empty( $site['configured'] ) && ! empty( $site['origin_match'] ) ? 'complete' : 'blocked' ),
 			array( 'label' => 'Brand Profile', 'detail' => ! empty( $profile ) ? (string) $profile['brand_name'] : 'Name the brand context', 'state' => ! empty( $profile ) ? 'complete' : 'pending' ),
 			array( 'label' => 'Google Drive', 'detail' => $google_detail, 'state' => $google_active ? 'complete' : 'attention', 'url' => self::tab_url( 'google-drive' ) ),
-			array( 'label' => 'Source Folder', 'detail' => $status['governed_source_count'] ? $status['governed_source_count'] . ' governed source(s)' : 'Choose a governed folder', 'state' => $status['governed_source_count'] ? 'complete' : 'pending', 'url' => self::tab_url( 'sources' ) ),
+			array( 'label' => 'Source Folder', 'detail' => $folder_stage_detail, 'state' => $owner_hold ? 'attention' : ( $status['governed_source_count'] ? 'complete' : 'pending' ), 'url' => self::tab_url( 'sources' ) ),
 			array( 'label' => 'Context Ready', 'detail' => $status['ready'] ? 'Mandatory context is ready' : 'Resolve review and source-scan blockers', 'state' => $status['ready'] ? 'complete' : 'attention', 'url' => self::tab_url( 'review' ) ),
 		);
 		if ( class_exists( 'MAD4B_SCP_Admin_Experience' ) ) MAD4B_SCP_Admin_Experience::stages( $stages );
@@ -1278,20 +1540,23 @@ final class MAD4B_SCP_Context_Admin_UI {
      */
     private static function source_onboarding_guidance( $state ) {
         $steps = array(
-            __( 'Verify Staging Site Profile and deployment binding', 'mad4b-site-control-plane' ),
+            __( 'Verify the enrolled Site Profile and deployment binding', 'mad4b-site-control-plane' ),
             __( 'Review Brand Profile and earlier source ownership', 'mad4b-site-control-plane' ),
             __( 'Verify Google connection and the required scope', 'mad4b-site-control-plane' ),
             __( 'Review this folder and approve the source policy', 'mad4b-site-control-plane' ),
         );
         $map = array(
-            'exact_staging_site_required' => array( 0, 'site-profile', __( 'The current Site Profile or its Staging authority is not ready. Verify the site identity before source onboarding.', 'mad4b-site-control-plane' ) ),
+            'exact_registered_site_required' => array( 0, 'site-profile', __( 'The current Site Profile must match the registered Staging or Production environment and the exact site identity before source onboarding.', 'mad4b-site-control-plane' ) ),
+            'exact_staging_site_required' => array( 0, 'site-profile', __( 'The current Site Profile does not match the registered environment. Verify the exact site identity before source onboarding.', 'mad4b-site-control-plane' ) ),
             'OPERATIONAL_SCOPE_RECOVERY_REQUIRED' => array( 0, 'operational-remediation', __( 'Deployment scope has not been verified. Review the operational remediation and deployment identity status first.', 'mad4b-site-control-plane' ) ),
-            'DEPLOYMENT_BINDING_RECOVERY_REQUIRED' => array( 0, 'operational-remediation', __( 'The source cannot be attached until this Staging site has a current verified deployment binding.', 'mad4b-site-control-plane' ) ),
+            'DEPLOYMENT_BINDING_RECOVERY_REQUIRED' => array( 0, 'operational-remediation', __( 'The source cannot be attached until this site has a current verified deployment binding.', 'mad4b-site-control-plane' ) ),
             'BRAND_PROFILE_REQUIRED' => array( 1, 'overview', __( 'Create or verify the Brand Profile before choosing a governed source.', 'mad4b-site-control-plane' ) ),
             'LEGACY_SOURCE_RECONCILIATION_REQUIRED' => array( 1, 'sources', __( 'Historical source or asset ownership needs review. Existing quarantined records must not be assigned to the selected folder automatically.', 'mad4b-site-control-plane' ) ),
+            'RECYCLE_ARCHIVE_INTEGRITY_RECOVERY_REQUIRED' => array( 1, 'sources', __( 'The recoverable archive failed its integrity check. Repair the protected archive before registering a new folder.', 'mad4b-site-control-plane' ) ),
             'GOOGLE_CONNECTION_RECOVERY_REQUIRED' => array( 2, 'google-drive', __( 'Reconnect or recover Google access after any pending revocation is resolved. Read-only access is enough for a read-only source.', 'mad4b-site-control-plane' ) ),
             'GOOGLE_WRITE_CONSENT_REQUIRED' => array( 2, 'google-drive', __( 'Managed library needs the separately consented Google write grant. You can choose Read-only while that grant is unavailable.', 'mad4b-site-control-plane' ) ),
             'FOLDER_SELECTION_REQUIRED' => array( 3, 'google-drive', __( 'Choose a specific folder rather than the Drive root.', 'mad4b-site-control-plane' ) ),
+            'GOOGLE_FOLDER_ACCESS_REQUIRED' => array( 3, 'google-drive', __( 'The selected folder could not be verified as an accessible Google Drive folder. Confirm the folder exists, the connected account can access it, and Google access is current, then retry.', 'mad4b-site-control-plane' ) ),
             'EXISTING_SOURCE_POLICY_REVIEW_REQUIRED' => array( 3, 'sources', __( 'This folder is already registered. Review its existing policy instead of creating a duplicate.', 'mad4b-site-control-plane' ) ),
             'mad4b_source_onboarding_preflight_missing' => array( 0, 'operational-remediation', __( 'The read-only onboarding preflight is not loaded in this installed build. Verify the exact plugin package and reopen this page; no save is possible until the gate is available.', 'mad4b-site-control-plane' ) ),
         );
@@ -1319,7 +1584,112 @@ final class MAD4B_SCP_Context_Admin_UI {
         return '';
     }
 
+    private static function existing_folder_view_fields( array $source ) {
+        return array(
+            'source_id'=>(string)$source['source_id'],
+            'write_policy'=>(string)$source['write_policy'],
+            'recursive'=>!empty($source['recursive']),
+            'external_root_id'=>(string)$source['external_root_id'],
+            'registry_revision'=>MAD4B_SCP_Context_Authority::registry_revision()
+        );
+    }
+
+    /** Editing an existing source is not onboarding a second source. */
+    private static function render_existing_folder_settings( array $source ) {
+        $source_id=(string)$source['source_id'];
+        $mode=(string)$source['mode'];
+        $policy=(string)$source['write_policy'];
+        $recursive=!empty($source['recursive']);
+        echo '<hr><div class="mad4b-scp-next-step is-complete"><h3>'
+            .esc_html__('Folder already registered — edit saved settings','mad4b-site-control-plane')
+            .'</h3><p>'
+            .esc_html__('This folder is connected to the current Site and Brand. Edit its existing record here; do not create a duplicate. Current values are loaded from the registry.','mad4b-site-control-plane')
+            .'</p><p><strong>'.esc_html__('Current mode:','mad4b-site-control-plane')
+            .'</strong> <code>'.esc_html($mode).'</code> · <strong>'
+            .esc_html__('Saved policy:','mad4b-site-control-plane')
+            .'</strong> <code>'.esc_html($policy).'</code> · <strong>'
+            .esc_html__('Include subfolders:','mad4b-site-control-plane')
+            .'</strong> '.($recursive?'Yes':'No').'</p></div>';
+        echo '<form class="mad4b-context-existing-folder-form mad4b-settings-ajax-form"'
+            .' data-mad4b-refresh-selector="#mad4b-context-registered-folder-settings"'
+            .MAD4B_SCP_Admin_Settings_Persistence::view_attributes(
+                'context-existing-folder-'.$source_id,self::existing_folder_view_fields($source))
+            .' method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
+        wp_nonce_field(self::ACTION_UPDATE_EXISTING_FOLDER);
+        foreach(array(
+            'action'=>self::ACTION_UPDATE_EXISTING_FOLDER,
+            'source_id'=>$source_id,
+            'expected_external_root_id'=>(string)$source['external_root_id'],
+            'expected_source_mode'=>$mode,
+            'expected_registry_revision'=>(string)MAD4B_SCP_Context_Authority::registry_revision()
+        ) as $key=>$value)
+            echo '<input type="hidden" name="'.esc_attr($key).'" value="'.esc_attr($value).'">';
+        echo '<h4>'.esc_html__('Saved source policy','mad4b-site-control-plane').'</h4>';
+        if('task_attachment'===$mode){
+            echo '<p><code>read_only</code><input type="hidden" name="write_policy" value="read_only"></p>';
+        }else{
+            echo '<p><label for="mad4b-existing-folder-policy">'.esc_html__('Write policy','mad4b-site-control-plane').'</label> ';
+            echo '<select id="mad4b-existing-folder-policy" name="write_policy">';
+            foreach(MAD4B_SCP_Context_Authority::write_policies() as $key=>$definition)
+                echo '<option value="'.esc_attr($key).'"'
+                    .selected($policy,$key,false).'>'.esc_html($definition['label']).'</option>';
+            echo '</select></p>';
+        }
+        echo '<p><label><input type="checkbox" name="write_policy_confirmed" value="1" data-mad4b-one-time-confirm> '
+            .esc_html__('I confirm if this changes the existing source to a policy with greater Drive write authority.','mad4b-site-control-plane')
+            .'</label></p>';
+        echo '<p><label><input type="checkbox" name="recursive" value="1"'
+            .checked($recursive,true,false).'> '
+            .esc_html__('Include subfolders','mad4b-site-control-plane')
+            .'</label></p>';
+        echo '<p><label><input type="checkbox" name="recursive_scope_confirmed" value="1" data-mad4b-one-time-confirm> '
+            .esc_html__('I confirm if this expands the source from this folder to include its subfolders.','mad4b-site-control-plane')
+            .'</label></p>';
+        echo '<p class="description"><strong>'
+            .esc_html__('Confirmation checkboxes apply to this save only and are never stored as settings.','mad4b-site-control-plane')
+            .'</strong></p>';
+        echo '<p class="description">'
+            .esc_html__('If the subfolder scope changes, a fresh complete scan is required. Existing assets and human reviews are preserved, but are not treated as a newly completed scan. The source mode and company ownership cannot be changed here.','mad4b-site-control-plane')
+            .'</p>';
+        echo '<p data-mad4b-settings-feedback role="status" aria-live="polite"></p>';
+        submit_button(__('Save existing source settings','mad4b-site-control-plane'),'primary','submit',false);
+        echo ' <a class="button button-secondary" href="'.esc_url(self::tab_url('sources')).'">'
+            .esc_html__('View registered source','mad4b-site-control-plane').'</a>';
+        echo '</form>';
+    }
+
 	private static function render_folder_browser() {
+        // Editing an existing registered source must not depend on a live Google
+        // token or remote folder preview: the exact source is already owned by
+        // this Site/Brand and all saved settings come from Context Authority.
+        $requested=isset($_GET['folder'])
+            ?sanitize_text_field(MAD4B_SCP_Admin_Experience::query_string('folder')):'';
+        if(''!==$requested && 'root'!==strtolower($requested)){
+            $matches=array();
+            foreach(MAD4B_SCP_Context_Authority::sources() as $source){
+                if(($source['provider']??'')==='google_drive'
+                    && hash_equals((string)($source['external_root_id']??''),$requested))
+                    $matches[]=$source;
+            }
+            if(count($matches)===1){
+                $existing=$matches[0];
+                echo '<div class="mad4b-scp-panel" id="mad4b-context-registered-folder-settings"><h2>'
+                    .esc_html__('Registered Google Drive folder','mad4b-site-control-plane')
+                    .'</h2><p><strong>'.esc_html((string)$existing['label'])
+                    .'</strong> <code>'.esc_html($requested).'</code></p>';
+                self::render_existing_folder_settings($existing);
+                echo '</div>';
+                return;
+            }
+            if(count($matches)>1){
+                echo '<div class="mad4b-scp-panel"><p>'
+                    .esc_html__('More than one registered mode references this folder. Choose the exact source from Source Folders.','mad4b-site-control-plane')
+                    .'</p><a class="button" href="'.esc_url(self::tab_url('sources')).'">'
+                    .esc_html__('View registered sources','mad4b-site-control-plane')
+                    .'</a></div>';
+                return;
+            }
+        }
 		$connection = MAD4B_SCP_Google_Drive_Context::connection_status();
 		if ( empty( $connection['connected'] ) ) return;
 		$folder_id = isset( $_GET['folder'] ) ? sanitize_text_field( MAD4B_SCP_Admin_Experience::query_string( 'folder' ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only folder navigation.
@@ -1351,6 +1721,28 @@ final class MAD4B_SCP_Context_Admin_UI {
 			echo '<hr><div class="mad4b-scp-next-step is-attention"><h3>' . esc_html__( 'Choose a specific folder', 'mad4b-site-control-plane' ) . '</h3><p>' . esc_html__( 'My Drive is available for navigation only. Open a Brand, project, or reference folder and select that folder as the governed source boundary.', 'mad4b-site-control-plane' ) . '</p></div></div>';
 			return;
 		}
+        // An exact registered folder is edited in-place, not sent through the
+        // separate new-source onboarding preflight. Never infer ownership from
+        // a similarly named folder or create another source behind the UI.
+        $registered=array();
+        foreach(MAD4B_SCP_Context_Authority::sources() as $record){
+            if(($record['provider']??'')==='google_drive'
+                && hash_equals((string)($record['external_root_id']??''),$current_folder_id))
+                $registered[]=$record;
+        }
+        if(count($registered)===1){
+            self::render_existing_folder_settings($registered[0]);
+            echo '</div>';
+            return;
+        }
+        if(count($registered)>1){
+            echo '<p class="notice notice-warning inline">'
+                .esc_html__('Multiple source modes use this folder. Choose the exact record from Source Folders before editing.','mad4b-site-control-plane')
+                .'</p><p><a class="button" href="'.esc_url(self::tab_url('sources')).'">'
+                .esc_html__('Open Source Folders','mad4b-site-control-plane')
+                .'</a></p></div>';
+            return;
+        }
         // Retain only the folder and desired UI choices after a blocked POST.
         // Never persist or reuse a checkbox consent, owner ticket, or grant.
         $hint_mode = isset( $_GET['source_mode'] )
@@ -1371,6 +1763,7 @@ final class MAD4B_SCP_Context_Admin_UI {
         $source_ready = is_array( $preflight )
             && ! empty( $preflight['new_source_write_eligible'] );
         echo '<hr><h3>' . esc_html__( 'Use this folder', 'mad4b-site-control-plane' ) . '</h3>';
+        echo '<p class="description">' . esc_html__( 'This chooser connects a folder to the current demo Site Profile only. For a shared Brands portfolio with several companies, choose the specific brand folder, or use the separate Company Manager workspace. A parent folder is not company-wide Content Job authority.', 'mad4b-site-control-plane' ) . '</p>';
         if ( ! $source_ready ) {
             $state = is_wp_error( $preflight ) ? $preflight->get_error_code()
                 : (string) ( $preflight['state'] ?? 'SOURCE_RECOVERY_REQUIRED' );
@@ -1379,12 +1772,28 @@ final class MAD4B_SCP_Context_Admin_UI {
             $reason = is_array( $preflight ) ? (string) ( $preflight['reason_code'] ?? '' ) : '';
             $guide = self::source_onboarding_guidance( $state );
             $setup_url = self::source_onboarding_setup_url( $state, $guide['tab'] );
-            $setup_label = 'DEPLOYMENT_BINDING_RECOVERY_REQUIRED' === $state
-                ? __( 'Open Staging deployment binding instructions', 'mad4b-site-control-plane' )
-                : __( 'Open the required setup step', 'mad4b-site-control-plane' );
+            if ( 'LEGACY_SOURCE_RECONCILIATION_REQUIRED' === $state ) {
+                // Preserve folder and preview-only choices; consent remains unsaved.
+                $setup_url = self::tab_url( 'sources', array(
+                    'folder' => $current_folder_id, 'source_mode' => $hint_mode,
+                    'write_policy' => $hint_policy,
+                    'recursive' => $hint_recursive ? '1' : '0',
+                ) );
+            }
+            $setup_label = 'LEGACY_SOURCE_RECONCILIATION_REQUIRED' === $state
+                ? __( 'Open source ownership lifecycle', 'mad4b-site-control-plane' )
+                : ( 'DEPLOYMENT_BINDING_RECOVERY_REQUIRED' === $state
+                    ? __( 'Open deployment binding instructions', 'mad4b-site-control-plane' )
+                    : __( 'Open the required setup step', 'mad4b-site-control-plane' ) );
             echo '<div class="notice notice-warning inline" role="status"><p><strong>'
                 . esc_html__( 'Source folder selected — save is waiting for preflight.', 'mad4b-site-control-plane' )
                 . '</strong> ' . esc_html( $guide['message'] ) . '</p>'
+                . ( 'LEGACY_SOURCE_RECONCILIATION_REQUIRED' === $state
+                    ? '<p><strong>' . esc_html( sprintf(
+                        __( 'Ownership review: %1$d earlier source(s) and %2$d asset(s) quarantined.', 'mad4b-site-control-plane' ),
+                        (int) ( $preflight['quarantined_source_count'] ?? 0 ),
+                        (int) ( $preflight['quarantined_asset_count'] ?? 0 ) ) ) . '</strong></p>'
+                    : '' )
                 . '<p>' . esc_html__( 'The options below are a preview only. No folder or Drive file was changed, and no write approval was saved.', 'mad4b-site-control-plane' ) . '</p>'
                 . ( '' !== $setup_url
                     ? '<p><a class="button button-secondary" href="' . esc_url( $setup_url ) . '">'
@@ -1433,12 +1842,120 @@ final class MAD4B_SCP_Context_Admin_UI {
 		echo '</form></div>';
 	}
 
+    /**
+     * Read-only, authenticated discovery of the quarantined ownership queue.
+     * Foreign/conflicting rows are NOT exposed as transfer candidates.
+     */
+    private static function render_legacy_source_discovery() {
+        $scope = self::ownership_lifecycle_snapshot();
+        if ( ! is_array( $scope )
+            || 'AWAITING_LEGACY_OWNER_REVIEW' !== $scope['state']
+            || ! current_user_can( 'manage_options' ) ) return;
+        $result = MAD4B_SCP_Context_Authority::legacy_owner_transfer_discover( array() );
+        echo '<div class="mad4b-scp-next-step is-attention mad4b-legacy-ownership-discovery">';
+        echo '<h3>' . esc_html__( 'Legacy source discovery — read-only', 'mad4b-site-control-plane' ) . '</h3>';
+        if ( is_wp_error( $result ) ) {
+            echo '<p><code>' . esc_html( $result->get_error_code() ) . '</code> · '
+                . esc_html__( 'Exact identity discovery is not currently available. No ownership assignment can proceed.', 'mad4b-site-control-plane' ) . '</p></div>';
+            return;
+        }
+        if ( ! is_array( $result )
+            || ( $result['contract'] ?? '' ) !== 'mad4b.context-legacy-owner-transfer-discovery.v1'
+            || ( $result['read_only'] ?? false ) !== true
+            || ( $result['migration_authorized'] ?? true ) !== false ) {
+            echo '<p>' . esc_html__( 'Discovery evidence could not be verified; keep all historical sources in quarantine.', 'mad4b-site-control-plane' ) . '</p></div>';
+            return;
+        }
+        $eligible = max( 0, (int) ( $result['candidate_count'] ?? 0 ) );
+        $conflicted = max( 0, (int) ( $result['foreign_or_conflicted_records'] ?? 0 ) );
+        echo '<p><strong>' . esc_html( sprintf(
+            __( '%1$d exact candidate(s) · %2$d foreign or conflicting source(s)', 'mad4b-site-control-plane' ),
+            $eligible, $conflicted ) ) . '</strong></p>';
+        if ( 0 === $eligible ) {
+            echo '<p>' . esc_html__( 'No historical source is eligible for owner transfer. Verified foreign Site/Brand references can instead be archived and cleaned from the current Site Context, without changing the original records or Drive files.', 'mad4b-site-control-plane' ) . '</p>';
+            $plan=MAD4B_SCP_Context_Authority::foreign_recycle_plan();
+            if ( is_array($plan)
+                && ($plan['contract'] ?? '') === 'mad4b.context-foreign-recycle-plan.v1'
+                && ($plan['state'] ?? '') === 'EXACT_FOREIGN_REFERENCES_READY_FOR_ARCHIVE'
+                && (int)($plan['foreign_sources'] ?? -1) === $conflicted
+                && (int)($plan['foreign_assets'] ?? -1) === $scope['asset_count'] ) {
+                echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
+                wp_nonce_field(self::ACTION_RECYCLE_FOREIGN);
+                echo '<input type="hidden" name="action" value="' . esc_attr(self::ACTION_RECYCLE_FOREIGN) . '">';
+                echo '<input type="hidden" name="expected_registry_revision" value="'
+                    . esc_attr((string)$plan['expected_registry_revision']) . '">';
+                echo '<input type="hidden" name="expected_inventory_sha256" value="'
+                    . esc_attr((string)$plan['expected_inventory_sha256']) . '">';
+                echo '<p><label><input type="checkbox" name="confirm_exact_foreign_recycle" value="1" required> '
+                    . esc_html__( 'Archive the verified foreign records and clean only their Site Context registry references. Keep original files and the recovery archive.', 'mad4b-site-control-plane')
+                    . '</label></p>';
+                echo '<p><button type="submit" class="button button-secondary">'
+                    . esc_html__( 'Recycle verified foreign records', 'mad4b-site-control-plane')
+                    . '</button></p></form>';
+            } else {
+                echo '<p><code>RECYCLE_EXACT_INVENTORY_PRECHECK_REQUIRED</code> · '
+                    . esc_html__( 'Cleanup cannot be offered until the live archive plan matches every foreign source and linked asset.', 'mad4b-site-control-plane' )
+                    . '</p>';
+            }
+        } else {
+            echo '<p>' . esc_html__( 'The following source candidates passed preliminary identity checks only. Inspect each original folder and its lineage before any separately authorized transfer.', 'mad4b-site-control-plane' ) . '</p><ul>';
+            $items = is_array( $result['eligible_unbound_candidates'] ?? null )
+                ? $result['eligible_unbound_candidates'] : array();
+            foreach ( array_slice( $items, 0, 20 ) as $candidate ) {
+                if ( ! is_array( $candidate ) ) continue;
+                $root = (string) ( $candidate['external_root_id'] ?? '' );
+                $digest = (string) ( $candidate['source_id'] ?? '' );
+                echo '<li><code>' . esc_html( substr( $digest, 0, 12 ) ) . '…</code> · '
+                    . esc_html( sprintf( __( '%d linked asset(s)', 'mad4b-site-control-plane' ),
+                        max( 0, (int) ( $candidate['asset_count'] ?? 0 ) ) ) );
+                if ( strlen( $root ) <= 255 && preg_match( '/^[A-Za-z0-9_.-]+$/D', $root ) ) {
+                    echo ' · <a href="' . esc_url( self::tab_url( 'google-drive', array( 'folder' => $root ) ) ) . '">'
+                        . esc_html__( 'Inspect original folder (read-only)', 'mad4b-site-control-plane' ) . '</a>';
+                }
+                echo '</li>';
+            }
+            echo '</ul>';
+        }
+        echo '<p class="description"><code>context/legacy-owner-transfer-discover</code> · '
+            . esc_html__( 'Discovery is not migration approval. These counts apply only to this Site Profile, not the complete company portfolio.', 'mad4b-site-control-plane' ) . '</p></div>';
+    }
+
 	private static function render_sources() {
 		$sources = MAD4B_SCP_Context_Authority::sources();
 		$connection = MAD4B_SCP_Google_Drive_Context::connection_status();
 		$review_queue = MAD4B_SCP_Context_Authority::review_queue();
+        // Surface exact owner-transfer eligibility, not just quarantine totals.
+        // No registry write or implicit change to selected folder follows.
+        ob_start();
+        self::render_legacy_source_discovery();
+        $legacy_discovery_html = ob_get_clean();
 		echo '<div id="mad4b-context-source-registry" class="mad4b-scp-panel"><h2>' . esc_html__( 'Source Folders', 'mad4b-site-control-plane' ) . '</h2>';
 		echo '<p>' . esc_html__( 'Governed folders participate in Context Authority. Task-only folders are isolated to their task scope and do not change the Brand Context fingerprint.', 'mad4b-site-control-plane' ) . '</p>';
+        echo $legacy_discovery_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- internal escaped markup only.
+        $selected_folder = isset( $_GET['folder'] ) && is_string( $_GET['folder'] )
+            ? sanitize_text_field( wp_unslash( $_GET['folder'] ) ) : '';
+        if ( '' !== $selected_folder && 'root' !== strtolower( $selected_folder )
+            && strlen( $selected_folder ) <= 255
+            && preg_match( '/^[A-Za-z0-9_.-]+$/D', $selected_folder ) ) {
+            $mode = isset( $_GET['source_mode'] ) && is_string( $_GET['source_mode'] )
+                && 'task_attachment' === sanitize_key( wp_unslash( $_GET['source_mode'] ) )
+                ? 'task_attachment' : 'governed';
+            $policy = isset( $_GET['write_policy'] ) && is_string( $_GET['write_policy'] )
+                ? sanitize_key( wp_unslash( $_GET['write_policy'] ) ) : 'read_only';
+            if ( ! in_array( $policy, array( 'read_only', 'repair_only', 'managed' ), true ) ) $policy = 'read_only';
+            if ( 'task_attachment' === $mode ) $policy = 'read_only';
+            $back = self::tab_url( 'google-drive', array(
+                'folder' => $selected_folder, 'source_mode' => $mode,
+                'write_policy' => $policy,
+                'recursive' => isset( $_GET['recursive'] ) && is_string( $_GET['recursive'] )
+                    && '0' === wp_unslash( $_GET['recursive'] ) ? '0' : '1',
+            ) );
+            echo '<div class="notice notice-info inline"><p><strong>'
+                . esc_html__( 'Selected folder preserved during ownership review.', 'mad4b-site-control-plane' )
+                . '</strong> <a class="button button-secondary" href="' . esc_url( $back ) . '">'
+                . esc_html__( 'Return to selected folder preview', 'mad4b-site-control-plane' )
+                . '</a></p><p>' . esc_html__( 'A folder selection is not a saved source, permission grant or ownership transfer.', 'mad4b-site-control-plane' ) . '</p></div>';
+        }
 		if ( ! empty( $review_queue['items'] ) ) echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Human review is pending.', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html__( 'Source scanning discovers content; exact human decisions are made in the Review workspace.', 'mad4b-site-control-plane' ) . ' <a class="button button-small" href="' . esc_url( self::tab_url( 'review' ) ) . '">' . esc_html__( 'Open Review Workspace', 'mad4b-site-control-plane' ) . '</a></p></div>';
 		if ( empty( $sources ) ) {
             $census = class_exists( 'MAD4B_SCP_Context_Authority' )
@@ -1462,7 +1979,10 @@ final class MAD4B_SCP_Context_Admin_UI {
 		}
 		echo '<div class="mad4b-scp-table-wrap"><table class="widefat striped"><thead><tr><th>Folder</th><th>Mode</th><th>Write policy</th><th>Task scope</th><th>Status</th><th>Assets</th><th>Last scan</th><th>Action</th></tr></thead><tbody>';
 		foreach ( $sources as $source ) {
-			echo '<tr><td><strong>' . esc_html( $source['label'] ) . '</strong><br><code>' . esc_html( $source['external_root_id'] ) . '</code></td>';
+			echo '<tr><td><strong>' . esc_html( $source['label'] ) . '</strong><br><code>' . esc_html( $source['external_root_id'] ) . '</code>';
+            if ('google_drive' === ($source['provider']??'') && 'brands' === strtolower(trim((string)($source['label']??''))))
+                echo '<p class="description"><strong>'.esc_html__('Mixed-brand source: verify every asset owner before approval. Discovery never authorizes another brand.','mad4b-site-control-plane').'</strong></p>';
+            echo '</td>';
 			echo '<td><span class="mad4b-context-badge">' . esc_html( $source['mode'] ) . '</span></td>';
 			echo '<td><form class="mad4b-context-policy-form mad4b-settings-ajax-form" data-mad4b-refresh-selector="#mad4b-context-source-registry"' . MAD4B_SCP_Admin_Settings_Persistence::view_attributes( 'context-source-policy-' . $source['source_id'], array(
 				'source_id' => (string) $source['source_id'], 'write_policy' => (string) $source['write_policy'],
@@ -1479,26 +1999,86 @@ final class MAD4B_SCP_Context_Admin_UI {
 				submit_button( __( 'Save', 'mad4b-site-control-plane' ), 'secondary small', 'submit', false );
 			}
 			echo '</form></td><td>' . esc_html( $source['task_scope'] ? $source['task_scope'] : '—' ) . '</td>';
-			echo '<td>' . esc_html( $source['status'] ) . '</td><td>' . esc_html( (string) $source['asset_count'] ) . '</td><td>' . esc_html( $source['last_synced_at'] ? $source['last_synced_at'] : 'Never' ) . '</td>';
+            $progress=array();
+            if(class_exists('MAD4B_SCP_Drive_Scan_Continuation',false)
+                ||is_readable(__DIR__.'/class-mad4b-scp-drive-scan-continuation.php')){
+                require_once __DIR__.'/class-mad4b-scp-drive-scan-continuation.php';
+                $progress=get_option(MAD4B_SCP_Drive_Scan_Continuation::progress_option_name(
+                    (string)$source['source_id']),array());
+            }
+            $active_progress=is_array($progress)
+                && ($progress['contract']??'')==='mad4b.scan-ui-progress.v1'
+                && hash_equals((string)$source['source_id'],(string)($progress['source_id']??''))
+                && (string)($progress['site_uuid']??'')!==''
+                && (int)($progress['expires_at']??0)>time();
+            echo '<td>' . esc_html( $source['status'] );
+            if($active_progress)echo '<p class="description">'
+                .esc_html(!empty($progress['inventory_complete'])?'Inventory ready for review':'Inventory in progress')
+                .' · Step '.(int)$progress['checkpoint_revision']
+                .' · Verified '.(int)$progress['verified_files']
+                .' · Deferred '.(int)$progress['deferred_files'].'</p>';
+            echo '</td><td>' . esc_html( (string) $source['asset_count'] )
+                . '</td><td>' . esc_html( $source['last_synced_at'] ? $source['last_synced_at'] : 'Never' )
+                .($active_progress?' <span class="description">(scan checkpoint available)</span>':'').'</td>';
 			echo '<td><form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 			wp_nonce_field( self::ACTION_SCAN_SOURCE );
 			echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_SCAN_SOURCE ) . '"><input type="hidden" name="source_id" value="' . esc_attr( $source['source_id'] ) . '">';
+            // Google Drive scanning must use the resumable continuation
+            // workflow, not the legacy all-folder scan in a single admin-post.
+            // Its exact source/nonce and human-reviewed Apply are unchanged.
+            if ( 'google_drive' === ( $source['provider'] ?? '' ) ) {
+                echo '<input type="hidden" name="resumable" value="1">';
+                echo '<input type="hidden" name="auto_scan" value="1">';
+            }
             if ( 'wordpress_media' === ( $source['provider'] ?? '' ) ) {
                 echo '<input type="hidden" name="media_mime_scope" value="1">';
-                foreach ( array( 'application/pdf' => 'PDF', 'text/plain' => 'TXT', 'text/markdown' => 'Markdown', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' => 'Excel XLSX', 'application/vnd.ms-excel.sheet.macroEnabled.12' => 'Excel XLSM', 'text/csv' => 'Excel CSV' ) as $mime => $caption )
+                foreach ( array( 'application/pdf' => 'PDF', 'text/plain' => 'TXT', 'text/markdown' => 'Markdown', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' => 'Excel XLSX', 'application/vnd.ms-excel.sheet.macroEnabled.12' => 'Excel XLSM', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'DOCX', 'text/csv' => 'Excel CSV' ) as $mime => $caption )
                     echo ' <label><input type="checkbox" name="mime_types[]" value="' . esc_attr( $mime ) . '" checked> ' . esc_html( $caption ) . '</label>';
             }
-			submit_button( __( 'Scan now', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
-            if ( 'google_drive' === ( $source['provider'] ?? '' ) )
-			echo ' <button class="button" name="resumable" value="1" type="submit">' . esc_html__( 'Scan in bounded steps', 'mad4b-site-control-plane' ) . '</button>';
-			echo '</form><details class="mad4b-context-remove"><summary>' . esc_html__( 'Remove', 'mad4b-site-control-plane' ) . '</summary><form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
-			wp_nonce_field( self::ACTION_REMOVE_SOURCE );
-			echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_REMOVE_SOURCE ) . '"><input type="hidden" name="source_id" value="' . esc_attr( $source['source_id'] ) . '">';
-			echo '<label><input type="checkbox" name="confirm_remove" value="1" required> ' . esc_html__( 'Remove this source and its indexed assets.', 'mad4b-site-control-plane' ) . '</label> ';
-			submit_button( __( 'Remove Source', 'mad4b-site-control-plane' ), 'delete small', 'submit', false );
-			echo '</form></details></td></tr>';
+            submit_button( 'google_drive' === ( $source['provider'] ?? '' )
+                ? __( 'Start / continue scan', 'mad4b-site-control-plane' )
+                : __( 'Scan now', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
+            echo '</form>';
+            if ( class_exists('MAD4B_SCP_Source_Lifecycle') ) {
+                $plan=MAD4B_SCP_Source_Lifecycle::archive_plan((string)$source['source_id']);
+                echo '<details class="mad4b-context-remove"><summary>'.esc_html__('Archive / detach','mad4b-site-control-plane').'</summary>';
+                if (is_wp_error($plan)) echo '<p>'.esc_html($plan->get_error_code()).'</p>';
+                else {
+                    echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
+                    wp_nonce_field('mad4b_context_archive_source');
+                    echo '<input type="hidden" name="action" value="mad4b_context_archive_source">';
+                    echo '<input type="hidden" name="source_id" value="'.esc_attr($source['source_id']).'">';
+                    echo '<input type="hidden" name="plan_digest" value="'.esc_attr($plan['digest']).'">';
+                    echo '<label><input type="checkbox" name="confirm_archive" value="1" required> ';
+                    echo esc_html(sprintf(__('Keep an archival snapshot of this source and %d indexed assets, then detach it. External files remain untouched.','mad4b-site-control-plane'),count($plan['assets']))).'</label> ';
+                    submit_button(__('Archive Source','mad4b-site-control-plane'),'secondary small','submit',false);
+                    echo '</form>';
+                }
+                echo '</details>';
+            }
+            echo '</td></tr>';
 		}
-		echo '</tbody></table></div></div>';
+        echo '</tbody></table></div>';
+        if ( class_exists('MAD4B_SCP_Source_Lifecycle') ) {
+            $archives=MAD4B_SCP_Source_Lifecycle::archives();
+            if($archives) {
+                echo '<div class="mad4b-scp-panel"><h3>'.esc_html__('Archived sources','mad4b-site-control-plane').'</h3>';
+                foreach($archives as $a){
+                    echo '<p><strong>'.esc_html($a['label']).'</strong> — '.esc_html($a['state']).' ('.esc_html((string)$a['asset_count']).' historical assets)</p>';
+                    if(!in_array($a['state'],array('detached','prepared'),true))continue;
+                    if('prepared'===$a['state'] && MAD4B_SCP_Context_Authority::source((string)$a['source_id']))continue;
+                    echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
+                    wp_nonce_field('mad4b_context_restore_source');
+                    echo '<input type="hidden" name="action" value="mad4b_context_restore_source">';
+                    echo '<input type="hidden" name="archive_id" value="'.esc_attr($a['archive_id']).'">';
+                    echo '<label><input type="checkbox" name="confirm_restore" value="1" required> '.esc_html__('Restore source as read-only; rescan and review assets again.','mad4b-site-control-plane').'</label>';
+                    submit_button(__('Restore source for rescan','mad4b-site-control-plane'),'secondary small','submit',false);
+                    echo '</form>';
+                }
+                echo '</div>';
+            }
+        }
+        echo '</div>';
 	}
 
 	private static function review_agent_options() {
@@ -1812,6 +2392,10 @@ final class MAD4B_SCP_Context_Admin_UI {
 				echo '<form class="mad4b-context-source-repair-form" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 				wp_nonce_field( self::ACTION_SCAN_SOURCE );
 				echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_SCAN_SOURCE ) . '"><input type="hidden" name="source_id" value="' . esc_attr( $source['source_id'] ) . '"><input type="hidden" name="return_tab" value="review">';
+                if ( 'google_drive' === ( $source['provider'] ?? '' ) ) {
+                    echo '<input type="hidden" name="resumable" value="1">';
+                    echo '<input type="hidden" name="auto_scan" value="1">';
+                }
 				echo '<span class="mad4b-scp-muted">' . esc_html( isset( $source['label'] ) && $source['label'] ? (string) $source['label'] : __( 'Governed source', 'mad4b-site-control-plane' ) ) . '</span> ';
 				submit_button( __( 'Continue source scan', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
 				echo '</form>';
@@ -2256,7 +2840,9 @@ final class MAD4B_SCP_Context_Admin_UI {
 			'google_connected' => __( 'Google Drive connected.', 'mad4b-site-control-plane' ),
 			'google_disconnected' => __( 'Google Drive disconnected. Existing Context assets were not deleted.', 'mad4b-site-control-plane' ),
 			'source_selected' => __( 'Source folder added. Scan it when you are ready.', 'mad4b-site-control-plane' ),
+            'foreign_recycled_archived' => __( 'Foreign source references were archived with verified readback; the active Site Context registry is clean. External files were not deleted.', 'mad4b-site-control-plane' ),
 			'source_policy_updated' => __( 'Source write policy updated. Runtime write eligibility will follow the selected policy and OAuth scope.', 'mad4b-site-control-plane' ),
+            'source_settings_updated' => __( 'Existing folder settings saved and verified. A new scan is required if subfolder scope changed.', 'mad4b-site-control-plane' ),
 			'source_scanned' => __( 'Source scan completed and Context assets were refreshed.', 'mad4b-site-control-plane' ),
 			'source_scanned_truncated' => __( 'Source scan was partial. Seen assets were refreshed, but unseen assets were not marked unavailable. Narrow the folder or increase certified coverage before using absence as evidence.', 'mad4b-site-control-plane' ),
 			'asset_review_saved' => __( 'Asset classification and quality review saved and the Context fingerprint was refreshed.', 'mad4b-site-control-plane' ),
@@ -2321,8 +2907,10 @@ final class MAD4B_SCP_Context_Admin_UI {
 		check_admin_referer( $action );
 	}
 
-	private static function redirect_result( $result, $tab, $notice ) {
-		$args = array( 'page' => self::PAGE_SLUG, 'tab' => sanitize_key( $tab ) );
+	private static function redirect_result( $result, $tab, $notice, array $extra = array() ) {
+        $args = array( 'page' => self::PAGE_SLUG, 'tab' => sanitize_key( $tab ) );
+        if ('google-drive'===sanitize_key($tab) && isset($extra['folder']))
+            $args['folder']=sanitize_text_field((string)$extra['folder']);
 		if ( is_wp_error( $result ) ) {
 			$args['mad4b_error'] = sanitize_key( $result->get_error_code() );
 			$args['mad4b_notice_receipt'] = MAD4B_SCP_Admin_Experience::notice_receipt( self::PAGE_SLUG, 'error:' . $args['mad4b_error'], self::notice_binding() );

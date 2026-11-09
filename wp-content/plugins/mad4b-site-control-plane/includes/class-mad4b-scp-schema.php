@@ -3,12 +3,12 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 final class MAD4B_SCP_Schema {
-	const VERSION = 13;
+	const VERSION = 14;
 	const OPTION  = 'mad4b_scp_schema_version';
-	const INTEGRITY_OPTION = 'mad4b_scp_schema_integrity_v13';
+	const INTEGRITY_OPTION = 'mad4b_scp_schema_integrity_v14';
 	const MIGRATION_CONTRACT = 'mad4b.schema-migration.v1';
-	const MIGRATION_ID = '20261003-feature007-capability-fabric-runtime-v13';
-	const MIGRATION_RECEIPT_OPTION = 'mad4b_scp_schema_migration_receipt_v13';
+	const MIGRATION_ID = '20261030-dual-principal-journal-v14';
+	const MIGRATION_RECEIPT_OPTION = 'mad4b_scp_schema_migration_receipt_v14';
 	const LEGACY_BINDINGS_OPTION = 'mad4b_scp_approval_candidate_bindings_v1';
 
 	private static $critical_ready_cache = null;
@@ -125,12 +125,12 @@ final class MAD4B_SCP_Schema {
 			'contract' => self::MIGRATION_CONTRACT,
 			'migration_id' => self::MIGRATION_ID,
 			'target_schema_version' => self::VERSION,
-			'prerequisite_schema_versions' => array( 0, 6, 7, 8, 9, 10, 11, 12, 13 ),
+			'prerequisite_schema_versions' => array( 0, 6, 7, 8, 9, 10, 11, 12, 13, 14 ),
 			'forward_operation' => 'dbdelta_additive_mad4b_tables_columns_and_indexes',
 			'rollback_or_forward_fix' => 'forward_fix_only_preserve_additive_schema_old_code_ignores_new_surfaces',
 			'destructive' => false,
 			'expected_locks_downtime' => 'bounded_metadata_ddl_no_maintenance_mode_expected',
-			'data_volume_assumption' => 'v13_adds_empty_capability_fabric_catalog_and_network_journal_tables_existing_governance_state_is_preserved',
+			'data_volume_assumption' => 'v14_adds_typed_principals_to_existing_mutations_preserving_all_independent_nhi_rows',
 			'preflight_checks' => array(
 				'supported_prerequisite_schema_version',
 				'wordpress_database_handle_available',
@@ -145,7 +145,7 @@ final class MAD4B_SCP_Schema {
 				'integrity_token_written_after_verification_only',
 			),
 			'partial_failure_recovery' => 'target_version_and_integrity_token_not_advanced_until_deep_verification_passes_retry_is_idempotent',
-			'mixed_version_compatibility' => 'additive_v13_schema_preserves_v12 runtime; catalog remains options-authoritative until parity cutover and network journal remains inert until explicitly invoked',
+			'mixed_version_compatibility' => 'v14 migration preserves NHI actor ids, historical rows default to independent_nhi and nullable agent ids are used only for verified WordPress users',
 			'authority_widening' => false,
 		);
 	}
@@ -361,7 +361,8 @@ final class MAD4B_SCP_Schema {
 			mutation_id char(36) NOT NULL,
 			request_id varchar(64) NOT NULL,
 			parent_mutation_id char(36) NULL,
-			agent_id bigint(20) unsigned NOT NULL,
+			principal_type varchar(32) NOT NULL DEFAULT 'independent_nhi',
+			agent_id bigint(20) unsigned NULL,
 			subject_type varchar(64) NOT NULL DEFAULT '',
 			subject_fingerprint char(64) NOT NULL DEFAULT '',
 			wp_user_id bigint(20) unsigned NOT NULL DEFAULT 0,
@@ -387,6 +388,7 @@ final class MAD4B_SCP_Schema {
 			PRIMARY KEY  (id),
 			UNIQUE KEY mutation_id (mutation_id),
 			KEY agent_created (agent_id,created_at),
+			KEY principal_created (principal_type,wp_user_id,created_at),
 			KEY ability_created (ability_name,created_at),
 			KEY status_created (status,created_at),
 			KEY parent_mutation_id (parent_mutation_id),
@@ -469,7 +471,7 @@ final class MAD4B_SCP_Schema {
 			writer_profile_id varchar(191) NOT NULL DEFAULT '',
 			writer_profile_version varchar(64) NOT NULL DEFAULT '',
 			research_depth varchar(32) NOT NULL DEFAULT 'standard',
-			automation_level varchar(32) NOT NULL DEFAULT 'review_gated',
+			automation_level varchar(32) NOT NULL DEFAULT 'autonomous',
 			state varchar(32) NOT NULL,
 			stage varchar(64) NOT NULL,
 			target_post_type varchar(64) NOT NULL DEFAULT '',
@@ -923,6 +925,19 @@ final class MAD4B_SCP_Schema {
 				'last_error' => substr( $last_error, 0, 1000 ),
 			);
 		}
+        // dbDelta does not reliably alter column nullability. This is an
+        // additive, idempotent migration: historic agent ids are untouched.
+        $mutation_table = $t['mutations'];
+        $agent_column = $wpdb->get_row( "SHOW COLUMNS FROM `{$mutation_table}` LIKE 'agent_id'", ARRAY_A );
+        if ( ! is_array( $agent_column ) )
+            return new WP_Error( 'mad4b_principal_agent_column_missing', 'Mutation Journal agent_id column is unavailable.' );
+        if ( 'YES' !== (string) $agent_column['Null'] ) {
+            if ( false === $wpdb->query( "ALTER TABLE `{$mutation_table}` MODIFY COLUMN agent_id bigint(20) unsigned NULL" ) )
+                return new WP_Error( 'mad4b_principal_agent_nullable_failed', 'Mutation Journal principal migration failed before readiness was finalized.' );
+            $agent_column = $wpdb->get_row( "SHOW COLUMNS FROM `{$mutation_table}` LIKE 'agent_id'", ARRAY_A );
+            if ( ! is_array( $agent_column ) || 'YES' !== (string) $agent_column['Null'] )
+                return new WP_Error( 'mad4b_principal_agent_nullable_unverified', 'Mutation Journal principal migration could not be verified.' );
+        }
 		self::migrate_legacy_candidate_bindings();
 		self::normalize_intent_relation_indexes();
 		self::$physical_status_cache = null;
@@ -1040,11 +1055,12 @@ final class MAD4B_SCP_Schema {
 		foreach ( self::required_durable_columns() as $table => $columns ) foreach ( $columns as $column ) $durable[] = $table . '.' . $column;
 		$indexes = array();
 		foreach ( self::required_durable_indexes() as $table => $required ) foreach ( $required as $name => $unique ) $indexes[] = $table . '.' . $name . ':' . ( $unique ? 'unique' : 'index' );
-		return hash( 'sha256', 'mad4b-schema-v13|' . implode( '|', array_keys( self::tables() ) ) . '|' . implode( '|', self::required_approval_binding_columns() ) . '|' . implode( '|', $durable ) . '|' . implode( '|', $indexes ) );
+		return hash( 'sha256', 'mad4b-schema-v14|' . implode( '|', array_keys( self::tables() ) ) . '|' . implode( '|', self::required_approval_binding_columns() ) . '|' . implode( '|', $durable ) . '|' . implode( '|', $indexes ) );
 	}
 	private static function required_approval_binding_columns() { return array( 'candidate_binding_contract', 'candidate_sha', 'build_fingerprint', 'binding_environment', 'binding_host', 'site_uuid', 'site_profile_revision', 'site_profile_digest', 'bound_at' ); }
 	private static function required_durable_columns() {
 		return array(
+			'mutations' => array( 'mutation_id', 'principal_type', 'agent_id', 'wp_user_id', 'subject_fingerprint', 'created_at' ),
 			'content_jobs' => array( 'job_id', 'site_uuid', 'state', 'stage', 'current_artifact_id', 'job_revision', 'updated_at' ),
 			'content_job_events' => array( 'event_id', 'job_id', 'sequence', 'event_type', 'plan_sha256', 'artifact_id', 'entry_sha256', 'created_at' ),
 			'artifacts' => array( 'artifact_id', 'site_uuid', 'job_id', 'artifact_type', 'version', 'status', 'content_sha256', 'payload_json', 'producer_stage', 'supersedes_artifact_id', 'created_at' ),
@@ -1070,6 +1086,7 @@ final class MAD4B_SCP_Schema {
 	}
 	private static function required_durable_indexes() {
 		return array(
+			'mutations' => array( 'mutation_id' => true, 'principal_created' => false ),
 			'content_jobs' => array( 'job_id' => true ),
 			'content_job_events' => array( 'event_id' => true, 'job_sequence' => true ),
 			'artifacts' => array( 'artifact_id' => true, 'job_type_version' => true ),

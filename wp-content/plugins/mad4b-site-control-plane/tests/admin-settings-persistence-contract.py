@@ -36,14 +36,20 @@ for marker in [
     "$asset_path = MAD4B_SCP_DIR . 'assets/admin-settings-persistence.js';",
     "$asset_version = MAD4B_SCP_VERSION;",
     "$connection_hotpath = in_array( $page, array( 'mad4b-control-plane-connection', 'mad4b-control-plane-chatgpt' ), true );",
-    "if ( ! $connection_hotpath && is_readable( $asset_path ) )",
+    "if ( is_readable( $asset_path ) )",
+    "if ( $connection_hotpath ) {",
     "hash_file( 'sha256', $asset_path )",
     "substr( $content_sha, 0, 12 )",
     "filemtime( $asset_path )",
 ]:
     assert marker in persistence, marker
-asset_hash_guard = persistence.index("if ( ! $connection_hotpath && is_readable( $asset_path ) )")
-assert asset_hash_guard < persistence.index("hash_file( 'sha256', $asset_path )")
+asset_read_guard = persistence.index("if ( is_readable( $asset_path ) )")
+hotpath_guard = persistence.index("if ( $connection_hotpath ) {")
+mtime_call = persistence.index("filemtime( $asset_path )")
+hash_call = persistence.index("hash_file( 'sha256', $asset_path )")
+assert asset_read_guard < hotpath_guard < mtime_call < hash_call
+assert "} else {\n                $content_sha = hash_file( 'sha256', $asset_path );" in persistence
+
 
 for marker in [
     ".mad4b-settings-ajax-form",
@@ -76,7 +82,7 @@ assert "self::boot_admin_actions();" in oauth
 # nonce, governance, or readback failures.
 for marker in [
     'response.status === 400 && trimmedResponse === "0"',
-    "HTMLFormElement.prototype.submit.call(form)",
+    "form.requestSubmit(originalSubmitter)",
     "mad4b_settings_ajax_action_unregistered",
     "mad4b_settings_non_json_response",
     '"Accept": "application/json"',
@@ -85,7 +91,12 @@ for marker in [
 
 assert 'if (response.status === 400 && trimmedResponse === "0")' in client
 sentinel = client.split('if (response.status === 400 && trimmedResponse === "0")', 1)[1].split("var payload;", 1)[0]
-assert "HTMLFormElement.prototype.submit.call(form)" in sentinel
+assert "form.requestSubmit(originalSubmitter)" in sentinel
+assert "form.requestSubmit()" in sentinel
+assert "nativeFallbackForms.add(form)" in sentinel
+assert "controls.forEach(function (control, index) { control.disabled = priorDisabled[index]; });" in sentinel
+assert 'if (typeof form.requestSubmit !== "function")' in sentinel
+assert "HTMLFormElement.prototype.submit.call(form)" not in sentinel
 assert "payload.data" not in sentinel
 
 # Site Profile writes must survive stale persistent Options caches and prove exact
