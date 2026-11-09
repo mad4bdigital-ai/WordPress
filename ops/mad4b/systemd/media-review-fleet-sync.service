@@ -1,0 +1,19 @@
+[Unit]
+Description=MAD4B Central Media Review Policy Inheritance and Fleet Telemetry
+Requires=docker.service
+After=docker.service
+ConditionPathExists=/usr/local/sbin/mad4b-media-review-fleet-sync
+
+[Service]
+Type=oneshot
+ExecCondition=/usr/bin/python3 /usr/local/libexec/mad4b-cpu-admission.py sample
+ExecCondition=/usr/bin/python3 /usr/local/libexec/mad4b-cpu-admission.py admit mad4b-media-review-fleet-sync.service
+ExecStart=/usr/local/sbin/mad4b-media-review-fleet-sync
+TimeoutStartSec=280
+Nice=14
+IOSchedulingClass=idle
+CPUQuota=65%
+CPUWeight=20
+NoNewPrivileges=true
+StandardOutput=journal
+StandardError=journal
