@@ -38,3 +38,28 @@
 @media(max-width:1050px){.mad4b-company-control .mc-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:782px){.mad4b-company-control{margin:14px 10px 30px 0}.mad4b-company-control .mc-hero{padding:20px}.mad4b-company-control .mc-section{padding:19px}.mad4b-company-control .mc-grid,.mad4b-company-control .mc-policy-grid{grid-template-columns:1fr}.mad4b-company-control .mc-summary{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.mad4b-company-control .mc-metric{padding:13px}}
 @media(max-width:420px){.mad4b-company-control .mc-summary{grid-template-columns:1fr 1fr}.mad4b-company-control .mc-metric strong{font-size:17px}}
+
+/* Saved setting and actual outcome must remain distinct even if inherited. */
+.mad4b-company-control .mc-current-state{
+ display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+ gap:0;border:1px solid #d2dfe9;background:#f8fbfd;
+ border-radius:10px;margin:0 0 18px;overflow:hidden
+}
+.mad4b-company-control .mc-current-state>div{padding:13px 15px;min-width:0}
+.mad4b-company-control .mc-current-state>div+div{border-left:1px solid #dae5ed}
+.mad4b-company-control .mc-state-label{display:block;color:#586a7e;font-size:12px;font-weight:650}
+.mad4b-company-control .mc-current-state strong{display:block;color:#173a64;font-size:15px;margin:4px 0}
+.mad4b-company-control .mc-current-state small{display:block;color:#65758b;font-size:12px;overflow-wrap:anywhere}
+.mad4b-company-control .mc-option.is-persisted{border-color:#3b6fa9;background:#f4f9ff}
+.mad4b-company-control .mc-option.is-effective:not(.is-persisted){border-style:dashed;border-color:#93a7bc}
+.mad4b-company-control .mc-option-markers{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-top:10px}
+.mad4b-company-control .mc-marker{font-size:11px;font-weight:650;border-radius:5px;padding:3px 7px;background:#e6edf5;color:#38536c}
+.mad4b-company-control .mc-marker-saved{background:#dbeafc;color:#184e84}
+.mad4b-company-control .mc-marker-effective{background:#e2f1ea;color:#215e43}
+.mad4b-company-control .mc-option:focus-within{outline:2px solid #2469bc;outline-offset:3px}
+.mad4b-company-control .mc-controls button:disabled{opacity:.58;cursor:not-allowed}
+.mad4b-company-control .mc-footnote{max-width:650px}
+@media(max-width:782px){
+ .mad4b-company-control .mc-current-state{grid-template-columns:1fr}
+ .mad4b-company-control .mc-current-state>div+div{border-left:0;border-top:1px solid #dae5ed}
+}
