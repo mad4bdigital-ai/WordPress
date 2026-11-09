@@ -28,11 +28,20 @@ final class MAD4B_SCP_Company_Local_WPCLI {
         $before=MAD4B_SCP_Operational_Integrity::capture();
         if (is_wp_error($before)) return $before;
         $scope=$before['scope']??array();
-        if (($scope['environment']??'')!=='staging' ||
-            ($scope['site_uuid']??'')!== 'e5e64bca-ed62-48d2-b2b3-dff693cd702a' ||
-            home_url()!=='https://tours.dev.mad4b.com' ||
-            wp_get_environment_type()!=='staging')
-            return self::error('central_staging_scope_mismatch');
+        // Read-only site inventory is safe on either exact enrolled Staging or
+        // Production; authorization comes from WP-CLI --user, WP admin cap,
+        // original read-only Core operation and immutable scope readback.
+        // Never bind a reusable adapter to Tours.dev's hostname or UUID.
+        $current_env = class_exists('MAD4B_SCP_Site_Profile')
+            ? MAD4B_SCP_Site_Profile::current_environment() : '';
+        if (!class_exists('MAD4B_SCP_Site_Profile') ||
+            !MAD4B_SCP_Site_Profile::origin_enrolled() ||
+            !in_array($current_env,array('staging','production'),true) ||
+            ($scope['environment']??'')!==$current_env ||
+            ($scope['site_uuid']??'')!==MAD4B_SCP_Site_Profile::site_uuid() ||
+            untrailingslashit(home_url('/'))!==MAD4B_SCP_Site_Profile::site_origin() ||
+            wp_get_environment_type()!==$current_env)
+            return self::error('exact_enrolled_site_scope_mismatch');
         $op=MAD4B_SCP_Operation_Registry::operation(self::OPERATION);
         if (is_wp_error($op) || !is_array($op) ||
             ($op['effect']??null)!=='read_only' ||
@@ -74,7 +83,7 @@ final class MAD4B_SCP_Company_Local_WPCLI {
         return array(
             'contract'=>self::CONTRACT,'operation'=>self::OPERATION,
             'origin'=>home_url(),'site_uuid'=>$scope['site_uuid'],
-            'environment'=>'staging','kind'=>$kind,
+            'environment'=>$current_env,'kind'=>$kind,
             'items_count'=>count($normalized),'items_sha256'=>hash('sha256',$encoded),
             'core_scope_fingerprint'=>$before['fingerprint'],
             'core_read_permission_verified'=>true,

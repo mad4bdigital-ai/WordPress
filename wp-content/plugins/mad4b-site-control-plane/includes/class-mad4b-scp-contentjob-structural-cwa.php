@@ -10,9 +10,16 @@ final class MAD4B_SCP_Structural_Only_CWA_Adapter implements MAD4B_Central_Enric
  private string $job;
  public function __construct(string $job){$this->job=$job;}
  private function facts():array {
-  if(wp_get_environment_type()!=='staging' ||
-    rtrim(home_url(),'/')!=='https://tours.dev.mad4b.com')
-    throw new RuntimeException('structural_cwa_staging_only');
+  // Structural CWA is a bounded central-source operation, NOT a generic
+  // tenant write permission. Bind it to the enrolled site and explicit
+  // local company-code, not a hardcoded hostname that a clone could inherit.
+  if(!class_exists('MAD4B_SCP_Site_Profile') ||
+     !MAD4B_SCP_Site_Profile::origin_enrolled() ||
+     MAD4B_SCP_Site_Profile::current_environment()!=='staging' ||
+     MAD4B_SCP_Site_Profile::current_origin()!==MAD4B_SCP_Site_Profile::site_origin() ||
+     get_option('mad4b_source_profile_company_code_v1','')!=='tours-central' ||
+     !class_exists('MAD4B_Company_Environment_Registry_V2',false))
+    throw new RuntimeException('structural_cwa_source_enrollment_required');
   $qa=MAD4B_SCP_Content_Job_Structural_QA::receipt($this->job);
   if(($qa['state']??'')!=='STRUCTURAL_DOCUMENT_ATTESTED' ||
      ($qa['editorial_review_completed']??true)!==false ||

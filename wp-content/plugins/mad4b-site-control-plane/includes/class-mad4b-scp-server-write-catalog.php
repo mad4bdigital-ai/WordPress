@@ -80,8 +80,11 @@ trait MAD4B_SCP_Server_Write_Catalog {
 			$origin = untrailingslashit( home_url( '/' ) );
 			$site_uuid = MAD4B_SCP_Site_Profile::site_uuid();
 			$binding = get_option( 'mad4b_fleet_adaptive_intake_site_v2', array() );
-			$central = 'https://tours.dev.mad4b.com' === $origin
-				&& class_exists( 'MAD4B_Company_Environment_Registry_V2', false );
+			// Central identity is the exact enrolled local company source role;
+			// never rely on an embedded environment hostname or copied URL.
+			$central = class_exists( 'MAD4B_Company_Environment_Registry_V2', false )
+				&& 'tours-central' === (string) get_option( 'mad4b_source_profile_company_code_v1', '' )
+				&& hash_equals( (string) MAD4B_SCP_Site_Profile::site_origin(), (string) $origin );
 			$company = is_array( $binding )
 				&& ( $binding['origin'] ?? '' ) === $origin
 				&& ( $binding['environment'] ?? '' ) === 'staging'

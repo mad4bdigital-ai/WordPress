@@ -5,13 +5,13 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * Exact MCP protocol behavior certified for the packaged MCP Adapter.
  *
  * Client/vendor identity is deliberately absent from negotiation. The protocol
- * revision and exact packaged Adapter version are the compatibility authority;
+ * revision and observed Adapter transport compatibility are the authority;
  * neither creates WordPress/MAD4B execution authority.
  */
 final class MAD4B_SCP_MCP_Protocol_Profile {
 	const CONTRACT = 'mad4b.mcp-protocol-profile.v1';
 	const CATALOG_CONTRACT = 'mad4b.mcp-protocol-profile-catalog.v1';
-	const CERTIFIED_ADAPTER_VERSION_SOURCE = 'runtime_release_policy.target_adapter_version';
+	const CERTIFIED_ADAPTER_VERSION_SOURCE = 'certified_provider_profile_reference';
 	const MAX_FEATURES = 8;
 	private static $catalog = null;
 
@@ -374,24 +374,24 @@ final class MAD4B_SCP_MCP_Protocol_Profile {
 			return self::$catalog = new WP_Error( 'mad4b_mcp_protocol_catalog_invalid', 'MCP protocol profile catalog contract is invalid.' );
 		}
 		$adapter = isset( $data['certified_adapter'] ) && is_array( $data['certified_adapter'] ) ? $data['certified_adapter'] : array();
-		$release_policy_path = dirname( __DIR__ ) . '/config/runtime-release-policy.json';
-		$provider_profiles_path = dirname( __DIR__ ) . '/config/certified-provider-profiles.json';
-		$release_policy = is_readable( $release_policy_path ) ? json_decode( (string) file_get_contents( $release_policy_path ), true ) : null;
-		$provider_profiles = is_readable( $provider_profiles_path ) ? json_decode( (string) file_get_contents( $provider_profiles_path ), true ) : null;
-		$target_adapter_version = is_array( $release_policy ) && 'mad4b.runtime-release-policy.v1' === ( isset( $release_policy['contract'] ) ? (string) $release_policy['contract'] : '' )
-			? trim( (string) ( isset( $release_policy['target_adapter_version'] ) ? $release_policy['target_adapter_version'] : '' ) ) : '';
-		$catalog_adapter_version = isset( $adapter['version'] ) ? trim( (string) $adapter['version'] ) : '';
-		if ( '' === $target_adapter_version
-			|| '' === $catalog_adapter_version
-			|| ! hash_equals( $target_adapter_version, $catalog_adapter_version )
-			|| self::CERTIFIED_ADAPTER_VERSION_SOURCE !== ( isset( $adapter['version_source'] ) ? (string) $adapter['version_source'] : '' )
-			|| empty( $adapter['exact_package_governed'] ) ) {
-			return self::$catalog = new WP_Error( 'mad4b_mcp_protocol_adapter_binding_invalid', 'MCP protocol catalog is not bound to the canonical runtime release Adapter target.' );
-		}
-		$provider_profile = is_array( $provider_profiles )
-			&& isset( $provider_profiles['providers']['mcp_adapter'][ $target_adapter_version ] )
-			&& is_array( $provider_profiles['providers']['mcp_adapter'][ $target_adapter_version ] )
-			? $provider_profiles['providers']['mcp_adapter'][ $target_adapter_version ] : array();
+        $provider_profiles_path = dirname( __DIR__ ) . '/config/certified-provider-profiles.json';
+        $provider_profiles = is_readable( $provider_profiles_path )
+            ? json_decode( (string) file_get_contents( $provider_profiles_path ), true ) : null;
+        // This catalog release is a documented protocol REFERENCE, never an
+        // installed MCP Adapter minimum/exact-version gate. The runtime tests
+        // its negotiated protocol and installed source separately.
+        $catalog_adapter_version = isset( $adapter['version'] ) ? trim( (string) $adapter['version'] ) : '';
+        if ( '' === $catalog_adapter_version
+            || self::CERTIFIED_ADAPTER_VERSION_SOURCE !== ( isset( $adapter['version_source'] ) ? (string) $adapter['version_source'] : '' )
+            || empty( $adapter['exact_package_governed'] )
+            || ! array_key_exists( 'version_gate', $adapter ) || false !== $adapter['version_gate'] ) {
+            return self::$catalog = new WP_Error( 'mad4b_mcp_protocol_adapter_binding_invalid',
+                'MCP protocol reference is not a reviewed compatibility profile.' );
+        }
+        $provider_profile = is_array( $provider_profiles )
+            && isset( $provider_profiles['providers']['mcp_adapter'][ $catalog_adapter_version ] )
+            && is_array( $provider_profiles['providers']['mcp_adapter'][ $catalog_adapter_version ] )
+            ? $provider_profiles['providers']['mcp_adapter'][ $catalog_adapter_version ] : array();
 		$compatibility = isset( $provider_profile['transport_compatibility'] ) && is_array( $provider_profile['transport_compatibility'] )
 			? $provider_profile['transport_compatibility'] : array();
 		$legacy_versions = isset( $compatibility['legacy_session_revisions'] ) && is_array( $compatibility['legacy_session_revisions'] )

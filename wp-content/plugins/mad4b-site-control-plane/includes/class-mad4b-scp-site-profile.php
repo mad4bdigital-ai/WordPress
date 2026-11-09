@@ -507,7 +507,7 @@ final class MAD4B_SCP_Site_Profile {
 		$home = self::current_origin();
 		$site = function_exists( 'site_url' ) ? self::normalize_origin( site_url( '/' ) ) : $home;
 		// WP-CLI has no HTTPS request context: WordPress site_url() may convert
-		// a configured https:// siteurl to http://. Compare the stored canonical
+		// a configured HTTPS site URL to HTTP. Compare the stored canonical
 		// origin as well, but ONLY in native CLI, never for HTTP/REST requests.
 		// A true siteurl/home change must still fail this identity check.
 		if ( defined( 'WP_CLI' ) && WP_CLI && '' !== $home ) {
