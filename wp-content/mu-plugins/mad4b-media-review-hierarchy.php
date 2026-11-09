@@ -646,7 +646,9 @@ final class MAD4B_Media_Review_Hierarchy_V1 {
             '<span class="mc-eyebrow">MAD4B / COMPANY CONTROL</span>'.
             '<h1>Company Media Control</h1>'.
             '<p>Manage this company’s media review preference and its own ChatGPT connection. Central policy, company authority and publishing permissions are separate.</p>'.
-            '</div><span class="mc-tag">'.esc_html($name).' · '.esc_html($site['site_uuid']).'</span></header>';
+            '</div><span class="mc-tag">'.esc_html(ucwords(str_replace('-',' ',$name))).
+            ' · '.esc_html(ucfirst((string)($profile['environment']??'production'))).
+            '</span></header>';
         if($save_notice==='changed')
             echo '<div class="mc-saved" role="status"><strong>Saved and verified.</strong> The company preference was updated in WordPress and read back successfully. Central policy and OAuth settings are unchanged.</div>';
         elseif($save_notice==='unchanged')
@@ -724,10 +726,15 @@ final class MAD4B_Media_Review_Hierarchy_V1 {
         echo '<div class="mc-guardrails"><div><strong>Independent policy boundaries</strong>'.
             '<p class="mc-muted">Central controls inherited defaults and central operator authority. The company manages only its own review preference. OAuth login, WordPress capabilities, actual media approval and Apply/rollback authorization are checked separately; changing this preference grants none of them.</p>'.
             '</div></div></section>';
-        echo '<div class="mc-grid">';
+        echo '<details class="mc-advanced"><summary>'.
+            '<span>Connection and authority details</span>'.
+            '<small>Company OAuth: '.esc_html($oauth_feature?'Enabled':'Disabled').
+            ' · Expand for settings and diagnostics</small></summary><div class="mc-grid">';
         echo '<section class="mc-section" aria-labelledby="company-auth-heading"><h2 id="company-auth-heading">Company authentication</h2>'.
             '<p class="mc-muted">This site has its own Site Profile and OAuth subject binding, distinct from Tours.dev Central.</p>'.
             '<div class="mc-kv"><span>WordPress admin permission</span><b>Verified for this page; not an OAuth grant</b></div>'.
+            '<div class="mc-kv"><span>Bound site UUID</span><b><code>'.
+                esc_html($site['site_uuid']).'</code></b></div>'.
             '<div class="mc-kv"><span>Site Profile binding</span><b>'.esc_html($profile_bound?'Origin/environment/deployment verified':'Incomplete binding').'</b></div>'.
             '<div class="mc-kv"><span>Site Profile OAuth feature</span><b>'.esc_html($oauth_feature?'Enabled':'Disabled').'</b></div>'.
             '<div class="mc-kv"><span>OAuth resource readiness</span><b>'.esc_html($oauth_resource_ready?'Ready (not proof of live client session)':'Not ready').'</b></div>'.
@@ -748,7 +755,7 @@ final class MAD4B_Media_Review_Hierarchy_V1 {
             '<li>Connect ChatGPT to this company’s MCP endpoint.</li>'.
             '<li>Read current state, plan a local change, then execute under the enrolled company identity.</li></ol>'.
             '<p class="mc-footnote">Photo provenance and license rights are not asserted by this setting.</p>'.
-            '</section></div></div>';
+            '</section></div></details></div>';
     }
     public static function admin_save():void {
         if(!current_user_can('manage_options'))wp_die('Access denied',403);
