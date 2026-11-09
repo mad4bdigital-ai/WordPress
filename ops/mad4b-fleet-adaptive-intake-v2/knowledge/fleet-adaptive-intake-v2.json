@@ -1,0 +1,82 @@
+{
+  "contract": "mad4b.fleet-adaptive-intake-knowledge.v2",
+  "operation": "company.input.adaptive.collect",
+  "scope": [
+    "mad4b-central",
+    "company-staging",
+    "company-production-after-verified-enrollment"
+  ],
+  "goal": "Complete any registered nonsecret MAD4B Ability input through ChatGPT/agent without opening WordPress admin",
+  "trigger": {
+    "states": [
+      "WAITING_INPUT",
+      "INPUT_REQUIRED",
+      "MISSING_SCHEMA_REQUIRED_FIELD",
+      "WAITING_CAPABILITY_SCHEMA"
+    ],
+    "discovery": "Use MAD4B governed operation router to find the exact Ability and schema."
+  },
+  "workflow": [
+    {
+      "ability": "mad4b/fleet-intake-auto",
+      "action": "Choose a verified registered Ability and create bound checkpoint"
+    },
+    {
+      "ability": "mad4b/fleet-intake-plan",
+      "action": "Create checkpoint from an exact Ability name"
+    },
+    {
+      "ability": "mad4b/fleet-intake-save",
+      "action": "Save user-supplied typed nonsecret data using the returned descriptor_sha256; no WordPress UI required"
+    },
+    {
+      "ability": "mad4b/fleet-intake-status",
+      "action": "Read back saved values, schema, site and correlation ID"
+    },
+    {
+      "action": "Original governed executor",
+      "mode": "Separate explicit approval and exact existing host/WordPress route; never infer permission from form completion"
+    }
+  ],
+  "supported_schema_types": [
+    "string",
+    "integer",
+    "number",
+    "boolean",
+    "enum",
+    "date",
+    "date-time",
+    "email",
+    "uri",
+    "object",
+    "array"
+  ],
+  "data_residency": {
+    "storage": "per-site WordPress non-autoload DB option",
+    "encryption": "AES-256-GCM using per-site HKDF key derived from server WordPress salts and registered site identity",
+    "ttl_seconds": 86400,
+    "secret_values_accepted": false,
+    "key_location": "server-side WordPress configuration, never conversation or DB",
+    "secret_handoff": "first-party certified native secret store, currently not proved ready fleet-wide"
+  },
+  "security": {
+    "site_identity_required": true,
+    "administrator_permission_required": true,
+    "first_party_form_optional": true,
+    "agent_may_submit_nonsecret_inputs": true,
+    "original_operation_automatically_executed": false,
+    "requires_existing_write_authorization": true,
+    "prevent_replay": true
+  },
+  "runtime_blockers": [
+    "Production company site UUIDs are absent from current central registry",
+    "ChatGPT WordPress MCP connector session handshake not yet independently verified",
+    "Native CSO Secrets provider is not enabled/certified on all target companies"
+  ],
+  "actor_binding": "Checkpoint can be read/saved only by the same authenticated WordPress user that created it; no cross-user token-only access",
+  "qa": {
+    "central": "passed actor-bound AES-GCM Plan Save Status and synthetic nested schema",
+    "company_staging": "deployment and ability readback verified for ARE and ETG",
+    "mcp": "session handshake not independently verified"
+  }
+}

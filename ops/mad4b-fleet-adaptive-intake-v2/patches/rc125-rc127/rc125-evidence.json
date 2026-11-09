@@ -1,0 +1,9 @@
+{
+  "contract": "mad4b.fleet-rc127-source-delta.v1",
+  "step": "rc125",
+  "source_path": "bootstrap/mad4b-mcp-adapter-mu-bootstrap.php",
+  "source_before_sha256": "4514997e25765f55bb46c04d1a2af426f278369d1a87679bfc6088b710c38f32",
+  "source_after_sha256": "64914093109086c8742449bf8389ce701647edf89eecca229bb0e23b127f2555",
+  "patch_sha256": "c39220c5aa37eac5f1da706e718d177dbc8f1ae86d69192b55d2d02e0ea5d028",
+  "source_build": "fleet-adaptive-mcp-source-rc125"
+}

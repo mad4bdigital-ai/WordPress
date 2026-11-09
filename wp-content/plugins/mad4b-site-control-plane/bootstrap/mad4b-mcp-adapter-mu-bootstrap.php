@@ -486,6 +486,35 @@ if ( $mad4b_mcp_mu_profile_enrolled ) {
 					}
 					if ( $mad4b_mcp_mu_status['critical_class_baseline_ready'] ) {
 						$mad4b_mcp_mu_official_root = realpath( $mad4b_mcp_mu_root );
+						$mad4b_mcp_mu_certified_autoload = static function ( $symbol ) use (
+							$mad4b_mcp_mu_critical_classes,
+							$mad4b_mcp_mu_critical_blobs,
+							$mad4b_mcp_mu_critical_hashes,
+							$mad4b_mcp_mu_root,
+							$mad4b_mcp_mu_official_root,
+							$mad4b_mcp_mu_git_blob_sha1
+							) {
+							// An unrelated provider may prepend an embedded MCP vendor
+							// autoloader. Use the certified first-party symbol map only
+							// while pinning the exact original adapter on MCP requests.
+							$name = ltrim( (string) $symbol, '\\' );
+							if ( ! isset( $mad4b_mcp_mu_critical_classes[ $name ] ) ) return;
+							$rel = $mad4b_mcp_mu_critical_classes[ $name ];
+							$file = realpath( $mad4b_mcp_mu_root . $rel );
+							if ( ! $file || ! $mad4b_mcp_mu_official_root ) return;
+							$prefix = rtrim( wp_normalize_path( $mad4b_mcp_mu_official_root ), '/' ) . '/';
+							if ( 0 !== strpos( wp_normalize_path( $file ), $prefix ) || ! is_readable( $file ) ) return;
+							$blob = (string) ( $mad4b_mcp_mu_critical_blobs[ $rel ] ?? '' );
+							$hash = (string) ( $mad4b_mcp_mu_critical_hashes[ $rel ] ?? '' );
+							$valid = '' !== $blob
+								? preg_match( '/^[a-f0-9]{40}$/D', $blob ) && hash_equals( $blob, $mad4b_mcp_mu_git_blob_sha1( $file ) )
+								: preg_match( '/^[a-f0-9]{64}$/D', $hash ) && hash_equals( $hash, (string) hash_file( 'sha256', $file ) );
+							if ( $valid ) require_once $file;
+						};
+						// Request-scoped autoload precedence, removed immediately
+						// after the 54-class identity and digest verification.
+						spl_autoload_register( $mad4b_mcp_mu_certified_autoload, true, true );
+
 						foreach ( $mad4b_mcp_mu_critical_classes as $mad4b_mcp_mu_critical_symbol => $mad4b_mcp_mu_critical_relative ) {
 							$mad4b_mcp_mu_symbol_kind = isset( $mad4b_mcp_mu_critical_kinds[ $mad4b_mcp_mu_critical_symbol ] ) ? $mad4b_mcp_mu_critical_kinds[ $mad4b_mcp_mu_critical_symbol ] : 'class';
 							if ( ! $mad4b_mcp_mu_symbol_exists( $mad4b_mcp_mu_critical_symbol, $mad4b_mcp_mu_symbol_kind, true ) ) {
@@ -510,6 +539,8 @@ if ( $mad4b_mcp_mu_profile_enrolled ) {
 								break;
 							}
 						}
+						spl_autoload_unregister( $mad4b_mcp_mu_certified_autoload );
+						unset( $mad4b_mcp_mu_certified_autoload );
 						$mad4b_mcp_mu_status['critical_class_set_pinned'] = $mad4b_mcp_mu_status['critical_class_pin_count'] === count( $mad4b_mcp_mu_critical_classes );
 					}
 					$mad4b_mcp_mu_status['canonical_symbols_pinned'] = $mad4b_mcp_mu_status['canonical_symbols_pinned'] && $mad4b_mcp_mu_status['critical_class_set_pinned'];

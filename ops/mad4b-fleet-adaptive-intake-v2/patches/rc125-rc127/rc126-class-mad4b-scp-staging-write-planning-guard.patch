@@ -1,0 +1,68 @@
+--- a/includes/class-mad4b-scp-staging-write-planning-guard.php
++++ b/includes/class-mad4b-scp-staging-write-planning-guard.php
+@@ -44,8 +44,52 @@
+ 		add_filter( 'mad4b_scp_authenticated_subject_context', array( __CLASS__, 'add_remote_planner_scope' ), 60 );
+ 		add_filter( 'mad4b_scp_low_impact_requires_approval', array( __CLASS__, 'planner_approval_exception' ), 110, 4 );
+ 	}
+ 
++
++    /**
++     * Legacy exact Site Profile actor compatibility for pending approval
++     * planning ONLY. The actor is the one that the current verified ChatGPT
++     * OAuth bearer already binds to the enrolled WordPress administrator.
++     * It is NOT a generic service/NHI alias, not a subject rebind, and does
++     * not grant the actor authorization for any target write.
++     *
++     * Separate exact operation grant, original authorization and owner/AI
++     * decision continue to be enforced by the caller and ticket lifecycle.
++     */
++    public static function current_enrolled_oauth_planner_actor( $principal, $actor, $user_id ) {
++        $user_id = absint( $user_id );
++        if ( $user_id < 1 || ! is_array( $principal ) || ! is_array( $actor )
++            || 'oauth' !== (string) ( $principal['subject_type'] ?? '' )
++            || 'oauth2_bearer' !== (string) ( $principal['auth_method'] ?? '' )
++            || 'staging' !== wp_get_environment_type()
++            || ! class_exists( 'MAD4B_SCP_Site_Profile', false )
++            || ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge', false )
++            || ! class_exists( 'MAD4B_SCP_Local_OAuth_Server', false )
++            || ! class_exists( 'MAD4B_SCP_Agent_Registry', false )
++            || ! class_exists( 'MAD4B_SCP_Policy', false )
++            || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()
++            || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is(
++                MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID )
++            || ! MAD4B_SCP_Site_Profile::origin_enrolled()
++            || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment()
++            || ! MAD4B_SCP_Site_Profile::user_is_enrolled( $user_id )
++            || ! MAD4B_SCP_Policy::can_connect_user( $user_id )
++            || 'enabled' !== (string) ( $actor['status'] ?? '' )
++            || (int) ( $actor['wp_user_id'] ?? 0 ) !== $user_id
++            || 'staging' !== (string) ( $actor['environment'] ?? '' )
++            || ! hash_equals(
++                (string) MAD4B_SCP_Site_Profile::agent_slug(),
++                (string) ( $actor['slug'] ?? '' ) ) ) return false;
++        $fingerprint = (string) ( $principal['subject_fingerprint'] ?? '' );
++        if ( ! preg_match( '/^[a-f0-9]{64}$/D', $fingerprint )
++            || ! isset( $actor['id'] ) || (int) $actor['id'] < 1 ) return false;
++        $subject = MAD4B_SCP_Agent_Registry::subject_binding( 'oauth', $fingerprint );
++        return is_array( $subject )
++            && 'enabled' === (string) ( $subject['status'] ?? '' )
++            && (int) ( $subject['agent_id'] ?? 0 ) === (int) $actor['id'];
++    }
++
+ 	public static function govern_registration( $args, $name ) {
+ 		if ( ! is_array( $args ) || self::ABILITY !== (string) $name ) return $args;
+ 		// Registration metadata is an immutable execution-safety contract, not a
+ 		// snapshot of current authority. A site can enroll governed write authority
+@@ -83,9 +127,11 @@
+ 				if ( ! $user || ! user_can( $user, 'manage_options' ) )
+ 					return new WP_Error( 'mad4b_planner_initiator_not_admin', 'The verified OAuth initiator must be an enrolled WordPress administrator.' );
+ 				$initiator = MAD4B_SCP_Agent_Registry::resolve_agent( $principal );
+ 				if ( is_wp_error( $initiator ) ) return $initiator;
+-				if ( ! MAD4B_SCP_Staging_Write_Authority::is_exact_delegated_oauth_agent( $initiator, (int) $user->ID ) )
++				if ( ! MAD4B_SCP_Staging_Write_Authority::is_exact_delegated_oauth_agent( $initiator, (int) $user->ID )
++					&& ! MAD4B_SCP_Staging_Write_Planning_Guard::current_enrolled_oauth_planner_actor(
++						$principal, $initiator, (int) $user->ID ) )
+ 					return new WP_Error( 'mad4b_planner_delegated_agent_mismatch', 'The initiating OAuth Agent must belong to the verified WordPress user.' );
+ 				$permission = MAD4B_SCP_Agent_Registry::exact_grant( (int) $initiator['id'], 'mad4b-write', self::ABILITY, 'core' );
+ 				if ( is_wp_error( $permission ) ) return $permission;
+ 			}

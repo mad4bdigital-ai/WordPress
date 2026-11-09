@@ -45,6 +45,71 @@ final class MAD4B_SCP_Staging_Write_Planning_Guard {
 		add_filter( 'mad4b_scp_low_impact_requires_approval', array( __CLASS__, 'planner_approval_exception' ), 110, 4 );
 	}
 
+
+    /**
+     * Resolve a verified ChatGPT bearer to its enrolled WP administrator.
+     * Only for pending approval planning and bounded Intake checkpoints.
+     * No credential, grant or write execution is created here.
+     */
+    public static function authenticated_enrolled_oauth_user( $principal ) {
+        if ( ! is_array( $principal ) || empty( $principal['authenticated'] )
+            || 'oauth' !== (string) ( $principal['subject_type'] ?? '' )
+            || 'oauth2_bearer' !== (string) ( $principal['auth_method'] ?? '' )
+            || 'mcp' !== (string) ( $principal['origin'] ?? '' )
+            || 'staging' !== wp_get_environment_type()
+            || ! class_exists( 'MAD4B_SCP_OAuth_Subject_User_Bridge', false )
+            || ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge', false )
+            || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()
+            || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( 'mad4b:read' )
+            || ! class_exists( 'MAD4B_SCP_Policy', false )
+            || ! class_exists( 'MAD4B_SCP_Site_Profile', false ) ) return null;
+        $mapped = MAD4B_SCP_OAuth_Subject_User_Bridge::mapped_context();
+        $id = (int) ( $principal['wp_user_id'] ?? 0 );
+        if ( $id < 1 || $id !== get_current_user_id()
+            || ! is_array( $mapped ) || empty( $mapped['authenticated'] )
+            || (int) ( $mapped['wp_user_id'] ?? 0 ) !== $id
+            || ! hash_equals( (string) ( $mapped['subject_fingerprint'] ?? '' ),
+                (string) ( $principal['subject_fingerprint'] ?? '' ) )
+            || ! in_array( 'mad4b:read', $principal['token_scopes'] ?? array(), true )
+            || ! MAD4B_SCP_Policy::can_connect_user( $id )
+            || ! MAD4B_SCP_Site_Profile::user_is_enrolled( $id ) ) return null;
+        $user = get_userdata( $id );
+        return $user && user_can( $user, 'manage_options' ) ? $user : null;
+    }
+
+    public static function current_enrolled_oauth_planner_actor( $principal, $actor, $user_id ) {
+        $user_id = absint( $user_id );
+        if ( $user_id < 1 || ! is_array( $principal ) || ! is_array( $actor )
+            || 'oauth' !== (string) ( $principal['subject_type'] ?? '' )
+            || 'oauth2_bearer' !== (string) ( $principal['auth_method'] ?? '' )
+            || 'staging' !== wp_get_environment_type()
+            || ! class_exists( 'MAD4B_SCP_Site_Profile', false )
+            || ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge', false )
+            || ! class_exists( 'MAD4B_SCP_Local_OAuth_Server', false )
+            || ! class_exists( 'MAD4B_SCP_Agent_Registry', false )
+            || ! class_exists( 'MAD4B_SCP_Policy', false )
+            || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()
+            || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is(
+                MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID )
+            || ! MAD4B_SCP_Site_Profile::origin_enrolled()
+            || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment()
+            || ! MAD4B_SCP_Site_Profile::user_is_enrolled( $user_id )
+            || ! MAD4B_SCP_Policy::can_connect_user( $user_id )
+            || 'enabled' !== (string) ( $actor['status'] ?? '' )
+            || (int) ( $actor['wp_user_id'] ?? 0 ) !== $user_id
+            || 'staging' !== (string) ( $actor['environment'] ?? '' )
+            || ! hash_equals(
+                (string) MAD4B_SCP_Site_Profile::agent_slug(),
+                (string) ( $actor['slug'] ?? '' ) ) ) return false;
+        $fingerprint = (string) ( $principal['subject_fingerprint'] ?? '' );
+        if ( ! preg_match( '/^[a-f0-9]{64}$/D', $fingerprint )
+            || ! isset( $actor['id'] ) || (int) $actor['id'] < 1 ) return false;
+        $subject = MAD4B_SCP_Agent_Registry::subject_binding( 'oauth', $fingerprint );
+        return is_array( $subject )
+            && 'enabled' === (string) ( $subject['status'] ?? '' )
+            && (int) ( $subject['agent_id'] ?? 0 ) === (int) $actor['id'];
+    }
+
 	public static function govern_registration( $args, $name ) {
 		if ( ! is_array( $args ) || self::ABILITY !== (string) $name ) return $args;
 		// Registration metadata is an immutable execution-safety contract, not a
@@ -68,7 +133,28 @@ final class MAD4B_SCP_Staging_Write_Planning_Guard {
 			if ( ! MAD4B_SCP_Policy::can_mutate() ) return new WP_Error( 'mad4b_mutation_disabled', 'Governed write authority is required to create an approval plan.' );
 			if ( ! class_exists( 'MAD4B_SCP_Authorization' ) ) return new WP_Error( 'mad4b_authorization_unavailable', 'MAD4B central authorization is unavailable.' );
 
-			$decision = MAD4B_SCP_Authorization::authorize_mutation( self::ABILITY, 'mad4b-admin', 'core', $input );
+
+            // Exact initiating OAuth user can request a pending ticket only.
+            // Both OAuth actor ownership and a separate original core write
+            // grant must hold before entering the regular NHI authorization.
+            $principal = class_exists( 'MAD4B_SCP_Identity_Context' )
+                ? MAD4B_SCP_Identity_Context::current() : null;
+            if ( is_wp_error( $principal ) ) return $principal;
+            if ( is_array( $principal ) && 'oauth' === (string) ( $principal['subject_type'] ?? '' ) ) {
+                $user = MAD4B_SCP_Staging_Write_Planning_Guard::authenticated_enrolled_oauth_user( $principal );
+                if ( ! $user ) return new WP_Error( 'mad4b_planner_initiator_unverified', 'Exact enrolled OAuth administrator required.' );
+                $actor = MAD4B_SCP_Agent_Registry::resolve_agent( $principal );
+                if ( is_wp_error( $actor ) ) return $actor;
+                if ( ! MAD4B_SCP_Staging_Write_Planning_Guard::current_enrolled_oauth_planner_actor(
+                    $principal, $actor, (int) $user->ID ) )
+                    return new WP_Error( 'mad4b_planner_delegated_agent_mismatch', 'OAuth Agent must belong to the verified WordPress user.' );
+                $permission = MAD4B_SCP_Agent_Registry::exact_grant(
+                    (int) $actor['id'], 'mad4b-write', self::ABILITY, 'core' );
+                if ( is_wp_error( $permission ) ) return $permission;
+            }
+            // approval-plan is a pending-ticket bootstrap on mad4b-write,
+            // never an administrative grant or approval to run the target.
+            $decision = MAD4B_SCP_Authorization::authorize_mutation( self::ABILITY, 'mad4b-write', 'core', $input );
 			return is_wp_error( $decision ) ? $decision : true;
 		};
 

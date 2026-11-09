@@ -1,0 +1,3 @@
+patches/hostinger-mcp-certified-autoload-precedence.patch -whitespace
+patches/company-manager-vps-preferred-route.patch -whitespace
+patches/rc125-rc127/*.patch -whitespace

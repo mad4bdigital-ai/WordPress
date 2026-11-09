@@ -44,6 +44,38 @@ trait MAD4B_SCP_Server_Write_Catalog {
 			&& wp_has_ability( MAD4B_SCP_AI_Approval::ABILITY ) ) {
 			$candidates[] = MAD4B_SCP_AI_Approval::ABILITY;
 		}
+		// MAD4B Fleet Adaptive Intake: exact enrolled original Write abilities.
+		// This list is *catalogue only*: MAD4B Native Write Execute still
+		// independently verifies actor, grant, site scope, schema pin, approval
+		// and the target Ability's permission callback. Do not add arbitrary
+		// agent-proposed Ability names or secrets to this allowlist.
+		if ( class_exists( 'MAD4B_Fleet_Adaptive_Intake_V2', false )
+			&& class_exists( 'MAD4B_SCP_Site_Profile', false )
+			&& function_exists( 'wp_has_ability' )
+			&& MAD4B_SCP_Site_Profile::configured()
+			&& MAD4B_SCP_Site_Profile::origin_enrolled()
+			&& MAD4B_SCP_Site_Profile::site_urls_match_enrollment()
+			&& 'staging' === MAD4B_SCP_Site_Profile::current_environment() ) {
+			$origin = untrailingslashit( home_url( '/' ) );
+			$site_uuid = MAD4B_SCP_Site_Profile::site_uuid();
+			$binding = get_option( 'mad4b_fleet_adaptive_intake_site_v2', array() );
+			$central = 'https://tours.dev.mad4b.com' === $origin
+				&& class_exists( 'MAD4B_Company_Environment_Registry_V2', false );
+			$company = is_array( $binding )
+				&& ( $binding['origin'] ?? '' ) === $origin
+				&& ( $binding['environment'] ?? '' ) === 'staging'
+				&& is_string( $site_uuid ) && '' !== $site_uuid
+				&& ( $binding['site_uuid'] ?? '' ) === $site_uuid;
+			if ( $central || $company ) {
+				foreach ( array(
+					'mad4b/fleet-intake-auto',
+					'mad4b/fleet-intake-plan',
+					'mad4b/fleet-intake-save',
+				) as $intake_ability ) {
+					if ( wp_has_ability( $intake_ability ) ) $candidates[] = $intake_ability;
+				}
+			}
+		}
 		// This one-purpose Ability is available only on the exact enrolled central
 		// Staging host. General mad4b/hub-bulk-enqueue stays unmounted.
 		if ( class_exists( 'MAD4B_Hub_Queue_Site_Health_Enqueue' )
