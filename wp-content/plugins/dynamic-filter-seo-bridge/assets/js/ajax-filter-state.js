@@ -145,11 +145,31 @@
 
     function remember(el) {
         if (!initialValues || initialValues.has(el)) { return; }
-        initialValues.set(el, { html: el.innerHTML, text: el.textContent, href: el.hasAttribute('href') ? el.getAttribute('href') : null, src: el.hasAttribute('src') ? el.getAttribute('src') : null, srcset: el.hasAttribute('srcset') ? el.getAttribute('srcset') : null, gallery: el.hasAttribute('data-etg-dfsb-gallery') ? el.getAttribute('data-etg-dfsb-gallery') : null, backgroundImage: el.style && typeof el.style.backgroundImage !== 'undefined' ? el.style.backgroundImage : null });
+        // A slideshow container may hold an entire Elementor archive. Never
+        // snapshot its HTML or destroy its child nodes when resetting filters.
+        var galleryContainer = el.hasAttribute('data-etg-dfsb-background-source');
+        initialValues.set(el, { html: galleryContainer ? null : el.innerHTML, text: galleryContainer ? null : el.textContent, href: el.hasAttribute('href') ? el.getAttribute('href') : null, src: el.hasAttribute('src') ? el.getAttribute('src') : null, srcset: el.hasAttribute('srcset') ? el.getAttribute('srcset') : null, gallery: el.hasAttribute('data-etg-dfsb-gallery') ? el.getAttribute('data-etg-dfsb-gallery') : null, backgroundImage: el.style && typeof el.style.backgroundImage !== 'undefined' ? el.style.backgroundImage : null });
     }
-    function restoreAttribute(el, name) { if (!initialValues) { return; } var original = initialValues.get(el); if (!original) { return; } var value = original[name]; if (value === null || typeof value === 'undefined') { el.removeAttribute(name); } else { el.setAttribute(name, value); } }
+    function restoreAttribute(el, name) { if (!initialValues) { return; } var original = initialValues.get(el); if (!original) { return; } var value = name === 'data-etg-dfsb-gallery' ? original.gallery : original[name]; if (value === null || typeof value === 'undefined') { el.removeAttribute(name); } else { el.setAttribute(name, value); } }
     function syncSectionVisibility(el) { if (!el || typeof el.closest !== 'function') { return; } var section = el.closest('[data-etg-dfsb-live-section]'); if (!section) { return; } var text = (section.textContent || '').replace(/\s+/g, ' ').trim(); if (text) { section.removeAttribute('hidden'); } else { section.setAttribute('hidden', 'hidden'); } }
-    function restoreElement(el) { if (!initialValues) { return; } var original = initialValues.get(el); if (!original) { return; } el.innerHTML = original.html; restoreAttribute(el, 'href'); restoreAttribute(el, 'src'); restoreAttribute(el, 'srcset'); restoreAttribute(el, 'data-etg-dfsb-gallery'); if (el.style && original.backgroundImage !== null) { el.style.backgroundImage = original.backgroundImage; } el.removeAttribute('data-etg-dfsb-live-content'); el.removeAttribute('data-etg-dfsb-live-html'); if (boundGroups) { boundGroups.delete(el); } syncSectionVisibility(el); }
+    function restoreElement(el) {
+        if (!initialValues) return;
+        var original=initialValues.get(el);
+        if (!original) return;
+        if (el.hasAttribute('data-etg-dfsb-background-source')) {
+            restoreAttribute(el,'data-etg-dfsb-gallery');
+            el.removeAttribute('data-dfsb-media-last-applied');
+            var gallery=[];
+            try { gallery=JSON.parse(original.gallery || '[]'); } catch (error) { gallery=[]; }
+            emitDFSBEvent('dfsb/media-updated',{source:'archive_fallback',target:'gallery',
+                element:el,gallery:gallery,slot:el.getAttribute('data-etg-dfsb-media-slot')||''});
+        } else if (original.html !== null) { el.innerHTML=original.html; }
+        restoreAttribute(el,'href');restoreAttribute(el,'src');restoreAttribute(el,'srcset');
+        if(el.style && original.backgroundImage !== null)el.style.backgroundImage=original.backgroundImage;
+        el.removeAttribute('data-etg-dfsb-live-content');el.removeAttribute('data-etg-dfsb-live-html');
+        if(boundGroups)boundGroups.delete(el);
+        if(!el.hasAttribute('data-etg-dfsb-background-source'))syncSectionVisibility(el);
+    }
     function elementGroup(el) { var own = (el.getAttribute('data-etg-dfsb-group') || '').trim(); if (own) { return own; } if (typeof el.closest === 'function') { var parent = el.closest('[data-etg-dfsb-group]'); if (parent) { return (parent.getAttribute('data-etg-dfsb-group') || '').trim(); } } return 'auto'; }
     function elementsFor(selector, key) { var auto = autoGroupKey(); return Array.prototype.filter.call(document.querySelectorAll(selector), function (el) { var group = elementGroup(el); if (!group || group === 'auto') { return !!auto && auto === key; } return group === key; }); }
 
