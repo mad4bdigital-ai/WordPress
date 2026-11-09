@@ -490,6 +490,11 @@ final class MAD4B_Media_Review_Hierarchy_V1 {
         if(!is_file($path))return;
         wp_enqueue_style('mad4b-company-media-control',
             content_url($relative),[],(string)filemtime($path));
+        $js_relative='mu-plugins/assets/mad4b-company-media-control.js';
+        $js_path=WP_CONTENT_DIR.'/'.$js_relative;
+        if(is_file($js_path))
+            wp_enqueue_script('mad4b-company-media-control',
+                content_url($js_relative),[],(string)filemtime($js_path),true);
     }
     public static function menu():void {
         if(self::central()){
@@ -557,13 +562,47 @@ final class MAD4B_Media_Review_Hierarchy_V1 {
         $e=self::effective();
         $site=self::site();
         $inherited=self::inherited();
+        // Exact persistent value; do not confuse the inherited effective
+        // strategy with the company's selected/saved radio option.
+        $stored_option=get_option(self::LOCAL_OPTION,null);
+        $stored_exists=$stored_option!==null;
+        $stored_valid=is_array($stored_option)
+            &&($stored_option['contract']??'')===self::CONTRACT
+            &&hash_equals((string)$site['site_uuid'],
+                (string)($stored_option['site_uuid']??''))
+            &&self::normalize_mode($stored_option['mode']??'',true)!==''
+            &&is_int($stored_option['revision']??null)
+            &&$stored_option['revision']>=0;
+        $stored_consistent=!$stored_exists||($stored_valid
+            &&($stored_option['mode']??'')===$e['company_local_override']
+            &&(int)$stored_option['revision']===(int)$e['company_revision']);
+        $ready=!empty($e['policy_ready'])&&$stored_consistent
+            &&(!$stored_exists||$stored_valid);
+        $stored_when=$stored_valid
+            ?(string)($stored_option['updated_at']??''):'';
+        $stored_when_utc=$stored_when!==''&&strtotime($stored_when)!==false
+            ?gmdate('Y-m-d H:i',strtotime($stored_when)).' UTC':'Not recorded';
+        $stored_actor_raw=$stored_valid
+            ?(string)($stored_option['updated_by']??'unknown'):'Not set';
+        $actors=['authorized_host_wpcli'=>'Authorized host WP-CLI',
+            'company_admin'=>'Company WordPress administrator',
+            'unknown'=>'Actor not recorded','Not set'=>'No company save recorded'];
+        $stored_actor=$actors[$stored_actor_raw]??'Recorded operator: '.$stored_actor_raw;
         $jobs=self::media_queue_snapshot();
         $applied=self::applied_media_snapshot();
         $profile=class_exists('MAD4B_SCP_Site_Profile',false)
             ?MAD4B_SCP_Site_Profile::status():[];
         $oauth=class_exists('MAD4B_SCP_OAuth_Resource_Bridge',false)
             ?MAD4B_SCP_OAuth_Resource_Bridge::runtime_identity_status():[];
-        $mcp_read=!empty($profile['oauth_enabled'])&&!empty($oauth['effective']);
+        $profile_bound=!empty($profile['configured'])
+            &&!empty($profile['origin_match'])
+            &&!empty($profile['environment_match'])
+            &&!empty($profile['deployment_binding_match']);
+        $oauth_feature=class_exists('MAD4B_SCP_Site_Profile',false)
+            &&MAD4B_SCP_Site_Profile::oauth_enabled();
+        // Resource readiness is NOT proof of an OAuth client session.
+        $oauth_resource_ready=$oauth_feature&&!empty($oauth['effective']);
+        $mcp_read=$oauth_resource_ready;
         $mcp_write=$mcp_read
             &&class_exists('MAD4B_SCP_Site_Profile',false)
             &&MAD4B_SCP_Site_Profile::governed_write_ready()
@@ -587,23 +626,38 @@ final class MAD4B_Media_Review_Hierarchy_V1 {
             ?number_format_i18n((int)$jobs['media_jobs_waiting_review']):'—';
         $applied_value=!empty($applied['ready'])
             ?number_format_i18n((int)$applied['applied_tour_families']):'—';
-        $mcp_label=$mcp_write?'Read + governed write':($mcp_read?'Read connected':'Connection required');
+        $mcp_label=$mcp_write?'Eligible for OAuth-governed write'
+            :($mcp_read?'OAuth server ready; client not verified here':'Not ready');
+        $save_notice='';
+        $notice=isset($_GET['media_notice'])&&is_string($_GET['media_notice'])
+            ?sanitize_key(wp_unslash($_GET['media_notice'])):'';
+        $notice_sig=isset($_GET['media_notice_token'])
+            &&is_string($_GET['media_notice_token'])
+            ?sanitize_text_field(wp_unslash($_GET['media_notice_token'])):'';
+        if(in_array($notice,['changed','unchanged'],true)&&$notice_sig!==''
+            &&wp_verify_nonce($notice_sig,
+                'mad4b_media_policy_notice_'.$e['site_uuid'].'_'.
+                $e['company_revision'].'_'.$e['company_local_override'].'_'.$notice))
+            $save_notice=$notice;
         $settings_url=admin_url('admin.php?page=mad4b-control-plane-site-profile');
         $connection_url=admin_url('admin.php?page=mad4b-control-plane-connection');
-        $saved=isset($_GET['saved'])&&is_string($_GET['saved'])
-            &&sanitize_key(wp_unslash($_GET['saved']))==='1';
+
         echo '<div class="wrap mad4b-company-control"><header class="mc-hero"><div>'.
             '<span class="mc-eyebrow">MAD4B / COMPANY CONTROL</span>'.
             '<h1>Company Media Control</h1>'.
             '<p>Manage this company’s media review preference and its own ChatGPT connection. Central policy, company authority and publishing permissions are separate.</p>'.
             '</div><span class="mc-tag">'.esc_html($name).' · '.esc_html($site['site_uuid']).'</span></header>';
-        if($saved)echo '<div class="mc-saved" role="status">Company review preference saved. Central policy and remote OAuth permissions were not changed.</div>';
+        if($save_notice==='changed')
+            echo '<div class="mc-saved" role="status"><strong>Saved and verified.</strong> The company preference was updated in WordPress and read back successfully. Central policy and OAuth settings are unchanged.</div>';
+        elseif($save_notice==='unchanged')
+            echo '<div class="mc-saved" role="status"><strong>No changes needed.</strong> This value already matches the company database setting.</div>';
+        if(!$ready)echo '<div class="notice notice-error inline" role="alert"><p><strong>Policy readback failed.</strong> A stored option or central policy does not match this site. Editing is blocked until the source is reconciled.</p></div>';
         echo '<div class="mc-summary" aria-label="Current media review overview">';
         foreach([
             [$mode_label,'Effective review strategy', $source_label],
             [$labels[$inherited_mode]??$inherited_mode,'Inherited default','Read-only here'],
-            [$applied_value,'Tour families with Apply receipts','Audit-based, not a new publish'],
-            [$jobs_value,'Media Content Jobs awaiting review','Bounded queue readback']
+            [$applied_value,'Tours with Apply receipts','Does not certify frontend or image origin'],
+            [$jobs_value,'Media Jobs awaiting review',!empty($jobs['bounded_to_first_100_jobs'])?'From first 100 jobs only':'Job ledger readback']
         ] as $metric){
             echo '<div class="mc-metric"><span>'.esc_html($metric[1]).'</span>'.
                 '<strong>'.esc_html((string)$metric[0]).'</strong>'.
@@ -614,11 +668,27 @@ final class MAD4B_Media_Review_Hierarchy_V1 {
             '<div class="mc-section-header"><div><h2 id="company-review-heading">Review strategy for this company</h2>'.
             '<p class="mc-muted">Your preference changes only this site’s review workflow; it never modifies the central administrator’s policy or OAuth permissions.</p></div>'.
             '<span class="mc-pill">Company revision '.esc_html((string)($e['company_revision']??0)).'</span></div>';
-        echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
+        echo '<div class="mc-current-state" aria-label="Live saved configuration">'.
+            '<div><span class="mc-state-label">Saved company selection (WordPress DB)</span>'.
+            '<strong>'.esc_html($stored_valid?($labels[$mode]??$mode):($stored_exists?'Invalid stored value':'Not yet saved — default inheritance')).'</strong>'.
+            '<small>'.esc_html($stored_valid?'Stored as '.$mode.' · revision '.(int)$stored_option['revision']:'No valid company override record').'</small></div>'.
+            '<div><span class="mc-state-label">Effective workflow now</span>'.
+            '<strong>'.esc_html($mode_label).'</strong>'.
+            '<small>'.esc_html($source_label.' · central revision '.(int)$e['central_revision']).'</small></div>'.
+            '<div><span class="mc-state-label">Last saved</span>'.
+            '<strong>'.esc_html($stored_when_utc).'</strong>'.
+            '<small>'.esc_html($stored_actor).'</small></div></div>';
+        echo '<form id="mad4b-media-company-form" data-persisted-mode="'.esc_attr($mode).'"'.
+            ' data-inherited-mode="'.esc_attr($inherited_mode).'" method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
         wp_nonce_field('mad4b_media_policy_local');
         echo '<input type="hidden" name="action" value="mad4b_media_review_settings">'.
             '<input type="hidden" name="operation" value="local">'.
-            '<fieldset class="mc-policy-grid"><legend class="screen-reader-text">Company media review preference</legend>';
+            '<input type="hidden" name="expected_site_uuid" value="'.esc_attr($e['site_uuid']).'">'.
+            '<input type="hidden" name="expected_company_revision" value="'.esc_attr((string)$e['company_revision']).'">'.
+            '<input type="hidden" name="expected_policy_fingerprint" value="'.esc_attr($e['policy_fingerprint']).'">'.
+            '<input type="hidden" name="expected_saved_mode" value="'.esc_attr($mode).'">'.
+            '<fieldset class="mc-policy-grid"'.($ready?'':' disabled').
+            '><legend class="screen-reader-text">Company media review preference</legend>';
         $choices=[
             'inherit'=>['Use inherited default',
                 'Follow the central standard for this company. Currently: '.($labels[$inherited_mode]??$inherited_mode).'.'],
@@ -630,29 +700,42 @@ final class MAD4B_Media_Review_Hierarchy_V1 {
                 'A company reviewer decides after inspecting image evidence.']
         ];
         foreach($choices as $value=>$copy){
-            echo '<label class="mc-option"><input type="radio" name="mode" value="'.
+            $is_saved=$stored_valid&&$mode===$value;
+            $is_effective=$effective===$value;
+            $is_inherit=$mode==='inherit'&&$value==='inherit';
+            echo '<label class="mc-option'.($is_saved?' is-persisted':'').
+                ($is_effective?' is-effective':'').'" data-policy-mode="'.esc_attr($value).'">'.
+                '<input type="radio" name="mode" value="'.
                 esc_attr($value).'" '.checked($mode,$value,false).' required>'.
                 '<span class="mc-choice-body"><b>'.esc_html($copy[0]).'</b>'.
-                '<small>'.esc_html($copy[1]).'</small></span></label>';
+                '<small>'.esc_html($copy[1]).'</small>'.
+                '<span class="mc-option-markers">';
+            if($is_saved)echo '<span class="mc-marker mc-marker-saved">Saved in database</span>';
+            elseif(!$stored_exists&&$is_inherit)echo '<span class="mc-marker">Default (not saved)</span>';
+            if($is_effective)echo '<span class="mc-marker mc-marker-effective">Effective now</span>';
+            echo '</span></span></label>';
         }
         echo '</fieldset><div class="mc-controls">'.
-            '<button type="submit" class="button button-primary">Save company preference</button>'.
-            '<span class="mc-footnote">Current preference: '.esc_html($labels[$mode]??$mode).
-            ' · Central revision '.esc_html((string)($e['central_revision']??0)).'</span></div></form>';
+            '<button id="mad4b-media-save" type="submit" class="button button-primary"'.
+                ($ready?'':' disabled').'>Save company preference</button>'.
+            '<span id="mad4b-media-unsaved" class="mc-footnote" role="status" aria-live="polite">'.
+                esc_html($stored_valid?'Database selection loaded. No unsaved changes.':'Verify the selected preference before saving.').
+            '</span></div></form>';
         echo '<div class="mc-guardrails"><div><strong>Independent policy boundaries</strong>'.
             '<p class="mc-muted">Central controls inherited defaults and central operator authority. The company manages only its own review preference. OAuth login, WordPress capabilities, actual media approval and Apply/rollback authorization are checked separately; changing this preference grants none of them.</p>'.
             '</div></div></section>';
         echo '<div class="mc-grid">';
         echo '<section class="mc-section" aria-labelledby="company-auth-heading"><h2 id="company-auth-heading">Company authentication</h2>'.
             '<p class="mc-muted">This site has its own Site Profile and OAuth subject binding, distinct from Tours.dev Central.</p>'.
-            '<div class="mc-kv"><span>WordPress administrator</span><b>Active in this page</b></div>'.
-            '<div class="mc-kv"><span>Site Profile</span><b>'.esc_html(!empty($profile['configured'])?'Enrolled':'Not enrolled').'</b></div>'.
-            '<div class="mc-kv"><span>ChatGPT OAuth</span><b>'.esc_html($mcp_read?'Configured':'Not ready').'</b></div>'.
+            '<div class="mc-kv"><span>WordPress admin permission</span><b>Verified for this page; not an OAuth grant</b></div>'.
+            '<div class="mc-kv"><span>Site Profile binding</span><b>'.esc_html($profile_bound?'Origin/environment/deployment verified':'Incomplete binding').'</b></div>'.
+            '<div class="mc-kv"><span>Site Profile OAuth feature</span><b>'.esc_html($oauth_feature?'Enabled':'Disabled').'</b></div>'.
+            '<div class="mc-kv"><span>OAuth resource readiness</span><b>'.esc_html($oauth_resource_ready?'Ready (not proof of live client session)':'Not ready').'</b></div>'.
             '<div class="mc-kv"><span>MCP company operations</span><b>'.esc_html($mcp_label).'</b></div>'.
             '<div class="mc-kv"><span>Site write feature</span><b>'.
                 esc_html(class_exists('MAD4B_SCP_Site_Profile',false)
                     &&MAD4B_SCP_Site_Profile::write_enabled()?'Enabled':'Not enabled').'</b></div>';
-        if(!$mcp_read)echo '<p class="mc-pill mc-pill-warning" role="status">The company MCP connection is not ready. No OAuth grant has been assumed.</p>';
+        if(!$mcp_read)echo '<p class="mc-pill mc-pill-warning" role="status">Company OAuth is not ready. WordPress and host access are independent of MCP authentication; no verified ChatGPT client session is claimed.</p>';
         echo '<div class="mc-actions"><a class="mc-link" href="'.esc_url($settings_url).'">Open Site Profile</a>'.
             '<a class="mc-link" href="'.esc_url($connection_url).'">Connection &amp; OAuth diagnostics</a></div></section>';
         echo '<section class="mc-section" aria-labelledby="central-boundary-heading"><h2 id="central-boundary-heading">Who controls what?</h2>'.
@@ -681,11 +764,55 @@ final class MAD4B_Media_Review_Hierarchy_V1 {
             if(self::central()||!self::site())
                 wp_die('Company Site Profile required',403);
             check_admin_referer('mad4b_media_policy_local');
-            $r=self::mutate_local(sanitize_key((string)($_POST['mode']??'')));
+            // Prevent an old tab from overwriting a newer company or central
+            // policy. A changed central revision also makes the plan stale.
+            $before=self::effective();
+            $stored=get_option(self::LOCAL_OPTION,null);
+            if(!$before['policy_ready']
+               ||($stored!==null&&(!is_array($stored)
+                   ||($stored['contract']??'')!==self::CONTRACT
+                   ||($stored['site_uuid']??'')!==$before['site_uuid']
+                   ||self::normalize_mode($stored['mode']??'',true)===''
+                   ||!is_int($stored['revision']??null))))
+                wp_die('Stored company policy is invalid or the central policy is not synchronized. Reconcile the source before changing settings.','Media policy readback error',['response'=>409]);
+            $posted_revision=(string)wp_unslash($_POST['expected_company_revision']??'');
+            $posted_site=(string)wp_unslash($_POST['expected_site_uuid']??'');
+            $posted_fp=(string)wp_unslash($_POST['expected_policy_fingerprint']??'');
+            $posted_mode=sanitize_key((string)wp_unslash($_POST['expected_saved_mode']??''));
+            $selected=sanitize_key((string)wp_unslash($_POST['mode']??''));
+            if($posted_revision===''||!ctype_digit($posted_revision)
+               ||!preg_match('/^[a-f0-9]{64}$/D',$posted_fp)
+               ||!is_string($posted_site)
+               ||!hash_equals((string)$before['site_uuid'],$posted_site)
+               ||(int)$posted_revision!==(int)$before['company_revision']
+               ||!hash_equals((string)$before['policy_fingerprint'],$posted_fp)
+               ||$posted_mode!==$before['company_local_override'])
+                wp_die('This company or central setting changed since you opened the page. Reload the page to review the latest saved preference before saving.','Outdated policy form',['response'=>409]);
+            $changed=$selected!==$before['company_local_override'];
+            $r=self::mutate_local($selected);
             $target=admin_url('tools.php?page=mad4b-company-media-review');
+            if(!is_wp_error($r)){
+                $after=get_option(self::LOCAL_OPTION,null);
+                if(($r['site_uuid']??'')!==$before['site_uuid']
+                   ||($r['company_local_override']??'')!==$selected
+                   ||(int)($r['company_revision']??-1)!==
+                      (int)$before['company_revision']+($changed?1:0)
+                   ||($changed&&(!is_array($after)
+                       ||($after['mode']??'')!==$selected
+                       ||(int)($after['revision']??-1)!==(int)$r['company_revision'])))
+                    $r=self::fail('mad4b_media_company_save_readback_mismatch');
+            }
+            if(!is_wp_error($r)){
+                $notice=$changed?'changed':'unchanged';
+                $signature=wp_create_nonce(
+                    'mad4b_media_policy_notice_'.$r['site_uuid'].'_'.
+                    $r['company_revision'].'_'.$r['company_local_override'].'_'.$notice);
+                $target=add_query_arg(['media_notice'=>$notice,
+                    'media_notice_token'=>$signature],$target);
+            }
         }else wp_die('Invalid settings operation',400);
         if(is_wp_error($r))wp_die(esc_html($r->get_error_code()),'Media policy error',['response'=>409]);
-        wp_safe_redirect(add_query_arg('saved','1',$target),303);exit;
+        wp_safe_redirect($target,303);exit;
     }
     public static function routes():void {
         register_rest_route('mad4b-company-management/v1','/media-review/fleet',[
