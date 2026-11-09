@@ -1,0 +1,9 @@
+{
+  "contract": "mad4b.fleet-rc127-source-delta.v1",
+  "step": "rc126",
+  "source_path": "includes/class-mad4b-scp-staging-write-planning-guard.php",
+  "source_before_sha256": "4b9ea0118c3f8ce89354dbe45e00da653e0e2be265ebe7abd9f2ac1403e46838",
+  "source_after_sha256": "a712787aefe40b4cd41f7a06a6c4cebf9424a3f106a464b780db5367f3fb11cb",
+  "patch_sha256": "69b82af3ab2f295096068953d838ff131b4f7dba3a24a8490c000c3bd72915b1",
+  "source_build": "fleet-adaptive-oauth-planner-rc126"
+}

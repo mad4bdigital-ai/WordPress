@@ -90,3 +90,19 @@ The MU plugin 321-mad4b-central-preferred-route.php registers authenticated read
 Live acceptance: registered ETG/ARE Staging each return VPS Client MCP Cross-SSH as preferred, Center Staging returns local WP-CLI, production scopes with missing canonical Site UUID return WAITING_ENROLLED_SITE_IDENTITY. Original VPS Client identity readback PASS for both Staging companies; 0 writes, 0 grants, 0 generated 313 receipts. Anonymous central REST returned 401. A 10-minute refresh timer is active on the VPS.
 
 This routing module is intended to be generalized to new companies by Company Environment Registry enrollment and Original Host Scope enrollment, with no per-company code changes. It must never fabricate site IDs or compensate for missing OAuth approval by impersonating a WordPress user with SSH.
+
+## rc.125–rc.127 tested-source reconciliation — 2026-11-09
+
+The GitHub feature branch and live 0.4.0-rc.127 source have independent development: 707 identical, 131 different and 107 missing files relative to the 945-file live inventory; the branch has over 1,000 extra files. Wholesale replacement would delete functionality. The reviewed live fixes have therefore been ported selectively into the three tracked source files, retaining unrelated changes.
+
+1. rc.125: MCP provider class pinning temporarily prepends a verified/hash-checked official adapter autoloader, then unregisters it immediately. No login or MCP access bypass.
+2. rc.126: the live enrolled OAuth bearer/client, mapped administrator, current Site Profile and exact OAuth subject must match the pending-ticket initiator; the write-server grant and original authorization are still required.
+3. rc.127: only three Adaptive Intake operations can enter the delegated-user write path on Staging: fleet-intake-plan, fleet-intake-auto and fleet-intake-save, and only after an exact approved current candidate-bound, one-time ticket. Other write tools retain the existing admin requirement.
+
+Exact tested file deltas and SHA-256 manifests are under patches/rc125-rc127. qa/rc127-source-reconciliation-test.py checks 15 source invariants and reapplies all three exact patches. These source ports do not rename the divergent Git branch as an actual rc.127 release or claim a full inventory reconciliation.
+
+ETG Staging 0.4.0-rc.127 passed end-to-end ChatGPT Approval Plan, AI approval, governed Intake Plan and Save, readback of three synthetic nonsecret values, AES-256-GCM at-rest envelope, and rejection of reused approval tickets. No underlying Skills/Content operation ran, no production sites changed, and a 305-to-313 receipt was not issued. Live report: /opt/mad4b-company-provisioning/reports/etg-intake-chatgpt-e2e-20261109.json
+
+ARE Staging already has rc.127 but still has six missing write grants and two stale grants, no effective candidate binding, and no Write Authority. The live ARE ChatGPT connector returned an internal error even for site_info; original pinned Cross-SSH WP-CLI readback worked. The ARE Intake write test is blocked pending its original OAuth/grant and connector reconciliation, not a reason to create grants using raw SSH.
+
+Completed branch QA: 1,391 tracked PHP files syntax PASS, four hermetic governance tests PASS, 15 source invariants PASS, and three live-source patch transitions apply cleanly with expected SHA. No production or credentials changed by repository reconciliation.
