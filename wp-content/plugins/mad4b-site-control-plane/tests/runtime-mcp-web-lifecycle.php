@@ -71,7 +71,24 @@ if ( '0.6.1' !== ( isset( $after['adapter_runtime_version'] ) ? (string) $after[
 
 $registrations = MAD4B_SCP_Servers::registration_status();
 foreach ( MAD4B_SCP_Servers::expected_server_ids() as $server_id ) {
-	if ( empty( $registrations[ $server_id ]['registered'] ) ) $fail( $server_id . ' not registered after web rest_api_init' );
+	if ( empty( $registrations[ $server_id ]['registered'] ) ) {
+    // Surface bounded source/descriptor evidence, not HTTP credentials or
+    // tenant secrets. Keep the physical registration requirement fail-closed.
+    $record = isset( $registrations[ $server_id ] ) && is_array( $registrations[ $server_id ] )
+        ? $registrations[ $server_id ] : array();
+    $descriptor = is_array( $record['capability_descriptor_evidence'] ?? null )
+        ? $record['capability_descriptor_evidence'] : array();
+    $blockers = array_slice( array_values( array_filter(
+        (array) ( $descriptor['blockers'] ?? array() ), 'is_string'
+    ) ), 0, 8 );
+    $fail( $server_id . ' not registered after web rest_api_init: '
+        . wp_json_encode( array(
+            'registration_error' => (string) ( $record['error'] ?? '' ),
+            'requested_tool_count' => (int) ( $record['requested_tool_count'] ?? 0 ),
+            'descriptor_ready' => ! empty( $descriptor['ready'] ),
+            'descriptor_blockers' => $blockers,
+        ) ) );
+}
 	if ( ! empty( $registrations[ $server_id ]['error'] ) ) $fail( $server_id . ' registration error: ' . $registrations[ $server_id ]['error'] );
 }
 
