@@ -187,7 +187,7 @@ def main() -> int:
         by_file[source] = digest
     if (listed and len(by_file) == surface_record.get("file_count")
         and len(listed) == surface_record.get("symbol_count")):
-        material = "".join(f"{name}={by_file[name]}\\n" for name in sorted(by_file))
+        material = "".join(f"{name}={by_file[name]}\n" for name in sorted(by_file))
         expected_tree = hashlib.sha256(material.encode("utf-8")).hexdigest()
         if surface_record.get("tree_sha256") != expected_tree:
             raise SystemExit(
