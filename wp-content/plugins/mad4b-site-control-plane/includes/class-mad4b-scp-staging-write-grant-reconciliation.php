@@ -64,6 +64,13 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
             'mad4b/content-job-create' => 'core',
             'mad4b/content-job-transition' => 'core',
             'mad4b/content-job-cancel' => 'core',
+            // The first-party core Abilities service routes update-post through
+            // Mutation_Manager::execute_post_update. Exact edit_post, modified-
+            // GMT CAS, publication capability, Brand Core review, managed
+            // publication-acceptance, rollback envelope and readback remain
+            // mandatory. This authorizes only eligibility for an exact grant,
+            // never an edit, publish action or standing approval.
+            'mad4b/content-update-post' => 'core',
 
 			// Feature 007 core mutation abilities are part of the reviewed governed
 			// write universe and resolve to the bundled core provider. Keep this

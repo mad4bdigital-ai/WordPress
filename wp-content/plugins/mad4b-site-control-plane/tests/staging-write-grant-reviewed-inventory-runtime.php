@@ -64,6 +64,25 @@ verify_grants( is_string( $content_jobs_source )
     && false !== strpos( $content_jobs_source, "'content_job_transition_cas_failed'" )
     && false !== strpos( $content_jobs_source, "'blind_retry_allowed' => false" ),
     'ContentJob source must keep operational fence, revision CAS and no blind retry.' );
+// Content update is source-owned by the bundled core Abilities service,
+// and the original mutation manager enforces post-specific CAS, permission,
+// brand review, publication acceptance and a verified recovery envelope.
+$registration = file_get_contents( dirname( __DIR__ ) . '/includes/trait-mad4b-scp-abilities-registration.php' );
+$abilities_source = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-abilities.php' );
+$mutation_source = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-mutation-manager.php' );
+verify_grants( ( $allowed['mad4b/content-update-post'] ?? '' ) === 'core'
+    && false !== strpos( $registration, "'mad4b/content-update-post'" )
+    && false !== strpos( $registration, "'expected_modified_gmt'" )
+    && false !== strpos( $registration, "'edit_post'" )
+    && false !== strpos( $abilities_source, 'MAD4B_SCP_Mutation_Manager::execute_post_update' )
+    && false !== strpos( $mutation_source, 'hash_equals( (string) $post->post_modified_gmt, $expected )' )
+    && false !== strpos( $mutation_source, "'mad4b_cannot_publish'" )
+    && false !== strpos( $mutation_source, 'MAD4B_SCP_Brand_Core_Control_Loop::publication_preflight' )
+    && false !== strpos( $mutation_source, 'verify_publication_transition' )
+    && false !== strpos( $mutation_source, 'consume_publication_acceptance' )
+    && false !== strpos( $mutation_source, 'rollback_dynamic_publication_transition' )
+    && false !== strpos( $mutation_source, 'verify_post_update' ),
+    'Exact core content-update-post eligibility requires the original CAS, publication, readback and rollback guards.' );
 $reviewed_jobs = array(
     'mad4b/content-job-create' => "'create_job'",
     'mad4b/content-job-transition' => "'transition_job'",
@@ -117,6 +136,8 @@ verify_grants( $allowed === array_replace( $allowed, array() )
     'Provider policy remains finite and unique.' );
 $GLOBALS['test_env'] = 'production';
 $production = $c::allowed_ability_providers();
+verify_grants( ( $production['mad4b/content-update-post'] ?? '' ) === 'core',
+    'Production post editing remains exact-grant and exact-ticket controlled.' );
 foreach ( array_keys( $reviewed_jobs ) as $ability ) {
     verify_grants( ( $production[ $ability ] ?? '' ) === 'core',
         'Production ContentJob eligibility still requires the same exact ticket and NHI: ' . $ability );
