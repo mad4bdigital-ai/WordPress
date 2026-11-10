@@ -62,8 +62,15 @@ class ReceiptOnlyProviderTests(unittest.TestCase):
             self.assertIn('receipt-reconcile',argv)
             self.assertNotIn('apply',argv)
             self.assertEqual(len(client.command_sha256(op,'b'*64)),64)
-            # Not enrolled in the installed active first-party registry.
-            self.assertNotIn(op,registry.Registry(INSTALLED).manifests)
+            # A source-only candidate can be tested both before and after
+            # independent First-Party registration of its reviewed SHA.
+            installed=registry.Registry(INSTALLED)
+            self.assertIn('company.code.release',installed.manifests)
+            self.assertIn('plugin.license.activate',installed.manifests)
+            if op in installed.manifests:
+                self.assertEqual(installed.resolve(op),client.resolve(op))
+                self.assertEqual(installed.command_sha256(op,'b'*64),
+                                 client.command_sha256(op,'b'*64))
             # Tampering a pinned provider byte fails the authoritative loader.
             (root/'receipt-reconcile-v1/host_handler.py').write_text('tampered')
             with self.assertRaisesRegex(registry.RegistryDenied,'PROVIDER_COMPONENT_DRIFT'):
