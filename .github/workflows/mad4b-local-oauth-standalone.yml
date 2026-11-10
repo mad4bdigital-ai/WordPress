@@ -296,6 +296,12 @@ jobs:
 
       - name: Prove dynamic projection admission through real OAuth and tools/call
         shell: bash
+        env:
+          # This test dispatches MCP requests via rest_do_request() inside
+          # WP-CLI; opt in only for this in-process MCP acceptance fixture.
+          # Normal WP-CLI remains route-only, and independent HTTP acceptance
+          # below exercises the real request-target selection unchanged.
+          MAD4B_SCP_MCP_CLI_REQUEST: '1'
         run: |
           set -euo pipefail
           root="$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests"
