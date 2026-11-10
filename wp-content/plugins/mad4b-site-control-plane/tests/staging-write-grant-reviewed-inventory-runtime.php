@@ -132,6 +132,41 @@ foreach ( $expected as $ability => $provider ) {
     verify_grants( isset( $allowed[ $ability ] ) && $allowed[ $ability ] === $provider,
         'Staging review must match exact Ability and provider: ' . $ability );
 }
+// Exact generic Staging inventory gap resolved without an invented grant.
+// Sensitive administrative operations still need their target-specific
+// capability, schema/expected-state, one-time approval and full audit.
+$reviewed_staging_core = array(
+    'context/native-owner-transfer-apply' => 'google_drive_context',
+    'mad4b/data-processing-record-decision' => 'core',
+    'mad4b/database-update' => 'core',
+    'mad4b/draft-apply' => 'core',
+    'mad4b/filesystem-patch' => 'core',
+    'mad4b/filesystem-write' => 'core',
+    'mad4b/firecrawl-research-capture' => 'core',
+    'mad4b/intent-registry-reconcile' => 'core',
+    'mad4b/mutation-undo' => 'core',
+    'mad4b/plugin-activate' => 'core',
+    'mad4b/plugin-deactivate' => 'core',
+    'mad4b/provider-canary-execute' => 'core',
+);
+verify_grants( count( $reviewed_staging_core ) === 12,
+    'Only the twelve exact missing Staging ability/provider registrations are source reviewed.' );
+foreach ( $reviewed_staging_core as $ability => $provider ) {
+    verify_grants( ( $allowed[ $ability ] ?? '' ) === $provider,
+        'No wildcard or substituted provider accepted for Staging grant eligibility: ' . $ability );
+}
+$registration = file_get_contents( dirname( __DIR__ ) . '/includes/trait-mad4b-scp-abilities-registration.php' );
+foreach ( array( 'plugin-activate', 'plugin-deactivate', 'filesystem-write',
+                  'filesystem-patch', 'database-update' ) as $admin_ability ) {
+    verify_grants( false !== strpos( $registration, "'mad4b/" . $admin_ability . "'" ),
+        'Sensitive core Admin operation must be explicitly registered: ' . $admin_ability );
+}
+verify_grants( false !== strpos( $registration, "'max_affected'" )
+    && false !== strpos( $registration, "'expected_sha256'" )
+    && false !== strpos( $registration, "'max_replacements'" ),
+    'Reviewed DB and file operations retain bounded count and expected-state schema.' );
+verify_grants( !isset( $allowed['mad4b/database-raw-query'] ),
+    'Raw SQL breakglass must not become eligible through the Staging review.' );
 verify_grants( !isset( $allowed['mad4b/database-raw-query'] )
     && !isset( $allowed['mad4b/unknown-future-grant'] )
     && !isset( $allowed['malicious/unknown-ability'] ),
@@ -149,6 +184,10 @@ foreach ( array_keys( $reviewed_jobs ) as $ability ) {
 }
 verify_grants( ( $production['mad4b/approval-plan'] ?? '' ) === 'core',
     'Production planner eligibility keeps exact approval and NHI gates; never auto-approves.' );
+foreach ( $reviewed_staging_core as $ability => $provider ) {
+    verify_grants( !isset( $production[ $ability ] ),
+        'Staging-reviewed admin/core grant must remain excluded on Production: ' . $ability );
+}
 verify_grants( !isset( $production['jetsmartfilters/update-filter-meta'] ),
     'The newly certified JetSmartFilters writer cannot expand Production grants.' );
 foreach ( $expected as $ability => $provider ) {
@@ -167,4 +206,4 @@ foreach ( $expected as $ability => $provider ) {
     verify_grants( ( $retire[ $ability ] ?? '' ) === $provider,
         'Current Staging review can retire exactly its stale version: ' . $ability );
 }
-echo "PASS: 38 Feature 007 plus 3 native Staging pairs, exact core grants only; no Production expansion\n";
+echo "PASS: 38 reviewed Feature 007 and 12 first-party Staging pairs plus 3 native; no Production expansion\n";

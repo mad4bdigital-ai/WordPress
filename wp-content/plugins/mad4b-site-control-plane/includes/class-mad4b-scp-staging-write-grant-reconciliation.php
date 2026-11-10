@@ -236,6 +236,27 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 				'mad4b/translation-set-post-language' => 'translation',
 				'media/import-external' => 'media',
 				'media/remote-import-apply' => 'media',
+                // 12 exact first-party Staging write registrations were
+                // omitted from the source-authorized grant inventory. This
+                // is provider-pair ELIGIBILITY only, not a grant, approval,
+                // dispatch permission or authority to write. Root/path
+                // restrictions, post CAS, one-time approval ticket, audit,
+                // site binding, provider certification and existing kill
+                // switches remain enforced by each target operation.
+                // Elevated admin/file/DB/plugin operations are deliberately
+                // not eligible on Production through this Staging review.
+                'context/native-owner-transfer-apply' => 'google_drive_context',
+                'mad4b/data-processing-record-decision' => 'core',
+                'mad4b/database-update' => 'core',
+                'mad4b/draft-apply' => 'core',
+                'mad4b/filesystem-patch' => 'core',
+                'mad4b/filesystem-write' => 'core',
+                'mad4b/firecrawl-research-capture' => 'core',
+                'mad4b/intent-registry-reconcile' => 'core',
+                'mad4b/mutation-undo' => 'core',
+                'mad4b/plugin-activate' => 'core',
+                'mad4b/plugin-deactivate' => 'core',
+                'mad4b/provider-canary-execute' => 'core',
 			);
 			// Only a registered, exact central Staging diagnostic may receive a
 			// separately approved core grant. General Hub enqueue remains forbidden.
