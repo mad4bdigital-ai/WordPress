@@ -315,6 +315,24 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 		return true;
 	}
 
+	/**
+	 * Narrow the JSON UTF-8 failure to a fixed, public MCP field name only.
+	 * No user-supplied field path, schema value, bearer or error message escapes.
+	 * Run only after the original strict JSON_THROW_ON_ERROR check has failed.
+	 */
+	private static function invalid_utf8_wire_component( array $data ) {
+		foreach ( array( 'name', 'title', 'description', 'inputSchema',
+			'outputSchema', 'annotations', 'icons', 'execution' ) as $key ) {
+			if ( ! array_key_exists( $key, $data ) ) continue;
+			try {
+				json_encode( $data[ $key ], JSON_THROW_ON_ERROR );
+			} catch ( JsonException $error ) {
+				if ( 5 === (int) $error->getCode() ) return $key;
+			}
+		}
+		return 'unclassified';
+	}
+
 	/** Official validator plus exact wire serialization. Only bounded diagnostic fields escape. */
 	public static function dto_failure( $dto, $prepared_data = null ) {
 		$stage = 'wire_serialization'; $fingerprint = '';
@@ -358,11 +376,14 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 			// Keep the required-tool failure and permission gate fail-closed.
 			$json_error = $error instanceof JsonException ? (int) $error->getCode() : 0;
 			if ( $json_error < 0 || $json_error > 10 ) $json_error = 0;
+			$utf8_component = 5 === $json_error && isset( $data ) && is_array( $data )
+				? self::invalid_utf8_wire_component( $data ) : 'not_applicable';
 			return array(
 				'stage' => $stage,
 				'error_class' => get_class( $error ),
 				'error_code' => 'mcp_tool_serialization_invalid',
 				'json_error_number' => $json_error,
+				'json_error_component' => $utf8_component,
 				'schema_fingerprint' => $fingerprint,
 			);
 		}
