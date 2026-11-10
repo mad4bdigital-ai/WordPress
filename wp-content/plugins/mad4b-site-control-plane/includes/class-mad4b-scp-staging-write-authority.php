@@ -1932,6 +1932,11 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		}
 		if ( ! empty( $unapproved_missing ) ) {
 			$status['source_policy_unapproved_missing_count'] = count( $unapproved_missing );
+			// Ability identifiers are not credentials. Surface a bounded list for
+			// exact source-review without granting anything or exposing tokens.
+			// The blocked outcome remains mandatory until the policy is reviewed.
+			$status['source_policy_unapproved_abilities'] = array_slice(
+				array_values( array_unique( $unapproved_missing ) ), 0, 32 );
 			$status['mutation_performed'] = false;
 			return self::finish_blocked( $status, 'write_grant_source_policy_preflight_blocked' );
 		}
