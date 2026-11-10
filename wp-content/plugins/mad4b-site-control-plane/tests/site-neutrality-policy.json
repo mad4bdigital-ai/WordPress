@@ -318,11 +318,17 @@
       ],
       "rationale": "Reviewed tourism-domain module or optional provider adapter, not a global site-type default. A user still needs the enrolled Site Profile and the exact WordPress/Ability operation permissions."
     },
-    "includes/class-mad4b-scp-content-readiness-alerts.php": {
+    "includes/trait-mad4b-scp-readiness-interface.php": {
       "models": [
         "tours-and-activities"
       ],
-      "rationale": "Reviewed tourism-domain module or optional provider adapter, not a global site-type default. A user still needs the enrolled Site Profile and the exact WordPress/Ability operation permissions."
+      "rationale": "Previously reviewed Content Readiness tourism model moved byte-for-byte into this bound Trait from class-mad4b-scp-content-readiness-alerts.php; it is not a new generic site default or execution grant. The owning class still requires the enrolled Site Profile and exact operation permissions."
+    },
+    "includes/trait-mad4b-scp-readiness-reconciliation.php": {
+      "models": [
+        "tours-and-activities"
+      ],
+      "rationale": "Previously reviewed Content Readiness tourism model moved byte-for-byte into this bound Trait from class-mad4b-scp-content-readiness-alerts.php; it is not a new generic site default or execution grant. The owning class still requires the enrolled Site Profile and exact operation permissions."
     },
     "includes/class-mad4b-scp-firecrawl-provider.php": {
       "models": [
