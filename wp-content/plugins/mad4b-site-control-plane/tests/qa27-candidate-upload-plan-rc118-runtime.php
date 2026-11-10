@@ -26,7 +26,7 @@ class MAD4B_SCP_Site_Profile {
  public static function status(){return ['site_uuid'=>'d745d81f-6fc4-5c6a-99dd-d953c92137bf','deployment_binding_configured'=>true,'same_origin_clone_protection'=>true];}
 }
 function wp_safe_remote_get($url,$args){
- if(!str_starts_with($url,'https://api.github.com/repos/mad4bdigital-ai/WordPress/git/commits/'))return new WP_Error('foreign_source');
+ if(!str_starts_with($url,'https://api.github.com/repos/mad4bdigital-ai/WordPress/commits/'))return new WP_Error('foreign_source');
  $ref=substr($url,strrpos($url,'/')+1);
  if($ref===str_repeat('f',40))return new WP_Error('disconnected');
  return ['code'=>200,'body'=>json_encode(['sha'=>$ref])];
@@ -35,8 +35,13 @@ function wp_remote_retrieve_response_code($response){return $response['code'];}
 function wp_remote_retrieve_body($response){return $response['body'];}
 require_once MAD4B_SCP_DIR.'includes/class-mad4b-scp-self-update.php';
 $sha='a'.str_repeat('1',39);
+// Read the exact active plugin version instead of a stale rc.120 fixture.
+// This tests immutable source matching, not approval to downgrade.
+$main_php = file_get_contents(MAD4B_SCP_FILE);
+if(!is_string($main_php) || !preg_match('/^[ \t\/*#@]*Version:\s*(.+)$/mi',$main_php,$version_match))throw new Exception('runtime_plugin_version_unavailable');
+$fixture_version = trim($version_match[1]);
 $input=[
- 'version'=>'0.4.0-rc.120','source_commit_sha'=>$sha,
+ 'version'=>$fixture_version,'source_commit_sha'=>$sha,
  'archive_sha256'=>str_repeat('b',64),'build_fingerprint'=>str_repeat('c',64),
  'package_manifest_digest'=>str_repeat('d',64),'size_bytes'=>4096,
  'reason'=>'test host allowlisted repository staging plan','channel'=>'staging_candidate_upload',
