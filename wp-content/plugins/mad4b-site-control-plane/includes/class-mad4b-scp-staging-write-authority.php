@@ -1920,18 +1920,31 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			return self::finish_blocked( $status, 'reviewed_grant_policy_unavailable' );
 		}
 		$unapproved_missing = array();
+		$unapproved_review = array();
 		foreach ( (array) ( $preflight_plan['exact_grants_missing'] ?? array() ) as $grant_row ) {
 			$ability = (string) ( $grant_row['ability'] ?? '' );
 			$provider = sanitize_key( (string) ( $grant_row['provider'] ?? '' ) );
-			if ( 'missing_exact_grant' !== (string) ( $grant_row['reason'] ?? '' )
-				|| '' === $ability || '' === $provider
-				|| ! isset( $reviewed_provider_policy[ $ability ] )
-				|| sanitize_key( (string) $reviewed_provider_policy[ $ability ] ) !== $provider ) {
+			$reason = (string) ( $grant_row['reason'] ?? '' );
+			$expected = isset( $reviewed_provider_policy[ $ability ] )
+				? sanitize_key( (string) $reviewed_provider_policy[ $ability ] ) : '';
+			$review_reason = 'missing_exact_grant' !== $reason ? 'grant_not_issuable'
+				: ( '' === $ability || '' === $provider ? 'unbound_ability_or_provider'
+					: ( '' === $expected ? 'source_policy_absent'
+						: ( $expected !== $provider ? 'source_provider_mismatch' : '' ) ) );
+			if ( '' !== $review_reason ) {
 				$unapproved_missing[] = $ability;
+				// All fields are canonical public identifiers: no principal, grant
+				// secret, WP user, provenance material or input schema is returned.
+				if ( count( $unapproved_review ) < 32 ) $unapproved_review[] = array(
+					'ability' => $ability, 'provider' => $provider,
+					'expected_provider' => $expected, 'review_reason' => $review_reason,
+					'plan_reason' => $reason,
+				);
 			}
 		}
 		if ( ! empty( $unapproved_missing ) ) {
 			$status['source_policy_unapproved_missing_count'] = count( $unapproved_missing );
+			$status['source_policy_review_pairs'] = $unapproved_review;
 			// Ability identifiers are not credentials. Surface a bounded list for
 			// exact source-review without granting anything or exposing tokens.
 			// The blocked outcome remains mandatory until the policy is reviewed.
