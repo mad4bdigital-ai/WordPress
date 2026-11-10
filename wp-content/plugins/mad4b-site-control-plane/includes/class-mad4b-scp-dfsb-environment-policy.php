@@ -55,7 +55,7 @@ final class MAD4B_SCP_DFSB_Environment_Policy {
     }
 
     public static function boot() {
-        add_action( 'admin_menu', array( __CLASS__, 'menu' ) );
+        add_action( 'admin_menu', array( __CLASS__, 'menu' ), 20 );
         add_action( 'admin_post_mad4b_scp_dfsb_policy_save', array( __CLASS__, 'save' ) );
     }
 

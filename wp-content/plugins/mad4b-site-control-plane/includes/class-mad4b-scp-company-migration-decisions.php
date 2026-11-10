@@ -466,7 +466,7 @@ final class MAD4B_SCP_Company_Migration_Decisions {
             if(class_exists('MAD4B_Tenant_Operations_Workspace'))
                 add_submenu_page('mad4b-company-workspace','Migration Decisions','Migration Decisions',
                     'mad4b_manage_company_operations',self::MENU,[__CLASS__,'page']);
-        });
+        },20);
         add_action('rest_api_init',static function(){
             register_rest_route('mad4b/v1','/company-migration-decisions/plan',[
                 'methods'=>'GET','permission_callback'=>[__CLASS__,'permission'],
