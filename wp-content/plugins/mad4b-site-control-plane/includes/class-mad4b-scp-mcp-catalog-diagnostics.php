@@ -158,7 +158,21 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
         $out['optional_per_tool_serialized_bytes_limit'] = $limits['max_bytes'];
         $out['catalog_budget'] = $limits;
 		$out['size_policy'] = 'bounded_single_tool_schema_unbounded_total';
-		$out['degraded'] = ! empty( $out['failures'] ) && '' === $out['blocker'];
+		// Optional wire failures can be isolated, but required tools may not
+		// disappear while the preflight still advertises ready=true.
+		$required_names = array_values( array_diff( $abilities, $optional ) );
+		$required_failed = false;
+		foreach ( $out['failures'] as $failure ) {
+			if ( isset( $failure['failing_ability'] )
+				&& in_array( $failure['failing_ability'], $required_names, true ) ) {
+				$required_failed = true;
+				break;
+			}
+		}
+		if ( $required_failed && '' === $out['blocker'] )
+			$out['blocker'] = 'mcp_required_tool_preflight_failed';
+		$out['degraded'] = ! empty( $out['failures'] ) && ! $required_failed
+			&& '' === $out['blocker'];
 		$out['ready'] = '' === $out['blocker'] && ! empty( $out['tools'] );
 		if ( ! $out['ready'] && '' === $out['blocker'] ) $out['blocker'] = 'mcp_catalog_empty';
 		return $out;
