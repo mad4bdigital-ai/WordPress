@@ -740,11 +740,23 @@ $foreign_apply = $dispatch(
 if ( ! $foreign_apply instanceof WP_REST_Response || 200 !== (int) $foreign_apply->get_status() ) {
 	$fail( 'Foreign-client step-up denial did not return an MCP response.', $normalize( $foreign_apply instanceof WP_REST_Response ? $foreign_apply->get_data() : $foreign_apply ) );
 }
-$foreign_apply_json = wp_json_encode( $normalize( $foreign_apply->get_data() ), JSON_UNESCAPED_SLASHES );
-if ( false === $foreign_apply_json
-	|| false === strpos( $foreign_apply_json, '"isError":true' )
-	|| false === strpos( $foreign_apply_json, 'Full Staging Authority step-up requires OAuth attribution to the exact ChatGPT CIMD client.' ) ) {
-	$fail( 'Foreign OAuth client carrying step-up scope was not denied by exact-client attribution.', $normalize( $foreign_apply->get_data() ) );
+$foreign_apply_data = $normalize( $foreign_apply->get_data() );
+$foreign_denial_text = array();
+foreach ( (array) ( $foreign_apply_data['result']['content'] ?? array() ) as $part ) {
+	if ( is_array( $part ) && 'text' === ( $part['type'] ?? '' ) && is_string( $part['text'] ?? null ) )
+		$foreign_denial_text[] = trim( $part['text'] );
+}
+// Both are explicit, fail-closed exact-client denials from the real MCP
+// permission path. A generic tools/call failure is NOT sufficient.
+$expected_foreign_denials = array(
+	'Enrolled ChatGPT OAuth client is required.',
+	'Full Staging Authority step-up requires OAuth attribution to the exact ChatGPT CIMD client.',
+);
+if ( ! is_array( $foreign_apply_data )
+	|| true !== ( $foreign_apply_data['result']['isError'] ?? null )
+	|| 1 !== count( $foreign_denial_text )
+	|| ! in_array( $foreign_denial_text[0], $expected_foreign_denials, true ) ) {
+	$fail( 'Foreign OAuth client carrying step-up scope was not denied by exact-client attribution.', $foreign_apply_data );
 }
 
 // Restore the read bearer/session for the remaining read-dispatch proof.
