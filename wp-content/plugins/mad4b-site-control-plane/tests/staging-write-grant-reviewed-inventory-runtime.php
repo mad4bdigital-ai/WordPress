@@ -55,6 +55,26 @@ $allowed = $c::allowed_ability_providers();
 // The original planning guard needs an exact grant to CREATE a pending
 // ticket, not a prior ticket (which would deadlock the consent lifecycle).
 // This policy review does not create that grant or approve a ticket.
+// Inspect the source owner rather than treating an arbitrary mounted
+// Ability as grant authority; the following three exact strings must
+// correspond to the current first-party ContentJob registration.
+$content_jobs_source = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-content-jobs.php' );
+verify_grants( is_string( $content_jobs_source )
+    && false !== strpos( $content_jobs_source, 'MAD4B_SCP_Operational_Integrity::assert_unchanged( $checkpoint, true )' )
+    && false !== strpos( $content_jobs_source, "'content_job_transition_cas_failed'" )
+    && false !== strpos( $content_jobs_source, "'blind_retry_allowed' => false" ),
+    'ContentJob source must keep operational fence, revision CAS and no blind retry.' );
+$reviewed_jobs = array(
+    'mad4b/content-job-create' => "'create_job'",
+    'mad4b/content-job-transition' => "'transition_job'",
+    'mad4b/content-job-cancel' => "'cancel_job'",
+);
+foreach ( $reviewed_jobs as $ability => $callback ) {
+    verify_grants( ( $allowed[ $ability ] ?? '' ) === 'core'
+        && false !== strpos( $content_jobs_source, "'" . $ability . "'" )
+        && false !== strpos( $content_jobs_source, $callback ),
+        'ContentJob exact source-owned core provider required: ' . $ability );
+}
 verify_grants( ( $allowed['mad4b/approval-plan'] ?? '' ) === 'core',
     'Only the exact core approval-plan bootstrap is grant eligible.' );
 verify_grants( ! isset( $allowed['mad4b/approval-plan-all'] )
@@ -97,6 +117,10 @@ verify_grants( $allowed === array_replace( $allowed, array() )
     'Provider policy remains finite and unique.' );
 $GLOBALS['test_env'] = 'production';
 $production = $c::allowed_ability_providers();
+foreach ( array_keys( $reviewed_jobs ) as $ability ) {
+    verify_grants( ( $production[ $ability ] ?? '' ) === 'core',
+        'Production ContentJob eligibility still requires the same exact ticket and NHI: ' . $ability );
+}
 verify_grants( ( $production['mad4b/approval-plan'] ?? '' ) === 'core',
     'Production planner eligibility keeps exact approval and NHI gates; never auto-approves.' );
 verify_grants( !isset( $production['jetsmartfilters/update-filter-meta'] ),

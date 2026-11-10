@@ -53,6 +53,17 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
             // This is exact grant ELIGIBILITY on enrolled sites, not a
             // standing delegation, plan approval, or a wildcard grant.
             'mad4b/approval-plan' => 'core',
+            // The first-party ContentJob aggregate registers these exact
+            // write abilities on the governed core surface. Creation begins
+            // at NEW/INTAKE with brand/site scope and an atomic audit fence;
+            // transition/cancel require revision CAS, legal transitions and
+            // verified rollback or explicit uncertain-outcome reconciliation.
+            // Grant eligibility is not a job, an execution ticket or permission
+            // to publish content. Every remote call retains original NHI,
+            // exact target, approval, mutation budget and audit.
+            'mad4b/content-job-create' => 'core',
+            'mad4b/content-job-transition' => 'core',
+            'mad4b/content-job-cancel' => 'core',
 
 			// Feature 007 core mutation abilities are part of the reviewed governed
 			// write universe and resolve to the bundled core provider. Keep this
