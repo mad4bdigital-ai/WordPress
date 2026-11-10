@@ -11,6 +11,9 @@ early_auth = "require_once __DIR__ . '/includes/class-mad4b-scp-ai-only-early-au
 assert entry.count(boot) == 1, "Guard must be included exactly once"
 assert entry.index(early_auth) < entry.index(boot)
 assert entry.index(boot) < entry.index("MAD4B_SCP_WPCLI_Passive_Gate::allowed_request()")
+# Foreign REST short-circuit must not skip the private type/JetEngine fence.
+assert entry.index(boot) < entry.index("if ( ! $mad4b_scp_early_owned )"), "Private boundary must precede foreign REST early return"
+assert entry.index(boot) < entry.index("register_deactivation_hook("), "Private boundary must be registered in the earliest plugin kernel"
 for kind in ("tour_orders", "tour_bookings"):
     assert kind in guard, f"Private CPT missing: {kind}"
 for requirement in (
