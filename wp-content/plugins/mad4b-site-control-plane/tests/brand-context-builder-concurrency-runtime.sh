@@ -67,7 +67,7 @@ if (empty($storage['ready']) || empty($storage['read_your_writes'])) {
 // Anonymous --skip-plugins WP-CLI must remain denied before opening any
 // ContentJob transaction, even though this command runs on a trusted CI host.
 $table = MAD4B_SCP_Schema::tables()['content_jobs'];
-$before_unauthorized = (int) $wpdb->get_var("SELECT COUNT(*) FROM `{$table}`");
+$before_unauthorized = (int) $GLOBALS['wpdb']->get_var("SELECT COUNT(*) FROM `{$table}`");
 $unauthorized = MAD4B_SCP_Content_Jobs::create_job(array(
   'brand_id'=>'brand-lineage', 'subject'=>'Anonymous mutation must fail',
   'language'=>'en', 'country'=>'eg', 'content_type'=>'brand_context_generation',
@@ -76,7 +76,7 @@ $unauthorized = MAD4B_SCP_Content_Jobs::create_job(array(
 ));
 if (!is_wp_error($unauthorized)
     || 'mad4b_content_job_authorized_actor_required' !== $unauthorized->get_error_code()
-    || $before_unauthorized !== (int) $wpdb->get_var("SELECT COUNT(*) FROM `{$table}`"))
+    || $before_unauthorized !== (int) $GLOBALS['wpdb']->get_var("SELECT COUNT(*) FROM `{$table}`"))
   $fail('anonymous actor bypassed the pre-transaction ContentJob guard');
 // Authenticate the test's seeded WordPress admin inside the hermetic fixture;
 // do not impose a --user flag or use an invented NHI/write grant.
