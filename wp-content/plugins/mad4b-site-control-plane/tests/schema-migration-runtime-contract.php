@@ -61,6 +61,8 @@ function dbDelta( $statement ) {
 final class MAD4B_Test_Schema_WPDB {
 	public $prefix = 'wp_';
 	public $missing_table = '';
+	public $agent_nullable = false;
+	public $agent_nullable_alterations = 0;
 
 	public function get_charset_collate() { return 'DEFAULT CHARACTER SET utf8mb4'; }
 	public function prepare( $query, ...$args ) {
@@ -72,6 +74,11 @@ final class MAD4B_Test_Schema_WPDB {
 		if ( preg_match( "/SHOW TABLES LIKE '([^']+)'/", (string) $query, $m ) ) {
 			return $this->missing_table === $m[1] ? null : $m[1];
 		}
+		return null;
+	}
+	public function get_row( $query, $output = null ) {
+		if ( preg_match( "/SHOW COLUMNS FROM `[^\x60]+` LIKE 'agent_id'/", (string) $query ) )
+			return array( 'Field' => 'agent_id', 'Null' => $this->agent_nullable ? 'YES' : 'NO' );
 		return null;
 	}
 	public function get_col( $query, $column = 0 ) {
@@ -127,7 +134,13 @@ final class MAD4B_Test_Schema_WPDB {
 		}
 		return $rows;
 	}
-	public function query( $query ) { return true; }
+	public function query( $query ) {
+		if ( false !== strpos( (string) $query, 'MODIFY COLUMN agent_id bigint(20) unsigned NULL' ) ) {
+			$this->agent_nullable = true;
+			++$this->agent_nullable_alterations;
+		}
+		return true;
+	}
 }
 $GLOBALS['wpdb'] = new MAD4B_Test_Schema_WPDB();
 
@@ -152,6 +165,8 @@ function mad4b_schema_reset_fixture( $version ) {
 	$GLOBALS['mad4b_schema_fail_option'] = '';
 	$GLOBALS['mad4b_schema_fail_final_receipt'] = false;
 	$GLOBALS['wpdb']->missing_table = '';
+	$GLOBALS['wpdb']->agent_nullable = false;
+	$GLOBALS['wpdb']->agent_nullable_alterations = 0;
 	mad4b_schema_reset_cache();
 }
 function mad4b_schema_receipt() {
@@ -177,6 +192,7 @@ mad4b_schema_reset_fixture( 6 );
 $before_calls = $GLOBALS['mad4b_schema_dbdelta_calls'];
 $upgrade = MAD4B_SCP_Schema::install_or_upgrade();
 mad4b_schema_assert( true === $upgrade, 'Supported v6 upgrade must succeed.', $upgrade );
+mad4b_schema_assert( $GLOBALS['wpdb']->agent_nullable && 1 === $GLOBALS['wpdb']->agent_nullable_alterations, 'Agent nullable upgrade must execute and verify exactly once.' );
 mad4b_schema_assert( MAD4B_SCP_Schema::VERSION === (int) get_option( MAD4B_SCP_Schema::OPTION, 0 ), 'Schema version must finalize to current target.' );
 mad4b_schema_assert( MAD4B_SCP_Schema::is_ready(), 'Schema must be ready only after exact receipt/token persistence.' );
 mad4b_schema_assert_receipt( 6, 'upgrade' );
