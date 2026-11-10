@@ -1494,7 +1494,17 @@ final class MAD4B_SCP_Abilities {
 			'mad4b_mutation_manager_unavailable',
 			'Governed content mutation manager is unavailable.'
 		);
-		return MAD4B_SCP_Mutation_Manager::execute_post_update( is_array( $input ) ? $input : array() );
+		$input = is_array( $input ) ? $input : array();
+		// The registration trait requires expected_modified_gmt; enforce its
+		// presence again at the directly callable executor boundary. The
+		// Mutation Manager independently verifies exact post-modified CAS.
+		$expected_modified_gmt = isset( $input['expected_modified_gmt'] ) && is_string( $input['expected_modified_gmt'] )
+			? trim( $input['expected_modified_gmt'] ) : '';
+		if ( '' === $expected_modified_gmt ) return new WP_Error(
+			'mad4b_stale_post',
+			'An expected post modification revision is required before editing.'
+		);
+		return MAD4B_SCP_Mutation_Manager::execute_post_update( $input );
 	}
 
 
