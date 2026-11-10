@@ -137,13 +137,51 @@ jobs:
         run: |
           set -euo pipefail
           python3 - <<'PY' > /tmp/mad4b-adapter.env
-          import json, shlex
+          import json, re, shlex
           from pathlib import Path
           root=Path('wp-content/plugins/mad4b-site-control-plane/config')
           policy=json.loads((root/'runtime-release-policy.json').read_text(encoding='utf-8'))
           profiles=json.loads((root/'certified-provider-profiles.json').read_text(encoding='utf-8'))
-          version=str(policy['target_adapter_version'])
-          profile=profiles['providers']['mcp_adapter'][version]
+          if policy.get('contract')!='mad4b.runtime-release-policy.v1' or policy.get('exact_provider_profile_required') is not True:
+              raise SystemExit('MCP Adapter certified release policy missing')
+          if policy.get('pair_certification_required') is not True:
+              raise SystemExit('MCP Adapter pair certification cannot be disabled')
+          catalog=(profiles.get('providers') or {}).get('mcp_adapter') or {}
+          def certified(version,profile):
+              if not re.fullmatch(r'[0-9]+[.][0-9]+[.][0-9]+',str(version)) or not isinstance(profile,dict):
+                  return False
+              evidence=profile.get('evidence') or {}
+              sha=str(profile.get('archive_sha256') or '')
+              size=profile.get('archive_bytes')
+              url=str(profile.get('package_url') or '')
+              authority=str(profile.get('certification_authority') or '')
+              if (profile.get('version')!=version or not re.fullmatch(r'[a-f0-9]{64}',sha)
+                  or type(size) is not int or size<1 or not isinstance(evidence,dict)
+                  or evidence.get('mutation_authority') is not False
+                  or evidence.get('release_asset_sha256')!=sha
+                  or evidence.get('release_asset_bytes')!=size
+                  or evidence.get('source_tag') not in (version,'v'+version)):
+                  return False
+              if (not isinstance(profile.get('critical_files'),dict) or not profile['critical_files']
+                  or (profile.get('runtime_surface') or {}).get('contract')!='mad4b.mcp-runtime-surface.v1'):
+                  return False
+              official_github=f'https://github.com/WordPress/mcp-adapter/releases/download/v{version}/mcp-adapter.zip'
+              official_wp=f'https://downloads.wordpress.org/plugin/mcp-adapter.{version}.zip'
+              return ((url==official_github and authority==f'github.com/WordPress/mcp-adapter/releases/tag/v{version}')
+                  or (url==official_wp and authority.startswith('https://wordpress.org/plugins/mcp-adapter/')
+                      and version in authority))
+          if policy.get('adapter_release_target_source')=='certified_runtime_release_set.mcp_adapter':
+              if policy.get('installed_adapter_version_gate') is not False or 'target_adapter_version' in policy:
+                  raise SystemExit('runtime release set must not pin the installed MCP Adapter version')
+              candidates=[v for v,p in catalog.items() if certified(v,p)]
+              if not candidates:
+                  raise SystemExit('no official fully certified MCP Adapter artifact is available')
+              version=max(candidates,key=lambda v:tuple(map(int,v.split('.'))))
+          else:
+              version=str(policy.get('target_adapter_version') or '')
+          profile=catalog.get(version) or {}
+          if not certified(version,profile):
+              raise SystemExit('selected MCP Adapter artifact is not source-certified')
           for key,value in {
               'VERSION':version,
               'SHA':profile['archive_sha256'],
@@ -161,15 +199,17 @@ jobs:
             --profile wp-content/plugins/mad4b-site-control-plane/config/certified-provider-profiles.json \
             --version "$VERSION"
           python3 wp-content/plugins/mad4b-site-control-plane/tests/mcp-adapter-protocol-matrix.py /tmp/mcp-adapter.zip
-          python3 - <<'PY'
-          import hashlib, json, zipfile
+          python3 - "$VERSION" "$SHA" "$BYTES" <<'PY'
+          import hashlib, json, sys, zipfile
           from pathlib import Path
 
           root=Path('wp-content/plugins/mad4b-site-control-plane/config')
-          policy=json.loads((root/'runtime-release-policy.json').read_text(encoding='utf-8'))
           profiles=json.loads((root/'certified-provider-profiles.json').read_text(encoding='utf-8'))
-          version=str(policy['target_adapter_version'])
-          profile=profiles['providers']['mcp_adapter'][version]
+          version,expected_sha,expected_bytes=sys.argv[1:]
+          profile=((profiles.get('providers') or {}).get('mcp_adapter') or {}).get(version) or {}
+          if (profile.get('version')!=version or profile.get('archive_sha256')!=expected_sha
+              or str(profile.get('archive_bytes'))!=expected_bytes):
+              raise SystemExit('MCP Adapter selected release identity changed after download')
           critical=profile.get('critical_files') or {}
           if not critical:
               raise SystemExit('critical file manifest missing')
