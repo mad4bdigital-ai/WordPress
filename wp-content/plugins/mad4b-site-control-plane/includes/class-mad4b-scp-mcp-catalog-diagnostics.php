@@ -353,10 +353,16 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 			if ( isset( $wire->outputSchema ) && ( ! is_object( $wire->outputSchema ) || 'object' !== ( $wire->outputSchema->type ?? '' ) ) ) throw new RuntimeException( 'wire_output_schema_invalid' );
 			return null;
 		} catch ( Throwable $error ) {
+			// JSON encoder error *number* is safe diagnostic evidence. Never
+			// persist raw wire schema, caller input, error message or stack trace.
+			// Keep the required-tool failure and permission gate fail-closed.
+			$json_error = $error instanceof JsonException ? (int) $error->getCode() : 0;
+			if ( $json_error < 0 || $json_error > 10 ) $json_error = 0;
 			return array(
 				'stage' => $stage,
 				'error_class' => get_class( $error ),
 				'error_code' => 'mcp_tool_serialization_invalid',
+				'json_error_number' => $json_error,
 				'schema_fingerprint' => $fingerprint,
 			);
 		}
