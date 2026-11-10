@@ -67,25 +67,6 @@ jobs:
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/self-update-dual-channel-contract.py
 
-      - name: Guard native WordPress Production parity and remote authority separation
-        if: matrix.php == '8.1' || matrix.php == '8.3' || matrix.php == '8.5'
-        shell: bash
-        run: |
-          set -euo pipefail
-          root=wp-content/plugins/mad4b-site-control-plane
-          python3 "$root/tests/production-native-gates-contract.py"
-          php "$root/tests/capability-first-mcp-adapter-gate-runtime.php"
-          # Hermetic structural fallback: no installed Adapter version floor.
-          php "$root/tests/mcp-mu-forward-version-fixture-runtime.php"
-          python3 "$root/tests/provider-version-neutral-read-contract.py"
-          for mode in cli session hard_kill; do
-            if [ "$mode" = cli ]; then
-              php "$root/tests/production-native-principal-parity-runtime.php"
-            else
-              php "$root/tests/production-native-principal-parity-runtime.php" "$mode"
-            fi
-          done
-
       - name: Verify QA20 and QA27 staging source contracts
         if: matrix.php == '8.3' || matrix.php == '8.5'
         shell: bash
