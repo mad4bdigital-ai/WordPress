@@ -11643,6 +11643,30 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "The trait is bound only inside the existing Servers class and retains the original root CLI, explicit server, registry-bound actor, site UUID/origin, administrator-role and Staging checks. It does not supply independent remote activation.",
       "review_rationale": "Verified that the six moved local VPS transport methods in this exact Git blob are byte-identical to the 122 lines removed from the previously reviewed Servers facade. No new functions, remote authentication fallbacks or policy bypasses are introduced; a direct negative runtime assertion rejects unregistered read/write host transport. This nonauthorizing CI-only source record does not create a grant."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "99692028839affabdc95d46f414e8b283f27b671",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "MCP-01",
+        "PLATFORM-01",
+        "EXECUTION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-early-boundary-contract.py"
+      ],
+      "owner_role": "Repository source/security reviewer — source and CI only; no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing private Tour Operations hooks, REST/CLI early fences, per-module capabilities and source-bound MCP/Write controls stay independently authoritative. This record does not authorize new grants or Runtime Release Set promotion.",
+      "review_rationale": "Examined the successor Bootstrap relative to reviewed source 4a83dc4b3ad5df67d9e43bea8e8b52d4eae80c0d: rc.104 to rc.129 marker, additive module requires/explicit boot registration and optional Staging readiness pathways. A previously removed early private Tour Orders/Bookings boundary was restored before foreign REST and passive WP-CLI exits; existing early AI credential guard remains first. The changed Python contract checks required module paths, version parity, explicit boot order and private CPT/JetEngine route guards. Independent PHP 7.4–8.5 lint, G6/G9 hermetic behavior, Auth and Production Readiness remain separate. No site data, grant, ticket or deployment was changed.",
+      "execution_note": "This exact Git blob is reviewed only as a non-authorizing source successor for G6/G9 historical delivery check and runtime source discovery. Feature-level runtime certification and production release gates remain independent."
     }
   ],
   "code_change_rules": {
