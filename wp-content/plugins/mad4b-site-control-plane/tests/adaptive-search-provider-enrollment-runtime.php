@@ -74,7 +74,7 @@ enrollment_case( 'provider_feedback_bound_to_current_revision_operation_and_sess
 	$render = static function () { ob_start(); MAD4B_SCP_Search_Provider_Connections::render(); return ob_get_clean(); };
 	enrollment_check( false === strpos( $render(), 'notice-success' ), 'query flags cannot manufacture successful feedback' );
 	$_GET['mad4b_notice_receipt'] = MAD4B_SCP_Admin_Experience::notice_receipt( 'mad4b-search-intelligence', 'provider_save', $binding );
-	enrollment_check( false !== strpos( $render(), 'Provider settings saved and verified.' ), 'current signed save receipt renders useful feedback' );
+	enrollment_check( false !== strpos( $render(), 'Provider credentials saved or securely retained. Account certification and budgets are separate.' ), 'current signed save receipt renders useful feedback' );
 	$GLOBALS['enrollment_session'] = 'different-fixture-session';
 	enrollment_check( false === strpos( $render(), 'notice-success' ), 'receipt cannot move to a different session' );
 	unset( $GLOBALS['enrollment_session'] );
