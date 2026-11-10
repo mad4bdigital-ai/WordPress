@@ -21,12 +21,14 @@ class MAD4B_SCP_Site_Profile {
     public static $environment = 'staging';
     public static $bound = false;
     public static function status() {
-        return array( 'environment' => self::$environment, 'origin_match' => true,
+        return array( 'environment' => self::$environment,
+            'configured_environment' => self::$environment,
+            'configured' => true, 'origin_match' => true,
             'configured' => true, 'authority_ready' => true,
             'deployment_binding_configured' => self::$bound,
             'deployment_binding_bound' => self::$bound,
             'deployment_binding_match' => true,
-            'environment_match' => true, 'site_uuid' => 'site-a',
+            'environment_match' => true, 'site_uuid' => 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
             'revision' => 3, 'profile_digest' => str_repeat( 'a', 64 ) );
     }
 }
