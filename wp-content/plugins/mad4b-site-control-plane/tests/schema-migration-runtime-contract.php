@@ -77,8 +77,12 @@ final class MAD4B_Test_Schema_WPDB {
 		return null;
 	}
 	public function get_row( $query, $output = null ) {
-		if ( preg_match( "/SHOW COLUMNS FROM `[^\x60]+` LIKE 'agent_id'/", (string) $query ) )
+		if ( preg_match( "/SHOW COLUMNS FROM `[^\\x60]+` LIKE 'agent_id'/", (string) $query ) )
 			return array( 'Field' => 'agent_id', 'Null' => $this->agent_nullable ? 'YES' : 'NO' );
+		if ( preg_match( "/SHOW TABLE STATUS WHERE Name = '([^']+)'/", (string) $query, $m ) ) {
+			if ( $this->missing_table === $m[1] ) return null;
+			return array( 'Name' => $m[1], 'Engine' => 'InnoDB', 'Collation' => 'utf8mb4_unicode_ci' );
+		}
 		return null;
 	}
 	public function get_col( $query, $column = 0 ) {
@@ -191,7 +195,7 @@ function mad4b_schema_assert_receipt( $from, $run_type ) {
 mad4b_schema_reset_fixture( 6 );
 $before_calls = $GLOBALS['mad4b_schema_dbdelta_calls'];
 $upgrade = MAD4B_SCP_Schema::install_or_upgrade();
-mad4b_schema_assert( true === $upgrade, 'Supported v6 upgrade must succeed.', $upgrade );
+mad4b_schema_assert( true === $upgrade, 'Supported v6 upgrade must succeed.', is_wp_error( $upgrade ) ? $upgrade->get_error_code() : $upgrade );
 mad4b_schema_assert( $GLOBALS['wpdb']->agent_nullable && 1 === $GLOBALS['wpdb']->agent_nullable_alterations, 'Agent nullable upgrade must execute and verify exactly once.' );
 mad4b_schema_assert( MAD4B_SCP_Schema::VERSION === (int) get_option( MAD4B_SCP_Schema::OPTION, 0 ), 'Schema version must finalize to current target.' );
 mad4b_schema_assert( MAD4B_SCP_Schema::is_ready(), 'Schema must be ready only after exact receipt/token persistence.' );
