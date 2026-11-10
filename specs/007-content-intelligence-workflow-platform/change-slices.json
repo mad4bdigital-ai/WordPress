@@ -4,8 +4,8 @@
   "reviewed_base_sha": "5c72e4893e36e992f056c90cfc75908b3a8f7785",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 408,
-  "changed_paths_sha256": "93480b0b19d68babc1d5e270ba3923bca8cb64ef23330eabfc8068d444eefd83",
+  "changed_file_count": 409,
+  "changed_paths_sha256": "b843c9cf2bfcd9a2b75b40f5baf318ce8a080699ed4cb0822cc883d903b99c4d",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -150,17 +150,18 @@
       "revert_boundary": "Keep reviewed historical SHA integrity, adversarial archive tests, and HTTPS DNS ordering fixture together; never waive live Staging OAuth or HTTP expectations.",
       "certification": "exact_head",
       "path_globs": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/g6-g9-historical-administration-source-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/historical_source_successor.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/integration-pr415-pr416-pr420-pr421-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/site-neutrality-policy.json",
-        "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/validate.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/historical-delivery-successor-contract.py",
-        "specs/007-content-intelligence-workflow-platform/validate_spec.py",
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/historical-delivery-source-reviews.json",
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/rebind-delivery.py",
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_rebind_delivery.py",
+        "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/validate.py",
+        "specs/007-content-intelligence-workflow-platform/validate_spec.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/are-staging-operations-http-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/g6-g9-historical-administration-source-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/historical-delivery-successor-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/historical_source_successor.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-pr415-pr416-pr420-pr421-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/remote-operation-parity-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-neutrality-policy.json",
         "wp-content/plugins/mad4b-site-control-plane/tests/staging-live-dns-order-contract.py"
       ]
     },
