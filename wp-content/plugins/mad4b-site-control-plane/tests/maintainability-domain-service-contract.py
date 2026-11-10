@@ -91,4 +91,39 @@ for invariant in ("MAD4B_SCP_Execution_Evidence_Policy::crash_point",
  if invariant not in recovery_trait:
   raise SystemExit("AUTHORIZATION_EXECUTION_RECOVERY_GUARD_MISSING:"+invariant)
 
+# Large first-party modules must retain their existing class and hook ABI after
+# extracting the original Source Reconciliation, Admin/REST and CrUX workers.
+# These tests check real require/use bindings and the guards in their true owner.
+_bound_traits = (
+ ("class-mad4b-scp-content-readiness-alerts.php", "trait-mad4b-scp-readiness-reconciliation.php",
+  "MAD4B_SCP_Readiness_Reconciliation_Trait",
+  ("public static function reconcile($scan,$scheduled=false)", "SELECT RELEASE_LOCK", "mad4b_readiness_incomplete_scan")),
+ ("class-mad4b-scp-content-readiness-alerts.php", "trait-mad4b-scp-readiness-interface.php",
+  "MAD4B_SCP_Readiness_Interface_Trait",
+  ("public static function rest_local_client_write_permission()", "public static function menu()", "public static function render()")),
+ ("class-mad4b-scp-core-web-vitals.php", "trait-mad4b-scp-core-web-vitals-workers.php",
+  "MAD4B_SCP_Core_Web_Vitals_Workers_Trait",
+  ("private static function acquire_lock()", "private static function release_lock(", "wp_remote_get(", "public static function refresh()")),
+)
+for facade_file, trait_file, trait_name, guards in _bound_traits:
+ facade_path = root / "includes" / facade_file
+ trait_path = root / "includes" / trait_file
+ if not facade_path.is_file() or not trait_path.is_file():
+  raise SystemExit("MAINTAINABILITY_BOUND_TRAIT_MISSING:"+trait_file)
+ facade = facade_path.read_text(encoding="utf-8")
+ trait_source = trait_path.read_text(encoding="utf-8")
+ if ("require_once __DIR__ . '/"+trait_file+"';" not in facade
+    and "require_once __DIR__.'/"+trait_file+"';" not in facade):
+  raise SystemExit("MAINTAINABILITY_BOUND_TRAIT_REQUIRE_MISSING:"+trait_file)
+ if "use "+trait_name+";" not in facade or "trait "+trait_name+" {" not in trait_source:
+  raise SystemExit("MAINTAINABILITY_BOUND_TRAIT_OWNER_MISSING:"+trait_file)
+ if len(facade.splitlines())>900 or len(trait_source.splitlines())>900:
+  raise SystemExit("MAINTAINABILITY_DOMAIN_BOUNDARY_OVERSIZE:"+trait_file)
+ for guard in guards:
+  if guard not in trait_source or guard in facade:
+   raise SystemExit("MAINTAINABILITY_BOUND_TRAIT_GUARD_DRIFT:"+trait_file+":"+guard)
+readiness_facade = (root/"includes/class-mad4b-scp-content-readiness-alerts.php").read_text(encoding="utf-8")
+if "MAD4B_SCP_Admin_Route_Registry::schedule_submenu(" not in readiness_facade:
+ raise SystemExit("MAINTAINABILITY_READINESS_ADMIN_ORDER_LOST")
+
 print("mad4b.maintainability-domain-service-decomposition.v1: PASS")
