@@ -509,6 +509,28 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 			if ( ! $failure ) { $safe[] = $dto; continue; }
 			if ( ! $direct_step_up && ! $dynamic ) throw new RuntimeException( 'mad4b_required_catalog_schema_invalid' );
 			$failure['failing_ability'] = $ability;
+			if ( 'description' === ( $failure['json_error_component'] ?? '' )
+				&& function_exists( 'wp_get_ability' )
+				&& class_exists( 'MAD4B_SCP_MCP_Adapter_Compatibility' ) ) {
+				$registered_ability = wp_get_ability( $ability );
+				$wire_fields = MAD4B_SCP_MCP_Adapter_Compatibility::wire_data( $dto );
+				$source_description = is_object( $registered_ability )
+					&& method_exists( $registered_ability, 'get_description' )
+					? $registered_ability->get_description() : null;
+				$wire_description = is_array( $wire_fields )
+					? ( $wire_fields['description'] ?? null ) : null;
+				// Diagnostic booleans and byte lengths only. Never log description
+				// content, WordPress user input, token, or untrusted schema keys.
+				$failure['description_source_is_utf8'] = is_string( $source_description )
+					&& 1 === preg_match( '//u', $source_description );
+				$failure['description_source_wire_equal'] = is_string( $source_description )
+					&& is_string( $wire_description )
+					&& hash_equals( $source_description, $wire_description );
+				$failure['description_source_bytes'] = is_string( $source_description )
+					? strlen( $source_description ) : 0;
+				$failure['description_wire_bytes'] = is_string( $wire_description )
+					? strlen( $wire_description ) : 0;
+			}
 			if ( ! self::$failure_logged ) {
 				self::$failure_logged = true;
 				error_log( '[MAD4B MCP preflight] ' . wp_json_encode( $failure ) );
