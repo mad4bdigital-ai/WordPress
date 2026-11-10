@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mad4b.com/schemas/faore/company.task.receipt.v1.schema.json",
+  "title": "company.task.receipt.v1",
+  "type": "object",
+  "properties": {
+    "contract": {
+      "type": "string",
+      "const": "company.task.receipt.v1"
+    },
+    "company_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "staging",
+        "production",
+        "development"
+      ]
+    },
+    "site_uuid": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "message_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "delivery_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sent_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "sequence_number": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "payload": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "enum": [
+            "COMPLETED",
+            "FAILED",
+            "REJECTED",
+            "ROLLED_BACK"
+          ]
+        },
+        "evidence_state": {
+          "enum": [
+            "Observed",
+            "Verified",
+            "Unverified",
+            "Stale"
+          ]
+        },
+        "receipt_reference": {
+          "type": "string",
+          "minLength": 1
+        },
+        "broker_stage": {
+          "type": "integer",
+          "enum": [
+            305,
+            306,
+            312,
+            313
+          ]
+        },
+        "readback_digest": {
+          "type": "string"
+        },
+        "result_digest": {
+          "type": "string"
+        },
+        "error_code": {
+          "type": "string"
+        },
+        "runtime_generation": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "evidence_state",
+        "receipt_reference"
+      ],
+      "additionalProperties": false
+    },
+    "parent_operation_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "child_operation_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "requested_capability": {
+      "type": "string",
+      "minLength": 1
+    },
+    "idempotency_key": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": [
+    "contract",
+    "company_id",
+    "environment",
+    "site_uuid",
+    "message_id",
+    "delivery_id",
+    "sent_at",
+    "sequence_number",
+    "payload",
+    "parent_operation_id",
+    "child_operation_id",
+    "requested_capability",
+    "idempotency_key"
+  ],
+  "additionalProperties": false
+}

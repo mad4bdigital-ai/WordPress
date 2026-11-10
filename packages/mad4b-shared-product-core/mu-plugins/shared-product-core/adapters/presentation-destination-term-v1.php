@@ -202,7 +202,16 @@ final class Shared_Product_Destination_Term_Presentation_v1 {
   // Preserve several different hierarchy levels without rendering a huge
   // country-wide attractions catalogue inside an Elementor Swiper.
   // Twelve matches per native Listing is the single shared presentation cap.
-  return array_slice(self::relation($current,self::QUERY_RELATIONS[$query_id],$language),0,12);
+  $lang=$language?:self::language();
+  $terms=self::relation($current,self::QUERY_RELATIONS[$query_id],$lang);
+  // Curated "Explore More Governors" tiles (288/294) link to live offers:
+  // keep destination hierarchy browseable elsewhere, but do not advertise
+  // empty/imageless governors as tour choices. Always filter BEFORE 12 cap.
+  if(in_array($query_id,[288,294],true)) {
+   $terms=array_values(array_filter($terms,static fn(WP_Term $candidate):bool =>
+     self::eligible_for_sale($candidate,$lang)));
+  }
+  return array_slice($terms,0,12);
  }
  public static function has_related(WP_Term $current):bool {
   foreach(self::QUERY_RELATIONS as $id=>$relation){

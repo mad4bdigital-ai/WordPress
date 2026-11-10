@@ -1,0 +1,129 @@
+name: MAD4B Company Settings Source Convergence
+on:
+  pull_request:
+    paths:
+      - 'wp-content/mu-plugins/00*-mad4b-lifecycle-access.php'
+      - 'wp-content/mu-plugins/14*-mad4b-*.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-experience-install-owner-launch.php'
+      - 'wp-content/plugins/mad4b-company-portfolio-manager/tests/experience-owner-job-rotation-regression-20261106.php'
+      - 'wp-content/plugins/mad4b-company-portfolio-manager/mad4b-company-portfolio-manager.php'
+      - 'packages/mad4b-shared-product-core/mu-plugins/**'
+      - 'ops/mad4b-company-live-convergence-20261106/**'
+      - 'ops/company-readiness-workflow/original-native-schema-313-v1/**'
+      - 'ops/company-readiness-workflow/central-signed-wpcli-priority-v1/**'
+      - 'ops/company-readiness-workflow/host-provisioning-runtime-v1/systemd/mad4b-company-plugin-install-capability.timer'
+      - 'ops/company-readiness-workflow/host-provisioning-runtime-v1/tests/test_plugin_install_heartbeat_cadence.py'
+      - 'wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-native-plugin-install-handler.php'
+      - 'wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-native-plugin-install-provider.php'
+      - '.github/workflows/mad4b-company-settings-source-convergence.yml'
+  push:
+    paths:
+      - 'wp-content/mu-plugins/00*-mad4b-lifecycle-access.php'
+      - 'wp-content/mu-plugins/14*-mad4b-*.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-experience-install-owner-launch.php'
+      - 'wp-content/plugins/mad4b-company-portfolio-manager/tests/experience-owner-job-rotation-regression-20261106.php'
+      - 'wp-content/plugins/mad4b-company-portfolio-manager/mad4b-company-portfolio-manager.php'
+      - 'packages/mad4b-shared-product-core/mu-plugins/**'
+      - 'ops/mad4b-company-live-convergence-20261106/**'
+      - 'ops/company-readiness-workflow/original-native-schema-313-v1/**'
+      - 'ops/company-readiness-workflow/central-signed-wpcli-priority-v1/**'
+      - 'ops/company-readiness-workflow/host-provisioning-runtime-v1/systemd/mad4b-company-plugin-install-capability.timer'
+      - 'ops/company-readiness-workflow/host-provisioning-runtime-v1/tests/test_plugin_install_heartbeat_cadence.py'
+      - 'wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-native-plugin-install-handler.php'
+      - 'wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-native-plugin-install-provider.php'
+      - '.github/workflows/mad4b-company-settings-source-convergence.yml'
+concurrency:
+  group: mad4b-company-settings-source-convergence-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  static-convergence:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Validate canonical sources, Skills v17, policies, and host-cache scope
+        run: python3 ops/mad4b-company-live-convergence-20261106/tests/test_source_convergence.py
+      - name: Verify Experience footer coexistence patch and source SHA
+        run: python3 ops/company-readiness-workflow/host-provisioning-runtime-v1/tests/test_experience_footer_coexistence_patch.py
+      - name: Install pinned signature-verification test dependency
+        run: python3 -m pip install --disable-pip-version-check 'cryptography==46.0.3'
+      - name: Verify original Schema 313 receipt-only and signed authority regressions
+        run: |
+          set -eu
+          base=ops/company-readiness-workflow/original-native-schema-313-v1
+          python3 -I -B "$base/test_schema_receipt_resume.py"
+          python3 -I -B "$base/test_schema_signed_authority_busy.py"
+      - name: Verify original signed WP-CLI priority and five-minute readiness policy
+        run: |
+          set -eu
+          priority=ops/company-readiness-workflow/central-signed-wpcli-priority-v1
+          heartbeat=ops/company-readiness-workflow/host-provisioning-runtime-v1
+          python3 -B "$priority/test_wpcli_signed_priority.py"
+          python3 -B "$priority/wpcli-signed-priority.py" selftest
+          python3 -B "$heartbeat/tests/test_plugin_install_heartbeat_cadence.py"
+  runtime-contracts:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Install PHP runtime for native skill and source-contract checks
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Verify governed read-only Skill registration and QA20 source verification
+        run: |
+          set -eu
+          base=wp-content/plugins/mad4b-site-control-plane/tests
+          php "$base/skill-task-abilities-runtime.php"
+          php "$base/qa20-source-allowlist-rc118-runtime.php"
+          php "$base/projection-registration-lifecycle.php"
+          php "$base/faore-local-observability.php"
+          php "$base/faore-original-queue-readback.php"
+          php "$base/private-operations-behavioral-runtime.php"
+          php "$base/native-plugin-management-menu-runtime.php"
+          php wp-content/plugins/mad4b-company-portfolio-manager/tests/experience-owner-job-rotation-regression-20261106.php
+      - name: Verify exact v14 migration and existing governance contracts
+        run: |
+          set -eu
+          base=wp-content/plugins/mad4b-site-control-plane/tests
+          python3 "$base/schema-dbdelta-upgrade-contract.py"
+          python3 "$base/spec-consistency-contract.py"
+          python3 "$base/agent-governance-contract.py"
+          python3 "$base/approval-console-v2-contract.py"
+      - name: Verify governed Site Profile, exact Google scopes, and Context/Brand safety
+        run: |
+          set -eu
+          base=wp-content/plugins/mad4b-site-control-plane/tests
+          php "$base/site-profile-lifecycle-matrix-runtime.php"
+          php "$base/context-oauth-lifecycle-runtime.php"
+          php "$base/content-job-transaction-fault-runtime.php"
+          python3 "$base/context-managed-google-signin-contract.py"
+          python3 "$base/context-authority-contract.py"
+          php "$base/context-admin-recovery-runtime.php"
+          php "$base/mcp-runtime-recovery-runtime.php"
+          php "$base/dynamic-hardening-pure-runtime.php"
+          python3 "$base/dynamic-runtime-hardening-contract.py"
+          python3 "$base/mcp-client-compatibility-contract.py"
+          python3 "$base/context-media-inventory-contract.py"
+          python3 "$base/admin-settings-persistence-contract.py"
+          php "$base/staging-write-candidate-binding-runtime.php"
+          php "$base/schema-migration-runtime-contract.php"
+          php "$base/undo-intent-fault-injection.php"
+          python3 "$base/site-profile-feature-reenrollment-contract.py"
+          php "$base/site-profile-feature-reenrollment-runtime.php"
+          php "$base/mcp-class-provenance-runtime.php"
+          node "$base/admin-settings-persistence-runtime.mjs"

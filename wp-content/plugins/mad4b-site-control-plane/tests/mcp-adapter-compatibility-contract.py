@@ -86,25 +86,27 @@ if min(compat_pos, projection_pos, servers_pos) < 0 or not (compat_pos < project
     fail("compatibility seam is not loaded before projection/server construction")
 
 policy = json.loads((ROOT / "config/runtime-release-policy.json").read_text(encoding="utf-8"))
-if policy.get("target_adapter_version") != "0.7.0":
-    fail("runtime release policy no longer targets exact MCP Adapter 0.7.0")
-if set(policy.get("supported_transition_adapter_versions", [])) != {"0.6.1", "0.7.0"}:
-    fail("supported transition set must remain exact 0.6.1 -> 0.7.0")
+target_version = policy.get("target_adapter_version")
+if not isinstance(target_version, str) or not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", target_version):
+    fail("runtime release policy target adapter version is invalid")
+transitions = set(policy.get("supported_transition_adapter_versions", []))
+if not {"0.6.1", "0.7.0", target_version}.issubset(transitions):
+    fail("runtime release transition policy omits a supported generation or target")
 
 profiles = json.loads((ROOT / "config/certified-provider-profiles.json").read_text(encoding="utf-8"))
-target = profiles.get("providers", {}).get("mcp_adapter", {}).get("0.7.0")
-if not isinstance(target, dict) or target.get("version") != "0.7.0":
-    fail("exact 0.7.0 provider profile is missing")
+target = profiles.get("providers", {}).get("mcp_adapter", {}).get(target_version)
+if not isinstance(target, dict) or target.get("version") != target_version:
+    fail("target MCP Adapter runtime profile is missing")
 surface = target.get("runtime_surface") or {}
 runtime_symbols = target.get("runtime_symbols") or []
 if surface.get("contract") != "mad4b.mcp-runtime-surface.v1":
-    fail("0.7.0 generated runtime surface contract is missing")
+    fail("target adapter generated runtime surface contract is missing")
 if surface.get("discovery") != "exact_archive_php_namespace_surface":
-    fail("0.7.0 runtime surface is not exact-archive discovered")
+    fail("target runtime surface is not exact-archive discovered")
 if surface.get("fail_closed_on_unprofiled_symbol") is not True:
-    fail("0.7.0 runtime surface is not fail-closed")
+    fail("target runtime surface is not fail-closed")
 if surface.get("symbol_count") != len(runtime_symbols):
-    fail("0.7.0 runtime surface symbol count drift")
+    fail("target runtime surface symbol count drift")
 classes = {spec.get("symbol") for spec in runtime_symbols if isinstance(spec, dict)}
 required = {
     "WP\\MCP\\Core\\McpAdapter",
@@ -116,13 +118,13 @@ required = {
 }
 missing = sorted(required - classes)
 if missing:
-    fail(f"0.7.0 generated runtime surface is incomplete: {missing}")
+    fail(f"target generated runtime surface is incomplete: {missing}")
 for removed in (
     "WP\\MCP\\Domain\\Tools\\McpToolValidator",
     "WP\\McpSchema\\Server\\Tools\\DTO\\Tool",
 ):
     if removed in classes:
-        fail(f"0.7.0 generated surface inherited removed symbol: {removed}")
+        fail(f"target generated surface inherited removed symbol: {removed}")
 for spec in runtime_symbols:
     if not isinstance(spec, dict):
         fail("runtime symbol entry must be an object")

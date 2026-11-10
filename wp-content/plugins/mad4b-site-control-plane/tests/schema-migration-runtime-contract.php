@@ -68,6 +68,12 @@ final class MAD4B_Test_Schema_WPDB {
 		$value = str_replace( "'", "''", (string) $args[0] );
 		return preg_replace( '/%s/', "'" . $value . "'", $query, 1 );
 	}
+	public function get_row( $query, $output = ARRAY_A ) {
+		// dbDelta synthetic schema reflects the already-additive, nullable
+		// agent_id column. No real DDL or WordPress database is touched.
+		if ( false !== strpos( (string) $query, "LIKE 'agent_id'" ) ) return array( 'Field' => 'agent_id', 'Null' => 'YES' );
+		return null;
+	}
 	public function get_var( $query ) {
 		if ( preg_match( "/SHOW TABLES LIKE '([^']+)'/", (string) $query, $m ) ) {
 			return $this->missing_table === $m[1] ? null : $m[1];
@@ -75,7 +81,11 @@ final class MAD4B_Test_Schema_WPDB {
 		return null;
 	}
 	public function get_col( $query, $column = 0 ) {
-		return array(
+		// Schema v14 adds distinct actor and subject metadata to the mutations journal.
+		// Keep these fields scoped to the mutations table in the synthetic DB.
+		$journal_extra = false !== strpos( (string) $query, 'wp_mad4b_scp_mutations' )
+			? array( 'mutation_id', 'principal_type', 'agent_id', 'wp_user_id', 'subject_fingerprint' ) : array();
+		return array_merge( $journal_extra, array(
 			'candidate_binding_contract', 'candidate_sha', 'build_fingerprint', 'binding_environment',
 			'binding_host', 'site_uuid', 'site_profile_revision', 'site_profile_digest', 'bound_at',
 			'job_id', 'state', 'stage', 'current_artifact_id', 'job_revision', 'updated_at',
@@ -109,7 +119,7 @@ final class MAD4B_Test_Schema_WPDB {
 			'receipt_sha256', 'receipt_binding_sha256', 'last_error_code', 'safe_metadata_json', 'previous_event_sha256',
 			'breaker_key_sha256', 'certification_generation_sha256', 'failure_count', 'open_count', 'open_until',
 			'probe_token_sha256', 'probe_expires_at', 'from_state', 'to_state', 'failure_class',
-		);
+		) );
 	}
 	public function get_results( $query, $output = null ) {
 		$rows = array();
@@ -124,6 +134,10 @@ final class MAD4B_Test_Schema_WPDB {
 			'provider_site_generation', 'state_open_until', 'provider_updated', 'breaker_sequence', 'breaker_created',
 		) as $name ) {
 			$rows[] = array( 'Key_name' => $name, 'Non_unique' => 0 );
+		}
+		if ( false !== strpos( (string) $query, 'wp_mad4b_scp_mutations' ) ) {
+			$rows[] = array( 'Key_name' => 'mutation_id', 'Non_unique' => 0 );
+			$rows[] = array( 'Key_name' => 'principal_created', 'Non_unique' => 1 );
 		}
 		return $rows;
 	}
@@ -176,7 +190,7 @@ function mad4b_schema_assert_receipt( $from, $run_type ) {
 mad4b_schema_reset_fixture( 6 );
 $before_calls = $GLOBALS['mad4b_schema_dbdelta_calls'];
 $upgrade = MAD4B_SCP_Schema::install_or_upgrade();
-mad4b_schema_assert( true === $upgrade, 'Supported v6 upgrade must succeed.', $upgrade );
+mad4b_schema_assert( true === $upgrade, 'Supported v6 upgrade must succeed.', is_wp_error( $upgrade ) ? array( 'code' => $upgrade->get_error_code(), 'data' => $upgrade->get_error_data() ) : $upgrade );
 mad4b_schema_assert( MAD4B_SCP_Schema::VERSION === (int) get_option( MAD4B_SCP_Schema::OPTION, 0 ), 'Schema version must finalize to current target.' );
 mad4b_schema_assert( MAD4B_SCP_Schema::is_ready(), 'Schema must be ready only after exact receipt/token persistence.' );
 mad4b_schema_assert_receipt( 6, 'upgrade' );

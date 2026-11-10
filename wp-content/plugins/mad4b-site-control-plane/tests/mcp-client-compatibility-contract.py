@@ -8,6 +8,7 @@ challenge = (root / 'includes/class-mad4b-scp-oauth-challenge-alignment.php').re
 registry = (root / 'includes/class-mad4b-scp-mcp-client-profile-registry.php').read_text(encoding='utf-8')
 servers = (root / 'includes/class-mad4b-scp-servers.php').read_text(encoding='utf-8') + (root / 'includes/class-mad4b-scp-server-core-catalog.php').read_text(encoding='utf-8')
 catalog_diagnostics = (root / 'includes/class-mad4b-scp-mcp-catalog-diagnostics.php').read_text(encoding='utf-8')
+catalog_budget = (root / 'includes/class-mad4b-scp-mcp-catalog-budget.php').read_text(encoding='utf-8')
 reviewed_bootstrap = (root / 'includes/class-mad4b-scp-chatgpt-approval-bootstrap.php').read_text(encoding='utf-8')
 projection = (root / 'includes/class-mad4b-scp-chatgpt-tool-projection.php').read_text(encoding='utf-8')
 full_authority = (root / 'includes/class-mad4b-scp-full-staging-authority.php').read_text(encoding='utf-8')
@@ -165,15 +166,30 @@ for source, label in [
 # step-ups exceed the refresh budget. Composite step-ups retain explicit priority.
 for marker in [
     'public static function budget_projection( array $abilities, array $optional )',
-    "'mcp_required_catalog_budget_exceeded'",
     "'mcp_optional_catalog_budget_excluded'",
     "$limits['max_tools'] - count( $required )",
-    "MAX_SERIALIZED_TOOL_BYTES",
     "'mcp_optional_catalog_size_excluded'",
     "'mcp_required_catalog_size_exceeded'",
-    "'bounded_serialized_tool_bytes'",
+    "'bounded_single_tool_schema_unbounded_total'",
 ]:
     assert marker in catalog_diagnostics, f'missing bounded catalog budget invariant: {marker}'
+# Modern catalog budgets preserve *all required abilities*, measuring safe
+# optional projection separately. Fixed total-tool cutoffs may never remove
+# required transport or provider abilities, while per-tool byte limits remain.
+for marker in [
+    "MAD4B_SCP_MCP_Catalog_Budget::limits( count( $abilities ) )",
+    "'required_count' => count( $required )",
+    "$out['per_tool_serialized_bytes_limit'] = $limits['configured_max_bytes']",
+]:
+    assert marker in catalog_diagnostics, f'missing adaptive required-tool invariant: {marker}'
+for marker in [
+    "const HARD_TOOL_LIMIT = 64",
+    "const HARD_BYTE_LIMIT = 196608",
+    "max( (int) $required_count, $effective_tools )",
+    "'authorizing' => false",
+]:
+    assert marker in catalog_budget, f'missing nonauthorizing catalog budget invariant: {marker}'
+
 # Dynamic projections use the live effective registry so same-request projection
 # changes cannot be hidden by an older registration-classification snapshot.
 assert "isset( $dynamic[ $ability_name ] )" in catalog_diagnostics
@@ -294,8 +310,8 @@ assert "MAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools() : array();" n
 assert "function chatgpt_materialization_optional_tools" in servers
 assert "MAD4B_SCP_Servers::chatgpt_materialization_optional_tools( $abilities )" in catalog_diagnostics
 assert "isset( $materialized_optional[ $ability_name ] )" in catalog_diagnostics
-assert "MAX_TOOLS = 36" in catalog_diagnostics  # legacy default, not fixed active limit
+assert "const LEGACY_TOOL_LIMIT = 36" in catalog_budget  # documented default; required ability universe is never capped
 assert "MAD4B_SCP_MCP_Catalog_Budget::limits" in catalog_diagnostics
-assert "class-mad4b-scp-mcp-catalog-budget.php" in catalog_diagnostics
+assert "class-mad4b-scp-mcp-catalog-budget.php" in catalog_diagnostics  # catalog owns safe shared budget dependency
 assert "MAD4B_SCP_MCP_Catalog_Budget::observe" in catalog_diagnostics
 print('mad4b.site-control-plane.mcp-client-compatibility.v12: PASS')

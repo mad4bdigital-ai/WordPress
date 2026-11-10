@@ -279,7 +279,7 @@ require(drive, "mad4b_google_drive_remote_revocation_unconfirmed", "unconfirmed 
 require(drive, "mad4b_google_drive_revocation_pending", "Drive access disabled during revoke retry")
 require(drive, "access_mode", "OAuth access mode binding")
 require(drive, "requested_scope", "OAuth requested-scope binding")
-require(drive, "'include_granted_scopes' => 'true'", "incremental OAuth scope continuity contract")
+require(drive, "'include_granted_scopes' => 'false'", "incremental OAuth scope continuity contract")
 require(drive, "mad4b_google_drive_granted_scope_missing", "initial OAuth granted-scope evidence")
 require(drive, "mad4b_google_drive_readonly_scope_escalated", "read-only least-privilege enforcement")
 require(drive, "mad4b_google_drive_oauth_site_binding_changed", "OAuth Site Profile binding")

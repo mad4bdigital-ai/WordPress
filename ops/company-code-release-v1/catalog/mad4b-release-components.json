@@ -1,0 +1,14 @@
+{
+  "contract": "mad4b.company-release-components.v1",
+  "components": [
+    {
+      "id": "mad4b-composite-media",
+      "files": [
+        "wp-content/mu-plugins/mad4b-composite-media-patch.php",
+        "wp-content/mu-plugins/mad4b-composite-media-adapter.php",
+        "wp-content/mu-plugins/mad4b-media-composite-integrity.php",
+        "wp-content/mu-plugins/mad4b-unified-media-apply.php"
+      ]
+    }
+  ]
+}

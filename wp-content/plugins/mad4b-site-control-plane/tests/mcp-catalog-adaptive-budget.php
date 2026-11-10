@@ -49,9 +49,9 @@ $required = array( 'mad4b/read-discover', 'mad4b/read-execute',
 $optional = array();
 for ( $i = 0; $i < 110; ++$i ) $optional[] = 'demo/direct-' . $i;
 $result = MAD4B_SCP_MCP_Catalog_Diagnostics::budget_projection( array_merge( $required, $optional ), $optional );
-check( ! empty( $result['ready'] ) && $result['selected'] === array_merge( $required,
-    array_slice( $optional, 0, $expected_tools - 4 ) ), 'required priority, optional bounds and deterministic selection' );
-check( count( $result['excluded_optional'] ) === count( $optional ) - ( $expected_tools - 4 ), 'remaining abilities discoverable through dispatcher' );
+check( ! empty( $result['ready'] ) && $result['selected'] === array_merge( $required, $optional ),
+    'registered Ability universe cannot be truncated by a display budget' );
+check( count( $result['excluded_optional'] ) === 0, 'no eligible optional Ability excluded by a total count cap' );
 check( $budget['authorizing'] === false, 'budget cannot grant authority' );
 $repeat = MAD4B_SCP_MCP_Catalog_Budget::limits();
 check( $repeat['max_tools'] === $tools && $GLOBALS['test_reads'] === 1, 'request-local transient cache must avoid extra DB reads' );
@@ -59,12 +59,12 @@ if ( 'slow' === $scenario ) {
     $thirty = array_slice( $optional, 0, 30 );
     $result = MAD4B_SCP_MCP_Catalog_Diagnostics::budget_projection( array_merge( $thirty, array_slice( $optional, 30, 5 ) ),
         array_slice( $optional, 30, 5 ) );
-    check( ! empty( $result['ready'] ) && count( $result['selected'] ) === 30, 'latency cannot remove 30 required transport tools' );
+    check( ! empty( $result['ready'] ) && count( $result['selected'] ) === 35, 'latency never removes registered Ability inventory' );
 }
 if ( 'healthy' === $scenario ) {
     $many = array_slice( $optional, 0, 49 );
     $result = MAD4B_SCP_MCP_Catalog_Diagnostics::budget_projection( $many, array() );
-    check( empty( $result['ready'] ) && $result['blocker'] === 'mcp_required_catalog_budget_exceeded', 'configured hard cap must reject 49 required tools' );
+    check( ! empty( $result['ready'] ) && count( $result['selected'] ) === 49, 'registered Ability inventory may exceed historical configured cap' );
 }
 if ( 'default' === $scenario ) {
     check( MAD4B_SCP_MCP_Catalog_Budget::observe( 420, 8 ) === true, 'successful observation persisted' );

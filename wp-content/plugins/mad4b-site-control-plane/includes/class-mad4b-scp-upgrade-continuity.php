@@ -55,7 +55,7 @@ final class MAD4B_SCP_Upgrade_Continuity {
 	}
 
 	/**
-	 * Restore only a prior read/OAuth connection when exact same-site evidence
+	 * Restore only a prior read/OAuth connection when exact same-site, owner-bound evidence
 	 * survived the upgrade. This deliberately does not restore write authority.
 	 */
 	public static function recover_verified_read_continuity() {
@@ -81,7 +81,7 @@ final class MAD4B_SCP_Upgrade_Continuity {
 		}
 
 		$environment = self::current_environment();
-		if ( ! in_array( $environment, array( 'local', 'development', 'staging' ), true ) ) return self::recovery_result( 'blocked', false, 'nonproduction_only' );
+		if ( ! in_array( $environment, array( 'local', 'development', 'staging', 'production' ), true ) ) return self::recovery_result( 'blocked', false, 'invalid_runtime_environment' );
 		$origin = self::current_origin();
 		if ( '' === $origin || ! hash_equals( self::normalize_origin( $current['canonical_origin'] ), $origin ) || ! hash_equals( sanitize_key( (string) $current['environment'] ), $environment ) ) {
 			return self::recovery_result( 'blocked', false, 'current_profile_origin_or_environment_drift' );
@@ -159,7 +159,7 @@ final class MAD4B_SCP_Upgrade_Continuity {
 		}
 
 		$environment = self::current_environment( $snapshot );
-		if ( ! in_array( $environment, array( 'local', 'development', 'staging' ), true ) ) return self::recovery_result( 'blocked', false, 'nonproduction_only' );
+		if ( ! in_array( $environment, array( 'local', 'development', 'staging', 'production' ), true ) ) return self::recovery_result( 'blocked', false, 'invalid_runtime_environment' );
 		$origin = self::current_origin();
 		if ( '' === $origin ) return self::recovery_result( 'blocked', false, 'current_origin_unavailable' );
 

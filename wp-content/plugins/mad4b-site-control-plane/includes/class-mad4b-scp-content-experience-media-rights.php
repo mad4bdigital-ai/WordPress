@@ -28,6 +28,41 @@ final class MAD4B_SCP_Content_Experience_Media_Rights {
 		$today = self::evaluation_date( $today );
 		if ( is_wp_error( $today ) ) return $today;
 
+		// Site-neutral publication policy, shared with remote media rights.
+		// Absence of licence metadata is advisory by default, not a claim of
+		// legal reuse permission. Identity and provenance checks remain active.
+		$mode = sanitize_key( (string) apply_filters( 'mad4b_remote_media_rights_mode', get_option( 'mad4b_remote_media_rights_mode', 'advisory' ) ) );
+		if ( ! in_array( $mode, array( 'advisory', 'enforced' ), true ) ) return new WP_Error( 'mad4b_media_rights_policy_invalid', 'Media rights policy must be advisory or enforced.' );
+		if ( 'advisory' === $mode ) {
+			$fields = 0;
+			$items = 0;
+			$warnings = array();
+			foreach ( $field_specs as $key => $spec ) {
+				if ( ! is_array( $spec ) || false === strpos( (string) ( $spec['kind'] ?? '' ), '_usage' ) ) continue;
+				if ( 'require_valid' !== (string) ( $spec['publish_rights_policy'] ?? 'none' ) ) continue;
+				++$fields;
+				$entries = isset( $effective_meta[$key] ) && is_array( $effective_meta[$key] ) ? $effective_meta[$key] : array();
+				if ( ! $entries ) $warnings[] = array( 'field' => $key, 'code' => 'license_metadata_missing_or_empty' );
+				foreach ( $entries as $entry ) {
+					++$items;
+					if ( ! is_array( $entry ) || empty( $entry['license'] ) )
+						$warnings[] = array( 'field' => $key, 'code' => 'license_missing' );
+					$expiry = is_array( $entry ) ? trim( (string) ( $entry['license_expires_on'] ?? '' ) ) : '';
+					$expiry_required = (array) ( $spec['expiry_required_licenses'] ?? array() );
+					if ( is_array( $entry ) && in_array( (string) ( $entry['license'] ?? '' ), $expiry_required, true ) && $expiry === '' )
+						$warnings[] = array( 'field' => $key, 'code' => 'required_expiry_missing' );
+					if ( $expiry !== '' && ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $expiry ) || $expiry < $today ) )
+						return new WP_Error( 'mad4b_content_experience_media_rights_expired', 'An explicitly recorded media license is expired or invalid.', array( 'field' => $key ) );
+				}
+			}
+			return array(
+				'contract' => self::CONTRACT, 'evaluated_on' => $today,
+				'checked_field_count' => $fields, 'checked_item_count' => $items,
+				'nearest_expiry' => '', 'license_mode' => 'advisory',
+				'license_warnings' => $warnings, 'license_warning_count' => count($warnings),
+				'legal_reuse_permission' => 'not_determined_by_system', 'valid' => true,
+			);
+		}
 		$checked_fields = 0;
 		$checked_items = 0;
 		$nearest_expiry = '';

@@ -15,7 +15,7 @@ final class MAD4B_SCP_Skill_Seeder {
 	const CONTRACT = 'mad4b.skill-seeder.v1';
 	const OPTION = 'mad4b_scp_skill_seed_v1';
 	const INSPECTION_CONTRACT = 'mad4b.skill-seed-inspection.v1';
-	const SEED_VERSION = 13;
+	const SEED_VERSION = 17;
 	const SEED_DIR = 'skill-seeds';
 	const SEED_MANIFEST_CONTRACT = 'mad4b.skill-seed-manifest.v1';
 	const SEED_MANIFEST_FILE = 'config/skill-seed-manifest.json';
@@ -245,11 +245,18 @@ final class MAD4B_SCP_Skill_Seeder {
 			$managed = self::CONTRACT === $owner;
 			$recorded_sha = is_array( $meta ) && isset( $meta['sha256'] ) ? strtolower( trim( (string) $meta['sha256'] ) ) : '';
 			$digest_clean = $present && 1 === preg_match( '/^[a-f0-9]{64}$/', $recorded_sha ) && '' !== $current_sha && hash_equals( $recorded_sha, $current_sha );
-			$user_owned = $present && ( ! $managed || ! $digest_clean );
 			$seed_version_match = $managed && is_array( $meta ) && isset( $meta['seed_version'] ) && self::SEED_VERSION === (int) $meta['seed_version'];
 			$content_match = $present && '' !== $expected_sha && '' !== $current_sha && hash_equals( $expected_sha, $current_sha );
+			// A canonical file may have an outdated MAD4B digest after an external
+			// seed-source sync. Repair *metadata only* when source bytes, managed
+			// identity, manifest version and exact canonical path all agree.
+			$metadata_only_drift = $present && ! is_link( $meta_file ) && self::canonical_metadata_only_drift(
+				$meta, $level, $target, $name, $current_sha, $expected_sha, $recorded_sha
+			);
+			$user_owned = $present && ( ! $managed || ( ! $digest_clean && ! $metadata_only_drift ) );
 			$item_would_create = ! $path_exists && '' !== $expected_sha;
-			$item_would_refresh = $present && $managed && $digest_clean && ( ! $content_match || ! $seed_version_match );
+			$item_would_refresh = $present && $managed && ( $digest_clean || $metadata_only_drift )
+				&& ( ! $content_match || ! $seed_version_match || $metadata_only_drift );
 			$conflict = is_wp_error( $document ) || ( $path_exists && ! $present ) || $user_owned;
 			if ( $item_would_create ) $would_create[] = $logical_id;
 			if ( $item_would_refresh ) $would_refresh[] = $logical_id;
@@ -289,6 +296,31 @@ final class MAD4B_SCP_Skill_Seeder {
 			'option_write_performed' => false,
 			'audit_write_performed' => false,
 		);
+	}
+
+	/**
+	 * Metadata-only recovery for an exact canonical Skill already carrying the
+	 * site's MAD4B ownership identity. Never adopt unknown or edited files.
+	 * This predicate is pure; callers perform audited atomic metadata writes.
+	 */
+	private static function canonical_metadata_only_drift( $meta, $level, $target, $name, $current_sha, $canonical_sha, $recorded_sha ) {
+		if ( ! is_array( $meta )
+			|| self::CONTRACT !== ( $meta['provisioned_by'] ?? '' )
+			|| ! is_string( $recorded_sha )
+			|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', $recorded_sha )
+			|| ! is_string( $current_sha )
+			|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', $current_sha )
+			|| ! is_string( $canonical_sha )
+			|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', $canonical_sha )
+			|| ! hash_equals( $current_sha, $canonical_sha )
+			|| hash_equals( $recorded_sha, $current_sha )
+			|| self::SEED_VERSION !== (int) ( $meta['seed_version'] ?? 0 ) ) return false;
+		foreach ( array( 'level' => $level, 'target' => $target, 'name' => $name,
+			'canonical_source' => self::SEED_DIR . '/' . $name . '/SKILL.md' ) as $key => $expected ) {
+			if ( ! isset( $meta[ $key ] ) || ! is_string( $meta[ $key ] )
+				|| ! hash_equals( $expected, $meta[ $key ] ) ) return false;
+		}
+		return true;
 	}
 
 	private static function set_status( $state, array $created = array(), array $refreshed = array(), array $skipped = array() ) {
@@ -382,9 +414,12 @@ final class MAD4B_SCP_Skill_Seeder {
 
 		$current_sha = hash( 'sha256', $before_skill );
 		$recorded_sha = isset( $meta['sha256'] ) ? strtolower( trim( (string) $meta['sha256'] ) ) : '';
-		if ( ! preg_match( '/^[a-f0-9]{64}$/', $recorded_sha ) || ! hash_equals( $recorded_sha, $current_sha ) ) {
-			// A user or external process changed the bytes after MAD4B provisioned
-			// them. Treat the file as user-owned and never overwrite it automatically.
+		$metadata_only_drift = self::canonical_metadata_only_drift(
+			$meta, $level, $target, $name, $current_sha, $canonical_sha, $recorded_sha
+		);
+		if ( ( ! preg_match( '/^[a-f0-9]{64}$/', $recorded_sha ) || ! hash_equals( $recorded_sha, $current_sha ) )
+			&& ! $metadata_only_drift ) {
+			// Modified noncanonical bytes remain user-owned. Never overwrite.
 			return array( 'created' => false, 'refreshed' => false );
 		}
 		$content_changed = ! hash_equals( $current_sha, $canonical_sha );
@@ -392,10 +427,11 @@ final class MAD4B_SCP_Skill_Seeder {
 		$canonical_policy_json = wp_json_encode( $context_policy, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		$policy_changed = ! is_string( $current_policy_json ) || ! is_string( $canonical_policy_json ) || ! hash_equals( $current_policy_json, $canonical_policy_json );
 		$policy_digest_changed = ! hash_equals( isset( $meta['context_policy_sha256'] ) ? (string) $meta['context_policy_sha256'] : '', (string) $context_policy_sha256 );
-		$metadata_changed = $policy_changed || $policy_digest_changed || self::SEED_VERSION !== ( isset( $meta['seed_version'] ) ? (int) $meta['seed_version'] : 0 );
+		$metadata_changed = $policy_changed || $policy_digest_changed || $metadata_only_drift
+			|| self::SEED_VERSION !== ( isset( $meta['seed_version'] ) ? (int) $meta['seed_version'] : 0 );
 		if ( ! $content_changed && ! $metadata_changed ) return array( 'created' => false, 'refreshed' => false );
 
-		$meta['previous_sha256'] = $current_sha;
+		$meta['previous_sha256'] = $metadata_only_drift ? $recorded_sha : $current_sha;
 		$meta['sha256'] = $canonical_sha;
 		$meta['context_policy'] = $context_policy;
 		$meta['context_policy_sha256'] = $context_policy_sha256;
@@ -416,7 +452,7 @@ final class MAD4B_SCP_Skill_Seeder {
 
 		$audit = MAD4B_SCP_Audit::record(
 			'mad4b/skill-seed-refresh',
-			array( 'logical_id' => $level . ':' . $target . ':' . $name, 'seed_version' => self::SEED_VERSION, 'before_sha256' => $current_sha, 'after_sha256' => $canonical_sha, 'context_policy_sha256' => (string) $context_policy_sha256, 'content_changed' => (bool) $content_changed, 'bytes' => strlen( $document ) ),
+			array( 'logical_id' => $level . ':' . $target . ':' . $name, 'seed_version' => self::SEED_VERSION, 'before_sha256' => $current_sha, 'after_sha256' => $canonical_sha, 'context_policy_sha256' => (string) $context_policy_sha256, 'content_changed' => (bool) $content_changed, 'metadata_digest_repaired' => (bool) $metadata_only_drift, 'previous_recorded_sha256' => $metadata_only_drift ? $recorded_sha : '', 'bytes' => strlen( $document ) ),
 			'ok'
 		);
 		if ( is_wp_error( $audit ) ) {

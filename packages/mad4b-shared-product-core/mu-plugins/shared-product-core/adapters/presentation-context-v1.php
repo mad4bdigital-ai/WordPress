@@ -1,15 +1,18 @@
 <?php
 /** Read-only context inspection, Local Lab. Does not grant booking authority. */
 defined('ABSPATH') || exit;
-if (function_exists('wp_get_environment_type') && wp_get_environment_type()==='local'
- && defined('SHARED_PRODUCT_LAB_ONLY') && SHARED_PRODUCT_LAB_ONLY) {
+if (function_exists('wp_get_environment_type') && (defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED)
+ && defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED) {
 final class Shared_Product_Presentation_Context_v1 {
  public static function inspect(int $id): array {
   if (!class_exists('Shared_Product_Presentation_Compatibility_v1'))
    return ['ok'=>false,'code'=>'UNAVAILABLE'];
   $context=Shared_Product_Presentation_Compatibility_v1::context_for_tour($id);
   if (empty($context['ok'])) return $context;
-  $mode=get_post_meta($id,'tour_rates_display_style',true)==='Accordion'?'accordion':'grid';
+  $rate_view=class_exists('MAD4B_Tour_Rate_View_Inheritance_V1')
+   ? MAD4B_Tour_Rate_View_Inheritance_V1::resolve($id) : [];
+  $mode=in_array(($rate_view['style']??''),['accordion','grid'],true)
+   ? $rate_view['style'] : (get_post_meta($id,'tour_rates_display_style',true)==='Accordion'?'accordion':'grid');
   $descriptor=['slot'=>'tour.rate_list','mode'=>$mode,
    'template_id'=>48317,'listing_id'=>$mode==='grid'?46193:56197,
    'query_id'=>310,'provider_id'=>$mode==='grid'?'tour_rates':'tour_rates_accordion'];

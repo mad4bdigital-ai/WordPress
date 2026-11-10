@@ -279,8 +279,25 @@ final class MAD4B_SCP_Governance_Abilities {
 			(string) $input['reason'], isset( $input['ttl'] ) ? absint( $input['ttl'] ) : MAD4B_SCP_Approval_Tickets::DEFAULT_TTL
 		);
 		if ( is_wp_error( $ticket ) ) return $ticket;
+		// Record the real authenticated initiator separately from the Agent
+		// assigned to execute an approved target. Never forge or rebind identity.
+		$initiating_agent_public_id = '';
+		$initiating_wp_user_id = 0;
+		if ( class_exists( 'MAD4B_SCP_Identity_Context' ) && class_exists( 'MAD4B_SCP_Agent_Registry' ) ) {
+			$principal = MAD4B_SCP_Identity_Context::current();
+			if ( is_array( $principal ) && ! empty( $principal['authenticated'] ) ) {
+				$real_actor = MAD4B_SCP_Agent_Registry::resolve_agent( $principal );
+				if ( is_array( $real_actor ) ) {
+					$initiating_agent_public_id = (string) ( $real_actor['public_id'] ?? '' );
+					$initiating_wp_user_id = (int) ( $principal['wp_user_id'] ?? 0 );
+				}
+			}
+		}
 		MAD4B_SCP_Audit::record( 'mad4b/approval-plan', array(
 			'ticket_id' => $ticket['ticket_id'],
+			'initiated_by_agent_public_id' => $initiating_agent_public_id,
+			'initiated_by_wp_user_id' => $initiating_wp_user_id,
+			'planned_execution_agent_public_id' => $agent['public_id'],
 			'agent_public_id' => $agent['public_id'],
 			'server_id' => $server_id,
 			'ability' => $ability_name,

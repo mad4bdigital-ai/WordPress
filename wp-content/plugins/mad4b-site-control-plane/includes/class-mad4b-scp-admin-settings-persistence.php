@@ -41,15 +41,24 @@ final class MAD4B_SCP_Admin_Settings_Persistence {
 		$asset_path = MAD4B_SCP_DIR . 'assets/admin-settings-persistence.js';
 		$asset_version = MAD4B_SCP_VERSION;
 		$connection_hotpath = in_array( $page, array( 'mad4b-control-plane-connection', 'mad4b-control-plane-chatgpt' ), true );
-		if ( ! $connection_hotpath && is_readable( $asset_path ) ) {
-			$content_sha = hash_file( 'sha256', $asset_path );
-			if ( is_string( $content_sha ) && preg_match( '/^[a-f0-9]{64}$/', $content_sha ) ) {
-				$asset_version .= '-' . substr( $content_sha, 0, 12 );
-			} else {
-				$mtime = filemtime( $asset_path );
-				if ( false !== $mtime ) $asset_version .= '-' . (string) $mtime;
-			}
-		}
+        if ( is_readable( $asset_path ) ) {
+            // Connection and ChatGPT settings use a cheap file mtime rather
+            // than hashing the script on their hotpath. They still need
+            // version changes after a code fix, or browsers reuse stale
+            // settings handlers and report apparently unsaved controls.
+            if ( $connection_hotpath ) {
+                $mtime = filemtime( $asset_path );
+                if ( false !== $mtime ) $asset_version .= '-' . (string) $mtime;
+            } else {
+                $content_sha = hash_file( 'sha256', $asset_path );
+                if ( is_string( $content_sha ) && preg_match( '/^[a-f0-9]{64}$/', $content_sha ) ) {
+                    $asset_version .= '-' . substr( $content_sha, 0, 12 );
+                } else {
+                    $mtime = filemtime( $asset_path );
+                    if ( false !== $mtime ) $asset_version .= '-' . (string) $mtime;
+                }
+            }
+        }
 		wp_enqueue_script(
 			self::HANDLE,
 			plugins_url( 'assets/admin-settings-persistence.js', MAD4B_SCP_FILE ),

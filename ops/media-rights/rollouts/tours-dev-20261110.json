@@ -1,0 +1,42 @@
+{
+  "contract": "mad4b.media-rights.source-rollout.v1",
+  "site": "https://tours.dev.mad4b.com",
+  "cct_slug": "media_rights",
+  "cct_definition_id": 394,
+  "cct_table": "wp_jet_cct_media_rights",
+  "migration_legacy_records": 1,
+  "legacy_option_retained": "mad4b_licensed_media_credits_v1",
+  "pagination_page_size": 12,
+  "languages": [
+    "en",
+    "fr",
+    "de",
+    "es",
+    "it",
+    "ar"
+  ],
+  "elementor_template_ids": {
+    "en": 69640,
+    "fr": 69642,
+    "de": 69644,
+    "es": 69646,
+    "it": 69648,
+    "ar": 69650
+  },
+  "wpml_page_ids": {
+    "en": 69641,
+    "fr": 69643,
+    "de": 69645,
+    "es": 69647,
+    "it": 69649,
+    "ar": 69651
+  },
+  "writer_patch": "ops/media-rights/rollouts/tours-dev-unified-media-apply-scoped.patch",
+  "writer_live_sha256": "7211e575e85e2ec751172e257bc5207b8f7cfc44ee8524558c968c5cfa94c172",
+  "registry_sha256": "2f069e26de321edea562ffd422fc9b5d44cd6d043b3b98f4925903ca9f8c4bc0",
+  "intake_sha256": "ec3213eb5e45664425ec1c37df8257855c8883f724fb8b7552f4b31b19931333",
+  "implementation_policy": "Existing source writer kept; only canonical CCT rights-write section patched. No forced composite adapter deployment.",
+  "scope": "Source demo; not copied WordPress rows from Wayfatours",
+  "signed_apply": "Existing review + approval required; no new unconditional write",
+  "rights_approval": "Manual/verified only; unknown sources remain draft"
+}

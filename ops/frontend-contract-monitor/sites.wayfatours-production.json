@@ -1,0 +1,77 @@
+{
+  "sites": {
+    "wayfatours-production": {
+      "origin": "https://wayfatours.com",
+      "site_uuid": "a3a7cc36-db7e-4a14-8456-b41857def05c",
+      "container": "php-guxhp9y6vgh7oouuw8plxrlr",
+      "chromium": "/root/.cache/ms-playwright/chromium-1194/chrome-linux/chrome",
+      "switcher": ".elementor-element-798db22 .wayfa-native-language, .elementor-element-798db22 .wayfa-mobile-lang-ready",
+      "languages": {
+        "en": {
+          "path": "/",
+          "label": "English"
+        },
+        "es": {
+          "path": "/es/",
+          "label": "Español"
+        }
+      },
+      "cases": [
+        {
+          "name": "homepage_en",
+          "path": "/",
+          "language": "en",
+          "target_language": "es",
+          "click": true
+        },
+        {
+          "name": "homepage_es",
+          "path": "/es/",
+          "language": "es",
+          "target_language": "en",
+          "click": true
+        },
+        {
+          "name": "tour_en",
+          "path": "/tours-and-activities/7-day-egypt-nile-cruise-tour/",
+          "language": "en",
+          "target_language": "es",
+          "click": true
+        },
+        {
+          "name": "tour_es",
+          "path": "/es/tours-and-activities/crucero-por-el-cairo-y-el-nilo-7-dias/",
+          "language": "es",
+          "target_language": "en",
+          "click": true
+        }
+      ],
+      "navigation": {
+        "path": "/",
+        "menu": "header .e-n-menu-title:has-text('Egypt')",
+        "tab": "header .native-destination-deep-tabs .e-n-tabs-heading [role=tab]",
+        "tab_text": "Aswan",
+        "previous_tab_text": "Alexandria",
+        "dom_tab_selector": "header .native-destination-deep-tabs [role=tab]",
+        "expected_paths": {
+          "en": [
+            "/",
+            "/destination/africa-containent/egypt/",
+            "/tours-and-activities/",
+            "/blog/",
+            "/about-us/",
+            "/contact-us/"
+          ],
+          "es": [
+            "/es/",
+            "/es/destino/continente-africano/egipto/",
+            "/es/tours-and-activities/",
+            "/es/blog/",
+            "/es/sobre-nosotros/",
+            "/es/contacto/"
+          ]
+        }
+      }
+    }
+  }
+}

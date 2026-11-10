@@ -1,0 +1,10 @@
+[Unit]
+Description=MAD4B universal media readiness every 30 minutes
+[Timer]
+OnBootSec=7min
+OnUnitActiveSec=30min
+RandomizedDelaySec=90s
+Persistent=true
+Unit=mad4b-universal-media-readiness.service
+[Install]
+WantedBy=timers.target

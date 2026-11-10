@@ -1,0 +1,26 @@
+{
+  "contract": "company.task.dispatch.v1",
+  "company_id": "example-company",
+  "environment": "staging",
+  "site_uuid": "00000000-0000-4000-8000-000000000001",
+  "message_id": "msg-example-001",
+  "delivery_id": "delivery-example-001",
+  "sent_at": "2026-11-05T01:00:00Z",
+  "sequence_number": 1,
+  "parent_operation_id": "parent-example-001",
+  "child_operation_id": "child-example-001",
+  "requested_capability": "wpml.translation.audit",
+  "idempotency_key": "example-company:staging:child-example-001:read",
+  "payload": {
+    "execution_mode": "hybrid",
+    "local_admission_required": true,
+    "local_skill_resolution": true,
+    "result_delivery": "durable_outbox",
+    "requested_scope_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "status": "PLANNED",
+    "locales": [
+      "en",
+      "es"
+    ]
+  }
+}

@@ -1,0 +1,18 @@
+[Unit]
+Description=MAD4B Frontend Contract Monitoring - Wayfatours Production
+Wants=network-online.target docker.service
+After=network-online.target docker.service
+ConditionPathExists=/opt/mad4b-company-provisioning/releases/configuration-jobs-v1/frontend-contract-sites.json
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+UMask=0077
+ExecStart=/usr/bin/python3 /opt/mad4b-company-provisioning/releases/configuration-jobs-v1/mad4b-frontend-contract-browser-v1.py wayfatours-production
+TimeoutStartSec=240
+Nice=10
+IOSchedulingClass=idle
+NoNewPrivileges=true
+StandardOutput=journal
+StandardError=journal

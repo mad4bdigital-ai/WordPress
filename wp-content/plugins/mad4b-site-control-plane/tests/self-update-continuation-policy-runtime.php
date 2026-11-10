@@ -21,6 +21,7 @@ function is_wp_error( $value ) { return $value instanceof WP_Error; }
 final class MAD4B_SCP_Site_Profile {
 	public static $environment = 'staging';
 	public static $write_enabled = true;
+	public static function status() { return array( 'authority_ready' => true, 'site_uuid' => 'fixture-site-uuid' ); }
 	public static function configured() { return true; }
 	public static function current_environment() { return self::$environment; }
 	public static function origin_enrolled() { return true; }

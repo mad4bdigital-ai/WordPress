@@ -13,6 +13,9 @@ function wp_check_invalid_utf8($value, $strip = false) {
     return $strip ? iconv('UTF-8','UTF-8//IGNORE',(string)$value) : '';
 }
 require_once __DIR__ . '/../includes/class-mad4b-scp-google-drive-context.php';
+// Mirror the live bootstrap: the media consumer is backed by the shared
+// local workbook normalizer; a hermetic fixture must load its real provider.
+require_once __DIR__ . '/../includes/class-mad4b-scp-context-local-document-normalizer.php';
 require_once __DIR__ . '/../includes/class-mad4b-scp-wordpress-media-context.php';
 $pass = 0;
 $check = static function($label, $ok) use (&$pass) {

@@ -117,10 +117,13 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
             || 'staging' !== MAD4B_SCP_Site_Profile::current_environment()
             || ! MAD4B_SCP_Site_Profile::origin_enrolled()
             || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) return false;
-        $ids = MAD4B_SCP_Site_Profile::oauth_user_ids();
-        // Never accept legacy_zero_touch fallback as an owner attestation.
-        if ( ! is_array( $ids ) || 1 !== count( array_unique( array_map( 'intval', $ids ) ) )
-            || ! in_array( (int) get_current_user_id(), array_map( 'intval', $ids ), true ) ) return false;
+        // Owner Partner eligibility follows the site's verified native
+        // WordPress administrator, not the NUMBER of independent OAuth users.
+        // Multi-user OAuth is permitted: each remote actor is still verified
+        // against its own WordPress subject, client and step-up scope.
+        // This is only review eligibility, never a write grant or approval.
+        $current = wp_get_current_user();
+        if ( ! $current || ! $current->exists() || ! user_can( $current, 'manage_options' ) ) return false;
         if ( class_exists( 'MAD4B_SCP_Policy' ) && MAD4B_SCP_Policy::can_breakglass() ) return false;
         if ( class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' )
             && MAD4B_SCP_Governed_Runtime_Gates::raw_sql_breakglass_enabled() ) return false;

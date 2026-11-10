@@ -1,0 +1,47 @@
+--- a/wp-content/mu-plugins/mad4b-unified-media-apply.php
++++ b/wp-content/mu-plugins/mad4b-unified-media-apply.php
+@@ -180,8 +180,7 @@
+    if($previous[$tid]!==$asset['expected_featured_image'])return self::err('mad4b_media_apply_translation_preimage_drift');}
+   $lock='mad4b_media_apply_lock_'.$target['type'].'_'.$id;
+   if(!add_option($lock,['at'=>time(),'approval'=>$approved['approval_sha256']],'','no'))return self::err('mad4b_media_apply_concurrent_operation');
+-  $created=0;$upload_path='';$changed=[];$credits_before=get_option(MAD4B_Media_Attribution_Registry_V1::OPTION,[]);
+-  if(!is_array($credits_before))$credits_before=[];
++  $created=0;$upload_path='';$changed=[];$credits_before=null;$credit_key='';
+   $credits_updated=false;$result=null;
+   try{
+    $attachment_ids=get_posts(['post_type'=>'attachment','post_status'=>'inherit','posts_per_page'=>3,'fields'=>'ids',
+@@ -217,14 +216,15 @@
+     if(!update_term_meta($tid,'featured_image',$url))throw new Exception('term_meta_save_failed');
+     $changed[]=$tid;clean_term_cache($tid,$target['type']);
+    }
+-   $credits=$credits_before;$credit_key='licensed_'.substr($asset['sha256'],0,16);
+-   $credits[$credit_key]=['subject'=>$asset['subject'],'author'=>$asset['author'],'source_url'=>$asset['source_url'],
+-     'license_url'=>$asset['license_url'],'license_label'=>$asset['license_label'],
+-     'source_sha256'=>$asset['sha256'],'attachment_id'=>$aid];
+-   if(!update_option(MAD4B_Media_Attribution_Registry_V1::OPTION,$credits,false)
+-      &&get_option(MAD4B_Media_Attribution_Registry_V1::OPTION)!==$credits)throw new Exception('credits_update_failed');
++   $credit_key='licensed_'.substr($asset['sha256'],0,16);
++   $credits_before=MAD4B_Media_Attribution_Registry_V1::credit_record($credit_key);
+    $credits_updated=true;
+-   if(!str_contains(MAD4B_Media_Attribution_Registry_V1::render(),esc_html($asset['author'])))throw new Exception('credits_not_visible');
++   if(!MAD4B_Media_Attribution_Registry_V1::upsert_credit($credit_key,[
++     'subject'=>$asset['subject'],'author'=>$asset['author'],'source_url'=>$asset['source_url'],
++     'license_url'=>$asset['license_url'],'license_label'=>$asset['license_label'],
++     'source_sha256'=>$asset['sha256'],'attachment_id'=>$aid]))throw new Exception('credits_cct_update_failed');
++   $saved_credit=MAD4B_Media_Attribution_Registry_V1::credit_record($credit_key);
++   if(!is_array($saved_credit)||$saved_credit['author']!==$asset['author'])throw new Exception('credits_cct_readback_failed');
+    foreach($ids as $tid)if(get_term_meta($tid,'featured_image',true)!==$url)throw new Exception('image_readback_mismatch');
+    $receipt=['status'=>'applied_verified','site_uuid'=>$actor['site_uuid'],'adapter'=>'term_featured_image',
+     'term_ids'=>$ids,'attachment_id'=>$aid,'image_url'=>$url,'image_sha256'=>$asset['sha256'],
+@@ -241,9 +241,9 @@
+    $result=$receipt;
+   }catch(Throwable $e){
+    foreach($changed as $tid){if($previous[$tid]==='')delete_term_meta($tid,'featured_image');else update_term_meta($tid,'featured_image',$previous[$tid]);clean_term_cache($tid,$target['type']);}
+-   if($credits_updated)update_option(MAD4B_Media_Attribution_Registry_V1::OPTION,$credits_before,false);
++   $credits_rollback_ok=!$credits_updated || MAD4B_Media_Attribution_Registry_V1::restore_credit($credit_key,$credits_before);
+    if($created)wp_delete_attachment($created,true);elseif($upload_path && is_file($upload_path))@unlink($upload_path);
+-   $result=self::err('mad4b_media_apply_failed_rolled_back');
++   $result=self::err($credits_rollback_ok?'mad4b_media_apply_failed_rolled_back':'mad4b_media_apply_cct_rollback_requires_reconciliation');
+   }finally{delete_option($lock);}
+   return $result;
+  }

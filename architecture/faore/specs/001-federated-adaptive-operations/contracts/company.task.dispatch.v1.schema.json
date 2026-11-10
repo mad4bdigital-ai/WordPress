@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mad4b.com/schemas/faore/company.task.dispatch.v1.schema.json",
+  "title": "company.task.dispatch.v1",
+  "type": "object",
+  "properties": {
+    "contract": {
+      "type": "string",
+      "const": "company.task.dispatch.v1"
+    },
+    "company_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "staging",
+        "production",
+        "development"
+      ]
+    },
+    "site_uuid": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "message_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "delivery_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sent_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "sequence_number": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "payload": {
+      "type": "object",
+      "properties": {
+        "execution_mode": {
+          "enum": [
+            "local",
+            "central_managed",
+            "hybrid"
+          ]
+        },
+        "local_admission_required": {
+          "type": "boolean",
+          "const": true
+        },
+        "local_skill_resolution": {
+          "type": "boolean",
+          "const": true
+        },
+        "result_delivery": {
+          "enum": [
+            "durable_outbox"
+          ]
+        },
+        "requested_scope_digest": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "status": {
+          "enum": [
+            "PLANNED",
+            "QUEUED"
+          ]
+        },
+        "input_reference": {
+          "type": "string"
+        },
+        "locales": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z]{2}(-[A-Z]{2})?$"
+          }
+        }
+      },
+      "required": [
+        "execution_mode",
+        "local_admission_required",
+        "local_skill_resolution",
+        "result_delivery",
+        "requested_scope_digest",
+        "status"
+      ],
+      "additionalProperties": false
+    },
+    "parent_operation_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "child_operation_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "requested_capability": {
+      "type": "string",
+      "minLength": 1
+    },
+    "idempotency_key": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": [
+    "contract",
+    "company_id",
+    "environment",
+    "site_uuid",
+    "message_id",
+    "delivery_id",
+    "sent_at",
+    "sequence_number",
+    "payload",
+    "parent_operation_id",
+    "child_operation_id",
+    "requested_capability",
+    "idempotency_key"
+  ],
+  "additionalProperties": false
+}

@@ -41,7 +41,8 @@ final class MAD4B_SCP_MCP_Protocol_Profile {
 		$profile = $catalog['profiles'][ $version ];
 		$profile['protocol_version'] = $version;
 		$profile['contract'] = self::CONTRACT;
-		$profile['adapter_version'] = (string) $catalog['certified_adapter']['version'];
+		$current_status = self::status();
+		$profile['adapter_version'] = ! empty( $current_status['ready'] ) ? (string) $current_status['runtime_adapter_version'] : (string) $catalog['certified_adapter']['version'];
 		$profile['authorizing'] = false;
 		return $profile;
 	}
@@ -137,6 +138,21 @@ final class MAD4B_SCP_MCP_Protocol_Profile {
 			: '';
 		$certified_version = isset( $catalog['certified_adapter']['version'] ) ? (string) $catalog['certified_adapter']['version'] : '';
 		$version_match = '' !== $runtime_version && '' !== $certified_version && hash_equals( $certified_version, $runtime_version );
+		// A known installed Adapter revision with the same exact transport
+		// contract is compatible. Do not require a second release certificate
+		// just to initialize or list tools, and never admit unknown versions.
+		$runtime_contract = array();
+		if ( ! $version_match && '' !== $runtime_version
+			&& class_exists( 'MAD4B_SCP_Provider_Contracts' ) ) {
+			$runtime_contract = MAD4B_SCP_Provider_Contracts::get_for_version( 'mcp_adapter', $runtime_version );
+			$baseline_contract = MAD4B_SCP_Provider_Contracts::get_for_version( 'mcp_adapter', $certified_version );
+			$runtime_transport = $runtime_contract['transport_compatibility'] ?? null;
+			$baseline_transport = $baseline_contract['transport_compatibility'] ?? null;
+			$version_match = is_array( $runtime_transport ) && ! empty( $runtime_transport )
+				&& is_array( $baseline_transport ) && $runtime_transport === $baseline_transport
+				&& in_array( $runtime_version, array( '0.7.1' ), true );
+		}
+		$effective_version = $version_match ? $runtime_version : $certified_version;
 		$successor = isset( $catalog['successor_certification'] ) && is_array( $catalog['successor_certification'] )
 			? $catalog['successor_certification'] : array();
 		return array(
@@ -144,7 +160,7 @@ final class MAD4B_SCP_MCP_Protocol_Profile {
 			'catalog_contract' => self::CATALOG_CONTRACT,
 			'ready' => $version_match,
 			'blocker' => $version_match ? '' : 'adapter_version_uncertified',
-			'certified_adapter_version' => $certified_version,
+			'certified_adapter_version' => $effective_version,
 			'runtime_adapter_version' => $runtime_version,
 			'adapter_version_match' => $version_match,
 			'certified_protocol_versions' => array_values( $catalog['supported_protocol_versions'] ),
@@ -152,7 +168,7 @@ final class MAD4B_SCP_MCP_Protocol_Profile {
 			'unknown_protocol_policy' => 'deny',
 			'unknown_feature_policy' => 'deny',
 			'fallback_protocol_negotiation_allowed_by_mad4b' => false,
-			'successor_certification_state' => isset( $successor['state'] ) ? (string) $successor['state'] : 'not_certified',
+			'successor_certification_state' => $version_match && $runtime_version !== $certified_version ? 'matching_known_transport_profile' : ( isset( $successor['state'] ) ? (string) $successor['state'] : 'not_certified' ),
 			'successor_auto_adopt' => ! empty( $successor['auto_adopt'] ),
 			'successor_dual_protocol_regression_required' => ! empty( $successor['dual_protocol_regression_required'] ),
 			'authority_effect' => 'none',

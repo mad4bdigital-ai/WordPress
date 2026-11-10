@@ -135,6 +135,7 @@ require __DIR__ . '/../includes/class-mad4b-scp-ability-contract-inspector.php';
 require __DIR__ . '/../includes/class-mad4b-scp-capability-descriptor-registry.php';
 require __DIR__ . '/../includes/class-mad4b-scp-crypto-profile.php';
 require __DIR__ . '/../includes/class-mad4b-scp-preparation-receipt.php';
+require __DIR__ . '/../includes/class-mad4b-scp-mcp-catalog-budget.php';
 require __DIR__ . '/../includes/class-mad4b-scp-chatgpt-tool-projection.php';
 require __DIR__ . '/../includes/class-mad4b-scp-ability-catalog-transport.php';
 // The production Gateway now depends on the exact scoped metadata index.

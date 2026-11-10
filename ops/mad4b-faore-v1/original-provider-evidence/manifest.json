@@ -1,0 +1,16 @@
+{
+  "authenticated_owner_rest_required": true,
+  "contract": "mad4b.faore.original-provider-snapshot.v1",
+  "deployment_policy": "inventory_snapshot_only_no_auto_install",
+  "new_grant_issued": false,
+  "ordered_map_relative_path": "wp-content/plugins/mad4b-platform/config/ordered-mu-map.php",
+  "origin": "Central live mad4b-platform",
+  "original_313_certified": false,
+  "owner_admin_path": "/wp-admin/tools.php?page=mad4b-native-313",
+  "provider": "MAD4B_Original_313_Owner_Launcher_V1",
+  "route": "/wp-json/mad4b/v1/native-313/readonly-canary",
+  "sha256": "2271e0ddf83c0124f71e9e78f654c205ee90ff6994596477b3d366cf75f4c2d6",
+  "snapshot_file": "332-mad4b-original-313-owner-launcher.php",
+  "source_relative_path": "wp-content/plugins/mad4b-platform/modules/authority/332-mad4b-original-313-owner-launcher.php",
+  "wpcli_user_override_allowed": false
+}

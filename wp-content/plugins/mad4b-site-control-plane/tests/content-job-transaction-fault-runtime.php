@@ -12,6 +12,10 @@ class WP_Error {
 }
 function is_wp_error($v){return $v instanceof WP_Error;}
 function add_action(){}
+$GLOBALS['created_events'] = array();
+function do_action($name, $payload=array()) {
+    if ($name==='mad4b_scp_content_job_created')$GLOBALS['created_events'][]=$payload;
+}
 function absint($n){return abs((int)$n);}
 function sanitize_key($s){return strtolower(preg_replace('/[^a-z0-9_-]/','',(string)$s));}
 function sanitize_text_field($s){return trim(strip_tags((string)$s));}
@@ -120,4 +124,5 @@ $wpdb=fresh_db();
 $r=MAD4B_SCP_Content_Jobs::create_job($input);
 assert_pass(!is_wp_error($r)&&$r['job']['tenant_id']===$GLOBALS['test_resolution']['scope']['tenant_ref'],'healthy job remains tenant-bound');
 assert_pass(in_array('COMMIT',$wpdb->queries,true),'healthy job commits');
+assert_pass(count($GLOBALS['created_events'])===1 && $GLOBALS['created_events'][0]['job_id']===$r['job']['job_id'], 'created event emitted once, only after successful commit');
 echo "PASS: synthetic ContentJob BEGIN/COMMIT/revocation/brand-revision fault matrix\n";

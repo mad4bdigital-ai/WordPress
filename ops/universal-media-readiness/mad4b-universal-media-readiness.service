@@ -1,0 +1,14 @@
+[Unit]
+Description=MAD4B Universal Media and Configuration Jobs scan for enrolled WordPress sites
+After=docker.service
+Requires=docker.service
+[Service]
+Type=oneshot
+User=root
+Group=root
+UMask=0077
+ExecStart=/usr/bin/python3 /opt/mad4b-company-provisioning/releases/configuration-jobs-v1/mad4b-universal-media-scheduled-scan.py
+TimeoutStartSec=330
+Nice=12
+IOSchedulingClass=idle
+NoNewPrivileges=true

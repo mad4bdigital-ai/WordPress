@@ -1,0 +1,10 @@
+[Unit]
+Description=MAD4B Wayfatours: scoped Tour-rate presentation HTML cache invalidation
+After=docker.service
+RequiresMountsFor=/opt/wayfa-rebuild-20261102/site-copy/wp-content
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/mad4b-company-provisioning/bin/purge-wayfa-tour-rate-public-cache.py
+TimeoutStartSec=35
+NoNewPrivileges=true

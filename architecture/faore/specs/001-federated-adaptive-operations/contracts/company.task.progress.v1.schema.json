@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mad4b.com/schemas/faore/company.task.progress.v1.schema.json",
+  "title": "company.task.progress.v1",
+  "type": "object",
+  "properties": {
+    "contract": {
+      "type": "string",
+      "const": "company.task.progress.v1"
+    },
+    "company_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "staging",
+        "production",
+        "development"
+      ]
+    },
+    "site_uuid": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "message_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "delivery_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sent_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "sequence_number": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "payload": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "enum": [
+            "PLANNED",
+            "QUEUED",
+            "ACCEPTED",
+            "RUNNING",
+            "PARTIAL",
+            "COMPLETED",
+            "FAILED",
+            "REJECTED",
+            "UNREACHABLE"
+          ]
+        },
+        "completed_items": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "total_items": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "error_code": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "additionalProperties": false
+    },
+    "parent_operation_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "child_operation_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "requested_capability": {
+      "type": "string",
+      "minLength": 1
+    },
+    "idempotency_key": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": [
+    "contract",
+    "company_id",
+    "environment",
+    "site_uuid",
+    "message_id",
+    "delivery_id",
+    "sent_at",
+    "sequence_number",
+    "payload",
+    "parent_operation_id",
+    "child_operation_id",
+    "requested_capability",
+    "idempotency_key"
+  ],
+  "additionalProperties": false
+}

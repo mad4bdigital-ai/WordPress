@@ -179,6 +179,9 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
             && ! empty( $before['deployment_binding_match'] );
         $quarantined = (int) ( $census['source_quarantine_count'] ?? 0 )
             + (int) ( $census['asset_quarantine_count'] ?? 0 );
+        $recycle_archive = method_exists('MAD4B_SCP_Context_Authority','foreign_recycle_archive_status')
+            ? MAD4B_SCP_Context_Authority::foreign_recycle_archive_status()
+            : array('integrity_verified'=>true);
         $status = 'READY_FOR_GOVERNED_SOURCE_PLAN';
         $next = 'context/governed-source-upsert';
         $needs_ticket = true;
@@ -187,6 +190,9 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
             $next = 'READY_FOR_OWNER_APPROVAL' === $binding_state
                 ? 'mad4b/deployment-binding-native-plan'
                 : 'mad4b/deployment-binding-native-status';
+        } elseif ( empty($recycle_archive['integrity_verified']) ) {
+            $status = 'RECYCLE_ARCHIVE_INTEGRITY_RECOVERY_REQUIRED';
+            $next = 'context/status';
         } elseif ( empty( $profile ) ) {
             $status = 'BRAND_PROFILE_REQUIRED';
             $next = 'context/brand-profile-save';
@@ -230,6 +236,9 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
             'operational_scope_verified' => $scope_verified,
             'quarantined_source_count' => (int) ( $census['source_quarantine_count'] ?? 0 ),
             'quarantined_asset_count' => (int) ( $census['asset_quarantine_count'] ?? 0 ),
+            'recycle_archive_integrity_verified' => !empty($recycle_archive['integrity_verified']),
+            'archived_source_count' => max(0,(int)($recycle_archive['archived_sources']??0)),
+            'archived_asset_count' => max(0,(int)($recycle_archive['archived_assets']??0)),
             'folder_selected' => '' !== $folder,
             'folder_identity_sha256' => '' !== $folder ? hash( 'sha256', $folder ) : '',
             'folder_membership_verified' => false,

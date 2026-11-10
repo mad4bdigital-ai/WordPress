@@ -1,0 +1,22 @@
+{
+  "contract": "mad4b.company-code-release-policy.v1",
+  "source_git_root": "/opt/mad4b-company-transport/worktrees/company-code-release-20261108",
+  "runtime_registry": "/opt/mad4b-company-transport/native-operator-v1/target-runtime-bindings.v1.json",
+  "broker_public_key_b64": "MUST_BE_PINNED_TO_ORIGINAL_BROKER_PUBLIC_KEY",
+  "targets": {
+    "wayfatours:production": {
+      "site_uuid": "a3a7cc36-db7e-4a14-8456-b41857def05c",
+      "root": "/opt/wayfa-rebuild-20261102/site-copy",
+      "container": "php-guxhp9y6vgh7oouuw8plxrlr",
+      "origin": "https://wayfatours.com",
+      "allowed_targets": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php",
+        "wp-content/mu-plugins/mad4b-elementor-copy-readiness-producer.php"
+      ],
+      "coolify_service_uuid": "guxhp9y6vgh7oouuw8plxrlr"
+    }
+  },
+  "example_snapshot_only": true,
+  "receipt_dir": "/var/lib/mad4b/company-code-release/receipts",
+  "environment_policy": "exact_enrolled_target_only_no_named_environment_exceptions"
+}
