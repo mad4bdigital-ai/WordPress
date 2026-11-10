@@ -62,15 +62,26 @@ sort( $preauth_names );
 $reviewed_step_up_abilities = MAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools();
 $reviewed_step_up_names = array();
 $reviewed_step_up_by_ability = array();
-foreach ( $preauth_tools as $dto ) {
-	$tool_name = MAD4B_SCP_MCP_Adapter_Compatibility::wire_name( $dto );
-	if ( '' === $tool_name ) $fail( 'Pre-auth MCP tool wire identity is unavailable.' );
-	$bound = $preauth_server->get_mcp_tool( $tool_name );
-	$meta = is_object( $bound ) && method_exists( $bound, 'get_adapter_meta' ) ? $bound->get_adapter_meta() : array();
-	$ability_name = is_array( $meta ) && isset( $meta['ability'] ) ? (string) $meta['ability'] : '';
-	if ( ! in_array( $ability_name, $reviewed_step_up_abilities, true ) ) continue;
-	$reviewed_step_up_by_ability[ $ability_name ] = (string) $tool_name;
-	$reviewed_step_up_names[] = (string) $tool_name;
+// The Adapter materializes a frozen tool superset before OAuth. get_tools()
+// is a *visibility-filtered* snapshot: it intentionally hides direct mutations
+// without an exact step-up bearer. Verify physical binding against the frozen
+// registration classification instead of misidentifying hidden tools as absent.
+$registered_classification = MAD4B_SCP_MCP_Catalog_Diagnostics::classification_snapshot();
+if ( ! is_array( $registered_classification ) || ! $registered_classification )
+    $fail( 'Physical ChatGPT MCP catalog classification was not captured.' );
+foreach ( $registered_classification as $tool_name => $row ) {
+    if ( ! is_array( $row ) || empty( $row['direct_step_up'] ) ) continue;
+    $ability_name = isset( $row['ability'] ) ? (string) $row['ability'] : '';
+    if ( ! in_array( $ability_name, $reviewed_step_up_abilities, true ) ) continue;
+    $bound = $preauth_server->get_mcp_tool( (string) $tool_name );
+    $meta = is_object( $bound ) && method_exists( $bound, 'get_adapter_meta' )
+        ? $bound->get_adapter_meta() : array();
+    if ( ! is_array( $meta ) || ( $meta['ability'] ?? '' ) !== $ability_name )
+        $fail( 'Frozen direct step-up classification has no matching physical MCP binding.', array(
+            'ability' => $ability_name, 'registered_wire_name' => (string) $tool_name,
+        ) );
+    $reviewed_step_up_by_ability[ $ability_name ] = (string) $tool_name;
+    $reviewed_step_up_names[] = (string) $tool_name;
 }
 // Reviewed direct step-ups are independently validated, not dropped by any
 // historical 36/64-tool display estimate. Every valid projected Ability
@@ -118,8 +129,9 @@ foreach ( $reviewed_step_up_abilities as $ability_name ) {
 }
 $reviewed_step_up_names = array_values( array_unique( $reviewed_step_up_names ) );
 sort( $reviewed_step_up_names );
-foreach ( $reviewed_step_up_names as $required_step_up ) {
-	if ( ! in_array( $required_step_up, $preauth_names, true ) ) $fail( 'Pre-auth server omitted a reviewed direct step-up projection.', $required_step_up );
+foreach ( $reviewed_step_up_names as $hidden_step_up ) {
+    if ( in_array( $hidden_step_up, $preauth_names, true ) )
+        $fail( 'Anonymous pre-auth catalog exposed a physical direct step-up tool.', $hidden_step_up );
 }
 foreach ( array(
 	'mad4b-site-profile-feature-reenroll',
