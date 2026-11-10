@@ -5,6 +5,8 @@ class WP_Error { private $code; function __construct($c,$m=''){ $this->code=$c; 
 function is_wp_error($x){return $x instanceof WP_Error;}
 function sanitize_key($value){return preg_replace('/[^a-z0-9_\-]/','',strtolower((string)$value));}
 function wp_json_encode($x,$f=0){return json_encode($x,$f);}
+// WordPress core absint; standalone fixture does not load wp-includes.
+function absint($value){return abs((int)$value);}
 function wp_salt($x){return 'dedicated-test-only-secret-not-a-real-key';}
 function maybe_serialize($x){return $x;}
 function wp_cache_delete($x,$g){}
