@@ -4,8 +4,8 @@
   "reviewed_base_sha": "5c72e4893e36e992f056c90cfc75908b3a8f7785",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 409,
-  "changed_paths_sha256": "b843c9cf2bfcd9a2b75b40f5baf318ce8a080699ed4cb0822cc883d903b99c4d",
+  "changed_file_count": 411,
+  "changed_paths_sha256": "9aba1570dcdff829010515b6599b24bc8f5dca68201f4ab740dbc892d0aa429f",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -155,6 +155,7 @@
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_rebind_delivery.py",
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/validate.py",
         "specs/007-content-intelligence-workflow-platform/validate_spec.py",
+        "tests/production_readiness_registry_contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/are-staging-operations-http-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/g6-g9-historical-administration-source-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/historical-delivery-successor-contract.py",
@@ -288,7 +289,8 @@
       "certification": "exact_head",
       "path_globs": [
         "tools/check_plugin_site_neutrality.py",
-        "tools/mad4b_live_remediation_simulator.py"
+        "tools/mad4b_live_remediation_simulator.py",
+        "tools/production_readiness_registry.py"
       ]
     },
     {

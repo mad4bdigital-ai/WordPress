@@ -380,4 +380,57 @@ with mock.patch.object(reg, "json_file", side_effect=initial_baseline):
     else:
         raise AssertionError("Unbounded precedence override allowed")
 
+# A relocation is not a new capability and not retirement. This exception
+# must prove the exact core call is deleted from the original source AND
+# appears in its new first-party registration trait; changed source blobs
+# still independently require full readiness reviews.
+old_registrar = reg.PLUGIN + "includes/class-mad4b-scp-abilities.php"
+new_registrar = reg.PLUGIN + "includes/trait-mad4b-scp-abilities-registration.php"
+relocation_key = "ability:mad4b/diagnostics-health"
+def relocated_sources(commit, path):
+    snapshots = {
+        (base, old_registrar): "$this->add( 'mad4b/diagnostics-health', 'Read' );",
+        (head, old_registrar): "<?php // Facade delegates to the exact trait. ?>",
+        (base, new_registrar): None,
+        (head, new_registrar): "$this->add( 'mad4b/diagnostics-health', 'Read' );",
+    }
+    return snapshots.get((commit, path))
+relocation_changed = [("M", old_registrar), ("A", new_registrar)]
+with mock.patch.object(reg, "git_text", side_effect=relocated_sources):
+    newly_added = {relocation_key: new_registrar}
+    retired = {relocation_key: old_registrar}
+    relocated = reg.review_exact_core_registration_relocations(
+        base, head, relocation_changed, newly_added, retired
+    )
+    assert len(relocated) == 1 and relocated[0]["id"] == relocation_key
+    assert relocated[0]["authorizing"] is False and relocated[0]["production_authorized"] is False
+    assert newly_added == {} and retired == {}
+
+    # A matching string in a different file is NOT a registered move.
+    added_wrong = {relocation_key: new_registrar}
+    removed_wrong = {relocation_key: old_registrar}
+    assert reg.review_exact_core_registration_relocations(
+        base, head, [("M", old_registrar), ("M", new_registrar)],
+        added_wrong, removed_wrong
+    ) == []
+    assert added_wrong and removed_wrong
+
+    # Unknown future ability cannot piggyback on this reviewed relocation.
+    added_new = {"ability:mad4b/unknown-future-operation": new_registrar}
+    removed_new = {"ability:mad4b/unknown-future-operation": old_registrar}
+    assert reg.review_exact_core_registration_relocations(
+        base, head, relocation_changed, added_new, removed_new
+    ) == []
+    assert added_new and removed_new
+
+    # New registration text in an unrelated source must not grant or retire.
+    newly_added = {relocation_key: reg.PLUGIN + "includes/class-unreviewed-provider.php"}
+    retired = {relocation_key: old_registrar}
+    # Regardless of the scanner's first observed string source, only exact
+    # registration trait ownership permits source relocation classification.
+    relocated = reg.review_exact_core_registration_relocations(
+        base, head, relocation_changed, newly_added, retired
+    )
+    assert len(relocated) == 1 and not newly_added and not retired
+
 print("DYNAMIC_READINESS_NEGATIVE_REGRESSIONS: PASS")
