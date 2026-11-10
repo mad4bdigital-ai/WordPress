@@ -515,6 +515,8 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-google-drive-context.php'
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-google-revocation-remote.php';
 // Provider-neutral health, human OAuth handoff and approved refresh lifecycle.
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-connection-center.php';
+// Read-only Company source reconciliation must be registered before MCP descriptor admission.
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-company-code-reconciliation.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-context-preflight.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-context-intelligence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-context-provider-gateway.php';
@@ -880,6 +882,8 @@ if ( ! $mad4b_passive_admin_read || '' !== $mad4b_diagnostic_catalog_target ) {
 	MAD4B_SCP_MCP_Hybrid::boot();
 	MAD4B_SCP_Dependency_Impact_Graph::boot();
 	MAD4B_SCP_Operation_Registry::boot();
+	// Hook definitions only: neither compare nor plan runs on bootstrap.
+	MAD4B_SCP_Company_Code_Reconciliation::boot();
 	MAD4B_SCP_Operation_Pipeline::boot();
 	MAD4B_SCP_Provider_Autopilot::boot();
 	MAD4B_SCP_Plugin_Transaction::boot();

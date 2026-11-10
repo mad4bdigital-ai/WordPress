@@ -55,6 +55,26 @@ if ( ! empty( $before['adapter_init_seen_before_bridge_boot'] ) ) $fail( 'adapte
 if ( ! empty( $before['first_rest_observed'] ) ) $fail( 'MAD4B boot instantiated REST before the explicit canonical REST bootstrap' );
 if ( did_action( 'wp_loaded' ) < 1 ) $fail( 'wp_loaded did not complete before the canonical REST bootstrap proof' );
 
+// Company Code reconciler exports read-only Abilities; core read MCP must
+// never advertise abilities that have not actually registered. Checking just
+// before the canonical REST bootstrap catches hook-order regressions.
+if ( ! class_exists( 'MAD4B_SCP_Company_Code_Reconciliation' ) )
+    $fail( 'Company Code reconciliation definitions absent before MCP initialization' );
+foreach ( array(
+    MAD4B_SCP_Company_Code_Reconciliation::PLAN,
+    MAD4B_SCP_Company_Code_Reconciliation::COMPARE,
+) as $read_ability ) {
+    if ( ! function_exists( 'wp_has_ability' ) || ! wp_has_ability( $read_ability ) )
+        $fail( 'Company Code reconciliation read Ability not registered: ' . $read_ability );
+    $definition = wp_get_ability( $read_ability );
+    $meta = is_object( $definition ) && method_exists( $definition, 'get_meta' )
+        ? $definition->get_meta() : array();
+    if ( ! is_array( $meta )
+        || empty( $meta['annotations']['readonly'] )
+        || ! empty( $meta['mcp']['public'] ) )
+        $fail( 'Company Code reconciliation read Ability was made externally public/mutating' );
+}
+
 // Trigger WordPress' canonical lazy REST bootstrap. This must execute the MCP
 // Adapter callback at priority 15 and then route registration at priority 16.
 $rest_server = rest_get_server();
