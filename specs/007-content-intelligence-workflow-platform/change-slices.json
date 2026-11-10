@@ -4,8 +4,8 @@
   "reviewed_base_sha": "5c72e4893e36e992f056c90cfc75908b3a8f7785",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 401,
-  "changed_paths_sha256": "321749e2bc92cff4848ecb45245b25ac72efa84bd4a100c01364d8e3b17765cd",
+  "changed_file_count": 402,
+  "changed_paths_sha256": "ef8017d2be97dd7f5787ea94ffe4059fa2f066badd2840574cfb26a148f6e1c9",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -657,6 +657,7 @@
       "revert_boundary": "Revert with exact transport and catalog implementations; preserve negative classification tests. Coordinate the remaining 1 peer partition(s) in this domain.",
       "certification": "exact_head",
       "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-adapter-protocol-matrix.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-plugin-adapter-discovery-smoke.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/session-safe-transport-resilience-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/site-profile-feature-reenrollment-contract.py",
