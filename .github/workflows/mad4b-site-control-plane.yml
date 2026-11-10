@@ -226,12 +226,16 @@ jobs:
           fi
           grep -Fq "LOAD_FILE" "$abilities"
           grep -Fq "CREATE\\s+(?:USER|ROLE)" "$abilities"
-          # Registration schemas are loaded through a required trait; checking
-          # only the facade misses the actual input fields after extraction.
-          test -f "$abilities_registration"
-          grep -Fq "trait-mad4b-scp-abilities-registration.php" "$abilities"
-          grep -Fq "use MAD4B_SCP_Abilities_Registration_Trait;" "$abilities"
-          grep -Fq "expected_modified_gmt" "$abilities_registration"
+          # Accept either supported code layout, but verify the actual schema
+          # owner and its explicit Facade binding. Never pass merely because a
+          # file exists or a marker appears in an unrelated comment.
+          if [ -f "$abilities_registration" ]; then
+            grep -Fq "require_once __DIR__ . '/trait-mad4b-scp-abilities-registration.php';" "$abilities"
+            grep -Fq 'use MAD4B_SCP_Abilities_Registration_Trait;' "$abilities"
+            grep -Fq "expected_modified_gmt" "$abilities_registration"
+          else
+            grep -Fq "expected_modified_gmt" "$abilities"
+          fi
           grep -Fq "max_affected" "$abilities"
           grep -Fq "can_structured_database_read" "$abilities"
           grep -Fq "can_structured_database_write" "$abilities"
