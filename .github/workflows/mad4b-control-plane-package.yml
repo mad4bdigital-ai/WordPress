@@ -322,23 +322,96 @@ jobs:
         run: |
           set -euo pipefail
           eval "$(python3 - <<'PY'
-          import json, shlex
+          import json, re, shlex, sys
           from pathlib import Path
           root=Path('wp-content/plugins/mad4b-site-control-plane/config')
           policy=json.loads((root/'runtime-release-policy.json').read_text(encoding='utf-8'))
           profiles=json.loads((root/'certified-provider-profiles.json').read_text(encoding='utf-8'))
           if policy.get('contract')!='mad4b.runtime-release-policy.v1':
               raise SystemExit('runtime release policy contract mismatch')
-          version=str(policy.get('target_adapter_version') or '')
-          profile=((profiles.get('providers') or {}).get('mcp_adapter') or {}).get(version) or {}
-          if profile.get('version')!=version:
-              raise SystemExit('target MCP Adapter profile missing')
-          sha=str(profile.get('archive_sha256') or '').lower()
-          size=int(profile.get('archive_bytes') or 0)
-          url=str(profile.get('package_url') or '')
+          if policy.get('exact_provider_profile_required') is not True or policy.get('pair_certification_required') is not True:
+              raise SystemExit('MCP Adapter source certification may not be disabled')
+          adapter_profiles=((profiles.get('providers') or {}).get('mcp_adapter') or {})
+          if not isinstance(adapter_profiles, dict):
+              raise SystemExit('certified MCP Adapter provider catalog missing')
+          def verified_profile(version, row):
+              if not isinstance(version,str) or not re.fullmatch(r'[0-9]+[.][0-9]+[.][0-9]+',version):
+                  return False
+              if not isinstance(row,dict) or row.get('version')!=version:
+                  return False
+              sha=str(row.get('archive_sha256') or '')
+              size=row.get('archive_bytes')
+              url=str(row.get('package_url') or '')
+              authority=str(row.get('certification_authority') or '')
+              evidence=row.get('evidence') or {}
+              if not re.fullmatch(r'[a-f0-9]{64}',sha) or type(size) is not int or size<1:
+                  return False
+              if not isinstance(evidence,dict) or evidence.get('mutation_authority') is not False:
+                  return False
+              if (evidence.get('release_asset_sha256')!=sha
+                  or evidence.get('release_asset_bytes')!=size
+                  or evidence.get('source_tag') not in (version,'v'+version)):
+                  return False
+              if not isinstance(row.get('verified_contracts'),list) or 'create_server' not in row['verified_contracts']:
+                  return False
+              github_url=f'https://github.com/WordPress/mcp-adapter/releases/download/v{version}/mcp-adapter.zip'
+              wordpress_url=f'https://downloads.wordpress.org/plugin/mcp-adapter.{version}.zip'
+              if url==github_url:
+                  if authority!=f'github.com/WordPress/mcp-adapter/releases/tag/v{version}':
+                      return False
+              elif url==wordpress_url:
+                  if not authority.startswith('https://wordpress.org/plugins/mcp-adapter/') or version not in authority:
+                      return False
+              else:
+                  return False
+              archive=str(row.get('archive') or f'mcp-adapter-{version}.zip')
+              return re.fullmatch(r'[a-zA-Z0-9._-]+[.]zip',archive) is not None
+          # The legacy package policy remains build-compatible. The new
+          # capability-based policy proposes the newest already-certified
+          # official artifact without an installed-Adapter version gate.
+          # Runtime promotion and exact owner authority remain independent.
+          def choose_build_candidate(release_policy, candidates):
+              if release_policy.get('adapter_release_target_source')=='certified_runtime_release_set.mcp_adapter':
+                  if release_policy.get('installed_adapter_version_gate') is not False or 'target_adapter_version' in release_policy:
+                      raise SystemExit('dynamic adapter policy cannot retain the installed-version gate')
+                  eligible=[v for v,p in candidates.items() if verified_profile(v,p)]
+                  if not eligible:
+                      raise SystemExit('no verified official MCP Adapter build candidate')
+                  return max(eligible,key=lambda v:tuple(int(x) for x in v.split('.')))
+              return str(release_policy.get('target_adapter_version') or '')
+          # Pure, no-network source-certification regression for future versions,
+          # tampered digest and untrusted upstream channels. No fake release is
+          # downloaded, added to the live catalog or granted authority.
+          known=[(v,p) for v,p in adapter_profiles.items() if verified_profile(v,p)]
+          if not known:
+              raise SystemExit('no certified provider profile for dynamic resolver self-test')
+          future_version='2099.0.1'
+          seed=dict(known[0][1])
+          seed['version']=future_version
+          seed['archive']=f'mcp-adapter-{future_version}.zip'
+          seed['package_url']=f'https://github.com/WordPress/mcp-adapter/releases/download/v{future_version}/mcp-adapter.zip'
+          seed['certification_authority']=f'github.com/WordPress/mcp-adapter/releases/tag/v{future_version}'
+          seed['evidence']={**seed['evidence'],'source_tag':'v'+future_version}
+          mock={**adapter_profiles,future_version:seed}
+          probe={'adapter_release_target_source':'certified_runtime_release_set.mcp_adapter',
+                 'installed_adapter_version_gate':False}
+          if choose_build_candidate(probe,mock)!=future_version:
+              raise SystemExit('dynamic artifact selection cannot admit a future reviewed version')
+          invalid_digest={**seed,'evidence':{**seed['evidence'],'release_asset_sha256':'0'*64}}
+          if choose_build_candidate(probe,{**adapter_profiles,future_version:invalid_digest})==future_version:
+              raise SystemExit('tampered future artifact digest admitted')
+          invalid_url={**seed,'package_url':'https://example.invalid/mcp-adapter.zip'}
+          if choose_build_candidate(probe,{**adapter_profiles,future_version:invalid_url})==future_version:
+              raise SystemExit('untrusted release channel admitted')
+          version=choose_build_candidate(policy,adapter_profiles)
+          profile=adapter_profiles.get(version) or {}
+          if not verified_profile(version,profile):
+              raise SystemExit('target MCP Adapter profile identity or upstream provenance invalid')
+          sha=profile['archive_sha256']
+          size=profile['archive_bytes']
+          url=profile['package_url']
           archive=str(profile.get('archive') or f'mcp-adapter-{version}.zip')
-          if len(sha)!=64 or size<1 or not url.startswith('https://github.com/WordPress/mcp-adapter/releases/download/v'):
-              raise SystemExit('target MCP Adapter profile identity invalid')
+          print('Selected official certified MCP Adapter build candidate '+version+'; no runtime promotion',file=sys.stderr)
           values={'MCP_ADAPTER_VERSION':version,'MCP_ADAPTER_SHA':sha,'MCP_ADAPTER_BYTES':str(size),'MCP_ADAPTER_URL':url,'MCP_ADAPTER_ARCHIVE':archive,'MCP_ADAPTER_STAGE_PATH':'/tmp/mad4b-certified-mcp-adapter.zip'}
           for key,value in values.items():
               print(f'{key}={shlex.quote(value)}')
