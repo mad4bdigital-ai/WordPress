@@ -87,6 +87,8 @@ final class MAD4B_Test_Schema_WPDB {
 	}
 	public function get_col( $query, $column = 0 ) {
 		return array(
+			// Current dual-principal mutation journal columns required by physical integrity.
+			'mutation_id', 'principal_type', 'agent_id', 'wp_user_id', 'subject_fingerprint',
 			'candidate_binding_contract', 'candidate_sha', 'build_fingerprint', 'binding_environment',
 			'binding_host', 'site_uuid', 'site_profile_revision', 'site_profile_digest', 'bound_at',
 			'job_id', 'state', 'stage', 'current_artifact_id', 'job_revision', 'updated_at',
@@ -125,6 +127,7 @@ final class MAD4B_Test_Schema_WPDB {
 	public function get_results( $query, $output = null ) {
 		$rows = array();
 		foreach ( array(
+			'mutation_id', 'principal_created',
 			'job_id', 'event_id', 'job_sequence', 'work_id', 'scope_idempotency',
 			'outbox_id', 'provider_idempotency', 'provider_event',
 			'artifact_id', 'job_type_version', 'edge_id', 'artifact_relation',
