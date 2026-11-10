@@ -70,6 +70,11 @@ verify_grants( is_string( $content_jobs_source )
 $registration = file_get_contents( dirname( __DIR__ ) . '/includes/trait-mad4b-scp-abilities-registration.php' );
 $abilities_source = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-abilities.php' );
 $mutation_source = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-mutation-manager.php' );
+// The registered exact-CAS field is also checked by the direct Ability
+// executor, independently of the Mutation Manager's stale-write comparison.
+verify_grants( false !== strpos( $abilities_source, "isset( \$input['expected_modified_gmt'] )" )
+    && false !== strpos( $abilities_source, "if ( '' === \$expected_modified_gmt ) return new WP_Error(" ),
+    'Direct content update executor must refuse missing expected post revision.' );
 verify_grants( ( $allowed['mad4b/content-update-post'] ?? '' ) === 'core'
     && false !== strpos( $registration, "'mad4b/content-update-post'" )
     && false !== strpos( $registration, "'expected_modified_gmt'" )
