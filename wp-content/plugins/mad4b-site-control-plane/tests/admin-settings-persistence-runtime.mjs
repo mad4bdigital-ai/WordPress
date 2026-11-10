@@ -23,6 +23,14 @@ async function fixture(responseKind = 'success', profile = false, refreshMode = 
   const selector = refreshMode ? '#mad4b-workspace' : '';
   const form = {
     dataset: {},
+    // Model the browser's validated native submit event, not the unsafe
+    // HTMLFormElement.prototype.submit() shortcut that skips constraint checks.
+    requestSubmit(submitter) {
+      fallback++;
+      const event = { target: form, submitter: submitter || null,
+        preventDefault() { throw new Error('Native fallback was incorrectly intercepted'); } };
+      void listeners.get('submit')(event);
+    },
     closest: () => form,
     setAttribute() {},
     removeAttribute() {},
@@ -116,8 +124,7 @@ async function fixture(responseKind = 'success', profile = false, refreshMode = 
       HTMLFormElement: {
         prototype: {
           submit() {
-            fallback++;
-            assert.equal(controls[0].disabled, false);
+            throw new Error('Unsafe native .submit() bypassed HTML5 validation');
           }
         }
       }
