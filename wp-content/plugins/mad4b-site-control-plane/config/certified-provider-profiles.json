@@ -637,7 +637,7 @@
           "file_count": 54,
           "symbol_count": 54,
           "tree_sha256": "6db82286cf05a9f3776cbf2caaceb4d6899d3ab77410929d00a064426284b747",
-          "generator": "official Wordpress.org archive, layout derived from reviewed 0.7.0 54-file runtime surface",
+          "generator": "tests/mcp-runtime-surface-profile.py",
           "fail_closed_on_unprofiled_symbol": true
         },
         "runtime_symbols": [
