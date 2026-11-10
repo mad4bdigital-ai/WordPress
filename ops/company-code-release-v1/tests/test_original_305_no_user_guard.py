@@ -23,6 +23,20 @@ class Native305NoUserGuardTests(unittest.TestCase):
         self.assertEqual(result['state'],'DENIED_REGRESSION')
         self.assertIn('blanket_wpcli_rejection',result['prohibited_patterns'])
 
+    def test_regression_if_remote_host_principal_proof_removed(self):
+        if not guard.LIVE.is_file():
+            self.skipTest("Original live Tours.dev module is not mounted")
+        source=guard.LIVE.read_text()
+        for clause in ("($grant['principal_type']??null)==='signed_hostinger_ssh_wpcli'",
+                       'MAD4B_Original_Remote_Hostinger_328_V1::active(',
+                       'MAD4B_Original_Verified_WPCLI_Transport_V1::active(',
+                       "($grant['target_host_id']??null)==='srv2030908'"):
+            with self.subTest(clause=clause):
+                altered=source.replace(clause,'removed_protection(',1)
+                result=guard.evaluate(altered)
+                self.assertEqual(result['state'],'DENIED_REGRESSION')
+                self.assertIn('native_scope_ledger',result['missing_checks'])
+
     def test_regression_if_signature_or_native_enrollment_removed(self):
         if not guard.LIVE.is_file():
             self.skipTest("Original live Tours.dev module is not mounted")
