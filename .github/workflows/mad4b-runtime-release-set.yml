@@ -198,7 +198,7 @@ jobs:
             --archive /tmp/mcp-adapter.zip \
             --profile wp-content/plugins/mad4b-site-control-plane/config/certified-provider-profiles.json \
             --version "$VERSION"
-          python3 wp-content/plugins/mad4b-site-control-plane/tests/mcp-adapter-protocol-matrix.py /tmp/mcp-adapter.zip
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/mcp-adapter-protocol-matrix.py /tmp/mcp-adapter.zip "$VERSION"
           python3 - "$VERSION" "$SHA" "$BYTES" <<'PY'
           import hashlib, json, sys, zipfile
           from pathlib import Path
