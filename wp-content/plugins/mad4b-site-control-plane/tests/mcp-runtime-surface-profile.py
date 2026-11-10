@@ -170,6 +170,31 @@ def main() -> int:
     if str(profile.get("version") or "") != args.version:
         raise SystemExit("profile/version identity mismatch")
 
+    # All-symbol coverage is currently 1:1 with the selected PHP source
+    # files. Independently recompute the source tree from exact catalog blob
+    # identities before opening the archive; inconsistent signed metadata
+    # is never accepted just because the archive checksum itself matches.
+    listed = normalized_symbols(profile.get("runtime_symbols"))
+    surface_record = profile.get("runtime_surface") or {}
+    by_file = {}
+    for row in listed:
+        source = row["file"]
+        digest = row["git_blob_sha1"]
+        if not re.fullmatch(r"[a-f0-9]{40}", digest):
+            raise SystemExit("runtime symbol source Git blob identity invalid")
+        if source in by_file and by_file[source] != digest:
+            raise SystemExit("runtime symbol file has inconsistent Git blobs")
+        by_file[source] = digest
+    if (listed and len(by_file) == surface_record.get("file_count")
+        and len(listed) == surface_record.get("symbol_count")):
+        material = "".join(f"{name}={by_file[name]}\\n" for name in sorted(by_file))
+        expected_tree = hashlib.sha256(material.encode("utf-8")).hexdigest()
+        if surface_record.get("tree_sha256") != expected_tree:
+            raise SystemExit(
+                "runtime_surface recorded source tree disagrees with its own "
+                f"exact symbol file blobs: {expected_tree}"
+            )
+
     with zipfile.ZipFile(args.archive) as zf:
         surface, symbols = generated_surface(zf, profile, args.version)
 

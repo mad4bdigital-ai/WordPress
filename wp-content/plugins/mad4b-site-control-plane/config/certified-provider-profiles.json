@@ -636,7 +636,7 @@
           "source_identity": "WordPress.org/mcp-adapter@0.7.1",
           "file_count": 54,
           "symbol_count": 54,
-          "tree_sha256": "6db82286cf05a9f3776cbf2caaceb4d6899d3ab77410929d00a064426284b747",
+          "tree_sha256": "c0f3c05d1a8dbc178441a1fade8270d33dcacafa7096b377b1d79db667158f2d",
           "generator": "tests/mcp-runtime-surface-profile.py",
           "fail_closed_on_unprofiled_symbol": true
         },
