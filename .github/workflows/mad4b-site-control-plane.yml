@@ -234,7 +234,14 @@ jobs:
             grep -Fq 'use MAD4B_SCP_Abilities_Registration_Trait;' "$abilities"
             grep -Fq "expected_modified_gmt" "$abilities_registration"
           else
-            grep -Fq "expected_modified_gmt" "$abilities"
+            # The callback retains the registered Ability API. The exact post
+          # concurrency guard lives in the governed Mutation Manager, not the
+          # intentionally thin Abilities facade.
+          mutation_manager="$root/includes/class-mad4b-scp-mutation-manager.php"
+          test -f "$mutation_manager"
+          grep -Fq "MAD4B_SCP_Mutation_Manager::execute_post_update" "$abilities"
+          grep -Fq "public static function execute_post_update" "$mutation_manager"
+          grep -Fq "expected_modified_gmt" "$mutation_manager"
           fi
           grep -Fq "max_affected" "$abilities"
           grep -Fq "can_structured_database_read" "$abilities"
