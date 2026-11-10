@@ -2,7 +2,7 @@
 /**
  * Sparse, tenant-bound content storage. No live presentation hooks.
  * The only automatic schema mutation is dbDelta on this site when explicitly
- * called by an authorized Staging operator.
+ * called by a separately signed, exact-scope schema migration.
  */
 defined('ABSPATH') || exit;
 final class MAD4B_Tenant_Sparse_Store {
@@ -18,23 +18,11 @@ final class MAD4B_Tenant_Sparse_Store {
         return new WP_Error('mad4b_sparse_' . $name, $name);
     }
     private static function local_scope($write=false) {
-        if(!class_exists('MAD4B_SCP_Site_Profile')) return self::err('profile_missing');
-        $s=MAD4B_SCP_Site_Profile::status();
-        if(empty($s['authority_ready']) || empty($s['same_origin_clone_protection'])
-          || empty($s['deployment_binding_match']) || empty($s['origin_match'])
-          || empty($s['site_uuid']) || !empty($s['mutation_pending_audit'])) return self::err('site_not_bound');
-        // Read-only tenant lookups use enrolled UUID, origin and deployment
-        // binding; a stale environment label is not data ownership proof.
-        // Preserve the old exact-environment requirement for *writes*,
-        // which still have their separate staging/local and audit gates.
-        if($write) {
-            if(($s['configured_environment']??'')!==wp_get_environment_type())
-                return self::err('environment_mismatch');
-            if(!in_array(wp_get_environment_type(),['staging','local'],true))return self::err('non_test_mutation_blocked');
-            if(!class_exists('MAD4B_SCP_Audit') ||
-              empty(MAD4B_SCP_Audit::storage_status()['ready']))return self::err('audit_unready');
-        }
-        return (string)$s['site_uuid'];
+        // Exact site origin, host binding and audit are required in every
+        // environment. An environment label never grants write access.
+        $uuid=class_exists('MAD4B_Tenant_Operation_Authority',false)
+            ?MAD4B_Tenant_Operation_Authority::scope($write):'';
+        return $uuid!==''?$uuid:self::err($write?'site_write_authority_unverified':'site_not_bound');
     }
     public static function names(){
         return ['maps'=>self::table('content_maps'),
@@ -52,8 +40,8 @@ final class MAD4B_Tenant_Sparse_Store {
         global $wpdb;
         $scope=self::local_scope(true);
         if(is_wp_error($scope))return $scope;
-        if(!defined('WP_CLI') || !WP_CLI || get_current_user_id()!==0)
-            return self::err('schema_install_requires_host_cli');
+        if(!MAD4B_Tenant_Operation_Authority::schema('tenant.sparse.schema',array_values(self::names())))
+            return self::err('signed_schema_migration_authority_required');
         if(!self::exists()) {
             $a=self::audit('mad4b/tenant-sparse-schema-intent',[
                 'site_uuid'=>$scope,'schema'=>self::VERSION,'environment'=>wp_get_environment_type(),
@@ -224,7 +212,7 @@ KEY expires_at (expires_at)
         global $wpdb;
         // Only this operation's four-eyes-approved Workflow apply may
         // rely on the current tenant's verified read scope in Production.
-        // All ordinary sparse writes retain their former write gate.
+        // Ordinary writes require exact site and audit scope, not a Staging label.
         $approved=class_exists('MAD4B_Tenant_Workflow')
             && MAD4B_Tenant_Workflow::permitted_apply($map,$field);
         $scope=self::check_map($map,!$approved);
