@@ -574,7 +574,11 @@ try {
 	$isolated_schema = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( $requested_catalog, $catalog_optional );
 	if ( empty( $isolated_schema['ready'] ) || empty( $isolated_schema['degraded'] ) || 1 !== count( $nonbudget_failures( $isolated_schema ) ) || 'mad4b/full-staging-authority-apply' !== $nonbudget_failures( $isolated_schema )[0]['failing_ability'] || 64 !== strlen( $nonbudget_failures( $isolated_schema )[0]['source_schema_fingerprint'] ) ) $fail( 'Malformed real ability schema must be isolated by official conversion.', $isolated_schema );
 } finally { $ability_schema->setValue( $optional_ability, $original_schema ); }
-$required_ability = wp_get_ability( 'mad4b/site-info' ); $original_description = $ability_description->getValue( $required_ability );
+// Direct Profile conveniences such as site-info are optional. Corrupt a
+// genuine core dispatcher to verify that required-tool failure is fail-closed.
+if ( in_array( 'mad4b/read-execute', $catalog_optional, true ) )
+    $fail( 'Core read dispatcher was incorrectly classified as optional.' );
+$required_ability = wp_get_ability( 'mad4b/read-execute' ); $original_description = $ability_description->getValue( $required_ability );
 try {
 	$ability_description->setValue( $required_ability, "\xB1\x31" );
 	$isolated = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( $requested_catalog, $catalog_optional );
