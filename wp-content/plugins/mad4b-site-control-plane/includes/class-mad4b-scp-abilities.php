@@ -322,7 +322,7 @@ final class MAD4B_SCP_Abilities {
 		foreach ( $required_read_identity as $key ) {
 			if ( ! is_array( $input ) || ! isset( $input[ $key ] )
 				|| ! is_string( $input[ $key ] ) || '' === trim( $input[ $key ] ) )
-				return new WP_Error( 'mad4b_read_dispatch_preparation_required',
+				return new WP_Error( 'mad4b_dispatch_preparation_required',
 					'Governed read execution requires the complete exact prepared identity.' );
 		}
 		$ability_name = (string) $input['ability_name'];
