@@ -2100,6 +2100,7 @@
         "MCP-01"
       ],
       "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-package-mcp-governance-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-router-runtime.php"
       ],
       "owner_role": "Repository source-review maintainer — CI-only static candidate audit, not remote authorization or WordPress Site Owner",
@@ -2108,7 +2109,7 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing update-coordinator, cross-plugin isolation, recovery, rollout, governance and security controls apply. The introduced source only mentions the established Ability as non-authorizing routing guidance; this review does not register, grant, invoke, install or certify it. MCP-01 governs the bounded MCP plan reference; this review preserves source signature, identity, read-only result and approval gates, not a new grant.",
-      "review_rationale": "Static source scanner identifies the literal mad4b/control-plane-selected-head-plan in the new package route guidance. It is a pointer to an independent already-governed Control Plane planning surface, NOT a newly registered Ability or an executable provider-package action. Same-PR hermetic PHP test validates fail-closed MAD4B provider rejection, read-only guidance and no auto-apply/Production permission. Runtime discovery remains unverified. The same-PR Python regression contract executes both fixed PHP CLI fixtures with bounded timeout, checks nonzero exit codes and requires positive PASS markers; neither fixture is counted as a trusted standalone PHPUnit test. Added same-PR PHP reducer regression verifies actual Production denial, exact signed source linkage, fallback when Selected HEAD identity differs, no automatic mutation, and governed admin read authorization."
+      "review_rationale": "Static source scanner identifies the literal mad4b/control-plane-selected-head-plan in the new package route guidance. It is a pointer to an independent already-governed Control Plane planning surface, NOT a newly registered Ability or an executable provider-package action. Same-PR hermetic PHP test validates fail-closed MAD4B provider rejection, read-only guidance and no auto-apply/Production permission. Runtime discovery remains unverified. The same-PR Python regression contract executes both fixed PHP CLI fixtures with bounded timeout, checks nonzero exit codes and requires positive PASS markers; neither fixture is counted as a trusted standalone PHPUnit test. Added same-PR PHP reducer regression verifies actual Production denial, exact signed source linkage, fallback when Selected HEAD identity differs, no automatic mutation, and governed admin read authorization. Historical package governance contract is retained and now executes the new PHP route regression, preserving cumulative same-PR executable evidence."
     },
     {
       "id": "ability:mad4b/control-plane-test-route",
