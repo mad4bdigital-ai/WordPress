@@ -310,10 +310,13 @@ final class MAD4B_SCP_Brand_Context_Builder {
 	private static function approved_brand_asset( array $asset ) {
         // Defense in depth: old review receipts must not grant another
         // company's explicitly branded source authority in this site.
-        if ( class_exists('MAD4B_SCP_Context_Authority') ) {
-            $ownership=MAD4B_SCP_Context_Authority::brand_owner_evidence($asset);
-            if('foreign'===($ownership['status']??''))return false;
-        }
+        // A compatible Context Authority may be loaded by an older native
+        // adapter during migration. Never fatal or approve an unverified
+        // Brand Core ownership claim when its evidence method is missing.
+        if ( ! class_exists( 'MAD4B_SCP_Context_Authority', false )
+            || ! method_exists( 'MAD4B_SCP_Context_Authority', 'brand_owner_evidence' ) ) return false;
+        $ownership = MAD4B_SCP_Context_Authority::brand_owner_evidence( $asset );
+        if ( ! is_array( $ownership ) || 'foreign' === ( $ownership['status'] ?? '' ) ) return false;
 		$current = isset( $asset['content_hash'] ) ? strtolower( trim( (string) $asset['content_hash'] ) ) : '';
 		$reviewed = isset( $asset['reviewed_content_hash'] ) ? strtolower( trim( (string) $asset['reviewed_content_hash'] ) ) : '';
 		return 'ready' === ( isset( $asset['status'] ) ? (string) $asset['status'] : '' )

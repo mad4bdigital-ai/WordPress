@@ -10,8 +10,12 @@ function is_wp_error( $x ) { return $x instanceof WP_Error; }
 function add_action( ...$args ) {}
 function get_option( $name, $default = '' ) { return $default; }
 function wp_get_environment_type() { return $GLOBALS['test_env'] ?? 'staging'; }
+function sanitize_key( $s ) { return strtolower( preg_replace( '/[^a-z0-9_-]/', '', (string) $s ) ); }
 class MAD4B_SCP_Site_Profile {
+    public static $managed = true;
     public static function current_environment() { return $GLOBALS['test_env'] ?? 'staging'; }
+    public static function managed_runtime_enabled() { return self::$managed; }
+    public static function status() { return array( 'authority_ready' => true ); }
 }
 class MAD4B_SCP_Local_OAuth_Server {
     const CHATGPT_CIMD_CLIENT_ID = 'https://chatgpt.com/connector-client';
@@ -99,7 +103,12 @@ $GLOBALS['test_verified_scope_missing'] = true;
 check( 'verified scope absent denied', MAD4B_SCP_Operator_Grant_Convergence::execute( array( 'action' => 'plan' ) ), 'mad4b_operator_grants_step_up_required' );
 unset( $GLOBALS['test_verified_scope_missing'] );
 $GLOBALS['test_env'] = 'production';
-check( 'production denied', MAD4B_SCP_Operator_Grant_Convergence::execute( array( 'action' => 'plan' ) ), 'mad4b_operator_grants_staging_only' );
+check( 'enrolled production planning follows exact grants, not environment label',
+    MAD4B_SCP_Operator_Grant_Convergence::execute( array( 'action' => 'plan' ) ), null );
+MAD4B_SCP_Site_Profile::$managed = false;
+check( 'unmanaged production denied',
+    MAD4B_SCP_Operator_Grant_Convergence::execute( array( 'action' => 'plan' ) ),
+    'mad4b_operator_grants_site_not_ready' );
 if ( MAD4B_SCP_Developer_Authority::$apply_calls !== 0 ) {
     fwrite( STDERR, 'FAIL canonical apply touched' . PHP_EOL ); exit( 3 );
 }
