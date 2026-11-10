@@ -11601,6 +11601,48 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Original provider mapping implementation and existing Write catalog admission controls reused verbatim; provider precedence remains core first, then certified registered adapter, only for mounted abilities.",
       "review_rationale": "Exact Git blob of Write Catalog trait after relocation of the unchanged provider snapshot. The QA31 hermetic regression executes this exact implementation, checks core-first precedence, excludes unmounted and unmapped writes, and rejects adapter overrides. This is nonauthorizing CI source coverage; no release or Production approval."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
+      "source_blob_sha": "c85ec62adf01c6537aa853930be774d0e8cfd0d0",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/transport-permission-containment-runtime.php"
+      ],
+      "owner_role": "Repository source reviewer — exact extracted method comparison; CI only, not owner attestation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The existing scoped CLI host-identity and request transport admission rules remain in the unchanged six original methods; the façade now loads and uses their required trait, with no new Write/Breakglass grant.",
+      "review_rationale": "Compared prior exact reviewed Git blob 9f873295 against this successor: three hunks only (one require_once, one use, 122 lines removed and replaced by an informational comment). The 122 removed lines exactly match the six methods relocated to the loaded trait, byte-for-byte. The hermetic transport regression denies an unregistered host actor and preserves real read permission and fail-closed exception semantics. No site write or Production approval."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/trait-mad4b-scp-servers-vps-local-transport.php",
+      "source_blob_sha": "645377e4439cbb7deb980bef8ffbf9da7feee788",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/transport-permission-containment-runtime.php"
+      ],
+      "owner_role": "Repository source reviewer — exact extracted method comparison; CI only, not owner attestation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The trait is bound only inside the existing Servers class and retains the original root CLI, explicit server, registry-bound actor, site UUID/origin, administrator-role and Staging checks. It does not supply independent remote activation.",
+      "review_rationale": "Verified that the six moved local VPS transport methods in this exact Git blob are byte-identical to the 122 lines removed from the previously reviewed Servers facade. No new functions, remote authentication fallbacks or policy bypasses are introduced; a direct negative runtime assertion rejects unregistered read/write host transport. This nonauthorizing CI-only source record does not create a grant."
     }
   ],
   "code_change_rules": {
