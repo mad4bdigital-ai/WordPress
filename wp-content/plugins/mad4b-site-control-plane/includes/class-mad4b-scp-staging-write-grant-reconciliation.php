@@ -46,6 +46,13 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 			'mad4b/control-plane-native-apply' => 'core',
 			'mad4b/context-ai-review' => 'core',
 			'mad4b/approval-ai-decide' => 'core',
+            // approval-plan creates only a PENDING, candidate-bound one-time
+            // ticket. Its owned Planning Guard binds verified OAuth admin,
+            // exact mad4b-write NHI grant, certified target/schema, and
+            // budget; a distinct human action is still required to approve.
+            // This is exact grant ELIGIBILITY on enrolled sites, not a
+            // standing delegation, plan approval, or a wildcard grant.
+            'mad4b/approval-plan' => 'core',
 
 			// Feature 007 core mutation abilities are part of the reviewed governed
 			// write universe and resolve to the bundled core provider. Keep this

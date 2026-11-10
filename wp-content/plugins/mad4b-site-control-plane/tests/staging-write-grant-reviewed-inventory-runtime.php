@@ -52,6 +52,14 @@ $expected = array(
     'media/remote-import-apply' => 'media',
 );
 $allowed = $c::allowed_ability_providers();
+// The original planning guard needs an exact grant to CREATE a pending
+// ticket, not a prior ticket (which would deadlock the consent lifecycle).
+// This policy review does not create that grant or approve a ticket.
+verify_grants( ( $allowed['mad4b/approval-plan'] ?? '' ) === 'core',
+    'Only the exact core approval-plan bootstrap is grant eligible.' );
+verify_grants( ! isset( $allowed['mad4b/approval-plan-all'] )
+    && ! isset( $allowed['mad4b/approval-auto-approve'] ),
+    'No wildcard or auto-approval bootstrap becomes grant eligible.' );
 verify_grants( ( $allowed['jetsmartfilters/update-filter-meta'] ?? '' ) === 'jetsmartfilters',
     'Exact reversible JetSmartFilters metadata writer must be source-reviewed on Staging.' );
 verify_grants( !isset( $allowed['jetsmartfilters/delete-filter'] )
@@ -89,6 +97,8 @@ verify_grants( $allowed === array_replace( $allowed, array() )
     'Provider policy remains finite and unique.' );
 $GLOBALS['test_env'] = 'production';
 $production = $c::allowed_ability_providers();
+verify_grants( ( $production['mad4b/approval-plan'] ?? '' ) === 'core',
+    'Production planner eligibility keeps exact approval and NHI gates; never auto-approves.' );
 verify_grants( !isset( $production['jetsmartfilters/update-filter-meta'] ),
     'The newly certified JetSmartFilters writer cannot expand Production grants.' );
 foreach ( $expected as $ability => $provider ) {
