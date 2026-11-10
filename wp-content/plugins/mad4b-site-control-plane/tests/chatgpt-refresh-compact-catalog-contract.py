@@ -66,7 +66,7 @@ require("'ability_name' => $ability_name" in read_info.split("$result['prepared_
         "read preparation envelope lacks its exact target name")
 read_exec = ABILITIES.split("public function read_execute", 1)[1].split("private function governed_developer_target", 1)[0]
 require("foreach ( $required_read_identity as $key )" in read_exec and
-        "mad4b_read_dispatch_preparation_required" in read_exec,
+        "mad4b_dispatch_preparation_required" in read_exec,
         "read executor did not reject incomplete prepared identity")
 
 
