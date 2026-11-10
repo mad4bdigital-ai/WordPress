@@ -4,8 +4,8 @@
   "reviewed_base_sha": "5c72e4893e36e992f056c90cfc75908b3a8f7785",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 402,
-  "changed_paths_sha256": "ef8017d2be97dd7f5787ea94ffe4059fa2f066badd2840574cfb26a148f6e1c9",
+  "changed_file_count": 408,
+  "changed_paths_sha256": "93480b0b19d68babc1d5e270ba3923bca8cb64ef23330eabfc8068d444eefd83",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -87,13 +87,14 @@
       "certification": "exact_head",
       "path_globs": [
         "governance/production-readiness/capability-coverage.json",
+        "specs/007-content-intelligence-workflow-platform/baseline-review-20261026.md",
+        "specs/007-content-intelligence-workflow-platform/baseline-review-20261110.md",
         "specs/007-content-intelligence-workflow-platform/change-slices.json",
-        "tools/readiness_test_execution.py",
         "specs/007-content-intelligence-workflow-platform/feature.json",
         "specs/007-content-intelligence-workflow-platform/implementation-closure.json",
         "specs/007-content-intelligence-workflow-platform/implementation-closure.md",
         "specs/007-content-intelligence-workflow-platform/post-merge-capability-fabric-closure.json",
-        "specs/007-content-intelligence-workflow-platform/baseline-review-20261026.md"
+        "tools/readiness_test_execution.py"
       ]
     },
     {
@@ -658,6 +659,7 @@
       "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/tests/mcp-adapter-protocol-matrix.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-runtime-surface-profile.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-plugin-adapter-discovery-smoke.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/session-safe-transport-resilience-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/site-profile-feature-reenrollment-contract.py",
