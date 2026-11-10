@@ -127,7 +127,7 @@ final class MAD4B_SCP_Central_Release_Registry {
     private static function pinned_public_key() {
         // Public trust material is pinned by the deployed plugin source,
         // not a caller-provided field or a mutable WordPress option.
-        $file = dirname( __DIR__ ) . '/config/central-release-issuer-public.pem';
+        $file = dirname( __DIR__ ) . '/config/central-release-issuer-public.pub';
         if ( ! is_file( $file ) || is_link( $file ) || ! is_readable( $file ) ||
             filesize( $file ) < 100 || filesize( $file ) > 8192 )
             return '';
