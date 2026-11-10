@@ -310,6 +310,12 @@ final class MAD4B_SCP_Abilities {
 	}
 
 	public function read_execute( $input ) {
+		// Admission and abuse budgets run before validating even malformed
+		// prepared envelopes, so invalid calls still count against the budget.
+		$abuse = class_exists( 'MAD4B_SCP_Abuse_Budget' ) ? MAD4B_SCP_Abuse_Budget::admit( 'execute', is_array($input)?$input:array() ) : new WP_Error( 'mad4b_abuse_budget_unavailable', 'Execution abuse-budget runtime is unavailable.' );
+		if ( is_wp_error( $abuse ) ) return $abuse;
+		$request_scope = self::request_scope_admit( 'read_execute' );
+		if ( is_wp_error( $request_scope ) ) return $request_scope;
 		// Require the complete prepared identity. The shared validator still
 		// verifies the signed receipt, exact lane, site scope and live schema.
 		$required_read_identity = array( 'ability_name', 'expected_input_schema_sha256', 'expected_execution_lane', 'expected_classification_sha256', 'expected_authority_scope_sha256', 'preparation_receipt' );
@@ -319,10 +325,6 @@ final class MAD4B_SCP_Abilities {
 				return new WP_Error( 'mad4b_read_dispatch_preparation_required',
 					'Governed read execution requires the complete exact prepared identity.' );
 		}
-		$abuse = class_exists( 'MAD4B_SCP_Abuse_Budget' ) ? MAD4B_SCP_Abuse_Budget::admit( 'execute', is_array($input)?$input:array() ) : new WP_Error( 'mad4b_abuse_budget_unavailable', 'Execution abuse-budget runtime is unavailable.' );
-		if ( is_wp_error( $abuse ) ) return $abuse;
-		$request_scope = self::request_scope_admit( 'read_execute' );
-		if ( is_wp_error( $request_scope ) ) return $request_scope;
 		$ability_name = (string) $input['ability_name'];
 		$ability = $this->governed_read_target( $ability_name );
 		if ( is_wp_error( $ability ) ) return $ability;
