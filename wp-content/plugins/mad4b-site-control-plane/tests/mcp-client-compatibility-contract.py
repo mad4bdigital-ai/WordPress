@@ -299,4 +299,13 @@ assert "MAD4B_SCP_MCP_Catalog_Budget::limits( count( $abilities ) )" in catalog_
 assert "MAD4B_SCP_MCP_Catalog_Budget::limits" in catalog_diagnostics
 assert "class-mad4b-scp-mcp-catalog-budget.php" in catalog_diagnostics
 assert "MAD4B_SCP_MCP_Catalog_Budget::observe" in catalog_diagnostics
+# The live WP-CLI integration tests must opt in BEFORE plugin bootstrap.
+# Regular WP-CLI remains route-only to avoid eager 9-server materialization.
+cli_workflow = (root.parents[2] / '.github/workflows/mad4b-mcp-client-compatibility.yml').read_text(encoding='utf-8')
+for cli_test in ('runtime-chatgpt-tool-inventory-smoke.php', 'runtime-chatgpt-dynamic-tool-projection.php'):
+    assert any(
+        'MAD4B_SCP_MCP_CLI_REQUEST=1 php /tmp/wp-cli.phar eval-file' in line and cli_test in line
+        for line in cli_workflow.splitlines()
+    ), f'explicit MCP-only CLI lifecycle missing for {cli_test}'
+assert cli_workflow.count('MAD4B_SCP_MCP_CLI_REQUEST=1 php /tmp/wp-cli.phar eval-file') == 2
 print('mad4b.site-control-plane.mcp-client-compatibility.v12: PASS')

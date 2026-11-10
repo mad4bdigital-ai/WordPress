@@ -272,7 +272,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-tool-inventory-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+          # Explicit MCP CLI diagnostic: the ordinary WP-CLI process deliberately
+          # keeps its MCP servers route-only and must remain lightweight.
+          MAD4B_SCP_MCP_CLI_REQUEST=1 php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-tool-inventory-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
 
       - name: Prove bounded session-safe identity, triage and full reads in live WordPress
         shell: bash
@@ -284,7 +286,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-dynamic-tool-projection.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+          # Projected MCP tools must be materialized before WordPress plugin boot.
+          MAD4B_SCP_MCP_CLI_REQUEST=1 php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-dynamic-tool-projection.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
 
       - name: Prove adaptive unified capability gateway remains non-authorizing
         shell: bash
