@@ -1,5 +1,7 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+if ( ! class_exists( 'MAD4B_SCP_Elementor_Native_MCP_Awareness' ) ) require_once __DIR__ . '/class-mad4b-scp-elementor-native-mcp-awareness.php';
+if ( ! class_exists( 'MAD4B_SCP_MCP_Provider_Readiness_Matrix' ) ) require_once __DIR__ . '/class-mad4b-scp-mcp-provider-readiness-matrix.php';
 
 /**
  * Provider MCP path evidence, not a remote executor.
@@ -132,6 +134,8 @@ final class MAD4B_SCP_Provider_MCP_Path_Review {
             $rows[] = self::classify( $family, $observed );
         return array(
             'contract' => self::CONTRACT, 'scope' => 'local_wordpress_abilities_only',
+            'native_elementor_mcp' => MAD4B_SCP_Elementor_Native_MCP_Awareness::inspect(),
+            'provider_neutral_mcp_readiness' => MAD4B_SCP_MCP_Provider_Readiness_Matrix::matrix(),
             'external_native_mcp_discovery_performed' => false,
             'registered_abilities_examined' => count( $observed ),
             'providers' => $rows,
@@ -149,6 +153,30 @@ final class MAD4B_SCP_Provider_MCP_Path_Review {
             echo '<p role="alert">' . esc_html( $report->get_error_code() ) . '</p></section>';
             return;
         }
+        $overview=$report['provider_neutral_mcp_readiness']??array();
+        $runtime=$overview['shared_mcp_runtime']??array();
+        echo '<h3>All providers — independent MCP readiness</h3>';
+        echo '<p>Observed ability namespaces: '.esc_html((string)($overview['provider_count']??0))
+            .'; pinned native external peers: '.esc_html((string)($overview['pinned_external_peer_count']??0))
+            .'; shared Adapter provenance: <code>'.esc_html((string)($runtime['state']??'UNKNOWN'))
+            .'</code>. Namespaces and plugin installations are not authenticated MCP sessions.</p>';
+        if(!empty($runtime['mixed_vendor_runtime_risk']))
+            echo '<p role="alert"><strong>Rank Math / MCP Adapter class ownership conflict:</strong> Multiple vendor sources own already-loaded shared MCP PHP classes. Do not modify class load order or reuse MAD4B OAuth to probe other vendor endpoints automatically.</p>';
+        echo '<table class="widefat striped"><thead><tr><th>Provider</th><th>Discovery</th><th>MCP handshake</th><th>Native write ready</th></tr></thead><tbody>';
+        foreach((array)($overview['providers']??array()) as $provider) {
+            if(empty($provider['transport_declaration_count']) && empty($provider['pinned_peers'])
+                && !in_array($provider['provider_id']??'',array('rank-math','elementor'),true))continue;
+            echo '<tr><th>'.esc_html((string)($provider['provider_id']??'')).'</th><td>'
+                .esc_html(implode(', ',(array)($provider['evidence_sources']??array()))).'</td><td><code>'
+                .esc_html((string)($provider['native_mcp']['state']??'NOT_PROBED')).'</code></td><td>No</td></tr>';
+        }
+        echo '</tbody></table>';
+        $native=$report['native_elementor_mcp']['native_mcp']??array();
+        echo '<h3>Official Elementor MCP — independently verified status</h3>';
+        echo '<p><strong>Site enabled:</strong> '.esc_html(!empty($native['site_enabled'])?'yes':'no')
+            .'; <strong>Handshake:</strong> <code>'.esc_html((string)($native['handshake_state']??'UNKNOWN'))
+            .'</code>; tools/list verified: '.esc_html(!empty($native['tools_list_verified'])?'yes':'no')
+            .'. Elementor editor Custom CSS is editor-owned, not raw post-meta owned.</p>';
         echo '<table class="widefat striped"><thead><tr><th>Provider</th><th>Local discovery state</th><th>Observed local tools and origin</th><th>Next step</th></tr></thead><tbody>';
         foreach ( $report['providers'] as $row ) {
             echo '<tr><th scope="row">' . esc_html( $row['label'] ) . '</th><td><code>' . esc_html( $row['state'] ) . '</code></td>';

@@ -1,0 +1,12 @@
+[Unit]
+Description=MAD4B Wayfatours Browser Contract Regression Scan Every 30 Minutes
+
+[Timer]
+OnBootSec=6min
+OnUnitActiveSec=30min
+RandomizedDelaySec=90s
+Persistent=true
+Unit=mad4b-frontend-contract-wayfa.service
+
+[Install]
+WantedBy=timers.target

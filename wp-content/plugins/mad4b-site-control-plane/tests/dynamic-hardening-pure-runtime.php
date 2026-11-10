@@ -7,6 +7,10 @@ function sanitize_text_field($s){return trim((string)$s);}
 function absint($v){return abs((int)$v);}
 function wp_json_encode($v,$f=0){return json_encode($v,$f);}
 function apply_filters($tag,$v){return $v;}
+// WordPress provides this hook API before any plugin source is loaded.
+// Preserve hook-registration behavior without invoking provider effects.
+$GLOBALS['registered_dynamic_hooks']=array();
+function add_filter($tag,$callback,$priority=10,$accepted_args=1){$GLOBALS['registered_dynamic_hooks'][]=array($tag,$callback,$priority,$accepted_args);return true;}
 require dirname(__DIR__).'/includes/class-mad4b-scp-canonicalization.php';
 require dirname(__DIR__).'/includes/class-mad4b-scp-dynamic-ttl-policy.php';
 require dirname(__DIR__).'/includes/class-mad4b-scp-semantic-diff.php';
@@ -17,4 +21,5 @@ $d=MAD4B_SCP_Semantic_Diff::compare(array('meta'=>array('secret'=>'a'),'post'=>a
 if(empty($d['changed'])||empty($d['entries'][0])) exit(2);
 $p=MAD4B_SCP_Dynamic_Provider_Contract::normalize(array('provider_id'=>'rankmath','existing_registry_identity'=>'rankmath','side_effects'=>array(array('effect_scope'=>'seo','ownership'=>'provider','reversibility'=>'reversible','compensation_support'=>'verified','externality'=>'local'))));
 if(is_wp_error($p)||!empty($p['manifest_presence_authorizes'])) exit(3);
+if(count($GLOBALS['registered_dynamic_hooks'])!==2) exit(4);
 echo "mad4b.dynamic-hardening-pure-runtime.v1: PASS\n";

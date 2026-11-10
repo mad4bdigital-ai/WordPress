@@ -19,10 +19,24 @@ final class MAD4B_Hub_Bulk_Jobs_Queue {
         add_action('admin_menu',array(__CLASS__,'menu'),24);
     }
     public static function readable() {
-        return class_exists('MAD4B_Content_Hub') && MAD4B_Content_Hub::permission();
+        // Preserve original WordPress-admin Hub access. The registered VPS
+        // operator may access this QUEUE only from the exact Staging-local
+        // MCP stdio transport after the original host/agent/site checks.
+        // No general Content Hub privilege, no OAuth bypass, no new grant.
+        if ( class_exists('MAD4B_Content_Hub') && MAD4B_Content_Hub::permission() )
+            return true;
+        return class_exists('MAD4B_SCP_Servers')
+            && true === MAD4B_SCP_Servers::can_vps_local_transport();
     }
     public static function writable() {
-        return self::readable() && class_exists('MAD4B_SCP_Policy') && MAD4B_SCP_Policy::can_mutate();
+        if (!self::readable() || !class_exists('MAD4B_SCP_Policy')
+            || !MAD4B_SCP_Policy::can_mutate()) return false;
+        if (class_exists('MAD4B_Content_Hub') && MAD4B_Content_Hub::permission())
+            return true;
+        // Native READ never authorizes queue writes. Keep the original
+        // registered Agent + exact write operation admission for VPS stdio.
+        return class_exists('MAD4B_SCP_Servers')
+            && MAD4B_SCP_Servers::can_vps_local_write_transport() === true;
     }
     private static function fail($code,$http=409) {
         return new WP_Error('mad4b_bulk_'.$code,$code,array('status'=>$http,'contract'=>self::CONTRACT));
@@ -159,7 +173,32 @@ KEY content_job_stage (content_job_id,stage)
                      &&($payload['content_job_id']??'')===$job
                      &&($payload['stage']??'')===$s
                      &&($payload['model_execution_authorized']??true)===false;
-                if(!$safe&&!$approved)return self::fail('vps_operation_not_allowlisted',403);
+                // Universal VPS uses an independent registered adapter catalog.
+                // Admit ONLY a Staging read-only QA stage after independently
+                // replanning the exact contract and target. No arbitrary
+                // stage_work, publishing, supplier or shell operations.
+                $universal_qa=false;
+                if($op==='stage_work' && $s==='INTEGRATION_QA'
+                  && $job==='' && !empty($payload['stage_adapter_id'])
+                  && ($payload['universal_vps_contract']??'')==='mad4b.hub.universal-vps.v1'
+                  && class_exists('MAD4B_Hub_Universal_VPS_V1')
+                  && MAD4B_Hub_Universal_VPS_V1::scoped()) {
+                    $qa=MAD4B_Hub_Universal_VPS_V1::plan([
+                      'stage'=>$s,
+                      'adapter_id'=>(string)$payload['stage_adapter_id'],
+                      'target_ref'=>$target,
+                      'stage_input'=>is_array($payload['stage_input']??null)
+                        ?$payload['stage_input']:[]
+                    ]);
+                    $universal_qa=is_array($qa)
+                      && ($qa['state']??'')==='READY_FOR_QUEUED_EXECUTION'
+                      && ($qa['readonly']??false)===true
+                      && ($qa['selected_executor']??'')==='vps_runner'
+                      && ($qa['ability']??'')===(string)($payload['stage_ability']??'')
+                      && ($qa['stage']??'')===$s;
+                }
+                if(!$safe&&!$approved&&!$universal_qa)
+                    return self::fail('vps_operation_not_allowlisted',403);
             }
             $pri=(int)($item['priority']??5);$tries=(int)($item['max_attempts']??3);
             if($pri<1||$pri>9||$tries<1||$tries>5)return self::fail('invalid_policy',400);
@@ -180,6 +219,39 @@ KEY content_job_stage (content_job_id,stage)
             if(!$progress)return self::fail('dependency_cycle',400);
         }
         return array('batch_key'=>$key,'max_concurrency'=>$max,'items'=>$norm);
+    }
+    /**
+     * Record the site policy once per accepted queue batch, at its real
+     * insertion boundary. This is evidence, never a grant or an authorization.
+     * All transport choices are recorded; unknown executor routing is NOT
+     * misrepresented as an actual chosen transport.
+     */
+    private static function policy_context_at_enqueue() {
+        if(!class_exists('MAD4B_SCP_Site_Profile',false)
+            ||!class_exists('MAD4B_SCP_Capability_Transport_Routing',false))
+            return null;
+        $site=MAD4B_SCP_Site_Profile::status();
+        $class='MAD4B_SCP_Capability_Transport_Routing';
+        $prefs=$class::execution_preferences();
+        if(!is_array($site)||!is_array($prefs)
+            ||empty($site['origin_match'])
+            ||empty($site['deployment_binding_match'])
+            ||!is_string($site['site_uuid']??null)
+            ||!preg_match('/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/D',$site['site_uuid'])
+            ||!in_array($site['environment']??'',array('staging','production','development'),true)
+            ||!is_int($prefs['revision']??null)
+            ||!empty($prefs['invalid_configuration']))
+            return null;
+        $modes=array();
+        foreach(array($class::VPS,$class::HTTP,$class::REST) as $channel)
+            $modes[$channel]=$class::mode_for_transport($channel);
+        return array(
+            'contract'=>'mad4b.execution-policy-context-at-enqueue.v1',
+            'site_uuid'=>$site['site_uuid'],
+            'environment'=>$site['environment'],
+            'revision'=>$prefs['revision'],
+            'transport_modes'=>$modes
+        );
     }
     public static function enqueue($input) {
         if(!self::writable())return self::fail('permission',403);
@@ -208,6 +280,9 @@ KEY content_job_stage (content_job_id,stage)
             $n=MAD4B_Hub_Original_Context_Evidence::bind_batch($n);
             if(is_wp_error($n))return $n;
         }
+        // Snapshot is stored WITH the task, after request-hash calculation
+        // to preserve idempotent replay of jobs made before this upgrade.
+        $policy_at_enqueue=self::policy_context_at_enqueue();
         $hash=hash('sha256',wp_json_encode($n));
         $now=gmdate('Y-m-d H:i:s');
         $batch=wp_generate_uuid4();
@@ -252,6 +327,18 @@ KEY content_job_stage (content_job_id,stage)
                           ['status'=>409,'receipt'=>$receipt,'execution_performed'=>false]);
                     }
                     return $admit;
+                }
+            }
+            // Attach trusted local policy only on first insertion, not on
+            // subsequent reads/replays; preserve producer-specific snapshots.
+            // Discard caller-provided claims: only the site itself may
+            // record this historical context on the first accepted insert.
+            unset($it['payload']['enqueue_policy_context']);
+            if(is_array($policy_at_enqueue)) {
+                $it['payload']['enqueue_policy_context']=$policy_at_enqueue;
+                if(strlen(wp_json_encode($it['payload']))>16000) {
+                    $wpdb->query('ROLLBACK');
+                    return self::fail('policy_context_payload_too_large',400);
                 }
             }
             $row=array('task_id'=>$taskId,'batch_id'=>$batch,

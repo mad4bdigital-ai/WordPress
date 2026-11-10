@@ -40,7 +40,7 @@ final class MAD4B_SCP_Operator_Grant_Convergence {
             'expected_plan_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
             'expected_source_commit_sha' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{40}$' ),
             'expected_site_uuid' => array( 'type' => 'string', 'minLength' => 36, 'maxLength' => 36 ),
-            'expected_environment' => array( 'type' => 'string', 'enum' => array( 'staging' ) ),
+            'expected_environment' => array( 'type' => 'string', 'enum' => array( 'local', 'development', 'staging', 'production' ) ),
             'expected_profile_revision' => array( 'type' => 'integer', 'minimum' => 1 ),
             'expected_profile_digest' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
             'confirmation' => array( 'type' => 'string', 'enum' => array( self::CONFIRM ) ),
@@ -79,9 +79,9 @@ final class MAD4B_SCP_Operator_Grant_Convergence {
         }
         $access = MAD4B_SCP_Developer_Authority::can_access( $input );
         if ( is_wp_error( $access ) || true !== $access ) return $access;
-        if ( 'staging' !== wp_get_environment_type() ||
-             'staging' !== MAD4B_SCP_Site_Profile::current_environment() ) {
-            return new WP_Error( 'mad4b_operator_grants_staging_only', 'Exact Staging environment required.' );
+        if ( ! MAD4B_SCP_Site_Profile::managed_runtime_enabled() ||
+             empty( MAD4B_SCP_Site_Profile::status()['authority_ready'] ) ) {
+            return new WP_Error( 'mad4b_operator_grants_site_not_ready', 'Exact enrolled managed-runtime authority required.' );
         }
         $identity = MAD4B_SCP_Identity_Context::current();
         if ( is_wp_error( $identity ) || ! is_array( $identity ) ||
@@ -170,7 +170,7 @@ final class MAD4B_SCP_Operator_Grant_Convergence {
             $response = array(
                 'contract' => self::CONTRACT,
                 'state' => 'review_exact_five_grants',
-                'target_environment' => 'staging',
+                'target_environment' => sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() ),
                 'server_id' => 'mad4b-developer',
                 'new_grants' => $missing,
                 'ready_to_apply' => true,

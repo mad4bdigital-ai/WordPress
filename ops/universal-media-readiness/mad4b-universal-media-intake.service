@@ -1,0 +1,13 @@
+[Unit]
+Description=MAD4B Universal Media Intake local and licensed external candidate discovery
+After=docker.service
+Requires=docker.service
+[Service]
+Type=oneshot
+User=root
+UMask=0077
+ExecStart=/usr/bin/python3 /opt/mad4b-company-provisioning/releases/configuration-jobs-v1/mad4b-universal-media-intake-queue.py
+TimeoutStartSec=420
+Nice=15
+IOSchedulingClass=idle
+NoNewPrivileges=true

@@ -1,0 +1,19 @@
+[Unit]
+Description=MAD4B FAORE current Central MCP STDIO read-only observation
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+UMask=0077
+WorkingDirectory=/opt/hostinger-migrations/hosting-3/etg-commerce-staging/source-git/wordpress/ops/mad4b-faore-v1
+ExecStart=/usr/bin/python3 /opt/hostinger-migrations/hosting-3/etg-commerce-staging/source-git/wordpress/ops/mad4b-faore-v1/stdio_probe_auto.py
+TimeoutStartSec=130
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+StandardOutput=journal
+StandardError=journal

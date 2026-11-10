@@ -19,6 +19,13 @@ function current_user_can( $c ) { return $GLOBALS['admin'] && 'manage_options' =
 function is_admin() { return ! empty( $GLOBALS['is_admin_request'] ); }
 function is_user_logged_in() { return true; }
 function get_current_user_id() { return $GLOBALS['user']; }
+function wp_get_current_user() {
+    return new class {
+        function exists() { return ! empty( $GLOBALS['user'] ); }
+    };
+}
+function user_can( $user, $cap ) { return is_object( $user ) && current_user_can( $cap ); }
+
 function get_option( $k, $default = false ) { return isset( $GLOBALS['options'][$k] ) ? $GLOBALS['options'][$k] : $default; }
 function delete_option( $k ) {
     if ( ! array_key_exists( $k, $GLOBALS['options'] ) ) return false;

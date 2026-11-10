@@ -35,7 +35,7 @@ function wp_next_scheduled( $hook ) { return $GLOBALS['scheduled'][ $hook ] ?? f
 function wp_schedule_single_event( $when, $hook ) { $GLOBALS['scheduled'][ $hook ]=$when; return true; }
 function wp_clear_scheduled_hook( $hook ) { unset( $GLOBALS['scheduled'][ $hook ] ); }
 class MAD4B_SCP_MCP_Request_Scope { static function current_request_is_protocol_hotpath() { return $GLOBALS['protocol']; } static function current_request_is_endpoint_diagnostic_job() { return false; } }
-class MAD4B_SCP_Dependency_Manager { static function mcp_adapter_disk_integrity() { return array( 'ready' => $GLOBALS['integrity'] ); } }
+class MAD4B_SCP_Dependency_Manager { static function mcp_adapter_disk_integrity() { return array( 'ready' => $GLOBALS['integrity'], 'source_verified' => $GLOBALS['integrity'] ); } }
 class MAD4B_SCP_Endpoint_Diagnostic { static function build_fingerprint() { return 'journey-build'; } }
 class MAD4B_SCP_Audit {
  static function storage_status() { return array( 'ready' => $GLOBALS['audit_ready'] ); }

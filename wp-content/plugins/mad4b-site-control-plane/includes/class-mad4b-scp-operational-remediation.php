@@ -41,6 +41,9 @@ final class MAD4B_SCP_Operational_Remediation {
         if ( ! class_exists( 'MAD4B_SCP_Operator_Journeys', false ) )
             require_once __DIR__ . '/class-mad4b-scp-operator-journeys.php';
         MAD4B_SCP_Operator_Journeys::boot();
+        if ( ! class_exists( 'MAD4B_SCP_Control_Plane_Test_Router', false ) )
+            require_once __DIR__ . '/class-mad4b-scp-control-plane-test-router.php';
+        MAD4B_SCP_Control_Plane_Test_Router::boot();
         if ( ! class_exists( 'MAD4B_SCP_Recovery_Route_Matrix', false ) )
             require_once __DIR__ . '/class-mad4b-scp-recovery-route-matrix.php';
         MAD4B_SCP_Recovery_Route_Matrix::boot();
@@ -59,9 +62,20 @@ final class MAD4B_SCP_Operational_Remediation {
             require_once __DIR__ . '/class-mad4b-scp-adaptive-operation-router.php';
         MAD4B_SCP_Adaptive_Operation_Router::boot();
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 39 );
+        add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_admin_assets' ) );
 		if ( class_exists( 'MAD4B_SCP_Admin_Route_Registry', false ) )
 			MAD4B_SCP_Admin_Route_Registry::schedule_submenu( array( __CLASS__, 'register_menu' ), 39 );
 	}
+
+    public static function enqueue_admin_assets() {
+        if ( ! isset( $_GET['page'] ) || 'mad4b-operational-remediation' !== sanitize_key( wp_unslash( $_GET['page'] ) ) )
+            return;
+        $main = dirname( __DIR__ ) . '/mad4b-site-control-plane.php';
+        $css = dirname( __DIR__ ) . '/assets/operational-remediation-ui.css';
+        $js = dirname( __DIR__ ) . '/assets/operational-remediation-ui.js';
+        wp_enqueue_style( 'mad4b-operational-ui', set_url_scheme( plugins_url( 'assets/operational-remediation-ui.css', $main ), wp_parse_url( home_url('/'), PHP_URL_SCHEME ) ), array(), is_file( $css ) ? (string) filemtime( $css ) : '1' );
+        wp_enqueue_script( 'mad4b-operational-ui', set_url_scheme( plugins_url( 'assets/operational-remediation-ui.js', $main ), wp_parse_url( home_url('/'), PHP_URL_SCHEME ) ), array(), is_file( $js ) ? (string) filemtime( $js ) : '1', true );
+    }
 
 	public static function register_menu() {
 		if ( ! class_exists( 'MAD4B_SCP_Admin_UI', false ) ) return;
@@ -91,12 +105,34 @@ final class MAD4B_SCP_Operational_Remediation {
                 . '</p><p><code>' . esc_html( $error_code ) . '</code></p></div></div>';
             return;
         }
-		echo '<div class="wrap"><h1>' . esc_html__( 'Operational Remediation', 'mad4b-site-control-plane' ) . '</h1>';
-		echo '<p>' . esc_html__( 'Observed diagnostic only. Provider installation, host commands, Browser execution, Brand approval, WordPress writes and release acceptance require separate governed steps.', 'mad4b-site-control-plane' ) . '</p>';
+        echo '<div class="wrap mad4b-remediation" id="mad4b-remediation">';
+        echo '<header class="mad4b-remediation-header"><div><p class="mad4b-eyebrow">MAD4B / Control Plane</p>';
+        echo '<h1>Operational Remediation</h1>';
+        echo '<p class="mad4b-header-subtitle">Read-only diagnostics, recovery routes and accountable next actions.</p></div>';
+        echo '<a class="button button-secondary mad4b-refresh" href="' . esc_url( admin_url( 'admin.php?page=mad4b-operational-remediation' ) ) . '">Refresh report</a></header>';
         $items = is_array( $view['work_items'] ?? null ) ? $view['work_items'] : array();
         $next = is_array( $view['primary_next_step'] ?? null ) ? $view['primary_next_step'] : array();
+        $focus = (string) ( $next['focus_gate'] ?? '' );
+        $owner_count = count( array_unique( array_filter( array_map( static fn( $item ) => is_array( $item ) ? (string) ( $item['owner'] ?? '' ) : '', $items ) ) ) );
+        echo '<div class="mad4b-metrics" aria-label="Report summary">';
+        echo '<div class="mad4b-metric"><span>Open gates</span><strong>' . esc_html( (string) count( $items ) ) . '</strong><small>Unresolved observations</small></div>';
+        echo '<div class="mad4b-metric"><span>Responsible lanes</span><strong>' . esc_html( (string) $owner_count ) . '</strong><small>Owners of remediation</small></div>';
+        echo '<div class="mad4b-metric"><span>First open gate</span><strong class="mad4b-metric-code">' . esc_html( $focus ?: 'None identified' ) . '</strong><small>Prioritize this blocker</small></div>';
+        echo '<div class="mad4b-metric"><span>Report mode</span><strong class="mad4b-metric-code">READ ONLY</strong><small>No permission changes</small></div></div>';
+        $tabs = array( 'overview'=>'Overview', 'recovery'=>'Recovery', 'identity'=>'Host &amp; Identity', 'routes'=>'MCP Routes', 'workflows'=>'Workflows', 'blockers'=>'Blockers' );
+        echo '<nav class="mad4b-remediation-tabs" aria-label="Report sections" role="tablist">';
+        foreach ( $tabs as $id=>$label ) {
+            echo '<button type="button" class="mad4b-remediation-tab" role="tab" id="mad4b-tab-' . esc_attr( $id )
+                . '" aria-controls="mad4b-pane-' . esc_attr( $id ) . '" aria-selected="' . ( 'overview' === $id ? 'true' : 'false' )
+                . '" tabindex="' . ( 'overview' === $id ? '0' : '-1' ) . '" data-tab="' . esc_attr( $id ) . '">' . wp_kses_post( $label )
+                . ( 'blockers' === $id ? ' <span class="mad4b-tab-count">' . esc_html( (string) count( $items ) ) . '</span>' : '' )
+                . '</button>';
+        }
+        echo '</nav>';
+        echo '<section class="mad4b-remediation-panel" id="mad4b-pane-overview" data-tab-panel="overview" role="tabpanel" aria-labelledby="mad4b-tab-overview" tabindex="0">';
+        echo '<h2>Priority and overview</h2>';
         if ( $next ) {
-            echo '<div class="notice notice-info inline" role="status"><p><strong>Recommended next step:</strong> <code>'
+            echo '<div class="notice notice-info inline mad4b-priority" role="status"><p><strong>Recommended next step:</strong> <code>'
                 . esc_html( (string) ( $next['state'] ?? 'UNAVAILABLE' ) ) . '</code></p><p>'
                 . esc_html( (string) ( $next['why'] ?? '' ) ) . '</p>';
             if ( ! empty( $next['focus_gate'] ) ) echo '<p><strong>First open gate:</strong> <code>'
@@ -112,7 +148,11 @@ final class MAD4B_SCP_Operational_Remediation {
             ) . '</p></div>';
         if ( ! class_exists( 'MAD4B_SCP_Staging_Recovery_Center', false ) )
             require_once __DIR__ . '/class-mad4b-scp-staging-recovery-center.php';
+        echo '<div class="mad4b-overview-note"><strong>Report scope</strong><p>Observation only. Provider installation, host commands, browser execution, owner approval and release acceptance require their original governed workflows.</p></div>';
+        echo '</section><section class="mad4b-remediation-panel" id="mad4b-pane-recovery" data-tab-panel="recovery" role="tabpanel" aria-labelledby="mad4b-tab-recovery" tabindex="0">';
+        echo '<h2>Recovery and next actions</h2>';
         MAD4B_SCP_Staging_Recovery_Center::render();
+        MAD4B_SCP_Control_Plane_Test_Router::render_admin_panel();
         if ( class_exists( 'MAD4B_SCP_Runtime_Recovery_Workspace', false ) )
             MAD4B_SCP_Runtime_Recovery_Workspace::render();
         echo '<h2>' . esc_html__( 'Complete a recovery task', 'mad4b-site-control-plane' ) . '</h2>';
@@ -121,6 +161,8 @@ final class MAD4B_SCP_Operational_Remediation {
             . '</li><li>' . esc_html__( 'Review the plan, then authorize only its governed executor.', 'mad4b-site-control-plane' )
             . '</li><li>' . esc_html__( 'Verify the new state independently; retry or roll back on failure.', 'mad4b-site-control-plane' )
             . '</li></ol>';
+        echo '</section><section class="mad4b-remediation-panel" id="mad4b-pane-identity" data-tab-panel="identity" role="tabpanel" aria-labelledby="mad4b-tab-identity" tabindex="0">';
+        echo '<h2>Host binding and deployment identity</h2>';
         if ( function_exists( 'wp_get_environment_type' ) && 'staging' === wp_get_environment_type() ) {
         echo '<h2 id="mad4b-staging-deployment-identity">' . esc_html__( 'Staging deployment identity setup', 'mad4b-site-control-plane' ) . '</h2>';
         // Redirect query arguments are informational only. Readback below
@@ -228,8 +270,16 @@ final class MAD4B_SCP_Operational_Remediation {
             . esc_html__( 'Production verification never provisions a host key or enables Write. Missing or mismatched binding requires a separately approved Production release, protected host configuration, fresh plan and independent readback; the Staging setup button cannot be used.', 'mad4b-site-control-plane' )
             . '</p>';
         }
+        echo '</section><section class="mad4b-remediation-panel" id="mad4b-pane-routes" data-tab-panel="routes" role="tabpanel" aria-labelledby="mad4b-tab-routes" tabindex="0">';
+        echo '<h2>MCP routes and access requirements</h2>';
+        echo '<div class="mad4b-blocker-controls"><label for="mad4b-route-search">Search routes<input type="search" id="mad4b-route-search" placeholder="Stage, MCP ability or approval…"></label>';
+        echo '<span id="mad4b-route-results" role="status" aria-live="polite"></span></div>';
+        echo '<div class="mad4b-responsive-table mad4b-route-table">';
         if ( class_exists( 'MAD4B_SCP_Recovery_Route_Matrix', false ) )
             MAD4B_SCP_Recovery_Route_Matrix::render_admin();
+        echo '</div><p id="mad4b-no-routes" class="mad4b-empty" hidden>No routes match your search.</p>';
+        echo '</section><section class="mad4b-remediation-panel" id="mad4b-pane-workflows" data-tab-panel="workflows" role="tabpanel" aria-labelledby="mad4b-tab-workflows" tabindex="0">';
+        echo '<h2>Workflow journeys and rehearsal</h2>';
         echo '<h2>' . esc_html__( 'Host-free WordPress rehearsal', 'mad4b-site-control-plane' ) . '</h2>';
         $native = class_exists( 'MAD4B_SCP_Native_Recovery', false )
             ? MAD4B_SCP_Native_Recovery::status() : new WP_Error( 'native_recovery_not_mounted' );
@@ -279,6 +329,8 @@ final class MAD4B_SCP_Operational_Remediation {
             echo '</ol><p class="description">' . esc_html( (string) ( $task['user_guidance'] ?? '' ) )
                 . '</p></details>';
         }
+        echo '</section><section class="mad4b-remediation-panel" id="mad4b-pane-blockers" data-tab-panel="blockers" role="tabpanel" aria-labelledby="mad4b-tab-blockers" tabindex="0">';
+        echo '<h2>Outstanding blockers</h2>';
 		echo '<p><strong>' . esc_html__( 'Integrity', 'mad4b-site-control-plane' ) . ':</strong> '
 			. esc_html( ! empty( $view['diagnostic_integrity_ready'] ) ? 'Verified observation' : 'Blocked: recheck source and providers' ) . '</p>';
 		echo '<p><strong>Source:</strong> <code>' . esc_html( (string) ( $view['source_commit_sha'] ?? '' ) ) . '</code> <strong>Plan:</strong> <code>'
@@ -286,19 +338,26 @@ final class MAD4B_SCP_Operational_Remediation {
 		$issues = is_array( $view['plan_integrity_blockers'] ?? null ) ? $view['plan_integrity_blockers'] : array();
 		if ( $issues ) echo '<div class="notice notice-error inline"><p>'
 			. esc_html( implode( ', ', array_slice( $issues, 0, 15 ) ) ) . '</p></div>';
-		echo '<h2>' . esc_html__( 'Unresolved evidence and remediation owners', 'mad4b-site-control-plane' ) . '</h2>';
-		echo '<table class="widefat striped"><thead><tr><th>Gate</th><th>Owner</th><th>Remediation</th><th>Executor evidence</th></tr></thead><tbody>';
+        $owners = array_unique( array_filter( array_map( static fn( $it ) => is_array( $it ) ? (string) ( $it['owner'] ?? '' ) : '', $items ) ) );
+        sort( $owners, SORT_NATURAL | SORT_FLAG_CASE );
+        echo '<div class="mad4b-blocker-controls"><label for="mad4b-blocker-search">Search gates and actions<input id="mad4b-blocker-search" type="search" placeholder="Gate, operation or ability…"></label>';
+        echo '<label for="mad4b-blocker-owner">Responsible lane<select id="mad4b-blocker-owner"><option value="">All owners</option>';
+        foreach ( $owners as $owner ) echo '<option value="' . esc_attr( $owner ) . '">' . esc_html( $owner ) . '</option>';
+        echo '</select></label><span id="mad4b-blocker-results" role="status" aria-live="polite"></span></div>';
+        echo '<div class="mad4b-responsive-table"><table id="mad4b-blocker-table" class="widefat striped"><thead><tr><th scope="col">Gate</th><th scope="col">Owner</th><th scope="col">Remediation</th><th scope="col">Executor evidence</th></tr></thead><tbody>';
 		foreach ( array_slice( $items, 0, self::MAX_GATES ) as $item ) {
 			if ( ! is_array( $item ) ) continue;
 			$paths = is_array( $item['paths'] ?? null ) ? $item['paths'] : array();
-			echo '<tr><td><code>' . esc_html( (string) ( $item['gate_id'] ?? '' ) ) . '</code></td><td>'
-				. esc_html( (string) ( $item['owner'] ?? '' ) ) . '</td><td>';
+            $gate_id = (string) ( $item['gate_id'] ?? '' );
+            $owner = (string) ( $item['owner'] ?? '' );
+            echo '<tr data-owner="' . esc_attr( $owner ) . '"><td data-label="Gate"><code>' . esc_html( $gate_id ) . '</code></td><td data-label="Owner">'
+                . esc_html( $owner ) . '</td><td data-label="Remediation">';
 			foreach ( array_slice( $paths, 0, 10 ) as $action ) {
 				if ( ! is_array( $action ) ) continue;
 				echo '<p><code>' . esc_html( (string) ( $action['action_id'] ?? '' ) ) . '</code> — '
 					. esc_html( (string) ( $action['kind'] ?? '' ) ) . '</p>';
 			}
-			echo '</td><td>';
+			echo '</td><td data-label="Executor evidence">';
 			foreach ( array_slice( $paths, 0, 10 ) as $action ) {
 				if ( ! is_array( $action ) ) continue;
 				echo '<p>' . esc_html( (string) ( $action['apply_ability'] ?? '' ) ) . ': '
@@ -308,7 +367,8 @@ final class MAD4B_SCP_Operational_Remediation {
 			echo '</td></tr>';
 		}
 		if ( ! $items ) echo '<tr><td colspan="4">No blocked gates observed. This is not a release certificate.</td></tr>';
-		echo '</tbody></table></div>';
+        echo '</tbody></table></div><p id="mad4b-no-blockers" class="mad4b-empty" hidden>No gates match your filters. Clear search or choose all owners.</p>';
+        echo '</section></div>';
 	}
 	public static function register_abilities() {
 		if ( ! function_exists( 'wp_register_ability' ) || ! function_exists( 'wp_has_ability' ) ) return;

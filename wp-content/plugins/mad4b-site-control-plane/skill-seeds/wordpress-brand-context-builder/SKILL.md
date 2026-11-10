@@ -10,6 +10,14 @@ Use this skill when Brand Core coverage reports a missing `tone_of_voice` or `ed
 When this skill is invoked because a ContentJob is waiting on Brand Core, retain its job_id and job_revision throughout recovery. Call mad4b/content-job-dependency-plan after each approved Context mutation, and return to THAT job once all mandatory categories have a single reviewed exact current authority. The workflow may autonomously collect evidence, build quality-gated drafts and prepare approval plans; a human or separately configured governed AI reviewer must decide each eligible approval. Do not misclassify operational documents as Brand Strategy, invent missing first-party evidence, silently transfer source ownership or replace the original task with a new content job.
 
 
+## Brand Core bootstrap Context policy
+
+This canonical Skill is the narrowly governed bootstrap writer for missing Brand Core documents. Its Context Receipt requires an exact approved brand_strategy only; it is scoped exclusively to context/brand-draft-create and context/brand-draft-append. It cannot publish, materialize, approve, scan, or mutate arbitrary WordPress content through this policy.
+
+For tone_of_voice, require the current evidence-bound generation plan, structural preflight, a fresh signed Context Receipt issued for the exact intended ability, and a one-time exact approval ticket. For editorial_guidelines, also require an approved current tone_of_voice as independently enforced by the Brand Context Builder. Do not treat a draft as an approved category and do not borrow a wordpress-content-authoring receipt while Brand Core is incomplete.
+
+Resume work from the same task after Brand Core review; later content authoring continues to require all three approved Brand Core sets.
+
 ## Authority model
 
 Generation is not approval.

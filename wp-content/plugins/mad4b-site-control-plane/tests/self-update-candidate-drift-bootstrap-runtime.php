@@ -29,6 +29,7 @@ final class MAD4B_SCP_Site_Profile {
 	public static $origin_enrolled = true;
 	public static $urls_match = true;
 	public static $write_enabled = true;
+	public static function status() { return array( 'authority_ready' => self::$configured && self::$origin_enrolled && self::$urls_match, 'site_uuid' => 'fixture-site-uuid' ); }
 	public static function configured() { return self::$configured; }
 	public static function current_environment() { return self::$environment; }
 	public static function origin_enrolled() { return self::$origin_enrolled; }
@@ -127,6 +128,11 @@ check( false === $ready['candidate_binding_mutation_allowed'], 'bootstrap must n
 check( false === $ready['active_continuation'], 'bootstrap must prove no active continuation permit exists' );
 check( true === $ready['post_update_candidate_rebind_required'], 'bootstrap must require explicit post-update candidate rebind' );
 check( false === $ready['production_mutation_allowed'], 'bootstrap must never authorize Production mutation' );
+setup_clean_candidate_drift();
+MAD4B_SCP_Site_Profile::$environment = 'production';
+$production_ready = bootstrap_policy();
+check( ! empty( $production_ready['eligible'] ), 'exact managed Production candidate-drift proof must not depend on Staging label' );
+setup_clean_candidate_drift();
 check( false === $ready['mutation_performed'], 'bootstrap policy must remain read-only' );
 
 $cases = array(
@@ -148,7 +154,8 @@ $cases = array(
 	'checkpoint not ready' => static function () { MAD4B_SCP_Staging_Write_Authority::$checkpoint['status']['ready'] = false; },
 	'active continuation permit' => static function () { MAD4B_SCP_Post_Update_Continuation::$active = true; },
 	'breakglass active' => static function () { MAD4B_SCP_Policy::$breakglass = true; },
-	'production environment' => static function () { MAD4B_SCP_Site_Profile::$environment = 'production'; },
+	'unconfigured profile' => static function () { MAD4B_SCP_Site_Profile::$configured = false; },
+	'origin url mismatch' => static function () { MAD4B_SCP_Site_Profile::$urls_match = false; },
 	'write profile disabled' => static function () { MAD4B_SCP_Site_Profile::$write_enabled = false; },
 	'origin drift' => static function () { MAD4B_SCP_Site_Profile::$origin_enrolled = false; },
 );

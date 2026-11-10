@@ -268,8 +268,8 @@ if (
 	$fail( 'Oversized direct schema did not fail closed to dispatcher fallback.', $oversized_plan );
 }
 if (
-	( $oversized_plan['mcp_preflight']['serialized_tool_bytes'] ?? PHP_INT_MAX ) > MAD4B_SCP_MCP_Catalog_Diagnostics::MAX_SERIALIZED_TOOL_BYTES
-	|| 'bounded_serialized_tool_bytes' !== ( $oversized_plan['mcp_preflight']['size_policy'] ?? '' )
+	! array_key_exists( 'per_tool_serialized_bytes_limit', $oversized_plan['mcp_preflight'] ?? array() )
+	|| 'bounded_single_tool_schema_unbounded_total' !== ( $oversized_plan['mcp_preflight']['size_policy'] ?? '' )
 ) {
 	$fail( 'Direct catalog byte budget was not enforced.', $oversized_plan['mcp_preflight'] ?? array() );
 }

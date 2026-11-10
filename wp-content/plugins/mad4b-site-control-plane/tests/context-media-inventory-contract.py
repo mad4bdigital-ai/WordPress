@@ -21,7 +21,7 @@ contracts = {
     'mandatory_scope_coverage_guard': 'governed_context_required_mime_not_scanned' in authority and 'required_outside_scan_scope_count' in authority,
     'ui_mime_checkboxes': 'name="mime_types[]"' in admin and 'name="mime_types[]"' in media,
     'standalone_ui_no_attachment_list': 'Attachment IDs (comma-separated' not in media,
-    'ui_source_dispatch': 'MAD4B_SCP_Context_Source_Pipeline::scan_complete(' in admin,
+    'ui_source_dispatch': ('MAD4B_SCP_WordPress_Media_Context::begin_scan( $types )' in admin and 'mad4b-wp-media-context' in admin and 'scan_session' in admin),
 }
 for label, valid in contracts.items():
     print(f"{label}: {'PASS' if valid else 'FAIL'}")

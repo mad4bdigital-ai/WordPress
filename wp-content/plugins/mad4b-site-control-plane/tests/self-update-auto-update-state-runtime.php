@@ -8,6 +8,7 @@ $GLOBALS['mad4b_auto_transient'] = (object) array();
 $GLOBALS['mad4b_auto_forced'] = null;
 $GLOBALS['mad4b_effective_environment'] = 'staging';
 $GLOBALS['mad4b_profile_write_allowed'] = true;
+$GLOBALS['mad4b_profile_managed'] = true;
 
 function sanitize_key( $key ) {
 	$key = strtolower( (string) $key );
@@ -38,6 +39,11 @@ function apply_filters( $hook, $value ) {
 	return $value;
 }
 final class MAD4B_SCP_Site_Profile {
+	public static function status() { return array( 'authority_ready' => true, 'site_uuid' => 'fixture-site-uuid' ); }
+	public static function origin_enrolled() { return true; }
+	public static function site_urls_match_enrollment() { return true; }
+	public static function managed_runtime_enabled() { return ! empty( $GLOBALS['mad4b_profile_managed'] ); }
+	public static function write_enabled() { return ! empty( $GLOBALS['mad4b_profile_write_allowed'] ); }
 	public static function environment_resolution() {
 		return array(
 			'contract' => 'mad4b.site-profile-environment-resolution.v1',
@@ -117,9 +123,19 @@ if ( true !== $environment_allowed->invoke( null, true ) ) {
 }
 $GLOBALS['mad4b_effective_environment'] = 'production';
 $GLOBALS['mad4b_profile_write_allowed'] = false;
-if ( false !== $environment_allowed->invoke( null, false ) ) {
-	fwrite( STDERR, "Production native self-update bypassed explicit production gate\n" );
+if ( true !== $environment_allowed->invoke( null, false ) || false !== $environment_allowed->invoke( null, true ) ) {
+	fwrite( STDERR, "Production must permit verified read planning but deny ungranted writes\n" );
 	exit( 7 );
+}
+$GLOBALS['mad4b_profile_write_allowed'] = true;
+if ( true !== $environment_allowed->invoke( null, true ) ) {
+	fwrite( STDERR, "Enrolled managed Production write authority was still blocked by environment label\n" );
+	exit( 12 );
+}
+$GLOBALS['mad4b_profile_managed'] = false;
+if ( false !== $environment_allowed->invoke( null, true ) || false !== $environment_allowed->invoke( null, false ) ) {
+	fwrite( STDERR, "Unmanaged Production cannot use signed release channel\n" );
+	exit( 13 );
 }
 
 

@@ -65,7 +65,9 @@ assert "can_developer_read" in policy
 assert "can_developer_runtime_status" in policy
 assert "MAD4B_SCP_Agent_Registry::exact_grant( $agent['id'], 'mad4b-developer', 'mad4b/developer-runtime-status', 'core' )" in policy
 assert "can_developer_breakglass" in policy
-assert "mad4b_developer_production_denied" in developer
+assert "mad4b_developer_site_authority_required" in developer
+assert "MAD4B_SCP_Site_Profile::managed_runtime_enabled()" in developer
+assert "MAD4B_SCP_Site_Profile::write_enabled()" in developer
 assert "mad4b_developer_root_execution_denied" in developer
 assert "expected_source_commit_sha" in developer
 assert "expected_site_uuid" in developer
@@ -128,8 +130,7 @@ assert "proc_open" in developer
 assert "public static function lint_workspace_php_file" in developer
 assert "mad4b/developer-workspace-php-lint" in developer
 assert "array( PHP_BINARY, '-l', $file )" in developer
-assert "mad4b_developer_workspace_lint_production_denied" in developer
-assert "mad4b_developer_workspace_lint_environment_denied" in developer
+assert "mad4b_developer_workspace_lint_site_authority_required" in developer
 assert "mad4b_developer_workspace_lint_runtime_not_ready" in developer
 assert "MAD4B_SCP_Developer_Runtime::lint_workspace_php_file( $absolute, $project )" in workspace
 assert "private static function php_token_parse" in workspace

@@ -43,3 +43,14 @@ assert handler.index('self::require_admin( self::ACTION_SCAN_SOURCE )') < handle
 assert 'source_scan_apply_admission' in handler
 authority = (includes / 'class-mad4b-scp-context-authority.php').read_text()
 assert "isset( $scan['expected_registry_revision'] ) && (int) $scan['expected_registry_revision'] !== self::registry_revision()" in authority
+
+# Newly reviewed Brand Core recovery status is a passive, non-authorizing
+# discovery ability. Evidence stays committed with the added Ability.
+brand_recovery = (includes / 'class-mad4b-scp-brand-core-remote-recovery.php').read_text()
+read_registration = brand_recovery.split('self::STATUS_ABILITY => array(', 1)[1].split('self::ALTERNATIVES_ABILITY => array(', 1)[0]
+assert "'callback' => 'status'" in read_registration
+assert "'include_host_challenge' => array( 'type' => 'boolean', 'default' => false )" in read_registration
+assert "'include_operational_diagnostics' => array( 'type' => 'boolean', 'default' => false )" in read_registration
+assert "'non_authorizing' => true" in brand_recovery
+assert "'readonly' => true, 'destructive' => false" in brand_recovery
+assert "'mad4b/brand-core-remote-recovery-status'" in (includes / 'class-mad4b-scp-recovery-route-matrix.php').read_text()

@@ -35,7 +35,16 @@ class UndoFixtureAdapter extends MAD4B_SCP_Adapter_Base {
 }
 class UndoFixtureDB {
     public $rows=array();public $fail_insert=false;public $fail_claim=false;public $fail_child_commit=false;
-    public function insert($table,$values,$formats){
+    public function insert($table,$values,$formats=null){
+        // WPDB insert() permits omitted formats for child undo-intent journals;
+        // verify the parent linkage and exact pre-restore state in that lane.
+        if($formats===null){
+            if(($values['parent_mutation_id']??'')!=='original'
+               ||($values['status']??'')!=='planned'
+               ||($values['verification_code']??'')!=='undo_intent_reserved'
+               ||($values['reversible']??null)!==0)
+                throw new RuntimeException('invalid child undo intent insert');
+        }else{
         if(count($values)!==count($formats))throw new RuntimeException('mutation insert format mismatch');
         $keys=array_keys($values);
         foreach(array('agent_id'=>'%d','wp_user_id'=>'%d','reversible'=>'%d',
@@ -44,6 +53,7 @@ class UndoFixtureDB {
             if(false===$offset||$formats[$offset]!==$expected)
                 throw new RuntimeException('unsafe mutation insert field format: '.$key);
         }
+        } // explicit format assertions apply to initial mutation only
         if($this->fail_insert)return false;
         $id=$values['mutation_id'];if(isset($this->rows[$id]))return false;
         $this->rows[$id]=$values;return 1;

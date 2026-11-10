@@ -162,8 +162,9 @@ resetx();
 $GLOBALS['env']='production';$GLOBALS['home']='https://prod.example.test';
 $GLOBALS['opts'][MAD4B_SCP_Upgrade_Continuity::PRIOR_OAUTH_OPTION]=snapshot('production','https://prod.example.test');
 $r=MAD4B_SCP_Upgrade_Continuity::recover_verified_read_continuity();
-ok(!$r['recovered']&&'nonproduction_only'===$r['blocker'],'snapshot-only Production auto recovery is prohibited');
-ok(false===get_option(MAD4B_SCP_Site_Profile::OPTION,false),'snapshot-only Production must not persist a Site Profile');
+ok(!empty($r['recovered'])&&'prior_oauth_snapshot'===$r['recovery_source'],'exact Production snapshot-only read continuity recovers');
+$p=get_option(MAD4B_SCP_Site_Profile::OPTION,[]);
+ok(!empty($p['features']['oauth'])&&empty($p['features']['write'])&&empty($p['features']['production_write_confirmed']),'Production snapshot continuity never restores write authority');
 
 // Legacy identity alone remains fail-closed.
 resetx();
@@ -201,7 +202,15 @@ $GLOBALS['opts'][MAD4B_SCP_Site_Profile::LEGACY_OPTION]=legacy('production','htt
 MAD4B_SCP_Site_Profile::status();
 $GLOBALS['opts'][MAD4B_SCP_Upgrade_Continuity::PRIOR_OAUTH_OPTION]=snapshot('production','https://prod.example.test');
 $r=MAD4B_SCP_Upgrade_Continuity::recover_verified_read_continuity();
-ok(!$r['recovered']&&'nonproduction_only'===$r['blocker'],'Production auto recovery is prohibited');
+ok(!empty($r['recovered'])&&empty($r['write_restored'])&&empty($r['production_authority_restored']),'exact Production v2 migration read continuity recovers without write');
+
+// Production recovery with mismatched snapshot issuer remains rejected.
+resetx();
+$GLOBALS['env']='production';$GLOBALS['home']='https://prod.example.test';
+$GLOBALS['opts'][MAD4B_SCP_Upgrade_Continuity::PRIOR_OAUTH_OPTION]=snapshot('production','https://foreign.example.test');
+$r=MAD4B_SCP_Upgrade_Continuity::recover_verified_read_continuity();
+ok(!$r['recovered']&&'prior_oauth_identity_mismatch'===$r['blocker'],'foreign Production snapshot cannot restore read OAuth');
+ok(false===get_option(MAD4B_SCP_Site_Profile::OPTION,false),'foreign Production snapshot cannot persist Site Profile');
 
 // Known OAuth paths are derived from the live local authority instead of assuming domain-root WordPress.
 ok(MAD4B_SCP_Upgrade_Continuity::is_known_oauth_protocol_path('/oauth/mcp/authorize'),'authorize path recognized');

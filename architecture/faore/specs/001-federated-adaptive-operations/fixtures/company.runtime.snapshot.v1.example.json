@@ -1,0 +1,15 @@
+{
+  "contract": "company.runtime.snapshot.v1",
+  "company_id": "example-company",
+  "environment": "staging",
+  "site_uuid": "00000000-0000-4000-8000-000000000001",
+  "message_id": "msg-example-001",
+  "delivery_id": "delivery-example-001",
+  "sent_at": "2026-11-05T01:00:00Z",
+  "sequence_number": 1,
+  "payload": {
+    "current_generation": "example-generation",
+    "health": "healthy",
+    "drift_summary": {}
+  }
+}

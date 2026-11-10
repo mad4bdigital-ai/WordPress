@@ -1,0 +1,10 @@
+[Unit]
+Description=MAD4B universal media intake candidate discovery queue
+[Timer]
+OnBootSec=12min
+OnUnitActiveSec=30min
+RandomizedDelaySec=120s
+Persistent=true
+Unit=mad4b-universal-media-intake.service
+[Install]
+WantedBy=timers.target

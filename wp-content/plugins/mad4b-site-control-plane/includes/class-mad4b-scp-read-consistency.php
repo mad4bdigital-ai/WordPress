@@ -745,7 +745,8 @@ final class MAD4B_SCP_Read_Consistency {
 			$blocking = true;
 		}
 		if ( null === $skills_ready ) {
-			$reasons[] = 'skills_live_validation_deferred';
+			// Deliberately deferred work is an observation, not a failed check.
+			// The signal below retains tri-state null for clients seeking proof.
 			$actions[] = 'read_skills_runtime_certification';
 		} elseif ( false === $skills_ready ) {
 			$reasons[] = 'skills_runtime_not_ready';
@@ -777,6 +778,7 @@ final class MAD4B_SCP_Read_Consistency {
 			'effective_environment' => isset( $snapshot['environment'] ) ? sanitize_key( (string) $snapshot['environment'] ) : '',
 			'reasons' => $reasons,
 			'next_actions' => $actions,
+			'deferred_checks' => null === $skills_ready ? array( 'skills_live_validation_deferred' ) : array(),
 			'signals' => array(
 				'adapter_lifecycle_ready' => $adapter_lifecycle_ready,
 				'adapter_lifecycle_missing_abilities' => self::bounded_scalar_list(

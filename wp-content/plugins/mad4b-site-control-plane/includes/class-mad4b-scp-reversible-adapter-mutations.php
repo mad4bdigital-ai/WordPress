@@ -1,6 +1,7 @@
 <?php
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+require_once __DIR__ . '/class-mad4b-scp-mutation-principal.php';
 
 /**
  * Provider-agnostic durable envelope for explicitly certified reversible adapter writes.
@@ -48,8 +49,9 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 
 		$identity = MAD4B_SCP_Identity_Context::current();
 		if ( is_wp_error( $identity ) ) return $identity;
-		$agent = MAD4B_SCP_Agent_Registry::resolve_agent( $identity );
-		if ( is_wp_error( $agent ) ) return $agent;
+        $principal = MAD4B_SCP_Mutation_Principal::resolve( $identity, $ability_name, $input );
+        if ( is_wp_error( $principal ) ) return $principal;
+        $agent = $principal['actor'];
 
 		$server_id = class_exists( 'MAD4B_SCP_Transport_Context' ) ? MAD4B_SCP_Transport_Context::current_server_id() : '';
 		if ( '' === $server_id ) $server_id = $adapter->declared_server_for_ability( $ability_name );
@@ -83,10 +85,11 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 			'mutation_id' => $mutation_id,
 			'request_id' => $request_id,
 			'parent_mutation_id' => null,
-			'agent_id' => (int) $agent['id'],
-			'subject_type' => (string) $identity['subject_type'],
-			'subject_fingerprint' => (string) $identity['subject_fingerprint'],
-			'wp_user_id' => get_current_user_id(),
+            'principal_type' => $principal['principal_type'],
+            'agent_id' => $principal['agent_id'],
+            'subject_type' => $principal['subject_type'],
+            'subject_fingerprint' => $principal['subject_fingerprint'],
+            'wp_user_id' => $principal['wp_user_id'],
 			'server_id' => $server_id,
 			'ability_name' => $ability_name,
 			'provider' => $provider,
@@ -106,7 +109,7 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 			'error_code' => '',
 			'created_at' => $now,
 			'updated_at' => $now,
-		), array( '%s','%s','%s','%d','%s','%s','%d','%s','%s','%s','%s','%s','%s','%s','%s','%s','%d','%s','%s','%s','%s','%s','%s','%s','%s','%s' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		if ( false === $inserted ) return new WP_Error( 'mad4b_mutation_record_failed', 'Unable to persist reversible adapter mutation evidence before provider execution.', array( 'db_error' => $wpdb->last_error ) );
 		if ( 1 !== self::update_record( $mutation_id, array( 'status' => 'executing' ) ) ) {
 			return new WP_Error( 'mad4b_mutation_execution_journal_failed', 'Journal failed before provider execution; do not retry before reconciliation.', array( 'mutation_id' => $mutation_id, 'recovery_required' => true, 'blind_retry_allowed' => false ) );
@@ -216,9 +219,10 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 		if ( ! MAD4B_SCP_Policy::can_mutate() ) return new WP_Error( 'mad4b_mutation_disabled', 'Mutation/NHI authority is required for undo.' );
 		$identity = MAD4B_SCP_Identity_Context::current();
 		if ( is_wp_error( $identity ) ) return $identity;
-		$agent = MAD4B_SCP_Agent_Registry::resolve_agent( $identity );
-		if ( is_wp_error( $agent ) ) return $agent;
-		if ( (int) $agent['id'] !== (int) $record['agent_id'] && ! apply_filters( 'mad4b_scp_allow_cross_agent_undo', false, $record, $agent ) ) return new WP_Error( 'mad4b_undo_agent_denied', 'A different agent cannot undo this mutation by default.' );
+        $principal = MAD4B_SCP_Mutation_Principal::owner_for_undo(
+            $identity, $record, $adapter, $payload['target'] );
+        if ( is_wp_error( $principal ) ) return $principal;
+        $agent = $principal['actor'];
 
 		$undo_scope = null;
 		$undo_intent_incomplete = false;
@@ -229,7 +233,10 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 		try {
 		$fresh = MAD4B_SCP_Mutation_Manager::get( $mutation_id );
 		if ( ! $fresh || ! self::can_undo_record( $fresh ) ) return new WP_Error( 'mad4b_undo_journal_changed', 'Undo journal changed before provider lock was acquired.' );
-		$record = $fresh;
+        $record = $fresh;
+        $locked_principal = MAD4B_SCP_Mutation_Principal::owner_for_undo(
+            $identity, $record, $adapter, $payload['target'] );
+        if ( is_wp_error( $locked_principal ) ) return $locked_principal;
 		$current = $adapter->read_reversible_state( $record['ability_name'], $payload['target'] );
 		if ( is_wp_error( $current ) ) return $current;
 		$current_hash = self::state_hash( $current );
@@ -262,10 +269,11 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 			'mutation_id' => $recovery_id,
 			'request_id' => isset( $identity['request_id'] ) ? $identity['request_id'] : MAD4B_SCP_Identity_Context::request_id(),
 			'parent_mutation_id' => $mutation_id,
-			'agent_id' => (int) $agent['id'],
-			'subject_type' => (string) $identity['subject_type'],
-			'subject_fingerprint' => (string) $identity['subject_fingerprint'],
-			'wp_user_id' => get_current_user_id(),
+            'principal_type' => $principal['principal_type'],
+            'agent_id' => $principal['agent_id'],
+            'subject_type' => $principal['subject_type'],
+            'subject_fingerprint' => $principal['subject_fingerprint'],
+            'wp_user_id' => $principal['wp_user_id'],
 			'server_id' => 'mad4b-admin',
 			'ability_name' => 'mad4b/mutation-undo',
 			'provider' => (string) $record['provider'],
@@ -285,7 +293,7 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 			'error_code' => '',
 			'created_at' => $now,
 			'updated_at' => $now,
-		), array( '%s','%s','%s','%d','%s','%s','%d','%s','%s','%s','%s','%s','%s','%s','%s','%s','%d','%s','%s','%s','%s','%s','%s','%s','%s', '%s' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		if ( 1 !== $inserted ) return self::undo_recovery_required( $mutation_id, $recovery_id, 'Undo child intent could not be persisted before restore.' );
 		if ( 1 !== self::update_record( $recovery_id, array( 'status' => 'executing', 'verification_code' => 'undo_restore_started' ) ) ) {
 			return self::undo_recovery_required( $mutation_id, $recovery_id, 'Undo child intent could not enter executing state.' );

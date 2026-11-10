@@ -1,0 +1,125 @@
+{
+  "contract": "mad4b.jetengine-media-rights.v1",
+  "engine": "jet-engine-custom-content-types",
+  "slug": "media_rights",
+  "display_name": "Media Rights",
+  "native_table_suffix": "jet_cct_media_rights",
+  "fields": [
+    {
+      "name": "credit_key",
+      "type": "text",
+      "required": true
+    },
+    {
+      "name": "subject",
+      "type": "text",
+      "required": true
+    },
+    {
+      "name": "author",
+      "type": "text",
+      "required": true
+    },
+    {
+      "name": "source_url",
+      "type": "text",
+      "required": true
+    },
+    {
+      "name": "license_url",
+      "type": "text",
+      "required": true
+    },
+    {
+      "name": "license_label",
+      "type": "text",
+      "required": true
+    },
+    {
+      "name": "source_sha256",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "attachment_id",
+      "type": "media",
+      "value_format": "id",
+      "required": false
+    }
+  ],
+  "indexes": [
+    "UNIQUE credit_key(120)",
+    "KEY cct_status(20), _ID"
+  ],
+  "page_size": 12,
+  "page_parameter": "credits_page",
+  "create_read_update_delete_via": "JetEngine CCT native model / editor",
+  "public_read": "mad4b_media_credits shortcode in Elementor template",
+  "media_write": "MAD4B_Media_Attribution_Registry_V1::upsert_credit through signed media apply",
+  "legacy_option": "mad4b_licensed_media_credits_v1",
+  "legacy_option_policy": "read-only rollback snapshot; no new records",
+  "elementor_template_file": "ops/media-rights/elementor/wayfa-image-rights-en.json",
+  "production_page": "/image-attribution/",
+  "pagination": "server-side bounded CCT query, not client-side load-all",
+  "languages": {
+    "en": {
+      "page_id": 69848,
+      "page_slug": "image-attribution",
+      "elementor_template_id": 69856,
+      "elementor_template_file": "ops/media-rights/elementor/wayfa-image-rights-en.json"
+    },
+    "es": {
+      "page_id": 69879,
+      "page_slug": "creditos-de-imagenes",
+      "elementor_template_id": 69878,
+      "elementor_template_file": "ops/media-rights/elementor/wayfa-image-rights-es.json"
+    }
+  },
+  "wpml": {
+    "page_translation_trid": 1284536,
+    "elementor_template_translation_trid": 1284537,
+    "shared_cct_records": true
+  },
+  "admin_columns": {
+    "_ID": "ID",
+    "attachment_id": "JetEngine native image thumbnail (50x50)",
+    "subject": "Image / Subject",
+    "author": "Photographer / Author",
+    "license_label": "License",
+    "cct_status": "Status"
+  },
+  "admin_columns_managed_by": "JetEngine CCT native admin_columns setting",
+  "native_media_image_field": "attachment_id",
+  "source_deployment": {
+    "site": "tours.dev.mad4b.com",
+    "company": "Wo Vacation Demo",
+    "definition_id": 394,
+    "shared_rights_cct": true,
+    "languages": [
+      "en",
+      "ar",
+      "fr",
+      "de",
+      "es",
+      "it"
+    ],
+    "wordPress_pages_by_language": {
+      "en": 69641,
+      "fr": 69643,
+      "de": 69645,
+      "es": 69647,
+      "it": 69649,
+      "ar": 69651
+    },
+    "templates_by_language": {
+      "en": 69640,
+      "fr": 69642,
+      "de": 69644,
+      "es": 69646,
+      "it": 69648,
+      "ar": 69650
+    },
+    "published_rights_after_migration": 1,
+    "rollout_contract": "ops/media-rights/rollouts/tours-dev-20261110.json"
+  }
+}

@@ -1,0 +1,11 @@
+[Unit]
+Description=Renew MAD4B FAORE current Central STDIO read-only observation
+
+[Timer]
+OnCalendar=*-*-* *:00/3:00
+RandomizedDelaySec=10s
+Persistent=true
+Unit=mad4b-faore-stdio-observe.service
+
+[Install]
+WantedBy=timers.target

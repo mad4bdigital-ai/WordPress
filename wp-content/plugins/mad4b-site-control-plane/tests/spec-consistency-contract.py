@@ -185,7 +185,7 @@ if not core_catalog.is_file():
     raise SystemExit('FAIL implementation-core-catalog: missing extracted core catalog')
 impl['servers'] += read(core_catalog)
 
-require(impl['schema'], 'const VERSION = 13;', 'implementation-schema-v13')
+require(impl['schema'], 'const VERSION = 14;', 'implementation-schema-v14')
 require(impl['schema'], "'budget_windows'", 'implementation-budget-windows')
 require(impl['schema'], "'audit_events'", 'implementation-audit-events')
 require(impl['schema'], "'audit_heads'", 'implementation-audit-heads')
@@ -202,7 +202,7 @@ for marker in (
     'public static function physical_integrity_status()',
     'claim_epoch bigint(20) unsigned', 'reconciliation_ref varchar(191)',
     'private static function required_durable_indexes()', "'missing_durable_indexes'",
-): require(impl['schema'], marker, 'implementation-schema-v13-approval-guard')
+): require(impl['schema'], marker, 'implementation-schema-v14-approval-guard')
 for marker in (
     'const CONTRACT = \'mad4b.site-profile.v2\'',
     'public static function origin_enrolled()', 'public static function site_uuid()',

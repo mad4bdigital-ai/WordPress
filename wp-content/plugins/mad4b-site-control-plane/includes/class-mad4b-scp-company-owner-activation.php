@@ -1,12 +1,12 @@
 <?php
-/** One-time native Staging owner setup for company roles and JetEngine pages. */
+/** One-time site-bound native owner setup for company roles and JetEngine pages. */
 defined('ABSPATH') || exit;
 final class MAD4B_SCP_Company_Owner_Activation {
     const AUDIT='mad4b_company_owner_activation_audit_v1';
-    const CONSENT='ACTIVATE COMPANY OPERATIONS ON STAGING';
+    const CONSENT='ACTIVATE COMPANY OPERATIONS';
     const PAGE='mad4b-company-owner-activation';
     public static function browserOwnerAuthorized():bool {
-        if(wp_get_environment_type()!=='staging'||!defined('WP_ENVIRONMENT_TYPE')||WP_ENVIRONMENT_TYPE!=='staging'
+        if(!class_exists('MAD4B_SCP_Site_Profile',false) || empty(MAD4B_SCP_Site_Profile::status()['authority_ready'])
             ||!current_user_can('manage_options')||!current_user_can('activate_plugins'))return false;
         $cookie=defined('LOGGED_IN_COOKIE')?(string)($_COOKIE[LOGGED_IN_COOKIE]??''):'';
         $uid=$cookie!==''?wp_validate_auth_cookie($cookie,'logged_in'):false;
@@ -61,11 +61,11 @@ final class MAD4B_SCP_Company_Owner_Activation {
         $role=get_role('master_admin');
         $existing=self::existing();
         $problems=[];
-        if(wp_get_environment_type()!=='staging' || !defined('WP_ENVIRONMENT_TYPE') || WP_ENVIRONMENT_TYPE!=='staging')$problems[]='environment_not_staging';
-        if(($profile['environment']??'')!=='staging')$problems[]='site_profile_not_staging';
+        if(empty($site['origin_match'])||empty($site['deployment_binding_match'])||empty($site['same_origin_clone_protection']))$problems[]='site_identity_binding_not_ready';
+        if(empty($profile['site_uuid'])||!hash_equals((string)($site['site_uuid']??''),(string)$profile['site_uuid']))$problems[]='site_identity_mismatch';
         if(!($site['authority_ready']??false))$problems[]='site_profile_not_ready';
         if(!$role)$problems[]='master_admin_missing';
-        if($version!=='0.4.0-rc.109')$problems[]='unexpected_release_version';
+        if($version==='unknown')$problems[]='plugin_release_unknown';
         foreach($existing as$slug=>$page){
             if(($page['parent']??'')!=='mad4b-company' ||
               ($page['capability']??'')!=='mad4b_manage_company_operations')

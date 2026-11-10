@@ -3,7 +3,7 @@ define('ABSPATH',__DIR__.'/');
 class WP_Error {private $code;public function __construct($c,$m=''){$this->code=$c;}public function get_error_code(){return $this->code;}}
 function is_wp_error($x){return $x instanceof WP_Error;}
 $GLOBALS['cfg']=array();$GLOBALS['records']=array();$GLOBALS['admin']=true;
-$GLOBALS['ai_mode']='ai_only';$GLOBALS['rev']=1;$GLOBALS['grants']=array();$GLOBALS['audit_ok']=true;
+$GLOBALS['ai_mode']='ai_only';$GLOBALS['rev']=1;$GLOBALS['grants']=array();$GLOBALS['audit_ok']=true;$GLOBALS['runtime_allowed']=true;
 function get_option($name,$default=false){return $GLOBALS['cfg'][$name]??$default;}
 function update_option($name,$value,$autoload=false){$different=!isset($GLOBALS['cfg'][$name]) ||$GLOBALS['cfg'][$name]!==$value;$GLOBALS['cfg'][$name]=$value;return $different;}
 function add_option($name,$value,$deprecated='',$autoload=false){if(isset($GLOBALS['cfg'][$name]))return false;$GLOBALS['cfg'][$name]=$value;return true;}
@@ -18,7 +18,10 @@ class MAD4B_SCP_Site_Profile {
  public static function configured(){return true;}
  public static function origin_enrolled(){return true;}
  public static function site_urls_match_enrollment(){return true;}
- public static function current_environment(){return 'local';}
+ public static function current_environment(){return $GLOBALS['env']??'local';}
+ public static function status(){return array('authority_ready'=>!empty($GLOBALS['runtime_allowed']));}
+ public static function managed_runtime_enabled(){return !empty($GLOBALS['runtime_allowed']);}
+ public static function write_enabled(){return !empty($GLOBALS['runtime_allowed']);}
  public static function site_uuid(){return '123e4567-e89b-12d3-a456-426614174000';}
  public static function agent_slug(){return 'site-ai';}
  public static function user_is_enrolled($id){return $id===1;}
@@ -36,7 +39,7 @@ class MAD4B_SCP_Audit {
 }
 class MAD4B_SCP_Agent_Registry {
  public static function get_agent_by_public_id($id){
-    if($id==='987e4567-e89b-12d3-a456-426614174000')return array('id'=>5,'public_id'=>$id,'status'=>'enabled','environment'=>!empty($GLOBALS['use_stage_agent'])?'staging':'local','slug'=>'site-ai');
+    if($id==='987e4567-e89b-12d3-a456-426614174000')return array('id'=>5,'public_id'=>$id,'status'=>'enabled','environment'=>!empty($GLOBALS['use_stage_agent'])?'staging':($GLOBALS['env']??'local'),'slug'=>'site-ai');
     return false;
  }
  public static function exact_grant($agent_id,$server,$ability,$provider){
@@ -46,7 +49,7 @@ class MAD4B_SCP_Agent_Registry {
     return new WP_Error('mad4b_nhi_grant_missing');
  }
  public static function grant_ability($public,$server,$ability,$provider='core',$constraints=array(),$effect='allow',$environment='all'){
-   if($ability!=='mad4b/context-ai-review'||$server!=='mad4b-write'||$environment!=='local'||$constraints||$effect!=='allow')
+   if($ability!=='mad4b/context-ai-review'||$server!=='mad4b-write'||$environment!==($GLOBALS['env']??'local')||$constraints||$effect!=='allow')
        return new WP_Error('unsafe_grant_attempted');
    $GLOBALS['grants'][]=array('id'=>100+count($GLOBALS['grants']),'agent_id'=>5,'server_id'=>$server,
        'ability_name'=>$ability,'provider'=>'core','effect'=>'allow','environment'=>$environment);
@@ -70,9 +73,14 @@ ok('nonadmin_cannot_mint',is_wp_error(MAD4B_SCP_AI_Grant_Mode::apply('ai_agent_o
 $GLOBALS['admin']=true;
 $GLOBALS['ai_mode']='human_only';
 ok('ai_only_review_policy_required',is_wp_error(MAD4B_SCP_AI_Grant_Mode::apply('ai_agent_only','correct-nonce')));
-$GLOBALS['ai_mode']='ai_only';$GLOBALS['env']='production';
-ok('production_denied',is_wp_error(MAD4B_SCP_AI_Grant_Mode::apply('ai_agent_only','correct-nonce')));
-$GLOBALS['env']='local';
+$GLOBALS['ai_mode']='ai_only';$GLOBALS['env']='production';$GLOBALS['runtime_allowed']=false;
+ok('unmanaged_production_denied',is_wp_error(MAD4B_SCP_AI_Grant_Mode::apply('ai_agent_only','correct-nonce')));
+$GLOBALS['env']='production';$GLOBALS['runtime_allowed']=true;
+$production=MAD4B_SCP_AI_Grant_Mode::apply('ai_agent_only','correct-nonce');
+ok('managed_production_exact_review_grant',is_array($production)&&$production['ready']&&$production['production_allowed']&&count($GLOBALS['grants'])===1);
+$production_off=MAD4B_SCP_AI_Grant_Mode::apply('off','correct-nonce');
+ok('managed_production_can_revoke_own_review_grant',is_array($production_off)&&$production_off['mode']==='off'&&count($GLOBALS['grants'])===0);
+$GLOBALS['env']='local';$GLOBALS['runtime_allowed']=true;
 $GLOBALS['audit_ok']=false;
 ok('audit_required_before_grant',is_wp_error(MAD4B_SCP_AI_Grant_Mode::apply('ai_agent_only','correct-nonce')));
 $GLOBALS['audit_ok']=true;$GLOBALS['denied']=true;

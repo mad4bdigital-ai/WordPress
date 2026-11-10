@@ -3,6 +3,29 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 return array(
+            // Source-only descriptor. Dispatch Ability is not registered yet:
+            // catalog must report remote_ability_unregistered, never ready.
+            // Company Code Release host execution is environment-neutral by
+            // exact enrolled company:environment binding. The 'deny' value
+            // below ONLY keeps this unregistered operation out of the generic
+            // Staging-only enrollment dispatcher; it is not the host executor's
+            // environment policy. Its first-party native Broker lane remains
+            // separately governed and NOT enrolled.
+            'company_code_release' => array(
+                'feature_id' => 'company-lifecycle-code-release',
+                'capability_tags' => array( 'company', 'lifecycle', 'code', 'release', 'local-git', 'broker', 'rollback' ),
+                'provider' => 'mad4b-company-code-release',
+                'status_ability' => 'mad4b/company-code-release-readiness',
+                'local_surface' => 'host:ops/company-code-release-v1/company_code_release.py',
+                'remote_ability' => 'mad4b/company-code-release-dispatch',
+                'authority_surface' => 'mad4b-enrollment',
+                'executor' => 'host_native_operator',
+                'remote_mode' => 'git_commit_exact_scope_broker_signed_release',
+                'remote_caller_role' => 'owner',
+                'production_policy' => 'deny',
+                'host_environment_policy' => 'exact_enrolled_target_no_named_environment_exceptions',
+                'human_decision_required' => false,
+            ),
             'optional_governance_preference_update' => array(
                 'feature_id' => 'optional-governance-options-control',
                 'capability_tags' => array( 'options', 'advisory', 'governance', 'profile', 'readback', 'policy' ),
@@ -377,6 +400,22 @@ return array(
 				// This owner-reviewed operation has its own exact plan and OAuth
 				// step-up admission. No Developer/Breakglass rights are included.
 				'chatgpt_direct_step_up' => true,
+			),
+			'staging_write_grant_reconciliation' => array(
+				'feature_id' => 'staging-write-authority',
+				'capability_tags' => array( 'exact-staging-grants', 'audited-stale-retirement', 'candidate-binding', 'no-breakglass' ),
+				'provider' => 'core',
+				'status_ability' => 'mad4b/staging-write-grant-reconciliation-plan',
+				'local_surface' => '',
+				'remote_ability' => 'mad4b/staging-write-grant-reconcile-staging',
+				'authority_surface' => 'mad4b-enrollment',
+				'executor' => 'wordpress_native',
+				'remote_mode' => 'exact_staging_reviewed_stale_grant_retirement',
+				'remote_caller_role' => 'operator',
+				'production_policy' => 'deny',
+				// The exact OAuth step-up and required reviewed confirmation are
+				// enforced by the original grant reconciler; no blanket approval.
+				'human_decision_required' => false,
 			),
 			'staging_candidate_binding' => array(
 				'feature_id' => 'staging-write-authority',

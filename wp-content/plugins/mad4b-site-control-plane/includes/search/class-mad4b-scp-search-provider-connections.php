@@ -82,7 +82,16 @@ final class MAD4B_SCP_Search_Provider_Connections {
 		if ( ! in_array( $action, array( 'save', 'test', 'remove' ), true ) || ! isset( $input['expected_revision'] ) || ! is_int( $input['expected_revision'] ) || $input['expected_revision'] < 0 ) return MAD4B_SCP_Search_Contracts::error( 'connection_input_invalid' );
 		$old = MAD4B_SCP_Search_Store::read( self::KIND, $id ); if ( is_wp_error( $old ) ) return $old;
 		if ( null !== $old && ( ! is_array( $old ) || ! isset( $old['_revision'] ) || ! is_int( $old['_revision'] ) || $old['_revision'] < 1 ) ) return MAD4B_SCP_Search_Contracts::error( 'connection_record_invalid' );
-		if ( ( null === $old ? 0 : $old['_revision'] ) !== $input['expected_revision'] ) return MAD4B_SCP_Search_Contracts::error( 'connection_revision_conflict', 'Provider settings changed. Reload this page before trying again.' );
+
+		// A saved-account check observes current credentials; its browser revision
+		// is not a credential edit. Keep strict CAS for actual save/remove writes.
+		$credentials = isset( $input['credentials'] ) && is_array( $input['credentials'] ) ? $input['credentials'] : array();
+		$blank_save = 'save' === $action && ! count( array_filter( $credentials, static function ( $value ) { return '' !== $value; } ) );
+		$current_revision = null === $old ? 0 : $old['_revision'];
+		if ( 'test' !== $action && ! $blank_save && $current_revision !== $input['expected_revision'] ) {
+			error_log( '[MAD4B Search Provider] revision conflict provider=' . $id . ' operation=' . $action . ' posted_revision=' . $input['expected_revision'] . ' saved_revision=' . $current_revision );
+			return MAD4B_SCP_Search_Contracts::error( 'connection_revision_conflict', 'Provider credentials changed in another request. Your attempted change was not applied.' );
+		}
 		if ( 'remove' === $action ) {
 			$saved = MAD4B_SCP_Search_Store::cas( self::KIND, $id, $old, array( 'contract' => self::CONTRACT, 'provider_id' => $id, 'removed' => true ), 'PROVIDER_CONNECTION_REMOVED' );
 		} else {
@@ -91,7 +100,10 @@ final class MAD4B_SCP_Search_Provider_Connections {
 				$c = isset( $input['credentials'] ) ? $input['credentials'] : null;
 				if ( ! is_array( $c ) || array_diff( array_keys( $c ), array_keys( $a->enrollment()['fields'] ) ) ) return MAD4B_SCP_Search_Contracts::error( 'credentials_invalid' );
 				$blank = true; foreach ( $c as $value ) if ( '' !== $value ) $blank = false;
-				if ( $blank && is_array( $p ) ) return self::status( $id );
+
+					if ( $blank && is_wp_error( $p ) ) return $p;
+					if ( $blank && is_array( $p ) ) return self::status( $id );
+					if ( $blank ) return MAD4B_SCP_Search_Contracts::error( 'credentials_missing', 'Enter the credentials once before saving or testing.' );
 				$c = $a->normalize_credentials( $c ); if ( is_wp_error( $c ) ) return $c;
 				try { $handle = self::HANDLE_PREFIX . bin2hex( random_bytes( 32 ) ); } catch ( Throwable $e ) { return MAD4B_SCP_Search_Contracts::error( 'credential_encryption_unavailable' ); }
 				// Rotation invalidates both the account receipt and descriptor certification.
@@ -104,12 +116,71 @@ final class MAD4B_SCP_Search_Provider_Connections {
 				$p['account'] = is_wp_error( $result ) ? null : array_merge( $result, array( 'observed_at' => time(), 'expires_at' => time() + self::RECEIPT_TTL ) );
 				$p['last_check'] = array( 'state' => is_wp_error( $result ) ? 'FAILED' : 'VERIFIED', 'at' => time() );
 				$saved = self::persist( $id, $old, $p, 'PROVIDER_ACCOUNT_CHECKED' );
-				if ( ! is_wp_error( $saved ) && is_wp_error( $result ) ) return $result;
+
+					if ( is_wp_error( $saved ) && 'mad4b_search_compare_exchange_conflict' === $saved->get_error_code() ) {
+						// Do not accept a newer observation if credentials rotated in parallel.
+						$fresh = MAD4B_SCP_Search_Store::read( self::KIND, $id );
+						$readback = self::open( $id, $fresh );
+						if ( ! is_wp_error( $result ) && is_array( $readback )
+							&& hash_equals( $p['handle'], (string) ( $readback['handle'] ?? '' ) )
+							&& is_array( $readback['account'] ?? null )
+							&& ( $readback['account']['expires_at'] ?? 0 ) > time() )
+							return self::status( $id );
+						return MAD4B_SCP_Search_Contracts::error( 'connection_revision_conflict', 'Account configuration changed during the check. Please refresh the latest state.' );
+					}
+					if ( ! is_wp_error( $saved ) && is_wp_error( $result ) ) return $result;
 			}
 		}
-		return is_wp_error( $saved ) ? $saved : self::status( $id );
+		if ( is_wp_error( $saved ) ) return $saved;
+		$status = self::status( $id );
+		if ( 'test' === $action && is_array( $status )
+			&& 'VERIFIED' === $status['connection_state'] ) {
+			// Fire after the provider account CAS committed, without any paid search.
+			do_action( 'mad4b_scp_search_provider_verified', $id, (int) $status['revision'] );
+		}
+		return $status;
 	}
 
+	/** Non-authorizing provider-readiness inspection; no secret or paid capture. */
+	public static function readiness( $id ) {
+		if ( class_exists( 'MAD4B_SCP_Search_Provider_Autoprovision' ) ) {
+			$auto = MAD4B_SCP_Search_Provider_Autoprovision::inspect(array('provider_id'=>$id));
+			if ( is_array($auto) ) {
+				$record=MAD4B_SCP_Search_Store::read('provider_provision',$id);
+				return array(
+					'contract'=>'mad4b.serp-provider-readiness.v1',
+					'provider_id'=>$id,'account_connection_state'=>$auto['account_connection_state'],
+					'capture_ready'=>$auto['capture_ready'],
+					'non_paid_operational'=>$auto['non_paid_operational'],
+					'provider_profile_id'=>$auto['provider_profile_id'],
+					'owned_surfaces_indexed'=>is_array($record)?(int)($record['local_discovery_count']??0):0,
+					'blockers'=>$auto['pending'],'paid_search_executed'=>false,
+					'provider_certified'=>$auto['native_certification_verified'],
+					'search_profile_count'=>$auto['profile_created']?1:0);
+			}
+		}
+		$account = self::status( $id ); if ( is_wp_error( $account ) ) return $account;
+		$adapters = MAD4B_SCP_Search_Providers::adapters();
+		if ( ! isset( $adapters[$id] ) ) return MAD4B_SCP_Search_Contracts::error( 'provider_missing' );
+		$d = $adapters[$id]->descriptor(); $now = time(); $blockers = array();
+		if ( 'VERIFIED' !== $account['connection_state'] ) $blockers[] = 'account_observation_not_current';
+		if ( empty( $d['active'] ) ) $blockers[] = 'provider_not_active';
+		if ( empty( $d['certified'] ) || (int) ( $d['certification_expires_at'] ?? 0 ) <= $now ) $blockers[] = 'provider_certification_missing';
+		if ( empty( $d['economics'] ) ) $blockers[] = 'provider_economics_not_certified';
+		if ( empty( $d['evidence_rights'] ) ) $blockers[] = 'provider_evidence_rights_not_certified';
+		$budget = ! empty( $d['account_id'] ) ? MAD4B_SCP_Search_Budgets::status( $d['account_id'] ) : null;
+		if ( ! is_array( $budget ) ) $blockers[] = 'governed_budget_missing';
+		elseif ( ! empty( $d['shared_account'] ) && empty( $budget['hard_global_enforcement'] ) && empty( $d['local_allocation_certified'] ) ) $blockers[] = 'shared_account_budget_authority_required';
+		$profiles = class_exists( 'MAD4B_SCP_Search_Profile_Admin' ) ? MAD4B_SCP_Search_Profile_Admin::profiles() : array();
+		if ( ! is_array( $profiles ) || ! $profiles ) $blockers[] = 'search_profile_missing';
+		return array( 'contract'=>'mad4b.serp-provider-readiness.v1', 'provider_id'=>$id,
+			'account_connection_state'=>$account['connection_state'],
+			'capture_ready'=>!$blockers, 'paid_search_executed'=>false,
+			'blockers'=>array_values( array_unique( $blockers ) ),
+			'budget_authority'=>is_array( $budget ) ? $budget['authority_scope'] : 'not_configured',
+			'provider_certified'=>!empty( $d['certified'] ),
+			'search_profile_count'=>is_array( $profiles ) ? count( $profiles ) : 0 );
+	}
 	/** This projection never decrypts credentials into HTML or performs discovery HTTP. */
 	public static function status( $id ) {
 		if ( ! current_user_can( 'manage_options' ) ) return MAD4B_SCP_Search_Contracts::error( 'configuration_unauthorized' );
@@ -169,6 +240,15 @@ final class MAD4B_SCP_Search_Provider_Connections {
 			echo '<p>Provider certification: ' . esc_html( $certified ? 'Current' : 'Required before capture; account verification is not certification' ) . '</p>';
 			$b = ! empty( $d['account_id'] ) ? MAD4B_SCP_Search_Budgets::status( $d['account_id'] ) : null;
 			echo '<p>Governed budget: ' . esc_html( is_array( $b ) ? $b['authority_scope'] . '; remaining: ' . $b['remaining'] : 'Not configured for this provider account' ) . '</p>';
+
+			$readiness = self::readiness( $id );
+			if ( is_array( $readiness ) && ! empty( $readiness['non_paid_operational'] ) ) {
+				echo '<p class="notice notice-success inline"><strong>Automatic provisioning active.</strong> Search Profile enabled with paid spending frozen. ' . esc_html( (string) ($readiness['owned_surfaces_indexed']??0) ) . ' owned surfaces indexed without paid searches.</p>';
+			}
+			if ( is_array( $readiness ) && ! $readiness['capture_ready'] ) {
+				echo '<p class="description"><strong>Paid SERP evidence is being reconciled automatically:</strong> ' . esc_html( implode( ', ', $readiness['blockers'] ) ) . '.</p>';
+				echo '<p class="description">Account verification is not authorization for paid searches. A certified provider contract, evidence rights, Search Profile and account-wide budget authority are separately required.</p>';
+			}
 			if ( $editable ) {
 				echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"><input type="hidden" name="action" value="mad4b_search_provider_connection"><input type="hidden" name="provider_id" value="' . esc_attr( $id ) . '"><input type="hidden" name="expected_revision" value="' . esc_attr( (string) $revision ) . '">';
 				if ( MAD4B_SCP_Search_Contracts::id( $profile_id ) ) echo '<input type="hidden" name="profile_id" value="' . esc_attr( $profile_id ) . '">';
@@ -185,11 +265,12 @@ final class MAD4B_SCP_Search_Provider_Connections {
 	private static function feedback( $id, array $status ) {
 		$provider = MAD4B_SCP_Admin_Experience::query_string( 'mad4b_provider_notice', '', 96 );
 		$operation = MAD4B_SCP_Admin_Experience::query_string( 'mad4b_provider_operation', '', 16 );
-		if ( $provider !== $id || ! in_array( $operation, array( 'save', 'test', 'remove' ), true ) ) return;
+			if ( $provider !== $id || ! in_array( $operation, array( 'save', 'test', 'remove', 'conflict' ), true ) ) return;
 		$binding = $id . ':' . $status['revision'] . ':' . $operation . ':' . $status['connection_state'];
 		if ( ! MAD4B_SCP_Admin_Experience::notice_verified( 'mad4b-search-intelligence', 'provider_' . $operation, $binding ) ) return;
-		$messages = array( 'save' => __( 'Provider settings saved and verified.', 'mad4b-site-control-plane' ), 'test' => __( 'Saved account checked. Certification and budget gates remain separate.', 'mad4b-site-control-plane' ), 'remove' => __( 'Saved connection removed and verified.', 'mad4b-site-control-plane' ) );
-		echo '<div class="notice notice-success inline" role="status"><p>' . esc_html( $messages[ $operation ] ) . '</p></div>';
+			$messages = array( 'save' => __( 'Provider credentials saved or securely retained. Account certification and budgets are separate.', 'mad4b-site-control-plane' ), 'test' => __( 'Latest saved account checked. Certification and budget gates remain separate.', 'mad4b-site-control-plane' ), 'remove' => __( 'Saved connection removed and verified.', 'mad4b-site-control-plane' ), 'conflict' => __( 'The saved credentials changed in another request. Your edit was not applied. Review the refreshed settings before saving again.', 'mad4b-site-control-plane' ) );
+			$notice_class = 'conflict' === $operation ? 'notice-warning' : 'notice-success';
+			echo '<div class="notice ' . esc_attr( $notice_class ) . ' inline" role="status"><p>' . esc_html( $messages[ $operation ] ) . '</p></div>';
 	}
 	public static function post_input( array $input ) {
 		$revision = isset( $input['expected_revision'] ) ? $input['expected_revision'] : null;
@@ -204,10 +285,42 @@ final class MAD4B_SCP_Search_Provider_Connections {
 		if ( ! is_string( $profile_id ) || ( '' !== $profile_id && ! MAD4B_SCP_Search_Contracts::id( $profile_id ) ) ) wp_die( 'Invalid profile.', '', array( 'response' => 400 ) );
 		check_admin_referer( 'mad4b_search_provider_connection:' . $id );
 		$result = self::post_input( wp_unslash( $_POST ) );
-		if ( is_wp_error( $result ) ) wp_die( esc_html( $result->get_error_message() ), '', array( 'response' => 400, 'back_link' => true ) );
+
+		if ( is_wp_error( $result ) ) {
+			if ( in_array( $result->get_error_code(), array( 'mad4b_search_connection_revision_conflict', 'mad4b_search_compare_exchange_conflict' ), true ) ) {
+				// Redirect only benign stale-form conflicts; never echo posted secrets.
+				$current = self::status( $id );
+				if ( is_wp_error( $current ) ) wp_die( esc_html( $current->get_error_message() ), '', array( 'response' => 409 ) );
+				$binding = $id . ':' . $current['revision'] . ':conflict:' . $current['connection_state'];
+				$back = isset( $_POST['return_to_provider_connections'] ) && '1' === (string) wp_unslash( $_POST['return_to_provider_connections'] );
+				$page = $back ? 'mad4b-provider-connections' : 'mad4b-search-intelligence';
+				$args = array( 'page' => $page, 'mad4b_provider_notice' => $id,
+					'mad4b_provider_operation' => 'conflict',
+					'mad4b_notice_receipt' => MAD4B_SCP_Admin_Experience::notice_receipt( $page, 'provider_conflict', $binding ) );
+				if ( ! $back ) $args['section'] = 'providers';
+				if ( ! $back && '' !== $profile_id ) $args['profile_id'] = $profile_id;
+				wp_safe_redirect( add_query_arg( $args, admin_url( 'admin.php' ) ) . ( $back ? '#mad4b-provider-setup-coverage' : '#search-providers' ), 303 );
+				exit;
+			}
+			wp_die( esc_html( $result->get_error_message() ), '', array( 'response' => 400, 'back_link' => true ) );
+		}
 		$operation = isset( $_POST['operation'] ) && is_string( $_POST['operation'] ) ? wp_unslash( $_POST['operation'] ) : '';
 		$binding = $id . ':' . $result['revision'] . ':' . $operation . ':' . $result['connection_state'];
+        // The shared Provider Connections inventory may submit an exact existing
+        // adapter test. Return there only for that explicitly requested test.
+        $back = 'test' === $operation && isset( $_POST['return_to_provider_connections'] )
+            && '1' === (string) wp_unslash( $_POST['return_to_provider_connections'] );
+        if ( $back ) {
+            $args = array( 'page' => 'mad4b-provider-connections',
+                'mad4b_provider_notice' => $id, 'mad4b_provider_operation' => $operation,
+                'mad4b_notice_receipt' => MAD4B_SCP_Admin_Experience::notice_receipt( 'mad4b-provider-connections', 'provider_' . $operation, $binding ) );
+            wp_safe_redirect( add_query_arg( $args, admin_url( 'admin.php' ) ) . '#mad4b-provider-setup-coverage' ); exit;
+        }
 		$args = array( 'page' => 'mad4b-search-intelligence', 'section' => 'providers', 'profile_id' => $profile_id, 'mad4b_provider_notice' => $id, 'mad4b_provider_operation' => $operation, 'mad4b_notice_receipt' => MAD4B_SCP_Admin_Experience::notice_receipt( 'mad4b-search-intelligence', 'provider_' . $operation, $binding ) );
 		wp_safe_redirect( add_query_arg( $args, admin_url( 'admin.php' ) ) . '#search-providers' ); exit;
 	}
 }
+
+// Shared post-VERIFIED provisioning for every installed and future SERP adapter.
+require_once __DIR__ . '/class-mad4b-scp-search-provider-autoprovision.php';
+MAD4B_SCP_Search_Provider_Autoprovision::boot();
