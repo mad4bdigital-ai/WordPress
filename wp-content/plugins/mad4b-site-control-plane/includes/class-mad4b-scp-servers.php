@@ -1141,7 +1141,13 @@ final class MAD4B_SCP_Servers {
 			self::$registrations[ $id ]['tool_count'] = $evidence['tool_count'];
 			self::$registrations[ $id ]['catalog_evidence'] = $evidence;
 			self::$registrations[ $id ]['materialized'] = ! empty( $evidence['observed'] );
-			if ( empty( $evidence['ready'] ) ) self::$registrations[ $id ]['error'] = $evidence['blocker'];
+			if ( empty( $evidence['ready'] ) ) {
+			    // Keep exact bounded cause in catalog_evidence, but surface
+			    // the required-tool preflight failure on route-only servers.
+			    self::$registrations[ $id ]['error'] = empty( $preflight['ready'] )
+			        ? 'mcp_required_tool_preflight_failed'
+			        : $evidence['blocker'];
+			}
 		}
 	}
 }

@@ -31,7 +31,12 @@ final class MAD4B_SCP_Native_General_Settings_Contract {
     }
 
     public static function boot() {
-        add_filter('allowed_options', [__CLASS__, 'allowed_options'], PHP_INT_MAX, 1);
+        // Native plugins.php can load this class before WordPress hook APIs
+        // exist in isolated early-admin contexts. Normal WP boots register
+        // the exact same final allowed_options filter, without bypassing it.
+        if (function_exists('add_filter')) {
+            add_filter('allowed_options', [__CLASS__, 'allowed_options'], PHP_INT_MAX, 1);
+        }
     }
 }
 MAD4B_SCP_Native_General_Settings_Contract::boot();

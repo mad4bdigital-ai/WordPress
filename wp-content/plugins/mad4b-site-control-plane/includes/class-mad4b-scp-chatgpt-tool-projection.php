@@ -556,8 +556,8 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		}
 		$requested_tools = array_values( array_unique( array_merge( $base, $optional ) ) );
 		// Use the same reviewed optional classification as actual MCP server
-		// registration. Direct Profile tools are bounded conveniences too; treating
-		// them as required here rejects otherwise healthy dynamic projections.
+		// registration. Direct Profile conveniences remain independently
+		// validated; dynamic discovery has no fixed tool-count ceiling.
 		$base_optional = class_exists( 'MAD4B_SCP_Servers' )
 			? MAD4B_SCP_Servers::chatgpt_materialization_optional_tools( $base )
 			: array();

@@ -29,25 +29,27 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 			return array( 'ready' => false, 'blocker' => 'mcp_catalog_duplicate_ability', 'selected' => array(), 'excluded_optional' => array() );
 		}
 		$required = array_values( array_diff( $abilities, $optional ) );
+        // The full dynamic requested inventory expands its display estimate.
+        // Historical 36/64 suggestions never reject or hide valid Abilities.
+        // A runtime optional exclusion must be caused by actual wire/policy
+        // failure, not the number of abilities returned by discovery.
         $limits = MAD4B_SCP_MCP_Catalog_Budget::limits( count( $abilities ) );
-        // The live requested inventory expands the display estimate.
-        // Legacy configured counts never reject otherwise valid Abilities.
-		$capacity = max( 0, $limits['max_tools'] - count( $required ) );
-		$optional_requested = array_values( array_intersect( $optional, $abilities ) );
-		$optional_kept = array_slice( $optional_requested, 0, $capacity );
-		$optional_excluded = array_slice( $optional_requested, $capacity );
-		$allow = array_fill_keys( array_merge( $required, $optional_kept ), true );
-		$selected = array_values( array_filter( $abilities, static function ( $name ) use ( $allow ) { return isset( $allow[ $name ] ); } ) );
+        // Keep all unique, requested Abilities. No fixed tool-count limit:
+        // optional labels indicate failure-isolation policy, not truncation.
+        $optional_requested = array_values( array_intersect( $optional, $abilities ) );
+        $selected = $abilities;
+        $optional_excluded = array();
 		return array(
 			'ready' => true,
 			'blocker' => '',
 			'selected' => $selected,
 			'excluded_optional' => $optional_excluded,
 			'required_count' => count( $required ),
-			'optional_capacity' => $capacity,
+			'optional_capacity' => count( $optional_requested ),
             'effective_max_tools' => $limits['max_tools'],
             'configured_max_tools' => $limits['configured_max_tools'],
             'budget_policy' => $limits['contract'],
+            'dynamic_unbounded_catalog' => true,
             'latency_state' => $limits['latency_state'],
 		);
 	}
@@ -487,9 +489,8 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 		$dynamic = class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' )
 			? array_fill_keys( MAD4B_SCP_ChatGPT_Tool_Projection::projected_ability_names(), true )
 			: array();
-		// Reuse the canonical MCP server materialization policy for bounded
-		// profile conveniences. Otherwise those optional tools are counted as
-		// required and cause false mcp_required_catalog_budget_exceeded blocks.
+		// Reuse the canonical MCP materialization classification to isolate
+		// optional validation failures without hiding otherwise valid tools.
 		// Never classify an unknown provider Ability as optional by metadata alone.
 		$materialized_optional = class_exists( 'MAD4B_SCP_Servers' )
 			&& method_exists( 'MAD4B_SCP_Servers', 'chatgpt_materialization_optional_tools' )

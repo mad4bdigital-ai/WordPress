@@ -161,17 +161,18 @@ for source, label in [
 ]:
     assert 'verified_bearer_client_is' in source, f'{label} direct execution lacks exact-client attribution'
 
-# Provider-rich sites must not lose the required catalog because optional
-# step-ups exceed the refresh budget. Composite step-ups retain explicit priority.
+# The dynamic catalog admits the complete valid requested inventory,
+# regardless of legacy telemetry/display estimates. Composite step-ups keep
+# independent wire validation and execution authorization.
 for marker in [
     'public static function budget_projection( array $abilities, array $optional )',
-    "'mcp_required_catalog_budget_exceeded'",
+    'MAD4B_SCP_MCP_Catalog_Budget::limits( count( $abilities ) )',
     "'mcp_optional_catalog_budget_excluded'",
-    "$limits['max_tools'] - count( $required )",
-    "MAX_SERIALIZED_TOOL_BYTES",
+    "'dynamic_unbounded_catalog' => true",
+    "'bounded_single_tool_schema_unbounded_total'",
     "'mcp_optional_catalog_size_excluded'",
     "'mcp_required_catalog_size_exceeded'",
-    "'bounded_serialized_tool_bytes'",
+    "'per_tool_serialized_bytes_limit'",
 ]:
     assert marker in catalog_diagnostics, f'missing bounded catalog budget invariant: {marker}'
 # Dynamic projections use the live effective registry so same-request projection
@@ -287,14 +288,14 @@ for forbidden in [
     assert forbidden not in registry, f'forbidden registry authority marker: {forbidden}'
 
 # Projection plans and real server registration must use the same optional
-# classification, otherwise a direct profile convenience gets counted as a
-# required transport and exceeds the bounded 36-tool envelope.
+# classification for independent wire/policy checks. Historical 36/64 tool
+# counts are telemetry/display suggestions, never a registry limit.
 assert "MAD4B_SCP_Servers::chatgpt_materialization_optional_tools( $base )" in projection
 assert "MAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools() : array();" not in projection
 assert "function chatgpt_materialization_optional_tools" in servers
 assert "MAD4B_SCP_Servers::chatgpt_materialization_optional_tools( $abilities )" in catalog_diagnostics
 assert "isset( $materialized_optional[ $ability_name ] )" in catalog_diagnostics
-assert "MAX_TOOLS = 36" in catalog_diagnostics  # legacy default, not fixed active limit
+assert "MAD4B_SCP_MCP_Catalog_Budget::limits( count( $abilities ) )" in catalog_diagnostics  # full requested dynamic inventory
 assert "MAD4B_SCP_MCP_Catalog_Budget::limits" in catalog_diagnostics
 assert "class-mad4b-scp-mcp-catalog-budget.php" in catalog_diagnostics
 assert "MAD4B_SCP_MCP_Catalog_Budget::observe" in catalog_diagnostics

@@ -196,7 +196,7 @@ final class MAD4B_SCP_Visual_SEO_Strategy {
             $attachment=get_post_thumbnail_id($post);
             $file=$attachment?get_attached_file($attachment):'';
             if(!$attachment||!is_file((string)$file)||
-               !str_starts_with((string)get_post_mime_type($attachment),'image/'))
+               0 !== strpos((string)get_post_mime_type($attachment),'image/'))
                 return self::invalid('mad4b_visual_strategy_locale_image_missing');
             $actual=hash_file('sha256',$file);
             if(!hash_equals($image,$actual))
@@ -212,21 +212,25 @@ final class MAD4B_SCP_Visual_SEO_Strategy {
             ];
         }
         $layers=$context['policy_inheritance'];
+        // Keep the proposal mapping compatible with all supported PHP runtimes,
+        // including PHP 7.4. No dynamic expression evaluation is required.
+        $strategy_sources=[
+            'destination_relevance'=>'WPML destinations taxonomy / '.$slug,
+            'visual_truthfulness'=>'signed visual observation, requires editorial confirmation',
+            'multilingual_seo'=>'WPML locale family and Alt configuration',
+            'brand_alignment'=>'Brand Context evidence '.$context['brand_evidence_sha256'],
+            'media_role'=>'featured image and provider media field',
+            'search_intent'=>'tour title and destination taxonomy',
+        ];
         $strategies=[];
         foreach(self::catalog() as $key=>$definition){
             $strategies[$key]=[
                 'status'=>'applied_to_proposal',
                 'requirement'=>$definition['require'],
                 'decision'=>$definition['purpose'],
-                'source'=>match($key){
-                    'destination_relevance'=>'WPML destinations taxonomy / '.$slug,
-                    'visual_truthfulness'=>'signed visual observation, requires editorial confirmation',
-                    'multilingual_seo'=>'WPML locale family and Alt configuration',
-                    'brand_alignment'=>'Brand Context evidence '.$context['brand_evidence_sha256'],
-                    'media_role'=>'featured image and provider media field',
-                    'search_intent'=>'tour title and destination taxonomy',
-                    default=>'WPML, WordPress, JetEngine and Rank Math configuration',
-                },
+                'source'=>isset($strategy_sources[$key])
+                    ?$strategy_sources[$key]
+                    :'WPML, WordPress, JetEngine and Rank Math configuration',
                 'automatic_approval'=>false
             ];
         }
