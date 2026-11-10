@@ -318,6 +318,12 @@
       ],
       "rationale": "Reviewed tourism-domain module or optional provider adapter, not a global site-type default. A user still needs the enrolled Site Profile and the exact WordPress/Ability operation permissions."
     },
+    "includes/class-mad4b-scp-content-readiness-alerts.php": {
+      "models": [
+        "tours-and-activities"
+      ],
+      "rationale": "Previously reviewed tourism-specific discovery and source normalization remain in the original Content Readiness facade after trait extraction. This is not a global site-type default or an execution grant."
+    },
     "includes/trait-mad4b-scp-readiness-interface.php": {
       "models": [
         "tours-and-activities"
