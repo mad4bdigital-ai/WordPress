@@ -201,7 +201,7 @@ def review_exact_core_registration_relocations(base, head, changed, added, remov
         return []
     # Source-owned registration statements, NOT incidental literals in grant
     # allowlists, comments, metadata, or third-party runtime adapters.
-    declarations = re.compile(r"\\$this->add\\(\\s*['\\\"]([a-z0-9]+/[a-z0-9_-]+)['\\\"]")
+    declarations = re.compile(r"""[$]this->add[(]\s*['"]([a-z0-9]+/[a-z0-9_-]+)['"]""")
     old_names = set(declarations.findall(before))
     new_names = set(declarations.findall(current_target))
     remaining_original = set(declarations.findall(after))
