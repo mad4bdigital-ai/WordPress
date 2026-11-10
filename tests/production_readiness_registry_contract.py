@@ -380,6 +380,44 @@ with mock.patch.object(reg, "json_file", side_effect=initial_baseline):
     else:
         raise AssertionError("Unbounded precedence override allowed")
 
+# A previously reviewed capability can be referenced again in new source.
+# Its historical test remains immutable and does not become "new evidence".
+# The SOURCE still needs a fresh exact-blob test in this very PR.
+historical_capability = copy.deepcopy(covered)
+historical_capability["reviewed_capabilities"][0]["regression_tests"] = [test_path]
+new_source_test = reg.PLUGIN + "tests/staging-write-grant-reviewed-inventory-runtime.php"
+historical_capability["reviewed_changes"][0]["regression_tests"] = [new_source_test]
+historical_base = copy.deepcopy(policy)
+historical_base["reviewed_capabilities"] = copy.deepcopy(
+    historical_capability["reviewed_capabilities"]
+)
+def historic_baseline(_commit, path):
+    if path == reg.CONTROLS:
+        return copy.deepcopy(controls)
+    if path == reg.COVERAGE:
+        return copy.deepcopy(historical_base)
+    raise AssertionError("Unexpected historical baseline source: " + path)
+with mock.patch.object(reg, "json_file", side_effect=historic_baseline), \
+     mock.patch.object(reg, "current_blob_sha", return_value="c" * 40):
+    past_tests = [("A", path), ("M", new_source_test)]
+    failures, accepted, behavior = reg.validate_coverage(
+        copy.deepcopy(historical_capability), controls, base, head,
+        past_tests, {cap: path}, {}
+    )
+    assert not failures and accepted == [cap] and behavior, (
+        "A historical ability review and a new source review are separate"
+    )
+    without_fresh = copy.deepcopy(historical_capability)
+    without_fresh["reviewed_changes"][0]["regression_tests"] = [test_path]
+    try:
+        reg.validate_coverage(
+            without_fresh, controls, base, head,
+            past_tests, {cap: path}, {}
+        )
+        raise AssertionError("Historical test must not certify a new source blob")
+    except ValueError as exc:
+        assert "Changed behavior requires a regression test" in str(exc)
+
 # A relocation is not a new capability and not retirement. This exception
 # must prove the exact core call is deleted from the original source AND
 # appears in its new first-party registration trait; changed source blobs

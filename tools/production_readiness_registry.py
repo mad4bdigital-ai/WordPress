@@ -479,8 +479,16 @@ def validate_coverage(coverage, controls, base, head, changed, added, removed):
             ensure(isinstance(tests, list) and tests,
                    "A newly introduced capability must provide regression tests")
             for test in tests:
-                ensure(isinstance(test, str) and (test.startswith(PLUGIN + "tests/") or
-                       test.startswith("tests/")) and test in changed_set and
+                # Historical capability review evidence is append-only; its
+                # original regression file belongs to the introducing PR,
+                # not necessarily to this one. New capabilities still demand
+                # a same-PR test; all changed source Git blobs independently
+                # demand a *new* same-PR regression under reviewed_changes.
+                in_this_pr = capability not in previously_reviewed
+                ensure(isinstance(test, str) and
+                       (test.startswith(PLUGIN + "tests/") or
+                        test.startswith("tests/")) and
+                       (not in_this_pr or test in changed_set) and
                        (ROOT / test).is_file(),
                        "Test evidence must be committed with capability: " + capability)
             accepted.append(capability)
