@@ -61,6 +61,12 @@ def logical_files(root: Path) -> list[Path]:
         posix = PurePosixPath(rel)
         if posix.is_absolute() or ".." in posix.parts or rel.startswith("/"):
             raise SystemExit(f"unsafe package path: {rel}")
+        # Do not distribute ad-hoc PHP backups, swapped files or editor
+        # snapshots from a development worktree. Git preserves their history;
+        # the installable package must include only intentional runtime source.
+        lower = path.name.lower()
+        if lower.endswith((".bak", ".orig", ".swp", ".tmp")) or lower.endswith("~"):
+            raise SystemExit(f"backup snapshot forbidden in canonical package: {rel}")
         if rel == PROVENANCE_FILE:
             continue
         if rel in logical_seen:

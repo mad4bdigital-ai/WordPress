@@ -47,6 +47,7 @@ $mad4b_mcp_mu_status = array(
 	'runtime_source' => 'unavailable',
 	'request_requires_mcp_runtime' => false,
 	'request_scope_bypassed' => false,
+	'runtime_cache_convergence' => 'not_checked',
 	'request_route' => '',
 	'transaction_pending' => false,
 	'diagnostic_mu_proof_valid' => false,
@@ -59,6 +60,22 @@ if ( function_exists( 'home_url' ) && function_exists( 'wp_parse_url' ) ) {
 	$mad4b_mcp_mu_host = wp_parse_url( home_url( '/' ), PHP_URL_HOST );
 	$mad4b_mcp_mu_status['host'] = is_string( $mad4b_mcp_mu_host ) ? strtolower( rtrim( trim( $mad4b_mcp_mu_host ), '.' ) ) : '';
 }
+
+// Conservative unauthenticated page GET classification is a performance hint,
+// not a trust/authorization decision. A query string, CLI, admin, REST,
+// provider or unknown URI runs the ORIGINAL adapter provenance checks.
+$mad4b_mcp_mu_public_page_get = false;
+if (! (defined('WP_CLI') && WP_CLI) && function_exists('is_admin') && !is_admin()
+    && 'GET' === ($_SERVER['REQUEST_METHOD'] ?? '')
+    && isset($_SERVER['REQUEST_URI']) && is_string($_SERVER['REQUEST_URI'])
+    && strlen($_SERVER['REQUEST_URI']) <= 512
+    && 1 === preg_match('~^/[a-zA-Z0-9_/-]*$~D', $_SERVER['REQUEST_URI'])
+    && !preg_match('~(?:^|/)(?:wp-json|wp-admin|mcp|wp-login|xmlrpc|wp-cron|admin-ajax)(?:/|$)~i', $_SERVER['REQUEST_URI'])
+    && !str_contains($_SERVER['REQUEST_URI'], '.php')
+    && !str_contains($_SERVER['REQUEST_URI'], 'wp-json')) {
+    $mad4b_mcp_mu_public_page_get = true;
+}
+$mad4b_mcp_mu_status['profile_work_deferred_public_get'] = $mad4b_mcp_mu_public_page_get;
 
 // Resolve active plugin roots by unique main-file identity. Directory names are
 // not authority and may be renamed; ambiguous candidates remain fail-closed.
@@ -90,6 +107,17 @@ $mad4b_mcp_mu_root = '' !== $mad4b_mcp_mu_adapter_plugin
 	? trailingslashit( WP_PLUGIN_DIR . '/' . dirname( $mad4b_mcp_mu_adapter_plugin ) )
 	: '';
 
+// Provider source/version integrity is mandatory for every MCP-capable or
+// uncertain request, and intentionally omitted only for plain public GET.
+$mad4b_mcp_mu_selected_profile = array();
+$mad4b_mcp_mu_adapter_version = '';
+$mad4b_mcp_mu_critical_hashes = array();
+if ($mad4b_mcp_mu_public_page_get) {
+    // Public-page transport is already denied by the original request-scope
+    // guard below; this status is informational and never an authority grant.
+    $mad4b_mcp_mu_status['adapter_profile_source'] = 'deferred_public_page_get';
+    $mad4b_mcp_mu_status['adapter_profile_dynamic'] = false;
+} else {
 $mad4b_mcp_mu_baseline_file = $mad4b_mcp_mu_control_plane_root . 'config/certified-providers.json';
 $mad4b_mcp_mu_profiles_file = $mad4b_mcp_mu_control_plane_root . 'config/certified-provider-profiles.json';
 $mad4b_mcp_mu_adapter_main = '' !== $mad4b_mcp_mu_adapter_plugin ? trailingslashit( WP_PLUGIN_DIR ) . $mad4b_mcp_mu_adapter_plugin : '';
@@ -136,9 +164,103 @@ if ( '' !== $mad4b_mcp_mu_adapter_version
 		$mad4b_mcp_mu_status['adapter_profile_source'] = 'certified-provider-profiles';
 	}
 }
+
+/**
+ * PERMANENT FORWARD-UPDATE BEHAVIOR (MU execution is early, before plugins):
+ * No fixed 0.7.x range, major-version ceiling, or pre-added version ticket.
+ * For an unknown INSTALLED package version, select the newest known earlier
+ * Profile as a structural REFERENCE, then independently hash and resolve all
+ * its required runtime files and symbols within the installed package.
+ * Missing/moved required classes remain an actual compatibility failure; an
+ * unchanged ABI on a newer version does not fail merely due to a version label.
+ * This never grants write authority, bypasses OAuth, or loads MCP for unrelated
+ * WordPress requests. Production maintains its original enrollment policy.
+ */
+$mad4b_mcp_mu_status['adapter_profile_dynamic'] = false;
+$mad4b_mcp_mu_base_reference = array();
+$mad4b_mcp_mu_base_reference_version = '';
+$mad4b_mcp_mu_versions = $mad4b_mcp_mu_profiles_catalog['providers']['mcp_adapter'] ?? array();
+$mad4b_mcp_mu_future_semver = is_string( $mad4b_mcp_mu_adapter_version )
+    && strlen( $mad4b_mcp_mu_adapter_version ) <= 80
+    && 1 === preg_match(
+        '/^(?:0|[1-9][0-9]*)(?:\\.(?:0|[1-9][0-9]*)){2}(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?(?:\\+[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$/D',
+        $mad4b_mcp_mu_adapter_version
+    );
+if ( empty( $mad4b_mcp_mu_selected_profile ) && $mad4b_mcp_mu_future_semver
+    && is_array( $mad4b_mcp_mu_versions )
+    && '' !== $mad4b_mcp_mu_root ) {
+    foreach ( $mad4b_mcp_mu_versions as $mad4b_mcp_mu_candidate_version => $mad4b_mcp_mu_candidate ) {
+        $mad4b_mcp_mu_candidate_version = (string) $mad4b_mcp_mu_candidate_version;
+        if ( ! is_array( $mad4b_mcp_mu_candidate )
+            || (string) ( $mad4b_mcp_mu_candidate['version'] ?? '' ) !== $mad4b_mcp_mu_candidate_version
+            || ! version_compare( $mad4b_mcp_mu_adapter_version, $mad4b_mcp_mu_candidate_version, '>' )
+            || empty( $mad4b_mcp_mu_candidate['critical_files'] )
+            || empty( $mad4b_mcp_mu_candidate['runtime_symbols'] ) ) continue;
+        if ( '' === $mad4b_mcp_mu_base_reference_version
+            || version_compare( $mad4b_mcp_mu_candidate_version, $mad4b_mcp_mu_base_reference_version, '>' ) ) {
+            $mad4b_mcp_mu_base_reference_version = $mad4b_mcp_mu_candidate_version;
+            $mad4b_mcp_mu_base_reference = $mad4b_mcp_mu_candidate;
+        }
+    }
+}
+if ( empty( $mad4b_mcp_mu_selected_profile )
+    && $mad4b_mcp_mu_future_semver
+    && ! empty( $mad4b_mcp_mu_base_reference ) ) {
+    $mad4b_mcp_mu_layout = $mad4b_mcp_mu_base_reference;
+    $mad4b_mcp_mu_layout_root = realpath( $mad4b_mcp_mu_root );
+    $mad4b_mcp_mu_layout_ready = is_array( $mad4b_mcp_mu_layout )
+        && ! empty( $mad4b_mcp_mu_layout['critical_files'] )
+        && ! empty( $mad4b_mcp_mu_layout['runtime_symbols'] )
+        && false !== $mad4b_mcp_mu_layout_root;
+    $mad4b_mcp_mu_layout_hashes = array();
+    if ( $mad4b_mcp_mu_layout_ready ) {
+        foreach ( array_keys( $mad4b_mcp_mu_layout['critical_files'] ) as $mad4b_mcp_mu_layout_relative ) {
+            $mad4b_mcp_mu_layout_relative = (string) $mad4b_mcp_mu_layout_relative;
+            $mad4b_mcp_mu_layout_file = realpath( $mad4b_mcp_mu_layout_root . '/' . $mad4b_mcp_mu_layout_relative );
+            if ( '' === $mad4b_mcp_mu_layout_relative
+                || false !== strpos( $mad4b_mcp_mu_layout_relative, '../' )
+                || '/' === substr( $mad4b_mcp_mu_layout_relative, 0, 1 )
+                || ! $mad4b_mcp_mu_layout_file
+                || 0 !== strpos( wp_normalize_path( $mad4b_mcp_mu_layout_file ), rtrim( wp_normalize_path( $mad4b_mcp_mu_layout_root ), '/' ) . '/' )
+                || ! is_readable( $mad4b_mcp_mu_layout_file ) ) { $mad4b_mcp_mu_layout_ready = false; break; }
+            $mad4b_mcp_mu_layout_hashes[ $mad4b_mcp_mu_layout_relative ] = hash_file( 'sha256', $mad4b_mcp_mu_layout_file );
+        }
+    }
+    if ( $mad4b_mcp_mu_layout_ready ) {
+        foreach ( $mad4b_mcp_mu_layout['runtime_symbols'] as &$mad4b_mcp_mu_layout_symbol ) {
+            if ( ! is_array( $mad4b_mcp_mu_layout_symbol ) ) { $mad4b_mcp_mu_layout_ready = false; break; }
+            $mad4b_mcp_mu_layout_relative = isset( $mad4b_mcp_mu_layout_symbol['file'] ) ? (string) $mad4b_mcp_mu_layout_symbol['file'] : '';
+            $mad4b_mcp_mu_layout_file = realpath( $mad4b_mcp_mu_layout_root . '/' . $mad4b_mcp_mu_layout_relative );
+            if ( '' === $mad4b_mcp_mu_layout_relative
+                || false !== strpos( $mad4b_mcp_mu_layout_relative, '../' )
+                || '/' === substr( $mad4b_mcp_mu_layout_relative, 0, 1 )
+                || ! $mad4b_mcp_mu_layout_file
+                || 0 !== strpos( wp_normalize_path( $mad4b_mcp_mu_layout_file ), rtrim( wp_normalize_path( $mad4b_mcp_mu_layout_root ), '/' ) . '/' )
+                || ! is_readable( $mad4b_mcp_mu_layout_file ) ) { $mad4b_mcp_mu_layout_ready = false; break; }
+            $mad4b_mcp_mu_layout_bytes = file_get_contents( $mad4b_mcp_mu_layout_file );
+            if ( ! is_string( $mad4b_mcp_mu_layout_bytes ) ) { $mad4b_mcp_mu_layout_ready = false; break; }
+            $mad4b_mcp_mu_layout_symbol['git_blob_sha1'] = sha1( 'blob ' . strlen( $mad4b_mcp_mu_layout_bytes ) . "\0" . $mad4b_mcp_mu_layout_bytes );
+        }
+        unset( $mad4b_mcp_mu_layout_symbol );
+    }
+    if ( $mad4b_mcp_mu_layout_ready ) {
+        $mad4b_mcp_mu_layout['version'] = $mad4b_mcp_mu_adapter_version;
+        $mad4b_mcp_mu_layout['critical_files'] = $mad4b_mcp_mu_layout_hashes;
+        $mad4b_mcp_mu_selected_profile = $mad4b_mcp_mu_layout;
+        $mad4b_mcp_mu_status['adapter_profile_source'] = 'installed_compatible_layout';
+        $mad4b_mcp_mu_status['adapter_profile_dynamic'] = true;
+        // This is only the donor profile used to enumerate ABI requirements,
+        // not a statement that the future version is release-certified.
+        $mad4b_mcp_mu_status['dynamic_reference_version'] = $mad4b_mcp_mu_base_reference_version;
+        $mad4b_mcp_mu_status['dynamic_requires_runtime_class_readback'] = true;
+    }
+}
+
 $mad4b_mcp_mu_critical_hashes = isset( $mad4b_mcp_mu_selected_profile['critical_files'] ) && is_array( $mad4b_mcp_mu_selected_profile['critical_files'] )
 	? $mad4b_mcp_mu_selected_profile['critical_files']
 	: array();
+
+ }
 
 // Reuse the same pure exact-origin/environment decision as the regular plugin.
 // Raw WordPress production defaults are not explicit Production enrollment.
@@ -195,6 +317,69 @@ if ( null !== $mad4b_mcp_mu_transaction ) {
 	$mad4b_mcp_mu_profile_enrolled = false;
 }
 
+// Production cache coherence must never change the eligibility of the early
+// MCP adapter or its privileged routing. Only an explicit, exact-origin Site
+// Profile with managed_runtime enabled may maintain PHP opcodes, and only
+// through the same complete package provenance verification as Staging.
+// A Production Site Profile does NOT turn on early_managed_runtime_binding().
+$mad4b_cache_binding = class_exists( 'MAD4B_SCP_Site_Profile', false )
+	&& method_exists( 'MAD4B_SCP_Site_Profile', 'early_cache_runtime_binding' )
+	? MAD4B_SCP_Site_Profile::early_cache_runtime_binding()
+	: array( 'eligible' => false );
+if ( ! $mad4b_mcp_mu_profile_enrolled
+	&& ! empty( $mad4b_cache_binding['eligible'] )
+	&& 'production' === ( $mad4b_cache_binding['environment'] ?? '' )
+	&& ! $mad4b_mcp_mu_status['transaction_pending']
+	&& ! $mad4b_mcp_mu_status['plugin_identity_ambiguous']
+	&& '' !== $mad4b_mcp_mu_control_plane_plugin
+	&& '' !== $mad4b_mcp_mu_adapter_plugin
+	&& '' !== $mad4b_mcp_mu_control_plane_root
+	&& 'POST' === ( $_SERVER['REQUEST_METHOD'] ?? '' )
+	&& ! ( defined( 'WP_CLI' ) && WP_CLI ) ) {
+	$mad4b_cache_uri = isset( $_SERVER['REQUEST_URI'] ) ? (string) $_SERVER['REQUEST_URI'] : '';
+	$mad4b_cache_url_path = wp_parse_url( $mad4b_cache_uri, PHP_URL_PATH );
+	$mad4b_cache_url_path = is_string( $mad4b_cache_url_path ) ? $mad4b_cache_url_path : '';
+	$mad4b_cache_url_query = wp_parse_url( $mad4b_cache_uri, PHP_URL_QUERY );
+	$mad4b_cache_query = array();
+	if ( is_string( $mad4b_cache_url_query ) ) parse_str( $mad4b_cache_url_query, $mad4b_cache_query );
+	$mad4b_cache_route = isset( $mad4b_cache_query['rest_route'] ) && is_string( $mad4b_cache_query['rest_route'] )
+		? '/' . trim( $mad4b_cache_query['rest_route'], '/' )
+		: '';
+	if ( '' === $mad4b_cache_route
+		&& 0 === strpos( $mad4b_cache_url_path, '/wp-json/mcp/' ) ) {
+		$mad4b_cache_route = substr( $mad4b_cache_url_path, strlen( '/wp-json' ) );
+	}
+	$mad4b_cache_route = rtrim( $mad4b_cache_route, '/' );
+	if ( in_array( $mad4b_cache_route, array(
+		'/mcp/mad4b-read', '/mcp/mad4b-chatgpt', '/mcp/mad4b-content',
+		'/mcp/mad4b-write', '/mcp/mad4b-admin', '/mcp/mad4b-developer',
+	), true ) ) {
+		$mad4b_cache_helper = $mad4b_mcp_mu_control_plane_root . 'bootstrap/mad4b-runtime-cache-convergence-mu.php';
+		$mad4b_cache_result = array( 'state' => 'blocked' );
+		if ( is_readable( $mad4b_cache_helper ) ) {
+			require_once $mad4b_cache_helper;
+			$mad4b_cache_result = MAD4B_SCP_Runtime_Cache_Convergence_MU::converge(
+				$mad4b_mcp_mu_control_plane_root,
+				'production',
+				(string) $mad4b_cache_binding['site_uuid']
+			);
+		}
+		$mad4b_mcp_mu_status['runtime_cache_convergence'] = $mad4b_cache_result['state'];
+		if ( 'current' !== $mad4b_cache_result['state'] ) {
+			if ( function_exists( 'status_header' ) ) status_header( 503 );
+			else http_response_code( 503 );
+			header( 'Content-Type: application/json; charset=utf-8' );
+			header( 'Cache-Control: no-store' );
+			if ( 'revalidated' === $mad4b_cache_result['state'] ) header( 'Retry-After: 1' );
+			echo wp_json_encode( array(
+				'code' => 'mad4b_runtime_cache_convergence_pending',
+				'retryable' => 'revalidated' === $mad4b_cache_result['state'],
+			) );
+			exit;
+		}
+	}
+}
+
 if ( $mad4b_mcp_mu_profile_enrolled ) {
 	$mad4b_mcp_mu_status['official_plugin_active'] = '' !== $mad4b_mcp_mu_adapter_plugin;
 	$mad4b_mcp_mu_status['control_plane_active'] = '' !== $mad4b_mcp_mu_control_plane_plugin;
@@ -215,7 +400,28 @@ if ( $mad4b_mcp_mu_profile_enrolled ) {
 			'/mcp/mad4b-developer-breakglass',
 		);
 		$mad4b_mcp_mu_is_cli = defined( 'WP_CLI' ) && constant( 'WP_CLI' );
+		// Recognize the actual STDIO serve command at MU load, before bundled
+		// third-party autoloaders can claim incompatible MCP CLI classes.
+		$mad4b_mcp_mu_cli_command = false;
+		$mad4b_mcp_mu_command_args = isset( $_SERVER['argv'] ) && is_array( $_SERVER['argv'] ) ? $_SERVER['argv'] : array();
+		if ( $mad4b_mcp_mu_is_cli ) {
+			for ( $mad4b_mcp_mu_command_i = 0; $mad4b_mcp_mu_command_i + 1 < count( $mad4b_mcp_mu_command_args ); $mad4b_mcp_mu_command_i++ ) {
+				if ( 'mcp-adapter' !== (string) $mad4b_mcp_mu_command_args[ $mad4b_mcp_mu_command_i ]
+					|| 'serve' !== (string) $mad4b_mcp_mu_command_args[ $mad4b_mcp_mu_command_i + 1 ] ) continue;
+				for ( $mad4b_mcp_mu_command_j = $mad4b_mcp_mu_command_i + 2; $mad4b_mcp_mu_command_j < count( $mad4b_mcp_mu_command_args ); $mad4b_mcp_mu_command_j++ ) {
+					$mad4b_mcp_mu_command_arg = (string) $mad4b_mcp_mu_command_args[ $mad4b_mcp_mu_command_j ];
+					$mad4b_mcp_mu_command_server = 0 === strpos( $mad4b_mcp_mu_command_arg, '--server=' ) ? substr( $mad4b_mcp_mu_command_arg, 9 ) : '';
+					if ( '--server' === $mad4b_mcp_mu_command_arg && isset( $mad4b_mcp_mu_command_args[ $mad4b_mcp_mu_command_j + 1 ] ) )
+						$mad4b_mcp_mu_command_server = (string) $mad4b_mcp_mu_command_args[ $mad4b_mcp_mu_command_j + 1 ];
+					if ( in_array( '/mcp/' . $mad4b_mcp_mu_command_server, $mad4b_mcp_mu_allowed_routes, true ) ) {
+						$mad4b_mcp_mu_cli_command = true;
+						break 2;
+					}
+				}
+			}
+		}
 		$mad4b_mcp_mu_cli_opt_in = $mad4b_mcp_mu_is_cli && (
+			$mad4b_mcp_mu_cli_command ||
 			( defined( 'MAD4B_SCP_MCP_CLI_REQUEST' ) && constant( 'MAD4B_SCP_MCP_CLI_REQUEST' ) )
 			|| '1' === (string) getenv( 'MAD4B_SCP_MCP_CLI_REQUEST' )
 		);
@@ -300,6 +506,53 @@ if ( $mad4b_mcp_mu_profile_enrolled ) {
 		}
 	}
 
+	// Staging relies on WordPress and PHP native plugin execution; OPcache
+	// settings never determine whether an MCP client can connect. Never make MCP connectivity depend on a separate
+	// full-package checksum ledger for unrelated Provider changes.
+	// OAuth, exact-site routing and governed write permissions remain enforced.
+	// If native timestamp validation is disabled, retain the original strict gate.
+	$mad4b_mcp_mu_native_opcache = 'staging' === (string) ( $mad4b_mcp_mu_binding['environment'] ?? '' );
+	if ( $mad4b_mcp_mu_native_opcache ) {
+		$mad4b_mcp_mu_status['runtime_cache_convergence'] = 'native_opcache';
+	}
+	if ( $mad4b_mcp_mu_status['eligible']
+		&& $mad4b_mcp_mu_request_requires_mcp
+		&& in_array( $mad4b_mcp_mu_route, $mad4b_mcp_mu_allowed_routes, true )
+		&& ! $mad4b_mcp_mu_is_cli
+		&& 'POST' === ( $_SERVER['REQUEST_METHOD'] ?? '' )
+		&& in_array( (string) ( $mad4b_mcp_mu_binding['environment'] ?? '' ), array( 'staging', 'local', 'development' ), true )
+		&& ! $mad4b_mcp_mu_native_opcache
+		&& '' !== $mad4b_mcp_mu_control_plane_root ) {
+		$mad4b_cache_guard = $mad4b_mcp_mu_control_plane_root . 'bootstrap/mad4b-runtime-cache-convergence-mu.php';
+		if ( is_readable( $mad4b_cache_guard ) ) {
+			require_once $mad4b_cache_guard;
+			$mad4b_cache_result = MAD4B_SCP_Runtime_Cache_Convergence_MU::converge(
+				$mad4b_mcp_mu_control_plane_root,
+				$mad4b_mcp_mu_binding['environment'],
+				(string) ( $mad4b_mcp_mu_binding['site_uuid'] ?? '' )
+			);
+			$mad4b_mcp_mu_status['runtime_cache_convergence'] = $mad4b_cache_result['state'];
+		} else {
+			$mad4b_cache_result = array( 'state' => 'blocked' );
+			$mad4b_mcp_mu_status['runtime_cache_convergence'] = 'helper_missing';
+		}
+		// No stale PHP should serve a privileged MCP request after a changed
+		// package, including the request that performed the invalidation.
+		if ( 'current' !== $mad4b_cache_result['state'] ) {
+			if ( function_exists( 'status_header' ) ) status_header( 503 );
+			else http_response_code( 503 );
+			header( 'Content-Type: application/json; charset=utf-8' );
+			header( 'Cache-Control: no-store' );
+			if ( 'revalidated' === $mad4b_cache_result['state'] ) header( 'Retry-After: 1' );
+			echo wp_json_encode( array(
+				'code' => 'mad4b_runtime_cache_convergence_pending',
+				'retryable' => 'revalidated' === $mad4b_cache_result['state'],
+			) );
+			exit;
+		}
+		unset( $mad4b_cache_guard, $mad4b_cache_result );
+	}
+
 	if ( $mad4b_mcp_mu_status['eligible'] && ! $mad4b_mcp_mu_status['request_scope_bypassed'] ) {
 		$mad4b_mcp_mu_critical_classes = array();
 		$mad4b_mcp_mu_critical_kinds = array();
@@ -369,6 +622,38 @@ if ( $mad4b_mcp_mu_profile_enrolled ) {
 				$mad4b_mcp_mu_critical_kinds[ $mad4b_mcp_mu_runtime_symbol ] = 'class';
 			}
 		}
+
+        // CLI transports need the matching installed Stdio bridge ABI, before
+        // third-party embedded MCP packages can claim the PHP class names.
+        $mad4b_mcp_mu_cli_serve = false;
+        $mad4b_mcp_mu_argv = isset( $_SERVER['argv'] ) && is_array( $_SERVER['argv'] ) ? $_SERVER['argv'] : array();
+        if ( ! empty( $mad4b_mcp_mu_cli_opt_in ) ) {
+            for ( $mad4b_mcp_mu_index = 0; $mad4b_mcp_mu_index + 1 < count( $mad4b_mcp_mu_argv ); $mad4b_mcp_mu_index++ ) {
+                if ( 'mcp-adapter' === (string) $mad4b_mcp_mu_argv[ $mad4b_mcp_mu_index ]
+                    && 'serve' === (string) $mad4b_mcp_mu_argv[ $mad4b_mcp_mu_index + 1 ] ) {
+                    $mad4b_mcp_mu_cli_serve = true;
+                    break;
+                }
+            }
+        }
+        if ( $mad4b_mcp_mu_cli_serve ) {
+            foreach ( array(
+                'WP\\MCP\\Cli\\StdioServerBridge' => 'includes/Cli/StdioServerBridge.php',
+                'WP\\MCP\\Cli\\McpCommand' => 'includes/Cli/McpCommand.php',
+            ) as $mad4b_mcp_mu_cli_symbol => $mad4b_mcp_mu_cli_relative ) {
+                $mad4b_mcp_mu_cli_file = realpath( $mad4b_mcp_mu_root . $mad4b_mcp_mu_cli_relative );
+                $mad4b_mcp_mu_cli_root = realpath( $mad4b_mcp_mu_root );
+                if ( ! $mad4b_mcp_mu_cli_file || ! $mad4b_mcp_mu_cli_root
+                    || 0 !== strpos( wp_normalize_path( $mad4b_mcp_mu_cli_file ), rtrim( wp_normalize_path( $mad4b_mcp_mu_cli_root ), '/' ) . '/' )
+                    || ! is_readable( $mad4b_mcp_mu_cli_file ) ) continue;
+                $mad4b_mcp_mu_cli_bytes = file_get_contents( $mad4b_mcp_mu_cli_file );
+                if ( ! is_string( $mad4b_mcp_mu_cli_bytes ) ) continue;
+                $mad4b_mcp_mu_critical_classes[ $mad4b_mcp_mu_cli_symbol ] = $mad4b_mcp_mu_cli_relative;
+                $mad4b_mcp_mu_critical_kinds[ $mad4b_mcp_mu_cli_symbol ] = 'class';
+                $mad4b_mcp_mu_critical_blobs[ $mad4b_mcp_mu_cli_relative ] = sha1( 'blob ' . strlen( $mad4b_mcp_mu_cli_bytes ) . "\0" . $mad4b_mcp_mu_cli_bytes );
+            }
+        }
+
 		$mad4b_mcp_mu_status['adapter_profile_ready'] = ! empty( $mad4b_mcp_mu_selected_profile )
 			&& ! empty( $mad4b_mcp_mu_critical_hashes )
 			&& ! empty( $mad4b_mcp_mu_critical_classes );
@@ -610,6 +895,27 @@ unset(
 	$mad4b_mcp_mu_adapter_main,
 	$mad4b_mcp_mu_adapter_version,
 	$mad4b_mcp_mu_adapter_version_status,
+    $mad4b_mcp_mu_cli_command,
+    $mad4b_mcp_mu_command_args,
+    $mad4b_mcp_mu_command_i,
+    $mad4b_mcp_mu_command_j,
+    $mad4b_mcp_mu_command_arg,
+    $mad4b_mcp_mu_command_server,
+    $mad4b_mcp_mu_layout,
+    $mad4b_mcp_mu_layout_root,
+    $mad4b_mcp_mu_layout_ready,
+    $mad4b_mcp_mu_layout_hashes,
+    $mad4b_mcp_mu_layout_relative,
+    $mad4b_mcp_mu_layout_file,
+    $mad4b_mcp_mu_layout_bytes,
+    $mad4b_mcp_mu_cli_serve,
+    $mad4b_mcp_mu_argv,
+    $mad4b_mcp_mu_index,
+    $mad4b_mcp_mu_cli_symbol,
+    $mad4b_mcp_mu_cli_relative,
+    $mad4b_mcp_mu_cli_file,
+    $mad4b_mcp_mu_cli_root,
+    $mad4b_mcp_mu_cli_bytes,
 	$mad4b_mcp_mu_adapter_header,
 	$mad4b_mcp_mu_adapter_head,
 	$mad4b_mcp_mu_adapter_match,

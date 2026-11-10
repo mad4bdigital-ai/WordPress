@@ -29,7 +29,15 @@ $evidence = static function () use ( $guard, $bridge, $mu_runtime ) {
 };
 
 if ( empty( $guard['eligible'] ) ) $fail( 'guard must remain eligible on exact Staging origin' . $evidence() );
-if ( 'canonical_runtime' !== ( isset( $guard['state'] ) ? $guard['state'] : '' ) ) $fail( 'expected canonical runtime ownership after MU recovery' . $evidence() );
+// The conflict guard's normal status is deliberately observational and
+// source-neutral. Ownership proof comes from the official MU + bridge below;
+// never demand a gated maintenance state on an ordinary recovered request.
+if ( 'runtime_source_observed' !== ( $guard['state'] ?? '' )
+    || empty( $guard['source_provenance_observational'] )
+    || empty( $guard['runtime_from_official_plugin'] )
+    || empty( $guard['runtime_class_provenance_ready'] )
+    || ! empty( $guard['runtime_class_provenance_failure_count'] ) )
+    $fail( 'official runtime provenance was not actually established on recovered request' . $evidence() );
 if ( empty( $guard['official_loads_before_hostinger'] ) ) $fail( 'active_plugins order must remain canonical' );
 if ( ! empty( $guard['runtime_provenance_mismatch'] ) ) $fail( 'runtime provenance mismatch must be closed' );
 if ( ! empty( $guard['repair_applied'] ) ) $fail( 'recovered request must converge without another repair' );

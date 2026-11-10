@@ -61,6 +61,8 @@ function dbDelta( $statement ) {
 final class MAD4B_Test_Schema_WPDB {
 	public $prefix = 'wp_';
 	public $missing_table = '';
+	public $agent_nullable = false;
+	public $agent_nullable_alterations = 0;
 
 	public function get_charset_collate() { return 'DEFAULT CHARACTER SET utf8mb4'; }
 	public function prepare( $query, ...$args ) {
@@ -74,8 +76,19 @@ final class MAD4B_Test_Schema_WPDB {
 		}
 		return null;
 	}
+	public function get_row( $query, $output = null ) {
+		if ( preg_match( "/SHOW COLUMNS FROM `[^\\x60]+` LIKE 'agent_id'/", (string) $query ) )
+			return array( 'Field' => 'agent_id', 'Null' => $this->agent_nullable ? 'YES' : 'NO' );
+		if ( preg_match( "/SHOW TABLE STATUS WHERE Name = '([^']+)'/", (string) $query, $m ) ) {
+			if ( $this->missing_table === $m[1] ) return null;
+			return array( 'Name' => $m[1], 'Engine' => 'InnoDB', 'Collation' => 'utf8mb4_unicode_ci' );
+		}
+		return null;
+	}
 	public function get_col( $query, $column = 0 ) {
 		return array(
+			// Current dual-principal mutation journal columns required by physical integrity.
+			'mutation_id', 'principal_type', 'agent_id', 'wp_user_id', 'subject_fingerprint',
 			'candidate_binding_contract', 'candidate_sha', 'build_fingerprint', 'binding_environment',
 			'binding_host', 'site_uuid', 'site_profile_revision', 'site_profile_digest', 'bound_at',
 			'job_id', 'state', 'stage', 'current_artifact_id', 'job_revision', 'updated_at',
@@ -114,6 +127,7 @@ final class MAD4B_Test_Schema_WPDB {
 	public function get_results( $query, $output = null ) {
 		$rows = array();
 		foreach ( array(
+			'mutation_id', 'principal_created',
 			'job_id', 'event_id', 'job_sequence', 'work_id', 'scope_idempotency',
 			'outbox_id', 'provider_idempotency', 'provider_event',
 			'artifact_id', 'job_type_version', 'edge_id', 'artifact_relation',
@@ -127,7 +141,13 @@ final class MAD4B_Test_Schema_WPDB {
 		}
 		return $rows;
 	}
-	public function query( $query ) { return true; }
+	public function query( $query ) {
+		if ( false !== strpos( (string) $query, 'MODIFY COLUMN agent_id bigint(20) unsigned NULL' ) ) {
+			$this->agent_nullable = true;
+			++$this->agent_nullable_alterations;
+		}
+		return true;
+	}
 }
 $GLOBALS['wpdb'] = new MAD4B_Test_Schema_WPDB();
 
@@ -152,6 +172,8 @@ function mad4b_schema_reset_fixture( $version ) {
 	$GLOBALS['mad4b_schema_fail_option'] = '';
 	$GLOBALS['mad4b_schema_fail_final_receipt'] = false;
 	$GLOBALS['wpdb']->missing_table = '';
+	$GLOBALS['wpdb']->agent_nullable = false;
+	$GLOBALS['wpdb']->agent_nullable_alterations = 0;
 	mad4b_schema_reset_cache();
 }
 function mad4b_schema_receipt() {
@@ -176,7 +198,8 @@ function mad4b_schema_assert_receipt( $from, $run_type ) {
 mad4b_schema_reset_fixture( 6 );
 $before_calls = $GLOBALS['mad4b_schema_dbdelta_calls'];
 $upgrade = MAD4B_SCP_Schema::install_or_upgrade();
-mad4b_schema_assert( true === $upgrade, 'Supported v6 upgrade must succeed.', $upgrade );
+mad4b_schema_assert( true === $upgrade, 'Supported v6 upgrade must succeed.', is_wp_error( $upgrade ) ? $upgrade->get_error_code() : $upgrade );
+mad4b_schema_assert( $GLOBALS['wpdb']->agent_nullable && 1 === $GLOBALS['wpdb']->agent_nullable_alterations, 'Agent nullable upgrade must execute and verify exactly once.' );
 mad4b_schema_assert( MAD4B_SCP_Schema::VERSION === (int) get_option( MAD4B_SCP_Schema::OPTION, 0 ), 'Schema version must finalize to current target.' );
 mad4b_schema_assert( MAD4B_SCP_Schema::is_ready(), 'Schema must be ready only after exact receipt/token persistence.' );
 mad4b_schema_assert_receipt( 6, 'upgrade' );

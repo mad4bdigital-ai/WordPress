@@ -18,6 +18,7 @@ cases={
     'approval-plan-reconciliation-runtime.php':'mad4b.approval-plan-reconciliation.runtime.v1: PASS',
     'context-legacy-owner-provider-proof-runtime.php':'mad4b.site-control-plane.context-legacy-owner-provider-proof.runtime.v1: PASS',
     'oauth-resource-signature-hermetic.php':'OAUTH_RS256_ORIGINAL: PASS 23',
+    'local-ollama-ability-runtime.php':'LOCAL_OLLAMA_ABILITY: PASS',
 }
 php=shutil.which('php')
 if not php:raise SystemExit('QA31_W1_CONTRACT: FAIL PHP interpreter unavailable')

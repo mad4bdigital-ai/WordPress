@@ -378,6 +378,22 @@ return array(
 				// step-up admission. No Developer/Breakglass rights are included.
 				'chatgpt_direct_step_up' => true,
 			),
+			'staging_write_grant_reconciliation' => array(
+				'feature_id' => 'staging-write-authority',
+				'capability_tags' => array( 'exact-staging-grants', 'audited-stale-retirement', 'candidate-binding', 'no-breakglass' ),
+				'provider' => 'core',
+				'status_ability' => 'mad4b/staging-write-grant-reconciliation-plan',
+				'local_surface' => '',
+				'remote_ability' => 'mad4b/staging-write-grant-reconcile-staging',
+				'authority_surface' => 'mad4b-enrollment',
+				'executor' => 'wordpress_native',
+				'remote_mode' => 'exact_staging_reviewed_stale_grant_retirement',
+				'remote_caller_role' => 'operator',
+				'production_policy' => 'deny',
+				// The exact OAuth step-up and required reviewed confirmation are
+				// enforced by the original grant reconciler; no blanket approval.
+				'human_decision_required' => false,
+			),
 			'staging_candidate_binding' => array(
 				'feature_id' => 'staging-write-authority',
 				'capability_tags' => array( 'candidate', 'binding', 'write-authority', 'bootstrap', 'staging' ),

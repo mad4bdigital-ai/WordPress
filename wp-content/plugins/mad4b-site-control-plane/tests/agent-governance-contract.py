@@ -33,13 +33,21 @@ governance = read('includes/class-mad4b-scp-governance-abilities.php')
 policy = read('includes/class-mad4b-scp-policy.php')
 adapter = read('includes/adapters/class-mad4b-scp-adapter-base.php')
 adapter_registry = read('includes/class-mad4b-scp-adapter-registry.php')
-abilities = read('includes/class-mad4b-scp-abilities.php')
+abilities_facade = read('includes/class-mad4b-scp-abilities.php')
+abilities_registration = read('includes/trait-mad4b-scp-abilities-registration.php')
+# Test both the active class and its required catalog trait. Checking the
+# facade alone would miss governed tool declarations moved without mutation.
+require(abilities_facade, "require_once __DIR__ . '/trait-mad4b-scp-abilities-registration.php';",
+        'ability-registration-trait-require')
+require(abilities_facade, 'use MAD4B_SCP_Abilities_Registration_Trait;',
+        'ability-registration-trait-binding')
+abilities = abilities_facade + abilities_registration
 servers = read('includes/class-mad4b-scp-servers.php') + read('includes/class-mad4b-scp-server-write-catalog.php') + read('includes/class-mad4b-scp-server-core-catalog.php')
 bootstrap = read('mad4b-site-control-plane.php')
 plugin = read('includes/class-mad4b-scp-plugin.php')
 
 # Schema authority must be normalized and migration must not seed authority.
-require(schema, 'const VERSION = 13;', 'schema-version')
+require(schema, 'const VERSION = 14;', 'schema-version')
 for table in (
     'mad4b_scp_agents', 'mad4b_scp_agent_subjects', 'mad4b_scp_agent_grants',
     'mad4b_scp_approval_tickets', 'mad4b_scp_mutations', 'mad4b_scp_agent_budgets',

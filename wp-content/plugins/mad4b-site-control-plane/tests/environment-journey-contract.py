@@ -6,9 +6,14 @@ import sys
 
 root = Path(__file__).resolve().parents[1]
 include = root / "includes"
+facade = (include / "class-mad4b-scp-abilities.php").read_text(encoding="utf-8")
+registration = (include / "trait-mad4b-scp-abilities-registration.php").read_text(encoding="utf-8")
+if ("require_once __DIR__ . '/trait-mad4b-scp-abilities-registration.php';" not in facade
+        or "use MAD4B_SCP_Abilities_Registration_Trait;" not in facade):
+    raise SystemExit("ENV_JOURNEY: ABILITY_REGISTRATION_TRAIT_UNBOUND")
 read = {
     "model": (include / "class-mad4b-scp-environment-journey.php").read_text(encoding="utf-8"),
-    "abilities": (include / "class-mad4b-scp-abilities.php").read_text(encoding="utf-8"),
+    "abilities": facade + registration,
     "servers": (include / "class-mad4b-scp-servers.php").read_text(encoding="utf-8") + (include / "class-mad4b-scp-server-core-catalog.php").read_text(encoding="utf-8"),
 }
 for code in (

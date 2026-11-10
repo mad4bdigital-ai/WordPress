@@ -135,10 +135,13 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan {
 			return new WP_Error( 'mad4b_grant_reconcile_plan_oauth_identity_required', 'Verified OAuth bearer governance identity required.' );
 		$resolved = MAD4B_SCP_Agent_Registry::resolve_agent( $identity );
 		if ( is_wp_error( $resolved ) ) return $resolved;
-		if ( ! is_array( $resolved ) || (int) ( $resolved['id'] ?? 0 ) !== (int) $agent['id']
-			|| (string) ( $resolved['public_id'] ?? '' ) !== (string) ( $agent['public_id'] ?? '' )
+		$same_governed_agent = is_array( $resolved )
+			&& (int) ( $resolved['id'] ?? 0 ) === (int) $agent['id']
+			&& (string) ( $resolved['public_id'] ?? '' ) === (string) $agent['public_id'];
+		$exact_delegated_user = class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
+			&& MAD4B_SCP_Staging_Write_Authority::is_exact_delegated_oauth_agent( $resolved, get_current_user_id() );
+		if ( ! is_array( $resolved ) || ( ! $same_governed_agent && ! $exact_delegated_user )
 			|| (int) ( $resolved['wp_user_id'] ?? 0 ) !== get_current_user_id()
-			|| (string) ( $resolved['slug'] ?? '' ) !== (string) $agent['slug']
 			|| (string) ( $resolved['environment'] ?? '' ) !== $environment
 			|| 'enabled' !== (string) ( $resolved['status'] ?? '' ) )
 			return new WP_Error( 'mad4b_grant_reconcile_plan_subject_agent_mismatch',

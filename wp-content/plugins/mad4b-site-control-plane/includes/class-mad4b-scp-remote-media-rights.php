@@ -96,24 +96,42 @@ final class MAD4B_SCP_Remote_Media_Rights {
 	public static function publish_guard( $featured_media_id, array $field_specs, array $effective_meta, $today = '' ) {
 		$today = self::evaluation_date( $today );
 		if ( is_wp_error( $today ) ) return $today;
+		// Staging policy: licensing metadata is advisory; identity/provenance
+		// mismatches remain blocking inside state_evidence().
+		$advisory = wp_get_environment_type() === 'staging';
 		$state = self::state_evidence( $featured_media_id, $field_specs, $effective_meta );
 		if ( is_wp_error( $state ) ) return $state;
 		$nearest_expiry = '';
+		$warnings = array();
 		foreach ( $state['remote_items'] as $row ) {
-			$rights_basis = (string) $row['rights_basis'];
-			if ( ! in_array( $rights_basis, array( 'owned', 'licensed', 'permission', 'public_domain', 'creative_commons' ), true ) ) return new WP_Error( 'mad4b_remote_media_publish_rights_unproven', 'Publish is denied because a remote media attachment has no accepted rights basis.', array( 'attachment_id' => $row['attachment_id'] ) );
-			if ( 'owned' !== $rights_basis && empty( $row['rights_evidence_present'] ) ) return new WP_Error( 'mad4b_remote_media_publish_rights_evidence_missing', 'Publish is denied because non-owned remote media has no traceable rights evidence.', array( 'attachment_id' => $row['attachment_id'], 'rights_basis' => $rights_basis ) );
+			$id = (int) $row['attachment_id'];
+			$basis = (string) $row['rights_basis'];
+			$known = in_array( $basis, array( 'owned', 'licensed', 'permission', 'public_domain', 'creative_commons' ), true );
+			if ( ! $known ) {
+				if ( ! $advisory ) return new WP_Error( 'mad4b_remote_media_publish_rights_unproven', 'Remote media rights basis is not verified.', array( 'attachment_id' => $id ) );
+				$warnings[] = array( 'attachment_id' => $id, 'code' => 'rights_basis_unverified' );
+			}
+			if ( 'owned' !== $basis && empty( $row['rights_evidence_present'] ) ) {
+				if ( ! $advisory ) return new WP_Error( 'mad4b_remote_media_publish_rights_evidence_missing', 'Remote media reuse evidence is missing.', array( 'attachment_id' => $id ) );
+				$warnings[] = array( 'attachment_id' => $id, 'code' => 'rights_evidence_missing' );
+			}
 			$expiry = (string) $row['license_expires_on'];
 			if ( '' !== $expiry ) {
-				if ( ! self::valid_iso_date( $expiry ) || $expiry < $today ) return new WP_Error( 'mad4b_remote_media_publish_rights_expired', 'Publish is denied because remote media rights are expired or invalid.', array( 'attachment_id' => $row['attachment_id'], 'expired_on' => $expiry, 'evaluated_on' => $today ) );
-				if ( '' === $nearest_expiry || $expiry < $nearest_expiry ) $nearest_expiry = $expiry;
+				if ( ! self::valid_iso_date( $expiry ) || $expiry < $today ) {
+					if ( ! $advisory ) return new WP_Error( 'mad4b_remote_media_publish_rights_expired', 'Remote media license is invalid or expired.', array( 'attachment_id' => $id, 'expired_on' => $expiry, 'evaluated_on' => $today ) );
+					$warnings[] = array( 'attachment_id' => $id, 'code' => 'license_expired_or_invalid' );
+				} elseif ( '' === $nearest_expiry || $expiry < $nearest_expiry ) $nearest_expiry = $expiry;
 			}
 		}
 		return array(
 			'contract' => self::CONTRACT, 'evaluated_on' => $today,
 			'checked_attachment_count' => (int) $state['checked_attachment_count'],
 			'remote_attachment_count' => (int) $state['remote_attachment_count'],
-			'nearest_expiry' => $nearest_expiry, 'remote_state_sha256' => (string) $state['remote_state_sha256'], 'valid' => true,
+			'nearest_expiry' => $nearest_expiry,
+			'remote_state_sha256' => (string) $state['remote_state_sha256'],
+			'license_mode' => $advisory ? 'advisory' : 'enforced',
+			'license_warnings' => $warnings, 'license_warning_count' => count( $warnings ),
+			'legal_reuse_permission' => 'not_determined_by_system',
+			'valid' => true,
 		);
-	}
-}
+	}}

@@ -3,7 +3,10 @@
 define('ABSPATH',__DIR__.'/');
 class WP_Error { private $code; function __construct($c,$m=''){ $this->code=$c; } function get_error_code(){return $this->code;} }
 function is_wp_error($x){return $x instanceof WP_Error;}
+function sanitize_key($value){return preg_replace('/[^a-z0-9_\-]/','',strtolower((string)$value));}
 function wp_json_encode($x,$f=0){return json_encode($x,$f);}
+// WordPress core absint; standalone fixture does not load wp-includes.
+function absint($value){return abs((int)$value);}
 function wp_salt($x){return 'dedicated-test-only-secret-not-a-real-key';}
 function maybe_serialize($x){return $x;}
 function wp_cache_delete($x,$g){}
@@ -75,7 +78,25 @@ assert_scan(is_wp_error($c::run($scope,$root,true,$prior['scan_cursor'],true,$pr
 $GLOBALS['store']=array();assert_scan(is_wp_error($c::run($scope,$root,true,$prior['scan_cursor'],true,$provider)),'evicted checkpoint accepted cursor');
 foreach(array('duplicate','foreign','shortcut','list_timeout')as$mode){$GLOBALS['store']=array();$result=$c::run($scope,$root,true,'',false,$provider);assert_scan(is_wp_error($result)&&!$GLOBALS['store'],'unsafe provider page persisted');}
 $mode='normal';$GLOBALS['store']=array();$result=$c::run($scope,$root,true,'',false,$provider);$baseline=$GLOBALS['store'];
-foreach(array('incomplete','normalize_timeout')as$mode){assert_scan(is_wp_error($c::run($scope,$root,true,$result['scan_cursor'],false,$provider))&&$baseline===$GLOBALS['store'],'incomplete/failed content advanced checkpoint');}
+// A complete source inventory may retain per-file normalization failures as
+// explicitly deferred review items. This must not mark the scan complete or
+// grant Context admission. Provider timeouts still fail with no checkpoint write.
+$mode='incomplete';
+$deferred=$c::run($scope,$root,true,$result['scan_cursor'],false,$provider);
+assert_scan(is_array($deferred)&&empty($deferred['complete'])
+ &&!empty($deferred['truncated'])&&1===(int)$deferred['deferred_count']
+ &&false===($deferred['deferred_files'][0]['content_complete']??true)
+ &&'deferred_review_required'===($deferred['deferred_files'][0]['status']??'')
+ &&empty($deferred['registry_mutation_performed'])
+ &&($baseline!==$GLOBALS['store']),
+ 'Incomplete content did not produce an explicit nonauthorizing deferred checkpoint');
+assert_scan(false===strpos(serialize($GLOBALS['store']),'private Brand'),
+ 'Deferred scan leaked source content in checkpoint');
+// Reset the hermetic fixture to the original sealed generation before fault injection.
+$GLOBALS['store']=$baseline;
+$mode='normalize_timeout';
+assert_scan(is_wp_error($c::run($scope,$root,true,$result['scan_cursor'],false,$provider))
+ &&$baseline===$GLOBALS['store'],'Provider timeout advanced checkpoint');
 $mode='normal';$GLOBALS['wpdb']->fail=true;
 assert_scan(is_wp_error($c::run($scope,$root,true,$result['scan_cursor'],false,$provider))&&$baseline===$GLOBALS['store'],'CAS failure advanced checkpoint');$GLOBALS['wpdb']->fail=false;
 MAD4B_SCP_Audit::$ok=false;

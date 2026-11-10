@@ -1,6 +1,8 @@
 <?php
 /* Native policy reducer: no WP DB, network, approval or content mutations. */
 define( 'ABSPATH', dirname( __DIR__ ) . '/' );
+// Core WordPress filter shim in a standalone read-only reducer test.
+function apply_filters( $hook, $value ) { return $value; }
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-brand-core-control-loop.php';
 function check_loop( $truth, $message ) {
 	if ( ! $truth ) { fwrite( STDERR, "FAIL: " . $message . "\n" ); exit( 1 ); }

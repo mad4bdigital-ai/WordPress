@@ -88,11 +88,9 @@ final class MAD4B_SCP_Staging_Source_Selector {
 		} elseif ( 'branch' === $type ) {
 			$path = '/branches/' . rawurlencode( $reference );
 		} else {
-			// The REST /commits/{sha} response embeds every changed-file patch.
-			// Large integration commits exceed our bounded JSON budget despite a
-			// valid SHA. The Git Data commit endpoint returns the signed Git object
-			// identity and parents without the unbounded file-diff collection.
-			$path = '/git/commits/' . $reference;
+			// Git Data commits return bounded SHA/tree/parent provenance without the
+            // potentially unbounded per-file diff from REST /commits/{sha}.
+            $path = '/git/commits/' . $reference;
 		}
 		$url = 'https://api.github.com/repos/' . $repo . $path;
 		$response = wp_safe_remote_get( $url, array(

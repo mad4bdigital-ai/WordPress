@@ -114,6 +114,9 @@ jobs:
         shell: bash
         env:
           OAUTH_FIXTURE: ${{ matrix.oauth_fixture }}
+          # Explicitly exercise the real MCP registry; ordinary WP-CLI never
+          # materializes all MCP DTOs. No change to production defaults.
+          MAD4B_SCP_MCP_CLI_REQUEST: '1'
         run: |
           set -euo pipefail
           if [ "$OAUTH_FIXTURE" = 'misconfigured' ]; then
