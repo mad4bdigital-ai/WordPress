@@ -174,7 +174,7 @@ for path in (root / 'includes').rglob('*.php'):
     # registers that callback with the centralized parent-order scheduler.
     # Resolve both exact require_once and use binding; never accept an orphan
     # Trait, a loosely named class, or a direct admin_menu hook.
-    trait_decl = re.search(r'\\btrait\\s+(MAD4B_SCP_[A-Za-z0-9_]+)\\s*\\{', source)
+    trait_decl = re.search(r'\btrait\s+(MAD4B_SCP_[A-Za-z0-9_]+)\s*\{', source)
     if trait_decl:
         trait_name = trait_decl.group(1)
         users = []
@@ -182,12 +182,16 @@ for path in (root / 'includes').rglob('*.php'):
             if owner_path == path:
                 continue
             owner_source = owner_path.read_text(encoding='utf-8')
-            if (re.search(r'\\buse\\s+' + re.escape(trait_name) + r'\\s*;', owner_source)
-                    and re.search(r"require_once\\s+__DIR__\\s*\\.\\s*['\\\"]/[^'\\\"]*" + re.escape(path.name), owner_source)):
+            required = (
+                "require_once __DIR__.'/" + path.name + "';",
+                "require_once __DIR__ . '/" + path.name + "';",
+            )
+            if (re.search(r'\buse\s+' + re.escape(trait_name) + r'\s*;', owner_source)
+                    and any(marker in owner_source for marker in required)):
                 users.append((owner_path, owner_source))
-        if len(users) != 1 or not re.search(r'final class (MAD4B_SCP_\\w+)', users[0][1]):
+        if len(users) != 1 or not re.search(r'final class (MAD4B_SCP_\w+)', users[0][1]):
             raise SystemExit(f'FAIL admin submenu Trait owner binding: {path.name}')
-        source = users[0][1] + '\\n' + source
+        source = users[0][1] + '\n' + source
     if 'add_submenu_page(' in source and (
         'MAD4B_SCP_Admin_Route_Registry::schedule_submenu(' not in source
         or re.search(r"add_action\(\s*['\"]admin_menu['\"]", source)
