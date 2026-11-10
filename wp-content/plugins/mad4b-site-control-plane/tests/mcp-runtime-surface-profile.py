@@ -113,7 +113,20 @@ def generated_surface(zf: zipfile.ZipFile, profile: dict, version: str) -> tuple
         seen[row["symbol"]] = row["file"]
 
     generated = dict(surface)
-    generated["source_identity"] = f"WordPress/mcp-adapter@v{version}"
+    # Provenance is the exact pre-certified, official source channel, not
+    # an assumption that every release was obtained from GitHub. Preserve
+    # the archive/SHA and complete symbol-tree checks below.
+    url = str(profile.get("package_url") or "")
+    authority = str(profile.get("certification_authority") or "")
+    github = f"https://github.com/WordPress/mcp-adapter/releases/download/v{version}/mcp-adapter.zip"
+    wporg = f"https://downloads.wordpress.org/plugin/mcp-adapter.{version}.zip"
+    if url == github and authority == f"github.com/WordPress/mcp-adapter/releases/tag/v{version}":
+        generated["source_identity"] = f"WordPress/mcp-adapter@v{version}"
+    elif (url == wporg and authority.startswith("https://wordpress.org/plugins/mcp-adapter/")
+          and version in authority):
+        generated["source_identity"] = f"WordPress.org/mcp-adapter@{version}"
+    else:
+        raise SystemExit("MCP Adapter runtime surface source channel is not certified")
     generated["file_count"] = len(files)
     generated["symbol_count"] = len(symbols)
     generated["tree_sha256"] = tree_sha256
