@@ -296,6 +296,8 @@ final class MAD4B_SCP_Abilities {
 			return new WP_Error( 'mad4b_read_preparation_receipt_unavailable', 'Signed preparation evidence is unavailable; execution remains denied.' );
 		}
 		$result['prepared_dispatch'] = array(
+			// Complete, reusable signed read-dispatch identity for clients.
+			'ability_name' => $ability_name,
 			'expected_input_schema_sha256' => $schema_sha256,
 			'expected_execution_lane' => 'read',
 			'expected_classification_sha256' => (string) $row['classification_sha256'],
@@ -308,6 +310,15 @@ final class MAD4B_SCP_Abilities {
 	}
 
 	public function read_execute( $input ) {
+		// Require the complete prepared identity. The shared validator still
+		// verifies the signed receipt, exact lane, site scope and live schema.
+		$required_read_identity = array( 'ability_name', 'expected_input_schema_sha256', 'expected_execution_lane', 'expected_classification_sha256', 'expected_authority_scope_sha256', 'preparation_receipt' );
+		foreach ( $required_read_identity as $key ) {
+			if ( ! is_array( $input ) || ! isset( $input[ $key ] )
+				|| ! is_string( $input[ $key ] ) || '' === trim( $input[ $key ] ) )
+				return new WP_Error( 'mad4b_read_dispatch_preparation_required',
+					'Governed read execution requires the complete exact prepared identity.' );
+		}
 		$abuse = class_exists( 'MAD4B_SCP_Abuse_Budget' ) ? MAD4B_SCP_Abuse_Budget::admit( 'execute', is_array($input)?$input:array() ) : new WP_Error( 'mad4b_abuse_budget_unavailable', 'Execution abuse-budget runtime is unavailable.' );
 		if ( is_wp_error( $abuse ) ) return $abuse;
 		$request_scope = self::request_scope_admit( 'read_execute' );
