@@ -321,7 +321,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          eval "$(python3 - <<'PY'
+          profile_exports="$(python3 - <<'PY'
           import json, shlex
           from pathlib import Path
           root=Path('wp-content/plugins/mad4b-site-control-plane/config')
@@ -361,7 +361,11 @@ jobs:
           for key,value in values.items():
               print(f'{key}={shlex.quote(value)}')
           PY
-          )"
+          )" || exit 1
+          # Do not let a failed certified-profile resolver turn into an
+          # empty eval followed by an unbound version variable.
+          test -n "$profile_exports"
+          eval "$profile_exports"
           {
             echo "MCP_ADAPTER_VERSION=$MCP_ADAPTER_VERSION"
             echo "MCP_ADAPTER_SHA=$MCP_ADAPTER_SHA"
