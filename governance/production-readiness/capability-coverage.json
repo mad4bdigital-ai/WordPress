@@ -2096,18 +2096,39 @@
         "RECOVERY-01",
         "ROLLOUT-01",
         "GOVERNANCE-01",
-        "SECURITY-01"
+        "SECURITY-01",
+        "MCP-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-package-mcp-governance-contract.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-router-runtime.php"
       ],
       "owner_role": "Repository source-review maintainer — CI-only static candidate audit, not remote authorization or WordPress Site Owner",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true,
       "needs_new_control": false,
-      "coverage_reuse_rationale": "Existing update-coordinator, cross-plugin isolation, recovery, rollout, governance and security controls apply. The introduced source only mentions the established Ability as non-authorizing routing guidance; this review does not register, grant, invoke, install or certify it.",
-      "review_rationale": "Static source scanner identifies the literal mad4b/control-plane-selected-head-plan in the new package route guidance. It is a pointer to an independent already-governed Control Plane planning surface, NOT a newly registered Ability or an executable provider-package action. Same-PR hermetic PHP test validates fail-closed MAD4B provider rejection, read-only guidance and no auto-apply/Production permission. Runtime discovery remains unverified. The same-PR Python regression contract executes both fixed PHP CLI fixtures with bounded timeout, checks nonzero exit codes and requires positive PASS markers; neither fixture is counted as a trusted standalone PHPUnit test."
+      "coverage_reuse_rationale": "Existing update-coordinator, cross-plugin isolation, recovery, rollout, governance and security controls apply. The introduced source only mentions the established Ability as non-authorizing routing guidance; this review does not register, grant, invoke, install or certify it. MCP-01 governs the bounded MCP plan reference; this review preserves source signature, identity, read-only result and approval gates, not a new grant.",
+      "review_rationale": "Static source scanner identifies the literal mad4b/control-plane-selected-head-plan in the new package route guidance. It is a pointer to an independent already-governed Control Plane planning surface, NOT a newly registered Ability or an executable provider-package action. Same-PR hermetic PHP test validates fail-closed MAD4B provider rejection, read-only guidance and no auto-apply/Production permission. Runtime discovery remains unverified. The same-PR Python regression contract executes both fixed PHP CLI fixtures with bounded timeout, checks nonzero exit codes and requires positive PASS markers; neither fixture is counted as a trusted standalone PHPUnit test. Added same-PR PHP reducer regression verifies actual Production denial, exact signed source linkage, fallback when Selected HEAD identity differs, no automatic mutation, and governed admin read authorization."
+    },
+    {
+      "id": "ability:mad4b/control-plane-test-route",
+      "control_ids": [
+        "MCP-01",
+        "UPDATES-01",
+        "RECOVERY-01",
+        "GOVERNANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-router-runtime.php"
+      ],
+      "owner_role": "Repository source-review maintainer — static CI-only review; no WordPress Site Owner or deploy authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The new read-only route selects certified Source SHA and separate planning surfaces; existing MCP transport, update/recovery and security controls apply. It is not an installation authorization.",
+      "review_rationale": "Reviewed pure reducer and admin permission callback in new Control Plane router. Same-PR hermetic PHP test executes Production denial, missing archive proof, mismatched Selected HEAD fallback and non-authorizing result assertions. No Apply or OAuth grant is created. Live Staging and release evidence remain absent."
     },
     {
       "id": "ability:mad4b/control-plane-upload-plan",
