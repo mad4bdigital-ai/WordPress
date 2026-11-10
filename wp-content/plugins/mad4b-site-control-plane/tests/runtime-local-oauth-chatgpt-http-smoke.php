@@ -63,9 +63,9 @@ $reviewed_step_up_abilities = MAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up
 $reviewed_step_up_names = array();
 $reviewed_step_up_by_ability = array();
 // The Adapter materializes a frozen tool superset before OAuth. get_tools()
-// is a *visibility-filtered* snapshot: it intentionally hides direct mutations
-// without an exact step-up bearer. Verify physical binding against the frozen
-// registration classification instead of misidentifying hidden tools as absent.
+// enumerates the PHYSICAL registry, independent of bearer visibility.
+// Only real HTTP tools/list is scope-filtered; this test validates both
+// independently rather than treating a bound Step-up DTO as an auth leak.
 // A server may be materialized before the optional classification snapshot
 // is captured in an isolated WP-CLI REST bootstrap. Derive each exact tool
 // name through the installed official Adapter's Ability builder, then verify
@@ -145,10 +145,12 @@ foreach ( $reviewed_step_up_abilities as $ability_name ) {
 }
 $reviewed_step_up_names = array_values( array_unique( $reviewed_step_up_names ) );
 sort( $reviewed_step_up_names );
-foreach ( $reviewed_step_up_names as $hidden_step_up ) {
-    if ( in_array( $hidden_step_up, $preauth_names, true ) )
-        $fail( 'Anonymous pre-auth catalog exposed a physical direct step-up tool.', $hidden_step_up );
+foreach ( $reviewed_step_up_names as $bound_step_up ) {
+    if ( ! in_array( $bound_step_up, $preauth_names, true ) )
+        $fail( 'Official frozen MCP registry omitted a physically bound reviewed step-up.', $bound_step_up );
 }
+// Bearer scoping is asserted against the real REST tools/list response below,
+// not against the Adapter's internal, unconditional registry enumeration.
 foreach ( array(
 	'mad4b-site-profile-feature-reenroll',
 	'mad4b-site-profile-write-enable',
