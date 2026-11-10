@@ -286,6 +286,10 @@ jobs:
 
       - name: Prove local OAuth bearer through REST initialize session tools/list and tools/call
         shell: bash
+        env:
+          # Recreate the full MCP catalog before testing physical tools/list;
+          # do not turn this on for normal WP-CLI or regular WordPress pages.
+          MAD4B_SCP_MCP_CLI_REQUEST: '1'
         run: |
           set -euo pipefail
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-chatgpt-http-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
