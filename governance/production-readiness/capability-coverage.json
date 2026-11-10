@@ -11538,6 +11538,47 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "The existing original Agent Registry exact grant, Staging-only provider review, site profile, mutation gate, owner approval, checkpoint, readback and audit safeguards govern this single diagnostic, without wildcard rights.",
       "review_rationale": "Exact source review allows a core grant to be considered only for mad4b/hub-queue-site-health-enqueue when the Ability is registered on the correct central Staging site. No grant is issued merely because this provider pair appears; broad hub-bulk-enqueue remains outside the reviewed policy and Production is not enabled."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
+      "source_blob_sha": "9f873295f5b754932c5786701ef09c31e4a0c8a7",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "GOVERNANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/live-write-provider-snapshot-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/universal-wordpress-operations-contract.py"
+      ],
+      "owner_role": "Repository source/security CI reviewer — no Site Owner attestation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing site-bound MCP catalog, runtime Write mount, identity, OAuth and policy callbacks remain under existing controls. Only the provider snapshot method is extracted into the loaded Write Catalog trait.",
+      "review_rationale": "Exact Git blob of Servers facade after moving the unchanged live_write_provider_snapshot algorithm to the required Write Catalog trait. No new Ability, execution path, grant, role, environment access or Production permission. The hermetic QA31 test executes the trait's actual method; full MCP and release acceptance remain independent."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-write-catalog.php",
+      "source_blob_sha": "512a2d8f2817bea44409a4923b4eae30ddeddc6c",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "GOVERNANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/live-write-provider-snapshot-runtime.php"
+      ],
+      "owner_role": "Repository source/security CI reviewer — no Site Owner attestation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original provider mapping implementation and existing Write catalog admission controls reused verbatim; provider precedence remains core first, then certified registered adapter, only for mounted abilities.",
+      "review_rationale": "Exact Git blob of Write Catalog trait after relocation of the unchanged provider snapshot. The QA31 hermetic regression executes this exact implementation, checks core-first precedence, excludes unmounted and unmapped writes, and rejects adapter overrides. This is nonauthorizing CI source coverage; no release or Production approval."
     }
   ],
   "code_change_rules": {
