@@ -66,22 +66,38 @@ $reviewed_step_up_by_ability = array();
 // is a *visibility-filtered* snapshot: it intentionally hides direct mutations
 // without an exact step-up bearer. Verify physical binding against the frozen
 // registration classification instead of misidentifying hidden tools as absent.
+// A server may be materialized before the optional classification snapshot
+// is captured in an isolated WP-CLI REST bootstrap. Derive each exact tool
+// name through the installed official Adapter's Ability builder, then verify
+// the physical get_mcp_tool binding; never rely on filtered get_tools() here.
 $registered_classification = MAD4B_SCP_MCP_Catalog_Diagnostics::classification_snapshot();
-if ( ! is_array( $registered_classification ) || ! $registered_classification )
-    $fail( 'Physical ChatGPT MCP catalog classification was not captured.' );
-foreach ( $registered_classification as $tool_name => $row ) {
-    if ( ! is_array( $row ) || empty( $row['direct_step_up'] ) ) continue;
-    $ability_name = isset( $row['ability'] ) ? (string) $row['ability'] : '';
-    if ( ! in_array( $ability_name, $reviewed_step_up_abilities, true ) ) continue;
-    $bound = $preauth_server->get_mcp_tool( (string) $tool_name );
+if ( ! is_array( $registered_classification ) ) $registered_classification = array();
+foreach ( $reviewed_step_up_abilities as $ability_name ) {
+    $ability = function_exists( 'wp_get_ability' ) ? wp_get_ability( $ability_name ) : null;
+    if ( ! is_object( $ability ) )
+        $fail( 'Reviewed direct step-up Ability is not registered.', $ability_name );
+    $built = MAD4B_SCP_MCP_Adapter_Compatibility::build_ability_wire( $ability );
+    if ( is_wp_error( $built ) || ! is_array( $built ) || ! isset( $built['wire'] ) )
+        $fail( 'Official builder rejected a reviewed direct step-up Ability.', array(
+            'ability' => $ability_name,
+            'error_code' => is_wp_error( $built ) ? $built->get_error_code() : 'invalid_builder_result',
+        ) );
+    $tool_name = MAD4B_SCP_MCP_Adapter_Compatibility::wire_name( $built['wire'] );
+    if ( '' === $tool_name )
+        $fail( 'Official builder yielded no reviewed MCP tool name.', $ability_name );
+    $bound = $preauth_server->get_mcp_tool( $tool_name );
     $meta = is_object( $bound ) && method_exists( $bound, 'get_adapter_meta' )
         ? $bound->get_adapter_meta() : array();
     if ( ! is_array( $meta ) || ( $meta['ability'] ?? '' ) !== $ability_name )
-        $fail( 'Frozen direct step-up classification has no matching physical MCP binding.', array(
-            'ability' => $ability_name, 'registered_wire_name' => (string) $tool_name,
+        $fail( 'Reviewed direct step-up Ability has no physical MCP binding.', array(
+            'ability' => $ability_name, 'official_tool_name' => $tool_name,
+            'optional_catalog_classification_present' => ! empty( $registered_classification ),
         ) );
-    $reviewed_step_up_by_ability[ $ability_name ] = (string) $tool_name;
-    $reviewed_step_up_names[] = (string) $tool_name;
+    if ( isset( $registered_classification[ $tool_name ] )
+        && ( $registered_classification[ $tool_name ]['ability'] ?? '' ) !== $ability_name )
+        $fail( 'Optional captured MCP classification contradicts physical binding.', $ability_name );
+    $reviewed_step_up_by_ability[ $ability_name ] = $tool_name;
+    $reviewed_step_up_names[] = $tool_name;
 }
 // Reviewed direct step-ups are independently validated, not dropped by any
 // historical 36/64-tool display estimate. Every valid projected Ability
