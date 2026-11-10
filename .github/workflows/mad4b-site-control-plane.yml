@@ -140,6 +140,7 @@ jobs:
           root='wp-content/plugins/mad4b-site-control-plane'
           policy="$root/includes/class-mad4b-scp-policy.php"
           abilities="$root/includes/class-mad4b-scp-abilities.php"
+          abilities_registration="$root/includes/trait-mad4b-scp-abilities-registration.php"
           lifecycle_executor="$root/includes/class-mad4b-scp-plugin-ability-service.php"
           filesystem_executor="$root/includes/class-mad4b-scp-filesystem-mutation-service.php"
           audit="$root/includes/class-mad4b-scp-audit.php"
@@ -225,7 +226,23 @@ jobs:
           fi
           grep -Fq "LOAD_FILE" "$abilities"
           grep -Fq "CREATE\\s+(?:USER|ROLE)" "$abilities"
-          grep -Fq "expected_modified_gmt" "$abilities"
+          # Accept either supported code layout, but verify the actual schema
+          # owner and its explicit Facade binding. Never pass merely because a
+          # file exists or a marker appears in an unrelated comment.
+          if [ -f "$abilities_registration" ]; then
+            grep -Fq "require_once __DIR__ . '/trait-mad4b-scp-abilities-registration.php';" "$abilities"
+            grep -Fq 'use MAD4B_SCP_Abilities_Registration_Trait;' "$abilities"
+            grep -Fq "expected_modified_gmt" "$abilities_registration"
+          else
+            # The callback retains the registered Ability API. The exact post
+          # concurrency guard lives in the governed Mutation Manager, not the
+          # intentionally thin Abilities facade.
+          mutation_manager="$root/includes/class-mad4b-scp-mutation-manager.php"
+          test -f "$mutation_manager"
+          grep -Fq "MAD4B_SCP_Mutation_Manager::execute_post_update" "$abilities"
+          grep -Fq "public static function execute_post_update" "$mutation_manager"
+          grep -Fq "expected_modified_gmt" "$mutation_manager"
+          fi
           grep -Fq "max_affected" "$abilities"
           grep -Fq "can_structured_database_read" "$abilities"
           grep -Fq "can_structured_database_write" "$abilities"

@@ -321,7 +321,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          eval "$(python3 - <<'PY'
+          profile_exports="$(python3 - <<'PY'
           import json, shlex
           from pathlib import Path
           root=Path('wp-content/plugins/mad4b-site-control-plane/config')
@@ -329,21 +329,43 @@ jobs:
           profiles=json.loads((root/'certified-provider-profiles.json').read_text(encoding='utf-8'))
           if policy.get('contract')!='mad4b.runtime-release-policy.v1':
               raise SystemExit('runtime release policy contract mismatch')
-          version=str(policy.get('target_adapter_version') or '')
+          import re
+          protocol=json.loads((root/'mcp-protocol-profiles.json').read_text(encoding='utf-8'))
+          if protocol.get('contract')!='mad4b.mcp-protocol-profile-catalog.v1':
+              raise SystemExit('certified MCP protocol profile contract mismatch')
+          reference=protocol.get('certified_adapter') or {}
+          if reference.get('slug')!='mcp-adapter' or reference.get('exact_package_governed') is not True:
+              raise SystemExit('exact MCP Adapter certification reference required')
+          # Package QA follows the certified *test reference*, never the installed
+          # runtime version. An older policy target must agree if still declared.
+          version=str(reference.get('version') or '')
+          if not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+', version):
+              raise SystemExit('certified MCP Adapter version invalid')
+          legacy_target=str(policy.get('target_adapter_version') or '')
+          if legacy_target and legacy_target!=version:
+              raise SystemExit('legacy release target conflicts with certified protocol reference')
           profile=((profiles.get('providers') or {}).get('mcp_adapter') or {}).get(version) or {}
           if profile.get('version')!=version:
-              raise SystemExit('target MCP Adapter profile missing')
+              raise SystemExit('certified MCP Adapter profile missing')
           sha=str(profile.get('archive_sha256') or '').lower()
           size=int(profile.get('archive_bytes') or 0)
           url=str(profile.get('package_url') or '')
           archive=str(profile.get('archive') or f'mcp-adapter-{version}.zip')
-          if len(sha)!=64 or size<1 or not url.startswith('https://github.com/WordPress/mcp-adapter/releases/download/v'):
-              raise SystemExit('target MCP Adapter profile identity invalid')
+          certified_urls={
+              f'https://github.com/WordPress/mcp-adapter/releases/download/v{version}/mcp-adapter.zip',
+              f'https://downloads.wordpress.org/plugin/mcp-adapter.{version}.zip',
+          }
+          if not re.fullmatch(r'[a-f0-9]{64}',sha) or size<1 or url not in certified_urls:
+              raise SystemExit('certified MCP Adapter archive identity invalid')
           values={'MCP_ADAPTER_VERSION':version,'MCP_ADAPTER_SHA':sha,'MCP_ADAPTER_BYTES':str(size),'MCP_ADAPTER_URL':url,'MCP_ADAPTER_ARCHIVE':archive,'MCP_ADAPTER_STAGE_PATH':'/tmp/mad4b-certified-mcp-adapter.zip'}
           for key,value in values.items():
               print(f'{key}={shlex.quote(value)}')
           PY
-          )"
+          )" || exit 1
+          # Do not let a failed certified-profile resolver turn into an
+          # empty eval followed by an unbound version variable.
+          test -n "$profile_exports"
+          eval "$profile_exports"
           {
             echo "MCP_ADAPTER_VERSION=$MCP_ADAPTER_VERSION"
             echo "MCP_ADAPTER_SHA=$MCP_ADAPTER_SHA"
