@@ -75,6 +75,8 @@ jobs:
           root=wp-content/plugins/mad4b-site-control-plane
           python3 "$root/tests/production-native-gates-contract.py"
           php "$root/tests/capability-first-mcp-adapter-gate-runtime.php"
+          # Hermetic structural fallback: no installed Adapter version floor.
+          php "$root/tests/mcp-mu-forward-version-fixture-runtime.php"
           python3 "$root/tests/provider-version-neutral-read-contract.py"
           for mode in cli session hard_kill; do
             if [ "$mode" = cli ]; then
