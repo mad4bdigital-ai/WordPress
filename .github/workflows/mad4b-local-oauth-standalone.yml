@@ -167,13 +167,24 @@ jobs:
 
           if [ "$ADAPTER_PROFILE" = "target-0.7.0" ]; then
             python3 - <<'PY' > /tmp/mad4b-target-adapter.env
-          import json, shlex
+          import json, os, re, shlex
           from pathlib import Path
           root=Path('wp-content/plugins/mad4b-site-control-plane/config')
           policy=json.loads((root/'runtime-release-policy.json').read_text(encoding='utf-8'))
           profiles=json.loads((root/'certified-provider-profiles.json').read_text(encoding='utf-8'))
-          version=str(policy['target_adapter_version'])
-          profile=profiles['providers']['mcp_adapter'][version]
+          # The CI matrix picks an exact certified test artifact. Runtime
+          # compatibility never depends on a global target version string.
+          matrix_label=os.environ.get('ADAPTER_PROFILE', '')
+          if not re.fullmatch(r'target-[0-9]+\.[0-9]+\.[0-9]+', matrix_label):
+              raise SystemExit('invalid exact adapter test profile')
+          if (policy.get('contract') != 'mad4b.runtime-release-policy.v1'
+              or policy.get('installed_adapter_version_gate') is not False
+              or policy.get('adapter_release_target_source') != 'certified_runtime_release_set.mcp_adapter'):
+              raise SystemExit('runtime policy is not capability-driven and certified')
+          version=matrix_label[len('target-'):]
+          profile=((profiles.get('providers') or {}).get('mcp_adapter') or {}).get(version) or {}
+          if profile.get('version') != version:
+              raise SystemExit('CI test version has no exact certified provider profile')
           for key,value in {
               'TARGET_VERSION':version,
               'TARGET_SHA':profile['archive_sha256'],
@@ -184,7 +195,7 @@ jobs:
               print(f'{key}={shlex.quote(str(value))}')
           PY
             source /tmp/mad4b-target-adapter.env
-            test "$TARGET_VERSION" = "0.7.0"
+            test "target-$TARGET_VERSION" = "$ADAPTER_PROFILE"
             curl --fail --location --silent --show-error "$TARGET_URL" -o /tmp/mcp-adapter-target.zip
             test "$(stat -c '%s' /tmp/mcp-adapter-target.zip)" = "$TARGET_BYTES"
             echo "$TARGET_SHA  /tmp/mcp-adapter-target.zip" | sha256sum --check --strict
