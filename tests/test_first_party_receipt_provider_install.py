@@ -10,7 +10,7 @@ m=importlib.util.module_from_spec(sp);sp.loader.exec_module(m)
 class OriginalRegistryInstallTests(unittest.TestCase):
     def test_original_first_party_source_commit_verified(self):
         result=m.install()
-        self.assertEqual(result['state'],'FIRST_PARTY_PROVIDER_READY')
+        self.assertIn(result['state'],('FIRST_PARTY_PROVIDER_READY','ALREADY_INSTALLED'))
         self.assertFalse(result['grant_issued'])
         self.assertFalse(result['job_created'])
         self.assertFalse(result['original_313_certified'])
@@ -20,6 +20,16 @@ class OriginalRegistryInstallTests(unittest.TestCase):
             root=Path(folder)/'enrolled'
             shutil.copytree(m.INSTALLED,root)
             root.chmod(0o700)
+            # Reconstruct the *before-enrollment* state from the actual
+            # root-only rollback artifact so this test remains valid after
+            # first-party installation on the live VPS.
+            backup=m.BACKUP
+            if (root/'dynamic-operation-registry-v1/providers/company.code.release.receipt.reconcile/manifest.json').exists():
+                self.assertTrue(backup.is_file())
+                for rel in m.FILES:
+                    (root/rel).unlink()
+                (root/'index.json').write_bytes(backup.read_bytes())
+                (root/'index.json').chmod(0o600)
             original=(root/'index.json').read_bytes()
             def sha(q):return m.sha(q.read_bytes())
             old_digest=sha(root/'company-code-release-v1/original_313_host_handler.py')
