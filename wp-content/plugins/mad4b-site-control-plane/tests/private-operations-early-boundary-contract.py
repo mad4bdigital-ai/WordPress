@@ -35,4 +35,35 @@ for requirement in (
     assert requirement in guard, f"Confidentiality contract missing: {requirement}"
 assert "jet-rel/126" not in guard, "Relation IDs are site-local, must not be hardcoded"
 assert "67531" not in guard, "QA fixture IDs must not enter the shared module"
+# Source-scope wiring review for the replacement Bootstrap Git blob.
+# These checks do not certify a live site, a release, or write authority.
+import re
+version_header = re.search(r"^ \\* Version: ([^\\s]+)", entry, re.MULTILINE)
+version_constant = re.search(r"define\\( 'MAD4B_SCP_VERSION', '([^']+)' \\);", entry)
+assert version_header and version_constant
+assert version_header.group(1) == version_constant.group(1), "Bootstrap version drift"
+required_modules = re.findall(
+    r"require_once MAD4B_SCP_DIR \\. '([^']+\\.php)'\\s*;", entry,
+)
+assert len(required_modules) >= 30, "Bootstrap module inventory unexpectedly missing"
+for relative in required_modules:
+    module = (PLUGIN / relative).resolve()
+    assert module.is_relative_to(PLUGIN.resolve()) and module.is_file(), (
+        "Missing or unsafe bootstrap dependency: " + relative
+    )
+# Keep all new optional boot calls after their defining module is loaded.
+for class_name, path in (
+    ("MAD4B_SCP_Core_AI_Governance", "includes/class-mad4b-scp-core-ai-governance.php"),
+    ("MAD4B_SCP_Core_Connector_Vault", "includes/class-mad4b-scp-core-connector-vault.php"),
+    ("MAD4B_SCP_Company_Code_Reconciliation", "includes/class-mad4b-scp-company-code-reconciliation.php"),
+    ("MAD4B_SCP_FCP_Local_Observability", "includes/class-mad4b-scp-fcp-local-observability.php"),
+):
+    include = "require_once MAD4B_SCP_DIR . '" + path + "';"
+    boot_call = class_name + "::boot();"
+    assert entry.count(include) == 1 and entry.count(boot_call) == 1, class_name
+    assert entry.index(include) < entry.index(boot_call), class_name + " boot precedes require"
+assert "MAD4B_SCP_Private_Operations_Boundary::boot();" not in entry, (
+    "Private boundary already registers its hooks on guarded include"
+)
+print("BOOTSTRAP_SOURCE_REGISTRATION=PASS")
 print("PASS: early boot, private CPTs, dynamic site-local relation, authorized staff roles")
