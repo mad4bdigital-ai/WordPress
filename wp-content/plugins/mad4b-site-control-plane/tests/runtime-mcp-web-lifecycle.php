@@ -112,6 +112,11 @@ foreach ( MAD4B_SCP_Servers::expected_server_ids() as $server_id ) {
 	if ( ! empty( $registrations[ $server_id ]['error'] ) ) $fail( $server_id . ' registration error: ' . $registrations[ $server_id ]['error'] );
 }
 
+// A valid locally-routed VPS operator shell is part of the expected server
+// census, but no ordinary web client may obtain VPS-local execution.
+if ( ! is_wp_error( MAD4B_SCP_Servers::can_vps_local_transport() ) )
+    $fail( 'Untrusted web request acquired VPS-local MCP transport permission' );
+
 // This fixture is an explicit acceptance diagnostic and must verify the
 // physical REST route/permission bindings rather than the lightweight MCP
 // request-serving projection.
