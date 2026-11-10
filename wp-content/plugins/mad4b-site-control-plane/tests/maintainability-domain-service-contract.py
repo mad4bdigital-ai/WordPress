@@ -69,4 +69,26 @@ for marker in ("public static function permission_result(", "is_wp_error( $resul
  if marker not in decision_graph:
   raise SystemExit("AUTHORIZATION_DECISION_GRAPH_TRUTH_MISSING:"+marker)
 
+# Execution checkpoint/recovery implementation is bound into the same class,
+# not replicated or routed to an unguarded alternate execution plane.
+recovery_trait_path=root/"includes/trait-mad4b-scp-authorization-execution-recovery.php"
+if not recovery_trait_path.is_file():
+ raise SystemExit("AUTHORIZATION_EXECUTION_RECOVERY_TRAIT_MISSING")
+recovery_trait=recovery_trait_path.read_text(encoding="utf-8")
+for marker in ("require_once __DIR__ . '/trait-mad4b-scp-authorization-execution-recovery.php';",
+               "use MAD4B_SCP_Authorization_Execution_Recovery_Trait;"):
+ if marker not in files["authorization"]:
+  raise SystemExit("AUTHORIZATION_EXECUTION_RECOVERY_BINDING_MISSING:"+marker)
+for method in ("execution_checkpoint", "execution_attempt_sha256", "execution_attempt_state"):
+ signature="function "+method+"("
+ if signature not in recovery_trait or signature in files["authorization"]:
+  raise SystemExit("AUTHORIZATION_EXECUTION_RECOVERY_EXTRACTION_DRIFT:"+method)
+for invariant in ("MAD4B_SCP_Execution_Evidence_Policy::crash_point",
+                  "MAD4B_SCP_Audit::execution_checkpoint_events",
+                  "'blind_retry_allowed' => false",
+                  "'reconciliation_required' => true",
+                  "self::audit("):
+ if invariant not in recovery_trait:
+  raise SystemExit("AUTHORIZATION_EXECUTION_RECOVERY_GUARD_MISSING:"+invariant)
+
 print("mad4b.maintainability-domain-service-decomposition.v1: PASS")
