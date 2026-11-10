@@ -72,10 +72,9 @@ foreach ( $preauth_tools as $dto ) {
 	$reviewed_step_up_by_ability[ $ability_name ] = (string) $tool_name;
 	$reviewed_step_up_names[] = (string) $tool_name;
 }
-// The server formally designates reviewed direct step-ups OPTIONAL under
-// the 36-tool budget. Compare against the same deterministic selection as
-// registration: only budget-retained tools must be bound. Missing optional
-// tools must be explicitly excluded by that policy, not silently disappear.
+// Reviewed direct step-ups are independently validated, not dropped by any
+// historical 36/64-tool display estimate. Every valid projected Ability
+// must remain in the dynamic MCP registration.
 $all_requested = MAD4B_SCP_Servers::chatgpt_tools();
 // Use the authoritative server-side optional classification. Reconstructing
 // it without the Direct Profile/management priority can mark a registered
@@ -84,14 +83,11 @@ $optional = MAD4B_SCP_Servers::chatgpt_materialization_optional_tools( $all_requ
 $budget = MAD4B_SCP_MCP_Catalog_Diagnostics::budget_projection( $all_requested, $optional );
 if ( empty( $budget['ready'] ) ) $fail( 'Reviewed direct-step-up catalog budget itself is invalid.', $budget );
 foreach ( $reviewed_step_up_abilities as $ability_name ) {
-    if ( ! in_array( $ability_name, $budget['selected'], true ) ) {
-        if ( ! in_array( $ability_name, $budget['excluded_optional'], true )
-            || ! empty( $reviewed_step_up_by_ability[ $ability_name ] ) )
-            $fail( 'Non-selected direct step-up is not a genuine bounded optional exclusion.', $ability_name );
-        continue;
-    }
+    if ( ! in_array( $ability_name, $budget['selected'], true )
+        || ! empty( $budget['excluded_optional'] ) )
+        $fail( 'Dynamic catalog silently excluded a reviewed direct step-up.', $ability_name );
     if ( empty( $reviewed_step_up_by_ability[ $ability_name ] ) )
-        $fail( 'Budget-retained reviewed direct step-up ability has no bound MCP tool.', $ability_name );
+        $fail( 'Reviewed direct step-up ability has no bound MCP tool.', $ability_name );
 }
 $reviewed_step_up_names = array_values( array_unique( $reviewed_step_up_names ) );
 sort( $reviewed_step_up_names );
@@ -106,8 +102,8 @@ foreach ( array(
 ) as $forbidden_internal ) {
 	if ( in_array( $forbidden_internal, $preauth_names, true ) ) $fail( 'Low-level enrollment primitive leaked into pre-auth direct catalog.', $forbidden_internal );
 }
-if ( count( $preauth_names ) > MAD4B_SCP_MCP_Catalog_Diagnostics::MAX_TOOLS ) {
-	$fail( 'Pre-auth stable catalog exceeded the MCP refresh budget.', array( 'tool_count' => count( $preauth_names ), 'budget' => MAD4B_SCP_MCP_Catalog_Diagnostics::MAX_TOOLS ) );
+if ( empty( $preauth_names ) ) {
+    $fail( 'Pre-auth stable catalog unexpectedly empty after actual registration.' );
 }
 
 // Observe the final pre_http_request state after the local loopback guards have
@@ -265,8 +261,8 @@ foreach ( $reviewed_step_up_names as $hidden_step_up ) {
 // Every registered direct mutation is execution-gated, even when the caller knows its hidden name.
 $classification = MAD4B_SCP_MCP_Catalog_Diagnostics::classification_snapshot();
 $registered_step_names = array_keys( array_filter( $classification, static function ( $row ) { return ! empty( $row['direct_step_up'] ); } ) );
-if ( empty( $registered_step_names ) || count( $preauth_names ) > MAD4B_SCP_MCP_Catalog_Diagnostics::MAX_TOOLS ) {
-    $fail( 'Reviewed registered catalog must remain nonempty and within its budget.', array(
+if ( empty( $registered_step_names ) || empty( $preauth_names ) ) {
+    $fail( 'Reviewed registered catalog must remain nonempty, without a fixed count limit.', array(
         'reviewed_count' => count( $registered_step_names ),
         'preauth_count' => count( $preauth_names ),
         'owner_census' => class_exists( 'MAD4B_SCP_Governed_Ability_Census' )
@@ -317,7 +313,8 @@ try {
 	$rich_budget = MAD4B_SCP_MCP_Catalog_Diagnostics::budget_projection( $preflight_catalog, $rich_optional );
 	$required_rich = array_values( array_diff( $preflight_catalog, $rich_optional ) );
 	if ( empty( $rich_budget['ready'] )
-		|| count( $rich_budget['selected'] ) > MAD4B_SCP_MCP_Catalog_Diagnostics::MAX_TOOLS
+        || $rich_budget['selected'] !== $preflight_catalog
+        || ! empty( $rich_budget['excluded_optional'] )
 		|| array_diff( $required_rich, $rich_budget['selected'] )
 		|| array_filter( $preflight_catalog, static function ( $name ) { return 0 === strpos( $name, 'provider/rich-step-' ); } ) )
 		$fail( 'Provider growth must not widen the reviewed direct catalog or exhaust its effective budget.', $rich_budget );
@@ -501,7 +498,7 @@ foreach ( $reviewed_step_up_names as $visible_step_up ) {
 foreach ( array( 'mad4b-site-profile-feature-reenroll', 'mad4b-site-profile-write-enable', 'mad4b-staging-write-grant-reconcile', 'mad4b-staging-write-candidate-bind' ) as $forbidden_internal ) {
 	if ( in_array( $forbidden_internal, $step_names, true ) ) $fail( 'Step-up bearer exposed an internal enrollment primitive directly.', $forbidden_internal );
 }
-if ( count( $step_names ) > MAD4B_SCP_MCP_Catalog_Diagnostics::MAX_TOOLS ) $fail( 'Step-up bearer exceeded direct catalog budget.', count( $step_names ) );
+if ( empty( $step_names ) ) $fail( 'Step-up bearer returned an empty governed catalog.' );
 foreach ( $step_wire->result->tools as $dto ) {
 	if ( ! isset( $dto->inputSchema->properties ) || ! is_object( $dto->inputSchema->properties ) ) $fail( 'Actual wire input properties must remain a JSON object.', $dto->name );
 }

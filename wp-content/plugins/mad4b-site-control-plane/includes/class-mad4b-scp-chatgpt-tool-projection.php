@@ -1030,7 +1030,8 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
                 'max_change_batch' => self::MAX_CHANGE_BATCH,
 				'max_tools' => null,
 				'max_serialized_tool_bytes' => null,
-				'max_single_tool_schema_bytes' => MAD4B_SCP_MCP_Catalog_Budget::limits()['max_bytes'],
+				'max_single_tool_schema_bytes' => class_exists( 'MAD4B_SCP_MCP_Catalog_Budget', false )
+                    ? MAD4B_SCP_MCP_Catalog_Budget::limits()['max_bytes'] : null,
 				'status_page_max' => 25,
 				'status_default_page' => 10,
 				'schema_size_policy' => 'unbounded_total_with_bounded_per_tool_schema_and_paged_gateway',
