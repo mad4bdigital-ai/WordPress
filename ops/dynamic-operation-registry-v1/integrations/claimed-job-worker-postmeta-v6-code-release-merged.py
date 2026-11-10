@@ -619,6 +619,23 @@ def cli_json(args,timeout=30):
   time.sleep(attempt+1)
  raise TransientCentralReadBusy('ORIGINAL_CENTRAL_WPCLI_READ_SLOT_BUSY')
 
+def sign_existing_original_306_claim(job,entry):
+ """Same broker signer and original 306 Claim contract for every transport."""
+ # Sign the original broker claim; this does NOT create a grant or a job.
+ f='/opt/mad4b-company-transport/broker-v1/native-vps-client-principal.py'
+ spec=importlib.util.spec_from_file_location('original_broker_signer_for_claim',f)
+ m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+ signer=m.original_signer();m.check_original_wordpress_signer(signer)
+ now=int(time.time());exp=now+40;nonce=secrets.token_hex(16)
+ fields=['mad4b.central-vps-broker.v1','claim',job,entry['company'],
+         entry['site_uuid'],entry['environment'],entry['broker_host_id'],nonce,str(now),str(exp)]
+ signature=base64.b64encode(signer.sign('\n'.join(fields).encode())).decode()
+ row=cli_json(['mad4b','broker','claim','--job='+job,'--nonce='+nonce,
+   '--issued='+str(now),'--expires='+str(exp),'--signature='+signature])
+ if row.get('job_id')!=job or row.get('state')!='BROKER_CLAIMED_PENDING_INDEPENDENT_HOST_AUTHORITY':
+  raise RuntimeError('ORIGINAL_SIGNED_306_CLAIM_NOT_ACCEPTED')
+ return job
+
 def claim_authorized_job(actor):
  # Original 305/306 has to exist already through an authenticated site owner.
  queued=cli_json(['--user='+str(actor),'mad4b','broker','pending','--limit=10'])
@@ -631,8 +648,11 @@ def claim_authorized_job(actor):
   scope=str(entry.get('company') or '')+':'+str(entry.get('environment') or '')
   target=targets.get(scope)
   if not isinstance(target,dict):continue
-  if entry.get('target_host_id')!='srv2030908' or entry.get('broker_host_id')!='srv2030908':continue
-  if entry.get('site_uuid')!=target.get('site_uuid') or int(entry.get('expires_epoch') or 0)<time.time()+90:continue
+  remote=(target.get('transport_kind')=='hostinger_ssh_wpcli')
+  expected_host=target.get('target_host_id') if remote else 'srv2030908'
+  if entry.get('target_host_id')!=expected_host or entry.get('broker_host_id')!='srv2030908':continue
+  min_lifetime=360 if remote else 90
+  if entry.get('site_uuid')!=target.get('site_uuid') or int(entry.get('expires_epoch') or 0)<time.time()+min_lifetime:continue
   job=entry.get('job_id')
   if not isinstance(job,str) or not HEX32.fullmatch(job):continue
   # Read-only inspection of the original Job's command type and SHA.
@@ -646,10 +666,19 @@ def claim_authorized_job(actor):
   if not (j.get('operation')=='company.remote.wpcli.full'
     and j.get('target_scope')=='wordpress'
     and j.get('command_format')=='wpcli.argv.json.v1'
-    and j.get('job_type')=='signed_vps_wpcli'
+    and j.get('job_type')==('signed_remote_hostinger_wpcli' if remote else 'signed_vps_wpcli')
     and j.get('site_uuid')==entry['site_uuid']
     and j.get('state')=='QUEUED_FOR_VPS_BROKER_CLAIM'):
    continue
+  # Remote lane only admits the existing exact fixed read-only canary.
+  # Original 306 independently validates enrolled 305 and active remote 328
+  # when it consumes this signed Claim. No speculative remote writes.
+  if remote:
+   if (j.get('command_sha256')!=DIGEST
+       or not isinstance(j.get('sealed_argv_sha256'),str)
+       or not re.fullmatch(r'[a-f0-9]{64}',j['sealed_argv_sha256'])):
+    continue
+   return sign_existing_original_306_claim(job,entry)
   selected=allowed.get(j.get('command_sha256'))
   dynamic_candidate=(isinstance(selected,str) and
                      selected.startswith('dynamic:'))
@@ -671,20 +700,7 @@ def claim_authorized_job(actor):
              and re.fullmatch(r'[a-f0-9]{64}',j['sealed_argv_sha256'])
              and generic_preclaim(job))
   if not legacy and not encrypted and not dynamic_ready and not private_candidate and not postmeta_candidate:continue
-  # Sign the original broker claim; this does NOT create a grant or a job.
-  f='/opt/mad4b-company-transport/broker-v1/native-vps-client-principal.py'
-  spec=importlib.util.spec_from_file_location('original_broker_signer_for_claim',f)
-  m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
-  signer=m.original_signer();m.check_original_wordpress_signer(signer)
-  now=int(time.time());exp=now+40;nonce=secrets.token_hex(16)
-  fields=['mad4b.central-vps-broker.v1','claim',job,entry['company'],
-          entry['site_uuid'],entry['environment'],entry['broker_host_id'],nonce,str(now),str(exp)]
-  signature=base64.b64encode(signer.sign('\n'.join(fields).encode())).decode()
-  row=cli_json(['mad4b','broker','claim','--job='+job,'--nonce='+nonce,
-    '--issued='+str(now),'--expires='+str(exp),'--signature='+signature])
-  if row.get('job_id')!=job or row.get('state')!='BROKER_CLAIMED_PENDING_INDEPENDENT_HOST_AUTHORITY':
-   raise RuntimeError('ORIGINAL_SIGNED_306_CLAIM_NOT_ACCEPTED')
-  return job
+  return sign_existing_original_306_claim(job,entry)
  return None
 
 def main():
@@ -705,9 +721,22 @@ def main():
  allowed=operation_digests()
  for row in d['claimed']:
   if not isinstance(row,dict):continue
-  if row.get('target_id')!='srv2030908':continue
+  target_id=row.get('target_id')
+  if target_id not in ('srv2030908','hosting-2','hosting-3'):continue
   job=row.get('job_id')
   if not isinstance(job,str) or not HEX32.fullmatch(job):continue
+  if target_id!='srv2030908':
+   # Only existing preclaimed read Jobs are allowed through the Remote lane.
+   # The actual 312 issuer and 313 executor verify every original record again.
+   binding=exact_host_targets()
+   pinned=next((v for v in binding.values() if isinstance(v,dict)
+     and v.get('transport_kind')=='hostinger_ssh_wpcli'
+     and v.get('target_host_id')==target_id),None)
+   if (not pinned or row.get('command_sha256')!=DIGEST
+       or int(row.get('expires_epoch') or 0)<time.time()+360
+       or (ROOT/'reserved'/(job+'.reserved')).exists()):continue
+   work.append((job,'read'))
+   continue
   operation=allowed.get(row.get('command_sha256'))
   if (isinstance(operation,str) and operation.startswith('dynamic:')
       and not (dynamic_313_original_central_ready(actor) and
