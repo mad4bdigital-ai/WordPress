@@ -38,12 +38,12 @@ assert "67531" not in guard, "QA fixture IDs must not enter the shared module"
 # Source-scope wiring review for the replacement Bootstrap Git blob.
 # These checks do not certify a live site, a release, or write authority.
 import re
-version_header = re.search(r"^ \\* Version: ([^\\s]+)", entry, re.MULTILINE)
-version_constant = re.search(r"define\\( 'MAD4B_SCP_VERSION', '([^']+)' \\);", entry)
+version_header = re.search(r"^ \* Version: ([^\s]+)", entry, re.MULTILINE)
+version_constant = re.search(r"define\( 'MAD4B_SCP_VERSION', '([^']+)' \);", entry)
 assert version_header and version_constant
 assert version_header.group(1) == version_constant.group(1), "Bootstrap version drift"
 required_modules = re.findall(
-    r"require_once MAD4B_SCP_DIR \\. '([^']+\\.php)'\\s*;", entry,
+    r"require_once MAD4B_SCP_DIR \. '([^']+\.php)'\s*;", entry,
 )
 assert len(required_modules) >= 30, "Bootstrap module inventory unexpectedly missing"
 for relative in required_modules:
