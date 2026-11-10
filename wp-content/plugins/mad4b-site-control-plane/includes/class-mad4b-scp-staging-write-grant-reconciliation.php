@@ -203,8 +203,12 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 				'mad4b/runtime-release-set-apply' => 'core',
 				'mad4b/staging-offline-attestor-enroll-apply' => 'core',
 				'mad4b/taxonomy-update-term' => 'core',
-				'mad4b/translation-link-posts' => 'core',
-				'mad4b/translation-set-post-language' => 'core',
+				// The first-party Translation Bridge owns both reversible
+				// content mutations under its certified provider key 'translation'.
+				// Keep these exact pairs Staging-only and grant-eligible only after
+				// the existing owner-reviewed plan, ticket and audit.
+				'mad4b/translation-link-posts' => 'translation',
+				'mad4b/translation-set-post-language' => 'translation',
 				'media/import-external' => 'media',
 				'media/remote-import-apply' => 'media',
 			);
