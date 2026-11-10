@@ -115,7 +115,12 @@ final class MAD4B_SCP_Elementor_CSS_Existing_Provider_Bridge {
         return $findings;
     }
 }
-add_filter('mad4b_scp_dynamic_provider_manifests',
-    array('MAD4B_SCP_Elementor_CSS_Existing_Provider_Bridge','manifest'),20,1);
-add_filter('mad4b_scp_dynamic_content_policy_findings',
-    array('MAD4B_SCP_Elementor_CSS_Existing_Provider_Bridge','validate'),20,4);
+// Only register WordPress hooks after its hook API is available. Standalone
+// pure-policy tests may load this file before the WordPress runtime exists;
+// the real WordPress plugin boot still registers both original filters.
+if (function_exists('add_filter')) {
+    add_filter('mad4b_scp_dynamic_provider_manifests',
+        array('MAD4B_SCP_Elementor_CSS_Existing_Provider_Bridge','manifest'),20,1);
+    add_filter('mad4b_scp_dynamic_content_policy_findings',
+        array('MAD4B_SCP_Elementor_CSS_Existing_Provider_Bridge','validate'),20,4);
+}

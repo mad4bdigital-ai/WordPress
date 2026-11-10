@@ -362,12 +362,10 @@ foreach ( array(
 	if ( in_array( $hidden_tool, $names, true ) ) $fail( 'OAuth bearer tools/list leaked a capability that must stay behind governed discovery.', $hidden_tool );
 }
 
-if ( count( $names ) > 36 ) {
-	$fail( 'OAuth bearer tools/list exceeded the session-safe refresh/fanout budget.', array( 'tool_count' => count( $names ), 'budget' => 36 ) );
-}
-if ( $tools_payload_bytes > 131072 ) {
-	$fail( 'OAuth bearer tools/list exceeded the refresh payload budget.', array( 'payload_bytes' => $tools_payload_bytes, 'budget_bytes' => 131072 ) );
-}
+// Complete tools/list discovery has no fixed global count or byte ceiling.
+// Check the actual protocol, per-tool schema validity and authorization
+// boundaries instead. Payload size remains a measured performance metric,
+// never a reason to suppress valid tools or silently truncate the catalog.
 
 $refresh_latency_budget_ms = 5000.0;
 if ( $initialize_elapsed_ms > $refresh_latency_budget_ms ) {

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import json
+import re
 from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
@@ -308,4 +309,11 @@ for cli_test in ('runtime-chatgpt-tool-inventory-smoke.php', 'runtime-chatgpt-dy
         for line in cli_workflow.splitlines()
     ), f'explicit MCP-only CLI lifecycle missing for {cli_test}'
 assert cli_workflow.count('MAD4B_SCP_MCP_CLI_REQUEST=1 php /tmp/wp-cli.phar eval-file') == 2
+# Never reintroduce global count/total-byte test vetoes over a valid MCP
+# inventory. Per-tool schema and permission checks are separate hard gates.
+for smoke_name in ('runtime-chatgpt-tool-inventory-smoke.php', 'runtime-local-oauth-chatgpt-http-smoke.php'):
+    smoke = (root / 'tests' / smoke_name).read_text(encoding='utf-8')
+    assert not re.search(r'count\(\s*\$(?:actual_names|names)\s*\)\s*>\s*(?:36|64)\b', smoke), smoke_name
+    assert 'MCP_Catalog_Diagnostics::MAX_TOOLS' not in smoke, smoke_name
+    assert 'MCP_Catalog_Diagnostics::MAX_SERIALIZED_TOOL_BYTES' not in smoke, smoke_name
 print('mad4b.site-control-plane.mcp-client-compatibility.v12: PASS')

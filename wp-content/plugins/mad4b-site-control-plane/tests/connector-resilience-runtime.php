@@ -540,7 +540,7 @@ $topology_only_summary['next_actions'][] = 'repair_adapter_ability_lifecycle_reg
 $writer_before_adapter = $next_step_method->invoke( null, false, array(), $topology_only_summary );
 mad4b_assert_true( 'inspect_database_writer_topology' === $writer_before_adapter['action'], 'Writer readiness must precede a governed read that needs preparation storage' );
 $unknown_operator = $operator_method->invoke( null, array(), false, array(), array( 'environment' => 'staging' ) );
-mad4b_assert_true( 'DEGRADED' === $unknown_operator['state'], 'Missing operational readiness must not be projected as HEALTHY' );
+mad4b_assert_true( 'BLOCKED' === $unknown_operator['state'], 'Missing read identity must block readiness rather than claim HEALTHY' );
 mad4b_assert_true( in_array( 'database_topology_ready_unknown', $unknown_operator['reasons'], true ), 'Unknown topology evidence must remain explicit' );
 $null_write_sections = array( 'runtime' => array( 'checks' => array( 'write_authority' => array( 'summary' => array( 'effective_authority_ready' => null, 'candidate_binding_match' => null, 'current_grant_snapshot_ready' => null ) ) ) ) );
 $null_operator = $operator_method->invoke( null, $null_write_sections, false, array(), array() );

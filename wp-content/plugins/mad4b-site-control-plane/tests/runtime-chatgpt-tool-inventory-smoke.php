@@ -244,9 +244,9 @@ foreach ( $hidden_write_required as $ability_name ) {
 	}
 }
 
-if ( count( $actual_names ) > 36 ) {
-	$fail( 'Session-safe ChatGPT tools/list exceeded the reduced refresh/fanout-safety budget.', array( 'tool_count' => count( $actual_names ), 'budget' => 36 ) );
-}
+// No historical 36/64-count gate: the actual inventory has already been
+// compared to every vetted, expected protocol name above. Visibility and
+// execution boundaries are still independently asserted below.
 
 $discover = wp_get_ability( 'mad4b/tool-discover' );
 $info = wp_get_ability( 'mad4b/tool-info' );
