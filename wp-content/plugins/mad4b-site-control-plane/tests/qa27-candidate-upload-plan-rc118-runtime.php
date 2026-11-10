@@ -26,7 +26,7 @@ class MAD4B_SCP_Site_Profile {
  public static function status(){return ['site_uuid'=>'d745d81f-6fc4-5c6a-99dd-d953c92137bf','deployment_binding_configured'=>true,'same_origin_clone_protection'=>true];}
 }
 function wp_safe_remote_get($url,$args){
- if(!str_starts_with($url,'https://api.github.com/repos/mad4bdigital-ai/WordPress/commits/'))return new WP_Error('foreign_source');
+ if(!str_starts_with($url,'https://api.github.com/repos/mad4bdigital-ai/WordPress/git/commits/'))return new WP_Error('foreign_source');
  $ref=substr($url,strrpos($url,'/')+1);
  if($ref===str_repeat('f',40))return new WP_Error('disconnected');
  return ['code'=>200,'body'=>json_encode(['sha'=>$ref])];

@@ -88,7 +88,9 @@ final class MAD4B_SCP_Staging_Source_Selector {
 		} elseif ( 'branch' === $type ) {
 			$path = '/branches/' . rawurlencode( $reference );
 		} else {
-			$path = '/commits/' . $reference;
+			// Git Data commits return bounded SHA/tree/parent provenance without the
+            // potentially unbounded per-file diff from REST /commits/{sha}.
+            $path = '/git/commits/' . $reference;
 		}
 		$url = 'https://api.github.com/repos/' . $repo . $path;
 		$response = wp_safe_remote_get( $url, array(
