@@ -86,8 +86,35 @@ foreach ( $reviewed_step_up_abilities as $ability_name ) {
     if ( ! in_array( $ability_name, $budget['selected'], true )
         || ! empty( $budget['excluded_optional'] ) )
         $fail( 'Dynamic catalog silently excluded a reviewed direct step-up.', $ability_name );
-    if ( empty( $reviewed_step_up_by_ability[ $ability_name ] ) )
-        $fail( 'Reviewed direct step-up ability has no bound MCP tool.', $ability_name );
+    if ( empty( $reviewed_step_up_by_ability[ $ability_name ] ) ) {
+        // Bounded, secret-free diagnostics; this still FAILS the exact
+        // registration contract and never injects or auto-admits a missing tool.
+        $registration = MAD4B_SCP_Servers::registration_status();
+        $catalog = is_array( $registration['mad4b-chatgpt'] ?? null )
+            ? $registration['mad4b-chatgpt'] : array();
+        $matches = array();
+        foreach ( (array) ( $catalog['preflight']['failures'] ?? array() ) as $failure ) {
+            if ( ! is_array( $failure ) || ( $failure['failing_ability'] ?? '' ) !== $ability_name ) continue;
+            $matches[] = array(
+                'stage' => (string) ( $failure['stage'] ?? '' ),
+                'error_code' => (string) ( $failure['error_code'] ?? '' ),
+                'error_class' => (string) ( $failure['error_class'] ?? '' ),
+            );
+        }
+        $fail( 'Reviewed direct step-up ability has no bound MCP tool.', array(
+            'ability' => $ability_name,
+            'requested_in_actual_catalog' => in_array( $ability_name, $all_requested, true ),
+            'allowed_by_budget' => in_array( $ability_name, $budget['selected'], true ),
+            'optional_projection' => in_array( $ability_name, $optional, true ),
+            'preflight_failure_codes' => array_slice( $matches, 0, 3 ),
+            'descriptor_quarantined' => in_array(
+                $ability_name,
+                (array) ( $catalog['capability_descriptor_evidence']['quarantined_abilities'] ?? array() ),
+                true
+            ),
+            'registration_error' => (string) ( $catalog['error'] ?? '' ),
+        ) );
+    }
 }
 $reviewed_step_up_names = array_values( array_unique( $reviewed_step_up_names ) );
 sort( $reviewed_step_up_names );
