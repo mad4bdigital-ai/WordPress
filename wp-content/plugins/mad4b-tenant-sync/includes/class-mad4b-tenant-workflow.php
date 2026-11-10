@@ -32,26 +32,15 @@ final class MAD4B_Tenant_Workflow {
             // Company approval Submit/Review is an ordinary tenant-owned
             // operation, not an environment migration. Never infer authority
             // from staging/production labels, but require verified host scope.
-            if($operation==='approval'){
-                if(!class_exists('MAD4B_SCP_Site_Profile'))return self::err('profile_missing');
-                $binding=MAD4B_SCP_Site_Profile::status();
-                if(empty($binding['configured'])||empty($binding['authority_ready'])
-                    ||empty($binding['same_origin_clone_protection'])
-                    ||empty($binding['origin_match'])
-                    ||empty($binding['deployment_binding_match'])
-                    ||!empty($binding['mutation_pending_audit'])
-                    ||(string)($binding['site_uuid']??'')!==(string)$p['site_uuid'])
-                    return self::err('company_host_binding_unverified');
-                $scheme=wp_parse_url((string)get_option('home'),PHP_URL_SCHEME);
-                if($scheme!=='https' && wp_get_environment_type()!=='local')
-                    return self::err('secure_origin_required');
-            } elseif(!in_array(wp_get_environment_type(),['local','staging'],true)) {
-                // Schema provisioning and unrelated writes stay isolated.
-                return self::err('schema_provision_environment_restricted');
-            }
-            if(!class_exists('MAD4B_SCP_Audit')
-                ||empty(MAD4B_SCP_Audit::storage_status()['ready']))
-                return self::err('audit_not_ready');
+            $binding=class_exists('MAD4B_Tenant_Operation_Authority',false)
+                ?MAD4B_Tenant_Operation_Authority::status(true):null;
+            if(!is_array($binding)
+                ||(string)($binding['site_uuid']??'')!==(string)$p['site_uuid'])
+                return self::err('company_host_binding_unverified');
+            // Approval is an ordinary audited write; schema has a separate
+            // signed DDL authorization checked by install() below.
+            if(!MAD4B_Tenant_Operation_Authority::secure_origin())
+                return self::err('secure_origin_required');
         }
         return $p;
     }
@@ -65,10 +54,8 @@ final class MAD4B_Tenant_Workflow {
         $read=is_array($p) && !empty($p['ready'])
             && !empty($p['site_uuid']);
         $environment=wp_get_environment_type();
-        // Legacy schema/seed writes remain environment restricted.
-        // Approval Submit/Review readiness uses the stronger native
-        // site, origin, deployment and audit checks instead.
-        $write_environment=in_array($environment,['local','staging'],true);
+        // Host binding, not the Staging/Production label, controls scope.
+        $write_environment=MAD4B_Tenant_Operation_Authority::local_write();
         $approval=self::profile(true,'approval');
         $approval_ready=is_array($approval) && !empty($approval['site_uuid']);
         $audit=class_exists('MAD4B_SCP_Audit')
@@ -84,7 +71,8 @@ final class MAD4B_Tenant_Workflow {
             'audit_storage_ready'=>$audit_ready,
             'actor_can_review'=>$reviewer,
             'write_environment_eligible'=>$write_environment,
-            'schema_provision_environment_eligible'=>$write_environment,
+            'schema_provision_environment_eligible'=>MAD4B_Tenant_Operation_Authority::schema(
+                'tenant.workflow.schema',[self::table()]),
             'approval_write_scope_ready'=>$approval_ready,
             'request_submit_ready'=>$read && $table && $audit_ready
                 && $approval_ready && get_current_user_id()>0,
@@ -121,10 +109,10 @@ final class MAD4B_Tenant_Workflow {
             'SHOW TABLES LIKE %s',$wpdb->esc_like(self::table())))===self::table();
     }
     public static function install(){
-        $p=self::profile(true);
+        $p=self::profile(true,'schema');
         if(is_wp_error($p))return $p;
-        if(!defined('WP_CLI')||!WP_CLI||get_current_user_id()!==0)
-            return self::err('owner_staging_cli_required');
+        if(!MAD4B_Tenant_Operation_Authority::schema('tenant.workflow.schema',[self::table()]))
+            return self::err('signed_schema_migration_authority_required');
         if(!function_exists('dbDelta'))require_once ABSPATH.'wp-admin/includes/upgrade.php';
         global $wpdb;
         $table=self::table();$collate=$wpdb->get_charset_collate();
