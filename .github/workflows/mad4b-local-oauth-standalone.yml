@@ -214,8 +214,39 @@ jobs:
             fi
             test "$OBSERVED_AUTOLOAD_SHA" = "$TARGET_AUTOLOAD_SHA"
           fi
-          rm -rf "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
-          cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
+          # Install the same deterministic, manifest-bearing format as the
+          # canonical distribution path. Copying raw source without provenance
+          # fails the real MCP MU cache-convergence gate (HTTP 503), and
+          # disabling that gate would invalidate this browser acceptance.
+          CI_CONTROL_ROOT="$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
+          CI_STAGE="$(mktemp -d /tmp/mad4b-oauth-package.XXXXXX)"
+          cp -R "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane" "$CI_STAGE/mad4b-site-control-plane"
+          CI_CONTROL_VERSION="$(awk '$1 == "*" && $2 == "Version:" { print $3; exit }' "$CI_STAGE/mad4b-site-control-plane/mad4b-site-control-plane.php")"
+          test -n "$CI_CONTROL_VERSION"
+          CI_ADAPTER_SHA="$(sha256sum "$ADAPTER_ARCHIVE" | awk '{ print $1 }')"
+          test "${#CI_ADAPTER_SHA}" = 64
+          python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/build-deterministic-control-plane-package.py" \
+            --root "$CI_STAGE/mad4b-site-control-plane" \
+            --output-zip "$CI_STAGE/mad4b-control-plane-ci.zip" \
+            --version "$CI_CONTROL_VERSION" \
+            --source-sha "${{ github.event.pull_request.head.sha || github.sha }}" \
+            --adapter-version "$EXPECTED_ADAPTER_VERSION" \
+            --adapter-sha "$CI_ADAPTER_SHA" \
+            --receipt-output "$CI_STAGE/canonical-build-receipt.json"
+          python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/materialize-packaged-plugin.py" \
+            --archive "$CI_STAGE/mad4b-control-plane-ci.zip" \
+            --plugins-dir "$WP_PATH/wp-content/plugins" \
+            --slug mad4b-site-control-plane
+          python3 - "$CI_CONTROL_ROOT/MAD4B-BUILD-PROVENANCE.json" "${{ github.event.pull_request.head.sha || github.sha }}" <<'PYPROVENANCE'
+          import json, sys
+          from pathlib import Path
+          manifest = json.loads(Path(sys.argv[1]).read_text(encoding='utf-8'))
+          if (manifest.get('contract') != 'mad4b.build-provenance.v1'
+                  or manifest.get('source_commit_sha') != sys.argv[2]
+                  or not manifest.get('package_files')):
+              raise SystemExit('Local OAuth CI: canonical package provenance unavailable')
+          print('LOCAL_OAUTH_CANONICAL_INSTALL_PROVENANCE=PASS')
+          PYPROVENANCE
           php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
           php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
           INSTALLED_ADAPTER_VERSION="$(php /tmp/wp-cli.phar eval '
