@@ -1,0 +1,36 @@
+{
+  "base_head": "30d05e578a85902bed80be5282d89ccc10224e54",
+  "checked_utc": "2026-11-11T04:30:14.596072+00:00",
+  "contract": "mad4b.portfolio-historical-install-intent-reconcile.v1",
+  "existing_job_scope_identity_required": true,
+  "files": [
+    {
+      "base_sha256": "13823b0944169acf47d14b8e917aa38990f815482d2c21a39f9f2b41c3388754",
+      "candidate_sha256": "26640192da40670382f2d53abbd4a2e3fda4caabc8e4eae1855999335dd5cdf3",
+      "live_sha256": "26640192da40670382f2d53abbd4a2e3fda4caabc8e4eae1855999335dd5cdf3",
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-experience-install-owner-launch.php",
+      "scope": "readback_history_only_or_provenance_disclosure"
+    },
+    {
+      "base_sha256": "86e0c07105beca7c4b2ea4b2bd80976a47cffb44538c4a130ab6bc7140a3ccee",
+      "candidate_sha256": "3171e9eff65943a640588d5f0245191e69264b58ff2592819f2914326d516ba2",
+      "live_sha256": "3171e9eff65943a640588d5f0245191e69264b58ff2592819f2914326d516ba2",
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-native-plugin-install-provider.php",
+      "scope": "readback_history_only_or_provenance_disclosure"
+    },
+    {
+      "base_sha256": "0b55c955761e33c47e04376a27e1c1ef4b1efede68a78858277da2782472aa49",
+      "candidate_sha256": "2a18cead510442c7212c515c33fd057c8a436f00612a310e1c3facb4af8ef854",
+      "live_sha256": "2a18cead510442c7212c515c33fd057c8a436f00612a310e1c3facb4af8ef854",
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-plugin-sync-operation.php",
+      "scope": "readback_history_only_or_provenance_disclosure"
+    }
+  ],
+  "global_release_authorized": false,
+  "historical_install_not_original313_certificate": true,
+  "no_company_files_installed": true,
+  "no_new_grants_issued": true,
+  "no_new_job_issued": true,
+  "runtime_status_tested_on_live_site": false,
+  "source_site": "tours.dev.mad4b.com"
+}

@@ -108,7 +108,12 @@ final class MAD4B_Company_Plugin_Sync_Operation {
    'original_305_submission_ready'=>$native['original_305_submission_ready']??false,
    'plan_specific_313_certified'=>$native['plan_specific_313_certified']??false,
    'next_stage'=>$native['next_stage']??'NATIVE_READBACK_REQUIRED',
-   'generated_at'=>$rec['generated_at'],'isolated_test_pass'=>false,'production_mutation_authorized'=>false));
+   'generated_at'=>$rec['generated_at'],'isolated_test_pass'=>false,'production_mutation_authorized'=>false,
+   'lifecycle_stage'=>'INTENT_ONLY_NOT_NATIVE_JOB',
+   'original_305_job_issued'=>false,'original_306_claimed'=>false,
+   'native_312_executed'=>false,'independent_313_verified'=>false,
+   'operation_coverage'=>'regular_plugin_install_only',
+   'mu_plugin_deploy_requires_dedicated_provider'=>true));
  }
  public static function request_job($request){
   $company=self::company($request);if(is_wp_error($company))return $company;
@@ -169,7 +174,11 @@ final class MAD4B_Company_Plugin_Sync_Operation {
     return new WP_Error('mad4b_company_sync_job_readback_failed','Job mapping readback failed',array('status'=>503));
    return self::reply(array('contract'=>self::CONTRACT,'state'=>'PLANNED_NOT_EXECUTED','operation_id'=>$id,
     'journal'=>$started,'company'=>$company['code'],'plan_hash'=>$rec['plan_hash'],
-    'production_mutation_authorized'=>false),201);
+    'production_mutation_authorized'=>false,
+    'journal_record_kind'=>'PLANNED_INTENT_NOT_ORIGINAL_305_JOB',
+    'original_305_job_issued'=>false,'original_306_claimed'=>false,
+    'native_312_executed'=>false,'independent_313_verified'=>false,
+    'mu_plugin_deploy_requires_dedicated_provider'=>true),201);
   } finally {
    $wpdb->get_var($wpdb->prepare('SELECT RELEASE_LOCK(%s)',$lock));
   }

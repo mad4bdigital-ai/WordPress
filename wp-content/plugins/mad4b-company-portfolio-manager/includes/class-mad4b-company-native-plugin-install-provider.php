@@ -42,6 +42,17 @@ final class MAD4B_Company_Native_Plugin_Install_Provider_V1 {
             return self::result('CENTRAL_STAGING_ONLY');
         if(!class_exists('MAD4B_Central_VPS_Broker_V1',false))
             return self::result('ORIGINAL_305_CORE_NOT_LOADED');
+        // A completed installation is a resource state, not a fresh 305 capability.
+        $owner='MAD4B_Company_Experience_Install_Owner_V1';
+        if(class_exists($owner,false) && is_callable([$owner,'terminal_status'])) {
+            $terminal=$owner::terminal_status();
+            if(($terminal['state']??null)==='INSTALLED_HISTORICALLY_RECONCILED') {
+                $done=self::result('ALREADY_INSTALLED_NO_NEW_JOB_REQUIRED');
+                $done['state']=$terminal['state'];
+                $done['resource_inventory_state']=$terminal['inventory_state'];
+                return $done;
+            }
+        }
         $class='MAD4B_Company_Native_Plugin_Install_Handler_V1';
         if(!class_exists($class,false) || !is_callable([$class,'capability_status']))
             return self::result('EXACT_312_PLUGIN_INSTALL_HANDLER_NOT_INSTALLED');

@@ -67,6 +67,45 @@ final class MAD4B_Company_Experience_Install_Owner_V1 {
    'command_sha256'=>$command,'argv'=>$argv,'site_uuid'=>self::SITE,
    'plan_hash'=>$inventory['plan_hash']];
  }
+ /** Signed historical evidence is a completed resource, not a new 305 authority. */
+ public static function terminal_status():array {
+  $tracked=self::stored_job();
+  if(!$tracked)return [];
+  $id=(string)($tracked['job_id']??'');
+  if(!preg_match('/^[a-f0-9]{32}$/D',$id))return [];
+  $job=get_option(MAD4B_Central_VPS_Broker_V1::JOB.$id,false);
+  $history=get_option('mad4b_original_wpcli_historical_reconciliation_v1_'.$id,false);
+  if(!is_array($job)||!is_array($history)
+    ||($job['state']??null)!=='WPCLI_HISTORICAL_EXECUTION_READBACK_RECONCILED'
+    ||($job['job_id']??null)!==$id
+    ||($job['company']??null)!==self::COMPANY
+    ||($job['environment']??null)!==self::ENV
+    ||($job['site_uuid']??null)!==self::SITE
+    ||($job['canonical_origin']??null)!==self::ORIGIN
+    ||($job['command_sha256']??null)!==($tracked['command_sha256']??null)
+    ||($job['executed']??null)!==true
+    ||($job['independent_readback_verified']??null)!==true
+    ||($job['original_313_certified']??null)!==false
+    ||($history['contract']??null)!=='mad4b.original-wpcli-historical-evidence-reconciliation.v1'
+    ||($history['job_id']??null)!==$id
+    ||($history['state']??null)!==$job['state']
+    ||($history['observed_operation']??null)!=='plugin.install'
+    ||($history['original_execution_mutated_production']??null)!==true
+    ||($history['original_313_certified']??null)!==false)return [];
+  $snapshots=get_option('mad4b_company_plugin_target_inventory_readback_v1',[]);
+  $seen=is_array($snapshots)?($snapshots[self::COMPANY.':'.self::ENV]??null):null;
+  $observed=is_array($seen)?strtotime((string)($seen['observed_at']??'')):false;
+  $current=is_array($seen)&&($seen['site_uuid']??null)===self::SITE
+    &&($seen['canonical_origin']??null)===self::ORIGIN
+    &&($seen['contract']??null)==='mad4b.company-plugin-target-readback.v1'
+    &&($seen['readback_kind']??null)==='LIVE_COOLIFY_WPCLI_OBSERVATION'
+    &&($seen['install_missing_count']??null)===0
+    &&($seen['activation_needed_count']??null)===0
+    &&$observed!==false&&time()-$observed<=3600;
+  return ['state'=>'INSTALLED_HISTORICALLY_RECONCILED','job_id'=>$id,
+    'inventory_state'=>$current?'NO_MISSING_OR_INACTIVE':'REFRESH_NEEDED',
+    'original_313_certified'=>false,'reinstallation_required'=>false];
+ }
  private static function stored_job():?array {
   $v=get_option(self::STORE,false);
   return is_array($v)&&($v['contract']??null)==='mad4b.experience-owner-original305.v1'
@@ -234,6 +273,13 @@ final class MAD4B_Company_Experience_Install_Owner_V1 {
     ||($job['environment']??null)!==self::ENV
     ||($job['command_sha256']??null)!==($tracked['command_sha256']??null))
    return new WP_Error('original_job_scope_mismatch','Exact job not verified',['status'=>404]);
+  $terminal=self::terminal_status();
+  if(($terminal['job_id']??null)===$id)
+   return rest_ensure_response($terminal+[
+     'historical_reconciliation_verified'=>true,
+     'receipt_verification_required'=>false,
+     'receipt_only_recovery_required'=>false,
+     'production_mutation_verified'=>false]);
   // Read ORIGINAL signed 313 and its independent native finish. Never turn a
   // queued/claimed Job or the 312 capability heartbeat into a certificate.
   $read=class_exists('MAD4B_Broker_Remote_SSH_Receipt_V1',false)
@@ -259,6 +305,13 @@ final class MAD4B_Company_Experience_Install_Owner_V1 {
   if(($target['company_code']??null)!==self::COMPANY
     ||($target['environment']??null)!==self::ENV
     ||($target['site_uuid']??null)!==self::SITE)return;
+  $terminal=self::terminal_status();
+  if($terminal) {
+   echo '<h3>Experience installation — completed</h3>';
+   echo '<p role="status"><strong>INSTALLED_HISTORICALLY_RECONCILED</strong> — Job <code>'.esc_html($terminal['job_id']).'</code>. No new installation is required.</p>';
+   echo '<p>Current plugin inventory: '.esc_html($terminal['inventory_state']).'. Original 313 in-window certificate: <strong>NOT ISSUED</strong>. Historical signed evidence is preserved.</p>';
+   return;
+  }
   $plan=self::plan();$ready=($plan['ready']??false)===true;
   $tracked=self::stored_job();
   $blocked=self::prior_blocks($tracked,(string)($plan['command_sha256']??''))
