@@ -28,12 +28,14 @@ def verify(data, root=ROOT, live_root=None):
         raise Blocked('INVALID_RELEASE_SOURCE_CLAIM')
     overlays=data.get('approved_candidate_overlays')
     php_path=ROOT_NAME+'/modules/presentation/unified-date-presentation-v1.php'
-    js_path=ROOT_NAME+'/modules/presentation/assets/unified-date-v0.3.2.js'
     allowed_overlays={
-        php_path:('read_only_and_intersection_fail_closed','offline_php_cases_passed',27),
-        js_path:('clear_wpml_stale_date_and_empty_fluent_input','offline_js_cases_passed',23),
+        php_path:('read_only_and_intersection_fail_closed','offline_php_cases_passed',45),
+        ROOT_NAME+'/modules/presentation/assets/unified-date-v0.3.5.js':
+            ('clear_wpml_stale_date_and_empty_fluent_input','offline_js_cases_passed',23),
+        ROOT_NAME+'/modules/presentation/assets/unified-date-v0.3.2.js':
+            ('clear_wpml_stale_date_and_empty_fluent_input','offline_js_cases_passed',23),
     }
-    if not isinstance(overlays,list) or len(overlays)!=2:
+    if not isinstance(overlays,list) or len(overlays)!=3:
         raise Blocked('SEMANTIC_OVERLAY_COUNT_OR_SCOPE_DRIFT')
     sem_by_path={}
     for item in overlays:
@@ -62,7 +64,7 @@ def verify(data, root=ROOT, live_root=None):
     if set(sem_by_path)!=set(allowed_overlays):
         raise Blocked('REQUIRED_SEMANTIC_OVERLAY_MISSING')
     items=data.get('files')
-    if not isinstance(items,list) or len(items)!=278:
+    if not isinstance(items,list) or len(items)!=286:
         raise Blocked('COMMERCE_SOURCE_COUNT_DRIFT')
     seen=set()
     groups={'.php':0,'.js':0,'.css':0}
@@ -102,7 +104,7 @@ def verify(data, root=ROOT, live_root=None):
                 or digest(raw)!=row['sha256']
                 or blob(raw)!=row['git_blob_sha1']):
                 raise Blocked('COMMERCE_SOURCE_SHA_MISMATCH')
-    if groups!={'.php':238,'.js':26,'.css':14}:
+    if groups!={'.php':238,'.js':31,'.css':17}:
         raise Blocked('COMMERCE_CODE_TYPE_DRIFT')
     if (ROOT_NAME+'/mad4b-commerce.php' not in seen
         or ROOT_NAME+'/legacy-mu-tree/shared-product-core/adapters/rate-actions-styles.php' not in seen):
@@ -123,10 +125,10 @@ def verify(data, root=ROOT, live_root=None):
         if (Path(root)/ROOT_NAME/name).exists():
             raise Blocked('UNREVIEWED_BACKUP_FILE_IMPORTED')
     return {
-        'state':'COMMERCE_SOURCE_VERIFIED_WITH_TWO_EXACT_DATE_SEMANTIC_PATCHES__HOLD',
+        'state':'COMMERCE_V035_SOURCE_WITH_THREE_BOUNDED_PHP_AND_JS_GUARDS__HOLD',
         'source_files_verified':len(seen),
-        'semantic_overlays_verified':2,
-        'live_files_byte_identical_to_candidate':len(seen)-2,
+        'semantic_overlays_verified':3,
+        'live_files_byte_identical_to_candidate':len(seen)-3,
         'code_by_type':groups,
         'live_readback_checked':live_root is not None,
         'original_currency_symlink_not_replayed':True,

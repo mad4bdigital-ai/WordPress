@@ -1,0 +1,40 @@
+{
+  "browser_acceptance_passed": false,
+  "candidate_035_js_git_blob_sha1": "504815ea31307bfb8b9d73f19a7a4c8e4a10b098",
+  "candidate_035_js_sha256": "3d7f15896dc21b7da3b08feff5baf596ad4a57c3a01ed21c62ecafb47133b75c",
+  "candidate_php_git_blob_sha1": "b70ca2bc8050a47d98f480b8fb7e292b5e463ad9",
+  "candidate_php_sha256": "6af96e24e88482661221ab706a4a28dde12ea27f97f9344f51bb0557985f766f",
+  "contract": "mad4b.unified-date-v0.3.5-postin-guard.v1",
+  "created_at_utc": "2026-11-11T06:58:11.137409+00:00",
+  "explicit_prior_post_in_zero_is_deny_all": true,
+  "js_active_offline_cases_passed": 23,
+  "live_035_js_sha256": "4e9061a3d95118c2570f2aaa4f2a53fdd526a5255984ac3c9bf39f4a2c632571",
+  "live_runtime_qa_passed": false,
+  "live_source_patched_by_this_action": false,
+  "no_new_price_booking_or_order_writes": true,
+  "parent_git_sha": "2e0dbd350abc4692dbb9c9447364b29b6a8c2c6c",
+  "php_offline_cases_passed": 45,
+  "previous_local_php_sha256": "3c523e6fa8facf07ff3e45b0944560b0594ade2db532d907f05075913001e0a8",
+  "release_authorized": false,
+  "source_date_browser_test_scripts_imported_but_not_executed": true,
+  "source_js_css_035_byte_exact": false,
+  "source_php_sha256": "05a7bdb599246c2fc2982e7c7e2d9a270130dc0c624e93c5c0f7129a639c02ab",
+  "source_site": "tours.dev.mad4b.com",
+  "three_filter_lanes_runtime_mocked": true,
+  "three_lanes": [
+    "tour_archive",
+    "jetsearch",
+    "tour_rate_query_310"
+  ],
+  "two_previous_wpml_clear_and_fluent_empty_protections_preserved": true,
+  "verified_source_assets": {
+    "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.3.3.css": "3c82478ec2cd31ea0c62eed824ae2d037290722c49b2480d24081f8e2bc669ab",
+    "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.3.3.js": "4040755f28e2f3cf55e244a53229da3ee49208737c32705072a62a670b729dde",
+    "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.3.4.css": "3a1c9a61bfe3ea49322fabc9a84a61fb11a063b39e314be16def2ebdeb0f10a2",
+    "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.3.4.js": "c1fbf508a0e5cc97a3bce70c1db670d98ff47f48365b162060a0f73b857cef8a",
+    "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.3.5.css": "3a1c9a61bfe3ea49322fabc9a84a61fb11a063b39e314be16def2ebdeb0f10a2",
+    "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.3.5.js": "4e9061a3d95118c2570f2aaa4f2a53fdd526a5255984ac3c9bf39f4a2c632571",
+    "wp-content/plugins/mad4b-commerce/tests/browser/date-intent/unified-date-cross-page.test.js": "b9414bbd469f80f386dcebcd1aa7dc4fbf22d842b0244ea44deffbef0397e076",
+    "wp-content/plugins/mad4b-commerce/tests/browser/date-intent/unified-date-regression.test.js": "91f9f79474c4ecc10a11e6ccb29695ea540bf79ab435c8fdfb69b062d8139725"
+  }
+}

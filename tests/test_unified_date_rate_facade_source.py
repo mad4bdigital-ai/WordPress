@@ -2,8 +2,8 @@
 from pathlib import Path
 import unittest
 ROOT=Path(__file__).resolve().parents[1]
-JS=(ROOT/'wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.3.2.js').read_text()
-CSS=(ROOT/'wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.3.2.css').read_text()
+JS=(ROOT/'wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.3.5.js').read_text()
+CSS=(ROOT/'wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.3.5.css').read_text()
 MU=(ROOT/'wp-content/mu-plugins/mad4b-tour-form6-submission-mode-v1.php').read_text()
 class Facade(unittest.TestCase):
  def test_preserve_single_native_provider(self):
@@ -44,8 +44,8 @@ class Facade(unittest.TestCase):
   self.assertIn('/^(USD|EUR|EGP|GBP)$/.test',JS)
 
  def test_url_apply_clear_and_server_source(self):
-  self.assertIn("if(context==='archive')applyDateIntent('archive')",JS)
-  self.assertIn("applyDateIntent('rates')",JS)
+  self.assertIn("applyDateIntent('archive',draft)",JS)
+  self.assertIn("applyDateIntent('rates',stagedRateIntent||state)",JS)
   self.assertIn("_meta_query_advanced_date__any__tour_rate_start_date__tour_rate_end_date|date",JS)
   self.assertIn("syncLegacy('apply')",JS)
   self.assertIn("syncLegacy('clear')",JS)

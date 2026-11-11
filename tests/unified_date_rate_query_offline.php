@@ -1,5 +1,7 @@
 <?php
 /** Offline native query-310 date AND test; fake WordPress, no database writes. */
+namespace WCML\functions { function getSitePress(){ return (object)[]; } }
+namespace {
 define('ABSPATH','/offline');
 define('DAY_IN_SECONDS',86400);
 class WP_Error {
@@ -31,8 +33,12 @@ function wp_unslash($v){return stripslashes($v);}
 function sanitize_text_field($v){return trim((string)$v);}
 function wp_json_encode($v,$flags=0){return json_encode($v,$flags);}
 function get_post_type($id){return $id===99?'tours-and-activities':(in_array($id,[101,102],true)?'tour-rates':'not-a-tour');}
-function get_post_status($id){return in_array($id,[101,102],true)?'publish':'draft';}
+function get_post_status($id){return in_array($id,[99,101,102],true)?'publish':'draft';}
+function has_filter($hook){return false;}
+function get_posts($args){return [101];}
+
 function get_post_meta($id,$key,$single=true){
+ if ($key==='related_tour_id')return $id===101?99:0;
  $dates=[
   101=>['tour_rate_start_date'=>strtotime('2027-01-01 00:00:00 UTC'),'tour_rate_end_date'=>strtotime('2027-03-01 23:59:59 UTC')],
   102=>['tour_rate_start_date'=>strtotime('2028-01-01 00:00:00 UTC'),'tour_rate_end_date'=>strtotime('2028-03-01 23:59:59 UTC')]
@@ -48,10 +54,50 @@ $and='mad4b_unified_date_intersect_post_ids_v1';
 check($and([101,102],[])===[101,102],'unconstrained native list can narrow normally');
 check($and([101,102],['post__in'=>[]])===[101,102],'empty native list does not deny');
 check($and([101,102],['post__in'=>[0]])===[0],'native deny-all remains deny-all');
+check($and([101,102],['post__in'=>[0,101]])===[0],
+ 'mixed zero and valid Rate ID must not broaden an upstream deny-all sentinel');
+check($and([101,102],['post__in'=>[101,0]])===[0],
+ 'upstream deny-all sentinel is honored regardless of list order');
+check($and([101,102],['post__in'=>[101,'invalid']])===[0],
+ 'invalid prior ID cannot be silently discarded');
+check($and([101,102],['post__in'=>[101,-1]])===[0],
+ 'invalid negative prior ID is not converted to positive by absint');
+check($and([],['post__in'=>[101]])===[0],
+ 'empty date result keeps native deny-all output');
+check($and([101,101,102],['post__in'=>[101,102]])===[101,102],
+ 'duplicate date IDs are de-duplicated');
 check($and([101,102],['post__in'=>['0']])===[0],'string zero also remains deny-all');
 check($and([101,102],['post__in'=>['-1']])===[0],'negative native id not converted to positive');
 check($and([101,102],['post__in'=>[102,700]])===[102],'date narrows existing native IDs');
 check($and([101,102],['post__in'=>[700]])===[0],'no intersection fails closed');
+$archive=($filters['jet-engine/query-builder/types/posts-query/args'][65]??[])[0]??null;
+check(is_callable($archive),'archive Query Builder filter is registered');
+$_GET=['mad4b_date_mode'=>'fixed','mad4b_date_from'=>'2027-02-18'];
+$_POST=[];
+$archiveQuery=(object)['query_id'=>'tours_query_archive'];
+check($archive([],$archiveQuery)['post__in']===[99],
+ 'archive date narrows matching Tours to the active period');
+check($archive(['post__in'=>[0]],$archiveQuery)['post__in']===[0],
+ 'archive cannot revive Tour when earlier Package/Season query denied all');
+check($archive(['post__in'=>[0,99]],$archiveQuery)['post__in']===[0],
+ 'archive mixed zero sentinel fails closed');
+check($archive(['post__in'=>[200]],$archiveQuery)['post__in']===[0],
+ 'archive honors earlier explicit nonoverlap');
+check($archive(['post__in'=>[99]],$archiveQuery)['post__in']===[99],
+ 'archive date AND a valid Tour selection allows overlap');
+$search=($filters['jet-search/ajax-search/query-args'][75]??[])[0]??null;
+check(is_callable($search),'JetSearch read-only date filter is registered');
+$_SERVER['REQUEST_URI']='/wp-json/jet-search/v1/search-posts';
+$searchArgs=['post_type'=>['tours-and-activities']];
+check($search($searchArgs,null)['post__in']===[99],
+ 'JetSearch date narrows valid matching Tour');
+check($search($searchArgs+['post__in'=>[0]],null)['post__in']===[0],
+ 'JetSearch cannot revive Tour when earlier filters denied all');
+check($search($searchArgs+['post__in'=>[0,99]],null)['post__in']===[0],
+ 'JetSearch mixed zero sentinel fails closed');
+check($search($searchArgs+['post__in'=>[200]],null)['post__in']===[0],
+ 'JetSearch honors explicit nonoverlap');
+$_SERVER['REQUEST_URI']='';
 $callbacks=$filters['jet-engine/query-builder/types/posts-query/args'][85]??[];
 check(count($callbacks)===1,'exact tour Rates query contract registered');
 $rateFilter=$callbacks[0];
@@ -60,6 +106,8 @@ $query=(object)['id'=>310,'query_id'=>'tour_rates'];
 check($rateFilter([], $query)['post__in']===[101],'eligible published rate matches travel date');
 check($rateFilter(['post__in'=>[102],'tax_query'=>['existing']],$query)['post__in']===[0],
     'native Rate restriction AND the selected travel date');
+check($rateFilter(['post__in'=>[0,101]],$query)['post__in']===[0],
+    'query 310 cannot reintroduce an eligible Rate when the upstream list contains 0');
 check($rateFilter(['post__in'=>[0]],$query)['post__in']===[0],
     'upstream native deny remains denied');
 check($rateFilter(['post__in'=>[101,102]],(object)['id'=>311,'query_id'=>'tour_rates'])['post__in']===[101,102],
@@ -116,6 +164,7 @@ $_GET=[];
 check($rateFilter(['post__in'=>[101,102]],$query)['post__in']===[101,102],
   'currency-only native AJAX does not alter rate eligibility or price rows');
 unset($_POST['query']);
-echo json_encode(['state'=>'PASS','cases'=>27,'rate_query_id'=>310,
+echo json_encode(['state'=>'PASS','cases'=>45,'rate_query_id'=>310,
  'upstream_filters_preserved'=>true,'payment_mutation'=>false,'live_browser_test'=>false,
  'wordpress_runtime_loaded'=>false],JSON_UNESCAPED_SLASHES).PHP_EOL;
+}

@@ -2,14 +2,25 @@
   "approved_candidate_overlays": [
     {
       "booking_authorized": false,
-      "candidate_blob_sha1": "fbd0f0a7c54483cbc1db9d27dde448f8b870a5e1",
-      "candidate_sha256": "3c523e6fa8facf07ff3e45b0944560b0594ade2db532d907f05075913001e0a8",
+      "candidate_blob_sha1": "b70ca2bc8050a47d98f480b8fb7e292b5e463ad9",
+      "candidate_sha256": "6af96e24e88482661221ab706a4a28dde12ea27f97f9344f51bb0557985f766f",
       "deployment_authorized": false,
-      "live_sha256": "6ee00a2e5f9d13882fcdbbe1405595b11911201ce784a07daacba58f37a304b1",
-      "offline_php_cases_passed": 27,
-      "original_snapshot_sha256": "2fc598790080b5369567c9aef70efe61b9edc9ced7a20f8605dcea38338663b2",
+      "live_sha256": "05a7bdb599246c2fc2982e7c7e2d9a270130dc0c624e93c5c0f7129a639c02ab",
+      "offline_php_cases_passed": 45,
+      "original_snapshot_sha256": "05a7bdb599246c2fc2982e7c7e2d9a270130dc0c624e93c5c0f7129a639c02ab",
       "path": "wp-content/plugins/mad4b-commerce/modules/presentation/unified-date-presentation-v1.php",
       "policy": "read_only_and_intersection_fail_closed"
+    },
+    {
+      "booking_authorized": false,
+      "candidate_blob_sha1": "504815ea31307bfb8b9d73f19a7a4c8e4a10b098",
+      "candidate_sha256": "3d7f15896dc21b7da3b08feff5baf596ad4a57c3a01ed21c62ecafb47133b75c",
+      "deployment_authorized": false,
+      "live_sha256": "4e9061a3d95118c2570f2aaa4f2a53fdd526a5255984ac3c9bf39f4a2c632571",
+      "offline_js_cases_passed": 23,
+      "original_snapshot_sha256": "4e9061a3d95118c2570f2aaa4f2a53fdd526a5255984ac3c9bf39f4a2c632571",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.3.5.js",
+      "policy": "clear_wpml_stale_date_and_empty_fluent_input"
     },
     {
       "booking_authorized": false,
@@ -1816,6 +1827,48 @@
       "sha256": "dfa3460b58eacb2bf6ca32e3de318c904d5874a984bec27c9d13e3d1875721b6"
     },
     {
+      "bytes": 27076,
+      "git_blob_sha1": "7d852b6d01875d5b9273cef13993f54116fe5a73",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.3.3.css",
+      "sha256": "3c82478ec2cd31ea0c62eed824ae2d037290722c49b2480d24081f8e2bc669ab"
+    },
+    {
+      "bytes": 38392,
+      "git_blob_sha1": "b3c57b3cddb75371aaa4c790348821d5e38e94c5",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.3.3.js",
+      "sha256": "4040755f28e2f3cf55e244a53229da3ee49208737c32705072a62a670b729dde"
+    },
+    {
+      "bytes": 27712,
+      "git_blob_sha1": "2f57414c8db42cb98b4d24c8f1f60839498cc1b2",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.3.4.css",
+      "sha256": "3a1c9a61bfe3ea49322fabc9a84a61fb11a063b39e314be16def2ebdeb0f10a2"
+    },
+    {
+      "bytes": 47671,
+      "git_blob_sha1": "445cf64330f7fbfb0668b4efadaaf7c15127e475",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.3.4.js",
+      "sha256": "c1fbf508a0e5cc97a3bce70c1db670d98ff47f48365b162060a0f73b857cef8a"
+    },
+    {
+      "bytes": 27712,
+      "git_blob_sha1": "2f57414c8db42cb98b4d24c8f1f60839498cc1b2",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.3.5.css",
+      "sha256": "3a1c9a61bfe3ea49322fabc9a84a61fb11a063b39e314be16def2ebdeb0f10a2"
+    },
+    {
+      "bytes": 50940,
+      "git_blob_sha1": "3555260381e1d3915f6bc24b5242acc9252b3b76",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.3.5.js",
+      "sha256": "4e9061a3d95118c2570f2aaa4f2a53fdd526a5255984ac3c9bf39f4a2c632571"
+    },
+    {
       "bytes": 21449,
       "git_blob_sha1": "05fe15d09b82ae18de33acfe306560d6dfd001fb",
       "original_mode": "0644",
@@ -1942,11 +1995,11 @@
       "sha256": "92f5e89524bf21b18258020eb9e436c46caf0a1a1a16ad5294ac35c5653590e1"
     },
     {
-      "bytes": 12931,
-      "git_blob_sha1": "0457ea6ac6c508f95594f1e8c1dcc6daed059423",
+      "bytes": 12948,
+      "git_blob_sha1": "775a848ae04e56c73450fc3e2e526fb11744ed86",
       "original_mode": "0644",
       "path": "wp-content/plugins/mad4b-commerce/modules/presentation/unified-date-presentation-v1.php",
-      "sha256": "6ee00a2e5f9d13882fcdbbe1405595b11911201ce784a07daacba58f37a304b1"
+      "sha256": "05a7bdb599246c2fc2982e7c7e2d9a270130dc0c624e93c5c0f7129a639c02ab"
     },
     {
       "bytes": 1301,
@@ -1982,6 +2035,20 @@
       "original_mode": "0644",
       "path": "wp-content/plugins/mad4b-commerce/runtime-phases/40-booking-and-filters.php",
       "sha256": "8c5320a606c11e3c14e43677e844116890af6a2549aee8f0d5480505f449f332"
+    },
+    {
+      "bytes": 4195,
+      "git_blob_sha1": "956760875c893aaa4c4d5724d40488a2aae4da1a",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/tests/browser/date-intent/unified-date-cross-page.test.js",
+      "sha256": "b9414bbd469f80f386dcebcd1aa7dc4fbf22d842b0244ea44deffbef0397e076"
+    },
+    {
+      "bytes": 6147,
+      "git_blob_sha1": "aed776f7e2cd5b733ab73c32bd92e4c6ba4feb70",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/tests/browser/date-intent/unified-date-regression.test.js",
+      "sha256": "91f9f79474c4ecc10a11e6ccb29695ea540bf79ab435c8fdfb69b062d8139725"
     },
     {
       "bytes": 2392,

@@ -14,8 +14,8 @@ function mad4b_unified_date_enabled_v1(): bool {
 }
 
 function mad4b_unified_date_request_v1(): array {
-    // An explicit native JetSmartFilters Clear overrides stale referrer URLs.
-    // Do not turn a cleared filter into an unintended prior travel date.
+    // A cleared date in a JetSmartFilters AJAX request must not re-inherit
+    // a stale date from the referrer URL.
     if (wp_doing_ajax() && isset($_POST['query']) && is_array($_POST['query'])
         && isset($_POST['query']['mad4b_date_clear'])
         && $_POST['query']['mad4b_date_clear'] === '1') {
@@ -73,7 +73,6 @@ function mad4b_unified_date_request_v1(): array {
     return ['status'=>'absent'];
 }
 
-
 /**
  * Apply date eligibility as an AND constraint to existing native post filters.
  *
@@ -89,10 +88,14 @@ function mad4b_unified_date_intersect_post_ids_v1(array $matching,array $args):a
     if(array_key_exists('post__in',$args)){
         $raw=(array)$args['post__in'];
         if($raw){
-            $existing=array_values(array_unique(array_filter(array_map(
-                static fn($value):int => is_scalar($value) && is_numeric($value) && (int)$value>0 ? (int)$value : 0,
-                $raw
-            ))));
+            // Query 310 and archive may receive post__in=[0] (or other
+            // invalid ID markers) from prior AND filters. Do not discard
+            // the sentinel and re-include date-eligible Rate IDs.
+            foreach($raw as $value) {
+                if(!is_scalar($value) || !is_numeric($value)
+                   || (int)$value<=0) return [0];
+            }
+            $existing=array_values(array_unique(array_map('intval',$raw)));
             if(!$existing)return [0];
             $ids=array_values(array_intersect($ids,$existing));
         }
@@ -152,8 +155,8 @@ add_filter('jet-search/ajax-search/query-args',static function($args,$handler){
 },75,2);
 
 /**
- * Restore WCML's display currency only within the native SmartFilters AJAX
- * request, without editing underlying rate amounts, FX tables or checkout.
+ * Restore the native WCML display currency for JetSmartFilters Ajax only.
+ * It never overrides rate currency, FX tables, checkout or payments.
  */
 function mad4b_unified_date_currency_context_ajax_v1():void {
     if(!mad4b_unified_date_enabled_v1())return;
@@ -167,7 +170,7 @@ function mad4b_unified_date_currency_context_ajax_v1():void {
        ||!isset($settings['currency_options'][$currency]))return;
     $wcml=$GLOBALS['woocommerce_wpml']->multi_currency??null;
     if(is_object($wcml)&&method_exists($wcml,'set_client_currency')
-       &&function_exists('getSitePress')) {
+       &&function_exists('WCML\\functions\\getSitePress')) {
        $wcml->set_client_currency($currency);
     }
 }
@@ -242,8 +245,8 @@ add_action('wp_enqueue_scripts', static function():void {
     }
     wp_enqueue_script('flatpickr');
     wp_enqueue_style('flatpickr');
-    wp_enqueue_style('mad4b-unified-date-v1',plugins_url('assets/unified-date-v0.3.2.css',__FILE__),['flatpickr'],'0.3.2');
-    wp_enqueue_script('mad4b-unified-date-v1',plugins_url('assets/unified-date-v0.3.2.js',__FILE__),['flatpickr'],'0.3.2',true);
+    wp_enqueue_style('mad4b-unified-date-v1',plugins_url('assets/unified-date-v0.3.5.css',__FILE__),['flatpickr'],'0.3.5');
+    wp_enqueue_script('mad4b-unified-date-v1',plugins_url('assets/unified-date-v0.3.5.js',__FILE__),['flatpickr'],'0.3.5',true);
     $data=[
         'archiveUrl'=>home_url('/tours-and-activities/'),
         'policy'=>MAD4B_Unified_Date_Intent_V1::settings(),
