@@ -1,0 +1,90 @@
+{
+  "active_site_files_changed": false,
+  "ancestor": "rc128 standalone source snapshot",
+  "authority_policies_runtime_changed": false,
+  "contract": "mad4b.control-plane-three-way-source-reconcile.v1",
+  "deferred_conflicted_or_high_risk": [
+    "includes/class-mad4b-scp-company-sender-policy.php",
+    "includes/class-mad4b-scp-company-communication.php",
+    "includes/class-mad4b-scp-company-email-routing.php",
+    "includes/class-mad4b-scp-google-drive-context.php"
+  ],
+  "deployment_applied": false,
+  "files": [
+    {
+      "live_source_sha256": "cd15718a2d97ffd3c8cd3293305d02d46a56ed4bd944186bbe930f0394a838df",
+      "merge_equals_live": true,
+      "merged_sha256": "cd15718a2d97ffd3c8cd3293305d02d46a56ed4bd944186bbe930f0394a838df",
+      "no_declared_classes_removed": true,
+      "no_declared_functions_removed": true,
+      "no_git_conflict_markers": true,
+      "old_candidate_sha256": "e40d0b368d59140c92a34eab08fcb79bd9f8f3abda94d326faf403b5d50dc59f",
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-reconnect-hardening.php",
+      "source_base_sha256": "e40d0b368d59140c92a34eab08fcb79bd9f8f3abda94d326faf403b5d50dc59f",
+      "source_candidate_only": true
+    },
+    {
+      "live_source_sha256": "367c9ee747a37916ca59271dcb318faef9ba1ccf767e077f53eaf0bfc277ae2f",
+      "merge_equals_live": true,
+      "merged_sha256": "367c9ee747a37916ca59271dcb318faef9ba1ccf767e077f53eaf0bfc277ae2f",
+      "no_declared_classes_removed": true,
+      "no_declared_functions_removed": true,
+      "no_git_conflict_markers": true,
+      "old_candidate_sha256": "aca1eb0e9ccc227073daadbb0a463f8e8e54edba52e6e9536a73e80510d45fac",
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-runtime-diagnostics.php",
+      "source_base_sha256": "aca1eb0e9ccc227073daadbb0a463f8e8e54edba52e6e9536a73e80510d45fac",
+      "source_candidate_only": true
+    },
+    {
+      "live_source_sha256": "30446ead9af26abe834f210574e20be265c4165150a130c5f6e0426c44a611f0",
+      "merge_equals_live": true,
+      "merged_sha256": "30446ead9af26abe834f210574e20be265c4165150a130c5f6e0426c44a611f0",
+      "no_declared_classes_removed": true,
+      "no_declared_functions_removed": true,
+      "no_git_conflict_markers": true,
+      "old_candidate_sha256": "388211469ba528fe63f5f32f390a78ac1a8a226b4d3b6a942718414255178e40",
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-components-admin-ui.php",
+      "source_base_sha256": "388211469ba528fe63f5f32f390a78ac1a8a226b4d3b6a942718414255178e40",
+      "source_candidate_only": true
+    },
+    {
+      "live_source_sha256": "3100ff5c698fdf5b8de9870ad0360ead67dfdcadf963b0420504c77b6a3efccf",
+      "merge_equals_live": true,
+      "merged_sha256": "3100ff5c698fdf5b8de9870ad0360ead67dfdcadf963b0420504c77b6a3efccf",
+      "no_declared_classes_removed": true,
+      "no_declared_functions_removed": true,
+      "no_git_conflict_markers": true,
+      "old_candidate_sha256": "14baa5105a5cbc14bc0abb2eb911f36884fe9c123ddca2f99257c9c923c2e3dd",
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-switcher-sources.php",
+      "source_base_sha256": "14baa5105a5cbc14bc0abb2eb911f36884fe9c123ddca2f99257c9c923c2e3dd",
+      "source_candidate_only": true
+    },
+    {
+      "live_source_sha256": "0a15798fca4cb26390d5dd2b214bf7da39e9d0b7846bfed358831e4b22c5dd23",
+      "merge_equals_live": true,
+      "merged_sha256": "0a15798fca4cb26390d5dd2b214bf7da39e9d0b7846bfed358831e4b22c5dd23",
+      "no_declared_classes_removed": true,
+      "no_declared_functions_removed": true,
+      "no_git_conflict_markers": true,
+      "old_candidate_sha256": "046b4a2f23f05a942ad4fc838bfc8731449b2db401e4064e738d877028d4dbb3",
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-lifecycle-rest.php",
+      "source_base_sha256": "046b4a2f23f05a942ad4fc838bfc8731449b2db401e4064e738d877028d4dbb3",
+      "source_candidate_only": true
+    },
+    {
+      "live_source_sha256": "f0823b83afc8b2af4981344991b42830b35a9456521da7c557eeee6fd9c41517",
+      "merge_equals_live": false,
+      "merged_sha256": "0d71c378b439ec19f96900e76a87c1457844bc9c5b86e2c0435943d223e55124",
+      "no_declared_classes_removed": true,
+      "no_declared_functions_removed": true,
+      "no_git_conflict_markers": true,
+      "old_candidate_sha256": "cefdef913adc7971d768ceef4c5cb532a9b6c26c959122fa6d6be9eafd1ff919",
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-admin-ui.php",
+      "source_base_sha256": "f08bc27ae1cf7b751c7492b44a6ac8e43f1c2a81997f994c938d1905ee93af1d",
+      "source_candidate_only": true
+    }
+  ],
+  "original313_certified": false,
+  "preimage_commit": "e99fce8449283a6964e7d2f21da0f561a1703a8e",
+  "source_review_only": true
+}

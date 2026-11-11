@@ -30,3 +30,15 @@ Verdict: SOURCE_RECONCILE_CANDIDATE_ONLY, GLOBAL_RELEASE_HOLD. No publisher or l
 After integrating the exact PR #798 Tenant source and pinning to Git commit 6a314204e9924b4dc78e79058364094f827adb18, fresh filesystem readback compared the 26 candidate PHP files against the 26 files with the same paths at Tours.dev Staging. All 26 SHA-256 pairs were byte-identical. The exact per-file observations are in TENANT_LIVE_PARITY_READBACK_20261111.json. This is source parity, **not** signed WordPress execution/activation readback.
 
 Separately, 6 of 7 original critical WordPress module entrypoints still lack an exact candidate/live match; the sole match is Tenant Sync. Thus the global release remains HOLD. Original313 live worker and Original318 production authorization remain untouched.
+
+## Original rc128 vs current Staging Control Plane source
+
+An additional 60 Control Plane and 16 Portfolio Manager paths differ from the initial PR #799/rc129 integration snapshot. A read-only comparator examined all 76 conflicting paths against local branch heads and the rc128 standalone source. The reference is recorded in the VPS report control-plane-portfolio-variant-provenance.json.
+
+Six Control Plane PHP files were reconciled as source-only three-way merges using rc128 common file content as the merge base: reconnect hardening, native runtime diagnostics, runtime components admin UI, switcher sources, Site Lifecycle REST read-only scope and context admin UI. The merge kept all existing function/class declarations, and stores exact preimage/live/merged SHA-256 values in control-plane-rc128-three-way-20261111.json.
+
+The company sender policy, company communication, email routing and Google Drive context are explicitly deferred pending semantic safety review; the Google Drive merge would remove an existing named function. Do not convert a conflict-free textual merge into automatic authorization to release.
+
+The isolated reconnect PHP behavioral harness passed on the existing provider 0.6.1 and, with a temporary test-only rewrite of its version fixtures to 0.7.1, passed again. No WordPress site, network or active Worker was invoked. The unrelated session-safe diagnostic harness requires a runtime read service absent from this standalone test container, so that test is not accepted as a success.
+
+The source snapshots of 17 previously missing Portfolio Manager PHP/JS/CSS paths and two Control Plane PHP test paths are also preserved under portfolio-live-additive-20261111.json; their verifier rejects source or scope drift and does not enable providers.

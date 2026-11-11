@@ -53,15 +53,24 @@ final class MAD4B_SCP_Native_Runtime_Diagnostics {
         unset( $input );
         if ( ! self::authorized() ) return new WP_Error( 'mad4b_native_recovery_read_denied', 'Governed read access required.' );
         $profile = class_exists( 'MAD4B_SCP_Site_Profile', false ) ? MAD4B_SCP_Site_Profile::status() : array();
-        $staging = is_array( $profile ) && 'staging' === (string) ( $profile['configured_environment'] ?? '' )
-            && ! empty( $profile['origin_match'] ) && ! empty( $profile['environment_match'] );
+        $bound = is_array( $profile ) && ! empty( $profile['configured'] )
+            && ! empty( $profile['authority_ready'] )
+            && ! empty( $profile['origin_match'] )
+            && ! empty( $profile['deployment_binding_match'] )
+            && empty( $profile['mutation_pending_audit'] );
+        // Native read status works for any exactly enrolled company.
+        // Keep the separate Staging-only paired probe's original gate.
+        $staging = $bound && 'staging' === (string) ( $profile['configured_environment'] ?? '' )
+            && ! empty( $profile['environment_match'] );
         $incidents = class_exists( 'MAD4B_Native_Incident_MU', false ) ? MAD4B_Native_Incident_MU::status() : array(
             'state' => 'RECORDER_NOT_LOADED', 'recorder_loaded' => false,
             'events' => array(), 'count' => 0,
         );
         $qm_bridge = class_exists( 'MAD4B_SCP_Query_Monitor_Evidence_Bridge', false );
         return array(
-            'contract' => self::CONTRACT, 'state' => $staging ? 'STAGING_DIAGNOSTIC_READY' : 'NOT_EXACT_STAGING',
+            'contract' => self::CONTRACT,
+            'state' => $staging ? 'STAGING_DIAGNOSTIC_READY' : ( $bound ? 'READONLY_DIAGNOSTIC_READY' : 'SITE_PROFILE_NOT_READY' ),
+            'read_only_scope_ready' => $bound,
             'site_profile_staging_enrolled' => $staging,
             'wordpress_site_health' => array(
                 'core_screen' => 'site-health.php',
@@ -85,7 +94,11 @@ final class MAD4B_SCP_Native_Runtime_Diagnostics {
                 'mode' => 'explicit_admin_post_or_governed_mcp_read',
                 'automatic_on_page_load' => false,
             ),
-            'next_step' => $staging ? 'Review last sanitized incidents, then explicitly run paired homepage + REST probe and WordPress Site Health.' : 'Verify exact enrolled Staging Site Profile before any diagnostics.',
+            'next_step' => $staging
+                ? 'Review sanitized incidents; optionally run the Staging-only paired probe and WordPress Site Health.'
+                : ( $bound
+                    ? 'Read native diagnostics and WordPress Site Health; Staging-only paired probe is unavailable here.'
+                    : 'Verify enrolled Site Profile identity and binding; no paired probe is available.' ),
             'read_only' => true, 'mutation_performed' => false,
             'authority_granted' => false, 'production_mutation_allowed' => false,
             'browser_acceptance_certified' => false, 'root_cause_proven' => false,
