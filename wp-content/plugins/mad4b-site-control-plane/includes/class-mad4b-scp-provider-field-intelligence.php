@@ -371,3 +371,4 @@ final class MAD4B_SCP_Provider_Field_Intelligence {
 add_action('rest_api_init',[MAD4B_SCP_Provider_Field_Intelligence::class,'rest_route']);
 if(defined('WP_CLI')&&WP_CLI&&class_exists('WP_CLI'))
     WP_CLI::add_command('mad4b fields',[MAD4B_SCP_Provider_Field_Intelligence::class,'cli']);
+

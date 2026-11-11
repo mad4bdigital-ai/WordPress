@@ -117,3 +117,4 @@ final class MAD4B_SCP_Brand_Review_Routing_V1 {
         ]));
     }
 }
+

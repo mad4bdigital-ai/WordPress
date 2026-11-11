@@ -1,0 +1,52 @@
+{
+  "base_git_head": "8e46b7f02261c9f1f735deefec57028ded62ecc9",
+  "contract": "mad4b.scp-wpml-origin-local-merge.v1",
+  "database_changed": false,
+  "files": [
+    {
+      "candidate_sha256": "67a79f1bb3f628952cc44a3e735dd149052283a4fb3e199a50b2cc7f30c52bda",
+      "original_sha256": "3f740db26ad6817f2ffb96ad94508f74675535364e85a09450391332acc8ca50",
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-experience-quality.php",
+      "scope": "one_final_newline_only",
+      "source_sha256": "67a79f1bb3f628952cc44a3e735dd149052283a4fb3e199a50b2cc7f30c52bda"
+    },
+    {
+      "candidate_sha256": "fb95cfca37c1155c62d4840e2296f9f8f1519405afe7b0a3ab424b3fef972426",
+      "original_sha256": "3590e7d233aa62bd750a81dd0127f8af307a9d5664801f419ee382f928af1c34",
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-review-routing.php",
+      "scope": "one_final_newline_only",
+      "source_sha256": "fb95cfca37c1155c62d4840e2296f9f8f1519405afe7b0a3ab424b3fef972426"
+    },
+    {
+      "candidate_sha256": "440c556d5f6338ff153e2a87f9392bede3e972fd43a46cba50e3801e7d5545d5",
+      "original_sha256": "c1d53dc00646551cb93bcbc53f13a2b200953a1b72b8ed4ff2c661308b3d46c7",
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-drive-scan-cron.php",
+      "scope": "one_final_newline_only",
+      "source_sha256": "440c556d5f6338ff153e2a87f9392bede3e972fd43a46cba50e3801e7d5545d5"
+    },
+    {
+      "candidate_sha256": "6fd1de6f37cb7289ad483671c169088109f0fe163d2ede71ade5b8ff801a049e",
+      "original_sha256": "54eb793bfb8914d7c65e5d5b4e43a08fd2ad7cd501274952ab8d44902b1c9780",
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-field-intelligence.php",
+      "scope": "one_final_newline_only",
+      "source_sha256": "6fd1de6f37cb7289ad483671c169088109f0fe163d2ede71ade5b8ff801a049e"
+    },
+    {
+      "candidate_sha256": "86aad1b4c8ad2ae99258ac62af768479130c6188e09128903e1b3bc09b782784",
+      "original_sha256": "47da493a8c171d1a9c7912afb3dfa47af397fbb7f490be99b9acc70267351eaf",
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php",
+      "scope": "read_only_current_origin_wpml_query_preserving_semantic_patch",
+      "source_sha256": "f257d3eab7e12868791b8d90df593235f582f0bbd5d2003ed5b0e44f3bc94990"
+    }
+  ],
+  "independent_original313_signed": false,
+  "release_approved": false,
+  "safety_criteria": {
+    "http_host_required_to_match": true,
+    "new_write_authority_granted": false,
+    "query_reset_filter_removed": true,
+    "registered_site_origin_required": true,
+    "sitepress_current_language_identity_required": true
+  },
+  "site_deployment_executed": false
+}

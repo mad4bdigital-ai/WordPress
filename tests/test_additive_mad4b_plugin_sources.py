@@ -20,7 +20,7 @@ class AdditivePlugins(unittest.TestCase):
  def test_path_escape_fails(self):
   x=copy.deepcopy(M);x['files'][0]['path']='wp-content/plugins/mad4b-x/../../../etc/passwd'
   with self.assertRaises(m.Blocked):m.verify(x)
- def test_preexisting_69_preserved_except_seventeen_exact_reviewed_changes(self):
+ def test_preexisting_69_preserved_except_twenty_two_exact_reviewed_changes(self):
   import subprocess,hashlib
   self.assertEqual(M['base_git_commit'],'cea270f57bb8152989c6089f76405b165652f9df')
   safe=json.loads((ROOT/'docs/release-coverage/semantic-additive-safe-reconcile-20261111.json').read_text())
@@ -38,7 +38,10 @@ class AdditivePlugins(unittest.TestCase):
   historical=json.loads((ROOT/'docs/release-coverage/portfolio-historical-install-intent-provenance-20261111.json').read_text())
   for item in historical['files']:
    allowed[item['path']]=item['candidate_sha256']
-  self.assertEqual(len(allowed),17)
+  wpml=json.loads((ROOT/'docs/release-coverage/scp-wpml-origin-and-format-source-20261111.json').read_text())
+  for item in wpml['files']:
+   allowed[item['path']]=item['candidate_sha256']
+  self.assertEqual(len(allowed),22)
   reviewed=set()
   for group in M['preexisting_semantic_conflicts'].values():
    for path in group:
@@ -52,7 +55,7 @@ class AdditivePlugins(unittest.TestCase):
     else:
      self.assertEqual(before.stdout,current,path)
   self.assertEqual(reviewed,set(allowed))
-  self.assertEqual(len(reviewed),17)
+  self.assertEqual(len(reviewed),22)
  def test_exact_preexisting_conflicts_not_copied(self):
   c={item for values in M['preexisting_semantic_conflicts'].values() for item in values}
   self.assertEqual(len(c),69)

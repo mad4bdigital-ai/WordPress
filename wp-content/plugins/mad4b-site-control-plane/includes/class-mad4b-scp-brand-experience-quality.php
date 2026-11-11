@@ -248,3 +248,4 @@ final class MAD4B_SCP_Brand_Experience_Quality {
 }
 // Visual QA remains advisory; native Elementor/JetEngine settings own card styles.
 // Do not inject a second force-important brand/badge background layer.
+
