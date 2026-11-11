@@ -24,3 +24,9 @@
 5. Every other open GitHub branch and remaining local WordPress head requires feature-level coverage and conflict review before a full platform release.
 
 Verdict: SOURCE_RECONCILE_CANDIDATE_ONLY, GLOBAL_RELEASE_HOLD. No publisher or live mutation.
+
+## Fresh 2026-11-11 read-only Tours.dev source parity
+
+After integrating the exact PR #798 Tenant source and pinning to Git commit 6a314204e9924b4dc78e79058364094f827adb18, fresh filesystem readback compared the 26 candidate PHP files against the 26 files with the same paths at Tours.dev Staging. All 26 SHA-256 pairs were byte-identical. The exact per-file observations are in TENANT_LIVE_PARITY_READBACK_20261111.json. This is source parity, **not** signed WordPress execution/activation readback.
+
+Separately, 6 of 7 original critical WordPress module entrypoints still lack an exact candidate/live match; the sole match is Tenant Sync. Thus the global release remains HOLD. Original313 live worker and Original318 production authorization remain untouched.

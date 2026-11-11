@@ -1,0 +1,169 @@
+{
+  "company_mutated": false,
+  "contract": "mad4b.tenant-source-live-exact-parity.v1",
+  "count": 26,
+  "exact_count": 26,
+  "live_path": "/opt/hostinger-migrations/hosting-3/etg-commerce-staging/site-copy/wp-content/plugins/mad4b-tenant-sync",
+  "mismatch_count": 0,
+  "observed_utc": "2026-11-11T01:08:19.688233+00:00",
+  "rows": [
+    {
+      "exact": true,
+      "live_sha256": "71e75b81871ea9773e378be5063ce67ee27744e88cc4b105b3b5ca1781ed84be",
+      "path": "includes/class-mad4b-tenant-commerce-preview.php",
+      "source_sha256": "71e75b81871ea9773e378be5063ce67ee27744e88cc4b105b3b5ca1781ed84be"
+    },
+    {
+      "exact": true,
+      "live_sha256": "fe7710571cd3b47dfd5ca0a760a98d5c4b9f66a1825a301cd94678802781f0c0",
+      "path": "includes/class-mad4b-tenant-company-media.php",
+      "source_sha256": "fe7710571cd3b47dfd5ca0a760a98d5c4b9f66a1825a301cd94678802781f0c0"
+    },
+    {
+      "exact": true,
+      "live_sha256": "858143ef6210443b222214735682011189733b670f180f94ba908df3dfac345e",
+      "path": "includes/class-mad4b-tenant-consumers.php",
+      "source_sha256": "858143ef6210443b222214735682011189733b670f180f94ba908df3dfac345e"
+    },
+    {
+      "exact": true,
+      "live_sha256": "0ee75f8f8e9cacde58a0ae8e29c27b18f352889fadccc0bcfa07debe3cbcf600",
+      "path": "includes/class-mad4b-tenant-effective-read.php",
+      "source_sha256": "0ee75f8f8e9cacde58a0ae8e29c27b18f352889fadccc0bcfa07debe3cbcf600"
+    },
+    {
+      "exact": true,
+      "live_sha256": "57d7b169a4c37bf79305f2ec1d84b1399d5ba395be8b3ebaa590320832ffcc12",
+      "path": "includes/class-mad4b-tenant-elementor-tag.php",
+      "source_sha256": "57d7b169a4c37bf79305f2ec1d84b1399d5ba395be8b3ebaa590320832ffcc12"
+    },
+    {
+      "exact": true,
+      "live_sha256": "40e27e38c9ab1e10a49d15e1b8723da7dce57078fb7baf0f9f2caa4499488989",
+      "path": "includes/class-mad4b-tenant-field-registry.php",
+      "source_sha256": "40e27e38c9ab1e10a49d15e1b8723da7dce57078fb7baf0f9f2caa4499488989"
+    },
+    {
+      "exact": true,
+      "live_sha256": "ebab5ff9745766b5d7e0e125e1acd9efee35106933356e6cebd0fc85ca8467d5",
+      "path": "includes/class-mad4b-tenant-handover-inventory.php",
+      "source_sha256": "ebab5ff9745766b5d7e0e125e1acd9efee35106933356e6cebd0fc85ca8467d5"
+    },
+    {
+      "exact": true,
+      "live_sha256": "eededd1261ffacabc4d9fe16a4e7074b250ecc3ac7996c9873834fe9ac72a077",
+      "path": "includes/class-mad4b-tenant-operation-authority.php",
+      "source_sha256": "eededd1261ffacabc4d9fe16a4e7074b250ecc3ac7996c9873834fe9ac72a077"
+    },
+    {
+      "exact": true,
+      "live_sha256": "5da275333166af3f477f1004b77beeccbd5a395dbb34cbdcf393ae9af9be7a22",
+      "path": "includes/class-mad4b-tenant-operations-workspace.php",
+      "source_sha256": "5da275333166af3f477f1004b77beeccbd5a395dbb34cbdcf393ae9af9be7a22"
+    },
+    {
+      "exact": true,
+      "live_sha256": "c533bb67f38afcd6e25c7180d92e2175a9914f22c6af211ce6b3dd11558f9c5b",
+      "path": "includes/class-mad4b-tenant-override-policy.php",
+      "source_sha256": "c533bb67f38afcd6e25c7180d92e2175a9914f22c6af211ce6b3dd11558f9c5b"
+    },
+    {
+      "exact": true,
+      "live_sha256": "64b13ddcd0fe0f9fe3c29ed54f79c55f47b09aa89390beedc6b63564883eb0f0",
+      "path": "includes/class-mad4b-tenant-preservation.php",
+      "source_sha256": "64b13ddcd0fe0f9fe3c29ed54f79c55f47b09aa89390beedc6b63564883eb0f0"
+    },
+    {
+      "exact": true,
+      "live_sha256": "c0d5279e744d527e2a2895adb30b6b1667d8e260ba4eedafa02113f4550546d7",
+      "path": "includes/class-mad4b-tenant-price-engine.php",
+      "source_sha256": "c0d5279e744d527e2a2895adb30b6b1667d8e260ba4eedafa02113f4550546d7"
+    },
+    {
+      "exact": true,
+      "live_sha256": "5c43b771ee79cc43fc9a12e2e2400ba703b43a68405da71ef40b46bd199a69ad",
+      "path": "includes/class-mad4b-tenant-rejoin-preview.php",
+      "source_sha256": "5c43b771ee79cc43fc9a12e2e2400ba703b43a68405da71ef40b46bd199a69ad"
+    },
+    {
+      "exact": true,
+      "live_sha256": "2339b175c4609ecf956a69cd73de2c15d3d718d89ff08a24ef0d13c06ceb7036",
+      "path": "includes/class-mad4b-tenant-shadow.php",
+      "source_sha256": "2339b175c4609ecf956a69cd73de2c15d3d718d89ff08a24ef0d13c06ceb7036"
+    },
+    {
+      "exact": true,
+      "live_sha256": "a71b07d88b5d34c1a43f868e181476568cd04fa9d28a4bbb30bdfa92227646a2",
+      "path": "includes/class-mad4b-tenant-signed-publication.php",
+      "source_sha256": "a71b07d88b5d34c1a43f868e181476568cd04fa9d28a4bbb30bdfa92227646a2"
+    },
+    {
+      "exact": true,
+      "live_sha256": "e97ae052d285c802f3f6d77c27121964b96836a94783ca532f8e86fcdbf0d263",
+      "path": "includes/class-mad4b-tenant-sparse-admin.php",
+      "source_sha256": "e97ae052d285c802f3f6d77c27121964b96836a94783ca532f8e86fcdbf0d263"
+    },
+    {
+      "exact": true,
+      "live_sha256": "a8c880d2bdd1f8d0417b51e58c91f8a0dced5232c44b915e15457dc48f74e460",
+      "path": "includes/class-mad4b-tenant-sparse-store.php",
+      "source_sha256": "a8c880d2bdd1f8d0417b51e58c91f8a0dced5232c44b915e15457dc48f74e460"
+    },
+    {
+      "exact": true,
+      "live_sha256": "2be9b3124d26b05fd15cbe2e4f72b3b9aef872cdb38e549f940043d900a10fb6",
+      "path": "includes/class-mad4b-tenant-sync-planner.php",
+      "source_sha256": "2be9b3124d26b05fd15cbe2e4f72b3b9aef872cdb38e549f940043d900a10fb6"
+    },
+    {
+      "exact": true,
+      "live_sha256": "79d56036b78d62e1e26cc13c928689f9120e972571e93bbbdbc54ad25ac3dfd3",
+      "path": "includes/class-mad4b-tenant-typed-export.php",
+      "source_sha256": "79d56036b78d62e1e26cc13c928689f9120e972571e93bbbdbc54ad25ac3dfd3"
+    },
+    {
+      "exact": true,
+      "live_sha256": "27acfb3138e91567133fe63d5362b31271362bddee979772a6268d7464b5fcae",
+      "path": "includes/class-mad4b-tenant-typed-schema.php",
+      "source_sha256": "27acfb3138e91567133fe63d5362b31271362bddee979772a6268d7464b5fcae"
+    },
+    {
+      "exact": true,
+      "live_sha256": "419aa202d73ea471bc43ebe1cf8661c7f46f813c4b6270db3677a287d28fcbd7",
+      "path": "includes/class-mad4b-tenant-workflow.php",
+      "source_sha256": "419aa202d73ea471bc43ebe1cf8661c7f46f813c4b6270db3677a287d28fcbd7"
+    },
+    {
+      "exact": true,
+      "live_sha256": "fb10821f6ad06f00a9505a4979178bb4d437fe60002dc0a1127d2f613a3dd950",
+      "path": "mad4b-tenant-sync.php",
+      "source_sha256": "fb10821f6ad06f00a9505a4979178bb4d437fe60002dc0a1127d2f613a3dd950"
+    },
+    {
+      "exact": true,
+      "live_sha256": "3ae6fdfd972726b2a7a558011be0930f11a74d0aa9394adb42a9226af4f14a1e",
+      "path": "tests/tenant-handover-acceptance.php",
+      "source_sha256": "3ae6fdfd972726b2a7a558011be0930f11a74d0aa9394adb42a9226af4f14a1e"
+    },
+    {
+      "exact": true,
+      "live_sha256": "a2d9083b620f9acc7cff1b69c8a412ce53cf6e0ee54c0a1a0179f90e5a1eda3d",
+      "path": "tests/tenant-rejoin-preview-contract.php",
+      "source_sha256": "a2d9083b620f9acc7cff1b69c8a412ce53cf6e0ee54c0a1a0179f90e5a1eda3d"
+    },
+    {
+      "exact": true,
+      "live_sha256": "3c24791e2807dcb831d8ad06681a56be3ce08ba957b75129b41575c85b889155",
+      "path": "tests/typed-export-acceptance.php",
+      "source_sha256": "3c24791e2807dcb831d8ad06681a56be3ce08ba957b75129b41575c85b889155"
+    },
+    {
+      "exact": true,
+      "live_sha256": "4d07b2cb3fcf3c9f8b8f00611812fe7d539827e1d0e2ff337c20b41c7dd9a14f",
+      "path": "tests/typed-schema-source-acceptance.php",
+      "source_sha256": "4d07b2cb3fcf3c9f8b8f00611812fe7d539827e1d0e2ff337c20b41c7dd9a14f"
+    }
+  ],
+  "source_only_observation": true,
+  "source_path": "/opt/mad4b-company-provisioning/worktrees/wordpress-local-reconcile-20261111/wp-content/plugins/mad4b-tenant-sync"
+}
