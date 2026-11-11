@@ -55,6 +55,26 @@ if ( ! empty( $before['adapter_init_seen_before_bridge_boot'] ) ) $fail( 'adapte
 if ( ! empty( $before['first_rest_observed'] ) ) $fail( 'MAD4B boot instantiated REST before the explicit canonical REST bootstrap' );
 if ( did_action( 'wp_loaded' ) < 1 ) $fail( 'wp_loaded did not complete before the canonical REST bootstrap proof' );
 
+// Company Code reconciler exports read-only Abilities; core read MCP must
+// never advertise abilities that have not actually registered. Checking just
+// before the canonical REST bootstrap catches hook-order regressions.
+if ( ! class_exists( 'MAD4B_SCP_Company_Code_Reconciliation' ) )
+    $fail( 'Company Code reconciliation definitions absent before MCP initialization' );
+foreach ( array(
+    MAD4B_SCP_Company_Code_Reconciliation::PLAN,
+    MAD4B_SCP_Company_Code_Reconciliation::COMPARE,
+) as $read_ability ) {
+    if ( ! function_exists( 'wp_has_ability' ) || ! wp_has_ability( $read_ability ) )
+        $fail( 'Company Code reconciliation read Ability not registered: ' . $read_ability );
+    $definition = wp_get_ability( $read_ability );
+    $meta = is_object( $definition ) && method_exists( $definition, 'get_meta' )
+        ? $definition->get_meta() : array();
+    if ( ! is_array( $meta )
+        || empty( $meta['annotations']['readonly'] )
+        || ! empty( $meta['mcp']['public'] ) )
+        $fail( 'Company Code reconciliation read Ability was made externally public/mutating' );
+}
+
 // Trigger WordPress' canonical lazy REST bootstrap. This must execute the MCP
 // Adapter callback at priority 15 and then route registration at priority 16.
 $rest_server = rest_get_server();
@@ -71,9 +91,31 @@ if ( '0.6.1' !== ( isset( $after['adapter_runtime_version'] ) ? (string) $after[
 
 $registrations = MAD4B_SCP_Servers::registration_status();
 foreach ( MAD4B_SCP_Servers::expected_server_ids() as $server_id ) {
-	if ( empty( $registrations[ $server_id ]['registered'] ) ) $fail( $server_id . ' not registered after web rest_api_init' );
+	if ( empty( $registrations[ $server_id ]['registered'] ) ) {
+    // Surface bounded source/descriptor evidence, not HTTP credentials or
+    // tenant secrets. Keep the physical registration requirement fail-closed.
+    $record = isset( $registrations[ $server_id ] ) && is_array( $registrations[ $server_id ] )
+        ? $registrations[ $server_id ] : array();
+    $descriptor = is_array( $record['capability_descriptor_evidence'] ?? null )
+        ? $record['capability_descriptor_evidence'] : array();
+    $blockers = array_slice( array_values( array_filter(
+        (array) ( $descriptor['blockers'] ?? array() ), 'is_string'
+    ) ), 0, 8 );
+    $fail( $server_id . ' not registered after web rest_api_init: '
+        . wp_json_encode( array(
+            'registration_error' => (string) ( $record['error'] ?? '' ),
+            'requested_tool_count' => (int) ( $record['requested_tool_count'] ?? 0 ),
+            'descriptor_ready' => ! empty( $descriptor['ready'] ),
+            'descriptor_blockers' => $blockers,
+        ) ) );
+}
 	if ( ! empty( $registrations[ $server_id ]['error'] ) ) $fail( $server_id . ' registration error: ' . $registrations[ $server_id ]['error'] );
 }
+
+// A valid locally-routed VPS operator shell is part of the expected server
+// census, but no ordinary web client may obtain VPS-local execution.
+if ( ! is_wp_error( MAD4B_SCP_Servers::can_vps_local_transport() ) )
+    $fail( 'Untrusted web request acquired VPS-local MCP transport permission' );
 
 // This fixture is an explicit acceptance diagnostic and must verify the
 // physical REST route/permission bindings rather than the lightweight MCP

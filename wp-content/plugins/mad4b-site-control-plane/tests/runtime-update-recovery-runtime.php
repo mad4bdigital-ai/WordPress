@@ -75,6 +75,18 @@ class MAD4B_SCP_Audit {
 class MAD4B_SCP_Provider_Contracts {
     static function installed_version( $provider ) { return '0.7.0'; }
 }
+// Match the real version-neutral Adapter capability observation boundary.
+// Installed version is telemetry only; read readiness is independently proved.
+class MAD4B_SCP_Dependency_Manager {
+    public static $read_runtime_ready = true;
+    static function adapter_read_runtime_observation() {
+        return array(
+            'read_runtime_ready' => self::$read_runtime_ready,
+            'version_gate' => false,
+            'evidence' => array( 'fixture' => 'official_runtime_interfaces_present' ),
+        );
+    }
+}
 class MAD4B_SCP_Self_Update {
     static function cached_status() { return array( 'current' => $GLOBALS['pair']['control_plane'] ); }
     static function native_plan( $input ) {
@@ -125,6 +137,12 @@ $stored = invoke( 'write_transaction', $transaction );
 check( is_array( $stored ), 'initial atomic add failed' );
 $plan = $model::plan( array( 'reason' => 'test exact reconciliation' ) );
 check( $plan['eligible'] && 'reconcile_failed_transaction' === $plan['operation'], 'safe stale release set could not plan recovery' );
+// A missing runtime capability observation must still stop reconciliation;
+// this fixture never converts an installed version label into certification.
+MAD4B_SCP_Dependency_Manager::$read_runtime_ready = false;
+$without_runtime = $model::plan( array( 'reason' => 'unverified runtime must deny' ) );
+check( ! $without_runtime['eligible'] && in_array( 'installed_adapter_runtime_capabilities_unverified', $without_runtime['blockers'], true ), 'unverified Adapter runtime incorrectly admitted' );
+MAD4B_SCP_Dependency_Manager::$read_runtime_ready = true;
 // An unknown failure against the *same* release cannot replay a component.
 $unknown = $transaction; $unknown['release_set_sha256'] = $plan['release_set_sha256'];
 $unknown['error_code'] = 'unknown_timeout';

@@ -165,16 +165,48 @@ if ( '' !== $mad4b_mcp_mu_adapter_version
 	}
 }
 
-// For newer patch releases within the already-supported 0.7 family, verify
-// the installed package layout and capture request-local integrity snapshots
-// rather than treating version/source SHA drift as a permanent blocker.
-// Real builder, validator, OAuth and permission checks remain authoritative.
+/**
+ * PERMANENT FORWARD-UPDATE BEHAVIOR (MU execution is early, before plugins):
+ * No fixed 0.7.x range, major-version ceiling, or pre-added version ticket.
+ * For an unknown INSTALLED package version, select the newest known earlier
+ * Profile as a structural REFERENCE, then independently hash and resolve all
+ * its required runtime files and symbols within the installed package.
+ * Missing/moved required classes remain an actual compatibility failure; an
+ * unchanged ABI on a newer version does not fail merely due to a version label.
+ * This never grants write authority, bypasses OAuth, or loads MCP for unrelated
+ * WordPress requests. Production maintains its original enrollment policy.
+ */
 $mad4b_mcp_mu_status['adapter_profile_dynamic'] = false;
+$mad4b_mcp_mu_base_reference = array();
+$mad4b_mcp_mu_base_reference_version = '';
+$mad4b_mcp_mu_versions = $mad4b_mcp_mu_profiles_catalog['providers']['mcp_adapter'] ?? array();
+$mad4b_mcp_mu_future_semver = is_string( $mad4b_mcp_mu_adapter_version )
+    && strlen( $mad4b_mcp_mu_adapter_version ) <= 80
+    && 1 === preg_match(
+        '/^(?:0|[1-9][0-9]*)(?:\\.(?:0|[1-9][0-9]*)){2}(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?(?:\\+[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$/D',
+        $mad4b_mcp_mu_adapter_version
+    );
+if ( empty( $mad4b_mcp_mu_selected_profile ) && $mad4b_mcp_mu_future_semver
+    && is_array( $mad4b_mcp_mu_versions )
+    && '' !== $mad4b_mcp_mu_root ) {
+    foreach ( $mad4b_mcp_mu_versions as $mad4b_mcp_mu_candidate_version => $mad4b_mcp_mu_candidate ) {
+        $mad4b_mcp_mu_candidate_version = (string) $mad4b_mcp_mu_candidate_version;
+        if ( ! is_array( $mad4b_mcp_mu_candidate )
+            || (string) ( $mad4b_mcp_mu_candidate['version'] ?? '' ) !== $mad4b_mcp_mu_candidate_version
+            || ! version_compare( $mad4b_mcp_mu_adapter_version, $mad4b_mcp_mu_candidate_version, '>' )
+            || empty( $mad4b_mcp_mu_candidate['critical_files'] )
+            || empty( $mad4b_mcp_mu_candidate['runtime_symbols'] ) ) continue;
+        if ( '' === $mad4b_mcp_mu_base_reference_version
+            || version_compare( $mad4b_mcp_mu_candidate_version, $mad4b_mcp_mu_base_reference_version, '>' ) ) {
+            $mad4b_mcp_mu_base_reference_version = $mad4b_mcp_mu_candidate_version;
+            $mad4b_mcp_mu_base_reference = $mad4b_mcp_mu_candidate;
+        }
+    }
+}
 if ( empty( $mad4b_mcp_mu_selected_profile )
-    && preg_match( '/^0\.7\.[0-9]+$/D', (string) $mad4b_mcp_mu_adapter_version )
-    && version_compare( $mad4b_mcp_mu_adapter_version, '0.7.0', '>' )
-    && isset( $mad4b_mcp_mu_profiles_catalog['providers']['mcp_adapter']['0.7.0'] ) ) {
-    $mad4b_mcp_mu_layout = $mad4b_mcp_mu_profiles_catalog['providers']['mcp_adapter']['0.7.0'];
+    && $mad4b_mcp_mu_future_semver
+    && ! empty( $mad4b_mcp_mu_base_reference ) ) {
+    $mad4b_mcp_mu_layout = $mad4b_mcp_mu_base_reference;
     $mad4b_mcp_mu_layout_root = realpath( $mad4b_mcp_mu_root );
     $mad4b_mcp_mu_layout_ready = is_array( $mad4b_mcp_mu_layout )
         && ! empty( $mad4b_mcp_mu_layout['critical_files'] )
@@ -217,6 +249,10 @@ if ( empty( $mad4b_mcp_mu_selected_profile )
         $mad4b_mcp_mu_selected_profile = $mad4b_mcp_mu_layout;
         $mad4b_mcp_mu_status['adapter_profile_source'] = 'installed_compatible_layout';
         $mad4b_mcp_mu_status['adapter_profile_dynamic'] = true;
+        // This is only the donor profile used to enumerate ABI requirements,
+        // not a statement that the future version is release-certified.
+        $mad4b_mcp_mu_status['dynamic_reference_version'] = $mad4b_mcp_mu_base_reference_version;
+        $mad4b_mcp_mu_status['dynamic_requires_runtime_class_readback'] = true;
     }
 }
 

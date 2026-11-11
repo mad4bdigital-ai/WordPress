@@ -35,8 +35,13 @@ function wp_remote_retrieve_response_code($response){return $response['code'];}
 function wp_remote_retrieve_body($response){return $response['body'];}
 require_once MAD4B_SCP_DIR.'includes/class-mad4b-scp-self-update.php';
 $sha='a'.str_repeat('1',39);
+// Read the exact active plugin version instead of a stale rc.120 fixture.
+// This tests immutable source matching, not approval to downgrade.
+$main_php = file_get_contents(MAD4B_SCP_FILE);
+if(!is_string($main_php) || !preg_match('/^[ \t\/*#@]*Version:\s*(.+)$/mi',$main_php,$version_match))throw new Exception('runtime_plugin_version_unavailable');
+$fixture_version = trim($version_match[1]);
 $input=[
- 'version'=>'0.4.0-rc.120','source_commit_sha'=>$sha,
+ 'version'=>$fixture_version,'source_commit_sha'=>$sha,
  'archive_sha256'=>str_repeat('b',64),'build_fingerprint'=>str_repeat('c',64),
  'package_manifest_digest'=>str_repeat('d',64),'size_bytes'=>4096,
  'reason'=>'test host allowlisted repository staging plan','channel'=>'staging_candidate_upload',

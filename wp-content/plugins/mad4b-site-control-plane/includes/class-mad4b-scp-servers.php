@@ -4,6 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 require_once __DIR__ . '/class-mad4b-scp-server-write-catalog.php';
 require_once __DIR__ . '/class-mad4b-scp-chatgpt-approval-bootstrap.php';
 require_once __DIR__ . '/class-mad4b-scp-server-core-catalog.php';
+require_once __DIR__ . '/trait-mad4b-scp-servers-vps-local-transport.php';
 require_once __DIR__ . '/class-mad4b-scp-governed-ability-census.php';
 require_once __DIR__ . '/class-mad4b-scp-post-identity.php';
 require_once __DIR__ . '/class-mad4b-scp-site-profile-enrollment.php';
@@ -25,6 +26,7 @@ MAD4B_SCP_Staging_Write_Grant_Reconciliation::boot();
 final class MAD4B_SCP_Servers {
 	use MAD4B_SCP_Server_Write_Catalog;
 	use MAD4B_SCP_Server_Core_Catalog;
+	use MAD4B_SCP_Servers_VPS_Local_Transport;
 	private static $registrations = array();
 	private static $adapter_write_projection_cache = null;
 	private static $registered_adapter_write_candidates_cache = null;
@@ -1141,7 +1143,13 @@ final class MAD4B_SCP_Servers {
 			self::$registrations[ $id ]['tool_count'] = $evidence['tool_count'];
 			self::$registrations[ $id ]['catalog_evidence'] = $evidence;
 			self::$registrations[ $id ]['materialized'] = ! empty( $evidence['observed'] );
-			if ( empty( $evidence['ready'] ) ) self::$registrations[ $id ]['error'] = $evidence['blocker'];
+			if ( empty( $evidence['ready'] ) ) {
+			    // Keep exact bounded cause in catalog_evidence, but surface
+			    // the required-tool preflight failure on route-only servers.
+			    self::$registrations[ $id ]['error'] = empty( $preflight['ready'] )
+			        ? 'mcp_required_tool_preflight_failed'
+			        : $evidence['blocker'];
+			}
 		}
 	}
 }

@@ -44,10 +44,11 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 			'selected' => $selected,
 			'excluded_optional' => $optional_excluded,
 			'required_count' => count( $required ),
-			'optional_capacity' => $capacity,
+			'optional_capacity' => count( $optional_requested ),
             'effective_max_tools' => $limits['max_tools'],
             'configured_max_tools' => $limits['configured_max_tools'],
             'budget_policy' => $limits['contract'],
+            'dynamic_unbounded_catalog' => true,
             'latency_state' => $limits['latency_state'],
 		);
 	}
@@ -337,10 +338,19 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 			if ( isset( $wire->outputSchema ) && ( ! is_object( $wire->outputSchema ) || 'object' !== ( $wire->outputSchema->type ?? '' ) ) ) throw new RuntimeException( 'wire_output_schema_invalid' );
 			return null;
 		} catch ( Throwable $error ) {
+			// JSON encoder error *number* is safe diagnostic evidence. Never
+			// persist raw wire schema, caller input, error message or stack trace.
+			// Keep the required-tool failure and permission gate fail-closed.
+			$json_error = $error instanceof JsonException ? (int) $error->getCode() : 0;
+			if ( $json_error < 0 || $json_error > 10 ) $json_error = 0;
+			$utf8_component = 5 === $json_error && isset( $data ) && is_array( $data )
+				? self::invalid_utf8_wire_component( $data ) : 'not_applicable';
 			return array(
 				'stage' => $stage,
 				'error_class' => get_class( $error ),
 				'error_code' => 'mcp_tool_serialization_invalid',
+				'json_error_number' => $json_error,
+				'json_error_component' => $utf8_component,
 				'schema_fingerprint' => $fingerprint,
 			);
 		}
@@ -466,6 +476,28 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 			if ( ! $failure ) { $safe[] = $dto; continue; }
 			if ( ! $direct_step_up && ! $dynamic ) throw new RuntimeException( 'mad4b_required_catalog_schema_invalid' );
 			$failure['failing_ability'] = $ability;
+			if ( 'description' === ( $failure['json_error_component'] ?? '' )
+				&& function_exists( 'wp_get_ability' )
+				&& class_exists( 'MAD4B_SCP_MCP_Adapter_Compatibility' ) ) {
+				$registered_ability = wp_get_ability( $ability );
+				$wire_fields = MAD4B_SCP_MCP_Adapter_Compatibility::wire_data( $dto );
+				$source_description = is_object( $registered_ability )
+					&& method_exists( $registered_ability, 'get_description' )
+					? $registered_ability->get_description() : null;
+				$wire_description = is_array( $wire_fields )
+					? ( $wire_fields['description'] ?? null ) : null;
+				// Diagnostic booleans and byte lengths only. Never log description
+				// content, WordPress user input, token, or untrusted schema keys.
+				$failure['description_source_is_utf8'] = is_string( $source_description )
+					&& 1 === preg_match( '//u', $source_description );
+				$failure['description_source_wire_equal'] = is_string( $source_description )
+					&& is_string( $wire_description )
+					&& hash_equals( $source_description, $wire_description );
+				$failure['description_source_bytes'] = is_string( $source_description )
+					? strlen( $source_description ) : 0;
+				$failure['description_wire_bytes'] = is_string( $wire_description )
+					? strlen( $wire_description ) : 0;
+			}
 			if ( ! self::$failure_logged ) {
 				self::$failure_logged = true;
 				error_log( '[MAD4B MCP preflight] ' . wp_json_encode( $failure ) );
@@ -487,9 +519,8 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 		$dynamic = class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' )
 			? array_fill_keys( MAD4B_SCP_ChatGPT_Tool_Projection::projected_ability_names(), true )
 			: array();
-		// Reuse the canonical MCP server materialization policy for bounded
-		// profile conveniences. Otherwise those optional tools are counted as
-		// required and cause false mcp_required_catalog_budget_exceeded blocks.
+		// Reuse the canonical MCP materialization classification to isolate
+		// optional validation failures without hiding otherwise valid tools.
 		// Never classify an unknown provider Ability as optional by metadata alone.
 		$materialized_optional = class_exists( 'MAD4B_SCP_Servers' )
 			&& method_exists( 'MAD4B_SCP_Servers', 'chatgpt_materialization_optional_tools' )

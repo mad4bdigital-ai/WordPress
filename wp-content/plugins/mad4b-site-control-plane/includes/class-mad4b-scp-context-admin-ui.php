@@ -485,7 +485,10 @@ final class MAD4B_SCP_Context_Admin_UI {
 			require_once __DIR__ . '/class-mad4b-scp-drive-scan-admin.php';
 			$result = MAD4B_SCP_Drive_Scan_Admin::step( wp_unslash( $_POST ) );
 			if ( is_wp_error( $result ) ) self::redirect_result( $result, 'sources', '' );
-			if ( 'apply' === ( $_POST['scan_operation'] ?? '' ) ) self::redirect_result( $result, 'assets', 'source_scanned' );
+            if ( in_array( (string)($_POST['scan_operation']??''), array('apply','apply_partial'), true ) )
+                self::redirect_result( $result,
+                    'apply_partial' === (string)($_POST['scan_operation']??'')?'sources':'assets',
+                    'apply_partial' === (string)($_POST['scan_operation']??'')?'source_scanned_partial':'source_scanned' );
 			require_once ABSPATH . 'wp-admin/admin-header.php';
 			MAD4B_SCP_Drive_Scan_Admin::render( $result );
 			require_once ABSPATH . 'wp-admin/admin-footer.php';
@@ -1537,21 +1540,23 @@ final class MAD4B_SCP_Context_Admin_UI {
      */
     private static function source_onboarding_guidance( $state ) {
         $steps = array(
-            __( 'Verify Staging Site Profile and deployment binding', 'mad4b-site-control-plane' ),
+            __( 'Verify the enrolled Site Profile and deployment binding', 'mad4b-site-control-plane' ),
             __( 'Review Brand Profile and earlier source ownership', 'mad4b-site-control-plane' ),
             __( 'Verify Google connection and the required scope', 'mad4b-site-control-plane' ),
             __( 'Review this folder and approve the source policy', 'mad4b-site-control-plane' ),
         );
         $map = array(
-            'exact_staging_site_required' => array( 0, 'site-profile', __( 'The current Site Profile or its Staging authority is not ready. Verify the site identity before source onboarding.', 'mad4b-site-control-plane' ) ),
+            'exact_registered_site_required' => array( 0, 'site-profile', __( 'The current Site Profile must match the registered Staging or Production environment and the exact site identity before source onboarding.', 'mad4b-site-control-plane' ) ),
+            'exact_staging_site_required' => array( 0, 'site-profile', __( 'The current Site Profile does not match the registered environment. Verify the exact site identity before source onboarding.', 'mad4b-site-control-plane' ) ),
             'OPERATIONAL_SCOPE_RECOVERY_REQUIRED' => array( 0, 'operational-remediation', __( 'Deployment scope has not been verified. Review the operational remediation and deployment identity status first.', 'mad4b-site-control-plane' ) ),
-            'DEPLOYMENT_BINDING_RECOVERY_REQUIRED' => array( 0, 'operational-remediation', __( 'The source cannot be attached until this Staging site has a current verified deployment binding.', 'mad4b-site-control-plane' ) ),
+            'DEPLOYMENT_BINDING_RECOVERY_REQUIRED' => array( 0, 'operational-remediation', __( 'The source cannot be attached until this site has a current verified deployment binding.', 'mad4b-site-control-plane' ) ),
             'BRAND_PROFILE_REQUIRED' => array( 1, 'overview', __( 'Create or verify the Brand Profile before choosing a governed source.', 'mad4b-site-control-plane' ) ),
             'LEGACY_SOURCE_RECONCILIATION_REQUIRED' => array( 1, 'sources', __( 'Historical source or asset ownership needs review. Existing quarantined records must not be assigned to the selected folder automatically.', 'mad4b-site-control-plane' ) ),
             'RECYCLE_ARCHIVE_INTEGRITY_RECOVERY_REQUIRED' => array( 1, 'sources', __( 'The recoverable archive failed its integrity check. Repair the protected archive before registering a new folder.', 'mad4b-site-control-plane' ) ),
             'GOOGLE_CONNECTION_RECOVERY_REQUIRED' => array( 2, 'google-drive', __( 'Reconnect or recover Google access after any pending revocation is resolved. Read-only access is enough for a read-only source.', 'mad4b-site-control-plane' ) ),
             'GOOGLE_WRITE_CONSENT_REQUIRED' => array( 2, 'google-drive', __( 'Managed library needs the separately consented Google write grant. You can choose Read-only while that grant is unavailable.', 'mad4b-site-control-plane' ) ),
             'FOLDER_SELECTION_REQUIRED' => array( 3, 'google-drive', __( 'Choose a specific folder rather than the Drive root.', 'mad4b-site-control-plane' ) ),
+            'GOOGLE_FOLDER_ACCESS_REQUIRED' => array( 3, 'google-drive', __( 'The selected folder could not be verified as an accessible Google Drive folder. Confirm the folder exists, the connected account can access it, and Google access is current, then retry.', 'mad4b-site-control-plane' ) ),
             'EXISTING_SOURCE_POLICY_REVIEW_REQUIRED' => array( 3, 'sources', __( 'This folder is already registered. Review its existing policy instead of creating a duplicate.', 'mad4b-site-control-plane' ) ),
             'mad4b_source_onboarding_preflight_missing' => array( 0, 'operational-remediation', __( 'The read-only onboarding preflight is not loaded in this installed build. Verify the exact plugin package and reopen this page; no save is possible until the gate is available.', 'mad4b-site-control-plane' ) ),
         );
@@ -1994,7 +1999,27 @@ final class MAD4B_SCP_Context_Admin_UI {
 				submit_button( __( 'Save', 'mad4b-site-control-plane' ), 'secondary small', 'submit', false );
 			}
 			echo '</form></td><td>' . esc_html( $source['task_scope'] ? $source['task_scope'] : '—' ) . '</td>';
-			echo '<td>' . esc_html( $source['status'] ) . '</td><td>' . esc_html( (string) $source['asset_count'] ) . '</td><td>' . esc_html( $source['last_synced_at'] ? $source['last_synced_at'] : 'Never' ) . '</td>';
+            $progress=array();
+            if(class_exists('MAD4B_SCP_Drive_Scan_Continuation',false)
+                ||is_readable(__DIR__.'/class-mad4b-scp-drive-scan-continuation.php')){
+                require_once __DIR__.'/class-mad4b-scp-drive-scan-continuation.php';
+                $progress=get_option(MAD4B_SCP_Drive_Scan_Continuation::progress_option_name(
+                    (string)$source['source_id']),array());
+            }
+            $active_progress=is_array($progress)
+                && ($progress['contract']??'')==='mad4b.scan-ui-progress.v1'
+                && hash_equals((string)$source['source_id'],(string)($progress['source_id']??''))
+                && (string)($progress['site_uuid']??'')!==''
+                && (int)($progress['expires_at']??0)>time();
+            echo '<td>' . esc_html( $source['status'] );
+            if($active_progress)echo '<p class="description">'
+                .esc_html(!empty($progress['inventory_complete'])?'Inventory ready for review':'Inventory in progress')
+                .' · Step '.(int)$progress['checkpoint_revision']
+                .' · Verified '.(int)$progress['verified_files']
+                .' · Deferred '.(int)$progress['deferred_files'].'</p>';
+            echo '</td><td>' . esc_html( (string) $source['asset_count'] )
+                . '</td><td>' . esc_html( $source['last_synced_at'] ? $source['last_synced_at'] : 'Never' )
+                .($active_progress?' <span class="description">(scan checkpoint available)</span>':'').'</td>';
 			echo '<td><form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 			wp_nonce_field( self::ACTION_SCAN_SOURCE );
 			echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_SCAN_SOURCE ) . '"><input type="hidden" name="source_id" value="' . esc_attr( $source['source_id'] ) . '">';

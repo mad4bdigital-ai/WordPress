@@ -13,6 +13,7 @@ function wp_check_invalid_utf8( $value, $strip = false ) {
     if ( preg_match( '//u', (string) $value ) ) return (string) $value;
     return $strip ? iconv( 'UTF-8', 'UTF-8//IGNORE', (string) $value ) : '';
 }
+require_once __DIR__ . '/../includes/class-mad4b-scp-context-local-document-normalizer.php';
 require_once __DIR__ . '/../includes/class-mad4b-scp-google-drive-context.php';
 require_once __DIR__ . '/../includes/class-mad4b-scp-context-local-document-normalizer.php';
 require_once __DIR__ . '/../includes/class-mad4b-scp-wordpress-media-context.php';

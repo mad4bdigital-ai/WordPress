@@ -33,6 +33,142 @@ final class MAD4B_SCP_MCP_Runtime_Recovery {
 		return 1 === preg_match( '/^[A-Za-z0-9._:-]{1,128}$/D', $value ) ? $value : '';
 	}
 
+    /**
+     * PERMANENT TOPOLOGY CONTRACT:
+     * Host Registry, not the number of visible containers, determines whether
+     * the company uses one node or multiple required nodes. No fake cluster,
+     * no auto-created node ID and no inferred inventory membership.
+     * An UNKNOWN topology NEVER gets a multi-node PASS. This readback never
+     * issues grants, authorizes publication, or changes Broker/Executor jobs.
+     */
+    public static function topology_verdict( array $local, array $registry = array(), array $receipts = array() ) {
+        $local_verified = ! empty( $local['runtime_execution_verified'] )
+            && ! empty( $local['site_binding_ready'] )
+            && ! empty( $local['target_build'] );
+        $result = array(
+            'contract' => 'mad4b.mcp-topology-verdict.v1',
+            'local_runtime' => $local_verified ? 'LOCAL_VERIFIED' : 'LOCAL_NOT_VERIFIED',
+            'topology' => 'UNKNOWN',
+            'cluster_aggregation_required' => null,
+            'cluster_readback' => 'NOT_APPLICABLE_UNTIL_TOPOLOGY_DISCOVERED',
+            'required_node_count' => null,
+            'verified_node_count' => 0,
+            'missing_node_ids' => array(),
+            'deployment_complete' => false,
+            'business_completion_allowed' => false,
+            'read_only' => true,
+            'mutation_performed' => false,
+        );
+        $expected_origin = (string) ( $local['origin_sha256'] ?? '' );
+        $expected_site = (string) ( $local['site_uuid'] ?? '' );
+        $expected_env = (string) ( $local['environment'] ?? '' );
+        $expected_build = (string) ( $local['target_build'] ?? '' );
+        $status = (string) ( $registry['state'] ?? '' );
+        $kind = (string) ( $registry['topology'] ?? '' );
+        $required = $registry['required_node_ids'] ?? null;
+        $registry_valid = ( $registry['contract'] ?? '' ) === 'mad4b.company-host-topology-registry.v1'
+            && $status === 'VERIFIED'
+            && ! empty( $registry['registration_readback_verified'] )
+            && ( $registry['site_uuid'] ?? '' ) === $expected_site
+            && ( $registry['environment'] ?? '' ) === $expected_env
+            && ( $registry['origin_sha256'] ?? '' ) === $expected_origin
+            && ( $registry['target_build'] ?? '' ) === $expected_build
+            && is_array( $required ) && ! empty( $required )
+            && count( $required ) <= 64 && count( $required ) === count( array_unique( $required ) );
+        if ( $registry_valid ) {
+            foreach ( $required as $id ) {
+                if ( ! is_string( $id ) || ! preg_match( '/^[A-Za-z0-9._:-]{1,128}$/D', $id ) ) {
+                    $registry_valid = false;
+                    break;
+                }
+            }
+        }
+        if ( ! $registry_valid || ! in_array( $kind, array( 'single_node', 'multi_node' ), true ) ) {
+            $result['topology_reason'] = 'HOST_REGISTRY_MEMBERSHIP_NOT_VERIFIED';
+            return $result;
+        }
+        $local_node = (string) ( $local['node_id'] ?? '' );
+        if ( $local_node === '' || ! in_array( $local_node, $required, true ) ) {
+            $result['topology_reason'] = 'LOCAL_NODE_NOT_IN_VERIFIED_REGISTRY';
+            return $result;
+        }
+        if ( $kind === 'single_node' && count( $required ) === 1 ) {
+            $result['topology'] = 'SINGLE_NODE_VERIFIED';
+            $result['cluster_aggregation_required'] = false;
+            $result['cluster_readback'] = 'NOT_APPLICABLE_SINGLE_NODE';
+            $result['required_node_count'] = 1;
+            $result['verified_node_count'] = $local_verified ? 1 : 0;
+            $result['deployment_complete'] = $local_verified;
+            return $result;
+        }
+        $cluster_id = (string) ( $registry['cluster_id'] ?? '' );
+        if ( $kind !== 'multi_node' || count( $required ) < 2
+            || $cluster_id === ''
+            || $cluster_id !== (string) ( $local['cluster_id'] ?? '' ) ) {
+            $result['topology_reason'] = 'MULTI_NODE_CLUSTER_MEMBERSHIP_MISMATCH';
+            return $result;
+        }
+        $result['topology'] = 'MULTI_NODE_REGISTERED';
+        $result['cluster_aggregation_required'] = true;
+        $result['required_node_count'] = count( $required );
+        $verified = array();
+        $seen = array();
+        $invalid_receipts = 0;
+        $duplicate_node_receipts = 0;
+        foreach ( $receipts as $receipt ) {
+            if ( ! is_array( $receipt ) ) continue;
+            $node = (string) ( $receipt['node_id'] ?? '' );
+            if ( ! in_array( $node, $required, true ) ) {
+                ++$invalid_receipts;
+                continue;
+            }
+            if ( isset( $seen[ $node ] ) ) {
+                ++$duplicate_node_receipts;
+                continue;
+            }
+            $seen[ $node ] = true;
+            $fingerprint = $receipt;
+            foreach ( array( 'verified_at', 'evidence_sha256',
+                'local_runtime_verdict', 'topology_verdict',
+                'cluster_aggregation_required', 'cluster_readback',
+                'deployment_complete', 'host_registry_topology_evidence'
+            ) as $computed_field ) unset( $fingerprint[ $computed_field ] );
+            $encoded = wp_json_encode( $fingerprint, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+            $receipt_digest_valid = is_string( $encoded )
+                && preg_match( '/^[a-f0-9]{64}$/D', (string) ( $receipt['evidence_sha256'] ?? '' ) )
+                && hash_equals( hash( 'sha256', $encoded ), $receipt['evidence_sha256'] );
+            if ( ! $receipt_digest_valid ) {
+                ++$invalid_receipts;
+                continue;
+            }
+            if ( empty( $receipt['runtime_execution_verified'] )
+                || empty( $receipt['site_binding_ready'] )
+                || ( $receipt['site_uuid'] ?? '' ) !== $expected_site
+                || ( $receipt['environment'] ?? '' ) !== $expected_env
+                || ( $receipt['cluster_id'] ?? '' ) !== $cluster_id
+                || ( $receipt['target_build'] ?? '' ) !== $expected_build
+                || ( $receipt['origin_sha256'] ?? '' ) !== $expected_origin
+                || ( $receipt['expected_mu_sha256'] ?? '' ) === ''
+                || ( $receipt['expected_mu_sha256'] ?? '' ) !== ( $receipt['observed_mu_sha256'] ?? '' )
+                || ( $receipt['expected_mu_sha256'] ?? '' ) !== ( $local['expected_mu_sha256'] ?? '' ) ) {
+                ++$invalid_receipts;
+                continue;
+            }
+            $verified[ $node ] = true;
+        }
+        $result['verified_node_count'] = count( $verified );
+        $result['missing_node_ids'] = array_values( array_diff( $required, array_keys( $verified ) ) );
+        $result['duplicate_node_receipt_count'] = $duplicate_node_receipts;
+        $result['invalid_node_receipt_count'] = $invalid_receipts;
+        $result['cluster_readback'] = $duplicate_node_receipts || $invalid_receipts
+            ? 'INVALID_OR_DUPLICATE_NODE_RECEIPTS'
+            : ( empty( $result['missing_node_ids'] )
+                ? 'CLUSTER_VERIFIED' : 'PENDING_REQUIRED_NODE_RECEIPTS' );
+        $result['deployment_complete'] = $local_verified
+            && $result['cluster_readback'] === 'CLUSTER_VERIFIED';
+        return $result;
+    }
+
 	/**
 	 * Current-node evidence is deliberately separate from cluster certification.
 	 * A node without explicit cluster/node IDs can be healthy but cannot be
@@ -63,7 +199,36 @@ final class MAD4B_SCP_MCP_Runtime_Recovery {
 		$expected_mu_sha256 = $source && is_readable( $source ) ? (string) hash_file( 'sha256', $source ) : '';
 		$observed_mu_sha256 = $destination && is_readable( $destination ) ? (string) hash_file( 'sha256', $destination ) : '';
 		$guard = class_exists( 'MAD4B_SCP_MCP_Runtime_Conflict_Guard', false ) ? MAD4B_SCP_MCP_Runtime_Conflict_Guard::status() : array();
-		$runtime_execution_verified = 'canonical_runtime' === ( $guard['state'] ?? '' )
+		// PERMANENT NODE READBACK CONTRACT:
+		// The observational Runtime_Conflict_Guard now intentionally returns
+		// runtime_source_observed rather than canonical_runtime outside an
+		// explicit repair lifecycle. Do not make this legacy state name hide a
+		// fully proven canonical MCP request after the next-request MU refresh.
+		// The early MU bootstrap + independently inspected complete class set
+		// are the execution evidence; versions, optional release certificates and
+		// the guard's label never create authority. Ordinary WP/Rank Math
+		// requests must NOT certify this MCP node.
+		$mu = isset( $GLOBALS['mad4b_scp_mcp_mu_bootstrap'] )
+			&& is_array( $GLOBALS['mad4b_scp_mcp_mu_bootstrap'] )
+			? $GLOBALS['mad4b_scp_mcp_mu_bootstrap'] : array();
+		$classes = class_exists( 'MAD4B_SCP_MCP_Class_Provenance', false )
+			? MAD4B_SCP_MCP_Class_Provenance::status( false, false ) : array();
+		$canonical_execution_proven = ! empty( $mu['eligible'] )
+			&& ! empty( $mu['request_requires_mcp_runtime'] )
+			&& empty( $mu['request_scope_bypassed'] )
+			&& empty( $mu['transaction_pending'] )
+			&& empty( $mu['runtime_preclaimed'] )
+			&& ! empty( $mu['canonical_symbols_pinned'] )
+			&& ! empty( $mu['critical_class_set_pinned'] )
+			&& ! empty( $mu['adapter_init_hook_bound'] )
+			&& ! empty( $mu['runtime_from_official_plugin'] )
+			&& (int) ( $mu['critical_class_pin_count'] ?? 0 ) > 0
+			&& ! empty( $classes['ready'] )
+			&& ! empty( $classes['complete'] )
+			&& empty( $classes['mixed_runtime'] )
+			&& empty( $classes['failure_count'] )
+			&& (int) ( $classes['class_count'] ?? 0 ) >= (int) $mu['critical_class_pin_count'];
+		$runtime_execution_verified = $canonical_execution_proven
 			&& ! empty( $guard['runtime_from_official_plugin'] )
 			&& ! empty( $guard['mu_bootstrap_executed'] )
 			&& ! empty( $guard['mu_bootstrap_runtime_from_official_plugin'] )
@@ -71,11 +236,53 @@ final class MAD4B_SCP_MCP_Runtime_Recovery {
 			&& '' !== $observed_mu_sha256
 			&& hash_equals( $expected_mu_sha256, $observed_mu_sha256 );
 		$identity_configured = '' !== $cluster_id && '' !== $node_id;
+		// PERMANENT ORIGINAL HOST-REGISTRY TRUST BOUNDARY:
+		// NEVER trust an option's state=VERIFIED or its SHA alone.
+		// Company Manager independently revalidates the original signed
+		// Host Bridge inventory on this request. Existing read/MCP/WP-CLI/SSH
+		// routes remain independent if no provider inventory is registered.
+		$registry = class_exists( 'MAD4B_Company_Host_Topology_Registry_V1', false )
+			? MAD4B_Company_Host_Topology_Registry_V1::verified_local_registry(
+				$site_uuid, $environment, $canonical_origin
+			) : array();
+		$registry = is_array( $registry ) ? $registry : array();
+		// PERMANENT DYNAMIC NODE IDENTITY:
+		// A registered node is selected only by a UNIQUE match against the
+		// current Host Bridge installation fingerprint inside the signed
+		// inventory. Two webheads with the same filesystem/config fingerprint
+		// are ambiguous; never invent their identities from Docker IDs.
+		$node_identity_source = $node_id !== '' ? 'explicit_host_configuration' : 'not_verified';
+		if ( $registry && class_exists( 'MAD4B_SCP_Host_Bridge', false ) ) {
+			$fingerprint = MAD4B_SCP_Host_Bridge::target_fingerprint_readonly();
+			$matches = array();
+			foreach ( (array) ( $registry['required_nodes'] ?? array() ) as $node ) {
+				if ( ! is_array( $node ) || ! in_array(
+					(string) ( $node['runtime_role'] ?? '' ),
+					array( 'wordpress_mcp', 'wordpress_webhead' ), true
+				) ) continue;
+				if ( $fingerprint !== '' && hash_equals(
+					$fingerprint, (string) ( $node['target_fingerprint'] ?? '' )
+				) ) $matches[] = (string) ( $node['node_id'] ?? '' );
+			}
+			if ( count( $matches ) === 1 ) {
+				$verified_node_id = $matches[0];
+				if ( $node_id === '' ) {
+					$node_id = $verified_node_id;
+					$node_identity_source = 'original_signed_host_inventory_fingerprint';
+				}
+				if ( $node_id === $verified_node_id && $cluster_id === ''
+					&& ( $registry['topology'] ?? '' ) === 'multi_node' )
+					$cluster_id = (string) ( $registry['cluster_id'] ?? '' );
+			}
+		}
+		$identity_configured = $node_id !== '' &&
+			( $cluster_id !== '' || ( $registry['topology'] ?? '' ) === 'single_node' );
 		$evidence = array(
 			'contract' => 'mad4b.mcp-runtime-node-evidence.v2',
 			'cluster_id' => $cluster_id,
 			'node_id' => $node_id,
 			'cluster_identity_configured' => $identity_configured,
+			'node_identity_source' => $node_identity_source,
 			'site_uuid' => $site_uuid,
 			'site_profile_revision' => $site_profile_revision,
 			'site_profile_digest' => $site_profile_digest,
@@ -95,6 +302,9 @@ final class MAD4B_SCP_MCP_Runtime_Recovery {
 				'mu_runtime_from_official_plugin' => ! empty( $guard['mu_bootstrap_runtime_from_official_plugin'] ),
 			),
 			'runtime_execution_verified' => $runtime_execution_verified,
+			'runtime_execution_verification_source' => $runtime_execution_verified
+				? 'canonical_mu_pin_plus_complete_class_provenance_and_exact_hash'
+				: 'not_verified_for_this_request',
 			'verified_at' => $runtime_execution_verified ? gmdate( 'c' ) : '',
 			'eligible_for_cluster_aggregation' => $runtime_execution_verified && $identity_configured && $site_binding_ready && '' !== $target_build,
 			'runtime_node_scope' => 'current_node',
@@ -106,6 +316,20 @@ final class MAD4B_SCP_MCP_Runtime_Recovery {
 			? wp_json_encode( $fingerprint, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE )
 			: json_encode( $fingerprint, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		$evidence['evidence_sha256'] = hash( 'sha256', is_string( $encoded ) ? $encoded : '' );
+		// Per-node receipt is valid independent of topology. Whole-deployment
+		// success is conditional on verified Host Registry membership and, for
+		// multi-node, independently collected Broker receipts.
+		$topology = self::topology_verdict( $evidence, $registry );
+		$evidence['local_runtime_verdict'] = $topology['local_runtime'];
+		$evidence['topology_verdict'] = $topology['topology'];
+		$evidence['cluster_aggregation_required'] = $topology['cluster_aggregation_required'];
+		$evidence['cluster_readback'] = $topology['cluster_readback'];
+		$evidence['deployment_complete'] = $topology['deployment_complete'];
+		$evidence['host_registry_topology_evidence'] = ( $topology['topology'] !== 'UNKNOWN' );
+		$evidence['host_registry_source'] = $registry
+			? 'original_signed_host_inventory_readback' : 'unverified_or_unavailable';
+		$evidence['unknown_topology_does_not_disable_local_mcp'] = true;
+		$evidence['other_execution_routes_are_independent'] = true;
 		return $evidence;
 	}
 

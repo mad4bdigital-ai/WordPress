@@ -4,7 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 /** Encrypted, bounded diagnostic progress. Never writes Context assets or grants. */
 final class MAD4B_SCP_Drive_Scan_Continuation {
  const CONTRACT = 'mad4b.drive-scan-continuation.v1';
- const TTL = 900;
+ const TTL = 7200;
  const MAX_BYTES = 8388608;
  private static function error( $suffix ) { return new WP_Error( 'mad4b_scan_' . $suffix, 'Scan continuation stopped: ' . $suffix . '. Reinspect the exact source; no Context registry write was performed.' ); }
  private static function digest( $data ) { return hash( 'sha256', wp_json_encode( $data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) ); }
@@ -29,6 +29,31 @@ final class MAD4B_SCP_Drive_Scan_Continuation {
   $plain = openssl_decrypt( substr( $bytes, 28 ), 'aes-256-gcm', self::key(), OPENSSL_RAW_DATA, substr( $bytes, 0, 12 ), substr( $bytes, 12, 16 ), $scope_sha );
   $state = is_string( $plain ) ? json_decode( $plain, true ) : null;
   return is_array( $state ) && self::CONTRACT === ( $state['contract'] ?? '' ) ? $state : self::error( 'checkpoint_corrupt' );
+ }
+ // Diagnostic UI status only: not Content authority, not a write grant.
+ public static function progress_option_name($source_id) {
+  return 'mad4b_scan_ui_progress_' . hash('sha256',(string)$source_id);
+ }
+ private static function save_ui_progress(array $scope,array $state) {
+  $owner=(array)($scope['checkpoint_owner']??array());
+  $site=(string)($owner[0]??''); $source=(string)($owner[4]??'');
+  if(!preg_match('/^[a-f0-9-]{36}$/D',$site)
+   ||!preg_match('/^[a-f0-9]{64}$/D',$source))return;
+  $record=array(
+   'contract'=>'mad4b.scan-ui-progress.v1','site_uuid'=>$site,'source_id'=>$source,
+   'at'=>gmdate('c'),'checkpoint_revision'=>absint($state['revision']??0),
+   'verified_files'=>count((array)($state['assets']??array())),
+   'deferred_files'=>count((array)($state['deferred']??array())),
+   'queued_folders'=>count((array)($state['queue']??array())),
+   'pending_files'=>count((array)($state['pending']??array())),
+   'discovered_folders'=>(int)($state['folders']??0),
+   'seen_entries'=>count((array)($state['seen']??array())),
+   'total_known'=>false,
+   'inventory_complete'=>!empty($state['complete']),
+   'expires_at'=>(int)($state['expires_at']??0),
+   'readonly_evidence'=>true,'registry_mutation_performed'=>false,
+  );
+  update_option(self::progress_option_name($source),$record,false);
  }
  private static function read_raw( $name ) {
   wp_cache_delete( $name, 'options' ); wp_cache_delete( 'notoptions', 'options' );
@@ -70,7 +95,8 @@ final class MAD4B_SCP_Drive_Scan_Continuation {
     $state = array( 'contract'=>self::CONTRACT, 'generation'=>bin2hex( random_bytes( 16 ) ),
      'revision'=>0, 'expires_at'=>time()+self::TTL, 'started_at'=>gmdate('c'), 'completed_at'=>'', 'change_token'=>$token,
      'root'=>$root, 'queue'=>array( array('id'=>$root['id'],'path'=>$root['name'],'depth'=>0,'token'=>'') ),
-     'pending'=>array(), 'seen'=>array($root['id']=>true), 'page_tokens'=>array(), 'assets'=>array(),
+     'pending'=>array(), 'seen'=>array($root['id']=>true), 'page_tokens'=>array(),
+     'assets'=>array(), 'deferred'=>array(),
      'folders'=>1, 'complete'=>false, 'last_request'=>'', 'blocked'=>'' );
    } else {
     if ( '' !== $state['blocked'] ) return self::error( $state['blocked'] );
@@ -85,6 +111,9 @@ final class MAD4B_SCP_Drive_Scan_Continuation {
    $check = call_user_func( $provider, 'revalidate', $scope );
    if ( true !== $check ) return is_wp_error( $check ) ? $check : self::error( 'scope_changed' );
    if ( $next['expires_at'] <= time() ) return self::error( 'checkpoint_expired' );
+   // Keep active large folders resumable. TTL is idle time between
+   // successful bounded steps, never unlimited unattended authority.
+   $next['expires_at']=time()+self::TTL;
    $next['revision']++; $next['last_request'] = hash( 'sha256', $cursor );
    $sealed = self::seal( $next, $scope_sha ); if ( is_wp_error( $sealed ) ) return $sealed;
    // Append-only intent precedes exact CAS. A failed CAS never claims completion.
@@ -95,18 +124,62 @@ final class MAD4B_SCP_Drive_Scan_Continuation {
    if ( is_wp_error( $audit ) || ! $audit ) return self::error( 'audit_failed' );
    if ( ! MAD4B_SCP_Distributed_Lock::owns( $lock ) ) return self::error( 'checkpoint_lock_lost' );
    $saved = self::save( $name, $raw, $sealed );
+   if(!is_wp_error($saved))self::save_ui_progress($scope,$next);
    return is_wp_error( $saved ) ? $saved : self::result( $next, $scope_sha );
   } finally { MAD4B_SCP_Distributed_Lock::release( $lock ); }
  }
  private static function advance( array $state, $recursive, $provider ) {
   if ( $state['pending'] ) {
    $file = $state['pending'][0];
-   $asset = call_user_func( $provider, 'normalize', $file );
-   if ( is_wp_error( $asset ) ) return $asset;
-   if ( ! is_array( $asset ) || true !== ( $asset['content_complete'] ?? false )
-    || ! preg_match('/^[a-f0-9]{64}$/D', (string)($asset['content_hash']??'')) ) return self::error( 'file_normalization_incomplete' );
-   if ( $file['id'] !== ($asset['file_id']??'') ) return self::error( 'file_identity_changed' );
-   $state['assets'][] = $asset; array_shift( $state['pending'] );
+   // Content fetch is bounded to 16 MiB. Advertised larger binary files
+   // are inventoried by verified Drive metadata, not downloaded into PHP.
+   $binary_limit=class_exists('MAD4B_SCP_Google_Drive_Context',false)
+    ? MAD4B_SCP_Google_Drive_Context::MAX_BINARY_BYTES : 16777216;
+   $declared_size=(isset($file['size']) && ctype_digit((string)$file['size']))
+    ? (int)$file['size'] : 0;
+   $google_native=0===strpos((string)($file['mimeType']??''),'application/vnd.google-apps.');
+   $asset=($declared_size>$binary_limit && !$google_native)
+    ? new WP_Error('mad4b_google_drive_binary_too_large',
+       'File size exceeds the bounded scanner fetch limit.') : call_user_func( $provider, 'normalize', $file );
+   // Distinguish a complete provider inventory from incomplete content
+   // extraction. An oversized workbook is not allowed to prevent discovery
+   // of other files or masquerade as an approved Context document.
+   $defer_codes = array(
+    'mad4b_context_spreadsheet_capacity',
+    'mad4b_context_spreadsheet_row_invalid',
+    'mad4b_context_spreadsheet_formula_uncached',
+    'mad4b_context_spreadsheet_formula_error',
+    'mad4b_context_spreadsheet_xml_invalid',
+    'mad4b_context_spreadsheet_shared_string_invalid',
+    'mad4b_context_archive_expanded_too_large',
+    'mad4b_google_drive_binary_too_large',
+    'mad4b_google_drive_export_too_large',
+    'mad4b_context_spreadsheet_size_invalid'
+   );
+   $deferred_reason = '';
+   if ( is_wp_error( $asset ) ) {
+    if ( in_array( $asset->get_error_code(), $defer_codes, true ) )
+     $deferred_reason = (string) $asset->get_error_code();
+    else return $asset; // Provider/network/scope failure is never treated as indexed.
+   } elseif ( is_array( $asset ) && empty( $asset['content_complete'] ) )
+    $deferred_reason = sanitize_key((string)($asset['normalization_reason']??'content_incomplete'));
+   if ( '' !== $deferred_reason ) {
+    if ( ! is_string($file['id']??null) || !preg_match('/^[A-Za-z0-9_-]{1,255}$/D',$file['id']) )
+     return self::error('deferred_file_identity_invalid');
+    $state['deferred'][]=array(
+     'file_id'=>$file['id'], 'title'=>mb_substr((string)($file['name']??''),0,250),
+     'mime_type'=>substr((string)($file['mimeType']??''),0,191),
+     'normalization_reason'=>$deferred_reason, 'content_complete'=>false,
+     'status'=>'deferred_review_required'
+    );
+    array_shift($state['pending']);
+   } else {
+    if ( ! is_array( $asset ) || true !== ( $asset['content_complete'] ?? false )
+     || ! preg_match('/^[a-f0-9]{64}$/D', (string)($asset['content_hash']??'')) )
+     return self::error('file_normalization_incomplete');
+    if ( $file['id'] !== ($asset['file_id']??'') ) return self::error('file_identity_changed');
+    $state['assets'][]=$asset; array_shift($state['pending']);
+   }
   } elseif ( $state['queue'] ) {
    $folder = $state['queue'][0];
    $page = call_user_func( $provider, 'list', $folder ); if ( is_wp_error( $page ) ) return $page;
@@ -149,14 +222,20 @@ final class MAD4B_SCP_Drive_Scan_Continuation {
   return self::result($state,$scope_sha);
  }
  private static function result( array $state, $scope_sha ) {
+  $deferred=is_array($state['deferred']??null)?$state['deferred']:array();
+  $inventory_complete=!empty($state['complete']);
+  $all_normalized=$inventory_complete && !$deferred;
   return array( 'contract'=>self::CONTRACT, 'scan_generation'=>hash('sha256',self::CONTRACT.'|'.$state['generation']),
    'started_at'=>$state['started_at'], 'completed_at'=>$state['completed_at'],
-   'complete'=>$state['complete'], 'truncated'=>!$state['complete'],
-   'partial_scan_requires_complete_rescan'=>!$state['complete'],
-   'truncation_reasons'=>$state['complete']?array():array('scan_page_pending'),
+   'complete'=>$all_normalized, 'inventory_complete'=>$inventory_complete,
+   'truncated'=>!$all_normalized,
+   'partial_scan_requires_complete_rescan'=>!$all_normalized,
+   'truncation_reasons'=>!$inventory_complete?array('scan_page_pending')
+     : ($deferred?array('file_normalization_deferred'):array()),
+   'deferred_files'=>$deferred,'deferred_count'=>count($deferred),
    'assets'=>$state['assets'], 'asset_count'=>count($state['assets']),
    'scan_cursor'=>self::cursor($state,$scope_sha), 'expires_at'=>$state['expires_at'],
    'checkpoint_revision'=>$state['revision'], 'registry_mutation_performed'=>false,
-   'next_action'=>$state['complete']?'prepare_exact_source_scan_apply':'continue_with_scan_cursor' );
+   'next_action'=>$inventory_complete?($deferred?'review_deferred_and_apply_verified_subset':'prepare_exact_source_scan_apply'):'continue_with_scan_cursor' );
  }
 }

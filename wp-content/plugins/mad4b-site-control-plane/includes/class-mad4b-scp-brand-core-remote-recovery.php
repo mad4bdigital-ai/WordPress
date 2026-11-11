@@ -108,6 +108,26 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
      * quarantine records. The selected folder is a claim, not proof.
      * No ticket, Drive mutation, registry write or implicit approval.
      */
+    /**
+     * Read-only gate for a site's enrolled environment.
+     * Production is a valid deployment scope, not a source-write grant.
+     * Retains independent origin, environment, identity and authority checks.
+     */
+    private static function exact_registered_site_for_onboarding( $site ) {
+        if ( ! is_array( $site ) || empty( $site['configured'] )
+            || ! in_array( (string) ( $site['environment'] ?? '' ),
+                array( 'staging', 'production' ), true )
+            || ! hash_equals( (string) ( $site['configured_environment'] ?? '' ),
+                (string) ( $site['environment'] ?? '' ) )
+            || empty( $site['origin_match'] )
+            || empty( $site['environment_match'] )
+            || empty( $site['authority_ready'] )
+            || ! preg_match( '/^[a-f0-9-]{36}$/D', (string) ( $site['site_uuid'] ?? '' ) )
+            || ! preg_match( '/^[a-f0-9]{64}$/D', (string) ( $site['profile_digest'] ?? '' ) ) )
+            return false;
+        return true;
+    }
+
     public static function source_onboarding_preflight( $input = array() ) {
         if ( ! self::can_read() )
             return self::denial( 'permission_required' );
@@ -130,12 +150,8 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
             || ! class_exists( 'MAD4B_SCP_Context_Authority' ) )
             return self::denial( 'site_or_context_unavailable' );
         $before = MAD4B_SCP_Site_Profile::status();
-        if ( ! is_array( $before ) || empty( $before['configured'] )
-            || 'staging' !== (string) ( $before['environment'] ?? '' )
-            || empty( $before['origin_match'] )
-            || empty( $before['environment_match'] )
-            || empty( $before['authority_ready'] ) )
-            return self::denial( 'exact_staging_site_required' );
+        if ( ! self::exact_registered_site_for_onboarding( $before ) )
+            return self::denial( 'exact_registered_site_required' );
         $profile = MAD4B_SCP_Context_Authority::profile();
         $census = MAD4B_SCP_Context_Authority::legacy_reconciliation_census();
         if ( is_wp_error( $census ) ) {
@@ -185,6 +201,7 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
         $status = 'READY_FOR_GOVERNED_SOURCE_PLAN';
         $next = 'context/governed-source-upsert';
         $needs_ticket = true;
+        $folder_access_verified = false;
         if ( ! $scope_verified ) {
             $status = 'DEPLOYMENT_BINDING_RECOVERY_REQUIRED';
             $next = 'READY_FOR_OWNER_APPROVAL' === $binding_state
@@ -210,15 +227,31 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
             $next = self::SOURCE_PREFLIGHT_ABILITY;
             $needs_ticket = false;
         } else {
-            // Existing authorized source: no duplicate creation or ownership
-            // migration. Only the existing per-source policy may be reviewed.
-            foreach ( MAD4B_SCP_Context_Authority::sources() as $source ) {
-                if ( ! is_array( $source ) ) continue;
-                if ( hash_equals( $folder, (string) ( $source['external_root_id'] ?? '' ) )
-                    && $mode === (string) ( $source['mode'] ?? '' ) ) {
-                    $status = 'EXISTING_SOURCE_POLICY_REVIEW_REQUIRED';
-                    $next = 'context/brand-core-coverage';
-                    break;
+            // The folder picker has displayed a folder, but the POST must
+            // independently prove current provider access. A syntactically
+            // valid ID is not proof that a folder exists or is accessible.
+            $folder_proof = class_exists( 'MAD4B_SCP_Google_Drive_Context' )
+                ? MAD4B_SCP_Google_Drive_Context::admin_folder_preview( $folder )
+                : new WP_Error( 'mad4b_google_drive_context_missing' );
+            if ( is_wp_error( $folder_proof )
+                || ! is_array( $folder_proof )
+                || ! hash_equals( $folder, (string) ( $folder_proof['id'] ?? '' ) )
+                || 'application/vnd.google-apps.folder' !== (string) ( $folder_proof['mimeType'] ?? '' ) ) {
+                $status = 'GOOGLE_FOLDER_ACCESS_REQUIRED';
+                $next = self::SOURCE_PREFLIGHT_ABILITY;
+                $needs_ticket = false;
+            } else {
+                $folder_access_verified = true;
+                // Existing authorized source: no duplicate creation or ownership
+                // migration. Only its per-source policy may be reviewed.
+                foreach ( MAD4B_SCP_Context_Authority::sources() as $source ) {
+                    if ( ! is_array( $source ) ) continue;
+                    if ( hash_equals( $folder, (string) ( $source['external_root_id'] ?? '' ) )
+                        && $mode === (string) ( $source['mode'] ?? '' ) ) {
+                        $status = 'EXISTING_SOURCE_POLICY_REVIEW_REQUIRED';
+                        $next = 'context/brand-core-coverage';
+                        break;
+                    }
                 }
             }
         }
@@ -231,6 +264,7 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
             'contract' => 'mad4b.context-source-onboarding-preflight.v1',
             'state' => $status, 'next_ability' => $next,
             'site_uuid' => (string) ( $before['site_uuid'] ?? '' ),
+            'registered_environment' => (string) ( $before['environment'] ?? '' ),
             'profile_revision' => (int) ( $before['revision'] ?? 0 ),
             'deployment_binding_state' => $binding_state,
             'operational_scope_verified' => $scope_verified,
@@ -242,6 +276,7 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
             'folder_selected' => '' !== $folder,
             'folder_identity_sha256' => '' !== $folder ? hash( 'sha256', $folder ) : '',
             'folder_membership_verified' => false,
+            'folder_access_verified' => $folder_access_verified,
             'write_policy_requested' => $policy,
             'write_permission_available' => ! empty( $connected['write_available'] ),
             'new_source_write_eligible' => 'READY_FOR_GOVERNED_SOURCE_PLAN' === $status,

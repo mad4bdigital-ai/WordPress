@@ -120,6 +120,7 @@ $r=MAD4B_SCP_Content_Jobs::create_job($input);
 assert_pass(is_wp_error($r)&&in_array('ROLLBACK',$wpdb->queries,true),'brand revision drift rolls back before commit');
 $GLOBALS['test_revise_at_audit']=false;
 
+assert_pass(count($GLOBALS['created_events'])===0,'failed or uncertain ContentJob transactions never emit created event');
 $wpdb=fresh_db();
 $r=MAD4B_SCP_Content_Jobs::create_job($input);
 assert_pass(!is_wp_error($r)&&$r['job']['tenant_id']===$GLOBALS['test_resolution']['scope']['tenant_ref'],'healthy job remains tenant-bound');

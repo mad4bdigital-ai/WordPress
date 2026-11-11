@@ -5,6 +5,7 @@ on:
     paths:
       - '.github/workflows/mad4b-apply-nhi-core-gate.yml'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/trait-mad4b-scp-abilities-registration.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-peer-governance.php'
@@ -28,6 +29,7 @@ on:
     paths:
       - '.github/workflows/mad4b-apply-nhi-core-gate.yml'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/trait-mad4b-scp-abilities-registration.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-peer-governance.php'
@@ -69,6 +71,7 @@ jobs:
           set -euo pipefail
           root='wp-content/plugins/mad4b-site-control-plane'
           abilities="$root/includes/class-mad4b-scp-abilities.php"
+          abilities_registration="$root/includes/trait-mad4b-scp-abilities-registration.php"
           servers="$root/includes/class-mad4b-scp-servers.php"
           core_catalog="$root/includes/class-mad4b-scp-server-core-catalog.php"
           test -f "$core_catalog"
@@ -104,7 +107,9 @@ jobs:
 
           grep -Fq "authorize_mutation( \$ability_name, \$server_id, 'core', \$input )" "$abilities"
           grep -Fq "authorize_mutation( \$ability_name, 'mad4b-' . sanitize_key( \$surface )" "$adapter"
-          grep -Fq "mad4b/runtime-authority-status" "$abilities"
+          grep -Fq "require_once __DIR__ . '/trait-mad4b-scp-abilities-registration.php';" "$abilities"
+          grep -Fq 'use MAD4B_SCP_Abilities_Registration_Trait;' "$abilities"
+          grep -Fq "mad4b/runtime-authority-status" "$abilities_registration"
           grep -Fq "mad4b/runtime-authority-status" "$servers" "$core_catalog"
           grep -Fq "exact_grant" "$authz"
           grep -Fq "public static function target_fingerprint" "$authz"

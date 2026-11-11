@@ -271,7 +271,7 @@ if (
 	! array_key_exists( 'per_tool_serialized_bytes_limit', $oversized_plan['mcp_preflight'] ?? array() )
 	|| 'bounded_single_tool_schema_unbounded_total' !== ( $oversized_plan['mcp_preflight']['size_policy'] ?? '' )
 ) {
-	$fail( 'Direct catalog byte budget was not enforced.', $oversized_plan['mcp_preflight'] ?? array() );
+    $fail( 'Dynamic catalog must retain unbounded total discovery with bounded individual tool schemas.', $oversized_plan['mcp_preflight'] ?? array() );
 }
 
 $manifest = MAD4B_SCP_ChatGPT_Tool_Projection::discover( array( 'transport_action' => 'manifest', 'limit' => 1 ) );

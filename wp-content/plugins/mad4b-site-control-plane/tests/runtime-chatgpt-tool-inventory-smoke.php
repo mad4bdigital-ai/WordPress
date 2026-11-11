@@ -38,7 +38,24 @@ if ( ! $server ) {
 
 $tools = $server->get_tools();
 if ( empty( $tools ) ) {
-	$fail( 'mad4b-chatgpt registered with an empty protocol tool inventory.' );
+    // Bounded, secret-free evidence: keep actual official Adapter registration
+    // failures visible instead of misdiagnosing missing tools as a count cap.
+    $registration = MAD4B_SCP_Servers::registration_status()['mad4b-chatgpt'] ?? array();
+    $preflight = $registration['preflight'] ?? array();
+    $failure_codes = array();
+    foreach ( array_slice( (array) ( $preflight['failures'] ?? array() ), 0, 8 ) as $row ) {
+        $failure_codes[] = array(
+            'ability' => (string) ( $row['failing_ability'] ?? '' ),
+            'stage' => (string) ( $row['stage'] ?? '' ),
+            'code' => (string) ( $row['error_code'] ?? '' ),
+        );
+    }
+    $fail( 'mad4b-chatgpt registered with an empty protocol tool inventory.', array(
+        'registration_error' => (string) ( $registration['error'] ?? '' ),
+        'requested_tools' => (int) ( $registration['requested_tool_count'] ?? 0 ),
+        'preflight_blocker' => (string) ( $preflight['blocker'] ?? '' ),
+        'preflight_failure_codes' => $failure_codes,
+    ) );
 }
 
 $actual_names = array();
@@ -63,9 +80,9 @@ if ( empty( $certified_catalog['ready'] ) || empty( $certified_catalog['tools'] 
 	$fail( 'The reviewed ChatGPT tool catalog did not pass actual MCP preflight.', $certified_catalog );
 }
 $expected_abilities = $certified_catalog['tools'];
-if ( count( $expected_abilities ) > MAD4B_SCP_MCP_Catalog_Diagnostics::MAX_TOOLS
-	|| array_diff( array_diff( $requested_abilities, $optional_abilities ), $expected_abilities ) ) {
-	$fail( 'Required tools cannot be silently omitted by catalog budget.', $certified_catalog );
+if ( ! empty( $certified_catalog['excluded_optional'] )
+    || array_diff( array_diff( $requested_abilities, $optional_abilities ), $expected_abilities ) ) {
+    $fail( 'Valid requested tools cannot be omitted by a historical display budget.', $certified_catalog );
 }
 
 $expected_names = array();
@@ -227,9 +244,9 @@ foreach ( $hidden_write_required as $ability_name ) {
 	}
 }
 
-if ( count( $actual_names ) > 36 ) {
-	$fail( 'Session-safe ChatGPT tools/list exceeded the reduced refresh/fanout-safety budget.', array( 'tool_count' => count( $actual_names ), 'budget' => 36 ) );
-}
+// No historical 36/64-count gate: the actual inventory has already been
+// compared to every vetted, expected protocol name above. Visibility and
+// execution boundaries are still independently asserted below.
 
 $discover = wp_get_ability( 'mad4b/tool-discover' );
 $info = wp_get_ability( 'mad4b/tool-info' );

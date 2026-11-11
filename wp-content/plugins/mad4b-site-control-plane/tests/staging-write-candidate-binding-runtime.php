@@ -102,7 +102,6 @@ final class MAD4B_SCP_Audit {
 }
 
 final class MAD4B_SCP_Staging_Write_Authority {
-	public static function is_exact_delegated_oauth_agent( $other, $user_id ) { return false; } // This fixture only enrolls canonical governed-write; no delegated subject.
 	const OPTION = 'mad4b_scp_staging_write_authority_v1';
 	const CANDIDATE_BINDING_CONTRACT = 'mad4b.governed-write-authority-candidate-binding.v2';
 	public static $reconcile_calls = 0;
@@ -117,6 +116,10 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		array( 'ability' => 'mad4b/plugin-activate', 'provider' => 'core', 'mounted' => true, 'exact_grant_present' => true, 'grant_state' => 'exact_current_environment' ),
 	);
 
+    public static function is_exact_delegated_oauth_agent( $resolved, $user_id ) {
+        // Fixture only: do not grant an untested delegation path.
+        return false;
+    }
 	public static function augment_write_ability( $args, $name ) { return $args; }
 	public static function bootstrap() { return get_option( self::OPTION, array() ); }
 	public static function reconcile() { ++self::$reconcile_calls; return new WP_Error( 'must_not_be_called' ); }

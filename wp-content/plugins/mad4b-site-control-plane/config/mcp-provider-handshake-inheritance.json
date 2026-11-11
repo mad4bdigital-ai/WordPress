@@ -1,0 +1,47 @@
+{
+  "contract": "mad4b.mcp-provider-inherited-readiness-policy.v1",
+  "inherited_defaults": {
+    "require_real_initialize": true,
+    "require_real_tools_list": true,
+    "require_authenticated_principal": true,
+    "require_tool_schema_identity": true,
+    "require_source_site_binding": true,
+    "require_fresh_receipt": true,
+    "allow_shared_oauth_session_inheritance": false,
+    "allow_automatic_adapter_class_rebinding": false,
+    "allow_auto_mcp_enablement": false,
+    "allow_write_from_local_registry_only": false,
+    "unrelated_content_jobs_not_blocked": true,
+    "skill_dimensions": [
+      "provider",
+      "security",
+      "content_jobs",
+      "devops",
+      "frontend",
+      "qa"
+    ],
+    "missing_static_release_profile_is_runtime_blocker": false,
+    "dynamic_installed_provider_version_detection": true,
+    "dynamic_official_upstream_source_verification_on_maintenance": true,
+    "privileged_runtime_recovery_requires_upstream_source_verification": true,
+    "release_policy_target_is_not_a_version_allowlist": true,
+    "mixed_vendor_mcp_php_runtime_still_requires_independent_compatibility_check": true
+  },
+  "provider_overrides": {
+    "rank-math": {
+      "notes": [
+        "Bundled wordpress/mcp-adapter can load shared DTO classes ahead of the official adapter",
+        "Treat mixed vendor class provenance as an independent runtime compatibility risk",
+        "Keep Rank Math OAuth and server routes separate from MAD4B Control Plane authorization",
+        "Do not reinitialize adapter or repair class load order in native MCP request hotpath",
+        "Legacy MCP metadata bridge remains copy-if-missing, no permission/route mutation"
+      ]
+    },
+    "elementor": {
+      "notes": [
+        "Native Elementor MCP enabled state is separate from generic MCP Adapter registration",
+        "Custom CSS remains native Elementor Editor owned; disallow raw post-meta CSS writes"
+      ]
+    }
+  }
+}

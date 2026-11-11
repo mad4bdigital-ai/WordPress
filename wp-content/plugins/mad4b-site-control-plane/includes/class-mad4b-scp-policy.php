@@ -115,7 +115,15 @@ final class MAD4B_SCP_Policy {
 
 	public static function can_mutate() {
 		$gate = self::mutation_gate_status();
-		if ( empty( $gate['effective'] ) ) return false;
+        // The global Production gate controls remote NHI/MCP and exceptional
+        // operations, but may not force an additional OAuth enrollment on an
+        // already authenticated native WordPress administrator. This does
+        // NOT enable the remote Production mutation gate.
+        $native_production_candidate = 'production' === ( $gate['environment'] ?? '' )
+            && empty( $gate['effective'] ) && empty( $gate['explicit_kill_switch'] )
+            && ! empty( $gate['site_profile_configured'] )
+            && ! empty( $gate['site_profile_governed_write_ready'] );
+		if ( empty( $gate['effective'] ) && ! $native_production_candidate ) return false;
 		if ( ! class_exists( 'MAD4B_SCP_Schema' ) || ! MAD4B_SCP_Schema::is_ready() ) return false;
 		if ( ! class_exists( 'MAD4B_SCP_Identity_Context' ) || ! class_exists( 'MAD4B_SCP_Agent_Registry' ) ) return false;
 		$identity = MAD4B_SCP_Identity_Context::current();
@@ -125,6 +133,12 @@ final class MAD4B_SCP_Policy {
         // explicit local WP-CLI --user. Exact per-Ability caps still apply.
         $native_user = MAD4B_SCP_Delegation_Mode::verified_wordpress_user( $identity );
         if ( $native_user ) {
+            // Production's normal WordPress exception is strictly local:
+            // verified native cookie / explicit server WP-CLI actor only.
+            // A remotely mapped OAuth or MCP user still requires the
+            // original Production remote authority, not this exception.
+            if ( empty( $gate['effective'] ) && ( ! empty( $identity['authenticated'] )
+                || '' !== (string) ( $identity['subject_type'] ?? '' ) ) ) return false;
             if ( ! MAD4B_SCP_Site_Profile::governed_write_ready() ) return false;
             // This global mutation predicate is used by many admin/write
             // routes. Require administrator capability here; content editors
@@ -133,6 +147,9 @@ final class MAD4B_SCP_Policy {
             return true === apply_filters( 'mad4b_scp_wordpress_mutation_permission', true,
                 (int) $native_user->ID, $identity );
         }
+		// An OAuth/MCP principal cannot borrow a normal WordPress admin's
+		// Production exception. Require the original independent NHI gate.
+		if ( empty( $gate['effective'] ) ) return false;
 		// Independent NHI still uses the existing exact agent/grant path.
 		if ( ! MAD4B_SCP_Delegation_Mode::principal_allowed( $identity ) ) return false;
 		// Actor enrollment occurs only at the exact prepared write dispatch

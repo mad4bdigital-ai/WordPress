@@ -214,8 +214,17 @@ final class MAD4B_SCP_LiteSpeed_Adapter extends MAD4B_SCP_Adapter_Base {
     }
     public function purge_all() {
         if ( ! $this->is_available() ) return $this->unavailable_error();
-        do_action( 'litespeed_purge_all' );
-        MAD4B_SCP_Audit::record( 'litespeed/purge-all', array() );
-        return array( 'purged' => true, 'scope' => 'all' );
+        if ( ! class_exists( 'MAD4B_Safe_Public_HTML_Purge_V1', false ) )
+            return new WP_Error( 'mad4b_safe_html_purge_unavailable',
+                'Safe public HTML cache controller is not enrolled.' );
+        $r = MAD4B_Safe_Public_HTML_Purge_V1::purge_public_html( 'mad4b_scp_public_html_only' );
+        if ( ! in_array( $r['status'] ?? '', array( 'public_html_purge_queued', 'already_queued_in_request' ), true ) )
+            return new WP_Error( 'mad4b_safe_html_purge_failed',
+                'Public HTML cache invalidation could not be queued.' );
+        MAD4B_SCP_Audit::record( 'litespeed/purge-public-html',
+            array( 'scope' => 'public_html_only', 'object_cache_preserved' => true ) );
+        return array( 'purged' => false, 'queued' => true,
+            'scope' => 'public_html_only', 'redis_flushed' => false,
+            'fastcgi_host_receipt' => 'pending' );
     }
 }
