@@ -9,6 +9,7 @@ final class MAD4B_Company_Service_Catalog_V1 {
     public const STORE='mad4b_company_service_catalog_modes_v1';
     public const MODES=['tour_only','full_catalog'];
     public const OWNERS=['tours','properties','transportations','visas'];
+    public const OBSERVATION_SCOPE='mad4b_service_public_observation_pilot_v1';
 
     public static function staging(): bool {
         return class_exists('MAD4B_Company_Portfolio_Manager_V1',false)
@@ -33,6 +34,15 @@ final class MAD4B_Company_Service_Catalog_V1 {
             ||!preg_match('/^[a-f0-9]{64}$/D',(string)($b['binding_sha256']??'')))
             return self::error('binding_invalid','Verified company site binding required',403);
         return $b;
+    }
+    /**
+     * Explicit, local central rollout scope. Unreconciled company records are
+     * not probed merely because an old Site Profile / catalog record exists.
+     */
+    public static function observation_enabled(string $code):bool {
+        if (!preg_match('/^[a-z][a-z0-9-]{2,47}$/D',$code))return false;
+        $scope=get_option(self::OBSERVATION_SCOPE,[]);
+        return is_array($scope)&&in_array($code,$scope,true);
     }
     public static function matrix(string $mode): array {
         if(!in_array($mode,self::MODES,true))return [];
@@ -130,8 +140,128 @@ final class MAD4B_Company_Service_Catalog_V1 {
             $wpdb->get_var($wpdb->prepare('SELECT RELEASE_LOCK(%s)',$lock));
         }
     }
+    /**
+     * Observe only publicly accessible guest routes at the verified registered
+     * company origin. Does not consume admin-only site readiness, save options,
+     * apply a catalog plan, issue a grant, or certify booking/payment authority.
+     */
+    public static function public_observation(string $code):array {
+        $base=[
+            'contract'=>'mad4b.company-service.public-observation.v1',
+            'company_code'=>$code,
+            'observation_state'=>'unverified',
+            'verification_level'=>'guest_https_routes_only_not_signed',
+            'company_plan_applied'=>false,
+            'tenant_mutated'=>false,
+            'booking_verified'=>false,
+            'payment_verified'=>false,
+            'checked_at'=>gmdate('c'),
+            'checks'=>[]
+        ];
+        if(!self::admin())return $base+['reason'=>'administrator_required'];
+        if(!self::observation_enabled($code))
+            return $base+['reason'=>'company_pending_reconciliation_or_full_clone'];
+        $binding=self::binding($code);
+        if(is_wp_error($binding))return $base+['reason'=>'company_binding_invalid'];
+        if(!class_exists('MAD4B_Company_Environment_Registry_V2',false))
+            return $base+['reason'=>'environment_registry_unavailable'];
+        $target=MAD4B_Company_Environment_Registry_V2::target($code,'production');
+        if(!is_array($target) ||
+            ($target['company_id']??'')!==$code ||
+            ($target['environment']??'')!=='production' ||
+            ($target['site_uuid']??'')!==$binding['company_site_uuid'])
+            return $base+['reason'=>'exact_production_site_binding_missing'];
+        $origin=rtrim((string)($target['canonical_origin']??''),'/');
+        $parts=wp_parse_url($origin);
+        if(!is_array($parts)||($parts['scheme']??'')!=='https'
+            ||empty($parts['host'])||isset($parts['user'])||isset($parts['pass'])
+            ||isset($parts['port'])||isset($parts['query'])||isset($parts['fragment'])
+            ||!preg_match('/^[a-z0-9][a-z0-9.-]*\\.[a-z]{2,}$/i',(string)$parts['host'])
+            ||($parts['path']??'')!=='')
+            return $base+['reason'=>'canonical_https_origin_invalid'];
+        $paths=[
+            'tours'=>'/wp-json/wp/v2/tours-and-activities?per_page=1&_fields=id',
+            'internal_rates'=>'/wp-json/wp/v2/tour-rates?per_page=1&_fields=id',
+            'properties'=>'/wp-json/wp/v2/properties?per_page=1&_fields=id',
+            'transportations'=>'/wp-json/wp/v2/transportations?per_page=1&_fields=id'
+        ];
+        $observed=[];
+        foreach($paths as $key=>$path){
+            $result=wp_safe_remote_get($origin.$path,[
+                'timeout'=>5,'redirection'=>0,'sslverify'=>true,
+                'cookies'=>[],'limit_response_size'=>512,
+                'headers'=>[
+                    'Accept'=>'application/json',
+                    'Cache-Control'=>'no-cache',
+                ],
+            ]);
+            if(is_wp_error($result)){
+                $observed[$key]=['result'=>'unverified','reason'=>'transport_unavailable'];
+                continue;
+            }
+            $http=(int)wp_remote_retrieve_response_code($result);
+            $contentType=strtolower((string)wp_remote_retrieve_header($result,'content-type'));
+            $isJson=str_contains($contentType,'application/json');
+            if(!in_array($http,[200,404],true)||!$isJson){
+                $observed[$key]=['result'=>'unverified','reason'=>'non_rest_or_unexpected_http'];
+                continue;
+            }
+            $expected=$key==='internal_rates'?404:null;
+            $observed[$key]=[
+                'result'=>$expected===null?'observed':($http===$expected?'pass':'policy_drift'),
+                'http_status'=>$http,
+                'meaning'=>$http===200?'guest_readable':'guest_not_found',
+            ];
+        }
+        $status='observed';
+        foreach($observed as $row) {
+            if($row['result']==='policy_drift'){$status='policy_drift';break;}
+            if($row['result']==='unverified')$status='partial_unverified';
+        }
+        // A plan is not deployment authority. This comparison is advisory and
+        // must never be interpreted as proof that a service was activated.
+        $plan=self::current($code);
+        $mode=is_array($plan)?(string)($plan['mode']??''):'';
+        $matrix=self::matrix($mode);
+        $comparison=[];$disagreements=[];
+        foreach(['tours','properties','transportations'] as $family){
+            $expected=($matrix[$family]??'tour_only')==='standalone_and_tour'?200:404;
+            $actual=$observed[$family]['http_status']??null;
+            $known=in_array($actual,[200,404],true);
+            $agrees=$known?($actual===$expected):null;
+            $comparison[$family]=[
+                'planned_mode'=>$matrix[$family]??'unverified',
+                'expected_guest_http_if_deployed'=>$expected,
+                'observed_guest_http'=>$actual,
+                'plan_to_public_visibility_agrees'=>$agrees,
+                'plan_confirmed_deployed'=>false
+            ];
+            if($known&&!$agrees)$disagreements[]=$family;
+        }
+        return array_replace($base,[
+            'site_host'=>$parts['host'],'registered_site_uuid'=>$target['site_uuid'],
+            'observation_state'=>$status,'checks'=>$observed,
+            'plan_mode'=>$mode,'plan_revision'=>is_array($plan)?($plan['revision']??0):null,
+            'plan_vs_public'=>$comparison,
+            'plan_to_public_disagreements'=>$disagreements,
+            'reason'=>$status==='observed'?'guest_routes_checked':'see_route_results',
+        ]);
+    }
+    public static function public_observation_response($result) {
+        $response=rest_ensure_response($result);
+        if($response instanceof WP_REST_Response)
+            $response->header('Cache-Control','private, no-store, max-age=0');
+        return $response;
+    }
     public static function rest_routes():void {
         if(!self::staging())return;
+        register_rest_route('mad4b/v1',
+            '/company-management/companies/(?P<company_code>[a-z][a-z0-9-]{2,47})/service-catalog/public-observation',[
+                'methods'=>'GET',
+                'permission_callback'=>[__CLASS__,'permission'],
+                'callback'=>static fn($r)=>self::public_observation_response(
+                    self::public_observation((string)$r['company_code']))
+            ]);
         register_rest_route('mad4b/v1',
             '/company-management/companies/(?P<company_code>[a-z][a-z0-9-]{2,47})/service-catalog',[
               ['methods'=>'GET','permission_callback'=>[__CLASS__,'permission'],
@@ -188,10 +318,50 @@ final class MAD4B_Company_Service_Catalog_V1 {
                 echo '<option value="'.esc_attr($mode).'"'.selected($mode,$v['mode'],false).'>'.esc_html($label).'</option>';
             echo '</select> ';
             submit_button('Save','secondary','submit',false);
-            echo '</form></td><td>Rev '.esc_html((string)$v['revision']).' · Not deployed</td></tr>';
+            echo '</form></td><td><span>Rev '.esc_html((string)$v['revision']).' · Plan not deployed</span>';
+            if(self::observation_enabled($code)){
+                echo '<p><button type="button" class="button button-small mad4b-company-live-observe"'
+                    .' data-company="'.esc_attr($code).'">Check live public routes</button></p>'
+                    .'<div class="mad4b-company-observation-result" data-company="'.esc_attr($code).'"'
+                    .' role="status" aria-live="polite">Not checked. Booking and payment authority remain unverified.</div>';
+            }else {
+                echo '<p><small>Live observation deferred: company reconciliation / Full Clone pending.</small></p>';
+            }
+            echo '</td></tr>';
         }
         echo '</tbody></table>';
         echo '<p>Inherited services include Rooms/Property Rates, Transport Rates/Vehicle Lines/Trains, Tour Rates, and Visas. Disabled native providers stay disabled.</p></div>';
+    }
+    /** One explicit administrator action, not automatic per-company network calls. */
+    public static function admin_assets():void {
+        if(!self::admin() || !is_admin() ||
+            sanitize_key((string)($_GET['page']??''))!=='mad4b-company-service-catalog')return;
+        $config=['base'=>rest_url('mad4b/v1/company-management/companies/'),
+                 'nonce'=>wp_create_nonce('wp_rest')];
+        $script='(()=>{const cfg='.wp_json_encode($config).';'
+            .'for(const button of document.querySelectorAll(".mad4b-company-live-observe")){'
+            .'button.addEventListener("click",async()=>{const company=button.dataset.company;'
+            .'const host=button.closest("td");const out=host&&host.querySelector(".mad4b-company-observation-result");'
+            .'if(!out||!company||!/^[a-z][a-z0-9-]{2,47}$/.test(company))return;'
+            .'button.disabled=true;out.textContent="Checking exact company public routes…";'
+            .'try{const url=cfg.base+encodeURIComponent(company)+"/service-catalog/public-observation";'
+            .'const response=await fetch(url,{headers:{"X-WP-Nonce":cfg.nonce},credentials:"same-origin",cache:"no-store"});'
+            .'if(!response.ok)throw new Error("readback_unavailable");const v=await response.json();'
+            .'const bits=Object.entries(v.checks||{}).map(([name,row])=>name+": "+(row.http_status??"unknown")'
+            .'+ " ("+(row.result||"unverified")+")");'
+            .'const differences=v.plan_to_public_disagreements||[];'
+            .'const comparison=differences.length'
+            .'?" · Plan differs from public site: "+differences.join(", ")'
+            .':" · No observed plan-to-public differences on checked routes";'
+            .'out.textContent="Guest HTTPS: "+String(v.observation_state||"unverified")+" · "'
+            .'+bits.join(" · ")+" · Plan: "+String(v.plan_mode||"unverified")+comparison'
+            .'+ " · "+String(v.checked_at||"")'
+            .'+". This is not booking, payment, or signed activation evidence.";'
+            .'}catch(e){out.textContent="Live observation unavailable; plan remains not deployed/unverified.";}'
+            .'finally{button.disabled=false;}});}})();';
+        wp_register_script('mad4b-company-public-observation',false,[],null,true);
+        wp_enqueue_script('mad4b-company-public-observation');
+        wp_add_inline_script('mad4b-company-public-observation',$script);
     }
     public static function admin_save():void {
         if(!self::admin())wp_die('Central Staging administrator required',403);
@@ -210,6 +380,7 @@ final class MAD4B_Company_Service_Catalog_V1 {
     public static function boot():void {
         add_action('rest_api_init',[__CLASS__,'rest_routes'],76);
         add_action('admin_menu',[__CLASS__,'admin_menu'],94);
+        add_action('admin_enqueue_scripts',[__CLASS__,'admin_assets']);
         add_action('admin_post_mad4b_company_service_catalog_save',[__CLASS__,'admin_save']);
     }
 }

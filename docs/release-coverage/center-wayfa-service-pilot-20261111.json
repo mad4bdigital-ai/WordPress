@@ -1,0 +1,88 @@
+{
+  "booking_payment_activated": false,
+  "central_composite_release_authorized": false,
+  "company_plan_applied": false,
+  "contract": "mad4b.center-wayfa-service-pilot.v1",
+  "date": "2026-11-11",
+  "files": [
+    {
+      "bytes": 22527,
+      "git_blob_sha1": "3a3737b652e6223d88a9b265ed53cb8e3058d7fc",
+      "live": {
+        "central": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-service-catalog.php"
+      },
+      "repo_path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-service-catalog.php",
+      "sha256": "8779524e9f3d30fff615e9180809110fb4af15b19cd2feb636b72352e3b31b58"
+    },
+    {
+      "bytes": 1580,
+      "git_blob_sha1": "41f70bd2ed0715de16c82b6d06a84ccff6f2f828",
+      "live": {
+        "central": "wp-content/mu-plugins/001-mad4b-service-tenant-boundary-v1.php",
+        "wayfa": "wp-content/mu-plugins/001-mad4b-service-tenant-boundary-v1.php"
+      },
+      "repo_path": "wp-content/mu-plugins/001-mad4b-service-tenant-boundary-v1.php",
+      "sha256": "96cfaeb8f90447ad7c56cd76d1db01c8f728f778b281c7405ff0371187f75d90"
+    },
+    {
+      "bytes": 2034,
+      "git_blob_sha1": "5e6c02edad905bfeca1378d8934c9f2324981381",
+      "live": {
+        "central": "wp-content/mu-plugins/mad4b-tenant-presentation-adapter-loader-v1.php",
+        "wayfa": "wp-content/mu-plugins/mad4b-tenant-presentation-adapter-loader-v1.php"
+      },
+      "repo_path": "wp-content/mu-plugins/mad4b-tenant-presentation-adapter-loader-v1.php",
+      "sha256": "97280eaa4609f925948ee1a45af73dd36679aec9f510369d3f1520b55b26f5d9"
+    },
+    {
+      "bytes": 3639,
+      "git_blob_sha1": "2cfabef47af84353414981de265c769668da242f",
+      "live": {
+        "wayfa": "wp-content/mu-plugins/003-wayfa-service-channel-policy.php"
+      },
+      "repo_path": "wp-content/mu-plugins/tenant-overlays/wayfatours/003-wayfa-service-channel-policy.php",
+      "sha256": "042a9e2bed9a2af704d2b866faf9324b4bdfcc64643b1371f1052fe57c588e91"
+    },
+    {
+      "bytes": 8722,
+      "git_blob_sha1": "911c632a59a9599eb0fb8823348a4fd4d1b7362c",
+      "live": {
+        "wayfa": "wp-content/mu-plugins/004-wayfa-service-visibility-elementor.php"
+      },
+      "repo_path": "wp-content/mu-plugins/tenant-overlays/wayfatours/004-wayfa-service-visibility-elementor.php",
+      "sha256": "01986b23d0237f1416b5e6412e9b59b97ea957eab9b261a7ae7c032455c8ed81"
+    },
+    {
+      "bytes": 510,
+      "git_blob_sha1": "d0bb869ac860919387e8661368a2e36a00d2634e",
+      "live": {
+        "wayfa": "wp-content/mu-plugins/005-wayfa-destination-activation.php"
+      },
+      "repo_path": "wp-content/mu-plugins/tenant-overlays/wayfatours/005-wayfa-destination-activation.php",
+      "sha256": "f4fb7a9abd51c6cb014380862df507eba15e7d0bb5f932b7af22faf5be4fd7ad"
+    },
+    {
+      "bytes": 1239,
+      "git_blob_sha1": "c4d4bac70dd923b3acf9ed0db4b63950832dc20d",
+      "live": {
+        "wayfa": "wp-content/mu-plugins/090-wayfa-presentation-service-policy.php"
+      },
+      "repo_path": "wp-content/mu-plugins/tenant-overlays/wayfatours/090-wayfa-presentation-service-policy.php",
+      "sha256": "fd08ddb5296eab7e188f6bf207da605e355e6a72b89c449106e126153146c831"
+    }
+  ],
+  "observation_pilot_codes": [
+    "wayfatours"
+  ],
+  "observation_scope_option": "mad4b_service_public_observation_pilot_v1",
+  "other_companies_deferred": true,
+  "remote_public_observation_does_not_certify_deployment": true,
+  "sites": {
+    "central": "tours.dev.mad4b.com",
+    "wayfa": "wayfatours.com"
+  },
+  "stored_service_activation_modified": false,
+  "wayfa_inquiry_only": true,
+  "wayfa_schema_count": 31,
+  "wayfa_schema_gap_count": 0
+}
