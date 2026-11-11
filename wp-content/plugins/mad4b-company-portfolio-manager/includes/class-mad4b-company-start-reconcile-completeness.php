@@ -5,6 +5,9 @@
  * Description: Read-only, identity-bound completeness gate for the original company readiness workflow. No write or grant.
  */
 defined('ABSPATH') || exit;
+require_once __DIR__ . '/class-mad4b-company-reconcile-work-plan.php';
+require_once __DIR__ . '/class-mad4b-company-reconcile-operation-readiness.php';
+MAD4B_Company_Reconcile_Work_Plan_V1::boot();
 
 final class MAD4B_Company_Start_Reconcile_Completeness_V1 {
     const CONTRACT = 'mad4b.company-start-reconcile-completeness-projection.v1';
@@ -14,11 +17,12 @@ final class MAD4B_Company_Start_Reconcile_Completeness_V1 {
         return class_exists('MAD4B_Company_Portfolio_Manager_V1', false)
             && MAD4B_Company_Portfolio_Manager_V1::staging();
     }
-    private static function registry(): array {
+    private static function registry(string $company): array {
         if (!class_exists('MAD4B_Company_Environment_Registry_V2', false)) return array();
         $out = array();
         foreach (array('staging','production') as $env) {
-            $out[$env] = (array) MAD4B_Company_Environment_Registry_V2::target(self::$company, $env);
+            $target=MAD4B_Company_Environment_Registry_V2::target($company,$env);
+            if(is_array($target))$out[$env]=$target;
         }
         return $out;
     }
@@ -46,14 +50,12 @@ final class MAD4B_Company_Start_Reconcile_Completeness_V1 {
             'source_requires_identity_remap'=>true,
         );
     }
-    private static string $company = '';
     public static function project(string $company, array $report = array()): array {
         if (!self::origin() || !preg_match('/^[a-z][a-z0-9-]{2,47}$/D', $company)) {
             return array('contract'=>self::CONTRACT,'state'=>'INVALID_SOURCE_OR_COMPANY',
                 'ready_to_publish'=>false,'authority_granted'=>false);
         }
-        self::$company = $company;
-        $byEnv=self::registry();
+        $byEnv=self::registry($company);
         $registered = array();
         foreach ($byEnv as $env=>$row) {
             if (($row['company_id']??'')!==$company || !wp_is_uuid((string)($row['site_uuid']??''))) continue;
@@ -64,9 +66,10 @@ final class MAD4B_Company_Start_Reconcile_Completeness_V1 {
                 'identity_binding_present'=>true);
         }
         $uuid=(string)($report['site_uuid']??'');
+        // Legacy reports must bind to environment+HTTPS origin+UUID, not any
+        // Site UUID in another environment of the same company. An unsigned
+        // stage hint is not an independent receipt regardless of binding.
         $reportBound=false;
-        foreach ($registered as $row)
-            if ($row['site_uuid']===$uuid) $reportBound=true;
         $presentation=array();
         if (class_exists('MAD4B_Company_Presentation_Option_Ownership_V1',false)) {
             foreach(array('staging','production') as $scopedEnvironment) {
@@ -102,6 +105,17 @@ final class MAD4B_Company_Start_Reconcile_Completeness_V1 {
         $policyFile=WPMU_PLUGIN_DIR.'/company-start-reconcile/policy.json';
         $policy=is_readable($policyFile)?json_decode((string)file_get_contents($policyFile),true):null;
         $required=is_array($policy)?(array)($policy['stages']??array()):array();
+        $workPlan = MAD4B_Company_Reconcile_Work_Plan_V1::build($company,$registered,is_array($policy)?$policy:[], $report);
+        $operationLinks=array();
+        foreach($registered as $environment=>$siteRecord){
+            if(!in_array($environment,array('staging','production'),true)||
+               !wp_is_uuid((string)($siteRecord['site_uuid']??'')))continue;
+            $operationLinks[$environment]=add_query_arg(array(
+                'environment'=>$environment,
+                'expected_site_uuid'=>$siteRecord['site_uuid'],
+            ),rest_url('mad4b/v1/company-brand-readiness/companies/'.$company.'/reconcile-operations'));
+        }
+        $reportBound=($workPlan['legacy_report_bound_to_target']??false)===true;
         // The existing report represents the legacy company registered site. It may
         // NOT be inherited by a new site UUID after a fresh 313 installation.
         $stageHints = array();
@@ -109,7 +123,9 @@ final class MAD4B_Company_Start_Reconcile_Completeness_V1 {
             if (is_array($row)) $stageHints[$name]=$row['state']??'UNKNOWN';
         $blocked = array();
         if (!$seedReady) $blocked[]='SOURCE_MASTER_SEED_ORIGINAL_RELEASE_MISSING';
-        if (!$reportBound) $blocked[]='READINESS_REPORT_SITE_UUID_MISMATCH_OR_MISSING';
+        if (!$reportBound) $blocked[]='READINESS_REPORT_ENV_ORIGIN_UUID_MISMATCH_OR_MISSING';
+        if(!empty($workPlan['invalid_environment_records']))
+            $blocked[]='ENVIRONMENT_REGISTRY_IDENTITY_INCONSISTENT';
         // A populated settings page is not proof that the active Elementor,
         // JetEngine, WPML or WooCommerce frontend reads those fields.
         if ($presentation) $blocked[]='PRESENTATION_CANONICAL_OWNER_TARGET_READBACK_REQUIRED';
@@ -119,7 +135,7 @@ final class MAD4B_Company_Start_Reconcile_Completeness_V1 {
             if (($stageHints[$requiredName]??'UNKNOWN')!=='PASS')
                 $blocked[]='EXISTING_STAGE_NOT_PASS:'.$requiredName;
         }
-        foreach (array('bootstrap','functional','presentation') as $stage) {
+        foreach (array('bootstrap','functional','presentation','commercial') as $stage) {
             foreach ((array)($required[$stage]??array()) as $check)
                 $blocked[]='INDEPENDENT_READBACK_PENDING:'.$check;
         }
@@ -168,6 +184,8 @@ final class MAD4B_Company_Start_Reconcile_Completeness_V1 {
             'legacy_report_result'=>$report['result']??null,
             'state'=>'RECONCILE_EVIDENCE_REQUIRED',
             'ready_to_publish'=>false, 'commercial_ready'=>false,
+            'commercial_stage_requires_independent_readback'=>true,
+            'commerce_only_gaps_have_independent_publication_state'=>true,
             'status_is_non_authorizing'=>true,
             'manifest_bound_readbacks_present'=>false,
             'seed_source_readiness'=>$seedSummary,
@@ -182,11 +200,22 @@ final class MAD4B_Company_Start_Reconcile_Completeness_V1 {
             'presentation_option_contract_included'=>!empty($presentation),
             'presentation_aliases_do_not_claim_runtime_binding'=>true,
             'check_count'=>array_sum(array_map('count',$required)),
+            'company_reconcile_work_plan'=>$workPlan,
+            'operation_readiness_on_demand'=>true,
+            'operation_readiness_contract'=>'mad4b.company-reconcile.operation-readiness.v1',
+            'operation_readiness_path'=>'/wp-json/mad4b/v1/company-brand-readiness/companies/'.$company.'/reconcile-operations',
+            'operation_readiness_links_by_environment'=>$operationLinks,
+            'reconcile_runtime_observed'=>$workPlan['observed_runtime']['state']??'NOT_OBSERVED',
+            'reconcile_next_action'=>$workPlan['next_action']??'COLLECT_EXACT_TARGET_READBACK',
+            'reconcile_environment_scope'=>$workPlan['environment_inventory']??[],
+            'unverified_check_count'=>count(array_unique($blocked)),
+            'target_local_probe_contract'=>'mad4b.company-reconcile.target-evidence.v1',
+            'target_probe_not_authoritative_without_original_readback'=>true,
             'unverified_checks'=>array_values(array_unique($blocked)),
-            'next_action'=>'COLLECT_EXACT_SITE_ORIGINAL_PROVIDER_RECEIPTS_AND_BROWSER_READBACK',
+            'next_action'=>$workPlan['next_action']??'COLLECT_EXACT_SITE_ORIGINAL_PROVIDER_RECEIPTS_AND_BROWSER_READBACK',
             'authority_granted'=>false,
             'mutation_performed'=>false,
-            'source_host'=>'tours.dev.mad4b.com',
+            'source_host'=>(string)wp_parse_url(home_url(),PHP_URL_HOST),
         );
     }
     public static function routes(): void {

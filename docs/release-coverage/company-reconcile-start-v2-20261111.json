@@ -1,0 +1,80 @@
+{
+  "company_code_release_provider_registered_by_this_change": false,
+  "company_resource_created": false,
+  "company_runtime_probe_is_unsigned": true,
+  "contract": "mad4b.company-reconcile-start-company.source-v2.v1",
+  "date": "2026-11-11",
+  "files": [
+    {
+      "bytes": 24316,
+      "installed": {
+        "central": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-reconcile-work-plan.php"
+      },
+      "sha256": "3c1609a4645f3b41fe683d7330edbbd032d6b1e64ce398af0029a85a0d9a6032",
+      "source": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-reconcile-work-plan.php"
+    },
+    {
+      "bytes": 15767,
+      "installed": {
+        "central": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-start-reconcile-completeness.php"
+      },
+      "sha256": "db65359d9db8720e2f3f2c32c23588c6fb80ec196e573c058315f50a0f8cce86",
+      "source": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-start-reconcile-completeness.php"
+    },
+    {
+      "bytes": 29603,
+      "installed": {
+        "central": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-vps-company-launch.php"
+      },
+      "sha256": "376b1124e6f6b03bb6ef93f2e5f6972762dc676c08b20f4ce9849013afbf5bea",
+      "source": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-vps-company-launch.php"
+    },
+    {
+      "bytes": 7190,
+      "installed": {
+        "central": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-reconcile-operation-readiness.php"
+      },
+      "sha256": "3b748420c34bd79f0e78251affe6ee05c5035544ed12728c5cd60ef3d3f2ba8c",
+      "source": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-reconcile-operation-readiness.php"
+    },
+    {
+      "bytes": 16317,
+      "installed": {
+        "central": "wp-content/mu-plugins/company-start-reconcile/policy.json"
+      },
+      "sha256": "e7e2c2f8997c189596dd9d9435f6afe75254ef26b70bc851d3f31b72558a6420",
+      "source": "ops/deployment-overlays/center/company-start-reconcile/policy.json"
+    },
+    {
+      "bytes": 11975,
+      "installed": {
+        "central": "wp-content/mu-plugins/mad4b-company-reconcile-target-evidence-v1.php",
+        "wayfa": "wp-content/mu-plugins/mad4b-company-reconcile-target-evidence-v1.php"
+      },
+      "sha256": "f173cc62d769721b30b0dc66edc70c3ab373dba885678d4c390be19f9b944113",
+      "source": "ops/deployment-overlays/center-and-wayfa/mad4b-company-reconcile-target-evidence-v1.php"
+    }
+  ],
+  "full_clone_executed": false,
+  "mixed_ownership_count": 7,
+  "native_grant_issued": false,
+  "not_reconciled_main_plugin_source_vs_git": true,
+  "operation_readiness_exact_provider_test_deferred_by_wpcli_busy": true,
+  "original_313_postcondition_signed": false,
+  "original_318_release_signed": false,
+  "original_source_regression_tests_passed": 21,
+  "other_companies_modified": false,
+  "prices_or_payments_modified": false,
+  "read_only_rest_admin_200_guest_403_verified": true,
+  "registered_target_environment_isolation": true,
+  "source_policy_checks": 34,
+  "source_policy_provider_ownership_in_digest": true,
+  "source_policy_scenarios": 18,
+  "source_policy_stage_count": 4,
+  "source_site": "tours.dev.mad4b.com",
+  "start_company_duplicate_reservation_guard": true,
+  "target_site_uuid": "a3a7cc36-db7e-4a14-8456-b41857def05c",
+  "verified_runtime_target": "wayfatours.com",
+  "workplan_offline_tests_passed": 9,
+  "wp_options_modified": false
+}

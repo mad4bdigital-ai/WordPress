@@ -237,7 +237,13 @@ final class MAD4B_VPS_Company_Launch {
         $providers=class_exists('MAD4B_Tourism_Workflow_REST') ?
             MAD4B_Tourism_Workflow_REST::providers()->get_data() : array();
         $reg=get_option('mad4b_tourism_company_site_registry_v1',array());
-        $exists=is_array($reg) && isset($reg[$data['company_code']??'']);
+        $code=(string)($data['company_code']??'');
+        $exists=is_array($reg) && isset($reg[$code]);
+        $pendingService=class_exists('MAD4B_Company_Portfolio_Manager_V1',false)
+            ?MAD4B_Company_Portfolio_Manager_V1::coolify_service_reservation($code):false;
+        $reservationExists=is_array($pendingService);
+        // No second Coolify service reservation if an existing private
+        // resource is already tied to the same company.
         $basic=in_array($w['state'],array('intake_received','owner_approved'),true) &&
             !empty($data['brand_name']) &&
             is_email((string)($data['email']??'')) &&
@@ -249,6 +255,7 @@ final class MAD4B_VPS_Company_Launch {
             'code_only_no_uploads'=>!empty($tech['code_only_no_uploads']),
             'coolify_authenticated'=>!empty($providers['checks']['coolify_auth']),
             'company_not_already_enrolled'=>!$exists,
+            'no_duplicate_private_service_reservation'=>!$reservationExists,
             'content_hub_available'=>$hub,
             'cloudflare_adapter_available'=>$domain,
             'cloudflare_token_authenticated'=>!empty($cf['cloudflare_token_configured']),
@@ -262,14 +269,40 @@ final class MAD4B_VPS_Company_Launch {
             $checks['source_integrity_verified'] &&
             $checks['code_only_no_uploads'] &&
             $checks['coolify_authenticated'] &&
-            $checks['company_not_already_enrolled'];
+            $checks['company_not_already_enrolled'] &&
+            $checks['no_duplicate_private_service_reservation'];
         $blockers=array();
         foreach($checks as $k=>$ready)if(!$ready)$blockers[]=$k;
+        $reconcile=null;
+        if(class_exists('MAD4B_Company_Reconcile_Work_Plan_V1',false)
+            &&preg_match('/^[a-z][a-z0-9-]{2,47}$/D',$code)){
+            $targets=[];
+            if($exists && class_exists('MAD4B_Company_Environment_Registry_V2',false)){
+                foreach(['staging','production'] as $env){
+                    $target=MAD4B_Company_Environment_Registry_V2::target($code,$env);
+                    if(is_array($target))$targets[$env]=$target;
+                }
+            }
+            $path=WPMU_PLUGIN_DIR.'/company-start-reconcile/policy.json';
+            $policy=is_readable($path)?json_decode((string)file_get_contents($path),true):null;
+            $reconcile=MAD4B_Company_Reconcile_Work_Plan_V1::build(
+                $code,$targets,is_array($policy)?$policy:[]);
+        }
+        $lane=$exists?'RECONCILE_EXISTING_COMPANY_NO_DUPLICATE_CLONE'
+            :($reservationExists?'RECONCILE_EXISTING_PRIVATE_RESERVATION'
+               :'NEW_COMPANY_PRIVATE_BOOTSTRAP');
         return array('contract'=>self::VERSION,'application_id'=>$x['id'],
             'company_code'=>$data['company_code'],'current_state'=>$w['state'],
             'source'=>$proof,'seed'=>$seed,'checks'=>$checks,'blockers'=>$blockers,
             'next_action'=>!$checks['live_demo_sealed_seed_verified']?'prepare_original_sealed_demo_seed':($technical_ready?'restore_sealed_seed_private':'resolve_technical_preflight'),
             'private_provisioning_possible'=>$technical_ready,
+            'company_start_lane'=>$lane,
+            'existing_private_reservation_detected'=>$reservationExists,
+            'existing_resource_must_not_be_recreated'=>$reservationExists,
+            'start_company_reconcile_plan'=>$reconcile,
+            'reconcile_plan_is_non_authorizing'=>true,
+            'full_clone_not_authorized_by_intake'=>true,
+            'tenant_owned_options_must_be_preserved'=>true,
             'source_certificate_required'=>false,
             'separate_owner_approval_required'=>false,
             'public_launch_authorized'=>false,
@@ -345,7 +378,14 @@ final class MAD4B_VPS_Company_Launch {
             'contentjob_preflight_required'=>true,
             'contentjob_preflight_is_not_resource_approval'=>true,
             'state'=>$plan['private_provisioning_possible']?
-                'READY_FOR_PRIVATE_RESERVATION':'TECHNICAL_PREFLIGHT_BLOCKED',
+                'READY_FOR_PRIVATE_RESERVATION':(
+                   $plan['existing_private_reservation_detected']
+                    ?'PRIVATE_RESERVATION_ALREADY_EXISTS_RECONCILE_FIRST'
+                    :'TECHNICAL_PREFLIGHT_BLOCKED'),
+            'company_start_lane'=>$plan['company_start_lane'],
+            'start_company_reconcile_plan'=>$plan['start_company_reconcile_plan']??null,
+            'existing_resource_must_not_be_recreated'=>$plan['existing_resource_must_not_be_recreated'],
+            'tenant_owned_options_must_be_preserved'=>true,
             'missing_gates'=>$plan['blockers'],
             'second_owner_approval_required'=>false,'source_certificate_required'=>false,
             'public_live'=>false,
