@@ -40,13 +40,13 @@ class PassportSource(unittest.TestCase):
  def test_search_widget_keeps_original_fluent_value(self):
   s=JS.read_text()
   self.assertIn("form.fluent_form_6 select[name=\"dropdown_1\"]",s)
-  self.assertIn("[...field.options].some(o => o.value === item.value)",s)
+  self.assertIn("available.has(item.value)",s)
   self.assertIn("field.dispatchEvent(new Event('change'",s)
   self.assertIn("!field.closest('form.fluent_form_6')",s)
   self.assertIn("field.classList.remove('mad4b-passport-native-hidden')",s)
   self.assertNotIn("innerHTML =",s)
-  self.assertIn("cache.size > 50",s)
-  self.assertIn("currentAbort?.abort()",s)
+  self.assertIn("cache.size>45",s)
+  self.assertIn("controller?.abort()",s)
  def test_site_specific_identity_is_not_global_publisher(self):
   s=PHP.read_text()
   self.assertIn("private const SITE_UUID=",s)

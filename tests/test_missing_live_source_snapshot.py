@@ -11,7 +11,7 @@ DATA=json.loads((ROOT/'docs/release-coverage/missing-live-code-source-snapshot-2
 class SnapshotIntegrity(unittest.TestCase):
     def test_all_file_digests_and_source_only(self):
         result=m.verify(DATA)
-        self.assertEqual(result['files_verified'],531)
+        self.assertEqual(result['files_verified'],533)
         self.assertFalse(result['company_deployment_authorized'])
         self.assertFalse(result['source_complete_for_global_release'])
     def test_manifest_cannot_claim_release(self):

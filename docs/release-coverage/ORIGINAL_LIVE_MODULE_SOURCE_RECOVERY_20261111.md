@@ -54,3 +54,9 @@ A second live JS asset path, mad4b-rate-widget-lifecycle-2.1.0-20261111.js, appe
 ## Latest source amendments
 
 The manifest was expanded to 531 precise code files. New Passport, Form 6 and Rate Widget assets are recorded under the exact source filenames. The current Passport JS revision invalidates old in-flight requests. Rate Widget 2.2.0 performs its native JetAccordion handler recovery on late Ajax rather than initial hydration. Both historical 2.1.0 and 2.2.0 filename variants are preserved as sources. Form 6 submission mode is not checkout activation, and no Stripe/payment operation was run. Original PHP/JS/CSS source bytes were preserved exactly from the current Tours.dev filesystem readback.
+
+## Rate UI 2.4 and Passport inline 1.2
+
+Further staging source update recovered under its original filename mad4b-rate-widget-lifecycle-2.4.0-20261111.js. It uses exported JetTabs accordionInit only when the Elementor widget-ready hook fails to attach its native click handler. Live source SHA-256 ab93afe8f65db760631efc9364d83cefc03988dd8381251c18fee2e7385b1765. At readback Tours.dev public HTML loaded 2.4 and Wayfatours 2.3. These were observations, not deployments.
+
+Concurrent Passport inline combobox v1.2 JS/CSS was also captured with exact byte-level hashes. Fidelity manifest now represents 533 files in four bounded source groups. Tests cover source hashes, duplicate-handler avoidance, fallback export, original Form #6 option preservation and no payment/execution authority. Browser acceptance and authenticated company publishing remain outstanding.

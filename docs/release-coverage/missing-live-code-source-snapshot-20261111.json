@@ -993,18 +993,18 @@
       "sha256": "6044723ba78d6edae4a074777bdee4ad2426fdc2c00f7988c9ac33d9b99070be"
     },
     {
-      "bytes": 3232,
-      "git_blob_sha1": "54792ff679cbae0c3af855b6a3d433cd273b8dd8",
+      "bytes": 4165,
+      "git_blob_sha1": "1359dc1f47a0f734a7f6d902689f73221afb6474",
       "path": "wp-content/plugins/mad4b-platform/legacy-mu-tree/assets/mad4b-passport-country-ajax-v1.css",
       "scope": "mad4b-platform",
-      "sha256": "48728f7e48ecfba20a22e3071bc14f4dae0dee55bb279d8adeb8bb961f94e263"
+      "sha256": "fb6cb1d61159bee46a6c0e9e863a2f8e4e12e3394206e03cde4d143c06e55849"
     },
     {
-      "bytes": 10443,
-      "git_blob_sha1": "8d335e76d61478fe2406acb319d93629b9ca02e7",
+      "bytes": 10256,
+      "git_blob_sha1": "9ffc08a48a249674cdf496b16baf473c0617d948",
       "path": "wp-content/plugins/mad4b-platform/legacy-mu-tree/assets/mad4b-passport-country-ajax-v1.js",
       "scope": "mad4b-platform",
-      "sha256": "fce8de1e6411be2adf7e9149db77e6a02fbadffa070b62e26b8c77921878c620"
+      "sha256": "66d150071d88d5f222115fc2d264ebdf88dbe402d7e89c0d9c508030f4d54384"
     },
     {
       "bytes": 2903,
@@ -1040,6 +1040,20 @@
       "path": "wp-content/plugins/mad4b-platform/legacy-mu-tree/assets/mad4b-rate-widget-lifecycle-2.2.0-20261111.js",
       "scope": "mad4b-platform",
       "sha256": "13281cb629084d8bee25335d248d2d5ed8c4257110194ad95265fb4590a9e102"
+    },
+    {
+      "bytes": 8743,
+      "git_blob_sha1": "1b3d3e97a343976e676a933f0651a273b997c31a",
+      "path": "wp-content/plugins/mad4b-platform/legacy-mu-tree/assets/mad4b-rate-widget-lifecycle-2.3.0-20261111.js",
+      "scope": "mad4b-platform",
+      "sha256": "f582c395597df1c8c5b5e4276cf0ec12fb740e5403a0a88b83404d09e8b926f6"
+    },
+    {
+      "bytes": 9205,
+      "git_blob_sha1": "d6089306f3c9f4a0365de57937568963477ba8c9",
+      "path": "wp-content/plugins/mad4b-platform/legacy-mu-tree/assets/mad4b-rate-widget-lifecycle-2.4.0-20261111.js",
+      "scope": "mad4b-platform",
+      "sha256": "ab93afe8f65db760631efc9364d83cefc03988dd8381251c18fee2e7385b1765"
     },
     {
       "bytes": 1916,
@@ -3724,7 +3738,7 @@
     }
   ],
   "grant_issued": false,
-  "last_reconciled_utc": "2026-11-11T02:40:07.543709+00:00",
+  "last_reconciled_utc": "2026-11-11T03:06:19.694545+00:00",
   "original313_certified": false,
   "original318_v82_not_automatically_substituted": true,
   "post_capture_amendments": [
@@ -3798,6 +3812,42 @@
       "new_sha256": "a9dd9dc5694cb22c3fbcc153ccc5770dc2f8bb2c7c8476d56918b7ce2105de74",
       "path": "wp-content/plugins/mad4b-platform/legacy-mu-tree/assets/mad4b-tour-form6-submission-mode-v1.js",
       "payments_enabled_by_source_capture": false
+    },
+    {
+      "actual_browser_click_accepted": false,
+      "auto_publish": false,
+      "change_type": "live_rate_ui_2_3_pointer_and_keyboard_activation",
+      "new_sha256": "f582c395597df1c8c5b5e4276cf0ec12fb740e5403a0a88b83404d09e8b926f6",
+      "path": "wp-content/plugins/mad4b-platform/legacy-mu-tree/assets/mad4b-rate-widget-lifecycle-2.3.0-20261111.js",
+      "source_only": true
+    },
+    {
+      "auto_publish": false,
+      "browser_click_verified": false,
+      "change_type": "latest_site_live_rate_ui_2_4_native_JetTabs_fallback",
+      "path": "wp-content/plugins/mad4b-platform/legacy-mu-tree/assets/mad4b-rate-widget-lifecycle-2.4.0-20261111.js",
+      "sha256": "ab93afe8f65db760631efc9364d83cefc03988dd8381251c18fee2e7385b1765",
+      "site_origin": "Tours.dev Staging",
+      "source_only": true,
+      "wayfatours_updated_by_reconcile": false
+    },
+    {
+      "auto_publish": false,
+      "change_type": "live_passport_search_inline_v1_2",
+      "new_sha256": "66d150071d88d5f222115fc2d264ebdf88dbe402d7e89c0d9c508030f4d54384",
+      "old_sha256": "fce8de1e6411be2adf7e9149db77e6a02fbadffa070b62e26b8c77921878c620",
+      "path": "wp-content/plugins/mad4b-platform/legacy-mu-tree/assets/mad4b-passport-country-ajax-v1.js",
+      "runtime_validation": "not_performed",
+      "source_only": true
+    },
+    {
+      "auto_publish": false,
+      "change_type": "live_passport_search_inline_v1_2",
+      "new_sha256": "fb6cb1d61159bee46a6c0e9e863a2f8e4e12e3394206e03cde4d143c06e55849",
+      "old_sha256": "48728f7e48ecfba20a22e3071bc14f4dae0dee55bb279d8adeb8bb961f94e263",
+      "path": "wp-content/plugins/mad4b-platform/legacy-mu-tree/assets/mad4b-passport-country-ajax-v1.css",
+      "runtime_validation": "not_performed",
+      "source_only": true
     }
   ],
   "root_code_types": [

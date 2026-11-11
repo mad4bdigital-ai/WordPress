@@ -1,73 +1,85 @@
-/* MAD4B country combobox: FF's original <select> remains the submitted field. */
-form.fluent_form_6 .mad4b-passport-native-hidden {
+/* The FF select remains the original required, submitted, translatable field. */
+body.single-tours-and-activities form.fluent_form_6 .mad4b-passport-native-hidden {
  position:absolute!important;width:1px!important;height:1px!important;
  overflow:hidden!important;opacity:0!important;pointer-events:none!important;
  clip-path:inset(50%)!important;
 }
-form.fluent_form_6 .mad4b-passport-trigger {
- display:block;width:100%;min-height:43px;
- padding:9px 13px;border:1px solid #d0d8df;border-radius:7px;
- color:#263e49;background:#fff;text-align:center;
- font:inherit;cursor:pointer;
+body.single-tours-and-activities form.fluent_form_6 .mad4b-passport-inline {
+ position:relative;width:100%;min-width:0;margin:0;
+ direction:inherit;box-sizing:border-box;
 }
-form.fluent_form_6 .mad4b-passport-trigger:focus-visible {
+body.single-tours-and-activities form.fluent_form_6 .mad4b-passport-trigger {
+ display:block;width:100%;min-height:43px;box-sizing:border-box;
+ padding:9px 34px 9px 12px;border:1px solid #d0d8df;border-radius:7px;
+ color:#263e49;background:#fff;text-align:start;
+ font-family:inherit;font-size:14px;line-height:1.5;font-weight:400;
+ cursor:pointer;position:relative;
+}
+body.single-tours-and-activities form.fluent_form_6 .mad4b-passport-trigger::after {
+ content:"⌄";position:absolute;right:12px;top:50%;transform:translateY(-55%);
+ font-size:20px;color:#506873;
+}
+body[dir="rtl"].single-tours-and-activities form.fluent_form_6 .mad4b-passport-trigger {
+ padding:9px 12px 9px 34px;
+}
+body[dir="rtl"].single-tours-and-activities form.fluent_form_6 .mad4b-passport-trigger::after {
+ right:auto;left:12px;
+}
+body.single-tours-and-activities form.fluent_form_6 .mad4b-passport-trigger:focus-visible {
  outline:2px solid #b78d44;outline-offset:2px;
 }
-.mad4b-passport-search-dialog {
- width:min(460px,calc(100vw - 24px));max-width:calc(100vw - 24px);
- max-height:min(570px,85dvh);
- border:1px solid #cad8de;border-radius:13px;
- padding:0;box-shadow:0 14px 46px rgba(14,39,53,.22);
- color:#173b47;background:#fff;
- overflow:hidden;
+body.single-tours-and-activities form.fluent_form_6 .mad4b-passport-dropdown[hidden] {display:none;}
+body.single-tours-and-activities form.fluent_form_6 .mad4b-passport-dropdown {
+ display:flex;flex-direction:column;position:relative;
+ width:100%;min-width:0;box-sizing:border-box;
+ margin:4px 0 8px;padding:10px;
+ background:#fff;color:#173b47;
+ border:1px solid #c9d8df;border-radius:8px;
+ box-shadow:0 6px 18px rgba(14,39,53,.10);
 }
-.mad4b-passport-search-dialog::backdrop { background:rgba(12,31,42,.52); }
-.mad4b-passport-search-dialog[open] { display:flex;flex-direction:column; }
-.mad4b-passport-dialog-header {
- display:flex;justify-content:space-between;align-items:center;
- gap:12px;padding:15px 18px;background:#f2f7f8;
+body.single-tours-and-activities form.fluent_form_6 .mad4b-passport-search-input {
+ display:block;width:100%;min-width:0;box-sizing:border-box;
+ min-height:42px;margin:0 0 8px;padding:8px 12px;
+ font-family:inherit;font-size:16px;font-weight:400;line-height:1.5;
+ background:#fff;color:#173b47;border:1px solid #9fb7c1;border-radius:6px;
 }
-.mad4b-passport-dialog-header strong {font-size:15px;}
-.mad4b-passport-close {
- min-width:36px;min-height:36px;border:0;background:transparent;
- color:#173b47;cursor:pointer;font-size:25px;line-height:1;
+body.single-tours-and-activities form.fluent_form_6 .mad4b-passport-results {
+ display:block;box-sizing:border-box;max-height:min(238px,30dvh);min-height:42px;
+ overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;
+ -webkit-overflow-scrolling:touch;
 }
-.mad4b-passport-search-input {
- display:block;width:calc(100% - 36px);box-sizing:border-box;min-height:46px;
- margin:14px 18px;border:1px solid #9fb7c1;border-radius:7px;
- padding:9px 12px;line-height:1.4;font:inherit;background:#fff;color:#173b47;
+body.single-tours-and-activities form.fluent_form_6 .mad4b-passport-result {
+ display:block;width:100%;min-height:40px;box-sizing:border-box;
+ margin:0 0 2px;padding:9px 11px;text-align:start;
+ border:0;border-radius:5px;box-shadow:none;
+ background:#fff;color:#173b47;
+ font-family:inherit;font-size:14px;line-height:1.4;font-weight:400;
+ cursor:pointer;white-space:normal;
 }
-.mad4b-passport-results {
- flex:1 1 auto;min-height:95px;max-height:320px;overflow:auto;
- overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
- padding:4px 12px 8px;
+body.single-tours-and-activities form.fluent_form_6 .mad4b-passport-result:hover,
+body.single-tours-and-activities form.fluent_form_6 .mad4b-passport-result:focus-visible,
+body.single-tours-and-activities form.fluent_form_6 .mad4b-passport-result[aria-selected="true"] {
+ background:#edf3f5;color:#123a46;outline:1px solid #a7bec7;
 }
-.mad4b-passport-result {
- display:block;width:100%;min-height:44px;text-align:start;
- padding:10px 13px;margin:0 0 3px;border:0;border-radius:7px;
- color:#173b47;background:#fff;cursor:pointer;font:inherit;
+body.single-tours-and-activities form.fluent_form_6 .mad4b-passport-status {
+ min-height:12px;margin:3px 0;padding:0;color:#647883;
+ font-family:inherit;font-size:12px;font-weight:400;
 }
-.mad4b-passport-result:hover,.mad4b-passport-result[aria-selected="true"],
-.mad4b-passport-result:focus-visible {background:#e9f1f3;outline:1px solid #9fb7c1;}
-.mad4b-passport-status {min-height:16px;margin:0;padding:4px 20px;color:#637783;font-size:12px;}
-.mad4b-passport-actions {
- display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;
- padding:12px 17px 15px;border-top:1px solid #edf0f2;
+body.single-tours-and-activities form.fluent_form_6 .mad4b-passport-actions {
+ display:flex;align-items:center;justify-content:space-between;
+ gap:6px;flex-wrap:wrap;padding-top:8px;border-top:1px solid #e6eff1;
 }
-.mad4b-passport-actions button {
- background:transparent;border:1px solid #d0dce2;border-radius:6px;
- padding:8px 10px;min-height:40px;color:#17414c;font:inherit;cursor:pointer;
+body.single-tours-and-activities form.fluent_form_6 .mad4b-passport-actions button {
+ min-height:32px;padding:6px 8px;background:transparent;
+ color:#28515a;border:1px solid #d5e0e5;border-radius:6px;
+ font-family:inherit;font-size:12px;font-weight:400;line-height:1.4;
+ cursor:pointer;
 }
-.mad4b-passport-actions button:focus-visible {outline:2px solid #b78d44;}
 @media(max-width:650px) {
- .mad4b-passport-search-dialog {
-   position:fixed;left:0;right:0;top:auto;bottom:0;margin:0;
-   width:100%;max-width:100%;height:min(70dvh,590px);
-   max-height:calc(100dvh - 16px);border-radius:16px 16px 0 0;
-   border-bottom:0;
+ body.single-tours-and-activities form.fluent_form_6 .mad4b-passport-results {
+  max-height:min(190px,25dvh);
  }
- .mad4b-passport-results {max-height:none;}
- .mad4b-passport-search-input {font-size:16px;}
- .mad4b-passport-result {min-height:48px;font-size:15px;}
- .mad4b-passport-actions {padding-bottom:max(13px,env(safe-area-inset-bottom));}
+ body.single-tours-and-activities form.fluent_form_6 .mad4b-passport-result {
+  min-height:44px;font-size:14px;
+ }
 }
