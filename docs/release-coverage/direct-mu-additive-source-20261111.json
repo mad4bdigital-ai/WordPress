@@ -19,6 +19,18 @@
       "payment_authority_granted": false,
       "policy": "woo_plain_preview_fallback_only_without_dispatch",
       "release_authorized": false
+    },
+    {
+      "automatic_redirect": false,
+      "booking_confirmed": false,
+      "candidate_blob_sha1": "61dd85a77abeb7246cc3854c79f39f6cc3ffadab",
+      "candidate_sha256": "0cee46514ec702612e3e3f4bb65e87d4ff98f24eaa30f8d4d9974bc3de416cce",
+      "live_sha256": "2641f2d08b9d51c3c4779b4f1e47b84ffe2ef35e87e786475e07d81dec016ebb",
+      "offline_php_cases_passed": 22,
+      "path": "wp-content/mu-plugins/mad4b-tour-form6-submission-mode-v1.php",
+      "payment_authority_granted": false,
+      "policy": "source_tour_localized_confirmation_and_advance_state_fail_closed",
+      "release_authorized": false
     }
   ],
   "automatic_mu_activation_authorized": false,
@@ -1064,11 +1076,11 @@
       "sha256": "9559b9bdb12912baf92bfe4bc43549af0c29108ecbccf752ef2e3057dde453b3"
     },
     {
-      "bytes": 10708,
+      "bytes": 15635,
       "file_type": ".php",
-      "git_blob_sha1": "a0e7e0160e0cb2dfb49e887061dc354ec1740709",
+      "git_blob_sha1": "81074d4a57acb157a698aa1c86d4b2b8253194fb",
       "path": "wp-content/mu-plugins/mad4b-tour-form6-submission-mode-v1.php",
-      "sha256": "a1c336d07985ab3652db7a0be18871d47714d6f49e225e77d4caf63d32b8c15d"
+      "sha256": "2641f2d08b9d51c3c4779b4f1e47b84ffe2ef35e87e786475e07d81dec016ebb"
     },
     {
       "bytes": 8343,

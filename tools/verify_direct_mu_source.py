@@ -30,11 +30,12 @@ def verify(data,root=ROOT,live_root=None):
     overlays=data.get('approved_candidate_overlays')
     native=PREFIX+'mad4b-tour-optional-sections-lazy.php'
     email=PREFIX+'mad4b-request-woocommerce-email-v1.php'
-    if (not isinstance(overlays,list) or len(overlays)!=2
+    form6=PREFIX+'mad4b-tour-form6-submission-mode-v1.php'
+    if (not isinstance(overlays,list) or len(overlays)!=3
         or any(not isinstance(o,dict) for o in overlays)):
         raise Blocked('MU_REVIEWED_OVERLAYS_MISSING')
     patches={o.get('path'):o for o in overlays}
-    if len(patches)!=2 or set(patches)!={native,email}:
+    if len(patches)!=3 or set(patches)!={native,email,form6}:
         raise Blocked('MU_REVIEWED_OVERLAY_SCOPE_EXPANDED')
     n=patches[native]
     expected_native={'path','live_sha256','candidate_sha256','candidate_blob_sha1',
@@ -53,7 +54,18 @@ def verify(data,root=ROOT,live_root=None):
         or any(e.get(k) is not False for k in
                ('mail_sent','payment_authority_granted','release_authorized'))):
         raise Blocked('EMAIL_MU_SEMANTIC_OVERLAY_INVALID')
-    for o in (n,e):
+    f=patches[form6]
+    expected_form={'path','live_sha256','candidate_sha256','candidate_blob_sha1',
+      'policy','offline_php_cases_passed','booking_confirmed','automatic_redirect',
+      'payment_authority_granted','release_authorized'}
+    if (set(f)!=expected_form or
+        f['policy']!='source_tour_localized_confirmation_and_advance_state_fail_closed'
+        or f['offline_php_cases_passed']!=22 or
+        any(f.get(k) is not False for k in
+            ('booking_confirmed','automatic_redirect','payment_authority_granted',
+             'release_authorized'))):
+        raise Blocked('FORM6_MU_SEMANTIC_OVERLAY_INVALID')
+    for o in (n,e,f):
         for name,length in (('live_sha256',64),('candidate_sha256',64),('candidate_blob_sha1',40)):
             if not isinstance(o.get(name),str) or not re.fullmatch('[a-f0-9]{'+str(length)+'}',o[name]):
                 raise Blocked('UNVERIFIED_MU_SEMANTIC_DIGEST')
@@ -91,7 +103,7 @@ def verify(data,root=ROOT,live_root=None):
                     raise Blocked('NATIVE_MU_PATCH_OUTSIDE_REVIEWED_SOURCE')
             elif hashlib.sha256(content).hexdigest()!=row['sha256'] or hashblob(content)!=row['git_blob_sha1']:
                 raise Blocked('DIRECT_MU_SHA_DRIFT')
-    return {'state':'DIRECT_MU_EXACT_EXCEPT_TWO_BOUNDED_SEMANTIC_PATCHES__HOLD',
+    return {'state':'DIRECT_MU_EXACT_EXCEPT_THREE_BOUNDED_SEMANTIC_PATCHES__HOLD',
             'source_php_files_verified':len(seen),
             'semantic_overlays_verified':len(patches),
             'existing_conflicts_held':len(EXISTING_DIFFERENT),
