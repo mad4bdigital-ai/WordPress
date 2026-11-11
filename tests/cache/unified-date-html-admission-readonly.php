@@ -23,12 +23,17 @@ $socket = is_file(WP_CONTENT_DIR . '/.mad4b-purge/origin.sock')
     || file_exists(WP_CONTENT_DIR . '/.mad4b-purge/origin.sock');
 
 $selection = MAD4B_Cache_Control_V1::preview_target('post:60629');
-$impact = is_array($selection) ? ($selection['dependency_impact'] ?? []) : [];
-$unknown = (int) ($impact['unknown_nodes'] ?? PHP_INT_MAX);
-$truncated = (bool) ($impact['truncated'] ?? true);
-$exact = ($impact['exact_census_ready'] ?? false) === true;
-$complete = $depReady && $exact && !$truncated && $unknown === 0
-    && (($impact['coverage'] ?? '') !== 'partial_unknown_requires_legacy_fallback');
+// impact_preview() is deliberately capped at 50 rows and labels its
+// coverage partial even when a separate exact census could prove completeness.
+// Cache admission must use the uncapped, read-only census instead.
+$census = $depReady
+    ? MAD4B_Page_Dependency_Cache::impact_census('post:60629')
+    : ['status' => 'schema_not_ready'];
+$exact = ($census['status'] ?? '') === 'ok';
+$unknown = $exact ? (int) ($census['unknown_coverage_nodes'] ?? PHP_INT_MAX) : PHP_INT_MAX;
+$nodes = $exact ? (int) ($census['total_nodes'] ?? 0) : 0;
+$complete = $depReady && $exact && $nodes > 0 && $unknown === 0
+    && (($census['all_nodes_proven_complete'] ?? false) === true);
 $admit = $verified && $mode === 'on' && $policy && $complete && $socket;
 $data = [
     'contract' => 'mad4b.date-html-cache-admission.audit.v1',
@@ -40,12 +45,12 @@ $data = [
     'browser_policy_enabled' => $policy,
     'page_dependency_ready' => $depReady,
     'impact_exact_census_ready' => $exact,
+    'impact_total_nodes' => $nodes,
     'impact_unknown_nodes' => $unknown,
-    'impact_truncated' => $truncated,
-    'impact_coverage' => $impact['coverage'] ?? 'unavailable',
+    'impact_groups' => $census['groups'] ?? [],
+    'impact_preview_truncated' => $selection['dependency_impact']['truncated'] ?? null,
     'selective_purge_socket_present' => $socket,
     'admit_shared_html' => $admit,
     'action' => $admit ? 'verify_served_variants_before_activation' : 'keep_private_no_store',
 ];
 echo wp_json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), PHP_EOL;
-

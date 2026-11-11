@@ -114,7 +114,9 @@ final class MAD4B_Cache_Lifecycle_V1 {
  public static function context(){
   foreach(array_keys($_COOKIE) as $key)if(preg_match('/(?:currency|market|passport|traveller|traveler|woocommerce_items_in_cart|wp_woocommerce_session_)/i',(string)$key))return 'personalized_cookie';
   if(isset($_GET['_mad4b_cache_delivery']))return 'native_purge_delivery';
-  foreach(array_keys($_GET) as $key)if(preg_match('/^(?:currency|market|country|passport|travel_date|start_date|adults|children|infants|wc-ajax)$/i',(string)$key))return 'personalized_query';
+  // Unified Date Intent and WCML's URL currency selector are visitor context.
+  // Protect them at WordPress origin even when the edge already bypasses queries.
+  foreach(array_keys($_GET) as $key)if(preg_match('/^(?:currency|market|country|passport|travel_date|start_date|adults|children|infants|wc-ajax|wcmlc|mad4b_date_(?:mode|from|to|clear))$/i',(string)$key))return 'personalized_query';
   return null;
  }
  public static function early_headers($headers){if(self::context()){$headers['Cache-Control']='private, no-store, no-cache, max-age=0, must-revalidate';$headers['X-MAD4B-Cache-Policy']='private-context';}return $headers;}
