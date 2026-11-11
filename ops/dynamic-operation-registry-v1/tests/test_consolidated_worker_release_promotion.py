@@ -34,6 +34,22 @@ class ConsolidatedReleaseTests(unittest.TestCase):
                 historic[label]=(f,old_sha)
             stack.enter_context(patch.object(m,'ACTIVE',active))
             stack.enter_context(patch.object(m,'TARGETS',historic))
+            # The live First-party guard legitimately advances when a newer
+            # worker version is released. Historical release tests must use
+            # an isolated pin for the historical source, not mutate the live
+            # guard, its proof or its protected source snapshot.
+            guard=root/'historical-test-guard.py'
+            guard.write_text('from pathlib import Path\n'
+                'from types import SimpleNamespace\n'
+                f'guard=SimpleNamespace(EXPECTED_NEW={m.NEW!r},'
+                f'VETTED=Path({str(m.SOURCE)!r}))\n')
+            original_spec=importlib.util.spec_from_file_location
+            def isolated_spec(name,path):
+                if name=='verified_original313_source_guard':
+                    return original_spec(name,str(guard))
+                return original_spec(name,path)
+            stack.enter_context(patch.object(m.importlib.util,
+                'spec_from_file_location',side_effect=isolated_spec))
             yield root,historic
 
     def test_reviewed_active_satisfies_superset_of_old_release_capabilities(self):
