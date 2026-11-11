@@ -43,6 +43,8 @@ final class MAD4B_SCP_Admin_Query_Performance_UI {
 		echo '<p><a class="button" href="' . esc_url( admin_url( 'admin.php?page=' . self::PAGE_SLUG ) ) . '">' . esc_html__( 'Refresh persisted status', 'mad4b-site-control-plane' ) . '</a></p>';
 
 		if ( class_exists( 'MAD4B_SCP_Core_Web_Vitals', false ) ) MAD4B_SCP_Core_Web_Vitals::render_admin_section();
+		self::render_selective_cache_release();
+		self::render_css_strategy_status();
 
 		$indexes = isset( $status['indexes'] ) && is_array( $status['indexes'] ) ? $status['indexes'] : array();
 		if ( $indexes ) {
