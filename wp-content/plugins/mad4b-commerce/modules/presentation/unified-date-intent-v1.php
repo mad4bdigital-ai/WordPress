@@ -44,13 +44,15 @@ final class MAD4B_Unified_Date_Intent_V1 {
         if ($toDate < $fromDate) return new WP_Error('invalid_date_window');
 
         $policy = self::settings();
-        $today = new DateTimeImmutable('today', new DateTimeZone('UTC'));
+        $today = new DateTimeImmutable('today', wp_timezone());
+        $minLocalDay = $today->modify('+' . $policy['min_lead_days'] . ' days')->format('Y-m-d');
+        $maxLocalDay = $today->modify('+' . $policy['max_advance_days'] . ' days')->format('Y-m-d');
         $span = (int)$fromDate->diff($toDate)->format('%a');
         if ($mode === 'flex' && $span < $policy['min_flex_gap_days']) return new WP_Error('date_window_too_short');
         if ($span > $policy['max_flex_days']) return new WP_Error('date_window_too_long');
         if ($enforce_policy) {
-            if ($fromDate < $today->modify('+' . $policy['min_lead_days'] . ' days')) return new WP_Error('date_too_soon');
-            if ($toDate > $today->modify('+' . $policy['max_advance_days'] . ' days')) return new WP_Error('date_too_far');
+            if ($start < $minLocalDay) return new WP_Error('date_too_soon');
+            if ($end > $maxLocalDay) return new WP_Error('date_too_far');
         }
         return [
             'contract' => self::CONTRACT, 'mode' => $mode,
@@ -82,13 +84,18 @@ final class MAD4B_Unified_Date_Intent_V1 {
         if (($intent['contract'] ?? '') !== self::CONTRACT) return [];
         $rates = get_posts([
             'post_type' => 'tour-rates', 'post_status' => 'publish',
-            'numberposts' => 2500, 'fields' => 'ids', 'suppress_filters' => true,
+            'numberposts' => -1, 'fields' => 'ids', 'suppress_filters' => true,
+            'no_found_rows' => true,
             'meta_query' => [
                 'relation' => 'AND',
                 ['key' => 'tour_rate_start_date', 'value' => (int)$intent['window_to_ts'], 'compare' => '<=', 'type' => 'NUMERIC'],
                 ['key' => 'tour_rate_end_date', 'value' => (int)$intent['window_from_ts'], 'compare' => '>=', 'type' => 'NUMERIC'],
             ],
         ]);
+        // Avoid one meta read query per Rate while preserving exhaustive matching.
+        foreach (array_chunk($rates, 500) as $batch) {
+            update_meta_cache('post', array_map('intval', $batch));
+        }
         $tours = []; $rateGroups = [];
         foreach ($rates as $rateId) {
             $tourId = (int)get_post_meta((int)$rateId, 'related_tour_id', true);

@@ -65,7 +65,18 @@
   const d=new Date(value+'T00:00:00Z');
   return !Number.isNaN(d.getTime())&&d.toISOString().slice(0,10)===value?value:null;
  };
+ // A flexible window is not a confirmed departure or quote date.
+ function appliedDateReadyForQuote(form){
+  const date=window.MAD4BUnifiedDateV1;
+  if(!date||date.context!=='single')return true;
+  if(form.dataset.mad4bDateDraftInvalid==='1'||
+     form.dataset.mad4bDatePending==='1')return false;
+  const applied=date.request;
+  return applied?.status==='valid'&&applied.mode==='fixed'&&
+    Boolean(applied.from)&&iso(form.querySelector('[name="datetime"]')?.value)===applied.from;
+ }
  function intentPayload(form){
+  if(!appliedDateReadyForQuote(form))return null;
   const n=name=>form.querySelector('[name="'+name+'"]')?.value;
   const adults=asInt(n('no_of_adults')),children=asInt(n('no_of_children')),infants=asInt(n('no_of_infants'));
   const snap=broker.getSnapshot(),rate=asRateId(snap.selectedRateId);
