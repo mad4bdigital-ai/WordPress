@@ -1,0 +1,156 @@
+<?php
+/**
+ * Plugin Name: MAD4B Provider Qualification Bridge
+ * Description: Read-only native WordPress Ability for inherited provider qualification; no authorization or mutation.
+ * Version: 0.1.1
+ * Author: MAD4B
+ */
+defined('ABSPATH') || exit;
+
+require_once __DIR__.'/includes/class-mad4b-scp-provider-auto-qualification.php';
+
+final class MAD4B_Provider_Qualification_Bridge {
+    const ABILITY='mad4b/provider-auto-qualification-plan';
+    const VERSION='0.1.1';
+
+    public static function scope() {
+        // Read-only discovery belongs to the enrolled CENTRAL controller,
+        // regardless of its WordPress environment label or domain.
+        // Do not use environment metadata as an authorization credential.
+        if (getenv('MAD4B_CENTRAL_HUB_ENABLED') !== '1'
+            || !class_exists('MAD4B_SCP_Site_Profile')
+            || !function_exists('get_option')
+            || !function_exists('wp_is_uuid')) return false;
+        $profile = MAD4B_SCP_Site_Profile::status();
+        if (!is_array($profile) || empty($profile['configured'])
+            || empty($profile['authority_ready'])
+            || empty($profile['same_origin_clone_protection'])
+            || empty($profile['deployment_binding_match'])
+            || empty($profile['origin_match'])
+            || !wp_is_uuid((string)($profile['site_uuid'] ?? ''))) return false;
+        $origin = rtrim((string)get_option('home', ''), '/');
+        $parts = wp_parse_url($origin);
+        if (!is_array($parts) || ($parts['scheme'] ?? '') !== 'https'
+            || empty($parts['host']) || isset($parts['user'])
+            || isset($parts['pass']) || isset($parts['query'])
+            || isset($parts['fragment'])) return false;
+        // A central identity document is already mounted separately from
+        // tenant Site Profiles. Its role and exact binding prevent a
+        // company from becoming a central inventory reader by toggling
+        // the central environment flag.
+        $path = '/run/secrets/mad4b-hub-central-identity';
+        if (!is_readable($path) || is_link($path)) return false;
+        $identity = json_decode((string)file_get_contents($path), true);
+        return is_array($identity)
+            && ($identity['contract'] ?? '') === 'mad4b.hub.central-host-identity.v1'
+            && in_array(($identity['role'] ?? ''), ['central-controller-preview', 'central-controller'], true)
+            && ($identity['site_uuid'] ?? '') === (string)$profile['site_uuid']
+            && rtrim((string)($identity['canonical_origin'] ?? ''), '/') === $origin
+            && ($identity['can_distribute_external_content'] ?? true) === false
+            && ($identity['can_authorize_sales'] ?? true) === false;
+    }
+
+    public static function allowed($input = array()) {
+        return self::scope() && current_user_can('manage_options')
+            && class_exists('MAD4B_SCP_Policy')
+            && MAD4B_SCP_Policy::can_read();
+    }
+
+    public static function plan($input = array()) {
+        if (!self::allowed($input))
+            return new WP_Error('mad4b_provider_qualification_read_denied','Provider qualification read access denied.');
+        if (!class_exists('MAD4B_SCP_Provider_Compatibility_Certification'))
+            return new WP_Error('mad4b_provider_qualification_owner_missing','Canonical provider compatibility owner missing.');
+        $input=is_array($input)?$input:array();
+        $ability=isset($input['ability'])?trim((string)$input['ability']):'';
+        $provider=isset($input['provider_id'])?sanitize_key((string)$input['provider_id']):'';
+        if ($ability==='' && $provider==='')
+            return new WP_Error('mad4b_provider_qualification_target_required','Supply a provider_id or exact ability.');
+        if ($ability!=='' && !preg_match('/^[A-Za-z0-9._\/-]{3,160}$/D',$ability))
+            return new WP_Error('mad4b_provider_qualification_ability_invalid','Invalid native ability.');
+        $inventory=MAD4B_SCP_Provider_Compatibility_Certification::inventory();
+        $assessments=(array)($inventory['providers']??array());
+        $matches=array();
+        $build='unknown';
+        // Only exact native provenance permits handoff to a behavioral probe.
+        // No build status can grant execution authority here.
+        foreach ($assessments as $key=>$assessment) {
+            if (!is_array($assessment)) continue;
+            if ($provider!=='' && !hash_equals($provider,(string)$key)) continue;
+            if ($ability!=='') {
+                $found=false;
+                foreach ((array)($assessment['capabilities']??array()) as $capability) {
+                    if (is_array($capability) && in_array($ability,(array)($capability['mounted_abilities']??array()),true)) {
+                        $found=true; break;
+                    }
+                }
+                if (!$found) continue;
+            }
+            $matches[$key]=$assessment;
+        }
+        if (count($matches)!==1)
+            return new WP_Error('mad4b_provider_qualification_binding_not_unique',
+                'Exact provider binding must resolve to one cataloged native adapter.',
+                array('match_count'=>count($matches),'provider_id'=>$provider,'ability'=>$ability));
+        $assessment=reset($matches);
+        if (class_exists('MAD4B_SCP_Live_Acceptance_Observer')
+            && method_exists('MAD4B_SCP_Live_Acceptance_Observer','build_provenance_status')) {
+            $p=MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
+            if (is_array($p) && !empty($p['manifest_present']) && !empty($p['manifest_valid'])
+                && !empty($p['runtime_manifest_match']) && empty($p['stale'])
+                && !empty($p['source_commit_sha']) && !empty($p['build_fingerprint']))
+                $build='exact_current';
+        }
+        $plan=MAD4B_SCP_Provider_Auto_Qualification::plan(
+            $assessment,$ability,array('build_provenance_state'=>$build)
+        );
+        $plan['site']=home_url('/');
+        $plan['environment']=wp_get_environment_type();
+        $plan['native_provenance_state']=$build;
+        $plan['native_provider_owner']='MAD4B_SCP_Provider_Compatibility_Certification';
+        $plan['dispatch_performed']=false;
+        $plan['read_only']=true;
+        return $plan;
+    }
+
+    public static function register() {
+        if (!self::scope() || !function_exists('wp_register_ability')) return;
+        if (function_exists('wp_has_ability') && wp_has_ability(self::ABILITY)) return;
+        wp_register_ability(self::ABILITY,array(
+            'label'=>'Provider Auto Qualification Plan',
+            'description'=>'Read native evidence and prepare the next qualification action for a demanded provider ability without executing a write or altering certification.',
+            'category'=>'mad4b-read',
+            'execute_callback'=>array(__CLASS__,'plan'),
+            'permission_callback'=>array(__CLASS__,'allowed'),
+            'input_schema'=>array(
+                'type'=>'object',
+                'properties'=>array(
+                    'provider_id'=>array('type'=>'string','minLength'=>1,'maxLength'=>64,'pattern'=>'^[a-z0-9_-]+$'),
+                    'ability'=>array('type'=>'string','minLength'=>3,'maxLength'=>160,'pattern'=>'^[A-Za-z0-9._/-]+$'),
+                ),
+                'additionalProperties'=>false,
+            ),
+            'output_schema'=>array('type'=>'object','additionalProperties'=>true),
+            'meta'=>array(
+                'public'=>false,'show_in_rest'=>false,
+                'mcp'=>array('public'=>false,'type'=>'tool','surface'=>'read'),
+                'annotations'=>array('readonly'=>true,'destructive'=>false,'idempotent'=>true),
+            ),
+        ));
+    }
+}
+add_action('wp_abilities_api_init',array('MAD4B_Provider_Qualification_Bridge','register'),99);
+
+if (defined('WP_CLI') && WP_CLI && class_exists('WP_CLI')) {
+    WP_CLI::add_command('mad4b provider-qualification',function($args,$assoc_args) {
+        $input=array();
+        if (isset($assoc_args['provider']))$input['provider_id']=(string)$assoc_args['provider'];
+        if (isset($assoc_args['ability']))$input['ability']=(string)$assoc_args['ability'];
+        $result=MAD4B_Provider_Qualification_Bridge::plan($input);
+        if (is_wp_error($result)) {
+            WP_CLI::error($result->get_error_code());
+            return;
+        }
+        WP_CLI::line(wp_json_encode($result,JSON_UNESCAPED_SLASHES));
+    },array('shortdesc'=>'Read native provider qualification plan, without mutation.'));
+}

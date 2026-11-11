@@ -1,0 +1,2003 @@
+{
+  "base_git_commit": "cea270f57bb8152989c6089f76405b165652f9df",
+  "captured_utc": "2026-11-11T03:18:19.275988+00:00",
+  "company_deployment_authorized": false,
+  "company_specific_content_copied": false,
+  "contract": "mad4b.first-party-plugin-additive-source-only.v1",
+  "files": [
+    {
+      "bytes": 28879,
+      "extension": ".php",
+      "git_blob_sha1": "3614fb44b38628e93fa8eba43584dc0ecf35e097",
+      "path": "wp-content/plugins/mad4b-adaptive-asset-intelligence/includes/class-mad4b-scp-adaptive-asset-intelligence.php",
+      "plugin": "mad4b-adaptive-asset-intelligence",
+      "sha256": "6b3d9a0be09f06de883fc7f5cd368c03a75acf545d99f1a2bf54f1e6aa66bb6e"
+    },
+    {
+      "bytes": 12329,
+      "extension": ".php",
+      "git_blob_sha1": "ea8869f37650222cb0968f473ee11a462d0850de",
+      "path": "wp-content/plugins/mad4b-adaptive-asset-intelligence/includes/class-mad4b-scp-adaptive-presentation-discovery.php",
+      "plugin": "mad4b-adaptive-asset-intelligence",
+      "sha256": "bcf6e6b401dfd6f921977670af4ab433619541d9e3abc748d360f3ed4e9dcbc2"
+    },
+    {
+      "bytes": 14834,
+      "extension": ".php",
+      "git_blob_sha1": "3ab0c6b90fc44ea2aa105bc53b3716820c1aea3c",
+      "path": "wp-content/plugins/mad4b-adaptive-asset-intelligence/includes/class-mad4b-scp-theme-builder-priority-plan.php",
+      "plugin": "mad4b-adaptive-asset-intelligence",
+      "sha256": "9578421171f4adb7539c24a626b7657f339bdd2ae34b762961401275816c2be8"
+    },
+    {
+      "bytes": 1245,
+      "extension": ".php",
+      "git_blob_sha1": "e0b77a40fa6ee1a7528040576aae3ec5f292b077",
+      "path": "wp-content/plugins/mad4b-adaptive-asset-intelligence/mad4b-adaptive-asset-intelligence.php",
+      "plugin": "mad4b-adaptive-asset-intelligence",
+      "sha256": "6b4d8a3d65226fbd30b9e3ba080122b7867997dbb243e5bcbd4964031c9d011e"
+    },
+    {
+      "bytes": 5498,
+      "extension": ".php",
+      "git_blob_sha1": "a39bc7e869d97187a56dbce951a7ce0e035ba71e",
+      "path": "wp-content/plugins/mad4b-adaptive-asset-intelligence/tests/contract.php",
+      "plugin": "mad4b-adaptive-asset-intelligence",
+      "sha256": "066a14f21c48e6c15be27a88e433708edaf19199aa43658778346897df605483"
+    },
+    {
+      "bytes": 990,
+      "extension": ".css",
+      "git_blob_sha1": "b577427118d806979e1312b4a26ac4dd5ce6731e",
+      "path": "wp-content/plugins/mad4b-age-occupancy-registry/assets/fluent-ages-20261103-r2.css",
+      "plugin": "mad4b-age-occupancy-registry",
+      "sha256": "5082b0c4dc628f8549021cdef5be2183e47adeb4e82a0d81382619e5d093848f"
+    },
+    {
+      "bytes": 4753,
+      "extension": ".php",
+      "git_blob_sha1": "b7c247e996324cc413c420517fcabcbf765157e4",
+      "path": "wp-content/plugins/mad4b-age-occupancy-registry/includes/fluent-age-policy.php",
+      "plugin": "mad4b-age-occupancy-registry",
+      "sha256": "2c77481510b185734b5cad26dd441729e8202e3e960c8541ef92ab2b810c40c9"
+    },
+    {
+      "bytes": 3454,
+      "extension": ".php",
+      "git_blob_sha1": "34b371650576819650e1af6b6dfd3a275e8f8878",
+      "path": "wp-content/plugins/mad4b-authority-reviews-classifier/mad4b-authority-reviews-classifier.php",
+      "plugin": "mad4b-authority-reviews-classifier",
+      "sha256": "b130b85e0fd9213a00dbe4e88277e1f1e3739783743c76d647048b1a29aa49d8"
+    },
+    {
+      "bytes": 16768,
+      "extension": ".php",
+      "git_blob_sha1": "d3ac9b2443efcfac79c91d841623d1d6e5224b60",
+      "path": "wp-content/plugins/mad4b-cache-lifecycle/includes/control.php",
+      "plugin": "mad4b-cache-lifecycle",
+      "sha256": "61456997ab3eba8418fe560e4e05523f1fcb083dcf1527fdcdcc01dc9a401fd7"
+    },
+    {
+      "bytes": 12067,
+      "extension": ".php",
+      "git_blob_sha1": "e835519187f6d9fe15c3426390af3d968aa1d3b7",
+      "path": "wp-content/plugins/mad4b-cache-lifecycle/includes/runtime.php",
+      "plugin": "mad4b-cache-lifecycle",
+      "sha256": "1268ef162a5080e93d142027be4f7fe8526d6ad6dd594e23cb60be6af8ce17c4"
+    },
+    {
+      "bytes": 476,
+      "extension": ".php",
+      "git_blob_sha1": "d5cae9b4f75e4d394f62dc5f653b1e8bf258f936",
+      "path": "wp-content/plugins/mad4b-cache-lifecycle/mad4b-cache-lifecycle.php",
+      "plugin": "mad4b-cache-lifecycle",
+      "sha256": "75d6bd040c26dd801b5f4ad5e56eac30c6133105283c4ec1533a764443ee1daa"
+    },
+    {
+      "bytes": 2730,
+      "extension": ".php",
+      "git_blob_sha1": "2291e732655facc8a51ec333d00f700cd1283a49",
+      "path": "wp-content/plugins/mad4b-cache-lifecycle/pricing-cache-acceptance.php",
+      "plugin": "mad4b-cache-lifecycle",
+      "sha256": "62d23afb0254947e247b494838a9d4f6ee1b342c413fc9b1aee1bc2bcac34a95"
+    },
+    {
+      "bytes": 9211,
+      "extension": ".php",
+      "git_blob_sha1": "f1b1b194b5637449fb3baa88998edcea77a5210e",
+      "path": "wp-content/plugins/mad4b-company-execution-reports/mad4b-company-execution-reports.php",
+      "plugin": "mad4b-company-execution-reports",
+      "sha256": "973dce44206c14860927299c82fb8f6c349c3443edf11482b36c88f77f89f6dc"
+    },
+    {
+      "bytes": 14570,
+      "extension": ".php",
+      "git_blob_sha1": "f96eb7f603ff7aeba56725abe7f14406f68ada25",
+      "path": "wp-content/plugins/mad4b-content-creation-control/class-mad4b-editorial-featured-image-gate.php",
+      "plugin": "mad4b-content-creation-control",
+      "sha256": "4e768e10d93c5956f79ee2904f05e92135f3debbdccebedbc68493c9365a9acb"
+    },
+    {
+      "bytes": 22269,
+      "extension": ".php",
+      "git_blob_sha1": "0ecd937ae3c526181057d15f549b00813d71839a",
+      "path": "wp-content/plugins/mad4b-content-creation-control/class-mad4b-seo-content-lifecycle.php",
+      "plugin": "mad4b-content-creation-control",
+      "sha256": "cc20c4d5ed3abcfb82bfb3b0ce7445402c7dd3ad1d93ba3e411409a00164c45a"
+    },
+    {
+      "bytes": 14430,
+      "extension": ".php",
+      "git_blob_sha1": "2c0d9ec3a491f362ae88b3562fbedf72de607688",
+      "path": "wp-content/plugins/mad4b-content-creation-control/class-mad4b-seo-cycle-admin.php",
+      "plugin": "mad4b-content-creation-control",
+      "sha256": "cedb691ac92da6c8270c492af6233d0dbbd887e855eb8205c33cf8a666d64619"
+    },
+    {
+      "bytes": 20287,
+      "extension": ".php",
+      "git_blob_sha1": "48e54da4b1e70fca69dc996a0992dc93d8b47ae5",
+      "path": "wp-content/plugins/mad4b-content-creation-control/class-mad4b-seo-image-lifecycle.php",
+      "plugin": "mad4b-content-creation-control",
+      "sha256": "81a62f45a583e2db11b5f91fd808e8bb0d5b2e0852ab4667d82c2f5d29144d2b"
+    },
+    {
+      "bytes": 7316,
+      "extension": ".php",
+      "git_blob_sha1": "abdba8ce3a9c31a17c34c08e9169d93e9361dc5f",
+      "path": "wp-content/plugins/mad4b-content-creation-control/class-mad4b-seo-render-audit.php",
+      "plugin": "mad4b-content-creation-control",
+      "sha256": "27bee4eff92df9fc972344934cf0352c81f1eef3205780e4f32e9b2e0973ce21"
+    },
+    {
+      "bytes": 18581,
+      "extension": ".php",
+      "git_blob_sha1": "197f5aff49ee9090b319c20d31d4deffc10977bb",
+      "path": "wp-content/plugins/mad4b-content-creation-control/class-mad4b-serp-policy-admin.php",
+      "plugin": "mad4b-content-creation-control",
+      "sha256": "b68c372f892f53776e432ccce1e08a875f8a9476bf600812f9b714203aa897c7"
+    },
+    {
+      "bytes": 20925,
+      "extension": ".php",
+      "git_blob_sha1": "eab480de13f1ca6ada5e0761c65887c9925f2180",
+      "path": "wp-content/plugins/mad4b-content-creation-control/class-mad4b-serp-policy.php",
+      "plugin": "mad4b-content-creation-control",
+      "sha256": "c7b0046a3b944a8422a94706a0555f6960301d5fe3d677c3915edcac90ebbab6"
+    },
+    {
+      "bytes": 41819,
+      "extension": ".php",
+      "git_blob_sha1": "e3f644bb59fd468654b44a59b2a60f0d25a3e6ee",
+      "path": "wp-content/plugins/mad4b-content-creation-control/mad4b-content-creation-control.php",
+      "plugin": "mad4b-content-creation-control",
+      "sha256": "690aa6eaadc04478bf09c20208990f8f63356fb3abb2a9191d11c76472cd4c22"
+    },
+    {
+      "bytes": 3892,
+      "extension": ".css",
+      "git_blob_sha1": "8985e432988c668d1e26bc762455ab452e015d20",
+      "path": "wp-content/plugins/mad4b-delayed-hero-youtube/assets/hero.css",
+      "plugin": "mad4b-delayed-hero-youtube",
+      "sha256": "95575ffae595378c2a1b2ef937cf86d1b0e103ffd7aad9cfaddc159ec09fd52e"
+    },
+    {
+      "bytes": 6135,
+      "extension": ".js",
+      "git_blob_sha1": "97e9ea6dd259f5b0c7eae5dc7e7c9810a22c29c9",
+      "path": "wp-content/plugins/mad4b-delayed-hero-youtube/assets/hero.js",
+      "plugin": "mad4b-delayed-hero-youtube",
+      "sha256": "ddf227528f9c92b2839bcd8385dcb0c7bf73aaa3ead041baa04ef4c1e49a70a5"
+    },
+    {
+      "bytes": 13969,
+      "extension": ".php",
+      "git_blob_sha1": "0b08eba8b94a4e1d750f2bf8ba9bc33b415373d0",
+      "path": "wp-content/plugins/mad4b-delayed-hero-youtube/mad4b-delayed-hero-youtube.php",
+      "plugin": "mad4b-delayed-hero-youtube",
+      "sha256": "6355aa5dda55b98215dce9dc6d195bc690a156ed0e5c27b55fc100c561a06fed"
+    },
+    {
+      "bytes": 220,
+      "extension": ".php",
+      "git_blob_sha1": "9ec44789760f58d0f2840d87e8f5e438df650473",
+      "path": "wp-content/plugins/mad4b-deploy-canary/mad4b-deploy-canary.php",
+      "plugin": "mad4b-deploy-canary",
+      "sha256": "bcedbc16ba01eb228cd1d2a617e3b926d0b17d0fbeb37c7d54eaaa10f4015c80"
+    },
+    {
+      "bytes": 20044,
+      "extension": ".php",
+      "git_blob_sha1": "8b4659be67ffbd14649f2d419145ee54fd00737c",
+      "path": "wp-content/plugins/mad4b-dfsb-native-presentation/includes/class-dynamic-qualification.php",
+      "plugin": "mad4b-dfsb-native-presentation",
+      "sha256": "2b429fd0d5831e992cb620388f1fda270aa378d2cf6ed4488496d7e4b3314880"
+    },
+    {
+      "bytes": 6978,
+      "extension": ".php",
+      "git_blob_sha1": "d42c56664ba9a9a0d8a3bf1abdfd6d55507a21e6",
+      "path": "wp-content/plugins/mad4b-dfsb-native-presentation/includes/class-shared-context.php",
+      "plugin": "mad4b-dfsb-native-presentation",
+      "sha256": "961201b39e738ad8fb36de850dac1cfe4e336ba644d00fbc69f881558d6f5b74"
+    },
+    {
+      "bytes": 13711,
+      "extension": ".php",
+      "git_blob_sha1": "6cf8829146edd26fd071dda13cbfde8b57574f4b",
+      "path": "wp-content/plugins/mad4b-dfsb-native-presentation/includes/class-smart-seo-admin-rest.php",
+      "plugin": "mad4b-dfsb-native-presentation",
+      "sha256": "79ae6ba16b0c2261c491fa365e767b2a4896c6ed185563489710b8ed4370bc26"
+    },
+    {
+      "bytes": 24706,
+      "extension": ".php",
+      "git_blob_sha1": "5207e14b0ccbbea8eb94302c10e1358262e7a74c",
+      "path": "wp-content/plugins/mad4b-dfsb-native-presentation/includes/class-smart-seo-combination-rest.php",
+      "plugin": "mad4b-dfsb-native-presentation",
+      "sha256": "fb40b13f5213a410e6c72e319f4fae4e680765af86a4d4910d9c9bbecdcbbc27"
+    },
+    {
+      "bytes": 17434,
+      "extension": ".php",
+      "git_blob_sha1": "81f0560721624edd9a80e6ea02a43558ca942bbb",
+      "path": "wp-content/plugins/mad4b-dfsb-native-presentation/includes/class-smart-seo-combinations.php",
+      "plugin": "mad4b-dfsb-native-presentation",
+      "sha256": "ab4ebd912416b1220df87c1ae4f277f2b94a4000da7d1ddea4c2e87fea153219"
+    },
+    {
+      "bytes": 8607,
+      "extension": ".php",
+      "git_blob_sha1": "fe0efcc7ec16c2e3b1369c652bd21f1e9117b340",
+      "path": "wp-content/plugins/mad4b-dfsb-native-presentation/includes/class-smart-seo-content-graph-rest.php",
+      "plugin": "mad4b-dfsb-native-presentation",
+      "sha256": "d2204437170e5184afa5a83e88b29c4faeae8030e976f4f9aa1934a28c731a79"
+    },
+    {
+      "bytes": 11282,
+      "extension": ".php",
+      "git_blob_sha1": "ea2602eaaa6619915abd01480e6eb764a454f175",
+      "path": "wp-content/plugins/mad4b-dfsb-native-presentation/includes/class-smart-seo-content-graph.php",
+      "plugin": "mad4b-dfsb-native-presentation",
+      "sha256": "424270a842067017215ddd74b46d91ae020430f2246f7660970d3e77274755d3"
+    },
+    {
+      "bytes": 3289,
+      "extension": ".php",
+      "git_blob_sha1": "54aaf94fe5cdcc9699289409c9b31dbcb3f9b816",
+      "path": "wp-content/plugins/mad4b-dfsb-native-presentation/includes/class-smart-seo-exact-publisher.php",
+      "plugin": "mad4b-dfsb-native-presentation",
+      "sha256": "99378cdc1c4d1b4067dd1401bf3c2068a4c20524dab0eda3ebf9019c9ec65d78"
+    },
+    {
+      "bytes": 2615,
+      "extension": ".php",
+      "git_blob_sha1": "1095708864b4baac332f410b1c8d2e3264e2e152",
+      "path": "wp-content/plugins/mad4b-dfsb-native-presentation/includes/class-smart-seo-link-crawler.php",
+      "plugin": "mad4b-dfsb-native-presentation",
+      "sha256": "b77ecc6ada5c42a460986eff54b283cb0221ca01c385b9ae1be926190f385533"
+    },
+    {
+      "bytes": 6750,
+      "extension": ".php",
+      "git_blob_sha1": "44e5643cafc8ba9c36be3c3ca4555c57df6e1712",
+      "path": "wp-content/plugins/mad4b-dfsb-native-presentation/includes/class-smart-seo-native-store.php",
+      "plugin": "mad4b-dfsb-native-presentation",
+      "sha256": "de24b7da7e3caf566a7d53abdcb2ca07acdc34dd9b38c423e3f0215c68e1096c"
+    },
+    {
+      "bytes": 9534,
+      "extension": ".php",
+      "git_blob_sha1": "1574629ad30ce75cef514923d8fd769ea295fd33",
+      "path": "wp-content/plugins/mad4b-dfsb-native-presentation/includes/class-smart-seo-policy-registry.php",
+      "plugin": "mad4b-dfsb-native-presentation",
+      "sha256": "8f73736d43facf8a658a71a8b7fb55363e5172cff16616ea2efb295dda14b794"
+    },
+    {
+      "bytes": 14975,
+      "extension": ".php",
+      "git_blob_sha1": "24ed3cde61bdd41daa89ab509ac86d8333bf9e56",
+      "path": "wp-content/plugins/mad4b-dfsb-native-presentation/includes/class-smart-seo-rules.php",
+      "plugin": "mad4b-dfsb-native-presentation",
+      "sha256": "3e7284f36cf42cc35ea5fd9763d4acc9773ddec381214481b4f9bc70f936cd5f"
+    },
+    {
+      "bytes": 10998,
+      "extension": ".php",
+      "git_blob_sha1": "9987734f96aec285d21b9c8b430bc4793f7b9d47",
+      "path": "wp-content/plugins/mad4b-dfsb-native-presentation/includes/class-smart-seo-translation-rest.php",
+      "plugin": "mad4b-dfsb-native-presentation",
+      "sha256": "b9ef4eaca0b24e906f266a190a30d02fe5bcf18f15b96bc76ee2d184753c9689"
+    },
+    {
+      "bytes": 6570,
+      "extension": ".php",
+      "git_blob_sha1": "896f1894022fca019fecf5d8805942d3cd0aae7f",
+      "path": "wp-content/plugins/mad4b-dfsb-native-presentation/includes/class-smart-seo-translation.php",
+      "plugin": "mad4b-dfsb-native-presentation",
+      "sha256": "20a47311dddf1d4d9bbec89c9df8f92cb1a1b07b107e7ae651274ea9cae65f8e"
+    },
+    {
+      "bytes": 11158,
+      "extension": ".php",
+      "git_blob_sha1": "3143861bb7d097ec9c7a32e7558d91fbb06acefb",
+      "path": "wp-content/plugins/mad4b-dfsb-native-presentation/mad4b-dfsb-native-presentation.php",
+      "plugin": "mad4b-dfsb-native-presentation",
+      "sha256": "856120df825d7a89736b2baa11858ba6fa81e4815b7dfa791e1d57dcef938468"
+    },
+    {
+      "bytes": 3314,
+      "extension": ".php",
+      "git_blob_sha1": "15cf5ff5caae1eeb35dc705e3caa85a939c8789d",
+      "path": "wp-content/plugins/mad4b-dfsb-native-presentation/tests/company-mu-presentation-policy-wp-cli.php",
+      "plugin": "mad4b-dfsb-native-presentation",
+      "sha256": "f4c26573f5fd03b94f058834d10af95a94a5cc1aa1a541b8225a4f351fa6a649"
+    },
+    {
+      "bytes": 1877,
+      "extension": ".php",
+      "git_blob_sha1": "1bb62400f04adad7cd51ebef4e75ddecb366724f",
+      "path": "wp-content/plugins/mad4b-dfsb-native-presentation/tests/jsf-dynamic-discovery-report-wp-cli.php",
+      "plugin": "mad4b-dfsb-native-presentation",
+      "sha256": "2563fc8014dd49a66faf33a592f0b682ff2e46f547fd1e1b9b59d450b4879f0f"
+    },
+    {
+      "bytes": 3217,
+      "extension": ".php",
+      "git_blob_sha1": "0cf42f85b9ef71b584aab58572b693128f13e18d",
+      "path": "wp-content/plugins/mad4b-dfsb-native-presentation/tests/jsf-dynamic-qualification-wp-cli.php",
+      "plugin": "mad4b-dfsb-native-presentation",
+      "sha256": "f72b548bc5d051a89dc2fcbf06836fcc63a78ceed9666088df711330339cdb88"
+    },
+    {
+      "bytes": 3306,
+      "extension": ".php",
+      "git_blob_sha1": "1552c636db152ca4bf9478c3ba1e451de834ae22",
+      "path": "wp-content/plugins/mad4b-dfsb-native-presentation/tests/jsf-seo-preflight-wp-cli.php",
+      "plugin": "mad4b-dfsb-native-presentation",
+      "sha256": "1241d6b2835d2897b74c874f2893b917ecec6eddbf9542b9521c3dc5220dde53"
+    },
+    {
+      "bytes": 2398,
+      "extension": ".php",
+      "git_blob_sha1": "03b97fc58ee289ebce0169ca9694f0f66a0ce298",
+      "path": "wp-content/plugins/mad4b-dfsb-native-presentation/tests/shared-context-wp-cli.php",
+      "plugin": "mad4b-dfsb-native-presentation",
+      "sha256": "2c2ce6f335dcc620ce8444c21853ef9c42a34773d22770dd041e63ecc589f965"
+    },
+    {
+      "bytes": 4223,
+      "extension": ".php",
+      "git_blob_sha1": "cf2c8e19376bba75d68f2651d8c43265165a2fa4",
+      "path": "wp-content/plugins/mad4b-dfsb-native-presentation/tests/smart-seo-combination-workflow-wp-cli.php",
+      "plugin": "mad4b-dfsb-native-presentation",
+      "sha256": "56e17915205d8700e6c771b6c6caed4eac61dfa5d288b37ec6c1fe99d43e0b43"
+    },
+    {
+      "bytes": 5973,
+      "extension": ".php",
+      "git_blob_sha1": "ed74e52970c4660becc0ce3c90c52894fe98ef24",
+      "path": "wp-content/plugins/mad4b-dfsb-native-presentation/tests/smart-seo-combinations-wp-cli.php",
+      "plugin": "mad4b-dfsb-native-presentation",
+      "sha256": "4ee515cafcb7d54f84559ab978b2cb8f85bcb87373293fac2f5947b042e0daf7"
+    },
+    {
+      "bytes": 3722,
+      "extension": ".php",
+      "git_blob_sha1": "0bdf35105b0a9fca3458e3e259d2bedb8f8e26c3",
+      "path": "wp-content/plugins/mad4b-dfsb-native-presentation/tests/smart-seo-content-graph-wp-cli.php",
+      "plugin": "mad4b-dfsb-native-presentation",
+      "sha256": "86e121c26127de5db7aa7dcaef70840399f9eb97565809f3c877d6e238052094"
+    },
+    {
+      "bytes": 5641,
+      "extension": ".php",
+      "git_blob_sha1": "8be17443d39da2b62f72388aa55720fb73d2ea78",
+      "path": "wp-content/plugins/mad4b-dfsb-native-presentation/tests/smart-seo-guide-language-wp-cli.php",
+      "plugin": "mad4b-dfsb-native-presentation",
+      "sha256": "fe8af05aa951a15d7c8acb3b3b1ff1eaa673ecc67301429d8202f707b3660fa5"
+    },
+    {
+      "bytes": 1725,
+      "extension": ".php",
+      "git_blob_sha1": "42f46ae983ab584df4b0fe2197018dee2e867757",
+      "path": "wp-content/plugins/mad4b-dfsb-native-presentation/tests/smart-seo-option-cas-wp-cli.php",
+      "plugin": "mad4b-dfsb-native-presentation",
+      "sha256": "a9904da3ea93881397b1e7f2c0b32add933ed61c9b8d855c42da749eb8791b2d"
+    },
+    {
+      "bytes": 4551,
+      "extension": ".php",
+      "git_blob_sha1": "bd75f14d9755cd20ed0cc182df697940c672312b",
+      "path": "wp-content/plugins/mad4b-dfsb-native-presentation/tests/smart-seo-policy-registry-wp-cli.php",
+      "plugin": "mad4b-dfsb-native-presentation",
+      "sha256": "95abac38ef68c2e2aa3f2effc8c46f4a1fe6e99425e1119ca67a415d683a52c4"
+    },
+    {
+      "bytes": 2530,
+      "extension": ".php",
+      "git_blob_sha1": "a5d0a08687d73806d25b7b5880e91963036323cf",
+      "path": "wp-content/plugins/mad4b-dfsb-native-presentation/tests/smart-seo-program-readiness-wp-cli.php",
+      "plugin": "mad4b-dfsb-native-presentation",
+      "sha256": "728f1083f0b34ccc7f5ddd22bd750f2c7ef09dcb0dfb87e83a8fdfdd19b861a0"
+    },
+    {
+      "bytes": 3332,
+      "extension": ".php",
+      "git_blob_sha1": "343a483e05c1e66331c0d937afc06e36701d579e",
+      "path": "wp-content/plugins/mad4b-dfsb-native-presentation/tests/smart-seo-rest-wp-cli.php",
+      "plugin": "mad4b-dfsb-native-presentation",
+      "sha256": "277692d4deb604a6eaeac48fc6a36073477b367f45c92686c08353c2ac99ae36"
+    },
+    {
+      "bytes": 3411,
+      "extension": ".php",
+      "git_blob_sha1": "b85c6a6eea4ae5b3c58495615d39e4d15562b5e1",
+      "path": "wp-content/plugins/mad4b-dfsb-native-presentation/tests/smart-seo-stage-wp-cli.php",
+      "plugin": "mad4b-dfsb-native-presentation",
+      "sha256": "1b90e0a232485e183e6688bcca023df7c4692e1226f1006144331021c54a6605"
+    },
+    {
+      "bytes": 5989,
+      "extension": ".php",
+      "git_blob_sha1": "246bea898e2a5c0728dcdb882517791361a59e26",
+      "path": "wp-content/plugins/mad4b-dfsb-native-presentation/tests/smart-seo-translation-readiness-wp-cli.php",
+      "plugin": "mad4b-dfsb-native-presentation",
+      "sha256": "13c2df67fdd28ba78253d9513eb0fa1dbcab135fa7e2b2322686809e20d34497"
+    },
+    {
+      "bytes": 4975,
+      "extension": ".php",
+      "git_blob_sha1": "691e05b99c8e10568a68c921304a7325ce05feaa",
+      "path": "wp-content/plugins/mad4b-dfsb-native-presentation/tests/smart-seo-wpml-archive-routes-wp-cli.php",
+      "plugin": "mad4b-dfsb-native-presentation",
+      "sha256": "ff841b39d483fc8bd3b42962516e50e324b9cb2f4f374473f74cca865cd2b656"
+    },
+    {
+      "bytes": 2734,
+      "extension": ".php",
+      "git_blob_sha1": "9e03fbffe035851033a89befecfe5101aa0d79d4",
+      "path": "wp-content/plugins/mad4b-dfsb-native-presentation/tests/wp-cli-smoke.php",
+      "plugin": "mad4b-dfsb-native-presentation",
+      "sha256": "9322b0c3413eba2c717aa1edbf65491453afab739d1dfea9a715728c9575b2aa"
+    },
+    {
+      "bytes": 13648,
+      "extension": ".css",
+      "git_blob_sha1": "1ce2134f56b17b80b3d28a81a0f54521b026c02c",
+      "path": "wp-content/plugins/mad4b-distribution-connectors/assets/catalog-workbench.css",
+      "plugin": "mad4b-distribution-connectors",
+      "sha256": "0a4c3a2a95901ad747b4baf929d8ab0f6bd5c116e2a21ff727f5f3110454f939"
+    },
+    {
+      "bytes": 2674,
+      "extension": ".js",
+      "git_blob_sha1": "d4f730ad9659246cbe352177873b5707917e074e",
+      "path": "wp-content/plugins/mad4b-distribution-connectors/assets/catalog-workbench.js",
+      "plugin": "mad4b-distribution-connectors",
+      "sha256": "862ad3b148cdcb2fe486e86293eef9dcb5cfeb93078c8b3e5e234738d84b79cc"
+    },
+    {
+      "bytes": 18463,
+      "extension": ".css",
+      "git_blob_sha1": "ebbcb0cbf3b8123464686dfc5a8b42b1a2b0a7b2",
+      "path": "wp-content/plugins/mad4b-distribution-connectors/assets/distribution-console.css",
+      "plugin": "mad4b-distribution-connectors",
+      "sha256": "8b625a3e1efd0ade106d094c3fa0ccb07bc584d225d6f8c92826f7017846aa07"
+    },
+    {
+      "bytes": 1830,
+      "extension": ".js",
+      "git_blob_sha1": "cfcfde80ac2e5dbb8287c00043d275ea12d057f6",
+      "path": "wp-content/plugins/mad4b-distribution-connectors/assets/distribution-console.js",
+      "plugin": "mad4b-distribution-connectors",
+      "sha256": "3f54ac6d1aa1773d6ec5278e604ab4f0c90ce9c7efe248fe38bb92df9a9279a8"
+    },
+    {
+      "bytes": 3074,
+      "extension": ".php",
+      "git_blob_sha1": "da11fc4b8840df2d8ed24084e067470f6e49b717",
+      "path": "wp-content/plugins/mad4b-distribution-connectors/includes/class-mad4b-catalog-data-epoch.php",
+      "plugin": "mad4b-distribution-connectors",
+      "sha256": "7dd337fc7b67237221753dfbda889c0ed3823348968186a6d9d39442eac5ad02"
+    },
+    {
+      "bytes": 21268,
+      "extension": ".php",
+      "git_blob_sha1": "386b736d192bba6804cf5a0905b3bcf46ae7307a",
+      "path": "wp-content/plugins/mad4b-distribution-connectors/includes/class-mad4b-catalog-studio-admin.php",
+      "plugin": "mad4b-distribution-connectors",
+      "sha256": "a6a8d6b0997483b8d1d685e63879813e8b64913a4387527f0810b054327cd9d1"
+    },
+    {
+      "bytes": 29030,
+      "extension": ".php",
+      "git_blob_sha1": "2f653e7bc4c5121812edae2e5258740352d5dd39",
+      "path": "wp-content/plugins/mad4b-distribution-connectors/includes/class-mad4b-catalog-studio.php",
+      "plugin": "mad4b-distribution-connectors",
+      "sha256": "5a233a809bb49556948ffe16147c643b3fee8303972b74a2c510fbfcaba5d595"
+    },
+    {
+      "bytes": 8655,
+      "extension": ".php",
+      "git_blob_sha1": "a4cfb7ce4b47e0776ef6946d79fb8ef6a116791f",
+      "path": "wp-content/plugins/mad4b-distribution-connectors/includes/class-mad4b-distribution-activation.php",
+      "plugin": "mad4b-distribution-connectors",
+      "sha256": "d1803b283f6fda57bfb7f33701b20bbde7bbe69d141f122165609bea4dd90243"
+    },
+    {
+      "bytes": 26003,
+      "extension": ".php",
+      "git_blob_sha1": "b2bc6279f3901a05378925c5212f0c5f12928c6c",
+      "path": "wp-content/plugins/mad4b-distribution-connectors/includes/class-mad4b-distribution-admin.php",
+      "plugin": "mad4b-distribution-connectors",
+      "sha256": "629616d2254d88f06783e7894bf86bd40c41e3786585a4a20cf54a2bdeaa3086"
+    },
+    {
+      "bytes": 25636,
+      "extension": ".php",
+      "git_blob_sha1": "a587e9a0eb19023ec1ac5da89a678a6c9f97b4eb",
+      "path": "wp-content/plugins/mad4b-distribution-connectors/includes/class-mad4b-distribution-channel-registry.php",
+      "plugin": "mad4b-distribution-connectors",
+      "sha256": "5b5e5bb36f7c97d204feb6638bd70f2cb0808def1592a3561b1e80643f9ffd83"
+    },
+    {
+      "bytes": 5892,
+      "extension": ".php",
+      "git_blob_sha1": "290211dc068df08455603a3cf535675dcfd2fd37",
+      "path": "wp-content/plugins/mad4b-distribution-connectors/includes/class-mad4b-distribution-local-credentials.php",
+      "plugin": "mad4b-distribution-connectors",
+      "sha256": "f264ba170671869b02945d9b66cb974e807b508e9eece1123a9916785dc54513"
+    },
+    {
+      "bytes": 15888,
+      "extension": ".php",
+      "git_blob_sha1": "440d912949721d852c7bd961e0ec35efde690442",
+      "path": "wp-content/plugins/mad4b-distribution-connectors/includes/class-mad4b-meta-catalog-adapter.php",
+      "plugin": "mad4b-distribution-connectors",
+      "sha256": "40ae700973dd35cbf4f2c75c0b72ccd0cd96f8df18d0612bc4d92b4ed0435531"
+    },
+    {
+      "bytes": 2034,
+      "extension": ".php",
+      "git_blob_sha1": "796de39e3351d22ea9baa3ab91b3f43a1b025833",
+      "path": "wp-content/plugins/mad4b-distribution-connectors/mad4b-distribution-connectors.php",
+      "plugin": "mad4b-distribution-connectors",
+      "sha256": "855d1f4b1377db3668c51427ba7c0b5c347d6c7feb027b0b42fe15e0017f3484"
+    },
+    {
+      "bytes": 1538,
+      "extension": ".php",
+      "git_blob_sha1": "92f8d9d36a92a60c2142409e963387ae32ecefbf",
+      "path": "wp-content/plugins/mad4b-experience/mad4b-experience.php",
+      "plugin": "mad4b-experience",
+      "sha256": "fdf91f474e3cee5de64dca056faaa111530c47e2f632e91b5897b131edb47e8f"
+    },
+    {
+      "bytes": 1957,
+      "extension": ".css",
+      "git_blob_sha1": "e2b483f3984e8aee5a381356c289b139b6d96f4e",
+      "path": "wp-content/plugins/mad4b-experience/src/presentation/assets/mad4b-chatbotx-elementor-kit.css",
+      "plugin": "mad4b-experience",
+      "sha256": "0949b68ab4ff3481afc3ae610878f7dec075a03832e247d7c1762940b6bd5c76"
+    },
+    {
+      "bytes": 3077,
+      "extension": ".css",
+      "git_blob_sha1": "31ec8f9fd362c614f51f4e56a13c9f2d1f9e8476",
+      "path": "wp-content/plugins/mad4b-experience/src/presentation/assets/mad4b-city-geometry-and-intro.css",
+      "plugin": "mad4b-experience",
+      "sha256": "a1a1c267b6aeda1a60b3ce34ef8cc0fc971554397af61f367ed9a475fc73cca3"
+    },
+    {
+      "bytes": 4558,
+      "extension": ".js",
+      "git_blob_sha1": "9ac7a000629300cb6f807efb12bbd98918e6387a",
+      "path": "wp-content/plugins/mad4b-experience/src/presentation/assets/mad4b-city-visible-image.js",
+      "plugin": "mad4b-experience",
+      "sha256": "bf78f9e93969b8cf48cb64d9fbfb85ca1c96cfa373af5e8e24f21d2ab83b4e84"
+    },
+    {
+      "bytes": 10302,
+      "extension": ".css",
+      "git_blob_sha1": "91d72202b27a5ae3550793c053b459e900863a67",
+      "path": "wp-content/plugins/mad4b-experience/src/presentation/assets/mad4b-featured-listing-banner-parity.css",
+      "plugin": "mad4b-experience",
+      "sha256": "9f014bc6da051a0244a97cf49bcf97762db78f249a502902f36a11961a7c21fb"
+    },
+    {
+      "bytes": 17260,
+      "extension": ".css",
+      "git_blob_sha1": "86d90da3aa58597623595a5281e1d8349b2954e6",
+      "path": "wp-content/plugins/mad4b-experience/src/presentation/assets/mad4b-footer.css",
+      "plugin": "mad4b-experience",
+      "sha256": "6fd3eb7daf59acd0dd70bd0b501aa6104181e6fb5fb5cc574352fc0243f8898c"
+    },
+    {
+      "bytes": 456,
+      "extension": ".css",
+      "git_blob_sha1": "ea57cd9a39b8287c147244b32a9e1fba8ff9ffd6",
+      "path": "wp-content/plugins/mad4b-experience/src/presentation/assets/mad4b-layout-interaction.css",
+      "plugin": "mad4b-experience",
+      "sha256": "e83ae751d6b13e83a6d4ac3e56f93bdd13f4eb27005601c2a1820bdabe26cd1a"
+    },
+    {
+      "bytes": 24924,
+      "extension": ".js",
+      "git_blob_sha1": "519ec10dfcd71dadd4626b469c8ec5fe69acba17",
+      "path": "wp-content/plugins/mad4b-experience/src/presentation/assets/mad4b-layout-switcher.js",
+      "plugin": "mad4b-experience",
+      "sha256": "efc4d8578ee57ed5b44597f69abc34414441b8b8363d4aa67e8d406c3d8ef662"
+    },
+    {
+      "bytes": 2630,
+      "extension": ".js",
+      "git_blob_sha1": "dcd4a320e154432474fa00111a4cc7c42cc41f19",
+      "path": "wp-content/plugins/mad4b-experience/src/presentation/assets/mad4b-mobile-scroll-action-viewport-v2.js",
+      "plugin": "mad4b-experience",
+      "sha256": "6aaf906869448200b06f9ea5c9e48668a27e63b8a51213d9465cbd7346122b38"
+    },
+    {
+      "bytes": 6336,
+      "extension": ".css",
+      "git_blob_sha1": "f13c3d55a4c411fbd74ff54b29196437c768496e",
+      "path": "wp-content/plugins/mad4b-experience/src/presentation/assets/mad4b-mobile-scroll-action.css",
+      "plugin": "mad4b-experience",
+      "sha256": "e193693ef4910b5760634b148b1ca6f2c620361e4a3e96f3c5e899f2219fde80"
+    },
+    {
+      "bytes": 2482,
+      "extension": ".js",
+      "git_blob_sha1": "91acf8af4e6ca67bbc63af6409b48d7e34ec391e",
+      "path": "wp-content/plugins/mad4b-experience/src/presentation/assets/mad4b-mobile-scroll-action.js",
+      "plugin": "mad4b-experience",
+      "sha256": "f3e49919f439a34bafa23b83e55538df8211fc744135bf62c0bd82d7999598ee"
+    },
+    {
+      "bytes": 1034,
+      "extension": ".css",
+      "git_blob_sha1": "851221483d65ed23963e85d3b7f8fb33bf39bc3d",
+      "path": "wp-content/plugins/mad4b-experience/src/presentation/assets/mad4b-sticky-hover-protection.css",
+      "plugin": "mad4b-experience",
+      "sha256": "294aba833d3568b06bb0cf9eb16243ea17089f347c81105c872aee9378299ab6"
+    },
+    {
+      "bytes": 1244,
+      "extension": ".css",
+      "git_blob_sha1": "9f57b1d7746a4df1afaf31e9a76d816a8dea2506",
+      "path": "wp-content/plugins/mad4b-experience/src/presentation/assets/mad4b-tour-inquiry-sidebar-sticky.css",
+      "plugin": "mad4b-experience",
+      "sha256": "9ca7cf9aff15d14fd58f95f3bfaa2b92c5b34ad780917452e893b7db8c8f69d2"
+    },
+    {
+      "bytes": 6015,
+      "extension": ".php",
+      "git_blob_sha1": "970dac5bbe9cb58103a7f56c93ec18f53d27656c",
+      "path": "wp-content/plugins/mad4b-experience/src/presentation/bootstrap.php",
+      "plugin": "mad4b-experience",
+      "sha256": "9e84a876add7e321eceeaafc803a0964396d7f085481d981472086ad212ce7cb"
+    },
+    {
+      "bytes": 2407,
+      "extension": ".php",
+      "git_blob_sha1": "1406c76d45b6a1659d1da26f76267195744c1529",
+      "path": "wp-content/plugins/mad4b-experience/src/presentation/modules/343-mad4b-chatbotx-elementor-kit.php",
+      "plugin": "mad4b-experience",
+      "sha256": "101893ce5b3201d426458a8f71bb9e223d853f0b5b9988d729a3abb4c8a8cf4f"
+    },
+    {
+      "bytes": 2095,
+      "extension": ".php",
+      "git_blob_sha1": "15e2a5ac762c0a675cb3717008ef9fc86fff0617",
+      "path": "wp-content/plugins/mad4b-experience/src/presentation/modules/344-mad4b-mobile-scroll-action.php",
+      "plugin": "mad4b-experience",
+      "sha256": "041b08928ee9b5b834c518313b3676fe98d8d666ee8e9643a49ab8543bc255a2"
+    },
+    {
+      "bytes": 2832,
+      "extension": ".php",
+      "git_blob_sha1": "3916cc89a99f6e5a130b1c9852f796237f94ff70",
+      "path": "wp-content/plugins/mad4b-experience/src/presentation/modules/347-mad4b-tour-inquiry-sidebar-sticky.php",
+      "plugin": "mad4b-experience",
+      "sha256": "8b123ffa4b282fa6854beb06046f30c0c4f2aacecaf45c1234400db8ffdc4868"
+    },
+    {
+      "bytes": 1037,
+      "extension": ".php",
+      "git_blob_sha1": "8ecc5b0f00ee2fd17078d37d59a36f0b27e8cdb1",
+      "path": "wp-content/plugins/mad4b-experience/src/presentation/modules/356-mad4b-jetengine-count-locale.php",
+      "plugin": "mad4b-experience",
+      "sha256": "6833ec47ba77950cdaacd4e6f5d020ace7258784bf34ce8c5261ffd4ead6779a"
+    },
+    {
+      "bytes": 1692,
+      "extension": ".php",
+      "git_blob_sha1": "495961d4aa02b81344a0cc39c2d6eb1a3e9a23e6",
+      "path": "wp-content/plugins/mad4b-experience/src/presentation/modules/363-mad4b-archive-single-mobile-dock.php",
+      "plugin": "mad4b-experience",
+      "sha256": "d71d0a6642a64a16195ed37551253f87c3f3295befe39d84f751e9ede29bf43e"
+    },
+    {
+      "bytes": 793,
+      "extension": ".php",
+      "git_blob_sha1": "58654fe3bf5b3c1a6931be7bc3c23825a511da79",
+      "path": "wp-content/plugins/mad4b-experience/src/presentation/modules/364-mad4b-featured-listing-banner-parity.php",
+      "plugin": "mad4b-experience",
+      "sha256": "b5d8b1a2e540287256879c27cfc900ff61b5b4f9ea57f306c242125ef4005dd9"
+    },
+    {
+      "bytes": 2412,
+      "extension": ".php",
+      "git_blob_sha1": "1cf005f4996150e94c51304bc19e87864008b82e",
+      "path": "wp-content/plugins/mad4b-experience/src/presentation/modules/366-mad4b-city-visible-image.php",
+      "plugin": "mad4b-experience",
+      "sha256": "d18dee895d146c7f75ab8385f58ea7d75ad32fd921c5ccad7baf50e6617ebfad"
+    },
+    {
+      "bytes": 17189,
+      "extension": ".php",
+      "git_blob_sha1": "bfc6aca3c903461b317e22ed09513a34ba42c252",
+      "path": "wp-content/plugins/mad4b-experience/src/presentation/modules/369-layout-switcher-compatibility.php",
+      "plugin": "mad4b-experience",
+      "sha256": "ef5eb339db823202cf80dd32f6e2aef8c3a766274d598a87c4809e02f557e7c1"
+    },
+    {
+      "bytes": 2697,
+      "extension": ".php",
+      "git_blob_sha1": "2a553e862ccf4fce72e9a8bd80b1242e559aa477",
+      "path": "wp-content/plugins/mad4b-experience/src/presentation/modules/371-mad4b-sticky-hover-protection.php",
+      "plugin": "mad4b-experience",
+      "sha256": "5193c813378db583f944cac15d43e37a96d348a735d55f77dc77f1873c7a715d"
+    },
+    {
+      "bytes": 985,
+      "extension": ".php",
+      "git_blob_sha1": "4fd80a1ceea7696850842a85976fd14f2db5ec95",
+      "path": "wp-content/plugins/mad4b-experience/src/presentation/modules/372-mad4b-footer-heading-tag.php",
+      "plugin": "mad4b-experience",
+      "sha256": "219278e1bf02561a53e60a0682c44c268e184c142639b199db7c312753d49bdd"
+    },
+    {
+      "bytes": 11751,
+      "extension": ".php",
+      "git_blob_sha1": "bc86ed52530bd51a20c74b3cfe321e3ccb7ded79",
+      "path": "wp-content/plugins/mad4b-experience/src/presentation/modules/372-mad4b-footer-look-feel.php",
+      "plugin": "mad4b-experience",
+      "sha256": "52dc25d50591f2fe22ace1ff2268dcb5cd899d35c6d4e04f99002abe02aaccf5"
+    },
+    {
+      "bytes": 7913,
+      "extension": ".php",
+      "git_blob_sha1": "68367c1847fa03c701299998d95991983949edb1",
+      "path": "wp-content/plugins/mad4b-experience/src/presentation/modules/373-mad4b-trust-support-dynamic.php",
+      "plugin": "mad4b-experience",
+      "sha256": "df499027aec935328acf048d63390dc1864ea66972ff0577457b0e120ddcd917"
+    },
+    {
+      "bytes": 1047,
+      "extension": ".php",
+      "git_blob_sha1": "4e3c243dae2f9de0e41ce0d2e2343ec4c878832b",
+      "path": "wp-content/plugins/mad4b-experience/src/presentation/modules/373-mad4b-trust-support-tag.php",
+      "plugin": "mad4b-experience",
+      "sha256": "105c8b6acdfebda3d8cef67f9225c9e5607520022f8ff71b2d6b89e2d483ec90"
+    },
+    {
+      "bytes": 35141,
+      "extension": ".php",
+      "git_blob_sha1": "54be865d001142c109e77052fd923571c8e55aac",
+      "path": "wp-content/plugins/mad4b-experience/src/presentation/modules/374-mad4b-tenant-option-canonical-bridge.php",
+      "plugin": "mad4b-experience",
+      "sha256": "64ccae200f4f8582d6f538421e81e554f674d7a71a4c19348a76bf470a617bb9"
+    },
+    {
+      "bytes": 7728,
+      "extension": ".php",
+      "git_blob_sha1": "c3bf6a8918995f1ab2afb3188f7aa9dfa468b328",
+      "path": "wp-content/plugins/mad4b-experience/src/presentation/modules/375-mad4b-native-company-brand-context.php",
+      "plugin": "mad4b-experience",
+      "sha256": "2f93c8a73da47fc308a4981b9685e13407d295433a535aa295eb4606f3fdf596"
+    },
+    {
+      "bytes": 7306,
+      "extension": ".php",
+      "git_blob_sha1": "aef585a497c5e7e909a6cd731f4efaad86e89b72",
+      "path": "wp-content/plugins/mad4b-experience/src/presentation/modules/performance/307-mad4b-uael-critical-css-policy.php",
+      "plugin": "mad4b-experience",
+      "sha256": "4338e12f6ec30f21eefdbec25b8b377bf78e08142cdfc50d3da9356c1cadc3f3"
+    },
+    {
+      "bytes": 5380,
+      "extension": ".php",
+      "git_blob_sha1": "9c2d7bfe441b6b1c6ec8b29efe3c1b9b56819ced",
+      "path": "wp-content/plugins/mad4b-experience/src/presentation/modules/performance/310-mad4b-city-slider-lcp-preload.php",
+      "plugin": "mad4b-experience",
+      "sha256": "af317146730c7a8db169f629cad9252f1e41fc32ff8518db4b43417afd34959f"
+    },
+    {
+      "bytes": 2509,
+      "extension": ".php",
+      "git_blob_sha1": "298156141c77df8c48029ddb3f8757a4b148d723",
+      "path": "wp-content/plugins/mad4b-experience/src/presentation/modules/performance/329-mad4b-home-wpml-flag-preload-trim.php",
+      "plugin": "mad4b-experience",
+      "sha256": "da63b3819891e469a06895c891b70101b15dd1b7ffa5db18dd162f2aaf743682"
+    },
+    {
+      "bytes": 1741,
+      "extension": ".php",
+      "git_blob_sha1": "44d69ccaaa55da439e80f08e0c682d7399e1cccf",
+      "path": "wp-content/plugins/mad4b-experience/src/presentation/modules/performance/jet-city-slider-image-size.php",
+      "plugin": "mad4b-experience",
+      "sha256": "4c4ec665de0aaa633e44efea36f8dd78fcaa7242756042c76f98b1a2e21b8585"
+    },
+    {
+      "bytes": 1303,
+      "extension": ".php",
+      "git_blob_sha1": "422f09b697be4c44c6cf991d5e9f23e6e40b88e7",
+      "path": "wp-content/plugins/mad4b-experience/src/presentation/modules/performance/newsletter-image-options-cache-sync.php",
+      "plugin": "mad4b-experience",
+      "sha256": "6b07c2d09286bd556d213d07a53035d1f4c2c378dd51c0b88699f91c7b9db25f"
+    },
+    {
+      "bytes": 1883,
+      "extension": ".php",
+      "git_blob_sha1": "4f6d3737092e7496258b9be89f4af37362976d19",
+      "path": "wp-content/plugins/mad4b-experience/src/shared/class-mad4b-experience-site-scope.php",
+      "plugin": "mad4b-experience",
+      "sha256": "1e98bb410d5dad65e6f85626b0e1665b43c47ff0322e25d6ee81dfe396df8753"
+    },
+    {
+      "bytes": 3715,
+      "extension": ".css",
+      "git_blob_sha1": "df126fb17349c457051e8f501c678ef305f49df6",
+      "path": "wp-content/plugins/mad4b-experience/src/visitor/assets/mad4b-fluent-phone-brand-and-dial.css",
+      "plugin": "mad4b-experience",
+      "sha256": "046032f1995926b1879298af0135ebb337f2e24a400a0a8d0e52e2957781a754"
+    },
+    {
+      "bytes": 3813,
+      "extension": ".js",
+      "git_blob_sha1": "3a9d60b7d8c1316af183f91edd0c233f81d6911c",
+      "path": "wp-content/plugins/mad4b-experience/src/visitor/assets/mad4b-fluent-phone-brand-and-dial.js",
+      "plugin": "mad4b-experience",
+      "sha256": "b37e41b05bde04aec2c13e165c3757e78039a28fefe5917cbfb538782f6e7a52"
+    },
+    {
+      "bytes": 3885,
+      "extension": ".php",
+      "git_blob_sha1": "73942fb1bfdfd1fe06582b4fc2fb1362e2d83e6e",
+      "path": "wp-content/plugins/mad4b-experience/src/visitor/bootstrap.php",
+      "plugin": "mad4b-experience",
+      "sha256": "8559d629110962d9ac7462db0401ee0489ae738cfa756310dcc318b04c72b151"
+    },
+    {
+      "bytes": 2315,
+      "extension": ".php",
+      "git_blob_sha1": "4fd773e069cc95baceeb8846c9a95a5e4367cefc",
+      "path": "wp-content/plugins/mad4b-experience/src/visitor/modules/348-mad4b-fluent-phone-brand-and-dial.php",
+      "plugin": "mad4b-experience",
+      "sha256": "04a6933bf0e0fbee958ada08b19b9034c35bc0ac307ff8028cbf211acbbdd346"
+    },
+    {
+      "bytes": 5875,
+      "extension": ".php",
+      "git_blob_sha1": "a0133dd835923e4c275a63eb7081fb83a23bc1d1",
+      "path": "wp-content/plugins/mad4b-experience/src/visitor/modules/350-mad4b-visitor-switchers-locale.php",
+      "plugin": "mad4b-experience",
+      "sha256": "29da4f16e7d6823f4a4a96e091e352a42a3eb66fc0031a7d9cb3c985ad9a662b"
+    },
+    {
+      "bytes": 5658,
+      "extension": ".php",
+      "git_blob_sha1": "c484b10268d00c2a003be7f1a6f7170a8ec27f78",
+      "path": "wp-content/plugins/mad4b-experience/tests/tenant-option-canonical-bridge-regression-20261105.php",
+      "plugin": "mad4b-experience",
+      "sha256": "438c5860909b70fd2526b248354e1e7851dd0c7b8cb03e83103874aac1af1a26"
+    },
+    {
+      "bytes": 24759,
+      "extension": ".php",
+      "git_blob_sha1": "567cb496764a7830e7f7ba2301a9ade2e647fe70",
+      "path": "wp-content/plugins/mad4b-google-measurement-bridge/includes/class-mad4b-google-measurement-gtm-consent-audit.php",
+      "plugin": "mad4b-google-measurement-bridge",
+      "sha256": "d0af5bbb52b2e864e8020f856fbe081dc7768a24ebc134c423d81c2632e1f45d"
+    },
+    {
+      "bytes": 1728,
+      "extension": ".php",
+      "git_blob_sha1": "c73990a3dd7306777fb0925f91dc45dfc1baa042",
+      "path": "wp-content/plugins/mad4b-google-measurement-bridge/tests/gtm-live-provider-partial-consent-contract.php",
+      "plugin": "mad4b-google-measurement-bridge",
+      "sha256": "a457593d663028a6c9e1748e7266b923137f332c958f82efc809283452683800"
+    },
+    {
+      "bytes": 2440,
+      "extension": ".php",
+      "git_blob_sha1": "64c2bbbc606cf6560c748d3f16d958e2cb3a15de",
+      "path": "wp-content/plugins/mad4b-google-measurement-bridge/tests/gtm-portfolio-consent-contract.php",
+      "plugin": "mad4b-google-measurement-bridge",
+      "sha256": "017e37b4284138f0d6be16ec118857edd7bb6873a6b7b86758ad35fbf2c5efa2"
+    },
+    {
+      "bytes": 24946,
+      "extension": ".php",
+      "git_blob_sha1": "8811582ad9d1368536bf1501e62fc2801c8a59a5",
+      "path": "wp-content/plugins/mad4b-jetengine-hub-addon/includes/class-mad4b-hub-company-pricing.php",
+      "plugin": "mad4b-jetengine-hub-addon",
+      "sha256": "11ba87fe7dbfe72db0d726df78a88788f12c542cab5c412b00e275955e2091ef"
+    },
+    {
+      "bytes": 33219,
+      "extension": ".php",
+      "git_blob_sha1": "8fcd01257a23e804b69bf4dbff6a9022f542229e",
+      "path": "wp-content/plugins/mad4b-jetengine-hub-addon/includes/class-mad4b-hub-discovery-planner.php",
+      "plugin": "mad4b-jetengine-hub-addon",
+      "sha256": "c8117d3caf17a97e315ecea1a0500ce37484c58f2433baa07929f942f04a8e92"
+    },
+    {
+      "bytes": 30716,
+      "extension": ".php",
+      "git_blob_sha1": "6179de176b52da75b44c3f8ba63cef2ee8a60549",
+      "path": "wp-content/plugins/mad4b-jetengine-hub-addon/includes/class-mad4b-hub-jetengine-consumer-runtime.php",
+      "plugin": "mad4b-jetengine-hub-addon",
+      "sha256": "9d2c140517ed126b2a77eccb4b0f8d1f9dd4fecd250bd698b40c313fbe804c03"
+    },
+    {
+      "bytes": 5272,
+      "extension": ".php",
+      "git_blob_sha1": "465f31a1f5fc7efc911dd3153eaba9b12160be9c",
+      "path": "wp-content/plugins/mad4b-jetengine-hub-addon/includes/class-mad4b-hub-jetengine-distribution-status.php",
+      "plugin": "mad4b-jetengine-hub-addon",
+      "sha256": "7148225b12a283a891fd59055b07594f34461c1695d20e76ca198d311391b5da"
+    },
+    {
+      "bytes": 8938,
+      "extension": ".php",
+      "git_blob_sha1": "4270d4dc8a1b94b3aff62ee3f7037460f6584388",
+      "path": "wp-content/plugins/mad4b-jetengine-hub-addon/includes/class-mad4b-hub-language-baseline.php",
+      "plugin": "mad4b-jetengine-hub-addon",
+      "sha256": "63f69b7d4e1f264f6388443dc8480bbbf1bedd791876aa9b7f99fe5e055807a1"
+    },
+    {
+      "bytes": 8685,
+      "extension": ".php",
+      "git_blob_sha1": "3ddf69095d3d74b2d75b6a1d094daf3542f0572d",
+      "path": "wp-content/plugins/mad4b-jetengine-hub-addon/includes/class-mad4b-hub-market-policy.php",
+      "plugin": "mad4b-jetengine-hub-addon",
+      "sha256": "90f5a63263b84e96e08d44d94dcf32f2312ca4e7aa29e30944d4b20edebc554a"
+    },
+    {
+      "bytes": 19697,
+      "extension": ".php",
+      "git_blob_sha1": "aa14787528c0e99c00b1cc0235a9330c0c46805b",
+      "path": "wp-content/plugins/mad4b-jetengine-hub-addon/includes/class-mad4b-hub-price-sources.php",
+      "plugin": "mad4b-jetengine-hub-addon",
+      "sha256": "cb4b091d66b57b6458714daa9983c055c31722b60b997b6d9460df3deffe74db"
+    },
+    {
+      "bytes": 10594,
+      "extension": ".php",
+      "git_blob_sha1": "aa4140af49ef5644fa7d8d3c3a95b53116f15f81",
+      "path": "wp-content/plugins/mad4b-jetengine-hub-addon/includes/class-mad4b-hub-signed-source-preview.php",
+      "plugin": "mad4b-jetengine-hub-addon",
+      "sha256": "c8b2cc00761692a85e451c4a732468633c621a23fa44f0bd5f6dc47e3402e900"
+    },
+    {
+      "bytes": 19928,
+      "extension": ".php",
+      "git_blob_sha1": "8f941caa61c8f94cbe3e2ce9cb4878a94d4dbe01",
+      "path": "wp-content/plugins/mad4b-jetengine-hub-addon/mad4b-jetengine-hub-addon.php",
+      "plugin": "mad4b-jetengine-hub-addon",
+      "sha256": "13e6dedbb89982f4587792abe5726c983a548f7c1929866c39501d1bf3076052"
+    },
+    {
+      "bytes": 6215,
+      "extension": ".php",
+      "git_blob_sha1": "80a393dae9bbe1329f2ad83d541d139852c85e9c",
+      "path": "wp-content/plugins/mad4b-jetengine/core/class-mad4b-jetengine-core.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "66b7a1ba548cd1c25264fd0471370de16ac0d1fac0125b17f249f5d40a5c43a6"
+    },
+    {
+      "bytes": 423,
+      "extension": ".php",
+      "git_blob_sha1": "35ec3c2617b8eb2ef23c4c0e46e78b79fbb750e7",
+      "path": "wp-content/plugins/mad4b-jetengine/mad4b-jetengine.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "40834f0f77cc31614458141cf5cebbc36fad6eea2b128abea5dd22ee84e828bc"
+    },
+    {
+      "bytes": 3113,
+      "extension": ".css",
+      "git_blob_sha1": "095b262074644296a868a94a081c9bb9d69200a8",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/assets/contextual-help.css",
+      "plugin": "mad4b-jetengine",
+      "sha256": "4f07d69d859c386bd08d69e453de7daa7fb993f23a4a89d560a5cc2a24d8de94"
+    },
+    {
+      "bytes": 16050,
+      "extension": ".js",
+      "git_blob_sha1": "687124ac3ec45e782b9ee68fefde81d4049961ba",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/assets/contextual-help.js",
+      "plugin": "mad4b-jetengine",
+      "sha256": "23085f75e54a08b60ca9e35c05d72fb5aead9b3cd8a850a39a93b6fe15d09d74"
+    },
+    {
+      "bytes": 466,
+      "extension": ".js",
+      "git_blob_sha1": "b6ea37ada6580b618d3373b4306353471157bc51",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/assets/currency-configuration.js",
+      "plugin": "mad4b-jetengine",
+      "sha256": "2ce6ff751129a21c895e9264f76da6bdfe8b9208f82447c855a03a67be5a6adc"
+    },
+    {
+      "bytes": 2091,
+      "extension": ".js",
+      "git_blob_sha1": "52847a7fc33548340f076d19ba278f9ea4516e20",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/assets/currency-glossary-admin.js",
+      "plugin": "mad4b-jetengine",
+      "sha256": "2147dc1dd13dd363e660eb915eaadabc599dc9417239c2c1ad969464d2a79bb3"
+    },
+    {
+      "bytes": 617,
+      "extension": ".js",
+      "git_blob_sha1": "fb4b96eaccd42244c7d9e6bc9d185c3cd12f1ca6",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/assets/frontend-form-recipe.js",
+      "plugin": "mad4b-jetengine",
+      "sha256": "6edcc656b6b12368c63972183fbccf670e51f44a5f2e4c83068c843e9cad82d8"
+    },
+    {
+      "bytes": 79471,
+      "extension": ".css",
+      "git_blob_sha1": "9bc377911326b8f309c3d51d5febbda53f6bf1f7",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/assets/functional-modes.css",
+      "plugin": "mad4b-jetengine",
+      "sha256": "a5fac0611d4c946201e825877c02629104df3c1d175115a540032c8432f4d6f2"
+    },
+    {
+      "bytes": 69524,
+      "extension": ".js",
+      "git_blob_sha1": "8d2e5d4e24861e921bac6789f9e4e07a688e2faf",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/assets/functional-modes.js",
+      "plugin": "mad4b-jetengine",
+      "sha256": "0b863a7f38eeafa135505d2061ad93a55751fd91746034150bc3e5d5a32a2021"
+    },
+    {
+      "bytes": 2623,
+      "extension": ".css",
+      "git_blob_sha1": "7d4f1e36d3348578abf61bf8ec3a45eb34bd66f2",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/assets/hybrid-policy-bindings.css",
+      "plugin": "mad4b-jetengine",
+      "sha256": "8c1f87255d49621d926c30fbf8b46cd4deb3274c803efb60f4db8483d092c4dd"
+    },
+    {
+      "bytes": 12951,
+      "extension": ".js",
+      "git_blob_sha1": "ec2697e0f8d2b0875a5dbd2971d0bb30b21d6a98",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/assets/hybrid-policy-bindings.js",
+      "plugin": "mad4b-jetengine",
+      "sha256": "6dda3692077aaf9a0c7cef222410aa9be0f86c2148b92ae0e1201ab0f95b2b21"
+    },
+    {
+      "bytes": 601,
+      "extension": ".css",
+      "git_blob_sha1": "cf588d30d0aebed92c7a7c6336eda953ae416843",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/assets/hybrid-rate-generator.css",
+      "plugin": "mad4b-jetengine",
+      "sha256": "d5836fab90c9c6f66af31f7bf8a441024c6ad30203a3bdf669310a0798b36b58"
+    },
+    {
+      "bytes": 2324,
+      "extension": ".js",
+      "git_blob_sha1": "83da9eac49f7a83e8adee1d0a1a5556cc1b6dc50",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/assets/hybrid-rate-generator.js",
+      "plugin": "mad4b-jetengine",
+      "sha256": "281d0c035289d1bec4106edb1f2dcaa51cb6bc779fb3e7f7a2f5d03e54088852"
+    },
+    {
+      "bytes": 20601,
+      "extension": ".css",
+      "git_blob_sha1": "2eafbb5d7e827735ecf1a89bb76ae4834aac12b5",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/assets/jetengine-field-recipe.css",
+      "plugin": "mad4b-jetengine",
+      "sha256": "190024fc450d24a8db3c861afe784efe542e157560a8fbc948c443cd23327ca7"
+    },
+    {
+      "bytes": 5077,
+      "extension": ".css",
+      "git_blob_sha1": "3eb2acbb0c2fc71a1c1c4cce575de58a65d8ed5e",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/assets/jetengine-native-field-system.css",
+      "plugin": "mad4b-jetengine",
+      "sha256": "1ce1419589078e3485e23225f49036d65347fbddb230af6704af07d2cd049f8f"
+    },
+    {
+      "bytes": 3141,
+      "extension": ".css",
+      "git_blob_sha1": "354667e3b885b6c54f66e185562df8d5882ece2e",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/assets/modern-meta-editor.css",
+      "plugin": "mad4b-jetengine",
+      "sha256": "670882f832e07a6fd625d1a6beabea570f57dc45d651223d91a5aa020f6336f3"
+    },
+    {
+      "bytes": 2493,
+      "extension": ".js",
+      "git_blob_sha1": "9a90c09ce91f99e842d619eb021fa316657bc722",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/assets/modern-meta-editor.js",
+      "plugin": "mad4b-jetengine",
+      "sha256": "c1023a2a5ef056c4100cf42be4e3a3b9fccb0aa2a8d9e72a074ce46dfab48da5"
+    },
+    {
+      "bytes": 3258,
+      "extension": ".css",
+      "git_blob_sha1": "64f822a72150e2b39d0e2d6613e9d39c82407c34",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/assets/native-wp-settings-adapter.css",
+      "plugin": "mad4b-jetengine",
+      "sha256": "e456859616af55af19ad6646c87d9e0032f8c355c143d22fe8a189b8ed49f5bf"
+    },
+    {
+      "bytes": 5121,
+      "extension": ".css",
+      "git_blob_sha1": "11fb4da477847994220b04a2a5d90fca76e9003a",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/assets/native-wp-ui-inventory.css",
+      "plugin": "mad4b-jetengine",
+      "sha256": "9c9d16d82c73ab8498e19492f5b3b382b1c6e39f423d0f348afba53a5ea0d6a1"
+    },
+    {
+      "bytes": 2129,
+      "extension": ".js",
+      "git_blob_sha1": "b8b2990fe663aa815af92aaffc01535ae27d6096",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/assets/native-wp-ui-inventory.js",
+      "plugin": "mad4b-jetengine",
+      "sha256": "6faeb6135e60878cf339f12a8588d66bd20d46e9d0934d9c259845ea3439b73a"
+    },
+    {
+      "bytes": 4461,
+      "extension": ".css",
+      "git_blob_sha1": "3cd70beeadbc065b407020e41f5b9889d52a3399",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/assets/page-recipes.css",
+      "plugin": "mad4b-jetengine",
+      "sha256": "65ce03a9988a24a7229eb58b0712d74c8237919cf721e7f7236087dcd132436a"
+    },
+    {
+      "bytes": 7387,
+      "extension": ".js",
+      "git_blob_sha1": "ef62339d00453630bbef859174c07bf5a1e1be66",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/assets/page-recipes.js",
+      "plugin": "mad4b-jetengine",
+      "sha256": "8fa974e2bebb7ffd4f366084929a64037020d47bf3447a37ef4424f1dfb6f212"
+    },
+    {
+      "bytes": 10395,
+      "extension": ".js",
+      "git_blob_sha1": "bc5651cf57e741e3e2f1075daeea80d13b554070",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/assets/price-group-controller.js",
+      "plugin": "mad4b-jetengine",
+      "sha256": "c01e08c9bf1e0324057a40eef4eb461b893238ec23f3b3dabe60f25eba41024d"
+    },
+    {
+      "bytes": 4021,
+      "extension": ".css",
+      "git_blob_sha1": "d498b065036a3d1548b59cdd711a40b44a1a9aee",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/assets/pricing-lab-quote-testing.css",
+      "plugin": "mad4b-jetengine",
+      "sha256": "76e85bfdb5852567669db434265e4eac492b046d5199b2be459ee32bc1d3fd6a"
+    },
+    {
+      "bytes": 1599,
+      "extension": ".js",
+      "git_blob_sha1": "c0596f3399c7f3157d5d4d47211b6c0944b20760",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/assets/pricing-lab-quote-testing.js",
+      "plugin": "mad4b-jetengine",
+      "sha256": "83af57f59c1e168c7f1786a8b73e36898635b9fad2d0f901229b390451b083fe"
+    },
+    {
+      "bytes": 6974,
+      "extension": ".css",
+      "git_blob_sha1": "8bda6eec7b98e9feeffcdf6d2b9eb9f9773161c4",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/assets/pricing-lab.css",
+      "plugin": "mad4b-jetengine",
+      "sha256": "c3b8c6a0115feba03fb1b3d9f9b9e726b1a87415ec7fb5eb2860a2f5ffd92abb"
+    },
+    {
+      "bytes": 33754,
+      "extension": ".js",
+      "git_blob_sha1": "d03b89072f9b9bcb15c65cac0da4adedd15addc6",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/assets/pricing-lab.js",
+      "plugin": "mad4b-jetengine",
+      "sha256": "346d9f5d38dee5d21fd926f9b9a6a15b6b50dd8777b04c6d3087aaaf05c60b90"
+    },
+    {
+      "bytes": 7599,
+      "extension": ".css",
+      "git_blob_sha1": "43d174da66697e823d27e32bd8a5e0c527592ff1",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/assets/pricing-workspace.css",
+      "plugin": "mad4b-jetengine",
+      "sha256": "b9d4085ba1f358bbefb18b33e60228fcc2ad1a7f1fbda416ec21fa338460a6ba"
+    },
+    {
+      "bytes": 3842,
+      "extension": ".js",
+      "git_blob_sha1": "876e899b957d0d41b87cf8f350eaefff7d7e6f5c",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/assets/pricing-workspace.js",
+      "plugin": "mad4b-jetengine",
+      "sha256": "3612058d4b18ce6e694914029e7e0ba8ea96832d72b639930e212a7049908cc2"
+    },
+    {
+      "bytes": 8781,
+      "extension": ".css",
+      "git_blob_sha1": "bcc0f5f5f1ee86ce79f16fd66d412bc9d361d747",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/assets/provider-price-sources.css",
+      "plugin": "mad4b-jetengine",
+      "sha256": "a0996a24a80315becf75cca2971d0c211f738e1cbd883190f5c1d4083db61062"
+    },
+    {
+      "bytes": 10989,
+      "extension": ".js",
+      "git_blob_sha1": "98c34dc2a588601263aef5605dc5d087fa7d8ea7",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/assets/provider-price-sources.js",
+      "plugin": "mad4b-jetengine",
+      "sha256": "9deb533cfcb3269b8e05f97c26df7329e8319c90af2df0a7ead3b6d742d42ba0"
+    },
+    {
+      "bytes": 69975,
+      "extension": ".js",
+      "git_blob_sha1": "e0b29a045721c2d4db0bd171971e451b1b9894df",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/assets/published-tours.js",
+      "plugin": "mad4b-jetengine",
+      "sha256": "17fff4907c2330b89d913651e9e1776c53f9b9491d298a2505457906579a1420"
+    },
+    {
+      "bytes": 3093,
+      "extension": ".css",
+      "git_blob_sha1": "7254ccb6f64f17f5a21963b7514b764c81de52eb",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/assets/recipe-registry.css",
+      "plugin": "mad4b-jetengine",
+      "sha256": "01ff54ef07215370818a9d570ad8e08ffc1ccb09bc0bf33c6084cdb97d0f16e4"
+    },
+    {
+      "bytes": 7069,
+      "extension": ".js",
+      "git_blob_sha1": "75bfc898a94a4b671ba01b5712cdc9ee2c890832",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/assets/recipe-registry.js",
+      "plugin": "mad4b-jetengine",
+      "sha256": "ce5e2be2f40dd3450a012e97b122e03ed967b99f211665e07668f9a991161b79"
+    },
+    {
+      "bytes": 7974,
+      "extension": ".css",
+      "git_blob_sha1": "af747e9dbde342b2f5ae7b02982b60d65228815b",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/assets/recipe-workspace.css",
+      "plugin": "mad4b-jetengine",
+      "sha256": "2e24404b5ef4e7037cf1dbc59eaf974207eb8065031d94ceb278b87e6bf6b16f"
+    },
+    {
+      "bytes": 3402,
+      "extension": ".js",
+      "git_blob_sha1": "dc4cfc33c127f4141f441073e2dd865c8e9ceb36",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/assets/recipe-workspace.js",
+      "plugin": "mad4b-jetengine",
+      "sha256": "d5d66921028a8cd834a971aaaca7c3e0ac10c0ba7ff81446776ac884cd76964e"
+    },
+    {
+      "bytes": 11796,
+      "extension": ".js",
+      "git_blob_sha1": "bc04bcbb5eacf7192f9309ff3a5fdc56f63395ec",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/assets/repeater-overview.js",
+      "plugin": "mad4b-jetengine",
+      "sha256": "ae62ce4606cfdb4bc3825d9b3adba6eb7a5b9fc4c445699293cf749d06f9f3b6"
+    },
+    {
+      "bytes": 12565,
+      "extension": ".php",
+      "git_blob_sha1": "37a20a7e00fe2595da551aaaae1a9601d45ecb35",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/class-affected-tour-strategy.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "219a620d30a3e75ab4babedae5c6f2e3522499702116702bf9b49606c30d53ad"
+    },
+    {
+      "bytes": 28223,
+      "extension": ".php",
+      "git_blob_sha1": "fec2668bfb3915afc47419a9dbce51c492e248a6",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/class-contextual-help-registry.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "722eeef9d60e09714803632c3dccb0ecd808801e823fc3a88f82bc10682ec886"
+    },
+    {
+      "bytes": 11733,
+      "extension": ".php",
+      "git_blob_sha1": "0ff7f130e60f76495708389cbe536f8d7657c1d3",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/class-currency-configuration.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "27e99b77ae87c36f08f3014d94a35439ff3d0fa782c66ecff9052d4c6c5c4c8a"
+    },
+    {
+      "bytes": 8452,
+      "extension": ".php",
+      "git_blob_sha1": "416661b44b2706132593dfed6f062f98ebe4f598",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/class-currency-glossary.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "8cb08d140d892434bd16af8dc8239052ec0280474e1ba6257f457ba858f42d80"
+    },
+    {
+      "bytes": 23060,
+      "extension": ".php",
+      "git_blob_sha1": "dfa3d9c966d24ccd638869c1947f2e78597b5ddc",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/class-field-modes.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "a1e63a62cd8b0ec3594fcf44d89d9692d8b493630c424de3225c5ebc83448a17"
+    },
+    {
+      "bytes": 888,
+      "extension": ".php",
+      "git_blob_sha1": "f706e567d397d29112609a9eb3c4aa9139ebbbff",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/class-frontend-form-recipe.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "956242e7358b44dfe329df370296e213946a5d6c74b9a1f76222b3bc064a6e0f"
+    },
+    {
+      "bytes": 4775,
+      "extension": ".php",
+      "git_blob_sha1": "adc271b5343d30973197e7bb4bb523b57c54d1d8",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/class-guidance.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "f3dd811f3298b1f1bf0ed4d4bdcaeacc36e62a24a1bc0aaed43b8dff276110ae"
+    },
+    {
+      "bytes": 9834,
+      "extension": ".php",
+      "git_blob_sha1": "5c791bf82b2352ca35d7d8ca45d7f51496773c0d",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/class-hybrid-pricing-admin.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "f280348242ffec88b8f7ef23d898b930f1f50d0c8a1cfb60a8de72643e04889d"
+    },
+    {
+      "bytes": 16948,
+      "extension": ".php",
+      "git_blob_sha1": "177348ae2b7c2eee89482bcac8fa8f843acde4b0",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/class-hybrid-pricing-policies.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "4293935cb774ab123e6f35c19d349b639e023199adceb770fd3b689d9b1df102"
+    },
+    {
+      "bytes": 7274,
+      "extension": ".php",
+      "git_blob_sha1": "a6abf8a83c653540412d7c24dcd34e630622552a",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/class-hybrid-rate-generator-bridge.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "59d18fedbd51d37d034192fc4042b6004feedc6de0052707a1af77b50cf46b8d"
+    },
+    {
+      "bytes": 1601,
+      "extension": ".php",
+      "git_blob_sha1": "3c30a43531d459021925a17d8c22b75c6575e781",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/class-modern-meta-editor.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "381ad10e8634359780a9deffcfe02423b7730871a609298d0a7a5748c5fd8efb"
+    },
+    {
+      "bytes": 6979,
+      "extension": ".php",
+      "git_blob_sha1": "2df30dff73188bc305b3f280cb532f11b027f715",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/class-native-wordpress-ui-inventory.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "568276de44d048a369dcff53d77e76b9349edc5b69be6e94d9e4e50c4f0e60f5"
+    },
+    {
+      "bytes": 6062,
+      "extension": ".php",
+      "git_blob_sha1": "0b91cd7d6f9cffaad66f299847f8a5c36bebcdb2",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/class-native-wp-screen-coverage.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "6424c0e4fa410b93e68d8da40bf5ce9b9068f52ebecadb9cb1a906e036515888"
+    },
+    {
+      "bytes": 1674,
+      "extension": ".php",
+      "git_blob_sha1": "975bfdfb8a778809c9751e9a8e8794f44569da71",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/class-native-wp-settings-adapter.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "e3011612a8a75d8aa76ea7f706f8347080415ca3c3e3a939325cfc38a835240a"
+    },
+    {
+      "bytes": 2465,
+      "extension": ".php",
+      "git_blob_sha1": "f183059d64c2a85c42630359d33eb7780a7ed209",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/class-page-recipes.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "8cac2ba66c46aeabcfcc4c3cf2a5f2df36b539e6ae6546f22e07cd3481dead09"
+    },
+    {
+      "bytes": 16774,
+      "extension": ".php",
+      "git_blob_sha1": "c3a6330cc99b551651fe495bbc9cf88b985b9f2a",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/class-price-group-controller.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "5f6dce1f842fe6064add139727eef76d429771cf276068c5ae51ea35f781ddb3"
+    },
+    {
+      "bytes": 3147,
+      "extension": ".php",
+      "git_blob_sha1": "7331acc2fa5fcd6f735503b87339c52ce6013a38",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/class-pricing-controls-access.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "4a32ece4e7cfe89a849402bd13847f36d1559f22660ead80fc6d128b14122404"
+    },
+    {
+      "bytes": 14141,
+      "extension": ".php",
+      "git_blob_sha1": "a1b40ba3a7a814f583bf59b3e9992f6d6d3b3868",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/class-pricing-dimensions.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "3d6525667da1220596ed442b0994bcc3191024db034c4cafd852287d906c7b6b"
+    },
+    {
+      "bytes": 40872,
+      "extension": ".php",
+      "git_blob_sha1": "7b44c5543109fd8a27cc40df9661bec691aebcff",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/class-pricing-lab.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "5708dcb136746d34ff1856ed063bf83c6ae68cf39e407f7a9761d23d51849bcd"
+    },
+    {
+      "bytes": 16826,
+      "extension": ".php",
+      "git_blob_sha1": "679a069bb9234ba93ab2230dd7932da43f93700f",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/class-pricing-workspace.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "4ca701fa3d296e81a5da5269f637304ea708ad4353c7f9834a93efdc046bb2ed"
+    },
+    {
+      "bytes": 13083,
+      "extension": ".php",
+      "git_blob_sha1": "84c248c1387c738790439d12124905ffd492f27b",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/class-provider-jetengine-bridge.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "d049a609bf4e553e269c257a2b81a6e049144aede432d7c14a07ec4cbef474a2"
+    },
+    {
+      "bytes": 26103,
+      "extension": ".php",
+      "git_blob_sha1": "4190570ffc5e60905ad12f60083d4c5931167ae9",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/class-provider-price-sources.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "c8bed6c60743fa2eb9d65e78d9c7f1b4da7bacfdbe95f610dc99529d3c1bfcfe"
+    },
+    {
+      "bytes": 34565,
+      "extension": ".php",
+      "git_blob_sha1": "f3b65bdd5e03f1b242674172e56d4d23c0bf3575",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/class-published-tours-preview.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "5338559cb31ecc0b23413b615338a330157710a4628b0ac6861bb563f3fcc75e"
+    },
+    {
+      "bytes": 11801,
+      "extension": ".php",
+      "git_blob_sha1": "e4b00711c3f4336c4c41a5585084212c7d0258fd",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/class-rate-season-term-matcher.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "c514e29b6e573c91ee387d5f593981f223494db95e10a413f28fa7f2bb86b933"
+    },
+    {
+      "bytes": 12825,
+      "extension": ".php",
+      "git_blob_sha1": "93d8dfb4de7b794b63ec580f25c0415c6c1a63a9",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/class-rate-title-override.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "c3742202089a1e81392fc626b74fe788345d641d688bc984879ce58435b906e5"
+    },
+    {
+      "bytes": 15301,
+      "extension": ".php",
+      "git_blob_sha1": "eac85770bd63908e370c85ca417e3e17d77ebda9",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/class-recipe-field-matrix.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "65b47b87c8d06523a1ef97c30455a9674b1fa7c8c522d0efa914a6ab4cafe548"
+    },
+    {
+      "bytes": 13974,
+      "extension": ".php",
+      "git_blob_sha1": "0b1bd0ab1729dfedf6e0eea58e062e8f01b6f6e9",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/class-recipe-registry.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "fff2751b6624072742c4e5862d4b2c412d6f3a2b833eb61ce26dc867d8efb4a8"
+    },
+    {
+      "bytes": 10325,
+      "extension": ".php",
+      "git_blob_sha1": "44020afa6900b7e2e6b5c6e33d3d9fbe59c3ee0d",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/class-recipe-workspace.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "507083d85c8702d3d5c20f6e0629c9211ec80c8f9aeb726672b51db9c20c951b"
+    },
+    {
+      "bytes": 4047,
+      "extension": ".php",
+      "git_blob_sha1": "c162ff53b64d4e0f12f1b11e5dca3b7e42e46728",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/class-repeater-overview.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "1d3e799ece79113a1d039107d7a0ce6d031e9971ad83b0b9974497970c4786d7"
+    },
+    {
+      "bytes": 25799,
+      "extension": ".php",
+      "git_blob_sha1": "283525ac08c8e2ca408c46c58ba2f92aace65a15",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/class-strategy-schema-bridge.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "053bda9b9a771c196cf3b96d93f4b19188bc8db57f73a780b6a0190974f0e987"
+    },
+    {
+      "bytes": 24304,
+      "extension": ".php",
+      "git_blob_sha1": "40530ea664e0509edbecc9d96011d367362d4ec3",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/class-tour-preview-filter-registry.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "75ce25dc4574562b18073e35f1f750464603822da45780c73a0dcc0f32dc6061"
+    },
+    {
+      "bytes": 183,
+      "extension": ".php",
+      "git_blob_sha1": "10b882d8b54e90a333c8f8428413e073b488af19",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/modes/code.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "feefd1f2d79b5f64117d6a7f47928416e293d71cbf61d337467c114e6c67cbfa"
+    },
+    {
+      "bytes": 186,
+      "extension": ".php",
+      "git_blob_sha1": "4ecbc80dae974950dee36835231ddec2af825510",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/modes/date.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "6cdb7bf5cdc33526534fd547810429a6b410fe55484ca3bc8c42763a4718d6e7"
+    },
+    {
+      "bytes": 183,
+      "extension": ".php",
+      "git_blob_sha1": "240a25915aa36cb08ab54f1029d1088989037139",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/modes/field-card.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "cf07a47782454ababb4b16af2df227f02ef32dc8b0bac1b268e43c942aaaabe2"
+    },
+    {
+      "bytes": 188,
+      "extension": ".php",
+      "git_blob_sha1": "bc6ab946d51debb892815883383f528bde9352f8",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/modes/rules.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "611e6612fcc9e8297e2318a465a235676b01158c6f82f3edff8643e699a1c89e"
+    },
+    {
+      "bytes": 199,
+      "extension": ".php",
+      "git_blob_sha1": "a4712d7401c8312c0c3f2f86bb871cffd73c2d2c",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/modes/select-cards.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "e666de533dc858faf6e846e3112bc08fbcdec9f1c348a9b1ddd99802df0a8a55"
+    },
+    {
+      "bytes": 195,
+      "extension": ".php",
+      "git_blob_sha1": "20f78bf2b577d39d6547232571440fa1d339c81e",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/modes/slider.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "777b84eccec45f9657848f741e84fe2a66636ac751f68052c0b7c90a97ff744a"
+    },
+    {
+      "bytes": 282,
+      "extension": ".php",
+      "git_blob_sha1": "4de49b1f3042e0ad99d170beb333414096852364",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/modes/source-cards.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "c45d606a34750e170ee99fbf3e6ffcd3628c294d06392a77b57c5fe10d886bdf"
+    },
+    {
+      "bytes": 173,
+      "extension": ".php",
+      "git_blob_sha1": "772ac847e2baf3daa0294a7667c85485229df072",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/modes/standard.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "25d6a9f7336be00817f5c3c50420ed18c05801e4f108159695607ab7f7a903ea"
+    },
+    {
+      "bytes": 197,
+      "extension": ".php",
+      "git_blob_sha1": "ee277a0d2c3e5b463efbaf12fe81d1562d9cde17",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/modes/toggle.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "3cb356517a09a7964eacd6bd68ccc0848b6516b6989c8039be2e8a213cacb2a8"
+    },
+    {
+      "bytes": 3327,
+      "extension": ".php",
+      "git_blob_sha1": "004dd768d83c9bf9a7609c80816cd5c61e644cfa",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/module.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "7ac73d4ff265696694c3642f3e2325b0d3de67cea7458eb2292c42c3c6025e4c"
+    },
+    {
+      "bytes": 3597,
+      "extension": ".php",
+      "git_blob_sha1": "ceb3e1bc097b654268ea11b136b82b84aeaf4ac3",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/qa/options-page-coverage-scan.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "060d7e1112b292f8447b72bbf38a9083f1cf4b35dffda12d8eb2dcb302f643fa"
+    },
+    {
+      "bytes": 1173,
+      "extension": ".php",
+      "git_blob_sha1": "60a9f5d9e912803ce0d9676bfb8421ec76c1f685",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/qa/wp-native-screen-coverage-scan.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "f16dca5eb2f4496e5aec601c9b093b7b66b16c1b826c61f10e53a8936fde62e3"
+    },
+    {
+      "bytes": 2605,
+      "extension": ".php",
+      "git_blob_sha1": "a02b25a18d63678d8e8556aae983f83874e865f0",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/qa/wp-native-settings-adapter-contract.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "1277574adc51f06ef4569fbfa0c70a7d18634dd2b26d704672cce2b03c3967a7"
+    },
+    {
+      "bytes": 4168,
+      "extension": ".php",
+      "git_blob_sha1": "ec274b0b987df2856af45c64ce1cde7d8e528ac2",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/qa/wp-native-ui-inventory.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "20f9610fc137537dc4ec01e1bf744730d9f11e71aeb31b3129893b406c4696e5"
+    },
+    {
+      "bytes": 24946,
+      "extension": ".php",
+      "git_blob_sha1": "8811582ad9d1368536bf1501e62fc2801c8a59a5",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/hub/legacy/includes/class-mad4b-hub-company-pricing.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "11ba87fe7dbfe72db0d726df78a88788f12c542cab5c412b00e275955e2091ef"
+    },
+    {
+      "bytes": 33219,
+      "extension": ".php",
+      "git_blob_sha1": "8fcd01257a23e804b69bf4dbff6a9022f542229e",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/hub/legacy/includes/class-mad4b-hub-discovery-planner.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "c8117d3caf17a97e315ecea1a0500ce37484c58f2433baa07929f942f04a8e92"
+    },
+    {
+      "bytes": 30716,
+      "extension": ".php",
+      "git_blob_sha1": "6179de176b52da75b44c3f8ba63cef2ee8a60549",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/hub/legacy/includes/class-mad4b-hub-jetengine-consumer-runtime.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "9d2c140517ed126b2a77eccb4b0f8d1f9dd4fecd250bd698b40c313fbe804c03"
+    },
+    {
+      "bytes": 5272,
+      "extension": ".php",
+      "git_blob_sha1": "465f31a1f5fc7efc911dd3153eaba9b12160be9c",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/hub/legacy/includes/class-mad4b-hub-jetengine-distribution-status.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "7148225b12a283a891fd59055b07594f34461c1695d20e76ca198d311391b5da"
+    },
+    {
+      "bytes": 8938,
+      "extension": ".php",
+      "git_blob_sha1": "4270d4dc8a1b94b3aff62ee3f7037460f6584388",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/hub/legacy/includes/class-mad4b-hub-language-baseline.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "63f69b7d4e1f264f6388443dc8480bbbf1bedd791876aa9b7f99fe5e055807a1"
+    },
+    {
+      "bytes": 8685,
+      "extension": ".php",
+      "git_blob_sha1": "3ddf69095d3d74b2d75b6a1d094daf3542f0572d",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/hub/legacy/includes/class-mad4b-hub-market-policy.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "90f5a63263b84e96e08d44d94dcf32f2312ca4e7aa29e30944d4b20edebc554a"
+    },
+    {
+      "bytes": 19697,
+      "extension": ".php",
+      "git_blob_sha1": "aa14787528c0e99c00b1cc0235a9330c0c46805b",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/hub/legacy/includes/class-mad4b-hub-price-sources.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "cb4b091d66b57b6458714daa9983c055c31722b60b997b6d9460df3deffe74db"
+    },
+    {
+      "bytes": 10594,
+      "extension": ".php",
+      "git_blob_sha1": "aa4140af49ef5644fa7d8d3c3a95b53116f15f81",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/hub/legacy/includes/class-mad4b-hub-signed-source-preview.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "c8b2cc00761692a85e451c4a732468633c621a23fa44f0bd5f6dc47e3402e900"
+    },
+    {
+      "bytes": 19928,
+      "extension": ".php",
+      "git_blob_sha1": "8f941caa61c8f94cbe3e2ce9cb4878a94d4dbe01",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/hub/legacy/mad4b-jetengine-hub-addon.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "13e6dedbb89982f4587792abe5726c983a548f7c1929866c39501d1bf3076052"
+    },
+    {
+      "bytes": 334,
+      "extension": ".php",
+      "git_blob_sha1": "8e36d5c42c3986f9c7a1fa83b46b09c9cf967119",
+      "path": "wp-content/plugins/mad4b-jetengine/modules/hub/module.php",
+      "plugin": "mad4b-jetengine",
+      "sha256": "79f98dabe4af53e76f03d85923ab1f0c5b38ad2e26d1a70a427a36761ca4d8bc"
+    },
+    {
+      "bytes": 6466,
+      "extension": ".php",
+      "git_blob_sha1": "9b5eeae4373f6bb9d1bbad1c298ed5557df21c07",
+      "path": "wp-content/plugins/mad4b-litespeed-local-bridge/mad4b-litespeed-local-bridge.php",
+      "plugin": "mad4b-litespeed-local-bridge",
+      "sha256": "093c516e98500cd2cbc05830224b572df4143f776941d0f507d598bec8825eb4"
+    },
+    {
+      "bytes": 4598,
+      "extension": ".php",
+      "git_blob_sha1": "6aded8c21471a444da40b7ad53dc7fc00f57e365",
+      "path": "wp-content/plugins/mad4b-litespeed-local-bridge/tests/contract.php",
+      "plugin": "mad4b-litespeed-local-bridge",
+      "sha256": "fbdba5573d7506700f8b56b31cbe6fd7b2321d89d9b40ccaaf2335b605765c29"
+    },
+    {
+      "bytes": 10460,
+      "extension": ".php",
+      "git_blob_sha1": "a21da17e54ce494f94a31b15c33a1eae2e5cf332",
+      "path": "wp-content/plugins/mad4b-marketplace-sequential-runner/mad4b-marketplace-sequential-runner.php",
+      "plugin": "mad4b-marketplace-sequential-runner",
+      "sha256": "91bdee56ca6526a42f448f41a935164ba98a13218d8dec5e1cce875754db10b6"
+    },
+    {
+      "bytes": 3226,
+      "extension": ".php",
+      "git_blob_sha1": "a0b84e5b69592dfd8abe2f76b0be4ec7848b4db6",
+      "path": "wp-content/plugins/mad4b-marketplace-sequential-runner/native-approval-adapter.php",
+      "plugin": "mad4b-marketplace-sequential-runner",
+      "sha256": "bd830c1c96c27378170432dd7c558afab3a7b58aa78c163eb7c93228dc57975d"
+    },
+    {
+      "bytes": 23729,
+      "extension": ".js",
+      "git_blob_sha1": "30d29afc758b8f7e6b4a33fe42221f3715cf3373",
+      "path": "wp-content/plugins/mad4b-persistent-site-shell/assets/site-shell.js",
+      "plugin": "mad4b-persistent-site-shell",
+      "sha256": "ebd96fe7f8d60c12e8cb685bdc89b01c91797e15551545ceb677887688b91376"
+    },
+    {
+      "bytes": 27592,
+      "extension": ".php",
+      "git_blob_sha1": "78045ad984ddfcd2f289cc5437e5adbb548c8c65",
+      "path": "wp-content/plugins/mad4b-persistent-site-shell/mad4b-persistent-site-shell.php",
+      "plugin": "mad4b-persistent-site-shell",
+      "sha256": "5a4c609a65e3ab6faa5ccf2d8253c3f97c098f637ac588fb113e64a26d277aa6"
+    },
+    {
+      "bytes": 91,
+      "extension": ".php",
+      "git_blob_sha1": "e999c4335659f1ad612a0d0efaebf8850a2bad44",
+      "path": "wp-content/plugins/mad4b-persistent-site-shell/templates/fragment-template.php",
+      "plugin": "mad4b-persistent-site-shell",
+      "sha256": "ab0e330f37e197f871c856c2457d113586c000b5c48bfc6706d40fc13d48e4e2"
+    },
+    {
+      "bytes": 3088,
+      "extension": ".php",
+      "git_blob_sha1": "5b577666c365da6ffc8720dbef431d350ac9880b",
+      "path": "wp-content/plugins/mad4b-persistent-site-shell/tests/contract.php",
+      "plugin": "mad4b-persistent-site-shell",
+      "sha256": "a70221a4300303a367a9dc2481146b34d1a5d3a7b089390e7e17730d2e71b37d"
+    },
+    {
+      "bytes": 1957,
+      "extension": ".css",
+      "git_blob_sha1": "e2b483f3984e8aee5a381356c289b139b6d96f4e",
+      "path": "wp-content/plugins/mad4b-presentation-experience/assets/mad4b-chatbotx-elementor-kit.css",
+      "plugin": "mad4b-presentation-experience",
+      "sha256": "0949b68ab4ff3481afc3ae610878f7dec075a03832e247d7c1762940b6bd5c76"
+    },
+    {
+      "bytes": 3077,
+      "extension": ".css",
+      "git_blob_sha1": "31ec8f9fd362c614f51f4e56a13c9f2d1f9e8476",
+      "path": "wp-content/plugins/mad4b-presentation-experience/assets/mad4b-city-geometry-and-intro.css",
+      "plugin": "mad4b-presentation-experience",
+      "sha256": "a1a1c267b6aeda1a60b3ce34ef8cc0fc971554397af61f367ed9a475fc73cca3"
+    },
+    {
+      "bytes": 4558,
+      "extension": ".js",
+      "git_blob_sha1": "9ac7a000629300cb6f807efb12bbd98918e6387a",
+      "path": "wp-content/plugins/mad4b-presentation-experience/assets/mad4b-city-visible-image.js",
+      "plugin": "mad4b-presentation-experience",
+      "sha256": "bf78f9e93969b8cf48cb64d9fbfb85ca1c96cfa373af5e8e24f21d2ab83b4e84"
+    },
+    {
+      "bytes": 10302,
+      "extension": ".css",
+      "git_blob_sha1": "91d72202b27a5ae3550793c053b459e900863a67",
+      "path": "wp-content/plugins/mad4b-presentation-experience/assets/mad4b-featured-listing-banner-parity.css",
+      "plugin": "mad4b-presentation-experience",
+      "sha256": "9f014bc6da051a0244a97cf49bcf97762db78f249a502902f36a11961a7c21fb"
+    },
+    {
+      "bytes": 5282,
+      "extension": ".css",
+      "git_blob_sha1": "024b569803ce2e5bd12317cdcddd374ec78c0e11",
+      "path": "wp-content/plugins/mad4b-presentation-experience/assets/mad4b-mobile-scroll-action.css",
+      "plugin": "mad4b-presentation-experience",
+      "sha256": "063668ce00c3d8c65596d9347050c7087fa1f205dfff65974e2afa036dbefe66"
+    },
+    {
+      "bytes": 2079,
+      "extension": ".js",
+      "git_blob_sha1": "ee3a5d436847916c35abd54441a117d380dae9d4",
+      "path": "wp-content/plugins/mad4b-presentation-experience/assets/mad4b-mobile-scroll-action.js",
+      "plugin": "mad4b-presentation-experience",
+      "sha256": "d5f4ed4006d9179c04e14a5c1f6c2b37c304a8ebac3b348f976144790d1056ce"
+    },
+    {
+      "bytes": 1244,
+      "extension": ".css",
+      "git_blob_sha1": "9f57b1d7746a4df1afaf31e9a76d816a8dea2506",
+      "path": "wp-content/plugins/mad4b-presentation-experience/assets/mad4b-tour-inquiry-sidebar-sticky.css",
+      "plugin": "mad4b-presentation-experience",
+      "sha256": "9ca7cf9aff15d14fd58f95f3bfaa2b92c5b34ad780917452e893b7db8c8f69d2"
+    },
+    {
+      "bytes": 6758,
+      "extension": ".php",
+      "git_blob_sha1": "9d1bc4482319493fb558eefdd1b7ba4ea6f733e2",
+      "path": "wp-content/plugins/mad4b-provider-qualification-bridge/includes/class-mad4b-scp-provider-auto-qualification.php",
+      "plugin": "mad4b-provider-qualification-bridge",
+      "sha256": "5fae7603f16a5f3f690b8a4e15bc949eb54fd7f15382f05b8398b8335b713c59"
+    },
+    {
+      "bytes": 8550,
+      "extension": ".php",
+      "git_blob_sha1": "4265cab62d083f40ea11b32c5e328caadfc163ed",
+      "path": "wp-content/plugins/mad4b-provider-qualification-bridge/mad4b-provider-qualification-bridge.php",
+      "plugin": "mad4b-provider-qualification-bridge",
+      "sha256": "aa684e8e502c3910d6d1aa5becc83d44c4c3121343474774f75c531955776af3"
+    },
+    {
+      "bytes": 21206,
+      "extension": ".php",
+      "git_blob_sha1": "01fa33365f9bc0f24413141dddbb753547ad3ed9",
+      "path": "wp-content/plugins/mad4b-seo-opportunities/mad4b-seo-opportunities.php",
+      "plugin": "mad4b-seo-opportunities",
+      "sha256": "5cd7267a9c2a8c9eaf193b52a946f4e14078c289ff16c554de877f40fc8b2594"
+    },
+    {
+      "bytes": 12474,
+      "extension": ".php",
+      "git_blob_sha1": "8cd5df37490d3c15d0aaa01dbf46738dc1d1389c",
+      "path": "wp-content/plugins/mad4b-unified-full-authority/mad4b-unified-full-authority.php",
+      "plugin": "mad4b-unified-full-authority",
+      "sha256": "5fd4199d42f6829a5ab076527d1a692d5fc3fb428aa1c4e3d577711f6f8f4356"
+    },
+    {
+      "bytes": 3715,
+      "extension": ".css",
+      "git_blob_sha1": "df126fb17349c457051e8f501c678ef305f49df6",
+      "path": "wp-content/plugins/mad4b-visitor-experience/assets/mad4b-fluent-phone-brand-and-dial.css",
+      "plugin": "mad4b-visitor-experience",
+      "sha256": "046032f1995926b1879298af0135ebb337f2e24a400a0a8d0e52e2957781a754"
+    },
+    {
+      "bytes": 3813,
+      "extension": ".js",
+      "git_blob_sha1": "3a9d60b7d8c1316af183f91edd0c233f81d6911c",
+      "path": "wp-content/plugins/mad4b-visitor-experience/assets/mad4b-fluent-phone-brand-and-dial.js",
+      "plugin": "mad4b-visitor-experience",
+      "sha256": "b37e41b05bde04aec2c13e165c3757e78039a28fefe5917cbfb538782f6e7a52"
+    },
+    {
+      "bytes": 10271,
+      "extension": ".php",
+      "git_blob_sha1": "a891de62f8c99db60a71577bb86a3f9328174493",
+      "path": "wp-content/plugins/mad4b-wpml-taxonomy-parity/includes/class-mad4b-wpml-term-parity-v1.php",
+      "plugin": "mad4b-wpml-taxonomy-parity",
+      "sha256": "eb84db7d19c80f932141a3948fc5283755bf818a97114704c2060107fc3550fd"
+    },
+    {
+      "bytes": 490,
+      "extension": ".php",
+      "git_blob_sha1": "6c4503e83ed20109f4ad9d788e6ee1721ff83192",
+      "path": "wp-content/plugins/mad4b-wpml-taxonomy-parity/mad4b-wpml-taxonomy-parity.php",
+      "plugin": "mad4b-wpml-taxonomy-parity",
+      "sha256": "b348be0cfbb3d8dcddddf5b4cd9bbe76a404abaf19d9cbd842e851748396984a"
+    }
+  ],
+  "global_release_certified": false,
+  "plugin_activation_performed": false,
+  "plugin_roots_examined": 32,
+  "preexisting_semantic_conflict_count": 69,
+  "preexisting_semantic_conflicts": {
+    "mad4b-age-occupancy-registry": [
+      "wp-content/plugins/mad4b-age-occupancy-registry/assets/fluent-ages.css",
+      "wp-content/plugins/mad4b-age-occupancy-registry/assets/fluent-ages.js",
+      "wp-content/plugins/mad4b-age-occupancy-registry/includes/admin.php",
+      "wp-content/plugins/mad4b-age-occupancy-registry/includes/age-aware-stay.php",
+      "wp-content/plugins/mad4b-age-occupancy-registry/includes/fluent-forms.php",
+      "wp-content/plugins/mad4b-age-occupancy-registry/mad4b-age-occupancy-registry.php"
+    ],
+    "mad4b-company-portfolio-manager": [
+      "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-brand-readiness-hub.php",
+      "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-experience-install-owner-launch.php",
+      "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-faore-broker-readback.php",
+      "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-native-plugin-install-handler.php",
+      "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-native-plugin-install-provider.php",
+      "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-plugin-live-reconcile.php",
+      "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-plugin-sync-operation.php",
+      "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-scp-company-communication.php",
+      "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-scp-company-email-routing.php",
+      "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-scp-company-master-admin.php",
+      "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-scp-company-sender-policy.php",
+      "wp-content/plugins/mad4b-company-portfolio-manager/mad4b-company-portfolio-manager.php",
+      "wp-content/plugins/mad4b-company-portfolio-manager/tests/experience-owner-job-rotation-regression-20261106.php",
+      "wp-content/plugins/mad4b-company-portfolio-manager/tests/presentation-option-ownership-regression-20261105.php"
+    ],
+    "mad4b-country-switcher": [
+      "wp-content/plugins/mad4b-country-switcher/assets/switcher.js",
+      "wp-content/plugins/mad4b-country-switcher/mad4b-country-switcher.php"
+    ],
+    "mad4b-google-measurement-bridge": [
+      "wp-content/plugins/mad4b-google-measurement-bridge/includes/class-mad4b-google-measurement-admin.php",
+      "wp-content/plugins/mad4b-google-measurement-bridge/mad4b-google-measurement-bridge.php"
+    ],
+    "mad4b-pricing-registry": [
+      "wp-content/plugins/mad4b-pricing-registry/includes/source-arbitration.php",
+      "wp-content/plugins/mad4b-pricing-registry/includes/tour-preview.php",
+      "wp-content/plugins/mad4b-pricing-registry/mad4b-pricing-registry.php"
+    ],
+    "mad4b-site-control-plane": [
+      "wp-content/plugins/mad4b-site-control-plane/bootstrap/mad4b-runtime-cache-convergence-mu.php",
+      "wp-content/plugins/mad4b-site-control-plane/config/remote-operation-catalog.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-provider-adapter.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-skills-adapter.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-context-builder.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-experience-quality.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-review-routing.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-tool-projection.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli-execution-context.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli-readiness.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-communication.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-email-routing.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-sender-policy.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-connection-status.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dependency-manager.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-deployment-binding-native.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-drive-scan-admin.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-drive-scan-cron.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-commit-guard.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-firecrawl-provider.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-full-staging-authority.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-catalog-budget.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-catalog-diagnostics.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-protocol-profile.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-general-settings-contract.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-policy.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-field-intelligence.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-read-consistency.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-reversible-adapter-mutations.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-release-set.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-write-catalog.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-abilities.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-grant-reconciliation.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-visual-seo-strategy.php",
+      "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php"
+    ]
+  },
+  "source_only": true,
+  "source_site": "tours.dev.mad4b.com",
+  "wp_cli_or_db_mutation_performed": false
+}

@@ -1,0 +1,24 @@
+/*
+ * Archive filter-sidebar hover protection.
+ * The Elementor/Crocoblock sticky filter keeps its native 99 stacking level,
+ * scroll position, width, and interactions. Hover transforms and shadows
+ * remain entirely owned by Elementor; this only contains each listing's paint.
+ */
+body:not(.elementor-editor-active) .elementor-location-archive .jet-listing-grid__items,
+body:not(.elementor-editor-active) .elementor-location-archive .mad4b-hover-layer-safe {
+  isolation: isolate;
+}
+
+
+/*
+ * Single-product content vs. authored sticky inquiry sidebar.
+ * Shared by Tours, Properties and Transportations whenever their WordPress
+ * service channel permits rendering. No template IDs or sticky z-index values.
+ * The authored side panel retains its native Sticky/Flex/Scroll behavior;
+ * only the adjacent main content receives a stacking boundary.
+ */
+body:not(.elementor-editor-active) .elementor-location-single
+  .e-con-inner:has(> .mad4b-product-sticky-panel)
+  > .e-con:not(.mad4b-product-sticky-panel) {
+  isolation: isolate;
+}

@@ -1,0 +1,56 @@
+/* The ChatbotX launcher is part of the parent DOM, unlike the remote iframe.
+   Its brandColor query parameter is injected server-side from the current
+   Elementor Kit by MU 343; these CSS tokens style only the launcher frame. */
+body .ahc-btn {
+ --mad4b-chat-primary:var(--e-global-color-primary,#102D40);
+ --mad4b-chat-accent:var(--e-global-color-accent,#B48A46);
+ --mad4b-chat-hover:var(--e-global-color-secondary,#204C50);
+ background-color:var(--mad4b-chat-primary)!important;
+ color:var(--e-global-color-bmentxt,#FFFFFF);
+ border:2px solid var(--mad4b-chat-accent);
+ border-radius:var(--e-global-border-radius,50%);
+ box-shadow:0 5px 18px rgb(16 45 64 / 24%);
+ font-family:var(--e-global-typography-text-font-family,'Nunito',sans-serif);
+ outline-offset:3px;
+}
+body .ahc-btn:is(:hover,:focus-visible) {
+ background-color:var(--mad4b-chat-hover)!important;
+ border-color:var(--mad4b-chat-accent);
+ opacity:1;
+}
+body .ahc-btn:focus-visible {
+ outline:2px solid var(--mad4b-chat-accent);
+}
+body .ahc-iframe-container {
+ border:1px solid var(--e-global-color-accent,#B48A46);
+ border-radius:var(--e-global-border-radius,16px);
+ box-shadow:0 10px 32px rgb(16 45 64 / 22%);
+ background:var(--e-global-color-80789f7,#F9F7F5);
+}
+@media(max-width:767px) {
+ body {
+  --ahc-btn-size:50px;
+  --ahc-btn-right:14px;
+ }
+ body.post-type-archive-tours-and-activities {
+  /* Keep the chatbot above the sticky inquiry CTA, not over its button. */
+  --ahc-btn-bottom:102px;
+ }
+}
+@media(prefers-reduced-motion:reduce) {
+ body .ahc-btn,body .ahc-iframe-container {transition:none;}
+}
+
+
+/* RTL ChatbotX: preserve the provider's z-index and native interactions. */
+html[dir="rtl"] body .ahc-btn,
+body.rtl .ahc-btn {
+ right:auto!important;
+ left:max(14px,env(safe-area-inset-left,0px))!important;
+}
+html[dir="rtl"] body .ahc-iframe-container,
+body.rtl .ahc-iframe-container {
+ right:auto!important;
+ left:max(12px,env(safe-area-inset-left,0px))!important;
+ direction:rtl;
+}

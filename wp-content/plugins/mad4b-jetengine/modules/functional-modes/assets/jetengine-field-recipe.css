@@ -1,0 +1,470 @@
+/* MAD4B JetEngine Field Recipe · shared design tokens.
+   Recipe owns component look; adapters own only safe DOM mapping.
+   Never changes native form structure, values or save behavior. */
+:root {
+ --mad4b-je-card-border:#d7e7dc;
+ --mad4b-je-card-radius:9px;
+ --mad4b-je-input-border:#c6dcce;
+ --mad4b-je-input-radius:7px;
+ --mad4b-je-input-height:38px;
+ --mad4b-je-ink:#234c3b;
+ --mad4b-je-muted:#60776b;
+ --mad4b-je-focus:#438e69;
+ --mad4b-je-card-bg:#fff;
+}
+/* Recipe adapter: JetEngine Options Pages Modern Mode */
+.jet-engine-options-page-wrap.mad4b-ws-visual .mad4b-ws-original {
+  --mad4b-field-border:var(--mad4b-je-card-border);
+  --mad4b-field-ink:var(--mad4b-je-ink);
+  --mad4b-field-muted:var(--mad4b-je-muted);
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual .mad4b-ws-original #settings_top {
+  padding:0;
+  border:0;
+  background:transparent;
+}
+/* Native settings section title becomes the header of the actual form, not
+   another inset white box with detached spacing. */
+.jet-engine-options-page-wrap.mad4b-ws-visual .mad4b-ws-original #settings_top
+  :is(.cx-settings__title,.cx-ui-kit__title,.cx-component__title) {
+  color:#1e5842;
+  font-weight:750;
+  letter-spacing:-.01em;
+}
+/* Cards use the same visual grammar as the dimensional targeting panels. */
+.jet-engine-options-page-wrap.mad4b-ws-visual #settings_top .mad4b-ws-control:not(.mad4b-ws-filtered):not(.mad4b-source-cards-mode):not([data-control-name="shared_price_source_mode_rows"]) {
+  border:1px solid var(--mad4b-field-border);
+  border-radius:var(--mad4b-je-card-radius);
+  background:#fff;
+  padding:16px 18px;
+  margin:8px 0;
+  min-width:0;
+  box-shadow:0 1px 3px rgba(26,81,54,.035);
+  transition:border-color .15s,background-color .15s,box-shadow .15s;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual #settings_top .mad4b-ws-control:not(.mad4b-ws-filtered):not(.mad4b-source-cards-mode):not([data-control-name="shared_price_source_mode_rows"]):hover {
+  background:#fcfefd;
+  border-color:#a9d0b9;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual #settings_top .mad4b-ws-control:not(.mad4b-source-cards-mode):not([data-control-name="shared_price_source_mode_rows"]):focus-within {
+  border-color:#5aab84;
+  box-shadow:0 0 0 2px rgba(45,131,86,.12);
+}
+/* Original JetEngine two-column rows remain native; only the label hierarchy,
+   control surface and helper text are refined. */
+.jet-engine-options-page-wrap.mad4b-ws-visual #settings_top .mad4b-ws-control
+  :is(.cx-control__title,.cx-control__label) {
+  color:var(--mad4b-field-ink);
+  font-size:13px;
+  font-weight:700;
+  line-height:1.45;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual #settings_top .mad4b-ws-control
+  :is(.cx-control__description,.cx-control__desc) {
+  color:var(--mad4b-field-muted);
+  font-size:11px;
+  line-height:1.6;
+  max-width:68ch;
+  overflow-wrap:anywhere;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual #settings_top .mad4b-ws-control
+  :is(select,textarea,input[type=text],input[type=number],input[type=url],input[type=email]) {
+  min-height:var(--mad4b-je-input-height);
+  border:1px solid var(--mad4b-je-input-border);
+  border-radius:var(--mad4b-je-input-radius);
+  background-color:#fff;
+  color:#294939;
+  padding:7px 11px;
+  max-width:100%;
+  box-sizing:border-box;
+  box-shadow:none;
+  font-size:12px;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual #settings_top .mad4b-ws-control
+  :is(select,textarea,input[type=text],input[type=number]):focus-visible {
+  border-color:#438e69;
+  outline:2px solid rgba(57,142,98,.2);
+  outline-offset:1px;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual #settings_top .mad4b-ws-control
+  :is(input[type=checkbox],input[type=radio]) {
+  accent-color:#206e50;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual #settings_top .mad4b-ws-control
+  :is(.cx-control__switcher,.cx-switcher) {
+  accent-color:#206e50;
+}
+/* The native submit bar is a distinct anchored footer, integrated with the
+   field cards and without changing native POST/validation. */
+.jet-engine-options-page-wrap.mad4b-ws-visual .cx-component.dialog-save.mad4b-ws-native-save-bar {
+  background:#f7fbf8;
+  border:1px solid #b7d5c1;
+  border-top:3px solid #2b8460;
+  border-radius:10px;
+  padding:13px 16px;
+  box-shadow:0 5px 18px rgba(23,70,48,.085);
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual .mad4b-ws-native-save-help {
+  color:#416b54;
+  font-size:12px;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual .cx-component.dialog-save
+  .cx-button.mad4b-ws-native-save-button {
+  background:#16694b;
+  border-color:#16694b;
+  min-width:140px;
+  min-height:42px;
+  border-radius:8px;
+  font-size:12px;
+  box-shadow:0 2px 4px rgba(13,75,49,.12);
+}
+
+/* Shared component treatment for specialized source/rule repeaters.
+   Keep existing vendor display, flex basis, collapse classes and field nodes. */
+.jet-engine-options-page-wrap.mad4b-ws-visual #settings_top
+ .mad4b-ws-control:is(.mad4b-source-cards-mode,[data-control-name="shared_price_source_mode_rows"]){
+ border:1px solid var(--mad4b-je-card-border);
+ border-radius:var(--mad4b-je-card-radius);
+ background:#fcfefd;
+ padding:12px;
+ margin:8px 0;
+ box-sizing:border-box;
+ min-width:0;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual #settings_top
+ .mad4b-ws-control:is(.mad4b-source-cards-mode,[data-control-name="shared_price_source_mode_rows"]):focus-within{
+ border-color:#5aab84;
+ box-shadow:0 0 0 2px rgba(45,131,86,.12);
+}
+@media(max-width:720px){
+ .jet-engine-options-page-wrap.mad4b-ws-visual #settings_top
+ .mad4b-ws-control:not(.mad4b-ws-filtered){padding:12px}
+ .jet-engine-options-page-wrap.mad4b-ws-visual .cx-component.dialog-save.mad4b-ws-native-save-bar{padding:10px}
+}
+
+/* Recipe adapter: JetEngine CPT Post Meta Editor (original WordPress Save). */
+body.mad4b-jetengine-modern-editor .jet-engine-meta-wrap .cx-control{
+ border:1px solid var(--mad4b-je-card-border);
+ border-radius:var(--mad4b-je-card-radius);
+ background:var(--mad4b-je-card-bg);
+ padding:13px 15px;
+ margin:8px 0;
+ min-width:0;
+ box-sizing:border-box;
+}
+body.mad4b-jetengine-modern-editor .jet-engine-meta-wrap .cx-control__title{
+ color:var(--mad4b-je-ink);font-size:13px;font-weight:700;
+}
+body.mad4b-jetengine-modern-editor .jet-engine-meta-wrap .cx-control__description{
+ color:var(--mad4b-je-muted);font-size:11px;
+}
+body.mad4b-jetengine-modern-editor .jet-engine-meta-wrap
+ :is(input[type=text],input[type=number],input[type=url],input[type=email],select,textarea){
+ border:1px solid var(--mad4b-je-input-border);
+ border-radius:var(--mad4b-je-input-radius);
+ min-height:var(--mad4b-je-input-height);
+ max-width:100%;box-sizing:border-box;
+}
+body.mad4b-jetengine-modern-editor .jet-engine-meta-wrap
+ :is(input,select,textarea):focus-visible{
+ border-color:var(--mad4b-je-focus);outline:2px solid rgba(57,142,98,.2);
+ outline-offset:1px;
+}
+/* Recipe adapter: legacy JetEngine frontend forms only.
+   Does not touch Woo checkout, Fluent Forms, JetFormBuilder or arbitrary
+   inputs. Keep repeater, upload, WYSIWYG and range vendor controls intact. */
+body.mad4b-jetengine-form-recipe .jet-form .jet-form-row:not(.jet-form-row--hidden):not(.jet-form-row--submit){
+ border:1px solid var(--mad4b-je-card-border);
+ border-radius:var(--mad4b-je-card-radius);
+ padding:12px;
+ margin-block:8px;
+ background:var(--mad4b-je-card-bg);
+ box-sizing:border-box;
+ min-width:0;
+}
+body.mad4b-jetengine-form-recipe .jet-form .jet-form__label{
+ color:var(--mad4b-je-ink);font-size:13px;font-weight:700;
+}
+body.mad4b-jetengine-form-recipe .jet-form .jet-form__field:not(.file-field):not(.range-field):not([type=checkbox]):not([type=radio]){
+ border:1px solid var(--mad4b-je-input-border);
+ border-radius:var(--mad4b-je-input-radius);
+ min-height:var(--mad4b-je-input-height);
+ max-width:100%;
+ box-sizing:border-box;
+}
+body.mad4b-jetengine-form-recipe .jet-form .jet-form__field:focus-visible{
+ outline:2px solid rgba(57,142,98,.28);outline-offset:1px;
+}
+body.mad4b-jetengine-form-recipe .jet-form .jet-form-repeater__row{
+ min-width:0;
+}
+@media(max-width:720px){
+ body.mad4b-jetengine-modern-editor .jet-engine-meta-wrap .cx-control{padding:12px}
+ body.mad4b-jetengine-form-recipe .jet-form .jet-form-row:not(.jet-form-row--hidden):not(.jet-form-row--submit){padding:10px}
+}
+
+/* JetFormBuilder — canonical MAD4B Recipe appearance on original form rows.
+   Never replace vendor file, WYSIWYG, repeater, choice or submit behavior. */
+body.mad4b-jetengine-form-recipe form.jet-form-builder
+ .jet-form-builder-row:not(.field-type-submit-field):not(.field-type-hidden-field) {
+ border:1px solid var(--mad4b-je-card-border,#d7e7dc);
+ background:var(--mad4b-je-card-bg,#fff);
+ border-radius:var(--mad4b-je-card-radius,9px);
+ padding:12px 14px;margin-block:9px;box-sizing:border-box;min-width:0;
+}
+body.mad4b-jetengine-form-recipe form.jet-form-builder
+ :is(.jet-form-builder__label,.jet-form-builder__label-text) {
+ color:var(--mad4b-je-ink,#234c3b);font-size:13px;font-weight:700;line-height:1.5;
+}
+body.mad4b-jetengine-form-recipe form.jet-form-builder .jet-form-builder__field-wrap{
+ min-width:0;max-width:100%;box-sizing:border-box
+}
+body.mad4b-jetengine-form-recipe form.jet-form-builder
+ :is(input.jet-form-builder__field:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=hidden]):not([type=range]),select.jet-form-builder__field,textarea.jet-form-builder__field) {
+ border:1px solid var(--mad4b-je-input-border,#c6dcce);
+ border-radius:var(--mad4b-je-input-radius,7px);
+ min-height:var(--mad4b-je-input-height,38px);
+ max-width:100%;box-sizing:border-box;
+}
+body.mad4b-jetengine-form-recipe form.jet-form-builder
+ :is(input.jet-form-builder__field,select.jet-form-builder__field,textarea.jet-form-builder__field):focus-visible{
+ outline:2px solid var(--mad4b-je-focus,#438e69);outline-offset:1px;
+}
+body.mad4b-jetengine-form-recipe form.jet-form-builder
+ .jet-form-builder-row:focus-within{border-color:var(--mad4b-je-focus,#438e69)}
+body.mad4b-jetengine-form-recipe form.jet-form-builder
+ .jet-form-builder__submit{border-radius:var(--mad4b-je-input-radius,7px)}
+@media(max-width:720px){
+ body.mad4b-jetengine-form-recipe form.jet-form-builder
+ .jet-form-builder-row:not(.field-type-submit-field):not(.field-type-hidden-field){padding:10px}
+}
+
+/* Universal native JetEngine field-family treatments.
+   Covers all installed types (text, textarea, number, select, checkbox,
+   switcher, colorpicker, media, gallery, repeater, HTML) without altering
+   JetEngine field semantics or native action handlers. */
+.jet-engine-options-page-wrap.mad4b-ws-visual #settings_top .mad4b-ws-control,
+body.mad4b-jetengine-modern-editor .jet-engine-meta-wrap .cx-control{
+ --mad4b-native-outline:var(--mad4b-je-input-border,#c6dcce);
+ --mad4b-native-hover:#edf7f0;
+ min-width:0;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual #settings_top .mad4b-ws-control
+ :is(.cx-ui-checkbox,.cx-checkbox,.cx-ui-radio,.cx-radio,.cx-ui-switcher,.cx-switcher),
+body.mad4b-jetengine-modern-editor .jet-engine-meta-wrap .cx-control
+ :is(.cx-ui-checkbox,.cx-checkbox,.cx-ui-radio,.cx-radio,.cx-ui-switcher,.cx-switcher){
+ border-radius:8px;
+ accent-color:var(--mad4b-je-focus,#438e69);
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual #settings_top .mad4b-ws-control
+ :is(input[type=checkbox],input[type=radio],input[type=color]),
+body.mad4b-jetengine-modern-editor .jet-engine-meta-wrap .cx-control
+ :is(input[type=checkbox],input[type=radio],input[type=color]){
+ accent-color:var(--mad4b-je-focus,#438e69);
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual #settings_top .mad4b-ws-control
+ :is(.cx-color-picker,.cx-ui-colorpicker,.wp-picker-container,.cx-media-field,.cx-ui-media,.cx-gallery,.cx-ui-gallery),
+body.mad4b-jetengine-modern-editor .jet-engine-meta-wrap .cx-control
+ :is(.cx-color-picker,.cx-ui-colorpicker,.wp-picker-container,.cx-media-field,.cx-ui-media,.cx-gallery,.cx-ui-gallery){
+ max-width:100%;
+ min-width:0;
+ box-sizing:border-box;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual #settings_top .mad4b-ws-control
+ :is(.cx-ui-repeater-container,.cx-ui-repeater-list,.cx-ui-repeater-item,.cheryr-ui-repeater-content-box),
+body.mad4b-jetengine-modern-editor .jet-engine-meta-wrap .cx-control
+ :is(.cx-ui-repeater-container,.cx-ui-repeater-list,.cx-ui-repeater-item,.cheryr-ui-repeater-content-box){
+ max-width:100%;
+ min-width:0;
+ box-sizing:border-box;
+}
+/* Native media/gallery/repeater controls keep native flex and collapse.
+   Only their outer button chrome shares Recipe tokens. */
+.jet-engine-options-page-wrap.mad4b-ws-visual #settings_top
+ :is(.cx-ui-repeater-add,.cx-button,.button),
+body.mad4b-jetengine-modern-editor .jet-engine-meta-wrap
+ :is(.cx-ui-repeater-add,.cx-button,.button){
+ border-radius:var(--mad4b-je-input-radius,7px);
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual #settings_top
+ :is(.cx-ui-repeater-add,.cx-button,.button):focus-visible,
+body.mad4b-jetengine-modern-editor .jet-engine-meta-wrap
+ :is(.cx-ui-repeater-add,.cx-button,.button):focus-visible{
+ outline:2px solid var(--mad4b-je-focus,#438e69);
+ outline-offset:2px;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual #settings_top
+ :is(.select2-container,.select2-selection,.choices,.choices__inner),
+body.mad4b-jetengine-modern-editor .jet-engine-meta-wrap
+ :is(.select2-container,.select2-selection,.choices,.choices__inner){
+ max-width:100%;
+ min-width:0;
+ box-sizing:border-box;
+ border-radius:var(--mad4b-je-input-radius,7px);
+}
+body.mad4b-jetengine-form-recipe form.jet-form-builder
+ :is(.jet-form-builder-file-upload,.jet-form-builder-repeater,.jet-form-builder__fields-group,.jet-form-builder__field-wrap,.wp-editor-wrap),
+body.mad4b-jetengine-form-recipe form.jet-form
+ :is(.jet-form-repeater,.jet-form__field-wrap){
+ max-width:100%;min-width:0;box-sizing:border-box;
+}
+@media(max-width:720px){
+ .jet-engine-options-page-wrap.mad4b-ws-visual #settings_top .mad4b-ws-control,
+ body.mad4b-jetengine-modern-editor .jet-engine-meta-wrap .cx-control{
+  overflow-wrap:anywhere;
+ }
+}
+/* Logical padding and margins inherit direction; no forced LTR layout in Arabic. */
+
+/* Specialist widgets — vendor-owned controls, Recipe-owned outer surfaces.
+   Phone: original intl-tel-input controls retain country popup/hidden pairing. */
+body.mad4b-jetengine-form-recipe form.jet-form-builder
+ :is(.phone-field-wrap,.iti,.iti__flag-container,.iti__selected-country),
+body.mad4b-jetengine-form-recipe form.jet-form-builder
+ :is(.jet-fb-map-field,.jet-fb-map-field__preview,.jet-fb-map-field__search,
+     .jet-fb-map-field__frame,.jet-fb-map-field__search-list){
+ max-width:100%;min-width:0;box-sizing:border-box;
+}
+body.mad4b-jetengine-form-recipe form.jet-form-builder .phone-field-wrap{
+ border-radius:var(--mad4b-je-input-radius,7px);
+}
+body.mad4b-jetengine-form-recipe form.jet-form-builder
+ :is(.phone-field-wrap input[type=tel],.jet-fb-map-field__search input[type=text]){
+ max-width:100%;
+ border-radius:var(--mad4b-je-input-radius,7px);
+ min-height:var(--mad4b-je-input-height,38px);
+ box-sizing:border-box;
+}
+body.mad4b-jetengine-form-recipe form.jet-form-builder
+ :is(.jet-fb-map-field__preview,.jet-fb-map-field__search,.jet-fb-map-field__frame){
+ border-radius:var(--mad4b-je-input-radius,7px);
+}
+body.mad4b-jetengine-form-recipe form.jet-form-builder
+ :is(.jet-fb-map-field__reset,.iti__selected-country):focus-visible{
+ outline:2px solid var(--mad4b-je-focus,#438e69);outline-offset:2px;
+}
+/* Native date / datetime pickers, including advanced-date-fields, remain
+   accessible for calendar popover positioning and keyboard input. */
+body.mad4b-jetengine-form-recipe form.jet-form-builder
+ :is(.jet-form-builder__field-wrap:has(input[type=date]),
+     .jet-form-builder__field-wrap:has(input[type=datetime-local]),
+     .jet-form-builder__field-wrap:has(.jet-form-builder-advanced-date)){
+ max-width:100%;min-width:0;box-sizing:border-box;
+}
+/* Never style the captcha token itself or create a fake challenge. The
+   provider security scripts and their injected elements remain authoritative. */
+body.mad4b-jetengine-form-recipe form.jet-form-builder
+ .captcha-token-container{max-width:100%;min-width:0;box-sizing:border-box}
+
+/* JetEngine native CX checkbox group uses hidden inputs plus custom marker
+   spans, not input[type=checkbox]. Preserve vendor event and value logic.
+   Recipe styles outer choice surfaces only; no forced checked state. */
+.jet-engine-options-page-wrap.mad4b-ws-visual #settings_top
+ .mad4b-ws-control :is(.cx-checkbox-group,.cx-checkbox-actions),
+body.mad4b-jetengine-modern-editor .jet-engine-meta-wrap
+ .cx-control :is(.cx-checkbox-group,.cx-checkbox-actions){
+ max-width:100%;min-width:0;box-sizing:border-box;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual #settings_top
+ .mad4b-ws-control .cx-checkbox-item-wrap,
+body.mad4b-jetengine-modern-editor .jet-engine-meta-wrap
+ .cx-control .cx-checkbox-item-wrap{
+ border:1px solid var(--mad4b-je-card-border,#d7e7dc);
+ border-radius:var(--mad4b-je-input-radius,7px);
+ padding:7px 10px;
+ background:var(--mad4b-je-card-bg,#fff);
+ min-width:0;max-width:100%;box-sizing:border-box;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual #settings_top
+ .mad4b-ws-control .cx-checkbox-item-wrap:hover,
+body.mad4b-jetengine-modern-editor .jet-engine-meta-wrap
+ .cx-control .cx-checkbox-item-wrap:hover{
+ background:var(--mad4b-native-hover,#edf7f0);
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual #settings_top
+ .mad4b-ws-control .cx-checkbox-item-wrap:focus-within,
+body.mad4b-jetengine-modern-editor .jet-engine-meta-wrap
+ .cx-control .cx-checkbox-item-wrap:focus-within{
+ outline:2px solid var(--mad4b-je-focus,#438e69);
+ outline-offset:1px;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual #settings_top
+ .mad4b-ws-control .cx-checkbox-label,
+body.mad4b-jetengine-modern-editor .jet-engine-meta-wrap
+ .cx-control .cx-checkbox-label{
+ color:var(--mad4b-je-ink,#234c3b);
+ overflow-wrap:anywhere;
+}
+
+/* Modern Recipe: actual native JetEngine inline rows become vertical field
+   cards in Visual Mode. 31 dynamic Service Activation fields use native
+   cx-control-inline; previous styling changed only their border and left
+   the old 35%/65% vendor column split, giving the impression of no update.
+   Keep all original controls, field names, form actions and native Save. */
+.jet-engine-options-page-wrap.mad4b-ws-visual #settings_top
+ .cx-control.mad4b-ws-control.cx-control-inline:not(.cx-control-repeater):not(.mad4b-source-cards-mode):not([data-control-name="shared_price_source_mode_rows"]) {
+ display:flex!important;
+ flex-direction:column!important;
+ align-items:stretch!important;
+ gap:11px;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual #settings_top
+ .cx-control.mad4b-ws-control.cx-control-inline:not(.cx-control-repeater)
+ > :is(.cx-control__info,.cx-control__content){
+ flex:0 1 auto!important;
+ width:100%!important;
+ max-width:100%!important;
+ min-width:0!important;
+ margin:0!important;
+ box-sizing:border-box;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual #settings_top
+ .cx-control.mad4b-ws-control.cx-control-inline:not(.cx-control-repeater)
+ > .cx-control__info{
+ padding:0 0 8px!important;
+ border-bottom:1px solid #e7efe9;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual #settings_top
+ .cx-control.mad4b-ws-control.cx-control-inline:not(.cx-control-repeater)
+ > .cx-control__content{
+ padding:0!important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual #settings_top
+ .cx-control.mad4b-ws-control.cx-control-inline .cx-control__name{
+ opacity:.70;
+ font-size:10px;
+ line-height:1.3;
+ margin-top:4px;
+}
+/* Native CX checkbox hidden-input technique remains intact. Make the real
+   option rows visually legible and responsive without replacing selection. */
+.jet-engine-options-page-wrap.mad4b-ws-visual #settings_top
+ .cx-control.mad4b-ws-control.cx-control-checkbox .cx-checkbox-group{
+ display:grid;
+ grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));
+ gap:8px;
+ align-items:stretch;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual #settings_top
+ .cx-control.mad4b-ws-control.cx-control-checkbox .cx-checkbox-item-wrap{
+ display:flex;
+ align-items:center;
+ min-height:38px;
+ padding:10px 12px;
+ margin:0;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual #settings_top
+ .cx-control.mad4b-ws-control.cx-control-checkbox .cx-checkbox-actions{
+ display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual #settings_top
+ .cx-control.mad4b-ws-control > .cx-control__content .cx-control__description{
+ max-width:88ch;
+ margin-top:9px;
+}
+@media(max-width:650px){
+ .jet-engine-options-page-wrap.mad4b-ws-visual #settings_top
+ .cx-control.mad4b-ws-control.cx-control-checkbox .cx-checkbox-group{
+  grid-template-columns:minmax(0,1fr);
+ }
+}

@@ -1,0 +1,112 @@
+/* Discovery page only. Never alter core WordPress controls globally. */
+#mad4b-wp-native-inventory{max-width:100%;min-width:0;box-sizing:border-box}
+#mad4b-wp-native-inventory .mad4b-native-scroll{
+  max-width:100%;overflow-x:auto;overscroll-behavior-inline:contain;
+  scrollbar-gutter:stable;outline-offset:2px
+}
+#mad4b-wp-native-inventory .mad4b-native-scroll:focus-visible{
+  outline:2px solid #2271b1
+}
+#mad4b-wp-native-inventory .mad4b-native-scroll table{
+  min-width:680px;width:100%;border-collapse:collapse;
+}
+#mad4b-wp-native-inventory .mad4b-native-scroll th,
+#mad4b-wp-native-inventory .mad4b-native-scroll td{
+  overflow-wrap:anywhere;vertical-align:top
+}
+#mad4b-wp-native-inventory code{white-space:normal;overflow-wrap:anywhere}
+
+/* Opt-in native Core adapter pilot; only MAD4B's own read-only inventory.
+   Uses WordPress's real inputs/buttons/notices. Not a global admin theme. */
+#mad4b-wp-native-inventory .mad4b-native-pilot{
+  --mad4b-native-border:#d5e5db;--mad4b-native-accent:#287a56;
+  margin:22px 0;padding:20px;border:1px solid var(--mad4b-native-border);
+  border-radius:12px;background:#fff;box-sizing:border-box;max-width:100%;
+}
+#mad4b-wp-native-inventory .mad4b-native-pilot *,
+#mad4b-wp-native-inventory .mad4b-native-pilot *::before,
+#mad4b-wp-native-inventory .mad4b-native-pilot *::after{box-sizing:border-box}
+#mad4b-wp-native-inventory .mad4b-native-pilot-heading h2{
+  margin:0 0 6px;color:#26523f;font-size:18px;line-height:1.35
+}
+#mad4b-wp-native-inventory .mad4b-native-pilot-heading p{
+  color:#526a5f;max-width:80ch;margin:0 0 18px;line-height:1.6
+}
+#mad4b-wp-native-inventory .mad4b-native-pilot-grid{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px
+}
+#mad4b-wp-native-inventory .mad4b-native-pilot-field{
+  padding:14px;background:#f8fbf9;border:1px solid var(--mad4b-native-border);
+  border-radius:9px;display:grid;align-content:start;gap:8px;min-width:0
+}
+#mad4b-wp-native-inventory .mad4b-native-pilot-field>label{
+  display:block;font-weight:650;color:#294c3d
+}
+#mad4b-wp-native-inventory .mad4b-native-pilot-field :is(input.regular-text,select){
+  width:100%;max-width:100%;min-width:0;min-height:39px;border-radius:7px;
+  border-color:#bbd1c1;background:#fff
+}
+#mad4b-wp-native-inventory .mad4b-native-pilot .description{
+  margin:0;color:#607b6d;line-height:1.5
+}
+#mad4b-wp-native-inventory .mad4b-native-pilot-choice{
+  display:flex;gap:10px;align-items:center;min-height:43px;
+  padding:10px 12px;background:#f8fbf9;border:1px solid var(--mad4b-native-border);
+  border-radius:8px;cursor:pointer
+}
+#mad4b-wp-native-inventory .mad4b-native-pilot-choice input{margin:0;flex:none}
+#mad4b-wp-native-inventory .mad4b-native-pilot-actions{
+  display:flex;gap:9px;flex-wrap:wrap;align-items:center;min-width:0
+}
+#mad4b-wp-native-inventory .mad4b-native-pilot-actions .button{
+  border-radius:7px;min-height:37px
+}
+#mad4b-wp-native-inventory .mad4b-native-pilot-actions .button-primary{
+  background:var(--mad4b-native-accent);border-color:var(--mad4b-native-accent)
+}
+#mad4b-wp-native-inventory .mad4b-native-pilot :is(input,select,button):focus-visible{
+  outline:2px solid var(--mad4b-native-accent);outline-offset:2px
+}
+#mad4b-wp-native-inventory #mad4b-native-pilot-feedback{margin:15px 0 0}
+#mad4b-wp-native-inventory #mad4b-native-pilot-feedback[hidden]{display:none}
+@media(max-width:650px){
+  #mad4b-wp-native-inventory .mad4b-native-pilot{padding:14px}
+  #mad4b-wp-native-inventory .mad4b-native-pilot-grid{
+    grid-template-columns:minmax(0,1fr)
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  #mad4b-wp-native-inventory .mad4b-native-pilot *{scroll-behavior:auto}
+}
+
+/* Scoped admin Screen Coverage Registry; native WordPress table retained */
+#mad4b-wp-native-inventory .mad4b-native-screen-registry{
+  margin:24px 0;padding:19px 20px;max-width:100%;min-width:0;
+  background:#fff;border:1px solid #d5e5db;border-radius:12px;box-sizing:border-box
+}
+#mad4b-wp-native-inventory .mad4b-native-screen-registry h2{
+  margin:0 0 8px;color:#275b40;font-size:18px
+}
+#mad4b-wp-native-inventory .mad4b-native-screen-registry p{
+  margin:7px 0 14px;line-height:1.6;color:#536c5e
+}
+#mad4b-wp-native-inventory .mad4b-native-screen-toolbar{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;
+  align-items:end;margin:16px 0 12px
+}
+#mad4b-wp-native-inventory .mad4b-native-screen-toolbar label{
+  display:grid;gap:7px;font-weight:650;color:#335947;min-width:0
+}
+#mad4b-wp-native-inventory .mad4b-native-screen-toolbar :is(input,select){
+  width:100%;max-width:100%;min-height:39px;border-radius:7px;
+  border-color:#c3d9cc;min-width:0
+}
+#mad4b-wp-native-inventory .mad4b-native-screen-toolbar :is(input,select):focus-visible{
+  outline:2px solid #287a56;outline-offset:2px
+}
+#mad4b-wp-native-inventory #mad4b-native-screen-table code{overflow-wrap:anywhere}
+#mad4b-wp-native-inventory #mad4b-native-screen-table tr[hidden]{display:none}
+@media(max-width:650px){
+  #mad4b-wp-native-inventory .mad4b-native-screen-registry{padding:13px}
+  #mad4b-wp-native-inventory .mad4b-native-screen-toolbar{grid-template-columns:minmax(0,1fr)}
+}

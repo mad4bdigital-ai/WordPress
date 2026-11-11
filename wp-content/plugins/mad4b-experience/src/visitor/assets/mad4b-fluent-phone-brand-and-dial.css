@@ -1,0 +1,95 @@
+/* Shared Fluent Forms phone control. All colors use Elementor Kit variables.
+   Form-specific Fluent Forms CSS remains stored and untouched; this is the
+   single shared appearance owner for the country-code control. */
+.fluentform .iti {
+ --mad4b-phone-ink:#fff;
+ --mad4b-phone-surface:var(--e-global-color-secondary,#204c50);
+ --mad4b-phone-hover:var(--e-global-color-primary,#102d40);
+ --mad4b-phone-accent:var(--e-global-color-accent,#b48a46);
+}
+.fluentform .iti .iti__selected-country,
+.fluentform .iti .iti__selected-flag {
+ color:var(--mad4b-phone-ink)!important;
+ background-color:var(--mad4b-phone-surface)!important;
+ border:1px solid transparent!important;
+ border-radius:8px 0 0 8px!important;
+ display:flex;
+ align-items:center!important;
+ justify-content:center;
+ cursor:pointer;
+ transition:background-color .18s ease,border-color .18s ease;
+}
+.fluentform .iti .iti__selected-country-primary {
+ color:var(--mad4b-phone-ink)!important;
+ border-radius:8px 0 0 8px;
+ transition:background-color .18s ease;
+}
+@media(hover:hover) and (pointer:fine) {
+ .fluentform .iti .iti__selected-country:hover,
+ .fluentform .iti .iti__selected-flag:hover,
+ .fluentform .iti .iti__selected-country-primary:hover {
+  background-color:var(--mad4b-phone-hover)!important;
+  border-color:var(--mad4b-phone-accent)!important;
+ }
+}
+.fluentform .iti :is(.iti__selected-country,.iti__selected-flag,.iti__selected-country-primary):focus-visible {
+ outline:2px solid var(--mad4b-phone-accent)!important;
+ outline-offset:2px;
+}
+.fluentform .iti :is(.iti__selected-country,.iti__selected-flag)[aria-expanded="true"] {
+ background-color:var(--mad4b-phone-hover)!important;
+ border-color:var(--mad4b-phone-accent)!important;
+}
+.fluentform .iti .iti__globe,
+.fluentform .iti .iti__selected-country .iti__globe,
+.fluentform .iti .iti__selected-flag .iti__flag.iti__unknown {
+ filter:brightness(0) invert(1)!important;
+ opacity:1!important;
+}
+.fluentform .iti .iti__arrow {
+ border-top-color:#fff!important;
+}
+.fluentform .iti .iti__arrow--up {
+ border-bottom-color:#fff!important;
+}
+.fluentform .iti .iti__selected-dial-code {
+ color:#fff!important;
+ font-weight:600;
+ font-variant-numeric:tabular-nums;
+}
+.fluentform .iti .iti__country-list,
+.fluentform .iti .iti__dropdown-content {
+ color:var(--e-global-color-text,#102d40);
+ background-color:var(--e-global-color-bnav001,#fff);
+}
+.fluentform .iti .iti__country.iti__highlight {
+ background:color-mix(in srgb,var(--e-global-color-secondary,#204c50) 12%,white);
+}
+/* Reuse custom Form #6's submit/choice button visual contract site-wide. */
+.fluentform .ff-el-group .ff-btn-submit,
+.fluentform .ff-el-group.ff_list_buttons .ff-el-form-check.ff_item_selected label {
+ color:#fff!important;
+ background-color:var(--e-global-color-secondary,#204c50)!important;
+ border-color:var(--e-global-color-secondary,#204c50)!important;
+ transition:background-color .18s ease,color .18s ease,border-color .18s ease;
+}
+@media(hover:hover) and (pointer:fine){
+ .fluentform .ff-el-group .ff-btn-submit:hover,
+ .fluentform .ff-el-group.ff_list_buttons .ff-el-form-check.ff_item_selected label:hover {
+  color:var(--e-global-color-accent,#b48a46)!important;
+  background-color:#fff!important;
+  border-color:var(--e-global-color-accent,#b48a46)!important;
+ }
+}
+.fluentform .ff-el-group .ff-btn-submit:focus-visible,
+.fluentform .ff-el-group.ff_list_buttons .ff-el-form-check.ff_item_selected label:focus-within {
+ outline:2px solid var(--e-global-color-accent,#b48a46)!important;
+ outline-offset:2px;
+}
+@media(prefers-reduced-motion:reduce){
+ .fluentform .iti .iti__selected-country,
+ .fluentform .iti .iti__selected-flag,
+ .fluentform .ff-el-group .ff-btn-submit {
+  transition:none!important;
+ }
+}

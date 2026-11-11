@@ -1,0 +1,178 @@
+/* Provider price-source Draft builder. Isolated from JetEngine CX input rules. */
+.mad4b-ws-provider-panel{grid-column:1/-1;min-width:0}
+.mad4b-ws-provider-panel[hidden]{display:none!important}
+.mad4b-ws-provider-panel>h4{font-size:15px;color:#125448;margin:12px 0 5px}
+.mad4b-ws-provider-panel>p{color:#536c65;font-size:12px;line-height:1.6}
+.mad4b-provider-card{border:1px solid #d3e3da;border-radius:8px;background:#fff;
+  padding:13px;margin:13px 0;min-width:0}
+.mad4b-provider-card>p{font-size:12px;color:#536f65;line-height:1.55;margin:5px 0 12px}
+.mad4b-provider-head{display:flex;align-items:center;justify-content:space-between;
+  gap:8px;flex-wrap:wrap;margin-bottom:7px}
+.mad4b-provider-head h5{font-size:13px;margin:0;color:#144f43}
+.mad4b-provider-stack{display:grid;gap:10px}
+.mad4b-provider-item,.mad4b-provider-rule{padding:12px;border-radius:7px;
+  border:1px solid #d7e7dd;background:#f8fbf9;min-width:0}
+.mad4b-provider-item>strong,.mad4b-provider-rule strong{color:#1a5546}
+.mad4b-provider-item>p{font-size:11px;color:#61796c;margin:5px 0 9px}
+.mad4b-provider-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;
+  margin:8px 0;min-width:0}
+.mad4b-provider-field{display:flex;flex-direction:column;gap:4px;min-width:0;
+  font-size:12px;font-weight:600;color:#215449}
+.mad4b-provider-field>input,.mad4b-provider-field>select{
+  display:block;width:100%;max-width:100%;min-width:0;box-sizing:border-box;
+  border:1px solid #b9cec5;border-radius:5px;background:#fff;color:#23483c;
+  padding:7px 8px;font-size:12px;line-height:1.4;font-weight:500
+}
+.mad4b-provider-field>select[multiple]{min-height:80px}
+.mad4b-provider-field>small{font-size:10.5px;color:#59776a;font-weight:400;
+  line-height:1.45}
+.mad4b-provider-switch{display:flex;align-items:center;gap:6px;font-size:12px;
+  color:#214e43;margin:8px 0}
+.mad4b-provider-group,.mad4b-provider-tour,.mad4b-provider-rate{
+  margin-top:9px;padding:10px;border-top:1px solid #d9e7df}
+.mad4b-provider-group[hidden],.mad4b-provider-tour[hidden],
+.mad4b-provider-rate[hidden]{display:none!important}
+.mad4b-provider-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+  margin:13px 0}
+.mad4b-provider-actions small{flex:1;min-width:220px;color:#537165;
+  font-size:11px;line-height:1.5}
+.mad4b-provider-status{padding:9px 11px;border-left:3px solid #25765e;
+  background:#ecf6ef;color:#215847;font-size:12px}
+.mad4b-provider-preview-result{display:grid;gap:6px;padding:8px 0;
+  overflow-wrap:anywhere;font-size:12px}
+.mad4b-provider-preview-result>p{margin:4px 0}
+.mad4b-provider-candidates{display:grid;gap:6px}
+.mad4b-provider-candidate{border:1px solid #d8e8df;background:#f8fcfa;
+  border-radius:5px;padding:9px;display:flex;flex-direction:column;gap:3px}
+.mad4b-provider-candidate small{font-size:11px;color:#557567}
+.mad4b-provider-error{color:#ae3a35!important;font-size:12px;font-weight:600}
+.mad4b-ws-provider-panel .button{min-height:30px}
+.mad4b-ws-provider-panel button:focus-visible,.mad4b-ws-provider-panel input:focus-visible,
+.mad4b-ws-provider-panel select:focus-visible{outline:2px solid #197763;outline-offset:2px}
+@media(max-width:800px){.mad4b-provider-grid{grid-template-columns:1fr}}
+
+
+.mad4b-provider-company{display:grid;gap:3px;border:1px solid #bbdccc;
+  background:#edf7f0;border-radius:7px;padding:10px 11px;margin-bottom:10px}
+.mad4b-provider-company strong{font-size:13px;color:#174f42}
+.mad4b-provider-company span{font-size:11px;color:#537364;line-height:1.5}
+
+
+/* Optional expansion: global native Price Sources are immediately visible
+   without forcing 3 extra policy panels before the existing settings. */
+.mad4b-ws-provider-panel{padding:0 12px;border:1px solid #d2e3da;
+  border-radius:8px;background:#fbfdfc;margin:12px 0}
+.mad4b-ws-provider-heading{cursor:pointer;list-style:disclosure-closed;
+  font-weight:700;font-size:12px;color:#155749;padding:11px 4px;
+  line-height:1.5}
+.mad4b-ws-provider-panel[open]>.mad4b-ws-provider-heading{
+  border-bottom:1px solid #d2e3da;list-style:disclosure-open;
+}
+.mad4b-ws-provider-heading:focus-visible{outline:2px solid #197763;
+  outline-offset:2px}
+
+/* Generic MAD4B Functional Mode: display the vendor's original repeater
+   items as clean cards. Never create alternate input elements. */
+.jet-engine-options-page-wrap .mad4b-source-cards-mode{
+  --mad4b-native-provider-border:#cde3d7;
+  --mad4b-native-provider-surface:#f6fbf8;
+  background:#fff;
+  min-width:0;
+  border-radius:8px;
+}
+.jet-engine-options-page-wrap .mad4b-source-cards-mode .cx-ui-repeater-list,
+.jet-engine-options-page-wrap .mad4b-source-cards-mode .cx-vui-repeater{
+  display:grid;gap:12px;min-width:0;
+}
+.jet-engine-options-page-wrap .mad4b-source-cards-mode .cx-ui-repeater-item,
+.jet-engine-options-page-wrap .mad4b-source-cards-mode .cx-vui-repeater-item{
+  border:1px solid var(--mad4b-native-provider-border);
+  border-radius:8px;background:var(--mad4b-native-provider-surface);
+  padding:12px;box-shadow:none;min-width:0;
+}
+.jet-engine-options-page-wrap .mad4b-source-cards-mode .cx-ui-repeater-item__content,
+.jet-engine-options-page-wrap .mad4b-source-cards-mode .cx-vui-repeater-item__content{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;min-width:0;
+}
+.jet-engine-options-page-wrap .mad4b-source-cards-mode .cx-ui-repeater-item .cx-control,
+.jet-engine-options-page-wrap .mad4b-source-cards-mode .cx-vui-repeater-item .cx-vui-component{
+  max-width:100%;width:100%;min-width:0;box-sizing:border-box;margin:0;
+}
+.jet-engine-options-page-wrap .mad4b-source-cards-mode input,
+.jet-engine-options-page-wrap .mad4b-source-cards-mode textarea,
+.jet-engine-options-page-wrap .mad4b-source-cards-mode select{
+  max-width:100%;min-width:0;box-sizing:border-box;
+}
+.jet-engine-options-page-wrap .mad4b-source-cards-mode .cx-control__title{
+  font-size:12px;color:#1c5446;font-weight:600;
+}
+.jet-engine-options-page-wrap .mad4b-source-cards-mode .cx-control__description{
+  color:#5a7467;font-size:11px;line-height:1.5;
+}
+.mad4b-source-native-hint{display:block;font-size:10.5px;font-weight:400;
+  color:#617a6e;margin-top:4px;line-height:1.5}
+.mad4b-provider-native-jumps{display:flex;align-items:center;
+  gap:9px;flex-wrap:wrap;margin:10px 0}
+.mad4b-source-preview-field{display:flex;flex-direction:column;gap:5px;
+  min-width:0;color:#1e5547;font-size:12px;font-weight:600}
+.mad4b-source-preview-field input,.mad4b-source-preview-field select{
+  width:100%;max-width:100%;min-width:0;box-sizing:border-box;
+  min-height:36px;border:1px solid #b9d5c8;border-radius:5px;
+  padding:7px 8px;background:#fff;color:#1c4338
+}
+.mad4b-ws-provider-panel .mad4b-provider-preview-result{margin-top:10px;}
+.mad4b-ws-provider-panel .mad4b-provider-preview-result .mad4b-provider-candidate{
+  border:1px solid #d7e7df;background:#f8fcfa;border-radius:6px;padding:9px;
+}
+@media(max-width:800px){
+ .jet-engine-options-page-wrap .mad4b-source-cards-mode .cx-ui-repeater-item__content,
+ .jet-engine-options-page-wrap .mad4b-source-cards-mode .cx-vui-repeater-item__content{
+   grid-template-columns:minmax(0,1fr)
+ }
+}
+
+
+/* Actual JetEngine CX native options Repeater DOM:
+   .cx-ui-repeater-item > .cheryr-ui-repeater-content-box
+   (verified from framework/interface-builder/inc/controls/repeater.php).
+   Keep its own drag/copy/delete toolbar outside the grid. */
+.jet-engine-options-page-wrap .mad4b-source-cards-mode .cheryr-ui-repeater-content-box{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
+  min-width:0;
+  margin-top:8px;
+}
+.jet-engine-options-page-wrap .mad4b-source-cards-mode .cx-ui-repeater-item-control{
+  min-width:0;
+  width:100%;
+  box-sizing:border-box;
+}
+.jet-engine-options-page-wrap .mad4b-source-cards-mode .cx-ui-repeater-item-control>.cx-ui-container{
+  min-width:0;width:100%;max-width:100%;
+}
+@media(max-width:800px){
+ .jet-engine-options-page-wrap .mad4b-source-cards-mode .cheryr-ui-repeater-content-box{
+   grid-template-columns:minmax(0,1fr)
+ }
+}
+
+/* Native JetEngine CX accordion contract — provider-card repeaters.
+   The expanded two-column grid must NEVER override cx-ui-repeater-min.
+   Keep JetEngine's own delegated toggle handler and untouched form inputs. */
+.jet-engine-options-page-wrap .mad4b-source-cards-mode
+  .cx-ui-repeater-item.cx-ui-repeater-min > .cheryr-ui-repeater-content-box{
+  display:none!important;
+}
+.jet-engine-options-page-wrap .mad4b-source-cards-mode
+  .cx-ui-repeater-item:not(.cx-ui-repeater-min) > .cheryr-ui-repeater-content-box{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+}
+@media(max-width:800px){
+  .jet-engine-options-page-wrap .mad4b-source-cards-mode
+    .cx-ui-repeater-item:not(.cx-ui-repeater-min) > .cheryr-ui-repeater-content-box{
+    grid-template-columns:minmax(0,1fr);
+  }
+}
