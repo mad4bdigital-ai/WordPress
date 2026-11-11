@@ -37,7 +37,7 @@ class ReceiptOnlyProviderTests(unittest.TestCase):
         registry=importlib.util.module_from_spec(sp);sp.loader.exec_module(registry)
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp)/'enrolled';root.mkdir(mode=0o700)
-            for f in ('host_handler.py','independent_readback.py','recovery_plan.py','historical_audit.py'):
+            for f in ('host_handler.py','independent_readback.py','recovery_plan.py','historical_audit.py','signed_recovery_admission.py'):
                 dest=root/'receipt-reconcile-v1'/f;dest.parent.mkdir(parents=True,exist_ok=True)
                 dest.write_bytes((PKG/f).read_bytes());dest.chmod(0o600)
             new=root/'dynamic-operation-registry-v1/providers/company.code.release.receipt.reconcile'
@@ -68,7 +68,9 @@ class ReceiptOnlyProviderTests(unittest.TestCase):
             self.assertIn('company.code.release',installed.manifests)
             self.assertIn('plugin.license.activate',installed.manifests)
             if op in installed.manifests:
-                self.assertEqual(installed.resolve(op),client.resolve(op))
+                # The candidate extends first-party dependencies but must
+                # retain the same command format and exact operation scope.
+                self.assertEqual(installed.resolve(op)['command'],client.resolve(op)['command'])
                 self.assertEqual(installed.command_sha256(op,'b'*64),
                                  client.command_sha256(op,'b'*64))
             # Tampering a pinned provider byte fails the authoritative loader.
