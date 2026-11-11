@@ -4,6 +4,7 @@
  * operation mapping and no operation guessed from ownership or names.
  */
 defined('ABSPATH') || exit;
+require_once __DIR__ . '/class-mad4b-company-repair-resource-resolver.php';
 if(!class_exists('MAD4B_Company_Repair_Capability_Discovery_V1',false)) {
 final class MAD4B_Company_Repair_Capability_Discovery_V1 {
     const CONTRACT='mad4b.company-repair.provider-capability.v1';
@@ -35,6 +36,20 @@ final class MAD4B_Company_Repair_Capability_Discovery_V1 {
                 ||($support['mutation_authorized']??true)!==false
                 ||($support['independent_313_required']??false)!==true
                 ||($support['rollback_via_new_original_job']??false)!==true
+                ||($support['resource_resolver_contract']??null)!==
+                    MAD4B_Company_Repair_Resource_Resolver_V2::CONTRACT
+                ||($support['resource_resolution_read_only']??null)!==true
+                ||!is_array($support['resource_resolver']??null)
+                ||array_keys($support['resource_resolver'])!==[0,1]
+                ||!is_string($support['resource_resolver'][0]??null)
+                ||!is_string($support['resource_resolver'][1]??null)
+                ||!is_array($support['resource_types']??null)
+                ||count($support['resource_types'])===0
+                ||count($support['resource_types'])>32
+                ||count(array_unique($support['resource_types']))!==
+                   count($support['resource_types'])
+                ||count(array_filter($support['resource_types'],static fn($type)=>
+                    !is_string($type)||!preg_match('/^[a-z][a-z0-9._-]{2,63}$/D',$type)))>0
                 ||!is_array($support['supported_checks']??null)
                 ||count($support['supported_checks'])>100
                 ||count(array_unique($support['supported_checks']))!==
@@ -56,6 +71,10 @@ final class MAD4B_Company_Repair_Capability_Discovery_V1 {
                 'target_scope'=>$p['target_scope'],'command_format'=>$p['command_format'],
                 'supported_checks'=>$support['supported_checks'],
                 'resource_scope'=>$support['resource_scope'],
+                'resource_resolver_contract'=>$support['resource_resolver_contract'],
+                'resource_types'=>$support['resource_types'],
+                'resource_resolver_id'=>implode('::',$support['resource_resolver']),
+                'resource_resolution_read_only'=>true,
                 'requires_original_305'=>true,'requires_fresh_signed_312'=>true,
                 'requires_exact_313'=>true,'writes_allowed_by_discovery'=>false,
             ];
@@ -102,6 +121,14 @@ final class MAD4B_Company_Repair_Capability_Discovery_V1 {
                 $readback=call_user_func($profile['readback']);
                 if(!is_array($readback))continue;
             }catch(Throwable $e){continue;}
+            // The root-owned readback file must own the resolver as well.
+            // A config option or a different plugin may not nominate one.
+            $support=$readback['repair_support']??null;
+            if(is_array($support)
+                &&is_array($support['resource_resolver']??null)
+                &&!MAD4B_Company_Repair_Resource_Resolver_V2::trusted_provider_resolver(
+                    $profile,$support['resource_resolver']))
+                $support=null;
             $profiles[]=[
                 'operation'=>$op,
                 'provider'=>$profile['provider']??null,
@@ -111,7 +138,7 @@ final class MAD4B_Company_Repair_Capability_Discovery_V1 {
                 'evidence_contract'=>$profile['evidence_contract']??null,
                 'provider_readback_contract'=>$readback['contract']??null,
                 'registry_source_trusted'=>true,
-                'repair_support'=>$readback['repair_support']??null,
+                'repair_support'=>$support,
             ];
         }
         return self::inspect_profiles($check,$profiles);

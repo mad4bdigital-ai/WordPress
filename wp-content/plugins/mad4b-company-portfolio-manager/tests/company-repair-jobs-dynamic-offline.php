@@ -23,6 +23,10 @@ $profile=[
   'resource_scope'=>'exact_site_resource',
   'mutation_authorized'=>false,'independent_313_required'=>true,
   'rollback_via_new_original_job'=>true,
+  'resource_resolver_contract'=>'mad4b.company-repair.resource-resolver.v2',
+  'resource_resolution_read_only'=>true,
+  'resource_resolver'=>['TrustedTestSource','resolve_resource'],
+  'resource_types'=>['wordpress.post'],
   'supported_checks'=>[$check],
  ],
 ];
@@ -61,6 +65,11 @@ $tests=[
  'duplicated_checks'=>static function(&$p){$p['repair_support']['supported_checks']=['new_capability_check','new_capability_check'];},
  'bad_check_text'=>static function(&$p){$p['repair_support']['supported_checks']=['../new_capability_check'];},
  'wrong_capability_contract'=>static function(&$p){$p['repair_support']['contract']='made.up.contract';},
+ 'missing_resolver_contract'=>static function(&$p){unset($p['repair_support']['resource_resolver_contract']);},
+ 'missing_resolver_method'=>static function(&$p){unset($p['repair_support']['resource_resolver']);},
+ 'wrong_resource_type'=>static function(&$p){$p['repair_support']['resource_types']=['../etc'];},
+ 'resolver_claims_write'=>static function(&$p){$p['repair_support']['resource_resolution_read_only']=false;},
+ 'duplicate_resource_types'=>static function(&$p){$p['repair_support']['resource_types']=['wordpress.post','wordpress.post'];},
 ];
 foreach($tests as $name=>$tamper) {
  $p=$profile;$tamper($p);

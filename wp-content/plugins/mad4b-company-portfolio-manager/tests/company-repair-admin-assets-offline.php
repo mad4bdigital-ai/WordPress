@@ -36,11 +36,17 @@ $js=$GLOBALS['TEST_JS']??'';
 $meta=[
  'screen_visible'=>str_contains($html,'Company Repair Jobs'),
  'queue_button'=>str_contains($html,'mad4b-repair-queue-button'),
+ 'resource_button'=>str_contains($html,'mad4b-repair-resource-button'),
+ 'resource_selector_labeled'=>str_contains($html,'mad4b-repair-resource-type')
+      &&str_contains($html,'mad4b-repair-resource-id'),
  'form_labeled'=>str_contains($html,'mad4b-repair-company')
                   &&str_contains($html,'mad4b-repair-environment'),
  'incident_count'=>substr_count($html,'<option value=')-2,
  'javascript_has_dynamic_queue'=>str_contains($js,'queueUrl'),
  'javascript_has_dynamic_plan'=>str_contains($js,'u.searchParams.set("incident"'),
+ 'javascript_has_resource_preview'=>str_contains($js,'resourceUrl')
+       &&str_contains($js,'u.searchParams.set("resource_type"')
+       &&str_contains($js,'u.searchParams.set("resource_id"'),
  'javascript_uses_no_unsafe_html'=>!str_contains($js,'innerHTML'),
  'javascript_bytes'=>strlen($js),
 ];

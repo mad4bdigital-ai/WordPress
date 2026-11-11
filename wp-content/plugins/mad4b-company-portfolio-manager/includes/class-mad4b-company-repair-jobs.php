@@ -8,11 +8,14 @@
  */
 defined('ABSPATH') || exit;
 require_once __DIR__.'/class-mad4b-company-repair-job-contract.php';
+require_once __DIR__.'/class-mad4b-company-repair-resource-resolver.php';
 require_once __DIR__.'/class-mad4b-company-repair-capability-discovery.php';
 if (!class_exists('MAD4B_Company_Reconcile_Repair_Jobs_V1',false)) {
 final class MAD4B_Company_Reconcile_Repair_Jobs_V1 {
     public const PREFIX='mad4b_company_repair_job_v1_';
     public const CONTRACT='mad4b.company-reconcile.repair-jobs-orchestrator.v1';
+    public const RESOURCE_INDEX_PREFIX='mad4b_company_repair_children_v1_';
+    public const MAX_CHILDREN_PER_INCIDENT=64;
     private static function deny(string $reason,int $status=409):WP_Error {
         return new WP_Error('mad4b_company_repair_'.$reason,
             'Company Repair Job blocked: '.$reason,['status'=>$status]);
@@ -127,6 +130,241 @@ final class MAD4B_Company_Reconcile_Repair_Jobs_V1 {
             'mutation_performed'=>false,
         ];
         return $base;
+    }
+    /** Resolve a specific company WordPress resource, never an incident alias. */
+    public static function resource_preview(string $company,string $environment,
+          string $incident,string $resourceType,string $resourceId):array|WP_Error {
+        if(!self::read_owner())return self::deny('admin_only',403);
+        $plan=self::plan($company,$environment,$incident);
+        if(is_wp_error($plan))return $plan;
+        $selector=['resource_type'=>$resourceType,'resource_id'=>$resourceId];
+        if(!MAD4B_Company_Repair_Resource_Resolver_V2::selector_valid($selector))
+            return self::deny('invalid_resource_selector',422);
+        $candidates=$plan['registered_provider_candidates'];
+        $discovery=[
+            'state'=>$plan['provider_resolution_state'],
+            'selected'=>count($candidates)===1
+                 &&$plan['provider_resolution_state']==='EXACT_CAPABILITY_DISCOVERED'
+                 ?$candidates[0]:null,
+        ];
+        $scope=[
+            'company_code'=>$plan['company_code'],
+            'environment'=>$plan['environment'],
+            'site_uuid'=>$plan['site_uuid'],
+            'canonical_origin'=>$plan['canonical_origin'],
+            'source_plan_sha256'=>$plan['source_plan_sha256'],
+            'incident_code'=>$plan['incident_code'],
+            'check'=>$plan['target_check'],
+        ];
+        $out=MAD4B_Company_Repair_Resource_Resolver_V2::resolve(
+            $scope,$discovery,$selector);
+        $scopeOwner=$plan['ownership_scope']??null;
+        $observedOwner=$out['ownership_scope']??null;
+        if(($out['state']??null)==='EXACT_RESOURCE_OBSERVED_UNSIGNED'
+            &&($scopeOwner!=='mixed'&&$scopeOwner!==$observedOwner)) {
+            // A provider is not allowed to reclassify tenant-owned or
+            // site-generated values as portable source definitions.
+            return [
+                'contract'=>MAD4B_Company_Repair_Resource_Resolver_V2::CONTRACT,
+                'state'=>'RESOURCE_RESOLUTION_HOLD',
+                'reason'=>'PROVIDER_RESOURCE_OWNERSHIP_CONFLICT_WITH_SOURCE',
+                'company_code'=>$company,'environment'=>$environment,
+                'site_uuid'=>$plan['site_uuid'],
+                'canonical_origin'=>$plan['canonical_origin'],
+                'resource_observed'=>false,'resource_manifest_signed'=>false,
+                'original_313_signed'=>false,'repair_execution_authorized'=>false,
+                'target_mutated'=>false,'new_native_job_created'=>false
+            ];
+        }
+        // This preview is an authenticated, *unsigned* source observation.
+        // No before/after data is copied to customer-facing pages.
+        $out['incident_code']=$incident;
+        $out['target_check']=$plan['target_check'];
+        $out['source_policy_owned_data_preserved']=true;
+        $out['new_native_job_created']=false;
+        $out['resource_job_persisted']=false;
+        return $out;
+    }
+
+    /**
+     * Persist a unique exact-resource child journal after an authenticated
+     * provider readback. No WPCLI target command is submitted here.
+     */
+    public static function create_resource(string $company,string $environment,
+         string $incident,string $resourceType,string $resourceId,
+         string $expectedPlanHash):array|WP_Error {
+        if(!self::cli_owner())return self::deny('cli_owner_required',403);
+        $plan=self::plan($company,$environment,$incident);
+        if(is_wp_error($plan))return $plan;
+        if(!MAD4B_Company_Repair_Job_Contract_V1::sha($expectedPlanHash)
+           ||!hash_equals($plan['source_plan_sha256'],$expectedPlanHash))
+            return self::deny('source_plan_changed');
+        $observation=self::resource_preview($company,$environment,$incident,
+            $resourceType,$resourceId);
+        if(is_wp_error($observation))return $observation;
+        if(($observation['state']??null)!=='EXACT_RESOURCE_OBSERVED_UNSIGNED'
+           ||($observation['resource_observed']??false)!==true
+           ||($observation['operation']??null)!==($plan['native_operation']??null)
+           ||($observation['provider']??null)!==
+             ($plan['registered_provider_candidates'][0]['provider']??null)
+           ||($observation['source_plan_sha256']??null)!==$expectedPlanHash)
+            return self::deny('resource_resolver_evidence_not_eligible');
+        $scope=[
+            'company_code'=>$company,'environment'=>$environment,
+            'site_uuid'=>$plan['site_uuid'],
+            'canonical_origin'=>$plan['canonical_origin'],
+            'incident_code'=>$incident,
+            'resource_key'=>$observation['resource_key'],
+            'source_plan_sha256'=>$plan['source_plan_sha256']
+        ];
+        $id=MAD4B_Company_Repair_Job_Contract_V1::key($scope);
+        if($id==='')return self::deny('exact_resource_job_id_invalid');
+        $lock=self::lock($id);
+        if(!$lock)return self::deny('resource_journal_lease_busy');
+        $parentLock=self::lock(self::index_parent_id($scope));
+        if(!$parentLock) {
+            self::unlock($lock);
+            return self::deny('resource_index_lease_busy');
+        }
+        try{
+            $index=self::child_index_read($scope);
+            if(is_wp_error($index))return $index;
+            if(count($index['ids'])>=self::MAX_CHILDREN_PER_INCIDENT
+               &&!in_array($id,$index['ids'],true))
+                return self::deny('resource_child_index_capacity_exceeded');
+            $old=get_option(self::job_key($id),false);
+            if($old!==false){
+                $saved=self::raw($id);if(is_wp_error($saved))return $saved;
+                if(($saved['resource_resolution_sha256']??null)!==
+                    $observation['resource_resolution_sha256']
+                    ||($saved['provider_resolution_sha256']??null)!==
+                    $plan['provider_resolution_sha256'])
+                    return self::deny('previous_resource_observation_or_provider_changed');
+                if(!self::child_index_append($scope,$id))
+                    return self::deny('existing_resource_index_update_failed');
+                return [
+                    'state'=>'EXACT_RESOURCE_JOB_ALREADY_EXISTS',
+                    'repair_id'=>$id,'revision'=>$saved['revision'],
+                    'job_state'=>$saved['state'],
+                    'duplicate_original_job_created'=>false
+                ];
+            }
+            $binding=[
+                'resource_type'=>$observation['resource_type'],
+                'resource_id'=>$observation['resource_id'],
+                'resource_resolution_sha256'=>$observation['resource_resolution_sha256'],
+                'resolved_resource_before_sha256'=>$observation['before_sha256'],
+                'resolved_resource_manifest_sha256'=>$observation['resource_manifest_sha256'],
+                'resolved_company_preservation_sha256'=>$observation['company_preservation_sha256'],
+                'resolved_resource_observed_epoch'=>$observation['observed_epoch']
+            ];
+            $job=MAD4B_Company_Repair_Job_Contract_V1::fresh($scope,time(),$binding);
+            if(!$job)return self::deny('resource_binding_immutable_job_invalid');
+            $job['target_check']=$plan['target_check'];
+            $job['ownership_scope']=$observation['ownership_scope'];
+            $job['evidence_lane']=$plan['evidence_lane'];
+            $job['native_operation']=$plan['native_operation'];
+            $job['provider_resolution_sha256']=$plan['provider_resolution_sha256'];
+            $job['required_dependencies']=$plan['required_dependency_checks'];
+            $job['acceptance']=$plan['acceptance'];
+            $job['owner']=$plan['owner'];
+            $job['repair_strategy']=$plan['repair_strategy'];
+            $job['immutable_plan_sha256']=hash('sha256',
+                wp_json_encode([$plan,$observation],
+                    JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
+            $job['immutable_descriptor_sha256']=
+                MAD4B_Company_Repair_Job_Contract_V1::descriptor($job);
+            if(!MAD4B_Company_Repair_Job_Contract_V1::valid_chain($job))
+                return self::deny('resource_job_integrity_validation_failed');
+            if(!add_option(self::job_key($id),$job,'',false))
+                return self::deny('resource_job_insert_conflict');
+            $stored=self::raw($id);
+            if(is_wp_error($stored)
+               ||($stored['immutable_resolved_binding_sha256']??null)!==
+                   $job['immutable_resolved_binding_sha256'])
+                return self::deny('resource_job_durable_readback_failed');
+            if(!self::child_index_append($scope,$id))
+                return self::deny('resource_journal_saved_index_repair_required');
+            return [
+                'state'=>'EXACT_RESOURCE_JOB_PERSISTED_AWAITING_BASELINE',
+                'repair_id'=>$id,'revision'=>0,
+                'company_code'=>$company,'environment'=>$environment,
+                'resource_key'=>$observation['resource_key'],
+                'source_plan_sha256'=>$expectedPlanHash,
+                'resource_resolution_sha256'=>$observation['resource_resolution_sha256'],
+                'resource_evidence_signed'=>false,
+                'new_native_305_submitted'=>false,'target_mutated'=>false
+            ];
+        }finally{self::unlock($parentLock);self::unlock($lock);}
+    }
+    private static function index_parent_id(array $scope):string {
+        $basis=$scope;
+        $basis['resource_key']='incident:'.$scope['incident_code'];
+        return MAD4B_Company_Repair_Job_Contract_V1::key($basis);
+    }
+    private static function child_index_digest(array $row):string {
+        $fields=['contract','company_code','environment','site_uuid',
+            'canonical_origin','incident_code','source_plan_sha256','ids'];
+        $data=[];
+        foreach($fields as $field) {
+            if(!array_key_exists($field,$row))return '';
+            $data[$field]=$row[$field];
+        }
+        $encoded=wp_json_encode($data,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
+        return is_string($encoded)?hash('sha256',$encoded):'';
+    }
+    private static function child_index_read(array $scope):array|WP_Error {
+        $parent=self::index_parent_id($scope);
+        if($parent==='')return self::deny('child_index_scope_invalid');
+        $index=get_option(self::RESOURCE_INDEX_PREFIX.$parent,false);
+        if($index===false) {
+            $empty=[
+                'contract'=>self::CONTRACT.'.children-index',
+                'company_code'=>$scope['company_code'],
+                'environment'=>$scope['environment'],
+                'site_uuid'=>$scope['site_uuid'],
+                'canonical_origin'=>$scope['canonical_origin'],
+                'incident_code'=>$scope['incident_code'],
+                'source_plan_sha256'=>$scope['source_plan_sha256'],
+                'ids'=>[]
+            ];
+            $empty['index_sha256']=self::child_index_digest($empty);
+            return $empty;
+        }
+        if(!is_array($index)||($index['contract']??null)!==
+             self::CONTRACT.'.children-index')return self::deny('child_index_corrupt');
+        foreach(['company_code','environment','site_uuid','canonical_origin',
+                  'incident_code','source_plan_sha256'] as $k)
+            if(($index[$k]??null)!==($scope[$k]??null))
+                return self::deny('child_index_tenant_or_plan_drift');
+        $ids=$index['ids']??null;
+        if(!is_array($ids)||count($ids)>self::MAX_CHILDREN_PER_INCIDENT
+            ||count(array_unique($ids))!==count($ids))return self::deny('child_index_overflow');
+        foreach($ids as $id)
+            if(!is_string($id)||!preg_match('/^[a-f0-9]{40}$/D',$id))
+                return self::deny('child_index_invalid_id');
+        if(!MAD4B_Company_Repair_Job_Contract_V1::sha($index['index_sha256']??null)
+            ||!hash_equals($index['index_sha256'],self::child_index_digest($index)))
+            return self::deny('child_index_digest_mismatch');
+        return $index;
+    }
+    private static function child_index_append(array $scope,string $id):bool {
+        $row=self::child_index_read($scope);
+        if(is_wp_error($row))return false;
+        if(in_array($id,$row['ids'],true))return true;
+        if(count($row['ids'])>=self::MAX_CHILDREN_PER_INCIDENT)return false;
+        $parent=self::index_parent_id($scope);
+        $key=self::RESOURCE_INDEX_PREFIX.$parent;
+        $old=get_option($key,false);
+        $row['ids'][]=$id;
+        $row['index_sha256']=self::child_index_digest($row);
+        $saved=$old===false
+            ?add_option($key,$row,'',false)
+            :update_option($key,$row,false);
+        $readback=self::child_index_read($scope);
+        return ($saved||$readback===$row)
+            &&!is_wp_error($readback)
+            &&in_array($id,$readback['ids'],true);
     }
     private static function raw(string $id):array|WP_Error {
         if(!preg_match('/^[a-f0-9]{40}$/D',$id))return self::deny('invalid_job_id',422);
@@ -251,6 +489,24 @@ final class MAD4B_Company_Reconcile_Repair_Jobs_V1 {
                 $job['immutable_descriptor_sha256']??null))
                 return self::deny('legacy_job_descriptor_needs_reconciliation');
             $now=time();
+            if(!str_starts_with((string)$job['resource_key'],'incident:')) {
+                // New signed 305 work may start long after this journal was
+                // created. Re-resolve exact target bytes instead of trusting
+                // a stale initial timestamp or silently changing the baseline.
+                $fresh=self::resource_preview($job['company_code'],$job['environment'],
+                    $job['incident_code'],$job['resource_type'],$job['resource_id']);
+                if(is_wp_error($fresh)
+                   ||($fresh['state']??null)!=='EXACT_RESOURCE_OBSERVED_UNSIGNED'
+                   ||($fresh['resource_resolution_sha256']??null)!==
+                       ($job['resource_resolution_sha256']??null)
+                   ||($fresh['company_preservation_sha256']??null)!==
+                       ($job['resolved_company_preservation_sha256']??null)
+                   ||($baseline['before_sha256']??null)!==
+                       ($job['resolved_resource_before_sha256']??null)
+                   ||($baseline['resource_manifest_sha256']??null)!==
+                       ($job['resolved_resource_manifest_sha256']??null))
+                    return self::deny('fresh_exact_resource_or_baseline_mismatch');
+            }
             if(!MAD4B_Company_Repair_Job_Contract_V1::baseline_valid($baseline,$job,$now))
                 return self::deny('baseline_identity_age_or_digest_invalid');
             $clean=array_intersect_key($baseline,array_flip([
@@ -290,7 +546,20 @@ final class MAD4B_Company_Reconcile_Repair_Jobs_V1 {
         // Original preflights until an exact signed resource resolution exists.
         $resourceBound=!str_starts_with((string)($job['resource_key']??''),'incident:')
             &&MAD4B_Company_Repair_Job_Contract_V1::sha(
-                $job['exact_resource_resolver_receipt_sha256']??null);
+                $job['resource_resolution_sha256']??null)
+            &&MAD4B_Company_Repair_Job_Contract_V1::sha(
+                $job['immutable_resolved_binding_sha256']??null)
+            &&MAD4B_Company_Repair_Job_Contract_V1::valid_chain($job);
+        if($resourceBound &&$matched) {
+            $fresh=self::resource_preview($job['company_code'],$job['environment'],
+                $job['incident_code'],$job['resource_type'],$job['resource_id']);
+            $resourceBound=!is_wp_error($fresh)
+                &&($fresh['state']??null)==='EXACT_RESOURCE_OBSERVED_UNSIGNED'
+                &&($fresh['resource_resolution_sha256']??null)===
+                    ($job['resource_resolution_sha256']??null)
+                &&($fresh['company_preservation_sha256']??null)===
+                    ($job['resolved_company_preservation_sha256']??null);
+        }
         $status=null;
         if($matched&&$resourceBound&&is_string($op)
             &&class_exists('MAD4B_Company_Native_Write_Executor_V1',false)) {
@@ -324,15 +593,21 @@ final class MAD4B_Company_Reconcile_Repair_Jobs_V1 {
             'original_provider_preflight_ready'=>$ready,
             'original_provider_state'=>$resourceBound
                 ?($status['state']??'NOT_AVAILABLE')
-                :'EXACT_RESOURCE_RESOLVER_REQUIRED',
+                :(str_starts_with((string)($job['resource_key']??''),'incident:')
+                    ?'EXACT_RESOURCE_RESOLVER_REQUIRED'
+                    :'EXACT_RESOURCE_TARGET_DRIFT_HOLD'),
             'original_provider_reason'=>!$resourceBound
-                ?'EXACT_RESOURCE_RESOLVER_AND_RESOURCE_MANIFEST_REQUIRED'
+                ?(str_starts_with((string)($job['resource_key']??''),'incident:')
+                    ?'EXACT_RESOURCE_RESOLVER_AND_RESOURCE_MANIFEST_REQUIRED'
+                    :'EXACT_RESOURCE_REOBSERVATION_CHANGED_OR_FAILED')
                 :($status['reason']??($op===null
                 ?$current['provider_resolution_state']:'SIGNATURE_OR_TRANSPORT_UNVERIFIED')),
             'baseline_recorded'=>is_array($job['baseline']??null),
             'resource_binding_state'=>$resourceBound
                 ?'EXACT_SOURCE_PROVIDER_RESOURCE_EVIDENCE_PRESENT'
-                :'LOGICAL_INCIDENT_ONLY__EXACT_RESOURCE_RESOLVER_REQUIRED',
+                :(str_starts_with((string)($job['resource_key']??''),'incident:')
+                   ?'LOGICAL_INCIDENT_ONLY__EXACT_RESOURCE_RESOLVER_REQUIRED'
+                   :'EXACT_RESOURCE_TARGET_CHANGED_OR_READBACK_UNAVAILABLE'),
             'baseline_independently_signed'=>false,
             'original_305_submission_performed'=>false,
             'can_submit_via_this_module'=>false,
@@ -595,6 +870,7 @@ final class MAD4B_Company_Reconcile_Repair_Jobs_V1 {
             'source_plan_sha256'=>$plan['work_plan_sha256'],
         ];
         $rows=[];$counts=['NOT_CREATED'=>0,'JOURNAL_INTEGRITY_HOLD'=>0,'PERSISTED'=>0];
+        $resourceChildTotal=0;$resourceChildHolds=0;
         $byCheck=[];
         foreach((array)($plan['depth_audit']['incident_probe_mapping']??[]) as $map)
             if(is_array($map)&&is_string($map['code']??null))
@@ -628,6 +904,27 @@ final class MAD4B_Company_Reconcile_Repair_Jobs_V1 {
                 $signed=false;
             }
             $counts[$storage]++;
+            $childScope=$scope;
+            $childScope['resource_key']='incident:'.$code;
+            $children=self::child_index_read($childScope);
+            $childIds=is_wp_error($children)?[]:$children['ids'];
+            $childStates=[];
+            $childIndexState=is_wp_error($children)?'CHILD_INDEX_INTEGRITY_HOLD':'VALID';
+            if($childIndexState!=='VALID')$resourceChildHolds++;
+            foreach($childIds as $childId){
+                $child=self::raw($childId);
+                $valid=!is_wp_error($child)
+                    &&($child['company_code']??null)===$company
+                    &&($child['environment']??null)===$environment
+                    &&($child['site_uuid']??null)===$target['site_uuid']
+                    &&($child['canonical_origin']??null)===$target['canonical_origin']
+                    &&($child['source_plan_sha256']??null)===$plan['work_plan_sha256']
+                    &&($child['incident_code']??null)===$code
+                    &&!str_starts_with((string)($child['resource_key']??''),'incident:');
+                if(!$valid){$childIndexState='CHILD_INDEX_INTEGRITY_HOLD';$resourceChildHolds++;break;}
+                $childStates[$child['state']]=($childStates[$child['state']]??0)+1;
+                $resourceChildTotal++;
+            }
             $rows[]=[
                 'incident_code'=>$code,
                 'priority'=>$item['priority']??'P1',
@@ -637,6 +934,9 @@ final class MAD4B_Company_Reconcile_Repair_Jobs_V1 {
                 'revision'=>$revision,
                 'resource_binding'=>'LOGICAL_INCIDENT_ONLY',
                 'provider_capability'=>'INSPECT_ON_DEMAND',
+                'resource_child_count'=>count($childIds),
+                'resource_child_states'=>$childStates,
+                'resource_child_index_state'=>$childIndexState,
                 'original_313_independent_verified'=>$signed,
                 'autonomous_execution_authorized'=>false,
             ];
@@ -648,6 +948,8 @@ final class MAD4B_Company_Reconcile_Repair_Jobs_V1 {
             'site_uuid'=>$target['site_uuid'],
             'source_plan_sha256'=>$plan['work_plan_sha256'],
             'incident_count'=>count($rows),
+            'resource_child_journals'=>$resourceChildTotal,
+            'resource_child_integrity_holds'=>$resourceChildHolds,
             'counts'=>$counts,'items'=>$rows,
             'historical_other_plan_journals_included'=>false,
             'provider_capabilities_discovered_only_on_detail_request'=>true,
@@ -674,8 +976,24 @@ final class MAD4B_Company_Reconcile_Repair_Jobs_V1 {
         $response->header('Cache-Control','private, no-store, max-age=0');
         return $response;
     }
+    public static function rest_resource_preview(WP_REST_Request $request) {
+        $result=self::resource_preview(
+            (string)$request->get_param('company'),
+            (string)$request->get_param('environment'),
+            (string)$request->get_param('incident'),
+            (string)$request->get_param('resource_type'),
+            (string)$request->get_param('resource_id'));
+        if(is_wp_error($result))return $result;
+        $response=rest_ensure_response($result);
+        $response->header('Cache-Control','private, no-store, max-age=0');
+        return $response;
+    }
     public static function routes():void {
         if(!self::central())return;
+        register_rest_route('mad4b/v1','/company-repair/resource-preview',[
+            'methods'=>'GET','permission_callback'=>static fn()=>self::read_owner(),
+            'callback'=>[__CLASS__,'rest_resource_preview']
+        ]);
         register_rest_route('mad4b/v1','/company-repair/queue',[
             'methods'=>'GET','permission_callback'=>static fn()=>self::read_owner(),
             'callback'=>[__CLASS__,'rest_queue']
@@ -699,7 +1017,7 @@ final class MAD4B_Company_Reconcile_Repair_Jobs_V1 {
         if(!self::cli_owner())WP_CLI::error('CENTRAL_REPAIR_CLI_OWNER_REQUIRED');
         $command=$args[0]??'';
         $allowed=['company','environment','incident','plan-sha','repair-id',
-            'baseline-path','original-job','command-sha'];
+            'baseline-path','original-job','command-sha','resource-type','resource-id'];
         if(count($args)!==1||array_diff(array_keys($assoc),$allowed))
             WP_CLI::error('UNSUPPORTED_REPAIR_JOB_ARGUMENTS');
         $company=(string)($assoc['company']??'');
@@ -709,6 +1027,13 @@ final class MAD4B_Company_Reconcile_Repair_Jobs_V1 {
         $value=match($command) {
             'plan'=>self::plan($company,$env,$incident),
             'create'=>self::create($company,$env,$incident,
+                (string)($assoc['plan-sha']??'')),
+            'resource-preview'=>self::resource_preview($company,$env,$incident,
+                (string)($assoc['resource-type']??''),
+                (string)($assoc['resource-id']??'')),
+            'create-resource'=>self::create_resource($company,$env,$incident,
+                (string)($assoc['resource-type']??''),
+                (string)($assoc['resource-id']??''),
                 (string)($assoc['plan-sha']??'')),
             'status'=>self::status($id),
             'preflight'=>self::preflight($id),
@@ -767,7 +1092,15 @@ final class MAD4B_Company_Reconcile_Repair_Jobs_V1 {
         echo '</select><button type="submit" class="button button-primary">'
             .'Inspect dynamic repair capabilities</button>'
             .'<button type="button" id="mad4b-repair-queue-button" class="button">'
-            .'View all incident states</button></form>'
+            .'View all incident states</button>'
+            .'<label for="mad4b-repair-resource-type">Resource type</label>'
+            .'<input id="mad4b-repair-resource-type" name="resource_type"'
+            .' placeholder="wordpress.post" autocomplete="off">'
+            .'<label for="mad4b-repair-resource-id">Resource ID</label>'
+            .'<input id="mad4b-repair-resource-id" name="resource_id"'
+            .' placeholder="123" autocomplete="off">'
+            .'<button type="button" id="mad4b-repair-resource-button" class="button">'
+            .'Inspect exact resource (read-only)</button></form>'
             .'<p role="status" aria-live="polite" id="mad4b-repair-status">Not inspected.</p>'
             .'<div id="mad4b-repair-result"></div>'
             .'<p><strong>No job creation in this screen.</strong> Creating a durable '
@@ -778,6 +1111,7 @@ final class MAD4B_Company_Reconcile_Repair_Jobs_V1 {
         if(!is_admin()||!current_user_can('manage_options')
            ||sanitize_key((string)($_GET['page']??''))!=='mad4b-company-repair-jobs')return;
         $config=['url'=>rest_url('mad4b/v1/company-repair/plan'),
+            'resourceUrl'=>rest_url('mad4b/v1/company-repair/resource-preview'),
             'queueUrl'=>rest_url('mad4b/v1/company-repair/queue'),
             'nonce'=>wp_create_nonce('wp_rest')];
         $js='(()=>{const f=document.getElementById("mad4b-repair-plan");'
@@ -785,6 +1119,27 @@ final class MAD4B_Company_Reconcile_Repair_Jobs_V1 {
             .'const output=document.getElementById("mad4b-repair-result");'
             .'if(!f||!status||!output)return;const c='.wp_json_encode($config).';'
             .'const qb=document.getElementById("mad4b-repair-queue-button");'
+            .'const rb=document.getElementById("mad4b-repair-resource-button");'
+            .'if(rb)rb.addEventListener("click",async()=>{output.replaceChildren();rb.disabled=true;'
+            .'status.textContent="Resolving exact site resource (read-only)…";'
+            .'try{const u=new URL(c.resourceUrl);'
+            .'u.searchParams.set("company",f.elements.company.value.trim().toLowerCase());'
+            .'u.searchParams.set("environment",f.elements.environment.value);'
+            .'u.searchParams.set("incident",f.elements.incident.value);'
+            .'u.searchParams.set("resource_type",f.elements.resource_type.value.trim());'
+            .'u.searchParams.set("resource_id",f.elements.resource_id.value.trim());'
+            .'const res=await fetch(u.toString(),{cache:"no-store",credentials:"same-origin",'
+            .'headers:{"X-WP-Nonce":c.nonce}});'
+            .'if(!res.ok)throw new Error("not_admitted");const d=await res.json();'
+            .'status.textContent="Resource: "+String(d.state)'
+            .'+" · Signed Original313: NO";'
+            .'const pre=document.createElement("pre");pre.textContent=JSON.stringify({'
+            .'state:d.state,reason:d.reason||null,resource_key:d.resource_key||null,'
+            .'before_sha256:d.before_sha256||null,resource_manifest_sha256:d.resource_manifest_sha256||null,'
+            .'resource_resolution_sha256:d.resource_resolution_sha256||null,'
+            .'new_native_job_created:false},null,2);output.appendChild(pre);'
+            .'}catch(err){status.textContent="Exact resource unavailable. No write permitted.";}'
+            .'finally{rb.disabled=false;}});'
             .'if(qb)qb.addEventListener("click",async()=>{output.replaceChildren();qb.disabled=true;'
             .'status.textContent="Reading current company queue (no writes)…";'
             .'try{const u=new URL(c.queueUrl);u.searchParams.set("company",f.elements.company.value.trim().toLowerCase());'
@@ -795,13 +1150,15 @@ final class MAD4B_Company_Reconcile_Repair_Jobs_V1 {
             .'status.textContent="Company queue: "+String(q.incident_count||0)+" incidents"'
             .'+" · Persisted "+String(q.counts?.PERSISTED||0)'
             .'+" · Pending "+String(q.counts?.NOT_CREATED||0)'
-            .'+" · Journal holds "+String(q.counts?.JOURNAL_INTEGRITY_HOLD||0);'
+            .'+" · Journal holds "+String(q.counts?.JOURNAL_INTEGRITY_HOLD||0)'
+            .'+" · Resource jobs "+String(q.resource_child_journals||0)'
+            .'+" · Resource index holds "+String(q.resource_child_integrity_holds||0);'
             .'const table=document.createElement("table");table.className="widefat striped";'
             .'const th=document.createElement("tr");'
-            .'for(const label of ["Priority","Incident","Job state","Evidence lane","Provider"]){'
+            .'for(const label of ["Priority","Incident","Job state","Resource jobs","Evidence lane","Provider"]){'
             .'const h=document.createElement("th");h.textContent=label;th.appendChild(h)}table.appendChild(th);'
             .'for(const item of q.items||[]){const tr=document.createElement("tr");'
-            .'for(const key of ["priority","incident_code","state","evidence_lane","provider_capability"]){'
+            .'for(const key of ["priority","incident_code","state","resource_child_count","evidence_lane","provider_capability"]){'
             .'const td=document.createElement("td");td.textContent=String(item[key]||"");tr.appendChild(td)}'
             .'table.appendChild(tr)}output.appendChild(table);'
             .'}catch(err){status.textContent="Queue unavailable or not permitted. No readiness inferred.";}'

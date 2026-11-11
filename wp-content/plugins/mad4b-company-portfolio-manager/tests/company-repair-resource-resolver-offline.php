@@ -1,0 +1,163 @@
+<?php
+/** Offline exact-site resource observation, immutable child jobs & tampering. */
+define('ABSPATH','/');
+function wp_is_uuid($v){return is_string($v)&&preg_match('/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/D',$v)===1;}
+require dirname(__DIR__).'/includes/class-mad4b-company-repair-resource-resolver.php';
+require dirname(__DIR__).'/includes/class-mad4b-company-repair-capability-discovery.php';
+require dirname(__DIR__).'/includes/class-mad4b-company-repair-job-contract.php';
+$cls='MAD4B_Company_Repair_Resource_Resolver_V2';
+$journal='MAD4B_Company_Repair_Job_Contract_V1';
+$tests=[];$test=static function($name,$pass)use(&$tests){$tests[$name]=(bool)$pass;};
+$scope=[
+ 'company_code'=>'wayfatours','environment'=>'production',
+ 'site_uuid'=>'a3a7cc36-db7e-4a14-8456-b41857def05c',
+ 'canonical_origin'=>'https://wayfatours.com',
+ 'source_plan_sha256'=>str_repeat('a',64),
+ 'incident_code'=>'custom_problem','check'=>'target_identity'];
+$selector=['resource_type'=>'wordpress.post','resource_id'=>'123'];
+$candidate=[
+ 'operation'=>'future.source.resource.write',
+ 'provider'=>'future_exact_source_provider',
+ 'resource_scope'=>'exact_site_resource',
+ 'resource_resolver_contract'=>$cls::CONTRACT,
+ 'resource_types'=>['wordpress.post'],
+ 'resource_resolution_read_only'=>true,
+];
+$epoch=10000;
+$observed=[
+ 'contract'=>$cls::OBSERVATION,'state'=>'EXACT_RESOURCE_READ_ONLY_OBSERVED',
+ 'observation_level'=>'TARGET_WORDPRESS_AUTHENTICATED_READ_ONLY',
+ 'company_code'=>$scope['company_code'],'environment'=>$scope['environment'],
+ 'site_uuid'=>$scope['site_uuid'],'canonical_origin'=>$scope['canonical_origin'],
+ 'source_plan_sha256'=>$scope['source_plan_sha256'],
+ 'operation'=>$candidate['operation'],'provider'=>$candidate['provider'],
+ 'resource_type'=>$selector['resource_type'],'resource_id'=>$selector['resource_id'],
+ 'resource_key'=>'wordpress.post:123',
+ 'ownership_scope'=>'mixed',
+ 'before_sha256'=>str_repeat('b',64),
+ 'resource_manifest_sha256'=>str_repeat('c',64),
+ 'company_preservation_sha256'=>str_repeat('d',64),
+ 'observed_epoch'=>10000,
+ 'original_313_signed'=>false,'original_312_signed'=>false,
+ 'mutation_performed'=>false,'native_job_created'=>false,
+];
+$read=$cls::validate($scope,$candidate,$selector,$observed,$epoch);
+$test('source_resource_readback_valid',
+ ($read['state']??null)==='EXACT_RESOURCE_OBSERVED_UNSIGNED');
+$test('unsigned_never_confers_authority',
+ $read['original_313_signed']===false
+ &&$read['repair_execution_authorized']===false
+ &&$read['target_mutated']===false);
+$test('type_and_id_exact',$read['resource_key']==='wordpress.post:123');
+$test('preservation_digest_present',
+ $read['company_preservation_sha256']===str_repeat('d',64));
+$test('stable_readback_fingerprint',strlen($read['resource_resolution_sha256'])===64
+ &&$cls::validate($scope,$candidate,$selector,$observed,$epoch)['resource_resolution_sha256']===
+   $read['resource_resolution_sha256']);
+$retimed=$observed;$retimed['observed_epoch']=10001;
+$freshSame=$cls::validate($scope,$candidate,$selector,$retimed,10001);
+$test('same_resource_bytes_keep_semantic_snapshot_across_new_readback',
+ $freshSame['resource_resolution_sha256']===$read['resource_resolution_sha256']
+ &&$freshSame['observed_epoch']!==$read['observed_epoch']);
+$changed=$observed;$changed['before_sha256']=str_repeat('e',64);
+$second=$cls::validate($scope,$candidate,$selector,$changed,$epoch);
+$test('before_change_changes_resolution_hash',
+ $second['resource_resolution_sha256']!==$read['resource_resolution_sha256']);
+$changed=$observed;$changed['company_preservation_sha256']=str_repeat('f',64);
+$second=$cls::validate($scope,$candidate,$selector,$changed,$epoch);
+$test('tenant_preservation_changes_resolution_hash',
+ $second['resource_resolution_sha256']!==$read['resource_resolution_sha256']);
+foreach([
+ 'wrong_company'=>['company_code','othercompany'],
+ 'wrong_environment'=>['environment','staging'],
+ 'wrong_site_uuid'=>['site_uuid','a3a7cc36-db7e-4a14-8456-b41857def05f'],
+ 'wrong_origin'=>['canonical_origin','https://other.example'],
+ 'wrong_source_plan'=>['source_plan_sha256',str_repeat('f',64)],
+ 'wrong_resource_type'=>['resource_type','wordpress.term'],
+ 'wrong_resource_id'=>['resource_id','124'],
+ 'wrong_resource_key'=>['resource_key','wordpress.post:124'],
+ 'wrong_operation'=>['operation','other.operation'],
+ 'wrong_provider'=>['provider','other_source_provider'],
+ 'wrong_contract'=>['contract','fake.contract'],
+ 'claims_signed313'=>['original_313_signed',true],
+ 'claims_signed312'=>['original_312_signed',true],
+ 'claims_mutation'=>['mutation_performed',true],
+ 'claims_native_job'=>['native_job_created',true],
+ 'claims_unauthenticated'=>['observation_level','HTTP_GENERAL'],
+ 'claims_wrong_state'=>['state','SOMETHING_EXECUTED'],
+ 'missing_before_sha'=>['before_sha256',null],
+ 'missing_preservation_sha'=>['company_preservation_sha256',null],
+ 'bad_owner'=>['ownership_scope','unknown_owner'],
+ 'never_clone_owner'=>['ownership_scope','never_clone'],
+ 'inspect_only_owner'=>['ownership_scope','inspect_only'],
+] as $name=>[$field,$value]){
+ $row=$observed;$row[$field]=$value;
+ $bad=$cls::validate($scope,$candidate,$selector,$row,$epoch);
+ $test('reject_'.$name,($bad['state']??'')==='RESOURCE_RESOLUTION_HOLD');
+}
+$bad=$observed;$bad['observed_epoch']=10000-601;
+$test('stale_observation_rejected',
+ $cls::validate($scope,$candidate,$selector,$bad,$epoch)['state']==='RESOURCE_RESOLUTION_HOLD');
+$bad=$observed;$bad['observed_epoch']=10031;
+$test('future_observation_rejected',
+ $cls::validate($scope,$candidate,$selector,$bad,$epoch)['state']==='RESOURCE_RESOLUTION_HOLD');
+$bad=$candidate;$bad['resource_types']=['wordpress.term'];
+$test('unsupported_resource_type_rejected',
+ $cls::validate($scope,$bad,$selector,$observed,$epoch)['state']==='RESOURCE_RESOLUTION_HOLD');
+$bad=$candidate;$bad['resource_resolver_contract']='other.contract';
+$test('unsupported_resolver_contract_rejected',
+ $cls::validate($scope,$bad,$selector,$observed,$epoch)['state']==='RESOURCE_RESOLUTION_HOLD');
+foreach([
+ ['resource_type'=>'../etc','resource_id'=>'123'],
+ ['resource_type'=>'wordpress.post','resource_id'=>'../secrets'],
+ ['resource_type'=>'wordpress.post','resource_id'=>'http://evil.example'],
+ ['resource_type'=>'wordpress.post','resource_id'=>str_repeat('a',129)],
+ ['resource_id'=>'123','resource_type'=>'wordpress.post'],
+] as $i=>$selectorBad)
+ $test('resource_selector_rejected_'.$i,!$cls::selector_valid($selectorBad));
+$test('selector_exact_fields_valid',$cls::selector_valid($selector));
+$noRegistry=$cls::resolve($scope,[
+ 'state'=>'EXACT_CAPABILITY_DISCOVERED','selected'=>$candidate],$selector,$epoch);
+$test('without_trusted_original_registry_rejected',
+ ($noRegistry['state']??'')==='RESOURCE_RESOLUTION_HOLD');
+$resourceScope=[
+ 'company_code'=>$scope['company_code'],'environment'=>$scope['environment'],
+ 'site_uuid'=>$scope['site_uuid'],'canonical_origin'=>$scope['canonical_origin'],
+ 'incident_code'=>$scope['incident_code'],
+ 'resource_key'=>$read['resource_key'],
+ 'source_plan_sha256'=>$scope['source_plan_sha256']
+];
+$binding=[
+ 'resource_type'=>$read['resource_type'],
+ 'resource_id'=>$read['resource_id'],
+ 'resource_resolution_sha256'=>$read['resource_resolution_sha256'],
+ 'resolved_resource_before_sha256'=>$read['before_sha256'],
+ 'resolved_resource_manifest_sha256'=>$read['resource_manifest_sha256'],
+ 'resolved_company_preservation_sha256'=>$read['company_preservation_sha256'],
+ 'resolved_resource_observed_epoch'=>$read['observed_epoch']
+];
+$unbound=$journal::fresh($resourceScope,$epoch);
+$test('cannot_make_exact_resource_job_without_binding',$unbound===[]);
+$child=$journal::fresh($resourceScope,$epoch,$binding);
+$test('exact_resource_job_hash_valid',!empty($child)&&$journal::valid_chain($child));
+$test('resource_job_not_incident_job',$child['id']!==$journal::key(
+ array_replace($resourceScope,['resource_key'=>'incident:'.$scope['incident_code']])));
+$test('resource_binding_immutable',$journal::sha($child['immutable_resolved_binding_sha256']));
+$bad=$child;$bad['resolved_resource_before_sha256']=str_repeat('e',64);
+$test('altered_before_image_rejected',!$journal::valid_chain($bad));
+$bad=$child;$bad['resource_resolution_sha256']=str_repeat('f',64);
+$test('altered_provider_observation_rejected',!$journal::valid_chain($bad));
+$bad=$child;$bad['resource_id']='124';
+$test('resource_identity_change_rejected',!$journal::valid_chain($bad));
+$bad=$child;$bad['resolved_company_preservation_sha256']=str_repeat('f',64);
+$test('tenant_owned_preservation_change_rejected',!$journal::valid_chain($bad));
+$bad=$child;$bad['immutable_resolved_binding_sha256']=str_repeat('0',64);
+$test('resource_binding_hash_changed_rejected',!$journal::valid_chain($bad));
+$other=$resourceScope;$other['resource_key']='wordpress.post:124';
+$test('different_exact_resource_different_job',$journal::key($other)!==$child['id']);
+echo json_encode(['pass'=>!in_array(false,$tests,true),
+ 'assertions'=>count($tests),
+ 'failed'=>array_keys(array_filter($tests,fn($x)=>!$x)),
+ 'resource_resolver_state'=>$read['state'],
+ 'native_job_created'=>false],JSON_UNESCAPED_SLASHES).PHP_EOL;
+if(in_array(false,$tests,true))exit(1);

@@ -87,6 +87,23 @@ final class MAD4B_Company_Repair_Job_Contract_V1 {
         $encoded=json_encode($values,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
         return is_string($encoded)?hash('sha256',$encoded):'';
     }
+    /**
+     * Resource-bound jobs have a separate immutable observation fingerprint.
+     * Existing logical incident journals retain their historic descriptor.
+     */
+    public static function resolved_binding_hash(array $job):string {
+        $fields=['resource_type','resource_id','resource_key',
+            'resource_resolution_sha256','resolved_resource_before_sha256',
+            'resolved_resource_manifest_sha256','resolved_company_preservation_sha256',
+            'resolved_resource_observed_epoch'];
+        $row=[];
+        foreach($fields as $field){
+            if(!array_key_exists($field,$job))return '';
+            $row[$field]=$job[$field];
+        }
+        $encoded=json_encode($row,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+        return is_string($encoded)?hash('sha256',$encoded):'';
+    }
     public static function key(array $scope):string {
         $fields=['company_code','environment','site_uuid','canonical_origin',
             'incident_code','resource_key','source_plan_sha256'];
@@ -171,6 +188,20 @@ final class MAD4B_Company_Repair_Job_Contract_V1 {
                 ||($job['original_job_id']??null)!==null)return false;
         }elseif(!self::sha($descriptor)
                 ||!hash_equals($descriptor,self::descriptor($job)))return false;
+        if(!str_starts_with((string)($job['resource_key']??''),'incident:')) {
+            $binding=$job['immutable_resolved_binding_sha256']??null;
+            if(!self::sha($binding)
+                ||self::resolved_binding_hash($job)===''
+                ||!hash_equals($binding,self::resolved_binding_hash($job))
+                ||!self::sha($job['resource_resolution_sha256']??null)
+                ||!self::sha($job['resolved_resource_before_sha256']??null)
+                ||!self::sha($job['resolved_resource_manifest_sha256']??null)
+                ||!self::sha($job['resolved_company_preservation_sha256']??null)
+                ||!is_int($job['resolved_resource_observed_epoch']??null)
+                ||($job['resource_key']??null)!==
+                   ($job['resource_type']??'').':'.($job['resource_id']??''))
+                return false;
+        }
         $baseline=$job['baseline']??null;
         $baselineEvent=null;
         foreach($events as $item)
@@ -205,7 +236,7 @@ final class MAD4B_Company_Repair_Job_Contract_V1 {
             && ($job['execution_authorized_by_repair_job']??true)===false
             && ($job['original_305_submitted_by_repair_job']??true)===false;
     }
-    public static function fresh(array $scope,int $epoch):array {
+    public static function fresh(array $scope,int $epoch,array $resourceBinding=[]):array {
         $id=self::key($scope);
         if($id===''||!self::sha($scope['source_plan_sha256']??null))return [];
         $job=array_merge($scope,[
@@ -222,6 +253,18 @@ final class MAD4B_Company_Repair_Job_Contract_V1 {
             'company_publication_certified'=>false,
             'rollback_available_without_original_job'=>false,
         ]);
+        if(!str_starts_with($job['resource_key'],'incident:')) {
+            $fields=[
+                'resource_type','resource_id','resource_resolution_sha256',
+                'resolved_resource_before_sha256',
+                'resolved_resource_manifest_sha256',
+                'resolved_company_preservation_sha256',
+                'resolved_resource_observed_epoch'
+            ];
+            if(array_keys($resourceBinding)!==$fields)return [];
+            foreach($fields as $field)$job[$field]=$resourceBinding[$field];
+            $job['immutable_resolved_binding_sha256']=self::resolved_binding_hash($job);
+        }
         return self::valid_chain($job)?$job:[];
     }
 }

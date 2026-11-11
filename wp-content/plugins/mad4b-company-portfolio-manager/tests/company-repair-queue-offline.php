@@ -8,6 +8,7 @@ class WP_Error {
 }
 function is_wp_error($obj){return $obj instanceof WP_Error;}
 function add_action(...$args){}
+function wp_json_encode($value,$options=0){return json_encode($value,$options);}
 function get_option($key,$default=false){return $GLOBALS['TEST_OPTIONS'][$key]??$default;}
 function current_user_can($name){return $GLOBALS['TEST_ADMIN']??false;}
 class MAD4B_Company_Portfolio_Manager_V1 {
