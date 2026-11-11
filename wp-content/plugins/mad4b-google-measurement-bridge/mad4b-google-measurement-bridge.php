@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Google Measurement Bridge (Discovery)
  * Description: Read-only Brand Authority capability discovery for GA4/GTM and GTM4WP.
- * Version: 0.1.0
+ * Version: 0.1.3
  * Requires PHP: 7.4
  */
 if (!defined('ABSPATH')) exit;
@@ -18,6 +18,7 @@ final class MAD4B_Google_Measurement_Bridge {
     const SCOPE_GA4_EDIT = 'https://www.googleapis.com/auth/analytics.edit';
     const SCOPE_GTM_READ = 'https://www.googleapis.com/auth/tagmanager.readonly';
     const SCOPE_GTM_EDIT = 'https://www.googleapis.com/auth/tagmanager.edit.containers';
+    const SCOPE_GTM_EDIT_VERSIONS = 'https://www.googleapis.com/auth/tagmanager.edit.containerversions';
     const SCOPE_GTM_PUBLISH = 'https://www.googleapis.com/auth/tagmanager.publish';
 
     public static function boot() {
@@ -159,6 +160,7 @@ final class MAD4B_Google_Measurement_Bridge {
         }
     }
 }
+require_once __DIR__ . '/includes/class-mad4b-google-measurement-gtm-consent-audit.php';
 require_once __DIR__ . '/includes/class-mad4b-google-measurement-api.php';
 require_once __DIR__ . '/includes/class-mad4b-google-measurement-mutation.php';
 require_once __DIR__ . '/includes/class-mad4b-google-measurement-admin.php';

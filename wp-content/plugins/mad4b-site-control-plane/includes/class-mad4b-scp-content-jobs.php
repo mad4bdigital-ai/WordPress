@@ -898,6 +898,11 @@ final class MAD4B_SCP_Content_Jobs {
 			if ( is_wp_error( $row ) ) throw new RuntimeException( $row->get_error_code() );
 			if ( $expected_revision !== (int) $row['job_revision'] ) throw new RuntimeException( 'content_job_revision_conflict' );
 			if ( in_array( $row['state'], array( 'COMPLETED', 'CANCELLED' ), true ) ) throw new RuntimeException( 'content_job_terminal_immutable' );
+			// A user's explicit notification-only deferral is neither an
+			// execution failure nor permission to start a different executor.
+			if ( class_exists('MAD4B_Translation_Execution_Governance',false) &&
+				MAD4B_Translation_Execution_Governance::transition_denied($row,$new_state,$new_stage,$artifact_id) )
+				throw new RuntimeException('translation_notification_only_deferred');
 			// A translation job must not accept an arbitrary external Artifact
 			// ID in ANY lifecycle transition. An exact same-site native WPML
 			// family and current original Job revision are mandatory.

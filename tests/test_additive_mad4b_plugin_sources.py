@@ -20,18 +20,29 @@ class AdditivePlugins(unittest.TestCase):
  def test_path_escape_fails(self):
   x=copy.deepcopy(M);x['files'][0]['path']='wp-content/plugins/mad4b-x/../../../etc/passwd'
   with self.assertRaises(m.Blocked):m.verify(x)
- def test_preexisting_69_candidate_files_preserved_by_sha(self):
-  import subprocess
+ def test_preexisting_69_preserved_except_six_exact_reviewed_changes(self):
+  import subprocess,hashlib
   self.assertEqual(M['base_git_commit'],'cea270f57bb8152989c6089f76405b165652f9df')
-  n=0
+  safe=json.loads((ROOT/'docs/release-coverage/semantic-additive-safe-reconcile-20261111.json').read_text())
+  country=json.loads((ROOT/'docs/release-coverage/country-switcher-privacy-and-entitlement-reconcile-20261111.json').read_text())
+  allowed={row['path']:row['verified_current_live_sha256'] for row in safe['files']}
+  allowed[country['php_path']]=country['reconciled_php_sha256']
+  allowed[country['js_path']]=country['live_js_sha256']
+  self.assertEqual(len(allowed),6)
+  reviewed=set()
   for group in M['preexisting_semantic_conflicts'].values():
    for path in group:
     before=subprocess.run(['git','-C',str(ROOT),'show',
       M['base_git_commit']+':'+path],capture_output=True,timeout=20)
     self.assertEqual(before.returncode,0,path)
-    self.assertEqual(before.stdout,(ROOT/path).read_bytes(),path)
-    n+=1
-  self.assertEqual(n,69)
+    current=(ROOT/path).read_bytes()
+    if path in allowed:
+     self.assertEqual(hashlib.sha256(current).hexdigest(),allowed[path],path)
+     reviewed.add(path)
+    else:
+     self.assertEqual(before.stdout,current,path)
+  self.assertEqual(reviewed,set(allowed))
+  self.assertEqual(len(reviewed),6)
  def test_exact_preexisting_conflicts_not_copied(self):
   c={item for values in M['preexisting_semantic_conflicts'].values() for item in values}
   self.assertEqual(len(c),69)

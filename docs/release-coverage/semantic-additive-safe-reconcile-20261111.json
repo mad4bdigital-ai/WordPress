@@ -1,0 +1,37 @@
+{
+  "base_commit": "a3164cb61d46d7e8347326dd5e3279de15d794fd",
+  "company_code_release_authorized": false,
+  "company_options_mutated": false,
+  "contract": "mad4b.semantic-live-additive-source-review.v1",
+  "files": [
+    {
+      "path": "wp-content/plugins/mad4b-age-occupancy-registry/assets/fluent-ages.css",
+      "prior_sha256": "597a0734c36c9ab1e6a596c515ed366572541ee3214ed2ebccdf8b5976c44c9c",
+      "verified_current_live_sha256": "5082b0c4dc628f8549021cdef5be2183e47adeb4e82a0d81382619e5d093848f"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php",
+      "prior_sha256": "8cb8ec03e66e7ba95cd40c66bcd7156465880718271dbd1c757c20b7d6011bb2",
+      "verified_current_live_sha256": "cc8ed43625db6ea74cb3d20b395f06545db661267880cec5b37f94dedcca7a70"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-google-measurement-bridge/mad4b-google-measurement-bridge.php",
+      "prior_sha256": "92277460bf7fd3ce34195af0091a624688d897b68b0ecfa18016f8fb7578a4f1",
+      "verified_current_live_sha256": "acff925aadb8768f9a6d61d22995e5082128278ca64bcf6a7a129c02ad87db3d"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-google-measurement-bridge/includes/class-mad4b-google-measurement-admin.php",
+      "prior_sha256": "ff8a98cd4b4cae1d5f99c1ca7876d4a26dabf679e940b3478391c5e34a46ffea",
+      "verified_current_live_sha256": "653462318e04acefcec5b6bd693b2c26e23010ba82ed9ab0a736160125af243c"
+    }
+  ],
+  "google_api_called": false,
+  "roles": {
+    "age_css": "Fluent Form6 hint stays inline without changing input values",
+    "google_binding": "missing resource binding distinguishable from invalid site profile",
+    "google_measurement": "central-scoped GTM consent audit provider registered with explicit owner confirmation",
+    "translation": "notification-only deferral before source Job atomic transition"
+  },
+  "runtime_execution_performed": false,
+  "source_only": true
+}

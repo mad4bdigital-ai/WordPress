@@ -1,0 +1,16 @@
+{
+  "approved_market_still_required": true,
+  "base_git_commit": "a3164cb61d46d7e8347326dd5e3279de15d794fd",
+  "contract": "mad4b.country-switcher-cache-and-marketing-entitlement.v1",
+  "global_release_authorized": false,
+  "js_path": "wp-content/plugins/mad4b-country-switcher/assets/switcher.js",
+  "live_js_sha256": "8c3d43bbd2635cda38e622ac79f1a9d1fb3d6aa4a8c5aa8cf1336243de4716df",
+  "live_php_reference_sha256": "6b31f96547f3ff143f8009369aad49563a4c96a1be868d0a7491b834a9c02742",
+  "live_site_modified": false,
+  "original_php_sha256": "650fd9a600c07c711d8183365ab96b439a21fd76ee938ff5f24be2d6f44a9c2d",
+  "php_path": "wp-content/plugins/mad4b-country-switcher/mad4b-country-switcher.php",
+  "provider_contract_identity_preserved": true,
+  "reconciled_php_sha256": "38acf63a6d1af14a957f02ebe177e558a1e7c6eed49c3446ea0b2bb2f11d5872",
+  "stored_cookie_bound_to_site_uuid": true,
+  "visitor_ip_not_in_shared_html": true
+}
