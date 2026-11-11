@@ -737,10 +737,27 @@ if (wp_get_environment_type() === 'staging') {
 // for each field. This read-only schema is included in source reconcile plans.
 if (wp_get_environment_type() === 'staging') {
     require_once __DIR__ . '/includes/class-mad4b-company-presentation-option-ownership.php';
+    // Native providers expose operation-specific admission; they do not
+    // themselves manufacture Original 312/313 readbacks or execute Jobs.
+    require_once __DIR__ . '/includes/class-mad4b-company-native-scoped-write-handler.php';
+    require_once __DIR__ . '/includes/class-mad4b-company-native-scoped-write-providers.php';
     require_once __DIR__ . '/includes/class-mad4b-company-native-plugin-install-handler.php';
     require_once __DIR__ . '/includes/class-mad4b-company-native-plugin-install-provider.php';
     // Exact owner-authenticated Original 305; job rotation remains package-hash bound.
     require_once __DIR__ . '/includes/class-mad4b-company-experience-install-owner-launch.php';
+    require_once __DIR__ . '/includes/class-mad4b-company-native-mu-deploy-handler.php';
+    require_once __DIR__ . '/includes/class-mad4b-company-native-mu-deploy-provider.php';
+    require_once __DIR__ . '/includes/class-mad4b-company-mu-deploy-lifecycle.php';
+    require_once __DIR__ . '/includes/class-mad4b-company-original-lifecycle-router.php';
+    // Deliberately defer legacy MU Owner Launch: its path, fixed company and
+    // host identity are hard-coded to one historical Wayfatours operation.
+}
+
+// Enrolled host topology is readback, not authority. Keep it independent from
+// Native Provider admission and do not infer one physical server as a fleet.
+if (wp_get_environment_type() === 'staging') {
+    require_once __DIR__ . '/includes/class-mad4b-company-host-topology-registry.php';
+    require_once __DIR__ . '/includes/class-mad4b-company-host-runner-enrollment.php';
 }
 
 // Original, read-only Start Company completeness projection: belongs to
@@ -759,6 +776,12 @@ add_action('plugins_loaded', static function (): void {
 }, 16);
 
 MAD4B_Company_Portfolio_Manager_V1::boot();
+// Enrolled company site operations: request parsing + bounded readback.
+// Existing Site UUID and original transport/authority checks remain mandatory.
+if (wp_get_environment_type() === 'staging') {
+    require_once __DIR__ . '/includes/class-mad4b-company-site-operations.php';
+    add_action('plugins_loaded',['MAD4B_Company_Site_Operations_V1','boot'],43);
+}
 // FAORE Company Connections: registry-scoped observation, not operation authority.
 require_once __DIR__ . '/includes/class-mad4b-company-faore-fleet-observability.php';
 MAD4B_Company_FAORE_Fleet_Observability::boot();
@@ -790,6 +813,7 @@ add_action('plugins_loaded', static function (): void {
     require_once __DIR__ . '/includes/class-mad4b-company-strategy-management.php';
     require_once __DIR__ . '/includes/class-mad4b-company-brand-readiness-hub.php';
     require_once __DIR__ . '/includes/class-mad4b-company-market-portfolio.php';
+    require_once __DIR__ . '/includes/class-mad4b-company-distribution-provision.php';
     require_once __DIR__ . '/includes/class-mad4b-company-launch-setup.php';
     require_once __DIR__ . '/includes/class-mad4b-vps-company-launch.php';
     require_once __DIR__ . '/includes/class-mad4b-company-plugin-sync-operation.php';

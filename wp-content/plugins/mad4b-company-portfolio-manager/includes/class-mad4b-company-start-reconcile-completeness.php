@@ -77,6 +77,14 @@ final class MAD4B_Company_Start_Reconcile_Completeness_V1 {
                     : $project;
             }
         }
+        // Keep topology evidence as an independent readiness dimension. A
+        // signed 313 WordPress bootstrap or one MCP node cannot imply fleet
+        // convergence; UNKNOWN is not a reason to revoke existing read lanes.
+        $topology=array();
+        if(class_exists('MAD4B_Company_Host_Topology_Registry_V1',false)){
+            foreach(array_keys($registered) as $env)
+                $topology[$env]=MAD4B_Company_Host_Topology_Registry_V1::discover($company,$env);
+        }
         $seed = class_exists('MAD4B_Company_Seed_Admission_V1', false)
             ? MAD4B_Company_Seed_Admission_V1::status() : array();
         $seedReady = is_array($seed) && ($seed['seed_complete']??false) === true;
@@ -115,6 +123,39 @@ final class MAD4B_Company_Start_Reconcile_Completeness_V1 {
             foreach ((array)($required[$stage]??array()) as $check)
                 $blocked[]='INDEPENDENT_READBACK_PENDING:'.$check;
         }
+        // Dynamic schema candidates come from the existing Field Fusion owner;
+        // target source-of-truth / company overrides still require 313 readback.
+        $sourceSchemas=class_exists('MAD4B_Hub_Field_Fusion_V1',false)
+            ? MAD4B_Hub_Field_Fusion_V1::reusable_jetengine_definition_manifest('tours-and-activities')
+            : ['state'=>'FIELD_FUSION_OWNER_UNAVAILABLE','auto_apply'=>false];
+        $schemaAlerts=array();
+        // This is a reconciliation ALERT, not an assertion that the target
+        // schema is missing. Exact target inventory and 313 are mandatory.
+        foreach ((array)($sourceSchemas['definitions']??array()) as $definition) {
+            if (!in_array(($definition['scope']??''),
+                ['EXPLICIT_POST_TYPE','EXPLICIT_RELATED_POST_TYPE','EXPLICIT_TAXONOMY'],true))continue;
+            $boxId=(string)($definition['id']??'');
+            $sha=(string)($definition['definition_sha256']??'');
+            if (!preg_match('/^[A-Za-z0-9_][A-Za-z0-9_.-]{1,95}$/D',$boxId)
+                || !preg_match('/^[a-f0-9]{64}$/D',$sha))continue;
+            $schemaAlerts[]=array(
+                'code'=>'JETENGINE_TARGET_SCHEMA_READBACK_REQUIRED',
+                'severity'=>'warning','owner'=>'MAD4B_Hub_Field_Fusion_V1',
+                'post_type'=>'tours-and-activities',
+                'schema_scope'=>$definition['scope'],
+                'object_type'=>$definition['object_type']??'post',
+                'applicable_post_types'=>$definition['post_types']??[],
+                'applicable_taxonomies'=>$definition['taxonomies']??[],
+                'source_definition_id'=>$boxId,
+                'source_definition_sha256'=>$sha,
+                'source_semantic_sha256'=>$definition['semantic_sha256']??null,
+                'target_state'=>'UNVERIFIED',
+                'required_lane'=>'Company Manager → Native 305/312/313',
+                'content_job_handoff_state'=>'REQUIRES_NATIVE_ADAPTER',
+                'auto_apply'=>false,'company_values_preserved'=>true,
+            );
+            $blocked[]='JETENGINE_TARGET_SCHEMA_READBACK_REQUIRED:'.$boxId;
+        }
         // Policy file and this endpoint are not signed provider receipts. Even if
         // all old stage hints are PASS, publication requires fresh original provider
         // receipts bound to exact site+manifest+profile revision and browser evidence.
@@ -131,6 +172,12 @@ final class MAD4B_Company_Start_Reconcile_Completeness_V1 {
             'manifest_bound_readbacks_present'=>false,
             'seed_source_readiness'=>$seedSummary,
             'elementor_visual_css_source'=>self::css_source_evidence(),
+            'source_field_fusion_definition_inventory'=>$sourceSchemas,
+            'schema_reconciliation_alerts'=>$schemaAlerts,
+            'host_topology_readback'=>$topology,
+            'host_topology_full_deployment_verified'=>false,
+            'all_required_node_receipts_verified'=>false,
+            'host_topology_not_a_write_gate_for_existing_lanes'=>true,
             'presentation_option_ownership'=>$presentation,
             'presentation_option_contract_included'=>!empty($presentation),
             'presentation_aliases_do_not_claim_runtime_binding'=>true,

@@ -95,6 +95,26 @@ final class MAD4B_Company_Presentation_Option_Ownership_V1 {
                 'owner'=>'market_profile_widget','field'=>'enabled','alias'=>'header_footer.show_market_switcher',
                 'scope'=>'target_owned','binding'=>'market-provider','empty'=>'advisory',
             ],
+            'brand.hero_headline' => [
+                'owner'=>'jetengine_look_and_feel','field'=>'mad4b_hero_headline','alias'=>null,
+                'scope'=>'target_owned','binding'=>'mad4b-brand-copy-runtime-proof-required','language'=>'wpml_localized',
+            ],
+            'brand.hero_subtitle' => [
+                'owner'=>'jetengine_look_and_feel','field'=>'mad4b_hero_subtitle','alias'=>null,
+                'scope'=>'target_owned','binding'=>'mad4b-brand-copy-runtime-proof-required','language'=>'wpml_localized',
+            ],
+            'brand.hero_cta' => [
+                'owner'=>'jetengine_look_and_feel','field'=>'mad4b_hero_cta','alias'=>null,
+                'scope'=>'target_owned','binding'=>'mad4b-brand-copy-runtime-proof-required','language'=>'wpml_localized',
+            ],
+            'brand.archive_cta' => [
+                'owner'=>'jetengine_look_and_feel','field'=>'mad4b_archive_cta','alias'=>null,
+                'scope'=>'target_owned','binding'=>'mad4b-brand-copy-runtime-proof-required','language'=>'wpml_localized',
+            ],
+            'brand.tour_inquiry_cta' => [
+                'owner'=>'jetengine_look_and_feel','field'=>'mad4b_tour_inquiry_cta','alias'=>null,
+                'scope'=>'target_owned','binding'=>'mad4b-brand-copy-runtime-proof-required','language'=>'wpml_localized',
+            ],
             'visual.look_and_feel' => [
                 'owner'=>'jetengine_look_and_feel','field'=>'presentation','alias'=>null,
                 'scope'=>'selective_portable_content','binding'=>'elementor-dynamic-tags','remap'=>'media_assets',

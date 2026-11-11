@@ -1,0 +1,25 @@
+{
+  "automatic_publish": false,
+  "contract": "mad4b.portfolio-source-additive-existing.v1",
+  "fields_do_not_imply_company_readback": true,
+  "files": [
+    {
+      "append_only_insert_lines": 20,
+      "live_sha256": "66ca463186190df6ed0feaf5c1b70941e76915b7018851478d475b4bfe3cceb3",
+      "no_original_lines_removed_or_modified": true,
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-presentation-option-ownership.php",
+      "preimage_sha256": "c642db8506574529e4e1cb2fde33620e8da3f90f5cc7bb8b782d2764cfb7390c",
+      "runtime_write_occurred": false
+    },
+    {
+      "append_only_insert_lines": 47,
+      "live_sha256": "3acb0a37742dd486426e014d0b77579c1e084983b335eadb0ec3c62e4b5c6d2c",
+      "no_original_lines_removed_or_modified": true,
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-start-reconcile-completeness.php",
+      "preimage_sha256": "3838398c4f7a7106671befaae628bbba0bbc19ea2a074793d4f6517aee0d8121",
+      "runtime_write_occurred": false
+    }
+  ],
+  "production_mutated": false,
+  "snapshot_base": "ba5484b1d5d1120b648f3079b4ac47b6e087e45b"
+}

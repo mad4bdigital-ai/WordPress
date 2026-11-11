@@ -1,0 +1,12 @@
+{
+  "contract": "mad4b.portfolio-bootstrap-source-reconciliation.v1",
+  "deferred_legacy_owner_launch": "class-mad4b-company-mu-deploy-owner-launch.php",
+  "deferred_reason": "Hardcoded Wayfatours Production plan and Tours.dev host identity; requires generic operation catalog scope and signed source migration",
+  "live_publisher_executed": false,
+  "prior_git_sha256": "4e4b750e3e1254a67e6c01f16572542b05b849ace4cec1f20c923016838df5ff",
+  "provider_grant_issued": false,
+  "read_only_source_reconcile": true,
+  "reconciled_git_sha256": "732232a7c37b1f857800ae137cda848de3c7fbcd2d2f2bb87884230bf9629de7",
+  "runtime_updated": false,
+  "source_bootstrap_only": true
+}

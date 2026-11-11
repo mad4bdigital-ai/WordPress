@@ -33,3 +33,13 @@ The integration candidate contains additional plugin source files that are not d
 6. Full WordPress staging acceptance and target company-specific regression checks remain unexecuted for this merged release. No Production rollout.
 
 **GLOBAL RELEASE HOLD.** No site content, WordPress runtime, Company Registry, Tenant Options, Grants, Jobs or Production code were modified by this integration.
+
+## 2026-11-11 additional Portfolio Bootstrap and read-only ownership reconciliation
+
+- The added 10 native Portfolio Manager class files were previously unreferenced by the PR #799 candidate bootstrap. The reconciled source now loads their guarded classes and registers existing site-operation boot callback once, following the live functional load order on Staging.
+- The legacy hardcoded Wayfatours Production MU owner launcher remains intentionally **unregistered**. That class embeds a fixed site UUID, a fixed Tours.dev host, a fixed SHA and a fixed company route. Do not generalize its authorization by removing one if-condition; replace the fixed input set with verified dynamic operation catalog and exact signed provider scope before registration.
+- Production-specific owner-approval panel from the live plugin is also not blindly merged: it hardcodes All Royal Egypt and changes production-delegation semantics. Preserving currently authorized company identities and explicit rights takes precedence over raw file parity.
+- Native provider registration does not itself issue signed Original 305/312/313 proof; the standalone provider hook harness proved source class loading and **zero** WordPress writes in an isolated PHP container.
+- Presentation Ownership and Start Company Readiness now include all read-only fields/JetEngine/host-topology readiness alerts added in the live source. Exact source differences were additive-only, 67 extra lines, no original content removed. Brand copy stays company-target-owned and WPML-localized; readiness cannot claim signed target proof.
+- The stale fixed 24-field acceptance assertion was replaced with semantic owner-field assertions so new valid brand fields do not cause false regression failures.
+- None of these source additions, alone, certify source runtime compatibility on Production or activate Tenant or Company operations. The current shared platform rollout HOLD remains in force.

@@ -9,7 +9,15 @@ $expect=function($pass,$name) {
  echo 'PASS '.$name.PHP_EOL;
 };
 $expect($cls::valid_registry(),'registry_shape');
-$expect(count($cls::registry())===24,'24_canonical_owners');
+$owners=$cls::registry();
+$brandFields=['brand.hero_headline','brand.hero_subtitle','brand.hero_cta',
+    'brand.archive_cta','brand.tour_inquiry_cta'];
+$expect(!array_diff($brandFields,array_keys($owners)),'brand_fields_in_canonical_owners');
+foreach($brandFields as $key) {
+    $expect(($owners[$key]['scope']??'')==='target_owned'
+        && ($owners[$key]['language']??'')==='wpml_localized',
+        'company_localized_owner_'.$key);
+}
 $plan=$cls::plan('wayfatours','production');
 $expect(!is_wp_error($plan),'registered_wayfatours_scope');
 $expect(($plan['target_origin']??'')==='https://wayfatours.com','wayfatours_origin_bound');
