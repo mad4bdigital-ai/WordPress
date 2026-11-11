@@ -1,0 +1,164 @@
+{
+  "base_head": "ed548491df6f3f61d5bb555c041196fa32bc5a2c",
+  "content_overrides_ported": false,
+  "contract": "mad4b.live-additive-source-provenance.v1",
+  "deployment_authorized": false,
+  "files": [
+    {
+      "bytes": 7088,
+      "is_runtime_activated": false,
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/assets/company-site-operations.css",
+      "sha256": "22bcaaa55b00f7a2a3ebec0ad44429551df8b76c1fc7d0742386200a5f1575bb",
+      "source": "live_Staging_exact_snapshot",
+      "source_owner_uid": 0
+    },
+    {
+      "bytes": 6443,
+      "is_runtime_activated": false,
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/assets/company-site-operations.js",
+      "sha256": "fbc46a99a30ba5446548988cb4ea917b798a61801fb3d1a34b7440ad89dd2b9c",
+      "source": "live_Staging_exact_snapshot",
+      "source_owner_uid": 0
+    },
+    {
+      "bytes": 9183,
+      "is_runtime_activated": false,
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-distribution-provision.php",
+      "sha256": "4c1a4556398755a2ac580b5516391674b977f75e56150abde90e5785cbe614e9",
+      "source": "live_Staging_exact_snapshot",
+      "source_owner_uid": 0
+    },
+    {
+      "bytes": 7192,
+      "is_runtime_activated": false,
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-host-runner-enrollment.php",
+      "sha256": "2c26b533154a389685bbb0040172535e185a346fc30e8ee187eaf0784a3ff418",
+      "source": "live_Staging_exact_snapshot",
+      "source_owner_uid": 33
+    },
+    {
+      "bytes": 24677,
+      "is_runtime_activated": false,
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-host-topology-registry.php",
+      "sha256": "210f652bf6684885286b369c92978aa8f88e2754cd9e2b72a48651c8c1cf498c",
+      "source": "live_Staging_exact_snapshot",
+      "source_owner_uid": 33
+    },
+    {
+      "bytes": 3975,
+      "is_runtime_activated": false,
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-mu-deploy-lifecycle.php",
+      "sha256": "dde0e9a1a7513b8586f35cd820c869d0cdbe9b0575d5a4ec3087d279058eb431",
+      "source": "live_Staging_exact_snapshot",
+      "source_owner_uid": 33
+    },
+    {
+      "bytes": 10977,
+      "is_runtime_activated": false,
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-mu-deploy-owner-launch.php",
+      "sha256": "d3d030f9e79840655611cc537e9e25db874b41f02c60d12658543a1141764fb7",
+      "source": "live_Staging_exact_snapshot",
+      "source_owner_uid": 33
+    },
+    {
+      "bytes": 5628,
+      "is_runtime_activated": false,
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-native-mu-deploy-handler.php",
+      "sha256": "7e8cce2b31928d2e2b04f41cf8d7d5f7676cfff7da86779f1c75ca161a64cdb8",
+      "source": "live_Staging_exact_snapshot",
+      "source_owner_uid": 33
+    },
+    {
+      "bytes": 3672,
+      "is_runtime_activated": false,
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-native-mu-deploy-provider.php",
+      "sha256": "45213ca9bb9b689769fd046c71dbf7b703f631c92ffdacd397dd6adadff7d2c5",
+      "source": "live_Staging_exact_snapshot",
+      "source_owner_uid": 33
+    },
+    {
+      "bytes": 11216,
+      "is_runtime_activated": false,
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-native-scoped-write-handler.php",
+      "sha256": "fd804404711550736fef5b625b7cdab7354cbc61ac5c082e5005f6fbaa553e34",
+      "source": "live_Staging_exact_snapshot",
+      "source_owner_uid": 0
+    },
+    {
+      "bytes": 4873,
+      "is_runtime_activated": false,
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-native-scoped-write-providers.php",
+      "sha256": "1554c720af727d8beda94c778f3bd3ee71c79d970098b442bf3466e34e439c9b",
+      "source": "live_Staging_exact_snapshot",
+      "source_owner_uid": 0
+    },
+    {
+      "bytes": 8955,
+      "is_runtime_activated": false,
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-original-lifecycle-router.php",
+      "sha256": "25ac41e4eba874fe9524f74a09defc5fbbb22a585808261db985723014e3c341",
+      "source": "live_Staging_exact_snapshot",
+      "source_owner_uid": 33
+    },
+    {
+      "bytes": 22045,
+      "is_runtime_activated": false,
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-site-operations-dashboard.php",
+      "sha256": "21787b31992a2d5411fba8e10e85b62e3aaf4c6ec54a9f25e54e3e9ca2c67456",
+      "source": "live_Staging_exact_snapshot",
+      "source_owner_uid": 0
+    },
+    {
+      "bytes": 24380,
+      "is_runtime_activated": false,
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-site-operations.php",
+      "sha256": "0f6d4cdf35f334f24c46c2a387080031f01d781364686549dbf8dad3ff9e05ce",
+      "source": "live_Staging_exact_snapshot",
+      "source_owner_uid": 0
+    },
+    {
+      "bytes": 6669,
+      "is_runtime_activated": false,
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-pricing-strategy-drafts.php",
+      "sha256": "9f8631130adac1d96afd8361b070923547e455a113b5cd3b3827824dfb92ed15",
+      "source": "live_Staging_exact_snapshot",
+      "source_owner_uid": 0
+    },
+    {
+      "bytes": 2548,
+      "is_runtime_activated": false,
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/tests/host-runner-enrollment-preflight-regression.php",
+      "sha256": "1ac1a6ad788482a268d042317f92d0db81ddfac6a079c319a44378da6ce336ec",
+      "source": "live_Staging_exact_snapshot",
+      "source_owner_uid": 33
+    },
+    {
+      "bytes": 3268,
+      "is_runtime_activated": false,
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/tests/wo-vacation-native-scoped-write-regression.php",
+      "sha256": "76bfc5ddc90c703309f2a9f6814e610d5dbbca0473ddd719bc974c110a671a4a",
+      "source": "live_Staging_exact_snapshot",
+      "source_owner_uid": 0
+    },
+    {
+      "bytes": 1219,
+      "is_runtime_activated": false,
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/google-gtm-publish-version-scope.php",
+      "sha256": "1335a1b5e006a5c8ea3f5b12bbdcc102881788fade766ab15433dd289d5c8966",
+      "source": "live_Staging_exact_snapshot",
+      "source_owner_uid": 0
+    },
+    {
+      "bytes": 942,
+      "is_runtime_activated": false,
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/google-incremental-consent-panel-regression.php",
+      "sha256": "88a5bd111b2357083cc212070277f902c164bc0d792f74eb71aa1447a0eebb41",
+      "source": "live_Staging_exact_snapshot",
+      "source_owner_uid": 0
+    }
+  ],
+  "overwrite_allowed": false,
+  "production_runtime_modified": false,
+  "source": "Tours.dev Staging filesystem readback",
+  "source_capture_only": true
+}
