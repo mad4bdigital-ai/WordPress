@@ -1,0 +1,22 @@
+{
+  "Fluent_Forms_notification_enablement_unmodified": true,
+  "Stripe_live_enabled": false,
+  "WooCommerce_email_classes_unmodified": true,
+  "brand_authority": "exact_site_brand_context_and_existing_look_and_feel",
+  "central_composite_release_authorized": false,
+  "contract": "mad4b.company-email-experience-bridge.v1",
+  "desktop_and_mobile_chromium_render_verified": true,
+  "early_payment_benefits_enabled": false,
+  "gmail_inbox_visual_verified": false,
+  "one_sender_no_new_wp_mail_dispatch": true,
+  "order_payment_and_reset_links_unmodified": true,
+  "outlook_desktop_app_verified": false,
+  "plugin_path": "wp-content/mu-plugins/mad4b-company-email-experience-bridge-v1.php",
+  "qa_emails_to_customers": false,
+  "same_company_localized_public_links_only": true,
+  "source_and_wayfa_live_readback_required": true,
+  "source_blob_sha1": "b0fdabfd945d57de2414564900c77bc822480ca5",
+  "source_bytes": 14185,
+  "source_sha256": "5d5ab191df48859ffb0f5e2d1a1fe17e828c4c7e727fb8fa823757cf103d4f86",
+  "test_message_smtp_accepted_count": 2
+}
