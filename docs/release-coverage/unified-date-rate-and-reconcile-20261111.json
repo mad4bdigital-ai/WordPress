@@ -3,6 +3,7 @@
   "browser_acceptance_performed": false,
   "canonical_query_id": 310,
   "contract": "mad4b.unified-date-rate-query-AND-no-broadening.v1",
+  "current_runtime_asset_version": "0.2.7",
   "date_filters": [
     "tours_query_archive",
     "JetSearch",
@@ -21,5 +22,6 @@
     "tour_rates",
     "tour_rates_accordion"
   ],
-  "reconciled_candidate_sha256": "d1bce4eb9d98afa7ad4818dbef4279ba5192c40b36a5a32c45a0149dea3a471c"
+  "reconciled_candidate_sha256": "9bd6e2fdbf4d165665179ed2429fc65fec36b09bfadb7dd600fca18cb395b966",
+  "reconciled_candidate_sha256_prior_v025": "d1bce4eb9d98afa7ad4818dbef4279ba5192c40b36a5a32c45a0149dea3a471c"
 }

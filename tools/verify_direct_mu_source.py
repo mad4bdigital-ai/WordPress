@@ -28,7 +28,7 @@ def verify(data,root=ROOT,live_root=None):
     if set(data.get('preexisting_different_files') or [])!=EXISTING_DIFFERENT:
         raise Blocked('SOURCE_CONFLICT_SCOPE_CHANGED')
     rows=data.get('files')
-    if not isinstance(rows,list) or len(rows)!=161:
+    if not isinstance(rows,list) or len(rows)!=162:
         raise Blocked('UNREVIEWED_DIRECT_MU_COUNT')
     seen=set()
     for row in rows:

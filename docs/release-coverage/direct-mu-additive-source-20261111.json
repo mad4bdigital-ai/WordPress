@@ -1063,6 +1063,13 @@
       "sha256": "a4e388568a43b5a2f13d6ae8e5c83e7110e9f630d68ae9b103fa1141238a72c3"
     },
     {
+      "bytes": 13084,
+      "file_type": ".php",
+      "git_blob_sha1": "085aaade2ca75f48e21a2785525d3e1dae316b64",
+      "path": "wp-content/mu-plugins/mad4b-tour-optional-sections-lazy.php",
+      "sha256": "66c732fd18288c3e379f8efa5bffae06257fd5abc0b8d13c75e859674adeae45"
+    },
+    {
       "bytes": 16274,
       "file_type": ".php",
       "git_blob_sha1": "d671610fad861fd51ef99ff003d55af61f4049a8",
@@ -1134,7 +1141,7 @@
     }
   ],
   "global_release_approved": false,
-  "last_reconciled_utc": "2026-11-11T03:43:08.466690+00:00",
+  "last_reconciled_utc": "2026-11-11T04:01:05.710675+00:00",
   "preexisting_different_files": [
     "mad4b-media-composite-integrity.php",
     "mad4b-tour-media-reconcile.php",

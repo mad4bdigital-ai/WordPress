@@ -2,8 +2,8 @@
 from pathlib import Path
 import unittest
 ROOT=Path(__file__).resolve().parents[1]
-JS=(ROOT/'wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v1.js').read_text()
-CSS=(ROOT/'wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v1.css').read_text()
+JS=(ROOT/'wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.2.7.js').read_text()
+CSS=(ROOT/'wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.2.7.css').read_text()
 MU=(ROOT/'wp-content/mu-plugins/mad4b-tour-form6-submission-mode-v1.php').read_text()
 class Facade(unittest.TestCase):
  def test_preserve_single_native_provider(self):
@@ -15,6 +15,14 @@ class Facade(unittest.TestCase):
   self.assertIn('mad4b-ud-rate-filter-ready',JS)
   self.assertIn("group.insertBefore(widget,first)",JS)
   self.assertIn("document.querySelectorAll('.mad4b-ud-rate-context').forEach(el=>el.remove())",JS)
+ def test_immutable_v027_rate_geometry(self):
+  self.assertIn("function setPortalGeometry()",JS)
+  self.assertIn("window.matchMedia('(max-width:767px)').matches",JS)
+  self.assertIn("setPortalGeometry();",JS)
+  self.assertIn("maxHeight:'90dvh'",JS)
+  self.assertIn("transform:'translate(-50%,-50%)'",JS)
+  self.assertIn("width:min(290px,100%)!important",CSS)
+  self.assertIn("max-width:100%!important",CSS)
  def test_url_apply_clear_and_server_source(self):
   self.assertIn("if(context==='archive'||context==='rates')",JS)
   self.assertIn("_meta_query_advanced_date__any__tour_rate_start_date__tour_rate_end_date|date",JS)

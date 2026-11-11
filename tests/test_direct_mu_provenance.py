@@ -8,7 +8,7 @@ M=json.loads(m.DOC.read_text())
 class MUProvenance(unittest.TestCase):
  def test_exact_direct_mu_source_and_no_auto_activation(self):
   r=m.verify(M)
-  self.assertEqual(r['source_php_files_verified'],161)
+  self.assertEqual(r['source_php_files_verified'],162)
   self.assertEqual(r['existing_conflicts_held'],3)
   self.assertFalse(r['release_authorized'])
  def test_untrusted_grant_claim_fails(self):

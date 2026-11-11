@@ -2,10 +2,10 @@
   "approved_candidate_overlays": [
     {
       "booking_authorized": false,
-      "candidate_blob_sha1": "6d137d0f229ee4da678e0def833a27c3bc541b56",
-      "candidate_sha256": "d1bce4eb9d98afa7ad4818dbef4279ba5192c40b36a5a32c45a0149dea3a471c",
+      "candidate_blob_sha1": "903e5a0cb86e9edf85889c4ba0d1eb4088fd4503",
+      "candidate_sha256": "9bd6e2fdbf4d165665179ed2429fc65fec36b09bfadb7dd600fca18cb395b966",
       "deployment_authorized": false,
-      "live_sha256": "99872f6c060c750718e3162092a51fb79f0cfa9c18819e9ad974acb03c97c9cb",
+      "live_sha256": "86dc75d2fdfa116cdbb2ba36ff0285e9dd80d244c2595761ba79aaeb47f16e21",
       "offline_php_cases_passed": 15,
       "original_snapshot_sha256": "2fc598790080b5369567c9aef70efe61b9edc9ced7a20f8605dcea38338663b2",
       "path": "wp-content/plugins/mad4b-commerce/modules/presentation/unified-date-presentation-v1.php",
@@ -1742,18 +1742,46 @@
       "sha256": "3f39554cd2d10e23d6a2bcb001546db932b1e7130794a24ec7778701863f0129"
     },
     {
-      "bytes": 19743,
-      "git_blob_sha1": "c6663db8de72b3a66a9cb71421f2fc1b66cb83ab",
+      "bytes": 21086,
+      "git_blob_sha1": "3c6569ad93d1e6b4cd1e2f795b34cacdd9ce72b0",
       "original_mode": "0644",
-      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v1.css",
-      "sha256": "cfc60d192978e119615cc240c696107167ecba609d59209498364020ad3af74f"
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.2.6.css",
+      "sha256": "bfef7c1ab2acf9318e59e1cc1475ad515ad5348bc3e8e2794074b12a316e73c6"
     },
     {
-      "bytes": 20178,
-      "git_blob_sha1": "5914b16dd68e318734eed081586f88414f9ee0f7",
+      "bytes": 23295,
+      "git_blob_sha1": "35f099d9f197960fe9b224c0518c92d10ec734f9",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.2.6.js",
+      "sha256": "cc7a5acb2124ea203d1c23113e90a9ba687a0063ce11500a5f823bbcb351551b"
+    },
+    {
+      "bytes": 21449,
+      "git_blob_sha1": "05fe15d09b82ae18de33acfe306560d6dfd001fb",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.2.7.css",
+      "sha256": "096f79bb38fc8c03d8b10820712a4619c27f586c2a0775be81c408afe540b578"
+    },
+    {
+      "bytes": 23385,
+      "git_blob_sha1": "3269bc6d193ef5eb15744af5b57b3c8c335d2f13",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.2.7.js",
+      "sha256": "aa03c8c7e9c76c228b0b9efed7b8298bd957661fa2690fde057319691ce0f8da"
+    },
+    {
+      "bytes": 21449,
+      "git_blob_sha1": "05fe15d09b82ae18de33acfe306560d6dfd001fb",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v1.css",
+      "sha256": "096f79bb38fc8c03d8b10820712a4619c27f586c2a0775be81c408afe540b578"
+    },
+    {
+      "bytes": 23385,
+      "git_blob_sha1": "3269bc6d193ef5eb15744af5b57b3c8c335d2f13",
       "original_mode": "0644",
       "path": "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v1.js",
-      "sha256": "8954602b5830bc194c5c662a7601fbbba8e285562813ffbbf295748327eba243"
+      "sha256": "aa03c8c7e9c76c228b0b9efed7b8298bd957661fa2690fde057319691ce0f8da"
     },
     {
       "bytes": 10226,
@@ -1868,11 +1896,11 @@
       "sha256": "92f5e89524bf21b18258020eb9e436c46caf0a1a1a16ad5294ac35c5653590e1"
     },
     {
-      "bytes": 11230,
-      "git_blob_sha1": "a25bf1c74e3fb694ca5cc5c792384476d9dc543f",
+      "bytes": 11238,
+      "git_blob_sha1": "f02109cc2396fb0c2cd93fe0e05655394075d906",
       "original_mode": "0644",
       "path": "wp-content/plugins/mad4b-commerce/modules/presentation/unified-date-presentation-v1.php",
-      "sha256": "99872f6c060c750718e3162092a51fb79f0cfa9c18819e9ad974acb03c97c9cb"
+      "sha256": "86dc75d2fdfa116cdbb2ba36ff0285e9dd80d244c2595761ba79aaeb47f16e21"
     },
     {
       "bytes": 1301,
@@ -1918,7 +1946,7 @@
     }
   ],
   "full_platform_release_certified": false,
-  "last_reconciled_utc": "2026-11-11T03:43:08.464721+00:00",
+  "last_reconciled_utc": "2026-11-11T04:01:05.707416+00:00",
   "payment_gateway_activated": false,
   "post_capture_amendments": [
     {

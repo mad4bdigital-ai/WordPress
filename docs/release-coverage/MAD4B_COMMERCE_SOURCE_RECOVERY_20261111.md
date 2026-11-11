@@ -33,3 +33,7 @@ Commerce source capture is not a WordPress activation, a Rate Generator runtime 
 ## Post-capture date filter acceptance exception
 
 One Commerce PHP source (modules/presentation/unified-date-presentation-v1.php) now intentionally differs from live by exactly one reviewed and fingerprinted semantic patch: the date/Rate Query 310 filter uses a shared fail-closed intersection function that never broadens an upstream JetEngine/JetSearch post__in=[0]. The authorized source SHA and candidate SHA are pinned separately in the Commerce manifest's single approved_candidate_overlays row. 268 remaining Commerce code paths continue to match the current live source byte-for-byte. Source recovery is not a runtime release.
+
+## Post-capture immutable 0.2.7 date assets
+
+A later live source change introduced 4 immutable 0.2.6/0.2.7 JS/CSS assets and moved the PHP date adapter to 0.2.7 URLs. The latest bounded Commerce manifest therefore verifies 273 sources, including **272 byte-identical live files and one exact reviewed semantic PHP exception** for fail-closed native rate/date intersection. Historical 269-file snapshots above describe the earlier checkpoint and must not be interpreted as the current file count. Native Rate Query 310, selectors and prices still require live runtime tests.

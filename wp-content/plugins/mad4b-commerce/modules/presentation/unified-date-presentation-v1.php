@@ -211,8 +211,8 @@ add_action('wp_enqueue_scripts', static function():void {
     }
     wp_enqueue_script('flatpickr');
     wp_enqueue_style('flatpickr');
-    wp_enqueue_style('mad4b-unified-date-v1',plugins_url('assets/unified-date-v1.css',__FILE__),['flatpickr'],'0.2.5');
-    wp_enqueue_script('mad4b-unified-date-v1',plugins_url('assets/unified-date-v1.js',__FILE__),['flatpickr'],'0.2.5',true);
+    wp_enqueue_style('mad4b-unified-date-v1',plugins_url('assets/unified-date-v0.2.7.css',__FILE__),['flatpickr'],'0.2.7');
+    wp_enqueue_script('mad4b-unified-date-v1',plugins_url('assets/unified-date-v0.2.7.js',__FILE__),['flatpickr'],'0.2.7',true);
     $data=[
         'archiveUrl'=>home_url('/tours-and-activities/'),
         'policy'=>MAD4B_Unified_Date_Intent_V1::settings(),

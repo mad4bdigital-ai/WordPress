@@ -27,3 +27,7 @@ Those media/Content Jobs source differences require semantic reconciliation, not
 This first-party source snapshot includes operating components such as runtime routing, cache, booking, source tours, filters and Content Jobs. It is not a certification of their combination and does not resolve the original Host Authority signer or runtime publisher.
 
 **Release state: HOLD**, pending remaining plugin/MU source semantic gaps, isolated runtime QA, original approved publication, and independent signed Original313 readback.
+
+## Later source: optional Extras/Transportation visibility and lazy loading
+
+The separately reviewed source module mad4b-tour-optional-sections-lazy.php was recovered as the 162nd direct MU PHP path. Its existing Elementor render guards and conservative native JetEngine lazy eligibility passed an isolated 20-case PHP fixture. It was NOT installed or activated on a site by this Git capture, and must be governed as executable code before release.

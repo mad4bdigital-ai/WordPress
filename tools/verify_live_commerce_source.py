@@ -48,7 +48,7 @@ def verify(data, root=ROOT, live_root=None):
         or not re.fullmatch('[a-f0-9]{40}',semantic['candidate_blob_sha1'])):
         raise Blocked('SEMANTIC_OVERLAY_BAD_DIGEST')
     items=data.get('files')
-    if not isinstance(items,list) or len(items)!=269:
+    if not isinstance(items,list) or len(items)!=273:
         raise Blocked('COMMERCE_SOURCE_COUNT_DRIFT')
     seen=set()
     groups={'.php':0,'.js':0,'.css':0}
@@ -85,7 +85,7 @@ def verify(data, root=ROOT, live_root=None):
                 or digest(raw)!=row['sha256']
                 or blob(raw)!=row['git_blob_sha1']):
                 raise Blocked('COMMERCE_SOURCE_SHA_MISMATCH')
-    if groups!={'.php':238,'.js':21,'.css':10}:
+    if groups!={'.php':238,'.js':23,'.css':12}:
         raise Blocked('COMMERCE_CODE_TYPE_DRIFT')
     if (ROOT_NAME+'/mad4b-commerce.php' not in seen
         or ROOT_NAME+'/legacy-mu-tree/shared-product-core/adapters/rate-actions-styles.php' not in seen):

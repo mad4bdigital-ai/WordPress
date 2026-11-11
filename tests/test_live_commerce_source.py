@@ -8,7 +8,7 @@ M=json.loads(m.DOC.read_text())
 class CommerceSource(unittest.TestCase):
  def test_exact_source_snapshot_without_authority(self):
   proof=m.verify(M)
-  self.assertEqual(proof['source_files_verified'],269)
+  self.assertEqual(proof['source_files_verified'],273)
   self.assertFalse(proof['release_authorized'])
   self.assertFalse(proof['payment_gateway_activated'])
  def test_no_implicit_activation(self):
@@ -24,14 +24,26 @@ class CommerceSource(unittest.TestCase):
   self.assertEqual(M['excluded_links'][0]['path'],'legacy-mu-tree/currency-data')
   self.assertFalse((ROOT/m.ROOT_NAME/M['excluded_links'][0]['path']).is_symlink())
  def test_date_filter_reinitializes_cloned_elementor_popup(self):
-  js=(ROOT/m.ROOT_NAME/'modules/presentation/assets/unified-date-v1.js').read_text()
+  js=(ROOT/m.ROOT_NAME/'modules/presentation/assets/unified-date-v0.2.7.js').read_text()
   php=(ROOT/m.ROOT_NAME/'modules/presentation/unified-date-presentation-v1.php').read_text()
   self.assertIn('const initializedRoots = new WeakSet()',js)
   self.assertIn('initializedRoots.has(root)',js)
   self.assertIn('initializedRoots.add(root)',js)
   self.assertIn('!instances[i].root.isConnected',js)
-  self.assertIn("'0.2.5'",php)
-  self.assertNotIn("'0.2.4'",php)
+  self.assertIn("'0.2.7'",php)
+  self.assertNotIn("'0.2.5'",php)
+ def test_immutable_date_assets_and_legacy_fallback_provenance(self):
+  assets=ROOT/m.ROOT_NAME/'modules/presentation/assets'
+  php=(ROOT/m.ROOT_NAME/'modules/presentation/unified-date-presentation-v1.php').read_text()
+  self.assertIn('unified-date-v0.2.7.js',php)
+  self.assertIn('unified-date-v0.2.7.css',php)
+  for ver in ('0.2.6','0.2.7'):
+   for ext in ('js','css'):
+    path=assets/('unified-date-v'+ver+'.'+ext)
+    self.assertTrue(path.is_file())
+    manifest_row=next(r for r in M['files'] if r['path'].endswith('/'+path.name))
+    import hashlib
+    self.assertEqual(hashlib.sha256(path.read_bytes()).hexdigest(),manifest_row['sha256'])
  def test_only_reviewed_date_310_semantic_overlay_is_allowed(self):
   from copy import deepcopy
   self.assertEqual(len(M.get('approved_candidate_overlays') or []),1)

@@ -1,0 +1,26 @@
+{
+  "contract": "mad4b.source-new-date-v0.2.7-optional-section-lazy.v1",
+  "date_runtime_php": "wp-content/plugins/mad4b-commerce/modules/presentation/unified-date-presentation-v1.php",
+  "new_immutable_asset_paths": [
+    "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.2.6.js",
+    "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.2.6.css",
+    "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.2.7.js",
+    "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.2.7.css"
+  ],
+  "optional_sections_php_path": "wp-content/mu-plugins/mad4b-tour-optional-sections-lazy.php",
+  "optional_sections_prunes_hidden_nested_css": true,
+  "optional_sections_runtime_activated": false,
+  "optional_sections_sha256": "66c732fd18288c3e379f8efa5bffae06257fd5abc0b8d13c75e859674adeae45",
+  "optional_sections_source_version": "1.2.0",
+  "original_date_AND_guard_preserved": true,
+  "release_authorized": false,
+  "retained_prior_immutable_assets": [
+    "unified-date-v0.2.6.js",
+    "unified-date-v0.2.6.css"
+  ],
+  "runtime_assets": [
+    "unified-date-v0.2.7.js",
+    "unified-date-v0.2.7.css"
+  ],
+  "source_site_or_database_mutated": false
+}

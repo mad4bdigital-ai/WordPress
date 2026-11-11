@@ -107,6 +107,28 @@
     const panel=root.querySelector('.mad4b-ud__panel');
     const q=selector=>root.querySelector(selector)||panel.querySelector(selector);
     const trigger=q('.mad4b-ud__trigger'),host=q('.mad4b-ud__calendar-host');
+    // Self-healing critical styles for Rate filter: the prior CSS URL had
+    // a seven-day cache life with its query-string version stripped.
+    if(context==='rates'){
+      const important=(el,entries)=>Object.entries(entries).forEach(([key,value])=>
+        el.style.setProperty(key,value,'important'));
+      important(trigger,{
+        display:'flex',width:'100%',minHeight:'44px',height:'44px',padding:'0 12px',
+        backgroundColor:'#fff',color:'#173e4a',
+        border:'1px solid #d8e2e5',borderRadius:'10px',
+        boxShadow:'none',transform:'none',textTransform:'none',letterSpacing:'normal',
+        fontFamily:'inherit',fontSize:'13px',fontWeight:'400',
+        lineHeight:'1.35',whiteSpace:'nowrap'
+      });
+      important(q('.mad4b-ud__summary'),{
+        flex:'1 1 auto',minWidth:'0',overflow:'hidden',textOverflow:'ellipsis',
+        whiteSpace:'nowrap',fontSize:'13px',fontWeight:'400',textAlign:'start'
+      });
+      important(root,{
+        width:window.matchMedia('(max-width:767px)').matches?'100%':'min(290px,100%)',
+        maxWidth:'100%',margin:'0'
+      });
+    }
     let calendar=null, opened=false;
     const backdrop=document.createElement('div');
     backdrop.className='mad4b-ud__backdrop';
@@ -119,10 +141,55 @@
       document.body.classList.remove('mad4b-ud-dialog-open');
       if(root.isConnected)trigger.focus({preventScroll:true});
     }
+    function setPortalGeometry(){
+      const mobile=window.matchMedia('(max-width:767px)').matches;
+      const set=(el,entries)=>Object.entries(entries).forEach(([key,value])=>
+        el.style.setProperty(key,value,'important'));
+      set(backdrop,{
+        position:'fixed',top:'0',right:'0',bottom:'0',left:'0',
+        zIndex:'2147483000',background:'rgba(11,36,48,.30)'
+      });
+      set(panel,{
+        position:'fixed',zIndex:'2147483001',
+        backgroundColor:'#fff',boxSizing:'border-box',
+        overflowY:'auto',overflowX:'hidden',
+        maxWidth:'100vw',margin:'0',
+        boxShadow:'0 24px 70px rgba(9,37,48,.28)'
+      });
+      if(mobile){
+        set(panel,{
+          top:'auto',left:'0',right:'0',bottom:'0',transform:'none',
+          width:'100%',maxHeight:'90dvh',borderRadius:'20px 20px 0 0'
+        });
+      }else{
+        set(panel,{
+          top:'50%',left:'50%',right:'auto',bottom:'auto',
+          transform:'translate(-50%,-50%)',
+          width:'min(390px,calc(100vw - 32px))',
+          maxHeight:'min(88dvh,670px)',borderRadius:'18px'
+        });
+      }
+    }
     backdrop.addEventListener('click',close);
+    window.addEventListener('resize',()=>{if(opened)setPortalGeometry();},{passive:true});
     function render() {
-      q('.mad4b-ud__summary').textContent=state.from
+      let summary=state.from
         ? dateLabel(state.from)+(state.mode==='flex'&&state.to?' – '+dateLabel(state.to):''):'Travel Dates';
+      if(context==='rates'){
+        const compact=day=>new Intl.DateTimeFormat(document.documentElement.lang||'en',{
+          day:'numeric',month:'short',year:'numeric'
+        }).format(new Date(day+'T12:00:00'));
+        if(state.from&&state.mode==='flex'&&state.to){
+          const [fy,fm]=state.from.split('-'),[ty,tm,td]=state.to.split('-');
+          const fromD=Number(state.from.split('-')[2]);
+          summary=(fy===ty&&fm===tm
+            ? fromD+'–'+Number(td)+' '+new Intl.DateTimeFormat(document.documentElement.lang||'en',{month:'short'}).format(new Date(state.from+'T12:00:00'))+' '+ty
+            :compact(state.from)+' – '+compact(state.to));
+          summary='Flex Date · '+summary;
+        }else summary=state.from?'Fixed Date · '+compact(state.from):'Travel Dates';
+      }
+      q('.mad4b-ud__summary').textContent=summary;
+      q('.mad4b-ud__trigger').title=summary;
       q('.mad4b-ud__from').textContent=dateLabel(state.from)||'Select date';
       q('.mad4b-ud__to').textContent=dateLabel(state.to)||'Select date';
       q('.mad4b-ud__to-wrap').hidden=state.mode!=='flex';
@@ -156,6 +223,7 @@
       instances.forEach(x=>{if(x.root!==root)x.close();});
       opened=true;panel.hidden=false;trigger.setAttribute('aria-expanded','true');
       panel.setAttribute('aria-modal','true');
+      setPortalGeometry();
       document.body.append(backdrop,panel);
       document.body.classList.add('mad4b-ud-dialog-open');
       initCalendar();render();
