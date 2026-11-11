@@ -61,17 +61,18 @@ final class WorkflowJobs
             return new \WP_Error('workflow_queue_origin_not_allowed');
         if(!preg_match('/^[A-Za-z0-9._:-]{16,128}$/D',$intentKey))
             return new \WP_Error('workflow_idempotency_key_invalid');
-        if($actorId<1||!user_can($actorId,'manage_options'))
+        if($actorId<1||!\MAD4B_Lifecycle_Access::can('commerce_run_workflows',$actorId))
             return new \WP_Error('workflow_actor_not_authorized');
         // Publicly enqueued background jobs must not depend on an HTTP
         // customer's transient Woo session or gain sale/supplier authority.
         if(!in_array($action,[
             'link_contact_record',
-            'create_request_from_saved_submission'
+            'create_request_from_saved_submission',
+            'sync_request_lifecycle'
         ],true))return new \WP_Error('workflow_action_not_async_certified');
-        $keys=$action==='link_contact_record'
-            ?['contact_id','source_key','source_id','role']
-            :['form_id','submission_id'];
+        $keys=$action==='sync_request_lifecycle'
+            ?['form_id','submission_id','order_id','event','component','refund_id']
+            :($action==='link_contact_record'?['contact_id','source_key','source_id','role']:['form_id','submission_id']);
         $actualKeys=array_keys($payload);
         sort($actualKeys,SORT_STRING);
         $requiredKeys=$keys;
@@ -92,6 +93,10 @@ final class WorkflowJobs
                 'source_id'=>$payload['source_id'],
                 'role'=>$payload['role']
             ];
+        }elseif($action==='sync_request_lifecycle'){
+            if(!RequestLifecycle::validPayload($payload))return new \WP_Error('workflow_payload_schema_invalid');
+            $verified=RequestAdvancePayments::submissionContext($payload['form_id'],$payload['submission_id']);
+            if(is_wp_error($verified))return $verified;
         }else{
             if(!is_int($payload['form_id'])||$payload['form_id']<1||
                 !is_int($payload['submission_id'])||$payload['submission_id']<1)
@@ -138,7 +143,7 @@ final class WorkflowJobs
     public static function status(int $id,int $viewerId):array|\WP_Error
     {
         global $wpdb;
-        if($id<1||!self::ready()||$viewerId<1||!user_can($viewerId,'manage_options'))
+        if($id<1||!self::ready()||$viewerId<1||!\MAD4B_Lifecycle_Access::can('commerce_run_workflows',$viewerId))
             return new \WP_Error('workflow_job_access_denied');
         $t=self::table();
         $row=$wpdb->get_row($wpdb->prepare(
@@ -146,7 +151,7 @@ final class WorkflowJobs
              FROM $t WHERE id=%d",$id
         ),ARRAY_A);
         if(!is_array($row)||((int)$row['actor_id']!==$viewerId &&
-            !user_can($viewerId,'manage_options')))
+            !\MAD4B_Lifecycle_Access::can('commerce_run_workflows',$viewerId)))
             return new \WP_Error('workflow_job_not_found');
         return [
             'job_id'=>(int)$row['id'],'action_key'=>$row['action_key'],
@@ -159,7 +164,7 @@ final class WorkflowJobs
         string $state=''):array|\WP_Error
     {
         global $wpdb;
-        if($viewerId<1||!user_can($viewerId,'manage_options')||!self::ready())
+        if($viewerId<1||!\MAD4B_Lifecycle_Access::can('commerce_run_workflows',$viewerId)||!self::ready())
             return new \WP_Error('workflow_jobs_list_access_denied');
         if($state!==''&&!in_array($state,
             ['queued','running','succeeded','failed'],true))
@@ -222,7 +227,7 @@ final class WorkflowJobs
             !hash_equals((string)$row['payload_sha256'],
                 hash('sha256',$row['action_key'].':'.$row['payload_json'])))
             $result=new \WP_Error('workflow_job_payload_integrity_failed');
-        elseif(!user_can($actor,'manage_options'))
+        elseif(!\MAD4B_Lifecycle_Access::can('commerce_run_workflows',$actor))
             $result=new \WP_Error('workflow_job_actor_revoked');
         else {
             $previous=get_current_user_id();
@@ -259,8 +264,8 @@ final class WorkflowJobs
         if(!self::ready())return ['processed'=>0,'succeeded'=>0,'failed'=>0];
         $t=self::table();
         $cutoff=gmdate('Y-m-d H:i:s',time()-900);
-        // A killed worker can leave state=running. The only certified
-        // background effect is a SQL-unique link, so retrying it is safe.
+        // Recover interrupted idempotent source jobs. Provider receipts detect
+        // uncertain mail/journal outcomes and stop those effects for review.
         $wpdb->query($wpdb->prepare(
             "UPDATE $t SET state='queued',error_code='workflow_worker_recovered'
              WHERE state='running' AND attempts<3 AND updated_utc<%s",

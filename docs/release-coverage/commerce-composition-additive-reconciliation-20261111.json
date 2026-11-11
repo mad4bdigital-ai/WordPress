@@ -1,0 +1,116 @@
+{
+  "commercial_qa_modules_preserved": true,
+  "company_code_deployed": false,
+  "contract": "mad4b.commerce-composition-additive-source-reconcile.v1",
+  "existing_candidate_only_code_not_removed": true,
+  "existing_reviewed_files_reconciled": 3,
+  "git_parent_head": "289806ba5d1f2f192db1dfc1459c5a63f9a51c85",
+  "lifecycle_job_sent": false,
+  "missing_files_imported": 8,
+  "original313_signer_issued": false,
+  "release_authorized": false,
+  "rows": [
+    {
+      "bytes": 2209,
+      "candidate_sha256": "fcd746a50a16c7a61ab39b6c35ef22a71e5a0fca576845ef885eb817cdc652b8",
+      "git_blob_sha1": "78ad713741d4a674f86b58e6023aa9e45b9b3cc3",
+      "kind": "missing_exact_source",
+      "live_sha256": "fcd746a50a16c7a61ab39b6c35ef22a71e5a0fca576845ef885eb817cdc652b8",
+      "path": "wp-content/plugins/commerce-composition/assets/accommodation-policy.js"
+    },
+    {
+      "bytes": 6834,
+      "candidate_sha256": "31579e4feede785d7e90a983d94dbbb1168eca491c8ac880c35de9ac987fe529",
+      "git_blob_sha1": "0921c42f7d2c87893f2501f19dc68ada7df31d0f",
+      "kind": "missing_exact_source",
+      "live_sha256": "31579e4feede785d7e90a983d94dbbb1168eca491c8ac880c35de9ac987fe529",
+      "path": "wp-content/plugins/commerce-composition/includes/AccommodationPolicyComponent.php"
+    },
+    {
+      "bytes": 9863,
+      "candidate_sha256": "3b652fe1bdb690eb3b514a0748109bb75788fe1dc301a4393c9521ce53bd6e8b",
+      "git_blob_sha1": "8ed86ea1d1814ac215dd90ee8442fad286f37d64",
+      "kind": "missing_exact_source",
+      "live_sha256": "3b652fe1bdb690eb3b514a0748109bb75788fe1dc301a4393c9521ce53bd6e8b",
+      "path": "wp-content/plugins/commerce-composition/includes/CompanyLegalRules.php"
+    },
+    {
+      "bytes": 24864,
+      "candidate_sha256": "a065d9468409bc5aab13a0294e99a8a58c66c3faf23c6dbb303d11d1369c7c06",
+      "git_blob_sha1": "329ed7e9faae1f1d2c069a0f09952908af8c301b",
+      "kind": "missing_exact_source",
+      "live_sha256": "a065d9468409bc5aab13a0294e99a8a58c66c3faf23c6dbb303d11d1369c7c06",
+      "path": "wp-content/plugins/commerce-composition/includes/CompanyPolicyLibrary.php"
+    },
+    {
+      "bytes": 5624,
+      "candidate_sha256": "9a8db9e0a02b80080c70c2a843c0ad627ca395b533a37b162038c8ab70b0c73e",
+      "git_blob_sha1": "92599ab9818646babe4b93f061335f278b87fe34",
+      "kind": "missing_exact_source",
+      "live_sha256": "9a8db9e0a02b80080c70c2a843c0ad627ca395b533a37b162038c8ab70b0c73e",
+      "path": "wp-content/plugins/commerce-composition/includes/RequestAdvanceAccounting.php"
+    },
+    {
+      "bytes": 42914,
+      "candidate_sha256": "36fd09ab564fb85f4d19239a880561458a13616d15560e07aa2a2b492c9eea5c",
+      "git_blob_sha1": "46adc3872d02ebd7ba807cfde452bb22f96d4eb8",
+      "kind": "missing_exact_source",
+      "live_sha256": "36fd09ab564fb85f4d19239a880561458a13616d15560e07aa2a2b492c9eea5c",
+      "path": "wp-content/plugins/commerce-composition/includes/RequestAdvancePayments.php"
+    },
+    {
+      "bytes": 31526,
+      "candidate_sha256": "b9f8744e679c7188d08686ae11459c86682184e2d7f0db5e3d8627c796fcc92e",
+      "git_blob_sha1": "5fbc163e376491f9925acd961a64f903fd946045",
+      "kind": "missing_exact_source",
+      "live_sha256": "b9f8744e679c7188d08686ae11459c86682184e2d7f0db5e3d8627c796fcc92e",
+      "path": "wp-content/plugins/commerce-composition/includes/RequestLifecycle.php"
+    },
+    {
+      "bytes": 15748,
+      "candidate_sha256": "5b1d9987a3f5d586270974031ab5ae0e740ffdcb4ebf838102277ffb5452170f",
+      "git_blob_sha1": "0dc465c39cd7c036218474907369f65b629aa09c",
+      "kind": "missing_exact_source",
+      "live_sha256": "5b1d9987a3f5d586270974031ab5ae0e740ffdcb4ebf838102277ffb5452170f",
+      "path": "wp-content/plugins/commerce-composition/includes/SingleFluentPaymentRouter.php"
+    },
+    {
+      "base_sha256": "95b6e454044fc8cc78fa2218913408bd64f67b0f70c88d5728584aeab24186fc",
+      "bytes": 5575,
+      "candidate_sha256": "e13e899b9deb2215fcd2dd645d31f0b3c8d9d8431b0b8184b8c0281d595c6d4e",
+      "git_blob_sha1": "9505af6829a2bcbbf9a75d306f55c4e99c8c53e0",
+      "kind": "reviewed_existing_source_reconcile",
+      "live_sha256": "e13e899b9deb2215fcd2dd645d31f0b3c8d9d8431b0b8184b8c0281d595c6d4e",
+      "path": "wp-content/plugins/commerce-composition/includes/WorkflowActions.php"
+    },
+    {
+      "base_sha256": "0ea2e7c75d382e9117a65030d4b1f2003fe81e9080aeea39dbc21196d644fd58",
+      "bytes": 14033,
+      "candidate_sha256": "24e8aab7db7811523759d3d26dc01124887349fe5096d9ac722f60387627a300",
+      "git_blob_sha1": "e78c421d63432534450a2ab053cef36f0018b74c",
+      "kind": "reviewed_existing_source_reconcile",
+      "live_sha256": "24e8aab7db7811523759d3d26dc01124887349fe5096d9ac722f60387627a300",
+      "path": "wp-content/plugins/commerce-composition/includes/WorkflowJobs.php"
+    },
+    {
+      "base_sha256": "66a281bbd808a8714e55a5fefe7ec5afd2448fdcc831553ff320fe8411290fe2",
+      "bytes": 13513,
+      "candidate_sha256": "465589ddd6152f49af5ca4d5c08015b7d2d61dfd6992e9b71b073de370a78916",
+      "git_blob_sha1": "18470e5b6fdefa128861318750cf098459b04102",
+      "kind": "reviewed_existing_source_reconcile",
+      "live_sha256": "465589ddd6152f49af5ca4d5c08015b7d2d61dfd6992e9b71b073de370a78916",
+      "path": "wp-content/plugins/commerce-composition/includes/FluentBoardsTaskBridge.php"
+    },
+    {
+      "base_sha256": "8cd1f9aa5b818c8c289a41ff450bad1a4e5732dfac2cda6f37e4eebd1829f02e",
+      "bytes": 9473,
+      "candidate_sha256": "a33dbf81585a6e400a6b9645394aab60cb090081565cb1cd1e51f3e8515ef4ed",
+      "git_blob_sha1": "b8b4323f0314279dda5361d689847b63ae082a9d",
+      "kind": "additive_bootstrap_preserve_existing_qa",
+      "live_sha256": "f8bca2e91dc6cbdc944a929aa6a5646082d74327bd88fc698305ac33f9711fd2",
+      "path": "wp-content/plugins/commerce-composition/composition.php"
+    }
+  ],
+  "source_site": "tours.dev.mad4b.com",
+  "woocommerce_order_written": false
+}

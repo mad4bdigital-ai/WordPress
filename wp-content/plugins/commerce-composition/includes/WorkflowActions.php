@@ -28,6 +28,11 @@ final class WorkflowActions
                 'effect'=>'verified_original_form_request_intake',
                 'requires'=>['form_id','submission_id','approved_server_policy']
             ],
+            'sync_request_lifecycle'=>[
+                'owner'=>'native_request_lifecycle','available'=>class_exists(RequestLifecycle::class),
+                'effect'=>'source_owned_crm_boards_mail_advance_journals',
+                'requires'=>['form_id','submission_id','order_id','event','component','refund_id']
+            ],
             'create_supplier_booking'=>[
                 'owner'=>'supplier_booking','available'=>false,
                 'effect'=>'not_authorized',
@@ -73,13 +78,14 @@ final class WorkflowActions
     /** Admin-only, explicit invocation. No code executes based on UI labels. */
     public static function execute(string $action,array $payload):array|\WP_Error
     {
-        if(!current_user_can('manage_options'))
+        if(!\MAD4B_Lifecycle_Access::can('commerce_run_workflows'))
             return new \WP_Error('workflow_action_permission_denied');
         $actions=self::definitions();
         if(!array_key_exists($action,$actions))
             return new \WP_Error('workflow_action_unknown');
         if(!$actions[$action]['available'])
             return new \WP_Error('workflow_action_required_authority_missing');
+        if($action==='sync_request_lifecycle')return RequestLifecycle::execute($payload);
         if($action==='link_contact_record'){
             if(!isset($payload['contact_id'],$payload['source_key'],
                 $payload['source_id'],$payload['role'])||
