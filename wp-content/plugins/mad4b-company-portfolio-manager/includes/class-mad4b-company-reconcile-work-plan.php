@@ -400,7 +400,10 @@ final class MAD4B_Company_Reconcile_Work_Plan_V1 {
    $policy['check_dependencies']??[],
    $policy['dependency_policy_kind']??null,
    $policy['evidence_levels']??[],
-   $policy['incident_evidence_lanes']??[]],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
+   $policy['incident_evidence_lanes']??[],
+   $policy['repair_provider_discovery_contract']??null,
+   $policy['repair_provider_discovery_mode']??null,
+   $policy['repair_ambiguous_provider_policy']??null],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
   $newCompany=!$environmentInventory;
   $depth=MAD4B_Company_Reconcile_Depth_Audit_V1::evaluate($policy,$work,$scenarios);
   $policyInvalid=($depth['dependency_graph_valid']??false)!==true;
@@ -459,3 +462,5 @@ final class MAD4B_Company_Reconcile_Work_Plan_V1 {
  }
 }
 }
+
+require_once __DIR__ . '/class-mad4b-company-repair-jobs.php';

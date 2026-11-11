@@ -1,0 +1,72 @@
+{
+  "central_local_repair_journal_created": true,
+  "central_repair_journal_count": 1,
+  "company_production_release_certified": false,
+  "contract": "mad4b.company-repair-jobs.dynamic-source-provenance.v1",
+  "date": "2026-11-11",
+  "dynamic_operation_map_absent": true,
+  "files": [
+    {
+      "bytes": 6324,
+      "installed": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-repair-capability-discovery.php",
+      "sha256": "ad29f4a33075fbfea0f48f7adcb01478cf944ed02e9f82f2ff8902ec0ea24129",
+      "source": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-repair-capability-discovery.php"
+    },
+    {
+      "bytes": 11161,
+      "installed": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-repair-job-contract.php",
+      "sha256": "fbd15bc2b71d81271dcf6f9f7cc7d6af8cad3d51a06dcd47ac0db7b8baf851be",
+      "source": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-repair-job-contract.php"
+    },
+    {
+      "bytes": 49792,
+      "installed": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-repair-jobs.php",
+      "sha256": "dc95429767cd9b357d5b80d66bc8d5ab575f173831ee0d72e9e5a3d203a980df",
+      "source": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-repair-jobs.php"
+    },
+    {
+      "bytes": 26798,
+      "installed": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-reconcile-work-plan.php",
+      "sha256": "a574e9521e83c3531034686e65f701d9be1f8f0280aae7739ce31ea0deeab4db",
+      "source": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-reconcile-work-plan.php"
+    },
+    {
+      "bytes": 21668,
+      "installed": "wp-content/mu-plugins/company-start-reconcile/policy.json",
+      "sha256": "7108762fa323f49b161c31b7fb5c5b0177a89eccf2581be5a7b175b167006d37",
+      "source": "ops/deployment-overlays/center/company-start-reconcile/policy.json"
+    }
+  ],
+  "full_clone_executed": false,
+  "immutable_journal_upgrade_verified": true,
+  "main_company_manager_plugin_replaced": false,
+  "manual_original_305_required": true,
+  "native_305_job_submitted": false,
+  "native_grant_created": false,
+  "observed_target_site": "wayfatours.com",
+  "original_313_exact_receipt_verified": false,
+  "original_318_signed_release": false,
+  "payment_or_pricing_changed": false,
+  "pilot_job_id": "f672cfb110bbb5419a59738e8a05c0114aa98de9",
+  "pilot_provider_candidates": 0,
+  "pilot_provider_discovery_state": "NO_TRUSTED_PROVIDER_DECLARES_REPAIR_SUPPORT",
+  "provider_registry_registrations": 9,
+  "repair_queue_integrity_holds": 0,
+  "repair_queue_items": 19,
+  "repair_queue_not_created": 18,
+  "resource_resolver_unenrolled": true,
+  "scope_other_companies_touched": false,
+  "source_site": "tours.dev.mad4b.com",
+  "tests": {
+    "admin_js_parsed": true,
+    "admin_queue_http": 200,
+    "dynamic_job_assertions": 62,
+    "guest_queue_http": 401,
+    "original_binding_structural_assertions": 17,
+    "queue_assertions": 15,
+    "reconcile_depth_assertions": 35,
+    "wordpress_live_regression": 21
+  },
+  "wayfa_production_site_uuid": "a3a7cc36-db7e-4a14-8456-b41857def05c",
+  "wayfa_target_wordpress_mutated": false
+}

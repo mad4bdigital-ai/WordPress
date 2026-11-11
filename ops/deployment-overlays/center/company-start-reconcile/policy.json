@@ -601,5 +601,10 @@
     "native_plugin_install_capability": "original_provider",
     "company_code_release_lifecycle": "original_provider",
     "native_scoped_write_capability_freshness": "original_provider"
-  }
+  },
+  "repair_job_baseline": "exact-site local hashes are advisory until corroborated by signed Original 313",
+  "repair_job_receipt": "command + resource + before/after/rollback + exact original signed proof",
+  "repair_provider_discovery_contract": "mad4b.company-repair.provider-capability.v1",
+  "repair_provider_discovery_mode": "trusted_original_registry_scoped_readback_dynamic",
+  "repair_ambiguous_provider_policy": "hold_no_auto_selection"
 }
