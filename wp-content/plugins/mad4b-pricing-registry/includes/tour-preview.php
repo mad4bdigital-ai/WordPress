@@ -1,6 +1,6 @@
 <?php
 if (!defined('ABSPATH')) exit;
-/** Delegates immutable tour previews to canonical Booking Configuration v2. */
+/** Delegates immutable tour previews to the canonical Booking Configuration v2 engine. */
 final class MAD4B_Pricing_Tour_Preview {
  public static function preview($payload) {
   if(!is_array($payload))return new WP_Error('pricing_registry_tour_payload_invalid');

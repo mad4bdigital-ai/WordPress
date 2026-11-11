@@ -484,3 +484,4 @@ final class MAD4B_Tour_Media_Reconcile_V1 {
 }
 if(defined('WP_CLI') && WP_CLI && class_exists('WP_CLI'))
     WP_CLI::add_command('mad4b media-reconcile',[MAD4B_Tour_Media_Reconcile_V1::class,'cli']);
+

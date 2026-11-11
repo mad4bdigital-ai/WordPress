@@ -62,7 +62,7 @@ final class MAD4B_Pricing_Quote_Dispatch {
   $handler=$handlers[$source];
   if(!is_array($handler)||!isset($handler['callback'],$handler['domain'],$handler['argument'])||!is_string($handler['callback'])||!is_callable($handler['callback'])||$handler['domain']!==$defs[$source]['domain'])return new WP_Error('pricing_registry_handler_invalid');
   if($handler['argument']==='array'){
-   if($source==='accommodation_rate'&&array_diff(array_keys($payload),['rate_id','checkin','checkout','rooms','adults','children','room_occupancy','addons']))return new WP_Error('pricing_registry_unknown_input');
+   if($source==='accommodation_rate'&&array_diff(array_keys($payload),['rate_id','checkin','checkout','rooms','adults','children','child_ages','room_occupancy','addons']))return new WP_Error('pricing_registry_unknown_input');
    $result=call_user_func($handler['callback'],$payload);
   }elseif($handler['argument']==='transport'){
    if(array_diff(array_keys($payload),['transport_id','quantities'])||!isset($payload['transport_id'])||(!empty($payload['quantities'])&&!is_array($payload['quantities'])))return new WP_Error('pricing_registry_unknown_input');

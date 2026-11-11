@@ -1,0 +1,47 @@
+{
+  "company_release_authorized": false,
+  "contract": "mad4b.pricing-media-static-source-preservation-review.v1",
+  "files": [
+    {
+      "path": "wp-content/plugins/mad4b-pricing-registry/includes/source-arbitration.php",
+      "previous_sha256": "46ba895a67ccc571326e5cf74385996f4ae2f044439bcf55c91ae44a667b69ba",
+      "reviewed_live_sha256": "dda9eb1fc77f2da8c0506d2012385de02654cc0f9da913050050d447afa9baf6",
+      "scope": "comment_only_or_trailing_newline"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-pricing-registry/includes/tour-preview.php",
+      "previous_sha256": "6b686ec68974cf8775408ccdce7351536835bbf6aba23d2173f00c686476d467",
+      "reviewed_live_sha256": "cd7cf458fb12ce6f11d8dd0b2764b8f29f0b466858103da3ad2d1880b8557a6f",
+      "scope": "comment_only_or_trailing_newline"
+    },
+    {
+      "path": "wp-content/mu-plugins/mad4b-tour-media-reconcile.php",
+      "previous_sha256": "3de6aaef468a11e6e8fab0ba21e738d391caf21b5aef4b1cdf0884bf3cc62b73",
+      "reviewed_live_sha256": "edd8b777a9550586d4b1dd1fe48e8508aa8d74c7efbeea9c790e93d8481f463a",
+      "scope": "comment_only_or_trailing_newline"
+    },
+    {
+      "candidate_sha256": "315701f686c7792f5bc7259e62df71cf665c9223a8e4570393a9fcabab2ed3c1",
+      "path": "wp-content/plugins/mad4b-pricing-registry/mad4b-pricing-registry.php",
+      "reviewed_live_sha256": "4dd12cac10fe9ca1cefc060010982de01fdaccf0081ff0d566bfb4cb8d0be592",
+      "scope": "child_ages_pass_through_with_original_registry_identity_preserved"
+    },
+    {
+      "candidate_sha256": "92b5a7385496290c8ce127ced511ef83554d8dd6b09c1eb40ed297c6638d2a3c",
+      "live_sha256": "b660ea541fa36f7f1cbd26d94642e06223c297016aef5bcfdb36ecca27d21d6e",
+      "path": "wp-content/mu-plugins/mad4b-media-composite-integrity.php",
+      "scope": "candidate_only_composite_media_schema_or_signed_adapter_preserved"
+    },
+    {
+      "candidate_sha256": "13f4ee810615c04b8c649818b13972ff956f577a4c221744cb44d7cb32dd6bd5",
+      "live_sha256": "7211e575e85e2ec751172e257bc5207b8f7cfc44ee8524558c968c5cfa94c172",
+      "path": "wp-content/mu-plugins/mad4b-unified-media-apply.php",
+      "scope": "candidate_only_composite_media_schema_or_signed_adapter_preserved"
+    }
+  ],
+  "historical_base_head": "fbf0d2126a53efed1a87da4121888043734eac93",
+  "live_runtime_tested": false,
+  "no_woocommerce_order_created": true,
+  "no_wordpress_media_write": true,
+  "source_only": true
+}

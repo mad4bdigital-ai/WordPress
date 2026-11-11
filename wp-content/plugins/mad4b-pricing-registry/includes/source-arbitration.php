@@ -1,6 +1,6 @@
 <?php
 if (!defined('ABSPATH')) exit;
-/** Read-only adapter; canonical Shared Product Core remains the policy authority. */
+/** Canonical Shared Product Core owns source priority; this adapter cannot change it. */
 final class MAD4B_Pricing_Source_Arbitration {
  public static function inspect($mode='') {
   if (!function_exists('shared_product_price_source_policy')) return new WP_Error('pricing_registry_policy_unavailable');
