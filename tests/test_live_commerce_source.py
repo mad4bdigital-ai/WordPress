@@ -8,7 +8,7 @@ M=json.loads(m.DOC.read_text())
 class CommerceSource(unittest.TestCase):
  def test_exact_source_snapshot_without_authority(self):
   proof=m.verify(M)
-  self.assertEqual(proof['source_files_verified'],273)
+  self.assertEqual(proof['source_files_verified'],276)
   self.assertFalse(proof['release_authorized'])
   self.assertFalse(proof['payment_gateway_activated'])
  def test_no_implicit_activation(self):
@@ -24,34 +24,60 @@ class CommerceSource(unittest.TestCase):
   self.assertEqual(M['excluded_links'][0]['path'],'legacy-mu-tree/currency-data')
   self.assertFalse((ROOT/m.ROOT_NAME/M['excluded_links'][0]['path']).is_symlink())
  def test_date_filter_reinitializes_cloned_elementor_popup(self):
-  js=(ROOT/m.ROOT_NAME/'modules/presentation/assets/unified-date-v0.2.7.js').read_text()
+  js=(ROOT/m.ROOT_NAME/'modules/presentation/assets/unified-date-v0.3.1.js').read_text()
   php=(ROOT/m.ROOT_NAME/'modules/presentation/unified-date-presentation-v1.php').read_text()
   self.assertIn('const initializedRoots = new WeakSet()',js)
   self.assertIn('initializedRoots.has(root)',js)
   self.assertIn('initializedRoots.add(root)',js)
   self.assertIn('!instances[i].root.isConnected',js)
-  self.assertIn("'0.2.7'",php)
-  self.assertNotIn("'0.2.5'",php)
+  self.assertIn("'0.3.0'",php)
+  self.assertNotIn("'0.2.7'",php)
  def test_immutable_date_assets_and_legacy_fallback_provenance(self):
   assets=ROOT/m.ROOT_NAME/'modules/presentation/assets'
   php=(ROOT/m.ROOT_NAME/'modules/presentation/unified-date-presentation-v1.php').read_text()
-  self.assertIn('unified-date-v0.2.7.js',php)
-  self.assertIn('unified-date-v0.2.7.css',php)
-  for ver in ('0.2.6','0.2.7'):
+  self.assertIn('unified-date-v0.3.1.js',php)
+  self.assertIn('unified-date-v0.3.0.css',php)
+  for ver in ('0.2.6','0.2.7','0.3.0'):
    for ext in ('js','css'):
     path=assets/('unified-date-v'+ver+'.'+ext)
     self.assertTrue(path.is_file())
     manifest_row=next(r for r in M['files'] if r['path'].endswith('/'+path.name))
     import hashlib
-    self.assertEqual(hashlib.sha256(path.read_bytes()).hexdigest(),manifest_row['sha256'])
- def test_only_reviewed_date_310_semantic_overlay_is_allowed(self):
+    candidate_sha=hashlib.sha256(path.read_bytes()).hexdigest()
+    overlays={r['path']:r for r in M['approved_candidate_overlays']}
+    self.assertEqual(candidate_sha,overlays[manifest_row['path']]['candidate_sha256']
+      if manifest_row['path'] in overlays else manifest_row['sha256'])
+  newest=assets/'unified-date-v0.3.1.js'
+  row=next(r for r in M['files'] if r['path'].endswith('/'+newest.name))
+  overlay=next(r for r in M['approved_candidate_overlays'] if r['path']==row['path'])
+  self.assertEqual(hashlib.sha256(newest.read_bytes()).hexdigest(),overlay['candidate_sha256'])
+  self.assertEqual(row['sha256'],overlay['live_sha256'])
+ def test_both_exact_reviewed_date_semantic_overlays_are_required(self):
   from copy import deepcopy
-  self.assertEqual(len(M.get('approved_candidate_overlays') or []),1)
-  patch=M['approved_candidate_overlays'][0]
-  self.assertEqual(patch['offline_php_cases_passed'],15)
-  self.assertIs(patch['deployment_authorized'],False)
+  patches=M.get('approved_candidate_overlays') or []
+  self.assertEqual(len(patches),2)
+  by_policy={item['policy']:item for item in patches}
+  self.assertEqual(by_policy['read_only_and_intersection_fail_closed']['offline_php_cases_passed'],27)
+  self.assertEqual(by_policy['clear_wpml_stale_date_and_empty_fluent_input']['offline_js_cases_passed'],23)
+  self.assertEqual(m.verify(M)['semantic_overlays_verified'],2)
+  self.assertEqual(m.verify(M)['live_files_byte_identical_to_candidate'],274)
+  for patch in patches:
+   self.assertIs(patch['deployment_authorized'],False)
+   self.assertIs(patch['booking_authorized'],False)
+ def test_reject_malformed_or_forged_date_overlays(self):
+  from copy import deepcopy
+  for i in (0,1):
+   forged=deepcopy(M)
+   forged['approved_candidate_overlays'][i]['candidate_sha256']='0'*64
+   with self.assertRaises(m.Blocked):m.verify(forged)
+   forged=deepcopy(M)
+   forged['approved_candidate_overlays'][i]['deployment_authorized']=True
+   with self.assertRaises(m.Blocked):m.verify(forged)
   forged=deepcopy(M)
-  forged['approved_candidate_overlays'][0]['candidate_sha256']='0'*64
+  forged['approved_candidate_overlays'].append(forged['approved_candidate_overlays'][0])
+  with self.assertRaises(m.Blocked):m.verify(forged)
+  forged=deepcopy(M)
+  forged['approved_candidate_overlays'][1]['path']='wp-content/plugins/mad4b-commerce/mad4b-commerce.php'
   with self.assertRaises(m.Blocked):m.verify(forged)
  def test_rate_widget_loader_stored_in_commerce_source(self):
   rel=ROOT/m.ROOT_NAME/'legacy-mu-tree/shared-product-core/adapters/rate-actions-styles.php'

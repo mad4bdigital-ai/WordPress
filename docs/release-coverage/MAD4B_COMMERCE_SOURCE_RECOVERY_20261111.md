@@ -37,3 +37,7 @@ One Commerce PHP source (modules/presentation/unified-date-presentation-v1.php) 
 ## Post-capture immutable 0.2.7 date assets
 
 A later live source change introduced 4 immutable 0.2.6/0.2.7 JS/CSS assets and moved the PHP date adapter to 0.2.7 URLs. The latest bounded Commerce manifest therefore verifies 273 sources, including **272 byte-identical live files and one exact reviewed semantic PHP exception** for fail-closed native rate/date intersection. Historical 269-file snapshots above describe the earlier checkpoint and must not be interpreted as the current file count. Native Rate Query 310, selectors and prices still require live runtime tests.
+
+## Later Date Intent 0.3.1 source reconciliation
+
+The latest bounded Commerce code manifest represents 276 source files. Two reviewed source-only semantic patches deliberately differ from live: native rate/date post__in AND-deny intersection in PHP and cleared WPML/Fluent Form empty date handling in the immutable 0.3.1 JS. All other 274 sources match the live source at the pinned readback. WCML AJAX is display context only. These changes are not a WordPress deployment or a permission to book.

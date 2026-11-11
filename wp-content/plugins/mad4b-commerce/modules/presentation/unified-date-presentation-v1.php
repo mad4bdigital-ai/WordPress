@@ -14,10 +14,19 @@ function mad4b_unified_date_enabled_v1(): bool {
 }
 
 function mad4b_unified_date_request_v1(): array {
+    // An explicit native JetSmartFilters Clear overrides stale referrer URLs.
+    // Do not turn a cleared filter into an unintended prior travel date.
+    if (wp_doing_ajax() && isset($_POST['query']) && is_array($_POST['query'])
+        && isset($_POST['query']['mad4b_date_clear'])
+        && $_POST['query']['mad4b_date_clear'] === '1') {
+        return ['status'=>'absent'];
+    }
     $known = ['mad4b_date_mode','mad4b_date_from','mad4b_date_to'];
     $candidates = [];
-    if ($_GET) $candidates[] = $_GET;
+    // JetSmartFilters may include stale GET/referrer dates while its POST
+    // query contains the newly applied Date Intent. POST wins on Ajax only.
     if (wp_doing_ajax() && isset($_POST['query']) && is_array($_POST['query'])) $candidates[] = $_POST['query'];
+    if ($_GET) $candidates[] = $_GET;
     if (wp_doing_ajax() && isset($_POST['referrer']['uri']) && is_string($_POST['referrer']['uri'])) {
         $refPath=wp_unslash($_POST['referrer']['uri']);
         if (str_starts_with($refPath,'/') && !str_starts_with($refPath,'//')) {
@@ -142,6 +151,28 @@ add_filter('jet-search/ajax-search/query-args',static function($args,$handler){
     return $args;
 },75,2);
 
+/**
+ * Restore WCML's display currency only within the native SmartFilters AJAX
+ * request, without editing underlying rate amounts, FX tables or checkout.
+ */
+function mad4b_unified_date_currency_context_ajax_v1():void {
+    if(!mad4b_unified_date_enabled_v1())return;
+    if(!in_array((string)($_POST['provider']??''),[
+      'jet-engine/tour_rates_accordion','jet-engine/tours_query_archive'],true))return;
+    $params=$_POST['query']??null;
+    if(!is_array($params)||!is_string($params['mad4b_currency']??null))return;
+    $currency=strtoupper(sanitize_text_field(wp_unslash($params['mad4b_currency'])));
+    $settings=get_option('_wcml_settings',[]);
+    if(!in_array($currency,['USD','EUR','EGP','GBP'],true)
+       ||!isset($settings['currency_options'][$currency]))return;
+    $wcml=$GLOBALS['woocommerce_wpml']->multi_currency??null;
+    if(is_object($wcml)&&method_exists($wcml,'set_client_currency')
+       &&function_exists('getSitePress')) {
+       $wcml->set_client_currency($currency);
+    }
+}
+add_action('wp_ajax_jet_smart_filters','mad4b_unified_date_currency_context_ajax_v1',0);
+add_action('wp_ajax_nopriv_jet_smart_filters','mad4b_unified_date_currency_context_ajax_v1',0);
 /** Get read-only date coverage for the Rates section; never adjust amounts. */
 function mad4b_unified_tour_rates_for_date_v1(int $tourId,array $intent):array {
     if($tourId<1 || ($intent['contract']??'')!==MAD4B_Unified_Date_Intent_V1::CONTRACT)return [];
@@ -211,8 +242,8 @@ add_action('wp_enqueue_scripts', static function():void {
     }
     wp_enqueue_script('flatpickr');
     wp_enqueue_style('flatpickr');
-    wp_enqueue_style('mad4b-unified-date-v1',plugins_url('assets/unified-date-v0.2.7.css',__FILE__),['flatpickr'],'0.2.7');
-    wp_enqueue_script('mad4b-unified-date-v1',plugins_url('assets/unified-date-v0.2.7.js',__FILE__),['flatpickr'],'0.2.7',true);
+    wp_enqueue_style('mad4b-unified-date-v1',plugins_url('assets/unified-date-v0.3.0.css',__FILE__),['flatpickr'],'0.3.0');
+    wp_enqueue_script('mad4b-unified-date-v1',plugins_url('assets/unified-date-v0.3.1.js',__FILE__),['flatpickr'],'0.3.1',true);
     $data=[
         'archiveUrl'=>home_url('/tours-and-activities/'),
         'policy'=>MAD4B_Unified_Date_Intent_V1::settings(),

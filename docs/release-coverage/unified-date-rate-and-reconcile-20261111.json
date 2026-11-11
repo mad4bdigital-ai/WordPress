@@ -1,9 +1,11 @@
 {
+  "ajax_post_query_precedes_stale_get": true,
   "booking_authorized": false,
   "browser_acceptance_performed": false,
   "canonical_query_id": 310,
   "contract": "mad4b.unified-date-rate-query-AND-no-broadening.v1",
-  "current_runtime_asset_version": "0.2.7",
+  "current_runtime_asset_version": "0.3.1",
+  "date_ajax_wcml_display_currency_bridge_source_only": true,
   "date_filters": [
     "tours_query_archive",
     "JetSearch",
@@ -12,16 +14,19 @@
   "date_only_intersects_existing_native_query": true,
   "global_release_approved": false,
   "live_deployment_performed": false,
-  "live_upstream_sha256": "99872f6c060c750718e3162092a51fb79f0cfa9c18819e9ad974acb03c97c9cb",
+  "live_upstream_sha256": "ac1e2784f7a8ef0b754fdb5217e1de7453a485338820af42cb7909fd5c21b810",
+  "native_jet_smart_filters_clear_stale_referrer_guard": true,
   "new_financial_mutations": false,
   "original_git_head": "ad5561236870da66b11ff7e4a0f00e9d17bc964b",
   "path": "wp-content/plugins/mad4b-commerce/modules/presentation/unified-date-presentation-v1.php",
   "preexisting_post_in_zero_preserved": true,
   "prior_candidate_sha256": "2fc598790080b5369567c9aef70efe61b9edc9ced7a20f8605dcea38338663b2",
+  "qa_only_live_logging_excluded": true,
   "query_context_identifiers": [
     "tour_rates",
     "tour_rates_accordion"
   ],
-  "reconciled_candidate_sha256": "9bd6e2fdbf4d165665179ed2429fc65fec36b09bfadb7dd600fca18cb395b966",
-  "reconciled_candidate_sha256_prior_v025": "d1bce4eb9d98afa7ad4818dbef4279ba5192c40b36a5a32c45a0149dea3a471c"
+  "reconciled_candidate_sha256": "c9946bc02a6928fd5e1d7802a43f22ba78e6ced1e01160f08e1c705086f8ee1b",
+  "reconciled_candidate_sha256_prior_v025": "d1bce4eb9d98afa7ad4818dbef4279ba5192c40b36a5a32c45a0149dea3a471c",
+  "reconciled_candidate_sha256_prior_v027": "9bd6e2fdbf4d165665179ed2429fc65fec36b09bfadb7dd600fca18cb395b966"
 }

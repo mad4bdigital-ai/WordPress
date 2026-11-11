@@ -1,0 +1,34 @@
+{
+  "active_immutable_js_version": "0.3.1",
+  "ajax_currency_wpml_qa_not_browser_verified": true,
+  "assets": [
+    {
+      "bytes": 31118,
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.3.0.js",
+      "sha256": "92a0b463fd5d9238c4283839194a3cc1164542afcc85fd5a6fb011e5d7346935"
+    },
+    {
+      "bytes": 25572,
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.3.0.css",
+      "sha256": "636f70c253cd1b7c59ea24f7e7f30ed3ba702d06e994a44c0dfb70bfce7b6a51"
+    }
+  ],
+  "contract": "mad4b.unified-date-immutable-v030-source-only.v1",
+  "native_ajax_post_wins_over_stale_get": true,
+  "native_date_clearing_guard_imported": true,
+  "new_currency_context_is_display_only": true,
+  "original_query310_failclosed_AND_preserved": true,
+  "php_candidate_sha256": "c9946bc02a6928fd5e1d7802a43f22ba78e6ced1e01160f08e1c705086f8ee1b",
+  "php_live_sha256": "ac1e2784f7a8ef0b754fdb5217e1de7453a485338820af42cb7909fd5c21b810",
+  "previous_candidate_head": "8ab9236d4514d3f39847c7004a3207889db51c63",
+  "qa_only_source_diagnostic_imported": false,
+  "release_authorized": false,
+  "retained_immutable_css_version": "0.3.0",
+  "reviewed_js_fluent_empty_date_guard": true,
+  "reviewed_js_semantic_overlay_live_sha256": "63addcbeb594bcc621cb9c9fee1e90842f63953bf4ae44fde5f0c3b589c91f1e",
+  "reviewed_js_semantic_overlay_sha256": "7856d970a26a3bccc11a0dd6b08a45f27616bab7d3f58e89dd00b43b22665f82",
+  "reviewed_js_wpml_clear_stale_date_guard": true,
+  "site_write_executed": false,
+  "source_live_qa_diagnostic_removed_by_concurrent_source_update": true,
+  "source_php_has_qa_only_file_logging": false
+}

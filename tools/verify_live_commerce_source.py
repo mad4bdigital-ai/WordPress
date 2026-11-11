@@ -27,28 +27,42 @@ def verify(data, root=ROOT, live_root=None):
         or data.get('full_platform_release_certified') is not False):
         raise Blocked('INVALID_RELEASE_SOURCE_CLAIM')
     overlays=data.get('approved_candidate_overlays')
-    expected_overlay_path=(
-        ROOT_NAME+'/modules/presentation/unified-date-presentation-v1.php')
-    if (not isinstance(overlays,list) or len(overlays)!=1
-        or not isinstance(overlays[0],dict)
-        or set(overlays[0])!={'path','original_snapshot_sha256','live_sha256',
-            'candidate_sha256','candidate_blob_sha1','policy',
-            'offline_php_cases_passed','booking_authorized','deployment_authorized'}
-        or overlays[0]['path']!=expected_overlay_path
-        or overlays[0]['policy']!='read_only_and_intersection_fail_closed'
-        or overlays[0]['offline_php_cases_passed']!=15
-        or overlays[0]['booking_authorized'] is not False
-        or overlays[0]['deployment_authorized'] is not False):
-        raise Blocked('SEMANTIC_OVERLAY_NOT_EXACTLY_APPROVED')
-    semantic=overlays[0]
-    if (not all(isinstance(semantic.get(field),str) and
-            re.fullmatch('[a-f0-9]{64}',semantic[field])
+    php_path=ROOT_NAME+'/modules/presentation/unified-date-presentation-v1.php'
+    js_path=ROOT_NAME+'/modules/presentation/assets/unified-date-v0.3.1.js'
+    allowed_overlays={
+        php_path:('read_only_and_intersection_fail_closed','offline_php_cases_passed',27),
+        js_path:('clear_wpml_stale_date_and_empty_fluent_input','offline_js_cases_passed',23),
+    }
+    if not isinstance(overlays,list) or len(overlays)!=2:
+        raise Blocked('SEMANTIC_OVERLAY_COUNT_OR_SCOPE_DRIFT')
+    sem_by_path={}
+    for item in overlays:
+        if not isinstance(item,dict):
+            raise Blocked('INVALID_SEMANTIC_OVERLAY_RECORD')
+        path=item.get('path')
+        if path not in allowed_overlays or path in sem_by_path:
+            raise Blocked('UNREVIEWED_OR_DUPLICATED_SEMANTIC_OVERLAY')
+        policy,case_key,cases=allowed_overlays[path]
+        fields={'path','original_snapshot_sha256','live_sha256',
+                'candidate_sha256','candidate_blob_sha1','policy',
+                case_key,'booking_authorized','deployment_authorized'}
+        if (set(item)!=fields
+            or item.get('policy')!=policy
+            or item.get(case_key)!=cases
+            or item.get('booking_authorized') is not False
+            or item.get('deployment_authorized') is not False):
+            raise Blocked('SEMANTIC_OVERLAY_POLICY_DRIFT')
+        if (not all(isinstance(item.get(field),str) and
+            re.fullmatch('[a-f0-9]{64}',item[field])
             for field in ('original_snapshot_sha256','live_sha256','candidate_sha256'))
-        or not isinstance(semantic.get('candidate_blob_sha1'),str)
-        or not re.fullmatch('[a-f0-9]{40}',semantic['candidate_blob_sha1'])):
-        raise Blocked('SEMANTIC_OVERLAY_BAD_DIGEST')
+            or not isinstance(item.get('candidate_blob_sha1'),str)
+            or not re.fullmatch('[a-f0-9]{40}',item['candidate_blob_sha1'])):
+            raise Blocked('SEMANTIC_OVERLAY_BAD_DIGEST')
+        sem_by_path[path]=item
+    if set(sem_by_path)!=set(allowed_overlays):
+        raise Blocked('REQUIRED_SEMANTIC_OVERLAY_MISSING')
     items=data.get('files')
-    if not isinstance(items,list) or len(items)!=273:
+    if not isinstance(items,list) or len(items)!=276:
         raise Blocked('COMMERCE_SOURCE_COUNT_DRIFT')
     seen=set()
     groups={'.php':0,'.js':0,'.css':0}
@@ -77,7 +91,10 @@ def verify(data, root=ROOT, live_root=None):
             if not target.is_file() or target.is_symlink():
                 raise Blocked('COMMERCE_SOURCE_MISSING_OR_CHANGED')
             raw=target.read_bytes()
-            if path==expected_overlay_path and Path(target_root)==Path(root):
+            semantic=sem_by_path.get(path)
+            if semantic and row['sha256']!=semantic['live_sha256']:
+                raise Blocked('SEMANTIC_OVERLAY_LIVE_SOURCE_MISMATCH')
+            if semantic and Path(target_root)==Path(root):
                 if (digest(raw)!=semantic['candidate_sha256']
                     or blob(raw)!=semantic['candidate_blob_sha1']):
                     raise Blocked('UNAPPROVED_CANDIDATE_SEMANTIC_PATCH')
@@ -85,7 +102,7 @@ def verify(data, root=ROOT, live_root=None):
                 or digest(raw)!=row['sha256']
                 or blob(raw)!=row['git_blob_sha1']):
                 raise Blocked('COMMERCE_SOURCE_SHA_MISMATCH')
-    if groups!={'.php':238,'.js':23,'.css':12}:
+    if groups!={'.php':238,'.js':25,'.css':13}:
         raise Blocked('COMMERCE_CODE_TYPE_DRIFT')
     if (ROOT_NAME+'/mad4b-commerce.php' not in seen
         or ROOT_NAME+'/legacy-mu-tree/shared-product-core/adapters/rate-actions-styles.php' not in seen):
@@ -106,10 +123,10 @@ def verify(data, root=ROOT, live_root=None):
         if (Path(root)/ROOT_NAME/name).exists():
             raise Blocked('UNREVIEWED_BACKUP_FILE_IMPORTED')
     return {
-        'state':'COMMERCE_SOURCE_VERIFIED_WITH_ONE_DOCUMENTED_DATE_SEMANTIC_PATCH__HOLD',
+        'state':'COMMERCE_SOURCE_VERIFIED_WITH_TWO_EXACT_DATE_SEMANTIC_PATCHES__HOLD',
         'source_files_verified':len(seen),
-        'semantic_overlays_verified':1,
-        'live_files_byte_identical_to_candidate':len(seen)-1,
+        'semantic_overlays_verified':2,
+        'live_files_byte_identical_to_candidate':len(seen)-2,
         'code_by_type':groups,
         'live_readback_checked':live_root is not None,
         'original_currency_symlink_not_replayed':True,

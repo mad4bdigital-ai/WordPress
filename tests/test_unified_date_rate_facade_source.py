@@ -2,8 +2,8 @@
 from pathlib import Path
 import unittest
 ROOT=Path(__file__).resolve().parents[1]
-JS=(ROOT/'wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.2.7.js').read_text()
-CSS=(ROOT/'wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.2.7.css').read_text()
+JS=(ROOT/'wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.3.1.js').read_text()
+CSS=(ROOT/'wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.3.0.css').read_text()
 MU=(ROOT/'wp-content/mu-plugins/mad4b-tour-form6-submission-mode-v1.php').read_text()
 class Facade(unittest.TestCase):
  def test_preserve_single_native_provider(self):
@@ -13,7 +13,7 @@ class Facade(unittest.TestCase):
   self.assertIn("root.dataset.mad4bDateContext='rates'",JS)
   self.assertIn("picker(root,'rates')",JS)
   self.assertIn('mad4b-ud-rate-filter-ready',JS)
-  self.assertIn("group.insertBefore(widget,first)",JS)
+  self.assertIn("toolbar.append(widget,selects[0],selects[1],apply)",JS)
   self.assertIn("document.querySelectorAll('.mad4b-ud-rate-context').forEach(el=>el.remove())",JS)
  def test_immutable_v027_rate_geometry(self):
   self.assertIn("function setPortalGeometry()",JS)
@@ -23,8 +23,23 @@ class Facade(unittest.TestCase):
   self.assertIn("transform:'translate(-50%,-50%)'",JS)
   self.assertIn("width:min(290px,100%)!important",CSS)
   self.assertIn("max-width:100%!important",CSS)
+ def test_native_ajax_toolbar_currency_and_wpml_are_source_owned(self):
+  for feature in ('nativeAjaxPrefilter()', "group.applyFiltersHandler('ajax')",
+   'mad4b-rate-filter-row','mad4b-ud-rate-apply',
+   'rewriteContextLinks()', 'rememberCurrencyHandoff()', 'restoreCurrencyHandoff()'):
+   self.assertIn(feature,JS)
+  self.assertIn('query[mad4b_date_clear]',JS)
+  self.assertIn('jet-engine/tour_rates_accordion',JS)
+  self.assertIn('jet-engine/tours_query_archive',JS)
+  self.assertIn("history.replaceState(history.state,'',next.toString())",JS)
+  self.assertIn('a.wpml-ls-link, a.wpml-ls-item-toggle',JS)
+  self.assertIn('mad4b-rate-filter-row',CSS)
+  self.assertIn("payload.set('query[mad4b_currency]',currency)",JS)
+  self.assertIn('/^(USD|EUR|EGP|GBP)$/.test',JS)
+
  def test_url_apply_clear_and_server_source(self):
-  self.assertIn("if(context==='archive'||context==='rates')",JS)
+  self.assertIn("if(context==='archive')applyDateIntent('archive')",JS)
+  self.assertIn("applyDateIntent('rates')",JS)
   self.assertIn("_meta_query_advanced_date__any__tour_rate_start_date__tour_rate_end_date|date",JS)
   self.assertIn("syncLegacy('apply')",JS)
   self.assertIn("syncLegacy('clear')",JS)

@@ -14,6 +14,18 @@ class UnifiedDate(unittest.TestCase):
   self.assertEqual(s.count('function mad4b_unified_date_intersect_post_ids_v1('),1)
   self.assertEqual(s.count("=mad4b_unified_date_intersect_post_ids_v1("),3)
   self.assertIn("if(!$existing)return [0];",s)
+  self.assertIn("$_POST['query']['mad4b_date_clear']",s)
+  self.assertIn("return ['status'=>'absent'];",s)
+  self.assertNotIn('MAD4B_DATE_QA_ONLY_BEGIN',s)
+  self.assertNotIn('mad4b-date-query-qa-20261111.jsonl',s)
+  self.assertNotIn('file_put_contents(',s)
+  self.assertIn('mad4b_unified_date_currency_context_ajax_v1',s)
+  self.assertIn("set_client_currency($currency)",s)
+  self.assertIn("['USD','EUR','EGP','GBP']",s)
+  self.assertIn("wp_ajax_nopriv_jet_smart_filters",s)
+  self.assertNotIn('wc_create_order(',s)
+
+
   self.assertIn("if($raw){",s)
   self.assertIn("if((int)($query->id??0)!==310",s)
   self.assertIn("'tour_rates_accordion'",s)

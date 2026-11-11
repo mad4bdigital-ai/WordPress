@@ -10,9 +10,17 @@ class WP_Error {
 function is_wp_error($v){return $v instanceof WP_Error;}
 function wp_doing_ajax(){return true;}
 function wp_get_referer(){return false;}
+function getSitePress(){return (object)[];}
+class NativeDisplayCurrency {
+ public array $calls=[];
+ public function set_client_currency($currency){$this->calls[]=$currency;}
+}
+$GLOBALS['woocommerce_wpml']=(object)['multi_currency'=>new NativeDisplayCurrency()];
 function is_admin(){return false;}
 function get_option($key,$default=null){
  if($key==='mad4b_unified_date_enabled_v1')return 'on';
+ if($key==='_wcml_settings')return ['currency_options'=>[
+   'USD'=>[], 'EUR'=>[], 'EGP'=>[], 'GBP'=>[]]];
  return $default;
 }
 $filters=[];
@@ -65,6 +73,49 @@ $_GET=['mad4b_date_mode'=>'invalid','mad4b_date_from'=>'2027-02-18'];
 check($rateFilter([], $query)['post__in']===[0],'malformed date fails closed');
 $_GET=[];
 check($rateFilter(['post__in'=>[102]],$query)['post__in']===[102],'no selected travel date preserves old Rates');
-echo json_encode(['state'=>'PASS','cases'=>15,'rate_query_id'=>310,
+$_GET=['mad4b_date_mode'=>'fixed','mad4b_date_from'=>'2027-02-18'];
+$_POST=['query'=>['mad4b_date_clear'=>'1']];
+check(mad4b_unified_date_request_v1()['status']==='absent','explicit native Ajax clear takes priority over stale GET');
+check($rateFilter(['post__in'=>[102]],$query)['post__in']===[102],'clear never re-inherits stale referrer date');
+$_GET=[];$_POST=['query'=>['mad4b_date_mode'=>'fixed','mad4b_date_from'=>'2027-02-18']];
+check($rateFilter([],$query)['post__in']===[101],'date can be passed in native JetSmartFilters query payload');
+$_POST=['query'=>['mad4b_date_mode'=>['invalid_shape'],'mad4b_date_from'=>'2027-02-18']];
+check($rateFilter([],$query)['post__in']===[0],'malformed nested AJAX payload cannot broaden rates');
+$_GET=['mad4b_date_mode'=>'fixed','mad4b_date_from'=>'2028-02-18'];
+$_POST=['query'=>['mad4b_date_mode'=>'fixed','mad4b_date_from'=>'2027-02-18']];
+check($rateFilter([],$query)['post__in']===[101],
+  'current AJAX date beats stale GET and returns only matching Rates');
+$_POST=['query'=>['mad4b_date_mode'=>['untrusted_shape'],'mad4b_date_from'=>'2027-02-18']];
+check($rateFilter([],$query)['post__in']===[0],
+  'invalid AJAX date fails closed instead of falling back to valid stale GET');
+unset($_POST['query']);
+$_POST=['provider'=>'jet-engine/tour_rates_accordion',
+  'query'=>['mad4b_currency'=>'EUR']];
+mad4b_unified_date_currency_context_ajax_v1();
+check($GLOBALS['woocommerce_wpml']->multi_currency->calls===['EUR'],
+  'verified configured EUR is restored as native WCML AJAX display context');
+$_POST['provider']='jet-engine/unrelated';
+mad4b_unified_date_currency_context_ajax_v1();
+check(count($GLOBALS['woocommerce_wpml']->multi_currency->calls)===1,
+  'other providers cannot affect display currency');
+$_POST['provider']='jet-engine/tour_rates_accordion';
+$_POST['query']['mad4b_currency']='BTC';
+mad4b_unified_date_currency_context_ajax_v1();
+check(count($GLOBALS['woocommerce_wpml']->multi_currency->calls)===1,
+  'non-enrolled currencies cannot affect display context');
+$_POST['query']['mad4b_currency']=['EUR'];
+mad4b_unified_date_currency_context_ajax_v1();
+check(count($GLOBALS['woocommerce_wpml']->multi_currency->calls)===1,
+  'nested invalid currency type ignored before WCML setter');
+$_POST['query']['mad4b_currency']='GBP';
+mad4b_unified_date_currency_context_ajax_v1();
+check($GLOBALS['woocommerce_wpml']->multi_currency->calls===['EUR','GBP'],
+  'second configured display currency is supported without changing rate tables');
+$_POST['query']=['mad4b_currency'=>'GBP','unknown_price_override'=>99];
+$_GET=[];
+check($rateFilter(['post__in'=>[101,102]],$query)['post__in']===[101,102],
+  'currency-only native AJAX does not alter rate eligibility or price rows');
+unset($_POST['query']);
+echo json_encode(['state'=>'PASS','cases'=>27,'rate_query_id'=>310,
  'upstream_filters_preserved'=>true,'payment_mutation'=>false,'live_browser_test'=>false,
  'wordpress_runtime_loaded'=>false],JSON_UNESCAPED_SLASHES).PHP_EOL;
