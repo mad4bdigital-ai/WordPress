@@ -1,4 +1,4 @@
-/* MAD4B Passport Country AJAX Search v1.2
+/* MAD4B Passport Country AJAX Search v1.3
  * Inline searchable list within Fluent Form #6 (all viewports).
  * The original Fluent Forms select remains the only submitted value.
  * The existing WordPress visitor-preferences:saved bridge owns header inheritance.
@@ -27,11 +27,19 @@
     return node;
   };
   function setup(field) {
-    if (field.dataset.mad4bPassportAjaxReady === 'v1.2' ||
+    if (field.dataset.mad4bPassportAjaxReady === 'v1.3' ||
         field.options.length !== 196 || !field.options[1]?.dataset.passportIso ||
         !field.closest('form.fluent_form_6')) return;
     const wrapper=field.parentElement;
     if (!wrapper) return;
+    const originalOptions=[...field.options].slice(1);
+    const localRows=originalOptions.map(option=>({
+      value:option.value,
+      label:(option.textContent||'').trim(),
+      iso:option.dataset.passportIso||''
+    }));
+    if(localRows.length!==195 ||
+      localRows.some(row=>!row.value||!row.label||!/^[A-Z]{2}$/.test(row.iso)))return;
     const id='mad4b-passport-inline-'+(++counter);
     const box=make('div','mad4b-passport-inline');
     const trigger=make('button','mad4b-passport-trigger');
@@ -67,11 +75,28 @@
     dropdown.append(search,results,status,actions);
     box.append(trigger,dropdown);
     field.insertAdjacentElement('afterend',box);
-    field.dataset.mad4bPassportAjaxReady='v1.2';
+    field.dataset.mad4bPassportAjaxReady='v1.3';
     field.classList.add('mad4b-passport-native-hidden');
     field.setAttribute('aria-hidden','true');
     field.tabIndex=-1;
     let controller=null, seq=0, timer=null, focused=-1, hits=[];
+    // All 195 original options already contain the correctly translated label
+    // and the original saved value. Index once, then render searches instantly
+    // without waiting for a 2-5 second WordPress REST bootstrap.
+    const normalize=value=>String(value||'').normalize('NFD')
+      .replace(/\p{M}/gu,'').toLocaleLowerCase(lang).trim();
+    const priorities=['EG','US','GB','AE','FR','DE','ES','IT'];
+    const localSearch=query=>{
+      const needle=normalize(query);
+      let matched=localRows.filter(row=>
+        !needle||normalize(row.label+' '+row.value+' '+row.iso).includes(needle));
+      if(!needle) {
+        const top=priorities.map(iso=>matched.find(row=>row.iso===iso)).filter(Boolean);
+        const important=new Set(top.map(row=>row.value));
+        matched=top.concat(matched.filter(row=>!important.has(row.value)));
+      }
+      return matched.slice(0,14);
+    };
     const selectedLabel=()=>field.value?field.selectedOptions[0]?.textContent?.trim()||text[0]:text[0];
     function updateButton() {
       const label=selectedLabel();
@@ -157,6 +182,22 @@
         fallback.hidden=false;
       }
     }
+    function searchInstantly() {
+      ++seq;
+      controller?.abort();
+      clearTimeout(timer);
+      const query=search.value.trim().slice(0,48);
+      const rows=localSearch(query);
+      // Normal search uses the exact current Form #6 localized choices.
+      // Only unfamiliar spellings require the legacy AJAX endpoint.
+      if(rows.length||!query) {
+        render(rows);
+        return;
+      }
+      results.replaceChildren();
+      status.textContent='…';
+      timer=setTimeout(searchServer,90);
+    }
     function open() {
       if(!dropdown.hidden) {close(true);return;}
       document.querySelectorAll('.mad4b-passport-inline').forEach(other=>{
@@ -166,17 +207,12 @@
       trigger.setAttribute('aria-expanded','true');
       search.setAttribute('aria-expanded','true');
       search.value='';
-      results.replaceChildren();
-      searchServer();
+      searchInstantly();
       search.focus({preventScroll:true});
     }
     trigger.addEventListener('click',open);
     box.addEventListener('mad4b-passport-close',()=>close());
-    search.addEventListener('input',()=>{
-      ++seq;controller?.abort();clearTimeout(timer);
-      results.replaceChildren();status.textContent='…';
-      timer=setTimeout(searchServer,170);
-    });
+    search.addEventListener('input',searchInstantly);
     search.addEventListener('keydown',event=>{
       if(event.key==='Escape'){event.preventDefault();close(true);}
       else if(event.key==='ArrowDown'||event.key==='ArrowUp'){

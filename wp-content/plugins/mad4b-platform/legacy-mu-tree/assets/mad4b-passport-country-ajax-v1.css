@@ -83,3 +83,14 @@ body.single-tours-and-activities form.fluent_form_6 .mad4b-passport-actions butt
   min-height:44px;font-size:14px;
  }
 }
+
+
+/* Fluent Form #6: keep first/last names top aligned even when one
+   column becomes taller after Fluent Forms inserts a validation error.
+   No form schema or native validator changes. */
+@media (min-width:768px) {
+ body.single-tours-and-activities form.fluent_form_6
+ .ff-t-container:has(> .ff-t-cell input[name="names[first_name]"]) > .ff-t-cell {
+  justify-content:flex-start;
+ }
+}

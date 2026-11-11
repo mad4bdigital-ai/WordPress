@@ -47,6 +47,14 @@ class PassportSource(unittest.TestCase):
   self.assertNotIn("innerHTML =",s)
   self.assertIn("cache.size>45",s)
   self.assertIn("controller?.abort()",s)
+  self.assertIn('Passport Country AJAX Search v1.3',s)
+  self.assertIn('const originalOptions=[...field.options].slice(1)',s)
+  self.assertIn('localRows.length!==195',s)
+  self.assertIn('function searchInstantly()',s)
+  self.assertIn('if(rows.length||!query)',s)
+  self.assertIn('timer=setTimeout(searchServer,90)',s)
+  self.assertIn('field.value=value',s)
+
  def test_site_specific_identity_is_not_global_publisher(self):
   s=PHP.read_text()
   self.assertIn("private const SITE_UUID=",s)

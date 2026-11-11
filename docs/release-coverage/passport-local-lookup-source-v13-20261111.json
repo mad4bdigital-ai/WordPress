@@ -1,0 +1,21 @@
+{
+  "browser_acceptance_performed": false,
+  "contract": "mad4b.passport-inline-source-v1.3.local-first.v1",
+  "form_validation_unchanged": true,
+  "native_form6_select_authoritative": true,
+  "original_195_options_retained": true,
+  "release_authorized": false,
+  "site_or_company_mutated": false,
+  "updates": [
+    {
+      "after_sha256": "67a4ac1db73196c4451c38609339cffae0907f044105d5aa543f5eef6243a530",
+      "before_sha256": "fb6cb1d61159bee46a6c0e9e863a2f8e4e12e3394206e03cde4d143c06e55849",
+      "path": "wp-content/plugins/mad4b-platform/legacy-mu-tree/assets/mad4b-passport-country-ajax-v1.css"
+    },
+    {
+      "after_sha256": "5e386a12eb9e6de2e8494e559d304decfcdeba39b073456ef9ac8e7f882ff8db",
+      "before_sha256": "66d150071d88d5f222115fc2d264ebdf88dbe402d7e89c0d9c508030f4d54384",
+      "path": "wp-content/plugins/mad4b-platform/legacy-mu-tree/assets/mad4b-passport-country-ajax-v1.js"
+    }
+  ]
+}
