@@ -19,6 +19,10 @@
     {
       "path": "receipt-reconcile-v1/historical_audit.py",
       "sha256": "07e8daa6a678d56499c2c20092034a767e7058525e2c65b0c343a51dad28c4ec"
+    },
+    {
+      "path": "receipt-reconcile-v1/signed_recovery_admission.py",
+      "sha256": "b651c63476394a43013fd5f353f8bccb202a34e3099e215029655471e30bd16d"
     }
   ],
   "evidence": {
