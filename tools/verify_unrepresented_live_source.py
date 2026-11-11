@@ -43,7 +43,7 @@ def verify(manifest,root=ROOT,live_root=None):
             if hashlib.sha1((f"blob {len(content)}\0").encode()+content).hexdigest()!=row['git_blob_sha1']:
                 raise ValueError('GIT_BLOB_DRIFT')
         grouped[scope]=grouped.get(scope,0)+1
-    if grouped!={'mad4b-lifecycle-orchestrator':12,'mad4b-content-hub':61,'mad4b-platform':451,'mad4b-render-governor':1}:
+    if grouped!={'mad4b-lifecycle-orchestrator':12,'mad4b-content-hub':61,'mad4b-platform':452,'mad4b-render-governor':1}:
         raise ValueError('MODULE_GROUP_COUNTS_CHANGED')
     return {'state':'PASS_SOURCE_SNAPSHOT_FIDELITY_ONLY','files_verified':len(seen),
             'by_source':grouped,'checked_current_live':live_root is not None,

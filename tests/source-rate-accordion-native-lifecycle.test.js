@@ -6,6 +6,9 @@ const path = require('node:path');
 
 const source = fs.readFileSync(path.join(__dirname,
   '../wp-content/plugins/mad4b-platform/legacy-mu-tree/assets/mad4b-source-rate-actions-20261106.js'),'utf8');
+const alternate = fs.readFileSync(path.join(__dirname,
+  '../wp-content/plugins/mad4b-platform/legacy-mu-tree/assets/mad4b-rate-widget-lifecycle-2.1.0-20261111.js'),'utf8');
+assert.equal(source,alternate,'Both registered asset paths must carry identical reviewed code');
 assert(source.includes("version:'2.1.0'"));
 assert(!/\bnew\s+MutationObserver\s*\(/.test(source));
 assert(!source.includes('setInterval('));

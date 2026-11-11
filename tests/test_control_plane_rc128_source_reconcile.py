@@ -9,6 +9,9 @@ import unittest
 ROOT=Path(__file__).resolve().parents[1]
 P=ROOT/"docs/release-coverage/control-plane-rc128-three-way-20261111.json"
 D=json.loads(P.read_text())
+LATER=json.loads((ROOT/"docs/release-coverage/control-plane-semantic-reconcile-batch-20261111.json").read_text())
+LATER_BY_PATH={row["path"]:row for row in LATER["changed_files"]}
+
 
 def old_blob(ref,path):
     result=subprocess.run(["git","-C",str(ROOT),"cat-file","blob",ref+":"+path],
@@ -33,7 +36,13 @@ class ThreeWaySourceTests(unittest.TestCase):
                 self.assertTrue(rel.endswith(".php"))
                 self.assertTrue(item["source_candidate_only"])
                 current=(ROOT/rel).read_bytes()
-                self.assertEqual(hashlib.sha256(current).hexdigest(),item["merged_sha256"])
+                # Preserve the original rc128 commit proof, but admit exactly documented
+                # later semantic reconciles without freezing the source forever.
+                pinned=old_blob("ba5484b1d5d1120b648f3079b4ac47b6e087e45b",rel)
+                self.assertEqual(hashlib.sha256(pinned).hexdigest(),item["merged_sha256"])
+                later=LATER_BY_PATH.get(rel)
+                expected=later.get("candidate_sha256",later.get("live_sha256")) if later else item["merged_sha256"]
+                self.assertEqual(hashlib.sha256(current).hexdigest(),expected)
                 old=old_blob(D["preimage_commit"],rel)
                 self.assertEqual(hashlib.sha256(old).hexdigest(),item["old_candidate_sha256"])
                 c1,f1=signatures(old);c2,f2=signatures(current)

@@ -46,3 +46,7 @@ had changed after the initial Git snapshot:
 The exact new live bytes were read back and incorporated into Git with compare-and-swap source preimage checking and an explicit post-capture amendment in the SHA manifest. No JavaScript changes were written to the running site by this reconciliation.
 
 The new code restores the *native* JetAccordion handler for late-added JetEngine listing widgets using Elementor's own widget-ready event and bounded retries, without a global MutationObserver. An offline Node DOM-stub test checked three cases: absent handler, existing native handler and missing jQuery; it detected no duplicate vendor handler and required retry delays 80/400/1100 ms. The real-browser mobile/AJAX/CSS/lazy-render acceptance remains pending.
+
+## Additional concurrent asset filename (post-capture)
+
+A second live JS asset path, mad4b-rate-widget-lifecycle-2.1.0-20261111.js, appeared after the original 525-file capture. Its SHA-256 is the same as the reconciled Rate UI 2.1.0 asset (f873784a1b798e684bbd0226cfe86d14f8a2e02a8077c1e8487996efe1de0e3e). Both paths are preserved without renaming or activating either script. The fidelity manifest and guard now cover 526 files, with an explicit post-capture addition. A Node source test checks both asset bytes are identical. No browser run or live HTML script inclusion has been certified.

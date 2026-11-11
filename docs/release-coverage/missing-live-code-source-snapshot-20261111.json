@@ -6,88 +6,11 @@
   "contract": "mad4b.local-live-source-snapshot-fidelity.v1",
   "files": [
     {
-      "bytes": 6621,
-      "git_blob_sha1": "c3f134767460cf3d365cf8979d1437b2a4984f55",
-      "path": "wp-content/plugins/mad4b-lifecycle-orchestrator/class-mad4b-lifecycle-native-receipt.php",
-      "scope": "mad4b-lifecycle-orchestrator",
-      "sha256": "67891d0fa697b7d552ec9624a2c53b635a38091a452a4f5dd01df9ea5d88aff6"
-    },
-    {
-      "bytes": 21827,
-      "git_blob_sha1": "34cd8055d95371f0942bfb93c21e7b8f94d7aa48",
-      "path": "wp-content/plugins/mad4b-lifecycle-orchestrator/class-mad4b-unified-governed-lifecycle-policy.php",
-      "scope": "mad4b-lifecycle-orchestrator",
-      "sha256": "ed184a41852333bdc3a9dce506f481da47db5c18502a0628cbade58c6083c887"
-    },
-    {
-      "bytes": 46569,
-      "git_blob_sha1": "5def44e2eb720cf9ecd84ba9eef09c7c4cc8c02c",
-      "path": "wp-content/plugins/mad4b-lifecycle-orchestrator/mad4b-lifecycle-orchestrator.php",
-      "scope": "mad4b-lifecycle-orchestrator",
-      "sha256": "469a19eed875fe535778d2bd40d75bb8b2985aba5045161774e4d38ccf9a3c98"
-    },
-    {
-      "bytes": 1163,
-      "git_blob_sha1": "68ed799253eaf80e4df41a25e7df402358b44e49",
-      "path": "wp-content/plugins/mad4b-lifecycle-orchestrator/tests/automatic-trigger-smoke.php",
-      "scope": "mad4b-lifecycle-orchestrator",
-      "sha256": "65d75a609314d1c2a73432e191440627916d606f0987489b11837869b45ba2b5"
-    },
-    {
-      "bytes": 5244,
-      "git_blob_sha1": "ee0aafe2826a7fe7a84b510bccbfd13e8a599638",
-      "path": "wp-content/plugins/mad4b-lifecycle-orchestrator/tests/company-lifecycle-readback.php",
-      "scope": "mad4b-lifecycle-orchestrator",
-      "sha256": "f734c644d82f77b21c0bb9e86e836faaef6ce9194e9f9c41d0d2ed43eb761f44"
-    },
-    {
-      "bytes": 5986,
-      "git_blob_sha1": "47647dd1cf5b9ff71fb641e941140cc97ad9f747",
-      "path": "wp-content/plugins/mad4b-lifecycle-orchestrator/tests/lifecycle-source-contract.php",
-      "scope": "mad4b-lifecycle-orchestrator",
-      "sha256": "2622387084ac2adc93224100b8fcb70db903d5c26a2ea7b94b6d49162830ccdd"
-    },
-    {
-      "bytes": 2265,
-      "git_blob_sha1": "2ebbfcc674c5d7d5a00d27875710e8609196cdba",
-      "path": "wp-content/plugins/mad4b-lifecycle-orchestrator/tests/live-staging-smoke.php",
-      "scope": "mad4b-lifecycle-orchestrator",
-      "sha256": "2ff576cda00d4efdd4ea1d3fdff3226bf7cfe0be9f2cfb7abf84fbbdd1d65d4c"
-    },
-    {
-      "bytes": 2106,
-      "git_blob_sha1": "b66ccdd77cbe8c210e6a7dab3bb47738f33364e5",
-      "path": "wp-content/plugins/mad4b-lifecycle-orchestrator/tests/native-receipt-source-contract.php",
-      "scope": "mad4b-lifecycle-orchestrator",
-      "sha256": "26e633f9d85e3ab01b167f7d3896462bf9464d7a8c8e05744df5aa9f1fe55a1a"
-    },
-    {
-      "bytes": 1683,
-      "git_blob_sha1": "18b4ac61ad3ec4b6a507ba2ad68f86f3f82d92db",
-      "path": "wp-content/plugins/mad4b-lifecycle-orchestrator/tests/producer-event-smoke.php",
-      "scope": "mad4b-lifecycle-orchestrator",
-      "sha256": "31ddff6250706e8ebce5b452b96af8f7ed0224b2ce7821effc094cd0b9453d93"
-    },
-    {
-      "bytes": 1842,
-      "git_blob_sha1": "fe7c20c1b83db282c7c8ccbdf5d2e7912bf8fa22",
-      "path": "wp-content/plugins/mad4b-lifecycle-orchestrator/tests/unified-policy-live-smoke.php",
-      "scope": "mad4b-lifecycle-orchestrator",
-      "sha256": "5f2e323a71d7432d9f92bb58135bfcd6db1a10d8979295dd84346a18b7897491"
-    },
-    {
-      "bytes": 3879,
-      "git_blob_sha1": "cd71b471a62ed4a71ef1b2818d16b6ae51b4bbe3",
-      "path": "wp-content/plugins/mad4b-lifecycle-orchestrator/tests/unified-policy-source-contract.php",
-      "scope": "mad4b-lifecycle-orchestrator",
-      "sha256": "5249b83eb76fa532dead03cc93baf1fde9bd9793b3261655037ed773faa2e9ad"
-    },
-    {
-      "bytes": 1586,
-      "git_blob_sha1": "4fe15e1e1eb5fb5ac12f590ab9e18fe319e9f6f5",
-      "path": "wp-content/plugins/mad4b-lifecycle-orchestrator/tests/verification-negative-smoke.php",
-      "scope": "mad4b-lifecycle-orchestrator",
-      "sha256": "6f4f887561a04a25540e6a6f0b57e1b66aa30470fdde0dae142b69e3761d6b4e"
+      "bytes": 52304,
+      "git_blob_sha1": "c6921f564cca869bf38a897bad1305c0c468ea79",
+      "path": "wp-content/mu-plugins/mad4b-render-query-governor.php",
+      "scope": "mad4b-render-governor",
+      "sha256": "cbfa956427ae409e6f5a3bea46fea1ea08287e6e4d2a57b828b829e5f8584b14"
     },
     {
       "bytes": 6229,
@@ -515,6 +438,90 @@
       "path": "wp-content/plugins/mad4b-content-hub/tests/workflow-continuity-contract-runtime.php",
       "scope": "mad4b-content-hub",
       "sha256": "6ccac647c2bf78b723cb20e2dbcd925c09ba625619ea7351d4359ef19c3bef4d"
+    },
+    {
+      "bytes": 6621,
+      "git_blob_sha1": "c3f134767460cf3d365cf8979d1437b2a4984f55",
+      "path": "wp-content/plugins/mad4b-lifecycle-orchestrator/class-mad4b-lifecycle-native-receipt.php",
+      "scope": "mad4b-lifecycle-orchestrator",
+      "sha256": "67891d0fa697b7d552ec9624a2c53b635a38091a452a4f5dd01df9ea5d88aff6"
+    },
+    {
+      "bytes": 21827,
+      "git_blob_sha1": "34cd8055d95371f0942bfb93c21e7b8f94d7aa48",
+      "path": "wp-content/plugins/mad4b-lifecycle-orchestrator/class-mad4b-unified-governed-lifecycle-policy.php",
+      "scope": "mad4b-lifecycle-orchestrator",
+      "sha256": "ed184a41852333bdc3a9dce506f481da47db5c18502a0628cbade58c6083c887"
+    },
+    {
+      "bytes": 46569,
+      "git_blob_sha1": "5def44e2eb720cf9ecd84ba9eef09c7c4cc8c02c",
+      "path": "wp-content/plugins/mad4b-lifecycle-orchestrator/mad4b-lifecycle-orchestrator.php",
+      "scope": "mad4b-lifecycle-orchestrator",
+      "sha256": "469a19eed875fe535778d2bd40d75bb8b2985aba5045161774e4d38ccf9a3c98"
+    },
+    {
+      "bytes": 1163,
+      "git_blob_sha1": "68ed799253eaf80e4df41a25e7df402358b44e49",
+      "path": "wp-content/plugins/mad4b-lifecycle-orchestrator/tests/automatic-trigger-smoke.php",
+      "scope": "mad4b-lifecycle-orchestrator",
+      "sha256": "65d75a609314d1c2a73432e191440627916d606f0987489b11837869b45ba2b5"
+    },
+    {
+      "bytes": 5244,
+      "git_blob_sha1": "ee0aafe2826a7fe7a84b510bccbfd13e8a599638",
+      "path": "wp-content/plugins/mad4b-lifecycle-orchestrator/tests/company-lifecycle-readback.php",
+      "scope": "mad4b-lifecycle-orchestrator",
+      "sha256": "f734c644d82f77b21c0bb9e86e836faaef6ce9194e9f9c41d0d2ed43eb761f44"
+    },
+    {
+      "bytes": 5986,
+      "git_blob_sha1": "47647dd1cf5b9ff71fb641e941140cc97ad9f747",
+      "path": "wp-content/plugins/mad4b-lifecycle-orchestrator/tests/lifecycle-source-contract.php",
+      "scope": "mad4b-lifecycle-orchestrator",
+      "sha256": "2622387084ac2adc93224100b8fcb70db903d5c26a2ea7b94b6d49162830ccdd"
+    },
+    {
+      "bytes": 2265,
+      "git_blob_sha1": "2ebbfcc674c5d7d5a00d27875710e8609196cdba",
+      "path": "wp-content/plugins/mad4b-lifecycle-orchestrator/tests/live-staging-smoke.php",
+      "scope": "mad4b-lifecycle-orchestrator",
+      "sha256": "2ff576cda00d4efdd4ea1d3fdff3226bf7cfe0be9f2cfb7abf84fbbdd1d65d4c"
+    },
+    {
+      "bytes": 2106,
+      "git_blob_sha1": "b66ccdd77cbe8c210e6a7dab3bb47738f33364e5",
+      "path": "wp-content/plugins/mad4b-lifecycle-orchestrator/tests/native-receipt-source-contract.php",
+      "scope": "mad4b-lifecycle-orchestrator",
+      "sha256": "26e633f9d85e3ab01b167f7d3896462bf9464d7a8c8e05744df5aa9f1fe55a1a"
+    },
+    {
+      "bytes": 1683,
+      "git_blob_sha1": "18b4ac61ad3ec4b6a507ba2ad68f86f3f82d92db",
+      "path": "wp-content/plugins/mad4b-lifecycle-orchestrator/tests/producer-event-smoke.php",
+      "scope": "mad4b-lifecycle-orchestrator",
+      "sha256": "31ddff6250706e8ebce5b452b96af8f7ed0224b2ce7821effc094cd0b9453d93"
+    },
+    {
+      "bytes": 1842,
+      "git_blob_sha1": "fe7c20c1b83db282c7c8ccbdf5d2e7912bf8fa22",
+      "path": "wp-content/plugins/mad4b-lifecycle-orchestrator/tests/unified-policy-live-smoke.php",
+      "scope": "mad4b-lifecycle-orchestrator",
+      "sha256": "5f2e323a71d7432d9f92bb58135bfcd6db1a10d8979295dd84346a18b7897491"
+    },
+    {
+      "bytes": 3879,
+      "git_blob_sha1": "cd71b471a62ed4a71ef1b2818d16b6ae51b4bbe3",
+      "path": "wp-content/plugins/mad4b-lifecycle-orchestrator/tests/unified-policy-source-contract.php",
+      "scope": "mad4b-lifecycle-orchestrator",
+      "sha256": "5249b83eb76fa532dead03cc93baf1fde9bd9793b3261655037ed773faa2e9ad"
+    },
+    {
+      "bytes": 1586,
+      "git_blob_sha1": "4fe15e1e1eb5fb5ac12f590ab9e18fe319e9f6f5",
+      "path": "wp-content/plugins/mad4b-lifecycle-orchestrator/tests/verification-negative-smoke.php",
+      "scope": "mad4b-lifecycle-orchestrator",
+      "sha256": "6f4f887561a04a25540e6a6f0b57e1b66aa30470fdde0dae142b69e3761d6b4e"
     },
     {
       "bytes": 43274,
@@ -1005,6 +1012,13 @@
       "path": "wp-content/plugins/mad4b-platform/legacy-mu-tree/assets/mad4b-public-route-source-v1.php",
       "scope": "mad4b-platform",
       "sha256": "1c6019a14a97c25b802478a04aad015ba6f725144ee1f2f906f347858f9fa298"
+    },
+    {
+      "bytes": 7795,
+      "git_blob_sha1": "766f8f0bd87e274407c12be9de32279e2591eff0",
+      "path": "wp-content/plugins/mad4b-platform/legacy-mu-tree/assets/mad4b-rate-widget-lifecycle-2.1.0-20261111.js",
+      "scope": "mad4b-platform",
+      "sha256": "f873784a1b798e684bbd0226cfe86d14f8a2e02a8077c1e8487996efe1de0e3e"
     },
     {
       "bytes": 1916,
@@ -3672,17 +3686,10 @@
       "path": "wp-content/plugins/mad4b-platform/tests/wpml-rate-family-native-acceptance.php",
       "scope": "mad4b-platform",
       "sha256": "b57baa92e7a90b3ae791b2580d640d8e41f990d5048a1efaad9fd3dabf83d618"
-    },
-    {
-      "bytes": 52304,
-      "git_blob_sha1": "c6921f564cca869bf38a897bad1305c0c468ea79",
-      "path": "wp-content/mu-plugins/mad4b-render-query-governor.php",
-      "scope": "mad4b-render-governor",
-      "sha256": "cbfa956427ae409e6f5a3bea46fea1ea08287e6e4d2a57b828b829e5f8584b14"
     }
   ],
   "grant_issued": false,
-  "last_reconciled_utc": "2026-11-11T01:55:43.322032+00:00",
+  "last_reconciled_utc": "2026-11-11T02:14:38.874329+00:00",
   "original313_certified": false,
   "original318_v82_not_automatically_substituted": true,
   "post_capture_amendments": [
@@ -3694,6 +3701,14 @@
       "path": "wp-content/plugins/mad4b-platform/legacy-mu-tree/assets/mad4b-source-rate-actions-20261106.js",
       "related_feature": "JetAccordion native handler after AJAX/lazy listing",
       "runtime_verification": "not_performed"
+    },
+    {
+      "auto_publish": false,
+      "change_type": "same_live_js_code_new_asset_filename",
+      "path": "wp-content/plugins/mad4b-platform/legacy-mu-tree/assets/mad4b-rate-widget-lifecycle-2.1.0-20261111.js",
+      "runtime_verification": "not_performed",
+      "same_bytes_as": "wp-content/plugins/mad4b-platform/legacy-mu-tree/assets/mad4b-source-rate-actions-20261106.js",
+      "source_sha256": "f873784a1b798e684bbd0226cfe86d14f8a2e02a8077c1e8487996efe1de0e3e"
     }
   ],
   "root_code_types": [
