@@ -36,6 +36,7 @@ function add_filter($name,$fn,$priority=10){
 function sanitize_text_field($s){return trim((string)$s);}
 function wp_strip_all_tags($s){return strip_tags((string)$s);}
 function esc_html($s){return htmlspecialchars((string)$s,ENT_QUOTES,'UTF-8');}
+function esc_attr($s){return htmlspecialchars((string)$s,ENT_QUOTES,'UTF-8');}
 function esc_url($s){return htmlspecialchars((string)$s,ENT_QUOTES,'UTF-8');}
 function wp_kses_post($s){return (string)$s;}
 function wc_price($amount,$options=[]){return '$'.number_format($amount,2);}

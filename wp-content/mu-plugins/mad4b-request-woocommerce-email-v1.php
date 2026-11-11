@@ -5,6 +5,7 @@
  * Version: 1.0.0
  */
 defined('ABSPATH') || exit;
+require_once __DIR__.'/includes/mad4b-company-email-brand-v1.php';
 
 /* Registration happens after WooCommerce loads WC_Email. No email is sent
  * here and no WooCommerce core template or gateway class is modified. */
@@ -37,35 +38,40 @@ add_filter('woocommerce_email_classes', static function ($emails) {
              * and never sends, schedules or modifies a lifecycle receipt.
              */
             public function get_content_plain() {
+                $experience=MAD4B_Company_Email_Brand_V1::experience('en');
                 return wc_get_template_html(
                     $this->template_plain,
                     [
-                        'email' => $this,
-                        'event' => 'preview',
-                        'request_body' => 'This is a preview of the shared WooCommerce template.',
-                        'request_language' => 'en',
-                        'advance_order' => null,
-                        'additional_content' => $this->get_additional_content(),
+                        'email'=>$this,
+                        'event'=>'preview',
+                        'request_body'=>'This is a preview of the shared WooCommerce template.',
+                        'request_language'=>'en',
+                        'email_experience'=>$experience,
+                        'advance_order'=>null,
+                        'additional_content'=>'',
                     ],
                     '',
                     $this->template_base
                 );
             }
             public function get_content_html() {
-                return wc_get_template_html(
-                    $this->template_html,
-                    [
-                        'email' => $this,
-                        'email_heading' => $this->get_heading(),
-                        'event' => 'preview',
-                        'request_subject' => 'Travel request',
-                        'request_body' => 'This is a preview of the shared WooCommerce template.',
-                        'advance_order' => null,
-                        'additional_content' => $this->get_additional_content(),
-                    ],
-                    '',
-                    $this->template_base
-                );
+                $experience=MAD4B_Company_Email_Brand_V1::experience('en');
+                $brand=$experience['brand'];
+                return MAD4B_Company_Email_Brand_V1::renderScoped($brand,function()use($brand,$experience){
+                    $html=wc_get_template_html($this->template_html,[
+                        'email'=>$this,
+                        'email_heading'=>$this->get_heading(),
+                        'event'=>'preview',
+                        'request_subject'=>'Travel request',
+                        'request_body'=>'This is a preview of the shared WooCommerce template.',
+                        'request_language'=>'en',
+                        'email_brand'=>$brand,
+                        'email_experience'=>$experience,
+                        'advance_order'=>null,
+                        'additional_content'=>'',
+                    ],'',$this->template_base);
+                    return method_exists($this,'style_inline')?$this->style_inline($html):$html;
+                });
             }
             /**
              * Renders only, and never calls wp_mail. The original
@@ -77,22 +83,27 @@ add_filter('woocommerce_email_classes', static function ($emails) {
                     'refund_recorded','payment_failed','payment_cancelled'];
                 if (!in_array($event, $supported, true)) return '';
                 if ($order !== null && !($order instanceof WC_Order)) return '';
-                $html = wc_get_template_html(
-                    $this->template_html,
-                    [
-                        'email' => $this,
-                        'email_heading' => sanitize_text_field($msg['subject'] ?? ''),
-                        'event' => $event,
-                        'request_subject' => (string)($msg['subject'] ?? ''),
-                        'request_body' => (string)($msg['body'] ?? ''),
-                        'request_language' => (string)($msg['language'] ?? 'en'),
-                        'advance_order' => $order,
-                        'additional_content' => $this->get_additional_content(),
-                    ],
-                    '',
-                    $this->template_base
-                );
-                return is_string($html) && str_contains($html, 'mad4b-wc-request-content') ? $html : '';
+                $experience=MAD4B_Company_Email_Brand_V1::experience(
+                    (string)($msg['language']??'en'),(int)($msg['source_id']??0));
+                $brand=$experience['brand'];
+                $html=MAD4B_Company_Email_Brand_V1::renderScoped($brand,function()use($msg,$order,$event,$brand,$experience){
+                    $html=wc_get_template_html($this->template_html,[
+                        'email'=>$this,
+                        'email_heading'=>sanitize_text_field($msg['subject']??''),
+                        'event'=>$event,
+                        'request_subject'=>(string)($msg['subject']??''),
+                        'request_body'=>(string)($msg['body']??''),
+                        'request_language'=>(string)($msg['language']??'en'),
+                        'email_brand'=>$brand,
+                        'email_experience'=>$experience,
+                        'advance_order'=>$order,
+                        'additional_content'=>'',
+                    ],'',$this->template_base);
+                    // RequestLifecycle sends through its own single, receipt-backed wp_mail.
+                    // Woo's normal WC_Email::send() inlines CSS; preserve that step here.
+                    return method_exists($this,'style_inline')?$this->style_inline($html):$html;
+                });
+                return is_string($html) && str_contains($html,'mad4b-wc-request-content')?$html:'';
             }
         }
     }

@@ -7,6 +7,18 @@ final class RequestLifecycle
 {
     const OPTION='commerce_request_lifecycle_v1';
     const ACTION='sync_request_lifecycle';
+
+    /** Classify mail transport errors without retaining customer content. */
+    public static function deliveryFailureCategory(string $code,string $message):string {
+        $reason=strtolower($code.' '.$message);
+        if(str_contains($reason,'data not accepted'))return 'smtp_data_rejected';
+        if(str_contains($reason,'authenticat'))return 'smtp_auth_rejected';
+        if(str_contains($reason,'recipient') && str_contains($reason,'reject'))return 'smtp_recipient_rejected';
+        if(str_contains($reason,'timed out') || str_contains($reason,'timeout'))return 'smtp_timeout';
+        if(str_contains($reason,'connect'))return 'smtp_connect_failed';
+        return 'mail_transport_unclassified';
+    }
+
     public static function config():array {return array_replace(['enabled'=>true,'actor_id'=>0,'crm'=>true,'boards'=>true,'mail'=>true,'accounting'=>true],(array)get_option(self::OPTION,[]));}
     public static function bootstrap():void {
         add_action('fluentform/submission_inserted',static function($sid,$data,$form){if(is_object($form))self::enqueue((int)$form->id,(int)$sid,0,'request_received');},1010,3);
@@ -153,8 +165,51 @@ final class RequestLifecycle
         if($value===null)return $m?json_decode((string)$m->value,true):null;
         if(!$m)$m=new \FluentForm\App\Models\SubmissionMeta();$m->fill(['response_id'=>$sid,'form_id'=>$fid,'meta_key'=>$key,'value'=>wp_json_encode($value),'created_at'=>current_time('mysql'),'updated_at'=>current_time('mysql')])->save();return $value;
     }
+    /** The saved Fluent submission URL can identify the traveler's original language.
+     * It is advisory for copy/links only, never for site, identity or payment authority.
+     */
+    public static function requestLanguage(array $ctx):string {
+        $source=(int)($ctx['source_id']??0);
+        $sourceLang=$source>0?(string)apply_filters('wpml_element_language_code','',[
+            'element_id'=>$source,'element_type'=>'post_'.get_post_type($source)]):'';
+        $supported=['en','ar','fr','de','es','it'];
+        $default=(string)apply_filters('wpml_default_language','en');
+        if(!in_array($default,$supported,true))$default='en';
+        $fallback=in_array($sourceLang,$supported,true)?$sourceLang:$default;
+        $url=(string)($ctx['row']['source_url']??'');
+        if($url==='' || wp_parse_url($url,PHP_URL_SCHEME)!=='https'
+            || strtolower((string)wp_parse_url($url,PHP_URL_HOST))
+                !==strtolower((string)wp_parse_url(home_url('/'),PHP_URL_HOST))
+            || wp_parse_url($url,PHP_URL_USER)
+            || wp_parse_url($url,PHP_URL_PASS))return $fallback;
+        $settings=get_option('icl_sitepress_settings',[]);
+        if(!is_array($settings))return $fallback;
+        $available=apply_filters('wpml_active_languages',null,['skip_missing'=>0]);
+        if(!is_array($available))return $fallback;
+        $mode=(int)($settings['language_negotiation_type']??0);
+        if($mode===1){
+            $basePath=trim((string)wp_parse_url(home_url('/'),PHP_URL_PATH),'/');
+            $path=trim((string)wp_parse_url($url,PHP_URL_PATH),'/');
+            if($basePath!=='') {
+                if($path===$basePath)$path='';
+                elseif(str_starts_with($path,$basePath.'/'))
+                    $path=substr($path,strlen($basePath)+1);
+                else return $fallback;
+            }
+            $first=explode('/',$path)[0];
+            return in_array($first,$supported,true) && isset($available[$first])
+                ?$first:$default;
+        }
+        if($mode===3){
+            parse_str((string)wp_parse_url($url,PHP_URL_QUERY),$query);
+            $value=(string)($query['lang']??'');
+            return in_array($value,$supported,true)&&isset($available[$value])
+                ?$value:$default;
+        }
+        return $fallback;
+    }
     public static function composeMail(array $p,array $ctx,$o=null):array {
-        $lang=(string)apply_filters('wpml_element_language_code',null,['element_id'=>$ctx['source_id'],'element_type'=>'post_'.get_post_type($ctx['source_id'])]);
+        $lang=self::requestLanguage($ctx);
         $copy=[
             'en'=>['request_received'=>'Travel request received','advance_requested'=>'Your request advance payment','advance_received'=>'Request advance received','refund_recorded'=>'Request advance refund recorded','payment_failed'=>'Request payment was not completed','payment_cancelled'=>'Request payment cancelled','notice'=>'The final trip price and availability remain subject to agreement. This is not a booking confirmation.'],
             'ar'=>['request_received'=>'تم استلام طلب الرحلة','advance_requested'=>'دفع مقدم طلب الرحلة','advance_received'=>'تم استلام مقدم الطلب','refund_recorded'=>'تم تسجيل استرداد مقدم الطلب','payment_failed'=>'لم يكتمل دفع مقدم الطلب','payment_cancelled'=>'تم إلغاء طلب الدفع','notice'=>'السعر النهائي للرحلة والتوفر يخضعان للاتفاق. هذه الرسالة ليست تأكيد حجز.'],
@@ -163,11 +218,33 @@ final class RequestLifecycle
             'es'=>['request_received'=>'Solicitud de viaje recibida','advance_requested'=>'Pago del anticipo de su solicitud','advance_received'=>'Anticipo recibido','refund_recorded'=>'Reembolso del anticipo registrado','payment_failed'=>'Pago no completado','payment_cancelled'=>'Pago cancelado','notice'=>'El precio final y la disponibilidad están sujetos a acuerdo. Esto no confirma una reserva.'],
             'it'=>['request_received'=>'Richiesta di viaggio ricevuta','advance_requested'=>'Pagamento dell’anticipo','advance_received'=>'Anticipo ricevuto','refund_recorded'=>'Rimborso dell’anticipo registrato','payment_failed'=>'Pagamento non completato','payment_cancelled'=>'Pagamento annullato','notice'=>'Il prezzo finale e la disponibilità restano da concordare. Questa non è una conferma di prenotazione.']
         ];$c=$copy[$lang]??$copy['en'];
-        $subject=$c[$p['event']].' #'.$p['submission_id'];$body=$subject."\n\n".$c['notice'];
-        if($o&&in_array($p['event'],['advance_received','refund_recorded'],true))$body.="\n\n".sprintf("Advance receipt #%d\nAmount received: %s %s\nRefunded: %s %s",$o->get_id(),$o->get_meta('_request_paid_amount'),$o->get_currency(),$o->get_meta('_request_refunded_amount'),$o->get_currency());
-        if($o&&$p['event']==='advance_requested'&&$o->needs_payment())$body.="\n\n".$o->get_checkout_payment_url();
+        // Identity comes only from the enrolled site, never a submitted form field.
+        $identity=class_exists('MAD4B_SCP_Company_Communication',false)
+            ? \MAD4B_SCP_Company_Communication::brandIdentity():[];
+        $brand=!empty($identity['valid'])
+            ?sanitize_text_field((string)$identity['brand_name']):'';
+        $subject=$c[$p['event']].' #'.$p['submission_id'];
+        if($brand!=='')$subject.=' — '.$brand;
+        $body=$subject."\n\n".$c['notice'];
+        $receiptCopy=[
+          'en'=>['receipt'=>'Advance receipt','received'=>'Amount received','refunded'=>'Amount refunded'],
+          'ar'=>['receipt'=>'إيصال العربون','received'=>'المبلغ المستلم','refunded'=>'المبلغ المسترد'],
+          'es'=>['receipt'=>'Recibo del anticipo','received'=>'Importe recibido','refunded'=>'Importe reembolsado'],
+          'fr'=>['receipt'=>'Reçu de l’acompte','received'=>'Montant reçu','refunded'=>'Montant remboursé'],
+          'de'=>['receipt'=>'Anzahlungsbeleg','received'=>'Erhaltener Betrag','refunded'=>'Erstatteter Betrag'],
+          'it'=>['receipt'=>'Ricevuta di acconto','received'=>'Importo ricevuto','refunded'=>'Importo rimborsato']
+        ];
+        if($o&&in_array($p['event'],['advance_received','refund_recorded'],true)) {
+            $r=$receiptCopy[$lang]??$receiptCopy['en'];
+            $body.="\n\n".$r['receipt'].' #'.$o->get_id()
+                ."\n".$r['received'].': '.$o->get_meta('_request_paid_amount').' '.$o->get_currency()
+                ."\n".$r['refunded'].': '.$o->get_meta('_request_refunded_amount').' '.$o->get_currency();
+        }
+        // The Woo email template owns the only conditional payment CTA and
+        // verifies a payable advance + an eligible gateway at rendering time.
+        // Never embed a raw payment URL in stored/replayed request-body copy.
         $policy=RequestAdvancePayments::policy($ctx['source_id'],$ctx['rate_id']);
-        return ['subject'=>$subject,'body'=>$body,'to'=>$ctx['data'][$policy['email_field']]??'','language'=>$lang?:'en'];
+        return ['subject'=>$subject,'body'=>$body,'to'=>$ctx['data'][$policy['email_field']]??'','language'=>$lang?:'en','source_id'=>(int)$ctx['source_id']];
     }
     public static function sendMail(array $p,array $ctx,$o=null):array|\WP_Error {
         if($p['event']==='request_received'){
@@ -202,8 +279,19 @@ final class RequestLifecycle
         $headers=['Content-Type: text/html; charset=UTF-8','X-MAD4B-Message-Scope: company','X-MAD4B-Event: '.$p['event'],'From: '.sanitize_text_field($cfg['company_display_name']).' <'.$cfg['transactional_from_email'].'>'];
         if(is_email($cfg['traveler_reply_to']))$headers[]='Reply-To: '.$cfg['traveler_reply_to'];
         self::receiptMeta($p['form_id'],$p['submission_id'],$key,['state'=>'sending','event'=>$p['event'],'utc'=>gmdate('c')]);
-        try {$sent=wp_mail($msg['to'],$msg['subject'],$html,$headers);}catch(\Throwable $e){return new \WP_Error('lifecycle_mail_outcome_uncertain');}
-        self::receiptMeta($p['form_id'],$p['submission_id'],$key,['state'=>$sent?'accepted_by_transport':'failed','event'=>$p['event'],'utc'=>gmdate('c')]);
+        $failureCategory='transport_false_unclassified';
+        $captureFailure=static function($error)use(&$failureCategory):void {
+            if($error instanceof \WP_Error)
+                $failureCategory=self::deliveryFailureCategory(
+                    (string)$error->get_error_code(),(string)$error->get_error_message());
+        };
+        add_action('wp_mail_failed',$captureFailure,8,1);
+        try {$sent=wp_mail($msg['to'],$msg['subject'],$html,$headers);}
+        catch(\Throwable $e){return new \WP_Error('lifecycle_mail_outcome_uncertain');}
+        finally {remove_action('wp_mail_failed',$captureFailure,8);}
+        $receipt=['state'=>$sent?'accepted_by_transport':'failed','event'=>$p['event'],'utc'=>gmdate('c')];
+        if(!$sent)$receipt['failure_category']=$failureCategory;
+        self::receiptMeta($p['form_id'],$p['submission_id'],$key,$receipt);
         return $sent?['status'=>'mail_accepted_by_transport']:new \WP_Error('lifecycle_mail_send_failed');
     }
     public static function retryDue():void {

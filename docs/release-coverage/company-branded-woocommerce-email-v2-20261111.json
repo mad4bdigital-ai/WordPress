@@ -1,0 +1,47 @@
+{
+  "company_early_payment_default_off": true,
+  "contract": "mad4b.company-branded-woocommerce-email.v2",
+  "deployment_note": "five file live readback separate; original full-system release authority still HOLD",
+  "files": [
+    {
+      "bytes": 11751,
+      "git_blob_sha1": "b47d8a40958fc83de9e0e0b928a2777cc72ab84c",
+      "path": "wp-content/mu-plugins/includes/mad4b-company-email-brand-v1.php",
+      "sha256": "0ff3fd7c04bcae4a447f2f6f76f21257ab7bb5efe16e79dd438bcceb2bb0c328"
+    },
+    {
+      "bytes": 6154,
+      "git_blob_sha1": "1f67af416c0d743a1b719069740204a774a8dde3",
+      "path": "wp-content/mu-plugins/mad4b-request-woocommerce-email-v1.php",
+      "sha256": "75b6bf1f10f0be7c45d65d3899537a4798585262e35140ec1ecf3fd883606e75"
+    },
+    {
+      "bytes": 9600,
+      "git_blob_sha1": "a459d9f4a33e987310a436764c7f1a046d53cb9c",
+      "path": "wp-content/mu-plugins/templates/emails/mad4b-request-lifecycle.php",
+      "sha256": "7cbc593f9cadb74a571d7d5556b62012472a0d9b7c8f7775211e2f6e116f2a01"
+    },
+    {
+      "bytes": 4323,
+      "git_blob_sha1": "96d4f4d4571135d5214b29dfb08eb0729c092b6a",
+      "path": "wp-content/mu-plugins/templates/emails/plain/mad4b-request-lifecycle.php",
+      "sha256": "c0b8982e355c8d28e3a6160579159e55207eb39abe8b8c58361de5ee89958ee0"
+    },
+    {
+      "bytes": 36420,
+      "git_blob_sha1": "4d5cfe2eb08a355e64c543ef2b3302d23000c617",
+      "path": "wp-content/plugins/commerce-composition/includes/RequestLifecycle.php",
+      "sha256": "ed73baef566c57d5e60a879758aec0c6588c23c775d1d968ea62afb726c9fcad"
+    }
+  ],
+  "locale_source": "verified FluentForm submission source_url with WPML source-language fallback",
+  "localized_links": "same-site WPML verified public permalinks",
+  "new_mail_queue_or_dispatcher": false,
+  "payment_link_eligibility_enforced": true,
+  "release_authorized": false,
+  "scope": "site-bound exact-company transactional request email",
+  "single_dispatch_authority": "Commerce\\Composition\\RequestLifecycle::sendMail",
+  "source_of_brand": "MAD4B_SCP_Company_Communication::brandIdentity + look-and-feel + active Elementor kit",
+  "stripe_activation_or_payment_capture": false,
+  "untranslated_or_foreign_links_hidden": true
+}

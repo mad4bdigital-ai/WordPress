@@ -4,13 +4,20 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 from verify_early_payment_woocommerce_source import verify,Blocked
+from verify_company_branded_email_v2 import verify as verify_v2,Blocked as V2Blocked
 M=json.loads((ROOT/'docs/release-coverage/early-payment-woocommerce-email-source-v1-20261111.json').read_text())
+V2=json.loads((ROOT/'docs/release-coverage/company-branded-woocommerce-email-v2-20261111.json').read_text())
 class EarlyPaymentSource(unittest.TestCase):
- def test_five_exact_sources_and_disabled_defaults(self):
-  self.assertEqual(verify(M)['exact_source_files'],4)
-  self.assertEqual(verify(M)['reviewed_semantic_source_patches'],1)
-  self.assertEqual(verify(M)['candidate_only_plain_templates'],1)
-  self.assertFalse(verify(M)['benefit_default_enabled'])
+ def test_v1_baseline_detects_superseding_v2_and_disabled_defaults(self):
+  # The immutable v1 snapshot must reject the new company-branded files,
+  # while the reviewed v2 manifest must account for every changed source.
+  with self.assertRaises(Blocked) as old:
+   verify(M)
+  self.assertEqual(str(old.exception),'PLAIN_FALLBACK_CONTENT_CHANGED')
+  current=verify_v2(V2)
+  self.assertEqual(current['verified_files'],5)
+  self.assertFalse(current['release_authorized'])
+  self.assertFalse(V2['stripe_activation_or_payment_capture'])
   source=(ROOT/'wp-content/mu-plugins/mad4b-early-payment-benefits-v1.php').read_text()
   for marker in ("'enabled'=>'no'","'type'=>'service'",
                  "'monetary_discount'=>false","'booking_confirmed'=>false",
@@ -53,19 +60,16 @@ class EarlyPaymentSource(unittest.TestCase):
   self.assertTrue(M['candidate_plain_fallback']['gateway_eligibility_checked_before_link'])
  def test_exact_fingerprint_tamper_blocked(self):
   for index in range(5):
-   data=copy.deepcopy(M)
-   data['source_files'][index]['live_sha256']='0'*64
-   with self.assertRaises(Blocked):verify(data)
-  forged=copy.deepcopy(M)
-  forged['source_files'][0]['path']='wp-content/mu-plugins/foreign.php'
-  with self.assertRaises(Blocked):verify(forged)
-  forged=copy.deepcopy(M)
+   data=copy.deepcopy(V2)
+   data['files'][index]['sha256']='0'*64
+   with self.assertRaises(V2Blocked):verify_v2(data)
+  forged=copy.deepcopy(V2)
+  forged['files'][0]['path']='wp-content/mu-plugins/foreign.php'
+  with self.assertRaises(V2Blocked):verify_v2(forged)
+  forged=copy.deepcopy(V2)
   forged['release_authorized']=True
-  with self.assertRaises(Blocked):verify(forged)
-  forged=copy.deepcopy(M)
-  forged['candidate_plain_fallback']['candidate_sha256']='0'*64
-  with self.assertRaises(Blocked):verify(forged)
-  forged=copy.deepcopy(M)
-  forged['reviewed_candidate_overlays'][0]['payment_authority_granted']=True
-  with self.assertRaises(Blocked):verify(forged)
+  with self.assertRaises(V2Blocked):verify_v2(forged)
+  forged=copy.deepcopy(V2)
+  forged['new_mail_queue_or_dispatcher']=True
+  with self.assertRaises(V2Blocked):verify_v2(forged)
 if __name__=='__main__':unittest.main()

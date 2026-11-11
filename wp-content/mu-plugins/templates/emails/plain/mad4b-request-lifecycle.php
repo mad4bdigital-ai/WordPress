@@ -56,3 +56,25 @@ echo "\n".($notices[$request_language]??$notices['en'])."\n";
 if (!empty($additional_content) && is_string($additional_content)) {
     echo "\n".trim(wp_strip_all_tags($additional_content))."\n";
 }
+
+$experience = is_array($email_experience??null)?$email_experience:[];
+$brand = is_array($experience['brand']??null)?$experience['brand']:[];
+$links = is_array($experience['links']??null)?$experience['links']:[];
+$tour = is_array($experience['tour']??null)?$experience['tour']:[];
+$labels=[
+ 'en'=>['tour'=>'Explore your tour','home'=>'Visit our website','privacy'=>'Privacy','terms'=>'Terms'],
+ 'ar'=>['tour'=>'استكشف تفاصيل الرحلة','home'=>'زيارة موقعنا','privacy'=>'الخصوصية','terms'=>'الشروط'],
+ 'es'=>['tour'=>'Explora tu viaje','home'=>'Visita nuestro sitio','privacy'=>'Privacidad','terms'=>'Términos'],
+ 'fr'=>['tour'=>'Découvrir votre circuit','home'=>'Visiter notre site','privacy'=>'Confidentialité','terms'=>'Conditions'],
+ 'de'=>['tour'=>'Ihre Reise ansehen','home'=>'Unsere Website','privacy'=>'Datenschutz','terms'=>'AGB'],
+ 'it'=>['tour'=>'Scopri il tuo tour','home'=>'Visita il nostro sito','privacy'=>'Privacy','terms'=>'Termini']
+];
+$t=$labels[$request_language]??$labels['en'];
+if(!empty($brand['bound'])) {
+    if(!empty($brand['name']))echo "\n".sanitize_text_field($brand['name'])."\n";
+    if(!empty($brand['tagline']))echo sanitize_text_field($brand['tagline'])."\n";
+    if(!empty($tour['url']) && !empty($tour['title']))
+        echo "\n".sanitize_text_field($tour['title'])."\n".$t['tour'].": ".$tour['url']."\n";
+    foreach(['home','privacy','terms'] as $kind)
+        if(!empty($links[$kind]))echo $t[$kind].": ".$links[$kind]."\n";
+}

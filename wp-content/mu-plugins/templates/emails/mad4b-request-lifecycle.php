@@ -25,9 +25,47 @@ $labels=[
 ];
 $mailLang=(string)($request_language??'en');
 $label=$labels[$mailLang]??$labels['en'];
+$experience=is_array($email_experience??null)?$email_experience:[];
+$brand=is_array($experience['brand']??null)?$experience['brand']:[];
+$links=is_array($experience['links']??null)?$experience['links']:[];
+$tour=is_array($experience['tour']??null)?$experience['tour']:[];
+$brandName=sanitize_text_field((string)($brand['name']??''));
+$brandTagline=sanitize_text_field((string)($brand['tagline']??''));
+$primary=(string)($brand['primary']??'#24323B');
+$accent=(string)($brand['accent']??'#B48A46');
+$surface=(string)($brand['surface']??'#F8F7F4');
+$dictionary=[
+ 'en'=>['status'=>'Your request update','experience'=>'Your travel experience',
+        'view_tour'=>'Explore your tour','home'=>'Explore our website',
+        'privacy'=>'Privacy policy','terms'=>'Terms & conditions',
+        'reply'=>'Questions? Reply to this email.','reference'=>'Request details'],
+ 'ar'=>['status'=>'آخر مستجدات طلبك','experience'=>'تجربة رحلتك',
+        'view_tour'=>'استكشف تفاصيل الرحلة','home'=>'زيارة موقعنا',
+        'privacy'=>'سياسة الخصوصية','terms'=>'الشروط والأحكام',
+        'reply'=>'عندك استفسار؟ تقدر ترد على الرسالة.','reference'=>'تفاصيل الطلب'],
+ 'es'=>['status'=>'Actualización de tu solicitud','experience'=>'Tu experiencia de viaje',
+        'view_tour'=>'Explora tu viaje','home'=>'Visita nuestro sitio',
+        'privacy'=>'Política de privacidad','terms'=>'Términos y condiciones',
+        'reply'=>'¿Tienes dudas? Responde a este correo.','reference'=>'Detalles de la solicitud'],
+ 'fr'=>['status'=>'Actualités de votre demande','experience'=>'Votre expérience de voyage',
+        'view_tour'=>'Découvrir votre circuit','home'=>'Visiter notre site',
+        'privacy'=>'Politique de confidentialité','terms'=>'Conditions générales',
+        'reply'=>'Une question ? Répondez à cet e-mail.','reference'=>'Détails de la demande'],
+ 'de'=>['status'=>'Aktuelles zu Ihrer Anfrage','experience'=>'Ihr Reiseerlebnis',
+        'view_tour'=>'Ihre Reise ansehen','home'=>'Unsere Website besuchen',
+        'privacy'=>'Datenschutz','terms'=>'AGB',
+        'reply'=>'Fragen? Antworten Sie auf diese E-Mail.','reference'=>'Anfragedetails'],
+ 'it'=>['status'=>'Aggiornamento della richiesta','experience'=>'La tua esperienza di viaggio',
+        'view_tour'=>'Scopri il tuo tour','home'=>'Visita il nostro sito',
+        'privacy'=>'Informativa sulla privacy','terms'=>'Termini e condizioni',
+        'reply'=>'Hai domande? Rispondi a questa e-mail.','reference'=>'Dettagli richiesta'],
+];
+$ui=$dictionary[$mailLang]??$dictionary['en'];
+$direction=$mailLang==='ar'?'rtl':'ltr';
 $notice = $request_body;
 $pay_url = null;
-if ($advance_order && $advance_order->needs_payment()) {
+if ($advance_order) {
+    // A payment URL embedded by a queued body can become stale when payment closes.
     $notice = str_replace($advance_order->get_checkout_payment_url(), '', $notice);
 }
 if ($advance_order &&
@@ -44,8 +82,35 @@ if ($advance_order &&
 }
 do_action('woocommerce_email_header', $email_heading, $email);
 ?>
-<div class="mad4b-wc-request-content">
-    <p><?php echo nl2br(esc_html(trim($notice))); ?></p>
+<div class="mad4b-wc-request-content" lang="<?php echo esc_attr($mailLang); ?>" dir="<?php echo esc_attr($direction); ?>" style="color:<?php echo esc_attr($brand['text']??'#24323B'); ?>;line-height:1.65">
+    <?php if (!empty($brand['bound'])) : ?>
+        <div style="border-top:4px solid <?php echo esc_attr($accent); ?>;padding:16px 0 10px;">
+            <p style="margin:0;font-size:12px;letter-spacing:.05em;color:<?php echo esc_attr($primary); ?>;font-weight:700">
+                <?php echo esc_html($ui['status']); ?>
+            </p>
+            <?php if ($brandTagline!=='') : ?>
+                <p style="margin:8px 0;font-size:15px;color:<?php echo esc_attr($primary); ?>;">
+                    <?php echo esc_html($brandTagline); ?>
+                </p>
+            <?php endif; ?>
+        </div>
+    <?php endif; ?>
+    <p style="margin:16px 0 24px;"><?php echo nl2br(esc_html(trim($notice))); ?></p>
+    <?php if (!empty($tour['url']) && !empty($tour['title'])) : ?>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:<?php echo esc_attr($surface); ?>;margin:14px 0;border-collapse:collapse">
+            <tr><td style="padding:18px 20px;">
+                <p style="margin:0 0 8px;font-size:12px;color:<?php echo esc_attr($primary); ?>;font-weight:700;">
+                    <?php echo esc_html($ui['experience']); ?>
+                </p>
+                <p style="margin:0 0 12px;font-size:18px;font-weight:700;">
+                    <?php echo esc_html($tour['title']); ?>
+                </p>
+                <a href="<?php echo esc_url($tour['url']); ?>" style="color:<?php echo esc_attr($primary); ?>;font-weight:700;text-decoration:underline">
+                    <?php echo esc_html($ui['view_tour']); ?>
+                </a>
+            </td></tr>
+        </table>
+    <?php endif; ?>
     <?php if ($advance_order) : ?>
         <p><strong><?php echo esc_html(sprintf(
             $label['ref'].' #%d',
@@ -63,6 +128,24 @@ do_action('woocommerce_email_header', $email_heading, $email);
     <?php endif; ?>
     <?php if (!empty($additional_content)) : ?>
         <p><?php echo wp_kses_post($additional_content); ?></p>
+    <?php endif; ?>
+    <?php if (!empty($brand['bound'])) : ?>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:26px 0 0;border-top:1px solid #E1E4E5;border-collapse:collapse">
+            <tr><td style="padding:18px 0 0;font-size:13px;line-height:1.75">
+                <p style="margin:0 0 10px;"><?php echo esc_html($ui['reply']); ?></p>
+                <p style="margin:0;">
+                    <?php if (!empty($links['home'])) : ?>
+                        <a href="<?php echo esc_url($links['home']); ?>" style="color:<?php echo esc_attr($primary); ?>;"><?php echo esc_html($ui['home']); ?></a>
+                    <?php endif; ?>
+                    <?php foreach (['privacy','terms'] as $kind) : ?>
+                        <?php if (!empty($links[$kind])) : ?>
+                            &nbsp; · &nbsp;<a href="<?php echo esc_url($links[$kind]); ?>" style="color:<?php echo esc_attr($primary); ?>;"><?php echo esc_html($ui[$kind]); ?></a>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
+                </p>
+                <?php if ($brandName!=='') : ?><p style="margin:12px 0 0;font-size:12px;"><?php echo esc_html($brandName); ?></p><?php endif; ?>
+            </td></tr>
+        </table>
     <?php endif; ?>
 </div>
 <?php do_action('woocommerce_email_footer', $email); ?>
