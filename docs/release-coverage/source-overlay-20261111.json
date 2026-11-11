@@ -1,0 +1,218 @@
+{
+  "all_github_features_certified": false,
+  "automatic_publisher": false,
+  "base_commit": "7974d46b8ec203e728646a7fbac5fd334ae2f4c2",
+  "contract": "mad4b.git.local-only-source-overlay.v1",
+  "files": [
+    {
+      "git_blob_sha": "97d091ada33512f1a5bfb052cf63ac0e35478b38",
+      "group": "original313",
+      "path": "ops/dynamic-operation-registry-v1/integrations/promote_consolidated_worker_release.py",
+      "sha256": "48fbf616f1955fdb924dc64a978598eedb6173b875bfc2dd0a9731e027867372"
+    },
+    {
+      "git_blob_sha": "b609ff246d1f9c0b17c1a6c4f05cff54168cb88b",
+      "group": "original313",
+      "path": "ops/dynamic-operation-registry-v1/integrations/reviewed-source/claimed-job-worker-license-preclaim-v1.py",
+      "sha256": "c98aa36ee312dc96589474540216cefee6831b0df4c2acd522be6083579811b8"
+    },
+    {
+      "git_blob_sha": "68bea16db5a4a152397107a55c88b2384c42979f",
+      "group": "original313",
+      "path": "ops/dynamic-operation-registry-v1/integrations/reviewed-source/claimed-job-worker-receipt-preclaim-v1.py",
+      "sha256": "55de84978f797099963100d5e57d5982c029b085337a00eb51d0e4b678fac60f"
+    },
+    {
+      "git_blob_sha": "5484fbbb143282d7c62b0a9efea9e2b4fd19fea9",
+      "group": "original313",
+      "path": "ops/dynamic-operation-registry-v1/integrations/reviewed-source/worker_adapter_receipt_only_v1.py",
+      "sha256": "caaca98bfbbb3021298c14bc5c9c31c985d629477545fa97709ed72d50103ab4"
+    },
+    {
+      "git_blob_sha": "e9e2728b5823002eee3efb1c0e402d53906d7998",
+      "group": "original313",
+      "path": "ops/dynamic-operation-registry-v1/tests/test_consolidated_worker_release_promotion.py",
+      "sha256": "fe2b1fb2ac0fb3577d9e50f07b9cef9cdd175ffa62ef3a5da8eb6d5a463c71d5"
+    },
+    {
+      "git_blob_sha": "196ca1021b25469d0813648de17bdb695b1bfb41",
+      "group": "original313",
+      "path": "ops/dynamic-operation-registry-v1/tests/test_receipt_only_preclaim_worker_candidate.py",
+      "sha256": "add6f101791c5b30a4baf6487b987628db5cdeb63b51cec3861a8a8b895ba75f"
+    },
+    {
+      "git_blob_sha": "1c50b35f34377162111367b8c95f3bb3772f8e2e",
+      "group": "original313",
+      "path": "ops/dynamic-operation-registry-v1/tests/test_receipt_only_worker_adapter_candidate.py",
+      "sha256": "3b8179db82f2eb7ceebe2725bb76ffdd27fa8ce0a5857d9e15947f3e8479353a"
+    },
+    {
+      "git_blob_sha": "77edc2e6c99b599f488742e9839a051671dbea82",
+      "group": "tenant",
+      "path": "tests/test_tenant_environment_neutrality_source.py",
+      "sha256": "83f4081b4a1297619a215a9a07eeade701d857d733fea62d3b5ec1b7a0be76fa"
+    },
+    {
+      "git_blob_sha": "b1d2f3d0201fa804ed864def42260634af1a2834",
+      "group": "tenant",
+      "path": "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-commerce-preview.php",
+      "sha256": "71e75b81871ea9773e378be5063ce67ee27744e88cc4b105b3b5ca1781ed84be"
+    },
+    {
+      "git_blob_sha": "64e832f99dd3db592ad5e889e50b5634f4383d40",
+      "group": "tenant",
+      "path": "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-company-media.php",
+      "sha256": "fe7710571cd3b47dfd5ca0a760a98d5c4b9f66a1825a301cd94678802781f0c0"
+    },
+    {
+      "git_blob_sha": "3bf4f39743c62b91f34aa5665aba9278e20302ca",
+      "group": "tenant",
+      "path": "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-consumers.php",
+      "sha256": "858143ef6210443b222214735682011189733b670f180f94ba908df3dfac345e"
+    },
+    {
+      "git_blob_sha": "626ee625b08cd8cb353db00cf836e18ba744709b",
+      "group": "tenant",
+      "path": "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-effective-read.php",
+      "sha256": "0ee75f8f8e9cacde58a0ae8e29c27b18f352889fadccc0bcfa07debe3cbcf600"
+    },
+    {
+      "git_blob_sha": "15358b9c662bcd3407237693afbc94447864ad73",
+      "group": "tenant",
+      "path": "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-elementor-tag.php",
+      "sha256": "57d7b169a4c37bf79305f2ec1d84b1399d5ba395be8b3ebaa590320832ffcc12"
+    },
+    {
+      "git_blob_sha": "25f0223a46764b2ad6e21028f0825099c68357b0",
+      "group": "tenant",
+      "path": "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-field-registry.php",
+      "sha256": "40e27e38c9ab1e10a49d15e1b8723da7dce57078fb7baf0f9f2caa4499488989"
+    },
+    {
+      "git_blob_sha": "8fd58616201b7ba33d2deffe5968a9fe9f771557",
+      "group": "tenant",
+      "path": "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-handover-inventory.php",
+      "sha256": "ebab5ff9745766b5d7e0e125e1acd9efee35106933356e6cebd0fc85ca8467d5"
+    },
+    {
+      "git_blob_sha": "6b2be4ae39cd3052b9b7c3fce8a471c9e074b062",
+      "group": "tenant",
+      "path": "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-operation-authority.php",
+      "sha256": "eededd1261ffacabc4d9fe16a4e7074b250ecc3ac7996c9873834fe9ac72a077"
+    },
+    {
+      "git_blob_sha": "7a4afa91333aea7a62c082ddc3ac37b2548f82a6",
+      "group": "tenant",
+      "path": "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-operations-workspace.php",
+      "sha256": "5da275333166af3f477f1004b77beeccbd5a395dbb34cbdcf393ae9af9be7a22"
+    },
+    {
+      "git_blob_sha": "32f319b464cc056f7697807b4e6df58722ab04bf",
+      "group": "tenant",
+      "path": "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-override-policy.php",
+      "sha256": "c533bb67f38afcd6e25c7180d92e2175a9914f22c6af211ce6b3dd11558f9c5b"
+    },
+    {
+      "git_blob_sha": "df07bd2bb7ecccb29e6943172dae69cb3d508319",
+      "group": "tenant",
+      "path": "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-preservation.php",
+      "sha256": "64b13ddcd0fe0f9fe3c29ed54f79c55f47b09aa89390beedc6b63564883eb0f0"
+    },
+    {
+      "git_blob_sha": "8281477fdc505cda977c12c1a76dff5bf3991998",
+      "group": "tenant",
+      "path": "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-price-engine.php",
+      "sha256": "c0d5279e744d527e2a2895adb30b6b1667d8e260ba4eedafa02113f4550546d7"
+    },
+    {
+      "git_blob_sha": "a5f4dc3489bef34cf344962813580d73f71d12ca",
+      "group": "tenant",
+      "path": "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-rejoin-preview.php",
+      "sha256": "5c43b771ee79cc43fc9a12e2e2400ba703b43a68405da71ef40b46bd199a69ad"
+    },
+    {
+      "git_blob_sha": "74c508ad8a5c36fe16a21fd5bd6ec7c366b28ff8",
+      "group": "tenant",
+      "path": "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-shadow.php",
+      "sha256": "2339b175c4609ecf956a69cd73de2c15d3d718d89ff08a24ef0d13c06ceb7036"
+    },
+    {
+      "git_blob_sha": "42cb8f72a0997f69891276fa3e7589b3b7e5cb5f",
+      "group": "tenant",
+      "path": "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-signed-publication.php",
+      "sha256": "a71b07d88b5d34c1a43f868e181476568cd04fa9d28a4bbb30bdfa92227646a2"
+    },
+    {
+      "git_blob_sha": "2309d8fa91f1178d56eb8ac51bcda97e23121209",
+      "group": "tenant",
+      "path": "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-sparse-admin.php",
+      "sha256": "e97ae052d285c802f3f6d77c27121964b96836a94783ca532f8e86fcdbf0d263"
+    },
+    {
+      "git_blob_sha": "cbfe7527830ceabc1c98b6a6310ff773c9ff4952",
+      "group": "tenant",
+      "path": "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-sparse-store.php",
+      "sha256": "a8c880d2bdd1f8d0417b51e58c91f8a0dced5232c44b915e15457dc48f74e460"
+    },
+    {
+      "git_blob_sha": "7899d1d5f4827f20463c57ed21fc03a93b88abec",
+      "group": "tenant",
+      "path": "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-sync-planner.php",
+      "sha256": "2be9b3124d26b05fd15cbe2e4f72b3b9aef872cdb38e549f940043d900a10fb6"
+    },
+    {
+      "git_blob_sha": "8bd59e732de967e278a70f614543c31fcbe34d41",
+      "group": "tenant",
+      "path": "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-typed-export.php",
+      "sha256": "79d56036b78d62e1e26cc13c928689f9120e972571e93bbbdbc54ad25ac3dfd3"
+    },
+    {
+      "git_blob_sha": "c427cef02f0393cbd29b8e63f673ef75f7746d7c",
+      "group": "tenant",
+      "path": "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-typed-schema.php",
+      "sha256": "27acfb3138e91567133fe63d5362b31271362bddee979772a6268d7464b5fcae"
+    },
+    {
+      "git_blob_sha": "9c431c4083cffef4aff60f44d79c20d8024e3f5b",
+      "group": "tenant",
+      "path": "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-workflow.php",
+      "sha256": "419aa202d73ea471bc43ebe1cf8661c7f46f813c4b6270db3677a287d28fcbd7"
+    },
+    {
+      "git_blob_sha": "af4cde6f9078d7034ac1caeb5293235eaf812b04",
+      "group": "tenant",
+      "path": "wp-content/plugins/mad4b-tenant-sync/mad4b-tenant-sync.php",
+      "sha256": "fb10821f6ad06f00a9505a4979178bb4d437fe60002dc0a1127d2f613a3dd950"
+    },
+    {
+      "git_blob_sha": "f069765426102e05be7d645bdb00c77df41820fa",
+      "group": "tenant",
+      "path": "wp-content/plugins/mad4b-tenant-sync/tests/tenant-handover-acceptance.php",
+      "sha256": "3ae6fdfd972726b2a7a558011be0930f11a74d0aa9394adb42a9226af4f14a1e"
+    },
+    {
+      "git_blob_sha": "e82753fb669c8b454b8659407fd7836c93dbbd7b",
+      "group": "tenant",
+      "path": "wp-content/plugins/mad4b-tenant-sync/tests/tenant-rejoin-preview-contract.php",
+      "sha256": "a2d9083b620f9acc7cff1b69c8a412ce53cf6e0ee54c0a1a0179f90e5a1eda3d"
+    },
+    {
+      "git_blob_sha": "fac2b24add7bbfcdac93201aebf93b1c2b886094",
+      "group": "tenant",
+      "path": "wp-content/plugins/mad4b-tenant-sync/tests/typed-export-acceptance.php",
+      "sha256": "3c24791e2807dcb831d8ad06681a56be3ce08ba957b75129b41575c85b889155"
+    },
+    {
+      "git_blob_sha": "f6a3189e236b2d075233cbc9b6010a077afb17ea",
+      "group": "tenant",
+      "path": "wp-content/plugins/mad4b-tenant-sync/tests/typed-schema-source-acceptance.php",
+      "sha256": "4d07b2cb3fcf3c9f8b8f00611812fe7d539827e1d0e2ff337c20b41c7dd9a14f"
+    }
+  ],
+  "history_merges_performed": false,
+  "original313_receipt_signed": false,
+  "runtime_mutated": false,
+  "tenant_source_commit": "df112f08b848c25483829c15bc07e02aa2c4eb25",
+  "worker_source_commit": "8c4ce575335949dde860198f28851da45b9aec68",
+  "write_authority_granted": false
+}
