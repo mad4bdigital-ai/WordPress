@@ -50,3 +50,7 @@ The new code restores the *native* JetAccordion handler for late-added JetEngine
 ## Additional concurrent asset filename (post-capture)
 
 A second live JS asset path, mad4b-rate-widget-lifecycle-2.1.0-20261111.js, appeared after the original 525-file capture. Its SHA-256 is the same as the reconciled Rate UI 2.1.0 asset (f873784a1b798e684bbd0226cfe86d14f8a2e02a8077c1e8487996efe1de0e3e). Both paths are preserved without renaming or activating either script. The fidelity manifest and guard now cover 526 files, with an explicit post-capture addition. A Node source test checks both asset bytes are identical. No browser run or live HTML script inclusion has been certified.
+
+## Latest source amendments
+
+The manifest was expanded to 531 precise code files. New Passport, Form 6 and Rate Widget assets are recorded under the exact source filenames. The current Passport JS revision invalidates old in-flight requests. Rate Widget 2.2.0 performs its native JetAccordion handler recovery on late Ajax rather than initial hydration. Both historical 2.1.0 and 2.2.0 filename variants are preserved as sources. Form 6 submission mode is not checkout activation, and no Stripe/payment operation was run. Original PHP/JS/CSS source bytes were preserved exactly from the current Tours.dev filesystem readback.

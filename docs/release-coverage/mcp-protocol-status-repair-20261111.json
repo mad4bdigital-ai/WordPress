@@ -1,0 +1,15 @@
+{
+  "adapter_version_not_whitelisted_by_fixed_number": true,
+  "after_sha256": "ec1a0f66d401e31120240a86ab1c1669e20e0e12643bcb0954bb4d2f31446f63",
+  "before_sha256": "22c710c202c3016a08738da05d47d249ce3f20cf1b1dd30c8a7668c4ac3b1c33",
+  "contract": "mad4b.mcp-protocol-status-semantic-repair.v1",
+  "forward_protocol_check_uses_loaded_negotiator": true,
+  "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-protocol-profile.php",
+  "reference_live_sha256": "586f03bc6e63f4ffc218386d8b31ef15f07c44506bec294ea119f3abb8a8d708",
+  "runtime_deployment_performed": false,
+  "runtime_undefined_variable_references_removed": true,
+  "site_source_updated": false,
+  "source_only": true,
+  "unknown_mcp_protocols_denied": true,
+  "write_grant_authorized": false
+}

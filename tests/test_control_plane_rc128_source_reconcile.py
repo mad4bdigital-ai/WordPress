@@ -67,6 +67,15 @@ class ThreeWaySourceTests(unittest.TestCase):
         for name in D["deferred_conflicted_or_high_risk"]:
             path="wp-content/plugins/mad4b-site-control-plane/"+name
             current=(ROOT/path).read_bytes()
-            self.assertEqual(current,old_blob(D["preimage_commit"],path))
+            original=old_blob(D["preimage_commit"],path)
+            if name=="includes/class-mad4b-scp-company-email-routing.php":
+                # Later source repair removed exactly one duplicate Fluent Forms
+                # registration, without changing recipient handling or policy.
+                redundant=b"        add_filter('fluentform/email_to', [__CLASS__,'fluent_form_recipient'], 100, 4);\n"
+                self.assertEqual(original.count(redundant),1)
+                self.assertEqual(current,original.replace(redundant,b"",1))
+                self.assertEqual(current.count(b"add_filter('fluentform/email_to'"),1)
+            else:
+                self.assertEqual(current,original)
 
 if __name__=="__main__":unittest.main()

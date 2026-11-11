@@ -993,6 +993,20 @@
       "sha256": "6044723ba78d6edae4a074777bdee4ad2426fdc2c00f7988c9ac33d9b99070be"
     },
     {
+      "bytes": 3232,
+      "git_blob_sha1": "54792ff679cbae0c3af855b6a3d433cd273b8dd8",
+      "path": "wp-content/plugins/mad4b-platform/legacy-mu-tree/assets/mad4b-passport-country-ajax-v1.css",
+      "scope": "mad4b-platform",
+      "sha256": "48728f7e48ecfba20a22e3071bc14f4dae0dee55bb279d8adeb8bb961f94e263"
+    },
+    {
+      "bytes": 10443,
+      "git_blob_sha1": "8d335e76d61478fe2406acb319d93629b9ca02e7",
+      "path": "wp-content/plugins/mad4b-platform/legacy-mu-tree/assets/mad4b-passport-country-ajax-v1.js",
+      "scope": "mad4b-platform",
+      "sha256": "fce8de1e6411be2adf7e9149db77e6a02fbadffa070b62e26b8c77921878c620"
+    },
+    {
       "bytes": 2903,
       "git_blob_sha1": "06c52529c0893c52fc8b528dd9cd94597fc4b778",
       "path": "wp-content/plugins/mad4b-platform/legacy-mu-tree/assets/mad4b-pricing-cache-public-paths.php",
@@ -1019,6 +1033,13 @@
       "path": "wp-content/plugins/mad4b-platform/legacy-mu-tree/assets/mad4b-rate-widget-lifecycle-2.1.0-20261111.js",
       "scope": "mad4b-platform",
       "sha256": "f873784a1b798e684bbd0226cfe86d14f8a2e02a8077c1e8487996efe1de0e3e"
+    },
+    {
+      "bytes": 7904,
+      "git_blob_sha1": "884019a322a228581371b36760a43af214b6b6ec",
+      "path": "wp-content/plugins/mad4b-platform/legacy-mu-tree/assets/mad4b-rate-widget-lifecycle-2.2.0-20261111.js",
+      "scope": "mad4b-platform",
+      "sha256": "13281cb629084d8bee25335d248d2d5ed8c4257110194ad95265fb4590a9e102"
     },
     {
       "bytes": 1916,
@@ -1075,6 +1096,20 @@
       "path": "wp-content/plugins/mad4b-platform/legacy-mu-tree/assets/mad4b-tour-estimate-caption-20261106.js",
       "scope": "mad4b-platform",
       "sha256": "1bdebca68ebf0b92d8fa634b67885f614fc8dd31668bcd0a34b93bf7dbcf2e33"
+    },
+    {
+      "bytes": 688,
+      "git_blob_sha1": "52fc525edecc0008a9612278c8f3d90418288063",
+      "path": "wp-content/plugins/mad4b-platform/legacy-mu-tree/assets/mad4b-tour-form6-submission-mode-v1.css",
+      "scope": "mad4b-platform",
+      "sha256": "e09837bcb374e8ba26f5cfe17cf2b43f96f3bb026aaa1123cc21b23189d293d9"
+    },
+    {
+      "bytes": 6297,
+      "git_blob_sha1": "4a0eb2b373f91b444fbbebbf633a4660f95be8d3",
+      "path": "wp-content/plugins/mad4b-platform/legacy-mu-tree/assets/mad4b-tour-form6-submission-mode-v1.js",
+      "scope": "mad4b-platform",
+      "sha256": "a9dd9dc5694cb22c3fbcc153ccc5770dc2f8bb2c7c8476d56918b7ce2105de74"
     },
     {
       "bytes": 1244,
@@ -2827,11 +2862,11 @@
       "sha256": "f848a12e978e766d58aa72bf5dd5aca57ce827ba3f9eb91762a3bc38a96b738c"
     },
     {
-      "bytes": 11912,
-      "git_blob_sha1": "9c7f587d77bb8873c8bc481df5403c032648b613",
+      "bytes": 16738,
+      "git_blob_sha1": "f61c58e8cc2acad6f62219240716749dd59db299",
       "path": "wp-content/plugins/mad4b-platform/modules/presentation/327-mad4b-fluent-passport-locale.php",
       "scope": "mad4b-platform",
-      "sha256": "9bb8f22d9c1f2c7a9da1ff76602fe7fc753ea52de4f874c6fbe53ae0f9bbfe16"
+      "sha256": "012aeb163d2f0fbedb707f88a73be41f170bcffcbde96370db5c4eb1b4b6b65e"
     },
     {
       "bytes": 4982,
@@ -3689,7 +3724,7 @@
     }
   ],
   "grant_issued": false,
-  "last_reconciled_utc": "2026-11-11T02:14:38.874329+00:00",
+  "last_reconciled_utc": "2026-11-11T02:40:07.543709+00:00",
   "original313_certified": false,
   "original318_v82_not_automatically_substituted": true,
   "post_capture_amendments": [
@@ -3709,6 +3744,60 @@
       "runtime_verification": "not_performed",
       "same_bytes_as": "wp-content/plugins/mad4b-platform/legacy-mu-tree/assets/mad4b-source-rate-actions-20261106.js",
       "source_sha256": "f873784a1b798e684bbd0226cfe86d14f8a2e02a8077c1e8487996efe1de0e3e"
+    },
+    {
+      "application": "Form6 immutable saved values search adapter",
+      "auto_publish": false,
+      "change_type": "source_file_expanded_live",
+      "new_sha256": "012aeb163d2f0fbedb707f88a73be41f170bcffcbde96370db5c4eb1b4b6b65e",
+      "old_sha256": "9bb8f22d9c1f2c7a9da1ff76602fe7fc753ea52de4f874c6fbe53ae0f9bbfe16",
+      "path": "wp-content/plugins/mad4b-platform/modules/presentation/327-mad4b-fluent-passport-locale.php",
+      "runtime_binder_activated": false
+    },
+    {
+      "auto_publish": false,
+      "change_type": "new_site_bound_component",
+      "new_sha256": "c66263b65c4db95a09750cbbc4124334b1596349ad9594d56cf26292da610c5e",
+      "path": "wp-content/plugins/mad4b-platform/legacy-mu-tree/assets/mad4b-passport-country-ajax-v1.js",
+      "runtime_binder_activated": false
+    },
+    {
+      "auto_publish": false,
+      "change_type": "new_site_bound_component",
+      "new_sha256": "48728f7e48ecfba20a22e3071bc14f4dae0dee55bb279d8adeb8bb961f94e263",
+      "path": "wp-content/plugins/mad4b-platform/legacy-mu-tree/assets/mad4b-passport-country-ajax-v1.css",
+      "runtime_binder_activated": false
+    },
+    {
+      "auto_publish": false,
+      "browser_acceptance": false,
+      "change_type": "live_passport_ajax_race_and_dialog_fallback_fix",
+      "new_sha256": "fce8de1e6411be2adf7e9149db77e6a02fbadffa070b62e26b8c77921878c620",
+      "path": "wp-content/plugins/mad4b-platform/legacy-mu-tree/assets/mad4b-passport-country-ajax-v1.js"
+    },
+    {
+      "auto_publish": false,
+      "browser_acceptance": false,
+      "change_type": "new_live_source_asset",
+      "new_sha256": "13281cb629084d8bee25335d248d2d5ed8c4257110194ad95265fb4590a9e102",
+      "path": "wp-content/plugins/mad4b-platform/legacy-mu-tree/assets/mad4b-rate-widget-lifecycle-2.2.0-20261111.js",
+      "payments_enabled_by_source_capture": false
+    },
+    {
+      "auto_publish": false,
+      "browser_acceptance": false,
+      "change_type": "new_live_source_asset",
+      "new_sha256": "e09837bcb374e8ba26f5cfe17cf2b43f96f3bb026aaa1123cc21b23189d293d9",
+      "path": "wp-content/plugins/mad4b-platform/legacy-mu-tree/assets/mad4b-tour-form6-submission-mode-v1.css",
+      "payments_enabled_by_source_capture": false
+    },
+    {
+      "auto_publish": false,
+      "browser_acceptance": false,
+      "change_type": "new_live_source_asset",
+      "new_sha256": "a9dd9dc5694cb22c3fbcc153ccc5770dc2f8bb2c7c8476d56918b7ce2105de74",
+      "path": "wp-content/plugins/mad4b-platform/legacy-mu-tree/assets/mad4b-tour-form6-submission-mode-v1.js",
+      "payments_enabled_by_source_capture": false
     }
   ],
   "root_code_types": [

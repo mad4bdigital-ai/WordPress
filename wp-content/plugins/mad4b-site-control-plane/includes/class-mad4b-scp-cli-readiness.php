@@ -41,9 +41,13 @@ final class MAD4B_SCP_CLI_Readiness {
                 'scheduled_scan_authorized_by_site_policy' => !empty($rules['scheduled_scan_enabled']),
             )
         );
+        // Bind the scheduled scan plan to the *current* enrolled Site Profile,
+        // never to an undefined variable or an empty digest.
+        $profile = class_exists('MAD4B_SCP_Site_Profile',false)
+            ? MAD4B_SCP_Site_Profile::status() : array();
         $identity = array(
             'site_uuid'=>(string)$execution['site_uuid'],
-            'profile_digest'=>(string)($status['profile_digest']??''),
+            'profile_digest'=>(string)($profile['profile_digest']??''),
             'policy_sha256'=>hash('sha256', wp_json_encode($rules,JSON_UNESCAPED_SLASHES)),
             'latest_scan_timestamp'=>$last,
             'next_due_timestamp'=>$last ? $last+$interval : 0,

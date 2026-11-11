@@ -235,7 +235,6 @@ final class MAD4B_SCP_Company_Email_Routing {
         return self::is_company_admin();
     }
     public static function register(): void {
-        add_filter('fluentform/email_to', [__CLASS__,'fluent_form_recipient'], 100, 4);
         // Consumer adapters are opt-in. Nothing is sent by installing this layer.
         add_filter('fluentform/email_to', [__CLASS__, 'fluent_form_recipient'], 100, 4);
         add_action('rest_api_init', static function() {

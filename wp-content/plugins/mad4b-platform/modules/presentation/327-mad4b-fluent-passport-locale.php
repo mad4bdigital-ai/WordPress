@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Fluent Passport Nationality Localization (Staging)
  * Description: Localized country names in Fluent Forms; preserves existing saved values.
- * Version: 1.0.0
+ * Version: 1.1.0
  */
 defined('ABSPATH') || exit;
 final class MAD4B_Fluent_Passport_Locale_V1 {
@@ -216,7 +216,108 @@ JS;
   self::$has_nationality_field=true;
   return $form;
  }
+ /**
+  * Read-only AJAX search over the exact immutable legacy Fluent Form #6
+  * passport choices. Never change option values or stored submissions.
+  */
+ private static function legacy_rows():array {
+  $cacheKey='mad4b_passport_legacy_form6_v1';
+  $rows=wp_cache_get($cacheKey,'mad4b_passport');
+  if(is_array($rows))return $rows;
+  global $wpdb;
+  $table=$wpdb->prefix.'fluentform_forms';
+  $json=$wpdb->get_var($wpdb->prepare("SELECT form_fields FROM {$table} WHERE id=%d LIMIT 1",6));
+  $tree=is_string($json)?json_decode($json,true):null;
+  if(!is_array($tree))return [];
+  $opts=null;
+  $walk=static function($node)use(&$walk,&$opts){
+   if(!is_array($node)||$opts!==null)return;
+   if(($node['element']??null)==='select' &&
+      ($node['attributes']['name']??null)==='dropdown_1'){
+    $opts=$node['settings']['advanced_options']??null;return;
+   }
+   foreach($node as $child)if(is_array($child))$walk($child);
+  };
+  $walk($tree);
+  if(!is_array($opts)||count($opts)!==195)return [];
+  $values=array_map(static fn($x)=>(string)($x['value']??''),$opts);
+  if(!hash_equals(self::LEGACY_VALUES_SHA,hash('sha256',wp_json_encode($values))))return [];
+  $codes=explode(' ',self::LEGACY_CODES);
+  if(count($codes)!==count($values))return [];
+  $rows=[];
+  foreach($codes as $i=>$code){
+   if(!preg_match('/^[A-Z]{2}$/D',$code)||!is_array($opts[$i]))return [];
+   $value=(string)($opts[$i]['value']??'');
+   if($value===''||strlen($value)>80)return [];
+   $rows[]=['iso'=>$code,'value'=>$value];
+  }
+  wp_cache_set($cacheKey,$rows,'mad4b_passport',3600);
+  return $rows;
+ }
+ private static function normalized(string $value):string {
+  $value=remove_accents($value);
+  return function_exists('mb_strtolower')?mb_strtolower($value,'UTF-8'):strtolower($value);
+ }
+ public static function search_passport($request) {
+  if(!self::active())return new \WP_Error('passport_search_not_ready','Country search unavailable',['status'=>503]);
+  $q=(string)$request->get_param('q');
+  $lang=(string)$request->get_param('lang');
+  if(!isset(self::LOCALES[$lang]))return new \WP_Error('passport_search_locale_invalid','Unsupported language',['status'=>400]);
+  if(strlen($q)>64)return new \WP_Error('passport_search_query_too_long','Search too long',['status'=>400]);
+  $q=self::normalized(trim(sanitize_text_field($q)));
+  $rows=self::legacy_rows();
+  if(count($rows)!==195)return new \WP_Error('passport_search_contract_unavailable','Country choices unavailable',['status'=>503]);
+  $matches=[];
+  $priorities=['EG','US','GB','AE','FR','DE','ES','IT'];
+  $favorites=[];
+  foreach($rows as $r){
+   $label=self::label($r['iso'],$lang);
+   if($label==='')return new \WP_Error('passport_search_label_unavailable','Country label unavailable',['status'=>503]);
+   $needle=self::normalized($label.' '.$r['value'].' '.$r['iso']);
+   if($q!==''&&strpos($needle,$q)===false)continue;
+   $row=['value'=>$r['value'],'label'=>$label,'iso'=>$r['iso']];
+   if($q===''&&in_array($r['iso'],$priorities,true))$favorites[$r['iso']]=$row;
+   else $matches[]=$row;
+  }
+  if($q===''){
+   $ordered=[];
+   foreach($priorities as $iso)if(isset($favorites[$iso]))$ordered[]=$favorites[$iso];
+   $matches=array_merge($ordered,$matches);
+  }
+  $response=rest_ensure_response(['results'=>array_slice($matches,0,14),
+    'has_more'=>count($matches)>14,'query'=>$q,'total'=>count($rows)]);
+  $response->header('Cache-Control','public, max-age=120');
+  return $response;
+ }
+ public static function public_country_route():void {
+  register_rest_route('mad4b/v1','/passport-countries',[
+   'methods'=>'GET','permission_callback'=>'__return_true',
+   'callback'=>[self::class,'search_passport'],
+   'args'=>[
+    'q'=>['type'=>'string','required'=>false,'default'=>''],
+    'lang'=>['type'=>'string','required'=>false,'default'=>'en']
+   ]
+  ]);
+ }
+ public static function enqueue_passport_search():void {
+  if(!self::active()||!is_singular('tours-and-activities')||
+     count(self::legacy_rows())!==195)return;
+  $script=WPMU_PLUGIN_DIR.'/assets/mad4b-passport-country-ajax-v1.js';
+  $css=WPMU_PLUGIN_DIR.'/assets/mad4b-passport-country-ajax-v1.css';
+  if(!is_readable($script)||!is_readable($css))return;
+  $handle='mad4b-passport-country-ajax-v1';
+  wp_enqueue_script($handle,content_url('mu-plugins/assets/mad4b-passport-country-ajax-v1.js'),
+    [],(string)filemtime($script),true);
+  wp_add_inline_script($handle,'window.MAD4BPassportSearchV1='.wp_json_encode([
+   'endpoint'=>rest_url('mad4b/v1/passport-countries'),
+   'lang'=>self::language(),
+  ],JSON_UNESCAPED_SLASHES).';','before');
+  wp_enqueue_style($handle,content_url('mu-plugins/assets/mad4b-passport-country-ajax-v1.css'),
+    [],(string)filemtime($css));
+ }
  public static function boot():void {
+  add_action('rest_api_init',[__CLASS__,'public_country_route']);
+  add_action('wp_enqueue_scripts',[__CLASS__,'enqueue_passport_search'],40);
   add_filter('fluentform/rendering_form',[__CLASS__,'ensure_booking_field'],9999,1);
   add_filter('fluentform/rendering_field_data_select',[__CLASS__,'localize_legacy_select'],9999,2);
   add_filter('fluentform/rendering_field_html_select',[__CLASS__,'tag_legacy_country_options'],9999,3);

@@ -1,0 +1,23 @@
+/* Scoped to the dynamic Tour Form #6, not global Fluent Forms/Checkout. */
+body.single-tours-and-activities form.fluent_form_6 .mad4b-form6-mode-explanation {
+ margin:8px 0 12px;
+ padding:10px 12px;
+ font-size:12px;
+ font-weight:450;
+ line-height:1.55;
+ color:#536770;
+ border:1px solid #d8e4e7;
+ border-radius:7px;
+ background:#f6f9fa;
+}
+body.single-tours-and-activities form.fluent_form_6[data-mad4b-submission-mode="advance_checkout"] .mad4b-form6-mode-explanation {
+ border-color:#c2d8cf;
+ background:#f4f9f6;
+ color:#225146;
+}
+@media(max-width:600px) {
+ body.single-tours-and-activities form.fluent_form_6 .mad4b-form6-mode-explanation {
+  padding:10px 11px;
+  font-size:12px;
+ }
+}

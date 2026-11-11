@@ -86,13 +86,20 @@ if min(compat_pos, projection_pos, servers_pos) < 0 or not (compat_pos < project
     fail("compatibility seam is not loaded before projection/server construction")
 
 policy = json.loads((ROOT / "config/runtime-release-policy.json").read_text(encoding="utf-8"))
-target_version = policy.get("target_adapter_version")
+if policy.get("installed_adapter_version_gate") is not False or "target_adapter_version" in policy:
+    fail("installed Adapter version must not be pinned by runtime release policy")
+if policy.get("adapter_compatibility_source") != "dependency_manager.adapter_read_runtime_observation":
+    fail("runtime compatibility must follow independently observed Adapter transport")
+if policy.get("adapter_release_target_source") != "certified_runtime_release_set.mcp_adapter":
+    fail("update target identity must follow explicit release-set transaction")
+reference = json.loads((ROOT / "config/mcp-protocol-profiles.json").read_text(encoding="utf-8"))
+adapter_ref = reference.get("certified_adapter") or {}
+if (adapter_ref.get("version_source") != "certified_provider_profile_reference"
+    or adapter_ref.get("version_gate") is not False):
+    fail("protocol reference is not a version-neutral runtime gate")
+target_version = adapter_ref.get("version")
 if not isinstance(target_version, str) or not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", target_version):
-    fail("runtime release policy target adapter version is invalid")
-transitions = set(policy.get("supported_transition_adapter_versions", []))
-if not {"0.6.1", "0.7.0", target_version}.issubset(transitions):
-    fail("runtime release transition policy omits a supported generation or target")
-
+    fail("reference Adapter identity invalid")
 profiles = json.loads((ROOT / "config/certified-provider-profiles.json").read_text(encoding="utf-8"))
 target = profiles.get("providers", {}).get("mcp_adapter", {}).get(target_version)
 if not isinstance(target, dict) or target.get("version") != target_version:
