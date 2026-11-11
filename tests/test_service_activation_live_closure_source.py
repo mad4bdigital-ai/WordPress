@@ -8,11 +8,11 @@ DOC=json.loads((ROOT/'docs/release-coverage/service-activation-live-closure-2026
 class ServiceActivationLiveClosureTests(unittest.TestCase):
  def test_exact_source_integration_hold(self):
   result=verify(DOC)
-  self.assertEqual(result['verified_source_files'],5)
+  self.assertEqual(result['verified_source_files'],7)
   self.assertFalse(result['central_release_authorized'])
   self.assertFalse(result['settings_changed'])
  def test_digest_tamper_rejected(self):
-  for index in range(5):
+  for index in range(7):
    fake=copy.deepcopy(DOC)
    fake['files'][index]['sha256']='0'*64
    with self.assertRaises(Blocked):verify(fake)

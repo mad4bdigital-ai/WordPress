@@ -12,6 +12,8 @@ PATHS={
  'wp-content/mu-plugins/mad4b-service-inquiry-cta-v1.php',
  'wp-content/mu-plugins/489-mad4b-booking-fulfillment-policy-v1.php',
  'wp-content/mu-plugins/490-mad4b-unified-booking-fulfillment-v2.php',
+ 'wp-content/mu-plugins/mad4b-tour-form6-submission-mode-v1.php',
+ 'wp-content/mu-plugins/assets/mad4b-tour-form6-submission-mode-v1.js',
 }
 class Blocked(ValueError):pass
 def verify(document,root=ROOT,live=None):
@@ -21,7 +23,9 @@ def verify(document,root=ROOT,live=None):
         'service_activation_options_changed','stripes_or_payments_activated','fluent_form6_submission_behavior_changed',
         'wayfa_schema_full_parity']
     expected_true=['public_rest_tour_rate_denied','admin_rest_rate_editor_preserved',
-        'readback_status_endpoint_admin_only','tour_form_cta_now_explicit_inquiry']
+        'readback_status_endpoint_admin_only','tour_form_cta_now_explicit_inquiry',
+        'form6_locale_fallback_verified','form6_server_source_guard_reconciled',
+        'form6_source_js_in_git']
     if any(document.get(k) is not False for k in expected_false):
         raise Blocked('UNAUTHORIZED_RELEASE_OR_FALSE_ASSERTION')
     if any(document.get(k) is not True for k in expected_true):
@@ -53,6 +57,8 @@ def verify(document,root=ROOT,live=None):
     readback=snippets['wp-content/mu-plugins/mad4b-service-activation-live-readback-v1.php']
     cta=snippets['wp-content/mu-plugins/mad4b-service-inquiry-cta-v1.php']
     unified=snippets['wp-content/mu-plugins/490-mad4b-unified-booking-fulfillment-v2.php']
+    form6=snippets['wp-content/mu-plugins/mad4b-tour-form6-submission-mode-v1.php']
+    form6js=snippets['wp-content/mu-plugins/assets/mad4b-tour-form6-submission-mode-v1.js']
     requirements={
         'public':['rest_pre_dispatch','template_redirect','tour-rates','rank_math/sitemap/exclude_post_type','current_user_can'],
         'readback':['wp_ajax_mad4b_service_live_probe','wp_safe_remote_get','current_user_can','check_ajax_referer',
@@ -60,8 +66,11 @@ def verify(document,root=ROOT,live=None):
         'cta':['#fluentform_6','fluentform/rendering_form','Send Travel Request','Request This Tour'],
         'unified':['MAD4B_Unified_Booking_Fulfillment_V2','checkout_authority','payment_authority',
                    'intent_execution_ready','jet-engine/options-pages/raw-fields'],
+        'form6':['travelerLabels','_request_source_id','_request_collection_state',"'labels'=>self::travelerLabels"],
+        'form6js':['cfg.labels','fallbackLabels','labels={...fallbackLabels}'],
     }
-    for name,source in [('public',public),('readback',readback),('cta',cta),('unified',unified)]:
+    for name,source in [('public',public),('readback',readback),('cta',cta),
+                        ('unified',unified),('form6',form6),('form6js',form6js)]:
         for marker in requirements[name]:
             if marker not in source:
                 raise Blocked('CONTRACT_MARKER_MISSING_'+name)

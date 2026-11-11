@@ -42,6 +42,14 @@ final class MAD4B_Service_Inquiry_CTA_V1 {
         if(!is_object($form) || (int)($form->id??0)!==6
             || !isset($form->fields) || !is_array($form->fields))return $form;
         $label=self::labels(self::language())['submit'];
+        // The existing Form6 submission-mode engine owns quote-vs-advance
+        // wording. Use its public locale copy for the initial HTML too.
+        if(class_exists('MAD4B_Tour_Form6_Submission_Mode_V1',false)
+            && is_callable(['MAD4B_Tour_Form6_Submission_Mode_V1','travelerLabels'])){
+            $copy=MAD4B_Tour_Form6_Submission_Mode_V1::travelerLabels(self::language());
+            if(is_array($copy)&&!empty($copy['quote_button']))
+                $label=(string)$copy['quote_button'];
+        }
         $fields=$form->fields;
         foreach((array)($fields['fields']??[]) as $i=>$item){
             if(!is_array($item)||($item['element']??'')!=='custom_submit_button')continue;

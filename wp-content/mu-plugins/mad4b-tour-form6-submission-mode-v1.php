@@ -67,6 +67,10 @@ final class MAD4B_Tour_Form6_Submission_Mode_V1 {
   ];
   return $all[$lang]??$all['en'];
  }
+ /** Language-accurate initial submit copy shared by server HTML and browser. */
+ public static function travelerLabels(string $language):array {
+  return self::wording(self::lang($language));
+ }
  public static function inspect(int $tour):array {
   $mode='quote_only';
   if($tour>0 && get_post_type($tour)==='tours-and-activities' &&
@@ -117,7 +121,8 @@ final class MAD4B_Tour_Form6_Submission_Mode_V1 {
   wp_add_inline_script($handle,'window.MAD4BTourForm6ModeV1='.wp_json_encode([
    'tourId'=>get_queried_object_id(),
    'endpoint'=>rest_url('mad4b/v1/tour-form6-submission-mode'),
-   'lang'=>self::lang(apply_filters('wpml_current_language','en'))
+   'lang'=>self::lang(apply_filters('wpml_current_language','en')),
+   'labels'=>self::travelerLabels(self::lang(apply_filters('wpml_current_language','en')))
   ],JSON_UNESCAPED_SLASHES).';','before');
   wp_enqueue_style($handle,content_url('mu-plugins/assets/mad4b-tour-form6-submission-mode-v1.css'),
     [],(string)filemtime($css));
