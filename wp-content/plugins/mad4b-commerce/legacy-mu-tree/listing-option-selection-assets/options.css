@@ -1,0 +1,37 @@
+.booking-choice-list .booking-choice-item{position:relative;cursor:pointer;transition:background-color .15s,border-color .15s;overflow-wrap:anywhere}
+.booking-choice-list .jet-listing-grid__item .booking-choice-item:hover{border-color:var(--e-global-color-primary,#2c3e50)}
+.booking-choice-list .booking-choice-item:focus-visible{outline:2px solid var(--e-global-color-primary,#2c3e50);outline-offset:3px}
+.booking-choice-list .jet-listing-grid__items .jet-listing-grid__item .booking-choice-item[aria-checked="true"]{background:var(--e-global-color-primary,#2c3e50);border-color:var(--e-global-color-primary,#2c3e50)}
+.booking-choice-list .booking-choice-item[aria-checked="true"] .elementor-widget-heading .elementor-heading-title{color:#fff}
+.booking-choice-list .booking-choice-item::after{content:'';position:absolute;inset-inline-end:12px;top:12px;width:16px;height:16px;border:1px solid currentColor;border-radius:4px;pointer-events:none}
+.booking-choice-list .booking-choice-item[aria-checked="true"]::after{content:'✓';color:#fff;display:grid;place-items:center;font-size:12px;line-height:1}
+@media(prefers-reduced-motion:reduce){.booking-choice-list .booking-choice-item{transition:none}}
+
+.booking-choice-list .booking-choice-stage{box-sizing:border-box;width:100%;min-width:0;border:0;margin:0 0 16px;padding:0}
+.booking-choice-list .booking-choice-stage>legend{display:block;width:100%;padding:0 0 8px;color:var(--e-global-color-primary,#2c3e50);font-weight:600;font-size:14px;line-height:1.5}
+.booking-choice-list .booking-choice-stage>.jet-listing-grid__item{width:100%;max-width:100%;padding:4px 0}
+.booking-choice-list .booking-choice-item::after{border-radius:50%}
+.booking-choice-list .booking-choice-item[aria-disabled="true"]{cursor:default;opacity:.55}
+
+/* Compact native JetEngine property choices; only within Rate stay cards. */
+.booking-choice-list .booking-choice-item .elementor-element-76d4f7c .elementor-heading-title{
+ font-size:12px!important;line-height:1.35!important;font-weight:500!important;
+ overflow-wrap:anywhere;
+}
+.booking-choice-list .booking-choice-stage>legend{font-size:12.5px;line-height:1.4}
+
+/* Other Rate cards can be viewed, but never chosen into the active itinerary.
+   Saved choices are restored only if their own Rate is selected again. */
+.booking-choice-list .booking-choice-item.is-rate-inactive{
+ cursor:not-allowed;
+ opacity:.58;
+}
+.booking-choice-list .booking-choice-item.is-rate-inactive::after{opacity:.6}
+.booking-choice-list .booking-choice-item.is-rate-inactive:hover{box-shadow:none}
+
+/* Accommodation choice is optional: no Rate-to-Property relation => no empty selector.
+   PHP emits the eligible flag, preventing a pre-JS flash; JS preserves fallback. */
+.booking-choice-list[data-booking-choice-eligible="0"],
+.booking-choice-list[hidden],
+.elementor-element-644ab04:has(> .booking-choice-list[data-booking-choice-eligible="0"]),
+.elementor-element-644ab04[hidden] {display:none!important;}

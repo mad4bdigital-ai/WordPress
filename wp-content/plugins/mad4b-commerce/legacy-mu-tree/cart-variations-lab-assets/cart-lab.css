@@ -1,0 +1,56 @@
+/* Local QA design: inherits Elementor brand tokens where available. */
+.cartlab{--cl-bg:var(--e-global-color-secondary,#fcf9f3);--cl-ink:var(--e-global-color-text,#24312f);--cl-accent:var(--e-global-color-primary,#a57a3e);--cl-accent-bg:#f6eddd;--cl-border:#e7dfd2;--cl-muted:#68706f;--cl-white:#fff;box-sizing:border-box;color:var(--cl-ink);background:var(--cl-bg);border:1px solid var(--cl-border);border-radius:14px;font-family:inherit;max-width:1180px;margin:0 auto;line-height:1.45}
+.cartlab *, .cartlab *::before,.cartlab *::after{box-sizing:border-box}
+.cartlab-header{padding:27px 30px 21px;border-bottom:1px solid var(--cl-border);display:flex;justify-content:space-between;gap:18px;align-items:flex-start}
+.cartlab-eyebrow{display:block;font-size:11px;font-weight:750;letter-spacing:.14em;color:var(--cl-accent);text-transform:uppercase}
+.cartlab h2{font-size:clamp(25px,3vw,34px);font-weight:750;line-height:1.2;margin:7px 0 8px;color:var(--cl-ink)}
+.cartlab h3{font-size:18px;line-height:1.3;margin:0;font-weight:700;color:var(--cl-ink)}
+.cartlab h4{font-size:15px;margin:0 0 4px;color:var(--cl-ink)}
+.cartlab p{margin:0;color:var(--cl-muted);font-size:13px}
+.cartlab-status{border:1px solid #dbc9aa;background:var(--cl-accent-bg);border-radius:50px;padding:7px 12px;color:#835b28;white-space:nowrap;font-size:11px;font-weight:750}
+.cartlab-body{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(250px,.8fr);align-items:start;gap:20px;padding:20px}
+.cartlab-main{min-width:0;display:grid;gap:14px}
+.cartlab-section{padding:20px;background:var(--cl-white);border:1px solid var(--cl-border);border-radius:12px}
+.cartlab-section-title{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.cartlab-number{display:inline-grid;place-items:center;background:var(--cl-accent-bg);color:#866536;font-weight:700;font-size:12px;width:30px;height:30px;border-radius:7px}
+.cartlab-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.cartlab-rates{grid-template-columns:repeat(2,minmax(0,1fr))}
+.cartlab-option{appearance:none;background:#fff;border:1.5px solid var(--cl-border);border-radius:9px;padding:12px 13px;min-height:70px;display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:start;cursor:pointer;position:relative;color:var(--cl-ink);box-shadow:none;transition:border-color .15s,background-color .15s}
+.cartlab-option strong{font-weight:700;font-size:12.5px;line-height:1.4}
+.cartlab-option small{font-size:11px;line-height:1.4;color:var(--cl-muted)}
+.cartlab-option:hover:not(:disabled){border-color:var(--cl-accent);background:#fffaf2}
+.cartlab-option.is-selected{background:var(--cl-accent-bg);border-color:var(--cl-accent);box-shadow:inset 0 0 0 .5px var(--cl-accent)}
+.cartlab-option.is-selected::after{content:'✓';display:grid;place-items:center;position:absolute;right:8px;top:8px;border-radius:50%;width:18px;height:18px;color:#fff;background:var(--cl-accent);font-size:11px}
+.cartlab-option.is-selected strong{padding-right:17px}
+.cartlab-option:focus-visible,.cartlab-stepper button:focus-visible,.cartlab-primary:focus-visible,.cartlab input:focus-visible,.cartlab select:focus-visible{outline:3px solid #a3bcdc;outline-offset:2px}
+.cartlab-option:disabled{opacity:.45;cursor:not-allowed}
+.cartlab-date-row{display:flex;align-items:end;justify-content:space-between;flex-wrap:wrap;gap:18px}
+.cartlab-date-row label,.cartlab-age-label,.cartlab-meal-label{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:650}
+.cartlab-date-row input,.cartlab-select{border:1px solid var(--cl-border);border-radius:8px;background:#fff;color:var(--cl-ink);min-height:39px;padding:6px 10px;font-size:13px;max-width:100%}
+.cartlab-stepper-group{display:flex;gap:14px;flex-wrap:wrap}
+.cartlab-stepper{display:flex;align-items:center;gap:4px;border-radius:8px;border:1px solid var(--cl-border);overflow:hidden;max-width:130px;height:38px;background:#fff}
+.cartlab-stepper button{border:0;background:#fff;color:var(--cl-ink);cursor:pointer;font-size:20px;width:35px;height:37px;display:grid;place-items:center;padding:0}
+.cartlab-stepper button:hover{background:var(--cl-accent-bg)}
+.cartlab-stepper output{display:inline-flex;min-width:24px;align-items:center;justify-content:center;font-size:13px;font-weight:750}
+.cartlab-child-ages{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+.cartlab-stage{padding:15px 0;border-top:1px solid #eee9df}
+.cartlab-stage:first-child{border-top:0;padding-top:0}
+.cartlab-stage-title{margin-bottom:12px}
+.cartlab-stage-title small{color:var(--cl-accent);font-size:11px}
+.cartlab-label{font-size:11px!important;font-weight:700!important;margin:11px 0 7px!important;color:var(--cl-muted)!important;letter-spacing:.01em}
+.cartlab-rooms-line{display:flex;align-items:center;justify-content:space-between;margin-top:12px;font-size:13px;font-weight:650}
+.cartlab-meal-label{margin-top:12px}
+.cartlab-summary{position:sticky;top:24px;background:var(--cl-white);border-radius:12px;border:1px solid var(--cl-border);padding:22px;box-shadow:0 5px 16px rgba(71,51,17,.035)}
+.cartlab-summary h3{font-size:23px;margin:5px 0 17px}
+.cartlab-summary-row{display:flex;justify-content:space-between;gap:12px;margin:0;padding:11px 0;border-bottom:1px solid #f1eee7;font-size:12px}
+.cartlab-summary-row>span{color:var(--cl-muted)}
+.cartlab-summary-row strong{font-weight:650;text-align:end;max-width:60%}
+.cartlab-totals{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:20px 0;font-size:12px;font-weight:700}
+.cartlab-totals strong{font-size:21px;color:var(--cl-accent);font-weight:800}
+.cartlab-primary{width:100%;display:block;text-align:center;background:var(--cl-accent);color:#fff;border:0;border-radius:8px;padding:13px 15px;font-size:13px;font-weight:700;cursor:pointer}
+.cartlab-primary:hover{filter:brightness(.92)}
+.cartlab output[role=status]{display:block;font-size:11px;color:var(--cl-muted);margin:13px 0 8px;min-height:28px}
+.cartlab-note{padding-top:11px;margin-top:10px!important;border-top:1px solid var(--cl-border);font-size:11px!important}
+@media(max-width:850px){.cartlab-body{grid-template-columns:minmax(0,1fr)}.cartlab-summary{position:static}.cartlab-section{padding:17px}}
+@media(max-width:520px){.cartlab-header{padding:19px 16px;gap:9px}.cartlab-header h2{font-size:25px}.cartlab-body{padding:12px;gap:12px}.cartlab-section{padding:15px}.cartlab-rates{grid-template-columns:repeat(2,minmax(0,1fr))}.cartlab-grid{gap:7px}.cartlab-option{padding:10px;min-height:67px}.cartlab-option strong{font-size:12px}.cartlab-option small{font-size:10px}.cartlab-status{font-size:10px}.cartlab-summary{padding:18px}}
+@media(prefers-reduced-motion:reduce){.cartlab-option{transition:none}}

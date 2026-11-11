@@ -1,0 +1,1926 @@
+{
+  "captured_utc": "2026-11-11T03:09:48.595451+00:00",
+  "checkout_ready_authorized": false,
+  "commerce_runtime_activated": false,
+  "company_runtime_mutated": false,
+  "contract": "mad4b.local-commerce-runtime-source-recovery.v1",
+  "current_git_base_commit": "61de7613a1e6b35f752adad7f84db05e793157f0",
+  "excluded_links": [
+    {
+      "link_target": "../../../mu-plugins/currency-data",
+      "path": "legacy-mu-tree/currency-data"
+    }
+  ],
+  "excluded_non_code": [
+    "legacy-mu-tree/shared-product-core/pricing/rate-planner.php.before-no-unpriced-rates-20261109",
+    "mad4b-commerce.php.before-site-bound-fx-20261109T025012Z",
+    "mad4b-commerce.php.before-tenant-runtime-parity-20261109T024221Z",
+    "modules/commerce/313-mad4b-rate-departure-governance.php.backup-owner-request-memo-20261106",
+    "modules/commerce/374-mad4b-rail-woocommerce-settings.php.before-tenant-runtime-parity-20261109T024221Z",
+    "modules/compat/pricing-fx-auto-refresh.php.before-site-bound-fx-20261109T025012Z"
+  ],
+  "files": [
+    {
+      "bytes": 2097,
+      "git_blob_sha1": "d28e7e3d40283bb57ad2ec0c7011980deb3e7130",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/assets/extra-selection-ui.js",
+      "sha256": "7dc39aaadceaa5afdebae2403af06ed1fa096326a8fd54439cea61beeffac80a"
+    },
+    {
+      "bytes": 5030,
+      "git_blob_sha1": "c904c673be5f52cade648ca19959a98ccb76d38c",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/assets/selected-rate-price-bridge.js",
+      "sha256": "47b5b657cec8d270e960a37df1e2a0535424312edbf6118c75c4dac3e7a2d405"
+    },
+    {
+      "bytes": 5448,
+      "git_blob_sha1": "be7821bcced2c2b7be95a6bb2a688fd688a4f68d",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/assets/tour-rate-centered-popover.js",
+      "sha256": "3f728db76f71abf791a7dd8a00d679f1b89e1d03329d404cf116f800f58d746c"
+    },
+    {
+      "bytes": 6733,
+      "git_blob_sha1": "8f96f24beec62d1858b43f434742c3167c9fe1d2",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/cart-variations-lab-assets/cart-lab.css",
+      "sha256": "6dbcb7fb6c99b0a99f70e48d22c5034ad59bf79270a02a09f29e9b233e7fd9b2"
+    },
+    {
+      "bytes": 15965,
+      "git_blob_sha1": "370be7046bb3d3bf8272c96bce9a452159f69a52",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/cart-variations-lab-assets/cart-lab.js",
+      "sha256": "782e57132503f535d6430f8c95066e171eeea0b8ea2f1dc97c70877436352752"
+    },
+    {
+      "bytes": 12696,
+      "git_blob_sha1": "56238ad0c5faabbaf2163ca18471d7009893fc62",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/cart-variations-lab-assets/hybrid-native-selection.inc.php",
+      "sha256": "6bbede99de972f2b7e7c08f1fb3bc2540ede4ac499d4a7385967cd85bf56a583"
+    },
+    {
+      "bytes": 3470,
+      "git_blob_sha1": "d76618158d8456e443b93618f6e5b992ae6fc5bc",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/hybrid-native-selection-assets/native-hybrid.css",
+      "sha256": "18e1e9b0e722d0e66e2ac2293767a1387a81321ba31d9c21c12ca3a4ef7f08ea"
+    },
+    {
+      "bytes": 7546,
+      "git_blob_sha1": "a9388e2b507ae61fcc476d4c7dd4ec31ef8e8e8f",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/hybrid-native-selection-assets/native-hybrid.js",
+      "sha256": "11886a54bbf1e489b624a91f5e9924fd4a185bb5f72b976560d85ad0ac47098f"
+    },
+    {
+      "bytes": 8550,
+      "git_blob_sha1": "7844bf3ca7e695e18393075ba812068ff0f58ca2",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/listing-option-selection-assets/components.css",
+      "sha256": "7cd7983ef92e1eeea1419d7bde1a1cf4d2a9717eac19688e9a42cc1c0e0ae485"
+    },
+    {
+      "bytes": 8908,
+      "git_blob_sha1": "1b6ccb080499eeb44bead7506a6db68352ce535d",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/listing-option-selection-assets/components.js",
+      "sha256": "bcc82aff3aebbd1eddcf20257888bf182052c5719b4e614a43a16355147f1ebf"
+    },
+    {
+      "bytes": 2965,
+      "git_blob_sha1": "540347033c52076fdc40c92c81356ea5a95a93d2",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/listing-option-selection-assets/options.css",
+      "sha256": "99596add79e3a894016c352aff18ab050c9420dd92b09730f034a508f4168c5b"
+    },
+    {
+      "bytes": 7695,
+      "git_blob_sha1": "310a16766b3292dbc1567010386c53ff3f6da6c4",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/listing-option-selection-assets/options.js",
+      "sha256": "1a1a2b233fd0e0c3a1a95d2548fe4b9482f92e9a19c77c6f3e29a89cd70536bc"
+    },
+    {
+      "bytes": 1083,
+      "git_blob_sha1": "63eec208ac9a39df229cbdfbd38d46a0c75f54a4",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/booking-config-validation-guard.php",
+      "sha256": "be7cfc2f887337f385b279d4e7ad0f96983298a7e915418f975f8c33ff00cbbb"
+    },
+    {
+      "bytes": 38545,
+      "git_blob_sha1": "87c9239bdc43a79ea99f8054ac90443a3a6af007",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/booking-preview-bridge.php",
+      "sha256": "29bdb6c71fe5d4ec160b7e03f141eb6c73217ff1f64361e1d1c54aeeb498c373"
+    },
+    {
+      "bytes": 10850,
+      "git_blob_sha1": "6e7d672c511520b60562f87149f794827188dc79",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/commerce-suite-release-certification-v1.php",
+      "sha256": "9044da7fe808402d3db460f01a351bc9da45f316b13f2a26032eb6077c8e841c"
+    },
+    {
+      "bytes": 2622,
+      "git_blob_sha1": "c71bd64b1c2650790d8b40ba2df6e7c10953f1ee",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/cpt-product-price-compat.php",
+      "sha256": "5ae937f5e87a559c6c28532ef46200a55bf126e904a07b073352c3f6e2315ee6"
+    },
+    {
+      "bytes": 2332,
+      "git_blob_sha1": "212623c8419aa8dc111f45bec1bd5fb87538ec3a",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/cpt-woo-rate-guard.php",
+      "sha256": "2078860c561303b073ae4bb18098e3ac907e0e6327d708567c8e02e640aa865a"
+    },
+    {
+      "bytes": 329,
+      "git_blob_sha1": "199e62308bdd070f7f7ba76bfef72b9007924fb3",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/elementor-pricing.php",
+      "sha256": "2e41d757d8fb752c67a2aece20ef4d0ba79c5cbefa57811a50dc91b77cff0720"
+    },
+    {
+      "bytes": 4068,
+      "git_blob_sha1": "3ff2eea61d0a295494fc4f95ee3cdd86e5a5e4ae",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/elementor-visual-pickers.php",
+      "sha256": "02cab32831e611b4db7137510001863a302e5d2bd3d269fe2cfc00534eb31c94"
+    },
+    {
+      "bytes": 7362,
+      "git_blob_sha1": "16364c110655d672dd8d93ff0f811bd6c9dbe88d",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/extra-selection-actions.php",
+      "sha256": "f46cbd22a8d5fcfb16d7ae71aaa54e9bc47a9076c470f60e3acda74f24b45a36"
+    },
+    {
+      "bytes": 7499,
+      "git_blob_sha1": "97c750aca491f9a142fff71cbc810071ae695d9b",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/form-booking-intent.php",
+      "sha256": "6ab81994000467f5fe499fc38cd5157f44fda7acdffb6ef26238cde588a84573"
+    },
+    {
+      "bytes": 5665,
+      "git_blob_sha1": "222b0a911bb9b7e269d4d960529e2279b5ced19b",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/form-pricing.php",
+      "sha256": "3acfb2ef8505484e090656b57db5587cddfaa87dd9890528cd1117243d4411dc"
+    },
+    {
+      "bytes": 524,
+      "git_blob_sha1": "fa5d32490b9848518a504fa6885b073a6a404d71",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/jetengine-pricing.php",
+      "sha256": "0ca89dc9c95951387448a14cf311f85e6941cff5ec7e49c38576ddfb87410053"
+    },
+    {
+      "bytes": 1307,
+      "git_blob_sha1": "316da853a7f15a0a49105e53b1fe877008cd6e83",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/nationality-source.php",
+      "sha256": "5f7cd27de18e5e28a460add9d7ae2872e761143aa8118e3f76c89224df220a2b"
+    },
+    {
+      "bytes": 2634,
+      "git_blob_sha1": "7b51b52637ea0f983379e6887a3869138e03fb7a",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/package-tier-index.php",
+      "sha256": "a20f80c4d45fe7bfc6436416821e787fa51c8005b7f794b83f5891bd630bfece"
+    },
+    {
+      "bytes": 5963,
+      "git_blob_sha1": "137d892672c1a7bb77d8c2142be923bf8c7968e6",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/presentation-adapter-registry-v1.php",
+      "sha256": "2282b4b77f707eb5a74a98cc9f1f2f9a9c381d8d7d99a029ec220fe0f857b0ca"
+    },
+    {
+      "bytes": 1640,
+      "git_blob_sha1": "3f7af7292eeb522203ee23f38ad8904191621f3c",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/presentation-blog-native-facets-v1.php",
+      "sha256": "57a7d5d8989846a5cd4da21ae638fb36619e77b9b2fadcc9088481d5ebb0c7ce"
+    },
+    {
+      "bytes": 23425,
+      "git_blob_sha1": "e0039e0b53321f561ab290e942ac4df62653e809",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/presentation-catalog-context-v1.php",
+      "sha256": "93cebc2377eccc1c496967173075f12d1cd8782979041803428d4ff52ee2148b"
+    },
+    {
+      "bytes": 10141,
+      "git_blob_sha1": "6feddac26efee72967e778a1ad2213762a75d8bc",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/presentation-catalog-price-facet-v1.php",
+      "sha256": "8ad1d09c26c62f7e49fd9bfdb5b98a5cbd5264b6179c9bf645de1714b87b1b20"
+    },
+    {
+      "bytes": 5315,
+      "git_blob_sha1": "76589ac290032d8e4ff05e4a06ff81a971a59183",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/presentation-company-destination-facet-v1.php",
+      "sha256": "8df1582242ba63603796c2398bd10fe31ef67ba099c39d7701ffe2dad67a0fee"
+    },
+    {
+      "bytes": 16243,
+      "git_blob_sha1": "134c27eedd099edab521a0adbef6bc12fbad4492",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/presentation-compatibility-manifest-v1.php",
+      "sha256": "6e8bdd56fecac7e689f7656caf8023a1e81c07dd60a9c1210935c84be2f7783a"
+    },
+    {
+      "bytes": 1431,
+      "git_blob_sha1": "4c39b989be6046ffe2b15cec567b74a620b80c30",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/presentation-context-registry-v2.php",
+      "sha256": "846d85248d999ce540fc7ba475c33bb2e452c86794dcd0e252101e35e8d4ebae"
+    },
+    {
+      "bytes": 10718,
+      "git_blob_sha1": "1270868c37e1ff76f399c79da00c382b0f07855e",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/presentation-context-v1.php",
+      "sha256": "fb649ab27d29c38aa82542e2daca1886f94236df1abaa36c092d37d85b0c1f8b"
+    },
+    {
+      "bytes": 4817,
+      "git_blob_sha1": "603199e72f4f9c7e089c45806f11104cc2bcefd4",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/presentation-destination-commercial-listing-guard-v1.php",
+      "sha256": "6c176de52a09c5a8b482263c35309277b606eddca8b0a23318550c94f60b56e4"
+    },
+    {
+      "bytes": 12596,
+      "git_blob_sha1": "4e0bf3a0ee3ac79817a31df12a2f0756025f90fb",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/presentation-destination-term-v1.php",
+      "sha256": "c8613aa6697bd45e0466abd6ad31423e8a498a20f7922f821795f4c7777ca761"
+    },
+    {
+      "bytes": 5221,
+      "git_blob_sha1": "b8b58c95dd3139848d45a0a214a6aafda9e18a7f",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/presentation-discovery-search-v1.php",
+      "sha256": "3eb08b4461e100f4f86e22cd7ca321d5cd4c77c4be6fb85850a305f3f8451fbf"
+    },
+    {
+      "bytes": 6583,
+      "git_blob_sha1": "5429d0efe05888e7fd6d6a46d5610c7a12ca0d54",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/presentation-form6-candidate-v1.php",
+      "sha256": "a731ae37f1b695faee3fea88a1a9adf71acaf666574b22038ce0b077148f8260"
+    },
+    {
+      "bytes": 2217,
+      "git_blob_sha1": "d258ff92550b83f32a858f9939979acdd0108d14",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/presentation-form6-occupancy-policy-v1.php",
+      "sha256": "71760a77dc826d8c9dcbe86bf3a3952a8ab9890295226e3dfa833d8d8a6f4f17"
+    },
+    {
+      "bytes": 33381,
+      "git_blob_sha1": "6fc79c503c0449422aa4f55eea3c66822a8744db",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/presentation-form6-price-quote-v1.php",
+      "sha256": "85bf25dcbe2a7a26921981d0f016468d34ed83db16461bac5adbd998588dbdde"
+    },
+    {
+      "bytes": 8872,
+      "git_blob_sha1": "ab5740b2e81cba617cd69d4fa9355c9e844dda29",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/presentation-form6-stay-options-v1.php",
+      "sha256": "d433a037ce74ced2811f7f3c9cfc9cc795619a0e971ce3cf9fd3a18bb7171206"
+    },
+    {
+      "bytes": 1510,
+      "git_blob_sha1": "69a827a393028fbe0566c40a116482b83dfef413",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/presentation-jsf-pagination-v2.php",
+      "sha256": "d8b02fd875f8a6058fe317fd43d009369c68d13d0ec4f619cd4d8fe5ac13d1e6"
+    },
+    {
+      "bytes": 7346,
+      "git_blob_sha1": "18e74aa480fb6360c97e549612d95190ad801400",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/presentation-native-commercial-source-registry-v2.php",
+      "sha256": "ddc7317b7fc21bc0fca95eb74c0083f70b025b1b1984472a4f41293bd23ec380"
+    },
+    {
+      "bytes": 10773,
+      "git_blob_sha1": "900180a6dc0e4f782f8277bea2c338e4ebbcab75",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/presentation-native-consumer-policy-v1.php",
+      "sha256": "70fb1bcf1b29942f5e1e1d2385b9a2ac0f931b7771955f696dc1ef819bdea3e3"
+    },
+    {
+      "bytes": 5576,
+      "git_blob_sha1": "7c40ab63c7b45784bcd6db9d001f00446b554d62",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/presentation-native-destination-query-guard-v1.php",
+      "sha256": "fb5ed62fe5248f54054b954851ace01c312c46f8bf06a0bd20e069e72c36a92f"
+    },
+    {
+      "bytes": 9673,
+      "git_blob_sha1": "8038145bbaf05e960baa9b7f3c32fd0255d952c8",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/presentation-native-facet-discovery-v1.php",
+      "sha256": "c28f39b63ae39eae28eaca11c61f6fee7155ceac8f414fb8bfcd77049989b4d3"
+    },
+    {
+      "bytes": 8413,
+      "git_blob_sha1": "4a911aa3a4a720dd31c7d10b6b2385d804f222e8",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/presentation-native-filter-diagnostics-v1.php",
+      "sha256": "7e90a01826cdc76ac7a0a1b50c5c4e7fb1748c813d942c170c4ace4d789b3ea8"
+    },
+    {
+      "bytes": 8312,
+      "git_blob_sha1": "f7b0f5b529a1035e04114dbfb99c2301dc690cc9",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/presentation-native-filter-policy-v1.php",
+      "sha256": "414d95f2296cfdd80ca51d29d4c7c45d9bccea7f448d6299dcef24c864ee636e"
+    },
+    {
+      "bytes": 2792,
+      "git_blob_sha1": "a590bb57c552b8fcab43db6cf511e2f365904f53",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/presentation-native-fluent-form-sources-v1.php",
+      "sha256": "d281db598f4a1bf7be6877ee94075b2d49bfeb7b849c520a8e3085c2fc2afa20"
+    },
+    {
+      "bytes": 1172,
+      "git_blob_sha1": "6da1bff42f8797b3735a888ec4ebd61a8b035386",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/presentation-native-jetengine-price-v1.php",
+      "sha256": "c69aa54846cf7ee28866fa10c7c3885fbaf4715e6e8a24f5fe33b93006883bd0"
+    },
+    {
+      "bytes": 7594,
+      "git_blob_sha1": "3390c5cbc030df0d4d148650fb81184cf8758613",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/presentation-native-rate-eligibility-preview-v1.php",
+      "sha256": "b33067985b704d82a24e19e3d7bb344bb8193b6d6706ca49b26e794e051fd5e7"
+    },
+    {
+      "bytes": 8004,
+      "git_blob_sha1": "ec1493ce870eec7be2f5bbdd361850e1f6bf8c94",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/presentation-native-typed-source-registry-v1.php",
+      "sha256": "6692338067c84e728f04feecc17563c4acf6ed8ae5fa44c7cda9b85650f0ed8e"
+    },
+    {
+      "bytes": 4873,
+      "git_blob_sha1": "766216ca7ec6f572ec1b09e2545957277ae4fa71",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/presentation-query-consumer-registry-v1.php",
+      "sha256": "0857093b54e3aaeab18e706334d3ba061cf38aff4cb70a6c2dff95fa622da17e"
+    },
+    {
+      "bytes": 2815,
+      "git_blob_sha1": "028c24f1c27237f9825c71b8246db9c08defea71",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/presentation-source-field-guard-v1.php",
+      "sha256": "57eb789cfa1695ab0a7565c2962b4ed3c47612e06de1b3a695ca529c742afd48"
+    },
+    {
+      "bytes": 12892,
+      "git_blob_sha1": "8ceba282b333b6d60f8ce13e87f023cf281f3ba0",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/presentation-stay-selection-v1.php",
+      "sha256": "392ec4cf151388103ff17935889da616c58cbdf18125e813e5544d7043e4e561"
+    },
+    {
+      "bytes": 6375,
+      "git_blob_sha1": "5bac4447302f071d29a5ca41930e90af8f53da23",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/presentation-taxonomy-archive-v1.php",
+      "sha256": "1146ada07c377d8e6057977b1fff6f1b5397513e81fbd4a910679ba8ad35e86e"
+    },
+    {
+      "bytes": 13815,
+      "git_blob_sha1": "ecb10cf9335a23b1a2b895104eb7ed64c5ee39a3",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/presentation-tour-pricing-entry-v1.php",
+      "sha256": "77a9d85da7932974edbb24e6d607a6def2f06ff60ef9435e3e4312391331b282"
+    },
+    {
+      "bytes": 4751,
+      "git_blob_sha1": "c2d8c6d6df26a6bb78d0d634a810e997567d19e6",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/presentation-tour-rate-date-facet-v1.php",
+      "sha256": "d28b8004ab950ae5a976d98cd15748f10f5cf1754f1b002d5939e2cfb657036d"
+    },
+    {
+      "bytes": 7503,
+      "git_blob_sha1": "e6c611ee45773b6ac1bb48df98a93b99949c2022",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/presentation-transport-context-v1.php",
+      "sha256": "f581f1bd13257f418e9f8236c037368fa44c1631414f0c9cf8d5477ca8277c47"
+    },
+    {
+      "bytes": 5147,
+      "git_blob_sha1": "36b351a4ab8d349b1b659956ab27f2755e596217",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/pricing-legacy-template-tags.php",
+      "sha256": "d0da457b8f8120bf27e456b357d7f4bf1e12895c486a752bd12452e77619f752"
+    },
+    {
+      "bytes": 14245,
+      "git_blob_sha1": "0b56f793fd5274e57679f009b58be40662070446",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/rate-actions-styles.php",
+      "sha256": "bd5e7a5e08ea7f2586a4c911f9548add56009081a3cc8300377d65c36c170e1f"
+    },
+    {
+      "bytes": 6636,
+      "git_blob_sha1": "8bec03104971fd53a09b987450e38983d3ea8867",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/rate-selection-actions.php",
+      "sha256": "8af40e2a681ddbc6935e20f4b77698822b4228f4d7f194c087e4ae3ba6d3bf10"
+    },
+    {
+      "bytes": 9174,
+      "git_blob_sha1": "e7d5167c9b0076cbfcbc1b65e54638e525198ee1",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/tour-program-source-contract-v1.php",
+      "sha256": "9aea6cc8104cb5caaf5deee17319194cc761a2ec4fe52c4a1716e66795188026"
+    },
+    {
+      "bytes": 2734,
+      "git_blob_sha1": "d386bf17deda3d21724e982892b74ea9f8ac5ded",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/tour-rate-ajax-context.php",
+      "sha256": "0a4270240ae6e743add93a0cc6fdaaf44181a378012cb0639e6fb1291e0fa2d9"
+    },
+    {
+      "bytes": 829,
+      "git_blob_sha1": "810cc53d874aa6846b98085fc0c2fea0896341cc",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/tour-rate-availability-query-isolation.php",
+      "sha256": "1a9cb69a4e56b3865e208886fed4c1bd8e13b2dd64688811b7fdf7e236b39d8f"
+    },
+    {
+      "bytes": 13827,
+      "git_blob_sha1": "b3dab78351ef7c3b0a55f3d1b683518e4fd1a73c",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/tour-rate-dynamic-search.php",
+      "sha256": "332a589e67168cd17a52676c6fe1f801410f6b2fe1720f5afd3103b8f5356864"
+    },
+    {
+      "bytes": 4169,
+      "git_blob_sha1": "63cb671046748b9c1e1b89049c2078866ec698fd",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/tour-rate-eligible-query.php",
+      "sha256": "be353104a78bbe6324b7af976989441673bb65e8985693bc03607a2624e05ccb"
+    },
+    {
+      "bytes": 9102,
+      "git_blob_sha1": "e4bd97ee65133d66aa5519c3908495bdc66b36f7",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/tour-rate-facets-from-query.php",
+      "sha256": "b9b1a426f8615fec324b5684566268bec690955e457f75796bc804b82b9e190b"
+    },
+    {
+      "bytes": 1381,
+      "git_blob_sha1": "9d1920436fbbdbb8dd36d5edd9944d81be05cee1",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/tour-rate-filter-url-context.php",
+      "sha256": "7e8b6ff49b2162a16ba2687ecda8ef5feebb8cc03309ff6eb8c57d3e67c513be"
+    },
+    {
+      "bytes": 1513,
+      "git_blob_sha1": "e17244446819afe89a9abec8ddcb130d795e2d2a",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/tour-rate-package-filter-options.php",
+      "sha256": "2fb00f0b1d16d213f47739b7c71a2450b987da65510c9dd7e16e4a9e60b10649"
+    },
+    {
+      "bytes": 4639,
+      "git_blob_sha1": "0a88e3ee308e609489d53992f572bad50f87adf8",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/tour-rate-related-options.php",
+      "sha256": "9efa1aeb536e7dac6b85241cf2bc50b19c08b041e26cd76cff31e7d367affe85"
+    },
+    {
+      "bytes": 1269,
+      "git_blob_sha1": "2f9a8397a720a16e04993ac137f37580b7d3e4b4",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/tour-rate-season-filter-options.php",
+      "sha256": "a72853f8df6269ef9a972ae68fb213caa78d094974bc7cc9534b80f4a585ca9c"
+    },
+    {
+      "bytes": 1314,
+      "git_blob_sha1": "5c363f5e82c214d3bf7d0cae0be4a61723104c13",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/tour-rate-season-url-context.php",
+      "sha256": "f8abacf7822614ce676b696a642b49c9f7bfb0332db3595420d91059d7743a82"
+    },
+    {
+      "bytes": 18044,
+      "git_blob_sha1": "ae25b4903a6ac9a218a74a03ea870d930495376b",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/tour-rate-seed-bridge-v1.php",
+      "sha256": "15604db0ddcf3b83684ecea8c0f4bbb70d34889f0776bebbc8d5fb6acbd1476b"
+    },
+    {
+      "bytes": 3059,
+      "git_blob_sha1": "b680da5d4b7d56c87eee593df9b0a78cee64b2e4",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/tour-rate-semantic-reference-v1.php",
+      "sha256": "15fa3d4537ca668d160b8b81f475e7a64097b592fb611ccc2cfeea39894834be"
+    },
+    {
+      "bytes": 12825,
+      "git_blob_sha1": "490b915411ad80c29dd53889efc6702c58b2c6b1",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/woocommerce-booking-configuration.php",
+      "sha256": "1d8a5f30895020e8485ac4c31601d07909b1d026a8f555a2eeb94d73f4a1fc7a"
+    },
+    {
+      "bytes": 7916,
+      "git_blob_sha1": "9dd77139fe68a06804f548d7fa8dd4a28640b02a",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/woocommerce-pricing.php",
+      "sha256": "e757d17af23aec313d7340b730fec13d2971d412c307baad86995319d95e40b2"
+    },
+    {
+      "bytes": 1494,
+      "git_blob_sha1": "a32e574701a6dd5618a9903eac4850b97fce0ce7",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/admin/cpt-woo-rate-link.php",
+      "sha256": "0f7e7271acb3ce8bcf857700d742395f8abd84e3d453f6b83af538b32e23ee7e"
+    },
+    {
+      "bytes": 2328,
+      "git_blob_sha1": "2e3c6a977c796ffc7b0f545390c6cad92fd59387",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/admin/pricing-policy-readiness.php",
+      "sha256": "3a9995a2c9d89387d3f82d262444f2211b9f72df2b60eb0b34ca1fe2ba233f62"
+    },
+    {
+      "bytes": 28951,
+      "git_blob_sha1": "04f74819ee872b89e8ef1868f1ec01c552ed87cd",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/admin/rate-generation.php",
+      "sha256": "88fd57e9926fc86f261785c3d8e6102de12ad7b2ef299a49bd00c609a2dd5a8a"
+    },
+    {
+      "bytes": 5829,
+      "git_blob_sha1": "7f06d98a2c235eda4509bc6b9e3e534af90b2ab7",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/admin/woocommerce-financial-panel.php",
+      "sha256": "09c196801aa37242c820187167967ff5de5468380b8c22e39db639fe1d27ebdb"
+    },
+    {
+      "bytes": 971,
+      "git_blob_sha1": "16886e2e94f409e31a0db3dc21b2e32af3281ce8",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/admin/woocommerce-refund-recheck.php",
+      "sha256": "8600a1b382093b007ac03fb0d2d587f616015ff3f84b55552cdad0fd2bdc9095"
+    },
+    {
+      "bytes": 8246,
+      "git_blob_sha1": "ee3764c6635b57933f3af34435e0c940c4f5d47c",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/assets/presentation-fluent-projection-v1.js",
+      "sha256": "018d7e7a22acd13f7e6dd5e113f6036d1d95dd1604a22f8fa1bd4630d09a05df"
+    },
+    {
+      "bytes": 52414,
+      "git_blob_sha1": "07c6c79438034fa7dd7b2ab1acde2fdfb267dd9c",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/assets/presentation-fluent-quote-v1.js",
+      "sha256": "7b64989e8d5fe1739f1f99a23b5530c2e07cb6ec2367dc49d15fd591b018129f"
+    },
+    {
+      "bytes": 4765,
+      "git_blob_sha1": "e2fae432adff58259aca47baf2e026738d2818ab",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/assets/presentation-jsf-pagination-v2.js",
+      "sha256": "018dc429aa613bfc33d9911ec06bfde78b10a155ff723efb4ba01a73a7b2bc8d"
+    },
+    {
+      "bytes": 4377,
+      "git_blob_sha1": "adbd356ce0aa17bc0c2be1114b6c6ac04cd72046",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/assets/presentation-media-visibility-v1.js",
+      "sha256": "4526db050a9cefc2edd8b960079c03fb470c37ab98f06cf0b44970e5f303d53b"
+    },
+    {
+      "bytes": 388,
+      "git_blob_sha1": "65514ebae88acee49ff0f813ae3b86a66b1e0c5d",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/assets/presentation-media-visibility.css",
+      "sha256": "ae50283bbca28eb712445ac758af61b26c936fa14e7b37f9df73b0b8c8b4da41"
+    },
+    {
+      "bytes": 1140,
+      "git_blob_sha1": "9e47aaaaddabe96d5d649ae0256626ab8e13a405",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/assets/presentation-pricing-basis-v1.css",
+      "sha256": "db57470ba24fe029534938f1d66c72f3df35dd5ac1153b8fc780be7891051cb0"
+    },
+    {
+      "bytes": 7107,
+      "git_blob_sha1": "bd9e4d26f6e44f2062506ca20fc81583e45ee6aa",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/assets/presentation-selection-state-v1.js",
+      "sha256": "d13cc54a8ceba5facaa46e692ba82db96fedefbeceb9942884a993347cd7004e"
+    },
+    {
+      "bytes": 14320,
+      "git_blob_sha1": "75317d348cc02899df00dd08d2da35e8b0cf3f32",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/assets/presentation-tour-price-first-qa.css",
+      "sha256": "c6206a8f471e44d4e42dbdcc07ea9cbd88d3bcfd50c9ff51dbc35ba49fa4e02c"
+    },
+    {
+      "bytes": 3093,
+      "git_blob_sha1": "2a62b301cd63a3e6161159f287d860d3ea09d2c3",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/contracts/accommodation-component-quote-v1.php",
+      "sha256": "2ee496ac374a1b3bfc2d19203aa2b2214bb3b72d2e27bfe4bc3e8ce74c505ee6"
+    },
+    {
+      "bytes": 3081,
+      "git_blob_sha1": "9167d507fde3272942cbfa2179b083ee78ad75a8",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/contracts/booking-v2-component-shadow-v1.php",
+      "sha256": "3bb701a521ebe1aef4fde113fe099cc967e9108c6ddc650f75262186524d59a4"
+    },
+    {
+      "bytes": 15329,
+      "git_blob_sha1": "840b4502731ba1ca819a2d43a6a4ffccdfdd0ec4",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/contracts/commercial-component-shadow-v1.php",
+      "sha256": "10d642a629dd61825a002ecc87bf7ff17f282f06a785ae5b900a9f7a0aafc3f7"
+    },
+    {
+      "bytes": 4408,
+      "git_blob_sha1": "e229505878efb3156fb5d2e8f9e053f0edfb6faf",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/contracts/field-shape-contract-v1.php",
+      "sha256": "e1054643d0b9df489ccda86ab39ae0e617dc2679f60d822e2686a21970ed5940"
+    },
+    {
+      "bytes": 3698,
+      "git_blob_sha1": "57f14c79b39a1c8d23e2e70b107c6a85f677e995",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/contracts/intake-rate-handoff-v1.php",
+      "sha256": "c2c87d901fb63c9641c3b6848afcf5a15b46dbd254d80c4f9697c1093577dc0d"
+    },
+    {
+      "bytes": 7097,
+      "git_blob_sha1": "1bce23d9d14f1d04f13c89705552699868ccdeb9",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/contracts/native-package-quote-shadow-v1.php",
+      "sha256": "44f75ed6c01936fb152614789e09a8258d0cfb72036bcb47653f99aba5c0d40f"
+    },
+    {
+      "bytes": 2953,
+      "git_blob_sha1": "271f6ba4d93f723cce3aee47d82d2eec3f1fb14c",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/contracts/package-readiness-shadow-v1.php",
+      "sha256": "29772459805a904d03cf7f5ffb34f429801363f0b17e089abac9b3c02d79731c"
+    },
+    {
+      "bytes": 1421,
+      "git_blob_sha1": "0cacef8479c03e082c0fb66bdd74c43b81e02748",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/contracts/primary-tour-query-context-v1.php",
+      "sha256": "aff0104efe7630707d8314597b7be551dcf91e5b701b977649a397bf14c1a3ab"
+    },
+    {
+      "bytes": 3253,
+      "git_blob_sha1": "2ddf207f20942a2f6b65b2707ecba7d7a7ec1c8f",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/contracts/property-rate-source-audit-v1.php",
+      "sha256": "91ccc7db384fecd89bb88e9b3449abd5fd2dde06a2b23782c28c6d49bc40de25"
+    },
+    {
+      "bytes": 1555,
+      "git_blob_sha1": "a40643741b0bd0581513c04ae63731ad765401b4",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/contracts/property-relation-shadow-v1.php",
+      "sha256": "e1fc5fcaf8316ab4e6bb1f4d66ecbfa3d091b038e1c15b41e52c39c756d83207"
+    },
+    {
+      "bytes": 4885,
+      "git_blob_sha1": "7ada87ae74a0fb4d76d3d672d56ac3abe4ae6a9c",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/contracts/tour-stay-commercial-readiness-v1.php",
+      "sha256": "68acea9428c6a783a337f8f7b47ffdf65b2eb2b79e018c7889685a4cbf0b9906"
+    },
+    {
+      "bytes": 5687,
+      "git_blob_sha1": "98b80548dadbcb3c0aae0fc9f9457bc44447bcce",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/contracts/unit-rate-contract-v1.php",
+      "sha256": "78f3cf9a5bdebc0c85f8049a2158eaba36c70ef8ccd243a148b376f736dc6f00"
+    },
+    {
+      "bytes": 4837,
+      "git_blob_sha1": "8551b99b16e0b3eb1c5752d3ca1201d9b9a6a4f5",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/core.php",
+      "sha256": "73e2b2afbdc2723bd461fa9b91ab3e62b1565ba28f50d25df76095c53336e4e6"
+    },
+    {
+      "bytes": 16298,
+      "git_blob_sha1": "1263947de72e9593d8497fd2ba519bb85141b4dc",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/accommodation-assignment.php",
+      "sha256": "f7e641e83387213bf03b67525e86d50ccd8b70e527f62a96ea63dd398af1cf20"
+    },
+    {
+      "bytes": 2940,
+      "git_blob_sha1": "8af322b2d74359e4a5861ee283e439e274411924",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/audience-resolver.php",
+      "sha256": "d9d8346bd455ae7321a7f77223075b1b0eadbcbb48bd0bbf666da6ff19dd9a7f"
+    },
+    {
+      "bytes": 5679,
+      "git_blob_sha1": "b331a53cdf9f800bf6aa1e128a57ecd8e5cffc33",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/booking-addons.php",
+      "sha256": "8718ca6e1eed09af7e42856d8b9d76d02c23cf95d6d93640e0bdcadcc9e6362a"
+    },
+    {
+      "bytes": 2017,
+      "git_blob_sha1": "5927e9ad4d14706da8eadeff8451261eedf23c4e",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/booking-cart-v2.php",
+      "sha256": "37d5f5c8eaa39a39b0b55f5a57a719f91c9699c2e5b25df16208d9fbc68b40e3"
+    },
+    {
+      "bytes": 28774,
+      "git_blob_sha1": "106c40ca294419acb4de2a267f2d12cc9417429e",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/booking-configuration-v2.php",
+      "sha256": "49ce813e4b1a118736fc862cf09bbc1288af8601f59dc851cea0b7490aeda8ca"
+    },
+    {
+      "bytes": 3114,
+      "git_blob_sha1": "c466194c4514dc0c65c9344e945ec7b8ed6c0854",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/booking-modifiers.php",
+      "sha256": "1ae664ae992054c37441d4c6bbecf7a685460e688fc68d77fbbaad383f706e78"
+    },
+    {
+      "bytes": 19030,
+      "git_blob_sha1": "1d2882d006dbba91bd19e42046be30a71ce22615",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/campaign-event-v1.php",
+      "sha256": "29e08898439eaaee8d9c931a6970136bd4b2a058f103923935b836d7e390f8de"
+    },
+    {
+      "bytes": 3507,
+      "git_blob_sha1": "8cd9a358401cdeebee65e2efe2e1ef7028f8e70a",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/composite-quote.php",
+      "sha256": "876cfae29e1edec1037e12d25081acf5f8981dba68fc07f028dc636f36521df1"
+    },
+    {
+      "bytes": 1226,
+      "git_blob_sha1": "558bd4645281702056a1ac5e6ed5f8eff5b0ed2e",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/currency-provider.php",
+      "sha256": "c43eb6a18c66a3b4999431193dfcee7684fef7b7d303bf92a48a59b24ffa9491"
+    },
+    {
+      "bytes": 4357,
+      "git_blob_sha1": "e1babd33afab35a6fe9dc909f0febaad4944252f",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/dynamic-option-sources.php",
+      "sha256": "65ea09d4b9ffe4c1ba61c62398afcb8931a55079666a05a56f389e4d4f7fa9c4"
+    },
+    {
+      "bytes": 5234,
+      "git_blob_sha1": "ff87b8c65cf76886ae2fff81139636ea86effa9a",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/extra-source-quote.php",
+      "sha256": "8736e69492876487a2de5a96c7ea26e2951641b5a866dbc9b173be6da2d5cf78"
+    },
+    {
+      "bytes": 722,
+      "git_blob_sha1": "9e22fc9f98bf74a8888404f6869e7fa762ee2696",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/financial-field-choices-readonly.php",
+      "sha256": "82bb7d29ea0dfe15031388c47839b9cadc82409613d7ee871536a66582312407"
+    },
+    {
+      "bytes": 8861,
+      "git_blob_sha1": "b2b76ae44965d8dc121075e5090194974710ef3b",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/financial-inheritance.php",
+      "sha256": "e6724fa35c4a495e755ad98bb9d103619fa44075916db6fb0ee22dbe16157fab"
+    },
+    {
+      "bytes": 9926,
+      "git_blob_sha1": "feae5033d6d6b6c7bc9ec8897666d4c4dddb27a6",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/financial-ledger.php",
+      "sha256": "01c10dbf6f382bbf68a39b6b7e012141bcd4aba72e0f30800f50fdd611389446"
+    },
+    {
+      "bytes": 7487,
+      "git_blob_sha1": "bbbcbd8b81df13167da223d181d0e6160a0f6fab",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/financial-order-adapter.php",
+      "sha256": "3c49ce0dd17dddcad0f45fcdf83700aa83a186d28ec221b6b27f8d8fae980a11"
+    },
+    {
+      "bytes": 2321,
+      "git_blob_sha1": "fa02f948c9f9002b61fd875d4d1d8f66d8584c40",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/financial-order-snapshot.php",
+      "sha256": "b631fee675da79ede8c5080cd6c8e78ed200add2649829a6e7991607f0163c16"
+    },
+    {
+      "bytes": 3614,
+      "git_blob_sha1": "3dd96347bf6c7a94cdb613f2a6fedf920a047e8a",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/financial-policy-admin.php",
+      "sha256": "f38823d9814c09771d10855feb471878fd5c52b4e7ecf5bc22f76ec74096f6c2"
+    },
+    {
+      "bytes": 1906,
+      "git_blob_sha1": "f8bee8435b991e38b8ba68e17d1af1e45263257c",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/financial-readiness-v2.php",
+      "sha256": "d6deacefb1ef2d81f0b1dd46af435225e4601b6238d8bca60c61af5f0701843a"
+    },
+    {
+      "bytes": 9226,
+      "git_blob_sha1": "5f2424a2ab8f994dba6bc7f50d3191b8a663aa86",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/financial-refund-lock.php",
+      "sha256": "0496c5f634b301bb3083025fcce281638a7eb8db2d4b62649a77abb3456e5d8b"
+    },
+    {
+      "bytes": 6267,
+      "git_blob_sha1": "7adf8bf1173b4ca466288f83caaa39e6b1744a87",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/gateway-availability.php",
+      "sha256": "8f308c160b1643bbd50dea8338e62e41029c549b9dec59f0b79e43b88eb0a788"
+    },
+    {
+      "bytes": 5317,
+      "git_blob_sha1": "7bdeb21e58292447bca913efca450b5f4d971da3",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/global-offer-checkout.php",
+      "sha256": "59a7927270ee1df9e7b39c1a1e5cf22cad3619161562e5d286378596d04a8459"
+    },
+    {
+      "bytes": 4037,
+      "git_blob_sha1": "e7d2a2cd43c03d9cc0101d2e71f590f980de785e",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/global-offer-coupon.php",
+      "sha256": "5883a461caba3652b5cddcca4ce68e204faaa0b65cb3da1d53e5d40fe4b5c65d"
+    },
+    {
+      "bytes": 1584,
+      "git_blob_sha1": "892ee889b32b51649f7d455d75f76a3a86a6c366",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/global-offer-price-evidence.php",
+      "sha256": "cb8f087bcc06da452a35f78ffe87b944e3e129930b9c2093c56abfb0d851e34e"
+    },
+    {
+      "bytes": 1177,
+      "git_blob_sha1": "f677b2a9e2efb8a339df6ff40dd7ea034c12a45c",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/global-offer-verifier.php",
+      "sha256": "321a0ed4089f98c41a16a5691a5d74e96a0010ffe338ae7aff6006adb82c65b4"
+    },
+    {
+      "bytes": 3089,
+      "git_blob_sha1": "6c8d456a210813116642ca112122f27de623afcd",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/group-tier-policy.php",
+      "sha256": "0f4b85711d0a130759e43b32002bc6a55ee7e443552d56d187262000c0522fdb"
+    },
+    {
+      "bytes": 6335,
+      "git_blob_sha1": "f422ba5671500fac474bd749be6c9aa626dd0245",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/inventory-signal-v1.php",
+      "sha256": "4cb341db3838303595212a6e31b92c931f9daee0827cd2214a285fe6fd09ec4d"
+    },
+    {
+      "bytes": 9742,
+      "git_blob_sha1": "8d1fdbb0d8d4bf2ed87900e56d70544a80a306f0",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/jetengine-policy-provider.php",
+      "sha256": "cc64ce31eb5ba4080fcf24955895bf9875c5d623c94cf87e808c1e430b863549"
+    },
+    {
+      "bytes": 27692,
+      "git_blob_sha1": "85aa2afd8846e82db733466a7789d15396e9ca09",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/last-minute-policy-v1.php",
+      "sha256": "a942ec6b5582573d1968f32418bcd19eaa2bfcbdbf45adf0fc5faf2650a08cd2"
+    },
+    {
+      "bytes": 13411,
+      "git_blob_sha1": "f2156646e0e3dbacc7c150cc9a5e0127e29f4462",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/market-price-policy.php",
+      "sha256": "d0a10e7a135b000e02f2a837e8a2dadc2480ddd8cef65eacebab8fdec6ada07b"
+    },
+    {
+      "bytes": 3486,
+      "git_blob_sha1": "55c189e0eab035f80310ae9f2d31082cb4d93f24",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/occupancy-policy-v1.php",
+      "sha256": "102c3b75bf7896f14850ca7645e6fd498fa1fcf4ee91a2eafde731694fe35713"
+    },
+    {
+      "bytes": 889,
+      "git_blob_sha1": "900020438dd865d49031f3a0bbb048fb2ace443a",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/occupancy-presenter.php",
+      "sha256": "8b0c1a1ba749c95f3b1ebda499d7d0ae06e593fb4c6b874a827402a497cdd037"
+    },
+    {
+      "bytes": 1922,
+      "git_blob_sha1": "f6d31185d13baab428d26efa0e2c089f372c2a1e",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/optional-tour-relations-readonly.php",
+      "sha256": "764076c070bd10337b33085ead7f9713693b3f0d102e4932732ae833c24e67e8"
+    },
+    {
+      "bytes": 2384,
+      "git_blob_sha1": "c32cf57a6607f6b96c1b12038cfbe1a24133e140",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/package-level-policy.php",
+      "sha256": "37e7d6617df1863015cfc40d40dcc699c923a84b6e5b72ab77bbed340eceb49c"
+    },
+    {
+      "bytes": 2835,
+      "git_blob_sha1": "882a0b57ef846576f12abdcceaf81770783ba02c",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/package-stars-tier-admin.php",
+      "sha256": "e1ed079aaad90f19be707e0faa0be7189ead7071757d39da6624c39449a00861"
+    },
+    {
+      "bytes": 2386,
+      "git_blob_sha1": "2290b7d0070d953a1a82e5450728627b32071b36",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/page-options-provider.php",
+      "sha256": "a8d7ab14c0dee191858cb98a0c3688694c3bf46e2d1f159c2698f93ebf755c04"
+    },
+    {
+      "bytes": 5229,
+      "git_blob_sha1": "0f1aa65f0dca7e3567a2b2f8ab74afb17bff78de",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/payment-offers-visa.php",
+      "sha256": "b45f6c9d16ff81b087161a17b38db2e905ca872fb72904eb850819f21ae23736"
+    },
+    {
+      "bytes": 4232,
+      "git_blob_sha1": "d570bc06d9c309e34cfe368c406aee20db8773d4",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/price-presenter.php",
+      "sha256": "74156cbc7dccb8090f5cea90edb104e63a922fb92fdfe14cc6b96fe74ce970c8"
+    },
+    {
+      "bytes": 5456,
+      "git_blob_sha1": "70286a17a2f592fa55f7f2fc976eae21ffbc7b7f",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/price-resolver.php",
+      "sha256": "304f111a87681989649d50af66b0da5ce7d2d2b73fdc1e409b02cc708b93aea9"
+    },
+    {
+      "bytes": 4024,
+      "git_blob_sha1": "5224784fd5c514c8c92ead09fbc83f82357ea2cf",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/property-layer-policy.php",
+      "sha256": "aefe5a4e8c07d77012761af77b61ab102909d9baec56751f674c6005d53976fa"
+    },
+    {
+      "bytes": 1664,
+      "git_blob_sha1": "8e4fe87ce028d9eb0ec134476fc42336a47b81d7",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/quote-snapshot-readonly-v1.php",
+      "sha256": "c58bf2be6f892300bdac5dbcd2ca63ca6709a9abe47aef990b957d055de02c0a"
+    },
+    {
+      "bytes": 1067,
+      "git_blob_sha1": "58674a12bf45e7e34a71483fc17a0060e7ae8728",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/rate-authoring-policy.php",
+      "sha256": "fbde560ca146809bd286c40b1bc0f454be01c6d41a28ef4439157ff48fca7c21"
+    },
+    {
+      "bytes": 721,
+      "git_blob_sha1": "637209e9e5972376594eca1d39cdcf3e06c7fc75",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/rate-date-eligibility-readonly-v1.php",
+      "sha256": "21428ebc5f7cf83afc00c00c55ce942b7656c9ec8964a98603730a79f4fa643f"
+    },
+    {
+      "bytes": 1231,
+      "git_blob_sha1": "4bc1cfa98c385d8bbaa86daa80036b600a20800d",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/rate-field-presenter.php",
+      "sha256": "fb25f1048c6bc4cf82852e121a42ed75d381dc84b37f3daaa797d22454389e7b"
+    },
+    {
+      "bytes": 49181,
+      "git_blob_sha1": "165bb84ab2c465dab47c021a12c7d245791ec3d3",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/rate-generation.php",
+      "sha256": "93dddee1cd6891d8d86a198dfd1e5e2d24adff4b97f645e3e4282d56764c6842"
+    },
+    {
+      "bytes": 2055,
+      "git_blob_sha1": "5a2a2feac74239076d73e3880721fdc5443532f7",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/rate-locale-policy.php",
+      "sha256": "70dbdf8f5a9d3e410858a298e697a5b6224585357da3cdc6cf6755ea537dead5"
+    },
+    {
+      "bytes": 37286,
+      "git_blob_sha1": "4cf44f47d19b0298b8b749755a0229fb644a4fc1",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/rate-planner.php",
+      "sha256": "ee19e381a71ed114cf3147538528b3152fc1994ceb58f3dcd1774804db55aedf"
+    },
+    {
+      "bytes": 7970,
+      "git_blob_sha1": "c50c3963c358e80221ae923eda32f650eceffa12",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/rate-source-batch.php",
+      "sha256": "addd27b383e28de72b74c2b667c7831bafd62faab74030abecf302cecd1876b2"
+    },
+    {
+      "bytes": 5704,
+      "git_blob_sha1": "bf417bc25bfb55b0fc6641defb80d255d55efbb3",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/refund-provider-adapter.php",
+      "sha256": "dbc353cf10f6003c2470c665c94943a280e7f64ac89b763b14c7462899e28c9e"
+    },
+    {
+      "bytes": 1786,
+      "git_blob_sha1": "8679b96157277fda206d1db63512c56c78565b63",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/refund-provider-recheck.php",
+      "sha256": "41a070ffa6b1140bff21cc54a164826fd461d6b3775fbe86708db580fc3025a6"
+    },
+    {
+      "bytes": 4656,
+      "git_blob_sha1": "ce622a135f971345391dfbc7c8e688b4fd0354c9",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/rules-evaluators-v2.php",
+      "sha256": "f0a9340ad191faecac8bd15ab5c0826fed2b30a060f075e4cf22c7b4735b03a2"
+    },
+    {
+      "bytes": 6879,
+      "git_blob_sha1": "7418f8f7d8a06662a7c717dec8b18a38033bdf30",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/rules-registry-v2.php",
+      "sha256": "7071984b39e19976a42b6392d3f28e1ba816655f8eb7b9d6b15f52d4b62e1e07"
+    },
+    {
+      "bytes": 4290,
+      "git_blob_sha1": "e21c0930a31e3cd1a30167638ec9019e2125a2f0",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/shared-extra-unit-v1.php",
+      "sha256": "cc7d6e8b3d685fefa6527852abd20c8e0b91983391ebe3c9ed3c8aae37c38ed4"
+    },
+    {
+      "bytes": 3501,
+      "git_blob_sha1": "090a079265658b5035421e1056b726627393eb41",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/source-resolution-policy.php",
+      "sha256": "eb303fc386294dd3bc99c9f183ac22dc0e442a2139cc0682763afba31f6a84ab"
+    },
+    {
+      "bytes": 6227,
+      "git_blob_sha1": "75b3d15fa53ee2e20dda4e6fd94e582f594bdc03",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/strategy-evaluators.php",
+      "sha256": "290f41858f2c8d8dbf116233d6023615d987abfd9573d265c66166dd1b788d19"
+    },
+    {
+      "bytes": 3463,
+      "git_blob_sha1": "c8e68bf07329021ddec812cd2bceae96d7d9f6e4",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/strategy-registry.php",
+      "sha256": "06dc9dbadc6d6d55162c60b03945db17170d71fc84cf28119fb7e8a2007af4b3"
+    },
+    {
+      "bytes": 8548,
+      "git_blob_sha1": "3be70bc66ce527fd9cff5222406f9271c3497a55",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/taxonomy-pricing-context.php",
+      "sha256": "eb974d15963f9387c978446dae06dd115604cf3ae7a46b2e9349f51a62a8ee62"
+    },
+    {
+      "bytes": 2342,
+      "git_blob_sha1": "a4a73a632148e69a519a9c4e6511281e3820a3e0",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/tour-origin-options.php",
+      "sha256": "a0b48a11c6c57affa03764a257bda0b3b7c9cac3d013521ceee55f3ae3eb247a"
+    },
+    {
+      "bytes": 3002,
+      "git_blob_sha1": "c7fc4c0e787e4697bee3e24f2ca2a6ddac4302d2",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/travel-scope.php",
+      "sha256": "4f5fd465714e92a34cc57f9e9c79f91c41b0c16e05ba9c72437145077f9c0248"
+    },
+    {
+      "bytes": 3580,
+      "git_blob_sha1": "ca06fcf23c3c9a473d3d782cb008f279bc9a0c41",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/unit-resolver.php",
+      "sha256": "38b223034b91d241b6f46a8c3d33b42379ddee8f87ae7c2ea9a24ba08a122078"
+    },
+    {
+      "bytes": 4057,
+      "git_blob_sha1": "3b3a1a2c865acfcd09d4483feccc29997883ecfe",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/visa-matrix.php",
+      "sha256": "192e723458b49d99bf479bad9e020836803a85ad7b2b5eead35e8965590a1ade"
+    },
+    {
+      "bytes": 12023,
+      "git_blob_sha1": "55a020f22be79b6d9869f2c106326ffcd39bf706",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/scheduling/advance-notice.php",
+      "sha256": "c77239f927b611c5398598f9e4d5be9c37b23f3ec26d68a44c1d300b0665a966"
+    },
+    {
+      "bytes": 9296,
+      "git_blob_sha1": "d2bce5d1221cc23a01fe325d3263ecb2312294e2",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/scheduling/eligibility.php",
+      "sha256": "9d66abedcd33a6bdba004aeed57c309c123d1435ecb548b296a3479deb46bc7d"
+    },
+    {
+      "bytes": 9609,
+      "git_blob_sha1": "a11b0961e388a251d8fdc6d3553fac03a865c88a",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/scheduling/policy-settings.php",
+      "sha256": "c5f9d7f17867b952da9994e75efd52228ff4c433f771dda0854bba1b27dfcc56"
+    },
+    {
+      "bytes": 8260,
+      "git_blob_sha1": "8c9e6edb0df1e1c02db31d3ef38af6aba21635ce",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/scheduling/program-calendar.php",
+      "sha256": "147061af41f398a759c4c6b21091c8239facc0864d91b49e9ddf4ec749c27fd1"
+    },
+    {
+      "bytes": 2464,
+      "git_blob_sha1": "b74a34689214cb21f1b38f105d4344597f7181c9",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/tests/field-contract-release-gate.php",
+      "sha256": "7b81c45efb9832e370b656de9274748f21f494847f8e0e6e678c4a1b47d71eb5"
+    },
+    {
+      "bytes": 2731,
+      "git_blob_sha1": "46372b0bfdf9ff1ffe0d02cc6ded15f7b2d1dea7",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/tests/primary-tour-query-context-regression-cli.php",
+      "sha256": "2d7d1de2a72f7a03f7b3d67be851c4bfdde6a4d4ee31ee6aa7ad2fbe9e69c1b9"
+    },
+    {
+      "bytes": 3401,
+      "git_blob_sha1": "0ef167be83a4747cfd0efc79f64d8cfec66dfc3f",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/top-level-assets/package-level-editor.js",
+      "sha256": "6fe49a28726fb338e22a3d89ee09f0a23fda698527d14528405f22307d37511b"
+    },
+    {
+      "bytes": 10924,
+      "git_blob_sha1": "1dd914b550c9e03c1ef684e3e06161fe4882aea2",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/woo-lab-assets/program-calendar-clients.js",
+      "sha256": "09d839391abe54582bd67678df6bef34d0fabd52b68c9bdab8a3387005da1f14"
+    },
+    {
+      "bytes": 3677,
+      "git_blob_sha1": "7619cb86edad2777aad85f683f6191a5a777de5a",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/woo-lab-assets/rate-dates-adapter.js",
+      "sha256": "56cdd14236d1cee1249e8e9dc3d8b68aafac332ff376b41121b05881392ffcc1"
+    },
+    {
+      "bytes": 6017,
+      "git_blob_sha1": "afd4f0488ced9136c240afae819dcb8f71409f49",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/mad4b-commerce.php",
+      "sha256": "2f72464a63027056016b4aaaa1be1201fb03ce1ef7a0420fe000cf6080bf8ce7"
+    },
+    {
+      "bytes": 3767,
+      "git_blob_sha1": "1329b083f0db0d5bcc4858a732ab70d39a3475f3",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/096-verified-tour-render-context.php",
+      "sha256": "549e9f528e8ab98c2088e99f4777b7c076d6eb9c49cfff51bc50087bf2d57128"
+    },
+    {
+      "bytes": 1499,
+      "git_blob_sha1": "93bdffd940b4e303b29b234434908761707c35d8",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/099-global-offer-product-eligibility.php",
+      "sha256": "ae9f361f56cd8b90cdbbf7494af1a26bc0608765014941a2d88a88fff01a546c"
+    },
+    {
+      "bytes": 5218,
+      "git_blob_sha1": "2b964861d056bb0029819d196b780833f5910cc0",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/102-global-offers-woocommerce-admin.php",
+      "sha256": "840a8f95a890ea5d01d18673ced108859817a3991cb4e0191ba71cc44c05f4cb"
+    },
+    {
+      "bytes": 1245,
+      "git_blob_sha1": "b634ae73e9d17f56eb51ed7b20377e5ba333b436",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/103-global-offer-product-badge.php",
+      "sha256": "fa686b173580cb0745e01c0a0623fd76b0e760e5fe0b36c8dc5e180aea8ff80a"
+    },
+    {
+      "bytes": 20174,
+      "git_blob_sha1": "5c3a735a73cc6a9c47a4dd67000a2ee2036e6e5b",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/105-global-offer-seasonal-master.php",
+      "sha256": "cc46ee16ac26e240c1e12903ea02aecd03275dfb18c8803851662ac9010e2c9d"
+    },
+    {
+      "bytes": 7550,
+      "git_blob_sha1": "2103531b5de4edefc135e6f1a77406c98d4e7e43",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/106-seasonal-mad4b-context-bridge.php",
+      "sha256": "6fa1617e1e0daee4d23fed0d08cd4aed66af6b894f3353b9048a08a049460b47"
+    },
+    {
+      "bytes": 1656,
+      "git_blob_sha1": "97aa9bb61814676ba537619e26e825f2f43aab27",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/109-seasonal-topbar-content.php",
+      "sha256": "404b5f176a1baeb981eb324366bcdecc350836b439a604b44b2f5eb2fbd8c3a1"
+    },
+    {
+      "bytes": 11887,
+      "git_blob_sha1": "0302de3bf58db4104e1e22fcd3a6900a2361c735",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/110-seasonal-dynamic-topbar.php",
+      "sha256": "cb9aea0f4314b38e58c8331014584adbfcc01741f148d950ccebfce5eb3aaba2"
+    },
+    {
+      "bytes": 11819,
+      "git_blob_sha1": "10feb9962700548153743efde9971742ecb483c9",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/111-woo-offer-shared-targeting.php",
+      "sha256": "340a62532b8053a0c4a2c3082a64c7d79ec19f7092d7804830cf41a3ac8413e9"
+    },
+    {
+      "bytes": 4100,
+      "git_blob_sha1": "1198f6f22c449df6ffa230c348d6740f6cfb3364",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/112-seasonal-tour-product-source.php",
+      "sha256": "c9a642af5399071c28b526dd91b7c51b66eb927438c3c9f13b5ee0508b61e1fa"
+    },
+    {
+      "bytes": 5072,
+      "git_blob_sha1": "241a3a0487d20e2e822521348645db514988eb0e",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/113-seasonal-nested-listing-sources.php",
+      "sha256": "daf1e05f8bdaf9602d6c9e01556051794757893b43ac205f98792d5084793b38"
+    },
+    {
+      "bytes": 1766,
+      "git_blob_sha1": "7755468087f1c948bd017d57b2d730f3c7f4ca51",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/114-market-context-woocommerce-bridge.php",
+      "sha256": "b9e73c9f98ad75511f1780ed7cf6c3fc7e58c0c7667c45fbaecabbeba679264c"
+    },
+    {
+      "bytes": 8830,
+      "git_blob_sha1": "cfe090e14e8287f2c87338f9345a0699fc5a64fa",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/196-mad4b-curated-legacy-demo.php",
+      "sha256": "bd00c2a174d606c6c74018ff885cf6604199f4895415852d7f87618a15e4b750"
+    },
+    {
+      "bytes": 4763,
+      "git_blob_sha1": "a98333d7409b8a27abcb59ffbda09165de9f9ecf",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/197-mad4b-suspected-legacy-tour.php",
+      "sha256": "a377fd5c7a530f76ae232cb061ecefc6ceddbadfd350bd1588ce5896a6547cc4"
+    },
+    {
+      "bytes": 11529,
+      "git_blob_sha1": "c067ff4401b15f1f1f16eac195e5e52ab2163790",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/210-mad4b-tourism-source-view.php",
+      "sha256": "c642c7d2720f173674d850cd03fa441de15d787ebcdb7db19d9d254658b31fb0"
+    },
+    {
+      "bytes": 5194,
+      "git_blob_sha1": "b39163cb5333326c391e8d732e399e9e85295ecc",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/271-mad4b-hub-dedup-tourism-nile.php",
+      "sha256": "fa3134b9453d4da611a33e995a499dc6ff35171086c628b34b7e604fd42a7ba8"
+    },
+    {
+      "bytes": 1001,
+      "git_blob_sha1": "fc7dfd7a0b78db94b4e52cf08b8e1c3a283d3c73",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/274-mad4b-tourism-field-policy.php",
+      "sha256": "3e065a03b01a9a2d0d597fdee872b8d3db47d717a269a12e9a9cec22b0db2465"
+    },
+    {
+      "bytes": 801,
+      "git_blob_sha1": "d74ce9a31280577422bc565ba8df53705a72e3ef",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/291-mad4b-staging-action-scheduler-transport.php",
+      "sha256": "12df37d015431f893a4b43975c982171084cc3c361a79ff40222fe3ffda61f57"
+    },
+    {
+      "bytes": 3471,
+      "git_blob_sha1": "028ff796f2056363596ebef230f898278f5d9b7f",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/304-mad4b-original-verified-wpcli-transport.php",
+      "sha256": "373a457cf5f448b0e417f746abe24c04603cab9ab391ed66bf97722b86511573"
+    },
+    {
+      "bytes": 6535,
+      "git_blob_sha1": "99a6440a8ab5d66b74ff792441044e1c551113b2",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/312-mad4b-rate-css-resilience.php",
+      "sha256": "7f12afd2e235a1aa6f9911caae4b311357d294b5d9470bdae0feb9a53a0427c1"
+    },
+    {
+      "bytes": 15026,
+      "git_blob_sha1": "aed5878c745cbbef59d7613078631a7a49ad1b52",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/313-mad4b-rate-departure-governance.php",
+      "sha256": "6f00ef1fbe6b0f979e990ce910a4338ed612d383b9cb5a6980d04b5a7c8d6dfa"
+    },
+    {
+      "bytes": 18276,
+      "git_blob_sha1": "9bd6a5961d86a8cfefb659048733259d64e421bf",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/362-mad4b-booking-pickup-fields.php",
+      "sha256": "a95997e06f1af539aa65e990f9188f5526a481066e7ec9943009ac9a36bcc25d"
+    },
+    {
+      "bytes": 11466,
+      "git_blob_sha1": "aed34eec80a83bf244983d9d36a77fcea224ef30",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/363-mad4b-translation-transport-router.php",
+      "sha256": "29221318788c5be0ff829ef84fc84d8bfe09a9495beddbdb39a3d18f4be51d22"
+    },
+    {
+      "bytes": 16486,
+      "git_blob_sha1": "6f39ae7ae99ced488109c43faeb28c6cd0ac2fd4",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/364-mad4b-unit-age-pricing.php",
+      "sha256": "266eef0849e5fb6a8c14fe0900f7be162431c2a2f826b42b2436aea7da054aac"
+    },
+    {
+      "bytes": 19606,
+      "git_blob_sha1": "173c51a5a9d03091c5ec5f0c0c692bdd47725c65",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/365-mad4b-stay-unit-age-pricing.php",
+      "sha256": "02fdb1ba41abab069e7b4c291f77ca0c8ebb039d93b6532969bb50fa9a830de5"
+    },
+    {
+      "bytes": 7878,
+      "git_blob_sha1": "9a57a01a99cf92b4b0906e859776a92ae455b81b",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/366-mad4b-stay-age-pricing-admin.php",
+      "sha256": "131237306bda66605f108a8ff6c90df9556a1ea30ebdb81c65c73ac340305621"
+    },
+    {
+      "bytes": 15583,
+      "git_blob_sha1": "9ef757d9841ba76d99af1996766c6735a14f5d5a",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/367-mad4b-property-market-pricing.php",
+      "sha256": "97f6322ce01870fac845311969c850c4849749b02601abd8ad6f934b1ae96473"
+    },
+    {
+      "bytes": 15581,
+      "git_blob_sha1": "747191fba3e5a0a2aa6a0b57b2d1efbcd82ece3d",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/368-shared-property-amenity-offers.php",
+      "sha256": "a8adddebeede914357a71b4669992780c4bf7649238578d1a7628c5810c4d7cc"
+    },
+    {
+      "bytes": 10539,
+      "git_blob_sha1": "0eb1b180b1631bb65f1c14284984bf40a1fc4c0b",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/370-mad4b-pricing-workbench.php",
+      "sha256": "ef1978c6df7f5395c6a34c9e34d0ca610e9a53ad8ffea8063b7452574236d8de"
+    },
+    {
+      "bytes": 10010,
+      "git_blob_sha1": "792e473db484a00bc345dee49b21e6ea2f163523",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/374-mad4b-rail-woocommerce-settings.php",
+      "sha256": "bc96540b07939d24951659340d326fbeb2f45e50e07efc125c28dabd99f10a75"
+    },
+    {
+      "bytes": 9286,
+      "git_blob_sha1": "a49923aeacccabf4ba99a3f81384d22f993ef2b1",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/375-mad4b-rail-supplier-proof-core.php",
+      "sha256": "4032486301ff3c0a30f76854d2c30674950234dd033aa891b0f31a32a9a54050"
+    },
+    {
+      "bytes": 5512,
+      "git_blob_sha1": "39377fff6f8c2f8adb2dd070170d026bfb31bee8",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/376-mad4b-rail-supplier-proof-ui.php",
+      "sha256": "dd53ef00b296773725cfb466d3e8538f5bc49a6b6e29df6703b7738ab8710e35"
+    },
+    {
+      "bytes": 22134,
+      "git_blob_sha1": "a53542503521f5313a557e410f3b8ffe4100c1e4",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/378-mad4b-pricing-simulation-presets.php",
+      "sha256": "a75315d9ad624fb0a618e64773b0fa16095463e36001a1d300977a2e570619d6"
+    },
+    {
+      "bytes": 2104,
+      "git_blob_sha1": "323c2064d897e5483ef4263525da092a72471a42",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/378-mad4b-tour-single-css-stability.php",
+      "sha256": "7cbe957da0ded70af5de5d500b1ae5dc783a30138b12529ab87edff786ef8352"
+    },
+    {
+      "bytes": 1417,
+      "git_blob_sha1": "754fc1b7375e4e607144470362daa901f94ea512",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/381-mad4b-ground-provider-woo-guard.php",
+      "sha256": "564fac594fe1c45b616fb038e674007f6685d7bf6414caf3555ad9a59be8ccf9"
+    },
+    {
+      "bytes": 11397,
+      "git_blob_sha1": "1b754c6def6b4bc7278a68f2b9d6623ed4b1fa08",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/extra-tour-price-tags.php",
+      "sha256": "d076880e14846adb907266252bff81be7f1654776ae86e04a65d163b0b871219"
+    },
+    {
+      "bytes": 12665,
+      "git_blob_sha1": "6fd1061c8502decc57336094d3ba70694a8fd13e",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/local-tour-public-price-v1.php",
+      "sha256": "c867ec8de93bcd0446c6165024827b6b18f82620d9727f201777a39dbe1d636c"
+    },
+    {
+      "bytes": 2264,
+      "git_blob_sha1": "ad3cc6a918df222a6a1a922eeb5e5b8fc3c80e2f",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/local-tour-rate-filter-canonical-url.php",
+      "sha256": "96d393f72e4fa60a90e0fdcd40f6656d18f059b35e90d26348f7a87bc6f1e691"
+    },
+    {
+      "bytes": 1009,
+      "git_blob_sha1": "9a55a32f4e0d3dc6a50cf9f5435aee9bb5060828",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/local-tour-rate-filter-provider-router.php",
+      "sha256": "6cb16611e583c27991a93940dce0d1f06fe4364707353304d52230fdb3f7d0c0"
+    },
+    {
+      "bytes": 7555,
+      "git_blob_sha1": "e9293c2b443a8698dc24d5a86749958c427f2e6d",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/mad4b-frontend-impact-commerce-evidence.php",
+      "sha256": "641a1a0335715c506b68f99ae1334dbfb2df7f50723c1f36beacbe15c5c84ef9"
+    },
+    {
+      "bytes": 1330,
+      "git_blob_sha1": "410532cda637867bccc7f0dbde4005a2acf0c1d4",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/mad4b-research-firecrawl-transport-exception.php",
+      "sha256": "9ac135fc576743bb0a80cd6f353874092d61656c610bf132f9bd7f4527735168"
+    },
+    {
+      "bytes": 1712,
+      "git_blob_sha1": "af3cf3ff1020d04fe185526b9468b318b10804fb",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/mad4b-tour-country-mobile-card.php",
+      "sha256": "66c230dbe762b4c3f905801ad69f3df4f8c451be1a5ae3b0ee7d2f506265de26"
+    },
+    {
+      "bytes": 1200,
+      "git_blob_sha1": "bf13c0116ca5f9555101cbc9aeec083f258ddefc",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/pricing-acceptance-guards.php",
+      "sha256": "d192748b5083d0db7233fdea46ee90999a5c91e0088c830be031683770e194bb"
+    },
+    {
+      "bytes": 4086,
+      "git_blob_sha1": "a2d7a61f9038eab85656f59bf81c8ff1b86eedd5",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/pricing-header-switcher.php",
+      "sha256": "3c9fa92ea8d387e49496ad2b8da2ab90d50dcf9833466cd9cace036c12066ddd"
+    },
+    {
+      "bytes": 656,
+      "git_blob_sha1": "b11b9179c6034d07387f28ca0ecb97df8739f55c",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/rate-dates-ui.php",
+      "sha256": "59c92d468b568fe84709b95c6b30f1ec36bac543b05ff2eb236b6dd905ae92bc"
+    },
+    {
+      "bytes": 879,
+      "git_blob_sha1": "4408f2c3de98339df1b82d089003d99236a96239",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/shared-product-core-rest.php",
+      "sha256": "c74a3e60339e0faec46803d56ba84c7d2d05bf7c285788588b5501801d36a51a"
+    },
+    {
+      "bytes": 8667,
+      "git_blob_sha1": "38a2659f2389999726b8294c4af2f4ef079dc7ba",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/tour-component-structured-price-tags.php",
+      "sha256": "6142f7a9e2c3e13ac2385e901ae1cec625806355d900500e9205a5623838ab17"
+    },
+    {
+      "bytes": 7261,
+      "git_blob_sha1": "ad0dc3494118ae9d6e9d686f28b84018e98f76e3",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/tour-date-filter-assets.php",
+      "sha256": "a673881b76aa3a3a1531d88ad5fdb436cc8d9747c37f40857a27b5c7ab854a5b"
+    },
+    {
+      "bytes": 12201,
+      "git_blob_sha1": "fd92c0594c2eb8d6cfa21d1dd870b3fae6bbc1ee",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/tour-origin-sync.php",
+      "sha256": "6ee8dbc221791775c3c62ca9c1e893626557dcae03971480d42037d3fe0a243b"
+    },
+    {
+      "bytes": 11765,
+      "git_blob_sha1": "d48957ac2ae36df10edf63850e1eef5aa59d933f",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/tour-rates-dynamic-function.php",
+      "sha256": "e618f517124cee7b728ae5d27b79565fc85c9662f38aecbde1224c1c1fbf97ae"
+    },
+    {
+      "bytes": 11338,
+      "git_blob_sha1": "3829ac6cbafbb89e4921ca48cd9ad344a59f6070",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/transport-component-price-tags.php",
+      "sha256": "2539fba0d8d822c8dc255eced3d5eebfc05e57d32c8a17fe4dc6ef36b5709338"
+    },
+    {
+      "bytes": 510,
+      "git_blob_sha1": "d1051f83e18bc4fdd568a5708436de029a25364f",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/woocommerce-destination-taxonomy-bridge.php",
+      "sha256": "c2e4b39a5156862dc35a55d2ff114647cf18e0047d3512730e3a70a11270e881"
+    },
+    {
+      "bytes": 16390,
+      "git_blob_sha1": "40e8e4493fe311e83f985fae645888a15cffe8c6",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/compat/119-cart-variations-lab.php",
+      "sha256": "6e41d445c7eeeae071a57626c837c83f5f28a84b37f9e6f42026e18cc547efee"
+    },
+    {
+      "bytes": 2778,
+      "git_blob_sha1": "8819cc4eee89a0adad5510770a71914518f9baa9",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/compat/assets/tour-rate-occupancy-label.inc.php",
+      "sha256": "50b1a65669a0446c155cf37ae24a74609bb0147e880480fc9f84cfea65217c06"
+    },
+    {
+      "bytes": 2681,
+      "git_blob_sha1": "5f32dfc168df97342a60b5d37597c4880d768669",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/compat/assets/tour-rate-original-price-svg.inc.php",
+      "sha256": "55ffcdf899651515e3210fefacb97a4ab73a46202bcf75c499d520fa2004aff8"
+    },
+    {
+      "bytes": 2999,
+      "git_blob_sha1": "8ebd4feaed889504aed234159d5d7ba61817ab31",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/compat/assets/tour-rate-package-disclosure.inc.php",
+      "sha256": "ddfbd2aa1f3c7653356f543f4b1d3ab5c46a23dbfafe0bbc20903aedf4b92d7d"
+    },
+    {
+      "bytes": 5998,
+      "git_blob_sha1": "bbf23fd6651eca417195e85b95bcf754ffce1e39",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/compat/assets/tour-rate-structured-tags.inc.php",
+      "sha256": "76219fce5c3a7f04d0c9fd3b75a11bfaaa37bbb95b98a1876099a58f9d1bfa3b"
+    },
+    {
+      "bytes": 13142,
+      "git_blob_sha1": "0fbfcabc80794ba6de1e6c00d958bcbc20e4e08a",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/compat/local-presentation-fluent-projection-v1.php",
+      "sha256": "caef03f8a3e0b1fba76f71e7aeb99e2925a843dea72285228566f9df3dbb8e06"
+    },
+    {
+      "bytes": 9148,
+      "git_blob_sha1": "086c8ddfc929231a5806fe18c6b53dfe35e5bc0b",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/compat/pricing-fx-auto-refresh.php",
+      "sha256": "9e36adc03fc0efd5b3bc9fd429f1e5314c449b2205d390df44983079078f4516"
+    },
+    {
+      "bytes": 6834,
+      "git_blob_sha1": "556adf1dcb4d4d3fa6481faa471ad90099df310b",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/compat/shared-extra-display-mode.php",
+      "sha256": "447ed8accbae63889a2ef9ff6dfaf4acddd1633e10dbf8185786fe93fe5d3de9"
+    },
+    {
+      "bytes": 1006,
+      "git_blob_sha1": "9eaa6b043c6880cab1e37208e7ad7d7f3893c397",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/compat/shared-product-core-loader.php",
+      "sha256": "b7053f6548bf90416edffd0b5f9114069658521a97f5bc60e1d85a6246422b7c"
+    },
+    {
+      "bytes": 16540,
+      "git_blob_sha1": "9ba356cc690b8f451da3c038b35d5b550264cdac",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/compat/tour-content-layout-control.php",
+      "sha256": "97789932de011153aaed8fe315b39787c1f216911db07cf111e6c1dff9a96b04"
+    },
+    {
+      "bytes": 14416,
+      "git_blob_sha1": "b391899d79faf70e762687dcd8f8fda665b4528f",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/compat/tour-rate-language-policy.php",
+      "sha256": "d5206769cd9d6c68ea747cf62c678cab1fb46a8a60033458e40ae6fea61540de"
+    },
+    {
+      "bytes": 8255,
+      "git_blob_sha1": "54d6a873a937fcec0b71c151703831dc8dfc12fb",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/compat/tour-rate-native-display-tags.php",
+      "sha256": "47d8a65ffd7137868bb5f850583897da4d833ed181a037b6b911d4c6806bb2ca"
+    },
+    {
+      "bytes": 1133,
+      "git_blob_sha1": "ec46ec3d970f2caa2c39de7d5018fba818fd9198",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/compat/woo-lab-isolation.php",
+      "sha256": "2899473498e71b5537a0cf56c95e551d2898890bce99d6a045962ce2c552d7eb"
+    },
+    {
+      "bytes": 9952,
+      "git_blob_sha1": "65e78a7985e861d24ea1d592cb2153a20136d436",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/assets/company-admin-contrast-auditor-v1.js",
+      "sha256": "7176356a0d8012aff35aad615c5b9d80f99f02174f9579afa520a017a196ea30"
+    },
+    {
+      "bytes": 11829,
+      "git_blob_sha1": "d74e0181f0b4eae635aea8003caa5c51f97dd844",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/assets/company-admin-notice-accordion-v1.js",
+      "sha256": "81d6aba7d681b2e4a9e708c9fac64f884b4bdcaa3e4696851525769d2cc3e54f"
+    },
+    {
+      "bytes": 13704,
+      "git_blob_sha1": "c15f3765d3053bb74ab7f787151ee8d1dbcfbc6a",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/assets/company-admin-tables-v1.js",
+      "sha256": "f66e93176dc1e8aeec6785e75b97114f2a1aeb36a6fe25008ff254b9cce82d6e"
+    },
+    {
+      "bytes": 2606,
+      "git_blob_sha1": "0c38c341abb670e5978ab05cb993dd14995415f6",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/assets/company-admin-theme-toggle-v1.js",
+      "sha256": "de177645838bfefe6f6eb35b676a9ea1d9b7daeb0170fc16fc2007be6d2823d6"
+    },
+    {
+      "bytes": 9291,
+      "git_blob_sha1": "e4b053f38dbf9f29edb52a980476a52ce19cd973",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/assets/company-admin-ui-auto-scan-v1.js",
+      "sha256": "6caf7ed5901858fee7d9d2235f5b9f7bf618702a606d5a2e4b3ae6937c6f913c"
+    },
+    {
+      "bytes": 565,
+      "git_blob_sha1": "7f815c1f82f355be7353e3073874dd095b788fe5",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/assets/company-listing-card-actions.css",
+      "sha256": "6e653a03c876f079e3caa3c735573edd90e4ecdfc569f9767a717dc1e02fb3e4"
+    },
+    {
+      "bytes": 75041,
+      "git_blob_sha1": "96075fd2d5b3bc4a4b53252d52427fb7a8ae9eab",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/assets/company-system-appearance-v1.css",
+      "sha256": "3f39554cd2d10e23d6a2bcb001546db932b1e7130794a24ec7778701863f0129"
+    },
+    {
+      "bytes": 16649,
+      "git_blob_sha1": "04be301e1cfa02d049ee6779dcdd1f72280e5933",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v1.css",
+      "sha256": "f7b3a547a8c56464c6cb191b61ea3ae5763253d674d1689ede61b2d9767fdcae"
+    },
+    {
+      "bytes": 17138,
+      "git_blob_sha1": "ad9f2e520fb1b6263795065e9d5ec4c8b17d113c",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v1.js",
+      "sha256": "aed38ab13bd446ea359b8947193c6ec6a44f1b2c9e8184acc644359f14f9c51c"
+    },
+    {
+      "bytes": 10226,
+      "git_blob_sha1": "ffd38886d454c67323b6a75167ea90c17318d408",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/company-admin-experience-v1.php",
+      "sha256": "a1d178f04906c73640b5f1935cf59d51f38d68577108e8cc2d6ca0692bc44154"
+    },
+    {
+      "bytes": 5286,
+      "git_blob_sha1": "119f8340b328eb172676c58ed9327b29664e7a5f",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/company-admin-ui-auto-scan-v1.php",
+      "sha256": "daf189e184ac03a4d7dd0682be83c6ef7b0b61e7a37b51fb0f85cf496d55764c"
+    },
+    {
+      "bytes": 10168,
+      "git_blob_sha1": "c344cb84464b26a1371b2e2470be330dcf2a6f0c",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/company-admin-ui-translation-contentjobs-v1.php",
+      "sha256": "316eb44f397d03f4e000aa468dddbb5f991f675763bdeb939a4edc67da4e1a82"
+    },
+    {
+      "bytes": 3871,
+      "git_blob_sha1": "1a8ec35926445e16c5fd4fc225488ff864da2cbb",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/company-component-pricing-defaults-v1.php",
+      "sha256": "fb17efb50a5ade8ffc9eb82a2fb44c412235528587852b7985a108ebccd063c5"
+    },
+    {
+      "bytes": 1150,
+      "git_blob_sha1": "753d25b752b6e809b6401198b0e3e2ec2d2a022b",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/company-global-offer-empty-wrapper.php",
+      "sha256": "102dff8e3965c05d0d0ecd8e64c8e84da4195a7e8f95e1a7ad775199bce836ae"
+    },
+    {
+      "bytes": 491,
+      "git_blob_sha1": "71269381dee2dad5ffeb63a87c337bfc69fa1889",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/company-listing-card-actions.php",
+      "sha256": "3f9414de624a7bac1fea23529eb5a8ebfb838c271598742d5bdef209b92f04de"
+    },
+    {
+      "bytes": 3617,
+      "git_blob_sha1": "5ffc067a4fe6799f27ea0881834c288493f53bf4",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/company-mode-pricing-defaults-v1.php",
+      "sha256": "758e39b8b65842fa402c412de52afba3b5a8dc4c05e16c21b6b16f3198e53f55"
+    },
+    {
+      "bytes": 13501,
+      "git_blob_sha1": "c3c6d40c46a660845155901da46ab73f41b81619",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/company-presentation-form6-price-readonly-v1.php",
+      "sha256": "556e1e9d16d7a091c15717123b72ef5c403bb673b12ac4ca383267d95ec8175e"
+    },
+    {
+      "bytes": 5761,
+      "git_blob_sha1": "2aba76e3a65d58e89f707be48b0cc72e8b21d8b3",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/company-price-preview-reconcile-provider-v1.php",
+      "sha256": "05e84501175c940153762699e38bab57641e99128d9144a138cd7f1c94a936ba"
+    },
+    {
+      "bytes": 11587,
+      "git_blob_sha1": "cdc1b16b70cd14172df8778cc4e03f6a716f1cdd",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/company-responsive-source-visual-v1.php",
+      "sha256": "219c38a08fc37287c998bfa930c37fa73fb0e3cad52d08b6a47794e8fa60aeb8"
+    },
+    {
+      "bytes": 19597,
+      "git_blob_sha1": "3316bde725df08b367543d83cd02bf0c97ca273e",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/company-system-appearance-v1.php",
+      "sha256": "f1b6afa394479dda076d2395de876593cb10c93b567b8e76f33af3c622ed62f6"
+    },
+    {
+      "bytes": 1526,
+      "git_blob_sha1": "18c751b0fa272bfe80b29ef772564c848add4080",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/company-top-cities-eligibility.php",
+      "sha256": "25d57bf65419f49625707b743c363dc772c7c1206ad865207f32d778c27a4189"
+    },
+    {
+      "bytes": 4513,
+      "git_blob_sha1": "105072a024e1c8d57b289fa17311cf2c273185bd",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/extra-quote-readonly-runtime-v1.php",
+      "sha256": "6227f8f376c81e721d8fc94844d2922522214c4c4fdd3eeea64d74cb7a0ac447"
+    },
+    {
+      "bytes": 15414,
+      "git_blob_sha1": "0bb715efe51e5f65aa94205518355d67cb40dd46",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/extra-selection-ui.php",
+      "sha256": "6b77fa7c9906fe3503658ef30d4bee22e205445b85dcc4d6914c8d0f5fa28e21"
+    },
+    {
+      "bytes": 3056,
+      "git_blob_sha1": "c8dc80c7c8a004af5070bcf8dfb26215a913b50a",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/local-presentation-selection-registry-v1.php",
+      "sha256": "93f6939397b1f8c38510ed547c6b3c4305c99246331b0c73b8ea7f0001e7a689"
+    },
+    {
+      "bytes": 5653,
+      "git_blob_sha1": "a203d413508d5dd81fd11646b27e3801d80152cd",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/unified-date-intent-v1.php",
+      "sha256": "92f5e89524bf21b18258020eb9e436c46caf0a1a1a16ad5294ac35c5653590e1"
+    },
+    {
+      "bytes": 9633,
+      "git_blob_sha1": "cb8224e367092de82cb1e6c08e43b7c67970aae9",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/unified-date-presentation-v1.php",
+      "sha256": "2fc598790080b5369567c9aef70efe61b9edc9ced7a20f8605dcea38338663b2"
+    },
+    {
+      "bytes": 1301,
+      "git_blob_sha1": "43acf2bc7961eac4a3d1e25683660a62dc319fd8",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/runtime-phases/00-foundation.php",
+      "sha256": "00bffc425d8f311cbd67c312ba523044d1a8ce5704f74e9517e65801ec868f33"
+    },
+    {
+      "bytes": 958,
+      "git_blob_sha1": "498b59d8ea81f005941318c82376392f755a0ef4",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/runtime-phases/10-financial.php",
+      "sha256": "5b3cec1e88d9d06daaa62fa0a5f94b0177d495a695fce38baacb22654a728575"
+    },
+    {
+      "bytes": 2167,
+      "git_blob_sha1": "eca370e78464bba6a1af44c896186ce004f5a225",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/runtime-phases/20-pricing.php",
+      "sha256": "6c8c8aa73e64704ee5a83b4a6f4b4295c9fba21e155e7f780d679e82df530ba9"
+    },
+    {
+      "bytes": 3364,
+      "git_blob_sha1": "290f04fcabad01b86e6951dfd2818d5e3552b987",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/runtime-phases/30-presentation.php",
+      "sha256": "56423c8dd379ec0d1bc47e36c2ad120f774a38e8d0110910637c6da21354cf1d"
+    },
+    {
+      "bytes": 1619,
+      "git_blob_sha1": "5c3e3d86be9f785c9c54e0fbe6c5b07eacc5eb73",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/runtime-phases/40-booking-and-filters.php",
+      "sha256": "8c5320a606c11e3c14e43677e844116890af6a2549aee8f0d5480505f449f332"
+    },
+    {
+      "bytes": 2392,
+      "git_blob_sha1": "7195c063745e41961004e692b0771845d8355323",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/tests/pricing-basis-form6-contract.php",
+      "sha256": "32525a2f25a1c2d71f7b3e9835dd468dd97475d5007763c993599707a8309d29"
+    }
+  ],
+  "full_platform_release_certified": false,
+  "last_reconciled_utc": "2026-11-11T03:11:12.576939+00:00",
+  "payment_gateway_activated": false,
+  "post_capture_amendments": [
+    {
+      "current_sha256": "aed38ab13bd446ea359b8947193c6ec6a44f1b2c9e8184acc644359f14f9c51c",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v1.js",
+      "prior_sha256": "4c3ead43dabf533d699a64265d4bf1ccd2249b613e7a1dcd811356ca043cac90"
+    },
+    {
+      "current_sha256": "2fc598790080b5369567c9aef70efe61b9edc9ced7a20f8605dcea38338663b2",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/unified-date-presentation-v1.php",
+      "prior_sha256": "f21a3702e539505281484266da29370acb8d0b7412dc4702c31ae363d13aa453"
+    }
+  ],
+  "requires_separate_company_specific_data_reconciliation": true,
+  "source_only": true,
+  "source_root": "wp-content/plugins/mad4b-commerce",
+  "source_site": "tours.dev.mad4b.com"
+}

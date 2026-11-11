@@ -1,0 +1,321 @@
+/* MAD4B Unified Date V1: Flatpickr, JetSearch/JetSmartFilters and Fluent Forms bridges. */
+(() => {
+  'use strict';
+  const cfg = window.MAD4BUnifiedDateV1;
+  if (!cfg || typeof window.flatpickr !== 'function') return;
+  const current = cfg.request?.status === 'valid' ? cfg.request : {};
+  const state = {mode: current.mode === 'fixed' ? 'fixed' : 'flex', from: current.from || '', to: current.to || ''};
+  const instances = [];
+  // Elementor clones archive filter templates into the popup. DOM datasets
+  // are copied, but event listeners are not. Track real initialized nodes.
+  const initializedRoots = new WeakSet();
+  const addDays = (day, count) => {
+    const date = new Date(day + 'T12:00:00Z');
+    date.setUTCDate(date.getUTCDate() + count);
+    return date.toISOString().slice(0, 10);
+  };
+  const minDate = addDays(cfg.today, cfg.policy.min_lead_days || 0);
+  const maxDate = addDays(cfg.today, cfg.policy.max_advance_days || 730);
+  const iso = d => [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-');
+  const dateLabel = s => {
+    if (!s) return '';
+    const [y,m,d] = s.split('-').map(Number);
+    return new Intl.DateTimeFormat(document.documentElement.lang || 'en', {day:'numeric',month:'short',year:'numeric'}).format(new Date(y,m-1,d));
+  };
+  const valid = () => Boolean(state.from) && (state.mode === 'fixed' ||
+    (Boolean(state.to) && state.to >= addDays(state.from,cfg.policy.min_flex_gap_days || 0) &&
+      (new Date(state.to)-new Date(state.from))/86400000 <= cfg.policy.max_flex_days));
+  function params(url) {
+    ['mad4b_date_mode','mad4b_date_from','mad4b_date_to','travel_date'].forEach(k=>url.searchParams.delete(k));
+    if (valid()) {
+      url.searchParams.set('mad4b_date_mode',state.mode);
+      url.searchParams.set('mad4b_date_from',state.from);
+      if (state.mode === 'flex') url.searchParams.set('mad4b_date_to',state.to);
+      // Keep direct fixed-date consumers (including Last Minute quotes) compatible.
+      else url.searchParams.set('travel_date',state.from);
+    }
+    return url;
+  }
+  const sync = () => instances.forEach(x => {if(x.root.isConnected)x.render();});
+  const legacyKey='mad4b:travel-date:v1';
+  // Old travel_date was a *single chosen travel day*. Never turn a flexible
+  // window boundary into a bookable date or Last Minute pricing input.
+  const legacySelected = () => state.mode==='fixed' && valid() ? state.from : null;
+  const syncLegacy = origin => {
+    const day=legacySelected();
+    try {
+      if(day) sessionStorage.setItem(legacyKey,JSON.stringify({date:day,at:Date.now(),origin:'unified'}));
+      else sessionStorage.removeItem(legacyKey);
+    } catch(e){}
+    document.dispatchEvent(new CustomEvent('mad4b-travel-date-changed',{
+      detail:{travel_date:day,origin:origin||'unified'}
+    }));
+  };
+  if(!window.MAD4BTravelDate)window.MAD4BTravelDate=Object.freeze({
+    version:'2.0.0-compat',
+    get:()=>legacySelected(),
+    set:day=>{
+      if(typeof day!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(day))return false;
+      const d=new Date(day+'T12:00:00Z');
+      if(Number.isNaN(d.getTime())||d.toISOString().slice(0,10)!==day ||
+         day<minDate||day>maxDate)return false;
+      state.mode='fixed';state.from=day;state.to='';sync();syncLegacy('api');
+      return true;
+    },
+    clear:()=>{state.from='';state.to='';sync();syncLegacy('clear');}
+  });
+  function connectNativeJetSearch(){
+    const jq=window.jQuery;
+    if(cfg.context!=='home'||!jq?.ajaxPrefilter)return;
+    jq.ajaxPrefilter((options)=>{
+      if(!valid()||!/(?:\/jet-search\/v1\/search-posts)(?:\?|$)/.test(options.url||''))return;
+      const extra=new URLSearchParams({
+        mad4b_date_mode:state.mode,
+        mad4b_date_from:state.from
+      });
+      if(state.mode==='flex')extra.set('mad4b_date_to',state.to);
+      options.data=(options.data?String(options.data)+'&':'')+extra.toString();
+    });
+  }
+
+  function picker(root,context) {
+    if (!root || initializedRoots.has(root)) return;
+    initializedRoots.add(root);
+    // Avoid retaining detached cloned popup roots across reopen cycles.
+    for(let i=instances.length-1;i>=0;i--){
+      if(!instances[i].root.isConnected){instances[i].close();instances.splice(i,1);}
+    }
+    root.dataset.mad4bDateReady='1';
+    root.classList.add('mad4b-ud','mad4b-ud--'+context);
+    root.innerHTML = [
+      '<button type="button" class="mad4b-ud__trigger" aria-haspopup="dialog" aria-expanded="false">',
+      '<span class="mad4b-ud__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/></svg></span>',
+      '<span class="mad4b-ud__summary">Travel Dates</span><span class="mad4b-ud__chevron" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></span></button>',
+      '<div class="mad4b-ud__panel" role="dialog" aria-label="Select travel dates" hidden>',
+      '<div class="mad4b-ud__heading"><strong>Select Travel Dates</strong><button type="button" class="mad4b-ud__close" aria-label="Close">×</button></div>',
+      '<div class="mad4b-ud__modes" role="group" aria-label="Date flexibility">',
+      '<button type="button" data-mode="flex">Flex Date</button><button type="button" data-mode="fixed">Fixed Date</button></div>',
+      '<div class="mad4b-ud__selection" aria-live="polite">',
+      '<div><span>From Date</span><strong class="mad4b-ud__from">Select date</strong></div>',
+      '<div class="mad4b-ud__to-wrap"><span>To Date</span><strong class="mad4b-ud__to">Select date</strong></div></div>',
+      '<div class="mad4b-ud__calendar-host"></div>',
+      '<div class="mad4b-ud__footer"><button type="button" class="mad4b-ud__clear">Clear</button>',
+      '<button type="button" class="mad4b-ud__apply">Apply Dates</button></div></div>'
+    ].join('');
+    const panel=root.querySelector('.mad4b-ud__panel');
+    const q=selector=>root.querySelector(selector)||panel.querySelector(selector);
+    const trigger=q('.mad4b-ud__trigger'),host=q('.mad4b-ud__calendar-host');
+    let calendar=null, opened=false;
+    const backdrop=document.createElement('div');
+    backdrop.className='mad4b-ud__backdrop';
+    backdrop.setAttribute('aria-hidden','true');
+    function close(){
+      if(!opened)return;
+      opened=false;panel.hidden=true;trigger.setAttribute('aria-expanded','false');
+      backdrop.remove();
+      if(root.isConnected)root.appendChild(panel);else panel.remove();
+      document.body.classList.remove('mad4b-ud-dialog-open');
+      if(root.isConnected)trigger.focus({preventScroll:true});
+    }
+    backdrop.addEventListener('click',close);
+    function render() {
+      q('.mad4b-ud__summary').textContent=state.from
+        ? dateLabel(state.from)+(state.mode==='flex'&&state.to?' – '+dateLabel(state.to):''):'Travel Dates';
+      q('.mad4b-ud__from').textContent=dateLabel(state.from)||'Select date';
+      q('.mad4b-ud__to').textContent=dateLabel(state.to)||'Select date';
+      q('.mad4b-ud__to-wrap').hidden=state.mode!=='flex';
+      panel.classList.toggle('mad4b-ud__panel--fixed',state.mode==='fixed');
+      q('.mad4b-ud__apply').disabled=!valid();
+      panel.querySelectorAll('[data-mode]').forEach(b=>{
+        b.classList.toggle('is-active',b.dataset.mode===state.mode);
+        b.setAttribute('aria-pressed',b.dataset.mode===state.mode?'true':'false');
+      });
+    }
+    function initCalendar() {
+      if(calendar) calendar.destroy();
+      host.replaceChildren();
+      const input=document.createElement('input');input.type='text';
+      input.className='mad4b-ud__calendar-input';input.setAttribute('aria-label','Date calendar');
+      host.appendChild(input);
+      const dates=state.from?(state.mode==='flex'&&state.to?[state.from,state.to]:[state.from]):[];
+      calendar=window.flatpickr(input,{
+        inline:true,appendTo:host,mode:state.mode==='flex'?'range':'single',
+        dateFormat:'Y-m-d',defaultDate:dates,minDate:minDate,maxDate:maxDate,
+        disableMobile:true,allowInput:false,
+        onChange:selected=>{
+          state.from=selected[0]?iso(selected[0]):'';
+          state.to=state.mode==='flex'&&selected[1]?iso(selected[1]):'';
+          sync();
+        }
+      });
+    }
+    function open() {
+      if(opened){close();return;}
+      instances.forEach(x=>{if(x.root!==root)x.close();});
+      opened=true;panel.hidden=false;trigger.setAttribute('aria-expanded','true');
+      panel.setAttribute('aria-modal','true');
+      document.body.append(backdrop,panel);
+      document.body.classList.add('mad4b-ud-dialog-open');
+      initCalendar();render();
+      q('.mad4b-ud__close').focus({preventScroll:true});
+    }
+    trigger.addEventListener('click',open);
+    q('.mad4b-ud__close').addEventListener('click',close);
+    panel.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{
+      if(b.dataset.mode===state.mode)return;
+      state.mode=b.dataset.mode;state.to='';initCalendar();sync();
+    }));
+    q('.mad4b-ud__clear').addEventListener('click',()=>{
+      state.from='';state.to='';initCalendar();sync();syncLegacy('clear');
+      if(context==='archive')window.location.assign(params(new URL(window.location.href)).toString());
+    });
+    q('.mad4b-ud__apply').addEventListener('click',()=>{
+      if(!valid())return;
+      syncLegacy('apply');
+      if(context==='archive')window.location.assign(params(new URL(window.location.href)).toString());
+      else close();
+    });
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'&&opened)close();});
+    document.addEventListener('click',e=>{
+      if(opened&&!root.contains(e.target)&&!panel.contains(e.target))close();
+    });
+    instances.push({root,render,close});render();
+  }
+
+  function home() {
+    const form=document.querySelector('.elementor-element-7631225e .jet-ajax-search__form');
+    if(!form||form.dataset.mad4bDateReady)return;
+    const submit=form.querySelector('.jet-ajax-search__submit');
+    if(!submit)return;
+    const holder=form.querySelector('.jet-ajax-search__fields-holder');
+    if(!holder)return;
+    const categories=holder.querySelector('.jet-ajax-search__categories');
+    const root=document.createElement('div');
+    holder.insertBefore(root,categories || null);
+    form.dataset.mad4bDateReady='1';form.classList.add('mad4b-ud-search-form');
+    picker(root,'home');
+    // Preserve the JetSearch native flow when no date is selected.
+    const redirectWithDate = e=>{
+      if(!valid())return;
+      e.preventDefault();e.stopImmediatePropagation();
+      const url=new URL(cfg.archiveUrl,window.location.href);
+      new FormData(form).forEach((value,key)=>{
+        if(typeof value==='string'&&value.length<=4000&&!key.startsWith('mad4b_'))
+          url.searchParams.append(key,value);
+      });
+      window.location.assign(params(url).toString());
+    };
+    form.addEventListener('submit',redirectWithDate,true);
+    form.addEventListener('click',e=>{
+      if(e.target.closest('.jet-ajax-search__submit'))redirectWithDate(e);
+    },true);
+  }
+  function archive() {
+    document.querySelectorAll('.mad4b-ud-root[data-mad4b-date-context="archive"]').forEach(el=>picker(el,'archive'));
+    if(document.querySelector('.mad4b-ud-root[data-mad4b-date-context="archive"]'))return;
+    const first=document.querySelector('.elementor-widget-jet-smart-filters-range');
+    if(first&&!document.querySelector('.mad4b-ud--archive')){
+      const root=document.createElement('div');first.parentNode.insertBefore(root,first);picker(root,'archive');
+    }
+  }
+  function preserveTourLinks() {
+    if(cfg.request?.status!=='valid'||!valid())return;
+    const prefix=new URL(cfg.archiveUrl,window.location.origin).pathname;
+    document.querySelectorAll('#tours_query_archive a[href]').forEach(a=>{
+      try{
+        const destination=new URL(a.href,window.location.href);
+        if(destination.origin!==window.location.origin ||
+          destination.pathname===prefix || !destination.pathname.startsWith(prefix))return;
+        a.href=params(destination).toString();
+      }catch(e){/* Ignore malformed third-party links. */}
+    });
+  }
+  // Date inheritance in the native Rate Accordion: visibility only, never
+  // a price adjustment or booking/Last Minute eligibility receipt.
+  function rates() {
+    if(cfg.context!=='single'||cfg.request?.status!=='valid')return;
+    const listing=document.querySelector('#tour_rates_accordion,#tour_rates');
+    const priceHeading=document.getElementById('prices');
+    if(!listing&&!priceHeading)return;
+    let banner=document.querySelector('.mad4b-ud-rate-context');
+    if(!banner) {
+      banner=document.createElement('div');
+      banner.className='mad4b-ud-rate-context';
+      banner.setAttribute('role','status');
+      if(listing?.parentElement)listing.insertAdjacentElement('beforebegin',banner);
+      else priceHeading.insertAdjacentElement('afterend',banner);
+    }
+    const safeIds=Array.isArray(cfg.rateEligibleIds)
+      ?cfg.rateEligibleIds.map(x=>String(x)).filter(x=>/^\d+$/.test(x)):[];
+    const qualified=new Set(safeIds);
+    const msg={
+      en:['Travel dates','Rates shown for the selected rate period; departure and inventory are not confirmed','No eligible Rate periods cover these travel dates. You can still request a custom itinerary'],
+      es:['Fechas de viaje','Tarifas correspondientes al período; salidas y plazas sin confirmar','No hay tarifas para las fechas seleccionadas. Solicita un itinerario personalizado'],
+      fr:['Dates de voyage','Périodes tarifaires correspondantes, départs non confirmés','Aucun tarif correspondant. Demandez un itinéraire personnalisé'],
+      de:['Reisedaten','Tarifzeiträume; Abfahrt und Plätze nicht bestätigt','Kein passender Tarifzeitraum. Bitte individuell anfragen'],
+      it:['Date del viaggio','Periodi tariffari; partenze non confermate','Nessuna tariffa corrispondente. Richiedi un itinerario'],
+      ar:['تواريخ السفر','فترات الأسعار المتوافقة؛ المغادرة والتوافر غير مؤكدين','لا توجد أسعار متوافقة مع الفترة. يمكنك إرسال استفسار']
+    };
+    const lang=String(document.documentElement.lang||'en').slice(0,2);
+    const [label,detail,empty]=msg[lang]||msg.en;
+    const period=cfg.request.mode==='flex' && cfg.request.to
+      ?dateLabel(cfg.request.from)+' – '+dateLabel(cfg.request.to)
+      :dateLabel(cfg.request.from);
+    banner.replaceChildren();
+    const heading=document.createElement('strong');
+    heading.textContent=label+': '+period;
+    const info=document.createElement('span');
+    info.textContent=safeIds.length?detail:empty;
+    banner.append(heading,info);
+    if(!listing)return;
+    for(const action of listing.querySelectorAll('[data-rate-actions]')){
+      const id=String(action.dataset.rateActions||'');
+      if(!/^\d+$/.test(id))continue;
+      const card=action.closest('.jet-toggle,.jet-listing-grid__item');
+      if(!card)continue;
+      card.classList.toggle('mad4b-ud-rate-out-of-window',!qualified.has(id));
+    }
+  }
+  function fluentFormat(isoDate) {
+    const [y,m,d]=isoDate.split('-');
+    return d+'-'+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][Number(m)-1]+'-'+y.slice(-2);
+  }
+  function fluent() {
+    if(cfg.request?.status!=='valid')return;
+    document.querySelectorAll('form.fluent_form_6').forEach(form=>{
+      if(state.mode==='flex')form.dataset.mad4bDateInheritedFlex='1';
+      else delete form.dataset.mad4bDateInheritedFlex;
+      const wanted=state.mode==='flex'?'true':'false';
+      const radio=Array.from(form.querySelectorAll('input[name="tour_date_flexibility"]')).find(el=>el.value===wanted);
+      if(radio&&!radio.dataset.mad4bDatePrefilled){
+        radio.checked=true;radio.dataset.mad4bDatePrefilled='1';
+        radio.dispatchEvent(new Event('change',{bubbles:true}));
+      }
+      [['datetime',state.from],['datetime_2',state.mode==='flex'?state.to:'']].forEach(([field,value])=>{
+        const input=form.querySelector('input[name="'+field+'"]');
+        if(!input||input.dataset.mad4bDatePrefilled||!value)return;
+        if(input._flatpickr)input._flatpickr.setDate(value,true,'Y-m-d');
+        else{
+          input.value=fluentFormat(value);
+          input.dispatchEvent(new Event('input',{bubbles:true}));
+          input.dispatchEvent(new Event('change',{bubbles:true}));
+        }
+        input.dataset.mad4bDatePrefilled='1';
+      });
+    });
+  }
+  function mount() {
+    document.querySelectorAll('.mad4b-ud-root[data-mad4b-date-context="home"]').forEach(el=>picker(el,'home'));
+    if(cfg.context==='home')home();
+    if(cfg.context==='archive'){archive();preserveTourLinks();}
+    if(cfg.context==='single'){fluent();rates();}
+  }
+  connectNativeJetSearch();
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount,{once:true});
+  else mount();
+  let pending=false;
+  new MutationObserver(()=>{
+    if(pending)return;pending=true;
+    setTimeout(()=>{pending=false;mount();},120);
+  }).observe(document.documentElement,{childList:true,subtree:true});
+})();

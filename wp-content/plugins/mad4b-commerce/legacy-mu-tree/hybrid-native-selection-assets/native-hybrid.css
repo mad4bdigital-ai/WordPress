@@ -1,0 +1,69 @@
+/* QA enhancement scoped to original Elementor layout; all widgets remain native. */
+.booking-hybrid-native-qa .booking-hybrid-native-stay-slot{
+  margin:1.25rem 0;padding:1rem;border:1px solid var(--e-global-color-primary,#a88446);
+  border-radius:12px;background:var(--e-global-color-80789f7,#faf8f3);
+}
+.booking-hybrid-native-qa .booking-hybrid-section-intro{margin-bottom:.9rem}
+.booking-hybrid-native-qa .booking-hybrid-section-intro p{margin:.3rem 0;color:var(--e-global-color-text,#545454)}
+.booking-hybrid-native-qa .booking-hybrid-select{
+  width:100%;margin:.65rem 0 0;padding:.65rem .8rem;border-radius:6px;
+  background:transparent;color:var(--e-global-color-primary,#776035);
+  border:1.5px solid currentColor;font-weight:650;cursor:pointer
+}
+.booking-hybrid-native-qa .booking-hybrid-select:hover,
+.booking-hybrid-native-qa .booking-hybrid-select:focus-visible{
+  background:var(--e-global-color-80789f7,#f7f1e5)
+}
+.booking-hybrid-native-qa .booking-hybrid-selected{
+  outline:2px solid var(--e-global-color-primary,#a88446);outline-offset:2px
+}
+.booking-hybrid-native-qa .booking-hybrid-inline-summary{
+  border:1px solid var(--e-global-color-accent,#c9a463);
+  border-radius:8px;padding:1rem;margin:0 0 1rem;background:#fff
+}
+.booking-hybrid-native-qa .booking-hybrid-inline-summary strong{display:block;margin-bottom:.5rem}
+.booking-hybrid-native-qa .booking-hybrid-inline-summary p{margin:.25rem 0;font-size:.875rem}
+.booking-hybrid-native-qa .booking-hybrid-inline-summary small{font-size:.75rem;opacity:.75}
+.booking-hybrid-native-qa .booking-tour-stay-options fieldset,
+.booking-hybrid-native-qa .tour-stay-stage{
+  border:1px solid var(--e-global-color-0ce0fb4,#dedede);border-radius:8px;
+  padding:.8rem;margin-bottom:.75rem
+}
+.booking-hybrid-native-qa .booking-tour-stay-options :is(select,input,button){
+  max-width:100%;
+}
+@media(max-width:767px){
+ .booking-hybrid-native-qa .booking-hybrid-native-stay-slot{padding:.7rem;margin:.75rem 0}
+ .booking-hybrid-native-qa .booking-hybrid-inline-summary{padding:.75rem}
+}
+
+/* Native selector enhancement: chips reflect the existing rate dropdown. */
+.booking-hybrid-native-qa .booking-hybrid-rate-pills{
+ display:flex;gap:.5rem;flex-wrap:wrap;margin:.6rem 0 1rem;align-items:stretch
+}
+.booking-hybrid-native-qa .booking-hybrid-rate-pill{
+ padding:.6rem .8rem;border:1px solid var(--e-global-color-primary,#987b4b);
+ background:#fff;border-radius:6px;font-size:.78rem;line-height:1.35;
+ color:var(--e-global-color-text,#333);cursor:pointer
+}
+.booking-hybrid-native-qa .booking-hybrid-rate-pill.is-selected{
+ border-color:var(--e-global-color-primary,#987b4b);
+ background:var(--e-global-color-80789f7,#f5ecdc);
+ box-shadow:inset 0 0 0 1px var(--e-global-color-primary,#987b4b);
+ font-weight:700
+}
+.booking-hybrid-native-qa .booking-hybrid-rate-pill:focus-visible{
+ outline:3px solid var(--e-global-color-accent,#cfa970);outline-offset:2px
+}
+/* Preserve all discovery widgets. Collapse per-Rate stay choices only
+   inside the original Rate Listing Grids, never unrelated JetEngine cards. */
+.booking-hybrid-native-qa.booking-hybrid-qa-ready
+:is(.elementor-element-eb639ca,.elementor-element-854289f)
+.jet-listing-grid__item:not(.booking-hybrid-selected) .booking-tour-stay-options{
+ display:none;
+}
+.booking-hybrid-native-qa.booking-hybrid-qa-ready
+:is(.elementor-element-eb639ca,.elementor-element-854289f)
+.jet-listing-grid__item.booking-hybrid-selected .booking-tour-stay-options{
+ display:block;
+}

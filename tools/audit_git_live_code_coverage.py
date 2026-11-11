@@ -9,6 +9,7 @@ COMPONENTS=(
  ('mad4b-lifecycle-orchestrator','wp-content/plugins/mad4b-lifecycle-orchestrator'),
  ('mad4b-content-hub','wp-content/plugins/mad4b-content-hub'),
  ('mad4b-platform','wp-content/plugins/mad4b-platform'),
+ ('mad4b-commerce','wp-content/plugins/mad4b-commerce'),
  ('mad4b-render-query-governor','wp-content/mu-plugins/mad4b-render-query-governor.php'),
 )
 EXTENSIONS={'.php','.js','.css'}
@@ -22,7 +23,16 @@ def source_files(root,relative):
     if not base.is_dir():return {}
     results={}
     for file in base.rglob('*'):
-        if file.is_symlink():raise ValueError('CODE_PATH_SYMLINK_UNTRUSTED')
+        if file.is_symlink():
+            # The original installed Commerce currency data is a directory
+            # symlink, not an executable PHP/JS/CSS source file. Its exact
+            # existing link target is separately pinned in the source manifest.
+            # Never follow it here or silently reproduce it in the Git tree.
+            link=file.relative_to(root).as_posix()
+            if (link=='wp-content/plugins/mad4b-commerce/legacy-mu-tree/currency-data'
+                and file.readlink().as_posix()=='../../../mu-plugins/currency-data'):
+                continue
+            raise ValueError('CODE_PATH_SYMLINK_UNTRUSTED')
         if not file.is_file() or file.suffix.lower() not in EXTENSIONS:continue
         if not file.resolve().is_relative_to(root.resolve()):
             raise ValueError('CODE_PATH_OUTSIDE_SOURCE_ROOT')
