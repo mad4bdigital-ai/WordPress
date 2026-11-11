@@ -1,0 +1,12 @@
+[Unit]
+Description=Refresh MAD4B center-Wayfa site-local service status at bounded cadence
+
+[Timer]
+OnActiveSec=240s
+OnUnitInactiveSec=240s
+RandomizedDelaySec=10s
+AccuracySec=15s
+Unit=mad4b-company-service-native-wayfa-readback.service
+
+[Install]
+WantedBy=timers.target

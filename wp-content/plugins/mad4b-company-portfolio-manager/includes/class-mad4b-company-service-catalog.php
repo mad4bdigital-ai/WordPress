@@ -10,6 +10,10 @@ final class MAD4B_Company_Service_Catalog_V1 {
     public const MODES=['tour_only','full_catalog'];
     public const OWNERS=['tours','properties','transportations','visas'];
     public const OBSERVATION_SCOPE='mad4b_service_public_observation_pilot_v1';
+    public const NATIVE_OBSERVATION_PREFIX='mad4b_company_service_native_wpcli_readback_v1_';
+    public const NATIVE_READBACK_CONTRACT='mad4b.company.service.native-wpcli-observation.v1';
+    public const NATIVE_READBACK_MAX_AGE=360;
+
 
     public static function staging(): bool {
         return class_exists('MAD4B_Company_Portfolio_Manager_V1',false)
@@ -247,6 +251,115 @@ final class MAD4B_Company_Service_Catalog_V1 {
             'reason'=>$status==='observed'?'guest_routes_checked':'see_route_results',
         ]);
     }
+    /**
+     * Last host-collected WP-CLI response, protected by central administrator
+     * permissions and the exact enrolled company binding. No HTTP fallback.
+     *
+     * Digest validates transport integrity, NOT issuer authenticity.
+     * Original313 signed execution/readback is never inferred.
+     */
+    public static function native_observation(string $code):array {
+        $base=[
+            'contract'=>self::NATIVE_READBACK_CONTRACT,
+            'company_code'=>$code,'state'=>'unverified',
+            'transport'=>'same_host_scoped_wpcli',
+            'cryptographically_signed'=>false,
+            'original313_signed_receipt'=>false,
+            'company_plan_applied'=>false,
+            'booking_verified'=>false,
+            'payment_verified'=>false,
+            'tenant_mutated_by_reader'=>false,
+            'snapshot'=>null
+        ];
+        if(!self::admin())return $base+['reason'=>'central_administrator_required'];
+        if(!self::observation_enabled($code))
+            return $base+['reason'=>'company_pending_reconciliation_or_full_clone'];
+        $binding=self::binding($code);
+        if(is_wp_error($binding))return $base+['reason'=>'company_binding_invalid'];
+        if(!class_exists('MAD4B_Company_Environment_Registry_V2',false))
+            return $base+['reason'=>'environment_registry_unavailable'];
+        $target=MAD4B_Company_Environment_Registry_V2::target($code,'production');
+        if(!is_array($target)
+            ||($target['environment']??'')!=='production'
+            ||($target['company_id']??'')!==$code
+            ||($target['site_uuid']??'')!==$binding['company_site_uuid'])
+            return $base+['reason'=>'enrolled_production_identity_not_matched'];
+        $origin=rtrim((string)($target['canonical_origin']??''),'/');
+        $host=wp_parse_url($origin,PHP_URL_HOST);
+        if(!is_string($host)||$host===''||wp_parse_url($origin,PHP_URL_SCHEME)!=='https')
+            return $base+['reason'=>'invalid_registered_origin'];
+        $row=get_option(self::NATIVE_OBSERVATION_PREFIX.$code,null);
+        if(!is_array($row)
+            ||array_keys($row)!==['contract','company_code','site_uuid',
+                'canonical_origin','binding_sha256','transport','observed_epoch',
+                'expires_epoch','snapshot_json','snapshot_sha256','issuer_signed'])
+            return $base+['reason'=>'host_wpcli_receipt_unavailable'];
+        $json=$row['snapshot_json']??null;
+        if(($row['contract']??'')!==self::NATIVE_READBACK_CONTRACT
+            ||($row['company_code']??'')!==$code
+            ||($row['site_uuid']??'')!==$binding['company_site_uuid']
+            ||($row['canonical_origin']??'')!==$origin
+            ||($row['binding_sha256']??'')!==$binding['binding_sha256']
+            ||($row['transport']??'')!=='same_host_scoped_wpcli'
+            ||($row['issuer_signed']??null)!==false
+            ||!is_int($row['observed_epoch']??null)
+            ||!is_int($row['expires_epoch']??null)
+            ||!is_string($json)||strlen($json)>24000
+            ||!preg_match('/^[a-f0-9]{64}$/D',(string)($row['snapshot_sha256']??''))
+            ||!hash_equals((string)$row['snapshot_sha256'],hash('sha256',$json)))
+            return $base+['reason'=>'receipt_binding_or_digest_invalid'];
+        $observed=(int)$row['observed_epoch'];
+        if($observed>time()+30 || $row['expires_epoch']>$observed+self::NATIVE_READBACK_MAX_AGE
+            ||$row['expires_epoch']<=$observed)
+            return $base+['reason'=>'invalid_receipt_freshness_envelope'];
+        if(time()>=$row['expires_epoch'])
+            return $base+['reason'=>'host_wpcli_readback_stale','last_observed_epoch'=>$observed];
+        $payload=json_decode($json,true);
+        if(!is_array($payload) || array_keys($payload)!==['challenge','site',
+                'site_uuid','site_environment','readback_module_sha256','snapshot'])
+            return $base+['reason'=>'source_snapshot_schema_invalid'];
+        $snapshot=$payload['snapshot']??null;
+        if(!is_array($snapshot)
+            ||!preg_match('/^[a-f0-9]{32}$/D',(string)($payload['challenge']??''))
+            ||($payload['site_uuid']??'')!==$binding['company_site_uuid']
+            ||rtrim((string)($payload['site']??''),'/')!==$origin
+            ||($payload['site_environment']??'')!=='production'
+            ||!is_string($payload['readback_module_sha256']??null)
+            ||!preg_match('/^[a-f0-9]{64}$/D',$payload['readback_module_sha256'])
+            ||!hash_equals((string)hash_file('sha256',
+                WP_CONTENT_DIR.'/mu-plugins/mad4b-service-activation-live-readback-v1.php'),
+                $payload['readback_module_sha256'])
+            ||($snapshot['contract']??'')!=='mad4b.service-activation-live-readback.v1'
+            ||($snapshot['site_host']??'')!==$host
+            ||!is_array($snapshot['families']??null)
+            ||array_keys($snapshot['families'])!==['tours','properties','transportations','visas']
+            ||!is_array($snapshot['schema']??null)
+            ||!is_bool($snapshot['public_guard_loaded']??null)
+            ||!is_bool($snapshot['unified_fulfillment_loaded']??null)
+            ||!is_bool($snapshot['stripe_enabled']??null)
+            ||!is_bool($snapshot['early_payment_benefits_enabled']??null))
+            return $base+['reason'=>'runtime_snapshot_identity_or_schema_mismatch'];
+        // A successful local WP-CLI observation does not certify booking, grants
+        // or production deployment, even if matching the central plan.
+        return array_replace($base,[
+            'state'=>'fresh_local_wordpress_wpcli_unsigned',
+            'site_host'=>$host,'site_uuid'=>$payload['site_uuid'],
+            'observed_epoch'=>$observed,
+            'observed_utc'=>gmdate('c',$observed),
+            'max_age_seconds'=>self::NATIVE_READBACK_MAX_AGE,
+            'source_readback_contract'=>$snapshot['contract'],
+            'snapshot'=>[
+                'schema'=>$snapshot['schema'],
+                'families'=>$snapshot['families'],
+                'global_booking_status'=>$snapshot['global_booking_status']??'unverified',
+                'public_guard_loaded'=>$snapshot['public_guard_loaded'],
+                'unified_fulfillment_loaded'=>$snapshot['unified_fulfillment_loaded'],
+                'stripe_enabled'=>$snapshot['stripe_enabled'],
+                'early_payment_benefits_enabled'=>$snapshot['early_payment_benefits_enabled'],
+            ],
+            'reason'=>'site_wordpress_wpcli_observed_no_first_party_signature',
+        ]);
+    }
     public static function public_observation_response($result) {
         $response=rest_ensure_response($result);
         if($response instanceof WP_REST_Response)
@@ -255,6 +368,13 @@ final class MAD4B_Company_Service_Catalog_V1 {
     }
     public static function rest_routes():void {
         if(!self::staging())return;
+        register_rest_route('mad4b/v1',
+            '/company-management/companies/(?P<company_code>[a-z][a-z0-9-]{2,47})/service-catalog/native-observation',[
+                'methods'=>'GET',
+                'permission_callback'=>[__CLASS__,'permission'],
+                'callback'=>static fn($r)=>self::public_observation_response(
+                    self::native_observation((string)$r['company_code']))
+            ]);
         register_rest_route('mad4b/v1',
             '/company-management/companies/(?P<company_code>[a-z][a-z0-9-]{2,47})/service-catalog/public-observation',[
                 'methods'=>'GET',
@@ -320,6 +440,14 @@ final class MAD4B_Company_Service_Catalog_V1 {
             submit_button('Save','secondary','submit',false);
             echo '</form></td><td><span>Rev '.esc_html((string)$v['revision']).' · Plan not deployed</span>';
             if(self::observation_enabled($code)){
+                $native=self::native_observation($code);
+                echo '<p><strong>WordPress native:</strong> '
+                    .esc_html(($native['state']??'')==='fresh_local_wordpress_wpcli_unsigned'
+                        ?'Fresh local host WP-CLI (unsigned)':'Unverified / stale')
+                    .'</p><p><button type="button" class="button button-small mad4b-company-native-observe"'
+                    .' data-company="'.esc_attr($code).'">Read protected WordPress status</button></p>'
+                    .'<div class="mad4b-company-native-result" role="status" aria-live="polite">'
+                    .'No signed Original313 readback. Guest HTTP evidence is separate.</div>';
                 echo '<p><button type="button" class="button button-small mad4b-company-live-observe"'
                     .' data-company="'.esc_attr($code).'">Check live public routes</button></p>'
                     .'<div class="mad4b-company-observation-result" data-company="'.esc_attr($code).'"'
@@ -358,6 +486,26 @@ final class MAD4B_Company_Service_Catalog_V1 {
             .'+ " · "+String(v.checked_at||"")'
             .'+". This is not booking, payment, or signed activation evidence.";'
             .'}catch(e){out.textContent="Live observation unavailable; plan remains not deployed/unverified.";}'
+            .'finally{button.disabled=false;}});}'
+            .'for(const button of document.querySelectorAll(".mad4b-company-native-observe")){'
+            .'button.addEventListener("click",async()=>{const company=button.dataset.company;'
+            .'const cell=button.closest("td");const out=cell?.querySelector(".mad4b-company-native-result");'
+            .'if(!out||!/^[a-z][a-z0-9-]{2,47}$/.test(company||""))return;'
+            .'button.disabled=true;out.textContent="Reading latest host-collected WordPress state…";'
+            .'try{const url=cfg.base+encodeURIComponent(company)+"/service-catalog/native-observation";'
+            .'const res=await fetch(url,{credentials:"same-origin",cache:"no-store",'
+            .'headers:{"X-WP-Nonce":cfg.nonce}});'
+            .'if(!res.ok)throw new Error("native_read_denied");const v=await res.json();'
+            .'if(v.state!=="fresh_local_wordpress_wpcli_unsigned"){out.textContent='
+            .'"Native state unavailable: "+String(v.reason||"unverified")'
+            .'+" — no activation claim.";return;}'
+            .'const families=Object.entries(v.snapshot?.families||{}).map(([name,d])=>'
+            .'name+": "+String(d.effective_mode||"unknown")+", "+String(d.published||0)+" published");'
+            .'out.textContent="WordPress WP-CLI at "+String(v.observed_utc||"?")+" · "'
+            .'+families.join(" · ")+" · Booking "+String(v.snapshot?.global_booking_status)'
+            .'+" · Stripe "+String(v.snapshot?.stripe_enabled?"ON":"OFF")'
+            .'+" · Origin 313 signed: NO. No deployed plan or payment authority inferred.";'
+            .'}catch(e){out.textContent="Protected WordPress readback failed; no activation claim.";}'
             .'finally{button.disabled=false;}});}})();';
         wp_register_script('mad4b-company-public-observation',false,[],null,true);
         wp_enqueue_script('mad4b-company-public-observation');

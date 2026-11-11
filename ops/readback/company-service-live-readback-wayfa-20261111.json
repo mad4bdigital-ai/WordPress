@@ -1,0 +1,9 @@
+{
+  "contract": "mad4b.company.service.native-wpcli-observation.v1",
+  "company": "wayfatours",
+  "site_uuid": "a3a7cc36-db7e-4a14-8456-b41857def05c",
+  "origin": "https://wayfatours.com",
+  "central_origin": "https://tours.dev.mad4b.com",
+  "center_container": "php-wkgtkzta35wkkgouwt6ruljc",
+  "tenant_container": "php-guxhp9y6vgh7oouuw8plxrlr"
+}

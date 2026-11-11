@@ -1,0 +1,27 @@
+[Unit]
+Description=MAD4B center-Wayfa bounded service native WP-CLI readback
+Documentation=man:systemd.service(5)
+Wants=docker.service
+After=docker.service
+ConditionPathExists=/opt/mad4b-company-provisioning/policies/company-service-live-readback-wayfa-20261111.json
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/usr/bin/python3 /opt/mad4b-company-provisioning/bin/company-service-native-wpcli-readback-v1.py --config /opt/mad4b-company-provisioning/policies/company-service-live-readback-wayfa-20261111.json --apply
+TimeoutStartSec=120
+NoNewPrivileges=true
+ProtectHome=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ReadWritePaths=/run/lock
+UMask=0027
+MemoryMax=350M
+CPUQuota=100%
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mad4b-wayfa-service-readback

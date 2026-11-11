@@ -23,6 +23,8 @@ $route='/mad4b/v1/company-management/companies/(?P<company_code>[a-z][a-z0-9-]{2
 $checks['rest_registered']=isset($routes[$route]);
 $observation_route='/mad4b/v1/company-management/companies/(?P<company_code>[a-z][a-z0-9-]{2,47})/service-catalog/public-observation';
 $checks['public_observation_route_registered']=isset($routes[$observation_route]);
+$native_route='/mad4b/v1/company-management/companies/(?P<company_code>[a-z][a-z0-9-]{2,47})/service-catalog/native-observation';
+$checks['protected_native_route_registered']=isset($routes[$native_route]);
 $codes=MAD4B_Company_Service_Catalog_V1::companies();
 $rows=[];
 foreach ($codes as $code) {
@@ -74,6 +76,75 @@ if(in_array($target,$codes,true)){
     $anonymous=rest_do_request($observeRequest);
     $checks['live_observation_anonymous_denied']=in_array($anonymous->get_status(),[401,403],true);
     wp_set_current_user($original_user);
+    $nativeRequest=new WP_REST_Request('GET',
+        '/mad4b/v1/company-management/companies/'.$target.'/service-catalog/native-observation');
+    $nativeResponse=rest_do_request($nativeRequest);
+    $native=$nativeResponse->get_data();
+    $checks['native_readback_admin_200']=$nativeResponse->get_status()===200;
+    $checks['native_readback_original_site_uuid']=
+        ($native['site_uuid']??null)==='a3a7cc36-db7e-4a14-8456-b41857def05c';
+    $checks['native_readback_fresh_wpcli_unsigned']=
+        ($native['state']??null)==='fresh_local_wordpress_wpcli_unsigned'
+        &&($native['original313_signed_receipt']??true)===false
+        &&($native['cryptographically_signed']??true)===false;
+    $checks['native_readback_runtime_schema_verified']=
+        ($native['snapshot']['schema']['declared_count']??0)===31
+        &&($native['snapshot']['schema']['runtime_schema_gaps']??null)==[];
+    $checks['native_readback_deployment_not_inferred']=
+        ($native['company_plan_applied']??true)===false
+        &&($native['booking_verified']??true)===false
+        &&($native['payment_verified']??true)===false;
+    $checks['native_readback_other_company_denied']=
+        (MAD4B_Company_Service_Catalog_V1::native_observation('all-royal-egypt')['reason']??'')
+        ==='company_pending_reconciliation_or_full_clone';
+    wp_set_current_user(0);
+    $publicNative=rest_do_request($nativeRequest);
+    $checks['native_readback_anonymous_forbidden']=
+        in_array($publicNative->get_status(),[401,403],true);
+    wp_set_current_user($original_user);
+    // In-process mock of a corrupted central option: no production DB mutation.
+    $key=MAD4B_Company_Service_Catalog_V1::NATIVE_OBSERVATION_PREFIX.$target;
+    $corrupt=get_option($key);
+    if(is_array($corrupt)){
+        $corrupt['snapshot_sha256']=str_repeat('0',64);
+        $override=static fn()=>$corrupt;
+        add_filter('pre_option_'.$key,$override);
+        $check=MAD4B_Company_Service_Catalog_V1::native_observation($target);
+        remove_filter('pre_option_'.$key,$override);
+        $checks['native_readback_corrupt_hash_denied']=
+            ($check['state']??null)==='unverified'
+            &&($check['reason']??null)==='receipt_binding_or_digest_invalid';
+    }else $checks['native_readback_corrupt_hash_denied']=false;
+
+    $original=get_option($key);
+    if(is_array($original)){
+        $stale=$original;
+        $stale['observed_epoch']=time()-400;
+        $stale['expires_epoch']=time()-40;
+        $override=static fn()=>$stale;
+        add_filter('pre_option_'.$key,$override);
+        $result=MAD4B_Company_Service_Catalog_V1::native_observation($target);
+        remove_filter('pre_option_'.$key,$override);
+        $checks['native_readback_expired_denied']=($result['state']??null)==='unverified'
+            &&($result['reason']??null)==='host_wpcli_readback_stale';
+
+        $badModule=$original;
+        $untrusted=json_decode($original['snapshot_json'],true);
+        $untrusted['readback_module_sha256']=str_repeat('0',64);
+        $badModule['snapshot_json']=wp_json_encode($untrusted,
+            JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
+        $badModule['snapshot_sha256']=hash('sha256',$badModule['snapshot_json']);
+        $override=static fn()=>$badModule;
+        add_filter('pre_option_'.$key,$override);
+        $result=MAD4B_Company_Service_Catalog_V1::native_observation($target);
+        remove_filter('pre_option_'.$key,$override);
+        $checks['native_readback_wrong_runtime_code_denied']=
+            ($result['state']??null)==='unverified'
+            &&($result['reason']??null)==='runtime_snapshot_identity_or_schema_mismatch';
+    }else{
+        $checks['native_readback_expired_denied']=false;
+        $checks['native_readback_wrong_runtime_code_denied']=false;
+    }
 }
 
 echo wp_json_encode(['pass'=>!in_array(false,$checks,true),

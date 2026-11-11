@@ -1,0 +1,56 @@
+{
+  "booking_or_payment_authority_changed": false,
+  "catalog_plan_applied": false,
+  "central_admin_rest_only": true,
+  "company_site_modified_by_reader": false,
+  "contract": "mad4b.center-wayfa.native-service-readback.v1",
+  "files": [
+    {
+      "bytes": 32170,
+      "installed_path": "/opt/hostinger-migrations/hosting-3/etg-commerce-staging/site-copy/wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-service-catalog.php",
+      "sha256": "85123ac030c63a3ba5aeb3edcc1011011da040e30e7bbfb66abda9455933e17b",
+      "source": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-service-catalog.php"
+    },
+    {
+      "bytes": 12835,
+      "installed_path": "/opt/mad4b-company-provisioning/bin/company-service-native-wpcli-readback-v1.py",
+      "sha256": "733e66f6639d1e89484e1021e6551388b01ef039ebac0545ae0b309a4dccf33e",
+      "source": "tools/company_service_native_wpcli_readback_v1.py"
+    },
+    {
+      "bytes": 349,
+      "installed_path": "/opt/mad4b-company-provisioning/policies/company-service-live-readback-wayfa-20261111.json",
+      "sha256": "34525302a8b57b19f5c5334f2c367ce6991ebc56ab6e925929e7deed54674866",
+      "source": "ops/readback/company-service-live-readback-wayfa-20261111.json"
+    },
+    {
+      "bytes": 874,
+      "installed_path": "/etc/systemd/system/mad4b-company-service-native-wayfa-readback.service",
+      "sha256": "cba5cd1896f2d0f352fb6602a40bc5b686e5608eeebb7b0e979c08623b09d280",
+      "source": "ops/systemd/mad4b-company-service-native-wayfa-readback.service"
+    },
+    {
+      "bytes": 270,
+      "installed_path": "/etc/systemd/system/mad4b-company-service-native-wayfa-readback.timer",
+      "sha256": "ff8b5d29bf9fc6b9ca11fc769996850e12346381d9bb4c884fc877e52a932047",
+      "source": "ops/systemd/mad4b-company-service-native-wayfa-readback.timer"
+    }
+  ],
+  "native_receipt_max_age_seconds": 360,
+  "native_wpcli_live_readback_passed": true,
+  "observation_type": "same_vps_host_scoped_wpcli_unsigned",
+  "original_313_operation_registered_for_company_code_release": false,
+  "original_313_signed_receipt_verified": false,
+  "original_318_signed_release_completed": false,
+  "other_companies_included": false,
+  "pilot_timer_cadence_seconds": 240,
+  "pilots": [
+    "wayfatours"
+  ],
+  "scope": [
+    "tours.dev.mad4b.com",
+    "wayfatours.com"
+  ],
+  "site_module_exact_source_parity_required": true,
+  "target_site_uuid": "a3a7cc36-db7e-4a14-8456-b41857def05c"
+}
