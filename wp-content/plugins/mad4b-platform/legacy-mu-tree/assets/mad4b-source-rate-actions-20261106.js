@@ -19,6 +19,43 @@
  const captions=captionsByLanguage[lang]||captionsByLanguage.en;
  let pending=false;
  let processed=0;
+ let accordionRepairs=0;
+ let nativeRetry=null;
+
+ // JetAccordion registers click.jetAccordion on first Elementor widget-ready.
+ // JetEngine can inject Rate listing widgets AFTER Elementor's initial ready
+ // and before its own asynchronous assets/handler pass has finished.
+ // Restore the native JetTabs handler, never replace accordion behavior.
+ function hasNativeAccordionHandler(control){
+  const jq=window.jQuery;
+  const registry=jq?._data?.(control,'events');
+  if(!registry || !Array.isArray(registry.click))return false;
+  return registry.click.some(listener=>String(listener.namespace||'').split('.').includes('jetAccordion'));
+ }
+ function restoreNativeAccordions(root){
+  const jq=window.jQuery;
+  const hooks=window.elementorFrontend?.hooks;
+  if(!jq?._data || !hooks?.doAction)return;
+  for(const widget of root.querySelectorAll('.elementor-widget-jet-accordion')){
+   const control=widget.querySelector('.jet-accordion__inner > .jet-toggle > .jet-toggle__control');
+   if(!control || hasNativeAccordionHandler(control))continue;
+   hooks.doAction('frontend/element_ready/jet-accordion.default',jq(widget),jq);
+   if(hasNativeAccordionHandler(control))accordionRepairs++;
+  }
+ }
+ // Follow JetEngine lazy and JetSmartFilters lifecycle: bounded retries
+ // allow vendor asset promises to finish without page-wide DOM observers.
+ function retryNativeAccordions(){
+  if(nativeRetry!==null)clearTimeout(nativeRetry);
+  [80,400].forEach((ms,i)=>setTimeout(()=>{
+   const root=scope();if(root)restoreNativeAccordions(root);
+  },ms));
+  nativeRetry=setTimeout(()=>{
+   nativeRetry=null;
+   const root=scope();if(root)restoreNativeAccordions(root);
+  },1100);
+ }
+
  const scope=()=>{
   // Match the semantic Prices section across translated Elementor template IDs.
   const heading=document.getElementById('prices');
@@ -91,6 +128,7 @@
  function hydrate() {
   const root=scope();
   if(!root)return;
+  restoreNativeAccordions(root);
   positionRateActions(root);
   mountHeaderActions(root);
   syncSelection(root);
@@ -126,11 +164,14 @@
  // JetEngine and JetSmartFilters dispatch listing events through jQuery.
  if(window.jQuery)window.jQuery(document).on(
   'jet-filter-content-rendered.mad4bRateUI jet-engine/listing-grid/after-lazy-load.mad4bRateUI jet-engine/listing/ajax-get-listing/done.mad4bRateUI',
-  schedule
+  ()=>{
+   schedule();
+   retryNativeAccordions();
+  }
  );
  document.addEventListener('DOMContentLoaded',schedule,{once:true});
  window.addEventListener('load',schedule,{once:true});
- window.MAD4BRateActionLifecycleV2={version:'2.0.0',refresh:schedule,
-  inspect:()=>({hydrations:processed,rateActions:scope()?.querySelectorAll(actionSelector).length||0})};
+ window.MAD4BRateActionLifecycleV2={version:'2.1.0',refresh:schedule,
+  inspect:()=>({hydrations:processed,accordionRepairs,rateActions:scope()?.querySelectorAll(actionSelector).length||0})};
  schedule();
 })();

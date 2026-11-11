@@ -1042,11 +1042,11 @@
       "sha256": "501689183d16f7229cc5215ef8bcf981915fc75c55c6f2ac4aa9edf1f33f910e"
     },
     {
-      "bytes": 6028,
-      "git_blob_sha1": "71487710efeb6074db191a8e1d65da11dabb2ab7",
+      "bytes": 7795,
+      "git_blob_sha1": "766f8f0bd87e274407c12be9de32279e2591eff0",
       "path": "wp-content/plugins/mad4b-platform/legacy-mu-tree/assets/mad4b-source-rate-actions-20261106.js",
       "scope": "mad4b-platform",
-      "sha256": "411e511b5e6c6fa0a005c2fcfc03b49dfc3edb3d4c67f012ff6b9a96b8b044ca"
+      "sha256": "f873784a1b798e684bbd0226cfe86d14f8a2e02a8077c1e8487996efe1de0e3e"
     },
     {
       "bytes": 5320,
@@ -3682,8 +3682,20 @@
     }
   ],
   "grant_issued": false,
+  "last_reconciled_utc": "2026-11-11T01:55:43.322032+00:00",
   "original313_certified": false,
   "original318_v82_not_automatically_substituted": true,
+  "post_capture_amendments": [
+    {
+      "auto_publish": false,
+      "change_type": "concurrent_live_source_update",
+      "new_sha256": "f873784a1b798e684bbd0226cfe86d14f8a2e02a8077c1e8487996efe1de0e3e",
+      "old_sha256": "411e511b5e6c6fa0a005c2fcfc03b49dfc3edb3d4c67f012ff6b9a96b8b044ca",
+      "path": "wp-content/plugins/mad4b-platform/legacy-mu-tree/assets/mad4b-source-rate-actions-20261106.js",
+      "related_feature": "JetAccordion native handler after AJAX/lazy listing",
+      "runtime_verification": "not_performed"
+    }
+  ],
   "root_code_types": [
     "php",
     "js",

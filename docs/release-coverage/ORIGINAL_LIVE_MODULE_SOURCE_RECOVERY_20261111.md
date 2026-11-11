@@ -33,3 +33,16 @@ The source snapshot also contains legacy/staging-specific gates and hostnames as
 ### Original byte-preserving lint caveat
 
 Several historical files use CRLF and intentional whitespace suffixes. The ordinary Git whitespace checker detects these preexisting source bytes. Altering them would break the exact live SHA-256 proof. For this snapshot only, ordinary tracked tool/manifest/README files were checked under the normal whitespace policy, while the complete snapshot was checked once with temporary command-local Git settings disabling end-of-line whitespace warnings. No global Git configuration or live source file was changed. The source verifier is the authoritative exact-content acceptance of the snapshot.
+
+## Later live concurrent change: Rate Accordion handler
+
+At source-reconciliation readback, the already-running Tours.dev Staging file at
+wp-content/plugins/mad4b-platform/legacy-mu-tree/assets/mad4b-source-rate-actions-20261106.js
+had changed after the initial Git snapshot:
+
+- Prior captured SHA-256: 411e511b5e6c6fa0a005c2fcfc03b49dfc3edb3d4c67f012ff6b9a96b8b044ca (Rate UI 2.0.0)
+- Newly observed live SHA-256: f873784a1b798e684bbd0226cfe86d14f8a2e02a8077c1e8487996efe1de0e3e (Rate UI 2.1.0)
+
+The exact new live bytes were read back and incorporated into Git with compare-and-swap source preimage checking and an explicit post-capture amendment in the SHA manifest. No JavaScript changes were written to the running site by this reconciliation.
+
+The new code restores the *native* JetAccordion handler for late-added JetEngine listing widgets using Elementor's own widget-ready event and bounded retries, without a global MutationObserver. An offline Node DOM-stub test checked three cases: absent handler, existing native handler and missing jQuery; it detected no duplicate vendor handler and required retry delays 80/400/1100 ms. The real-browser mobile/AJAX/CSS/lazy-render acceptance remains pending.
