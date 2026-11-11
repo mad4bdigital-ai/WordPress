@@ -64,6 +64,33 @@ function mad4b_unified_date_request_v1(): array {
     return ['status'=>'absent'];
 }
 
+
+/**
+ * Apply date eligibility as an AND constraint to existing native post filters.
+ *
+ * An upstream post__in=[0] is a deny-all sentinel, not an empty list. Never
+ * broaden this into date-matching IDs. Empty/missing post__in means no earlier
+ * explicit post selection and is allowed to be narrowed by travel date.
+ */
+function mad4b_unified_date_intersect_post_ids_v1(array $matching,array $args):array {
+    $ids=array_values(array_unique(array_filter(array_map(
+        static fn($value):int => is_scalar($value) && is_numeric($value) && (int)$value>0 ? (int)$value : 0,
+        $matching
+    ))));
+    if(array_key_exists('post__in',$args)){
+        $raw=(array)$args['post__in'];
+        if($raw){
+            $existing=array_values(array_unique(array_filter(array_map(
+                static fn($value):int => is_scalar($value) && is_numeric($value) && (int)$value>0 ? (int)$value : 0,
+                $raw
+            ))));
+            if(!$existing)return [0];
+            $ids=array_values(array_intersect($ids,$existing));
+        }
+    }
+    return $ids?:[0];
+}
+
 /** JSF and JetEngine retain their own query providers. We narrow only their tour archive listing. */
 add_filter('jet-engine/query-builder/types/posts-query/args', static function($args,$query) {
     if (!mad4b_unified_date_enabled_v1() || !is_array($args)) return $args;
@@ -88,9 +115,7 @@ add_filter('jet-engine/query-builder/types/posts-query/args', static function($a
             )));
         }
     }
-    $existing=array_values(array_filter(array_map('absint',(array)($args['post__in']??[]))));
-    if ($existing) $matching=array_values(array_intersect($matching,$existing));
-    $args['post__in']=$matching ?: [0];
+    $args['post__in']=mad4b_unified_date_intersect_post_ids_v1($matching,$args);
     return $args;
 }, 65, 2);
 
@@ -113,9 +138,7 @@ add_filter('jet-search/ajax-search/query-args',static function($args,$handler){
     $parsed=MAD4B_Unified_Date_Intent_V1::normalize($data);
     if(!is_array($parsed) || is_wp_error($parsed)){$args['post__in']=[0];return $args;}
     $ids=MAD4B_Unified_Date_Intent_V1::matching_tour_ids($parsed);
-    $existing=array_values(array_filter(array_map('absint',(array)($args['post__in']??[]))));
-    if($existing)$ids=array_values(array_intersect($ids,$existing));
-    $args['post__in']=$ids?:[0];
+    $args['post__in']=mad4b_unified_date_intersect_post_ids_v1($ids,$args);
     return $args;
 },75,2);
 
@@ -137,6 +160,36 @@ function mad4b_unified_tour_rates_for_date_v1(int $tourId,array $intent):array {
     }
     return array_values(array_unique($result));
 }
+/**
+ * Tour Rate Date Intent read-only projection.
+ * Preserves JetEngine query 310, existing package/season constraints and
+ * the underlying native JetSmartFilters Date Range widget.
+ * UI writes a canonical URL; this server filter is the source of truth.
+ */
+add_filter('jet-engine/query-builder/types/posts-query/args', static function($args,$query){
+    if(!mad4b_unified_date_enabled_v1() || !is_array($args) || !is_object($query)) return $args;
+    if((int)($query->id??0)!==310
+       || !in_array((string)($query->query_id??''),['tour_rates','tour_rates_accordion'],true))return $args;
+    if(is_admin() && !wp_doing_ajax())return $args;
+    $request=mad4b_unified_date_request_v1();
+    if(($request['status']??'absent')==='absent')return $args;
+    if(($request['status']??'')!=='valid'){
+        $args['post__in']=[0];
+        return $args;
+    }
+    $tourId=0;
+    if(function_exists('shared_product_verified_presentation_tour_id'))
+        $tourId=(int)shared_product_verified_presentation_tour_id();
+    if(!$tourId && !wp_doing_ajax() && is_singular('tours-and-activities'))
+        $tourId=(int)get_queried_object_id();
+    if(!$tourId || get_post_type($tourId)!=='tours-and-activities'){
+        $args['post__in']=[0];
+        return $args;
+    }
+    $matching=mad4b_unified_tour_rates_for_date_v1($tourId,$request['intent']);
+    $args['post__in']=mad4b_unified_date_intersect_post_ids_v1($matching,$args);
+    return $args;
+},85,2);
 add_action('init', static function():void {
     add_shortcode('mad4b_unified_date_picker', static function($attrs):string {
         if (!mad4b_unified_date_enabled_v1()) return '';
@@ -158,8 +211,8 @@ add_action('wp_enqueue_scripts', static function():void {
     }
     wp_enqueue_script('flatpickr');
     wp_enqueue_style('flatpickr');
-    wp_enqueue_style('mad4b-unified-date-v1',plugins_url('assets/unified-date-v1.css',__FILE__),['flatpickr'],'0.2.4');
-    wp_enqueue_script('mad4b-unified-date-v1',plugins_url('assets/unified-date-v1.js',__FILE__),['flatpickr'],'0.2.4',true);
+    wp_enqueue_style('mad4b-unified-date-v1',plugins_url('assets/unified-date-v1.css',__FILE__),['flatpickr'],'0.2.5');
+    wp_enqueue_script('mad4b-unified-date-v1',plugins_url('assets/unified-date-v1.js',__FILE__),['flatpickr'],'0.2.5',true);
     $data=[
         'archiveUrl'=>home_url('/tours-and-activities/'),
         'policy'=>MAD4B_Unified_Date_Intent_V1::settings(),

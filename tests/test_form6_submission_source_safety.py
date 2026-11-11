@@ -23,7 +23,9 @@ class Form6Readiness(unittest.TestCase):
    self.assertIn(term,s)
  def test_ui_only_never_marks_booking_confirmed(self):
   s=SRC.read_text()
-  self.assertIn("Quote request only. No payment is due and no booking is confirmed.",s)
+  self.assertIn("You won’t be charged when you submit this request.",s)
+  self.assertIn("This is not a confirmed booking.",s)
+  self.assertIn("if (priceNote) priceNote.remove()",s)
   self.assertIn("Payment does not confirm the trip.",s)
   self.assertIn("form.dataset.mad4bSubmissionMode = mode",s)
   self.assertNotIn('window.location.href=',s)

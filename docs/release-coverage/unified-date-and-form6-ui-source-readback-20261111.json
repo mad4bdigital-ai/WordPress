@@ -1,0 +1,34 @@
+{
+  "candidate_commit_before": "ad5561236870da66b11ff7e4a0f00e9d17bc964b",
+  "contract": "mad4b.unified-date-and-form6-visible-ui-source-readback.v1",
+  "global_release_authorized": false,
+  "live_company_site_modified": false,
+  "php_date_query_intersection_fail_closed": true,
+  "server_quote_only_default_preserved": true,
+  "sources": [
+    {
+      "current_sha256": "8954602b5830bc194c5c662a7601fbbba8e285562813ffbbf295748327eba243",
+      "group": "commerce",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v1.js",
+      "prior_sha256": "aed38ab13bd446ea359b8947193c6ec6a44f1b2c9e8184acc644359f14f9c51c"
+    },
+    {
+      "current_sha256": "cfc60d192978e119615cc240c696107167ecba609d59209498364020ad3af74f",
+      "group": "commerce",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v1.css",
+      "prior_sha256": "f7b3a547a8c56464c6cb191b61ea3ae5763253d674d1689ede61b2d9767fdcae"
+    },
+    {
+      "current_sha256": "427ef7f8fdd4a5a5fb82f3f741c1959101d8640acab0e26f90264410e3aabf2d",
+      "group": "platform",
+      "path": "wp-content/plugins/mad4b-platform/legacy-mu-tree/assets/mad4b-tour-form6-submission-mode-v1.js",
+      "prior_sha256": "a9dd9dc5694cb22c3fbcc153ccc5770dc2f8bb2c7c8476d56918b7ce2105de74"
+    },
+    {
+      "current_sha256": "a1c336d07985ab3652db7a0be18871d47714d6f49e225e77d4caf63d32b8c15d",
+      "group": "mu",
+      "path": "wp-content/mu-plugins/mad4b-tour-form6-submission-mode-v1.php",
+      "prior_sha256": "ac7342756433177d6a5f80bdb08d79bdbfe90f1dfd58c2493c0effb4889a76fd"
+    }
+  ]
+}

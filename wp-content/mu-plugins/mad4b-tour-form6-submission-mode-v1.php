@@ -15,7 +15,7 @@ final class MAD4B_Tour_Form6_Submission_Mode_V1 {
   $all=[
    'en'=>[
     'quote_button'=>'Request a quote',
-    'quote_note'=>'Quote request only. No payment is due and no booking is confirmed.',
+    'quote_note'=>'You won’t be charged when you submit this request. We’ll confirm availability, the final price and any required deposit before you decide to proceed. This is not a confirmed booking.',
     'quote_success'=>'Your quote request has been received. No payment was taken. Our team will review availability and the final trip price before confirming any booking.',
     'advance_button'=>'Submit request & continue to secure advance checkout',
     'advance_note'=>'An advance is collected at secure checkout only after our server approves the request. Paying an advance does not confirm the trip or final price.',
@@ -24,7 +24,7 @@ final class MAD4B_Tour_Form6_Submission_Mode_V1 {
    ],
    'ar'=>[
     'quote_button'=>'اطلب عرض سعر',
-    'quote_note'=>'طلب عرض سعر فقط، دون دفع أو تأكيد للحجز.',
+    'quote_note'=>'لن يُخصم منك أي مبلغ عند إرسال هذا الطلب. سنؤكد التوافر والسعر النهائي وأي عربون مطلوب قبل أن تقرر المتابعة. إرسال الطلب لا يؤكد الحجز.',
     'quote_success'=>'استلمنا طلب عرض السعر. لم يتم تحصيل أي مبلغ. سيتحقق فريقنا من التوافر والسعر النهائي قبل تأكيد الحجز.',
     'advance_button'=>'أرسل الطلب وتابع إلى دفع العربون الآمن',
     'advance_note'=>'يُحصّل العربون في صفحة الدفع فقط بعد اعتماد الطلب من الخادم. دفع العربون لا يؤكد الرحلة أو السعر النهائي.',
@@ -33,7 +33,7 @@ final class MAD4B_Tour_Form6_Submission_Mode_V1 {
    ],
    'es'=>[
     'quote_button'=>'Solicitar presupuesto',
-    'quote_note'=>'Solo solicitud de presupuesto. No se realiza ningún pago ni se confirma la reserva.',
+    'quote_note'=>'No se te cobrará al enviar esta solicitud. Confirmaremos la disponibilidad, el precio final y cualquier anticipo requerido antes de que decidas continuar. Aún no es una reserva confirmada.',
     'quote_success'=>'Hemos recibido tu solicitud de presupuesto. No se ha cobrado ningún importe. Nuestro equipo revisará la disponibilidad y el precio final.',
     'advance_button'=>'Enviar solicitud y continuar al pago seguro del anticipo',
     'advance_note'=>'El anticipo se cobra en la página segura solo tras validar la solicitud. El pago no confirma el viaje ni su precio final.',
@@ -41,7 +41,7 @@ final class MAD4B_Tour_Form6_Submission_Mode_V1 {
     'advance_fallback'=>'Solicitud recibida, pero el pago del anticipo no está disponible. No se ha cobrado nada. Nuestro equipo te contactará.'
    ],
    'fr'=>[
-    'quote_button'=>'Demander un devis','quote_note'=>'Demande de devis sans paiement ni confirmation de réservation.',
+    'quote_button'=>'Demander un devis','quote_note'=>'Aucun paiement ne sera prélevé lors de l’envoi de cette demande. Nous confirmerons la disponibilité, le prix final et tout acompte requis avant votre décision. La réservation n’est pas confirmée.',
     'quote_success'=>'Demande de devis reçue. Aucun paiement effectué. Notre équipe vérifiera la disponibilité et le tarif final.',
     'advance_button'=>'Envoyer la demande et passer au paiement sécurisé de l’acompte',
     'advance_note'=>'L’acompte est prélevé après validation sur la page sécurisée. Il ne confirme ni le voyage ni le prix final.',
@@ -49,7 +49,7 @@ final class MAD4B_Tour_Form6_Submission_Mode_V1 {
     'advance_fallback'=>'Demande reçue, mais l’acompte est indisponible. Aucun paiement prélevé. Notre équipe vous contactera.'
    ],
    'de'=>[
-    'quote_button'=>'Angebot anfordern','quote_note'=>'Nur eine Angebotsanfrage. Keine Zahlung und keine Buchungsbestätigung.',
+    'quote_button'=>'Angebot anfordern','quote_note'=>'Beim Absenden dieser Anfrage wird nichts berechnet. Wir bestätigen Verfügbarkeit, Endpreis und eine mögliche Anzahlung, bevor Sie fortfahren. Die Buchung ist noch nicht bestätigt.',
     'quote_success'=>'Anfrage eingegangen. Es wurde nichts berechnet. Unser Team prüft Verfügbarkeit und Endpreis.',
     'advance_button'=>'Anfrage senden und zur sicheren Anzahlungsseite wechseln',
     'advance_note'=>'Eine Anzahlung wird erst nach Serverprüfung auf der sicheren Zahlungsseite erhoben. Keine Buchungsbestätigung.',
@@ -57,7 +57,7 @@ final class MAD4B_Tour_Form6_Submission_Mode_V1 {
     'advance_fallback'=>'Anfrage eingegangen, Anzahlung derzeit nicht möglich. Keine Zahlung erfolgt. Wir melden uns.'
    ],
    'it'=>[
-    'quote_button'=>'Richiedi preventivo','quote_note'=>'Solo richiesta di preventivo. Nessun pagamento o conferma di prenotazione.',
+    'quote_button'=>'Richiedi preventivo','quote_note'=>'Non ti verrà addebitato nulla all’invio della richiesta. Confermeremo disponibilità, prezzo finale ed eventuale acconto prima che tu decida di procedere. La prenotazione non è ancora confermata.',
     'quote_success'=>'Richiesta ricevuta. Nessun importo addebitato. Verificheremo disponibilità e prezzo finale.',
     'advance_button'=>'Invia richiesta e vai al pagamento sicuro dell’acconto',
     'advance_note'=>'L’acconto viene riscosso alla cassa sicura solo dopo la verifica. Non conferma il viaggio né il prezzo finale.',

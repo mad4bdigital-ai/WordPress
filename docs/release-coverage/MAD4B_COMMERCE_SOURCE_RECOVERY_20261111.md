@@ -29,3 +29,7 @@ The live-date filter changed during source capture: unified-date-v1.js now uses 
 Commerce source capture is not a WordPress activation, a Rate Generator runtime QA pass, a WooCommerce checkout or Stripe test, an Original 305/313 host grant, or a valid Original318 code release. Do not copy these files into Wayfatours or other companies until pricing policies, persisted company overrides, supplier pricing and booking behavior have been reconciled and tested through the authorized publisher and independent readback.
 
 **Global release state: HOLD.**
+
+## Post-capture date filter acceptance exception
+
+One Commerce PHP source (modules/presentation/unified-date-presentation-v1.php) now intentionally differs from live by exactly one reviewed and fingerprinted semantic patch: the date/Rate Query 310 filter uses a shared fail-closed intersection function that never broadens an upstream JetEngine/JetSearch post__in=[0]. The authorized source SHA and candidate SHA are pinned separately in the Commerce manifest's single approved_candidate_overlays row. 268 remaining Commerce code paths continue to match the current live source byte-for-byte. Source recovery is not a runtime release.

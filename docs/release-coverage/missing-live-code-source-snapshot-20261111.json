@@ -1119,11 +1119,11 @@
       "sha256": "e09837bcb374e8ba26f5cfe17cf2b43f96f3bb026aaa1123cc21b23189d293d9"
     },
     {
-      "bytes": 6297,
-      "git_blob_sha1": "4a0eb2b373f91b444fbbebbf633a4660f95be8d3",
+      "bytes": 6547,
+      "git_blob_sha1": "e3853da6530f3341c95ed5166471aa997f4e891a",
       "path": "wp-content/plugins/mad4b-platform/legacy-mu-tree/assets/mad4b-tour-form6-submission-mode-v1.js",
       "scope": "mad4b-platform",
-      "sha256": "a9dd9dc5694cb22c3fbcc153ccc5770dc2f8bb2c7c8476d56918b7ce2105de74"
+      "sha256": "427ef7f8fdd4a5a5fb82f3f741c1959101d8640acab0e26f90264410e3aabf2d"
     },
     {
       "bytes": 1244,
@@ -3738,7 +3738,7 @@
     }
   ],
   "grant_issued": false,
-  "last_reconciled_utc": "2026-11-11T03:06:19.694545+00:00",
+  "last_reconciled_utc": "2026-11-11T03:43:08.465361+00:00",
   "original313_certified": false,
   "original318_v82_not_automatically_substituted": true,
   "post_capture_amendments": [
@@ -3848,6 +3848,14 @@
       "path": "wp-content/plugins/mad4b-platform/legacy-mu-tree/assets/mad4b-passport-country-ajax-v1.css",
       "runtime_validation": "not_performed",
       "source_only": true
+    },
+    {
+      "change_type": "live_form6_or_unified_date_ui_semantic_readback",
+      "new_sha256": "427ef7f8fdd4a5a5fb82f3f741c1959101d8640acab0e26f90264410e3aabf2d",
+      "old_sha256": "a9dd9dc5694cb22c3fbcc153ccc5770dc2f8bb2c7c8476d56918b7ce2105de74",
+      "path": "wp-content/plugins/mad4b-platform/legacy-mu-tree/assets/mad4b-tour-form6-submission-mode-v1.js",
+      "payment_activation_authorized": false,
+      "site_source_mutation_performed": false
     }
   ],
   "root_code_types": [

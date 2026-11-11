@@ -8,7 +8,7 @@
   if (!cfg || !Number.isInteger(Number(cfg.tourId)) || !cfg.endpoint) return;
   const defaults = {
     quote_button:'Request a quote',
-    quote_note:'Quote request only. No payment is due and no booking is confirmed.',
+    quote_note:'You won’t be charged when you submit this request. We’ll confirm availability, the final price and any required deposit before you decide to proceed. This is not a confirmed booking.',
     advance_button:'Submit request & continue to secure advance checkout',
     advance_note:'A non-final advance is collected at secure checkout only after server verification. Payment does not confirm the trip.'
   };
@@ -65,8 +65,10 @@
     }
     const explanation=form.querySelector('.mad4b-form6-mode-explanation');
     if (explanation) explanation.textContent = note;
+    // The quote card already carries its own estimate caption.
+    // One submission notice only: below the button, not twice in the form.
     const priceNote=form.querySelector('.shared-fluent-server-quote .shared-price-note');
-    if (priceNote) priceNote.textContent = note;
+    if (priceNote) priceNote.remove();
   }
   function attach(form) {
     if (connectedForms.has(form)) return;

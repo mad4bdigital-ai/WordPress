@@ -1,4 +1,17 @@
 {
+  "approved_candidate_overlays": [
+    {
+      "booking_authorized": false,
+      "candidate_blob_sha1": "6d137d0f229ee4da678e0def833a27c3bc541b56",
+      "candidate_sha256": "d1bce4eb9d98afa7ad4818dbef4279ba5192c40b36a5a32c45a0149dea3a471c",
+      "deployment_authorized": false,
+      "live_sha256": "99872f6c060c750718e3162092a51fb79f0cfa9c18819e9ad974acb03c97c9cb",
+      "offline_php_cases_passed": 15,
+      "original_snapshot_sha256": "2fc598790080b5369567c9aef70efe61b9edc9ced7a20f8605dcea38338663b2",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/unified-date-presentation-v1.php",
+      "policy": "read_only_and_intersection_fail_closed"
+    }
+  ],
   "captured_utc": "2026-11-11T03:09:48.595451+00:00",
   "checkout_ready_authorized": false,
   "commerce_runtime_activated": false,
@@ -1729,18 +1742,18 @@
       "sha256": "3f39554cd2d10e23d6a2bcb001546db932b1e7130794a24ec7778701863f0129"
     },
     {
-      "bytes": 16649,
-      "git_blob_sha1": "04be301e1cfa02d049ee6779dcdd1f72280e5933",
+      "bytes": 19743,
+      "git_blob_sha1": "c6663db8de72b3a66a9cb71421f2fc1b66cb83ab",
       "original_mode": "0644",
       "path": "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v1.css",
-      "sha256": "f7b3a547a8c56464c6cb191b61ea3ae5763253d674d1689ede61b2d9767fdcae"
+      "sha256": "cfc60d192978e119615cc240c696107167ecba609d59209498364020ad3af74f"
     },
     {
-      "bytes": 17138,
-      "git_blob_sha1": "ad9f2e520fb1b6263795065e9d5ec4c8b17d113c",
+      "bytes": 20178,
+      "git_blob_sha1": "5914b16dd68e318734eed081586f88414f9ee0f7",
       "original_mode": "0644",
       "path": "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v1.js",
-      "sha256": "aed38ab13bd446ea359b8947193c6ec6a44f1b2c9e8184acc644359f14f9c51c"
+      "sha256": "8954602b5830bc194c5c662a7601fbbba8e285562813ffbbf295748327eba243"
     },
     {
       "bytes": 10226,
@@ -1855,11 +1868,11 @@
       "sha256": "92f5e89524bf21b18258020eb9e436c46caf0a1a1a16ad5294ac35c5653590e1"
     },
     {
-      "bytes": 9633,
-      "git_blob_sha1": "cb8224e367092de82cb1e6c08e43b7c67970aae9",
+      "bytes": 11230,
+      "git_blob_sha1": "a25bf1c74e3fb694ca5cc5c792384476d9dc543f",
       "original_mode": "0644",
       "path": "wp-content/plugins/mad4b-commerce/modules/presentation/unified-date-presentation-v1.php",
-      "sha256": "2fc598790080b5369567c9aef70efe61b9edc9ced7a20f8605dcea38338663b2"
+      "sha256": "99872f6c060c750718e3162092a51fb79f0cfa9c18819e9ad974acb03c97c9cb"
     },
     {
       "bytes": 1301,
@@ -1905,7 +1918,7 @@
     }
   ],
   "full_platform_release_certified": false,
-  "last_reconciled_utc": "2026-11-11T03:11:12.576939+00:00",
+  "last_reconciled_utc": "2026-11-11T03:43:08.464721+00:00",
   "payment_gateway_activated": false,
   "post_capture_amendments": [
     {
@@ -1917,6 +1930,22 @@
       "current_sha256": "2fc598790080b5369567c9aef70efe61b9edc9ced7a20f8605dcea38338663b2",
       "path": "wp-content/plugins/mad4b-commerce/modules/presentation/unified-date-presentation-v1.php",
       "prior_sha256": "f21a3702e539505281484266da29370acb8d0b7412dc4702c31ae363d13aa453"
+    },
+    {
+      "change_type": "live_form6_or_unified_date_ui_semantic_readback",
+      "new_sha256": "8954602b5830bc194c5c662a7601fbbba8e285562813ffbbf295748327eba243",
+      "old_sha256": "aed38ab13bd446ea359b8947193c6ec6a44f1b2c9e8184acc644359f14f9c51c",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v1.js",
+      "payment_activation_authorized": false,
+      "site_source_mutation_performed": false
+    },
+    {
+      "change_type": "live_form6_or_unified_date_ui_semantic_readback",
+      "new_sha256": "cfc60d192978e119615cc240c696107167ecba609d59209498364020ad3af74f",
+      "old_sha256": "f7b3a547a8c56464c6cb191b61ea3ae5763253d674d1689ede61b2d9767fdcae",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v1.css",
+      "payment_activation_authorized": false,
+      "site_source_mutation_performed": false
     }
   ],
   "requires_separate_company_specific_data_reconciliation": true,

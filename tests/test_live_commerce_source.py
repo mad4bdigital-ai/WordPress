@@ -30,8 +30,17 @@ class CommerceSource(unittest.TestCase):
   self.assertIn('initializedRoots.has(root)',js)
   self.assertIn('initializedRoots.add(root)',js)
   self.assertIn('!instances[i].root.isConnected',js)
-  self.assertIn("'0.2.4'",php)
-  self.assertNotIn("'0.2.3'",php)
+  self.assertIn("'0.2.5'",php)
+  self.assertNotIn("'0.2.4'",php)
+ def test_only_reviewed_date_310_semantic_overlay_is_allowed(self):
+  from copy import deepcopy
+  self.assertEqual(len(M.get('approved_candidate_overlays') or []),1)
+  patch=M['approved_candidate_overlays'][0]
+  self.assertEqual(patch['offline_php_cases_passed'],15)
+  self.assertIs(patch['deployment_authorized'],False)
+  forged=deepcopy(M)
+  forged['approved_candidate_overlays'][0]['candidate_sha256']='0'*64
+  with self.assertRaises(m.Blocked):m.verify(forged)
  def test_rate_widget_loader_stored_in_commerce_source(self):
   rel=ROOT/m.ROOT_NAME/'legacy-mu-tree/shared-product-core/adapters/rate-actions-styles.php'
   s=rel.read_text()

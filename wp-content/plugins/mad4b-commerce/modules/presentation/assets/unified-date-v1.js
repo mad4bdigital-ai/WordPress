@@ -26,7 +26,9 @@
     (Boolean(state.to) && state.to >= addDays(state.from,cfg.policy.min_flex_gap_days || 0) &&
       (new Date(state.to)-new Date(state.from))/86400000 <= cfg.policy.max_flex_days));
   function params(url) {
-    ['mad4b_date_mode','mad4b_date_from','mad4b_date_to','travel_date'].forEach(k=>url.searchParams.delete(k));
+    ['mad4b_date_mode','mad4b_date_from','mad4b_date_to','travel_date',
+      '_meta_query_advanced_date__any__tour_rate_start_date__tour_rate_end_date|date']
+      .forEach(k=>url.searchParams.delete(k));
     if (valid()) {
       url.searchParams.set('mad4b_date_mode',state.mode);
       url.searchParams.set('mad4b_date_from',state.from);
@@ -167,12 +169,12 @@
     }));
     q('.mad4b-ud__clear').addEventListener('click',()=>{
       state.from='';state.to='';initCalendar();sync();syncLegacy('clear');
-      if(context==='archive')window.location.assign(params(new URL(window.location.href)).toString());
+      if(context==='archive'||context==='rates')window.location.assign(params(new URL(window.location.href)).toString());
     });
     q('.mad4b-ud__apply').addEventListener('click',()=>{
       if(!valid())return;
       syncLegacy('apply');
-      if(context==='archive')window.location.assign(params(new URL(window.location.href)).toString());
+      if(context==='archive'||context==='rates')window.location.assign(params(new URL(window.location.href)).toString());
       else close();
     });
     document.addEventListener('keydown',e=>{if(e.key==='Escape'&&opened)close();});
@@ -230,10 +232,62 @@
       }catch(e){/* Ignore malformed third-party links. */}
     });
   }
+  // The original JSF #46259 widget remains mounted for query/provider
+  // compatibility. Only its *visible controls* are replaced; dates are
+  // carried in the verified Date Intent URL and filtered server-side.
+  const rateDateInitialized=new WeakSet();
+  function rateDateFields() {
+    if(cfg.context!=='single')return;
+    const native=document.querySelector(
+      '.jet-date-range[data-filter-id="46259"][data-query-id="tour_rates_accordion"],'+
+      '.jet-date-range[data-filter-id="46259"][data-query-id="tour_rates"]'
+    );
+    if(!native)return;
+    const widget=native.closest('.elementor-widget-jet-smart-filters-date-range');
+    if(!widget||rateDateInitialized.has(widget))return;
+    const host=widget.querySelector('.elementor-widget-container');
+    if(!host)return;
+    const root=document.createElement('div');
+    root.className='mad4b-ud-root mad4b-ud-rate-select';
+    root.dataset.mad4bDateContext='rates';
+    const note=document.createElement('p');
+    note.className='mad4b-ud-rate-note';
+    const lang=String(document.documentElement.lang||'en').slice(0,2);
+    const message={
+      en:['Rate periods only · Departure and availability are not confirmed',
+          'Select travel dates to narrow the available rate periods'],
+      ar:['فترات أسعار فقط · موعد المغادرة والتوافر غير مؤكدين',
+          'اختر تاريخ السفر لعرض فترات الأسعار المناسبة'],
+      es:['Períodos de tarifa · Salidas y disponibilidad sin confirmar',
+          'Selecciona fechas para filtrar los períodos de tarifa'],
+      fr:['Périodes tarifaires · Départs et disponibilité non confirmés',
+          'Choisissez des dates pour filtrer les tarifs'],
+      de:['Tarifzeiträume · Abfahrt und Verfügbarkeit nicht bestätigt',
+          'Reisedaten auswählen, um Tarifzeiträume zu filtern'],
+      it:['Periodi tariffari · Partenze e disponibilità non confermate',
+          'Scegli le date per filtrare i periodi tariffari']
+    };
+    note.textContent=(message[lang]||message.en)[valid()?0:1];
+    host.insertBefore(root,host.firstChild);
+    host.appendChild(note);
+    picker(root,'rates');
+    widget.classList.add('mad4b-ud-rate-filter-ready');
+    rateDateInitialized.add(widget);
+    const group=widget.parentElement;
+    const first=group?.querySelector('.elementor-widget-jet-smart-filters-select');
+    if(group && first && first!==widget)group.insertBefore(widget,first);
+    document.querySelectorAll('.mad4b-ud-rate-context').forEach(el=>el.remove());
+  }
   // Date inheritance in the native Rate Accordion: visibility only, never
   // a price adjustment or booking/Last Minute eligibility receipt.
   function rates() {
     if(cfg.context!=='single'||cfg.request?.status!=='valid')return;
+    // The read-only date note is already inside the unified Rates field.
+    // Avoid an additional banner (and MutationObserver replaceChildren loops).
+    if(document.querySelector('.mad4b-ud-rate-filter-ready')){
+      document.querySelectorAll('.mad4b-ud-rate-context').forEach(el=>el.remove());
+      return;
+    }
     const listing=document.querySelector('#tour_rates_accordion,#tour_rates');
     const priceHeading=document.getElementById('prices');
     if(!listing&&!priceHeading)return;
@@ -308,7 +362,7 @@
     document.querySelectorAll('.mad4b-ud-root[data-mad4b-date-context="home"]').forEach(el=>picker(el,'home'));
     if(cfg.context==='home')home();
     if(cfg.context==='archive'){archive();preserveTourLinks();}
-    if(cfg.context==='single'){fluent();rates();}
+    if(cfg.context==='single'){rateDateFields();fluent();rates();}
   }
   connectNativeJetSearch();
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount,{once:true});
