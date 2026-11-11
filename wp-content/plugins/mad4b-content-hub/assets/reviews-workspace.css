@@ -1,0 +1,58 @@
+/* Reviews Workspace — matches the MAD4B Pricing / Import workspace language. */
+.mad4b-reviews.mad4b-review-workspace{--rv-text:#254b3d;--rv-muted:#5a7267;--rv-line:#dce7df;--rv-soft:#f7faf8;--rv-blue:#137565;--rv-blue-dark:#126250;--rv-radius:10px;max-width:1560px;margin:16px 20px 45px 2px;color:#284d40}
+.mad4b-review-workspace .mad4b-rv-heading{align-items:center;padding:2px 1px 6px}
+.mad4b-review-workspace .mad4b-rv-heading h1{color:#194d40;font-size:26px}
+.mad4b-review-workspace .mad4b-rv-kicker{color:#558577;letter-spacing:.12em;font-size:11px}
+.mad4b-review-workspace .mad4b-rv-heading p{color:#60776b;font-size:13px}
+.mad4b-review-workspace .mad4b-rv-topmeta{white-space:normal;font-size:11px}
+.mad4b-rv-workspace-shell{background:white;border:1px solid #d9e7e1;border-radius:11px;margin:8px 0 20px;box-shadow:0 1px 3px #1d3c310f;padding:12px 14px 0;max-width:100%}
+.mad4b-rv-workspace-shell-head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-bottom:10px;flex-wrap:wrap}
+.mad4b-rv-workspace-shell-head>div{display:grid;gap:3px}
+.mad4b-rv-workspace-shell-head strong{font-size:15px;color:#205448}
+.mad4b-rv-workspace-shell-head small{font-size:11px;color:#597a6d}
+.mad4b-rv-workspace-shell-head>a{font-size:12px;font-weight:650;color:#157260}
+.mad4b-rv-workspace-nav{display:flex;gap:3px;overflow-x:auto;border-top:1px solid #e3ece6;scrollbar-width:thin}
+.mad4b-rv-workspace-tab{display:inline-flex;gap:7px;align-items:center;min-height:43px;white-space:nowrap;padding:11px 13px 9px;color:#34584f!important;font-size:12px;font-weight:650;border-bottom:3px solid transparent;border-radius:5px 5px 0 0;text-decoration:none!important}
+.mad4b-rv-workspace-tab .dashicons{font-size:16px;width:17px;height:17px}
+.mad4b-rv-workspace-tab:hover{background:#f1f7f4}
+.mad4b-rv-workspace-tab.is-current{color:#0a6052!important;border-bottom-color:#137565;background:#edf7f1}
+.mad4b-review-workspace .mad4b-rv-metric{border-radius:10px;box-shadow:none;padding:15px}
+.mad4b-review-workspace .mad4b-rv-metric strong{color:#22594b}
+.mad4b-review-workspace .mad4b-rv-metric.is-pending>.dashicons{background:#e6f4ec;color:#168568}
+.mad4b-review-workspace .mad4b-rv-filters,.mad4b-review-workspace .mad4b-rv-list{border-radius:10px;box-shadow:none}
+.mad4b-review-workspace .mad4b-rv-tabs{display:none}
+.mad4b-intake-detail .mad4b-intake-status{font-size:11px;font-weight:700;color:#235e49;background:#e8f4ec;border-radius:20px;padding:7px 12px}
+.mad4b-intake-breadcrumb{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 16px;font-size:12px;color:#60766b}
+.mad4b-intake-breadcrumb a{color:#137565;font-weight:600}
+.mad4b-intake-review-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,335px);gap:15px;align-items:start}
+.mad4b-intake-review-main,.mad4b-intake-review-aside{display:grid;gap:14px}
+.mad4b-intake-review-panel{border:1px solid #d9e7e0;background:white;border-radius:10px;padding:18px;box-shadow:0 1px 2px #1d3c310a;min-width:0}
+.mad4b-intake-review-panel>header{display:flex;gap:11px;align-items:center;border-bottom:1px solid #e5eee8;padding-bottom:13px;margin-bottom:13px}
+.mad4b-intake-review-panel>header>.dashicons{font-size:19px;display:grid;place-items:center;width:38px;height:38px;background:#eaf5ee;color:#19705b;border-radius:9px;flex:0 0 38px;line-height:38px}
+.mad4b-intake-review-panel>header small{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#6c8274;font-weight:700}
+.mad4b-intake-review-panel h2{font-size:16px;margin:2px 0 0;color:#235648}
+.mad4b-intake-review-facts{display:grid;gap:10px;margin:0}
+.mad4b-intake-review-facts>div{display:grid;grid-template-columns:minmax(105px,29%) minmax(0,1fr);gap:8px;border-bottom:1px solid #f0f4f0;padding-bottom:8px}
+.mad4b-intake-review-facts dt{color:#61766a;font-size:12px}
+.mad4b-intake-review-facts dd{margin:0;color:#2c5545;font-weight:600;overflow-wrap:anywhere}
+.mad4b-intake-review-facts code,.mad4b-intake-hash{white-space:normal;overflow-wrap:anywhere}
+.mad4b-intake-review-row{display:grid;gap:5px;padding:12px 0;border-bottom:1px solid #edf2ee}
+.mad4b-intake-review-row:last-child{border:0}
+.mad4b-intake-review-row strong{color:#255848}
+.mad4b-intake-review-row span,.mad4b-intake-review-row small{font-size:12px;color:#62766a}
+.mad4b-intake-warning{padding:11px;border:1px solid #e4d8b7;border-radius:7px;background:#fdfaf1;color:#6c5831;font-size:12px}
+.mad4b-intake-review-decision label{display:block;font-weight:650;margin-bottom:8px;color:#325b4d}
+.mad4b-intake-review-decision textarea{width:100%;border-radius:7px;border:1px solid #cddbd2}
+.mad4b-intake-review-buttons{display:grid;gap:8px;margin-top:10px}
+.mad4b-intake-review-buttons .button{min-height:36px;white-space:normal;height:auto}
+.mad4b-intake-review-buttons .button-primary{background:#137565;border-color:#137565}
+.mad4b-intake-decision-note{font-size:11px;color:#67786e;margin:13px 0 0}
+.mad4b-intake-review-panel details summary{cursor:pointer;color:#176d58;font-weight:600}
+@media(max-width:1020px){.mad4b-intake-review-grid{grid-template-columns:1fr}.mad4b-intake-review-aside{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:740px){.mad4b-review-workspace .mad4b-rv-heading{align-items:start}.mad4b-intake-review-aside{grid-template-columns:1fr}.mad4b-intake-review-panel{padding:14px}.mad4b-rv-workspace-tab{padding:10px}.mad4b-intake-review-facts>div{grid-template-columns:1fr;gap:3px}}
+.mad4b-review-workspace .mad4b-rv-lane-heading{font-size:15px;color:#2a5b49;margin:24px 2px 12px}
+.mad4b-review-workspace .mad4b-intake-review-section{padding-bottom:10px;margin-bottom:18px}
+.mad4b-review-workspace .mad4b-intake-review-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:12px 13px 8px;border-bottom:1px solid #e4eee6}
+.mad4b-review-workspace .mad4b-intake-review-summary>span{display:grid;gap:2px;background:#f8fbf9;border:1px solid #e3eee6;border-radius:7px;padding:10px;font-size:11px;color:#526d5f}
+.mad4b-review-workspace .mad4b-intake-review-summary strong{font-size:20px;color:#205748}
+@media(max-width:700px){.mad4b-review-workspace .mad4b-intake-review-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}

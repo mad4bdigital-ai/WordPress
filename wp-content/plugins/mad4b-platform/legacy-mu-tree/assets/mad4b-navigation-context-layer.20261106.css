@@ -1,0 +1,8 @@
+/* MAD4B mobile market/passport popover paints above the second header row
+   only while the selector is open. Avoid global z-index increases or disturbing
+   the Elementor mobile menu's own stacking context. */
+@media (max-width: 767px) {
+  .elementor-location-header .elementor-element-e9d5787:has(.header-context-controls-mobile.is-open) {
+    z-index: 1200 !important;
+  }
+}

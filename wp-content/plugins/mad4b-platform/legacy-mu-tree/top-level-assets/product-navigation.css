@@ -1,0 +1,58 @@
+/* Native menu responsive styling transferred from the existing header palette. */
+.product-native-navigation{width:100%;min-width:0}
+.product-native-navigation .e-n-menu-content .e-con{min-width:0}
+.product-native-navigation .e-n-menu-content .elementor-button{text-align:start;white-space:normal;line-height:1.5}
+.product-native-navigation .e-n-menu-content .elementor-widget-button{width:100%}
+@media(max-width:991px){
+ .product-native-navigation .e-n-menu-wrapper{background:var(--e-global-color-primary,#2C3E50);padding:12px;border-radius:7px;max-height:75vh;overflow-y:auto}
+ .product-native-navigation .e-n-menu-title{--n-menu-title-color-normal:#FFFFFF;--n-menu-title-color-hover:#D9D1CA;--n-menu-title-color-active:#FFFFFF}
+ .product-native-navigation .e-n-menu-title-container,.product-native-navigation .e-n-menu-title-text{color:#FFFFFF}
+ .product-native-navigation .e-n-menu-dropdown-icon{color:#FFFFFF;fill:#FFFFFF}
+ .product-native-navigation .e-n-menu-content{max-width:100%}
+}
+.product-native-navigation .product-navigation-panel{display:flex;flex-direction:row;flex-wrap:wrap;background:#fff;padding:20px;gap:20px}
+.product-native-navigation .product-navigation-group{display:flex;flex-direction:column;width:23%;gap:4px}
+.product-native-navigation .product-navigation-generated .elementor-button{background:transparent;color:#202f59;border:0;text-align:start;padding:8px 12px}
+@media(max-width:991px){.product-native-navigation .product-navigation-group{width:47%}}
+@media(max-width:767px){.product-native-navigation .product-navigation-group{width:100%}}
+/* The existing RTL listing carousel exposed its off-screen duplicate slides.
+   Restore the Swiper viewport instead of clipping the entire page. */
+.rtl .elementor-widget-jet-listing-grid .jet-listing-grid__slider.swiper{overflow:hidden;max-width:100%;min-width:0}
+.rtl .elementor-widget-jet-listing-grid:has(.jet-listing-grid__slider.swiper) > .elementor-widget-container,
+.rtl .jet-listing-grid:has(> .jet-listing-grid__slider.swiper){width:100%;max-width:100%;min-width:0;box-sizing:border-box;margin-inline:0}
+.rtl .jet-listing-grid__slider.swiper{width:100%;margin-inline:0}
+/* Keep the option-driven header logo readable beside the market controls. */
+.elementor-widget-image:has(img[fetchpriority="high"][data-no-lazy="1"]){min-width:100px;flex-shrink:0}
+.elementor-widget-image:has(img[fetchpriority="high"][data-no-lazy="1"]) > .elementor-widget-container{padding-inline:0}
+
+/* Keep Elementor's native Mega Menu trigger compact in mobile/tablet headers.
+   Do not reintroduce the legacy ElementsKit menu implementation. */
+@media(max-width:991px) {
+  .ekit-template-content-header .product-native-navigation {
+    width:45px!important;
+    max-width:45px!important;
+    min-width:45px!important;
+    flex:0 0 45px!important;
+  }
+  .ekit-template-content-header .product-native-navigation .e-n-menu-toggle {
+    width:45px!important;
+    justify-content:center;
+  }
+}
+
+/* BEGIN native editable menu layout */
+/* Layout safety and interaction only. Width, colours, spacing and columns stay in Elementor controls. */
+.navigation-editor-menu .navigation-editor-panel{max-width:calc(100vw - 32px)}
+.navigation-editor-menu .navigation-editor-card{text-decoration:none}
+.navigation-editor-menu .navigation-editor-card:focus-visible{outline:2px solid var(--e-global-color-secondary,#47729E);outline-offset:2px}
+.navigation-editor-menu .navigation-editor-thumbnail{flex-shrink:0;position:relative}
+.navigation-editor-menu .navigation-editor-thumbnail .navigation-editor-card-image{position:absolute;inset:0}
+.navigation-editor-menu .navigation-editor-thumbnail:has(img) .navigation-editor-image-fallback{visibility:hidden}
+@media(max-width:767px){.navigation-editor-menu .navigation-editor-panel{max-width:100%}}
+
+/* Native mobile items inherit viewport width; constrain them to the padded dropdown content box. */
+@media(max-width:991px){.navigation-editor-menu .e-n-menu-heading>.e-n-menu-item{max-width:100%}}
+
+.navigation-editor-menu .navigation-editor-card-text{min-width:0}
+
+/* END native editable menu layout */

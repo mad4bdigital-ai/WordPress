@@ -1,0 +1,185 @@
+/**
+ * MAD4B FAQ Brand Skin v1.0
+ * Native Elementor Global Kit tokens; no company-specific hex values.
+ * Scoped to shared FAQs only, never all accordions on a page.
+ * Compatible: Elementor Nested Accordion and JetElements Jet Accordion.
+ */
+:is(.mad4b-term-faq-section,.mad4b-home-faq-section,.elementor-24970,.elementor-40183) {
+  --mad4b-faq-primary: var(--e-global-color-primary, currentColor);
+  --mad4b-faq-secondary: var(--e-global-color-secondary, var(--mad4b-faq-primary));
+  --mad4b-faq-text: var(--e-global-color-text, var(--mad4b-faq-primary));
+  --mad4b-faq-accent: var(--e-global-color-accent, var(--mad4b-faq-secondary));
+  --mad4b-faq-surface: var(--e-global-color-0ce0fb4, Canvas);
+  --mad4b-faq-soft-surface: var(--e-global-color-80789f7, var(--mad4b-faq-surface));
+  --mad4b-faq-line: color-mix(in srgb, var(--mad4b-faq-primary) 18%, transparent);
+  --mad4b-faq-hover: color-mix(in srgb, var(--mad4b-faq-accent) 7%, var(--mad4b-faq-surface));
+  --mad4b-faq-focus: var(--mad4b-faq-accent);
+  color: var(--mad4b-faq-text);
+  font-family: var(--e-global-typography-text-font-family, inherit);
+}
+/* Section heading and spacing use the kit, without injecting a second H1. */
+:is(.mad4b-term-faq-section,.mad4b-home-faq-section) :is(h2,.elementor-heading-title) {
+  color: var(--mad4b-faq-primary);
+  font-family: var(--e-global-typography-primary-font-family, inherit);
+  font-weight: var(--e-global-typography-primary-font-weight, 600);
+  line-height: 1.25;
+  text-wrap: balance;
+}
+.mad4b-term-faq-section :is(.jet-listing-grid__items,.jet-listing-grid__item) {
+  min-width: 0;
+}
+.mad4b-term-faq-section .jet-listing-grid__items {
+  row-gap: .65rem;
+}
+/* Elementor native Nested Accordion, used in the JetEngine FAQ repeater. */
+.mad4b-term-faq-section .e-n-accordion {
+  --n-accordion-title-font-size: 1rem;
+  --n-accordion-icon-size: 1rem;
+}
+.mad4b-term-faq-section .e-n-accordion-item {
+  margin-block: 0 .65rem;
+  border: 1px solid var(--mad4b-faq-line);
+  border-radius: .75rem;
+  background: var(--mad4b-faq-surface);
+  overflow: clip;
+}
+.mad4b-term-faq-section .e-n-accordion-item-title {
+  color: var(--mad4b-faq-primary);
+  background: var(--mad4b-faq-surface);
+  border: 0;
+  padding: .95rem 1.1rem;
+  border-radius: .75rem;
+  line-height: 1.45;
+  transition: background-color .18s ease, color .18s ease;
+}
+.mad4b-term-faq-section .e-n-accordion-item-title .e-n-accordion-item-title-text {
+  color: inherit;
+  font-family: var(--e-global-typography-text-font-family, inherit);
+  font-size: clamp(.97rem, 1vw + .76rem, 1.08rem);
+  font-weight: 650;
+  line-height: 1.45;
+  margin: 0;
+}
+.mad4b-term-faq-section .e-n-accordion-item-title-icon,
+.mad4b-term-faq-section .e-n-accordion-item-title-icon svg {
+  color: var(--mad4b-faq-accent);
+  fill: currentColor;
+}
+.mad4b-term-faq-section .e-n-accordion-item-title:hover,
+.mad4b-term-faq-section details[open] > .e-n-accordion-item-title {
+  background: var(--mad4b-faq-hover);
+}
+.mad4b-term-faq-section details[open] > .e-n-accordion-item-title {
+  color: var(--mad4b-faq-secondary);
+  border-bottom: 1px solid var(--mad4b-faq-line);
+  border-radius: .75rem .75rem 0 0;
+}
+.mad4b-term-faq-section .e-n-accordion-item-title:focus-visible {
+  outline: 2px solid var(--mad4b-faq-focus);
+  outline-offset: -3px;
+}
+.mad4b-term-faq-section .e-n-accordion-item > .e-con,
+.mad4b-term-faq-section .e-n-accordion-item > .elementor-element,
+.mad4b-term-faq-section .e-n-accordion-item > .e-con-inner {
+  padding: .95rem 1.1rem 1.05rem;
+  color: var(--mad4b-faq-text);
+  line-height: 1.7;
+}
+.mad4b-term-faq-section .jet-listing-dynamic-field__content {
+  color: var(--mad4b-faq-text);
+  text-align: start;
+}
+/* JetElements accordion (Home and older shared global FAQ templates). */
+:is(.mad4b-home-faq-section,.elementor-24970,.elementor-40183) .jet-accordion__item {
+  margin-block: 0 .7rem;
+  border: 1px solid var(--mad4b-faq-line);
+  border-radius: .75rem;
+  background: var(--mad4b-faq-surface);
+  overflow: clip;
+}
+:is(.mad4b-home-faq-section,.elementor-24970,.elementor-40183) .jet-toggle__control {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: .95rem 1.1rem;
+  min-height: 3rem;
+  border: 0;
+  border-radius: .75rem;
+  background: var(--mad4b-faq-surface) !important;
+  color: var(--mad4b-faq-primary) !important;
+  transition: background-color .18s ease, color .18s ease;
+}
+:is(.mad4b-home-faq-section,.elementor-24970,.elementor-40183) .jet-toggle__label-text {
+  color: inherit !important;
+  font-family: var(--e-global-typography-text-font-family, inherit);
+  font-size: clamp(.97rem, 1vw + .76rem, 1.08rem);
+  font-weight: 650;
+  line-height: 1.45;
+  margin: 0;
+}
+:is(.mad4b-home-faq-section,.elementor-24970,.elementor-40183) .jet-toggle__label-icon {
+  flex-shrink: 0;
+}
+:is(.mad4b-home-faq-section,.elementor-24970,.elementor-40183) .jet-toggle__icon,
+:is(.mad4b-home-faq-section,.elementor-24970,.elementor-40183) .jet-toggle__icon svg {
+  color: var(--mad4b-faq-accent) !important;
+  fill: currentColor;
+}
+:is(.mad4b-home-faq-section,.elementor-24970,.elementor-40183) .jet-toggle__control:hover,
+:is(.mad4b-home-faq-section,.elementor-24970,.elementor-40183) .jet-toggle__control[aria-expanded="true"] {
+  background: var(--mad4b-faq-hover) !important;
+}
+:is(.mad4b-home-faq-section,.elementor-24970,.elementor-40183) .jet-toggle__control[aria-expanded="true"] {
+  border-bottom: 1px solid var(--mad4b-faq-line);
+  border-radius: .75rem .75rem 0 0;
+}
+:is(.mad4b-home-faq-section,.elementor-24970,.elementor-40183) .jet-toggle__control:focus-visible {
+  outline: 2px solid var(--mad4b-faq-focus);
+  outline-offset: -3px;
+}
+:is(.mad4b-home-faq-section,.elementor-24970,.elementor-40183) .jet-toggle__content,
+:is(.mad4b-home-faq-section,.elementor-24970,.elementor-40183) .jet-toggle__content-inner {
+  color: var(--mad4b-faq-text) !important;
+  background: var(--mad4b-faq-surface) !important;
+  font-family: var(--e-global-typography-text-font-family, inherit);
+  line-height: 1.7;
+}
+:is(.mad4b-home-faq-section,.elementor-24970,.elementor-40183) .jet-toggle__content-inner {
+  padding: .95rem 1.1rem 1.05rem;
+}
+/* Respect kit changes and RTL without separate translated CSS copies. */
+:dir(rtl) :is(.mad4b-term-faq-section,.mad4b-home-faq-section,.elementor-24970,.elementor-40183)
+  :is(.e-n-accordion-item-title,.jet-toggle__control,.jet-toggle__content-inner) {
+  text-align: start;
+  direction: rtl;
+}
+@media (max-width:767px) {
+  :is(.mad4b-term-faq-section,.mad4b-home-faq-section) {
+    --mad4b-faq-mobile-pad: .8rem;
+  }
+  .mad4b-term-faq-section .e-n-accordion-item-title,
+  :is(.mad4b-home-faq-section,.elementor-24970,.elementor-40183) .jet-toggle__control {
+    padding: .8rem .9rem;
+  }
+  .mad4b-term-faq-section .e-n-accordion-item > .e-con,
+  :is(.mad4b-home-faq-section,.elementor-24970,.elementor-40183) .jet-toggle__content-inner {
+    padding: .8rem .9rem .9rem;
+  }
+}
+@media (prefers-reduced-motion:reduce) {
+  .mad4b-term-faq-section .e-n-accordion-item-title,
+  :is(.mad4b-home-faq-section,.elementor-24970,.elementor-40183) .jet-toggle__control {
+    transition: none;
+  }
+}
+
+/* Stronger than Elementor template's legacy title color rule.
+   Only the shared term FAQ accordion; preserve open-state semantic colors. */
+html body .mad4b-term-faq-section.mad4b-term-faq-section .e-n-accordion-item-title,
+html body .mad4b-term-faq-section.mad4b-term-faq-section .e-n-accordion-item-title .e-n-accordion-item-title-text {
+  color: var(--mad4b-faq-primary) !important;
+}
+html body .mad4b-term-faq-section.mad4b-term-faq-section details[open] > .e-n-accordion-item-title,
+html body .mad4b-term-faq-section.mad4b-term-faq-section details[open] > .e-n-accordion-item-title .e-n-accordion-item-title-text {
+  color: var(--mad4b-faq-secondary) !important;
+}

@@ -1,0 +1,119 @@
+/* Quiet identity inheritance. Native Elementor layout and local widget styles
+   retain their higher-specificity rules; a visual role is an explicit opt-in. */
+body.company-brand-active{
+ color:var(--company-brand-text);background-color:var(--company-brand-surface);
+ font-family:var(--company-brand-font-body);font-size:var(--company-brand-body-size);
+ --company-brand-ease:cubic-bezier(.2,.65,.3,1);
+}
+body.company-brand-active :where(.elementor-heading-title){
+ font-family:var(--company-brand-font-heading);
+ font-weight:400;letter-spacing:-.025em;text-wrap:balance;
+}
+body.company-brand-active :where(p,li){text-wrap:pretty;}
+body.company-brand-active :where(.elementor-button,input,select,textarea,button){font-family:var(--company-brand-font-body);}
+body.company-brand-active :where(a,button,input,select,textarea,[tabindex]):focus-visible{
+ outline:2px solid var(--company-brand-focus);outline-offset:4px;
+}
+body.company-brand-active .company-brand-role-surface{
+ color:var(--company-brand-text);background-color:var(--company-brand-surface);
+}
+body.company-brand-active .company-brand-role-inverse{
+ color:var(--company-brand-surface);background-color:var(--company-brand-primary);
+}
+body.company-brand-active .company-brand-role-inverse :where(.elementor-heading-title,.elementor-widget-text-editor){
+ color:inherit;
+}
+body.company-brand-active .company-brand-role-card{
+ background-color:#fff;color:var(--company-brand-text);
+ border:1px solid var(--company-brand-border);
+ border-radius:var(--company-brand-radius-card);
+ box-shadow:0 5px 22px rgb(16 45 64 / 3%);
+ overflow-wrap:anywhere;
+}
+body.company-brand-active .company-brand-role-card :where(.elementor-button){
+ border-radius:var(--company-brand-radius-button);
+}
+body.company-brand-active .company-brand-role-editorial{
+ color:var(--company-brand-text);background-color:var(--company-brand-surface);
+ padding-block:clamp(36px,6vw,88px);gap:var(--company-brand-space);
+}
+body.company-brand-active .company-brand-role-editorial > :where(.e-con-inner){
+ gap:var(--company-brand-space);
+}
+body.company-brand-active .company-brand-role-editorial :where(.elementor-widget-heading):first-child .elementor-heading-title{
+ max-width:22ch;font-size:clamp(28px,4.2vw,56px);font-size:calc(clamp(28px,4.2vw,56px) * var(--company-brand-heading-scale));
+ line-height:1.14;
+}
+body.company-brand-active .company-brand-role-hero :where(.elementor-heading-title){
+ font-size:clamp(32px,5vw,68px);font-size:calc(clamp(32px,5vw,68px) * var(--company-brand-heading-scale));
+ line-height:1.1;letter-spacing:-.035em;max-width:24ch;
+}
+body.company-brand-active .company-brand-role-editorial :where(.elementor-widget-text-editor){
+ max-width:68ch;line-height:1.75;
+}
+body.company-brand-active .company-brand-role-editorial :where(.elementor-button),
+body.company-brand-active .company-brand-role-inverse :where(.elementor-button){
+ padding:14px 24px;border-radius:var(--company-brand-radius-button);
+ background-color:var(--company-brand-primary);color:#fff;
+ border:1px solid transparent;
+ transition:background-color .18s var(--company-brand-ease),color .18s var(--company-brand-ease);
+}
+body.company-brand-active .company-brand-role-inverse :where(.elementor-button){
+ background-color:var(--company-brand-surface);color:var(--company-brand-primary);
+}
+body.company-brand-active .company-brand-role-editorial :where(.elementor-button):hover{
+ background-color:var(--company-brand-secondary);color:#fff;
+}
+/* Header controls inherit role colors without changing menus, AJAX or placement. */
+body.company-brand-active .elementor-location-header .header-context-toggle{
+ color:var(--company-brand-text);background-color:#fff;
+ border-color:var(--company-brand-border);border-radius:var(--company-brand-radius-input);
+}
+body.company-brand-active .elementor-location-header .header-context-controls .header-context-panel{
+ color:var(--company-brand-text);background-color:#fff;
+ border-color:var(--company-brand-border);border-radius:var(--company-brand-radius-card);
+ box-shadow:0 12px 32px rgb(16 45 64 / 10%);
+}
+body.company-brand-active .elementor-location-header .header-context-toggle:focus-visible{
+ outline-color:var(--company-brand-focus);
+}
+body.company-brand-active .company-brand-role-card :where(input:not([type=checkbox]):not([type=radio]),select,textarea){
+ border-radius:var(--company-brand-radius-input);
+}
+/* Decorations stay opt-in through existing Company Shapes & Patterns controls.
+   No wallpaper is repeated behind price comparisons or booking controls. */
+body.company-brand-active.company-brand-decoration-off .elementor .e-con.company-pattern-surface{
+ background-image:none;
+}
+html[dir=rtl] body.company-brand-active,
+html[dir=rtl] body.company-brand-active :where(.elementor-heading-title,input,select,textarea,button){
+ font-family:var(--company-brand-font-arabic);letter-spacing:normal;
+}
+@media(max-width:767px){
+ body.company-brand-active .company-brand-role-editorial{padding-block:36px;gap:20px;}
+ body.company-brand-active .company-brand-role-hero :where(.elementor-heading-title){letter-spacing:-.02em;}
+ body.company-brand-active .company-brand-role-editorial :where(.elementor-button){padding:12px 20px;}
+}
+@media(prefers-reduced-motion:reduce){
+ body.company-brand-active .company-brand-role-editorial :where(.elementor-button){transition:none;}
+}
+/* Opting a native container into a role expresses the editorial intent. */
+body.company-brand-active .elementor .e-con.company-brand-role-surface{background-color:var(--company-brand-surface);}
+body.company-brand-active .elementor .e-con.company-brand-role-inverse{background-color:var(--company-brand-primary);color:var(--company-brand-surface);}
+body.company-brand-active .elementor .e-con.company-brand-role-card{background-color:#fff;border:1px solid var(--company-brand-border);border-radius:var(--company-brand-radius-card);box-shadow:0 4px 24px rgb(16 45 64 / 4%);}
+body.company-brand-active .elementor .company-brand-role-hero .elementor-heading-title,
+body.company-brand-active .elementor .elementor-widget-heading.company-brand-role-hero .elementor-heading-title{font-family:var(--company-brand-font-heading);font-size:calc(clamp(34px,4.9vw,66px) * var(--company-brand-heading-scale));font-weight:400;line-height:1.12;letter-spacing:-.025em;max-width:24ch;margin-inline:auto;text-shadow:none;}
+body.company-brand-active .elementor .e-con.company-brand-role-hero{min-height:540px;}
+body.company-brand-active .elementor .e-con.company-brand-role-hero::before{background-image:linear-gradient(110deg,color-mix(in srgb,var(--company-brand-primary) 82%,transparent),color-mix(in srgb,var(--company-brand-primary) 38%,transparent));opacity:1;}
+body.company-brand-active .elementor .e-con.company-brand-role-hero .elementor-shape,
+body.company-brand-active .elementor-location-header .elementor-shape{display:none;}
+body.company-brand-active .elementor .company-brand-role-hero .elementor-button{background-color:var(--company-brand-surface);color:var(--company-brand-primary);border:1px solid transparent;border-radius:var(--company-brand-radius-button);box-shadow:none;padding:13px 23px;}
+body.company-brand-active .elementor .company-brand-role-editorial .elementor-heading-title{color:var(--company-brand-text);}
+body.company-brand-active .elementor .company-brand-role-inverse .elementor-heading-title{color:var(--company-brand-surface);}
+body.company-brand-active .elementor .company-brand-role-editorial .elementor-button{box-shadow:none;}
+@media(max-width:767px){
+ body.company-brand-active .elementor .e-con.company-brand-role-hero{min-height:470px;}
+ body.company-brand-active .elementor .company-brand-role-hero .elementor-heading-title{font-size:calc(clamp(30px,8.2vw,44px) * var(--company-brand-heading-scale));max-width:22ch;}
+}
+html[dir=rtl] body.company-brand-active .elementor .company-brand-role-hero .elementor-heading-title{font-family:var(--company-brand-font-arabic);letter-spacing:normal;line-height:1.4;}
+body.company-brand-active .elementor .e-con.company-brand-role-hero .elementor-widget-button .elementor-button{background-color:var(--company-brand-surface);color:var(--company-brand-primary);box-shadow:none;border-radius:var(--company-brand-radius-button);}

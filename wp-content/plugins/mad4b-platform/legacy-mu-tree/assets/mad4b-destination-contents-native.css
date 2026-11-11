@@ -1,0 +1,98 @@
+/* Shares the exact nested <details> structure of MAD4B's Tour Contents widget.
+ * Scoped to destination archives; the original Elementor TOC stays as
+ * desktop navigation, and remains visible if dynamic links are not ready.
+ */
+body.tax-destinations .mad4b-destination-contents-native {
+ --mad4b-toc-surface:var(--mad4b-client-surface,#fff);
+ --mad4b-toc-ink:var(--mad4b-client-ink,var(--e-global-color-text,#214750));
+ --mad4b-toc-accent:var(--mad4b-client-accent,var(--e-global-color-accent,#ce9b56));
+ --mad4b-toc-hover:var(--mad4b-client-hover,#225358);
+ display:none!important;
+ width:100%;min-width:0;color:var(--mad4b-toc-ink);
+}
+@media(max-width:767px) {
+ body.tax-destinations .elementor-widget-mad4b-destination-contents {
+   display:block;width:100%;min-width:0;margin-block-start:12px;
+ }
+ body.tax-destinations .mad4b-destination-contents-native.is-ready {
+   display:block!important;
+ }
+ body.tax-destinations .elementor-widget-table-of-contents.mad4b-destination-source-suppressed {
+   display:none!important;
+ }
+ body.tax-destinations .mad4b-destination-contents-native .mad4b-tour-toc__drawer {
+   border:1px solid color-mix(in srgb,var(--mad4b-toc-hover) 17%,transparent);
+   border-radius:14px;background:var(--mad4b-toc-surface);
+   color:var(--mad4b-toc-ink);
+   box-shadow:0 5px 15px rgba(0,0,0,.045);overflow:clip;
+ }
+ body.tax-destinations .mad4b-destination-contents-native .mad4b-tour-toc__drawer>summary {
+   display:flex;align-items:center;gap:10px;min-height:48px;
+   padding:10px 13px;list-style:none;cursor:pointer;
+   font-weight:700;font-size:13px;line-height:1.45;
+ }
+ body.tax-destinations .mad4b-destination-contents-native summary::-webkit-details-marker {display:none}
+ body.tax-destinations .mad4b-destination-contents-native .mad4b-tour-toc__heading {flex:1;min-width:0;text-align:center}
+ body.tax-destinations .mad4b-destination-contents-native .mad4b-tour-toc__count {
+   background:color-mix(in srgb,var(--mad4b-toc-hover) 11%,transparent);
+   border-radius:99px;padding:3px 7px;color:var(--mad4b-toc-hover);
+   font-weight:600;font-size:11px;
+ }
+ body.tax-destinations .mad4b-destination-contents-native .mad4b-tour-toc__chevron {
+   width:8px;height:8px;flex:none;transform:rotate(45deg);
+   border-inline-end:2px solid currentColor;border-block-end:2px solid currentColor;
+   transition:transform 160ms ease;
+ }
+ body.tax-destinations .mad4b-destination-contents-native .mad4b-tour-toc__drawer[open]>.mad4b-tour-toc__chevron,
+ body.tax-destinations .mad4b-destination-contents-native .mad4b-tour-toc__drawer[open]>summary .mad4b-tour-toc__chevron {transform:rotate(225deg)}
+ body.tax-destinations .mad4b-destination-contents-native .mad4b-tour-toc__panels {
+   border-top:1px solid color-mix(in srgb,var(--mad4b-toc-hover) 14%,transparent);
+   padding:4px 9px 8px;max-height:min(58dvh,450px);
+   overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;
+ }
+ body.tax-destinations .mad4b-destination-contents-native .mad4b-tour-toc__group {
+   border-bottom:1px solid color-mix(in srgb,var(--mad4b-toc-hover) 11%,transparent);
+ }
+ body.tax-destinations .mad4b-destination-contents-native .mad4b-tour-toc__group:last-child{border-bottom:0}
+ body.tax-destinations .mad4b-destination-contents-native .mad4b-tour-toc__group>summary {
+   display:flex;align-items:center;gap:10px;min-height:41px;
+   padding:8px 10px;list-style:none;cursor:pointer;color:var(--mad4b-toc-hover);
+   font-size:12px;font-weight:700;
+ }
+ body.tax-destinations .mad4b-destination-contents-native .mad4b-tour-toc__group>summary::before {
+   content:"+";color:var(--mad4b-toc-accent);font-size:17px;font-weight:500;
+   width:16px;flex:none;text-align:center;
+ }
+ body.tax-destinations .mad4b-destination-contents-native .mad4b-tour-toc__group[open]>summary::before{content:"−"}
+ body.tax-destinations .mad4b-destination-contents-native .mad4b-tour-toc__group ul {
+   margin:0;padding:0 2px 9px 22px;list-style:none;
+ }
+ body.tax-destinations .mad4b-destination-contents-native .mad4b-tour-toc__group li{margin:0;padding:0}
+ body.tax-destinations .mad4b-destination-contents-native .mad4b-tour-toc__group a{
+   display:block;padding:9px 6px;border-radius:6px;
+   color:var(--mad4b-toc-ink);text-decoration:none;
+   font-size:12px;line-height:1.5;overflow-wrap:anywhere;
+ }
+ body.tax-destinations .mad4b-destination-contents-native .mad4b-tour-toc__group a:focus-visible,
+ body.tax-destinations .mad4b-destination-contents-native .mad4b-tour-toc__group a:hover {
+   color:var(--mad4b-toc-hover);background:color-mix(in srgb,var(--mad4b-toc-accent) 12%,transparent);
+   outline:2px solid var(--mad4b-toc-accent);outline-offset:-2px;
+ }
+ body.tax-destinations .elementor-widget-mad4b-destination-contents.mad4b-destination-drawer-open{position:relative;z-index:81!important}
+ body.tax-destinations [id^="elementor-toc__heading-anchor"],
+ body.tax-destinations [id^="mad4b-destination-heading-"]{scroll-margin-top:110px}
+}
+@media(prefers-reduced-motion:reduce){
+ body.tax-destinations .mad4b-destination-contents-native .mad4b-tour-toc__chevron{transition:none!important}
+}
+
+/* Dynamic, stable link targets do not alter layout. Logical indentation
+   follows WPML text direction, including Arabic RTL. */
+body.tax-destinations .mad4b-destination-anchor-alias {
+ display:block;block-size:0;inline-size:0;overflow:hidden;scroll-margin-block-start:110px;
+}
+@media(max-width:767px){
+ body.tax-destinations .mad4b-destination-contents-native .mad4b-tour-toc__group ul {
+   padding-inline-start:22px;padding-inline-end:2px;
+ }
+}

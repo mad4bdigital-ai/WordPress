@@ -1,0 +1,48 @@
+/* Opt-in only. Elementor's native background-color, foreground, layout and overlay remain intact. */
+.elementor .e-con.company-pattern-surface {
+  --company-pattern-ink: rgba(122,135,148,.075);
+  --company-pattern-draw-ink: var(--company-pattern-ink);
+  background-repeat: repeat;
+}
+.elementor .e-con.company-pattern-surface[data-company-pattern="dots"] {
+  background-image: radial-gradient(circle at 1px 1px,var(--company-pattern-draw-ink) 1px,transparent 1.8px);
+  background-size: 34px 34px;
+}
+.elementor .e-con.company-pattern-surface[data-company-pattern="grid"] {
+  background-image: linear-gradient(90deg,var(--company-pattern-draw-ink) 1px,transparent 1px),
+    linear-gradient(0deg,var(--company-pattern-draw-ink) 1px,transparent 1px);
+  background-size: 48px 48px;
+}
+.elementor .e-con.company-pattern-surface[data-company-pattern="arches"] {
+  background-image: repeating-radial-gradient(circle at 0% 100%,transparent 0px,
+    transparent 21px,var(--company-pattern-draw-ink) 22px,transparent 23px);
+  background-size: 195px 195px;
+}
+.elementor .e-con.company-pattern-surface[data-company-pattern="diagonal"] {
+  background-image: repeating-linear-gradient(135deg,transparent 0px,transparent 28px,
+    var(--company-pattern-draw-ink) 29px,transparent 30px);
+}
+.elementor .e-con.company-pattern-surface[data-company-pattern="orbit"] {
+  background-image: radial-gradient(ellipse 65% 90% at 105% 15%,
+      var(--company-pattern-draw-ink),transparent 80%),
+    radial-gradient(ellipse 90% 80% at -10% 90%,
+      var(--company-pattern-draw-ink),transparent 82%);
+  background-repeat:no-repeat;
+}
+.elementor .e-con.company-pattern-surface[data-company-pattern="custom"] {
+  background-image:var(--company-pattern-artwork);
+  background-size:auto;
+  background-position:center center;
+}
+/* Limit contrast and complexity on smaller screens without impacting card/form surfaces. */
+@media (max-width:767px){
+  .elementor .e-con.company-pattern-surface[data-company-pattern-mobile="reduce"]{
+    --company-pattern-draw-ink:var(--company-pattern-mobile-ink);
+  }
+  .elementor .e-con.company-pattern-surface[data-company-pattern-mobile="hide"]{
+    background-image:none;
+  }
+}
+@media (forced-colors:active){
+  .elementor .e-con.company-pattern-surface{background-image:none!important}
+}

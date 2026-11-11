@@ -1,0 +1,178 @@
+/* Rebuilt TOC is never visible on desktop after resize from mobile. */
+.mad4b-destination-toc { display: none; }
+
+/* The original full Elementor TOC stays intact and accessible on desktop. */
+@media (max-width: 767px) {
+  body.tax-destinations .elementor-45774 .elementor-element-f10db4f {
+    /* Physical gap below the previous mobile content block; scoped to TOC only. */
+    margin-block-start: 12px;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    --box-background-color: var(--mad4b-client-surface);
+    --box-border-radius: 14px;
+    --item-text-color: var(--mad4b-client-ink);
+    --item-text-active-color: var(--mad4b-client-hover);
+    --item-text-hover-color: var(--mad4b-client-hover);
+    --marker-color: var(--mad4b-client-accent);
+  }
+  /* Progressive fallback if Elementor generated TOC links are not ready. */
+  body.tax-destinations .elementor-45774 .elementor-element-f10db4f .elementor-toc__body {
+    max-height: min(58dvh, 440px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+  }
+  body.tax-destinations .elementor-45774 .elementor-element-f10db4f.mad4b-toc-ready > .elementor-widget-container > .elementor-toc__header,
+  body.tax-destinations .elementor-45774 .elementor-element-f10db4f.mad4b-toc-ready > .elementor-widget-container > .elementor-toc__body {
+    display: none !important;
+  }
+
+  body.tax-destinations .mad4b-destination-toc {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    margin: 0;
+    font-family: var(--e-global-typography-text-font-family, inherit);
+    font-size: var(--e-global-typography-text-font-size, inherit);
+    font-weight: var(--e-global-typography-text-font-weight, inherit);
+    color: var(--mad4b-client-ink);
+  }
+  body.tax-destinations .mad4b-destination-toc__drawer {
+    overflow: clip;
+    background: var(--mad4b-client-surface);
+    border: 1px solid color-mix(in srgb, var(--mad4b-client-hover) 15%, transparent);
+    border-radius: 14px;
+    box-shadow: 0 5px 18px rgba(0, 0, 0, .045);
+  }
+  body.tax-destinations .mad4b-destination-toc__drawer > summary {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 50px;
+    padding: 12px 15px;
+    list-style: none;
+    cursor: pointer;
+    color: var(--mad4b-client-ink);
+    font-size: 1em;
+    font-weight: var(--e-global-typography-accent-font-weight, 700);
+    line-height: 1.35;
+  }
+  body.tax-destinations .mad4b-destination-toc__drawer > summary::-webkit-details-marker,
+  body.tax-destinations .mad4b-destination-toc__group > summary::-webkit-details-marker {
+    display: none;
+  }
+  body.tax-destinations .mad4b-destination-toc__heading {
+    flex: 1;
+    min-width: 0;
+  }
+  body.tax-destinations .mad4b-destination-toc__count {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 3px 8px;
+    border-radius: 999px;
+    color: var(--mad4b-client-hover);
+    background: color-mix(in srgb, var(--mad4b-client-hover) 10%, transparent);
+  }
+  body.tax-destinations .mad4b-destination-toc__chevron {
+    inline-size: 8px;
+    block-size: 8px;
+    flex: none;
+    border-inline-end: 2px solid currentColor;
+    border-block-end: 2px solid currentColor;
+    transform: rotate(45deg);
+    transition: transform 160ms ease;
+  }
+  body.tax-destinations .mad4b-destination-toc__drawer[open] > summary .mad4b-destination-toc__chevron {
+    transform: rotate(225deg);
+  }
+  body.tax-destinations .mad4b-destination-toc__panels {
+    max-height: min(58dvh, 440px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    padding: 0 8px 8px;
+    border-top: 1px solid color-mix(in srgb, var(--mad4b-client-hover) 12%, transparent);
+  }
+  body.tax-destinations .mad4b-destination-toc__group {
+    border-bottom: 1px solid color-mix(in srgb, var(--mad4b-client-hover) 10%, transparent);
+  }
+  body.tax-destinations .mad4b-destination-toc__group:last-child {
+    border-bottom: 0;
+  }
+  body.tax-destinations .mad4b-destination-toc__group > summary {
+    cursor: pointer;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    min-height: 43px;
+    padding: 9px 9px;
+    font-size: .93em;
+    font-weight: var(--e-global-typography-accent-font-weight, 600);
+    color: var(--mad4b-client-hover);
+    list-style: none;
+  }
+  body.tax-destinations .mad4b-destination-toc__group > summary::before {
+    content: "+";
+    inline-size: 18px;
+    text-align: center;
+    color: var(--mad4b-client-accent);
+    font-size: 17px;
+    font-weight: 500;
+  }
+  body.tax-destinations .mad4b-destination-toc__group[open] > summary::before {
+    content: "−";
+  }
+  body.tax-destinations .mad4b-destination-toc__group ul {
+    list-style: none;
+    margin: 0;
+    padding: 0 4px 9px 24px;
+  }
+  body.tax-destinations .mad4b-destination-toc__group li {
+    margin: 0;
+    padding: 0;
+  }
+  body.tax-destinations .mad4b-destination-toc__group a {
+    display: block;
+    padding: 9px 9px;
+    color: var(--mad4b-client-ink);
+    font-size: .91em;
+    line-height: 1.45;
+    text-decoration: none;
+    overflow-wrap: anywhere;
+    border-radius: 7px;
+  }
+  body.tax-destinations .mad4b-destination-toc__group a:hover,
+  body.tax-destinations .mad4b-destination-toc__group a:focus-visible {
+    background: color-mix(in srgb, var(--mad4b-client-accent) 12%, transparent);
+    color: var(--mad4b-client-hover);
+    outline: 2px solid var(--mad4b-client-accent);
+    outline-offset: -2px;
+  }
+  body.tax-destinations [id^="elementor-toc__heading-anchor"] {
+    scroll-margin-top: 110px;
+  }
+}
+
+/* The destination Elementor container is sticky, so elevate its stacking
+   context only while the destination drawer is expanded. */
+@media (max-width:767px) {
+ body.tax-destinations .elementor-45774 .elementor-element-7394755:has(.mad4b-destination-toc__drawer[open]) {
+  z-index:80!important;
+ }
+ body.tax-destinations .elementor-45774 .elementor-element-f10db4f:has(.mad4b-destination-toc__drawer[open]) {
+  position:relative;
+  z-index:81!important;
+ }
+ body.tax-destinations .mad4b-destination-toc__drawer[open] {
+  position:relative;
+  z-index:82!important;
+ }
+ body.tax-destinations .mad4b-destination-toc__panels {
+  scrollbar-width:thin;
+ }
+}
+@media (prefers-reduced-motion:reduce) {
+ .mad4b-destination-toc__chevron {transition:none!important;}
+}

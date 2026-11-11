@@ -1,0 +1,59 @@
+/* Theme Builder header only; do not affect search, booking forms or body tabs. */
+.elementor-location-header {
+ --header-control-radius:8px;
+ --header-control-border:#d8e0e8;
+ --header-control-hover:#47729e;
+}
+.elementor-location-header .elementor-button {
+ min-height:40px;
+ display:inline-flex;
+ align-items:center;
+ justify-content:center;
+ white-space:nowrap;
+}
+.elementor-location-header :is(.pricing-currency-select,.header-market-preferences>summary,.wpml-ls-legacy-dropdown .wpml-ls-item-toggle,.wpml-ls-legacy-dropdown-click .wpml-ls-item-toggle) {
+ box-sizing:border-box;
+ height:40px;
+ min-height:40px;
+ border:1px solid var(--header-control-border);
+ border-radius:var(--header-control-radius);
+ background:#fff;
+ color:#2c3e50;
+ font-family:inherit;
+ font-size:13px;
+ line-height:1.4;
+ padding-block:9px;
+ padding-inline:12px;
+ transition:border-color .15s ease,background-color .15s ease,box-shadow .15s ease;
+}
+.elementor-location-header :is(.pricing-currency-select,.header-market-preferences>summary,.wpml-ls-item-toggle):hover {
+ border-color:var(--header-control-hover);
+ background-color:#f4f7fa;
+}
+.elementor-location-header :is(.pricing-currency-select,.header-market-preferences>summary,.wpml-ls-item-toggle,.elementor-button,.e-n-tab-title):focus-visible {
+ outline:2px solid var(--header-control-hover);
+ outline-offset:3px;
+}
+.elementor-location-header .pricing-currency-select {max-width:90px}
+.elementor-location-header :is(.wpml-ls-legacy-dropdown,.wpml-ls-legacy-dropdown-click) {max-width:100%;width:180px}
+.elementor-location-header :is(.wpml-ls-legacy-dropdown,.wpml-ls-legacy-dropdown-click) .wpml-ls-sub-menu {
+ margin-top:6px;border:1px solid var(--header-control-border);border-radius:8px;overflow:hidden;
+}
+.elementor-location-header .header-market-preferences__panel {border-radius:12px;border-color:var(--header-control-border)}
+.elementor-location-header .header-market-preferences__panel select {border-radius:var(--header-control-radius);border-color:var(--header-control-border)}
+/* Native horizontal_scroll controls own wrapping at every nesting level. */
+.elementor-location-header .native-destination-deep-tabs {min-width:0;max-width:100%}
+@media(max-width:767px){
+ .elementor-location-header :is(.pricing-currency-select,.header-market-preferences>summary,.wpml-ls-legacy-dropdown .wpml-ls-item-toggle,.wpml-ls-legacy-dropdown-click .wpml-ls-item-toggle) {padding-inline:9px}
+}
+@media(prefers-reduced-motion:reduce){
+ .elementor-location-header :is(.pricing-currency-select,.header-market-preferences>summary,.wpml-ls-item-toggle) {transition:none}
+}
+/* The current passport switcher uses an accessible button rather than details. */
+.elementor-location-header .header-context-toggle {
+ box-sizing:border-box;height:40px;min-height:40px;padding:9px 12px;
+ border:1px solid var(--header-control-border);border-radius:var(--header-control-radius);
+ background:#fff;color:#2c3e50;font-family:inherit;font-size:13px;line-height:20px;
+}
+.elementor-location-header .header-context-toggle:hover {border-color:var(--header-control-hover);background:#f4f7fa}
+.elementor-location-header .header-context-toggle:focus-visible {outline:2px solid var(--header-control-hover);outline-offset:3px}

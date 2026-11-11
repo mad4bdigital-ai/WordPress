@@ -1,0 +1,122 @@
+/* Accessible shared Elementor/JetEngine/UAEL presentation (Local Lab only). */
+/* The reusable Explore CTA has a light gold surface. Use dark text for WCAG AA. */
+.elementor-element-40a11b6b a.elementor-button,
+.elementor-element-40a11b6b a.elementor-button .elementor-button-text {
+    color: #183247 !important;
+}
+.elementor-element-40a11b6b a.elementor-button:focus-visible {
+    outline: 3px solid #183247;
+    outline-offset: 3px;
+}
+/* Links in prose must be identifiable without distinguishing color alone. */
+.elementor-location-footer a[href^="https://nagy.essam.website/"] {
+    text-decoration: underline !important;
+    text-underline-offset: 0.18em;
+    text-decoration-thickness: 1.5px;
+}
+.elementor-location-footer a[href^="https://nagy.essam.website/"]:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 3px;
+}
+/* UAEL carousel buttons remain reachable by touch and keyboard. */
+.uael-img-gallery-wrap.uael-img-carousel-wrap button.slick-prev,
+.uael-img-gallery-wrap.uael-img-carousel-wrap button.slick-next {
+    box-sizing: border-box !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    width: 44px !important;
+    height: 44px !important;
+    line-height: 44px !important;
+    text-align: center !important;
+}
+.uael-img-gallery-wrap.uael-img-carousel-wrap button.slick-prev:focus-visible,
+.uael-img-gallery-wrap.uael-img-carousel-wrap button.slick-next:focus-visible,
+.uael-img-gallery-wrap.uael-img-carousel-wrap .uael-grid-img:focus-visible {
+    outline: 3px solid #183247 !important;
+    outline-offset: 2px;
+}
+.uael-img-gallery-wrap.uael-img-carousel-wrap .uael-grid-img {
+    min-height: 44px;
+}
+/* Shared destination listing: white text now has a predictable opaque dark backing
+   instead of depending on each destination image's unknown luminance. */
+.elementor-45927 .elementor-element-3b68b75 .jet-listing-dynamic-link__label {
+    display: inline-block;
+    background: #183247;
+    color: #fff !important;
+    padding: 3px 8px;
+    border-radius: 4px;
+}
+/* Reusable tour cards, light metadata surface. */
+.elementor-element-e0f3452 .jet-listing-dynamic-terms__link {
+    color: #823c1c !important;
+}
+/* The light page background does not support pale gold text. */
+.elementor-element-11456f6 .elementor-heading-title {
+    color: #735323 !important;
+}
+/* Astra owns the actual footer, independently of Elementor's Theme Builder. */
+.ast-footer-copyright a[href^="https://nagy.essam.website/"] {
+    text-decoration: underline !important;
+    text-underline-offset: 0.18em;
+    text-decoration-thickness: 1.5px;
+}
+/* Small linked destination metadata must have a usable touch target. */
+.elementor-element-5d6d5c1 .jet-listing-dynamic-link__link {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    padding-inline: 4px;
+}
+/* Tour listing template #48562: location chips on variable image surfaces. */
+.elementor-48562 .elementor-element-5d6d5c1 .jet-listing-dynamic-link__label {
+    display: inline-block;
+    background: #183247;
+    color: #fff !important;
+    padding: 3px 7px;
+    border-radius: 4px;
+}
+/* JetEngine's legacy listing CSS still resolves to desktop 25% width even when
+   the native widget emits grid-col-mobile-2. Honour its authored mobile policy. */
+@media (max-width:767px) {
+    .jet-listing-grid__items.jet-listing-grid--48562.grid-col-mobile-2 > .jet-listing-grid__item {
+        flex: 0 0 50% !important;
+        max-width: 50% !important;
+    }
+}
+/* Shared tour archive card #25102: readable feature labels and durations. */
+.elementor-25102 .elementor-element-e446b68 .jet-listing-dynamic-field__content {color:#70450f!important;}
+.elementor-25102 .elementor-element-2d5be2e .jet-listing-dynamic-terms__link {color:#823c1c!important;}
+/* Filter action on pale archival toolbar. */
+.elementor-element-697ba59f .elementor-button,
+.elementor-element-697ba59f .elementor-button-text {color:#735323!important;}
+/* Other reusable small controls and editorial links. */
+.elementor-element-308c0bb5 .jet-filters-pagination__link {color:#823c1c!important;}
+.elementor-25208 .elementor-element-47471ca .jet-listing-dynamic-link__label {color:#823c1c!important;}
+.elementor-33817 .elementor-element-2d2b6ca .jet-listing-dynamic-link__label {color:#735323!important;}
+/* The archive's featured listing has an accessible section name without a visual title. */
+.a11y-featured-section-heading {
+    position:absolute!important;width:1px!important;height:1px!important;
+    padding:0!important;margin:-1px!important;overflow:hidden!important;
+    clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important;
+}
+
+/* Visible archive section heading for a logical H1 > H2 > card H3 sequence. */
+.a11y-archive-section-heading {font-size:1.125rem;line-height:1.4;font-weight:600;color:#183247;margin:0 0 .75rem;padding:0;}
+/* Single tour presentation — metadata and form controls on pale backgrounds. */
+.elementor-45262 :is(.jet-listing-dynamic-terms__link,.jet-listing-dynamic-field__content) {color:#39485a!important;}
+.elementor-24784 .elementor-element-02fb620 a,
+.elementor-24784 .elementor-element-1649bda a {color:#735323!important;}
+.elementor-48317 .jet-date-range__submit-text {color:#183247!important;}
+.elementor-56197 .tk-tour-rate-label {color:#70450f!important;}
+.elementor-24784 .ff-el-group :is(label,.ff-el-form-control,.ff-stepper-wrap input),
+.elementor-24784 .ff-el-group .ff-el-form-control::placeholder {color:#344456!important;}
+.elementor-24784 .ff-el-form-control:is(select,input),
+.elementor-24784 .ff-stepper-wrap input {background-color:#fff!important;}
+/* Text links must not rely on color as the sole distinguishing feature. */
+.elementor-24784 .elementor-element-1649bda a {
+    text-decoration: underline !important;
+    text-underline-offset: .2em;
+}
+/* Accommodation guidance is supporting prose, not a section heading. */
+.tour-accommodation-note {font-size: .875rem;line-height:1.6;margin: .5rem 0;color:#344456;}

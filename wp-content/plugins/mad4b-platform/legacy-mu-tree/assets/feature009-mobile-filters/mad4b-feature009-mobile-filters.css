@@ -1,0 +1,88 @@
+/* Feature 009: native Elementor Filter button, in its original container.
+ * Only the tour archive mobile panel is disclosed; desktop sidebar is retained. */
+@media (max-width: 767px) {
+  body.post-type-archive-tours-and-activities .elementor-element-26164c57 {
+    --flex-direction: column;
+    --align-items: stretch;
+    --justify-content: flex-start;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    width: 100%;
+  }
+  /* Restore a full-width, accessible Elementor native disclosure trigger. */
+  body.post-type-archive-tours-and-activities .elementor-element-26164c57 .elementor-element-697ba59f {
+    width: 100% !important;
+    max-width: 100% !important;
+    align-self: stretch !important;
+    display: block !important;
+  }
+  body.post-type-archive-tours-and-activities .elementor-element-697ba59f .elementor-button-wrapper {
+    display: block !important;
+    width: 100% !important;
+  }
+  body.post-type-archive-tours-and-activities .elementor-element-697ba59f .elementor-button {
+    /* Keep Elementor's brand colors and original funnel icon. */
+    width: 100% !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    box-sizing: border-box;
+    min-height: 44px;
+    padding: 10px 14px !important;
+    background-color: var(--e-global-color-3a5c55e, transparent);
+    color: var(--e-global-color-accent, currentColor);
+    fill: var(--e-global-color-accent, currentColor);
+    border: 1px solid var(--e-global-color-accent, currentColor) !important;
+    border-radius: 10px !important;
+    cursor: pointer;
+    text-align: start;
+  }
+  body.post-type-archive-tours-and-activities .elementor-element-697ba59f .elementor-button-content-wrapper {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    width: auto;
+    text-align: start;
+  }
+  body.post-type-archive-tours-and-activities .elementor-element-697ba59f .elementor-button::after {
+    content: '+';
+    font-size: 20px;
+    line-height: 1;
+    font-weight: 400;
+    margin-inline-start: auto;
+    color: var(--e-global-color-accent, currentColor);
+  }
+  body.post-type-archive-tours-and-activities .elementor-element-697ba59f .elementor-button[aria-expanded='true']::after {
+    content: '\2212';
+  }
+  body.post-type-archive-tours-and-activities .elementor-element-697ba59f .elementor-button:focus-visible {
+    outline: 2px solid var(--e-global-color-accent, currentColor);
+    outline-offset: 3px;
+  }
+  body.post-type-archive-tours-and-activities .elementor-element-702cfb6c.mad4b-feature009-mobile-filter-open {
+    display: block !important;
+    box-sizing: border-box;
+    min-width: 0;
+    width: 100%;
+    max-height: min(48vh, 413px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+    border-radius: 10px;
+    padding: 10px;
+    margin: 8px 0 14px;
+    box-shadow: inset 0 12px 15px -11px rgba(16, 45, 64, .48),
+                inset 0 -12px 15px -11px rgba(16, 45, 64, .48),
+                inset 0 0 0 1px rgba(16, 45, 64, .06);
+  }
+  body.post-type-archive-tours-and-activities .elementor-element-702cfb6c:not(.mad4b-feature009-mobile-filter-open) {
+    display: none !important;
+  }
+}
+/* Keep localized header CTA inside its layout box. */
+body.post-type-archive-tours-and-activities header .elementor-element-c45dc14 .elementor-button {
+  max-width: 100%; box-sizing: border-box; white-space: normal; overflow-wrap: anywhere;
+}

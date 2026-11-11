@@ -1,0 +1,184 @@
+/* Opt-in only. Native Elementor handles orientation, keyboard behavior and accordion. */
+.nav-design-enabled-yes:is(.nav-design-variant-pills,.nav-design-variant-outline,.nav-design-variant-underline,.nav-design-variant-cards) > .e-n-tabs > .e-n-tabs-heading > .e-n-tab-title,
+.nav-design-enabled-yes:is(.nav-design-variant-pills,.nav-design-variant-outline,.nav-design-variant-underline,.nav-design-variant-cards) > .elementor-widget-container > .e-n-tabs > .e-n-tabs-heading > .e-n-tab-title {
+ border-radius:var(--nav-tab-radius,8px)!important;
+ border:var(--nav-tab-border-width,1px) solid var(--nav-tab-border-normal,rgba(255,255,255,.25))!important;
+ background:var(--nav-tab-bg-normal,transparent)!important;
+ color:var(--nav-tab-text-normal,inherit)!important;
+ box-shadow:none;
+ transition:background-color .15s ease,border-color .15s ease,color .15s ease;
+}
+.nav-design-enabled-yes:is(.nav-design-variant-pills,.nav-design-variant-outline,.nav-design-variant-underline,.nav-design-variant-cards) > .e-n-tabs > .e-n-tabs-heading > .e-n-tab-title:hover,
+.nav-design-enabled-yes:is(.nav-design-variant-pills,.nav-design-variant-outline,.nav-design-variant-underline,.nav-design-variant-cards) > .elementor-widget-container > .e-n-tabs > .e-n-tabs-heading > .e-n-tab-title:hover {
+ background:var(--nav-tab-bg-hover,rgba(255,255,255,.08))!important;
+ color:var(--nav-tab-text-hover,inherit)!important;
+ border-color:var(--nav-tab-border-hover,var(--e-global-color-secondary,#47729e))!important;
+}
+.nav-design-enabled-yes:is(.nav-design-variant-pills,.nav-design-variant-outline,.nav-design-variant-underline,.nav-design-variant-cards) > .e-n-tabs > .e-n-tabs-heading > .e-n-tab-title[aria-selected=true],
+.nav-design-enabled-yes:is(.nav-design-variant-pills,.nav-design-variant-outline,.nav-design-variant-underline,.nav-design-variant-cards) > .elementor-widget-container > .e-n-tabs > .e-n-tabs-heading > .e-n-tab-title[aria-selected=true] {
+ background:var(--nav-tab-bg-active,var(--e-global-color-secondary,#47729e))!important;
+ color:var(--nav-tab-text-active,#fff)!important;
+ border-color:var(--nav-tab-border-active,var(--e-global-color-secondary,#47729e))!important;
+}
+.nav-design-enabled-yes.nav-design-variant-pills > .e-n-tabs > .e-n-tabs-heading > .e-n-tab-title,
+.nav-design-enabled-yes.nav-design-variant-pills > .elementor-widget-container > .e-n-tabs > .e-n-tabs-heading > .e-n-tab-title {border-radius:var(--nav-tab-radius,999px)!important;border-color:var(--nav-tab-border-normal,transparent)!important}
+.nav-design-enabled-yes.nav-design-variant-outline > .e-n-tabs > .e-n-tabs-heading > .e-n-tab-title[aria-selected=true],
+.nav-design-enabled-yes.nav-design-variant-outline > .elementor-widget-container > .e-n-tabs > .e-n-tabs-heading > .e-n-tab-title[aria-selected=true] {background:var(--nav-tab-bg-active,transparent)!important;color:var(--nav-tab-text-active,var(--e-global-color-secondary,#47729e))!important}
+.nav-design-enabled-yes.nav-design-variant-underline > .e-n-tabs > .e-n-tabs-heading > .e-n-tab-title,
+.nav-design-enabled-yes.nav-design-variant-underline > .elementor-widget-container > .e-n-tabs > .e-n-tabs-heading > .e-n-tab-title {
+ border-radius:var(--nav-tab-radius,0px)!important;
+ border-width:0 0 var(--nav-tab-border-width,2px)!important;
+ border-color:var(--nav-tab-border-normal,transparent)!important;
+}
+.nav-design-enabled-yes.nav-design-variant-underline > .e-n-tabs > .e-n-tabs-heading > .e-n-tab-title[aria-selected=true],
+.nav-design-enabled-yes.nav-design-variant-underline > .elementor-widget-container > .e-n-tabs > .e-n-tabs-heading > .e-n-tab-title[aria-selected=true] {background:var(--nav-tab-bg-active,transparent)!important;border-color:var(--nav-tab-border-active,var(--e-global-color-secondary,#47729e))!important;color:var(--nav-tab-text-active,var(--e-global-color-secondary,#47729e))!important}
+.nav-design-enabled-yes.nav-design-variant-cards > .e-n-tabs > .e-n-tabs-heading > .e-n-tab-title,
+.nav-design-enabled-yes.nav-design-variant-cards > .elementor-widget-container > .e-n-tabs > .e-n-tabs-heading > .e-n-tab-title {background:var(--nav-tab-bg-normal,rgba(255,255,255,.06))!important;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.nav-design-enabled-yes > .e-n-tabs > .e-n-tabs-heading > .e-n-tab-title:focus-visible,
+.nav-design-enabled-yes > .elementor-widget-container > .e-n-tabs > .e-n-tabs-heading > .e-n-tab-title:focus-visible {outline:2px solid var(--nav-tab-border-active,var(--e-global-color-secondary,#47729e));outline-offset:3px}
+/* Descendant grids use inherited variables; an enabled inner container can override them. */
+.nav-inner-enabled-yes.nav-inner-format-all {--nav-card-excerpt-display:block;--nav-card-thumbnail-display:flex}
+.nav-inner-enabled-yes.nav-inner-format-no_description {--nav-card-excerpt-display:none;--nav-card-thumbnail-display:flex}
+.nav-inner-enabled-yes.nav-inner-format-title_only {--nav-card-excerpt-display:none;--nav-card-thumbnail-display:none}
+.nav-inner-enabled-yes:is(.nav-inner-format-all,.nav-inner-format-no_description,.nav-inner-format-title_only) .navigation-editor-card-excerpt {display:var(--nav-card-excerpt-display)}
+.nav-inner-enabled-yes:is(.nav-inner-format-all,.nav-inner-format-no_description,.nav-inner-format-title_only) .navigation-editor-thumbnail {display:var(--nav-card-thumbnail-display)}
+/* Style values live on each container. Descendant CTAs consume the nearest set. */
+.nav-inner-enabled-yes.nav-inner-cta-solid {
+ --nav-cta-bg:var(--nav-cta-accent,var(--e-global-color-secondary,#47729e));
+ --nav-cta-fg:var(--nav-cta-text,#fff);
+ --nav-cta-border:var(--nav-cta-accent,var(--e-global-color-secondary,#47729e));
+ --nav-cta-padding:9px 14px;--nav-cta-decoration:none;--nav-cta-decoration-hover:none;
+ --nav-cta-hover-bg:var(--nav-cta-text,#fff);
+ --nav-cta-hover-fg:var(--nav-cta-accent,var(--e-global-color-secondary,#47729e));
+}
+.nav-inner-enabled-yes.nav-inner-cta-outline {
+ --nav-cta-bg:transparent;
+ --nav-cta-fg:var(--nav-cta-text,var(--nav-cta-accent,var(--e-global-color-secondary,#47729e)));
+ --nav-cta-border:var(--nav-cta-accent,var(--e-global-color-secondary,#47729e));
+ --nav-cta-padding:9px 14px;--nav-cta-decoration:none;--nav-cta-decoration-hover:none;
+ --nav-cta-hover-bg:var(--nav-cta-accent,var(--e-global-color-secondary,#47729e));
+ --nav-cta-hover-fg:var(--nav-cta-text,#fff);
+}
+.nav-inner-enabled-yes.nav-inner-cta-text {
+ --nav-cta-bg:transparent;
+ --nav-cta-fg:var(--nav-cta-text,var(--nav-cta-accent,var(--e-global-color-secondary,#47729e)));
+ --nav-cta-border:transparent;
+ --nav-cta-padding:9px 0;--nav-cta-decoration:none;--nav-cta-decoration-hover:underline;
+ --nav-cta-hover-bg:transparent;
+ --nav-cta-hover-fg:var(--nav-cta-text,var(--nav-cta-accent,var(--e-global-color-secondary,#47729e)));
+}
+@media(prefers-reduced-motion:reduce){
+ .nav-design-enabled-yes > .e-n-tabs > .e-n-tabs-heading > .e-n-tab-title,
+ .nav-design-enabled-yes > .elementor-widget-container > .e-n-tabs > .e-n-tabs-heading > .e-n-tab-title{transition:none}
+}
+
+
+/* MAD4B Navigation Skin v1
+ * Single visual authority for native destination menus and dynamic tour trees.
+ * Function, source of data and nested interaction remain owned by their plugins.
+ * Colors inherit the existing Elementor brand navigation palette.
+ */
+.product-native-navigation.navigation-editor-menu {
+  --mad4b-nav-surface:var(--e-global-color-btop001,#102d40);
+  --mad4b-nav-surface-hover:var(--e-global-color-bmenhov,#204c50);
+  --mad4b-nav-text:var(--e-global-color-bmentxt,#f4f4f0);
+  --mad4b-nav-muted:#c9d5db;
+  --mad4b-nav-accent:var(--e-global-color-secondary,#c39852);
+  --mad4b-nav-border:rgba(255,255,255,.20);
+  --mad4b-nav-radius:8px;
+  --mad4b-nav-gap:.5rem;
+  --mad4b-nav-cta-pad:9px 14px;
+  --mad4b-nav-cta-font:13px;
+}
+.product-native-navigation.navigation-editor-menu .mad4b-tour-query-mega {
+  color:var(--mad4b-nav-text);
+}
+/* Nested tours submenus take the same navy surface and typographic contrast as
+ * the destination nested tabs, rather than creating white popover UI. */
+.product-native-navigation.navigation-editor-menu .mad4b-tour-tree-children {
+  background:var(--mad4b-nav-surface);
+  color:var(--mad4b-nav-text);
+  border:1px solid var(--mad4b-nav-border);
+  border-radius:var(--mad4b-nav-radius);
+  box-shadow:0 8px 22px rgba(6,20,27,.18);
+}
+.product-native-navigation.navigation-editor-menu .mad4b-tour-tree-children .mad4b-tour-tree-row:is(:hover,:focus-within),
+.product-native-navigation.navigation-editor-menu .navigation-editor-card:is(:hover,:focus-visible) {
+  background:var(--mad4b-nav-surface-hover);
+}
+.product-native-navigation.navigation-editor-menu .mad4b-tour-tree-row :is(.mad4b-tour-tree-link,.mad4b-tour-tree-label,.mad4b-tour-tree-toggle),
+.product-native-navigation.navigation-editor-menu .mad4b-tour-tree-children .mad4b-tour-tree-row :is(.mad4b-tour-tree-link,.mad4b-tour-tree-label,.mad4b-tour-tree-toggle) {
+  color:var(--mad4b-nav-text);
+}
+.product-native-navigation.navigation-editor-menu .mad4b-tour-tree-empty .mad4b-tour-tree-label {
+  color:var(--mad4b-nav-muted);
+}
+/* Nested destination controls preserve Elementor's own tab layout and semantics. */
+.product-native-navigation.navigation-editor-menu .native-destination-deep-tabs .e-n-tab-title {
+  background:var(--mad4b-nav-surface);
+  color:var(--mad4b-nav-text);
+  border-color:var(--mad4b-nav-border);
+  border-radius:var(--mad4b-nav-radius);
+}
+.product-native-navigation.navigation-editor-menu .native-destination-deep-tabs .e-n-tab-title:is(:hover,[aria-selected=true],:focus-visible) {
+  background:var(--mad4b-nav-surface-hover);
+  color:var(--mad4b-nav-text);
+}
+/* Shared CTA: both Elementor 'See all' and generated 'Explore all' consume
+ * the same tokens. Opt-in Elementor content controls override through
+ * --nav-cta-* (solid / outline / text) without a second button renderer. */
+.product-native-navigation.navigation-editor-menu .e-n-menu-content .navigation-editor-see-all .elementor-button,
+.product-native-navigation.navigation-editor-menu .e-n-menu-content .mad4b-tour-query-all {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:.45rem;
+  width:auto;
+  min-height:36px;
+  padding:var(--nav-cta-padding,var(--mad4b-nav-cta-pad));
+  margin:0;
+  color:var(--nav-cta-fg,var(--mad4b-nav-text));
+  background:var(--nav-cta-bg,transparent);
+  border:1px solid var(--nav-cta-border,var(--mad4b-nav-border));
+  border-radius:var(--mad4b-nav-radius);
+  box-shadow:none;
+  font-family:inherit;
+  font-size:var(--mad4b-nav-cta-font);
+  font-weight:600;
+  line-height:1.35;
+  text-decoration:var(--nav-cta-decoration,none);
+  text-align:center;
+  white-space:normal;
+  transition:background-color .15s ease,color .15s ease,border-color .15s ease;
+}
+.product-native-navigation.navigation-editor-menu .e-n-menu-content .navigation-editor-see-all .elementor-button:is(:hover,:focus-visible),
+.product-native-navigation.navigation-editor-menu .e-n-menu-content .mad4b-tour-query-all:is(:hover,:focus-visible) {
+  color:var(--nav-cta-hover-fg,var(--mad4b-nav-text));
+  background:var(--nav-cta-hover-bg,var(--mad4b-nav-surface-hover));
+  border-color:var(--mad4b-nav-accent);
+  text-decoration:var(--nav-cta-decoration-hover,none);
+}
+.product-native-navigation.navigation-editor-menu .e-n-menu-content :is(.navigation-editor-see-all .elementor-button,.mad4b-tour-query-all):focus-visible {
+  outline:2px solid var(--mad4b-nav-accent);
+  outline-offset:2px;
+}
+@media(max-width:991px){
+ .product-native-navigation.navigation-editor-menu .mad4b-tour-tree-children {
+   position:static;
+   background:var(--mad4b-nav-surface);
+   border:0;
+   border-inline-start:2px solid var(--mad4b-nav-border);
+   border-radius:0;
+   box-shadow:none;
+ }
+ .product-native-navigation.navigation-editor-menu .e-n-menu-content .navigation-editor-see-all .elementor-button,
+ .product-native-navigation.navigation-editor-menu .e-n-menu-content .mad4b-tour-query-all {
+   font-size:12px;
+   min-height:40px;
+ }
+}
+@media(prefers-reduced-motion:reduce) {
+ .product-native-navigation.navigation-editor-menu :is(.navigation-editor-see-all .elementor-button,.mad4b-tour-query-all) {
+  transition:none;
+ }
+}

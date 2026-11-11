@@ -1,0 +1,43 @@
+/* Central Staging: Gutenberg About page, adapting the All Royal Egypt section
+   structure using the active Elementor/Company Brand Kit tokens. */
+body.page-id-68813 .entry-content{padding-top:0}
+body.page-id-68813 .mad4b-about-hero,
+body.page-id-68813 .mad4b-about-cta{background:var(--e-global-color-primary,var(--company-brand-primary,#16385a));color:#fff;text-align:center;padding:clamp(60px,8vw,110px) 22px}
+body.page-id-68813 .mad4b-about-hero>.wp-block-group__inner-container,
+body.page-id-68813 .mad4b-about-cta>.wp-block-group__inner-container,
+body.page-id-68813 .mad4b-about-muted>.wp-block-group__inner-container{max-width:1150px;margin:0 auto}
+body.page-id-68813 .mad4b-about-hero h1{font-family:var(--e-global-typography-primary-font-family,inherit);font-size:clamp(34px,5vw,55px);line-height:1.13;max-width:980px;margin:18px auto}
+body.page-id-68813 .mad4b-about-hero .mad4b-about-lead{font-size:clamp(17px,2vw,21px);line-height:1.7;max-width:850px;margin:0 auto 27px}
+body.page-id-68813 .mad4b-about-hero .mad4b-about-eyebrow{color:#fff}
+body.page-id-68813 .mad4b-about-eyebrow{text-transform:uppercase;font-weight:600;font-size:12px;letter-spacing:.16em;color:var(--e-global-color-accent,#b78b50);margin:0 0 12px}
+body.page-id-68813 .mad4b-about-section{max-width:1150px;margin:0 auto;padding:clamp(48px,6vw,80px) 20px}
+body.page-id-68813 .mad4b-about-section.mad4b-about-narrow{max-width:880px}
+body.page-id-68813 .mad4b-about-section h2,
+body.page-id-68813 .mad4b-about-muted h2,
+body.page-id-68813 .mad4b-about-cta h2{font-size:clamp(28px,3.1vw,39px);line-height:1.25;margin-bottom:20px}
+body.page-id-68813 .mad4b-about-section p,
+body.page-id-68813 .mad4b-about-section li,
+body.page-id-68813 .mad4b-about-muted p{line-height:1.75}
+body.page-id-68813 .mad4b-about-cards{gap:24px}
+body.page-id-68813 .mad4b-about-cards>.wp-block-column{min-width:0}
+body.page-id-68813 .mad4b-about-card{padding:30px 25px;min-height:100%;background:var(--e-global-color-2cf2b65,#f6f7f9);border:1px solid rgba(30,60,90,.1);border-radius:12px}
+body.page-id-68813 .mad4b-about-card h3{font-size:21px;margin:5px 0 12px}
+body.page-id-68813 .mad4b-about-number{font-size:14px;letter-spacing:.16em;color:var(--e-global-color-accent,#b78b50);font-weight:700}
+body.page-id-68813 .mad4b-about-muted{padding:clamp(55px,7vw,90px) 22px;background:#f3f6f8}
+body.page-id-68813 .mad4b-about-muted>.wp-block-group__inner-container>h2{margin:0 auto 38px}
+body.page-id-68813 .mad4b-about-muted .wp-block-column{background:#fff;border-radius:10px;padding:25px;box-shadow:0 5px 22px rgba(0,0,0,.04)}
+body.page-id-68813 .mad4b-about-muted .wp-block-column h3{font-size:21px}
+body.page-id-68813 .mad4b-about-cta h2{color:#fff}
+body.page-id-68813 .mad4b-about-cta p{font-size:18px;line-height:1.65;color:#fff}
+body.page-id-68813 .mad4b-about-hero .wp-block-button__link,
+body.page-id-68813 .mad4b-about-cta .wp-block-button__link{background:var(--e-global-color-accent,#bd965f);color:#fff;border-radius:8px;padding:13px 28px;text-decoration:none}
+body.page-id-68813 .mad4b-about-cta .is-style-outline .wp-block-button__link{background:transparent;border:1px solid #fff}
+body.page-id-68813 .mad4b-about-hero a:focus-visible,
+body.page-id-68813 .mad4b-about-cta a:focus-visible{outline:3px solid #fff;outline-offset:3px}
+@media(max-width:767px){
+ body.page-id-68813 .mad4b-about-hero,body.page-id-68813 .mad4b-about-cta{padding:65px 18px}
+ body.page-id-68813 .mad4b-about-section{padding:45px 18px}
+ body.page-id-68813 .mad4b-about-cards{gap:16px;flex-direction:column}
+ body.page-id-68813 .mad4b-about-card{padding:24px 21px}
+ body.page-id-68813 .mad4b-about-muted{padding:48px 18px}
+}

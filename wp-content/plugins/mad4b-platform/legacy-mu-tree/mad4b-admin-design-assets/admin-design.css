@@ -1,0 +1,124 @@
+/* MAD4B Admin Design System v2 - staging scoped, presentation-only. */
+body.mad4b-design-v2-page {
+  --mad2-ink:#1d2327;--mad2-sub:#50575e;--mad2-muted:#646970;
+  --mad2-line:#dcdcde;--mad2-blue:#135e96;--mad2-bg:#f0f0f1;--mad2-card:#fff;
+}
+body.mad4b-design-v2-page #wpbody-content{min-width:0}
+body.mad4b-design-v2-page #wpbody-content>.wrap,
+body.mad4b-design-v2-page #wpbody-content>.mad4b-scp-admin-page{
+  max-width:1480px;min-width:0;margin-block:17px 32px;margin-inline:0 20px;color:var(--mad2-ink);
+}
+body.mad4b-design-v2-page #wpbody-content .wrap>h1:first-child,
+body.mad4b-design-v2-page #wpbody-content .wrap>.wp-heading-inline:first-child{
+  font-size:27px;line-height:1.3;font-weight:650;margin:4px 0 8px;padding:0;
+}
+body.mad4b-design-v2-page #wpbody-content .wrap>p.description,
+body.mad4b-design-v2-page #wpbody-content .wrap>h1:first-child+p{
+  color:var(--mad2-sub);max-width:1000px;line-height:1.7;
+}
+body.mad4b-design-v2-page #wpbody-content .wrap h2{font-weight:650;line-height:1.35}
+body.mad4b-design-v2-page #wpbody-content .wrap h3{font-weight:650;line-height:1.35}
+body.mad4b-design-v2-page #wpbody-content .wrap :is(p,li,dd){line-height:1.65}
+body.mad4b-design-v2-page #wpbody-content .wrap :is(code,pre,td,th,dd,summary){overflow-wrap:anywhere}
+body.mad4b-design-v2-page #wpbody-content .wrap pre{white-space:pre-wrap;max-width:100%;overflow:auto}
+body.mad4b-design-v2-page #wpbody-content .wrap .mad4b-scp-panel,
+body.mad4b-design-v2-page #wpbody-content .wrap .mad4b-scp-card{
+  border:1px solid var(--mad2-line);border-radius:6px;box-shadow:none;background:var(--mad2-card);
+}
+body.mad4b-design-v2-page #wpbody-content .wrap .mad4b-scp-panel{padding:19px 22px;margin:16px 0}
+body.mad4b-design-v2-page #wpbody-content .wrap .mad4b-scp-card{padding:16px}
+body.mad4b-design-v2-page #wpbody-content .wrap .mad4b-scp-stage-rail,
+body.mad4b-design-v2-page #wpbody-content .wrap .mad4b-scp-card-grid{gap:12px}
+body.mad4b-design-v2-page #wpbody-content .wrap .notice{border-radius:3px;box-shadow:none;margin-block:12px}
+body.mad4b-design-v2-page #wpbody-content .wrap :is(.nav-tab-wrapper,nav.nav-tab-wrapper){
+  display:flex;flex-wrap:nowrap;gap:3px;overflow-x:auto;scrollbar-width:thin;border-bottom:1px solid #c3c4c7;padding-inline:2px;
+  margin-block:20px 16px;max-width:100%;
+}
+body.mad4b-design-v2-page #wpbody-content .wrap .nav-tab-wrapper .nav-tab{
+  background:transparent;border:1px solid transparent;border-bottom:3px solid transparent;
+  display:inline-flex;align-items:center;min-height:43px;box-sizing:border-box;margin:0;
+  padding:10px 13px;color:#50575e;white-space:nowrap;text-decoration:none;font-weight:600;border-radius:0;
+}
+body.mad4b-design-v2-page #wpbody-content .wrap .nav-tab-wrapper .nav-tab:hover{background:#f6f7f7;color:var(--mad2-blue)}
+body.mad4b-design-v2-page #wpbody-content .wrap .nav-tab-wrapper .nav-tab-active,
+body.mad4b-design-v2-page #wpbody-content .wrap .nav-tab-wrapper .nav-tab[aria-current=page]{
+  background:#fff;border-color:var(--mad2-line);border-bottom-color:#2271b1;color:var(--mad2-blue);
+}
+body.mad4b-design-v2-page #wpbody-content .wrap .widefat{
+  border:1px solid var(--mad2-line);box-shadow:none;border-radius:4px;border-collapse:separate;border-spacing:0;
+}
+body.mad4b-design-v2-page #wpbody-content .wrap .widefat :is(th,td){
+  padding:11px 12px;vertical-align:top;line-height:1.5;overflow-wrap:anywhere;
+}
+body.mad4b-design-v2-page #wpbody-content .wrap .widefat thead th{font-weight:650;background:#f6f7f7}
+body.mad4b-design-v2-page #wpbody-content .wrap .widefat tbody tr:hover{background:#f8fafc}
+body.mad4b-design-v2-page .mad4b-design-table-region{overflow-x:auto;max-width:100%;border-radius:4px;margin:14px 0 22px}
+body.mad4b-design-v2-page .mad4b-design-table-region table{min-width:670px;margin:0}
+body.mad4b-design-v2-page #wpbody-content .wrap :is(input.regular-text,input.large-text,input[type=search],textarea,select){
+ max-width:100%;box-sizing:border-box;
+}
+body.mad4b-design-v2-page #wpbody-content .wrap :is(button,.button,input[type=submit]){cursor:pointer}
+body.mad4b-design-v2-page #wpbody-content .wrap :is(input,textarea,select,.button,a,summary,[tabindex]):focus-visible{
+ outline:2px solid #2271b1;outline-offset:3px;
+}
+body.mad4b-design-v2-page .mad4b-workspace{
+  border:1px solid #dcdcde;border-radius:6px;background:#fff;padding:14px 17px;
+  margin-block:13px 12px;max-width:1480px;box-shadow:none;
+}
+body.mad4b-design-v2-page .mad4b-workspace-heading{gap:10px}
+body.mad4b-design-v2-page .mad4b-workspace-brand{font-weight:750;letter-spacing:.025em}
+body.mad4b-design-v2-page .mad4b-workspace-shortcuts{gap:7px}
+body.mad4b-design-v2-page .mad4b-workspace-shortcuts a{min-height:34px;padding:5px 10px;font-weight:600;font-size:12px}
+body.mad4b-design-v2-page .mad4b-workspace-directory{border-top:1px solid #eceef0;padding-top:4px;margin-top:12px}
+body.mad4b-design-v2-page .mad4b-workspace-directory summary{font-size:13px;min-height:36px}
+body.mad4b-design-v2-page .mad4b-workspace-pages article>a{padding:13px;border-radius:5px}
+body.mad4b-design-v2-page .mad4b-workspace-pages article>a:hover{border-color:#72aee6;background:#f6fbff}
+body.mad4b-design-v2-page .mad4b-design-section-tabs{
+  position:sticky;top:32px;z-index:4;display:flex;align-items:stretch;gap:3px;
+  margin:20px 0 18px;padding:0 2px;background:#f0f0f1;border-bottom:1px solid #c3c4c7;
+  overflow-x:auto;scrollbar-width:thin;max-width:100%;
+}
+body.mad4b-design-v2-page .mad4b-design-section-tab{
+  appearance:none;cursor:pointer;min-height:45px;flex:none;white-space:nowrap;
+  padding:10px 13px;border:1px solid transparent;border-bottom:3px solid transparent;
+  background:transparent;color:#50575e;font-weight:600;font-size:13px;line-height:1.3;
+}
+body.mad4b-design-v2-page .mad4b-design-section-tab:hover{color:#135e96;background:#f8f9fa}
+body.mad4b-design-v2-page .mad4b-design-section-tab[aria-selected=true]{
+  background:#fff;color:#135e96;border-color:#dcdcde;border-bottom-color:#2271b1;
+}
+body.mad4b-design-v2-page .mad4b-design-section-tabs+*[data-mad4b-content-section]{margin-top:0}
+body.mad4b-design-v2-page [data-mad4b-hidden-section]{display:none!important}
+body.mad4b-design-v2-page .mad4b-design-anchor-nav{display:flex;flex-wrap:wrap;gap:7px;margin:16px 0 20px}
+body.mad4b-design-v2-page .mad4b-design-anchor-nav a{
+  font-size:12px;font-weight:600;text-decoration:none;padding:6px 10px;
+  border:1px solid #c3c4c7;background:#fff;border-radius:4px;color:#135e96;
+}
+body.mad4b-design-v2-page .mad4b-design-anchor-nav a:hover{background:#f0f6fc}
+body.mad4b-design-v2-page #wpbody-content .wrap .mad4b-design-anchor-nav :focus-visible{outline-offset:2px}
+body.mad4b-design-v2-page .mad4b-design-support-note{color:#646970;font-size:12px;margin:5px 0 12px}
+body.mad4b-design-v2-page .mad4b-hub-design-header{border-bottom:1px solid #dcdcde;padding-bottom:13px;margin-bottom:20px}
+body.mad4b-design-v2-page .mad4b-hub-design-header>p{color:#646970}
+@media(max-width:1100px){
+ body.mad4b-design-v2-page #wpbody-content .wrap .mad4b-scp-panel{padding:15px}
+}
+@media(max-width:782px){
+ body.mad4b-design-v2-page #wpbody-content>.wrap{margin:12px 10px 25px 0}
+ body.mad4b-design-v2-page #wpbody-content .wrap>h1:first-child{font-size:23px}
+ body.mad4b-design-v2-page .mad4b-design-section-tabs{top:46px}
+ body.mad4b-design-v2-page .mad4b-workspace{margin-inline:10px;padding:12px}
+ body.mad4b-design-v2-page #wpbody-content .wrap :is(input:not([type=checkbox]):not([type=radio]),select,textarea){font-size:16px}
+ body.mad4b-design-v2-page #wpbody-content .wrap .widefat :is(td,th){padding:9px}
+ body.mad4b-design-v2-page #wpbody-content .wrap .button{min-height:38px;white-space:normal}
+}
+@media(max-width:480px){
+ body.mad4b-design-v2-page .mad4b-design-section-tab{padding:10px;font-size:12px}
+ body.mad4b-design-v2-page #wpbody-content .wrap .mad4b-scp-panel{padding:12px}
+}
+@media(prefers-reduced-motion:reduce){body.mad4b-design-v2-page *{scroll-behavior:auto!important}}
+@media(forced-colors:active){body.mad4b-design-v2-page .mad4b-design-section-tab[aria-selected=true]{outline:2px solid Highlight}}
+
+
+body.mad4b-design-v2-page #wpbody-content .wrap .mad4b-design-technical-details{background:#fff;border:1px solid #dcdcde;border-radius:5px;margin:12px 0;padding:11px 14px}
+body.mad4b-design-v2-page #wpbody-content .wrap .mad4b-design-technical-details summary{cursor:pointer;font-weight:600;color:#135e96;min-height:29px}
+body.mad4b-design-v2-page #wpbody-content .wrap .mad4b-design-technical-details pre{border-top:1px solid #eceef0;padding-top:12px;margin-bottom:0;max-height:650px;overflow:auto}
