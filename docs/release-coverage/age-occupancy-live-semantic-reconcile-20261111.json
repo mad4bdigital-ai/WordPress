@@ -1,0 +1,77 @@
+{
+  "age_decimal_precision": "0.01 years",
+  "candidate_parent_commit": "d3f74689cda93d93402cb17d00e49acafd5798e4",
+  "checkout_enabled_by_this_change": false,
+  "company_live_code_deployed": false,
+  "contract": "mad4b.age-occupancy-live-semantic-reconcile.v1",
+  "files": [
+    {
+      "candidate_sha256": "8505cdf4b1fb8c78347d9beb4f829be903dcd9d620e5dcebabc08bd121135570",
+      "change_kind": "preserve_mad4b_brand_plus_strict_fluent_context_metadata_semantic_patch",
+      "live_file_bytes": 6889,
+      "live_sha256": "6f724a2306e7d1667d400bea999ef9bc63e98e411e204fd59aff9448d8e2bb38",
+      "original_git_sha256": "56b053d2f6ab5e0e231634cfc3555d0ef0026d2b7eb1e9b7745f37f1f483e506",
+      "path": "wp-content/plugins/mad4b-age-occupancy-registry/mad4b-age-occupancy-registry.php"
+    },
+    {
+      "candidate_sha256": "e0f6b7e439c5ff81b992f8e07908d1ac3c788af55aeebc68fecda4284bb1454f",
+      "change_kind": "exact_live_bytes",
+      "live_file_bytes": 6113,
+      "live_sha256": "e0f6b7e439c5ff81b992f8e07908d1ac3c788af55aeebc68fecda4284bb1454f",
+      "original_git_sha256": "64b6f093819ebbe23d2c6da2d5d5a04c9ed6f7bb5ad9421d840cf4806f5de488",
+      "path": "wp-content/plugins/mad4b-age-occupancy-registry/includes/age-aware-stay.php"
+    },
+    {
+      "candidate_sha256": "772f156219e46693b6e978705a0fb21a04290316bc9f1e034aa75ad44801b8c9",
+      "change_kind": "exact_live_bytes",
+      "live_file_bytes": 11473,
+      "live_sha256": "772f156219e46693b6e978705a0fb21a04290316bc9f1e034aa75ad44801b8c9",
+      "original_git_sha256": "3d4d25e39407b8cfa0c341380ea79cdc7c3aa68547f83883becf75835721196f",
+      "path": "wp-content/plugins/mad4b-age-occupancy-registry/includes/fluent-forms.php"
+    },
+    {
+      "candidate_sha256": "579af8e4257c688df80a97596d49ffb0a818f9c868e97163b263bd5d856b2d58",
+      "change_kind": "exact_live_bytes",
+      "live_file_bytes": 15443,
+      "live_sha256": "579af8e4257c688df80a97596d49ffb0a818f9c868e97163b263bd5d856b2d58",
+      "original_git_sha256": "d425b398d5fd3ab10dfeec1bda9bdd5cab4a0550309d270c1c852bfa3d84bc11",
+      "path": "wp-content/plugins/mad4b-age-occupancy-registry/includes/admin.php"
+    },
+    {
+      "candidate_sha256": "1b8eb7c7993cc35828aab122e10cf74e9dfe93dff2e9dedc0c68858ee79fcf4b",
+      "change_kind": "exact_live_bytes",
+      "live_file_bytes": 7081,
+      "live_sha256": "1b8eb7c7993cc35828aab122e10cf74e9dfe93dff2e9dedc0c68858ee79fcf4b",
+      "original_git_sha256": "ef1d3273c84f34a08cb882056168b1ba55fd64dde4dd1c8e517a533d2aad7d45",
+      "path": "wp-content/plugins/mad4b-age-occupancy-registry/assets/fluent-ages.js"
+    }
+  ],
+  "form_context_modes": [
+    "adaptive",
+    "collect_only",
+    "tour_only",
+    "disabled"
+  ],
+  "globally_authorized_release": false,
+  "original_mad4b_plugin_identity_preserved": true,
+  "pricing_authorized": false,
+  "reviewed_semantic_patch": {
+    "file": "wp-content/plugins/mad4b-age-occupancy-registry/mad4b-age-occupancy-registry.php",
+    "final_candidate_sha256": "8505cdf4b1fb8c78347d9beb4f829be903dcd9d620e5dcebabc08bd121135570",
+    "form_age_evidence_does_not_authorize_checkout": true,
+    "initial_brand_only_candidate_sha256": "cfa01df138dcb09726312fbf3f364af7accb8778831304338cab5d27ded2dc47",
+    "live_reference_sha256": "6f724a2306e7d1667d400bea999ef9bc63e98e411e204fd59aff9448d8e2bb38",
+    "offline_php_cases_passed": 30,
+    "production_release_authorized": false,
+    "source_only": true,
+    "strict_age_context_labels_only": true,
+    "unknown_receipt_fields_denied": true
+  },
+  "source_site": "tours.dev.mad4b.com",
+  "timestamp_utc": "2026-11-11T04:22:53.530156+00:00",
+  "unchanged_existing_live_dependencies": [
+    "wp-content/plugins/mad4b-age-occupancy-registry/includes/fluent-age-policy.php",
+    "wp-content/plugins/mad4b-age-occupancy-registry/assets/fluent-ages-20261103-r2.css"
+  ],
+  "wp_or_db_write_executed": false
+}

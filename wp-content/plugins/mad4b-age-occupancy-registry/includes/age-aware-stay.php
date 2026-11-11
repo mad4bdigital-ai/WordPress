@@ -67,7 +67,7 @@ final class MAD4B_Age_Aware_Stay {
    }
    $capacity=0;
    foreach($ages as $age){
-    if(!is_int($age)||$age<0||$age>120)return new WP_Error('stay_age_value_invalid');
+    $age=MAD4B_Age_Occupancy_Registry::normalize_age($age);if(is_wp_error($age))return new WP_Error('stay_age_value_invalid');
     $band=null;foreach($bands as $candidate)if($age>=$candidate['min_age']&&$age<=$candidate['max_age']){$band=$candidate;break;}
     if(!$band)return new WP_Error('stay_age_band_missing');
     $factor=$band['price_factor']??1;
@@ -84,7 +84,12 @@ final class MAD4B_Age_Aware_Stay {
   if(count($flat)!==$children)return new WP_Error('stay_age_count_mismatch');
   if($input_ages && $rooms>1){
    if(!is_array($input['child_ages'])||!array_is_list($input['child_ages']))return new WP_Error('stay_age_assignment_invalid');
-   $global=$input['child_ages'];sort($global);sort($flat);
+   $global=$input['child_ages'];
+   foreach($global as &$item){
+    $item=MAD4B_Age_Occupancy_Registry::normalize_age($item);
+    if(is_wp_error($item))return new WP_Error('stay_age_value_invalid');
+   }
+   unset($item);sort($global);sort($flat);
    if($global!==$flat)return new WP_Error('stay_age_assignment_mismatch');
   }
   if($input_ages&&$rooms===1&&(!is_array($input['child_ages'])||count($input['child_ages'])!==$children))return new WP_Error('stay_age_count_mismatch');

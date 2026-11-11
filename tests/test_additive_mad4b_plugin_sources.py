@@ -20,7 +20,7 @@ class AdditivePlugins(unittest.TestCase):
  def test_path_escape_fails(self):
   x=copy.deepcopy(M);x['files'][0]['path']='wp-content/plugins/mad4b-x/../../../etc/passwd'
   with self.assertRaises(m.Blocked):m.verify(x)
- def test_preexisting_69_preserved_except_nine_exact_reviewed_changes(self):
+ def test_preexisting_69_preserved_except_fourteen_exact_reviewed_changes(self):
   import subprocess,hashlib
   self.assertEqual(M['base_git_commit'],'cea270f57bb8152989c6089f76405b165652f9df')
   safe=json.loads((ROOT/'docs/release-coverage/semantic-additive-safe-reconcile-20261111.json').read_text())
@@ -32,7 +32,10 @@ class AdditivePlugins(unittest.TestCase):
   for entry in pricing['files']:
    if entry['path'].startswith('wp-content/plugins/mad4b-pricing-registry/'):
     allowed[entry['path']]=entry.get('candidate_sha256',entry.get('reviewed_live_sha256'))
-  self.assertEqual(len(allowed),9)
+  ages=json.loads((ROOT/'docs/release-coverage/age-occupancy-live-semantic-reconcile-20261111.json').read_text())
+  for item in ages['files']:
+   allowed[item['path']]=item['candidate_sha256']
+  self.assertEqual(len(allowed),14)
   reviewed=set()
   for group in M['preexisting_semantic_conflicts'].values():
    for path in group:
@@ -46,7 +49,7 @@ class AdditivePlugins(unittest.TestCase):
     else:
      self.assertEqual(before.stdout,current,path)
   self.assertEqual(reviewed,set(allowed))
-  self.assertEqual(len(reviewed),9)
+  self.assertEqual(len(reviewed),14)
  def test_exact_preexisting_conflicts_not_copied(self):
   c={item for values in M['preexisting_semantic_conflicts'].values() for item in values}
   self.assertEqual(len(c),69)
