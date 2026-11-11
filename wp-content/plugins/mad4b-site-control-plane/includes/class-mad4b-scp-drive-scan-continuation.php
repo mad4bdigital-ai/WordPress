@@ -137,7 +137,7 @@ final class MAD4B_SCP_Drive_Scan_Continuation {
     ? MAD4B_SCP_Google_Drive_Context::MAX_BINARY_BYTES : 16777216;
    $declared_size=(isset($file['size']) && ctype_digit((string)$file['size']))
     ? (int)$file['size'] : 0;
-   $google_native=0===strpos((string)($file['mimeType']??''),'application/vnd.google-apps.');
+   $google_native=str_starts_with((string)($file['mimeType']??''),'application/vnd.google-apps.');
    $asset=($declared_size>$binary_limit && !$google_native)
     ? new WP_Error('mad4b_google_drive_binary_too_large',
        'File size exceeds the bounded scanner fetch limit.') : call_user_func( $provider, 'normalize', $file );

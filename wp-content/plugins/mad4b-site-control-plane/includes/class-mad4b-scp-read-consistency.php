@@ -813,6 +813,21 @@ final class MAD4B_SCP_Read_Consistency {
 			'effective_environment' => isset( $snapshot['environment'] ) ? sanitize_key( (string) $snapshot['environment'] ) : '',
 			'reasons' => $reasons,
 			'next_actions' => $actions,
+			// The rich lane projection is read-only. A 'PRECHECK_READY' write lane
+			// is never a grant or permission to execute an operation.
+			'readiness' => $readiness,
+			'readiness_lanes' => array(
+				'runtime' => $runtime_ready ? 'READY' : 'BLOCKED',
+				'read' => $read_ready ? 'READY' : 'BLOCKED',
+				'write' => $write_scope_ready ? 'PRECHECK_READY' : 'BLOCKED',
+				'exact_protocol_certified' => $protocol_ready,
+				'canonical_mcp_scope_evaluated' => $canonical_protocol_evaluated,
+				'canonical_mcp_ready' => $canonical_protocol_ready,
+				'protocol_observation_does_not_authorize_writes' => true,
+				'write_preflight_ready' => $write_scope_ready,
+				'write_execution_authorized' => false,
+				'authority_policy' => 'evaluate_each_write_ability_at_execution',
+			),
 			'deferred_checks' => null === $skills_ready ? array( 'skills_live_validation_deferred' ) : array(),
 			'signals' => array(
 				'runtime_ready' => $runtime_ready,

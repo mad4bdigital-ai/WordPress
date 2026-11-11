@@ -1,0 +1,63 @@
+{
+  "base_commit": "e7746c41450f25b9450b7e14c7c0f9834b968a7a",
+  "changed_files": [
+    {
+      "live_sha256": "f0823b83afc8b2af4981344991b42830b35a9456521da7c557eeee6fd9c41517",
+      "merge_kind": "exact_live_source",
+      "old_sha256": "0d71c378b439ec19f96900e76a87c1457844bc9c5b86e2c0435943d223e55124",
+      "outcome": "source_only",
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-admin-ui.php",
+      "source_changed_after_snapshot": false
+    },
+    {
+      "live_sha256": "b6425a1c74c7952e1cc22b2a5df5ad062c2d08b602f9f5c9725b89a2b74ce446",
+      "merge_kind": "exact_live_source",
+      "old_sha256": "76f69898a5e205dd5fef0a81e8c27f4795da71ccc9cc1a2f8f4ce87f4e46b43c",
+      "outcome": "source_only",
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-drive-scan-continuation.php",
+      "source_changed_after_snapshot": false
+    },
+    {
+      "live_sha256": "b99f4b8fd77c8f9578b104258dd624aa12a78eaa44857ffaf15fc00d39819e8c",
+      "merge_kind": "exact_live_source",
+      "old_sha256": "eb9d5d1cad2faeffb2d5974989a5ac7664486debcdb5c791e6c424eae4329192",
+      "outcome": "source_only",
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-workflow-options.php",
+      "source_changed_after_snapshot": false
+    },
+    {
+      "live_sha256": "7f7c2b85ba8e6297e94a06c89afcd53c8d3b7eb32d217625859316be11af5e8c",
+      "merge_kind": "exact_live_source",
+      "old_sha256": "7bd880db443e5ab642766d9982f3f2719cf4a6fdf8772419623de21b640e3027",
+      "outcome": "source_only",
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-adapter-dynamic-integrity.php",
+      "source_changed_after_snapshot": false
+    },
+    {
+      "candidate_sha256": "82b1c5ca88db6dcb9928cd78d8c12eb15ade82ea38b551ce29e100ccd0f4e9fa",
+      "merge_kind": "selective_non_authorizing_readiness_fields_rc129_tristate_preserved",
+      "old_sha256": "1bf0d3e3b7aae6bde4e4cebf00302cd14a402d20389d4019561705f5b8995058",
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-read-consistency.php",
+      "source_changed_after_snapshot": false
+    }
+  ],
+  "contract": "mad4b.control-plane-semantic-reconcile-batch-v1",
+  "exact_source_preimages_verified": 5,
+  "global_release_accepted": false,
+  "observed_utc": "2026-11-11T02:02:29.497259+00:00",
+  "php_syntax_lint_passed": 5,
+  "production_release_authorized": false,
+  "release_gate": "HOLD",
+  "runtime_behavior_test_attempt_state": "BLOCKED_BY_EXECUTION_CHANNEL",
+  "runtime_behavior_test_passed": false,
+  "site_mutated": false,
+  "source": "Tours.dev Staging readback",
+  "unchanged_blocked_areas": [
+    "context_brand_asset_owner_must_fail_closed",
+    "full_execution_commit_guard",
+    "original_305_306_312_313",
+    "original318_anchor",
+    "production_owner_delegation"
+  ],
+  "write_authority_changed": false
+}

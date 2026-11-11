@@ -1783,7 +1783,7 @@ final class MAD4B_SCP_Context_Admin_UI {
             $setup_label = 'LEGACY_SOURCE_RECONCILIATION_REQUIRED' === $state
                 ? __( 'Open source ownership lifecycle', 'mad4b-site-control-plane' )
                 : ( 'DEPLOYMENT_BINDING_RECOVERY_REQUIRED' === $state
-                    ? __( 'Open Staging deployment binding instructions', 'mad4b-site-control-plane' )
+                    ? __( 'Open deployment binding instructions', 'mad4b-site-control-plane' )
                     : __( 'Open the required setup step', 'mad4b-site-control-plane' ) );
             echo '<div class="notice notice-warning inline" role="status"><p><strong>'
                 . esc_html__( 'Source folder selected — save is waiting for preflight.', 'mad4b-site-control-plane' )

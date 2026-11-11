@@ -63,7 +63,11 @@ final class MAD4B_SCP_MCP_Adapter_Dynamic_Integrity {
             'installed_version' => $version,
             'external_fetch_performed' => false,
         );
-        if ( 1 !== preg_match( '/^[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,3}$/D', $version ) ) {
+        // PERMANENT UPDATE BEHAVIOR: no artificial major/minor/patch ceiling.
+        // Future versions are checked against the installed plugin header and
+        // actual runtime capabilities; a version string never grants authority.
+        if ( strlen( $version ) > 80 ||
+            1 !== preg_match( '/^(?:0|[1-9][0-9]*)(?:\\.(?:0|[1-9][0-9]*)){2}(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?(?:\\+[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$/D', $version ) ) {
             $out['state'] = 'invalid_installed_version';
             $out['mismatch_count'] = 1;
             return $out;

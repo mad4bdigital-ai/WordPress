@@ -18,6 +18,7 @@ final class MAD4B_SCP_Readiness_Workflow_Options {
     }
     public static function group_for_issue($issue) {
         $code=sanitize_key((string)($issue['code']??''));
+        if(($issue['source']??'')==='mad4b-rate-planner'&&in_array($issue['source_evidence']['owner_group']??'',array('pricing','operations','destinations','wpml'),true))return $issue['source_evidence']['owner_group'];
         if(str_starts_with($code,'ccr_')){
             $field=sanitize_key((string)($issue['source_evidence']['field']??''));
             if(str_starts_with($field,'seo_')||$field==='h1')return 'seo';
@@ -68,7 +69,7 @@ final class MAD4B_SCP_Readiness_Workflow_Options {
     }
     public static function validate_board_stage($board,$stage) {
         global $wpdb;
-        if(!$board||!$stage||!class_exists('FluentBoards\\App\\Models\\Board'))return false;
+        if(!$board||!$stage||!class_exists(\FluentBoards\App\Models\Board::class))return false;
         $exists=\FluentBoards\App\Models\Board::find($board);
         if(!$exists)return false;
         $s=\FluentBoards\App\Models\Stage::find($stage);
@@ -129,7 +130,7 @@ final class MAD4B_SCP_Readiness_Workflow_Options {
         $gate=class_exists('MAD4B_SCP_Policy')?MAD4B_SCP_Policy::mutation_gate_status():array();
         $authorized=class_exists('MAD4B_SCP_Policy')&&MAD4B_SCP_Policy::can_mutate();
         $boards=array(0=>'— Select board —');$stages=array(0=>'— Select stage —');
-        if(class_exists('FluentBoards\\App\\Models\\Board')) {
+        if(class_exists(\FluentBoards\App\Models\Board::class)) {
             foreach(\FluentBoards\App\Models\Board::whereNull('archived_at')->get() as $board) {
                 $boards[(int)$board->id]=$board->title.' (#'.$board->id.')';
                 foreach(\FluentBoards\App\Models\Stage::where('board_id',$board->id)->whereNull('archived_at')->orderBy('position')->get() as $stage)
