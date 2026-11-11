@@ -1,0 +1,60 @@
+{
+  "canonical_tour_path_required": true,
+  "company_deployed": false,
+  "contract": "mad4b.native-optional-transport-source-reconcile.v1",
+  "files": [
+    {
+      "base_sha256": "549e9f528e8ab98c2088e99f4777b7c076d6eb9c49cfff51bc50087bf2d57128",
+      "candidate_sha256": "7665a3b85291ea462f098e34e77c27753e47fd9a0da3276039681785df6169d6",
+      "live_sha256": "7665a3b85291ea462f098e34e77c27753e47fd9a0da3276039681785df6169d6",
+      "path": "wp-content/plugins/mad4b-commerce/modules/commerce/096-verified-tour-render-context.php"
+    },
+    {
+      "base_sha256": "66c732fd18288c3e379f8efa5bffae06257fd5abc0b8d13c75e859674adeae45",
+      "candidate_sha256": "234220ee8fc09e01025adf345be93dbc7bbbebb90e1d3d4dec23bc08f5dd9264",
+      "live_sha256": "e0571f139dd6520a8d64bfa9ae33bbfcc62d2d52572c59b7a222f5748f52dcb7",
+      "path": "wp-content/mu-plugins/mad4b-tour-optional-sections-lazy.php",
+      "scope": "source_plus_reviewed_jetengine_signature_and_canonical_referer_semantic_patch"
+    }
+  ],
+  "live_browser_verified": false,
+  "native_ajax_handler": "jet_engine_ajax/get_listing",
+  "new_booking_authority": false,
+  "new_candidate_transport_signature_guard": {
+    "ajax_route_allowed_without_fake_singular_front_query": true,
+    "browser_jetengine_ajax_verified": false,
+    "canonical_referer_required": true,
+    "fake_wp_offline_cases": 25,
+    "php_candidate_sha256": "234220ee8fc09e01025adf345be93dbc7bbbebb90e1d3d4dec23bc08f5dd9264",
+    "php_reference_source_sha256": "e0571f139dd6520a8d64bfa9ae33bbfcc62d2d52572c59b7a222f5748f52dcb7",
+    "same_origin_scheme_and_host_required": true,
+    "verified_jetengine_query_signature_pre_callback_required": true,
+    "verified_mutable_query_signature_pre_callback_required": true,
+    "verified_server_widget_query_pair_required": true,
+    "wpml_language_match_required": true
+  },
+  "new_payment_authority": false,
+  "only_presentation_scope": true,
+  "original313_certified": false,
+  "original_jetsmartfilters_rate_context_also_retained": true,
+  "previous_git_head": "ad865e6b8a9ddc10c5e437a36a9f74183d9da704",
+  "release_authorized": false,
+  "same_origin_referer_required": true,
+  "signed_editor_widget_binding_required": true,
+  "source_site": "tours.dev.mad4b.com",
+  "transport_categories": [
+    "vehicles",
+    "train",
+    "air"
+  ],
+  "wpml_post_language_required_when_available": true,
+  "wpml_translated_transport_category_source": {
+    "base_sha256": "f581f1bd13257f418e9f8236c037368fa44c1631414f0c9cf8d5477ca8277c47",
+    "candidate_sha256": "eb04c9cd6c000ddb562ede5872d6a962661c55b5c0504bc37ccaa31c4d36fb12",
+    "live_sha256": "eb04c9cd6c000ddb562ede5872d6a962661c55b5c0504bc37ccaa31c4d36fb12",
+    "localized_mode_and_subtype_fallback": true,
+    "no_eligibility_without_published_transport": true,
+    "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/presentation-transport-context-v1.php",
+    "taxonomy_meta_mode_source_preserved": true
+  }
+}

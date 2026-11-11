@@ -2,8 +2,8 @@
 from pathlib import Path
 import unittest
 ROOT=Path(__file__).resolve().parents[1]
-JS=(ROOT/'wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.3.1.js').read_text()
-CSS=(ROOT/'wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.3.0.css').read_text()
+JS=(ROOT/'wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.3.2.js').read_text()
+CSS=(ROOT/'wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.3.2.css').read_text()
 MU=(ROOT/'wp-content/mu-plugins/mad4b-tour-form6-submission-mode-v1.php').read_text()
 class Facade(unittest.TestCase):
  def test_preserve_single_native_provider(self):
@@ -34,6 +34,12 @@ class Facade(unittest.TestCase):
   self.assertIn("history.replaceState(history.state,'',next.toString())",JS)
   self.assertIn('a.wpml-ls-link, a.wpml-ls-item-toggle',JS)
   self.assertIn('mad4b-rate-filter-row',CSS)
+  for feature in ('syncRateActiveFilters','mad4b-ud-active-date',
+                  'mad4b-ud-active-remove','syncQueryCount','ajaxSuccess.mad4bDateCount',
+                  "Number.isSafeInteger(Number(pagination.found_posts))"):
+   self.assertIn(feature,JS)
+  self.assertIn('mad4b-ud-active-remove',CSS)
+
   self.assertIn("payload.set('query[mad4b_currency]',currency)",JS)
   self.assertIn('/^(USD|EUR|EGP|GBP)$/.test',JS)
 

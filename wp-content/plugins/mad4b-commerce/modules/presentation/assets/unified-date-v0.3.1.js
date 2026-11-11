@@ -55,7 +55,7 @@
   let ajaxPending=false;
   const sync = () => instances.forEach(x => {if(x.root.isConnected)x.render();});
   function rewriteContextLinks(){
-    // Update previously decorated links even after Clear: no stale date.
+    if(!valid())return;
     document.querySelectorAll('a.wpml-ls-link, a.wpml-ls-item-toggle').forEach(anchor=>{
       const href=anchor.getAttribute('href');
       if(!href||href.startsWith('#'))return;
@@ -571,7 +571,6 @@
     }
   }
   function fluentFormat(isoDate) {
-    if(!isoDate)return '';
     const [y,m,d]=isoDate.split('-');
     return d+'-'+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][Number(m)-1]+'-'+y.slice(-2);
   }

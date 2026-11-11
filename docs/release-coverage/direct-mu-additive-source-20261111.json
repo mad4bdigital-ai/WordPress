@@ -1,4 +1,16 @@
 {
+  "approved_candidate_overlays": [
+    {
+      "candidate_blob_sha1": "388e67c3fd014df94d600920464f034696de0b55",
+      "candidate_sha256": "234220ee8fc09e01025adf345be93dbc7bbbebb90e1d3d4dec23bc08f5dd9264",
+      "deploy_authorized": false,
+      "financial_authority_granted": false,
+      "live_sha256": "e0571f139dd6520a8d64bfa9ae33bbfcc62d2d52572c59b7a222f5748f52dcb7",
+      "offline_php_cases_passed": 25,
+      "path": "wp-content/mu-plugins/mad4b-tour-optional-sections-lazy.php",
+      "policy": "native_signed_jetengine_query_verified_before_optional_transport_presentation"
+    }
+  ],
   "automatic_mu_activation_authorized": false,
   "candidate_prior_head": "fcf80c0c9c632fceaada6205cc5f14944e052793",
   "captured_utc": "2026-11-11T03:15:05.305491+00:00",
@@ -1063,11 +1075,11 @@
       "sha256": "a4e388568a43b5a2f13d6ae8e5c83e7110e9f630d68ae9b103fa1141238a72c3"
     },
     {
-      "bytes": 13084,
+      "bytes": 18153,
       "file_type": ".php",
-      "git_blob_sha1": "085aaade2ca75f48e21a2785525d3e1dae316b64",
+      "git_blob_sha1": "b1ed60ad1ab3799c88b52f3ad76b35651e6836b0",
       "path": "wp-content/mu-plugins/mad4b-tour-optional-sections-lazy.php",
-      "sha256": "66c732fd18288c3e379f8efa5bffae06257fd5abc0b8d13c75e859674adeae45"
+      "sha256": "e0571f139dd6520a8d64bfa9ae33bbfcc62d2d52572c59b7a222f5748f52dcb7"
     },
     {
       "bytes": 16274,

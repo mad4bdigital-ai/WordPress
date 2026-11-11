@@ -8,7 +8,7 @@ M=json.loads(m.DOC.read_text())
 class CommerceSource(unittest.TestCase):
  def test_exact_source_snapshot_without_authority(self):
   proof=m.verify(M)
-  self.assertEqual(proof['source_files_verified'],276)
+  self.assertEqual(proof['source_files_verified'],278)
   self.assertFalse(proof['release_authorized'])
   self.assertFalse(proof['payment_gateway_activated'])
  def test_no_implicit_activation(self):
@@ -24,19 +24,19 @@ class CommerceSource(unittest.TestCase):
   self.assertEqual(M['excluded_links'][0]['path'],'legacy-mu-tree/currency-data')
   self.assertFalse((ROOT/m.ROOT_NAME/M['excluded_links'][0]['path']).is_symlink())
  def test_date_filter_reinitializes_cloned_elementor_popup(self):
-  js=(ROOT/m.ROOT_NAME/'modules/presentation/assets/unified-date-v0.3.1.js').read_text()
+  js=(ROOT/m.ROOT_NAME/'modules/presentation/assets/unified-date-v0.3.2.js').read_text()
   php=(ROOT/m.ROOT_NAME/'modules/presentation/unified-date-presentation-v1.php').read_text()
   self.assertIn('const initializedRoots = new WeakSet()',js)
   self.assertIn('initializedRoots.has(root)',js)
   self.assertIn('initializedRoots.add(root)',js)
   self.assertIn('!instances[i].root.isConnected',js)
-  self.assertIn("'0.3.0'",php)
+  self.assertIn("'0.3.2'",php)
   self.assertNotIn("'0.2.7'",php)
  def test_immutable_date_assets_and_legacy_fallback_provenance(self):
   assets=ROOT/m.ROOT_NAME/'modules/presentation/assets'
   php=(ROOT/m.ROOT_NAME/'modules/presentation/unified-date-presentation-v1.php').read_text()
-  self.assertIn('unified-date-v0.3.1.js',php)
-  self.assertIn('unified-date-v0.3.0.css',php)
+  self.assertIn('unified-date-v0.3.2.js',php)
+  self.assertIn('unified-date-v0.3.2.css',php)
   for ver in ('0.2.6','0.2.7','0.3.0'):
    for ext in ('js','css'):
     path=assets/('unified-date-v'+ver+'.'+ext)
@@ -47,11 +47,19 @@ class CommerceSource(unittest.TestCase):
     overlays={r['path']:r for r in M['approved_candidate_overlays']}
     self.assertEqual(candidate_sha,overlays[manifest_row['path']]['candidate_sha256']
       if manifest_row['path'] in overlays else manifest_row['sha256'])
-  newest=assets/'unified-date-v0.3.1.js'
+  newest=assets/'unified-date-v0.3.2.js'
   row=next(r for r in M['files'] if r['path'].endswith('/'+newest.name))
   overlay=next(r for r in M['approved_candidate_overlays'] if r['path']==row['path'])
   self.assertEqual(hashlib.sha256(newest.read_bytes()).hexdigest(),overlay['candidate_sha256'])
   self.assertEqual(row['sha256'],overlay['live_sha256'])
+  for oldasset in ('unified-date-v0.3.1.js','unified-date-v0.3.0.css'):
+   old=assets/oldasset
+   oldrow=next(r for r in M['files'] if r['path'].endswith('/'+oldasset))
+   self.assertEqual(hashlib.sha256(old.read_bytes()).hexdigest(),oldrow['sha256'])
+  newestcss=assets/'unified-date-v0.3.2.css'
+  cssrow=next(r for r in M['files'] if r['path'].endswith('/'+newestcss.name))
+  self.assertEqual(hashlib.sha256(newestcss.read_bytes()).hexdigest(),cssrow['sha256'])
+
  def test_both_exact_reviewed_date_semantic_overlays_are_required(self):
   from copy import deepcopy
   patches=M.get('approved_candidate_overlays') or []
@@ -60,7 +68,7 @@ class CommerceSource(unittest.TestCase):
   self.assertEqual(by_policy['read_only_and_intersection_fail_closed']['offline_php_cases_passed'],27)
   self.assertEqual(by_policy['clear_wpml_stale_date_and_empty_fluent_input']['offline_js_cases_passed'],23)
   self.assertEqual(m.verify(M)['semantic_overlays_verified'],2)
-  self.assertEqual(m.verify(M)['live_files_byte_identical_to_candidate'],274)
+  self.assertEqual(m.verify(M)['live_files_byte_identical_to_candidate'],276)
   for patch in patches:
    self.assertIs(patch['deployment_authorized'],False)
    self.assertIs(patch['booking_authorized'],False)

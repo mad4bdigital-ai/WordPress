@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Tour Optional Sections — Native Visibility + Deferred Listings
  * Description: Gate the authored Tour Extras/Transport templates before Elementor renders them; prepare native signed JetEngine lazy loading for eligible, parent-bound grids.
- * Version: 1.2.0
+ * Version: 1.4.1
  */
 defined('ABSPATH') || exit;
 
@@ -78,6 +78,13 @@ final class MAD4B_Tour_Optional_Sections_Lazy_V1 {
                     || (string)get_post_meta($id,'tour_public_status',true)==='0')continue;
             } else {
                 if ((string)get_post_meta($id,'trans_available_status',true)!=='1')continue;
+                // A published but wrong-mode/invalid-taxonomy transport must
+                // not make an optional tab visible if Query Builder will
+                // correctly return no matching card for that category.
+                if (class_exists('Shared_Product_Presentation_Transport_Context_v1',false)) {
+                    $candidate=Shared_Product_Presentation_Transport_Context_v1::candidate($id,$group);
+                    if (empty($candidate['ok']))continue;
+                }
                 if (function_exists('native_component_selection_public')
                     && !native_component_selection_public($id,'transportations'))continue;
             }
@@ -186,6 +193,78 @@ final class MAD4B_Tour_Optional_Sections_Lazy_V1 {
             && !isset(self::$used_listing_css[$id]))return '';
         return $tag;
     }
+    // JetEngine has validated the public document and recovered server-owned
+    // Elementor settings before this callback. But JetEngine verifies the
+    // QUERY signature only *after* this action; validate it independently
+    // before making any Tour presentation context available to hooks.
+    public static function verify_native_transport_ajax($handler=null): void {
+        if (($_SERVER['REQUEST_METHOD']??'')!=='POST'
+            || (string)($_REQUEST['action']??'')!=='jet_engine_ajax'
+            || (string)($_REQUEST['handler']??'')!=='get_listing'
+            || (string)($_REQUEST['listing_type']??'')!=='elementor'
+            || !wp_doing_ajax()
+            || !class_exists('Jet_Engine_Listings_Ajax_Handlers',false)
+            || !($handler instanceof \Jet_Engine_Listings_Ajax_Handlers)
+            || !is_callable([$handler,'query_has_valid_signature'])
+            || !is_callable([$handler,'query_matches_widget_settings'])
+            || !is_callable([$handler,'query_has_valid_mutable_signature'])
+            || !class_exists('Shared_Product_Verified_Tour_Render_Context_v1',false)
+            || !class_exists('Shared_Product_Presentation_Transport_Context_v1',false))return;
+        $page=$_REQUEST['page_settings']??null;
+        $settings=$_REQUEST['widget_settings']??null;
+        $query=$_REQUEST['query']??null;
+        if (!is_array($page)||!is_array($settings)||!is_array($query))return;
+        $verified_query=wp_unslash($query);
+        if(!is_array($verified_query)
+           || !$handler->query_has_valid_signature($verified_query)
+           || !$handler->query_matches_widget_settings($verified_query,$settings)
+           || !$handler->query_has_valid_mutable_signature($verified_query,$settings))return;
+        if (!preg_match('/^([1-9][0-9]*)[|]WP_Post$/D',
+            (string)($page['queried_id']??''),$match))return;
+        $tour=absint($match[1]);
+        // Native JetEngine listing AJAX runs on wp-admin/admin-ajax.php.
+        // is_singular()/get_queried_object_id() do not identify its signed
+        // frontend Tour. The validated widget+query and canonical referer do.
+        if (get_post_type($tour)!=='tours-and-activities'
+            || get_post_status($tour)!=='publish')return;
+        $provider=(string)($settings['_element_id']??'');
+        $category=array_search($provider,self::PROVIDERS,true);
+        if (!in_array($category,['vehicles','train','air'],true))return;
+        $binding=Shared_Product_Presentation_Transport_Context_v1::binding($category);
+        if (empty($binding['ok']) || !self::available($tour,$category)
+            || (int)($page['post_id']??0)!==(int)$binding['template_id']
+            || (string)($page['element_id']??'')!==(string)$binding['widget_id']
+            || (string)($settings['_id']??'')!==(string)$binding['widget_id']
+            || (int)($settings['lisitng_id']??0)!==(int)$binding['listing_id']
+            || (int)($settings['custom_query_id']??0)!==(int)$binding['query_id']
+            || (int)($query['query_id']??0)!==(int)$binding['query_id']
+            || (int)($query['custom_query_id']??0)!==(int)$binding['query_id']
+            || !filter_var($settings['custom_query']??false,FILTER_VALIDATE_BOOLEAN))return;
+        // Native signed Elementor settings restored by JetEngine; no custom
+        // request parameter or unsigned tour identifier can override these.
+        $canonical=(string)wp_parse_url((string)get_permalink($tour),PHP_URL_PATH);
+        if($canonical==='')return;
+        $referer=(string)($_SERVER['HTTP_REFERER']??'');
+        $ref=wp_parse_url($referer);
+        $host=wp_parse_url(home_url('/'));
+        $request_host=wp_parse_url('https://'.(string)($_SERVER['HTTP_HOST']??''));
+        if(!is_array($ref)||!is_array($host)||!is_array($request_host)
+            || !in_array(strtolower((string)($ref['scheme']??'')),['http','https'],true)
+            || strtolower((string)($ref['scheme']??''))!==strtolower((string)($host['scheme']??''))
+            || isset($ref['user'])||isset($ref['pass'])
+            || strtolower((string)($ref['host']??''))!==strtolower((string)($request_host['host']??''))
+            || (int)($ref['port']??0)!==(int)($request_host['port']??0)
+            || strtolower((string)($request_host['host']??''))!==strtolower((string)($host['host']??''))
+            || (string)($ref['path']??'')!==$canonical)return;
+        $language_data=apply_filters('wpml_post_language_details',null,$tour);
+        if(is_array($language_data)
+            && (string)($language_data['language_code']??'')!=='' 
+            && (string)apply_filters('wpml_current_language','')!==(string)$language_data['language_code'])
+            return;
+        if(function_exists('service_channel_allowed')
+            && !service_channel_allowed('transportations','tour_component'))return;
+        Shared_Product_Verified_Tour_Render_Context_v1::begin_native_optional_transport($tour,$category);
+    }
     private static function context(): bool {
         if (!self::tour() || self::editor() || wp_doing_ajax()
             || (defined('DOING_CRON')&&DOING_CRON))return false;
@@ -205,7 +284,11 @@ final class MAD4B_Tour_Optional_Sections_Lazy_V1 {
             || !filter_var($settings['custom_query'],FILTER_VALIDATE_BOOLEAN)
             || !absint($settings['custom_query_id']??0)
             || !absint($settings['lisitng_id']??0))return false;
-        foreach(['is_archive_template','pagination','use_load_more','use_load_more_pagination'] as $flag)
+        // "is_archive_template" is an Elementor authoring flag, not an
+        // archive-mode request. These narrowly recognized Tour component grids
+        // explicitly use a signed JetEngine Custom Query in singular context;
+        // keep pagination/load-more excluded, but do not veto by that flag.
+        foreach(['pagination','use_load_more','use_load_more_pagination'] as $flag)
             if (!empty($settings[$flag]) && filter_var($settings[$flag],FILTER_VALIDATE_BOOLEAN))
                 return false;
         $listing=absint($settings['lisitng_id']);
@@ -242,3 +325,6 @@ add_filter('style_loader_tag',
 
 add_action('elementor/frontend/widget/before_render',
     ['MAD4B_Tour_Optional_Sections_Lazy_V1','record_visible_listing'],5,1);
+
+add_action('jet-engine/ajax-handlers/before-call-handler',
+    ['MAD4B_Tour_Optional_Sections_Lazy_V1','verify_native_transport_ajax'],20,1);

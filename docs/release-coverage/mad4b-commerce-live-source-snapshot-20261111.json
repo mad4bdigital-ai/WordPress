@@ -2,10 +2,10 @@
   "approved_candidate_overlays": [
     {
       "booking_authorized": false,
-      "candidate_blob_sha1": "af4d349721c1c055594af32b54a61e2432ab9d98",
-      "candidate_sha256": "c9946bc02a6928fd5e1d7802a43f22ba78e6ced1e01160f08e1c705086f8ee1b",
+      "candidate_blob_sha1": "fbd0f0a7c54483cbc1db9d27dde448f8b870a5e1",
+      "candidate_sha256": "3c523e6fa8facf07ff3e45b0944560b0594ade2db532d907f05075913001e0a8",
       "deployment_authorized": false,
-      "live_sha256": "ac1e2784f7a8ef0b754fdb5217e1de7453a485338820af42cb7909fd5c21b810",
+      "live_sha256": "6ee00a2e5f9d13882fcdbbe1405595b11911201ce784a07daacba58f37a304b1",
       "offline_php_cases_passed": 27,
       "original_snapshot_sha256": "2fc598790080b5369567c9aef70efe61b9edc9ced7a20f8605dcea38338663b2",
       "path": "wp-content/plugins/mad4b-commerce/modules/presentation/unified-date-presentation-v1.php",
@@ -13,13 +13,13 @@
     },
     {
       "booking_authorized": false,
-      "candidate_blob_sha1": "ecd3d4282115a0d1035c870fdf88deb39bff86bd",
-      "candidate_sha256": "7856d970a26a3bccc11a0dd6b08a45f27616bab7d3f58e89dd00b43b22665f82",
+      "candidate_blob_sha1": "38040b9f5ac47a065a506aad9f3d1a2fe96a4f90",
+      "candidate_sha256": "97c130b976f4463c5ad2b2822ed621e4945267fb61bed6823bc99a48dd02ba39",
       "deployment_authorized": false,
-      "live_sha256": "63addcbeb594bcc621cb9c9fee1e90842f63953bf4ae44fde5f0c3b589c91f1e",
+      "live_sha256": "dfa3460b58eacb2bf6ca32e3de318c904d5874a984bec27c9d13e3d1875721b6",
       "offline_js_cases_passed": 23,
-      "original_snapshot_sha256": "63addcbeb594bcc621cb9c9fee1e90842f63953bf4ae44fde5f0c3b589c91f1e",
-      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.3.1.js",
+      "original_snapshot_sha256": "dfa3460b58eacb2bf6ca32e3de318c904d5874a984bec27c9d13e3d1875721b6",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.3.2.js",
       "policy": "clear_wpml_stale_date_and_empty_fluent_input"
     }
   ],
@@ -444,11 +444,11 @@
       "sha256": "d28b8004ab950ae5a976d98cd15748f10f5cf1754f1b002d5939e2cfb657036d"
     },
     {
-      "bytes": 7503,
-      "git_blob_sha1": "e6c611ee45773b6ac1bb48df98a93b99949c2022",
+      "bytes": 8505,
+      "git_blob_sha1": "22011b4b5900420186734409afb401c7876aca08",
       "original_mode": "0644",
       "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/presentation-transport-context-v1.php",
-      "sha256": "f581f1bd13257f418e9f8236c037368fa44c1631414f0c9cf8d5477ca8277c47"
+      "sha256": "eb04c9cd6c000ddb562ede5872d6a962661c55b5c0504bc37ccaa31c4d36fb12"
     },
     {
       "bytes": 5147,
@@ -1249,11 +1249,11 @@
       "sha256": "2f72464a63027056016b4aaaa1be1201fb03ce1ef7a0420fe000cf6080bf8ce7"
     },
     {
-      "bytes": 3767,
-      "git_blob_sha1": "1329b083f0db0d5bcc4858a732ab70d39a3475f3",
+      "bytes": 4557,
+      "git_blob_sha1": "d56f71e089cf3777323a6787a1f2e6866ac529b4",
       "original_mode": "0644",
       "path": "wp-content/plugins/mad4b-commerce/modules/commerce/096-verified-tour-render-context.php",
-      "sha256": "549e9f528e8ab98c2088e99f4777b7c076d6eb9c49cfff51bc50087bf2d57128"
+      "sha256": "7665a3b85291ea462f098e34e77c27753e47fd9a0da3276039681785df6169d6"
     },
     {
       "bytes": 1499,
@@ -1802,6 +1802,20 @@
       "sha256": "63addcbeb594bcc621cb9c9fee1e90842f63953bf4ae44fde5f0c3b589c91f1e"
     },
     {
+      "bytes": 26604,
+      "git_blob_sha1": "3486786cade0473036f042c778c9f75c0bc41746",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.3.2.css",
+      "sha256": "84382dcf9d555f50e0b44a02189aabebed7a24d530d99ae98e36bb25403f809d"
+    },
+    {
+      "bytes": 35733,
+      "git_blob_sha1": "1e72d7cbc3e2ae838ef15e5b0519a552e4cfd9b6",
+      "original_mode": "0644",
+      "path": "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.3.2.js",
+      "sha256": "dfa3460b58eacb2bf6ca32e3de318c904d5874a984bec27c9d13e3d1875721b6"
+    },
+    {
       "bytes": 21449,
       "git_blob_sha1": "05fe15d09b82ae18de33acfe306560d6dfd001fb",
       "original_mode": "0644",
@@ -1929,10 +1943,10 @@
     },
     {
       "bytes": 12931,
-      "git_blob_sha1": "845468d1dfe120079c638c150b55c5928b0b96f7",
+      "git_blob_sha1": "0457ea6ac6c508f95594f1e8c1dcc6daed059423",
       "original_mode": "0644",
       "path": "wp-content/plugins/mad4b-commerce/modules/presentation/unified-date-presentation-v1.php",
-      "sha256": "ac1e2784f7a8ef0b754fdb5217e1de7453a485338820af42cb7909fd5c21b810"
+      "sha256": "6ee00a2e5f9d13882fcdbbe1405595b11911201ce784a07daacba58f37a304b1"
     },
     {
       "bytes": 1301,

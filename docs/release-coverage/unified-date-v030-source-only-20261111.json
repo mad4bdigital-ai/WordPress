@@ -1,5 +1,5 @@
 {
-  "active_immutable_js_version": "0.3.1",
+  "active_immutable_js_version": "0.3.2",
   "ajax_currency_wpml_qa_not_browser_verified": true,
   "assets": [
     {
@@ -18,15 +18,15 @@
   "native_date_clearing_guard_imported": true,
   "new_currency_context_is_display_only": true,
   "original_query310_failclosed_AND_preserved": true,
-  "php_candidate_sha256": "c9946bc02a6928fd5e1d7802a43f22ba78e6ced1e01160f08e1c705086f8ee1b",
-  "php_live_sha256": "ac1e2784f7a8ef0b754fdb5217e1de7453a485338820af42cb7909fd5c21b810",
+  "php_candidate_sha256": "3c523e6fa8facf07ff3e45b0944560b0594ade2db532d907f05075913001e0a8",
+  "php_live_sha256": "6ee00a2e5f9d13882fcdbbe1405595b11911201ce784a07daacba58f37a304b1",
   "previous_candidate_head": "8ab9236d4514d3f39847c7004a3207889db51c63",
   "qa_only_source_diagnostic_imported": false,
   "release_authorized": false,
-  "retained_immutable_css_version": "0.3.0",
+  "retained_immutable_css_version": "0.3.2",
   "reviewed_js_fluent_empty_date_guard": true,
-  "reviewed_js_semantic_overlay_live_sha256": "63addcbeb594bcc621cb9c9fee1e90842f63953bf4ae44fde5f0c3b589c91f1e",
-  "reviewed_js_semantic_overlay_sha256": "7856d970a26a3bccc11a0dd6b08a45f27616bab7d3f58e89dd00b43b22665f82",
+  "reviewed_js_semantic_overlay_live_sha256": "dfa3460b58eacb2bf6ca32e3de318c904d5874a984bec27c9d13e3d1875721b6",
+  "reviewed_js_semantic_overlay_sha256": "97c130b976f4463c5ad2b2822ed621e4945267fb61bed6823bc99a48dd02ba39",
   "reviewed_js_wpml_clear_stale_date_guard": true,
   "site_write_executed": false,
   "source_live_qa_diagnostic_removed_by_concurrent_source_update": true,

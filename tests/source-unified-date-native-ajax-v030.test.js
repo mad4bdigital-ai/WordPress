@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname,
-  '../wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.3.1.js'),'utf8');
+  '../wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.3.2.js'),'utf8');
 function boot(hasDate, selectedCurrency='EUR') {
   const listeners={}, storage=new Map(), prefilters=[];
   const href='https://example.test/tours-and-activities/giza-pyramids-half-day-tour/?currency=EUR';

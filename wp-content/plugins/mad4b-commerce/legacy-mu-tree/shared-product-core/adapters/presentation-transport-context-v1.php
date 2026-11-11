@@ -92,12 +92,30 @@ final class Shared_Product_Presentation_Transport_Context_v1 {
   $mode=(int)get_post_meta($post_id,'trans_mode',true);
   if($mode!==$c['mode_term'])
     return ['ok'=>false,'code'=>'TRANSPORT_META_MODE_MISMATCH'];
-  if(!has_term($mode,'transportation-types',$post_id))
+  // WPML localizes taxonomy IDs during frontend queries even when the
+  // transport's saved trans_mode/trans_type meta keeps canonical source IDs.
+  // Validate the actual translated taxonomy, not hard-coded source-language
+  // has_term() IDs. Where a subtype has no translation, WPML may retain its
+  // original term (the site's explicit translate-or-fallback policy).
+  $language=(string)apply_filters('wpml_current_language','');
+  $localized_mode=$language!==''?(int)apply_filters('wpml_object_id',$mode,
+    'transportation-types',false,$language):0;
+  $taxonomy_mode=$localized_mode?:$mode;
+  if(!has_term($taxonomy_mode,'transportation-types',$post_id))
     return ['ok'=>false,'code'=>'TRANSPORT_TAXONOMY_MODE_MISMATCH'];
   $subtype=(int)get_post_meta($post_id,'trans_type',true);
-  $term=$subtype?get_term($subtype,'transportation-types'):false;
-  if(!$term instanceof WP_Term || (int)$term->parent!==$mode
-     ||!has_term($subtype,'transportation-types',$post_id))
+  $localized_subtype=$subtype && $language!==''
+    ?(int)apply_filters('wpml_object_id',$subtype,'transportation-types',false,$language):0;
+  $candidates=array_values(array_unique(array_filter([$localized_subtype,$subtype])));
+  $valid_subtype=false;
+  foreach($candidates as $candidate_id) {
+    $term=get_term($candidate_id,'transportation-types');
+    if($term instanceof WP_Term && in_array((int)$term->parent,[$taxonomy_mode,$mode],true)
+        && has_term($candidate_id,'transportation-types',$post_id)) {
+      $valid_subtype=true;break;
+    }
+  }
+  if(!$valid_subtype)
     return ['ok'=>false,'code'=>'TRANSPORT_SUBTYPE_MISMATCH'];
   return ['ok'=>true,'code'=>'TRANSPORT_PRESENTATION_ELIGIBLE','post_id'=>$post_id,
    'mode_term_id'=>$mode,'subtype_term_id'=>$subtype,'category'=>$category,

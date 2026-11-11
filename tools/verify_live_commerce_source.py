@@ -28,7 +28,7 @@ def verify(data, root=ROOT, live_root=None):
         raise Blocked('INVALID_RELEASE_SOURCE_CLAIM')
     overlays=data.get('approved_candidate_overlays')
     php_path=ROOT_NAME+'/modules/presentation/unified-date-presentation-v1.php'
-    js_path=ROOT_NAME+'/modules/presentation/assets/unified-date-v0.3.1.js'
+    js_path=ROOT_NAME+'/modules/presentation/assets/unified-date-v0.3.2.js'
     allowed_overlays={
         php_path:('read_only_and_intersection_fail_closed','offline_php_cases_passed',27),
         js_path:('clear_wpml_stale_date_and_empty_fluent_input','offline_js_cases_passed',23),
@@ -62,7 +62,7 @@ def verify(data, root=ROOT, live_root=None):
     if set(sem_by_path)!=set(allowed_overlays):
         raise Blocked('REQUIRED_SEMANTIC_OVERLAY_MISSING')
     items=data.get('files')
-    if not isinstance(items,list) or len(items)!=276:
+    if not isinstance(items,list) or len(items)!=278:
         raise Blocked('COMMERCE_SOURCE_COUNT_DRIFT')
     seen=set()
     groups={'.php':0,'.js':0,'.css':0}
@@ -102,7 +102,7 @@ def verify(data, root=ROOT, live_root=None):
                 or digest(raw)!=row['sha256']
                 or blob(raw)!=row['git_blob_sha1']):
                 raise Blocked('COMMERCE_SOURCE_SHA_MISMATCH')
-    if groups!={'.php':238,'.js':25,'.css':13}:
+    if groups!={'.php':238,'.js':26,'.css':14}:
         raise Blocked('COMMERCE_CODE_TYPE_DRIFT')
     if (ROOT_NAME+'/mad4b-commerce.php' not in seen
         or ROOT_NAME+'/legacy-mu-tree/shared-product-core/adapters/rate-actions-styles.php' not in seen):

@@ -7,7 +7,10 @@ P='wp-content/mu-plugins/mad4b-tour-optional-sections-lazy.php'
 class OptionalLazy(unittest.TestCase):
  def test_signed_live_source_sha_and_activation_not_assumed(self):
   item=next(x for x in M['files'] if x['path']==P)
-  self.assertEqual(hashlib.sha256((ROOT/P).read_bytes()).hexdigest(),item['sha256'])
+  patch=M['approved_candidate_overlays'][0]
+  self.assertEqual(item['sha256'],patch['live_sha256'])
+  self.assertEqual(patch['path'],P)
+  self.assertEqual(hashlib.sha256((ROOT/P).read_bytes()).hexdigest(),patch['candidate_sha256'])
   self.assertFalse(M['automatic_mu_activation_authorized'])
   self.assertFalse(M['site_modified'])
  def test_condition_gates_before_expensive_render(self):
@@ -33,6 +36,12 @@ class OptionalLazy(unittest.TestCase):
   self.assertIn("mad4b_tour_optional_lazy_mode",s)
   self.assertIn("'canary'",s)
   self.assertIn("'650px'",s)
+  self.assertIn('Jet_Engine_Listings_Ajax_Handlers',s)
+  self.assertIn('$handler->query_has_valid_signature(',s)
+  self.assertIn('$handler->query_has_valid_mutable_signature(',s)
+  self.assertIn('$handler->query_matches_widget_settings(',s)
+  self.assertIn("['MAD4B_Tour_Optional_Sections_Lazy_V1','verify_native_transport_ajax'],20,1",s)
+
  def test_hidden_template_styles_only_and_visible_nested_listing_preserved(self):
   s=(ROOT/P).read_text()
   self.assertIn("include_nested_styles_from_blocked_template",s)

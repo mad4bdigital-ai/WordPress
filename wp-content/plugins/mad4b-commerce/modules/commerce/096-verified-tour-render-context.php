@@ -34,6 +34,18 @@ final class Shared_Product_Verified_Tour_Render_Context_v1 {
         }
         self::$stack[]=$context;
     }
+    // Only internal server-verified native JetEngine readers may bind a
+    // published parent Tour for service-channel PRESENTATION. No booking,
+    // pricing or standalone-service authority is conveyed by this context.
+    public static function begin_native_optional_transport(int $tour,string $category): bool {
+        if (!wp_doing_ajax() || get_post_type($tour)!=='tours-and-activities'
+            || get_post_status($tour)!=='publish'
+            || !in_array($category,['vehicles','train','air'],true))return false;
+        self::$stack[]=['tour_id'=>$tour,'provider'=>'native-jetengine-transport',
+            'purpose'=>'signed_optional_transport_display','category'=>$category,
+            'requested_currency'=>null,'booking_authorized'=>false];
+        return true;
+    }
     public static function end():void {array_pop(self::$stack);}
     public static function current():?array {
         if(!self::$stack)return null;
