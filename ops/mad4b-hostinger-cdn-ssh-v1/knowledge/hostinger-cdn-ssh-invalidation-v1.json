@@ -1,0 +1,47 @@
+{
+  "contract": "mad4b.company-knowledge.operation.v1",
+  "knowledge_id": "hostinger.cdn.ssh.invalidation",
+  "operation_id": "company.cache.hostinger.refresh",
+  "revision": 1,
+  "company_manager": "MAD4B Central Company Operations",
+  "provider": "hostinger_cdn",
+  "problem": "Hostinger CDN may serve stored public HTML before SSH-accessible LiteSpeed/WordPress receives personalized requests.",
+  "supported_capabilities": [
+    "ssh.origin.readback",
+    "ssh.litespeed.url_invalidation",
+    "cdn.public_response.header_readback",
+    "origin.private_context_verification",
+    "provider_cdn_refresh_external_handoff"
+  ],
+  "execution_chain": [
+    "resolve registered company environment and pin SSH identity",
+    "verify canonical WP site home and target URL",
+    "verify origin no-store rules and LiteSpeed bypass",
+    "issue only a targeted LiteSpeed URL purge when explicitly requested",
+    "independently check Hostinger CDN HIT/BYPASS and Cache-Control",
+    "if CDN remains HIT for a private context, record WAITING_PROVIDER_CDN_PURGE without claiming completion"
+  ],
+  "non_capabilities": [
+    "Hostinger hPanel CDN purge is not exposed as an authenticated command by the enrolled SSH account",
+    "LiteSpeed URL purge does not invalidate an already stored Hostinger CDN HTML object",
+    "Do not infer an original central 313 signed execution receipt from local SSH logs"
+  ],
+  "safety": {
+    "default_mode": "read_only_reconcile",
+    "global_litespeed_purge": false,
+    "redis_flush": false,
+    "public_cdn_html_activation": false,
+    "no_authentication_bypass": true,
+    "scoped_www_domains": true
+  },
+  "remediation": {
+    "provider_action": "Purge Hostinger CDN cache for the specific website with an authorized Hostinger provider integration; if no provider authorization exists, keep WAITING_PROVIDER_CDN_PURGE and do not enable shared HTML for personalized pages",
+    "recovery": "Recheck independently after provider invalidation; accept PASS only with no sensitive-context CDN HIT"
+  },
+  "evidence": {
+    "live_service": "mad4b-company-hostinger-cdn-operation.service",
+    "report": "/opt/mad4b-company-provisioning/reports/company-hostinger-cdn-operation-current.json",
+    "fleet_probe": "/opt/mad4b-company-provisioning/reports/company-hostinger-cloud-cdn-edge-current.json",
+    "company_inventory": "/opt/mad4b-company-provisioning/reports/hostinger-cloud-startup-sites-current.json"
+  }
+}

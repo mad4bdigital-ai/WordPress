@@ -1,0 +1,16 @@
+[Unit]
+Description=MAD4B optional company owner authorization receipts and explicit email requests
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+UMask=0077
+WorkingDirectory=/opt/mad4b-company-provisioning
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/usr/bin/python3 /opt/mad4b-company-provisioning/ops/company-optional-owner-authorization-v1/company-optional-authorization-worker.py once
+TimeoutStartSec=190
+NoNewPrivileges=true
+PrivateTmp=false

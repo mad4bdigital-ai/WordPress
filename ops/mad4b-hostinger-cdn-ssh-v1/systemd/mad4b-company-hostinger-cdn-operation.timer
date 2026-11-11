@@ -1,0 +1,9 @@
+[Unit]
+Description=Company operation policy and Hostinger CDN SSH evidence reconciliation every 30 minutes
+[Timer]
+OnBootSec=11min
+OnUnitInactiveSec=30min
+AccuracySec=1min
+Unit=mad4b-company-hostinger-cdn-operation.service
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,12 @@
+[Unit]
+Description=Refresh WordPress public route registry at most every 30 minutes
+
+[Timer]
+OnBootSec=13min
+OnUnitInactiveSec=30min
+RandomizedDelaySec=90s
+AccuracySec=30s
+Unit=mad4b-public-route-registry-refresh.service
+
+[Install]
+WantedBy=timers.target

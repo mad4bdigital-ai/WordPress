@@ -1,0 +1,12 @@
+[Unit]
+Description=Retry missed pricing cache invalidation every 30m for source
+
+[Timer]
+OnBootSec=13min
+OnUnitInactiveSec=30min
+AccuracySec=60s
+RandomizedDelaySec=90s
+Unit=mad4b-pricing-cache-invalidation-source.service
+
+[Install]
+WantedBy=timers.target

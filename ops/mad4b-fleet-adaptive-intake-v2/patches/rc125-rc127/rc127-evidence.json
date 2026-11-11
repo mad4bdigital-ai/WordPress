@@ -1,0 +1,9 @@
+{
+  "contract": "mad4b.fleet-rc127-source-delta.v1",
+  "step": "rc127",
+  "source_path": "includes/class-mad4b-scp-abilities.php",
+  "source_before_sha256": "2f0fe2cd3643430579c2e0a61a00c23a524860612e21e2dba4f22776444f0a48",
+  "source_after_sha256": "8788f299643cadde91bf128d0417aca2a6ae97363fde95e0fc1bf5d1dbf5350b",
+  "patch_sha256": "26af0fd6d9d770ca337c1c32ff2f63a9ca7b8222a7f5118e8d1a3e94e6d779b5",
+  "source_build": "fleet-adaptive-intake-dispatch-rc127"
+}

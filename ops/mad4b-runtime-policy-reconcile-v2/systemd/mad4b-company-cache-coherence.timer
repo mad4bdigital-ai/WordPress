@@ -1,0 +1,14 @@
+[Unit]
+Description=Continuously audit the MAD4B cache/Redis/PHP/browser policy for enrolled companies
+
+[Timer]
+OnBootSec=9min
+OnUnitInactiveSec=30min
+RandomizedDelaySec=90s
+FixedRandomDelay=true
+AccuracySec=30s
+Persistent=false
+Unit=mad4b-company-cache-coherence.service
+
+[Install]
+WantedBy=timers.target

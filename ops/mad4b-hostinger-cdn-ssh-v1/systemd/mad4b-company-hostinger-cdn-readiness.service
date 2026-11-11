@@ -1,0 +1,17 @@
+[Unit]
+Description=MAD4B remote Hostinger CDN and LiteSpeed context readiness via registered SSH
+After=network-online.target
+Wants=network-online.target
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/flock -n /run/lock/mad4b-company-hostinger-cdn-readiness.lock /usr/bin/python3 /opt/mad4b-company-provisioning/bin/company-hostinger-cdn-readiness-v1.py --strict-security --entry-point systemd_timer
+TimeoutStartSec=240
+Nice=15
+CPUWeight=10
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=/opt/mad4b-company-provisioning/reports /run/lock
+UMask=0077
+StandardOutput=journal
+StandardError=journal

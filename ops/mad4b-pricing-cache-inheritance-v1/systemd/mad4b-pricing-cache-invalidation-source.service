@@ -1,0 +1,18 @@
+[Unit]
+Description=MAD4B Pricing Policy cache path invalidation for source
+After=docker.service network-online.target
+Wants=network-online.target
+Requires=docker.service
+RequiresMountsFor=/opt/hostinger-migrations/hosting-3/etg-commerce-staging/site-copy/wp-content
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/flock -w 45 /run/lock/mad4b-pricing-cache-invalidation-source.lock /usr/bin/python3 /opt/mad4b-company-provisioning/bin/company-pricing-cache-path-invalidation-v1.py source
+TimeoutStartSec=275
+NoNewPrivileges=true
+UMask=0077
+Nice=15
+IOSchedulingClass=idle
+CPUQuota=45%
+StandardOutput=journal
+StandardError=journal

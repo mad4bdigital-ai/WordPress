@@ -1,0 +1,135 @@
+--- a/includes/class-mad4b-scp-abilities.php
++++ b/includes/class-mad4b-scp-abilities.php
+@@ -751,8 +751,79 @@
+ 		if ( false === $encoded ) $encoded = 'null';
+ 		return hash( 'sha256', $encoded );
+ 	}
+ 
++
++    /**
++     * Staging-only, NON-CONTENT exception to the delegated draft dispatcher:
++     * Fleet Adaptive Intake checkpoints may be planned/saved with the user's
++     * exact approved ticket, but never execute the requested original change.
++     * The original central authorization and one-time ticket consumption remain
++     * mandatory in write_execute -> Ability::execute.
++     */
++    private function delegated_fleet_intake_write_preflight( $identity, $ability_name, $input ) {
++        $enrolled = array(
++            'mad4b/fleet-intake-plan',
++            'mad4b/fleet-intake-auto',
++            'mad4b/fleet-intake-save',
++        );
++        if ( ! in_array( $ability_name, $enrolled, true ) || ! is_array( $input )
++            || ! is_array( $input['input'] ?? null )
++            || ! class_exists( 'MAD4B_SCP_Staging_Write_Planning_Guard', false )
++            || ! class_exists( 'MAD4B_SCP_Agent_Registry', false )
++            || ! class_exists( 'MAD4B_SCP_Approval_Tickets', false )
++            || ! class_exists( 'MAD4B_SCP_Staging_Write_Authority', false )
++            || ! class_exists( 'MAD4B_SCP_Delegation_Mode', false )
++            || ! class_exists( 'MAD4B_Fleet_Adaptive_Intake_V2', false )
++            || ! MAD4B_Fleet_Adaptive_Intake_V2::can()
++            || ! MAD4B_SCP_Staging_Write_Authority::effective()
++            || ! MAD4B_SCP_Policy::can_mutate() )
++            return new WP_Error( 'mad4b_intake_delegation_scope_denied',
++                'Only enrolled Staging Intake checkpoint operations are eligible.' );
++
++        $user = MAD4B_SCP_Delegation_Mode::authenticated_user( $identity );
++        if ( ! $user || ! user_can( $user, 'manage_options' ) )
++            return new WP_Error( 'mad4b_intake_delegation_oauth_admin_required',
++                'Verified enrolled OAuth WordPress administrator is required.' );
++        $actor = MAD4B_SCP_Agent_Registry::resolve_agent( $identity );
++        if ( is_wp_error( $actor ) ) return $actor;
++        if ( ! MAD4B_SCP_Staging_Write_Planning_Guard::current_enrolled_oauth_planner_actor(
++            $identity, $actor, (int) $user->ID ) )
++            return new WP_Error( 'mad4b_intake_delegation_subject_denied',
++                'The authenticated OAuth subject is not bound to the current enrolled user.' );
++        $grant = MAD4B_SCP_Agent_Registry::exact_grant(
++            (int) $actor['id'], 'mad4b-write', $ability_name, 'core' );
++        if ( is_wp_error( $grant ) ) return $grant;
++        $candidate = MAD4B_SCP_Staging_Write_Authority::candidate_binding_status();
++        if ( ! is_array( $candidate ) || empty( $candidate['match'] ) )
++            return new WP_Error( 'mad4b_intake_delegation_candidate_stale',
++                'Current enrolled write candidate is not verified.' );
++        $ticket_id = isset( $input['_mad4b_approval_ticket_id'] )
++            ? strtolower( trim( (string) $input['_mad4b_approval_ticket_id'] ) ) : '';
++        if ( ! preg_match( '/^[a-f0-9-]{36}$/D', $ticket_id ) )
++            return new WP_Error( 'mad4b_intake_delegation_ticket_required',
++                'An exact approved pending Intake operation ticket is required.' );
++        $ticket = MAD4B_SCP_Approval_Tickets::get( $ticket_id );
++        if ( ! is_array( $ticket )
++            || 'approved' !== (string) ( $ticket['status'] ?? '' )
++            || 'mutation' !== (string) ( $ticket['ticket_class'] ?? '' )
++            || 'mad4b-write' !== (string) ( $ticket['server_id'] ?? '' )
++            || 'core' !== (string) ( $ticket['provider'] ?? '' )
++            || $ability_name !== (string) ( $ticket['ability_name'] ?? '' )
++            || (int) ( $ticket['agent_id'] ?? 0 ) !== (int) $actor['id']
++            || (string) ( $ticket['site_uuid'] ?? '' ) !== MAD4B_SCP_Site_Profile::site_uuid()
++            || (string) ( $ticket['binding_host'] ?? '' ) !== wp_parse_url( home_url(), PHP_URL_HOST )
++            || empty( $ticket['candidate_sha'] )
++            || ! hash_equals( (string) ( $candidate['current_source_commit_sha'] ?? '' ),
++                (string) ( $ticket['candidate_sha'] ?? '' ) )
++            || ! empty( $ticket['used_at'] )
++            || empty( $ticket['expires_at'] )
++            || (int) strtotime( (string) $ticket['expires_at'] ) <= time() )
++            return new WP_Error( 'mad4b_intake_delegation_ticket_not_current',
++                'Exact approved user-owned Intake ticket is not current or was already consumed.' );
++        return true;
++    }
++
+ 	public function can_write_dispatch( $input = null ) {
+ 		$request_scope = self::request_scope_admit( 'can_write_dispatch' );
+ 		if ( is_wp_error( $request_scope ) ) return $request_scope;
+ 		$delegation_identity = class_exists( 'MAD4B_SCP_Identity_Context' )
+@@ -774,25 +845,35 @@
+ 		$actual = $this->ability_input_schema_sha256( $ability );
+ 		$expected = strtolower( trim( (string) $input['expected_input_schema_sha256'] ) );
+ 		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $expected ) || ! hash_equals( strtolower( $actual ), $expected ) ) return new WP_Error( 'mad4b_write_dispatch_schema_drift', 'Requested write ability input schema changed after planning.', array( 'ability_name' => $ability_name, 'current_input_schema_sha256' => $actual ) );
+ 		if ( $delegated ) {
+-			// No owner impersonation, generic admin control or approval issuance:
+-			// only a verified signed preparation for a draft content bundle can
+-			// enroll an exact WordPress-user-owned execution actor.
+-			if ( 'mad4b/content-apply-bundle' !== $ability_name
+-				|| ! is_array( $input['input'] ?? null )
+-				|| empty( $input['_mad4b_approval_ticket_id'] )
+-				|| ! is_string( $input['_mad4b_approval_ticket_id'] ) )
+-				return new WP_Error( 'mad4b_delegation_prepared_draft_only', 'Verified delegated write dispatch requires a prepared draft target and exact approval-ticket reference.' );
+-			$capability_guard = MAD4B_SCP_Delegation_Mode::authorize_ability(
+-				$delegation_identity, $ability_name, $input['input'] );
+-			if ( is_wp_error( $capability_guard ) || true !== $capability_guard )
+-				return is_wp_error( $capability_guard ) ? $capability_guard
+-					: new WP_Error( 'mad4b_delegation_capability_denied', 'WordPress user lacks exact draft permission.' );
+-			$actor = MAD4B_SCP_Delegation_Mode::ensure_content_actor( $delegation_identity, true );
+-			if ( is_wp_error( $actor ) ) return $actor;
+-			if ( ! MAD4B_SCP_Policy::can_mutate() )
+-				return new WP_Error( 'mad4b_delegation_runtime_gate_denied', 'Delegated content actor is enrolled but the site write gate is not ready.' );
++			// The only additional delegated write class is a non-content,
++			// approved, encrypted Intake checkpoint on the enrolled Staging site.
++			// Never expand the existing draft-content exception to plugin,
++			// Developer, shell, approval creation, publication or arbitrary writes.
++			if ( in_array( $ability_name, array(
++				'mad4b/fleet-intake-plan', 'mad4b/fleet-intake-auto',
++				'mad4b/fleet-intake-save' ), true ) ) {
++				$intake_guard = $this->delegated_fleet_intake_write_preflight(
++					$delegation_identity, $ability_name, $input );
++				if ( is_wp_error( $intake_guard ) ) return $intake_guard;
++			} else {
++				// Original draft-only enrollment rule unchanged.
++				if ( 'mad4b/content-apply-bundle' !== $ability_name
++					|| ! is_array( $input['input'] ?? null )
++					|| empty( $input['_mad4b_approval_ticket_id'] )
++					|| ! is_string( $input['_mad4b_approval_ticket_id'] ) )
++					return new WP_Error( 'mad4b_delegation_prepared_draft_only', 'Verified delegated write dispatch requires a prepared draft target and exact approval-ticket reference.' );
++				$capability_guard = MAD4B_SCP_Delegation_Mode::authorize_ability(
++					$delegation_identity, $ability_name, $input['input'] );
++				if ( is_wp_error( $capability_guard ) || true !== $capability_guard )
++					return is_wp_error( $capability_guard ) ? $capability_guard
++						: new WP_Error( 'mad4b_delegation_capability_denied', 'WordPress user lacks exact draft permission.' );
++				$actor = MAD4B_SCP_Delegation_Mode::ensure_content_actor( $delegation_identity, true );
++				if ( is_wp_error( $actor ) ) return $actor;
++				if ( ! MAD4B_SCP_Policy::can_mutate() )
++					return new WP_Error( 'mad4b_delegation_runtime_gate_denied', 'Delegated content actor is enrolled but the site write gate is not ready.' );
++			}
+ 		}
+ 		// Governance metadata is bound only after the signed preparation contract
+ 		// and exact schema identity have passed current-request revalidation.
+ 		$captured = $this->capture_write_dispatch_governance_envelope( $input );

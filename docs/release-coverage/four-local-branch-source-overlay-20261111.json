@@ -1,0 +1,1072 @@
+{
+  "base_candidate": "cc392348139498faa0d5f0c951694429a1377b6b",
+  "contract": "mad4b.local-four-branch-source-overlay.v1",
+  "files": [
+    {
+      "bytes": 1269,
+      "git_blob_oid": "17afbdf2d30ebc7daf112712dac728d34d85111e",
+      "git_mode": "100644",
+      "path": ".github/workflows/mad4b-pricing-cache-inheritance.yml",
+      "sha256": "081177a1a836471fe70a60cf82442cc7cb0cde5395c90c6c7cd5a55f17839954",
+      "source_branches": [
+        "feat/mad4b-pricing-cache-inheritance-20261108"
+      ]
+    },
+    {
+      "bytes": 993,
+      "git_blob_oid": "116bbf4f3f90b70dd91f8ac5f46471468d40326a",
+      "git_mode": "100644",
+      "path": ".github/workflows/mad4b-runtime-policy-reconcile-v2.yml",
+      "sha256": "f2afc99f7e10971d16d9aaf89cba88703ea442ac270afec4f900677bcbf34851",
+      "source_branches": [
+        "fix/mad4b-runtime-policy-reconcile-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 19,
+      "git_blob_oid": "7a60b85e148f80966a550e5ab6a762a907c69ca6",
+      "git_mode": "100644",
+      "path": "ops/mad4b-company-optional-authorization-v1/.gitignore",
+      "sha256": "862263fa1f46c20f0d1e4dac5ffcc75abd55c08211b2c3864c5f8764b9d87793",
+      "source_branches": [
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 5865,
+      "git_blob_oid": "ad0e53a9a2fe4d77cdd71fdc788f4fc54134f43b",
+      "git_mode": "100644",
+      "path": "ops/mad4b-company-optional-authorization-v1/README.md",
+      "sha256": "58eb8f748944481122fdab7d0c8014ae082baa35fed3c44bd3473db522608005",
+      "source_branches": [
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 15653,
+      "git_blob_oid": "f972658f735906ead5a4843d22869fa7734c358c",
+      "git_mode": "100755",
+      "path": "ops/mad4b-company-optional-authorization-v1/host/company-optional-authorization-worker.py",
+      "sha256": "1e29878477aacc4d6d30c5d4eee3b45308d395c5f0c7ff86997f130dcde0d52a",
+      "source_branches": [
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 3860,
+      "git_blob_oid": "4234d7707733dbe79d0b93e8349f533e4cda4243",
+      "git_mode": "100755",
+      "path": "ops/mad4b-company-optional-authorization-v1/qa/optional-auth-source-contract-test.py",
+      "sha256": "7fe86bca8077bd7d97efe257760259abeb83b78247e5be7477c8189c27378e46",
+      "source_branches": [
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 520,
+      "git_blob_oid": "daed38bf57fb9123e1701067db6ac920785c2e42",
+      "git_mode": "100644",
+      "path": "ops/mad4b-company-optional-authorization-v1/systemd/mad4b-optional-company-authorization.service",
+      "sha256": "b22edc8f398203971ceafdefbf2738c010b3f7666605b6f9a6d1831f88d7dc77",
+      "source_branches": [
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 257,
+      "git_blob_oid": "80c9ed2ec6841e4ace2403551bc6881f2c705ec4",
+      "git_mode": "100644",
+      "path": "ops/mad4b-company-optional-authorization-v1/systemd/mad4b-optional-company-authorization.timer",
+      "sha256": "3b00920f22f30283204f1990a2028e40202ef3b358dcd1b9cce157cc991e27e7",
+      "source_branches": [
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 24684,
+      "git_blob_oid": "59baf7833e536bc47a1d3c4e701b189830dc54cc",
+      "git_mode": "100644",
+      "path": "ops/mad4b-company-optional-authorization-v1/wordpress/mu-plugins/322-mad4b-optional-company-authorization-center.php",
+      "sha256": "ca329e57f4dc35f1301a2d9fbd897a05568313256896b5061e53cfca4c4bc511",
+      "source_branches": [
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 17408,
+      "git_blob_oid": "6d93dc9c235c0a2632b2b91be456d62cb51b0228",
+      "git_mode": "100644",
+      "path": "ops/mad4b-company-optional-authorization-v1/wordpress/mu-plugins/323-mad4b-optional-company-authorization-site.php",
+      "sha256": "9351af0207287587ea3e435f9155e1803ea0694d9e70d83843458f3365c8cf42",
+      "source_branches": [
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 172,
+      "git_blob_oid": "44a025af266ef2f647b461e528b69619b3224c59",
+      "git_mode": "100644",
+      "path": "ops/mad4b-fleet-adaptive-intake-v2/.gitattributes",
+      "sha256": "2be70a464177d3356b8d3bb6c2028e731dcdaed224d6e4e482ba28c89e5301fc",
+      "source_branches": [
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 19,
+      "git_blob_oid": "7a60b85e148f80966a550e5ab6a762a907c69ca6",
+      "git_mode": "100644",
+      "path": "ops/mad4b-fleet-adaptive-intake-v2/.gitignore",
+      "sha256": "862263fa1f46c20f0d1e4dac5ffcc75abd55c08211b2c3864c5f8764b9d87793",
+      "source_branches": [
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 15439,
+      "git_blob_oid": "9ea62f1c988cedb8798d99eb5ee775d8027b4b04",
+      "git_mode": "100644",
+      "path": "ops/mad4b-fleet-adaptive-intake-v2/README.md",
+      "sha256": "198fd08978fbc1a9cb0293232324d676f583e7180b6165674f57329ca50f5f2f",
+      "source_branches": [
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 3018,
+      "git_blob_oid": "5eaecdc510359880bc8dc952aa4e53107e826259",
+      "git_mode": "100644",
+      "path": "ops/mad4b-fleet-adaptive-intake-v2/knowledge/fleet-adaptive-intake-v2.json",
+      "sha256": "e35de6201e56d600a9a0937b24058437ee158d89b7943bb5da38a5279078d651",
+      "source_branches": [
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 1922,
+      "git_blob_oid": "0121aa6589a97ca18cbde057f63a2b2f089aab9c",
+      "git_mode": "100644",
+      "path": "ops/mad4b-fleet-adaptive-intake-v2/patches/company-manager-vps-preferred-route.patch",
+      "sha256": "75c882e20e6eb81d310506b12cb8488c9b0a2688ce783e7a7374a57a67208f0a",
+      "source_branches": [
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 2869,
+      "git_blob_oid": "58767c1046eb74ef630245aa9087bffafd672972",
+      "git_mode": "100644",
+      "path": "ops/mad4b-fleet-adaptive-intake-v2/patches/hostinger-mcp-certified-autoload-precedence.patch",
+      "sha256": "ae55fe8aeb2edb6067d7da70bb5282fc8ffd80b17db39643de66a74a831ae7fa",
+      "source_branches": [
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 464,
+      "git_blob_oid": "48dcc1fa1c53528d17c99f0b240990a2e52f783e",
+      "git_mode": "100644",
+      "path": "ops/mad4b-fleet-adaptive-intake-v2/patches/rc125-rc127/rc125-evidence.json",
+      "sha256": "3c271c2f2272e61cae1520936525cce97ecd7f4f88a4ff714564c00ca03ca0de",
+      "source_branches": [
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 3121,
+      "git_blob_oid": "d89cad0e358440f02dcd87508a87116ff1303476",
+      "git_mode": "100644",
+      "path": "ops/mad4b-fleet-adaptive-intake-v2/patches/rc125-rc127/rc125-mad4b-mcp-adapter-mu-bootstrap.patch",
+      "sha256": "c39220c5aa37eac5f1da706e718d177dbc8f1ae86d69192b55d2d02e0ea5d028",
+      "source_branches": [
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 4411,
+      "git_blob_oid": "b557e0eea175a316f1a5baf0a4b3863838f542ad",
+      "git_mode": "100644",
+      "path": "ops/mad4b-fleet-adaptive-intake-v2/patches/rc125-rc127/rc126-class-mad4b-scp-staging-write-planning-guard.patch",
+      "sha256": "69b82af3ab2f295096068953d838ff131b4f7dba3a24a8490c000c3bd72915b1",
+      "source_branches": [
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 480,
+      "git_blob_oid": "6bc1834dfcf3e4f34697074d8acc5561b1c2c852",
+      "git_mode": "100644",
+      "path": "ops/mad4b-fleet-adaptive-intake-v2/patches/rc125-rc127/rc126-evidence.json",
+      "sha256": "d06b2c68a1cc12257e29c2fab23e8f1d45f33bada4669f59ddbd80f624aa82dd",
+      "source_branches": [
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 8836,
+      "git_blob_oid": "3b4019e68fbdb6e840789d9139c9591b57967918",
+      "git_mode": "100644",
+      "path": "ops/mad4b-fleet-adaptive-intake-v2/patches/rc125-rc127/rc127-class-mad4b-scp-abilities.patch",
+      "sha256": "26af0fd6d9d770ca337c1c32ff2f63a9ca7b8222a7f5118e8d1a3e94e6d779b5",
+      "source_branches": [
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 463,
+      "git_blob_oid": "27e3442274440e0bac8de3970f868ddcd1a37b64",
+      "git_mode": "100644",
+      "path": "ops/mad4b-fleet-adaptive-intake-v2/patches/rc125-rc127/rc127-evidence.json",
+      "sha256": "8c16269e33f78bd8ad238983a250a030e0aa9c47918ceeca829c1fff5e5b7946",
+      "source_branches": [
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 1092,
+      "git_blob_oid": "87a1c94bf4668f71e519e37044732b6f5037d4a2",
+      "git_mode": "100644",
+      "path": "ops/mad4b-fleet-adaptive-intake-v2/qa/actor-bound-checkpoint-smoke.php",
+      "sha256": "34d019bfd77354cbc1e7ad4ae49994cef8d45e23e3f380e7b6625738b8c20651",
+      "source_branches": [
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 1794,
+      "git_blob_oid": "1c289bdcc3e8ddfecdc4399d34e179e98258b4bf",
+      "git_mode": "100644",
+      "path": "ops/mad4b-fleet-adaptive-intake-v2/qa/central-preferred-route-smoke.php",
+      "sha256": "4490de2c890bf72d23046e17197e0d96b2b87e66c63c154a3e033b749e03913b",
+      "source_branches": [
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 1448,
+      "git_blob_oid": "de527d9f75cbe563365ba5eb6c70266bb419fb08",
+      "git_mode": "100644",
+      "path": "ops/mad4b-fleet-adaptive-intake-v2/qa/fleet-intake-chat-agent-smoke.php",
+      "sha256": "9ff64ef1840f3e239c8b52963bb24add373eb5cfb824f40119685d4b368abbf7",
+      "source_branches": [
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 4797,
+      "git_blob_oid": "12eef952d79ff4ac54d8939365ab95060d35f7b8",
+      "git_mode": "100644",
+      "path": "ops/mad4b-fleet-adaptive-intake-v2/qa/fleet-intake-synthetic-tests.php",
+      "sha256": "3fbc29dd882982f2dae5d36369ee4464a8ed1bdd8c886598004e7e54998832ac",
+      "source_branches": [
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 1721,
+      "git_blob_oid": "b699b6396a131a0caa6ab970d6d722662e2bbec6",
+      "git_mode": "100644",
+      "path": "ops/mad4b-fleet-adaptive-intake-v2/qa/mu-temporary-ability-fixture.php",
+      "sha256": "6b0ea7e949632efdb5c55354dcb84e8f943618fd721d2a2eb7bff0db95864ccd",
+      "source_branches": [
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 1331,
+      "git_blob_oid": "2812218e44152cd9653b1e007ff2a4db16adf0e7",
+      "git_mode": "100644",
+      "path": "ops/mad4b-fleet-adaptive-intake-v2/qa/native-write-routing-smoke.php",
+      "sha256": "b246970a023befc6889645777f48ab3fe16baa7e1040b23c28e0114d9d3852b4",
+      "source_branches": [
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 4595,
+      "git_blob_oid": "88c702f53059baa96267536270b858b6a366c71b",
+      "git_mode": "100644",
+      "path": "ops/mad4b-fleet-adaptive-intake-v2/qa/rc127-source-reconciliation-test.py",
+      "sha256": "7b098f7610cb1f07fff167e10c8735088fbf0dfeacce4e2bfc4d0904a5b0f394",
+      "source_branches": [
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 509,
+      "git_blob_oid": "1826bacec30296bb53124c8c9c44b887dac6c61c",
+      "git_mode": "100644",
+      "path": "ops/mad4b-fleet-adaptive-intake-v2/systemd/mad4b-company-central-preferred-route.service",
+      "sha256": "4c71186a435dea946e3d534d0fb092239a2102d2a6eef149799026dcc9016606",
+      "source_branches": [
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 272,
+      "git_blob_oid": "38ced7be8d035ec438f76db72c03edb861ffd832",
+      "git_mode": "100644",
+      "path": "ops/mad4b-fleet-adaptive-intake-v2/systemd/mad4b-company-central-preferred-route.timer",
+      "sha256": "3c28021c9e24783682674d4a73e81a9c3d2ae60dc064a87bf18e31305aa4acd5",
+      "source_branches": [
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 12321,
+      "git_blob_oid": "c42bec257d36157f55ba573d89b89980bec685b0",
+      "git_mode": "100755",
+      "path": "ops/mad4b-fleet-adaptive-intake-v2/tools/apply-fleet-intake-rc124-staging-v1.py",
+      "sha256": "a188481302816ab8cdd810e40a7f9efe69b228402b39ef7b176601eb38d3b5dd",
+      "source_branches": [
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 4648,
+      "git_blob_oid": "8f88e4686dc00c8f6748dc8dbc2d772326387a1d",
+      "git_mode": "100755",
+      "path": "ops/mad4b-fleet-adaptive-intake-v2/tools/build-fleet-intake-rc124-authority-v1.py",
+      "sha256": "1f79a9b2de9536d23155371c42f2c6e946350cf5d6200e1e7c518a654bda6781",
+      "source_branches": [
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 14871,
+      "git_blob_oid": "935895be4c8d641d108cf88e3586fd304792c02e",
+      "git_mode": "100755",
+      "path": "ops/mad4b-fleet-adaptive-intake-v2/tools/company-central-vps-preferred-route-v1.py",
+      "sha256": "2fde6bef36b96b8479827c6a1ff428fd9a9f60d3b8ec29f8a27c3fc89dbc625f",
+      "source_branches": [
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 9654,
+      "git_blob_oid": "882807b477ad19f8e356d5590ef34243c348822b",
+      "git_mode": "100755",
+      "path": "ops/mad4b-fleet-adaptive-intake-v2/tools/company-fleet-adaptive-intake-deploy-v1.py",
+      "sha256": "54b9409b4dd9753e069a964c07db5f2834ca9a875523867a873f594fff4fb469",
+      "source_branches": [
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 6534,
+      "git_blob_oid": "6710fcb64a204054cc29b80ae4c20aae34190f45",
+      "git_mode": "100755",
+      "path": "ops/mad4b-fleet-adaptive-intake-v2/tools/company-fleet-native-write-mount-v1.py",
+      "sha256": "72a6af5a8d9dd631cc0d3c40d962fc3444a59577cdf5e245a47613998e9ceeae",
+      "source_branches": [
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 3922,
+      "git_blob_oid": "706a069a0503d668a3f4395c802391e1582e079e",
+      "git_mode": "100755",
+      "path": "ops/mad4b-fleet-adaptive-intake-v2/tools/company-mcp-certified-autoload-deploy-v1.py",
+      "sha256": "864a767f7e563816f4fca3c4ec977f0d7a6b2e20e1db5b32a02a0dc2a23432b3",
+      "source_branches": [
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 35744,
+      "git_blob_oid": "18265db74a7e93d5a377ae2bee809468429dffb6",
+      "git_mode": "100644",
+      "path": "ops/mad4b-fleet-adaptive-intake-v2/wordpress/mu-plugins/319-mad4b-fleet-adaptive-intake.php",
+      "sha256": "953fc6356e687426155735e5ca0518315fb7f34b2694593a9578566095fd7ce1",
+      "source_branches": [
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 10743,
+      "git_blob_oid": "302864113eb576fbc4b59c57473f44370719357c",
+      "git_mode": "100644",
+      "path": "ops/mad4b-fleet-adaptive-intake-v2/wordpress/mu-plugins/321-mad4b-central-preferred-route.php",
+      "sha256": "a199aeecf9bdb54501bd8f64fe89fd74468913c6ec0808a3e1a6457c141e46fa",
+      "source_branches": [
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 19,
+      "git_blob_oid": "7a60b85e148f80966a550e5ab6a762a907c69ca6",
+      "git_mode": "100644",
+      "path": "ops/mad4b-hostinger-cdn-ssh-v1/.gitignore",
+      "sha256": "862263fa1f46c20f0d1e4dac5ffcc75abd55c08211b2c3864c5f8764b9d87793",
+      "source_branches": [
+        "feat/mad4b-hostinger-cdn-ssh-company-operation-20261108",
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 3970,
+      "git_blob_oid": "ffafcee36ec50d2be67dc4742a437c03c804dfff",
+      "git_mode": "100644",
+      "path": "ops/mad4b-hostinger-cdn-ssh-v1/README.md",
+      "sha256": "a410e75b036626f3756b93ca45b723922a1315a4a7b13a5b6c148f3896ce2e2d",
+      "source_branches": [
+        "feat/mad4b-hostinger-cdn-ssh-company-operation-20261108",
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 4918,
+      "git_blob_oid": "4192b43bdd14e872f81e6dc7a7e42229ba8012d6",
+      "git_mode": "100755",
+      "path": "ops/mad4b-hostinger-cdn-ssh-v1/bin/company-hostinger-cdn-central-sync-v1.py",
+      "sha256": "9446ad5b4d22273e5cd543c361928cc8844f9e85e4eddfe9a4c37a50dc319293",
+      "source_branches": [
+        "feat/mad4b-hostinger-cdn-ssh-company-operation-20261108",
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 7065,
+      "git_blob_oid": "9068c452e59ff9c889d2099daefb6d77ab5b85d5",
+      "git_mode": "100755",
+      "path": "ops/mad4b-hostinger-cdn-ssh-v1/bin/company-hostinger-cdn-operation-v1.py",
+      "sha256": "4e204f7d5487a7868337f18dc37e027f0ea60a5c70f0d57bf2904a8132ca9950",
+      "source_branches": [
+        "feat/mad4b-hostinger-cdn-ssh-company-operation-20261108",
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 11299,
+      "git_blob_oid": "dc2d671f5f28bf1bedd6a268e4fff8888f83afc3",
+      "git_mode": "100755",
+      "path": "ops/mad4b-hostinger-cdn-ssh-v1/bin/company-hostinger-cdn-readiness-v1.py",
+      "sha256": "16a1c5dbecdf9dedf5fa0c24b3f7aac5e49593502c3595296e17efdd980f9806",
+      "source_branches": [
+        "feat/mad4b-hostinger-cdn-ssh-company-operation-20261108",
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 4380,
+      "git_blob_oid": "b50cd44f4b863c087c6a4a98a6a4adbab2b6b9d0",
+      "git_mode": "100755",
+      "path": "ops/mad4b-hostinger-cdn-ssh-v1/bin/company-hostinger-cloud-cdn-edge-audit-v1.py",
+      "sha256": "acba7054828d3f952960c79fdcc20630ec6ef9b1378e0177a91de5f145e86c8b",
+      "source_branches": [
+        "feat/mad4b-hostinger-cdn-ssh-company-operation-20261108",
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 4161,
+      "git_blob_oid": "0ceca44b3ddd470e7e2878792d921a2ad1d36b19",
+      "git_mode": "100755",
+      "path": "ops/mad4b-hostinger-cdn-ssh-v1/bin/company-hostinger-cloud-startup-inventory-v1.py",
+      "sha256": "5c19f498e37cbc51e1b75ab4f6705694d943738cf157914079371d8e7d2a5830",
+      "source_branches": [
+        "feat/mad4b-hostinger-cdn-ssh-company-operation-20261108",
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 8996,
+      "git_blob_oid": "756e97e5b26625c6af0505f38080e8faae9df85d",
+      "git_mode": "100755",
+      "path": "ops/mad4b-hostinger-cdn-ssh-v1/bin/company-hostinger-two-route-binding-v1.py",
+      "sha256": "073bb1010f2fe763c0593aa697ac91f6454aa5eb8517655df45ffb05514456c7",
+      "source_branches": [
+        "feat/mad4b-hostinger-cdn-ssh-company-operation-20261108",
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 2441,
+      "git_blob_oid": "50e2a0f5d848254f20a705efe7d2b5eb00450d85",
+      "git_mode": "100644",
+      "path": "ops/mad4b-hostinger-cdn-ssh-v1/knowledge/hostinger-cdn-ssh-invalidation-v1.json",
+      "sha256": "e35827af3a4500d270ac22f4bed0bdc08f78f9f875acdfa4343188ac55f5103e",
+      "source_branches": [
+        "feat/mad4b-hostinger-cdn-ssh-company-operation-20261108",
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 1881,
+      "git_blob_oid": "5a0af44029eef80b6a43ed05ae25044b3fc22295",
+      "git_mode": "100644",
+      "path": "ops/mad4b-hostinger-cdn-ssh-v1/policies/company-hostinger-site-binding-map-v1.json",
+      "sha256": "b91d09f8096d9f4a2fb15358549ef8b571f606215f1fb504790e9b1c9ba453e5",
+      "source_branches": [
+        "feat/mad4b-hostinger-cdn-ssh-company-operation-20261108",
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 802,
+      "git_blob_oid": "8f8e371ced3038f7a67ef4c8fec2ad84f3ca37d3",
+      "git_mode": "100644",
+      "path": "ops/mad4b-hostinger-cdn-ssh-v1/systemd/mad4b-company-hostinger-cdn-operation.service",
+      "sha256": "b16b7879288a02baac235a8ffd0231b31234a38e495d814d5164609c1dba6e28",
+      "source_branches": [
+        "feat/mad4b-hostinger-cdn-ssh-company-operation-20261108",
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 256,
+      "git_blob_oid": "7038894b5fd7f2948e68779dea3cf38ff902feb1",
+      "git_mode": "100644",
+      "path": "ops/mad4b-hostinger-cdn-ssh-v1/systemd/mad4b-company-hostinger-cdn-operation.timer",
+      "sha256": "2515adfdb76754b71544bcbb4d3e9a5f12384b0340f2ba78b1df99b5ad376ff8",
+      "source_branches": [
+        "feat/mad4b-hostinger-cdn-ssh-company-operation-20261108",
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 612,
+      "git_blob_oid": "ec5e501cd1a4cb7ab4724432f8533c0f6cdbf165",
+      "git_mode": "100644",
+      "path": "ops/mad4b-hostinger-cdn-ssh-v1/systemd/mad4b-company-hostinger-cdn-readiness.service",
+      "sha256": "aa34050da053744df2b9e880891413e9594659d4e87ab05db8d91ca04917a6c5",
+      "source_branches": [
+        "feat/mad4b-hostinger-cdn-ssh-company-operation-20261108",
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 240,
+      "git_blob_oid": "ca9c88f48f9a53d6cbfd6608faef0dcc865c57b0",
+      "git_mode": "100644",
+      "path": "ops/mad4b-hostinger-cdn-ssh-v1/systemd/mad4b-company-hostinger-cdn-readiness.timer",
+      "sha256": "b1f2c5130bb5b06b36cb6d5438bb9ab8fb06e9ad77adfecc6a188998b329cc0e",
+      "source_branches": [
+        "feat/mad4b-hostinger-cdn-ssh-company-operation-20261108",
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 565,
+      "git_blob_oid": "d5dc2373a46a8c5cac35bf4174da2490501d3485",
+      "git_mode": "100644",
+      "path": "ops/mad4b-hostinger-cdn-ssh-v1/systemd/mad4b-company-hostinger-cloud-cdn-edge.service",
+      "sha256": "99f11abebadf55f130c55b10036a4ab5012d926099bfc2f3bb8a905ea3db2e7f",
+      "source_branches": [
+        "feat/mad4b-hostinger-cdn-ssh-company-operation-20261108",
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 230,
+      "git_blob_oid": "7c3c9cf1f10f4cdfac9dff89d09705101e2e728a",
+      "git_mode": "100644",
+      "path": "ops/mad4b-hostinger-cdn-ssh-v1/systemd/mad4b-company-hostinger-cloud-cdn-edge.timer",
+      "sha256": "c9e8ab5413c1036efa919c9e00e33ac0661a6ea7c0ab3a2b281e0fa0823e5f2a",
+      "source_branches": [
+        "feat/mad4b-hostinger-cdn-ssh-company-operation-20261108",
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 587,
+      "git_blob_oid": "67fba4e30e7ee818726e2eec33f7162bcfc22e38",
+      "git_mode": "100644",
+      "path": "ops/mad4b-hostinger-cdn-ssh-v1/systemd/mad4b-company-hostinger-cloud-startup-inventory.service",
+      "sha256": "2a44eaf98b702cbc5ab9d9ed347606e1055758461ef5301ae8b9f96e5599c8d8",
+      "source_branches": [
+        "feat/mad4b-hostinger-cdn-ssh-company-operation-20261108",
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 245,
+      "git_blob_oid": "08c7d2ed40c132915f9096039d5a350c0c5b23a3",
+      "git_mode": "100644",
+      "path": "ops/mad4b-hostinger-cdn-ssh-v1/systemd/mad4b-company-hostinger-cloud-startup-inventory.timer",
+      "sha256": "a22eba570828c4b71a86f2cec4216629bdac307d04789f9f46a281c6086d81bc",
+      "source_branches": [
+        "feat/mad4b-hostinger-cdn-ssh-company-operation-20261108",
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 14879,
+      "git_blob_oid": "6f93b697dcb99cbf5adc0cd9146db25b59028c45",
+      "git_mode": "100644",
+      "path": "ops/mad4b-hostinger-cdn-ssh-v1/wordpress/mu-plugins/316-mad4b-company-hostinger-cdn-operations.php",
+      "sha256": "d61cff1e30a2055b216f2d38f74edbba7998f174e6edc8240e5e00cc99005108",
+      "source_branches": [
+        "feat/mad4b-hostinger-cdn-ssh-company-operation-20261108",
+        "feat/mad4b-fleet-adaptive-intake-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 2837,
+      "git_blob_oid": "3977c70d8f0d9428de7851cdd85c7c3d163b56ef",
+      "git_mode": "100644",
+      "path": "ops/mad4b-pricing-cache-inheritance-v1/README.md",
+      "sha256": "d45bb52a64836ef73327fb6ddc8a2101239694115affe5ae7193a21676c12b7a",
+      "source_branches": [
+        "feat/mad4b-pricing-cache-inheritance-20261108"
+      ]
+    },
+    {
+      "bytes": 1598,
+      "git_blob_oid": "7255710e0b3479fbc59bb099ee531a78e63dba52",
+      "git_mode": "100644",
+      "path": "ops/mad4b-pricing-cache-inheritance-v1/RELEASE-MANIFEST.json",
+      "sha256": "e7b0ae5fabf042d92a9e74eb50e2d8f701429f63386e43e75eee80acc5b5a509",
+      "source_branches": [
+        "feat/mad4b-pricing-cache-inheritance-20261108"
+      ]
+    },
+    {
+      "bytes": 3523,
+      "git_blob_oid": "34de398e94b34c6a72dee9b90316a0be5dcaab64",
+      "git_mode": "100755",
+      "path": "ops/mad4b-pricing-cache-inheritance-v1/bin/company-pricing-cache-inheritance-observer-v1.py",
+      "sha256": "305841ce8cd5e8c96d174597c97e90848547201214458c0a464e0a732c76fe5e",
+      "source_branches": [
+        "feat/mad4b-pricing-cache-inheritance-20261108"
+      ]
+    },
+    {
+      "bytes": 6465,
+      "git_blob_oid": "e584916188f8db42348ca4945b7cd7323198ff7d",
+      "git_mode": "100755",
+      "path": "ops/mad4b-pricing-cache-inheritance-v1/bin/company-pricing-cache-path-invalidation-v1.py",
+      "sha256": "ab15b0c16224a9a0ff06640294af8989b37a5ec260bd077d0b82b9f062075959",
+      "source_branches": [
+        "feat/mad4b-pricing-cache-inheritance-20261108"
+      ]
+    },
+    {
+      "bytes": 2903,
+      "git_blob_oid": "06c52529c0893c52fc8b528dd9cd94597fc4b778",
+      "git_mode": "100644",
+      "path": "ops/mad4b-pricing-cache-inheritance-v1/overlays/mu-plugins/assets/mad4b-pricing-cache-public-paths.php",
+      "sha256": "872a616a47cbb5076a29d0047fc15c41dfc92629560c9368312db49f2c6aed95",
+      "source_branches": [
+        "feat/mad4b-pricing-cache-inheritance-20261108"
+      ]
+    },
+    {
+      "bytes": 32021,
+      "git_blob_oid": "356d1f0f05dc963af6ac23333e00ac1330c98ef4",
+      "git_mode": "100644",
+      "path": "ops/mad4b-pricing-cache-inheritance-v1/overlays/mu-plugins/mad4b-pricing-cache-inheritance.php",
+      "sha256": "efbdd61ff01275817af455ea6e12ea168c94e74aca3bf019e22235b687a938b4",
+      "source_branches": [
+        "feat/mad4b-pricing-cache-inheritance-20261108"
+      ]
+    },
+    {
+      "bytes": 9742,
+      "git_blob_oid": "8d1fdbb0d8d4bf2ed87900e56d70544a80a306f0",
+      "git_mode": "100644",
+      "path": "ops/mad4b-pricing-cache-inheritance-v1/overlays/mu-plugins/shared-product-core/pricing/jetengine-policy-provider.php",
+      "sha256": "cc64ce31eb5ba4080fcf24955895bf9875c5d623c94cf87e808c1e430b863549",
+      "source_branches": [
+        "feat/mad4b-pricing-cache-inheritance-20261108"
+      ]
+    },
+    {
+      "bytes": 3501,
+      "git_blob_oid": "090a079265658b5035421e1056b726627393eb41",
+      "git_mode": "100644",
+      "path": "ops/mad4b-pricing-cache-inheritance-v1/overlays/mu-plugins/shared-product-core/pricing/source-resolution-policy.php",
+      "sha256": "eb303fc386294dd3bc99c9f183ac22dc0e442a2139cc0682763afba31f6a84ab",
+      "source_branches": [
+        "feat/mad4b-pricing-cache-inheritance-20261108"
+      ]
+    },
+    {
+      "bytes": 412,
+      "git_blob_oid": "6e40889ddb5abf1d3b9419cc41152766f9b2faed",
+      "git_mode": "100644",
+      "path": "ops/mad4b-pricing-cache-inheritance-v1/systemd/mad4b-company-pricing-cache-inheritance.service",
+      "sha256": "67195731fbaf9b0496d0464e1f0fd2c8608fab125e05743b16619afe74cc83a9",
+      "source_branches": [
+        "feat/mad4b-pricing-cache-inheritance-20261108"
+      ]
+    },
+    {
+      "bytes": 265,
+      "git_blob_oid": "ad6b962af5b9252df5c72ca38c3a052e7e103e29",
+      "git_mode": "100644",
+      "path": "ops/mad4b-pricing-cache-inheritance-v1/systemd/mad4b-company-pricing-cache-inheritance.timer",
+      "sha256": "f00162887d2f75efb83261dd01a15783abd9c6c8b862625553d0a0977eea8576",
+      "source_branches": [
+        "feat/mad4b-pricing-cache-inheritance-20261108"
+      ]
+    },
+    {
+      "bytes": 324,
+      "git_blob_oid": "8443d309df42f92236f143b43f0c370240791dfa",
+      "git_mode": "100644",
+      "path": "ops/mad4b-pricing-cache-inheritance-v1/systemd/mad4b-pricing-cache-invalidation-source.path",
+      "sha256": "68bee023d3c2b03f25badb7506cdfbdcb08bfe359427a68bda1829c601c4c142",
+      "source_branches": [
+        "feat/mad4b-pricing-cache-inheritance-20261108"
+      ]
+    },
+    {
+      "bytes": 623,
+      "git_blob_oid": "60bd9baa335a9d449997aa1d0188a41c34eaa0d0",
+      "git_mode": "100644",
+      "path": "ops/mad4b-pricing-cache-inheritance-v1/systemd/mad4b-pricing-cache-invalidation-source.service",
+      "sha256": "b23d1260991db3530476d9d0c6759caff570c726b775dbfeb04e71d8e6b5729a",
+      "source_branches": [
+        "feat/mad4b-pricing-cache-inheritance-20261108"
+      ]
+    },
+    {
+      "bytes": 255,
+      "git_blob_oid": "13836e67b668653038b1656b6209fdceb40689be",
+      "git_mode": "100644",
+      "path": "ops/mad4b-pricing-cache-inheritance-v1/systemd/mad4b-pricing-cache-invalidation-source.timer",
+      "sha256": "48e6e2ceb1c932a2738e1e02a94b764898f243c4e46e4b5a50d9714236d450d1",
+      "source_branches": [
+        "feat/mad4b-pricing-cache-inheritance-20261108"
+      ]
+    },
+    {
+      "bytes": 293,
+      "git_blob_oid": "106950b860129f1364fef45f0dc8f79d8ccee433",
+      "git_mode": "100644",
+      "path": "ops/mad4b-pricing-cache-inheritance-v1/systemd/mad4b-pricing-cache-invalidation-wayfa.path",
+      "sha256": "b46d2728369cc6d3ec632324c5210c4793ea6dc4be479f46767e8fbbdbfe0d79",
+      "source_branches": [
+        "feat/mad4b-pricing-cache-inheritance-20261108"
+      ]
+    },
+    {
+      "bytes": 591,
+      "git_blob_oid": "19ae2e25e1949758e40987180cc4a69297cec7f1",
+      "git_mode": "100644",
+      "path": "ops/mad4b-pricing-cache-inheritance-v1/systemd/mad4b-pricing-cache-invalidation-wayfa.service",
+      "sha256": "45cb108743ec8eab0a831b7bfbd869ba0adac3221872feb803e2d5927666766e",
+      "source_branches": [
+        "feat/mad4b-pricing-cache-inheritance-20261108"
+      ]
+    },
+    {
+      "bytes": 253,
+      "git_blob_oid": "61aa14cc17d019c66651b1a66efafe13137aad0e",
+      "git_mode": "100644",
+      "path": "ops/mad4b-pricing-cache-inheritance-v1/systemd/mad4b-pricing-cache-invalidation-wayfa.timer",
+      "sha256": "165acb264f66d78e9fa85d47244656d70d3b6a902f064119c5b7bdf59ed32e73",
+      "source_branches": [
+        "feat/mad4b-pricing-cache-inheritance-20261108"
+      ]
+    },
+    {
+      "bytes": 1046,
+      "git_blob_oid": "e89578e9d8b21aee9bc7817600aa4fbd5ea4cda1",
+      "git_mode": "100644",
+      "path": "ops/mad4b-pricing-cache-inheritance-v1/tests/benchmark-pricing-blueprints.php",
+      "sha256": "fa15272bc0294abec7ee195667f86e8e2f8a1d294cb210203c57d17ac5a8f429",
+      "source_branches": [
+        "feat/mad4b-pricing-cache-inheritance-20261108"
+      ]
+    },
+    {
+      "bytes": 1665,
+      "git_blob_oid": "62ecc0cda94882384dcab171141baf1fbb87876e",
+      "git_mode": "100644",
+      "path": "ops/mad4b-pricing-cache-inheritance-v1/tests/native-price-baseline.php",
+      "sha256": "84802dade90d8adc61fb0d4d52f825a059203ac35292379f940c5e11526fcde4",
+      "source_branches": [
+        "feat/mad4b-pricing-cache-inheritance-20261108"
+      ]
+    },
+    {
+      "bytes": 4481,
+      "git_blob_oid": "f94fb7100d9f3f5140315989d72a5c161984b6c8",
+      "git_mode": "100644",
+      "path": "ops/mad4b-pricing-cache-inheritance-v1/tests/pricing-policy-inheritance-standalone.php",
+      "sha256": "ffc4de1c013b4167a28379e2ab92540f2f1a1091274761cb8d6d87c784a1e636",
+      "source_branches": [
+        "feat/mad4b-pricing-cache-inheritance-20261108"
+      ]
+    },
+    {
+      "bytes": 3572,
+      "git_blob_oid": "0cf16267420b8de8f456ffe9dd930e96d12ecccc",
+      "git_mode": "100644",
+      "path": "ops/mad4b-pricing-cache-inheritance-v1/tests/qa-inheritance-scopes.php",
+      "sha256": "5fb613966f3c66e5509587c544bc06449a4afc446206062719119dde9b8a2975",
+      "source_branches": [
+        "feat/mad4b-pricing-cache-inheritance-20261108"
+      ]
+    },
+    {
+      "bytes": 2758,
+      "git_blob_oid": "26e66d8944a350bcaa9e109237c4e04cc2ef5206",
+      "git_mode": "100644",
+      "path": "ops/mad4b-pricing-cache-inheritance-v1/tests/qa-inheritance-wpcli.php",
+      "sha256": "2125b0a315d41bb6035dfddd53dc3923b1670f96c7438cad1869d4e6088dd406",
+      "source_branches": [
+        "feat/mad4b-pricing-cache-inheritance-20261108"
+      ]
+    },
+    {
+      "bytes": 1352,
+      "git_blob_oid": "92bc12c85e6efca55dc1f11daf90215c4ed8c999",
+      "git_mode": "100644",
+      "path": "ops/mad4b-pricing-cache-inheritance-v1/tests/qa-source-blueprint.php",
+      "sha256": "97d68eaa676e91dc2865f6c4219e5852ab03fad5c6abb2f2a1f2af19230052ca",
+      "source_branches": [
+        "feat/mad4b-pricing-cache-inheritance-20261108"
+      ]
+    },
+    {
+      "bytes": 3269,
+      "git_blob_oid": "dd13c726e91d2a62f97d95003daa879303c60df7",
+      "git_mode": "100644",
+      "path": "ops/mad4b-pricing-cache-inheritance-v1/tests/test_release_source.py",
+      "sha256": "a4fcb50427335d8573aee6879236ba84f9539b8ec8755eb77c72a483b5d07cf5",
+      "source_branches": [
+        "feat/mad4b-pricing-cache-inheritance-20261108"
+      ]
+    },
+    {
+      "bytes": 2669,
+      "git_blob_oid": "802c5a3e79e7c0448dbb29036f42e92b47250c32",
+      "git_mode": "100644",
+      "path": "ops/mad4b-runtime-policy-reconcile-v2/README.md",
+      "sha256": "615aa2169880a82e1bdff3d202157440acaf083caca3b28f55a805815668e23a",
+      "source_branches": [
+        "fix/mad4b-runtime-policy-reconcile-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 1859,
+      "git_blob_oid": "2786f24b5840483e4b001db83ddf385a6ef96d72",
+      "git_mode": "100644",
+      "path": "ops/mad4b-runtime-policy-reconcile-v2/RELEASE-MANIFEST.json",
+      "sha256": "23cfcab0003b04268d69ccd396135697c95680efdc1fe68e91bb8fc451ee90a0",
+      "source_branches": [
+        "fix/mad4b-runtime-policy-reconcile-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 6993,
+      "git_blob_oid": "8aa8043f9961ca4222c0c7c80114393e42a1036b",
+      "git_mode": "100755",
+      "path": "ops/mad4b-runtime-policy-reconcile-v2/bin/company-cache-auto-enroll-v2.py",
+      "sha256": "6cf05f66e907ce02a8f12d5ec439162f44226897b0dd08c6fa3db923aefb93f9",
+      "source_branches": [
+        "fix/mad4b-runtime-policy-reconcile-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 21153,
+      "git_blob_oid": "f5703e365aecd94c37c30831064863e6b4a491ce",
+      "git_mode": "100755",
+      "path": "ops/mad4b-runtime-policy-reconcile-v2/bin/company-cache-coherence-reconcile.py",
+      "sha256": "1732c2b16b52f85e6385efc343fed0cb9b77005f2624e48e169ea83537ee617b",
+      "source_branches": [
+        "fix/mad4b-runtime-policy-reconcile-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 2696,
+      "git_blob_oid": "7d96a6204d3bc4a52a6952a9ad73b2ee1f2fb385",
+      "git_mode": "100755",
+      "path": "ops/mad4b-runtime-policy-reconcile-v2/bin/mad4b-public-route-registry-compile-v1.py",
+      "sha256": "91af063362d06e9918ee4b43aa767a5bd495c189fa19cd7cb9575d4b5030c951",
+      "source_branches": [
+        "fix/mad4b-runtime-policy-reconcile-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 2175,
+      "git_blob_oid": "b2567f9ac6452298435bbadd92f5902670805e93",
+      "git_mode": "100755",
+      "path": "ops/mad4b-runtime-policy-reconcile-v2/bin/mad4b-public-route-registry-refresh-v1.py",
+      "sha256": "a52702056b7d74a6f0088c068330816f5d5297240582463db7da513082cbfe13",
+      "source_branches": [
+        "fix/mad4b-runtime-policy-reconcile-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 3018,
+      "git_blob_oid": "1b432490bf2479df3f96cdbe09c2ba052e3c33e8",
+      "git_mode": "100755",
+      "path": "ops/mad4b-runtime-policy-reconcile-v2/bin/runtime-dependency-preflight-v2.py",
+      "sha256": "b869b29c77fed75331cfe7d6bb14c0d9748f64a51d43bf6ec11a2f419db1b68a",
+      "source_branches": [
+        "fix/mad4b-runtime-policy-reconcile-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 36970,
+      "git_blob_oid": "2814f7242db0f0fb12465b7ce559ae8969a8ddfc",
+      "git_mode": "100644",
+      "path": "ops/mad4b-runtime-policy-reconcile-v2/overlays/mad4b-platform/modules/compat/305-mad4b-central-ssh-command-intake.php",
+      "sha256": "f9ad49d9aee65eeca37f7448e3f1913cb871a4025ca6ea82858881a047d5a302",
+      "source_branches": [
+        "fix/mad4b-runtime-policy-reconcile-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 24508,
+      "git_blob_oid": "979d1f9704f781addaa2c8d112e54ca9fcf4bfd3",
+      "git_mode": "100644",
+      "path": "ops/mad4b-runtime-policy-reconcile-v2/overlays/mad4b-platform/modules/compat/306-mad4b-central-vps-broker.php",
+      "sha256": "3a2408d28e2309972d9bc1a47c57b739290bfc4e685802cdcd8a03346179507f",
+      "source_branches": [
+        "fix/mad4b-runtime-policy-reconcile-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 5702,
+      "git_blob_oid": "1906213c8108654690733421ff4f4450d8d04b66",
+      "git_mode": "100644",
+      "path": "ops/mad4b-runtime-policy-reconcile-v2/overlays/mu-plugins/00-0-mad4b-runtime-router.php",
+      "sha256": "1c856c0391eb940cf89ee166b262a191477390abb66e89428e33a2920e9bad34",
+      "source_branches": [
+        "fix/mad4b-runtime-policy-reconcile-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 3855,
+      "git_blob_oid": "f26404e6f577b2510b44169adaf6dea61f7b3b83",
+      "git_mode": "100644",
+      "path": "ops/mad4b-runtime-policy-reconcile-v2/overlays/mu-plugins/417-mad4b-public-cookie-contract.php",
+      "sha256": "8b02b95b53251288663c48c5da6e116cb80671b08f8c42d1f875ad1de46dafa2",
+      "source_branches": [
+        "fix/mad4b-runtime-policy-reconcile-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 777,
+      "git_blob_oid": "06c00aa18a148273787dad10ad9520c0f9592eaa",
+      "git_mode": "100644",
+      "path": "ops/mad4b-runtime-policy-reconcile-v2/overlays/mu-plugins/420-mad4b-favourites-no-autoadd.php",
+      "sha256": "dc3ca24ae040dacaec22fa40243763ea90373bb70281eb72dedf67fce91bdc2b",
+      "source_branches": [
+        "fix/mad4b-runtime-policy-reconcile-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 1376,
+      "git_blob_oid": "8f1f35b9fee9fbb9cc6462942a3b37a540fd5565",
+      "git_mode": "100644",
+      "path": "ops/mad4b-runtime-policy-reconcile-v2/overlays/mu-plugins/421-mad4b-favourites-element-cache-isolation.php",
+      "sha256": "f048573cb649f4382af01d727fae1d4d7747c2f8cef4718df97fc52b885c08bc",
+      "source_branches": [
+        "fix/mad4b-runtime-policy-reconcile-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 1338,
+      "git_blob_oid": "f067b2f4158735133d63f120d51d48aa094214d4",
+      "git_mode": "100644",
+      "path": "ops/mad4b-runtime-policy-reconcile-v2/overlays/mu-plugins/assets/mad4b-public-route-source-v1.php",
+      "sha256": "1c6019a14a97c25b802478a04aad015ba6f725144ee1f2f906f347858f9fa298",
+      "source_branches": [
+        "fix/mad4b-runtime-policy-reconcile-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 234,
+      "git_blob_oid": "838a0dcaf20b3cc2c73a77051c4bf159ef55d53e",
+      "git_mode": "100644",
+      "path": "ops/mad4b-runtime-policy-reconcile-v2/systemd/mad4b-company-cache-auto-enroll.path",
+      "sha256": "8a67eea9f5b93937915414d27ec3e85ecb0da00ef1360ac19a2dd40ed16ea191",
+      "source_branches": [
+        "fix/mad4b-runtime-policy-reconcile-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 524,
+      "git_blob_oid": "4381638adb2b50974573540b57d6d4406dc73aea",
+      "git_mode": "100644",
+      "path": "ops/mad4b-runtime-policy-reconcile-v2/systemd/mad4b-company-cache-auto-enroll.service",
+      "sha256": "cef775f404063cd3eec00a1c1b08e9275596ab3f8592711dfe91f7a14618e7fb",
+      "source_branches": [
+        "fix/mad4b-runtime-policy-reconcile-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 247,
+      "git_blob_oid": "d3eee7953a05a2bd695145bff5cc376ef208e52b",
+      "git_mode": "100644",
+      "path": "ops/mad4b-runtime-policy-reconcile-v2/systemd/mad4b-company-cache-auto-enroll.timer",
+      "sha256": "559f6a7e6228c722886fef37350753b16be430424266da96edb776df43771bfb",
+      "source_branches": [
+        "fix/mad4b-runtime-policy-reconcile-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 499,
+      "git_blob_oid": "cff092a4abf120a44ce559f6a81829f39d9b2ed7",
+      "git_mode": "100644",
+      "path": "ops/mad4b-runtime-policy-reconcile-v2/systemd/mad4b-company-cache-coherence.service",
+      "sha256": "92464ab335b19a2b54c3c7e961526579ba7e1a2faf89f8707c45efd345328f33",
+      "source_branches": [
+        "fix/mad4b-runtime-policy-reconcile-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 305,
+      "git_blob_oid": "654125ce9f068a9b3b028351ca08c4e37a684424",
+      "git_mode": "100644",
+      "path": "ops/mad4b-runtime-policy-reconcile-v2/systemd/mad4b-company-cache-coherence.timer",
+      "sha256": "32e1d16aec695475ccefa91a33c6e38fec650a5562f3da1a9f48c4ce0ddcfbe0",
+      "source_branches": [
+        "fix/mad4b-runtime-policy-reconcile-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 520,
+      "git_blob_oid": "f4f0881aaedab7610b0307e47584973d3dde0dc7",
+      "git_mode": "100644",
+      "path": "ops/mad4b-runtime-policy-reconcile-v2/systemd/mad4b-public-route-registry-refresh.service",
+      "sha256": "f7ba04c5e3fa28cf7244b5b5dcb9c70fc5e67572b7353c44de67c9ef22c5453b",
+      "source_branches": [
+        "fix/mad4b-runtime-policy-reconcile-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 255,
+      "git_blob_oid": "d99112e8c03352093e9204a763bf57363f1dd524",
+      "git_mode": "100644",
+      "path": "ops/mad4b-runtime-policy-reconcile-v2/systemd/mad4b-public-route-registry-refresh.timer",
+      "sha256": "4d5b8e180511562a108c28c0454fd03595f45892742f1394301d061db5c48cdd",
+      "source_branches": [
+        "fix/mad4b-runtime-policy-reconcile-v2-20261108"
+      ]
+    },
+    {
+      "bytes": 4048,
+      "git_blob_oid": "418c057b98b86e53a55ab40f2842b7a359e87dbd",
+      "git_mode": "100644",
+      "path": "ops/mad4b-runtime-policy-reconcile-v2/tests/test_release_contract.py",
+      "sha256": "4ac555bbef29fdd12c9a92b4fb89229ea0a2ec343310a385c87645117eee1860",
+      "source_branches": [
+        "fix/mad4b-runtime-policy-reconcile-v2-20261108"
+      ]
+    }
+  ],
+  "global_coverage_certified": false,
+  "observed_utc": "2026-11-11T01:49:59.266909+00:00",
+  "original305_grant_issued": false,
+  "original313_certified": false,
+  "production_updated": false,
+  "release_authorized": false,
+  "shared_identical_blobs": 19,
+  "source_only": true,
+  "source_pins": {
+    "feat/mad4b-fleet-adaptive-intake-v2-20261108": "939c9ec21fdbe90070333b186e6f1b8a7c69201d",
+    "feat/mad4b-hostinger-cdn-ssh-company-operation-20261108": "3193aa9ab2f26612aa6890d5dcab9b9d622f6827",
+    "feat/mad4b-pricing-cache-inheritance-20261108": "69f605c0426ae631b06ec1d41fa24002fb03abd6",
+    "fix/mad4b-runtime-policy-reconcile-v2-20261108": "96a60953457ca04f2d6a73a27cf8b575c3c4e38d"
+  },
+  "systemd_installed": false,
+  "total_branch_file_references": 122,
+  "unique_files": 103
+}

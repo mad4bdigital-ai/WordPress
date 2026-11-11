@@ -1,0 +1,16 @@
+[Unit]
+Description=MAD4B Central verified VPS Client Cross-SSH transport projection
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+UMask=0077
+WorkingDirectory=/opt/mad4b-company-provisioning
+ExecStart=/usr/bin/flock -n /run/lock/mad4b-central-preferred-route.lock /usr/bin/python3 /opt/mad4b-company-provisioning/bin/company-central-vps-preferred-route-v1.py once
+TimeoutStartSec=220
+NoNewPrivileges=true
+ProtectHome=false
+PrivateTmp=false

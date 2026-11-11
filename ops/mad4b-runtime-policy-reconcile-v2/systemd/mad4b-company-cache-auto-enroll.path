@@ -1,0 +1,9 @@
+[Unit]
+Description=Automatically enroll MAD4B company cache policy after new provisioner cache-warm manifest
+
+[Path]
+PathChanged=/etc/mad4b/cache-warm
+Unit=mad4b-company-cache-auto-enroll.service
+
+[Install]
+WantedBy=multi-user.target

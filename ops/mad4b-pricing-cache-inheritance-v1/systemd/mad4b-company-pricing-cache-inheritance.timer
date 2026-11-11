@@ -1,0 +1,12 @@
+[Unit]
+Description=Reconcile Pricing Cache policies on both company sites every 30 minutes
+
+[Timer]
+OnBootSec=9min
+OnUnitInactiveSec=30min
+RandomizedDelaySec=75s
+AccuracySec=45s
+Unit=mad4b-company-pricing-cache-inheritance.service
+
+[Install]
+WantedBy=timers.target

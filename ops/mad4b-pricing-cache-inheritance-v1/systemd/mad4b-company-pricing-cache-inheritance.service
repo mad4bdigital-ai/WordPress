@@ -1,0 +1,16 @@
+[Unit]
+Description=MAD4B Pricing Cache Inheritance release and invalidation observer
+After=docker.service
+Wants=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/mad4b-company-provisioning/bin/company-pricing-cache-inheritance-observer-v1.py --strict
+TimeoutStartSec=75
+NoNewPrivileges=true
+UMask=0077
+Nice=15
+CPUQuota=40%
+IOSchedulingClass=idle
+StandardOutput=journal
+StandardError=journal
