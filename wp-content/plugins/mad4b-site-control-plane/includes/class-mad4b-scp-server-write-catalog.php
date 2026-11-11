@@ -3,6 +3,31 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /** Request-local write catalog composition, using the facade's guarded caches. */
 trait MAD4B_SCP_Server_Write_Catalog {
+	// Keep runtime projection and hermetic provider regression on the same logic.
+	/**
+	 * Current live provider resolution in a single runtime snapshot.
+	 *
+	 * A deep governance projection must not call provider_for_ability()
+	 * separately for every Write tool: its uncached dynamic resolution
+	 * reconstructs and re-certifies the entire provider catalog per tool.
+	 * Use the SAME eligibility list (write_tools) and provider precedence
+	 * (core first, then certified registered adapter) as the single-tool
+	 * resolver; never cache this map across requests or changes.
+	 */
+	public static function live_write_provider_snapshot() {
+		$mounted = self::write_tools();
+		$core = array_fill_keys( self::core_write_candidates(), true );
+		$adapters = self::registered_adapter_write_candidates();
+		$result = array();
+		foreach ( $mounted as $ability ) {
+			$ability = (string) $ability;
+			if ( isset( $core[ $ability ] ) ) $result[ $ability ] = 'core';
+			elseif ( isset( $adapters[ $ability ] ) && '' !== $adapters[ $ability ] )
+				$result[ $ability ] = $adapters[ $ability ];
+		}
+		return $result;
+	}
+
 	private static function core_write_candidates() {
 		$candidates = array_merge(
 			array(
@@ -41,6 +66,14 @@ trait MAD4B_SCP_Server_Write_Catalog {
 				'mad4b/mutation-get', 'mad4b/mutation-undo', 'mad4b/agent-list', 'mad4b/agent-effective-access', 'mad4b/approval-plan',
 			)
 		);
+		// Exact Site Profile-bound Company media-review settings mutation.
+		// Discovery/registration is not a grant, and company OAuth write
+		// still requires all existing Site Profile and runtime gates.
+		if(class_exists('MAD4B_Company_Media_MCP_V1',false)
+		   &&MAD4B_Company_Media_MCP_V1::company_site()
+		   &&function_exists('wp_has_ability')
+		   &&wp_has_ability(MAD4B_Company_Media_MCP_V1::APPLY_ABILITY))
+			$candidates[]=MAD4B_Company_Media_MCP_V1::APPLY_ABILITY;
 		if ( class_exists( 'MAD4B_SCP_Adaptive_Search_Intelligence' ) ) $candidates = array_merge( $candidates, MAD4B_SCP_Adaptive_Search_Intelligence::ability_names( 'write' ) );
 		if ( class_exists( 'MAD4B_SCP_Context_Authority' )
 			&& function_exists( 'wp_has_ability' )

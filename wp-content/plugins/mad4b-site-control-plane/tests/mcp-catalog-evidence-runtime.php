@@ -37,6 +37,14 @@ $optional = array_map( static function ( $i ) { return 'optional/tool-' . $i; },
 $budget = MAD4B_SCP_MCP_Catalog_Diagnostics::budget_projection( array_merge( $required, $optional ), $optional );
 check( $budget['ready'] && 130 === count( $budget['selected'] ) && ! array_diff( $required, $budget['selected'] ) && empty( $budget['excluded_optional'] ), 'all registered optional tools remain selected without a total count cap' );
 check( $budget === MAD4B_SCP_MCP_Catalog_Diagnostics::budget_projection( array_merge( $required, $optional ), $optional ), 'budget selection deterministic' );
+// Regression for dynamic scale: no legacy 36/64 tool-count cap may silently
+// drop healthy tool definitions, even if all are reviewed optional tools.
+$large = array_map( static function ( $i ) { return 'dynamic/tool-' . $i; }, range( 1, 1024 ) );
+$large_budget = MAD4B_SCP_MCP_Catalog_Diagnostics::budget_projection( $large, $large );
+check( ! empty( $large_budget['ready'] ) && $large_budget['selected'] === $large
+    && empty( $large_budget['excluded_optional'] )
+    && ! empty( $large_budget['dynamic_unbounded_catalog'] ),
+    '1024-tool dynamic catalog must remain fully available without a fixed count cap' );
 $over = MAD4B_SCP_MCP_Catalog_Diagnostics::budget_projection( array_merge( $required, array_slice( $optional, 0, 7 ) ), array() );
 check( $over['ready'] && 37 === count( $over['selected'] ), 'historical required count limit no longer blocks valid Abilities' );
 $duplicate = MAD4B_SCP_MCP_Catalog_Diagnostics::budget_projection( array( 'core/tool', 'core/tool' ), array() );

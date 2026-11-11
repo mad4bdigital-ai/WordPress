@@ -4,7 +4,8 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 /**
  * Request-local, site-scoped MCP display budget. It never changes the Ability
  * registry, grants, permissions, execution, or the stable dispatch routes.
- * Only reviewed optional direct tools may be trimmed.
+ * No eligible Ability is dropped by a historical tool-count estimate;
+ * policy and per-tool wire validation remain independent.
  */
 final class MAD4B_SCP_MCP_Catalog_Budget {
     const CONTRACT = 'mad4b.mcp-catalog-budget.v1';

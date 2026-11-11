@@ -107,6 +107,19 @@ trait MAD4B_SCP_Server_Core_Catalog {
 		);
 		if ( 'mad4b-write' === $server_id ) return self::write_tools();
 		$tools = isset( $map[ $server_id ] ) ? $map[ $server_id ] : array();
+		// Company-only Abilities ride the existing authenticated MCP catalog.
+		// A direct ChatGPT transport is still subject to the OAuth identity
+		// and can never cross into a central Company Management site.
+		if(in_array($server_id,['mad4b-read','mad4b-chatgpt'],true)
+		   &&class_exists('MAD4B_Company_Media_MCP_V1',false)
+		   &&MAD4B_Company_Media_MCP_V1::company_site()){
+			foreach([MAD4B_Company_Media_MCP_V1::STATUS_ABILITY,
+			          MAD4B_Company_Media_MCP_V1::PLAN_ABILITY] as $ability){
+				if(function_exists('wp_has_ability')&&wp_has_ability($ability))
+					$tools[]=$ability;
+			}
+		}
+
 		// Mount only the resolver registration created by this plugin. Never
 		// widen meta.mcp.public for the default server or trust a name collision.
 		if ( 'mad4b-read' === $server_id && class_exists( 'MAD4B_SCP_Deployment_Mode_Resolver' ) ) {

@@ -369,6 +369,10 @@ final class MAD4B_SCP_Deployment_Binding_Native {
             && true === ( $authority['candidate_binding_match'] ?? false )
             && empty( $blockers );
         $binding_eligible = 'READY_FOR_OWNER_APPROVAL' === ( $binding['state'] ?? '' );
+        // Handoff is a read-only observation. Returning this same handoff
+        // Ability as its next step creates a dead-end when governed write
+        // grants are incomplete; expose the existing reconciliation PLAN only.
+        // It never creates a grant, approval ticket, or bypasses the write gate.
         $next = ! $binding_eligible ? 'mad4b/deployment-binding-native-status'
             : ( $write_ready ? 'mad4b/approval-plan'
                 : 'mad4b/deployment-binding-owner-handoff' );

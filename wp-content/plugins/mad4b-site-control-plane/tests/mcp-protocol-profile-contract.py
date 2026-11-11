@@ -9,7 +9,9 @@ impl = (root / "includes/class-mad4b-scp-mcp-protocol-profile.php").read_text(en
 projection = (root / "includes/class-mad4b-scp-chatgpt-tool-projection.php").read_text(encoding="utf-8")
 compat = (root / "includes/class-mad4b-scp-mcp-client-compatibility.php").read_text(encoding="utf-8")
 
-target = str(release_policy.get("target_adapter_version") or "")
+target = str((config.get("certified_adapter") or {}).get("version") or "")
+if release_policy.get("installed_adapter_version_gate") is not False:
+    raise SystemExit("FAIL protocol release policy reintroduced installed Adapter version gate")
 provider = ((providers.get("providers") or {}).get("mcp_adapter") or {}).get(target) or {}
 transport = provider.get("transport_compatibility") or {}
 legacy = [str(v) for v in transport.get("legacy_session_revisions") or []]
@@ -19,10 +21,10 @@ expected = modern + list(reversed(legacy))
 if config.get("contract") != "mad4b.mcp-protocol-profile-catalog.v1":
     raise SystemExit("FAIL protocol catalog contract")
 adapter = config.get("certified_adapter") or {}
-if not target or adapter.get("version") != target:
-    raise SystemExit("FAIL protocol catalog/runtime release Adapter binding")
-if adapter.get("version_source") != "runtime_release_policy.target_adapter_version":
-    raise SystemExit("FAIL protocol Adapter version source")
+if not target or adapter.get("version_gate") is not False:
+    raise SystemExit("FAIL protocol catalog reference must not bind installed Adapter version")
+if adapter.get("version_source") != "certified_provider_profile_reference":
+    raise SystemExit("FAIL protocol Adapter test reference source")
 if adapter.get("compatibility_source") != "certified-provider-profiles.mcp_adapter.<version>.transport_compatibility":
     raise SystemExit("FAIL protocol compatibility source")
 if config.get("supported_protocol_versions") != expected:
@@ -37,7 +39,7 @@ for version in expected:
         raise SystemExit("FAIL protocol behavior profile " + version)
 
 for marker in [
-    "CERTIFIED_ADAPTER_VERSION_SOURCE = 'runtime_release_policy.target_adapter_version'",
+    "CERTIFIED_ADAPTER_VERSION_SOURCE = 'certified_provider_profile_reference'",
     "certified-provider-profiles.json",
     "modern_per_request_revisions",
     "legacy_session_revisions",

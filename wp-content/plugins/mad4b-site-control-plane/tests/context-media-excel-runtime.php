@@ -12,6 +12,7 @@ function wp_check_invalid_utf8($value, $strip = false) {
     if ( preg_match('//u',(string)$value) ) return (string)$value;
     return $strip ? iconv('UTF-8','UTF-8//IGNORE',(string)$value) : '';
 }
+require_once __DIR__ . '/../includes/class-mad4b-scp-context-local-document-normalizer.php';
 require_once __DIR__ . '/../includes/class-mad4b-scp-google-drive-context.php';
 // Mirror the live bootstrap: the media consumer is backed by the shared
 // local workbook normalizer; a hermetic fixture must load its real provider.

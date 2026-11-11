@@ -33,6 +33,8 @@ final class MAD4B_SCP_Site_Profile {
 final class MAD4B_SCP_Google_Drive_Context {
     public static $status = array();
     public static $refresh_calls = 0;
+    // Managed OAuth state expires after 10 minutes; planning remains renewable.
+    public static function authorization_session_ttl_seconds() { return 600; }
     public static function public_connection_status() { return self::$status; }
     public static function encrypted_grant_identity_sha256() { return str_repeat( 'c', 64 ); }
     public static function refresh_existing_connection( $expected ) {
@@ -53,7 +55,9 @@ mad4b_assert( ! is_wp_error( $discovery ) && 1 === $discovery['count']
 $plan = $center::plan( array( 'provider' => 'google_drive' ) );
 mad4b_assert( ! is_wp_error( $plan ) && 'refresh' === $plan['action']
     && $plan['eligible_remote_refresh']
-    && 64 === strlen( $plan['plan_sha256'] ) && $plan['one_time_approval_required_for_remote_refresh'],
+    && 64 === strlen( $plan['plan_sha256'] ) && $plan['one_time_approval_required_for_remote_refresh']
+    && 600 === $plan['oauth_authorization_session_ttl_seconds']
+    && true === $plan['reconnect_request_renewable'],
     'Exact saved-grant refresh plan with owner approval.' );
 mad4b_assert( is_wp_error( $center::refresh( array( 'provider' => 'google_drive' ) ) ),
     'Remote refresh must deny missing one-time approval and exact bound plan.' );

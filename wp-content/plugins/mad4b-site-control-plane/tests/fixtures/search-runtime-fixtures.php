@@ -22,6 +22,15 @@ function admin_url( $p ) { return home_url( '/wp-admin/' . $p ); }
 function current_user_can( $cap ) { return ! empty( $GLOBALS['fixture_admin'] ); }
 function get_current_user_id() { return 7; }
 function add_action( $name, $callback, $priority = 10, $accepted = 1 ) { add_filter( $name, $callback, $priority, $accepted ); }
+function do_action( $name, ...$args ) {
+    // WordPress action semantics: callbacks get only action arguments,
+    // ordered by priority, without a synthetic filter accumulator.
+    $groups = $GLOBALS['fixture_filters'][ $name ] ?? array();
+    ksort( $groups, SORT_NUMERIC );
+    foreach ( $groups as $callbacks ) foreach ( $callbacks as $row ) {
+        call_user_func_array( $row[0], array_slice( $args, 0, $row[1] ) );
+    }
+}
 function add_filter( $name, $callback, $priority = 10, $accepted = 1 ) { $GLOBALS['fixture_filters'][ $name ][ $priority ][] = array( $callback, $accepted ); }
 function apply_filters( $name, $value, ...$args ) {
 	$groups = isset( $GLOBALS['fixture_filters'][ $name ] ) ? $GLOBALS['fixture_filters'][ $name ] : array(); ksort( $groups );

@@ -21,9 +21,10 @@
     "plugin_slug": "mad4b-site-control-plane",
     "mcp_adapter": {
       "slug": "mcp-adapter",
-      "required_version": "0.7.1",
-      "required_version_source": "runtime_release_policy.target_adapter_version",
-      "deployment_mode": "require_exact_preinstalled_or_verified_bundled"
+      "deployment_mode": "accept_compatible_installed_or_verified_release_artifact",
+      "version_gate": false,
+      "compatibility_source": "dependency_manager.adapter_read_runtime_observation",
+      "exact_release_target_source": "certified_runtime_release_set.mcp_adapter"
     }
   },
   "executor": {

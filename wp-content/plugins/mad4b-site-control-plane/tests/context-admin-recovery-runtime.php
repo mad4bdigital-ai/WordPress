@@ -72,7 +72,10 @@ final class MAD4B_SCP_Servers {
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-admin-settings-persistence.php';
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-context-admin-ui.php';
 function render( $method ) {
- $reflection = new ReflectionMethod( 'MAD4B_SCP_Context_Admin_UI', $method ); $reflection->setAccessible( true );
+ $reflection = new ReflectionMethod( 'MAD4B_SCP_Context_Admin_UI', $method );
+ // PHP 7.4 requires setAccessible() for private methods; PHP 8.1+ does not
+ // and PHP 8.5 deprecates the call under this fixture's strict error handler.
+ if ( PHP_VERSION_ID < 80100 ) $reflection->setAccessible( true );
  ob_start(); try { $reflection->invoke( null ); return ob_get_contents(); } finally { ob_end_clean(); }
 }
 function views( $html ) {

@@ -331,7 +331,7 @@ def main():
     if "UNIQUE KEY current_owner_scope" in intent_body:
         raise AssertionError("Intent Authority must not encode false single-owner exclusivity")
 
-    # The frozen Feature 007 schema-evolution contract requires migration identity,
+    # The Feature 007+ schema-evolution contract requires current migration identity,
     # preflight, additive/forward-fix semantics, post-verification evidence and
     # fail-closed persistence. dbDelta visibility alone is not enough.
     migration_markers = (

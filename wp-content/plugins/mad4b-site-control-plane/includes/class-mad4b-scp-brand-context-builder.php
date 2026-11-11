@@ -1603,6 +1603,10 @@ final class MAD4B_SCP_Brand_Context_Builder {
 			'registry_revision' => (int) MAD4B_SCP_Context_Authority::registry_revision(),
 			'provider_inventory_digest' => $inventory_digest,
 			'scan_complete' => $scan_complete,
+            'inventory_complete' => !empty($scan['inventory_complete']) || $scan_complete,
+            'deferred_files' => isset($scan['deferred_files']) && is_array($scan['deferred_files'])
+                ? array_slice($scan['deferred_files'],0,500) : array(),
+            'deferred_count' => max(0,absint($scan['deferred_count']??0)),
 			'missing_files_certified' => $scan_complete,
 			'truncation_reasons' => isset( $scan['truncation_reasons'] ) ? array_values( $scan['truncation_reasons'] ) : array(),
 			'new_files' => $new_files,
@@ -1643,6 +1647,73 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		}
 		return true;
 	}
+
+    /**
+     * Explicitly reviewed partial index: only files with complete verified
+     * normalization may be indexed. Any deferred files keep the source in
+     * partial_scan, with no absence decisions or Brand approval.
+     */
+    public static function source_scan_apply_verified_subset( $input ) {
+        if (!is_array($input) || ($input['confirm_verified_subset']??'')!=='1')
+            return new WP_Error('mad4b_scan_partial_explicit_confirmation_required',
+                'Confirm the verified subset and deferred files before indexing.');
+        $result=self::source_scan_snapshot($input['source_id']??'',array(
+            'scan_cursor'=>$input['scan_cursor']??'', 'final_only'=>true ));
+        if(is_wp_error($result))return $result;
+        $plan=$result['plan'];$scan=$result['scan'];
+        if(empty($plan['inventory_complete'])||!empty($plan['scan_complete'])
+            || empty($plan['deferred_count'])||empty($plan['deferred_files'])
+            || empty($scan['inventory_complete'])||empty($scan['deferred_files']))
+            return new WP_Error('mad4b_scan_partial_inventory_not_ready',
+                'Partial apply requires a fully enumerated provider inventory with explicit deferred files.');
+        if(count((array)$scan['deferred_files'])!==absint($plan['deferred_count']))
+            return new WP_Error('mad4b_scan_partial_deferred_mismatch',
+                'Deferred file evidence changed.');
+        $seen=array();$assets=(array)($scan['assets']??array());
+        foreach($assets as $asset){
+            $id=is_array($asset)?(string)($asset['file_id']??''):'';
+            if($id===''||isset($seen[$id])||true!==($asset['content_complete']??null)
+                ||!preg_match('/^[a-f0-9]{64}$/D',(string)($asset['content_hash']??'')))
+                return new WP_Error('mad4b_scan_partial_asset_unverified',
+                    'Every indexed file must have a unique verified content digest.');
+            $seen[$id]=true;
+        }
+        foreach($scan['deferred_files'] as $row){
+            $id=is_array($row)?(string)($row['file_id']??''):'';
+            if($id===''||isset($seen[$id])||!empty($row['content_complete'])
+                ||($row['status']??'')!=='deferred_review_required')
+                return new WP_Error('mad4b_scan_partial_deferred_invalid',
+                    'A deferred file conflicts with a fully normalized file.');
+            $seen[$id]=true;
+        }
+        foreach(array('expected_plan_sha256'=>'plan_sha256',
+            'expected_provider_inventory_digest'=>'provider_inventory_digest') as $from=>$to){
+            $claimed=(string)($input[$from]??'');
+            if(!preg_match('/^[a-f0-9]{64}$/D',$claimed)
+                ||!hash_equals((string)$plan[$to],$claimed))
+                return new WP_Error('mad4b_context_source_scan_plan_stale',
+                    'Provider inventory changed after review.');
+        }
+        if((int)($input['expected_registry_revision']??-1)!==(int)$plan['registry_revision'])
+            return new WP_Error('mad4b_context_source_scan_registry_stale',
+                'Context registry changed after review.');
+        $scan['expected_registry_revision']=(int)$plan['registry_revision'];
+        $scan['complete']=false;
+        $scan['inventory_complete']=true;
+        $scan['truncated']=true;
+        $scan['partial_scan_requires_complete_rescan']=true;
+        $scan['truncation_reasons']=array('file_normalization_deferred');
+        $applied=MAD4B_SCP_Context_Authority::replace_source_assets(
+            (string)$plan['source_id'],$assets,$scan);
+        if(is_wp_error($applied))return $applied;
+        $applied['verified_subset_applied']=true;
+        $applied['deferred_count']=count($scan['deferred_files']);
+        $applied['deferred_file_ids_sha256']=hash('sha256',
+            self::stable_json(array_column($scan['deferred_files'],'file_id')));
+        $applied['source_scan_complete']=false;
+        $applied['publication_authorized']=false;
+        return $applied;
+    }
 
 	public static function source_scan_apply( $input ) {
 		$result = self::source_scan_snapshot( isset( $input['source_id'] ) ? $input['source_id'] : '',

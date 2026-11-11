@@ -61,6 +61,8 @@ function dbDelta( $statement ) {
 final class MAD4B_Test_Schema_WPDB {
 	public $prefix = 'wp_';
 	public $missing_table = '';
+	public $agent_nullable = false;
+	public $agent_nullable_alterations = 0;
 
 	public function get_charset_collate() { return 'DEFAULT CHARACTER SET utf8mb4'; }
 	public function prepare( $query, ...$args ) {
@@ -68,15 +70,18 @@ final class MAD4B_Test_Schema_WPDB {
 		$value = str_replace( "'", "''", (string) $args[0] );
 		return preg_replace( '/%s/', "'" . $value . "'", $query, 1 );
 	}
-	public function get_row( $query, $output = ARRAY_A ) {
-		// dbDelta synthetic schema reflects the already-additive, nullable
-		// agent_id column. No real DDL or WordPress database is touched.
-		if ( false !== strpos( (string) $query, "LIKE 'agent_id'" ) ) return array( 'Field' => 'agent_id', 'Null' => 'YES' );
-		return null;
-	}
 	public function get_var( $query ) {
 		if ( preg_match( "/SHOW TABLES LIKE '([^']+)'/", (string) $query, $m ) ) {
 			return $this->missing_table === $m[1] ? null : $m[1];
+		}
+		return null;
+	}
+	public function get_row( $query, $output = null ) {
+		if ( preg_match( "/SHOW COLUMNS FROM `[^\\x60]+` LIKE 'agent_id'/", (string) $query ) )
+			return array( 'Field' => 'agent_id', 'Null' => $this->agent_nullable ? 'YES' : 'NO' );
+		if ( preg_match( "/SHOW TABLE STATUS WHERE Name = '([^']+)'/", (string) $query, $m ) ) {
+			if ( $this->missing_table === $m[1] ) return null;
+			return array( 'Name' => $m[1], 'Engine' => 'InnoDB', 'Collation' => 'utf8mb4_unicode_ci' );
 		}
 		return null;
 	}
@@ -124,6 +129,7 @@ final class MAD4B_Test_Schema_WPDB {
 	public function get_results( $query, $output = null ) {
 		$rows = array();
 		foreach ( array(
+			'mutation_id', 'principal_created',
 			'job_id', 'event_id', 'job_sequence', 'work_id', 'scope_idempotency',
 			'outbox_id', 'provider_idempotency', 'provider_event',
 			'artifact_id', 'job_type_version', 'edge_id', 'artifact_relation',
@@ -141,7 +147,13 @@ final class MAD4B_Test_Schema_WPDB {
 		}
 		return $rows;
 	}
-	public function query( $query ) { return true; }
+	public function query( $query ) {
+		if ( false !== strpos( (string) $query, 'MODIFY COLUMN agent_id bigint(20) unsigned NULL' ) ) {
+			$this->agent_nullable = true;
+			++$this->agent_nullable_alterations;
+		}
+		return true;
+	}
 }
 $GLOBALS['wpdb'] = new MAD4B_Test_Schema_WPDB();
 
@@ -166,6 +178,8 @@ function mad4b_schema_reset_fixture( $version ) {
 	$GLOBALS['mad4b_schema_fail_option'] = '';
 	$GLOBALS['mad4b_schema_fail_final_receipt'] = false;
 	$GLOBALS['wpdb']->missing_table = '';
+	$GLOBALS['wpdb']->agent_nullable = false;
+	$GLOBALS['wpdb']->agent_nullable_alterations = 0;
 	mad4b_schema_reset_cache();
 }
 function mad4b_schema_receipt() {

@@ -81,7 +81,7 @@ $homes=array( 'https://tenant.example', 'https://staging.tenant.example/subdirec
 foreach ( $homes as $home ) foreach ( $environments as $wordpress ) foreach ( $environments as $selected ) foreach ( array( false, true ) as $explicit ) {
  ++$journeys; $label="$home:$wordpress:$selected:" . ( $explicit ? 'explicit' : 'implicit' );
  $options=array( 'active_plugins'=>array( 'mcp-adapter/mcp-adapter.php', 'mad4b-site-control-plane/mad4b-site-control-plane.php' ), 'fixture_grants'=>array( 'sentinel'=>'must-not-change' ) );
- $scheduled=array(); $admin=true; $audit_ready=true; $audit_fail=false; $saved_hooks=0; $drop_option=''; $integrity=true; $lose_lease=false; $protocol=false;
+ $scheduled=array(); $admin=true; $audit_ready=true; $audit_fail=false; $saved_hooks=0; $drop_option=''; $integrity=true; $official_source_verified=true; $lose_lease=false; $protocol=false;
  if ( file_exists( $destination ) ) unlink( $destination ); MAD4B_SCP_Site_Profile::reset_cache();
  journey_check( ! MAD4B_SCP_Site_Profile::configured() && ! MAD4B_SCP_Site_Profile::oauth_enabled() && ! MAD4B_SCP_Site_Profile::write_enabled() && ! MAD4B_SCP_Site_Profile::skills_enabled(), 'fresh install granted authority' );
  MAD4B_SCP_MCP_Runtime_Recovery::schedule(); journey_check( empty( $scheduled ), 'fresh install scheduled repair' );
@@ -143,8 +143,8 @@ foreach ( $homes as $home ) foreach ( $environments as $wordpress ) foreach ( $e
 }
 // Fencing and storage faults use the real lease implementation, not a permissive stub.
 $wordpress='production'; $selected='staging'; $explicit=false; $home='https://tenant.example';
-foreach(array('shared_lease','foreign_lease','lease_lost','status_dropped','profile_dropped','http_staging','http_local','invalid_user','non_admin') as $fault) {
- $label=$fault; $options=array('active_plugins'=>array('mcp-adapter/mcp-adapter.php','mad4b-site-control-plane/mad4b-site-control-plane.php')); $scheduled=array(); $admin=true; $audit_ready=true; $audit_fail=false; $saved_hooks=0; $drop_option=''; $integrity=true; $lose_lease=false; $protocol=false;
+foreach(array('shared_lease','foreign_lease','lease_lost','status_dropped','profile_dropped','http_staging','http_local','invalid_user','non_admin','official_unverified') as $fault) {
+ $label=$fault; $options=array('active_plugins'=>array('mcp-adapter/mcp-adapter.php','mad4b-site-control-plane/mad4b-site-control-plane.php')); $scheduled=array(); $admin=true; $audit_ready=true; $audit_fail=false; $saved_hooks=0; $drop_option=''; $integrity=true; $official_source_verified=true; $lose_lease=false; $protocol=false;
  if(file_exists($destination))unlink($destination); MAD4B_SCP_Site_Profile::reset_cache();
  $input=array('environment'=>'staging','expected_revision'=>0,'oauth_user_ids'=>array(7),'managed_runtime_enabled'=>true,'nonproduction_override_confirmed'=>true,'nonproduction_override_confirmation'=>MAD4B_SCP_Site_Profile::NONPRODUCTION_OVERRIDE_CONFIRMATION);
  if('http_staging'===$fault || 'http_local'===$fault) {$home='http://localhost:8080';$input['environment']='http_local'===$fault?'local':'staging';}
@@ -158,10 +158,11 @@ foreach(array('shared_lease','foreign_lease','lease_lost','status_dropped','prof
  if('http_local'===$fault) {journey_check(MAD4B_SCP_Site_Profile::origin_enrolled(),'local HTTP enrollment rejected');continue;}
  $lease=''; if(in_array($fault,array('shared_lease','foreign_lease'),true))$lease=MAD4B_SCP_Runtime_Maintenance_Lease::acquire('runtime_convergence');
  if('lease_lost'===$fault)$lose_lease=true;
+ if('official_unverified'===$fault)$official_source_verified=false;
  if('status_dropped'===$fault)$drop_option=MAD4B_SCP_MCP_Runtime_Recovery::OPTION;
  $repair=MAD4B_SCP_MCP_Runtime_Recovery::run('foreign_lease'===$fault?'forged-token':$lease,true);
  if('shared_lease'===$fault) {journey_check(!is_wp_error($repair) && MAD4B_SCP_Runtime_Maintenance_Lease::owned($lease,'runtime_convergence'),'borrowed lease reacquired/released');MAD4B_SCP_Runtime_Maintenance_Lease::release($lease,'runtime_convergence');}
  else {journey_check(is_wp_error($repair) && false===get_option(MAD4B_SCP_MCP_Runtime_Recovery::OPTION),'fault published armed result');if('foreign_lease'===$fault)journey_check(!file_exists($destination) && MAD4B_SCP_Runtime_Maintenance_Lease::owned($lease,'runtime_convergence'),'forged lease mutated runtime');}
  journey_check(!MAD4B_SCP_MCP_Runtime_Recovery::active(),'fault leaked active privilege');
 }
-echo wp_json_encode(array('contract'=>'mad4b.site-profile-lifecycle-matrix.v1','enrollment_pairs'=>$journeys,'fault_cases'=>9,'assertions'=>$GLOBALS['assertions'],'result'=>'PASS')) . PHP_EOL;
+echo wp_json_encode(array('contract'=>'mad4b.site-profile-lifecycle-matrix.v1','enrollment_pairs'=>$journeys,'fault_cases'=>10,'assertions'=>$GLOBALS['assertions'],'result'=>'PASS')) . PHP_EOL;

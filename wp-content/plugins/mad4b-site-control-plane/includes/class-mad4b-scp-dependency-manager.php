@@ -62,9 +62,9 @@ final class MAD4B_SCP_Dependency_Manager {
 		$installed_version = $installed && isset( $plugins[ $mcp_plugin_file ]['Version'] ) ? trim( (string) $plugins[ $mcp_plugin_file ]['Version'] ) : '';
 		$installed_certified = '' !== $installed_version ? self::certified_mcp_adapter( $installed_version ) : array();
 		$supported_transition_versions = self::supported_transition_versions();
-		$transition_supported = $installed
-			&& ! empty( $installed_certified )
-			&& in_array( $installed_version, $supported_transition_versions, true );
+        // Version inventory is diagnostic only. Runtime contract, dynamic
+        // package inspection and capability checks decide compatibility.
+        $transition_supported = $installed && ! $plugin_identity_ambiguous;
 		$multisite_enabled = function_exists( 'is_multisite' ) && is_multisite();
 		$network_control_plane = $multisite_enabled && function_exists( 'is_plugin_active_for_network' ) && is_plugin_active_for_network( plugin_basename( MAD4B_SCP_FILE ) );
 		$network_mcp_adapter = $multisite_enabled && '' !== $mcp_plugin_file && function_exists( 'is_plugin_active_for_network' ) && is_plugin_active_for_network( $mcp_plugin_file );
@@ -135,7 +135,7 @@ final class MAD4B_SCP_Dependency_Manager {
 		if ( $network_control_plane || $network_mcp_adapter ) $hard_blockers[] = 'multisite_network_activation_unsupported';
 		if ( $plugin_identity_ambiguous ) $hard_blockers[] = 'mcp_adapter_plugin_identity_ambiguous';
 		elseif ( ! $installed ) $hard_blockers[] = 'mcp_adapter_missing';
-		elseif ( ! $transition_supported ) $hard_blockers[] = 'mcp_adapter_version_drift';
+        elseif ( ! $transition_supported ) $hard_blockers[] = 'mcp_adapter_identity_unverified';
 		elseif ( ! $installed_integrity_ready ) $hard_blockers[] = 'mcp_adapter_integrity_mismatch';
 		elseif ( ! $runtime_loaded ) $hard_blockers[] = 'mcp_adapter_runtime_unavailable';
 		elseif ( ! $runtime_from_official_plugin ) $hard_blockers[] = 'mcp_adapter_runtime_provenance_mismatch';
@@ -429,32 +429,18 @@ final class MAD4B_SCP_Dependency_Manager {
 	}
 
 	private static function target_mcp_adapter_version() {
-		$path = defined( 'MAD4B_SCP_DIR' ) ? MAD4B_SCP_DIR . 'config/runtime-release-policy.json' : '';
-		if ( '' !== $path && is_readable( $path ) ) {
-			$decoded = json_decode( (string) file_get_contents( $path ), true ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
-			$version = is_array( $decoded ) ? trim( (string) ( $decoded['target_adapter_version'] ?? '' ) ) : '';
-			if ( '' !== $version ) return $version;
-		}
-		$base = self::bootstrap_mcp_adapter();
-		return isset( $base['version'] ) ? trim( (string) $base['version'] ) : '';
+        // Resolve installed version as observation, not as a release target.
+        // Exact release target identity comes exclusively from a certified
+        // release-set manifest when a component update is requested.
+        return class_exists( 'MAD4B_SCP_Provider_Contracts', false )
+            ? (string) MAD4B_SCP_Provider_Contracts::installed_version( 'mcp_adapter' ) : '';
 	}
 
 	private static function supported_transition_versions() {
-		$path = defined( 'MAD4B_SCP_DIR' ) ? MAD4B_SCP_DIR . 'config/runtime-release-policy.json' : '';
-		$versions = array();
-		if ( '' !== $path && is_readable( $path ) ) {
-			$decoded = json_decode( (string) file_get_contents( $path ), true ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
-			$raw = is_array( $decoded ) && isset( $decoded['supported_transition_adapter_versions'] ) && is_array( $decoded['supported_transition_adapter_versions'] )
-				? $decoded['supported_transition_adapter_versions']
-				: array();
-			foreach ( $raw as $version ) {
-				$version = trim( (string) $version );
-				if ( '' !== $version && empty( self::certified_mcp_adapter( $version ) ) === false ) $versions[] = $version;
-			}
-		}
-		$target = self::target_mcp_adapter_version();
-		if ( '' !== $target && ! empty( self::certified_mcp_adapter( $target ) ) ) $versions[] = $target;
-		return array_values( array_unique( $versions ) );
+        // Inventory of known release profiles is advisory. Future compatible
+        // versions are not rejected for being absent from this list.
+        return class_exists( 'MAD4B_SCP_Provider_Contracts', false )
+            ? MAD4B_SCP_Provider_Contracts::certified_versions( 'mcp_adapter' ) : array();
 	}
 
 	/** Canonical runtime/update identity for the installed MCP Adapter main file. */

@@ -157,6 +157,53 @@ final class MAD4B_SCP_Skill_Abilities {
 			array( 'type' => 'object', 'additionalProperties' => false ),
 			array( __CLASS__, 'skills_runtime_certification' )
 		);
+
+        // Two task-aware discovery APIs. Their ability definitions are
+        // read-only; input validation and source requests remain in the
+        // bounded composition service. This is not a Skill execution lane.
+        $task_input = array(
+            'type' => 'object',
+            'properties' => array(
+                'task' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 4000 ),
+                'task_context' => array( 'type' => 'string', 'maxLength' => 4000 ),
+                'topics' => array( 'type' => 'array', 'maxItems' => 12, 'items' => array( 'type' => 'string', 'maxLength' => 80 ) ),
+                'source_ids' => array( 'type' => 'array', 'maxItems' => 40, 'items' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{24}$' ) ),
+                'source_offset' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 40 ),
+                'max_results' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 12 ),
+            ),
+            'required' => array( 'task' ),
+            'additionalProperties' => false,
+        );
+        self::add( 'mad4b/skill-match-task', 'Match Task to Available Skills', $task_input,
+            array( 'SCP_Skill_Task_Composition', 'match_task' ) );
+        self::add( 'mad4b/skill-composition-plan', 'Review Skill Composition Plan', $task_input,
+            array( 'SCP_Skill_Task_Composition', 'composition_plan' ) );
+
+        // Public source repositories are administrator-configured, but the
+        // lookup tools never install or execute source content. Every
+        // request passes the existing Policy::can_read permission callback.
+        $source_id = array( 'type' => 'string', 'pattern' => '^[a-f0-9]{24}$' );
+        $source_path = array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 512 );
+        $source_sha = array( 'type' => 'string', 'pattern' => '^[a-f0-9]{40}$' );
+        self::add( 'mad4b/skill-sources-list', 'List Configured External Skill Sources',
+            array( 'type' => 'object', 'properties' => array(), 'additionalProperties' => false ),
+            array( 'SCP_External_Skill_Sources', 'list_sources' ) );
+        self::add( 'mad4b/skill-source-skills', 'Discover External Source Skill Paths',
+            array( 'type' => 'object', 'properties' => array( 'source_id' => $source_id ),
+                'required' => array( 'source_id' ), 'additionalProperties' => false ),
+            array( 'SCP_External_Skill_Sources', 'list_skills' ) );
+        self::add( 'mad4b/skill-source-get', 'Read Exact External Skill',
+            array( 'type' => 'object', 'properties' => array(
+                'source_id' => $source_id, 'path' => $source_path, 'blob_sha' => $source_sha,
+            ), 'required' => array( 'source_id', 'path', 'blob_sha' ), 'additionalProperties' => false ),
+            array( 'SCP_External_Skill_Sources', 'get_skill' ) );
+        self::add( 'mad4b/skill-source-resource', 'Read Exact External Skill Reference',
+            array( 'type' => 'object', 'properties' => array(
+                'source_id' => $source_id, 'skill_path' => $source_path,
+                'path' => $source_path, 'blob_sha' => $source_sha,
+            ), 'required' => array( 'source_id', 'skill_path', 'path', 'blob_sha' ),
+                'additionalProperties' => false ),
+            array( 'SCP_External_Skill_Sources', 'get_resource' ) );
 	}
 
 	private static function add( $name, $label, array $input_schema, $callback ) {

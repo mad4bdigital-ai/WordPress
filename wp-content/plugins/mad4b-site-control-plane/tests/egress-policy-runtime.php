@@ -20,6 +20,7 @@ $skill_url='https://api.github.com/repos/example/skills/git/trees/main';
 $skill_args=MAD4B_SCP_Egress_Policy::mark_request('skill_source_discovery',$skill_url,'https://api.github.com',array('timeout'=>12,'redirection'=>0));
 $check(is_array($skill_args)&&true===$skill_args['sslverify']&&0===$skill_args['redirection']&&true===$skill_args['reject_unsafe_urls'],'Skill source egress not hardened',$skill_args);
 $check('mad4b_egress_https_required'===$code(MAD4B_SCP_Egress_Policy::mark_request('skill_source_discovery','http://api.github.com/repos/example/skills/git/trees/main','http://api.github.com',array())),'Skill source HTTP was admitted');
+$check('mad4b_egress_purpose_uncertified'===$code(MAD4B_SCP_Egress_Policy::mark_request('skill_source_mutation',$skill_url,'https://api.github.com',array())),'Uncertified Skill egress purpose was admitted');
 $check('mad4b_egress_tls_verification_required'===$code(MAD4B_SCP_Egress_Policy::mark_request('skill_source_discovery',$skill_url,'https://api.github.com',array('sslverify'=>false))),'Skill source TLS disable was admitted');
 $check('mad4b_egress_redirect_budget_exceeded'===$code(MAD4B_SCP_Egress_Policy::mark_request('skill_source_discovery',$skill_url,'https://api.github.com',array('redirection'=>1))),'Skill source redirects were admitted');
 $check('mad4b_egress_authority_origin_drift'===$code(MAD4B_SCP_Egress_Policy::mark_request('skill_source_discovery','https://evil.example.test/repos/example/skills','https://api.github.com',array())),'Skill source origin drift was admitted');

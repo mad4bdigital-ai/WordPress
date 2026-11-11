@@ -1,0 +1,25 @@
+{
+  "contract": "mad4b.central-demo-authoring-brand.v1",
+  "version": "1.0.0",
+  "assignments": [
+    {
+      "site_uuid": "e5e64bca-ed62-48d2-b2b3-dff693cd702a",
+      "canonical_origin": "https://tours.dev.mad4b.com",
+      "environment": "staging",
+      "mode": "central_neutral_demo",
+      "default": true,
+      "governed_brand_source_id": "659b2997c4d24be0e6f40142b41781969f7f62ea4cd4560f5713155fa9ef8986"
+    }
+  ],
+  "editorial_rules": {
+    "brand_name": "Neutral Demo",
+    "audience": "Visitors comparing travel experiences",
+    "source_attribution": "mandatory",
+    "copy_style": "factual original summary",
+    "supplier_impersonation": false,
+    "unsupported_prices": false,
+    "photo_rights_required": true,
+    "booking_readiness": "on_request_without_verified_prices",
+    "publish_guard": "unchanged_governed_brand_core"
+  }
+}

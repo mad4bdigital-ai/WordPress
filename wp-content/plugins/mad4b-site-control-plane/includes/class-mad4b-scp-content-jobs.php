@@ -413,6 +413,33 @@ final class MAD4B_SCP_Content_Jobs {
 		if ( is_wp_error( $record ) ) return $record;
 		$job = $record['job'] ?? null;
 		if ( ! is_array( $job ) ) return new WP_Error( 'mad4b_content_recovery_job_unavailable', 'Exact ContentJob not found.' );
+
+		// Projection of an explicit user deferral precedes Brand Core recovery.
+		// This read-only state cannot schedule, publish, approve or resume a Job.
+		if ( class_exists('MAD4B_Translation_Execution_Governance',false) &&
+			MAD4B_Translation_Execution_Governance::is_deferred_job($job) ) {
+			return array(
+				'contract' => 'mad4b.content-job-dependency-recovery.v1',
+				'job_id' => (string)$job['job_id'],
+				'job_revision' => (int)$job['job_revision'],
+				'original_job_state' => (string)$job['state'],
+				'original_job_stage' => (string)$job['stage'],
+				'state' => 'DEFERRED_BY_USER_POLICY',
+				'policy' => 'notification_only',
+				'policy_reason' => 'user_deferred_for_higher_priority_lifecycle_work',
+				'resume_ready' => false,
+				'next_ability' => '',
+				'next_transition' => array(),
+				'content_job_mutation_performed' => false,
+				'original_job_only' => true,
+				'alerts_remain_open' => true,
+				'no_auto_resume' => true,
+				'explicit_authorized_resume_required' => true,
+				'read_only' => true,
+				'mutation_performed' => false,
+			);
+		}
+
 		if ( ! class_exists( 'MAD4B_SCP_Context_Authority' ) || ! class_exists( 'MAD4B_SCP_Brand_Core_Control_Loop' ) )
 			return new WP_Error( 'mad4b_content_recovery_dependencies_unavailable', 'Governed Brand Core runtime unavailable.' );
 		$coverage = MAD4B_SCP_Context_Authority::brand_core_coverage();
@@ -959,6 +986,10 @@ final class MAD4B_SCP_Content_Jobs {
 			if ( 'content_job_terminal_immutable' === $code ) return new WP_Error( 'mad4b_content_job_terminal_immutable', 'Completed or cancelled ContentJob history is immutable.' );
 			if ( 'content_job_state_transition_denied' === $code ) return new WP_Error( 'mad4b_content_job_state_transition_denied', 'Requested lifecycle transition is not allowed.' );
 			if ( 'content_job_noop_transition' === $code ) return new WP_Error( 'mad4b_content_job_noop_transition', 'State and stage are unchanged.' );
+			if ( 'translation_notification_only_deferred' === $code ) return new WP_Error(
+				'mad4b_translation_notification_only',
+				'This translation is intentionally deferred by site policy; original alert and ContentJob remain open.',
+				array('execution_deferred'=>true,'job_state_unchanged'=>true,'resume_requires_explicit_action'=>true));
 			return new WP_Error( 'mad4b_content_job_transition_failed', 'Unable to transition ContentJob.', array( 'blind_retry_allowed' => false, 'rollback_confirmed' => true ) );
 		}
         // Only a committed state change may emit the authoritative lifecycle event.
