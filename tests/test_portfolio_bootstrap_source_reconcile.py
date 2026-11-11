@@ -28,8 +28,12 @@ class SourceBootstrapTests(unittest.TestCase):
                          capture_output=True,timeout=15)
         self.assertEqual(p.returncode,0)
         self.assertEqual(hashlib.sha256(p.stdout).hexdigest(),INFO['prior_git_sha256'])
-    def test_exact_current_main_source(self):
-        self.assertEqual(hashlib.sha256(MAIN.read_bytes()).hexdigest(),
+    def test_original_bootstrap_reconcile_sha_preserved_in_git_history(self):
+        p=subprocess.run(['git','-C',str(ROOT),'cat-file','blob',
+                          'b5484a26099414ed7dbc01cb5b4d98f753a75feb:wp-content/plugins/mad4b-company-portfolio-manager/mad4b-company-portfolio-manager.php'],
+                         capture_output=True,timeout=15)
+        self.assertEqual(p.returncode,0)
+        self.assertEqual(hashlib.sha256(p.stdout).hexdigest(),
                          INFO['reconciled_git_sha256'])
     def test_new_requires_are_one_time_and_exist(self):
         source=MAIN.read_text()

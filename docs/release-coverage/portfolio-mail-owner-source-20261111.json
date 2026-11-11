@@ -1,0 +1,22 @@
+{
+  "browser_runtime_acceptance": false,
+  "candidate_sha256": "b96f4a3f45e6d9f0c2051918e5447003a89b140229079535ddfbccf384a49ea3",
+  "company_manager_early_mail_environments": [
+    "staging",
+    "production"
+  ],
+  "contract": "mad4b.portfolio-mail-owner-source-reconcile.v1",
+  "early_classes": [
+    "MAD4B_SCP_Company_Communication",
+    "MAD4B_SCP_Company_Email_Routing",
+    "MAD4B_SCP_Company_Sender_Policy"
+  ],
+  "global_release_authorized": false,
+  "original_core_fallback_unchanged": true,
+  "preimage_commit": "d4d6704d335e62e8c8143043074286d564c2223a",
+  "preimage_sha256": "732232a7c37b1f857800ae137cda848de3c7fbcd2d2f2bb87884230bf9629de7",
+  "production_grant_issued": false,
+  "production_mail_delivery_verified": false,
+  "production_mutation_executed": false,
+  "smtp_credentials_modified": false
+}

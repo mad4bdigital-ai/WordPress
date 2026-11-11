@@ -7,12 +7,17 @@
  * Requires Plugins: mad4b-site-control-plane
  */
 if (!defined('ABSPATH')) { exit; }
-if (function_exists('wp_get_environment_type') && wp_get_environment_type() === 'staging') {
-    // Register original company mail hooks as early as the Core did, even in
-    // foreign REST/cron/AJAX contexts where Control Plane is lightweight.
-    require_once __DIR__ . '/includes/class-mad4b-scp-company-communication.php';
-    require_once __DIR__ . '/includes/class-mad4b-scp-company-email-routing.php';
-    require_once __DIR__ . '/includes/class-mad4b-scp-company-sender-policy.php';
+// Company-owned mail hooks must be registered early in both active company
+// environments. The Core handles Production only when this Add-on is absent.
+// Never redeclare a Core fallback class or inherit another site's authority.
+if (function_exists('wp_get_environment_type')
+    && in_array(wp_get_environment_type(), ['staging','production'], true)) {
+    if (!class_exists('MAD4B_SCP_Company_Communication', false))
+        require_once __DIR__ . '/includes/class-mad4b-scp-company-communication.php';
+    if (!class_exists('MAD4B_SCP_Company_Email_Routing', false))
+        require_once __DIR__ . '/includes/class-mad4b-scp-company-email-routing.php';
+    if (!class_exists('MAD4B_SCP_Company_Sender_Policy', false))
+        require_once __DIR__ . '/includes/class-mad4b-scp-company-sender-policy.php';
 }
 
 
