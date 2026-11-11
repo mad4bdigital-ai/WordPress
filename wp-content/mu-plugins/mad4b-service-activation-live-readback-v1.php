@@ -128,6 +128,13 @@ final class MAD4B_Service_Activation_Live_Readback_V1 {
                 'status'=>$guard?'policy_loaded':'public_guard_missing',
             ];
         }
+        // Host-side WP-CLI may collect the optional settings audit for the
+        // central company readback. Regular HTML/admin page rendering stays
+        // lightweight; the full settings audit is otherwise user-triggered.
+        $relatedOptions=null;
+        if(defined('WP_CLI') && WP_CLI
+            && class_exists('MAD4B_Options_Live_Readback_V1',false))
+            $relatedOptions=MAD4B_Options_Live_Readback_V1::snapshot();
         return [
             'contract'=>'mad4b.service-activation-live-readback.v1',
             'site_host'=>(string)wp_parse_url(home_url('/'),PHP_URL_HOST),
@@ -144,6 +151,7 @@ final class MAD4B_Service_Activation_Live_Readback_V1 {
             'stripe_enabled'=>$stripeEnabled,
             'early_payment_benefits_enabled'=>$early,
             'schema'=>$schema,'families'=>$families,
+            'related_options_live_status'=>$relatedOptions,
             'plan_verified_from_central'=>false,
             'status_note'=>'Local WordPress runtime readback. Central Company Plan and remote rollout are separate.',
         ];

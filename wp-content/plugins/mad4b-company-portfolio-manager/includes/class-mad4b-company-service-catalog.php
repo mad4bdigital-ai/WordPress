@@ -339,6 +339,19 @@ final class MAD4B_Company_Service_Catalog_V1 {
             ||!is_bool($snapshot['stripe_enabled']??null)
             ||!is_bool($snapshot['early_payment_benefits_enabled']??null))
             return $base+['reason'=>'runtime_snapshot_identity_or_schema_mismatch'];
+        $related=$snapshot['related_options_live_status']??null;
+        if(!is_array($related)
+            ||($related['contract']??'')!=='mad4b.options-live-readback.v1'
+            ||($related['site_host']??'')!==$host
+            ||!is_array($related['pricing_configuration']??null)
+            ||!is_array($related['pricing_dimensions']??null)
+            ||!is_array($related['destinations']??null)
+            ||!is_array($related['currencies']??null)
+            ||!is_array($related['selling_options']??null)
+            ||($related['writes_performed']??true)!==false
+            ||($related['payment_authority_changed']??true)!==false
+            ||($related['prices_changed']??true)!==false)
+            return $base+['reason'=>'live_options_snapshot_missing_or_invalid'];
         // A successful local WP-CLI observation does not certify booking, grants
         // or production deployment, even if matching the central plan.
         return array_replace($base,[
@@ -356,6 +369,27 @@ final class MAD4B_Company_Service_Catalog_V1 {
                 'unified_fulfillment_loaded'=>$snapshot['unified_fulfillment_loaded'],
                 'stripe_enabled'=>$snapshot['stripe_enabled'],
                 'early_payment_benefits_enabled'=>$snapshot['early_payment_benefits_enabled'],
+                'related_options_live_status'=>[
+                    'observed_utc'=>$related['observed_utc']??null,
+                    'destinations'=>$related['destinations'],
+                    'pricing_configuration'=>[
+                        'schema_fields'=>$related['pricing_configuration']['schema_fields']??0,
+                        'expected_booking_field_present'=>$related['pricing_configuration']['expected_booking_field_present']??false,
+                        'financial_policy_complete'=>$related['pricing_configuration']['financial_policy_complete']??false,
+                        'provider_effective'=>$related['pricing_configuration']['provider_effective']??[],
+                    ],
+                    'pricing_dimensions'=>[
+                        'mode'=>$related['pricing_dimensions']['mode']??'unknown',
+                        'available'=>$related['pricing_dimensions']['available']??0,
+                        'active'=>$related['pricing_dimensions']['active']??0,
+                    ],
+                    'currencies'=>[
+                        'store_base_currency'=>$related['currencies']['store_base_currency']??null,
+                        'display_currencies'=>$related['currencies']['display_currencies']??[],
+                        'new_draft_authoring_currencies'=>$related['currencies']['new_draft_authoring_currencies']??[],
+                    ],
+                    'selling_options'=>$related['selling_options'],
+                ],
             ],
             'reason'=>'site_wordpress_wpcli_observed_no_first_party_signature',
         ]);
@@ -501,8 +535,16 @@ final class MAD4B_Company_Service_Catalog_V1 {
             .'+" — no activation claim.";return;}'
             .'const families=Object.entries(v.snapshot?.families||{}).map(([name,d])=>'
             .'name+": "+String(d.effective_mode||"unknown")+", "+String(d.published||0)+" published");'
+            .'const options=v.snapshot?.related_options_live_status||{};'
+            .'const groups=options.destinations?.groups||{};'
+            .'const destinations=Object.entries(groups).map(([name,r])=>name.replace("active_","")+": "+r.selected).join("/");'
             .'out.textContent="WordPress WP-CLI at "+String(v.observed_utc||"?")+" · "'
-            .'+families.join(" · ")+" · Booking "+String(v.snapshot?.global_booking_status)'
+            .'+families.join(" · ")+" · Destination "+destinations+" · Pricing fields "'
+            .'+String(options.pricing_configuration?.schema_fields||"unknown")'
+            .'+ " · Financial mode policies "'
+            .'+(options.pricing_configuration?.financial_policy_complete?"COMPLETE":"UNVERIFIED")'
+            .'+ " · Draft currencies "+(options.currencies?.new_draft_authoring_currencies||[]).join(", ")'
+            .'+ " · Booking "+String(v.snapshot?.global_booking_status)'
             .'+" · Stripe "+String(v.snapshot?.stripe_enabled?"ON":"OFF")'
             .'+" · Origin 313 signed: NO. No deployed plan or payment authority inferred.";'
             .'}catch(e){out.textContent="Protected WordPress readback failed; no activation claim.";}'

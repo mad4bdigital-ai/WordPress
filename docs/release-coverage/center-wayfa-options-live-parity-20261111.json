@@ -1,0 +1,100 @@
+{
+  "booking_fulfillment_mode": "inquiry_only",
+  "central_company_plan_applied": false,
+  "company_native_readback_signed": false,
+  "contract": "mad4b.center-wayfa.options-live-parity.v1",
+  "currency_base": "USD",
+  "customer_order_or_payment_modified": false,
+  "data_scope": "wayfa pricing configuration options only",
+  "destination_groups_selected": [
+    2,
+    4,
+    17
+  ],
+  "destination_translation_or_hierarchy_errors": 0,
+  "dimension_available_source": 19,
+  "dimension_available_wayfa": 17,
+  "dimension_count_divergence_is_data_derived": true,
+  "early_payment_benefits_activated": false,
+  "files": [
+    {
+      "bytes": 15767,
+      "live": {
+        "central": "wp-content/mu-plugins/mad4b-options-live-readback-v1.php",
+        "wayfa": "wp-content/mu-plugins/mad4b-options-live-readback-v1.php"
+      },
+      "sha256": "c3dc8431d9d23c5318f4eb5598a89b580d2d9b77ca943d8054c9d65b7a9c5024",
+      "source": "wp-content/mu-plugins/mad4b-options-live-readback-v1.php"
+    },
+    {
+      "bytes": 2575,
+      "live": {
+        "central": "wp-content/mu-plugins/mad4b-tenant-pricing-options-parity-v1.php",
+        "wayfa": "wp-content/mu-plugins/mad4b-tenant-pricing-options-parity-v1.php"
+      },
+      "sha256": "6ce9a9753417b3a22f96570ba101783f3ff02e427088cec4033ac71dd19d5d19",
+      "source": "wp-content/mu-plugins/mad4b-tenant-pricing-options-parity-v1.php"
+    },
+    {
+      "bytes": 19067,
+      "live": {
+        "central": "wp-content/mu-plugins/mad4b-service-activation-live-readback-v1.php",
+        "wayfa": "wp-content/mu-plugins/mad4b-service-activation-live-readback-v1.php"
+      },
+      "sha256": "ab2b2dea105d982abb2765d46cc996ffc2252c94cc89781aa51abecf20f0a17b",
+      "source": "wp-content/mu-plugins/mad4b-service-activation-live-readback-v1.php"
+    },
+    {
+      "bytes": 35111,
+      "live": {
+        "central": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-service-catalog.php"
+      },
+      "sha256": "377a36e2e5bcbb8eea45e8567706e632aa2e22fcda46b8812bad6f294187b1eb",
+      "source": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-service-catalog.php"
+    },
+    {
+      "bytes": 8368,
+      "live": {
+        "central": "wp-content/plugins/destinations-compatibility/includes/activation.php",
+        "wayfa": "wp-content/plugins/destinations-compatibility/includes/activation.php"
+      },
+      "sha256": "0870a166e30944f229907a02f2dd47b36251fcd623b083a914798ee5793696ce",
+      "source": "ops/deployment-overlays/wayfatours/wp-content/plugins/destinations-compatibility/includes/activation.php"
+    }
+  ],
+  "financial_defaults_from_source": true,
+  "financial_mode_policy_rows_complete": 4,
+  "live_booking_enabled": false,
+  "original_318_313_certified": false,
+  "other_companies_touched": false,
+  "pricing_controls_source_fields": 37,
+  "pricing_controls_wayfa_fields": 37,
+  "pricing_engine_enabled": false,
+  "published_tour_rate_records_modified": false,
+  "selling_units_count": 5,
+  "site_local_admin_readback_protected": true,
+  "site_scope": [
+    "tours.dev.mad4b.com",
+    "wayfatours.com"
+  ],
+  "source_draft_currency_count": 148,
+  "stripe_activated": false,
+  "target_site_uuid": "a3a7cc36-db7e-4a14-8456-b41857def05c",
+  "tour_cpt_meta_schema_hash_equal": true,
+  "tour_cpt_schema_field_count": 91,
+  "wayfa_draft_authoring_currencies": [
+    "USD",
+    "EUR",
+    "EGP",
+    "GBP"
+  ],
+  "wayfa_option_postimage_sha256": "2f741bb19f04f4831109e5e0b95775615ee3e19f6df2a778848dbbc25707c5a7",
+  "wayfa_option_preimage_sha256": "04490e1901f1dcb9bd33357689927b7737561dc8a69038c549e81cfcd9fbb3c9",
+  "wayfa_options_changed_count": 10,
+  "wcml_display_currencies": [
+    "USD",
+    "EUR",
+    "EGP",
+    "GBP"
+  ]
+}

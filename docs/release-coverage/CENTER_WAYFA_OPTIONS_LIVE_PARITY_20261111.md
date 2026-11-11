@@ -1,0 +1,30 @@
+# Center and Wayfatours: Destination & Pricing Options reconciliation
+
+Date: 2026-11-11. Scope: tours.dev.mad4b.com and wayfatours.com only. Other companies remain deferred until reconciliation or Full Clone. This is site-local code/data verification, not an Original 318/313 signed release.
+
+## Root causes and applied corrections
+
+1. Destination Activation: the 3 native JetEngine fields were already identical in content (2 continents, 4 countries, 17 governorates), without parent or WPML visibility drift. Wayfatours still used an older taxonomy activation evaluator. Replaced that PHP file with the exact newer source version, retaining a backup. This version memoizes ancestry only for guest GET, never admin writes, REST, AJAX or WP-CLI. Source and target SHA256 agree.
+2. Pricing Controls: Wayfatours lacked the registered booking_fulfillment_mode field (36 vs 37). A site-identity-guarded MU module restores the exact native dropdown only if absent. It does not enable checkout or edit values.
+3. Pricing setting provider: Wayfatours had the exact source page-options-provider.php file but did not load it. The same identity-guarded module registers the existing code at plugins_loaded. Missing values now correctly return pricing_setting_not_configured rather than being guessed.
+4. Configuration values: the source explicitly stored disabled dynamic pricing and disabled live booking, no manual overrides, no availability requirement, no global stop sale, inquiry_only fulfillment and active_today card-rate date. Wayfatours lacked these explicit options; the strictly scoped migration stores the canonical safe values.
+5. Financial policies: the four modes tour, activity, extra_trip and cruise_tour each retained their Wayfatours strategy, min/max occupancy and enabled values. Seven absent source-defined financial fields were added: inclusive tax basis, before-tax discount order, payment fee non-taxable, merchant pays fee, base-only discount, line-based refunds and nonrefundable payment fee. Source and target native control schema supports the same enumerations. This is not legal acceptance or real refund certification; direct payment remains disabled.
+6. Selling Options: saved the five allowed units (per_person, per_room_night, per_cabin_night, per_person_night and per_stay) on Wayfatours, matching source. No individual published price record was edited.
+7. Pricing Dimensions: the Tour CPT meta key/type schema has exactly 91 entries with identical SHA256 on source and Wayfatours, and both have the same seven Tour meta-box fields. Source discovery still returns 19 data-backed dimensions and Wayfatours 17 due to language and published content coverage. This is expected runtime variation, not missing schema. Both keep inherited All and no synthetic saved dimension policy or copied tenant content.
+8. Pricing Currencies: WooCommerce base USD and WCML display currencies USD/EUR/EGP/GBP are unchanged. Source permits 148 glossary entries in its draft authoring picker. Wayfatours now explicitly uses wcml_only draft currency selection for USD/EUR/EGP/GBP, without changing checkout rates or currency exchange configuration.
+9. Live Options Readback: an on-demand, admin-only native WordPress readback reports saved versus unconfigured controls, Destination visibility, four financial modes, data-backed dimensions, currency authoring versus display, and selling units. Its button appears on actual Dynamic Pricing Controls, native JetEngine settings, Destination Activation, Pricing Workspace and Currency screens. An expensive readback is not run during ordinary visitor HTML rendering. Admin REST returns 200 and guest REST returns 401, private/no-store.
+10. Center Company Manager: the existing bound same-VPS native WP-CLI host reader includes this options snapshot, which the center checks for contract, company host, no-write assertions and file parity before displaying it. Readback remains fresh_local_wordpress_wpcli_unsigned and cannot imply a deployed company catalog plan or Original 313 certified receipt.
+
+## Live verification and rollback
+
+- The protected Wayfatours pricing options preimage and postimage stored outside Git in the dated VPS report differ in exactly 10 approved keys. After applying once, a repeated dry run showed zero planned mutations, and a second explicit apply returned already_applied_and_verified with no new writes.
+- Both sites now have 37 registered Pricing Controls fields; Wayfatours native provider reports booking_enabled=false, pricing_engine_enabled=false. Destination selection state and ancestry remain consistent. Financial policy rows complete 4/4. Wayfatours authoring currency choices 4, selling bases 5.
+- Both sites options REST is 200 for admin and 401 for anonymous. Central Company Manager integrated tests reject stale, tampered and missing-options snapshots. Other companies remain out of scope.
+- Wayfatours guest REST: Tour Rates 404, standalone Properties 404, public Tours 200. Headless Chromium at 390px: EN and ES Tour pages 200, no horizontal overflow, zero page JS errors, published rate cards remain visible, Form 6 uses Request a quote / Solicitar presupuesto.
+- Destination plugin preimage is preserved under /opt/mad4b-company-provisioning/reports/options-live-parity-20261111/wayfa-destination-activation-pre.php. Readback module preimages are in the dated visibility-before and deployed-pre-readback-extension directories. Pricing options preimage and postimage JSON have 0600 permissions and contain only approved option keys, enabling exact rollback without wholesale database cloning.
+
+## Explicit limitations
+
+- No Tour Rate amounts, Woo orders, Stripe configuration, payment capture, quote/booking authority, general tax amount, service fee amount, global currency FX rates or customer data were altered.
+- Tax percentage, service fee, default pricing currency and booking quote TTL remain unconfigured where the source is also unconfigured; no artificial numbers were inserted.
+- Other companies were not modified or probed. The central plan stays Not Deployed and Original 318/313 signed certification remains HOLD.

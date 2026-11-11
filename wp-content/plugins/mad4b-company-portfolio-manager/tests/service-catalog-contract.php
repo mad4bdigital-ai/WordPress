@@ -90,6 +90,19 @@ if(in_array($target,$codes,true)){
     $checks['native_readback_runtime_schema_verified']=
         ($native['snapshot']['schema']['declared_count']??0)===31
         &&($native['snapshot']['schema']['runtime_schema_gaps']??null)==[];
+    $options=$native['snapshot']['related_options_live_status']??[];
+    $checks['native_options_contract_verified']=
+        ($options['pricing_configuration']['schema_fields']??null)===37
+        && ($options['pricing_configuration']['financial_policy_complete']??null)===true
+        && ($options['pricing_configuration']['expected_booking_field_present']??null)===true;
+    $checks['native_destination_activation_verified']=
+        ($options['destinations']['hierarchy_and_public_flags_consistent']??null)===true
+        && ($options['destinations']['groups']['active_continents']['selected']??0)===2
+        && ($options['destinations']['groups']['active_countries']['selected']??0)===4
+        && ($options['destinations']['groups']['active_governorates']['selected']??0)===17;
+    $checks['native_currency_authoring_scope_verified']=
+        count((array)($options['currencies']['new_draft_authoring_currencies']??[]))===4
+        && count((array)($options['selling_options']['allowed_units']??[]))===5;
     $checks['native_readback_deployment_not_inferred']=
         ($native['company_plan_applied']??true)===false
         &&($native['booking_verified']??true)===false
@@ -141,9 +154,24 @@ if(in_array($target,$codes,true)){
         $checks['native_readback_wrong_runtime_code_denied']=
             ($result['state']??null)==='unverified'
             &&($result['reason']??null)==='runtime_snapshot_identity_or_schema_mismatch';
+
+        $withoutOptions=$original;
+        $payload=json_decode($original['snapshot_json'],true);
+        unset($payload['snapshot']['related_options_live_status']);
+        $withoutOptions['snapshot_json']=wp_json_encode($payload,
+            JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
+        $withoutOptions['snapshot_sha256']=hash('sha256',$withoutOptions['snapshot_json']);
+        $override=static fn()=>$withoutOptions;
+        add_filter('pre_option_'.$key,$override);
+        $result=MAD4B_Company_Service_Catalog_V1::native_observation($target);
+        remove_filter('pre_option_'.$key,$override);
+        $checks['native_options_missing_fail_closed']=
+            ($result['state']??null)==='unverified'
+            &&($result['reason']??null)==='live_options_snapshot_missing_or_invalid';
     }else{
         $checks['native_readback_expired_denied']=false;
         $checks['native_readback_wrong_runtime_code_denied']=false;
+        $checks['native_options_missing_fail_closed']=false;
     }
 }
 
