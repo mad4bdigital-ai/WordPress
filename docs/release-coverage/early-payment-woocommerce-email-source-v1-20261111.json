@@ -1,0 +1,95 @@
+{
+  "candidate_base_head": "113d1dfe88ff15083cc5921d554e02e24fb6f123",
+  "candidate_plain_fallback": {
+    "booking_confirmation_issued": false,
+    "candidate_sha256": "09172e64bbd210eda3ee23e66868b3745d00ed708a66715b2095dd596679c683",
+    "direct_send_or_email_trigger": false,
+    "gateway_eligibility_checked_before_link": true,
+    "original_live_template_exists": false,
+    "path": "wp-content/mu-plugins/templates/emails/plain/mad4b-request-lifecycle.php",
+    "release_authorized": false,
+    "source_kind": "candidate_only_native_woo_plain_fallback",
+    "stale_pay_link_removed_without_needs_payment": true
+  },
+  "contract": "mad4b.early-payment-woocommerce-email-source.v1",
+  "existing_woocommerce_lifecycle_job_only": true,
+  "latest_live_benefit_task_sync_reviewed": {
+    "exact_source_sha256": "6b506a2e26f2efc42faf8e9abb0fdd83ba106d9b8d4ae9d0920d1da8cb92a900",
+    "native_mysql_advisory_lock_for_manual_fulfilment": true,
+    "no_new_queue_or_notification": true,
+    "paid_refund_state_remains_order_authoritative": true,
+    "release_authorized": false,
+    "sync_existing_board_task_only": true
+  },
+  "no_background_job_executed": true,
+  "no_email_delivered": true,
+  "no_stripe_capture": true,
+  "no_woocommerce_order_mutated": true,
+  "optional_company_policy_default_off": true,
+  "original_wp_mail_dispatch_remains_in_request_lifecycle": true,
+  "per_tour_rate_override_not_new_global_authority": true,
+  "plain_text_template_missing_on_live_source": true,
+  "release_authorized": false,
+  "reviewed_candidate_overlays": [
+    {
+      "candidate_blob_sha1": "b89b9400ae30442f17fba43e01c68d01851956f7",
+      "candidate_sha256": "22139178bbc2646930f4c2e16ec5119c86b86ef0bccd6d76f1a23a3f32b18506",
+      "live_sha256": "bbcc62a85f4421fd1123e808c52f3e0077bc4a6b6499e0b0173ed9aef3cc4dd9",
+      "mail_sent": false,
+      "path": "wp-content/mu-plugins/mad4b-request-woocommerce-email-v1.php",
+      "payment_authority_granted": false,
+      "policy": "woo_plain_preview_fallback_only_without_dispatch",
+      "release_authorized": false
+    }
+  ],
+  "service_benefits_only_no_monetary_discount": true,
+  "source_files": [
+    {
+      "bytes": 33915,
+      "candidate_sha256": "6b506a2e26f2efc42faf8e9abb0fdd83ba106d9b8d4ae9d0920d1da8cb92a900",
+      "deployment_authorized": false,
+      "git_blob_sha1": "b104eca997e286c9c68cd3d0b0d944c07f375a75",
+      "live_sha256": "6b506a2e26f2efc42faf8e9abb0fdd83ba106d9b8d4ae9d0920d1da8cb92a900",
+      "path": "wp-content/mu-plugins/mad4b-early-payment-benefits-v1.php",
+      "source_exact": true
+    },
+    {
+      "bytes": 4150,
+      "candidate_sha256": "22139178bbc2646930f4c2e16ec5119c86b86ef0bccd6d76f1a23a3f32b18506",
+      "deployment_authorized": false,
+      "git_blob_sha1": "fdc10ce065c958b66df5baa1f6023ef1127d6778",
+      "live_sha256": "bbcc62a85f4421fd1123e808c52f3e0077bc4a6b6499e0b0173ed9aef3cc4dd9",
+      "path": "wp-content/mu-plugins/mad4b-request-woocommerce-email-v1.php",
+      "source_exact": false
+    },
+    {
+      "bytes": 698,
+      "candidate_sha256": "e6bebc58100c7248ecffb43a584eaed9caa89ec59da004a93998525c6200e91c",
+      "deployment_authorized": false,
+      "git_blob_sha1": "df76ee8c3a9ef429f460015a7c817d97c2beaade",
+      "live_sha256": "e6bebc58100c7248ecffb43a584eaed9caa89ec59da004a93998525c6200e91c",
+      "path": "wp-content/mu-plugins/assets/mad4b-early-payment-benefits-v1.css",
+      "source_exact": true
+    },
+    {
+      "bytes": 3802,
+      "candidate_sha256": "fcf60bb1d263b26a3d5acd1abd9c5015b379d5e77da4b60477828c2a0a7e08f0",
+      "deployment_authorized": false,
+      "git_blob_sha1": "9d7a1b60774801e7c0602642c0c823402770d5d1",
+      "live_sha256": "fcf60bb1d263b26a3d5acd1abd9c5015b379d5e77da4b60477828c2a0a7e08f0",
+      "path": "wp-content/mu-plugins/templates/emails/mad4b-request-lifecycle.php",
+      "source_exact": true
+    },
+    {
+      "bytes": 698,
+      "candidate_sha256": "e6bebc58100c7248ecffb43a584eaed9caa89ec59da004a93998525c6200e91c",
+      "deployment_authorized": false,
+      "git_blob_sha1": "df76ee8c3a9ef429f460015a7c817d97c2beaade",
+      "live_sha256": "e6bebc58100c7248ecffb43a584eaed9caa89ec59da004a93998525c6200e91c",
+      "path": "wp-content/plugins/mad4b-platform/legacy-mu-tree/assets/mad4b-early-payment-benefits-v1.css",
+      "source_exact": true
+    }
+  ],
+  "source_site": "tours.dev.mad4b.com",
+  "woocommerce_manual_email_template": true
+}

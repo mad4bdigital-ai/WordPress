@@ -1,0 +1,21 @@
+/* MAD4B optional company loyalty policy: render only for verified active offers. */
+.mad4b-early-benefit {
+  box-sizing:border-box;
+  border:1px solid #c9dce1;
+  border-inline-start:3px solid #b89045;
+  background:#fbfaf6;
+  padding:14px 16px;
+  margin:12px 0;
+  border-radius:8px;
+  color:#25424a;
+  line-height:1.55;
+  overflow-wrap:anywhere;
+}
+.mad4b-early-benefit h3 {font-size:18px;line-height:1.35;margin:0 0 9px;}
+.mad4b-early-benefit p {margin:6px 0 10px;}
+.mad4b-early-benefit--short {font-size:14px;}
+.mad4b-early-benefit-deadline {font-weight:600;}
+.mad4b-early-benefit-note {font-size:12px;opacity:.85;}
+@media (max-width:700px) {
+ .mad4b-early-benefit {padding:12px;margin:10px 0;}
+}

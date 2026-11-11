@@ -9,6 +9,16 @@
       "offline_php_cases_passed": 25,
       "path": "wp-content/mu-plugins/mad4b-tour-optional-sections-lazy.php",
       "policy": "native_signed_jetengine_query_verified_before_optional_transport_presentation"
+    },
+    {
+      "candidate_blob_sha1": "b89b9400ae30442f17fba43e01c68d01851956f7",
+      "candidate_sha256": "22139178bbc2646930f4c2e16ec5119c86b86ef0bccd6d76f1a23a3f32b18506",
+      "live_sha256": "bbcc62a85f4421fd1123e808c52f3e0077bc4a6b6499e0b0173ed9aef3cc4dd9",
+      "mail_sent": false,
+      "path": "wp-content/mu-plugins/mad4b-request-woocommerce-email-v1.php",
+      "payment_authority_granted": false,
+      "policy": "woo_plain_preview_fallback_only_without_dispatch",
+      "release_authorized": false
     }
   ],
   "automatic_mu_activation_authorized": false,
@@ -669,6 +679,13 @@
       "sha256": "1108235a972b3a5dcb483635baa9c5e5c9089b743c7f36fd168f64f0f19fe862"
     },
     {
+      "bytes": 33915,
+      "file_type": ".php",
+      "git_blob_sha1": "b104eca997e286c9c68cd3d0b0d944c07f375a75",
+      "path": "wp-content/mu-plugins/mad4b-early-payment-benefits-v1.php",
+      "sha256": "6b506a2e26f2efc42faf8e9abb0fdd83ba106d9b8d4ae9d0920d1da8cb92a900"
+    },
+    {
       "bytes": 12790,
       "file_type": ".php",
       "git_blob_sha1": "2a658bc46f144c3e6b2819baeb14b3847b045fce",
@@ -947,6 +964,13 @@
       "git_blob_sha1": "2c25d772646e1822344dbcf318cb4fd0322a85dc",
       "path": "wp-content/mu-plugins/mad4b-rates-elementor-dynamic-cache.php",
       "sha256": "205748a5a3470f36d13e7328fc61652d4feff0d4dc0af2f994c14a9b73385cc9"
+    },
+    {
+      "bytes": 4150,
+      "file_type": ".php",
+      "git_blob_sha1": "fdc10ce065c958b66df5baa1f6023ef1127d6778",
+      "path": "wp-content/mu-plugins/mad4b-request-woocommerce-email-v1.php",
+      "sha256": "bbcc62a85f4421fd1123e808c52f3e0077bc4a6b6499e0b0173ed9aef3cc4dd9"
     },
     {
       "bytes": 8068,
