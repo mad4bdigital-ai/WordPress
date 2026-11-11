@@ -418,6 +418,17 @@
       "repair_strategy": "discover_original_company_code_release_provider_and_preflight",
       "acceptance": "identity_bound_305_job_312_executor_and_independent_313_receipt",
       "auto_apply": false
+    },
+    {
+      "code": "native_scoped_write_capability_freshness",
+      "priority": "P0",
+      "related_check": "original_authority",
+      "target_probe_check": null,
+      "owner": "Original 312 Capability Lifecycle",
+      "ownership_scope": "never_clone",
+      "repair_strategy": "audit_admission_aware_capability_renewal_interval_against_source_handler_ttl",
+      "acceptance": "three_successive_refresh_windows_with_signed_site_bound_proof_age_below_ttl_and_no_cpu_pressure",
+      "auto_apply": false
     }
   ],
   "reconcile_ownership_by_check": {
@@ -435,5 +446,160 @@
     "provider_account_connections": "reconnect",
     "elementor_initial_ajax_css_parity": "site_generated",
     "jetsmartfilters_target_index": "site_generated"
+  },
+  "check_dependencies": {
+    "target_identity": [],
+    "source_scope": [
+      "target_identity"
+    ],
+    "original_authority": [
+      "target_identity"
+    ],
+    "rollback_ready": [
+      "target_identity",
+      "source_scope",
+      "original_authority"
+    ],
+    "provider_dependency_graph": [
+      "source_scope",
+      "target_identity"
+    ],
+    "plugin_activation": [
+      "provider_dependency_graph"
+    ],
+    "post_taxonomy_schema": [
+      "plugin_activation"
+    ],
+    "tenant_field_mapping": [
+      "post_taxonomy_schema"
+    ],
+    "eligible_content_manifest": [
+      "tenant_field_mapping"
+    ],
+    "post_term_relationships": [
+      "post_taxonomy_schema",
+      "eligible_content_manifest"
+    ],
+    "user_verifier_continuity": [
+      "target_identity"
+    ],
+    "wpml_translations": [
+      "tenant_field_mapping",
+      "post_taxonomy_schema"
+    ],
+    "fluent_form_definitions": [
+      "tenant_field_mapping",
+      "plugin_activation"
+    ],
+    "media_provenance": [
+      "eligible_content_manifest"
+    ],
+    "jetengine_queries_options": [
+      "post_taxonomy_schema"
+    ],
+    "jetsmartfilters_target_index": [
+      "jetengine_queries_options",
+      "eligible_content_manifest"
+    ],
+    "mu_presentation_dependencies": [
+      "plugin_activation"
+    ],
+    "brand_kit_page_options": [
+      "target_identity",
+      "mu_presentation_dependencies"
+    ],
+    "elementor_theme_conditions": [
+      "brand_kit_page_options",
+      "mu_presentation_dependencies"
+    ],
+    "dynamic_tag_bindings": [
+      "post_taxonomy_schema",
+      "elementor_theme_conditions"
+    ],
+    "navigation_lists": [
+      "post_term_relationships",
+      "wpml_translations"
+    ],
+    "frontend_shortcodes": [
+      "dynamic_tag_bindings",
+      "mu_presentation_dependencies"
+    ],
+    "hero_and_css_assets": [
+      "brand_kit_page_options",
+      "media_provenance"
+    ],
+    "desktop_visual_render": [
+      "navigation_lists",
+      "hero_and_css_assets",
+      "frontend_shortcodes"
+    ],
+    "mobile_visual_render": [
+      "hero_and_css_assets",
+      "frontend_shortcodes"
+    ],
+    "all_public_languages_render": [
+      "navigation_lists",
+      "wpml_translations"
+    ],
+    "interactive_filters_and_forms": [
+      "fluent_form_definitions",
+      "jetsmartfilters_target_index"
+    ],
+    "internal_links_brand_isolation": [
+      "navigation_lists",
+      "wpml_translations"
+    ],
+    "elementor_visual_css_source_readback": [
+      "hero_and_css_assets",
+      "brand_kit_page_options"
+    ],
+    "elementor_initial_ajax_css_parity": [
+      "elementor_visual_css_source_readback",
+      "interactive_filters_and_forms"
+    ],
+    "pricing_and_booking": [
+      "tenant_field_mapping",
+      "eligible_content_manifest"
+    ],
+    "payment_checkout": [
+      "pricing_and_booking",
+      "original_authority"
+    ],
+    "outbound_notifications": [
+      "fluent_form_definitions",
+      "internal_links_brand_isolation"
+    ],
+    "provider_account_connections": [
+      "original_authority"
+    ]
+  },
+  "dependency_policy_kind": "diagnostic_order_only_no_execution_grant",
+  "scenario_probe_rule": "declared_probe_not_equal_independent_receipt",
+  "evidence_levels": [
+    "NOT_OBSERVED",
+    "LOCAL_WORDPRESS_UNSIGNED",
+    "BROWSER_LOCALE_OBSERVED",
+    "ORIGINAL_PROVIDER_SIGNED_313"
+  ],
+  "incident_evidence_lanes": {
+    "age_policy_contract": "target_local",
+    "fluent_to_woo_age_receipt": "target_local",
+    "archive_date_locale": "target_local",
+    "ajax_filter_intersection": "target_local",
+    "elementor_html_cache": "target_local",
+    "wpml_listing_id_relocation": "target_local",
+    "archive_media_provenance": "target_local",
+    "tour_rate_neutral_defaults": "target_probe_design_pending",
+    "cruise_program_taxonomy": "target_probe_design_pending",
+    "rate_season_eligibility": "target_probe_design_pending",
+    "draft_tour_rate_advisory": "target_local",
+    "itinerary_media_coverage": "target_local",
+    "seo_tenant_canonical": "target_local",
+    "mobile_overlap_and_popups": "target_local",
+    "cold_ttfb_cache_vary": "target_local",
+    "tenant_owned_preservation": "company_pre_post_signed_digest",
+    "native_plugin_install_capability": "original_provider",
+    "company_code_release_lifecycle": "original_provider",
+    "native_scoped_write_capability_freshness": "original_provider"
   }
 }

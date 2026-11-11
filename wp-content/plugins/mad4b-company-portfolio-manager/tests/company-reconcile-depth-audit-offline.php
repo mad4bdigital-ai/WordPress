@@ -1,0 +1,131 @@
+<?php
+/** Offline evaluation for incident coverage, DAG integrity and no authority. */
+define('ABSPATH','/');
+function wp_is_uuid($s){return is_string($s)&&preg_match('/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/D',$s)===1;}
+function wp_json_encode($x,$flags=0){return json_encode($x,$flags);}
+$root=dirname(__DIR__);
+require $root.'/includes/class-mad4b-company-reconcile-depth-audit.php';
+require $root.'/includes/class-mad4b-company-reconcile-work-plan.php';
+$file=dirname($root,3).'/ops/deployment-overlays/center/company-start-reconcile/policy.json';
+if(!is_file($file)){
+ $file='/work/ops/deployment-overlays/center/company-start-reconcile/policy.json';
+}
+$policy=json_decode(file_get_contents($file),true);
+$plan=MAD4B_Company_Reconcile_Work_Plan_V1::build('exampleco',[],$policy);
+$d=$plan['depth_audit'];
+$checks=[];
+$test=static function($label,$good)use(&$checks):void {$checks[$label]=(bool)$good;};
+$test('34_required_checks',($d['policy_checks']??0)===34);
+$test('19_incidents',($d['scenario_total']??0)===19);
+$test('16_incident_mapped_checks',($d['checks_with_incident_playbook']??0)===16);
+$test('18_checks_without_specific_incident',($d['checks_without_incident_playbook']??0)===18);
+$test('12_named_probe_incidents',($d['incident_scenarios_with_named_probe']??0)===12);
+$test('7_incidents_without_named_probe',($d['incident_scenarios_without_named_probe']??0)===7);
+$test('provider_receipts_have_separate_evidence_lane',
+ ($d['incident_evidence_lane_counts']['original_provider']??0)===3);
+$test('postcondition_digest_has_separate_evidence_lane',
+ ($d['incident_evidence_lane_counts']['company_pre_post_signed_digest']??0)===1);
+$test('three_target_probe_designs_are_explicitly_pending',
+ ($d['incident_evidence_lane_counts']['target_probe_design_pending']??0)===3);
+$test('7_P0_incidents',($d['incident_priority_counts']['P0']??0)===7);
+$test('57_edges',($d['dependency_edge_count']??0)===57);
+$test('11_diagnostic_waves',($d['dependency_wave_count']??0)===11);
+$test('graph_is_valid',($d['dependency_graph_valid']??false)===true);
+$test('no_authority_from_valid_dag',($d['can_start_mutation']??true)===false
+ &&($d['company_release_certified']??true)===false &&($plan['ready_to_publish']??true)===false);
+$test('all_checks_still_need_independent_receipts',
+ count(array_filter($d['check_mapping']??[],fn($x)=>($x['independent_provider_readback']??null)!=='REQUIRED'))===0);
+$test('ownership_preservation_no_auto_apply',
+ count(array_filter($plan['work_items'],fn($x)=>($x['auto_apply']??true)!==false))===0);
+$test('first_wave_identity_only',($d['dependency_waves'][0]['checks']??null)===['target_identity']);
+$test('policy_dependency_in_plan_digest',
+ ($plan['work_plan_sha256']??'')!=='');
+$changed=$policy;$changed['check_dependencies']['source_scope']=[];
+$changedPlan=MAD4B_Company_Reconcile_Work_Plan_V1::build('exampleco',[],$changed);
+$test('graph_edit_changes_plan_hash',
+ ($changedPlan['work_plan_sha256']??null)!==($plan['work_plan_sha256']??null));
+$cycle=$policy;$cycle['check_dependencies']['target_identity']=['outbound_notifications'];
+$cyclePlan=MAD4B_Company_Reconcile_Work_Plan_V1::build('exampleco',[],$cycle);
+$test('cycle_fails_closed',
+ ($cyclePlan['state']??'')==='SOURCE_POLICY_INTEGRITY_REVIEW_REQUIRED'
+ &&($cyclePlan['depth_audit']['reason']??'')==='dependency_cycle');
+$unknown=$policy;$unknown['check_dependencies']['source_scope']=['does_not_exist'];
+$unknownPlan=MAD4B_Company_Reconcile_Work_Plan_V1::build('exampleco',[],$unknown);
+$test('unknown_dependency_fails_closed',
+ ($unknownPlan['depth_audit']['reason']??'')==='unknown_or_self_dependency');
+$broken=$policy;unset($broken['check_dependencies']['payment_checkout']);
+$brokenPlan=MAD4B_Company_Reconcile_Work_Plan_V1::build('exampleco',[],$broken);
+$test('missing_dependency_coverage_fails_closed',
+ ($brokenPlan['depth_audit']['reason']??'')==='dependency_coverage_incomplete');
+$unsafe=$policy;$unsafe['incident_scenarios'][0]['auto_apply']=true;
+$unsafePlan=MAD4B_Company_Reconcile_Work_Plan_V1::build('exampleco',[],$unsafe);
+$test('unsafe_autoapply_claim_fails_closed',
+ ($unsafePlan['depth_audit']['state']??'')==='SOURCE_POLICY_INTEGRITY_REVIEW_REQUIRED');
+$test('production_readback_not_inferred_for_new_site',
+ ($plan['observed_runtime']['state']??'')==='NOT_OBSERVED');
+$test('stable_output_no_resource_creation',
+ ($plan['mutation_performed']??true)===false
+ &&($plan['authority_granted']??true)===false
+ &&($d['new_native_job_submitted']??true)===false);
+// Exact-site target probe correlation exercises only local advisory status.
+$targetUuid='a3a7cc36-db7e-4a14-8456-b41857def05c';
+$targetOrigin='https://wayfatours.com';
+$targetEnv='production';
+$synthetic=[
+ 'contract'=>'mad4b.company-reconcile.target-evidence.v1',
+ 'source_of_evidence'=>'LOCAL_WORDPRESS_READ_ONLY',
+ 'provider_signature_present'=>false,'native_receipt_313_present'=>false,
+ 'native_execution_authorized'=>false,'mutation_performed'=>false,
+ 'site'=>['site_uuid'=>$targetUuid,'origin'=>$targetOrigin,'environment'=>$targetEnv],
+ 'collected_utc'=>gmdate('c',10000),
+ 'checks'=>[
+  ['check'=>'age_policy_contract','state'=>'PASS_LOCAL'],
+  ['check'=>'age_order_metadata_bridge','state'=>'DRIFT'],
+  ['check'=>'visual_ajax_acceptance','state'=>'UNVERIFIED'],
+  ['check'=>'seo_and_conversion','state'=>'ADVISORY']
+ ],
+];
+$correlate=static fn(array $r,int $now=10000)=>
+ MAD4B_Company_Reconcile_Depth_Audit_V1::correlate_local_probe(
+    $d,$r,$targetUuid,$targetOrigin,$targetEnv,$now);
+$triage=$correlate($synthetic);
+$test('exact_site_local_advisory_ingested',
+ ($triage['state']??'')==='FRESH_SITE_LOCAL_TRIAGE_UNSIGNED'
+ &&($triage['incident_count']??null)===19);
+$test('no_local_clear_counts_as_signed_release',
+ ($triage['independent_original_313_verified']??true)===false
+ &&($triage['can_close_any_stage']??true)===false
+ &&($triage['can_start_mutation']??true)===false);
+$test('unprovided_probe_incidents_visible',
+ ($triage['counts']['TARGET_PROBE_DESIGN_REQUIRED']??-1)===3
+ &&($triage['counts']['ORIGINAL_PROVIDER_RECEIPT_REQUIRED']??-1)===3
+ &&($triage['counts']['COMPANY_PRE_POST_DIGEST_REQUIRED']??-1)===1);
+$spoof=$synthetic;$spoof['site']['site_uuid']='22222222-2222-4222-8222-222222222222';
+$test('spoofed_site_uuid_rejected',
+ ($correlate($spoof)['reason']??null)==='exact_site_identity_mismatch');
+$spoof=$synthetic;$spoof['site']['environment']='staging';
+$test('wrong_environment_rejected',
+ ($correlate($spoof)['reason']??null)==='exact_site_identity_mismatch');
+$spoof=$synthetic;$spoof['provider_signature_present']=true;
+$test('forged_signature_claim_rejected',
+ ($correlate($spoof)['reason']??null)==='probe_contract_or_authority_claim_invalid');
+$spoof=$synthetic;$spoof['native_execution_authorized']=true;
+$test('forged_authority_claim_rejected',
+ ($correlate($spoof)['reason']??null)==='probe_contract_or_authority_claim_invalid');
+$test('stale_local_probe_rejected',
+ ($correlate($synthetic,14000)['reason']??null)==='missing_future_or_stale_observation');
+$spoof=$synthetic;$spoof['checks'][]=$synthetic['checks'][0];
+$test('duplicate_probe_checks_rejected',
+ ($correlate($spoof)['reason']??null)==='probe_check_duplicate_or_invalid');
+$spoof=$synthetic;$spoof['checks'][0]['state']='PASS_SIGNED_313';
+$test('unsupported_probe_state_rejected',
+ ($correlate($spoof)['reason']??null)==='probe_check_duplicate_or_invalid');
+echo json_encode(['pass'=>!in_array(false,$checks,true),
+ 'assertions'=>count($checks),
+ 'failed'=>array_keys(array_filter($checks,fn($x)=>!$x)),
+ 'coverage'=>[
+  'checks'=>$d['policy_checks'],'scenarios'=>$d['scenario_total'],
+  'mapped'=>$d['checks_with_incident_playbook'],
+  'probed'=>$d['incident_scenarios_with_named_probe'],
+  'edges'=>$d['dependency_edge_count'],'waves'=>$d['dependency_wave_count']]],JSON_UNESCAPED_SLASHES).PHP_EOL;
+if(in_array(false,$checks,true))exit(1);

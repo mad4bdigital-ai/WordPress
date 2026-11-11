@@ -5,6 +5,7 @@
  * accepts caller-supplied PASS as an independent target provider receipt.
  */
 defined('ABSPATH') || exit;
+require_once __DIR__ . '/class-mad4b-company-reconcile-depth-audit.php';
 if(!class_exists('MAD4B_Company_Reconcile_Work_Plan_V1',false)){
 final class MAD4B_Company_Reconcile_Work_Plan_V1 {
  const CONTRACT='mad4b.company-reconcile.work-plan.v1';
@@ -213,20 +214,39 @@ final class MAD4B_Company_Reconcile_Work_Plan_V1 {
    .'headers:{"X-WP-Nonce":cfg.nonce}});'
    .'if(!res.ok)throw new Error("not_authorized_or_missing");const r=await res.json();'
    .'state.textContent=String(r.state||"UNVERIFIED")+" · "+String(r.next_action||"")'
-   .'+" · Original313 signed: NO";'
+   .'+" · Signed Original313 receipt: NOT VERIFIED by this assessment";'
    .'const summary=document.createElement("p");'
    .'summary.textContent="Lane: "+String(r.start_company_lane||"?")'
    .'+" · Registered: "+String(r.requested_environment_registered)'
    .'+" · Local WordPress: "+String(r.observed_runtime?.state||"NOT_OBSERVED")'
-   .'+" · "+String(r.work_count||0)+" checks · "+String(r.scenario_count||0)+" scenarios";'
+   .'+" · "+String(r.work_count||0)+" checks · "+String(r.scenario_count||0)+" scenarios"'
+   .'+" · "+String(r.depth_audit?.dependency_wave_count||0)+" diagnostic waves"'
+   .'+" · "+String(r.depth_audit?.incident_scenarios_without_named_probe||0)+" incident probes undeclared";'
    .'box.appendChild(summary);'
+   .'const depth=r.depth_audit||{};'
+   .'const evidence=document.createElement("p");'
+   .'const lanes=depth.incident_evidence_lane_counts||{};'
+   .'evidence.textContent="Incident coverage: "+String(depth.checks_with_incident_playbook||0)'
+   .'+" of "+String(depth.policy_checks||0)+" checks have named incident playbooks"'
+   .'+" · Local probes "+String(lanes.target_local||0)'
+   .'+" · Probe design pending "+String(lanes.target_probe_design_pending||0)'
+   .'+" · Original provider "+String(lanes.original_provider||0)'
+   .'+" · Before/after digest "+String(lanes.company_pre_post_signed_digest||0)'
+   .'+" · No automatic publication approval";box.appendChild(evidence);'
+   .'if(depth.dependency_graph_valid && Array.isArray(depth.dependency_waves)){'
+   .'const waves=document.createElement("details");'
+   .'const ws=document.createElement("summary");ws.textContent="Diagnostic dependency order ("+depth.dependency_wave_count+" waves)";'
+   .'waves.appendChild(ws);const ol=document.createElement("ol");'
+   .'for(const wave of depth.dependency_waves){const li=document.createElement("li");'
+   .'li.textContent=(wave.checks||[]).join(", ");ol.appendChild(li)}'
+   .'waves.appendChild(ol);box.appendChild(waves)}'
    .'const table=document.createElement("table");table.className="widefat striped";'
    .'const head=document.createElement("tr");'
-   .'for(const x of ["Check","Stage","Ownership","Required action","Evidence"]){'
+   .'for(const x of ["Check","Stage","Ownership","Depends on","Required action","Evidence"]){'
    .'const th=document.createElement("th");th.textContent=x;head.appendChild(th)}table.appendChild(head);'
    .'for(const item of r.work_items||[]){const tr=document.createElement("tr");'
-   .'for(const k of ["check","stage","ownership_scope","proposed_repair","target_state"]){'
-   .'const td=document.createElement("td");td.textContent=String(item[k]||"");tr.appendChild(td)}'
+   .'for(const k of ["check","stage","ownership_scope","depends_on","proposed_repair","target_state"]){'
+   .'const td=document.createElement("td");td.textContent=Array.isArray(item[k])?item[k].join(", "):String(item[k]||"");tr.appendChild(td)}'
    .'table.appendChild(tr)}box.appendChild(table);'
    .'}catch(err){state.textContent="Assessment unavailable or forbidden. No readiness inferred.";}'
    .'finally{button.disabled=false;}});})();';
@@ -331,6 +351,8 @@ final class MAD4B_Company_Reconcile_Work_Plan_V1 {
     $work[]=[
      'check'=>$check,'stage'=>$stage,'priority'=>$stage==='bootstrap'?'P0':($stage==='commercial'?'P1':'P1'),
      'owner'=>$owner,'ownership_scope'=>$scope,
+     'depends_on'=>(array)($policy['check_dependencies'][$check]??[]),
+     'dependencies_are_advisory_not_release_authority'=>true,
      'ownership_split_required'=>$scope==='mixed',
      'tenant_values_preserved'=>in_array($scope,
         ['mixed','tenant_owned','reconnect','never_clone'],true),
@@ -374,16 +396,23 @@ final class MAD4B_Company_Reconcile_Work_Plan_V1 {
   $sourceHash=hash('sha256',wp_json_encode([$company,$environmentInventory,$policy['contract']??'',
    $stages,$policy['ownership_rules']??[],$policy['provider_owners']??[],
    $policy['reconcile_ownership_by_check']??[],
-   $policy['incident_scenarios']??[]],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
+   $policy['incident_scenarios']??[],
+   $policy['check_dependencies']??[],
+   $policy['dependency_policy_kind']??null,
+   $policy['evidence_levels']??[],
+   $policy['incident_evidence_lanes']??[]],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
   $newCompany=!$environmentInventory;
+  $depth=MAD4B_Company_Reconcile_Depth_Audit_V1::evaluate($policy,$work,$scenarios);
+  $policyInvalid=($depth['dependency_graph_valid']??false)!==true;
   $runtime=self::native_runtime_observation($company,$environmentInventory);
   $scopeTotals=array_count_values(array_column($work,'ownership_scope'));
   $stageTotals=array_count_values(array_column($work,'stage'));
   $p0=count(array_filter($work,static fn($x)=>($x['priority']??'')==='P0'));
   return [
    'contract'=>self::CONTRACT,
-   'state'=>$invalidTargets?'IDENTITY_REGISTRY_REVIEW_REQUIRED':
-      ($newCompany?'START_COMPANY_TARGET_PROFILE_PENDING':'READY_FOR_EVIDENCE_COLLECTION'),
+   'state'=>$policyInvalid?'SOURCE_POLICY_INTEGRITY_REVIEW_REQUIRED':
+      ($invalidTargets?'IDENTITY_REGISTRY_REVIEW_REQUIRED':
+      ($newCompany?'START_COMPANY_TARGET_PROFILE_PENDING':'READY_FOR_EVIDENCE_COLLECTION')),
    'company_code'=>$company,
    'registered_targets'=>$registered,
    'environment_inventory'=>$environmentInventory,
@@ -398,6 +427,8 @@ final class MAD4B_Company_Reconcile_Work_Plan_V1 {
    'work_items'=>$work,
    'scenario_count'=>count($scenarios),
    'incident_scenarios'=>$scenarios,
+   'depth_audit'=>$depth,
+   'depth_audit_is_non_authorizing'=>true,
    'stage_totals'=>$stageTotals,'ownership_totals'=>$scopeTotals,
    'bootstrap_priority_count'=>$p0,
    'observed_runtime'=>$runtime,
@@ -405,11 +436,12 @@ final class MAD4B_Company_Reconcile_Work_Plan_V1 {
    'live_status_is_separate_from_policy_stage_hints'=>true,
    'all_work_items_still_require_independent_acceptance'=>true,
    'idempotent_noop_requires_exact_postcondition_readback'=>true,
-   'next_action'=>$invalidTargets?'VERIFY_ENVIRONMENT_TARGET_ORIGIN_AND_UUID':
+   'next_action'=>$policyInvalid?'REPAIR_SOURCE_DEPENDENCY_POLICY_BEFORE_EXECUTION':
+      ($invalidTargets?'VERIFY_ENVIRONMENT_TARGET_ORIGIN_AND_UUID':
       ($newCompany?'ENROLL_EXACT_TARGET_SITE_PROFILE_THEN_RUN_PRIVATE_BOOTSTRAP':
         (($runtime['state']??'')==='LOCAL_WORDPRESS_OBSERVED_UNSIGNED'
           ?'COLLECT_SIGNED_313_RECEIPTS_AND_BROWSER_ACCEPTANCE':
-            'COLLECT_FRESH_TARGET_WORDPRESS_AND_ORIGINAL_RECEIPTS')),
+            'COLLECT_FRESH_TARGET_WORDPRESS_AND_ORIGINAL_RECEIPTS'))),
    'scenarios_are_advisory_until_verified'=>true,
    'required_target_probe_contract'=>'mad4b.company-reconcile.target-evidence.v1',
    'target_probe_is_advisory_not_an_original_receipt'=>true,

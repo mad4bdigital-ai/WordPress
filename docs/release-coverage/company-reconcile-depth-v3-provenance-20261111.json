@@ -1,0 +1,63 @@
+{
+  "check_count": 34,
+  "code_deployment_site": "tours.dev.mad4b.com",
+  "commercial_settings_mutated": false,
+  "company_grant_issued": false,
+  "company_manager_main_plugin_replaced": false,
+  "contract": "mad4b.company-reconcile-depth-v3.provenance.v1",
+  "dependency_edges": 57,
+  "dependency_waves": 11,
+  "files": [
+    {
+      "bytes": 16393,
+      "installed": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-reconcile-depth-audit.php",
+      "sha256": "cf78260860a46a9869c60edc7910f3b39f9dd711b594bd264ee1f85e910257dc",
+      "source": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-reconcile-depth-audit.php"
+    },
+    {
+      "bytes": 26572,
+      "installed": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-reconcile-work-plan.php",
+      "sha256": "f9853ece481f18867769dd31740aaebf6bda239d432314936961f4005dd21b98",
+      "source": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-reconcile-work-plan.php"
+    },
+    {
+      "bytes": 21221,
+      "installed": "wp-content/mu-plugins/company-start-reconcile/policy.json",
+      "sha256": "1d7b775d4bbb11d467d87fd7e56d472ca9ec8aad61d651405d7cea683f2ba085",
+      "source": "ops/deployment-overlays/center/company-start-reconcile/policy.json"
+    }
+  ],
+  "full_clone_performed": false,
+  "incident_count": 19,
+  "incident_triage_counts": {
+    "COMPANY_PRE_POST_DIGEST_REQUIRED": 1,
+    "LOCAL_ADVISORY_REVIEW": 2,
+    "LOCAL_DRIFT_REVIEW": 0,
+    "LOCAL_PASS_NOT_CERTIFIED": 5,
+    "NAMED_TARGET_PROBE_NOT_REPORTED": 0,
+    "ORIGINAL_PROVIDER_RECEIPT_REQUIRED": 3,
+    "TARGET_PROBE_DESIGN_REQUIRED": 3,
+    "TARGET_PROBE_UNVERIFIED": 5
+  },
+  "local_probe_count": 10,
+  "local_probe_report_sha256": "e9231ef057278d10288c6abb23592f16d9c471135c3ef76f032c0428dbd79104",
+  "local_triage_report_sha256": "fe63d131e257d647d4b20ab2e23c2a2f351bab9a9f20818e6d05d1c9ae50b12f",
+  "original_313_signed": false,
+  "original_318_signed": false,
+  "other_companies_touched": false,
+  "reconcile_execution_authorized": false,
+  "site_local_probe_collected_utc": "2026-11-11T19:03:47+00:00",
+  "site_scope": [
+    "tours.dev.mad4b.com",
+    "wayfatours.com"
+  ],
+  "target_site_uuid": "a3a7cc36-db7e-4a14-8456-b41857def05c",
+  "tests": {
+    "admin_js_syntax": true,
+    "admin_rest_http": 200,
+    "anonymous_rest_http": 403,
+    "central_wpcli_regression_passed": 21,
+    "offline_assertions_passed": 35
+  },
+  "wayfa_wordpress_mutated": false
+}
