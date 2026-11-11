@@ -23,7 +23,7 @@
 - Source tested and applied to tours.dev.mad4b.com first, then wayfatours.com, with pre-update backups in /opt/mad4b-company-provisioning/reports/company-branded-email-20261111/.
 - Isolated PHP cases: brand identity, translation and scoped links 18; traveler request language 11; Woo mail contract 25; opt-in loyalty 51. No real payments, emails or database writes.
 - Live WordPress checked Spanish tour, header/logo, privacy, terms and homepage URLs on both sites. All five rendered Spanish hrefs passed same-host and exact-language tests. No order-pay URL was emitted.
-- Wayfatours EN/ES active locales passed. Tours.dev EN/ES passed; its six-language scan was delayed by the WP-CLI admission busy condition.
+- Wayfatours EN/ES active locales passed. Tours.dev all six active locales EN/AR/FR/DE/ES/IT passed a later readback: every available published home/privacy/terms link was correctly scoped to the site and requested language.
 - Prior Wayfatours 3 failed lifecycle mail jobs were not replayed. Earlier 3 Gmail SMTP acceptance tests are separate from this brand design update.
 - V1 historical provenance intentionally rejects these newer source bytes; V2 manifest/verifier covers all five new source files, mail dispatch authority, locale contracts, tamper resistance, no monetary discount and no release permission.
 - Gmail mobile / Outlook / Apple Mail visual screenshots and full Original 318/313 composite release certification remain outstanding.
