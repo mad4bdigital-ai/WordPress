@@ -1,0 +1,1146 @@
+{
+  "automatic_mu_activation_authorized": false,
+  "candidate_prior_head": "fcf80c0c9c632fceaada6205cc5f14944e052793",
+  "captured_utc": "2026-11-11T03:15:05.305491+00:00",
+  "company_deployment_authorized": false,
+  "contract": "mad4b.local-direct-mu-sources-source-only.v1",
+  "files": [
+    {
+      "bytes": 5702,
+      "file_type": ".php",
+      "git_blob_sha1": "1906213c8108654690733421ff4f4450d8d04b66",
+      "path": "wp-content/mu-plugins/00-0-mad4b-runtime-router.php",
+      "sha256": "1c856c0391eb940cf89ee166b262a191477390abb66e89428e33a2920e9bad34"
+    },
+    {
+      "bytes": 1447,
+      "file_type": ".php",
+      "git_blob_sha1": "241f648b4a9d091fab3771be84019f985f6d8b33",
+      "path": "wp-content/mu-plugins/000-mad4b-cache-warm-proof.php",
+      "sha256": "3b0c24fb94b1ec3d5c91d13edcafc972e24f4bcca092058c37f7e0b9323b8328"
+    },
+    {
+      "bytes": 593,
+      "file_type": ".php",
+      "git_blob_sha1": "b5c9ceef824acdce250e2ba712a4a4336e34ecfd",
+      "path": "wp-content/mu-plugins/000-mad4b-dfsb-edge-attested.php",
+      "sha256": "cb58220d4150e2b7cd209aa9bfba83c3519cccf559c68eab616b35617c2ffb89"
+    },
+    {
+      "bytes": 4029,
+      "file_type": ".php",
+      "git_blob_sha1": "0aee8295a66cf2c98586d8f612af70caaae976af",
+      "path": "wp-content/mu-plugins/000-mad4b-elementor-device-mode-cache.php",
+      "sha256": "1dd1fb49e122e838c4d914c01a02ce42eab5d6ecb96d3c88bfde34f45491927b"
+    },
+    {
+      "bytes": 54159,
+      "file_type": ".php",
+      "git_blob_sha1": "fcaf68800d97c6f053fba4a9b54b295db27391b9",
+      "path": "wp-content/mu-plugins/000-mad4b-mcp-adapter-bootstrap.php",
+      "sha256": "766e5bef911cdc50f76b7aef3721a96e2488c5429a9afdc3abf16eb8e823eda0"
+    },
+    {
+      "bytes": 9226,
+      "file_type": ".php",
+      "git_blob_sha1": "e3eec59dcb72bd8c3e19a03f75a8b319db74e440",
+      "path": "wp-content/mu-plugins/000-mad4b-native-mail.php",
+      "sha256": "c0e8cd85edb9c701f9858605d6948babd4275a624896595f35ed1958334ea5b5"
+    },
+    {
+      "bytes": 6239,
+      "file_type": ".php",
+      "git_blob_sha1": "6ee4c79deab43ac97f59b765b21a6e5eacb755f2",
+      "path": "wp-content/mu-plugins/000-mad4b-redis-flush-provenance.php",
+      "sha256": "91bed2eb68ec74ed0780a41237d8219dd5884d2eff5912729234e1f4a02cb6a3"
+    },
+    {
+      "bytes": 1883,
+      "file_type": ".php",
+      "git_blob_sha1": "477258cfbe437763f253e5ca29f960ca7f1ec739",
+      "path": "wp-content/mu-plugins/000-mad4b-visitor-state-fast-bootstrap.php",
+      "sha256": "c5896df477099c98d9d64039b063eaee83c0dc92a5b887323f09062bb293b7fd"
+    },
+    {
+      "bytes": 565,
+      "file_type": ".php",
+      "git_blob_sha1": "b16d2101f0db9b162ddea1b8a3ba67d0cc822591",
+      "path": "wp-content/mu-plugins/002-mad4b-accommodation-policy.php",
+      "sha256": "f33893dc296830315a9fb0d2126a42412440863c02e4e13786f7d68c8907e385"
+    },
+    {
+      "bytes": 1672,
+      "file_type": ".php",
+      "git_blob_sha1": "67c625b2626a4a93ab4133a1aec829dd73659d2b",
+      "path": "wp-content/mu-plugins/004-mad4b-rate-authoring.php",
+      "sha256": "f2fbd310cc91b730bc89ba2f4ac92f7930197ea34b67e777dc1a0db98e33994d"
+    },
+    {
+      "bytes": 14879,
+      "file_type": ".php",
+      "git_blob_sha1": "6f93b697dcb99cbf5adc0cd9146db25b59028c45",
+      "path": "wp-content/mu-plugins/316-mad4b-company-hostinger-cdn-operations.php",
+      "sha256": "d61cff1e30a2055b216f2d38f74edbba7998f174e6edc8240e5e00cc99005108"
+    },
+    {
+      "bytes": 21736,
+      "file_type": ".php",
+      "git_blob_sha1": "c76c7c4085a19a194e9af7a993a07f14128600a3",
+      "path": "wp-content/mu-plugins/318-mad4b-central-remote-adaptive-intake.php",
+      "sha256": "292e329edbeae6d253da49656906c08be95ad0872f1d01f89e1e571517d640ba"
+    },
+    {
+      "bytes": 35744,
+      "file_type": ".php",
+      "git_blob_sha1": "18265db74a7e93d5a377ae2bee809468429dffb6",
+      "path": "wp-content/mu-plugins/319-mad4b-fleet-adaptive-intake.php",
+      "sha256": "953fc6356e687426155735e5ca0518315fb7f34b2694593a9578566095fd7ce1"
+    },
+    {
+      "bytes": 10743,
+      "file_type": ".php",
+      "git_blob_sha1": "302864113eb576fbc4b59c57473f44370719357c",
+      "path": "wp-content/mu-plugins/321-mad4b-central-preferred-route.php",
+      "sha256": "a199aeecf9bdb54501bd8f64fe89fd74468913c6ec0808a3e1a6457c141e46fa"
+    },
+    {
+      "bytes": 24684,
+      "file_type": ".php",
+      "git_blob_sha1": "59baf7833e536bc47a1d3c4e701b189830dc54cc",
+      "path": "wp-content/mu-plugins/322-mad4b-optional-company-authorization-center.php",
+      "sha256": "ca329e57f4dc35f1301a2d9fbd897a05568313256896b5061e53cfca4c4bc511"
+    },
+    {
+      "bytes": 682,
+      "file_type": ".php",
+      "git_blob_sha1": "9de4aa3577abd11b6ae1e273e00faf87c7e0d8c8",
+      "path": "wp-content/mu-plugins/385-mad4b-scrolltop-hero-parity.php",
+      "sha256": "630625a51ea4b5be04e9c3c86a1362069bfab9a52a89d0973d794010db97c2ed"
+    },
+    {
+      "bytes": 3465,
+      "file_type": ".php",
+      "git_blob_sha1": "98fbc27678b2db49221bc62aa24ff9b4fa410c0c",
+      "path": "wp-content/mu-plugins/386-mad4b-archive-runtime-profile.php",
+      "sha256": "5594b7d6431e77c2e8a6265a87bce746995fa7558709f4b5f8aa8d77b41d3776"
+    },
+    {
+      "bytes": 8043,
+      "file_type": ".php",
+      "git_blob_sha1": "da9a8b4c991bbe373305206c52fc0ac8c5d6ff91",
+      "path": "wp-content/mu-plugins/387-mad4b-archive-filter-reconciler.php",
+      "sha256": "d92a8fa7cd8a056b9acae83b85b8c3c830df5da6522f82dddeb0724ec11874e6"
+    },
+    {
+      "bytes": 18536,
+      "file_type": ".php",
+      "git_blob_sha1": "13b2a962777bac6d4e5589ed30e00627c7e405e7",
+      "path": "wp-content/mu-plugins/388-mad4b-live-semantic-discovery.php",
+      "sha256": "b762e7035416a760cc7654bd7d4a3fc25269b0573df1cc9eed8167c87a209337"
+    },
+    {
+      "bytes": 2418,
+      "file_type": ".php",
+      "git_blob_sha1": "9f81d99c322831291586e10f1b5bfd8e4575417b",
+      "path": "wp-content/mu-plugins/389-mad4b-archive-async-asset-epoch.php",
+      "sha256": "83a9304a34efa6689ff3f19ad773a913038e91260b23c673dc643692727ea265"
+    },
+    {
+      "bytes": 6358,
+      "file_type": ".php",
+      "git_blob_sha1": "48aa986abd24ff2cf752390f9a90fba64d733008",
+      "path": "wp-content/mu-plugins/402-wayfa-safe-elementor-css-segments.php",
+      "sha256": "4715bd97de3efc6e36cbda35d997f5157115e962fa5fcd1258c2214f9d270a19"
+    },
+    {
+      "bytes": 17541,
+      "file_type": ".php",
+      "git_blob_sha1": "aea7300c0d9a814160233ac6ba7a2e3b03de587a",
+      "path": "wp-content/mu-plugins/406-mad4b-shared-performance-parity.php",
+      "sha256": "43bbdc794a885e9220d4e5e35811518c4f4150d28dfb50b621f271c7a4051304"
+    },
+    {
+      "bytes": 8871,
+      "file_type": ".php",
+      "git_blob_sha1": "1236d83a9d341661fe72c2de0eb4a9bdbef1621d",
+      "path": "wp-content/mu-plugins/407-mad4b-lsc-asset-coherence.php",
+      "sha256": "695272a739c97d2c5a39e990df148a049bcff864b0b5f85cfb0b88e5d58663a5"
+    },
+    {
+      "bytes": 1744,
+      "file_type": ".php",
+      "git_blob_sha1": "2625f37a3d64cd283a52f552f209ed5a0eb4cebb",
+      "path": "wp-content/mu-plugins/409-mad4b-tour-visibility-recovery.php",
+      "sha256": "2669de47f776fe54b4cdb68abe0394bd2de9ecefa96349813154987ac5bbc9aa"
+    },
+    {
+      "bytes": 4502,
+      "file_type": ".php",
+      "git_blob_sha1": "670bd7108649be3af0403841179e77b7ab0193b7",
+      "path": "wp-content/mu-plugins/410-mad4b-recovery-brand-export.php",
+      "sha256": "e730b06bff8ee4e662084c4b2e6ca0eaf7565450422bbdf7b7c0af69df16cf84"
+    },
+    {
+      "bytes": 4242,
+      "file_type": ".php",
+      "git_blob_sha1": "52564d15c3d4925defa599b174f0f17ef918ac48",
+      "path": "wp-content/mu-plugins/412-mad4b-lazy-jet-backgrounds.php",
+      "sha256": "569db48e991db1efdff8253a6b4928bc5c2c3396684cfc62ad98a2e9a08e926f"
+    },
+    {
+      "bytes": 5130,
+      "file_type": ".php",
+      "git_blob_sha1": "517dcdb4d7a6b08fa343364337edf8de8ced7d1c",
+      "path": "wp-content/mu-plugins/414-mad4b-stable-listing-css-identity.php",
+      "sha256": "47322808952d7b055344101e2361839ad166258f82e66d7454f68c3a92088ff1"
+    },
+    {
+      "bytes": 26296,
+      "file_type": ".php",
+      "git_blob_sha1": "dc9b684c1d8a13a63c4deeb6b7f4c9c0838ea3bb",
+      "path": "wp-content/mu-plugins/415-mad4b-critical-css-orchestrator.php",
+      "sha256": "18fe5aad2924cbd4e0c3ebf62baccded9f340e87dbd5f3bfe7b91bb94b5b3412"
+    },
+    {
+      "bytes": 2356,
+      "file_type": ".php",
+      "git_blob_sha1": "8764a19f9a9279dc7a05b34e47585410606a2471",
+      "path": "wp-content/mu-plugins/416-mad4b-responsive-viewport-integrity.php",
+      "sha256": "7dc49ac354f992ca9e55f2b178dcede6ecbb0bfd27b2d8c17e637ae96b5a844e"
+    },
+    {
+      "bytes": 3334,
+      "file_type": ".php",
+      "git_blob_sha1": "8b6bc38607712767100f01b636cf7930054d5a0f",
+      "path": "wp-content/mu-plugins/416-mad4b-tour-css-delivery.php",
+      "sha256": "dad8966d469f0a0c0d65ff0dc9917300887fd5197636203919d0c2d7654ba6e5"
+    },
+    {
+      "bytes": 1405,
+      "file_type": ".php",
+      "git_blob_sha1": "388616fa63d64299c4e3868c9cfd242a411c5f0c",
+      "path": "wp-content/mu-plugins/417-mad4b-destination-empty-guards.php",
+      "sha256": "a9441e8cff4831d68b0af193ccb07b5270ddc1ff3ba09045a8ab162721a396e7"
+    },
+    {
+      "bytes": 3181,
+      "file_type": ".php",
+      "git_blob_sha1": "065ebc560c2abab92c0c6940bda6363994f90111",
+      "path": "wp-content/mu-plugins/417-mad4b-native-navigation-compat.php",
+      "sha256": "90e3e917303471e021eeda1b1f36675fcd83cfc7ab4ec01c7f702859c70014f3"
+    },
+    {
+      "bytes": 3855,
+      "file_type": ".php",
+      "git_blob_sha1": "f26404e6f577b2510b44169adaf6dea61f7b3b83",
+      "path": "wp-content/mu-plugins/417-mad4b-public-cookie-contract.php",
+      "sha256": "8b02b95b53251288663c48c5da6e116cb80671b08f8c42d1f875ad1de46dafa2"
+    },
+    {
+      "bytes": 1871,
+      "file_type": ".php",
+      "git_blob_sha1": "75b9f3bbb388fb347f9ebe7aa4fdcbe52108f6d7",
+      "path": "wp-content/mu-plugins/418-mad4b-backup-option-autoload.php",
+      "sha256": "1393570fd15684e2da8f229be6737a35be09cf993dc2c26036269e20fccd16b2"
+    },
+    {
+      "bytes": 1680,
+      "file_type": ".php",
+      "git_blob_sha1": "93e297b3b0ab2432dcdae369b7ed37cd73c9506c",
+      "path": "wp-content/mu-plugins/418-mad4b-destination-card-interaction.php",
+      "sha256": "586e17c26c727ab85ab1e48022ad0b167bcad356d904eba7767911b13f79c991"
+    },
+    {
+      "bytes": 9676,
+      "file_type": ".php",
+      "git_blob_sha1": "e6eca4827452f697320b0a0cba103886a1edc291",
+      "path": "wp-content/mu-plugins/419-mad4b-city-card-shape-policy.php",
+      "sha256": "aad8302256a47fdf6c5a2e20136a4609db9f9d58cd074b289c279e67eb5d0ef5"
+    },
+    {
+      "bytes": 777,
+      "file_type": ".php",
+      "git_blob_sha1": "06c00aa18a148273787dad10ad9520c0f9592eaa",
+      "path": "wp-content/mu-plugins/420-mad4b-favourites-no-autoadd.php",
+      "sha256": "dc3ca24ae040dacaec22fa40243763ea90373bb70281eb72dedf67fce91bdc2b"
+    },
+    {
+      "bytes": 1376,
+      "file_type": ".php",
+      "git_blob_sha1": "8f1f35b9fee9fbb9cc6462942a3b37a540fd5565",
+      "path": "wp-content/mu-plugins/421-mad4b-favourites-element-cache-isolation.php",
+      "sha256": "f048573cb649f4382af01d727fae1d4d7747c2f8cef4718df97fc52b885c08bc"
+    },
+    {
+      "bytes": 10345,
+      "file_type": ".php",
+      "git_blob_sha1": "daa68e4c889dd657713ea536623fca033c502686",
+      "path": "wp-content/mu-plugins/422-mad4b-destination-card-integrity.php",
+      "sha256": "505029790a33cc82a32bc26fefed774886bed0cdb02a9969abe8104b37f695db"
+    },
+    {
+      "bytes": 7553,
+      "file_type": ".php",
+      "git_blob_sha1": "2d8ece7aee959a5a1984735a349094153fce0bc7",
+      "path": "wp-content/mu-plugins/423-mad4b-translation-execution-governance.php",
+      "sha256": "0f37c4da3b609332da88c969084a4a39f114f80e109075383939859403789283"
+    },
+    {
+      "bytes": 6782,
+      "file_type": ".php",
+      "git_blob_sha1": "1a47388bc1e6f7f71b6271c6fde1309ae47152e5",
+      "path": "wp-content/mu-plugins/424-mad4b-translation-campaign-hold.php",
+      "sha256": "d47f58098a904df6eb767925f3c43dc25c090c1b8da7e5bc5a6c70e8ea8a29e4"
+    },
+    {
+      "bytes": 8669,
+      "file_type": ".php",
+      "git_blob_sha1": "b7a433b46bf0f2342b9c9a409b45b7327c4cff67",
+      "path": "wp-content/mu-plugins/425-mad4b-contact-page-dynamic.php",
+      "sha256": "68e1953a579aa11f712906d3baefb205570898ee01b49b761bcc188764887f2e"
+    },
+    {
+      "bytes": 15661,
+      "file_type": ".php",
+      "git_blob_sha1": "8490a1e1f471626aa17624ba5a19e64c23a5b71e",
+      "path": "wp-content/mu-plugins/426-mad4b-contact-form-delivery.php",
+      "sha256": "6899c123b217868aded26fa0a4f63ae9a1acce75d5d58b6b3340b2ddd9763d53"
+    },
+    {
+      "bytes": 9218,
+      "file_type": ".php",
+      "git_blob_sha1": "8262f8a76e4d00e1d6142f069ee57bab1f808cd0",
+      "path": "wp-content/mu-plugins/429-mad4b-company-mail-readiness.php",
+      "sha256": "fe1ed9ad128bcaf363c19acfa51204fa8dfa32ea3f45c56ff27990f8b576d02e"
+    },
+    {
+      "bytes": 8692,
+      "file_type": ".php",
+      "git_blob_sha1": "9ed1d2db8c97b94523be46d89b38f98d8e38dc36",
+      "path": "wp-content/mu-plugins/431-mad4b-contact-premium-fields.php",
+      "sha256": "2dc712e444409b8e2598dea3efa1b0ac96fdbb80c079bfcd7d47246ae486df55"
+    },
+    {
+      "bytes": 804,
+      "file_type": ".php",
+      "git_blob_sha1": "3516a3ed424fd66a65c2d4258446625acf9275b4",
+      "path": "wp-content/mu-plugins/480-mad4b-shared-last-minute.php",
+      "sha256": "d65fdabd44b681a8e20a620511ed5a1c21873844bb819576fd2f0fa2497866e0"
+    },
+    {
+      "bytes": 9821,
+      "file_type": ".php",
+      "git_blob_sha1": "331553e179c96796ba3b73779b8ac9e47869bba3",
+      "path": "wp-content/mu-plugins/481-mad4b-travel-date-presentation.php",
+      "sha256": "f922fb9c2cbb7bf0992dae038244d79adac9df0479d0fbf3682d3cc73d717fe7"
+    },
+    {
+      "bytes": 1019,
+      "file_type": ".php",
+      "git_blob_sha1": "9e9a607489d7571d7755606d8fe051ecfa938509",
+      "path": "wp-content/mu-plugins/484-mad4b-component-shadow.php",
+      "sha256": "87726af91935a6a2251730fd560c043ef2442f4d60c87f56ed3f6149a6666ee5"
+    },
+    {
+      "bytes": 5441,
+      "file_type": ".php",
+      "git_blob_sha1": "900a4ec98e25d4c443abee0ed3aae6d69bf6ffc2",
+      "path": "wp-content/mu-plugins/485-mad4b-ota-provider-source-profiles-v1.php",
+      "sha256": "2dbac7295683e6191db50d3070502229662045f923cea5c37c65bc1ab2d84d69"
+    },
+    {
+      "bytes": 7451,
+      "file_type": ".php",
+      "git_blob_sha1": "86825741069e1e959a3e958347a492c29ba2281a",
+      "path": "wp-content/mu-plugins/486-mad4b-property-source-intake-v1.php",
+      "sha256": "5a43a3ee8a91412417df7a756f22bbd3bb159e7330ca2e80512ad24d4f31beef"
+    },
+    {
+      "bytes": 25903,
+      "file_type": ".php",
+      "git_blob_sha1": "11f2b8daea938c7617bfc71032cda194aa2e75a8",
+      "path": "wp-content/mu-plugins/487-mad4b-property-intake-admin-v1.php",
+      "sha256": "321b64a83c3f45574954d2c69e29534c3dc53af554003b82503722e7b6289cc5"
+    },
+    {
+      "bytes": 17618,
+      "file_type": ".php",
+      "git_blob_sha1": "3004d35825ddfeb506f6fc978d613b1f02fcaeb1",
+      "path": "wp-content/mu-plugins/488-mad4b-property-intake-review-bridge-v1.php",
+      "sha256": "72608d1758ca0e6a28a36ddbefb5e11263e592fc9a5d14286b8fb76661c32302"
+    },
+    {
+      "bytes": 3851,
+      "file_type": ".php",
+      "git_blob_sha1": "7d10bc929050e218b9174cb9f84354ed3621fb06",
+      "path": "wp-content/mu-plugins/489-mad4b-booking-fulfillment-policy-v1.php",
+      "sha256": "da905b60cbb1cb890267999509593de9ad12d59e05cc51018b7d52359d9ff770"
+    },
+    {
+      "bytes": 13781,
+      "file_type": ".php",
+      "git_blob_sha1": "95b9610a24e27729ee5a9361f8d939adfbfc74e3",
+      "path": "wp-content/mu-plugins/490-mad4b-unified-booking-fulfillment-v2.php",
+      "sha256": "a613342b110fd6912932be0399d4c15726bd9b8a428461ab31b7521d18eb84f3"
+    },
+    {
+      "bytes": 38508,
+      "file_type": ".php",
+      "git_blob_sha1": "2b2f9dabe5eda19051ccea0cd2734dab6e6d3604",
+      "path": "wp-content/mu-plugins/991-mad4b-source-content-loop-v1.php",
+      "sha256": "baad38754333515bc5a413a749e1339ef31a2f2da4f241d1c6d084a0caf9b03c"
+    },
+    {
+      "bytes": 46322,
+      "file_type": ".php",
+      "git_blob_sha1": "ef50864c21e10ae2f96228c78d93a31c7399c437",
+      "path": "wp-content/mu-plugins/992-mad4b-source-tour-materialize-v1.php",
+      "sha256": "8a592598256efea3a766b098b19617e452b06e99fd5fd5614efc5cb57f97aa5b"
+    },
+    {
+      "bytes": 20454,
+      "file_type": ".php",
+      "git_blob_sha1": "9816e38a9f41d0abb2f3da64e1083c3a7fc6f252",
+      "path": "wp-content/mu-plugins/993-mad4b-scraping-source-profiles-v1.php",
+      "sha256": "2db5d8aa069b9d4f92c0a1cc0aa8b66a7e2de6c8fc018347ce3400a60e61e5d7"
+    },
+    {
+      "bytes": 24948,
+      "file_type": ".php",
+      "git_blob_sha1": "68b4e52e0e6b032cd58fc069611a6085c52608e0",
+      "path": "wp-content/mu-plugins/994-mad4b-tour-archetype-property-v1.php",
+      "sha256": "61d9126b5f822f728f802d39ba0c39f3e62cdd30880b3ffc0ff13647316a7e57"
+    },
+    {
+      "bytes": 15989,
+      "file_type": ".php",
+      "git_blob_sha1": "a441f343d0aa8807046e2a5e585fcdcdfd6639a3",
+      "path": "wp-content/mu-plugins/995-mad4b-tour-archetype-registry-v1.php",
+      "sha256": "2266bd5322582d66e7e5a5acb77f0babfaaf2a0b3a8926a313083d50e0f683ff"
+    },
+    {
+      "bytes": 28058,
+      "file_type": ".php",
+      "git_blob_sha1": "ca8068ebf4eb87809615383b6838d95f577ac5ea",
+      "path": "wp-content/mu-plugins/996-mad4b-source-components-v1.php",
+      "sha256": "5463851c3bb1045b05515ca7f11cdf8673c69bf154a8fe7f41828465ec02619a"
+    },
+    {
+      "bytes": 7643,
+      "file_type": ".php",
+      "git_blob_sha1": "7c30f9d6802d9c2356342c5804541c62b93f8ec9",
+      "path": "wp-content/mu-plugins/997-mad4b-source-component-options-v1.php",
+      "sha256": "3b3dddf4a802f05ccfb87b1452a819e52919a4b3ea924df25042e1ba81854f9e"
+    },
+    {
+      "bytes": 28216,
+      "file_type": ".php",
+      "git_blob_sha1": "7e2bdc6a43b110c558a5d9f4d65105149f074a16",
+      "path": "wp-content/mu-plugins/998-mad4b-company-tour-publishing-seo-v1.php",
+      "sha256": "e1c63502638a2534cb9f48ed7ec45a07b00bf35e1964f45eaed0867257d4e34c"
+    },
+    {
+      "bytes": 1971,
+      "file_type": ".php",
+      "git_blob_sha1": "a1d72c1e58dfc7b42b17ac7d6a24e8f313cd68e7",
+      "path": "wp-content/mu-plugins/company-settings-navigator.php",
+      "sha256": "76ae6a1c2748d807bceb747efb0401c200e4072f5dc651df231d18250c9d82a6"
+    },
+    {
+      "bytes": 141,
+      "file_type": ".php",
+      "git_blob_sha1": "f31b61d28d502779fe836a4dab0fb6bb365fa0bd",
+      "path": "wp-content/mu-plugins/mad4b-adaptive-media.php",
+      "sha256": "3ece94a9860db5c486175fae3a272625296a2ad5de657443f3bde270c20b8421"
+    },
+    {
+      "bytes": 10630,
+      "file_type": ".php",
+      "git_blob_sha1": "4ec96d14624b50c7cc0d09a5515c18807b18385b",
+      "path": "wp-content/mu-plugins/mad4b-advance-checkout-ux.php",
+      "sha256": "57b29888a92854f3b719d85444427859d2749064cda00531e0b8f39d3bbc3b4a"
+    },
+    {
+      "bytes": 731,
+      "file_type": ".php",
+      "git_blob_sha1": "05ea8dd1913e517aa969a7a04ca8449a8d88adf6",
+      "path": "wp-content/mu-plugins/mad4b-browser-journey-v1.php",
+      "sha256": "c159b440f664b6b0038ab879bfb20049d3fed7b9eaa8ba9611345982a7dfcf6b"
+    },
+    {
+      "bytes": 36829,
+      "file_type": ".php",
+      "git_blob_sha1": "e0cef28798d24c0cbf40084e2a83080664a03c5c",
+      "path": "wp-content/mu-plugins/mad4b-cache-control-v1.php",
+      "sha256": "d35ee831aca102150a4ac90dfac17ce2f49c4ea9a4baa3bd505532fe88407ab5"
+    },
+    {
+      "bytes": 1245,
+      "file_type": ".php",
+      "git_blob_sha1": "4ecff0bbc3947f6678afa742b2b86b5cdc35591d",
+      "path": "wp-content/mu-plugins/mad4b-checkout-wp-deps-exclusions.php",
+      "sha256": "53d9d16b4315cff3179628312dbb67b1ff04eb0e8ae15d5a37bd397a7489c47e"
+    },
+    {
+      "bytes": 23645,
+      "file_type": ".php",
+      "git_blob_sha1": "ec1617136a04dd548f7ccf4345aa698360302d07",
+      "path": "wp-content/mu-plugins/mad4b-company-adaptive-controls.php",
+      "sha256": "ec364bf5a210df709ed085bafdd159993f268df8118f80318c7ad2ace3015e19"
+    },
+    {
+      "bytes": 655,
+      "file_type": ".php",
+      "git_blob_sha1": "0ff125f1c3154c2c44786e5a0690d73236db50c0",
+      "path": "wp-content/mu-plugins/mad4b-company-astra-assets-policy.php",
+      "sha256": "4c070e0a59f02d2e89c5280d6beb4088997afcbe180f2c04ba491128e4083c88"
+    },
+    {
+      "bytes": 11830,
+      "file_type": ".php",
+      "git_blob_sha1": "7a5882b03c9ca74102ed79411e04a7cca88c11a5",
+      "path": "wp-content/mu-plugins/mad4b-company-browser-html-policy.php",
+      "sha256": "f0487aada66fe43ef84230eb33102145f1ede782050871c72e43a5b40388bb8e"
+    },
+    {
+      "bytes": 41339,
+      "file_type": ".php",
+      "git_blob_sha1": "57bcbfbfa319a90223d5862cb484a9c4866af305",
+      "path": "wp-content/mu-plugins/mad4b-company-credential-manager.php",
+      "sha256": "1fcf0ba0e560cd61de3ad794c31a15f80e7a9f96c0ee9a1d074e839e3e49eb86"
+    },
+    {
+      "bytes": 14573,
+      "file_type": ".php",
+      "git_blob_sha1": "592650f09f1a62b9c379d57d8006c17e3dd7e216",
+      "path": "wp-content/mu-plugins/mad4b-company-legal-documents.php",
+      "sha256": "3c3a29d714ff6fa22f8461aff94cbe968a55a43de97b0428139d75342435ac86"
+    },
+    {
+      "bytes": 1915,
+      "file_type": ".php",
+      "git_blob_sha1": "6bd0ceb1e219f0c004490099892a00964aec80c3",
+      "path": "wp-content/mu-plugins/mad4b-company-neutral-admin-links.php",
+      "sha256": "1e05d51c47278e3628a96a7c85b52b4bfae395a28e91f66da219bd6e22806a63"
+    },
+    {
+      "bytes": 8094,
+      "file_type": ".php",
+      "git_blob_sha1": "750ec48c943e9c6b98506ee03e04da758175ffd7",
+      "path": "wp-content/mu-plugins/mad4b-company-policy-broker-bridge.php",
+      "sha256": "99652b36cb473426c1e788d8dc5719db80943054b9e31bc52a8157d8b9141a3b"
+    },
+    {
+      "bytes": 16599,
+      "file_type": ".php",
+      "git_blob_sha1": "2b4deaf8e1598fa959d65c530958da91d100269f",
+      "path": "wp-content/mu-plugins/mad4b-company-policy-intelligence-v2.php",
+      "sha256": "3092c5708c593921baf1971f3db861ac23382fad6bf0c8ed5d0abb5168871881"
+    },
+    {
+      "bytes": 30806,
+      "file_type": ".php",
+      "git_blob_sha1": "a54c1899035c613e097a2378b32f3c502531b58c",
+      "path": "wp-content/mu-plugins/mad4b-company-policy-registry-v2.php",
+      "sha256": "ea49b80d3f1f46055d18919f76874a422a4f37d770c67cea61cfb98ff908ebc9"
+    },
+    {
+      "bytes": 29922,
+      "file_type": ".php",
+      "git_blob_sha1": "9d44ce6aea7018c3b8707ae12618047cbe087a30",
+      "path": "wp-content/mu-plugins/mad4b-company-policy-rest-v2.php",
+      "sha256": "8e63676238bafa5842d75920d069f2e251bb12282e9eaafa76c9e02bbdfbe222"
+    },
+    {
+      "bytes": 14274,
+      "file_type": ".php",
+      "git_blob_sha1": "3b2432c2271e08c677ae541ebb8c73f3d05ee5d3",
+      "path": "wp-content/mu-plugins/mad4b-company-pricing-native-selection-v2.php",
+      "sha256": "e6e9627e5c52bc2fd91454c8495415f49227c1b88afd1ce44ce2fb6be98f51f3"
+    },
+    {
+      "bytes": 17288,
+      "file_type": ".php",
+      "git_blob_sha1": "e799f705e8110776bbeef54a4d72b968bd88523d",
+      "path": "wp-content/mu-plugins/mad4b-configuration-fleet.php",
+      "sha256": "ac1e0088198b1e76fcf22ed48b3e938dc7dac63e0665f08a453557370738239f"
+    },
+    {
+      "bytes": 21554,
+      "file_type": ".php",
+      "git_blob_sha1": "249519bbd4d854abac7a79975b3caf018046bc8d",
+      "path": "wp-content/mu-plugins/mad4b-configuration-jobs.php",
+      "sha256": "7c133ce5c0a209a52c22b66b11ca4a04f13e71fbb2a41a960dfe57670aa1cfaa"
+    },
+    {
+      "bytes": 16749,
+      "file_type": ".php",
+      "git_blob_sha1": "302c92b044561829a9476b0f472655d0f3e9d926",
+      "path": "wp-content/mu-plugins/mad4b-consent-gateway.php",
+      "sha256": "9374d71b7a80968c6a6ac1749ad68751c73ba7bb5dd4b21dbd42d0c6f61cc1c9"
+    },
+    {
+      "bytes": 12439,
+      "file_type": ".php",
+      "git_blob_sha1": "010eed56eff9e2392ff4e0b2243af7da85928cc8",
+      "path": "wp-content/mu-plugins/mad4b-consent-receipts.php",
+      "sha256": "3b3f276d1a3a515113986544dcad305033f1baa0dc2cbf9b4fe17669a7803c64"
+    },
+    {
+      "bytes": 12159,
+      "file_type": ".php",
+      "git_blob_sha1": "79b4eab07ade321500adb9b4448c6f6c4a9e8e63",
+      "path": "wp-content/mu-plugins/mad4b-consent-settings.php",
+      "sha256": "ac15e24ad959266505c3225775b612993daebb176f76272e0462b1bc4d9a144a"
+    },
+    {
+      "bytes": 35610,
+      "file_type": ".php",
+      "git_blob_sha1": "75c05c0a9f5eb3879d6eb7f49a54ff7990cfb9f1",
+      "path": "wp-content/mu-plugins/mad4b-credential-provider-adapters.php",
+      "sha256": "03c3941d59d4f43064f885915326297ebe96f3259fe3ce2264d019cf0f4d5d60"
+    },
+    {
+      "bytes": 4902,
+      "file_type": ".php",
+      "git_blob_sha1": "4b886293e56251527b7b89941044e917682f83b9",
+      "path": "wp-content/mu-plugins/mad4b-destination-card-readiness.php",
+      "sha256": "091dc9e72a29a01023353919c0115d0e7161a0c257e284532982de707bd78e7a"
+    },
+    {
+      "bytes": 3428,
+      "file_type": ".php",
+      "git_blob_sha1": "14249fd4bfbbb2e930c7008754d72fdc698b1242",
+      "path": "wp-content/mu-plugins/mad4b-destination-contents-widget.php",
+      "sha256": "5a8a576cd51a09acc34710aa0e81903ce8aaea272f2986d198639345069be64e"
+    },
+    {
+      "bytes": 966,
+      "file_type": ".php",
+      "git_blob_sha1": "0d166f98fd64e228ae329301fdb9f0eb86c80847",
+      "path": "wp-content/mu-plugins/mad4b-destination-context-cache-isolation.php",
+      "sha256": "e8308398bbd8fea56674d51f4a056b88a126a5bdc89736ca48779de5ce98d0b2"
+    },
+    {
+      "bytes": 658,
+      "file_type": ".php",
+      "git_blob_sha1": "f29d9723cbc52b70ac11e868e75227e3899587d0",
+      "path": "wp-content/mu-plugins/mad4b-destination-first-root-expanded.php",
+      "sha256": "90edb6d7676ee8f981e1f7d524d807af85b3cae8475cc2f80b7f051d738c9d53"
+    },
+    {
+      "bytes": 13941,
+      "file_type": ".php",
+      "git_blob_sha1": "38e8baeb40cf563fe2849fe8040e01da25befb59",
+      "path": "wp-content/mu-plugins/mad4b-destination-locale-fallback.php",
+      "sha256": "335c86ea2a52873277ce20f4a0526c3ab00b404d8243ac5f78c80f4cbd35a79d"
+    },
+    {
+      "bytes": 1197,
+      "file_type": ".php",
+      "git_blob_sha1": "2e587dbd643afe91ba4011b1bd2f807a5602e236",
+      "path": "wp-content/mu-plugins/mad4b-destination-parent-redirect.php",
+      "sha256": "611396253f6a25c02460155c2c184d87428ec4a1f1fdeb654ff858b284c0eeff"
+    },
+    {
+      "bytes": 718,
+      "file_type": ".php",
+      "git_blob_sha1": "edfeb2ec9baa0c2858b572ac50040ebea1825a45",
+      "path": "wp-content/mu-plugins/mad4b-destination-permalink-invalidation.php",
+      "sha256": "6e48ceeb262883e475b6e96434766d76f3956cd7349d7d71c11a3f5aaaef611f"
+    },
+    {
+      "bytes": 962,
+      "file_type": ".php",
+      "git_blob_sha1": "6edc82121c9a12ee8124cf14ef4ecef1cd8ebd5a",
+      "path": "wp-content/mu-plugins/mad4b-dynamic-empty-sections.php",
+      "sha256": "1108235a972b3a5dcb483635baa9c5e5c9089b743c7f36fd168f64f0f19fe862"
+    },
+    {
+      "bytes": 12790,
+      "file_type": ".php",
+      "git_blob_sha1": "2a658bc46f144c3e6b2819baeb14b3847b045fce",
+      "path": "wp-content/mu-plugins/mad4b-elementor-copy-coverage.php",
+      "sha256": "ce1bee796b5002d9cd83d57b10bf0a06f9dbaae81c23889f5741d5b7c3703458"
+    },
+    {
+      "bytes": 2919,
+      "file_type": ".php",
+      "git_blob_sha1": "8268119743e0f85b0ddd2b49dc583e69e56cb8e1",
+      "path": "wp-content/mu-plugins/mad4b-elementor-copy-readiness-producer.php",
+      "sha256": "33547d6ae4e78ee95a3502cf6998b75ae0b15d1bbd5d89f3b4b43563da78a8d2"
+    },
+    {
+      "bytes": 12935,
+      "file_type": ".php",
+      "git_blob_sha1": "b5b5b262729112ecaf7bd89e6392514bf856bfaf",
+      "path": "wp-content/mu-plugins/mad4b-elementor-display-conditions-gate.php",
+      "sha256": "5b0c494439dd759d4efd5b943691d0f489e5ae3dbc0cf0fcae84e8f66fa3f386"
+    },
+    {
+      "bytes": 799,
+      "file_type": ".php",
+      "git_blob_sha1": "47a847deab2a12eacb6f50ea799368935508db1c",
+      "path": "wp-content/mu-plugins/mad4b-faq-brand-kit-style.php",
+      "sha256": "40d2088458d2861d48d0bae3566df94a50da5598b1a1e393a95c873f4723df40"
+    },
+    {
+      "bytes": 1139,
+      "file_type": ".php",
+      "git_blob_sha1": "78c6a6a22bc746d218462d3c6f7ff963e4d86022",
+      "path": "wp-content/mu-plugins/mad4b-feature009-mobile-filters.php",
+      "sha256": "b44e6506a7aa05d5d678401f48e1b5c31a6330984bd3156d29fcf221fe883106"
+    },
+    {
+      "bytes": 4358,
+      "file_type": ".php",
+      "git_blob_sha1": "fc1c36c6285c96b5deb69f22abc67b5ed5dc815a",
+      "path": "wp-content/mu-plugins/mad4b-fluent-smtp-sandbox-validator.php",
+      "sha256": "fad83d96c923757abbd4b0f6206ac7b34a70b55a054e924881f7e30fc324f9ed"
+    },
+    {
+      "bytes": 11186,
+      "file_type": ".php",
+      "git_blob_sha1": "e265be2f3ff680c45ac00156c90951dcd83e2c2b",
+      "path": "wp-content/mu-plugins/mad4b-gallery-resolution-engine.php",
+      "sha256": "a989cddcae1606cdf3ae2da08b357e2ba1c3ec0838e74219c6fd8d84c40fe867"
+    },
+    {
+      "bytes": 3121,
+      "file_type": ".php",
+      "git_blob_sha1": "e6c1d6258d18b8e3bd0e54ef570764f35ce91571",
+      "path": "wp-content/mu-plugins/mad4b-general-public-page-origin-cache.php",
+      "sha256": "d8e006a9859f49b899f32309d5481fc887451ca9252096b28bafa321b90211db"
+    },
+    {
+      "bytes": 9201,
+      "file_type": ".php",
+      "git_blob_sha1": "0c6249d84f2ae22b62cde5ba52838e60e3f68650",
+      "path": "wp-content/mu-plugins/mad4b-google-things-to-do-readiness.php",
+      "sha256": "a8fb2f7cd268f110906195958013270d1a18d939191226233e20e154b6f5fdb2"
+    },
+    {
+      "bytes": 10628,
+      "file_type": ".php",
+      "git_blob_sha1": "95fccd618be0f8d3ae25aacfdc841e424566dc07",
+      "path": "wp-content/mu-plugins/mad4b-gtm-consent-governance.php",
+      "sha256": "f173883204ba1f0310a08330a1c7889c4606f32b9cae25421cb34c841cb4f339"
+    },
+    {
+      "bytes": 1321,
+      "file_type": ".php",
+      "git_blob_sha1": "201e496a00a9ce8ecf30384696fcf790e195fa8e",
+      "path": "wp-content/mu-plugins/mad4b-header-css-cache-contract.php",
+      "sha256": "923cab076c26d04833f4aef8388d16edfc039b65167d93a20ba0cf5ac186a471"
+    },
+    {
+      "bytes": 6925,
+      "file_type": ".php",
+      "git_blob_sha1": "fc2ecfe973a403b0bb466462e5e99f1839dbae7a",
+      "path": "wp-content/mu-plugins/mad4b-home-first-screen.php",
+      "sha256": "dcb8427a64707be9c3131df023d83ed51519218e6ab718c0b76dedc685b708b1"
+    },
+    {
+      "bytes": 774,
+      "file_type": ".php",
+      "git_blob_sha1": "7212a5b758a4c91da4991d89fdf9d0197aceba58",
+      "path": "wp-content/mu-plugins/mad4b-home-hero-font-preload.php",
+      "sha256": "6a80227d60260532f01285e5e872e09c8313c9fca74688ce7737c44c4b1fe96c"
+    },
+    {
+      "bytes": 13011,
+      "file_type": ".php",
+      "git_blob_sha1": "2f18c5866af0eafdf8e5f14a3b5c447ccaacf1a6",
+      "path": "wp-content/mu-plugins/mad4b-home-reviews-native-visibility.php",
+      "sha256": "e900e21ef8da9963fe42697ca81be8bfdc6ddeb3ef157fab4021f9d2f199343a"
+    },
+    {
+      "bytes": 20947,
+      "file_type": ".php",
+      "git_blob_sha1": "913789e0a5e119d62301d1045550a7339bb3ba6e",
+      "path": "wp-content/mu-plugins/mad4b-home-seo-translation-priority.php",
+      "sha256": "fb8e8e6f00352a53ba6e30e3ea3604b8a37fc97300bbe659df787e2967e7b437"
+    },
+    {
+      "bytes": 6620,
+      "file_type": ".php",
+      "git_blob_sha1": "fc3242bd988acede9322cf4b05368aef418b1fee",
+      "path": "wp-content/mu-plugins/mad4b-host-performance-readback.php",
+      "sha256": "bc15b6fec769d8a00a11d048137ffa77a955f6d90fa13ec55e0f7ae56dd237f3"
+    },
+    {
+      "bytes": 5032,
+      "file_type": ".php",
+      "git_blob_sha1": "12269659a3b0b91dfb7788bd20acc2b2cdc26c07",
+      "path": "wp-content/mu-plugins/mad4b-jet-static-dynamic-css-bypass.php",
+      "sha256": "61173593a8db3423aa7fcdfe1116db3887476bba831ab6436a16109afcf6598d"
+    },
+    {
+      "bytes": 3030,
+      "file_type": ".php",
+      "git_blob_sha1": "c4e7f84fb194a155f769b9b665c17e27251d7ca4",
+      "path": "wp-content/mu-plugins/mad4b-jetblog-mobile-lazy-canary.php",
+      "sha256": "262740515ff4cbb708fd63f2a36377ce64ff06ae6790eb46a068e5be6849ba2e"
+    },
+    {
+      "bytes": 7172,
+      "file_type": ".php",
+      "git_blob_sha1": "0b3881674269c0e53d1c49979a693bd5f5435652",
+      "path": "wp-content/mu-plugins/mad4b-listing-content-context.php",
+      "sha256": "6c9e61a6bcd087f955de9facd99d70491ebc6cdf322f369a770c9d45a7b78544"
+    },
+    {
+      "bytes": 8937,
+      "file_type": ".php",
+      "git_blob_sha1": "c867353d1add42777c11be0e40bcbcb703248fa6",
+      "path": "wp-content/mu-plugins/mad4b-litespeed-fastcgi-coherence-v1.php",
+      "sha256": "a01594cea9264c2f57b40eabd48f72a8ab9682c0fc6cb57a178023f57cd77845"
+    },
+    {
+      "bytes": 857,
+      "file_type": ".php",
+      "git_blob_sha1": "8d38f1b04e32fa184c152e44347b0239cb8e07e4",
+      "path": "wp-content/mu-plugins/mad4b-localized-commerce-pages.php",
+      "sha256": "dfe336ae792025b40dd2af00b7110265b20afc66128dee241c6af9eda5c89d33"
+    },
+    {
+      "bytes": 1826,
+      "file_type": ".php",
+      "git_blob_sha1": "69686b41b83425ebdca0e6aea23a9de53e9e9390",
+      "path": "wp-content/mu-plugins/mad4b-localized-destination-route.php",
+      "sha256": "c86a44324bec59be37f6f8b77d00cfbc6637910a982924b8ebcd4f35477c6b63"
+    },
+    {
+      "bytes": 8163,
+      "file_type": ".php",
+      "git_blob_sha1": "16844fec55ddb347f89520b336a08702b77427bc",
+      "path": "wp-content/mu-plugins/mad4b-media-incident-bridge.php",
+      "sha256": "213dcac36149c03a082565e155050d820cba6d4a671127809cb97214d665a065"
+    },
+    {
+      "bytes": 52314,
+      "file_type": ".php",
+      "git_blob_sha1": "ce9e06b2f68dab5b207043d7313bebce5a0d4bd3",
+      "path": "wp-content/mu-plugins/mad4b-media-review-hierarchy.php",
+      "sha256": "84414755c45ec323fbc33f1aa14caca22e45860fbce737f5695992caca382965"
+    },
+    {
+      "bytes": 16254,
+      "file_type": ".php",
+      "git_blob_sha1": "2a3a8ec363ef4a16066a0d6f1280892c73767eb1",
+      "path": "wp-content/mu-plugins/mad4b-meta-catalog-adapter.php",
+      "sha256": "f7ece0714c43f8ee6b9d4a35386b96b975b61d65fcbfe8c83a14488e282e476a"
+    },
+    {
+      "bytes": 1966,
+      "file_type": ".php",
+      "git_blob_sha1": "dedc5cd446a3abe8ee597d4f23fe3e6c6963f45a",
+      "path": "wp-content/mu-plugins/mad4b-mobile-css-combine-canary.php",
+      "sha256": "60daa8ce8f1c38d9035eac47a8014c81466fe88c23bfdb5f182d866f3df123bb"
+    },
+    {
+      "bytes": 859,
+      "file_type": ".php",
+      "git_blob_sha1": "f46855623a92ef7dfa01d563c3720984aa665543",
+      "path": "wp-content/mu-plugins/mad4b-mobile-destination-toc.php",
+      "sha256": "74e20e2896ee6e0e10636b69e22e5561d546ba673938f847e5aa52f13c545089"
+    },
+    {
+      "bytes": 7809,
+      "file_type": ".php",
+      "git_blob_sha1": "230d8aa6c6e2d8f88b2def5779e85856352cab67",
+      "path": "wp-content/mu-plugins/mad4b-mobile-external-css-async.php",
+      "sha256": "d6902f3bfabf3543357a8f69eaebf339857a5d169be940b37e59cdd84257523c"
+    },
+    {
+      "bytes": 29300,
+      "file_type": ".php",
+      "git_blob_sha1": "00c97b040906429d9e3d9d0fb5c925c3e98cdf38",
+      "path": "wp-content/mu-plugins/mad4b-native-page-modes.php",
+      "sha256": "4c6ebe18fdfa0d7a5c2929db15270432d2ace7994813ca9546f64e68e5bcd5e2"
+    },
+    {
+      "bytes": 8216,
+      "file_type": ".php",
+      "git_blob_sha1": "642d3c8e772c2b6d97fefc7fcb2c53c74b3098ba",
+      "path": "wp-content/mu-plugins/mad4b-need-help-native-visibility.php",
+      "sha256": "87092d9c27164b8cf93f36019b5f966653a04a1f5833bd1dba6bc6132b654cc1"
+    },
+    {
+      "bytes": 7820,
+      "file_type": ".php",
+      "git_blob_sha1": "906cf318ec20f9a5ae62f7dd5d6f006485d6044c",
+      "path": "wp-content/mu-plugins/mad4b-network-dependency-policy.php",
+      "sha256": "ea77b59ac8008a9e06f8b14a9f9bd4f14d3401559e894852de8c77a117e903d2"
+    },
+    {
+      "bytes": 49057,
+      "file_type": ".php",
+      "git_blob_sha1": "ad18c9c87ac64307133472249cdbe46b08f3c10f",
+      "path": "wp-content/mu-plugins/mad4b-page-dependency-cache.php",
+      "sha256": "8200eb2d3f7e26de205bcb9339bec87d9c94ff9583aad3a80a8c626372a7a104"
+    },
+    {
+      "bytes": 41655,
+      "file_type": ".php",
+      "git_blob_sha1": "65ece91401a0f6c4658e6d1c9f9acb8f0fcbe867",
+      "path": "wp-content/mu-plugins/mad4b-plugin-license-provider-adapters.php",
+      "sha256": "a17107615970534cdeaca8d89b65bf025a9c565387386fe064fb3f6efe5307c0"
+    },
+    {
+      "bytes": 29001,
+      "file_type": ".php",
+      "git_blob_sha1": "f7f8ec589d26733bf02916079eb13940c003abb1",
+      "path": "wp-content/mu-plugins/mad4b-plugin-native-license-activation.php",
+      "sha256": "71bfc645cfda108718652bc66601bf3139062d3ea9240be5c2e376ff63f7263d"
+    },
+    {
+      "bytes": 1648,
+      "file_type": ".php",
+      "git_blob_sha1": "c3170c419fe11251e3b77a8b939a7f7e2ace90db",
+      "path": "wp-content/mu-plugins/mad4b-policy-registry-admin-bridge-v1.php",
+      "sha256": "b65cecb9c12c168145a22dfb4e69e27894087edab8b91df73976d4f8eb81033a"
+    },
+    {
+      "bytes": 32021,
+      "file_type": ".php",
+      "git_blob_sha1": "356d1f0f05dc963af6ac23333e00ac1330c98ef4",
+      "path": "wp-content/mu-plugins/mad4b-pricing-cache-inheritance.php",
+      "sha256": "efbdd61ff01275817af455ea6e12ea168c94e74aca3bf019e22235b687a938b4"
+    },
+    {
+      "bytes": 1132,
+      "file_type": ".php",
+      "git_blob_sha1": "5cc9202025d630ee918026fc800afb4499b5c42e",
+      "path": "wp-content/mu-plugins/mad4b-public-legal-pages.php",
+      "sha256": "c15b2549c1a1a9838fe97254ff042a1adc82ab904f706c7a8d864f98d38dcfee"
+    },
+    {
+      "bytes": 8851,
+      "file_type": ".php",
+      "git_blob_sha1": "6d83102ba09a94c96a11db8051a34e70e94c5b07",
+      "path": "wp-content/mu-plugins/mad4b-published-content-scope-cache.php",
+      "sha256": "1491167dc2b9e5992897aac25e47e0484bd7b21dfdac6e407c7398905d838af6"
+    },
+    {
+      "bytes": 16621,
+      "file_type": ".php",
+      "git_blob_sha1": "12b5546121b67e1b07444551ba1fbac5baddc8a0",
+      "path": "wp-content/mu-plugins/mad4b-rate-naming-and-note-v1.php",
+      "sha256": "c57bb35f4718cf34c84d4fcb40166fe8712d6e15790fc98b0444d919346fcafc"
+    },
+    {
+      "bytes": 2532,
+      "file_type": ".php",
+      "git_blob_sha1": "2c25d772646e1822344dbcf318cb4fd0322a85dc",
+      "path": "wp-content/mu-plugins/mad4b-rates-elementor-dynamic-cache.php",
+      "sha256": "205748a5a3470f36d13e7328fc61652d4feff0d4dc0af2f994c14a9b73385cc9"
+    },
+    {
+      "bytes": 8068,
+      "file_type": ".php",
+      "git_blob_sha1": "b97267b65253d4ea10f11c38eb92429fed1a41d2",
+      "path": "wp-content/mu-plugins/mad4b-safe-public-html-purge-v1.php",
+      "sha256": "2de6fba11df52cf4040a683914a555581b2122cc598f4c045f5cd300ab0d04e5"
+    },
+    {
+      "bytes": 8327,
+      "file_type": ".php",
+      "git_blob_sha1": "0b5e13a5215d19d3c50cc9980841c2e1dea6b025",
+      "path": "wp-content/mu-plugins/mad4b-secondary-listing-lazy.php",
+      "sha256": "04a2fd518fcc30c9706d5e22dbedd4975aeb1fb4583223e2e87230936fc977a7"
+    },
+    {
+      "bytes": 28959,
+      "file_type": ".php",
+      "git_blob_sha1": "5379c3b985bd145e23a73b251dd6db7255240d1b",
+      "path": "wp-content/mu-plugins/mad4b-secure-credential-envelope.php",
+      "sha256": "53b5ef48cc3ac0c152cdfa82c4136b47a10975affeab90d8b8dbb883634e2838"
+    },
+    {
+      "bytes": 8595,
+      "file_type": ".php",
+      "git_blob_sha1": "56ec3a1ac0c3daf570083f1f4581d7388e78fa59",
+      "path": "wp-content/mu-plugins/mad4b-single-reviews-native-visibility.php",
+      "sha256": "c0ff64c1c0bd54f7f02477c64029eddd6925d9644541eb6f304dd0044c2858c4"
+    },
+    {
+      "bytes": 15715,
+      "file_type": ".php",
+      "git_blob_sha1": "fcbb97db48223d0c8c142e4d5a44e9f7f149b747",
+      "path": "wp-content/mu-plugins/mad4b-structural-first-paint.php",
+      "sha256": "927da03f733235b93a1651051e0d96d1190e17734edf11458dc00448b2262542"
+    },
+    {
+      "bytes": 2887,
+      "file_type": ".php",
+      "git_blob_sha1": "97e36ea8aa095c9c6ba831c6f9964cbefe4a0409",
+      "path": "wp-content/mu-plugins/mad4b-taxonomy-faq-readiness.php",
+      "sha256": "a1b191da4a1e171da7c71768bf4459eeea0320058f19117b26b888dc392717e6"
+    },
+    {
+      "bytes": 6913,
+      "file_type": ".php",
+      "git_blob_sha1": "8b0ad420f52a2b80f240d625012d992b4874e91e",
+      "path": "wp-content/mu-plugins/mad4b-taxonomy-faq-runtime.php",
+      "sha256": "b6aeb178209d0a7869d3f9d6d10fc03d248c9d98b52e3208d0a94b1c956c142f"
+    },
+    {
+      "bytes": 2352,
+      "file_type": ".php",
+      "git_blob_sha1": "5abcbfa73c60e2c10647da715a6b03e51f2bc5c1",
+      "path": "wp-content/mu-plugins/mad4b-taxonomy-faq-settings.php",
+      "sha256": "8d41f0cbfb1b8107c387269cedbfa15832e8c7adc8381a6ad167285190809f31"
+    },
+    {
+      "bytes": 14513,
+      "file_type": ".php",
+      "git_blob_sha1": "cae7da69d514e6f3095ee936d110178317ad2ea6",
+      "path": "wp-content/mu-plugins/mad4b-taxonomy-faq-source.php",
+      "sha256": "8583da7e850753bdfce9698ce79ae9fa03eaddfaffdd04decf6298190bbebd5e"
+    },
+    {
+      "bytes": 3661,
+      "file_type": ".php",
+      "git_blob_sha1": "d117003d5e0018387f9dcc8178c04e2d6f054632",
+      "path": "wp-content/mu-plugins/mad4b-tour-card-dynamic-css.php",
+      "sha256": "f458fb747166a33fc3647a959cc1c1d207166f9f2f3245abdca3cd2a272fd44d"
+    },
+    {
+      "bytes": 2575,
+      "file_type": ".php",
+      "git_blob_sha1": "61b2e9f849a02331bef47367c3fbe5620f252221",
+      "path": "wp-content/mu-plugins/mad4b-tour-card-wpml-conversion.php",
+      "sha256": "a41e0e284df937c4d50b47eb11eaa6fcdc8131602335d5d0c9dcc20a48bcbf7c"
+    },
+    {
+      "bytes": 7413,
+      "file_type": ".php",
+      "git_blob_sha1": "736a5dbc7ff0e7475252eaae8e2c7db22f5690b0",
+      "path": "wp-content/mu-plugins/mad4b-tour-contents-widget.php",
+      "sha256": "056ca8c4ed0bbc7f778f90e87ae2b498713978c7d26d78698695a4b24177a286"
+    },
+    {
+      "bytes": 13882,
+      "file_type": ".php",
+      "git_blob_sha1": "a10e9760f563bb01a3d8bc0e6236c6e74a77723d",
+      "path": "wp-content/mu-plugins/mad4b-tour-destination-structured-data.php",
+      "sha256": "9559b9bdb12912baf92bfe4bc43549af0c29108ecbccf752ef2e3057dde453b3"
+    },
+    {
+      "bytes": 9931,
+      "file_type": ".php",
+      "git_blob_sha1": "645c58fcacdf2311ddc1c5a22fa61482fe095530",
+      "path": "wp-content/mu-plugins/mad4b-tour-form6-submission-mode-v1.php",
+      "sha256": "ac7342756433177d6a5f80bdb08d79bdbfe90f1dfd58c2493c0effb4889a76fd"
+    },
+    {
+      "bytes": 8343,
+      "file_type": ".php",
+      "git_blob_sha1": "525ebf901ad0a713b7796bf7827646b772fec6ee",
+      "path": "wp-content/mu-plugins/mad4b-tour-gallery-presentation.php",
+      "sha256": "8e05b7258ff3bee3f329f581409796493580ec5c8fd264bd42b346aed801826c"
+    },
+    {
+      "bytes": 1041,
+      "file_type": ".php",
+      "git_blob_sha1": "599f500083c8f08e1bc1f52e9a41afe6e53fc7d4",
+      "path": "wp-content/mu-plugins/mad4b-tour-hero-critical-css.php",
+      "sha256": "a3017776a6ea43c4e489f03c55f23910fd76d57a7a3e353239cce356a31fc66e"
+    },
+    {
+      "bytes": 14620,
+      "file_type": ".php",
+      "git_blob_sha1": "b25140d5fe328497c67f6afec92e501058d6a899",
+      "path": "wp-content/mu-plugins/mad4b-tour-media-portrait-derivative.php",
+      "sha256": "54488af9b34e1e7906b2138996f68258d83d9a8107f7b3869aff6e292ca97de8"
+    },
+    {
+      "bytes": 16851,
+      "file_type": ".php",
+      "git_blob_sha1": "d5e5e3e170be93867409b9430f66becc4f76b55a",
+      "path": "wp-content/mu-plugins/mad4b-tour-multilingual-interface-v1.php",
+      "sha256": "a4e388568a43b5a2f13d6ae8e5c83e7110e9f630d68ae9b103fa1141238a72c3"
+    },
+    {
+      "bytes": 16274,
+      "file_type": ".php",
+      "git_blob_sha1": "d671610fad861fd51ef99ff003d55af61f4049a8",
+      "path": "wp-content/mu-plugins/mad4b-tour-price-distribution-v1.php",
+      "sha256": "ef502786258726468e0bbb1a39eacf144bc5261bcfff940b70999591f9dbeb98"
+    },
+    {
+      "bytes": 11434,
+      "file_type": ".php",
+      "git_blob_sha1": "b7959908e0e4fac718b9fbd9e88d726318d5daae",
+      "path": "wp-content/mu-plugins/mad4b-tour-rates-native-lazy.php",
+      "sha256": "8bd29654ee57a1cd18a7f48196856a20e1dedd18876fd4a27b3934155ddbbb12"
+    },
+    {
+      "bytes": 614,
+      "file_type": ".php",
+      "git_blob_sha1": "00453133eadc8429cfee6e3e2239aac340c5dd9f",
+      "path": "wp-content/mu-plugins/mad4b-tour-share-dropbar-first-paint.php",
+      "sha256": "640e0c01453c4197f006d34464c601faba8487a63a3edfacea671104019711ce"
+    },
+    {
+      "bytes": 1322,
+      "file_type": ".php",
+      "git_blob_sha1": "6ef1240a4f2d94218ce8131358838976c711bf4c",
+      "path": "wp-content/mu-plugins/mad4b-tour-shared-icon-styles.php",
+      "sha256": "4e2dd0283ef3d35b0e26f36d25aa377de2ecc31c820a15d047e84384eef87712"
+    },
+    {
+      "bytes": 2888,
+      "file_type": ".php",
+      "git_blob_sha1": "1fd42371de6edf964bb8ccef1df9fa4e6b642571",
+      "path": "wp-content/mu-plugins/mad4b-tour-ui-source-parity-20261106.php",
+      "sha256": "aad40971a8878c343ff2d5dde7d566dae0b7a45f083bb9c04b20504d0ff88fa8"
+    },
+    {
+      "bytes": 4183,
+      "file_type": ".php",
+      "git_blob_sha1": "a1723431c5fef5363a8f01ab7cda12af77746f64",
+      "path": "wp-content/mu-plugins/mad4b-visitor-state-batch.php",
+      "sha256": "fcaacade4b1d6b5cc7506cd4a8f0ede831a5c0abbd9053befb789e4844708429"
+    },
+    {
+      "bytes": 1127,
+      "file_type": ".php",
+      "git_blob_sha1": "678b6c6ef10ac86fc74128a10881adc267c2614d",
+      "path": "wp-content/mu-plugins/mad4b-woocommerce-shop-visibility.php",
+      "sha256": "46bbaeed1123b07201752b5c23fc00620c7a91e179b92a30f086da1d65a01c0f"
+    },
+    {
+      "bytes": 2840,
+      "file_type": ".php",
+      "git_blob_sha1": "39363e47d0a974b5b5aa0c36451321f95fd97f57",
+      "path": "wp-content/mu-plugins/mad4b-wpml-attachment-family-readback.php",
+      "sha256": "378023caf793c5db7147e4d8abb1027c45e2cb9e22d8684ea8fb4702106b087a"
+    },
+    {
+      "bytes": 3929,
+      "file_type": ".php",
+      "git_blob_sha1": "79c99086a0fab0872fffa67e3aeaada33edb519c",
+      "path": "wp-content/mu-plugins/mad4b-wpml-translation-batch.php",
+      "sha256": "ba75f33c915837a7270f03e86469866b1ac7b640ca26b971c6c980339df8bead"
+    },
+    {
+      "bytes": 12799,
+      "file_type": ".php",
+      "git_blob_sha1": "8043f7bed0f04cc08db8bf7d0f97d0d4b9c81e3b",
+      "path": "wp-content/mu-plugins/mad4b-z-company-media-mcp.php",
+      "sha256": "32f179fe787914a5d56bbba0ec5389359cd3bd9a32f4f929bea4ae171ee2aa50"
+    }
+  ],
+  "global_release_approved": false,
+  "preexisting_different_files": [
+    "mad4b-media-composite-integrity.php",
+    "mad4b-tour-media-reconcile.php",
+    "mad4b-unified-media-apply.php"
+  ],
+  "site_modified": false,
+  "source_only": true,
+  "source_relative_root": "wp-content/mu-plugins",
+  "source_site": "tours.dev.mad4b.com"
+}
