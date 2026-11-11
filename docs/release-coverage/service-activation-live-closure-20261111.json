@@ -1,0 +1,52 @@
+{
+  "admin_rest_rate_editor_preserved": true,
+  "authorized_scope": "local-site files and readback; no global original318/313 certification",
+  "central_composite_release_authorized": false,
+  "company_plan_remote_activation_performed": false,
+  "contract": "mad4b.service-activation-live-closure.v1",
+  "date_utc": "2026-11-11",
+  "files": [
+    {
+      "bytes": 7256,
+      "git_blob_sha1": "9e98fa6bd95581fd69c2f5508c80984f026d82f9",
+      "path": "wp-content/mu-plugins/mad4b-service-public-entry-guard-v1.php",
+      "sha256": "a702e68eedcb9712fb09e2eb599d719b18871e75b1b029ea143e35b48afa8b69"
+    },
+    {
+      "bytes": 18567,
+      "git_blob_sha1": "bfee9dcf48ff0afa4a24dea7ee268045425442aa",
+      "path": "wp-content/mu-plugins/mad4b-service-activation-live-readback-v1.php",
+      "sha256": "cb905eadaac0e1b2afafee5b107b4c989a85d7d41a86d52e7a0f03dfdf927d6c"
+    },
+    {
+      "bytes": 3385,
+      "git_blob_sha1": "53d4a4ee5fecc83a7183f2a923ce81261ab7f93c",
+      "path": "wp-content/mu-plugins/mad4b-service-inquiry-cta-v1.php",
+      "sha256": "c7b8cbef7d0b370969163bf7ee672996766b6567ed690e36ea2591f655489bed"
+    },
+    {
+      "bytes": 3851,
+      "git_blob_sha1": "7d10bc929050e218b9174cb9f84354ed3621fb06",
+      "path": "wp-content/mu-plugins/489-mad4b-booking-fulfillment-policy-v1.php",
+      "sha256": "da905b60cbb1cb890267999509593de9ad12d59e05cc51018b7d52359d9ff770"
+    },
+    {
+      "bytes": 13781,
+      "git_blob_sha1": "95b9610a24e27729ee5a9361f8d939adfbfc74e3",
+      "path": "wp-content/mu-plugins/490-mad4b-unified-booking-fulfillment-v2.php",
+      "sha256": "a613342b110fd6912932be0399d4c15726bd9b8a428461ab31b7521d18eb84f3"
+    }
+  ],
+  "fluent_form6_submission_behavior_changed": false,
+  "public_rest_tour_rate_denied": true,
+  "readback_status_endpoint_admin_only": true,
+  "service_activation_options_changed": false,
+  "sites": [
+    "tours.dev.mad4b.com",
+    "wayfatours.com"
+  ],
+  "stripes_or_payments_activated": false,
+  "tour_form_cta_now_explicit_inquiry": true,
+  "wayfa_remaining_schema_gap": "shared_tour_presentation_mode",
+  "wayfa_schema_full_parity": false
+}
