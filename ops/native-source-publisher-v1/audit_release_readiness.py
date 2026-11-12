@@ -310,12 +310,60 @@ def installed_status() -> dict:
     }
 
 
+def legacy_plan_compatibility_probe() -> dict:
+    """Read first-party installed plan-store metadata for enrollment impact.
+
+    Do not infer active Job state from stored plan files. This is a risk
+    count and must be verified against signed Original305/312 before migration.
+    """
+    module_path=HERE/"plan_store_compatibility_audit.py"
+    provider_root=INSTALLED_REGISTRY.parent
+    try:
+        loader=importlib.util.spec_from_file_location(
+            "_mad4b_private_plan_store_compatibility",module_path
+        )
+        if loader is None or loader.loader is None:
+            raise ValueError("PLAN_COMPATIBILITY_MODULE_MISSING")
+        module=importlib.util.module_from_spec(loader)
+        loader.loader.exec_module(module)
+        registry_spec=importlib.util.spec_from_file_location(
+            "_mad4b_private_plan_compat_registry",provider_root/"registry.py"
+        )
+        if registry_spec is None or registry_spec.loader is None:
+            raise ValueError("FIRST_PARTY_REGISTRY_NOT_AVAILABLE")
+        first_party=importlib.util.module_from_spec(registry_spec)
+        registry_spec.loader.exec_module(first_party)
+        verified=first_party.Registry(provider_root)
+        candidates={}
+        for path in sorted((HERE/"catalog/generated").glob("*.manifest.json")):
+            if path.is_symlink():
+                raise ValueError("UNTRUSTED_CANDIDATE_MANIFEST_LINK")
+            manifest=json.loads(path.read_text())
+            op=manifest.get("operation_id")
+            if (not isinstance(op,str) or path.name!=op+".manifest.json" or
+                op in candidates):
+                raise ValueError("DUPLICATE_OR_INVALID_CANDIDATE")
+            candidates[op]=manifest
+        return module.summarize(verified,module.PLAN_ROOT,candidates)
+    except Exception as exc:
+        return {
+            "contract":"mad4b.native-source-plan-store-compatibility-audit.v1",
+            "state":"HOLD__LEGACY_PLAN_AUDIT_UNVERIFIED",
+            "plan_count":None,
+            "ambiguous_existing_plan_count":None,
+            "reason":type(exc).__name__,
+            "plan_store_modified":False,
+            "provider_enrolled":False,
+        }
+
+
 def evaluate() -> dict:
     probes = candidate_probes()
     original_contract = original_worker_contract_probes()
     association = signed_association_admission_probe()
     verifier_environment = verifier_environment_contract_probe()
     installed = installed_status()
+    legacy_plan_impact = legacy_plan_compatibility_probe()
     blockers = []
     if probes["different_git_source_for_same_target"] != "DENIED":
         blockers.append("SOURCE_TARGET_EQUIVALENCE_NOT_ENFORCED")
@@ -325,6 +373,10 @@ def evaluate() -> dict:
         blockers.append("ORIGINAL313_PLAN_ENVELOPE_NOT_COMPATIBLE")
     if not original_contract["operation_exclusive"]:
         blockers.append("ORIGINAL306_PLAN_OPERATION_NOT_UNIQUELY_BOUND")
+    if legacy_plan_impact["state"] == "HOLD__LEGACY_PLAN_AUDIT_UNVERIFIED":
+        blockers.append("LEGACY_PLAN_STORE_IMPACT_UNVERIFIED")
+    elif legacy_plan_impact["ambiguous_existing_plan_count"]:
+        blockers.append("LEGACY_EXISTING_PLANS_SHARE_NEW_SOURCE_CONTRACT")
     if not association["installed_original306_enforces_exclusive_association"]:
         blockers.append("ORIGINAL306_SIGNED_ASSOCIATION_HOOK_NOT_INSTALLED")
     if not association["tracked_and_installed_original306_worker_match"]:
@@ -347,6 +399,7 @@ def evaluate() -> dict:
         "blockers": blockers,
         "ephemeral_security_probes": probes,
         "original_worker_contract_probes": original_contract,
+        "legacy_plan_compatibility_probe": legacy_plan_impact,
         "signed_association_admission_probe": association,
         "verifier_environment_contract_probe": verifier_environment,
         "installed_status": installed,

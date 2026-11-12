@@ -68,3 +68,14 @@ The release audit now independently reports both the tracked Git worker SHA
 and the installed Original306 worker SHA, and refuses to declare ready while
 they differ. This is an explicit reconciliation precondition before adopting
 the source-only candidate, not permission to overwrite either implementation.
+
+## Legacy migration compatibility
+
+A read-only audit of the real 16 existing plans found 15 sharing the source
+candidate plan contract. The current installed worker indexes all 16 plans
+successfully. A separate source-only migration preview revalidated the
+15 colliding plans against their existing Original306 provider: all 15 were
+uniquely attributable, none ambiguous. No first-party association was signed.
+See LEGACY_PLAN_MIGRATION_20261112.md. The release audit now explicitly
+blocks candidate enrollment while any legacy plan contract collision remains
+unreconciled.

@@ -77,3 +77,13 @@ The full suite test module imports first-party code under private aliases to
 avoid contaminating other Registry tests. The readiness audit now checks
 source-versus-installed Original306 worker digests before promoting any
 integration; they differ, so it remains HOLD.
+
+## Legacy plan preservation
+
+Read-only inventory of Original306 confirms 16 existing CAS plans and
+15 dynamically detected contract collisions with source-family enrollment.
+The existing first-party worker still indexes 16/16. The source-only
+legacy_plan_migration_preview.py validates original attribution for all
+15 affected plans and reports 0 unresolved, with no signed associations
+or modifications. Runtime job/claim state is not yet certified.
+LEGACY_PLAN_MIGRATION_20261112.md defines migration and rollback conditions.

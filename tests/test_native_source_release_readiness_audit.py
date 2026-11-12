@@ -143,6 +143,20 @@ class NativeSourceAudit(unittest.TestCase):
         self.assertFalse(found["original_independent_signer_modified"])
         self.assertFalse(found["signed_proof_created"])
 
+    def test_legacy_plan_inventory_blocks_unsafe_shared_contract_rollout(self):
+        report=audit.legacy_plan_compatibility_probe()
+        self.assertEqual(report["plan_store_modified"],False)
+        self.assertEqual(report["provider_enrolled"],False)
+        final=audit.evaluate()
+        self.assertEqual(final["state"],"HOLD")
+        if report["state"]=="HOLD__LEGACY_PLAN_AUDIT_UNVERIFIED":
+            self.assertIn("LEGACY_PLAN_STORE_IMPACT_UNVERIFIED",final["blockers"])
+        elif report["ambiguous_existing_plan_count"]>0:
+            self.assertIn(
+                "LEGACY_EXISTING_PLANS_SHARE_NEW_SOURCE_CONTRACT",
+                final["blockers"],
+            )
+
     def test_index_names_are_not_registry_digest_certification(self):
         with tempfile.TemporaryDirectory(prefix="source-registry-unauthenticated-") as temp:
             folder=Path(temp)
