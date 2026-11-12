@@ -38,17 +38,17 @@
       "source": "ops/dynamic-operation-registry-v1/executor-time-cas-v1/independent_readback.py"
     },
     {
-      "bytes": 1279,
+      "bytes": 1581,
       "deployed_to": [],
       "root_owned": false,
-      "sha256": "6d45ac39e75086e5a3a0898db1d03b371ff05009a0fe9acf6a2f09f27134e652",
+      "sha256": "e27e81c2cf7faf53971f0d4026e9db8f3c8cd15234f6f22318e082c0626fc5af",
       "source": "ops/dynamic-operation-registry-v1/providers/company.resource.cas.apply/manifest.json"
     },
     {
-      "bytes": 484,
+      "bytes": 622,
       "deployed_to": [],
       "root_owned": false,
-      "sha256": "5f836d697f29acb61be800b92e03a1a0f30f12f76ae2df3939da54d5c34ab20e",
+      "sha256": "701e57711d1b739a69792604174badbbd1a70bdcc78652f273821340d1891d1f",
       "source": "ops/dynamic-operation-registry-v1/providers/company.resource.cas.apply/evidence-schema.json"
     }
   ],

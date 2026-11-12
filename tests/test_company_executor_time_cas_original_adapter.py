@@ -58,6 +58,8 @@ class CAS(unittest.TestCase):
             "registry.py","admission.py",
             "executor-time-cas-v1/host_handler.py",
             "executor-time-cas-v1/independent_readback.py",
+            "executor-time-cas-v1/preclaim.py",
+            "executor-time-cas-v1/finalizer.py",
             "providers/company.resource.cas.apply/manifest.json",
             "providers/company.resource.cas.apply/evidence-schema.json",
         ]

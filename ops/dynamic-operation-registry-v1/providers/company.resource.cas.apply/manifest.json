@@ -25,15 +25,23 @@
   "dependencies": [],
   "evidence": {
     "path": "providers/company.resource.cas.apply/evidence-schema.json",
-    "sha256": "5f836d697f29acb61be800b92e03a1a0f30f12f76ae2df3939da54d5c34ab20e"
+    "sha256": "701e57711d1b739a69792604174badbbd1a70bdcc78652f273821340d1891d1f"
   },
   "evidence_schema": "resource_cas.v1",
+  "finalizer": {
+    "path": "executor-time-cas-v1/finalizer.py",
+    "sha256": "c0a2d9a4128c37a024c367718e2c2ae3bea07adf9de70cdbacd364264fc82f68"
+  },
   "handler": {
     "path": "executor-time-cas-v1/host_handler.py",
     "sha256": "064ee3e29ebe4e7a67df5a8506f5a73ad1519a2a5e06e24be10b115ea9e5e459"
   },
   "operation_id": "company.resource.cas.apply",
   "plan_contract": "mad4b.company-resource.executor-cas-plan.v1",
+  "preclaim": {
+    "path": "executor-time-cas-v1/preclaim.py",
+    "sha256": "5ed159f51cda47dade9865d8d5d2e0f3f847b15b541d39f16b794e262c3b9709"
+  },
   "provider": "mad4b-company-resource-cas",
   "verifier": {
     "path": "executor-time-cas-v1/independent_readback.py",

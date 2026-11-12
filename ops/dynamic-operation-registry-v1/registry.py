@@ -139,6 +139,27 @@ class Registry:
             blob = protected_file(self.root / rel, self.root)
             require(sha(blob) == component["sha256"],
                     "PROVIDER_COMPONENT_DRIFT:" + entry)
+        # Optional workflow components are first-party, digest-pinned source
+        # code just like the execution handler and independent verifier.
+        # The installed Worker may call a provider-specific preclaim ONLY
+        # after this registry checks its exact immutable component.
+        for component_type in ("preclaim","finalizer"):
+            if component_type not in m:
+                continue
+            component=m[component_type]
+            require(isinstance(component,dict)
+                    and set(component)=={"path","sha256"}
+                    and isinstance(component["path"],str)
+                    and isinstance(component["sha256"],str)
+                    and SHA.fullmatch(component["sha256"]),
+                    "DYNAMIC_PROVIDER_COMPONENT_SHAPE_INVALID:"+component_type)
+            rel=bounded_relative(component["path"])
+            require(rel.endswith(".py")
+                    and rel not in (m["handler"]["path"],m["verifier"]["path"]),
+                    "DYNAMIC_PROVIDER_COMPONENT_PATH_INVALID:"+component_type)
+            blob=protected_file(self.root/rel,self.root,maximum=2_000_000)
+            require(sha(blob)==component["sha256"],
+                    "DYNAMIC_PROVIDER_COMPONENT_DRIFT:"+component_type)
         # A handler cannot be made immutable while its imported Python
         # dependencies are mutable. Independently content-pin every declared
         # first-party dependency before the Provider is considered enrolled.

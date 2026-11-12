@@ -1,0 +1,100 @@
+{
+  "cas_provider_original_registry_enrolled": false,
+  "central": "tours.dev.mad4b.com",
+  "contract": "mad4b.company.original306313-cas-source-integration.v2",
+  "current_enrolled_operations": 3,
+  "date": "2026-11-12",
+  "legacy_313_schema": "code_release.v2",
+  "legacy_code_release_central_operational_after": true,
+  "legacy_code_release_central_operational_before": true,
+  "live_central_cas_finalizer_ready": false,
+  "live_central_dynamic313_routing_deployed": true,
+  "live_central_original313_config_sha256": "570389541ae911cbb524c37af883814ab7bd12665e9c616fc63679a78544e6c2",
+  "live_original306_worker_sha256": "c98aa36ee312dc96589474540216cefee6831b0df4c2acd522be6083579811b8",
+  "live_original313_code_release_finalizer_sha256": "1f5cfab8119e7ec70364ba4a3711757ca1ab4404b402094fa7a217d4f278ac31",
+  "live_registry_index_sha256": "4bcc22b706981208797eb0fb8d8314f14ee322307ed3f83f36f50226d1d73a55",
+  "original305_cas_job_issued": false,
+  "original306_live_worker_modified": false,
+  "original313_cas_certificate_issued": false,
+  "original313_host_finalizer_modified": false,
+  "original318_signed_release_certified": false,
+  "other_companies_modified": false,
+  "scoped_cas_grant_created": false,
+  "source_files": [
+    {
+      "bytes": 11869,
+      "central_live": false,
+      "path": "ops/dynamic-operation-registry-v1/registry.py",
+      "sha256": "1a3917b57b85c2f5883d91fad39ea0808ae7c1f88f3f898457af136e01e09b39"
+    },
+    {
+      "bytes": 9094,
+      "central_live": false,
+      "path": "ops/dynamic-operation-registry-v1/worker_adapter.py",
+      "sha256": "ab61d2efd2d3ff54e9fa40d2ea8d514019fd68abb50b05ffbe36abedd537dfa4"
+    },
+    {
+      "bytes": 10807,
+      "central_live": false,
+      "path": "ops/dynamic-operation-registry-v1/executor-time-cas-v1/preclaim.py",
+      "sha256": "5ed159f51cda47dade9865d8d5d2e0f3f847b15b541d39f16b794e262c3b9709"
+    },
+    {
+      "bytes": 19584,
+      "central_live": false,
+      "path": "ops/dynamic-operation-registry-v1/executor-time-cas-v1/finalizer.py",
+      "sha256": "c0a2d9a4128c37a024c367718e2c2ae3bea07adf9de70cdbacd364264fc82f68"
+    },
+    {
+      "bytes": 19773,
+      "central_live": false,
+      "path": "ops/dynamic-operation-registry-v1/executor-time-cas-v1/host_handler.py",
+      "sha256": "064ee3e29ebe4e7a67df5a8506f5a73ad1519a2a5e06e24be10b115ea9e5e459"
+    },
+    {
+      "bytes": 5698,
+      "central_live": false,
+      "path": "ops/dynamic-operation-registry-v1/executor-time-cas-v1/independent_readback.py",
+      "sha256": "201ff3927b93ce74309e5f5e3e4999266444c42405a671742c45fe2d7834a8c0"
+    },
+    {
+      "bytes": 1581,
+      "central_live": false,
+      "path": "ops/dynamic-operation-registry-v1/providers/company.resource.cas.apply/manifest.json",
+      "sha256": "e27e81c2cf7faf53971f0d4026e9db8f3c8cd15234f6f22318e082c0626fc5af"
+    },
+    {
+      "bytes": 622,
+      "central_live": false,
+      "path": "ops/dynamic-operation-registry-v1/providers/company.resource.cas.apply/evidence-schema.json",
+      "sha256": "701e57711d1b739a69792604174badbbd1a70bdcc78652f273821340d1891d1f"
+    },
+    {
+      "bytes": 5790,
+      "central_live": false,
+      "path": "ops/dynamic-operation-registry-v1/executor-time-cas-v1/integrations/plan_original_registry_upgrade.py",
+      "sha256": "6d2653adb181656b8cb7daef1f15c2fa37d7a6a576d7a7f2bbb739bb630eaa17"
+    },
+    {
+      "bytes": 2355,
+      "central_live": false,
+      "path": "ops/dynamic-operation-registry-v1/executor-time-cas-v1/integrations/patch_original306_provider_preclaim.py",
+      "sha256": "30c03a1b7ef3cb1c5dded8622275815e6340043b0cc7538d0fcf695bfe4d4a9d"
+    },
+    {
+      "bytes": 13950,
+      "central_live": true,
+      "path": "wp-content/plugins/mad4b-platform/modules/authority/dynamic313/class-mad4b-dynamic-313-wordpress.php",
+      "sha256": "106d74b496b11978fd5aec90cdb0542aea825866ca0dacecbb525e88e077e5e1"
+    },
+    {
+      "bytes": 22146,
+      "central_live": true,
+      "path": "wp-content/plugins/mad4b-platform/modules/services/313b-mad4b-native-independent-verifier.php",
+      "sha256": "0b15f17c578a5e4ca706cfe3c81203019f03d452312f5b176e572902ec82a685"
+    }
+  ],
+  "source_only_registry_upgrade_proposed_operations": 4,
+  "tenant": "wayfatours.com",
+  "wayfatours_data_mutated": false
+}

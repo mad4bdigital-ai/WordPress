@@ -64,6 +64,64 @@ def digest_table(index: registry.Registry, plan_store: Path) -> dict[str,str]:
             indexed_plans(index,plan_store).items()}
 
 
+def provider_preclaim(index: registry.Registry, plan_store: Path,
+                      job_id: str, command_sha256: str) -> bool:
+    """Manifest-driven Original 306 admission for future operations.
+
+    This is a pre-Claim read; a first-party original 312 cannot yet be
+    evaluated as a claimed Job. The pinned provider-specific admission must
+    require the exact queued 305 Job and independently enrolled Original 313,
+    plus the signed provider grant. No command can make this run merely by
+    adding a field to a public WordPress request.
+    """
+    if (not isinstance(job_id,str) or
+        re.fullmatch(r"[a-f0-9]{32}",job_id) is None or
+        not isinstance(command_sha256,str) or
+        HEX.fullmatch(command_sha256) is None):
+        return False
+    try:
+        entry=indexed_plans(index,plan_store).get(command_sha256)
+        if not isinstance(entry,dict):
+            return False
+        operation=entry["operation"]
+        manifest=index.resolve(operation)
+        hook=manifest.get("preclaim")
+        if not isinstance(hook,dict) or set(hook)!={"path","sha256"}:
+            return False
+        candidate=index.root/registry.bounded_relative(hook["path"])
+        content=registry.protected_file(candidate,index.root,maximum=2_000_000)
+        registry.require(registry.sha(content)==hook["sha256"],
+                         "DYNAMIC_306_PRECLAIM_COMPONENT_NOT_PINNED")
+        # This path and its bytes were independently checked by Registry.
+        import importlib.util
+        spec=importlib.util.spec_from_file_location(
+            "_mad4b_original_306_preclaim_"+command_sha256[:12],candidate)
+        registry.require(spec is not None and spec.loader is not None,
+                         "DYNAMIC_306_PRECLAIM_MODULE_NOT_AVAILABLE")
+        admission=importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(admission)
+        registry.require(Path(admission.__file__)==candidate
+                         and callable(getattr(admission,"verify_claimable",None)),
+                         "DYNAMIC_306_PRECLAIM_UNTRUSTED_MODULE")
+        state=admission.verify_claimable(
+            index,entry["plan"],job_id,command_sha256)
+        return (isinstance(state,dict) and
+            state.get("contract")=="mad4b.original306.dynamic-provider-preclaim.v1"
+            and state.get("state")==
+              "REGISTERED_PROVIDER_ORIGINAL_305_EXACT_SIGNED_PRECLAIM"
+            and state.get("operation_id")==operation
+            and state.get("job_id")==job_id
+            and state.get("command_sha256")==command_sha256
+            and state.get("original_313_finalizer_enrolled") is True
+            and state.get("provider_release_grant_verified") is True
+            and state.get("new_grant_issued") is False
+            and state.get("new_job_issued") is False
+            and state.get("original_313_certified") is False)
+    except (Exception,ValueError):
+        # Never produce a claim as a fallback to unavailable broker/313.
+        return False
+
+
 def select(index: registry.Registry, store: Path,
            original_job: dict, original_pending: dict) -> dict:
     cmd=original_job.get("command_sha256")

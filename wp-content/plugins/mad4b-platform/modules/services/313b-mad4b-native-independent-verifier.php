@@ -60,7 +60,7 @@ final class MAD4B_Native_WPCLI_Receipt_Verifier_V1 {
   // transport: require a separately enrolled Dynamic proof and exact
   // evidence postcondition for the operation and original claimed Job.
   if ($dynamic && (
-       ($p['observed_operation']??null)!=='company.code.release'
+       (!is_string($p['observed_operation']??null) || !preg_match('/^[a-z][a-z0-9_.-]{2,79}$/D',(string)$p['observed_operation']))
     || !is_string($p['environment']??null)
     || !preg_match('/^[a-z][a-z0-9_-]{1,63}$/D',$p['environment'])
     || ($p['production_mutation']??null)!==
@@ -68,8 +68,11 @@ final class MAD4B_Native_WPCLI_Receipt_Verifier_V1 {
     || ($p['postcondition_type']??null)!=='enrolled_dynamic_evidence'
     || !class_exists('MAD4B_Dynamic_WP_313_Readback_V1',false)
     || !is_callable(['MAD4B_Dynamic_WP_313_Readback_V1','enrolled_schema_id'])
+    || !is_callable(['MAD4B_Dynamic_WP_313_Readback_V1','operation_operational_ready'])
+    || !MAD4B_Dynamic_WP_313_Readback_V1::operation_operational_ready((string)$p['observed_operation'])
     || ($p['postcondition_key']??null)!==
-       MAD4B_Dynamic_WP_313_Readback_V1::enrolled_schema_id()
+       MAD4B_Dynamic_WP_313_Readback_V1::enrolled_schema_id(
+          (string)$p['observed_operation'])
     || !is_string($p['sealed_argv_sha256']??null)
     || !hash_equals((string)($p['command_sha256']??''),$p['sealed_argv_sha256'])
     || !preg_match('/^[a-f0-9]{64}$/D',(string)($p['dynamic_plan_sha256']??''))
@@ -213,7 +216,7 @@ final class MAD4B_Native_WPCLI_Receipt_Verifier_V1 {
    $read=MAD4B_Dynamic_WP_313_Readback_V1::recorded_exact_for_original_313($id);
    $evidence=$read['proof']??null;
    if (($read['verified']??false)!==true ||
-       ($read['operation_id']??'')!=='company.code.release' ||
+       ($read['operation_id']??'')!==$p['observed_operation'] ||
        !is_array($evidence) ||
        ($evidence['plan_sha256']??'')!==$p['dynamic_plan_sha256'] ||
        ($evidence['evidence_sha256']??'')!==$p['dynamic_evidence_sha256'] ||

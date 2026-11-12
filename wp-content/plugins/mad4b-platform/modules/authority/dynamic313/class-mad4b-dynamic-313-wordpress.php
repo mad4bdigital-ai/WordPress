@@ -14,26 +14,104 @@ final class MAD4B_Dynamic_WP_313_Readback_V1 {
     const CONTRACT='mad4b.dynamic-313-wordpress.v1';
     const PROOF_PREFIX='mad4b_dynamic_313_signed_evidence_v1_';
 
-    private static function trusted():array {
-        $file=__DIR__.'/config.php';
-        $data=is_file($file) ? require $file : null;
-        if (!is_array($data) ||
-            ($data['contract']??'')!=='mad4b.dynamic-313-first-party-config.v1' ||
-            !is_bool($data['original_313_finalizer_connected']??null) ||
-            (($data['original_313_finalizer_connected']??false)===true &&
-             (!class_exists('MAD4B_Native_WPCLI_Receipt_Verifier_V1',false) ||
-              !is_callable(['MAD4B_Native_WPCLI_Receipt_Verifier_V1','supports_dynamic_v4']) ||
-              !MAD4B_Native_WPCLI_Receipt_Verifier_V1::supports_dynamic_v4())) ||
-            !is_array($data['trusted']??null) ||
-            ($data['trusted']['first_party_enrolled']??null)!==true) {
+    private static function config():array {
+        $path=__DIR__.'/config.php';
+        if(is_link($path)||!is_file($path)
+            ||fileowner($path)!==0
+            ||(fileperms($path)&0022)!==0)
             return [];
-        }
-        return $data['trusted'];
+        $config=require $path;
+        if(!is_array($config)
+            ||($config['contract']??null)!=='mad4b.dynamic-313-first-party-config.v1'
+            ||!is_bool($config['original_313_finalizer_connected']??null)
+            ||!is_array($config['trusted']??null)
+            ||($config['trusted']['first_party_enrolled']??null)!==true)
+            return [];
+        if(($config['original_313_finalizer_connected']??false)===true
+           &&(!class_exists('MAD4B_Native_WPCLI_Receipt_Verifier_V1',false)
+               ||!is_callable(['MAD4B_Native_WPCLI_Receipt_Verifier_V1','supports_dynamic_v4'])
+               ||!MAD4B_Native_WPCLI_Receipt_Verifier_V1::supports_dynamic_v4()))
+            return [];
+        return $config;
     }
 
-    public static function enrolled_schema_id():string {
-        $trusted=self::trusted();
+    private static function approved_record(array $candidate,string $operation):bool {
+        $provider=$candidate['provider']??null;
+        $schema=$candidate['evidence_schema']??null;
+        $public=$candidate['independent_verifier_public_key_b64']??null;
+        return ($candidate['registry_contract']??null)==='mad4b.dynamic-operation-index.v1'
+            &&($candidate['first_party_enrolled']??null)===true
+            &&is_array($provider)&&is_array($schema)
+            &&($provider['operation_id']??null)===$operation
+            &&($provider['command']['bound_operation_id']??null)===$operation
+            &&($provider['command']['format']??null)==='wpcli.argv.json.v1'
+            &&($provider['command']['mode']??null)==='plan_sha256'
+            &&($provider['evidence_schema']??null)===($schema['schema_id']??null)
+            &&($schema['contract']??null)==='mad4b.dynamic-evidence-schema.v1'
+            &&is_array($schema['fields']??null)
+            &&count($schema['fields'])>=1&&count($schema['fields'])<=40
+            &&count(array_diff([
+                'grant_id','transport_id','result_status',
+                'output_sha256','expected_readback_sha256',
+                'readback_sha256','production_mutation'
+             ],array_keys($schema['fields'])))===0
+            &&is_string($public)
+            &&strlen((string)base64_decode($public,true))===
+                SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES;
+    }
+
+    private static function trusted(?string $operation=null):array {
+        $config=self::config();
+        if(!$config)return [];
+        $legacy=$config['trusted'];
+        $legacyOperation=$legacy['provider']['operation_id']??null;
+        if($operation===null)$operation=is_string($legacyOperation)?$legacyOperation:'';
+        if(!preg_match('/^[a-z][a-z0-9_.-]{2,79}$/D',$operation))
+            return [];
+        if($operation===$legacyOperation)
+            return self::approved_record($legacy,$operation)?$legacy:[];
+        $providers=$config['providers']??[];
+        if(!is_array($providers)||!array_is_list($providers)
+            ||count($providers)>32)return [];
+        $found=null;
+        $seen=[];
+        foreach($providers as $candidate) {
+            if(!is_array($candidate))return [];
+            $name=$candidate['provider']['operation_id']??null;
+            if(!is_string($name)||isset($seen[$name])
+               ||!self::approved_record($candidate,$name)
+               ||$name===$legacyOperation)
+                return [];
+            $seen[$name]=true;
+            if($name===$operation)$found=$candidate;
+        }
+        return is_array($found)?$found:[];
+    }
+
+    public static function enrolled_schema_id(?string $operation=null):string {
+        $trusted=self::trusted($operation);
         return (string)($trusted['provider']['evidence_schema']??'');
+    }
+
+    public static function operation_enrolled(string $operation):bool {
+        return self::trusted($operation)!==[];
+    }
+
+    public static function operation_operational_ready(string $operation):bool {
+        $config=self::config();
+        if(!$config||!self::operation_enrolled($operation)
+           ||($config['original_313_finalizer_connected']??false)!==true)
+            return false;
+        $operations=$config['finalizer_operations']??['company.code.release'];
+        if(!is_array($operations)||!array_is_list($operations)
+           ||count($operations)<1||count($operations)>32
+           ||count($operations)!==count(array_unique($operations)))
+            return false;
+        foreach($operations as $name)
+            if(!is_string($name)
+               ||!preg_match('/^[a-z][a-z0-9_.-]{2,79}$/D',$name))
+                return false;
+        return in_array($operation,$operations,true);
     }
 
     public static function status():array {
@@ -80,9 +158,9 @@ final class MAD4B_Dynamic_WP_313_Readback_V1 {
     }
 
     public static function check_exact(array $proof):array {
-        if (!self::trusted()) {
-            return ['verified'=>false,'reason'=>'FIRST_PARTY_DYNAMIC_REGISTRY_ABSENT'];
-        }
+        $operation=$proof['operation_id']??null;
+        if(!is_string($operation)||!self::operation_operational_ready($operation))
+            return ['verified'=>false,'reason'=>'FIRST_PARTY_DYNAMIC_OPERATION_NOT_FINALIZER_ENROLLED'];
         if (!class_exists('MAD4B_Central_VPS_Broker_V1',false) ||
             !class_exists('MAD4B_Broker_Remote_SSH_Receipt_V1',false) ||
             !class_exists('MAD4B_Broker_Exact_SSH_Authority_V1',false)) {
@@ -111,7 +189,7 @@ final class MAD4B_Dynamic_WP_313_Readback_V1 {
         $authority=MAD4B_Broker_Exact_SSH_Authority_V1::evaluate(
             $jobid,$target,$digest);
         $result=MAD4B_Dynamic_313_Proof_V1::verify(
-            $proof,self::trusted(),$original,$authority);
+            $proof,self::trusted($operation),$original,$authority);
         if (($result['verified']??false)!==true) return $result;
         $signed=$proof['payload'];
         foreach(['grant_id','transport_id','output_sha256',
