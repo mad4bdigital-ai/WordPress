@@ -161,6 +161,8 @@ class NativeSourceAudit(unittest.TestCase):
     def test_job_claim_lifecycle_preview_never_authorizes_migration(self):
         state=audit.original_job_lifecycle_contract_probe()
         self.assertTrue(state["candidate_lifecycle_classifier_available"])
+        self.assertTrue(state["source_only_wp_job_claim_readback_php_present"])
+        self.assertTrue(state["source_only_readback_not_bootstrapped"])
         self.assertFalse(state["first_party_current_job_claim_readback_available"])
         self.assertFalse(state["release_authorized"])
 

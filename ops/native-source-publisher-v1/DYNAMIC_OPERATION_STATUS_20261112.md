@@ -104,3 +104,11 @@ no matching Grant in the inspected inventory, and two have repeated records.
 Original Job/Claim statuses remain unverified. Added read-only Grant audit
 and a source-only, fail-closed original Job/Claim lifecycle preview; neither
 creates current authorization or historical replay.
+
+## Current Original305/306 WordPress read-only Ability candidate
+
+An unmounted read-only WordPress Ability is now present in
+class-mad4b-scp-original-job-readback.php, with bounded digest lists,
+source site/company scope, administrator permissions, error and ambiguous-Job
+blocking. PHP and Python source tests passed. No live Job read or enrollment
+was performed. See ORIGINAL305_JOB_READBACK_ABILITY_CANDIDATE_20261112.md.

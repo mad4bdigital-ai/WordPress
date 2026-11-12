@@ -390,8 +390,15 @@ def original_job_lifecycle_contract_probe() -> dict:
     do not pretend an unverified preview is first-party evidence.
     """
     path=HERE/"original_job_lifecycle_preview.py"
+    readback=ROOT/"wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-original-job-readback.php"
+    boot=ROOT/"wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php"
+    source_only=(readback.is_file() and boot.is_file() and
+       "MAD4B_SCP_Original_Job_Readback" not in boot.read_text() and
+       "class-mad4b-scp-original-job-readback.php" not in boot.read_text())
     return {
         "candidate_lifecycle_classifier_available":path.is_file(),
+        "source_only_wp_job_claim_readback_php_present":readback.is_file(),
+        "source_only_readback_not_bootstrapped":source_only,
         "first_party_current_job_claim_readback_available":False,
         "historical_grants_transformed_into_current_authority":False,
         "release_authorized":False,

@@ -76,3 +76,13 @@ available, it must:
 
 Read-only report includes no Job IDs, nonces, raw signatures, secrets or Plan
 SHA values. These source probes did not mutate any live WordPress property.
+
+## Proposed governed current Job/Claim read surface
+
+A strictly bounded, non-authorizing WordPress Ability candidate is now present
+in the Control Plane source under
+class-mad4b-scp-original-job-readback.php. It requires a verified Site Profile,
+administrator permission, exact command digests and company scope, and reads
+original Job/Claim options without mutations. It is NOT loaded on Central
+and has not returned any real Job status. See
+ORIGINAL305_JOB_READBACK_ABILITY_CANDIDATE_20261112.md.
