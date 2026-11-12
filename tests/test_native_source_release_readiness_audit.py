@@ -143,6 +143,27 @@ class NativeSourceAudit(unittest.TestCase):
         self.assertFalse(found["original_independent_signer_modified"])
         self.assertFalse(found["signed_proof_created"])
 
+    def test_original_signed_grants_are_distinct_and_never_fresh_authority(self):
+        grants=audit.original_historical_grants_probe()
+        self.assertFalse(grants["current_original305_job_verified"])
+        self.assertFalse(grants["fresh_original312_verified"])
+        self.assertFalse(grants["grants_extended_or_issued"])
+        self.assertFalse(grants["plans_or_wordpress_mutated"])
+        self.assertEqual(grants["state"],
+            "HISTORICAL_SIGNED_GRANTS_ONLY__CURRENT_AUTHORITY_UNVERIFIED")
+        self.assertGreaterEqual(grants["matched_grant_file_count"],
+                                grants["distinct_plans_with_valid_grant_evidence"])
+        self.assertIn(
+            "LEGACY_HISTORICAL_SIGNED_GRANT_COVERAGE_INCOMPLETE",
+            audit.evaluate()["blockers"],
+        )
+
+    def test_job_claim_lifecycle_preview_never_authorizes_migration(self):
+        state=audit.original_job_lifecycle_contract_probe()
+        self.assertTrue(state["candidate_lifecycle_classifier_available"])
+        self.assertFalse(state["first_party_current_job_claim_readback_available"])
+        self.assertFalse(state["release_authorized"])
+
     def test_historical_finish_is_not_fresh_signed_original_312(self):
         historical=audit.original_finish_evidence_probe()
         self.assertFalse(historical["original305_current_state_verified"])

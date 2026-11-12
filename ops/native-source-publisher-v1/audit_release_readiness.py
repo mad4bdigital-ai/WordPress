@@ -310,6 +310,94 @@ def installed_status() -> dict:
     }
 
 
+def original_historical_grants_probe() -> dict:
+    """Independent read-only signed-grant inventory by DISTINCT legacy plan.
+
+    This never interprets historical grant validity as a fresh original312
+    authority and never refreshes expired Grants or accesses signing keys.
+    """
+    try:
+        from datetime import datetime,timezone
+        root=INSTALLED_REGISTRY.parent
+        grants_path=Path("/var/lib/mad4b/company-code-release/grants")
+        policy_path=Path("/etc/mad4b/company-code-release-policy.json")
+        grant_script=HERE/"original_historical_grants_audit.py"
+        def load(alias,path):
+            spec=importlib.util.spec_from_file_location(alias,path)
+            if spec is None or spec.loader is None:
+                raise ValueError("FIRST_PARTY_SCRIPT_NOT_AVAILABLE")
+            module=importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return module
+
+        history=load("_mad4b_historical_grants_readonly",grant_script)
+        legacy=load(
+            "_mad4b_first_party_code_release_grants",
+            root/"company-code-release-v1/company_code_release.py"
+        )
+        absent=object()
+        modules=("registry","admission","worker_adapter")
+        prior={name:sys.modules.get(name,absent) for name in modules}
+        try:
+            registry_mod=load("_mad4b_private_grant_registry",root/"registry.py")
+            sys.modules["registry"]=registry_mod
+            admission_mod=load("_mad4b_private_grant_admission",root/"admission.py")
+            sys.modules["admission"]=admission_mod
+            worker_mod=load("_mad4b_private_grant_worker",root/"worker_adapter.py")
+            index=registry_mod.Registry(root)
+            original_commands=worker_mod.indexed_plans(
+                index,Path("/var/lib/mad4b/dynamic-operation-registry/plans")
+            )
+        finally:
+            for name,value in prior.items():
+                if value is absent:
+                    sys.modules.pop(name,None)
+                else:
+                    sys.modules[name]=value
+
+        plans={
+            row["plan"]["plan_sha256"]:row["plan"]
+            for row in original_commands.values()
+            if row["plan"]["contract"]==legacy.PLAN_CONTRACT
+        }
+        policy=legacy.trusted_config(policy_path)
+        return history.summarize(
+            plans,grants_path,
+            broker_public_key_b64=policy["broker_public_key_b64"],
+            signed_message=legacy.grant_message,
+            expected_contract=legacy.AUTH_CONTRACT,
+            now=datetime.now(timezone.utc),
+        )
+    except Exception as exc:
+        return {
+            "contract":"mad4b.original305.historical-signed-grant-audit.v1",
+            "state":"HOLD__GRANT_HISTORY_UNVERIFIED",
+            "reason":type(exc).__name__,
+            "original_plans_in_scope":None,
+            "distinct_plans_with_valid_grant_evidence":None,
+            "distinct_plans_without_matching_grant_evidence":None,
+            "current_original305_job_verified":False,
+            "fresh_original312_verified":False,
+            "grants_extended_or_issued":False,
+            "plans_or_wordpress_mutated":False,
+        }
+
+
+def original_job_lifecycle_contract_probe() -> dict:
+    """A pure fail-closed lifecycle classifier is staged, not installed.
+
+    No WP broker snapshot is available through the admitted read surface;
+    do not pretend an unverified preview is first-party evidence.
+    """
+    path=HERE/"original_job_lifecycle_preview.py"
+    return {
+        "candidate_lifecycle_classifier_available":path.is_file(),
+        "first_party_current_job_claim_readback_available":False,
+        "historical_grants_transformed_into_current_authority":False,
+        "release_authorized":False,
+    }
+
+
 def original_finish_evidence_probe() -> dict:
     """Read installed plans and broker-signed historical FINISH evidence only.
 
@@ -430,6 +518,8 @@ def evaluate() -> dict:
     installed = installed_status()
     legacy_plan_impact = legacy_plan_compatibility_probe()
     historical_finishes = original_finish_evidence_probe()
+    historical_grants = original_historical_grants_probe()
+    lifecycle = original_job_lifecycle_contract_probe()
     blockers = []
     if probes["different_git_source_for_same_target"] != "DENIED":
         blockers.append("SOURCE_TARGET_EQUIVALENCE_NOT_ENFORCED")
@@ -442,6 +532,9 @@ def evaluate() -> dict:
     if (not historical_finishes["original305_current_state_verified"] or
         not historical_finishes["original312_current_eligibility_verified"]):
         blockers.append("ORIGINAL305312_CURRENT_JOB_CLAIM_NOT_VERIFIED")
+    if (historical_grants["state"]=="HOLD__GRANT_HISTORY_UNVERIFIED" or
+        historical_grants["distinct_plans_without_matching_grant_evidence"]):
+        blockers.append("LEGACY_HISTORICAL_SIGNED_GRANT_COVERAGE_INCOMPLETE")
     if legacy_plan_impact["state"] == "HOLD__LEGACY_PLAN_AUDIT_UNVERIFIED":
         blockers.append("LEGACY_PLAN_STORE_IMPACT_UNVERIFIED")
     elif legacy_plan_impact["ambiguous_existing_plan_count"]:
@@ -470,6 +563,8 @@ def evaluate() -> dict:
         "original_worker_contract_probes": original_contract,
         "legacy_plan_compatibility_probe": legacy_plan_impact,
         "historical_finish_evidence_probe": historical_finishes,
+        "historical_grants_evidence_probe": historical_grants,
+        "original_job_lifecycle_contract_probe": lifecycle,
         "signed_association_admission_probe": association,
         "verifier_environment_contract_probe": verifier_environment,
         "installed_status": installed,

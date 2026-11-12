@@ -95,3 +95,12 @@ FINISH records against the live Original306 command index and protected
 public key: 10 valid signed attempts, 6 commands without comparable proof.
 Current Job/Claim and fresh Original312 are still unverified; the release
 gate explicitly holds until first-party authenticated readback is completed.
+
+## Historical original305 Grant readback and lifecycle classifier
+
+The first-party Broker public key verifies 13 historical Grants covering
+only 10 unique company-code-release plans; all are expired. Five plans have
+no matching Grant in the inspected inventory, and two have repeated records.
+Original Job/Claim statuses remain unverified. Added read-only Grant audit
+and a source-only, fail-closed original Job/Claim lifecycle preview; neither
+creates current authorization or historical replay.

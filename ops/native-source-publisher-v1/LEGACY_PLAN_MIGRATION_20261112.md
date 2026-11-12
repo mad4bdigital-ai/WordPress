@@ -78,3 +78,15 @@ receipt-reconciliation plan also has no matching FINISH in that directory.
 This does not classify current Job state or Original312 eligibility, and
 does not reissue claims. Details:
 ORIGINAL305312_HISTORICAL_RECEIPT_READBACK_20261112.md.
+
+## Corrected Grant uniqueness and lifecycle (2026-11-12)
+
+An independent historical Broker Grant audit found 13 correctly signed but
+expired Grants covering **10 distinct plans**, not 13 plans. Five of the 15
+plans have no matching Grant file in this root-only inventory. Two plans
+have multiple historical Grants; this is not permission to renew or replay
+the same Job. See ORIGINAL305_GRANT_LIFECYCLE_READBACK_20261112.md.
+
+The pure original_job_lifecycle_preview.py defines fail-closed lifecycle
+classification for future authorized Job/Claim snapshots. It is not a
+running WordPress reader or a substitute for Original305/312 signed evidence.
