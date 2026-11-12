@@ -120,6 +120,10 @@ $noRegistry=$cls::resolve($scope,[
  'state'=>'EXACT_CAPABILITY_DISCOVERED','selected'=>$candidate],$selector,$epoch);
 $test('without_trusted_original_registry_rejected',
  ($noRegistry['state']??'')==='RESOURCE_RESOLUTION_HOLD');
+$test('resource_provider_waiting_is_never_faked_as_verified',
+ ($cls::validate($scope,$candidate,$selector,[
+   'contract'=>$cls::OBSERVATION,'state'=>'RESOURCE_OBSERVATION_HOLD',
+   'reason'=>'TARGET_RESOURCE_SNAPSHOT_EXPIRED'],$epoch)['state']??'')==='RESOURCE_RESOLUTION_HOLD');
 $resourceScope=[
  'company_code'=>$scope['company_code'],'environment'=>$scope['environment'],
  'site_uuid'=>$scope['site_uuid'],'canonical_origin'=>$scope['canonical_origin'],

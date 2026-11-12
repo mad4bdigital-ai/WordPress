@@ -216,6 +216,12 @@ final class MAD4B_Company_Repair_Resource_Resolver_V2{
                     'dry_run'=>true,'allow_write'=>false];
    $observed=call_user_func($support['resource_resolver'],$request);
    if(!is_array($observed))return self::hold('PROVIDER_RESOLVER_RESULT_INVALID',$scope);
+   if(($observed['state']??null)==='RESOURCE_OBSERVATION_HOLD'){
+       $why=$observed['reason']??null;
+       if(!is_string($why)||!preg_match('/^[A-Z_]{5,80}$/D',$why))
+           $why='RESOURCE_PROVIDER_READBACK_NOT_READY';
+       return self::hold($why,$scope);
+   }
    return self::validate($scope,$selected,$selector,$observed,$now>0?$now:time());
   }catch(Throwable $e){
    return self::hold('PROVIDER_RESOURCE_READBACK_FAILED',$scope);

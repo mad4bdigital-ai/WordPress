@@ -9,6 +9,7 @@
 defined('ABSPATH') || exit;
 require_once __DIR__.'/class-mad4b-company-repair-job-contract.php';
 require_once __DIR__.'/class-mad4b-company-repair-resource-resolver.php';
+require_once __DIR__.'/class-mad4b-company-resource-snapshot-store.php';
 require_once __DIR__.'/class-mad4b-company-repair-capability-discovery.php';
 if (!class_exists('MAD4B_Company_Reconcile_Repair_Jobs_V1',false)) {
 final class MAD4B_Company_Reconcile_Repair_Jobs_V1 {
@@ -176,8 +177,35 @@ final class MAD4B_Company_Reconcile_Repair_Jobs_V1 {
                 'target_mutated'=>false,'new_native_job_created'=>false
             ];
         }
+        // Expose three independent states to the operator: local target
+        // evidence, exact signed 312 capability, and absent Original 313.
+        $cap=($out['state']??null)==='EXACT_RESOURCE_OBSERVED_UNSIGNED'
+            ?self::exact_signed_provider_312([
+                'company_code'=>$plan['company_code'],
+                'environment'=>$plan['environment'],
+                'site_uuid'=>$plan['site_uuid'],
+                'canonical_origin'=>$plan['canonical_origin'],
+                'native_operation'=>$plan['native_operation'],
+            ],$plan)
+            :['state'=>'NOT_CHECKED_RESOURCE_OBSERVATION_HOLD',
+                'reason'=>'EXACT_RESOURCE_NOT_OBSERVED','verified'=>false];
+        $out['exact_scoped_312_state']=$cap['state'];
+        $out['exact_scoped_312_verified']=($cap['verified']??false)===true;
+        $out['exact_scoped_312_proof_age_seconds']=($cap['verified']??false)===true
+            ?max(0,time()-$cap['heartbeat_epoch']):null;
+        $out['exact_scoped_312_expires_in_seconds']=($cap['verified']??false)===true
+            ?max(0,300-max(0,time()-$cap['heartbeat_epoch'])):null;
+        $out['imported_target_snapshot_expires_in_seconds']=
+            ($out['state']??null)==='EXACT_RESOURCE_OBSERVED_UNSIGNED'
+              ?max(0,MAD4B_Company_Resource_Snapshot_Store_V1::MAX_AGE-
+                       (int)($out['evidence_age_seconds']??0)):null;
+        $out['original_313_for_this_resource_verified']=false;
+        $out['repair_execution_ready']=false;
+        $out['readback_is_original_313']=false;
+        $out['target_readback_evidence_level']=($out['state']??null)==='EXACT_RESOURCE_OBSERVED_UNSIGNED'
+             ?'TARGET_WPCLI_SNAPSHOT_IMPORTED_UNSIGNED':'NOT_VERIFIED';
         // This preview is an authenticated, *unsigned* source observation.
-        // No before/after data is copied to customer-facing pages.
+        // No raw target metadata is copied to customer-facing pages.
         $out['incident_code']=$incident;
         $out['target_check']=$plan['target_check'];
         $out['source_policy_owned_data_preserved']=true;
@@ -236,16 +264,59 @@ final class MAD4B_Company_Reconcile_Repair_Jobs_V1 {
             if($old!==false){
                 $saved=self::raw($id);if(is_wp_error($saved))return $saved;
                 if(($saved['resource_resolution_sha256']??null)!==
-                    $observation['resource_resolution_sha256']
-                    ||($saved['provider_resolution_sha256']??null)!==
-                    $plan['provider_resolution_sha256'])
-                    return self::deny('previous_resource_observation_or_provider_changed');
+                    $observation['resource_resolution_sha256'])
+                    return self::deny('previous_resource_observation_changed');
+                $profileReconciled=false;
+                if(($saved['provider_resolution_sha256']??null)!==
+                    $plan['provider_resolution_sha256']) {
+                    // Only a still-empty, exact same-provider resource job
+                    // may adopt a newly versioned capability fingerprint.
+                    // A previous claim, baseline, or signed result is NEVER
+                    // modified or silently reused.
+                    $eligible=($saved['state']??null)==='AWAITING_RESOURCE_BASELINE'
+                        &&($saved['baseline']??null)===null
+                        &&($saved['original_job_id']??null)===null
+                        &&($saved['signed_repair_313_sha256']??null)===null
+                        &&($saved['native_operation']??null)===($plan['native_operation']??null)
+                        &&($saved['resource_key']??null)===$observation['resource_key']
+                        &&($saved['ownership_scope']??null)===$observation['ownership_scope']
+                        &&($saved['resolved_company_preservation_sha256']??null)===
+                           $observation['company_preservation_sha256']
+                        &&($saved['resolved_resource_before_sha256']??null)===
+                           $observation['before_sha256']
+                        &&($saved['resolved_resource_manifest_sha256']??null)===
+                           $observation['resource_manifest_sha256'];
+                    if(!$eligible)
+                        return self::deny('provider_capability_drift_started_job_hold');
+                    $next=MAD4B_Company_Repair_Job_Contract_V1::append(
+                        $saved,'RECONCILE_PROVIDER_CAPABILITY',[
+                            'old_provider_sha256'=>$saved['provider_resolution_sha256'],
+                            'new_provider_sha256'=>$plan['provider_resolution_sha256'],
+                            'resource_resolution_sha256'=>$observation['resource_resolution_sha256'],
+                            'no_replay'=>true,'native_job_submitted'=>false
+                        ],time());
+                    if(isset($next['error']))
+                        return self::deny('provider_capability_journal_transition_invalid');
+                    $next['provider_resolution_sha256']=$plan['provider_resolution_sha256'];
+                    $next['immutable_plan_sha256']=hash('sha256',
+                        wp_json_encode([$plan,$observation],
+                            JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
+                    $next['immutable_descriptor_sha256']=
+                        MAD4B_Company_Repair_Job_Contract_V1::descriptor($next);
+                    if(!self::persist($next))
+                        return self::deny('provider_capability_reconciliation_persistence_failed');
+                    $saved=$next;
+                    $profileReconciled=true;
+                }
                 if(!self::child_index_append($scope,$id))
                     return self::deny('existing_resource_index_update_failed');
                 return [
-                    'state'=>'EXACT_RESOURCE_JOB_ALREADY_EXISTS',
+                    'state'=>$profileReconciled
+                        ?'EXACT_RESOURCE_PROVIDER_PROFILE_RECONCILED_NO_REPLAY'
+                        :'EXACT_RESOURCE_JOB_ALREADY_EXISTS',
                     'repair_id'=>$id,'revision'=>$saved['revision'],
                     'job_state'=>$saved['state'],
+                    'provider_profile_reconciled'=>$profileReconciled,
                     'duplicate_original_job_created'=>false
                 ];
             }
@@ -530,6 +601,81 @@ final class MAD4B_Company_Reconcile_Repair_Jobs_V1 {
                 'original_305_job_created'=>false,'can_apply'=>false];
         }finally{self::unlock($lock);}
     }
+    /**
+     * The generic Original transport preflight is not enough. Require a
+     * separately source-backed provider callback that verifies the exact
+     * Original 312 signature for company+environment+operation.
+     */
+    private static function exact_signed_provider_312(array $job,array $plan):array {
+        $blocked=static fn(string $why):array=>[
+            'state'=>'EXACT_COMPANY_PROVIDER_312_HOLD',
+            'reason'=>$why,'verified'=>false,
+            'source_signature_verified'=>false,
+            'original_313_signed'=>false
+        ];
+        $operation=$job['native_operation']??null;
+        $registry='MAD4B_Original_Native_Operation_Providers_V1';
+        $candidates=$plan['registered_provider_candidates']??[];
+        if(!is_string($operation)
+            ||($plan['provider_resolution_state']??null)!=='EXACT_CAPABILITY_DISCOVERED'
+            ||!is_array($candidates)||count($candidates)!==1
+            ||($candidates[0]['operation']??null)!==$operation
+            ||!class_exists($registry,false)
+            ||!is_callable([$registry,'profile']))
+            return $blocked('PROVIDER_OPERATION_EXACT_SELECTION_MISSING');
+        $profile=$registry::profile($operation);
+        if(!is_array($profile)
+            ||($profile['provider']??null)!==($candidates[0]['provider']??null)
+            ||($profile['authority_family']??null)!=='original_305'
+            ||($profile['target_scope']??null)!=='wordpress'
+            ||!is_array($profile['readback']??null))
+            return $blocked('PROVIDER_PROFILE_CHANGED');
+        try {
+            $readback=call_user_func($profile['readback']);
+            $support=is_array($readback)?($readback['repair_support']??null):null;
+            $callback=is_array($support)?($support['scoped_preflight']??null):null;
+            if(!is_array($support)
+               ||($readback['contract']??null)!==($profile['evidence_contract']??null)
+               ||($support['operation']??null)!==$operation
+               ||($support['provider']??null)!==$profile['provider']
+               ||($support['scoped_preflight_contract']??null)!==
+                   'mad4b.company-repair.exact-provider-312.v1'
+               ||($support['scoped_preflight_read_only']??null)!==true
+               ||!is_array($callback)
+               ||($candidates[0]['scoped_preflight_id']??null)!==
+                   implode('::',$callback)
+               ||!MAD4B_Company_Repair_Resource_Resolver_V2::trusted_provider_resolver(
+                  $profile,$callback))
+                return $blocked('EXACT_SOURCE_PROVIDER_SIGNED_312_CALLBACK_UNTRUSTED');
+            $result=call_user_func($callback,$job['company_code'],
+                $job['environment'],$operation);
+        }catch(Throwable $e) {
+            return $blocked('EXACT_SOURCE_PROVIDER_312_READBACK_EXCEPTION');
+        }
+        $now=time();
+        $valid=is_array($result)
+           &&($result['contract']??null)==='mad4b.company-repair.exact-provider-312.v1'
+           &&($result['state']??null)==='EXACT_SOURCE_SIGNED_ORIGINAL_312_VERIFIED'
+           &&($result['original_312_signed']??false)===true
+           &&($result['source_signature_verified']??false)===true
+           &&($result['original_313_signed']??true)===false
+           &&($result['native_job_submitted']??true)===false
+           &&($result['company_code']??null)===$job['company_code']
+           &&($result['environment']??null)===$job['environment']
+           &&($result['site_uuid']??null)===$job['site_uuid']
+           &&($result['canonical_origin']??null)===$job['canonical_origin']
+           &&($result['operation']??null)===$operation
+           &&($result['provider']??null)===$profile['provider']
+           &&is_int($result['heartbeat_epoch']??null)
+           &&$result['heartbeat_epoch']<=$now+10
+           &&$result['heartbeat_epoch']>=$now-300;
+        return $valid?[
+            'state'=>'EXACT_SOURCE_SIGNED_ORIGINAL_312_VERIFIED',
+            'reason'=>null,'verified'=>true,'source_signature_verified'=>true,
+            'original_313_signed'=>false,
+            'heartbeat_epoch'=>$result['heartbeat_epoch']
+        ]:$blocked((string)($result['reason']??'EXACT_SIGNED_312_NOT_CURRENT'));
+    }
     public static function preflight(string $id):array|WP_Error {
         if(!self::read_owner())return self::deny('admin_only',403);
         $job=self::raw($id);if(is_wp_error($job))return $job;
@@ -577,7 +723,14 @@ final class MAD4B_Company_Reconcile_Repair_Jobs_V1 {
                 $status=['state'=>'NATIVE_PREFLIGHT_UNSTRUCTURED',
                     'reason'=>'provider_non_array_response'];
         }
-        $ready=$resourceBound&&is_array($status)&&($status['state']??null)==='AUTHORITY_AND_EXECUTOR_READY_FOR_EXACT_JOB'
+        $scoped=$resourceBound&&$matched
+            ?self::exact_signed_provider_312($job,$current)
+            :['state'=>'EXACT_COMPANY_PROVIDER_312_NOT_QUERIED',
+              'reason'=>'EXACT_RESOURCE_OR_CURRENT_PLAN_NOT_VERIFIED',
+              'verified'=>false,'source_signature_verified'=>false,
+              'original_313_signed'=>false];
+        $ready=$resourceBound&&($scoped['verified']??false)===true
+            &&is_array($status)&&($status['state']??null)==='AUTHORITY_AND_EXECUTOR_READY_FOR_EXACT_JOB'
             &&($status['scope_preflight_passed']??false)===true
             &&($status['target_wordpress_actor_capability_verified']??false)===true
             &&($status['operation_provider_ready']??false)===true
@@ -590,9 +743,20 @@ final class MAD4B_Company_Reconcile_Repair_Jobs_V1 {
             'native_operation'=>$op,
             'provider_resolution_state'=>$current['provider_resolution_state'],
             'provider_candidates'=>$current['registered_provider_candidates'],
+            'specialized_provider_312_state'=>$scoped['state'],
+            'specialized_provider_312_reason'=>$scoped['reason']??null,
+            'specialized_provider_signed_312_verified'=>($scoped['verified']??false)===true,
+            'specialized_provider_312_expires_in_seconds'=>($scoped['verified']??false)===true
+                ?max(0,300-max(0,time()-$scoped['heartbeat_epoch'])):null,
+            'general_native_transport_state'=>$status['state']??'NOT_AVAILABLE',
             'original_provider_preflight_ready'=>$ready,
+            'native_capability_ready_for_external_original_job'=>$ready,
+            'repair_execution_ready'=>false,
+            'independent_original_313_for_this_job_verified'=>false,
             'original_provider_state'=>$resourceBound
-                ?($status['state']??'NOT_AVAILABLE')
+                ?(($scoped['verified']??false)===true
+                   ?($status['state']??'NOT_AVAILABLE')
+                   :'EXACT_SOURCE_PROVIDER_312_HOLD')
                 :(str_starts_with((string)($job['resource_key']??''),'incident:')
                     ?'EXACT_RESOURCE_RESOLVER_REQUIRED'
                     :'EXACT_RESOURCE_TARGET_DRIFT_HOLD'),
@@ -600,8 +764,10 @@ final class MAD4B_Company_Reconcile_Repair_Jobs_V1 {
                 ?(str_starts_with((string)($job['resource_key']??''),'incident:')
                     ?'EXACT_RESOURCE_RESOLVER_AND_RESOURCE_MANIFEST_REQUIRED'
                     :'EXACT_RESOURCE_REOBSERVATION_CHANGED_OR_FAILED')
-                :($status['reason']??($op===null
-                ?$current['provider_resolution_state']:'SIGNATURE_OR_TRANSPORT_UNVERIFIED')),
+                :(($scoped['verified']??false)===true
+                  ?($status['reason']??($op===null
+                    ?$current['provider_resolution_state']:'SIGNATURE_OR_TRANSPORT_UNVERIFIED'))
+                  :($scoped['reason']??'SIGNED_ORIGINAL_312_EXACT_SCOPE_NOT_VERIFIED')),
             'baseline_recorded'=>is_array($job['baseline']??null),
             'resource_binding_state'=>$resourceBound
                 ?'EXACT_SOURCE_PROVIDER_RESOURCE_EVIDENCE_PRESENT'
@@ -1013,11 +1179,46 @@ final class MAD4B_Company_Reconcile_Repair_Jobs_V1 {
             }
         ]);
     }
+    /** Import a bounded, digest-only, unsigned Wayfatours WP-CLI observation. */
+    public static function import_resource_snapshot(
+        string $company,string $environment,string $incident,
+        string $payloadBase64,string $expectedPlanHash):array|WP_Error {
+        if(!self::cli_owner())return self::deny('central_cli_owner_required',403);
+        if(strlen($payloadBase64)>12000
+            ||!preg_match('/^[A-Za-z0-9+\/=]+$/D',$payloadBase64))
+            return self::deny('resource_snapshot_payload_invalid',422);
+        $decoded=base64_decode($payloadBase64,true);
+        if(!is_string($decoded)||strlen($decoded)>8192||strlen($decoded)<200)
+            return self::deny('resource_snapshot_size_invalid',422);
+        try{$source=json_decode($decoded,true,32,JSON_THROW_ON_ERROR);}
+        catch(JsonException $error){return self::deny('resource_snapshot_json_invalid',422);}
+        if(!is_array($source))return self::deny('resource_snapshot_schema_invalid',422);
+        $plan=self::plan($company,$environment,$incident);
+        if(is_wp_error($plan))return $plan;
+        if(!MAD4B_Company_Repair_Job_Contract_V1::sha($expectedPlanHash)
+            ||!hash_equals($plan['source_plan_sha256'],$expectedPlanHash))
+            return self::deny('resource_source_plan_hash_changed');
+        $candidates=(array)($plan['registered_provider_candidates']??[]);
+        $candidate=count($candidates)===1?$candidates[0]:null;
+        $ownership=$plan['ownership_scope']??null;
+        if(($plan['provider_resolution_state']??null)!=='EXACT_CAPABILITY_DISCOVERED'
+            ||!is_array($candidate)
+            ||($plan['native_operation']??null)!==($candidate['operation']??null)
+            ||($candidate['resource_resolver_contract']??null)!==
+                  MAD4B_Company_Repair_Resource_Resolver_V2::CONTRACT
+            ||!in_array($source['resource_type']??null,
+                (array)($candidate['resource_types']??[]),true)
+            ||($ownership!=='mixed'&&($source['ownership_scope']??null)!==$ownership)
+            ||in_array($ownership,['never_clone','inspect_only'],true))
+            return self::deny('resource_provider_or_ownership_not_eligible');
+        return MAD4B_Company_Resource_Snapshot_Store_V1::ingest($plan,$source);
+    }
     public static function cli(array $args,array $assoc):void {
         if(!self::cli_owner())WP_CLI::error('CENTRAL_REPAIR_CLI_OWNER_REQUIRED');
         $command=$args[0]??'';
         $allowed=['company','environment','incident','plan-sha','repair-id',
-            'baseline-path','original-job','command-sha','resource-type','resource-id'];
+            'baseline-path','original-job','command-sha','resource-type','resource-id',
+            'snapshot-base64'];
         if(count($args)!==1||array_diff(array_keys($assoc),$allowed))
             WP_CLI::error('UNSUPPORTED_REPAIR_JOB_ARGUMENTS');
         $company=(string)($assoc['company']??'');
@@ -1031,6 +1232,9 @@ final class MAD4B_Company_Reconcile_Repair_Jobs_V1 {
             'resource-preview'=>self::resource_preview($company,$env,$incident,
                 (string)($assoc['resource-type']??''),
                 (string)($assoc['resource-id']??'')),
+            'snapshot-ingest'=>self::import_resource_snapshot($company,$env,
+                $incident,(string)($assoc['snapshot-base64']??''),
+                (string)($assoc['plan-sha']??'')),
             'create-resource'=>self::create_resource($company,$env,$incident,
                 (string)($assoc['resource-type']??''),
                 (string)($assoc['resource-id']??''),
@@ -1132,11 +1336,19 @@ final class MAD4B_Company_Reconcile_Repair_Jobs_V1 {
             .'headers:{"X-WP-Nonce":c.nonce}});'
             .'if(!res.ok)throw new Error("not_admitted");const d=await res.json();'
             .'status.textContent="Resource: "+String(d.state)'
-            .'+" · Signed Original313: NO";'
+            .'+" · Exact signed Original312: "+(d.exact_scoped_312_verified?"YES":"NO")'
+            .'+" · Repair execution ready: NO · Signed Original313: NO";'
             .'const pre=document.createElement("pre");pre.textContent=JSON.stringify({'
             .'state:d.state,reason:d.reason||null,resource_key:d.resource_key||null,'
             .'before_sha256:d.before_sha256||null,resource_manifest_sha256:d.resource_manifest_sha256||null,'
             .'resource_resolution_sha256:d.resource_resolution_sha256||null,'
+            .'target_readback_evidence_level:d.target_readback_evidence_level||"NOT_VERIFIED",'
+            .'exact_scoped_312_state:d.exact_scoped_312_state||"NOT_CHECKED",'
+            .'exact_scoped_312_verified:d.exact_scoped_312_verified===true,'
+            .'exact_scoped_312_expires_in_seconds:d.exact_scoped_312_expires_in_seconds,'
+            .'imported_target_snapshot_expires_in_seconds:d.imported_target_snapshot_expires_in_seconds,'
+            .'original_313_for_this_resource_verified:false,'
+            .'repair_execution_ready:false,'
             .'new_native_job_created:false},null,2);output.appendChild(pre);'
             .'}catch(err){status.textContent="Exact resource unavailable. No write permitted.";}'
             .'finally{rb.disabled=false;}});'

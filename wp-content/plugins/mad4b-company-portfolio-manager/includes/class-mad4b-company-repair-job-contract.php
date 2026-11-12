@@ -19,6 +19,12 @@ final class MAD4B_Company_Repair_Job_Contract_V1 {
         'MANUAL_RECOVERY_REQUIRED'
     ];
     public const TRANSITIONS=[
+        // A capability manifest may be updated without changing the target
+        // resource. Only an untouched, unexecuted journal may reconcile it;
+        // the exact old/new fingerprints stay in the append-only log.
+        'RECONCILE_PROVIDER_CAPABILITY'=>[
+            'AWAITING_RESOURCE_BASELINE'=>'AWAITING_RESOURCE_BASELINE'
+        ],
         'BASELINE_COLLECTED'=>[
             'AWAITING_RESOURCE_BASELINE'=>'BASELINE_RECORDED_UNVERIFIED'
         ],

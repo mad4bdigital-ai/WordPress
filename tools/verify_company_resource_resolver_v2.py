@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Verifies source parity, exact company scope and absence of signed-release claims."""
-import argparse, hashlib, json, os
+import argparse, hashlib, json, os, subprocess
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 LIVE=Path('/opt/hostinger-migrations/hosting-3/etg-commerce-staging/site-copy')
@@ -14,7 +14,20 @@ EXPECTED=[
 POLICY='ops/deployment-overlays/center/company-start-reconcile/policy.json'
 POLICY_SHA='7108762fa323f49b161c31b7fb5c5b0177a89eccf2581be5a7b175b167006d37'
 class Blocked(ValueError):pass
-def verify(data,with_live=False):
+HISTORICAL_V2_COMMIT='a7ea8620e1'
+def verify(data,with_live=False,historical_revision=None):
+ if historical_revision is not None:
+  if with_live or historical_revision!=HISTORICAL_V2_COMMIT:
+   raise Blocked('historical_commit_or_live_mode_invalid')
+ def source_bytes(relative_path):
+  if historical_revision is None:
+   p=ROOT/relative_path
+   if not p.is_file() or p.is_symlink():raise Blocked('source_missing_or_symlink')
+   return p.read_bytes()
+  p=subprocess.run(['git','show',historical_revision+':'+relative_path],
+     cwd=ROOT,capture_output=True,timeout=14)
+  if p.returncode:raise Blocked('historical_source_not_in_git')
+  return p.stdout
  if data.get('contract')!='mad4b.company-repair.resource-resolver-v2.source-provenance.v1':
   raise Blocked('manifest_contract')
  if data.get('central_source')!='tours.dev.mad4b.com' or data.get('target_observed')!='wayfatours.com':
@@ -44,7 +57,7 @@ def verify(data,with_live=False):
   'live_resource_endpoint_admin_http':200,'live_resource_endpoint_guest_http':401
  }
  if data.get('tests')!=expected_tests:raise Blocked('test_count_changed')
- policy=(ROOT/POLICY).read_bytes()
+ policy=source_bytes(POLICY)
  if hashlib.sha256(policy).hexdigest()!=POLICY_SHA:
   raise Blocked('source_policy_modified')
  doc=json.loads(policy)
@@ -60,10 +73,12 @@ def verify(data,with_live=False):
    raise Blocked('unexpected_install_path_or_owner')
   if not isinstance(entry['bytes'],int) or entry['bytes']<1000 or entry['bytes']>200000:
    raise Blocked('file_size_invalid')
-  files=[ROOT/entry['source']]+([LIVE/entry['installed']] if with_live else [])
-  for file in files:
+  parts=[source_bytes(entry['source'])]
+  if with_live:
+   file=LIVE/entry['installed']
    if not file.is_file() or file.is_symlink():raise Blocked('file_missing_or_symlink')
-   data_bytes=file.read_bytes()
+   parts.append(file.read_bytes())
+  for data_bytes in parts:
    if len(data_bytes)!=entry['bytes'] or hashlib.sha256(data_bytes).hexdigest()!=entry['sha256']:
     raise Blocked('file_digest_changed')
   if with_live:
@@ -77,13 +92,17 @@ def verify(data,with_live=False):
   'read_only_wayfa_preview':True,
   'resource_child_jobs_executed':0,
   'original_313_signed':False,
-  'live_source_parity':with_live
+  'live_source_parity':with_live,
+  'historical_commit_verified':historical_revision
  }
 if __name__=='__main__':
  parser=argparse.ArgumentParser()
  parser.add_argument('--live',action='store_true')
+ parser.add_argument('--historical-v2',action='store_true',
+   help='Validate the unchanged V2 manifest against its original Git commit instead of current source')
  args=parser.parse_args()
- try:print(json.dumps(verify(json.loads(MANIFEST.read_text()),args.live),indent=2))
+ try:print(json.dumps(verify(json.loads(MANIFEST.read_text()),args.live,
+    HISTORICAL_V2_COMMIT if args.historical_v2 else None),indent=2))
  except (Blocked,OSError,ValueError) as exc:
   print(json.dumps({'state':'HOLD','reason':str(exc),'release_certified':False}))
   raise SystemExit(2)

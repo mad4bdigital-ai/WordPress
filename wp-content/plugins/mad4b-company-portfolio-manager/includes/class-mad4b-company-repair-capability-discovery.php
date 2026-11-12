@@ -75,6 +75,9 @@ final class MAD4B_Company_Repair_Capability_Discovery_V1 {
                 'resource_types'=>$support['resource_types'],
                 'resource_resolver_id'=>implode('::',$support['resource_resolver']),
                 'resource_resolution_read_only'=>true,
+                'scoped_preflight_contract'=>$support['scoped_preflight_contract']??null,
+                'scoped_preflight_id'=>is_array($support['scoped_preflight']??null)
+                    ?implode('::',$support['scoped_preflight']):null,
                 'requires_original_305'=>true,'requires_fresh_signed_312'=>true,
                 'requires_exact_313'=>true,'writes_allowed_by_discovery'=>false,
             ];

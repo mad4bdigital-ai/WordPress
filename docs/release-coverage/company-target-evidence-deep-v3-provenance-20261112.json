@@ -1,0 +1,103 @@
+{
+  "as_of": "2026-11-12",
+  "center_source_policy_changed": false,
+  "central_queue_incident_count": 19,
+  "central_queue_integrity_holds": 0,
+  "central_queue_resource_children": 1,
+  "central_site": "tours.dev.mad4b.com",
+  "central_target_snapshot_imported_unsigned": true,
+  "contract": "mad4b.company-reconcile.exact-target-evidence.v3.source-provenance",
+  "current_final_regression_wpcli_confirmed": false,
+  "current_resource_child_job_id": "22e60729e0e14bd6754139197b69d451f7c08dae",
+  "current_resource_child_job_state": "AWAITING_RESOURCE_BASELINE",
+  "exact_312_permanently_available": false,
+  "exact_312_was_verified_in_live_readback": true,
+  "files": [
+    {
+      "bytes": 10812,
+      "installed_targets": [
+        "central"
+      ],
+      "sha256": "8e9211fc63e0cd9a9ef160af0ba3d701aae38cd7f1b2dd8dd125b4b937f42969",
+      "source": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-native-scoped-write-providers.php"
+    },
+    {
+      "bytes": 8348,
+      "installed_targets": [
+        "central"
+      ],
+      "sha256": "e67807b9456346e146dbd54250b1cf6a289b2dd15b4b7dbf91e2c6e102bdbcc2",
+      "source": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-repair-capability-discovery.php"
+    },
+    {
+      "bytes": 13857,
+      "installed_targets": [
+        "central"
+      ],
+      "sha256": "355573105b633af5a07eabc90426277a840db12ba3c081558909fa8edbee45c9",
+      "source": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-repair-job-contract.php"
+    },
+    {
+      "bytes": 84362,
+      "installed_targets": [
+        "central"
+      ],
+      "sha256": "67fba36669923fb751d704d61b97a1abcfa0e9691d69756af605bedec19fc657",
+      "source": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-repair-jobs.php"
+    },
+    {
+      "bytes": 12056,
+      "installed_targets": [
+        "central"
+      ],
+      "sha256": "0c2d5cab563332d0e08eafcccbb7ccc520622884690eaf54178ebf481ed8e634",
+      "source": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-repair-resource-resolver.php"
+    },
+    {
+      "bytes": 10414,
+      "installed_targets": [
+        "central"
+      ],
+      "sha256": "4f44a4fdee9fa9537ec3e01d1f333ca013c5eae02b09f9eb829f9fd6a98d354e",
+      "source": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-resource-snapshot-store.php"
+    },
+    {
+      "bytes": 13091,
+      "installed_targets": [
+        "central",
+        "wayfatours"
+      ],
+      "sha256": "69185b5696bd675ca5809246145bf8871a9e42c52fa22afc2ec44a32e4b8b245",
+      "source": "wp-content/mu-plugins/mad4b-company-exact-resource-evidence-v1.php"
+    }
+  ],
+  "full_clone_executed": false,
+  "last_confirmed_resource_child_job_revision": 1,
+  "native_305_executed_for_resource": false,
+  "native_original_313_release_certified": false,
+  "only_tenant_observed": "wayfatours.com",
+  "original_313_verified_for_resource": false,
+  "original_318_signed_release": false,
+  "other_companies_modified": false,
+  "resource_index_limit_per_incident": 64,
+  "snapshot_import_is_operator_managed": true,
+  "snapshot_origin_independently_signed": false,
+  "staging_wpcli_busy_at_final_regression_attempt": true,
+  "target_resource_readback_state": "EXACT_RESOURCE_OBSERVED_UNSIGNED",
+  "target_site_uuid": "a3a7cc36-db7e-4a14-8456-b41857def05c",
+  "tests": {
+    "admin_ui_js_parsed": true,
+    "depth_policy": 35,
+    "dynamic_journal": 67,
+    "legacy_v2_historical_provenance": 8,
+    "original_binding_structural": 17,
+    "queue": 15,
+    "resolver": 52,
+    "resource_lifecycle": 28,
+    "signed_312_structural": 19,
+    "snapshot_store": 29,
+    "wayfa_source_reader": 16
+  },
+  "wayfatours_content_or_pricing_mutated": false,
+  "wayfatours_site_root_muplugin_added": true
+}
