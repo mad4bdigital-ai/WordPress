@@ -27,3 +27,17 @@
 6. Unified Date Apply remains a browser-tested but uninstalled JavaScript candidate on Tours.dev.
 
 Never self-issue a receipt, use test keys, or directly patch the live site to bypass a denied publisher.
+
+## Additional fail-closed release audit
+
+The separate audit_release_readiness.py source-only checker discovers all
+candidate operations from the generated catalog. The executable returns
+nonzero HOLD until source/target equivalence and derived change-count
+semantics, first-party provider registration, enabled root policy, and
+installed Central review are independently satisfied. It never creates
+authority, calls an enrolled original worker, or issues a signed receipt.
+See RELEASE_READINESS_AUDIT_20261112.md.
+
+Additional audit tests bring focused Python coverage to 26/26. Full
+repository suite has 358 tests, with the same 22 failures present on the
+parent baseline and no newly failing test labels.
