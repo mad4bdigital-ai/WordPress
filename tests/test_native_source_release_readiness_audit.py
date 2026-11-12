@@ -96,6 +96,20 @@ class NativeSourceAudit(unittest.TestCase):
             )
 
 
+    def test_source_association_does_not_false_claim_worker_enrollment(self):
+        observation = audit.signed_association_admission_probe()
+        self.assertTrue(
+            observation["source_only_signed_association_contract_present"]
+        )
+        self.assertFalse(
+            observation["installed_original306_enforces_exclusive_association"]
+        )
+        self.assertFalse(observation["original306_job_issued"])
+        self.assertIn(
+            "ORIGINAL306_SIGNED_ASSOCIATION_HOOK_NOT_INSTALLED",
+            audit.evaluate()["blockers"],
+        )
+
     def test_original_313_environment_evidence_must_be_compatible(self):
         found=audit.verifier_environment_contract_probe()
         self.assertTrue(found["original313_requires_env_bound_mutation_flag"])

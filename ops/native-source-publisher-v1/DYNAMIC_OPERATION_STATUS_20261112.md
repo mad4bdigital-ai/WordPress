@@ -49,3 +49,13 @@ operation/plan ambiguity across providers sharing a plan contract, a
 Production evidence environment mismatch and unregistered authority.
 All checks use ephemeral fixtures or installed read-only validators.
 No authority was created. See RELEASE_READINESS_AUDIT_20261112.md.
+
+## Signed association source contract
+
+A separate, verifiable Plan-to-Operation Association now exists in
+operation_plan_association.py, with ephemeral-key tests and successful
+compatibility against the installed read-only Original306/313 plan validator.
+It does NOT mutate the core plan, issue authority or integrate with the
+currently installed worker. The release gate requires a trusted first-party
+worker association hook before registering any new operation. See
+PLAN_OPERATION_ASSOCIATION_CONTRACT_20261112.md.

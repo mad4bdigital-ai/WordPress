@@ -155,6 +155,45 @@ def verified_registry_candidates(candidates: dict[str, dict]) -> set[str]:
         return set()
 
 
+def signed_association_admission_probe() -> dict:
+    """Check installed Original306 has the new verified association contract.
+
+    Source implementation may be test-correct while first-party worker lacks
+    the hook. Do not call first-party Job execution or create a real signer.
+    """
+    import ast
+    installed_worker = INSTALLED_REGISTRY.parent / "worker_adapter.py"
+    candidate_module = HERE / "operation_plan_association.py"
+    candidate_exists = candidate_module.is_file()
+    worker_hook_present = False
+    if installed_worker.is_file() and candidate_exists:
+        tree = ast.parse(installed_worker.read_text())
+        called = []
+        imported_modules = set()
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.Import, ast.ImportFrom)):
+                if isinstance(node, ast.Import):
+                    imported_modules.update(alias.name for alias in node.names)
+                else:
+                    imported_modules.add(node.module)
+            if isinstance(node, ast.Call):
+                if isinstance(node.func, ast.Name):
+                    called.append(node.func.id)
+                elif isinstance(node.func, ast.Attribute):
+                    called.append(node.func.attr)
+        worker_hook_present = (
+            "operation_plan_association" in imported_modules and
+            "exclusive_operation" in called
+        )
+    return {
+        "source_only_signed_association_contract_present": candidate_exists,
+        "installed_original306_enforces_exclusive_association": worker_hook_present,
+        "installed_worker_updated": False,
+        "original306_job_issued": False,
+        "independent_signing_authority_enrolled": False,
+    }
+
+
 def verifier_environment_contract_probe() -> dict:
     """Observe a verifier/schema mismatch without executing signed 313.
 
@@ -241,6 +280,7 @@ def installed_status() -> dict:
 def evaluate() -> dict:
     probes = candidate_probes()
     original_contract = original_worker_contract_probes()
+    association = signed_association_admission_probe()
     verifier_environment = verifier_environment_contract_probe()
     installed = installed_status()
     blockers = []
@@ -252,6 +292,8 @@ def evaluate() -> dict:
         blockers.append("ORIGINAL313_PLAN_ENVELOPE_NOT_COMPATIBLE")
     if not original_contract["operation_exclusive"]:
         blockers.append("ORIGINAL306_PLAN_OPERATION_NOT_UNIQUELY_BOUND")
+    if not association["installed_original306_enforces_exclusive_association"]:
+        blockers.append("ORIGINAL306_SIGNED_ASSOCIATION_HOOK_NOT_INSTALLED")
     if not verifier_environment["production_proof_compatible"]:
         blockers.append("ORIGINAL313_PRODUCTION_EVIDENCE_ENVIRONMENT_MISMATCH")
     if not installed["all_candidate_operations_present_in_index"]:
@@ -270,6 +312,7 @@ def evaluate() -> dict:
         "blockers": blockers,
         "ephemeral_security_probes": probes,
         "original_worker_contract_probes": original_contract,
+        "signed_association_admission_probe": association,
         "verifier_environment_contract_probe": verifier_environment,
         "installed_status": installed,
         "first_party_signed_original313_receipt_verified": False,

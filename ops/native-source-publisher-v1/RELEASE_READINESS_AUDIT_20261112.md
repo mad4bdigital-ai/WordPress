@@ -83,3 +83,14 @@ The extended audit also differentiates an operation merely present in the
 installed index from one whose handler, verifier, dependencies, manifest and
 evidence schema SHAs pass the first-party Registry readback. Index presence
 alone does not certify a release.
+
+## Signed plan-association contract (source candidate)
+
+Added operation_plan_association.py and the dedicated offline tests. The new
+verifier accepts a first-party signed sidecar tied to one plan, one operation,
+one manifest and the site's scope while preserving the original CAS plan bytes.
+It returns verification facts only, not authority or a 313 receipt. The
+installed Original306 worker does NOT import or invoke this verifier; the
+release audit therefore adds ORIGINAL306_SIGNED_ASSOCIATION_HOOK_NOT_INSTALLED
+as a hard HOLD reason. Full interface details and activation prerequisites are
+in PLAN_OPERATION_ASSOCIATION_CONTRACT_20261112.md.
