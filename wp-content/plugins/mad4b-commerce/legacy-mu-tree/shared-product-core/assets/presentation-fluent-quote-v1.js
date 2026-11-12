@@ -124,7 +124,20 @@
   const d=new Date(value+'T00:00:00Z');
   return !Number.isNaN(d.getTime())&&d.toISOString().slice(0,10)===value?value:null;
  };
+ // The pricing endpoint accepts a single departure date, never an
+ // unconfirmed flexible search window. An incomplete or pending date must
+ // not be passed to Quote, Last Minute or advance-routing projections.
+ function appliedDateReadyForQuote(form){
+  const date=window.MAD4BUnifiedDateV1;
+  if(!date||date.context!=='single')return true;
+  if(form.dataset.mad4bDateDraftInvalid==='1'||
+     form.dataset.mad4bDatePending==='1')return false;
+  const intent=date.request;
+  return intent?.status==='valid'&&intent.mode==='fixed'&&
+    Boolean(intent.from)&&iso(form.querySelector('[name="datetime"]')?.value)===intent.from;
+ }
  function intentPayload(form){
+  if(!appliedDateReadyForQuote(form))return null;
   const n=name=>form.querySelector('[name="'+name+'"]')?.value;
   const adults=asInt(n('no_of_adults')),children=asInt(n('no_of_children')),infants=asInt(n('no_of_infants'));
   const snap=broker.getSnapshot(),rate=asRateId(snap.selectedRateId);
@@ -447,7 +460,8 @@
   // These are untrusted selections, not amounts. Server recomputes, validates
   // date/rate/occupancy and seals any payable reference independently.
   const forPayment=asRateId(snapshot.selectedRateId);
-  state.paymentRate.value=forPayment&&pricedTiers(forPayment).length?String(forPayment):'';
+  state.paymentRate.value=appliedDateReadyForQuote(form)&&
+    forPayment&&pricedTiers(forPayment).length?String(forPayment):'';
   state.paymentOccupancy.value=state.paymentRate.value?state.occupancy.value:'';
   const selectedIds=new Set([...snapshot.extras].map(String));
   // Only optional activities picked in the native Elementor/JetEngine section.
@@ -794,7 +808,7 @@
    const snap=broker.getSnapshot();
    const rate=asRateId(snap.selectedRateId);
    const available=pricedTiers(rate);
-   paymentRate.value=rate&&available.length?String(rate):'';
+   paymentRate.value=appliedDateReadyForQuote(form)&&rate&&available.length?String(rate):'';
    paymentOccupancy.value=paymentRate.value&&available.includes(occupancy.value)?occupancy.value:'';
    const payload=intentPayload(form);
    intent.value=payload?JSON.stringify(payload):'';
