@@ -1,6 +1,6 @@
 {
   "name": "mad4b-shared-product-core",
-  "version": "0.1.0-dev.20261028",
+  "version": "0.1.0-dev.20261108",
   "status": "source-only-candidate",
   "source_environment": "ETG WooCommerce Local Lab",
   "php_test_matrix": [
@@ -8,7 +8,7 @@
     "8.5"
   ],
   "source_file_count": 134,
-  "source_manifest_sha256": "aec4cb878aaf891cd4ed830e02a4a4bbced09ff7517fbce706b88c2f3537399c",
+  "source_manifest_sha256": "c4472aa43510e1fe113be7945a2b8846aae78188c1e90db30027ae7da6ecd0d7",
   "activation": "local Lab only; production activation not authorized",
   "stage": "requires per-tenant parity, integration tests, editor UI acceptance and explicit rollout approval",
   "deploy_automatically": false,
@@ -21,5 +21,17 @@
     "path": "shared-product-core/pricing/booking-cart-v2.php",
     "sha256": "cac0505d58b69c890f08a58dc580f7aefe1ea7b9fc3491fdf2c61e3b3737a744",
     "reason": "cart_quote_preview_uses_raw_validated_shape"
+  },
+  "source_reconciliation": {
+    "as_of": "2026-11-08",
+    "origin": "tours.dev.mad4b.com staging, parity with Wayfatours production",
+    "scope": [
+      "shared-product-core/adapters/tour-rate-eligible-query.php",
+      "shared-product-core/adapters/tour-rate-facets-from-query.php"
+    ],
+    "type": "source-sync-of-tested-live-adapters",
+    "wordpress_database_changed": false,
+    "automatic_deploy_allowed": false,
+    "test": "tests/presentation-runtime-contract.php"
   }
 }

@@ -1,6 +1,6 @@
 # MAD4B Shared Product Core — canonical source candidate
 
-**Version:** `0.1.0-dev.20261028` · **Lifecycle:** source-only / Draft PR · **Origin:** ETG WooCommerce Local Lab on VPS. This is the first version-controlled home for the 134 previously local-only active files. The `*.before-*` recovery files and any WordPress database, customers, orders, media, vendor plugins, runtime secrets, `.env`, and vault contents are **not** included.
+**Version:** `0.1.0-dev.20261108` · **Lifecycle:** source-only / Draft PR · **Origin:** ETG WooCommerce Local Lab on VPS. This is the first version-controlled home for the 134 previously local-only active files. The `*.before-*` recovery files and any WordPress database, customers, orders, media, vendor plugins, runtime secrets, `.env`, and vault contents are **not** included.
 
 ## Layout
 
@@ -51,3 +51,10 @@ The original `adapters/tour-program-source-contract-v1.php` was recovered verbat
 ## Post-import booking cart bugfix
 
 The first live WordPress test exposed a normalized-cart-to-raw-quote mismatch: `shared_product_booking_v2_cart_draft()` succeeded but `shared_product_booking_v2_cart_quote_preview()` returned `booking_v2_unexpected_keys` for a valid configuration. The cart preview now passes the original already-validated request to the server-side quote validator while retaining normalized identity in the draft. `tests/booking-cart-regression.php` proves the separation. This is a reviewed patch to the imported original and is recorded with its new SHA-256 in `release-manifest.json`. No Woo Cart, Order, Payment, or inventory writes are enabled by this source change.
+
+
+## 2026-11-08 — Two-file Tours.dev live source reconciliation
+
+The eligible Rate query and Rate facets adapters have been updated using the reviewed live Tours.dev Staging bytes (identical to Wayfatours Production). The source package now records the Presentation-only boot, existing-runtime function collision guard, cruise Rate eligibility, verified tour query context and shared Rate facet behavior that the 2026-10-28 Lab import did not contain. Only these two adapter files were changed under mu-plugins; manifest hashes and a new standalone PHP mode regression test were updated accordingly.
+
+The October historical frozen-import claims above describe the original import only. This is a NEW source-only candidate version. It DOES NOT authorize automatic tenant publication or database writes. For offline proof, run php tests/presentation-runtime-contract.php.
