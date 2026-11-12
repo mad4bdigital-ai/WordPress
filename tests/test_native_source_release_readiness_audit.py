@@ -143,6 +143,16 @@ class NativeSourceAudit(unittest.TestCase):
         self.assertFalse(found["original_independent_signer_modified"])
         self.assertFalse(found["signed_proof_created"])
 
+    def test_historical_finish_is_not_fresh_signed_original_312(self):
+        historical=audit.original_finish_evidence_probe()
+        self.assertFalse(historical["original305_current_state_verified"])
+        self.assertFalse(historical["original312_current_eligibility_verified"])
+        self.assertFalse(historical["live_site_mutated"])
+        self.assertIn(
+            "ORIGINAL305312_CURRENT_JOB_CLAIM_NOT_VERIFIED",
+            audit.evaluate()["blockers"],
+        )
+
     def test_legacy_plan_inventory_blocks_unsafe_shared_contract_rollout(self):
         report=audit.legacy_plan_compatibility_probe()
         self.assertEqual(report["plan_store_modified"],False)

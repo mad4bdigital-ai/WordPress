@@ -67,3 +67,14 @@ That requires a separate authorized readback of actual Job state and claims.
 
 The candidate discovery is fully dynamic, not a fixed list of operation
 names. The first-party policy and trusted Registry define its scope.
+
+## Historical Original305/312 evidence qualification
+
+A separate read-only cryptographic audit matched the installed Original306
+commands against existing Broker-signed historical Host FINISH records:
+10 of the 15 company.code.release plans have valid signed FINISH attempts,
+5 of those 15 do not have one in the selected receipt directory. The one
+receipt-reconciliation plan also has no matching FINISH in that directory.
+This does not classify current Job state or Original312 eligibility, and
+does not reissue claims. Details:
+ORIGINAL305312_HISTORICAL_RECEIPT_READBACK_20261112.md.

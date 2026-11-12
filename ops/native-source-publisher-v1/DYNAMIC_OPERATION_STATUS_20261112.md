@@ -87,3 +87,11 @@ legacy_plan_migration_preview.py validates original attribution for all
 15 affected plans and reports 0 unresolved, with no signed associations
 or modifications. Runtime job/claim state is not yet certified.
 LEGACY_PLAN_MIGRATION_20261112.md defines migration and rollback conditions.
+
+## Original305/312 historical evidence
+
+Read-only original_finish_readonly_audit.py verifies historical Broker-signed
+FINISH records against the live Original306 command index and protected
+public key: 10 valid signed attempts, 6 commands without comparable proof.
+Current Job/Claim and fresh Original312 are still unverified; the release
+gate explicitly holds until first-party authenticated readback is completed.

@@ -310,6 +310,71 @@ def installed_status() -> dict:
     }
 
 
+def original_finish_evidence_probe() -> dict:
+    """Read installed plans and broker-signed historical FINISH evidence only.
+
+    Import installed 306 modules under temporary private names and restore the
+    process module cache, so this audit cannot contaminate other Registry
+    tests. Historical signatures do not constitute fresh 305/312 or 313.
+    """
+    module=HERE/"original_finish_readonly_audit.py"
+    root=INSTALLED_REGISTRY.parent
+    plan_store=Path("/var/lib/mad4b/dynamic-operation-registry/plans")
+    policy_path=Path("/etc/mad4b/company-code-release-policy.json")
+    try:
+        sp=importlib.util.spec_from_file_location(
+            "_mad4b_original_finish_readonly",module
+        )
+        if sp is None or sp.loader is None:
+            raise ValueError("HISTORICAL_FINISH_AUDIT_NOT_AVAILABLE")
+        verified=importlib.util.module_from_spec(sp)
+        sp.loader.exec_module(verified)
+
+        absent=object()
+        names=("registry","admission","worker_adapter")
+        prior={name:sys.modules.get(name,absent) for name in names}
+        try:
+            def fresh(name: str):
+                path=root/(name+".py")
+                found=importlib.util.spec_from_file_location(
+                    "_mad4b_private_finish_"+name,path
+                )
+                if found is None or found.loader is None:
+                    raise ValueError("FIRST_PARTY_COMPONENT_NOT_AVAILABLE")
+                mod=importlib.util.module_from_spec(found)
+                found.loader.exec_module(mod)
+                sys.modules[name]=mod
+                return mod
+            reg=fresh("registry")
+            fresh("admission")
+            worker=fresh("worker_adapter")
+            index=reg.Registry(root)
+            original_commands=worker.indexed_plans(index,plan_store)
+        finally:
+            for name,value in prior.items():
+                if value is absent:
+                    sys.modules.pop(name,None)
+                else:
+                    sys.modules[name]=value
+
+        policy=json.loads(policy_path.read_text())
+        return verified.summarize(
+            original_commands,verified.DEFAULT_RECEIPTS,
+            policy["broker_public_key_b64"]
+        )
+    except Exception as exc:
+        return {
+            "contract":"mad4b.original305312.historical-finish-correlation.v1",
+            "state":"HOLD__ORIGINAL_RECEIPT_EVIDENCE_UNVERIFIED",
+            "reason":type(exc).__name__,
+            "installed_command_count":None,
+            "commands_with_verified_historical_signed_finish":None,
+            "original305_current_state_verified":False,
+            "original312_current_eligibility_verified":False,
+            "live_site_mutated":False,
+        }
+
+
 def legacy_plan_compatibility_probe() -> dict:
     """Read first-party installed plan-store metadata for enrollment impact.
 
@@ -364,6 +429,7 @@ def evaluate() -> dict:
     verifier_environment = verifier_environment_contract_probe()
     installed = installed_status()
     legacy_plan_impact = legacy_plan_compatibility_probe()
+    historical_finishes = original_finish_evidence_probe()
     blockers = []
     if probes["different_git_source_for_same_target"] != "DENIED":
         blockers.append("SOURCE_TARGET_EQUIVALENCE_NOT_ENFORCED")
@@ -373,6 +439,9 @@ def evaluate() -> dict:
         blockers.append("ORIGINAL313_PLAN_ENVELOPE_NOT_COMPATIBLE")
     if not original_contract["operation_exclusive"]:
         blockers.append("ORIGINAL306_PLAN_OPERATION_NOT_UNIQUELY_BOUND")
+    if (not historical_finishes["original305_current_state_verified"] or
+        not historical_finishes["original312_current_eligibility_verified"]):
+        blockers.append("ORIGINAL305312_CURRENT_JOB_CLAIM_NOT_VERIFIED")
     if legacy_plan_impact["state"] == "HOLD__LEGACY_PLAN_AUDIT_UNVERIFIED":
         blockers.append("LEGACY_PLAN_STORE_IMPACT_UNVERIFIED")
     elif legacy_plan_impact["ambiguous_existing_plan_count"]:
@@ -400,6 +469,7 @@ def evaluate() -> dict:
         "ephemeral_security_probes": probes,
         "original_worker_contract_probes": original_contract,
         "legacy_plan_compatibility_probe": legacy_plan_impact,
+        "historical_finish_evidence_probe": historical_finishes,
         "signed_association_admission_probe": association,
         "verifier_environment_contract_probe": verifier_environment,
         "installed_status": installed,
