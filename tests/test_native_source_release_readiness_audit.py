@@ -96,10 +96,32 @@ class NativeSourceAudit(unittest.TestCase):
             )
 
 
+    def test_worker_source_and_installed_hash_drift_is_reported(self):
+        state=audit.signed_association_admission_probe()
+        tracked=state["tracked_original306_worker_sha256"]
+        installed=state["installed_original306_worker_sha256"]
+        self.assertEqual(len(tracked),64)
+        self.assertEqual(len(installed),64)
+        self.assertEqual(
+            state["tracked_and_installed_original306_worker_match"],
+            tracked==installed
+        )
+        if tracked!=installed:
+            self.assertIn(
+                "ORIGINAL306_SOURCE_INSTALLED_WORKER_DRIFT",
+                audit.evaluate()["blockers"]
+            )
+
     def test_source_association_does_not_false_claim_worker_enrollment(self):
         observation = audit.signed_association_admission_probe()
         self.assertTrue(
             observation["source_only_signed_association_contract_present"]
+        )
+        self.assertTrue(
+            observation["source_only_associated_worker_index_present"]
+        )
+        self.assertTrue(
+            observation["source_only_associated_worker_index_uses_signed_resolver"]
         )
         self.assertFalse(
             observation["installed_original306_enforces_exclusive_association"]

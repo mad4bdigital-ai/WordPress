@@ -59,3 +59,21 @@ It does NOT mutate the core plan, issue authority or integrate with the
 currently installed worker. The release gate requires a trusted first-party
 worker association hook before registering any new operation. See
 PLAN_OPERATION_ASSOCIATION_CONTRACT_20261112.md.
+
+## Source-only associated indexing adapter
+
+Added associated_worker_index.py with two-provider tests and a fail-closed
+index for source-family operations. This is a reviewable additive candidate,
+not an installed Original306 change. A source-versus-installed worker drift
+was verified, and the worker must be reconciled before approved enrollment.
+
+## Associated Original306 index and source drift guard
+
+A read-only, non-executing associated_worker_index.py candidate has been
+tested with two enrolled provider manifests and the original first-party
+plan validator. It enforces one signed plan association and denies fallback to
+another provider, while leaving unrelated legacy plan contracts unchanged.
+The full suite test module imports first-party code under private aliases to
+avoid contaminating other Registry tests. The readiness audit now checks
+source-versus-installed Original306 worker digests before promoting any
+integration; they differ, so it remains HOLD.

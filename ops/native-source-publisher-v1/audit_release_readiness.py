@@ -155,6 +155,11 @@ def verified_registry_candidates(candidates: dict[str, dict]) -> set[str]:
         return set()
 
 
+def digest_file(path: Path) -> str:
+    import hashlib
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
 def signed_association_admission_probe() -> dict:
     """Check installed Original306 has the new verified association contract.
 
@@ -163,8 +168,29 @@ def signed_association_admission_probe() -> dict:
     """
     import ast
     installed_worker = INSTALLED_REGISTRY.parent / "worker_adapter.py"
+    tracked_worker = ROOT / "ops/dynamic-operation-registry-v1/worker_adapter.py"
+    installed_worker_sha256 = (
+        digest_file(installed_worker) if installed_worker.is_file() else None
+    )
+    tracked_worker_sha256 = (
+        digest_file(tracked_worker) if tracked_worker.is_file() else None
+    )
+    source_worker_matches_installed = (
+        installed_worker_sha256 is not None and
+        installed_worker_sha256 == tracked_worker_sha256
+    )
     candidate_module = HERE / "operation_plan_association.py"
+    candidate_index = HERE / "associated_worker_index.py"
     candidate_exists = candidate_module.is_file()
+    candidate_index_exists = candidate_index.is_file()
+    candidate_index_has_signed_resolver = False
+    if candidate_index_exists:
+        source_tree = ast.parse(candidate_index.read_text())
+        candidate_index_has_signed_resolver = any(
+            isinstance(node, ast.Attribute) and
+            node.attr == "exclusive_operation"
+            for node in ast.walk(source_tree)
+        )
     worker_hook_present = False
     if installed_worker.is_file() and candidate_exists:
         tree = ast.parse(installed_worker.read_text())
@@ -187,7 +213,14 @@ def signed_association_admission_probe() -> dict:
         )
     return {
         "source_only_signed_association_contract_present": candidate_exists,
+        "source_only_associated_worker_index_present": candidate_index_exists,
+        "source_only_associated_worker_index_uses_signed_resolver":
+            candidate_index_has_signed_resolver,
         "installed_original306_enforces_exclusive_association": worker_hook_present,
+        "tracked_original306_worker_sha256": tracked_worker_sha256,
+        "installed_original306_worker_sha256": installed_worker_sha256,
+        "tracked_and_installed_original306_worker_match":
+            source_worker_matches_installed,
         "installed_worker_updated": False,
         "original306_job_issued": False,
         "independent_signing_authority_enrolled": False,
@@ -294,6 +327,8 @@ def evaluate() -> dict:
         blockers.append("ORIGINAL306_PLAN_OPERATION_NOT_UNIQUELY_BOUND")
     if not association["installed_original306_enforces_exclusive_association"]:
         blockers.append("ORIGINAL306_SIGNED_ASSOCIATION_HOOK_NOT_INSTALLED")
+    if not association["tracked_and_installed_original306_worker_match"]:
+        blockers.append("ORIGINAL306_SOURCE_INSTALLED_WORKER_DRIFT")
     if not verifier_environment["production_proof_compatible"]:
         blockers.append("ORIGINAL313_PRODUCTION_EVIDENCE_ENVIRONMENT_MISMATCH")
     if not installed["all_candidate_operations_present_in_index"]:

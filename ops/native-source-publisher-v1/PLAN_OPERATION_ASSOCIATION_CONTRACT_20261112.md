@@ -74,3 +74,13 @@ file. The tests also execute the *installed read-only*
 admission.checked_plan against the plain original CAS plan and verify the
 signed association through the new pure verifier. They never invoke
 execute_claimed or any signed Broker action.
+
+## Non-executing associated worker index
+
+The source-only associated_worker_index.py implements the selection
+boundary and retains original command digest generation and read-only plan
+validation. It limits source-family plans to one signed Association. It is
+not imported by the installed Original306 worker. Before authorized
+enrollment, reconcile the tracked source worker's newer preclaim features
+against the installed worker rather than overwriting either.
+Details: ASSOCIATED_WORKER_INDEX_INTEGRATION_20261112.md.
