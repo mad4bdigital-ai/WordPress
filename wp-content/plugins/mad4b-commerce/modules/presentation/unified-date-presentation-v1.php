@@ -245,13 +245,15 @@ add_action('wp_enqueue_scripts', static function():void {
     }
     wp_enqueue_script('flatpickr');
     wp_enqueue_style('flatpickr');
-    wp_enqueue_style('mad4b-unified-date-v1',plugins_url('assets/unified-date-v0.3.9.css',__FILE__),['flatpickr'],'0.3.9');
-    wp_enqueue_script('mad4b-unified-date-v1',plugins_url('assets/unified-date-v0.3.9.js',__FILE__),['flatpickr'],'0.3.9',true);
+    wp_enqueue_style('mad4b-unified-date-v1',plugins_url('assets/unified-date-v0.3.18.css',__FILE__),['flatpickr'],'0.3.18');
+    wp_enqueue_script('mad4b-unified-date-v1',plugins_url('assets/unified-date-v0.4.3.js',__FILE__),['flatpickr'],'0.4.3',true);
     $data=[
         'archiveUrl'=>home_url('/tours-and-activities/'),
         'policy'=>MAD4B_Unified_Date_Intent_V1::settings(),
         'today'=>wp_date('Y-m-d'),
         'request'=>mad4b_unified_date_request_v1(),
+        // Optional per-company Elementor search Popup. Disabled on unconfigured sites.
+        'mobilePopupId'=>is_front_page()?max(0,(int)get_option('mad4b_unified_date_mobile_popup_id',0)):0,
         'context'=>is_front_page()?'home':(is_singular('tours-and-activities')?'single':'archive'),
     ];
     if (is_singular('tours-and-activities') && ($data['request']['status']??'')==='valid') {

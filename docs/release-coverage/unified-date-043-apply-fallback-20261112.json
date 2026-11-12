@@ -1,0 +1,39 @@
+{
+  "candidate_only": true,
+  "changes": [
+    "always install Date Apply toolbar when a signed native Rate Date widget mounts, even without adjacent Select widgets",
+    "preserve 4-field combined toolbar when both Select widgets are available",
+    "fallback two-column Date+Apply reuses same existing native JetSmartFilters query path"
+  ],
+  "contract": "mad4b.unified-date-v043-missing-rate-apply-source-fix.v1",
+  "created_utc": "2026-11-12T05:06:54.912449+00:00",
+  "files": {
+    "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.3.18.css": {
+      "bytes": 31890,
+      "candidate_sha256": "7019e6df142004334043f002df3e05e03d9536ab99a6dbc68c46086a9f451f09",
+      "live_source_sha256": "7019e6df142004334043f002df3e05e03d9536ab99a6dbc68c46086a9f451f09",
+      "original_candidate_sha256": null
+    },
+    "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.4.3.js": {
+      "bytes": 58140,
+      "candidate_sha256": "da32212e364ef8af046b5756976058e731ef6ec9d7413831e04e411491a45274",
+      "live_source_sha256": "b9fcf15e7f605cefb4bf21d4ceb73e562e8278e732a1fbacfe6c1dfff578d7c5",
+      "original_candidate_sha256": null
+    },
+    "wp-content/plugins/mad4b-commerce/modules/presentation/unified-date-presentation-v1.php": {
+      "bytes": 14045,
+      "candidate_sha256": "dfe86e3464b810abf22889a89fa4f24678fff49771fceaf26af9d974a015a873",
+      "live_source_sha256": "dfe86e3464b810abf22889a89fa4f24678fff49771fceaf26af9d974a015a873",
+      "original_candidate_sha256": "87f685b68264958850ca53adaa794070059acc7ef74e53fb8efce7942aecf7a4"
+    }
+  },
+  "new_external_actions": false,
+  "new_payment_authority": false,
+  "original313_receipt_obtained": false,
+  "raw_transport_or_broker_mutated": false,
+  "release_authorized": false,
+  "replaces_elementor_layout": false,
+  "source_js_version": "0.4.3",
+  "source_origin": "https://tours.dev.mad4b.com",
+  "source_php_has_date_postin_fix": true
+}
