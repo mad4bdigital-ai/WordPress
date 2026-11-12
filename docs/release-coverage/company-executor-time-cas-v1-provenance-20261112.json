@@ -1,0 +1,84 @@
+{
+  "as_of": "2026-11-12",
+  "central": "tours.dev.mad4b.com",
+  "contract": "mad4b.company.original-executor-time-cas.v1.provenance",
+  "files": [
+    {
+      "bytes": 21616,
+      "deployed_to": [
+        "central",
+        "wayfatours"
+      ],
+      "root_owned": true,
+      "sha256": "2e64006f25168775b17856c1e9f084df05e30a743cdc10cf2805375e636896a7",
+      "source": "wp-content/mu-plugins/mad4b-company-executor-time-cas-v1.php"
+    },
+    {
+      "bytes": 372,
+      "deployed_to": [
+        "central",
+        "wayfatours"
+      ],
+      "root_owned": true,
+      "sha256": "e9720076f16f7dbb80ef488c79d23d1e8afb2d3497e3d0f70f4e94b226c9f056",
+      "source": "wp-content/mu-plugins/mad4b-company-executor-time-cas-policy-v1.json"
+    },
+    {
+      "bytes": 19773,
+      "deployed_to": [],
+      "root_owned": false,
+      "sha256": "064ee3e29ebe4e7a67df5a8506f5a73ad1519a2a5e06e24be10b115ea9e5e459",
+      "source": "ops/dynamic-operation-registry-v1/executor-time-cas-v1/host_handler.py"
+    },
+    {
+      "bytes": 5698,
+      "deployed_to": [],
+      "root_owned": false,
+      "sha256": "201ff3927b93ce74309e5f5e3e4999266444c42405a671742c45fe2d7834a8c0",
+      "source": "ops/dynamic-operation-registry-v1/executor-time-cas-v1/independent_readback.py"
+    },
+    {
+      "bytes": 1279,
+      "deployed_to": [],
+      "root_owned": false,
+      "sha256": "6d45ac39e75086e5a3a0898db1d03b371ff05009a0fe9acf6a2f09f27134e652",
+      "source": "ops/dynamic-operation-registry-v1/providers/company.resource.cas.apply/manifest.json"
+    },
+    {
+      "bytes": 484,
+      "deployed_to": [],
+      "root_owned": false,
+      "sha256": "5f836d697f29acb61be800b92e03a1a0f30f12f76ae2df3939da54d5c34ab20e",
+      "source": "ops/dynamic-operation-registry-v1/providers/company.resource.cas.apply/evidence-schema.json"
+    }
+  ],
+  "full_clone_executed": false,
+  "live_target_source_digest_match": true,
+  "live_wrong_source_digest_rejected": true,
+  "original_305_job_created_for_resource": false,
+  "original_313_independent_signature_issued": false,
+  "original_318_signed_release_certified": false,
+  "original_broker_private_key_read_by_tests": false,
+  "original_broker_public_key_sha256": "46ea6fbf1b37f9507916b44c4537653c76a9d69afbf1e129379b10d75357a617",
+  "original_dynamic_cas_provider_enrolled": false,
+  "original_worker_modified": false,
+  "other_companies_modified": false,
+  "public_apply_rest_exposed": false,
+  "signed_specific_release_grant_created": false,
+  "site_uuid": "a3a7cc36-db7e-4a14-8456-b41857def05c",
+  "source_only_mutating_provider": true,
+  "source_owned_catalog_excludes_prices": true,
+  "target_cas_source_deployed_both_sites": true,
+  "target_resource": "wordpress.post:61152",
+  "tenant": "wayfatours.com",
+  "tests": {
+    "central_schema_http": 200,
+    "guest_cas_apply_http": 404,
+    "legacy_company_reconcile_php": 320,
+    "live_source_catalog_denies_single_price": true,
+    "new_cas_target_php": 22,
+    "original_provider_source_python": 36,
+    "wayfatours_home_http": 200
+  },
+  "wayfatours_postmeta_or_prices_mutated": false
+}

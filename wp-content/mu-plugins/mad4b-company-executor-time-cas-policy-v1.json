@@ -1,0 +1,13 @@
+{
+  "contract": "mad4b.company.original-cas-provider-scope-policy.v1",
+  "capabilities": [
+    {
+      "operation_id": "company.resource.cas.apply",
+      "resource_type": "wordpress.post",
+      "ownership_scope": "tenant_owned",
+      "allowed_post_types": ["tour-rates"],
+      "allowed_meta_keys": ["rate_title"],
+      "commercial_pricing_allowed": false
+    }
+  ]
+}
