@@ -35,7 +35,7 @@
   "provider": "mad4b-source-release",
   "verifier": {
     "path": "native-source-publisher-v1/original_313_independent_readback.py",
-    "sha256": "dde98d3f554c67444e6752a98e6f3518d5ae0d6c2a43a533872035b55bab5c51"
+    "sha256": "92fbfb5725a4d50c7a08ddd2b99404726d1f4ca135e59d4f438e3621ba942125"
   },
   "version": 1
 }

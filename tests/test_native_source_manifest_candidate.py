@@ -21,6 +21,11 @@ class ManifestCandidate(unittest.TestCase):
     {'native-source-publisher-v1/native_source_publisher.py',
      'company-code-release-v1/company_code_release.py'})
   self.assertEqual(m['evidence_schema'],'source_code_release.v1')
+  schema=json.loads((H/'catalog/evidence-schema.json').read_text())
+  self.assertEqual(set(schema['fields']),{'result_status','readback_sha256',
+       'expected_readback_sha256','grant_id','transport_id',
+       'production_mutation','target_sha256','file_count'})
+  self.assertEqual(schema['success_state'],'HOST_READBACK_VERIFIED_PENDING_ORIGINAL_313')
  def test_sibling_index_is_a_proposal_only(self):
   p=json.loads((H/'catalog/publisher-enrollment-proposal.json').read_text())
   for key in ('publisher_enabled','registry_enrolled','production_writes_authorized'):

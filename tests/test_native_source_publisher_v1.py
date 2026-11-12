@@ -138,8 +138,10 @@ class SourcePublisher(unittest.TestCase):
   self.assertIn('SOURCE_HOST_HANDLER_NOT_FIRST_PARTY_INSTALLED',source)
   self.assertIn('fresh_master_ticket_readback(plan,policy,approval)',(BASE/'native_source_publisher.py').read_text())
   check=(BASE/'original_313_independent_readback.py').read_text()
-  self.assertIn('"independent_313_signed_receipt_issued":False',check)
+  self.assertIn('"original_313_signed_receipt_issued":False',check)
   self.assertIn('"signature_generated":False',check)
+  self.assertIn('evidence_for_original_job(',check)
+  self.assertIn('handler.original_312_for_claim(job_id,plan)',check)
   cli=(BASE/'native_source_publisher.py').read_text()
   self.assertIn('choices=("status","plan","verify")',cli)
  def test_registry_proposal_is_non_authorizing(self):
