@@ -34,10 +34,10 @@
       "sha256": "ab61d2efd2d3ff54e9fa40d2ea8d514019fd68abb50b05ffbe36abedd537dfa4"
     },
     {
-      "bytes": 10807,
+      "bytes": 11045,
       "central_live": false,
       "path": "ops/dynamic-operation-registry-v1/executor-time-cas-v1/preclaim.py",
-      "sha256": "5ed159f51cda47dade9865d8d5d2e0f3f847b15b541d39f16b794e262c3b9709"
+      "sha256": "0f1b4f43da32b2d84b190b39953cd2c88019743d908e50019d98942365490c95"
     },
     {
       "bytes": 19584,
@@ -61,7 +61,7 @@
       "bytes": 1581,
       "central_live": false,
       "path": "ops/dynamic-operation-registry-v1/providers/company.resource.cas.apply/manifest.json",
-      "sha256": "e27e81c2cf7faf53971f0d4026e9db8f3c8cd15234f6f22318e082c0626fc5af"
+      "sha256": "3617d07e7ea127bbd3da1f047dc8fc01995b17433c00ac6d1e0d3e286797040a"
     },
     {
       "bytes": 622,

@@ -99,7 +99,7 @@ class Original306Preclaim(unittest.TestCase):
    "job_type":"signed_vps_wpcli","command_format":"wpcli.argv.json.v1",
    "command_sha256":self.digest,
    "grant_id":"1"*32,"transport_id":"2"*32,
-   "domain_intent":self.op,
+   "domain_intent":"operations.write",
    "state":"QUEUED_FOR_VPS_BROKER_CLAIM",
    "executed":False,"expires_epoch":self.now+1000
   }
@@ -234,6 +234,16 @@ class Original306Preclaim(unittest.TestCase):
   row={**self.response,"job":{**self.j,"site_uuid":"0"*36}}
   with self.assertRaises(cas.Hold):
    self.run_preclaim(lambda job,op:row)
+
+ def test_original305_delegation_intent_not_unregistered_provider_name(self):
+  self.saved_grant()
+  row={**self.response,"job":{**self.j,"domain_intent":self.op}}
+  with self.assertRaises(cas.Hold):self.run_preclaim(lambda job,op:row)
+
+ def test_original305_existing_write_lane_is_supported(self):
+  self.saved_grant()
+  result=self.run_preclaim()
+  self.assertTrue(result["provider_release_grant_verified"])
 
  def test_original_job_command_changed_denied(self):
   self.saved_grant()

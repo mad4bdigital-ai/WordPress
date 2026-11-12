@@ -41,7 +41,7 @@
       "bytes": 1581,
       "deployed_to": [],
       "root_owned": false,
-      "sha256": "e27e81c2cf7faf53971f0d4026e9db8f3c8cd15234f6f22318e082c0626fc5af",
+      "sha256": "3617d07e7ea127bbd3da1f047dc8fc01995b17433c00ac6d1e0d3e286797040a",
       "source": "ops/dynamic-operation-registry-v1/providers/company.resource.cas.apply/manifest.json"
     },
     {

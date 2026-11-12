@@ -40,7 +40,7 @@
   "plan_contract": "mad4b.company-resource.executor-cas-plan.v1",
   "preclaim": {
     "path": "executor-time-cas-v1/preclaim.py",
-    "sha256": "5ed159f51cda47dade9865d8d5d2e0f3f847b15b541d39f16b794e262c3b9709"
+    "sha256": "0f1b4f43da32b2d84b190b39953cd2c88019743d908e50019d98942365490c95"
   },
   "provider": "mad4b-company-resource-cas",
   "verifier": {

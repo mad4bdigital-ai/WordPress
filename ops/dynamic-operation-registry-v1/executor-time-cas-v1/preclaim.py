@@ -195,7 +195,10 @@ def verify_claimable(index,plan:dict,job:str,sha:str,
         ("job_type","signed_vps_wpcli"),
         ("command_format","wpcli.argv.json.v1"),
         ("command_sha256",sha),
-        ("domain_intent",OPERATION),
+        # Original 305 authorizes the delegation lane, not the provider ID.
+        # Exact CAS operation and resource are independently bound by the
+        # source-pinned plan, command SHA and operation-specific Broker grant.
+        ("domain_intent","operations.write"),
         ("state","QUEUED_FOR_VPS_BROKER_CLAIM"),
         ("executed",False)))
         and type(original.get("expires_epoch")) is int
