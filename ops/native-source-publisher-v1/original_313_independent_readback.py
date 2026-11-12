@@ -40,16 +40,19 @@ def evidence_for_original_job(job_id: str, plan: dict, policy: dict,
     if (record.get("state") != "APPLIED_VERIFIED" or
         record.get("nonce")!=nonce or
         record.get("plan_sha256")!=plan["plan_sha256"] or
-        record.get("site_uuid")!=publisher.EXPECTED_UUID or
+        record.get("site_uuid")!=plan["site_uuid"] or
         record.get("git_commit")!=plan["git_commit"]):
         raise publisher.Denied("SOURCE_INDEPENDENT_NATIVE_RECEIPT_CHANGED")
-    source=plan["files"][0]
-    target=Path(plan["target_root"])/source["target"]
-    publisher.core.no_link(target)
-    fresh=publisher.sha(publisher.core.safe_regular(target))
-    expected=source["source_sha256"]
-    if fresh!=expected:
-        raise publisher.Denied("SOURCE_INDEPENDENT_READBACK_SHA_MISMATCH")
+    digests=[]
+    for source in plan["files"]:
+        target=Path(plan["target_root"])/source["target"]
+        publisher.core.no_link(target)
+        observed=publisher.sha(publisher.core.safe_regular(target))
+        if observed!=source["source_sha256"]:
+            raise publisher.Denied("SOURCE_INDEPENDENT_READBACK_SHA_MISMATCH")
+        digests.append({"target":source["target"],"sha256":observed})
+    fresh=publisher.sha(publisher.canonical({"files":digests}))
+    expected=fresh
     grant=signed.get("grant_id")
     transport=signed.get("transport_id")
     if not isinstance(grant,str) or not grant or not isinstance(transport,str) or not transport:
@@ -62,7 +65,7 @@ def evidence_for_original_job(job_id: str, plan: dict, policy: dict,
        "grant_id":grant,
        "transport_id":transport,
        "production_mutation":False,
-       "file_count":1
+       "file_count":len(plan["files"])
     }
     if set(payload)!=FIELDS:
         raise publisher.Denied("SOURCE_INDEPENDENT_EVIDENCE_CONTRACT_DRIFT")
@@ -73,12 +76,15 @@ def inspect_without_original_job(plan: dict, policy: dict) -> dict:
     """Pure file readback, explicitly insufficient for signed original313."""
     publisher.check_plan(plan,policy,after=True)
     publisher.native_runtime_binding(plan,policy)
-    source=plan["files"][0]
-    path=Path(plan["target_root"])/source["target"]
-    publisher.core.no_link(path)
-    digest=publisher.sha(publisher.core.safe_regular(path))
-    if digest!=source["source_sha256"]:
-        raise publisher.Denied("SOURCE_READBACK_SHA_MISMATCH")
+    observed=[]
+    for source in plan["files"]:
+        path=Path(plan["target_root"])/source["target"]
+        publisher.core.no_link(path)
+        digest=publisher.sha(publisher.core.safe_regular(path))
+        if digest!=source["source_sha256"]:
+            raise publisher.Denied("SOURCE_READBACK_SHA_MISMATCH")
+        observed.append({"target":source["target"],"sha256":digest})
+    digest=publisher.sha(publisher.canonical({"files":observed}))
     return {
         "contract":"mad4b.native-source-publisher.file-readback-only.v1",
         "state":"EXACT_FILE_HASH_READBACK_ONLY",

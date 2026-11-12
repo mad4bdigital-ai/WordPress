@@ -1,4 +1,5 @@
 {
+  "approval_ability": "mad4b/native-source-release",
   "command": {
     "bound_operation_id": "source.code.release",
     "flag": "--plan_sha256=",
@@ -14,7 +15,7 @@
   "dependencies": [
     {
       "path": "native-source-publisher-v1/native_source_publisher.py",
-      "sha256": "1e8ced374511d34e106ff9c98f9f634ada1fffe5becc729a3e65f9d74498b0fc"
+      "sha256": "d7ba9d1406fe19809b82e4e7a29a95c30d1d770c01c701e61757eb4b70f2dd20"
     },
     {
       "path": "company-code-release-v1/company_code_release.py",
@@ -28,14 +29,15 @@
   "evidence_schema": "source_code_release.v1",
   "handler": {
     "path": "native-source-publisher-v1/original_313_host_handler.py",
-    "sha256": "2c1d57c524b0cbd28105b02fe30fc3e360f4688272793f5deb269eb7aa39bd78"
+    "sha256": "7f5638c9edf0154a9af037ac98c4a2a6d3857e86ef5a52e0c170352a3f9976e3"
   },
   "operation_id": "source.code.release",
   "plan_contract": "mad4b.company-code-release.plan.v1",
   "provider": "mad4b-source-release",
+  "source_family": "mad4b.native-source-release.v2",
   "verifier": {
     "path": "native-source-publisher-v1/original_313_independent_readback.py",
-    "sha256": "92fbfb5725a4d50c7a08ddd2b99404726d1f4ca135e59d4f438e3621ba942125"
+    "sha256": "138fd2d0b8cd9e976edb4a97a972be91c390aa28c6be3c808d7034b8ede42a3d"
   },
   "version": 1
 }

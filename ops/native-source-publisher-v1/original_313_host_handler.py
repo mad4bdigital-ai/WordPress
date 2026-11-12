@@ -54,15 +54,17 @@ def original_312_for_claim(job_id: str, plan: dict) -> dict:
         sys.path.insert(0,str(INDEX))
         module=importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
-        command_sha=publisher.sha(json.dumps(
-            ["mad4b","native-source-publisher","apply",
-             "--plan_sha256="+plan["plan_sha256"]],
+        manifest=publisher.enrolled_original_provider(
+            plan[publisher.BINDING_KEY]["operation_id"])
+        command=publisher.original_registry().command_argv(
+            manifest["operation_id"],plan["plan_sha256"])
+        command_sha=publisher.sha(json.dumps(command,
             separators=(",",":"),ensure_ascii=False).encode())
         reservation=protected_file(RESERVATIONS/(job_id+".reserved"),RESERVATIONS)
-        if reservation != ("dynamic:"+publisher.OPERATION+" "+command_sha+"\n").encode():
+        if reservation != ("dynamic:"+manifest["operation_id"]+" "+command_sha+"\n").encode():
             raise publisher.Denied("SOURCE_ORIGINAL_JOB_RESERVATION_MISMATCH")
         signed=module.fresh_original_312(job_id,command_sha)
-        candidate={"job_id":job_id,"operation_id":publisher.OPERATION,
+        candidate={"job_id":job_id,"operation_id":manifest["operation_id"],
           "command_sha256":command_sha,"company":plan["company"],
           "environment":plan["environment"],"site_uuid":plan["site_uuid"],
           "origin":plan["origin"]}
@@ -82,7 +84,6 @@ def execute_once(job_id: str, plan_sha256: str) -> dict:
     expected=(INDEX/"native-source-publisher-v1/original_313_host_handler.py")
     if (Path(__file__).absolute()!=expected or expected.is_symlink()):
         raise publisher.Denied("SOURCE_HOST_HANDLER_NOT_FIRST_PARTY_INSTALLED")
-    publisher.enrolled_original_provider()
     policy=publisher.checked_policy()
     raw_plan=protected_file(PLANS/(plan_sha256+".json"),PLANS)
     plan=json.loads(raw_plan)

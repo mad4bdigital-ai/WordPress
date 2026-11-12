@@ -36,7 +36,7 @@ class RegistryCandidate(unittest.TestCase):
     'dynamic-operation-registry-v1/providers/source.code.release/evidence-schema.json':
       H/'catalog/evidence-schema.json',
     'dynamic-operation-registry-v1/providers/source.code.release/manifest.json':
-      H/'catalog/manifest.candidate.json'
+      H/'catalog/generated/source.code.release.manifest.json'
    }
    for rel,source in src.items():
     dst=base/rel
