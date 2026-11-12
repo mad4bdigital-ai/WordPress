@@ -62,3 +62,24 @@ Original305/312 state remains unverified.
    worker parity, publisher CAS guards and Production evidence are reconciled.
 
 This is a read surface candidate, not a new Original305 issuer or authority.
+
+## Redacted-lifecycle classification compatibility
+
+The read-only WordPress output now includes the verified canonical origin
+and observation epoch in addition to company, Site UUID and environment.
+This exposes no Job ID, token, Grant or command contents.
+
+Added compact_job_readback_classifier.py as a non-executing source-only
+adapter. It consumes exactly the redacted Job/Claim view, checks the immutable
+command digest, site identity, company, bounded observation age and
+no-authorization output flags. It classifies queued, claimed, expired,
+ambiguous, duplicated, conflicting and terminal records; all classifications
+remain HOLD with execution_authorized=false. It refuses input that claims
+Original312 or Original313 verification.
+
+The existing original_job_lifecycle_preview.py remains usable for richer
+future authenticated first-party internal snapshots, but must not require
+the public-facing read-only Ability to expose Job IDs or private Grants.
+
+No live WordPress readback, installed Ability, signed Original312, signed
+Original313, source publish or Broker Job was created by either classifier.

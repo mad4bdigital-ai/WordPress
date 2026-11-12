@@ -29,6 +29,8 @@ class ReadbackBridge(unittest.TestCase):
             "'destructive'=>false",
             "'show_in_rest'=>false",
             "'authority_created'=>false",
+            "'observed_epoch'=>time()",
+            "'origin'=>$scope['origin']",
             "'original312_eligible'=>false",
             "'signed_original313_receipt_verified'=>false",
             "'job_or_claim_mutated'=>false",

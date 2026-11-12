@@ -112,3 +112,11 @@ class-mad4b-scp-original-job-readback.php, with bounded digest lists,
 source site/company scope, administrator permissions, error and ambiguous-Job
 blocking. PHP and Python source tests passed. No live Job read or enrollment
 was performed. See ORIGINAL305_JOB_READBACK_ABILITY_CANDIDATE_20261112.md.
+
+## Redacted WP Job/Claim to lifecycle contract
+
+A separate compact_job_readback_classifier.py consumes the protected
+read-only Job output without exposing Job IDs or Grants. It checks source
+scope, exact command, readback age, Claim flags and denied authority states.
+Every result is HOLD. The release gate differentiates the source-only
+classifier from the still-unmounted live WordPress Ability.

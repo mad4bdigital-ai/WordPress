@@ -79,6 +79,9 @@ $valid=$cls::read(request($hash));
 verify(is_array($valid),'valid result');
 verify($valid['state']==='READ_ONLY__ORIGINAL312_INDEPENDENT_SIGNATURE_REQUIRED','read-only result');
 verify($valid['commands'][0]['job_count']===1,'one job');
+verify($valid['origin']==='https://tours.dev.mad4b.com','origin bound');
+verify(is_int($valid['observed_epoch']) && abs(time()-$valid['observed_epoch'])<=1,
+ 'bounded observation epoch');
 verify($valid['commands'][0]['record']['claim_present']===false,'not claimed');
 verify($valid['original312_eligible']===false,'not signing');
 verify(!array_key_exists('job_id',$valid['commands'][0]['record']),'job id not leaked');

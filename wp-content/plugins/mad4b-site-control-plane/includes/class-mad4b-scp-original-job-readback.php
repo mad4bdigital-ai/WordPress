@@ -206,7 +206,10 @@ final class MAD4B_SCP_Original_Job_Readback {
             'state'=>'READ_ONLY__ORIGINAL312_INDEPENDENT_SIGNATURE_REQUIRED',
             'site_uuid'=>$scope['site_uuid'],
             'company'=>$input['company'],
+            'origin'=>$scope['origin'],
             'environment'=>$scope['environment'],
+            // Bounded observation timestamp only. NOT a signed attestation.
+            'observed_epoch'=>time(),
             'commands'=>$summary,
             'job_store_scanned'=>count( $keys ),
             'original312_eligible'=>false,
