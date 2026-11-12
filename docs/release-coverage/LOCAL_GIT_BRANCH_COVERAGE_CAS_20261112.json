@@ -1,0 +1,572 @@
+{
+  "audit_date_utc": "2026-11-12T04:36:53Z",
+  "branch_refs_other_than_target": 61,
+  "branches": [
+    {
+      "ancestor_of_integration": false,
+      "branch": "approval/lifecycle-source-reissue-pr782-20261108",
+      "commit": "d30695a8c985c922ee9fa4fb50d4af045eeddf85",
+      "resolution": "NOT_INTEGRATED"
+    },
+    {
+      "ancestor_of_integration": true,
+      "branch": "feat/company-baseline-review-v1-20261112",
+      "commit": "b082a64ba6e9d82462b08d9e5191fd30ea90d806",
+      "resolution": "INCLUDED_GIT_ANCESTOR"
+    },
+    {
+      "ancestor_of_integration": false,
+      "branch": "feat/company-code-release-v1-20261108",
+      "commit": "92f4d6b3fdab22b31e5ff5713003b1ee9dc01f82",
+      "resolution": "NOT_INTEGRATED"
+    },
+    {
+      "ancestor_of_integration": true,
+      "branch": "feat/company-executor-time-cas-v1-20261112",
+      "commit": "a9f4ab145555107a19855a482af04a30153be551",
+      "resolution": "INCLUDED_GIT_ANCESTOR"
+    },
+    {
+      "ancestor_of_integration": true,
+      "branch": "feat/company-live-public-observation-20261111",
+      "commit": "fc40566940ced0baf270777eaad39fc1d3c11850",
+      "resolution": "INCLUDED_GIT_ANCESTOR"
+    },
+    {
+      "ancestor_of_integration": true,
+      "branch": "feat/company-original-cas-306313-v1-20261112",
+      "commit": "b5eb0ecd109c91bdea6ee99b5492949ab65664c1",
+      "resolution": "INCLUDED_GIT_ANCESTOR"
+    },
+    {
+      "ancestor_of_integration": false,
+      "branch": "feat/company-policy-registry-native-rates-20261107",
+      "commit": "69048403b434551021025e29605847fa2f6c9da7",
+      "resolution": "NOT_INTEGRATED"
+    },
+    {
+      "ancestor_of_integration": true,
+      "branch": "feat/company-reconcile-depth-v3-20261111",
+      "commit": "6bd3f66c622b9eea61c2f1a35c6584819d174be5",
+      "resolution": "INCLUDED_GIT_ANCESTOR"
+    },
+    {
+      "ancestor_of_integration": true,
+      "branch": "feat/company-reconcile-start-v2-20261111",
+      "commit": "f82682c7408b6ffec4f9b531fae5c5a934ccf670",
+      "resolution": "INCLUDED_GIT_ANCESTOR"
+    },
+    {
+      "ancestor_of_integration": true,
+      "branch": "feat/company-repair-jobs-v1-20261111",
+      "commit": "7f04c928e8d412f82ca943a8393513a19b075fb8",
+      "resolution": "INCLUDED_GIT_ANCESTOR"
+    },
+    {
+      "ancestor_of_integration": true,
+      "branch": "feat/company-resource-resolver-v2-20261111",
+      "commit": "a7ea8620e15448fe1043553170a2cb52bfecd087",
+      "resolution": "INCLUDED_GIT_ANCESTOR"
+    },
+    {
+      "ancestor_of_integration": true,
+      "branch": "feat/company-target-evidence-deep-v1-20261111",
+      "commit": "386f9e8df7958b6441e9b960abb6fd3866d54027",
+      "resolution": "INCLUDED_GIT_ANCESTOR"
+    },
+    {
+      "ancestor_of_integration": false,
+      "branch": "feat/company-unified-release-coverage-v1-20261108",
+      "commit": "cd516e1a249798d1e9bb9059b2744a4d80551beb",
+      "resolution": "NOT_INTEGRATED"
+    },
+    {
+      "ancestor_of_integration": false,
+      "branch": "feat/early-payment-benefits-policy-20261111",
+      "commit": "dd4449978825409ab60ba7f779ac9d10ba1b1bed",
+      "resolution": "NOT_INTEGRATED"
+    },
+    {
+      "ancestor_of_integration": false,
+      "branch": "feat/faore-speckit-20261105",
+      "commit": "627d370e25745fc8a3e896e9f8818a895750645d",
+      "resolution": "NOT_INTEGRATED"
+    },
+    {
+      "ancestor_of_integration": false,
+      "branch": "feat/mad4b-fleet-adaptive-intake-v2-20261108",
+      "commit": "939c9ec21fdbe90070333b186e6f1b8a7c69201d",
+      "resolution": "NOT_INTEGRATED"
+    },
+    {
+      "ancestor_of_integration": false,
+      "branch": "feat/mad4b-hostinger-cdn-ssh-company-operation-20261108",
+      "commit": "3193aa9ab2f26612aa6890d5dcab9b9d622f6827",
+      "resolution": "NOT_INTEGRATED"
+    },
+    {
+      "ancestor_of_integration": false,
+      "branch": "feat/mad4b-pricing-cache-inheritance-20261108",
+      "commit": "69f605c0426ae631b06ec1d41fa24002fb03abd6",
+      "resolution": "NOT_INTEGRATED"
+    },
+    {
+      "ancestor_of_integration": false,
+      "branch": "feat/mad4b-source-url-content-loop-v1-20261108",
+      "commit": "061552b74e8e3cffdde998477b353b66d2659128",
+      "resolution": "NOT_INTEGRATED"
+    },
+    {
+      "ancestor_of_integration": false,
+      "branch": "feat/original313-receipt-preclaim-20261111",
+      "commit": "6ac19b42430ca68a91457fe96007ef2afb7e5c3a",
+      "resolution": "NOT_INTEGRATED"
+    },
+    {
+      "ancestor_of_integration": false,
+      "branch": "feat/plugin-license-original313-v18",
+      "commit": "3e9f27ecf1dd6bf583cf4dac852e191ecb77ff72",
+      "resolution": "NOT_INTEGRATED"
+    },
+    {
+      "ancestor_of_integration": false,
+      "branch": "feat/request-advances-20261106",
+      "commit": "1318b19a8aa62f5ec12461a2b5868515f5d1d5b5",
+      "resolution": "NOT_INTEGRATED"
+    },
+    {
+      "ancestor_of_integration": false,
+      "branch": "feat/woo-request-email-and-thankyou-20261111",
+      "commit": "54a5cbf98cfddbc3414c3d252d5c6f312c41275f",
+      "resolution": "NOT_INTEGRATED"
+    },
+    {
+      "ancestor_of_integration": true,
+      "branch": "feature/company-branded-woocommerce-email-20261111",
+      "commit": "225bfa07b7e2041cbe331e04572960c908103263",
+      "resolution": "INCLUDED_GIT_ANCESTOR"
+    },
+    {
+      "ancestor_of_integration": true,
+      "branch": "feature/unified-woo-fluent-brand-email-20261111",
+      "commit": "357fb39b8888677744bb7b95b51a31738ed05d2d",
+      "resolution": "INCLUDED_GIT_ANCESTOR"
+    },
+    {
+      "ancestor_of_integration": true,
+      "branch": "fix/center-wayfa-native-readback-20261111",
+      "commit": "e4689660e9c8cfd22d2b1eeffe357dcecfab89ff",
+      "resolution": "INCLUDED_GIT_ANCESTOR"
+    },
+    {
+      "ancestor_of_integration": true,
+      "branch": "fix/center-wayfa-option-live-parity-20261111",
+      "commit": "6e6aa67af1aec8373b653b2942581645c61c9270",
+      "resolution": "INCLUDED_GIT_ANCESTOR"
+    },
+    {
+      "ancestor_of_integration": false,
+      "branch": "fix/central-wpcli-scoped-discovery-20261106",
+      "commit": "0fcf4cbd0a8e282eebe96fe22b4c52684260add0",
+      "resolution": "NOT_INTEGRATED"
+    },
+    {
+      "ancestor_of_integration": true,
+      "branch": "fix/company-cas-original305-intent-20261112",
+      "commit": "0c8ca35b943e0b2bd755aae7216a638bff25270f",
+      "resolution": "INCLUDED_GIT_ANCESTOR"
+    },
+    {
+      "ancestor_of_integration": false,
+      "branch": "fix/company-native-runtime-resolver-20261106",
+      "commit": "020cb8865ad1bbdda563fc8223fd180499c8b2f3",
+      "resolution": "NOT_INTEGRATED"
+    },
+    {
+      "ancestor_of_integration": false,
+      "branch": "fix/company-operations-settings-cache-skills-live-20261106",
+      "commit": "e6d36f40961b1fa142d33be73d65ed32f18e92c2",
+      "resolution": "NOT_INTEGRATED"
+    },
+    {
+      "ancestor_of_integration": false,
+      "branch": "fix/composite-media-signed-apply-20261110",
+      "commit": "2cd871eeaa0d5055f868e13cdf3b8f13e395a647",
+      "resolution": "NOT_INTEGRATED"
+    },
+    {
+      "ancestor_of_integration": false,
+      "branch": "fix/cross-ssh-out-of-band-recovery-20261106",
+      "commit": "23b6e5b14b5ffa7c46bf8de3f3f6fdcd4ac3cc9d",
+      "resolution": "NOT_INTEGRATED"
+    },
+    {
+      "ancestor_of_integration": false,
+      "branch": "fix/early-benefits-integrated-claims-20261111",
+      "commit": "bad8e810eb40667141eb3895814823f9a73f54ae",
+      "resolution": "NOT_INTEGRATED"
+    },
+    {
+      "ancestor_of_integration": true,
+      "branch": "fix/early-benefits-mail-closure-20261111",
+      "commit": "e2f80b985402ab35ea59536870f892caa9b592d2",
+      "resolution": "INCLUDED_GIT_ANCESTOR"
+    },
+    {
+      "ancestor_of_integration": false,
+      "branch": "fix/etg-native-site-info-20261106",
+      "commit": "627d370e25745fc8a3e896e9f8818a895750645d",
+      "resolution": "NOT_INTEGRATED"
+    },
+    {
+      "ancestor_of_integration": false,
+      "branch": "fix/gtm-consent-central-portfolio-audit-20261111",
+      "commit": "1a1be24b02926a148443d5344c71a00cc320fed9",
+      "resolution": "NOT_INTEGRATED"
+    },
+    {
+      "ancestor_of_integration": false,
+      "branch": "fix/live-render-wpml-cwv-20261106",
+      "commit": "9babb46201b725e2bb913877d73006c3387f9a24",
+      "resolution": "NOT_INTEGRATED"
+    },
+    {
+      "ancestor_of_integration": false,
+      "branch": "fix/mad4b-runtime-policy-reconcile-v2-20261108",
+      "commit": "96a60953457ca04f2d6a73a27cf8b575c3c4e38d",
+      "resolution": "NOT_INTEGRATED"
+    },
+    {
+      "ancestor_of_integration": false,
+      "branch": "fix/mcp-dynamic-unbounded-20261106",
+      "commit": "ba5c57f0f51dd0355a1356e400765e18253fdab5",
+      "resolution": "NOT_INTEGRATED"
+    },
+    {
+      "ancestor_of_integration": false,
+      "branch": "fix/native-mcp-permission-bridge-20261106",
+      "commit": "c57d381fc66de48841d4ed0ca1226a8d668d1e1e",
+      "resolution": "NOT_INTEGRATED"
+    },
+    {
+      "ancestor_of_integration": false,
+      "branch": "fix/optional-native-v4-20261106",
+      "commit": "33330f349347c00f7ac569ae8373f9a2c59f53df",
+      "resolution": "NOT_INTEGRATED"
+    },
+    {
+      "ancestor_of_integration": false,
+      "branch": "fix/original-lifecycle-shortest-path-and-receipt-20261106",
+      "commit": "ab573130f1acce544aba2ad4c111ddeaa5250c8a",
+      "resolution": "NOT_INTEGRATED"
+    },
+    {
+      "ancestor_of_integration": false,
+      "branch": "fix/original313-license-preclaim-parity-20261111",
+      "commit": "b872d581dc96bade4be42278650594c691e93485",
+      "resolution": "NOT_INTEGRATED"
+    },
+    {
+      "ancestor_of_integration": false,
+      "branch": "fix/prod-native-parity-20261109",
+      "commit": "794e732af124eb4bfa2be5f00cb838e1b15f566a",
+      "resolution": "NOT_INTEGRATED"
+    },
+    {
+      "ancestor_of_integration": false,
+      "branch": "fix/runtime-cache-overlay-fleet-20261106",
+      "commit": "76cc5d4429c7eb0f0be4c76862622f975864100a",
+      "resolution": "NOT_INTEGRATED"
+    },
+    {
+      "ancestor_of_integration": false,
+      "branch": "fix/runtime-read-write-protocol-lane-isolation-20261106",
+      "commit": "93fb634c4a4c5e037bfbccd656733b44bd78b9de",
+      "resolution": "NOT_INTEGRATED"
+    },
+    {
+      "ancestor_of_integration": true,
+      "branch": "fix/service-activation-live-closure-20261111",
+      "commit": "c7df29c7e9db024d0c61850521a659577c5461f3",
+      "resolution": "INCLUDED_GIT_ANCESTOR"
+    },
+    {
+      "ancestor_of_integration": true,
+      "branch": "fix/shared-product-core-live-parity-20261108",
+      "commit": "2bcca5ff949f1e44359c6005221448d45adf9cf5",
+      "resolution": "INCLUDED_GIT_ANCESTOR"
+    },
+    {
+      "ancestor_of_integration": false,
+      "branch": "fix/staging-admin-settings-persistence-20261105",
+      "commit": "28fc587f2c83ac56b213881a8527315109fe92a3",
+      "resolution": "NOT_INTEGRATED"
+    },
+    {
+      "ancestor_of_integration": false,
+      "branch": "fix/tenant-environment-neutral-20261111",
+      "commit": "1ceab34b0e91c78519d5a471a0ae69fc39f90025",
+      "resolution": "NOT_INTEGRATED"
+    },
+    {
+      "ancestor_of_integration": true,
+      "branch": "fix/unified-date-v039-source-20261111",
+      "commit": "21ccf7e3117f808de45aea5a7c13880f19ef4695",
+      "resolution": "INCLUDED_GIT_ANCESTOR"
+    },
+    {
+      "ancestor_of_integration": false,
+      "branch": "fix/wayfa-checkout-unified-consents-20261111",
+      "commit": "88adf36d85db32170ebc4db06a84cfcc01e091ab",
+      "resolution": "NOT_INTEGRATED"
+    },
+    {
+      "ancestor_of_integration": false,
+      "branch": "fix/wayfa-passport-inline-ajax-wpml-20261111",
+      "commit": "16a5d996e322567ff043e19d75f5f44f22bfc287",
+      "resolution": "NOT_INTEGRATED"
+    },
+    {
+      "ancestor_of_integration": false,
+      "branch": "fix/wayfa-tenant-schema-current-readback-20261111",
+      "commit": "de7df5e3ccefb83865f27fd8043034ceacf08ca2",
+      "resolution": "NOT_INTEGRATED"
+    },
+    {
+      "ancestor_of_integration": true,
+      "branch": "integration/full-wordpress-source-reconcile-20261111",
+      "commit": "87f1e9a0a717b651cdfd4abb3b09864e9b4d25de",
+      "resolution": "INCLUDED_GIT_ANCESTOR"
+    },
+    {
+      "ancestor_of_integration": true,
+      "branch": "master",
+      "commit": "5c72e4893e36e992f056c90cfc75908b3a8f7785",
+      "resolution": "INCLUDED_GIT_ANCESTOR"
+    },
+    {
+      "ancestor_of_integration": false,
+      "branch": "reconcile/live-source-target-identity-20261105",
+      "commit": "395115c059b3333c1c7102b3734e55632b9a4c90",
+      "resolution": "NOT_INTEGRATED"
+    },
+    {
+      "ancestor_of_integration": false,
+      "branch": "release/control-plane-rc121-live-20261106",
+      "commit": "60ca8859d2c2bd7e5722c1d6995a1157f28a3878",
+      "resolution": "NOT_INTEGRATED"
+    },
+    {
+      "ancestor_of_integration": false,
+      "branch": "release/mcp-skills-rc120-integration-20261106",
+      "commit": "f696846fec2c2cc1b77ad5312d892e2073fcc0c5",
+      "resolution": "NOT_INTEGRATED"
+    },
+    {
+      "ancestor_of_integration": false,
+      "branch": "review/toursdev-rc129-reconciled-20261109",
+      "commit": "45e4cbdc46145092e9b9484ecb6cb47bf7ef8ee7",
+      "resolution": "NOT_INTEGRATED"
+    }
+  ],
+  "clean_unmerged_heads": 0,
+  "contract": "mad4b.local-git-source-branch-coverage.v1",
+  "dirty_worktree_status": [
+    {
+      "state": "WORKTREE_UNCOMMITTED_NOT_INCLUDED",
+      "tracked_modified_count": 0,
+      "untracked_count": 4,
+      "worktree": "/opt/hostinger-migrations/hosting-3/etg-commerce-staging/source-git/worktrees/lifecycle-router-receipt-20261106"
+    },
+    {
+      "state": "WORKTREE_UNCOMMITTED_NOT_INCLUDED",
+      "tracked_modified_count": 3,
+      "untracked_count": 1,
+      "worktree": "/opt/hostinger-migrations/hosting-3/etg-commerce-staging/source-git/worktrees/runtime-cache-overlay-fleet-20261106"
+    },
+    {
+      "state": "WORKTREE_UNCOMMITTED_NOT_INCLUDED",
+      "tracked_modified_count": 0,
+      "untracked_count": 1,
+      "worktree": "/opt/hostinger-migrations/hosting-3/etg-commerce-staging/source-git/worktrees/staging-save-20261105"
+    },
+    {
+      "state": "WORKTREE_UNCOMMITTED_NOT_INCLUDED",
+      "tracked_modified_count": 1,
+      "untracked_count": 5,
+      "worktree": "/opt/mad4b-company-provisioning/worktrees/early-benefits-mail-closure-20261111"
+    },
+    {
+      "state": "WORKTREE_UNCOMMITTED_NOT_INCLUDED",
+      "tracked_modified_count": 67,
+      "untracked_count": 0,
+      "worktree": "/opt/mad4b-company-provisioning/worktrees/pr787-ci-forward-neutral-20261110"
+    },
+    {
+      "state": "WORKTREE_UNCOMMITTED_NOT_INCLUDED",
+      "tracked_modified_count": 0,
+      "untracked_count": 1,
+      "worktree": "/opt/mad4b-company-provisioning/worktrees/tenant-environment-neutral-20261111"
+    },
+    {
+      "state": "WORKTREE_UNCOMMITTED_NOT_INCLUDED",
+      "tracked_modified_count": 22,
+      "untracked_count": 0,
+      "worktree": "/opt/mad4b-company-provisioning/worktrees/unified-date-v039-reconcile-20261111"
+    },
+    {
+      "state": "WORKTREE_UNCOMMITTED_NOT_INCLUDED",
+      "tracked_modified_count": 1,
+      "untracked_count": 1,
+      "worktree": "/opt/mad4b-company-transport/worktrees/company-code-release-20261108"
+    },
+    {
+      "state": "WORKTREE_UNCOMMITTED_NOT_INCLUDED",
+      "tracked_modified_count": 1,
+      "untracked_count": 4,
+      "worktree": "/opt/mad4b-company-transport/worktrees/gh764-destination-unified-20261107"
+    },
+    {
+      "state": "WORKTREE_UNCOMMITTED_NOT_INCLUDED",
+      "tracked_modified_count": 3,
+      "untracked_count": 5,
+      "worktree": "/opt/mad4b-company-transport/worktrees/gh764-gallery-checkpoint-20261107"
+    },
+    {
+      "state": "WORKTREE_UNCOMMITTED_NOT_INCLUDED",
+      "tracked_modified_count": 5,
+      "untracked_count": 5,
+      "worktree": "/opt/mad4b-company-transport/worktrees/gh764-readiness-gallery-20261107"
+    },
+    {
+      "state": "WORKTREE_UNCOMMITTED_NOT_INCLUDED",
+      "tracked_modified_count": 0,
+      "untracked_count": 4,
+      "worktree": "/opt/mad4b-company-transport/worktrees/live-render-wpml-cwv-20261106"
+    }
+  ],
+  "dirty_worktrees": 12,
+  "full_branch_coverage_verified": false,
+  "included_ancestor_branch_refs": 20,
+  "independent_unmerged_heads": 18,
+  "local_git_only_source_review": true,
+  "manual_conflict_resolutions_authorized": false,
+  "maximal_unmerged_heads": [
+    {
+      "branch": "approval/lifecycle-source-reissue-pr782-20261108",
+      "commit": "d30695a8c985c922ee9fa4fb50d4af045eeddf85",
+      "git_merge_tree_conflict_count": 0,
+      "state": "UNRELATED_HISTORY"
+    },
+    {
+      "branch": "feat/company-policy-registry-native-rates-20261107",
+      "commit": "69048403b434551021025e29605847fa2f6c9da7",
+      "git_merge_tree_conflict_count": 64,
+      "state": "CONFLICTS_REQUIRE_EXPLICIT_RESOLUTION"
+    },
+    {
+      "branch": "feat/mad4b-fleet-adaptive-intake-v2-20261108",
+      "commit": "939c9ec21fdbe90070333b186e6f1b8a7c69201d",
+      "git_merge_tree_conflict_count": 18,
+      "state": "CONFLICTS_REQUIRE_EXPLICIT_RESOLUTION"
+    },
+    {
+      "branch": "feat/mad4b-pricing-cache-inheritance-20261108",
+      "commit": "69f605c0426ae631b06ec1d41fa24002fb03abd6",
+      "git_merge_tree_conflict_count": 2,
+      "state": "CONFLICTS_REQUIRE_EXPLICIT_RESOLUTION"
+    },
+    {
+      "branch": "feat/mad4b-source-url-content-loop-v1-20261108",
+      "commit": "061552b74e8e3cffdde998477b353b66d2659128",
+      "git_merge_tree_conflict_count": 62,
+      "state": "CONFLICTS_REQUIRE_EXPLICIT_RESOLUTION"
+    },
+    {
+      "branch": "feat/original313-receipt-preclaim-20261111",
+      "commit": "6ac19b42430ca68a91457fe96007ef2afb7e5c3a",
+      "git_merge_tree_conflict_count": 61,
+      "state": "CONFLICTS_REQUIRE_EXPLICIT_RESOLUTION"
+    },
+    {
+      "branch": "feat/plugin-license-original313-v18",
+      "commit": "3e9f27ecf1dd6bf583cf4dac852e191ecb77ff72",
+      "git_merge_tree_conflict_count": 62,
+      "state": "CONFLICTS_REQUIRE_EXPLICIT_RESOLUTION"
+    },
+    {
+      "branch": "feat/request-advances-20261106",
+      "commit": "1318b19a8aa62f5ec12461a2b5868515f5d1d5b5",
+      "git_merge_tree_conflict_count": 65,
+      "state": "CONFLICTS_REQUIRE_EXPLICIT_RESOLUTION"
+    },
+    {
+      "branch": "fix/central-wpcli-scoped-discovery-20261106",
+      "commit": "0fcf4cbd0a8e282eebe96fe22b4c52684260add0",
+      "git_merge_tree_conflict_count": 60,
+      "state": "CONFLICTS_REQUIRE_EXPLICIT_RESOLUTION"
+    },
+    {
+      "branch": "fix/company-operations-settings-cache-skills-live-20261106",
+      "commit": "e6d36f40961b1fa142d33be73d65ed32f18e92c2",
+      "git_merge_tree_conflict_count": 48,
+      "state": "CONFLICTS_REQUIRE_EXPLICIT_RESOLUTION"
+    },
+    {
+      "branch": "fix/composite-media-signed-apply-20261110",
+      "commit": "2cd871eeaa0d5055f868e13cdf3b8f13e395a647",
+      "git_merge_tree_conflict_count": 34,
+      "state": "CONFLICTS_REQUIRE_EXPLICIT_RESOLUTION"
+    },
+    {
+      "branch": "fix/early-benefits-integrated-claims-20261111",
+      "commit": "bad8e810eb40667141eb3895814823f9a73f54ae",
+      "git_merge_tree_conflict_count": 66,
+      "state": "CONFLICTS_REQUIRE_EXPLICIT_RESOLUTION"
+    },
+    {
+      "branch": "fix/live-render-wpml-cwv-20261106",
+      "commit": "9babb46201b725e2bb913877d73006c3387f9a24",
+      "git_merge_tree_conflict_count": 3,
+      "state": "CONFLICTS_REQUIRE_EXPLICIT_RESOLUTION"
+    },
+    {
+      "branch": "fix/mad4b-runtime-policy-reconcile-v2-20261108",
+      "commit": "96a60953457ca04f2d6a73a27cf8b575c3c4e38d",
+      "git_merge_tree_conflict_count": 5,
+      "state": "CONFLICTS_REQUIRE_EXPLICIT_RESOLUTION"
+    },
+    {
+      "branch": "fix/prod-native-parity-20261109",
+      "commit": "794e732af124eb4bfa2be5f00cb838e1b15f566a",
+      "git_merge_tree_conflict_count": 63,
+      "state": "CONFLICTS_REQUIRE_EXPLICIT_RESOLUTION"
+    },
+    {
+      "branch": "fix/staging-admin-settings-persistence-20261105",
+      "commit": "28fc587f2c83ac56b213881a8527315109fe92a3",
+      "git_merge_tree_conflict_count": 56,
+      "state": "CONFLICTS_REQUIRE_EXPLICIT_RESOLUTION"
+    },
+    {
+      "branch": "fix/tenant-environment-neutral-20261111",
+      "commit": "1ceab34b0e91c78519d5a471a0ae69fc39f90025",
+      "git_merge_tree_conflict_count": 60,
+      "state": "CONFLICTS_REQUIRE_EXPLICIT_RESOLUTION"
+    },
+    {
+      "branch": "fix/wayfa-tenant-schema-current-readback-20261111",
+      "commit": "de7df5e3ccefb83865f27fd8043034ceacf08ca2",
+      "git_merge_tree_conflict_count": 62,
+      "state": "CONFLICTS_REQUIRE_EXPLICIT_RESOLUTION"
+    }
+  ],
+  "original_main_branch": "integration/full-wordpress-source-reconcile-20261111",
+  "production_original313_cas_certified": false,
+  "production_original318_signed_source_approval": false,
+  "source_head_before_audit_commit": "cc57dba78da2ecf02e7adce7f10e0a43d9ae55ff",
+  "source_kind": "LOCAL_GIT_ONLY_NO_REMOTE_FETCH",
+  "target_branch": "integration/company-cas-local-branches-20261112",
+  "unmerged_branch_refs": 41,
+  "unrelated_unmerged_heads": 1
+}
