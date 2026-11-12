@@ -1,0 +1,20 @@
+{
+  "contract": "mad4b.native-source-publisher-enrollment-proposal.v1",
+  "operation_id": "source.code.release",
+  "company": "tours-central",
+  "environment": "staging",
+  "site_uuid": "e5e64bca-ed62-48d2-b2b3-dff693cd702a",
+  "origin": "https://tours.dev.mad4b.com",
+  "file_allowlist": ["wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.4.3.js"],
+  "plan_contract": "mad4b.company-code-release.plan.v1",
+  "native_provider_id": "mad4b-source-release",
+  "approval_contract": "mad4b.native-source-master-approval.v1",
+  "required_approval_role": "master_admin",
+  "installed_original_306_312_313_required": true,
+  "independent_receipt_required": true,
+  "remote_host_authority_v2_required": false,
+  "source_only": true,
+  "registry_enrolled": false,
+  "publisher_enabled": false,
+  "production_writes_authorized": false
+}
