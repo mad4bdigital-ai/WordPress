@@ -43,3 +43,43 @@ bridge have actually been installed. Currently they have not. An exit code
 zero on a future local source audit would still NOT constitute release
 authorization: a separately signed Master Admin/Original312/Original313
 workflow remains mandatory.
+
+## Original worker and signed-evidence compatibility (expanded audit)
+
+These checks load currently installed first-party read-only functions
+admission.checked_plan, worker_adapter.indexed_plans, registry.Registry, and
+the Original313 evidence contract. They test an ephemeral root-private plan
+directory only. They never invoke execute_claimed, create a Job, sign grants,
+change installed registry files, or run Host execution.
+
+1. The dynamic source candidate embeds source_binding inside the CAS plan.
+   Original313 checks the exact plan digest including that extra field and
+   responds ORIGINAL_PLAN_CONTENT_CHANGED. Removing the field makes the
+   original core plan validate, but removes the operation binding.
+2. The installed worker can index one plain CAS plan under two operations
+   sharing the generic plan contract. This is an ambiguous mapping, NOT
+   proof of unauthorized deployment: a distinct signed Job is still needed
+   before dispatch. Future first-party admission must limit each plan to
+   its specifically enrolled operation.
+3. The source independent-verifier candidate always emits
+   production_mutation=false; the installed Original313 evidence verifier
+   requires the flag to equal environment == production. Current candidate
+   cannot provide a compatible Production evidence payload.
+
+### Required approved interface changes
+
+- Preserve the core CAS plan bytes and SHA. A separately protected first-party
+  association must pin operation ID, plan SHA, manifest hash, site UUID and
+  target scope, and be validated before worker indexing and original312.
+  Never use caller Job metadata or an unsigned fixture as authority.
+- Do not allow another provider sharing plan_contract to claim the association.
+  Deny ambiguous, missing, revoked or mismatched scope/binding.
+- Ensure independent signed evidence has the correct environment flag and
+  is bound to the genuine original Job and independently certified signer.
+- Preserve the two existing blockers requiring explicit review:
+  cross-source/target path equality and fresh changed_count recomputation.
+
+The extended audit also differentiates an operation merely present in the
+installed index from one whose handler, verifier, dependencies, manifest and
+evidence schema SHAs pass the first-party Registry readback. Index presence
+alone does not certify a release.

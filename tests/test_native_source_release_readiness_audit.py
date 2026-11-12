@@ -35,6 +35,33 @@ class NativeSourceAudit(unittest.TestCase):
         )
 
 
+    def test_installed_original_worker_contract_requires_exclusive_binding(self):
+        result = audit.original_worker_contract_probes()
+        self.assertEqual(
+            result["test_scope"], "ORIGINAL_VALIDATORS_ON_EPHEMERAL_PLAN_STORE"
+        )
+        self.assertEqual(result["original313_accepts_plain_core_plan"], "ACCEPTED")
+        self.assertIn(
+            result["original313_accepts_dynamic_envelope"].split(":")[0],
+            ("ACCEPTED", "DENIED"),
+        )
+        self.assertEqual(len(result["one_core_plan_indexed_under_operations"]), 2)
+        self.assertFalse(result["job_issued"])
+        self.assertFalse(result["grant_issued"])
+        self.assertFalse(result["installed_worker_modified"])
+
+    def test_original_worker_contract_holds_release_if_not_compatible(self):
+        result = audit.evaluate()
+        worker = result["original_worker_contract_probes"]
+        if worker["original313_accepts_dynamic_envelope"] != "ACCEPTED":
+            self.assertIn(
+                "ORIGINAL313_PLAN_ENVELOPE_NOT_COMPATIBLE", result["blockers"]
+            )
+        if not worker["operation_exclusive"]:
+            self.assertIn(
+                "ORIGINAL306_PLAN_OPERATION_NOT_UNIQUELY_BOUND", result["blockers"]
+            )
+
     def test_new_catalog_operation_is_discovered_without_code_edits(self):
         with tempfile.TemporaryDirectory(prefix="source-catalog-audit-") as temp:
             folder = Path(temp)
@@ -60,6 +87,47 @@ class NativeSourceAudit(unittest.TestCase):
                              ["beta.source.release"])
             self.assertFalse(result["all_candidate_operations_present_in_index"])
             self.assertFalse(result["first_party_signed_enrollment_verified"])
+            self.assertEqual(
+                result["registry_hash_verified_candidate_operations"], []
+            )
+            self.assertEqual(
+                result["registry_unverified_candidate_operations"],
+                ["alpha.source.release", "beta.source.release"],
+            )
+
+
+    def test_original_313_environment_evidence_must_be_compatible(self):
+        found=audit.verifier_environment_contract_probe()
+        self.assertTrue(found["original313_requires_env_bound_mutation_flag"])
+        if not found["production_proof_compatible"]:
+            self.assertIn(
+                "ORIGINAL313_PRODUCTION_EVIDENCE_ENVIRONMENT_MISMATCH",
+                audit.evaluate()["blockers"],
+            )
+        self.assertFalse(found["original_independent_signer_modified"])
+        self.assertFalse(found["signed_proof_created"])
+
+    def test_index_names_are_not_registry_digest_certification(self):
+        with tempfile.TemporaryDirectory(prefix="source-registry-unauthenticated-") as temp:
+            folder=Path(temp)
+            generated=folder/"catalog/generated"
+            generated.mkdir(parents=True)
+            op="untrusted.source.release"
+            (generated/(op+".manifest.json")).write_text(
+                json.dumps({"operation_id":op,"provider":"untrusted"}))
+            root=folder/"registry"
+            root.mkdir()
+            (root/"index.json").write_text(json.dumps({"providers":[{
+              "manifest":"dynamic-operation-registry-v1/providers/"+
+                         op+"/manifest.json",
+              "sha256":"0"*64
+            }]}))
+            with mock.patch.object(audit, "HERE",folder), (
+                 mock.patch.object(audit, "INSTALLED_REGISTRY",root/"index.json")):
+                result=audit.installed_status()
+            self.assertTrue(result["all_candidate_operations_present_in_index"])
+            self.assertFalse(result["all_candidate_manifests_sha_verified"])
+            self.assertEqual(result["registry_unverified_candidate_operations"],[op])
 
     def test_detected_source_behavior_has_corresponding_blocker(self):
         result = audit.evaluate()

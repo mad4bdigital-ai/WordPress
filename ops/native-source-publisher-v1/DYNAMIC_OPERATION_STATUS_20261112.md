@@ -41,3 +41,11 @@ See RELEASE_READINESS_AUDIT_20261112.md.
 Additional audit tests bring focused Python coverage to 26/26. Full
 repository suite has 358 tests, with the same 22 failures present on the
 parent baseline and no newly failing test labels.
+
+## Original306/313 compatibility update
+
+The read-only audit reports eight blockers including CAS-envelope mismatch,
+operation/plan ambiguity across providers sharing a plan contract, a
+Production evidence environment mismatch and unregistered authority.
+All checks use ephemeral fixtures or installed read-only validators.
+No authority was created. See RELEASE_READINESS_AUDIT_20261112.md.
