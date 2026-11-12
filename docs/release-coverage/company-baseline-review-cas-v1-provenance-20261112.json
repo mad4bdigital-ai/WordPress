@@ -1,0 +1,55 @@
+{
+  "as_of": "2026-11-12",
+  "baseline_preview_ever_creates_after_digest": false,
+  "central_new_baseline_guest_http": 401,
+  "central_privileged_baseline_review_live_success": false,
+  "central_schema_public_http": 200,
+  "central_wpcli_busy_at_live_acceptance": true,
+  "contract": "mad4b.company-reconcile.baseline-review-cas.v1.source-provenance",
+  "current_resource_child_job_id": "22e60729e0e14bd6754139197b69d451f7c08dae",
+  "executor_cas_verified": false,
+  "files": [
+    {
+      "bytes": 6105,
+      "deployed_to": "central_source_only",
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-repair-baseline-review.php",
+      "root_owned": true,
+      "sha256": "47296d5838ec8067eb613b55529d1b43051a76fe7512dd009a8fc557509d1aec"
+    },
+    {
+      "bytes": 91370,
+      "deployed_to": "central_source_only",
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-repair-jobs.php",
+      "root_owned": true,
+      "sha256": "47b0d4ecfe2d9c4335fb09d41ef770666b81fefae9f9c176978dac9d7c8d5e66"
+    }
+  ],
+  "full_clone_executed": false,
+  "new_code_deployed_to_central": true,
+  "operator_review_mutates_journal": false,
+  "original_305_submitted": false,
+  "original_313_for_resource_verified": false,
+  "original_318_signed_release_certified": false,
+  "other_company_content_or_code_changed": false,
+  "preparation_without_executor_cas_admitted": false,
+  "restorable_rollback_artifact_generated": false,
+  "scope": "Central source and Wayfatours Production evidence only",
+  "signed_original312_implicitly_authorizes_execution": false,
+  "source_incident_count": 19,
+  "source_policy_changed": false,
+  "target_site_uuid": "a3a7cc36-db7e-4a14-8456-b41857def05c",
+  "tests": {
+    "admin_ui_javascript_parsed": true,
+    "baseline_candidate": 35,
+    "depth_policy": 35,
+    "dynamic_repair": 67,
+    "original_binding_structural": 17,
+    "queue": 15,
+    "resource_lifecycle": 35,
+    "resource_resolver": 52,
+    "scoped_312_structural": 19,
+    "snapshot_store": 29,
+    "target_double_read": 16
+  },
+  "wayfatours_content_or_code_changed_in_this_increment": false
+}

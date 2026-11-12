@@ -1,0 +1,120 @@
+<?php
+define('ABSPATH','/');
+require dirname(__DIR__).'/includes/class-mad4b-company-repair-job-contract.php';
+require dirname(__DIR__).'/includes/class-mad4b-company-repair-baseline-review.php';
+$contract='MAD4B_Company_Repair_Job_Contract_V1';
+$review='MAD4B_Company_Repair_Baseline_Review_V1';
+$now=20000;
+$scope=[
+ 'company_code'=>'wayfatours','environment'=>'production',
+ 'site_uuid'=>'a3a7cc36-db7e-4a14-8456-b41857def05c',
+ 'canonical_origin'=>'https://wayfatours.com',
+ 'incident_code'=>'draft_tour_rate_advisory',
+ 'resource_key'=>'wordpress.post:61152',
+ 'source_plan_sha256'=>str_repeat('a',64)
+];
+$binding=[
+ 'resource_type'=>'wordpress.post',
+ 'resource_id'=>'61152',
+ 'resource_resolution_sha256'=>str_repeat('b',64),
+ 'resolved_resource_before_sha256'=>str_repeat('c',64),
+ 'resolved_resource_manifest_sha256'=>str_repeat('d',64),
+ 'resolved_company_preservation_sha256'=>str_repeat('e',64),
+ 'resolved_resource_observed_epoch'=>$now,
+];
+$job=$contract::fresh($scope,$now,$binding);
+$job['ownership_scope']='tenant_owned';
+$job['target_check']='eligible_content_manifest';
+$job['evidence_lane']='target_local';
+$job['required_dependencies']=[];
+$job['acceptance']='independent Original 313 proof required';
+$job['owner']='trusted_provider';
+$job['repair_strategy']='inspect exact resource before change';
+$job['native_operation']='content.write';
+$job['provider_resolution_sha256']=str_repeat('f',64);
+$job['immutable_plan_sha256']=str_repeat('9',64);
+$job['immutable_descriptor_sha256']=$contract::descriptor($job);
+$observed=[
+ 'state'=>'EXACT_RESOURCE_OBSERVED_UNSIGNED',
+ 'resource_observed'=>true,
+ 'company_code'=>$job['company_code'],'environment'=>$job['environment'],
+ 'site_uuid'=>$job['site_uuid'],'canonical_origin'=>$job['canonical_origin'],
+ 'source_plan_sha256'=>$job['source_plan_sha256'],
+ 'resource_key'=>$job['resource_key'],
+ 'resource_resolution_sha256'=>$job['resource_resolution_sha256'],
+ 'before_sha256'=>$job['resolved_resource_before_sha256'],
+ 'resource_manifest_sha256'=>$job['resolved_resource_manifest_sha256'],
+ 'company_preservation_sha256'=>$job['resolved_company_preservation_sha256'],
+ 'ownership_scope'=>'tenant_owned',
+ 'observed_epoch'=>$now,
+ 'exact_scoped_312_verified'=>true
+];
+$tests=[];$assert=static function($label,$pass)use(&$tests){$tests[$label]=(bool)$pass;};
+$assert('immutable_chain_created',$contract::valid_chain($job));
+$row=$review::inspect($job,$observed,$now);
+$assert('resource_candidate_eligible_for_review_only',
+ $row['state']==='UNSIGNED_BASELINE_CANDIDATE_REVIEW_ONLY');
+$assert('unsigned_source_never_signed',$row['snapshot_origin_independently_signed']===false);
+$assert('baseline_not_recorded',$row['baseline_recorded']===false);
+$assert('no_fake_after_image',$row['expected_after_sha256']===null);
+$assert('no_fake_rollback_artifact',$row['rollback_sha256']===null);
+$assert('no_execution_authority',$row['repair_execution_authorized']===false);
+$assert('no_original_job_submitted',$row['original_305_submitted']===false);
+$assert('no_313_certification',$row['original_313_verified']===false);
+$assert('no_journal_mutation',$row['journal_updated_by_review']===false);
+$assert('before_matches_bound_target',$row['before_sha256']===str_repeat('c',64));
+$assert('tenant_preservation_digest_displayed',$row['company_preservation_sha256']===str_repeat('e',64));
+$assert('target_snapshot_300_seconds',$row['snapshot_expires_in_seconds']===300);
+$assert('missing_requirements_explicit',
+ in_array('PROVIDER_GOVERNED_EXPECTED_AFTER_IMAGE_NOT_SUPPLIED',$row['missing_requirements'],true)
+ &&in_array('VERIFIED_RESTORABLE_ROLLBACK_ARTIFACT_NOT_SUPPLIED',$row['missing_requirements'],true)
+ &&in_array('INDEPENDENT_TARGET_ORIGIN_AND_EXECUTOR_TIME_CAS_REQUIRED',$row['missing_requirements'],true));
+$assert('candidate_fingerprint_exposed',strlen($row['candidate_fingerprint_sha256']??'')===64);
+$assert('same_snapshot_deterministic_candidate',$row['candidate_fingerprint_sha256']===
+ $review::inspect($job,$observed,$now)['candidate_fingerprint_sha256']);
+$assert('signed312_does_not_change_execution_readiness',
+ $row['exact_scoped_312_was_verified']===true
+ &&$row['repair_execution_authorized']===false);
+foreach([
+ 'wrong_company'=>['company_code','wrong-company'],
+ 'wrong_environment'=>['environment','staging'],
+ 'wrong_uuid'=>['site_uuid','a3a7cc36-db7e-4a14-8456-b41857def05f'],
+ 'wrong_origin'=>['canonical_origin','https://different.example'],
+ 'wrong_plan'=>['source_plan_sha256',str_repeat('0',64)],
+ 'wrong_key'=>['resource_key','wordpress.post:999'],
+ 'wrong_before'=>['before_sha256',str_repeat('0',64)],
+ 'wrong_manifest'=>['resource_manifest_sha256',str_repeat('0',64)],
+ 'wrong_preservation'=>['company_preservation_sha256',str_repeat('0',64)],
+ 'changed_owner'=>['ownership_scope','shared_definition'],
+ 'unverified_preview'=>['resource_observed',false],
+ 'unexpected_preview_state'=>['state','ORIGINAL_313_CERTIFIED'],
+] as $label=>[$field,$value]){
+ $copy=$observed;$copy[$field]=$value;
+ $r=$review::inspect($job,$copy,$now);
+ $assert($label.'_holds', $r['state']==='BASELINE_REVIEW_HOLD'
+  &&$r['before_sha256']===null &&$r['repair_execution_authorized']===false);
+}
+$old=$observed;$old['observed_epoch']=$now-301;
+$assert('expired_snapshot_rejected',
+ $review::inspect($job,$old,$now)['state']==='BASELINE_REVIEW_HOLD');
+$future=$observed;$future['observed_epoch']=$now+31;
+$assert('future_epoch_rejected',
+ $review::inspect($job,$future,$now)['state']==='BASELINE_REVIEW_HOLD');
+$staged=$job;$staged['state']='BASELINE_RECORDED_UNVERIFIED';
+$assert('tampered_state_invalid_job_rejected',
+ $review::inspect($staged,$observed,$now)['state']==='BASELINE_REVIEW_HOLD');
+$bad=$job;$bad['resolved_resource_before_sha256']=str_repeat('0',64);
+$assert('journal_tamper_refused',
+ $review::inspect($bad,$observed,$now)['state']==='BASELINE_REVIEW_HOLD');
+$bad=$job;$bad['original_job_id']='original_1';
+$assert('original_job_already_bound_holds',
+ $review::inspect($bad,$observed,$now)['state']==='BASELINE_REVIEW_HOLD');
+$logical=$job;
+$logical['resource_key']='incident:'. $logical['incident_code'];
+$assert('incident_alias_not_a_resource',
+ $review::inspect($logical,$observed,$now)['state']==='BASELINE_REVIEW_HOLD');
+echo json_encode(['pass'=>!in_array(false,$tests,true),
+ 'assertions'=>count($tests),
+ 'failed'=>array_keys(array_filter($tests,static fn($v)=>!$v)),
+ 'current_execution_ready'=>false],JSON_UNESCAPED_SLASHES).PHP_EOL;
+if(in_array(false,$tests,true))exit(1);

@@ -11,6 +11,7 @@ require_once __DIR__.'/class-mad4b-company-repair-job-contract.php';
 require_once __DIR__.'/class-mad4b-company-repair-resource-resolver.php';
 require_once __DIR__.'/class-mad4b-company-resource-snapshot-store.php';
 require_once __DIR__.'/class-mad4b-company-repair-capability-discovery.php';
+require_once __DIR__.'/class-mad4b-company-repair-baseline-review.php';
 if (!class_exists('MAD4B_Company_Reconcile_Repair_Jobs_V1',false)) {
 final class MAD4B_Company_Reconcile_Repair_Jobs_V1 {
     public const PREFIX='mad4b_company_repair_job_v1_';
@@ -138,6 +139,13 @@ final class MAD4B_Company_Reconcile_Repair_Jobs_V1 {
         if(!self::read_owner())return self::deny('admin_only',403);
         $plan=self::plan($company,$environment,$incident);
         if(is_wp_error($plan))return $plan;
+        return self::resource_preview_from_plan($plan,$resourceType,$resourceId);
+    }
+    private static function resource_preview_from_plan(
+        array $plan,string $resourceType,string $resourceId):array|WP_Error {
+        $company=$plan['company_code'];
+        $environment=$plan['environment'];
+        $incident=$plan['incident_code'];
         $selector=['resource_type'=>$resourceType,'resource_id'=>$resourceId];
         if(!MAD4B_Company_Repair_Resource_Resolver_V2::selector_valid($selector))
             return self::deny('invalid_resource_selector',422);
@@ -227,8 +235,7 @@ final class MAD4B_Company_Reconcile_Repair_Jobs_V1 {
         if(!MAD4B_Company_Repair_Job_Contract_V1::sha($expectedPlanHash)
            ||!hash_equals($plan['source_plan_sha256'],$expectedPlanHash))
             return self::deny('source_plan_changed');
-        $observation=self::resource_preview($company,$environment,$incident,
-            $resourceType,$resourceId);
+        $observation=self::resource_preview_from_plan($plan,$resourceType,$resourceId);
         if(is_wp_error($observation))return $observation;
         if(($observation['state']??null)!=='EXACT_RESOURCE_OBSERVED_UNSIGNED'
            ||($observation['resource_observed']??false)!==true
@@ -544,6 +551,67 @@ final class MAD4B_Company_Reconcile_Repair_Jobs_V1 {
                 'resumable'=>true];
         }finally{self::unlock($lock);}
     }
+    /** Explicit operator assessment: review a *candidate*, never record a baseline. */
+    public static function baseline_review(string $id):array|WP_Error {
+        if(!self::read_owner())return self::deny('admin_only',403);
+        $job=self::raw($id);
+        if(is_wp_error($job))return $job;
+        $plan=self::plan($job['company_code'],$job['environment'],
+            $job['incident_code']);
+        if(is_wp_error($plan))return $plan;
+        return self::baseline_review_from_plan($plan,$job);
+    }
+    private static function baseline_review_from_plan(
+        array $plan,array $job):array|WP_Error {
+        if(($plan['site_uuid']??null)!==$job['site_uuid']
+            ||($plan['canonical_origin']??null)!==$job['canonical_origin']
+            ||($plan['source_plan_sha256']??null)!==$job['source_plan_sha256']
+            ||($plan['incident_code']??null)!==$job['incident_code']
+            ||($plan['native_operation']??null)!==($job['native_operation']??null)
+            ||($plan['provider_resolution_sha256']??null)!==
+                 ($job['provider_resolution_sha256']??null))
+            return self::deny('baseline_review_current_plan_or_provider_drift');
+        if(str_starts_with((string)($job['resource_key']??''),'incident:'))
+            return self::deny('baseline_review_requires_exact_resource',422);
+        $preview=self::resource_preview_from_plan(
+            $plan,$job['resource_type'],$job['resource_id']);
+        if(is_wp_error($preview))return $preview;
+        return MAD4B_Company_Repair_Baseline_Review_V1::inspect(
+            $job,$preview,time());
+    }
+    public static function baseline_review_scope(string $company,string $environment,
+        string $incident,string $type,string $resourceId):array|WP_Error {
+        if(!self::read_owner())return self::deny('admin_only',403);
+        if(!MAD4B_Company_Repair_Resource_Resolver_V2::selector_valid([
+            'resource_type'=>$type,'resource_id'=>$resourceId]))
+            return self::deny('invalid_resource_selector',422);
+        $plan=self::plan($company,$environment,$incident);
+        if(is_wp_error($plan))return $plan;
+        $id=MAD4B_Company_Repair_Job_Contract_V1::key([
+            'company_code'=>$company,'environment'=>$environment,
+            'site_uuid'=>$plan['site_uuid'],
+            'canonical_origin'=>$plan['canonical_origin'],
+            'incident_code'=>$incident,
+            'resource_key'=>$type.':'.$resourceId,
+            'source_plan_sha256'=>$plan['source_plan_sha256']
+        ]);
+        if($id==='')return self::deny('baseline_review_exact_job_identity_invalid');
+        $job=self::raw($id);
+        if(is_wp_error($job))return $job;
+        return self::baseline_review_from_plan($plan,$job);
+    }
+    public static function rest_baseline_review(WP_REST_Request $request) {
+        $result=self::baseline_review_scope(
+            (string)$request->get_param('company'),
+            (string)$request->get_param('environment'),
+            (string)$request->get_param('incident'),
+            (string)$request->get_param('resource_type'),
+            (string)$request->get_param('resource_id'));
+        if(is_wp_error($result))return $result;
+        $response=rest_ensure_response($result);
+        $response->header('Cache-Control','private, no-store, max-age=0');
+        return $response;
+    }
     public static function status(string $id):array|WP_Error {
         if(!self::read_owner())return self::deny('admin_only',403);
         return self::raw($id);
@@ -697,8 +765,8 @@ final class MAD4B_Company_Reconcile_Repair_Jobs_V1 {
                 $job['immutable_resolved_binding_sha256']??null)
             &&MAD4B_Company_Repair_Job_Contract_V1::valid_chain($job);
         if($resourceBound &&$matched) {
-            $fresh=self::resource_preview($job['company_code'],$job['environment'],
-                $job['incident_code'],$job['resource_type'],$job['resource_id']);
+            $fresh=self::resource_preview_from_plan(
+                $current,$job['resource_type'],$job['resource_id']);
             $resourceBound=!is_wp_error($fresh)
                 &&($fresh['state']??null)==='EXACT_RESOURCE_OBSERVED_UNSIGNED'
                 &&($fresh['resource_resolution_sha256']??null)===
@@ -752,6 +820,11 @@ final class MAD4B_Company_Reconcile_Repair_Jobs_V1 {
             'original_provider_preflight_ready'=>$ready,
             'native_capability_ready_for_external_original_job'=>$ready,
             'repair_execution_ready'=>false,
+            // An imported unsigned snapshot is suitable for inspection and
+            // planning only. It never proves an executor-time compare-and-swap.
+            'executor_time_before_image_cas_verified'=>false,
+            'executor_preimage_cas_admission_state'=>
+                'EXACT_TARGET_EXECUTOR_CAS_NOT_PROVEN',
             'independent_original_313_for_this_job_verified'=>false,
             'original_provider_state'=>$resourceBound
                 ?(($scoped['verified']??false)===true
@@ -801,6 +874,16 @@ final class MAD4B_Company_Reconcile_Repair_Jobs_V1 {
                     'reason'=>$pre['original_provider_reason'],
                     'job_state'=>$row['state'],
                     'original_305_submitted'=>false];
+            if(($pre['executor_time_before_image_cas_verified']??false)!==true)
+                return [
+                    'state'=>'EXACT_EXECUTOR_PREIMAGE_CAS_HOLD',
+                    'reason'=>'SIGNED_312_AND_UNSIGNED_WPCLI_SNAPSHOT_DO_NOT_PROVE_EXECUTOR_TIME_CAS',
+                    'job_id'=>$id,'job_state'=>$row['state'],
+                    'baseline_remains_unsigned'=>true,
+                    'can_submit_via_this_module'=>false,
+                    'original_305_submitted'=>false,
+                    'original_313_verified'=>false,
+                ];
             $next=MAD4B_Company_Repair_Job_Contract_V1::append($row,
                 'BASELINE_PREPARED',[
                     'native_operation'=>$row['native_operation'],
@@ -1156,6 +1239,10 @@ final class MAD4B_Company_Reconcile_Repair_Jobs_V1 {
     }
     public static function routes():void {
         if(!self::central())return;
+        register_rest_route('mad4b/v1','/company-repair/baseline-review',[
+            'methods'=>'GET','permission_callback'=>static fn()=>self::read_owner(),
+            'callback'=>[__CLASS__,'rest_baseline_review']
+        ]);
         register_rest_route('mad4b/v1','/company-repair/resource-preview',[
             'methods'=>'GET','permission_callback'=>static fn()=>self::read_owner(),
             'callback'=>[__CLASS__,'rest_resource_preview']
@@ -1232,6 +1319,9 @@ final class MAD4B_Company_Reconcile_Repair_Jobs_V1 {
             'resource-preview'=>self::resource_preview($company,$env,$incident,
                 (string)($assoc['resource-type']??''),
                 (string)($assoc['resource-id']??'')),
+            'baseline-review'=>self::baseline_review_scope($company,$env,$incident,
+                (string)($assoc['resource-type']??''),
+                (string)($assoc['resource-id']??'')),
             'snapshot-ingest'=>self::import_resource_snapshot($company,$env,
                 $incident,(string)($assoc['snapshot-base64']??''),
                 (string)($assoc['plan-sha']??'')),
@@ -1304,7 +1394,9 @@ final class MAD4B_Company_Reconcile_Repair_Jobs_V1 {
             .'<input id="mad4b-repair-resource-id" name="resource_id"'
             .' placeholder="123" autocomplete="off">'
             .'<button type="button" id="mad4b-repair-resource-button" class="button">'
-            .'Inspect exact resource (read-only)</button></form>'
+            .'Inspect exact resource (read-only)</button>'
+            .'<button type="button" id="mad4b-repair-baseline-button" class="button">'
+            .'Review baseline candidate (read-only)</button></form>'
             .'<p role="status" aria-live="polite" id="mad4b-repair-status">Not inspected.</p>'
             .'<div id="mad4b-repair-result"></div>'
             .'<p><strong>No job creation in this screen.</strong> Creating a durable '
@@ -1316,6 +1408,7 @@ final class MAD4B_Company_Reconcile_Repair_Jobs_V1 {
            ||sanitize_key((string)($_GET['page']??''))!=='mad4b-company-repair-jobs')return;
         $config=['url'=>rest_url('mad4b/v1/company-repair/plan'),
             'resourceUrl'=>rest_url('mad4b/v1/company-repair/resource-preview'),
+            'baselineUrl'=>rest_url('mad4b/v1/company-repair/baseline-review'),
             'queueUrl'=>rest_url('mad4b/v1/company-repair/queue'),
             'nonce'=>wp_create_nonce('wp_rest')];
         $js='(()=>{const f=document.getElementById("mad4b-repair-plan");'
@@ -1323,6 +1416,29 @@ final class MAD4B_Company_Reconcile_Repair_Jobs_V1 {
             .'const output=document.getElementById("mad4b-repair-result");'
             .'if(!f||!status||!output)return;const c='.wp_json_encode($config).';'
             .'const qb=document.getElementById("mad4b-repair-queue-button");'
+            .'const bb=document.getElementById("mad4b-repair-baseline-button");'
+            .'if(bb)bb.addEventListener("click",async()=>{output.replaceChildren();bb.disabled=true;'
+            .'status.textContent="Reviewing unsigned baseline candidate (no writes)…";'
+            .'try{const u=new URL(c.baselineUrl);'
+            .'for(const k of ["company","environment","incident","resource_type","resource_id"]){'
+            .'let v=String(f.elements[k].value).trim();'
+            .'if(k==="company")v=v.toLowerCase();u.searchParams.set(k,v)}'
+            .'const res=await fetch(u.toString(),{cache:"no-store",credentials:"same-origin",'
+            .'headers:{"X-WP-Nonce":c.nonce}});'
+            .'if(!res.ok)throw new Error("review_unavailable");'
+            .'const d=await res.json();'
+            .'status.textContent=String(d.state)+" · No rollback artifact · No after-image · No job";'
+            .'const pre=document.createElement("pre");pre.textContent=JSON.stringify({'
+            .'job_id:d.job_id,resource_key:d.resource_key,state:d.state,'
+            .'before_sha256:d.before_sha256,resource_manifest_sha256:d.resource_manifest_sha256,'
+            .'company_preservation_sha256:d.company_preservation_sha256,'
+            .'snapshot_expires_in_seconds:d.snapshot_expires_in_seconds,'
+            .'expected_after_sha256:d.expected_after_sha256,rollback_sha256:d.rollback_sha256,'
+            .'missing_requirements:d.missing_requirements,'
+            .'repair_execution_authorized:false,original_313_verified:false},null,2);'
+            .'output.appendChild(pre);'
+            .'}catch(err){status.textContent="Exact baseline review unavailable. No readiness inferred.";}'
+            .'finally{bb.disabled=false;}});'
             .'const rb=document.getElementById("mad4b-repair-resource-button");'
             .'if(rb)rb.addEventListener("click",async()=>{output.replaceChildren();rb.disabled=true;'
             .'status.textContent="Resolving exact site resource (read-only)…";'

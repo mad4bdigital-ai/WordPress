@@ -36,6 +36,7 @@ class MAD4B_Company_Portfolio_Manager_V1{
 class MAD4B_Company_Environment_Registry_V2{}
 class MAD4B_Company_Reconcile_Work_Plan_V1{
  public static function inspect($company,$environment){
+  $GLOBALS['WORK_PLAN_INSPECT_COUNT']=($GLOBALS['WORK_PLAN_INSPECT_COUNT']??0)+1;
   if($company!=='wayfatours'||$environment!=='production')
    return new WP_Error('target_not_registered');
   return $GLOBALS['TEST_PLAN'];
@@ -64,9 +65,27 @@ class TestNativeProvider{
     'resource_resolution_read_only'=>true,
     'resource_resolver'=>[__CLASS__,'resolve_resource'],
     'resource_types'=>['wordpress.post'],
+    'scoped_preflight_contract'=>'mad4b.company-repair.exact-provider-312.v1',
+    'scoped_preflight_read_only'=>true,
+    'scoped_preflight'=>[__CLASS__,'scoped312'],
     'supported_checks'=>['target_identity']
   ]
  ];}
+ public static function scoped312($company,$environment,$operation){
+  $ready=($GLOBALS['TEST_SIGNED_312']??false)===true;
+  return [
+   'contract'=>'mad4b.company-repair.exact-provider-312.v1',
+   'state'=>$ready?'EXACT_SOURCE_SIGNED_ORIGINAL_312_VERIFIED':'EXACT_COMPANY_PROVIDER_312_HOLD',
+   'reason'=>$ready?null:'TEST_SIGNED_312_NOT_AVAILABLE',
+   'company_code'=>$company,'environment'=>$environment,
+   'site_uuid'=>'a3a7cc36-db7e-4a14-8456-b41857def05c',
+   'canonical_origin'=>'https://wayfatours.com',
+   'operation'=>$operation,'provider'=>'test_source_provider',
+   'heartbeat_epoch'=>time(),
+   'original_312_signed'=>$ready,'source_signature_verified'=>$ready,
+   'original_313_signed'=>false,'native_job_submitted'=>false
+  ];
+ }
  public static function resolve_resource($request){
   $GLOBALS['OBSERVED_REQUEST']=$request;
   $base=[
@@ -92,6 +111,19 @@ class TestNativeProvider{
     'mutation_performed'=>false,'native_job_created'=>false
   ];
   return array_replace($base,$GLOBALS['OVERRIDES']??[]);
+ }
+}
+class MAD4B_Company_Native_Write_Executor_V1 {
+ public static function preflight_status($company,$environment,$operation){
+  return [
+   'state'=>'AUTHORITY_AND_EXECUTOR_READY_FOR_EXACT_JOB',
+   'scope_preflight_passed'=>true,
+   'target_wordpress_actor_capability_verified'=>true,
+   'operation_provider_ready'=>true,
+   'site_uuid'=>'a3a7cc36-db7e-4a14-8456-b41857def05c',
+   'canonical_origin'=>'https://wayfatours.com',
+   'original_313_signed'=>false
+  ];
  }
 }
 class MAD4B_Original_Native_Operation_Providers_V1{
@@ -179,6 +211,22 @@ $test('resource_job_hash_chain_and_binding',!is_wp_error($record)
  &&MAD4B_Company_Repair_Job_Contract_V1::valid_chain($record)
  &&$record['revision']===0
  &&$record['resource_key']==='wordpress.post:123');
+$GLOBALS['WORK_PLAN_INSPECT_COUNT']=0;
+$assessment=$cls::baseline_review_scope(
+ 'wayfatours','production','synthetic_missing_resource','wordpress.post','123');
+$test('baseline_candidate_resource_journal_review_only',
+ !is_wp_error($assessment)
+ &&$assessment['state']==='UNSIGNED_BASELINE_CANDIDATE_REVIEW_ONLY'
+ &&$assessment['before_sha256']===str_repeat('b',64)
+ &&$assessment['expected_after_sha256']===null
+ &&$assessment['rollback_sha256']===null
+ &&$assessment['original_313_verified']===false
+ &&$assessment['journal_updated_by_review']===false);
+$test('baseline_review_uses_one_work_plan_inspection',
+ $GLOBALS['WORK_PLAN_INSPECT_COUNT']===1);
+$test('baseline_review_cannot_create_or_mutate_job',
+ $cls::status($id)['revision']===0);
+
 $test('no_native_submission_from_resource_create',
  ($record['original_305_submitted_by_repair_job']??true)===false);
 $again=$cls::create_resource('wayfatours','production','synthetic_missing_resource',
@@ -209,6 +257,10 @@ $GLOBALS['OVERRIDES']=['before_sha256'=>str_repeat('e',64)];
 $drift=$cls::create_resource('wayfatours','production','synthetic_missing_resource',
  $type,$rid,$plan['source_plan_sha256']);
 $test('changed_source_refuses_same_resource_duplicate',is_wp_error($drift));
+$unmatched=$cls::baseline_review_scope(
+ 'wayfatours','production','synthetic_missing_resource','wordpress.post','123');
+$test('changed_source_cannot_make_fresh_baseline_candidate',
+ !is_wp_error($unmatched)&&$unmatched['state']==='BASELINE_REVIEW_HOLD');
 $pre=$cls::preflight($id);
 $test('changed_source_blocks_native_312_preflight',
  !is_wp_error($pre)&&$pre['original_provider_preflight_ready']===false
@@ -244,6 +296,23 @@ $prepared=$cls::prepare($id);
 $test('preflight_does_not_fabricate_signed312',
  !is_wp_error($prepared)&&$prepared['state']==='PROVIDER_OR_SIGNED_312_HOLD'
  &&$prepared['original_305_submitted']===false);
+$GLOBALS['TEST_SIGNED_312']=true;
+$pre=$cls::preflight($id);
+$test('mock_exact_signed312_and_generic_transport_consistent',
+ !is_wp_error($pre)&&$pre['original_provider_preflight_ready']===true
+ &&$pre['specialized_provider_signed_312_verified']===true
+ &&$pre['repair_execution_ready']===false
+ &&$pre['executor_time_before_image_cas_verified']===false);
+$prepared=$cls::prepare($id);
+$test('signed_312_plus_unsigned_wpcli_never_passes_executor_cas',
+ !is_wp_error($prepared)&&$prepared['state']==='EXACT_EXECUTOR_PREIMAGE_CAS_HOLD'
+ &&$prepared['original_305_submitted']===false
+ &&$prepared['original_313_verified']===false);
+$after=$cls::status($id);
+$test('cas_hold_does_not_advance_or_write_journal',
+ !is_wp_error($after)&&$after['state']==='BASELINE_RECORDED_UNVERIFIED'
+ &&$after['revision']===1);
+unset($GLOBALS['TEST_SIGNED_312']);
 $resume=$cls::resume($id);
 $test('resume_never_submits_original305',
  !is_wp_error($resume)&&$resume['new_job_submitted']===false);
