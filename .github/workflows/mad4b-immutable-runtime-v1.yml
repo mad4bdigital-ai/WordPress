@@ -55,6 +55,9 @@ jobs:
         run: |
           find wp-content/plugins/mad4b-tenant-sync -type f -name '*.php' -print0 | xargs -0 -n1 php -l
           python -m unittest discover -s ops/company-code-release-v1/tests -p test_tenant_source_lineage_candidate.py -v
+      - name: Isolated HTTP BlueGreen QA script syntax (no production execution)
+        run: |
+          bash -n ops/native-source-publisher-v1/tests/isolated_bluegreen_http_qa.sh
       - name: Prevent accidental registration or secrets in source
         run: |
           test ! -f /etc/mad4b/native-source-publisher-policy.v2.json

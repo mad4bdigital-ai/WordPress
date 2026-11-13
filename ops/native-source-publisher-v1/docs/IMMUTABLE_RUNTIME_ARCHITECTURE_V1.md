@@ -57,3 +57,29 @@ root-private reports and source files were added.
 The generated source.code.release Manifest is a source proposal.
 Its pinned Evidence Schema is staged as source bytes under the corresponding
 dynamic-operation-registry provider path, but no active Index was changed.
+
+## Verified isolated HTTP Blue/Green experiment
+
+The reproducible manual QA command is
+ops/native-source-publisher-v1/tests/isolated_bluegreen_http_qa.sh.
+It reads an already recorded site-bound runtime candidate and image ID,
+creates ONLY disposable Docker QA containers on an internal, nonpublished
+network, and switches a disposable Nginx configuration between PHP server
+slots A and B. It always removes QA containers and the QA network afterward.
+
+The executed Wayfatours *offline test harness*, with no WP database, used:
+- Original PHP image A (local original Base ID).
+- Root-protected candidate image B (local immutable OCI Image ID).
+- Test-only PHP health script (mounted read-only into each container).
+- QA-only Nginx, with a separate configuration bind mount.
+- Four observed HTTP responses: initial A, post-switch B, in-flight A
+  completing on the original pool, and post-rollback A.
+- Evidence report SHA-256:
+  dc147c7a96f74f24c6dd76eff9ac25e025064fd9488a936df82cfeb7a6346a2f.
+- No published host port, no production Traefik modification, no WP writes,
+  and no Original grants or signing keys issued.
+
+It is a *real local HTTP routing test* and a useful integration fixture,
+but **NOT** real WordPress/FPM/caching/DB/schema correctness proof. PHP used
+the CLI built-in development server for QA; Original 312/313 and a real
+site-scoped front-door traffic provider remain required for Production.
