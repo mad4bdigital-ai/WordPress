@@ -154,7 +154,8 @@ final class MAD4B_Company_Term_Eligibility_V1 {
         $postType=(string)(product_navigation_registry()[$owner]['post_type']??'');
         if (!$postType) return $terms;
         $channel=(string)($args['mad4b_term_eligibility_channel']??'destination_discovery');
-        $taxonomy=(string)($args['taxonomy']??'');
+        $taxArg=$args['taxonomy']??'';
+        $taxonomy=is_array($taxArg)?(count($taxArg)===1?(string)reset($taxArg):''):(string)$taxArg;
         return array_values(array_filter($terms,static function($term)use($postType,$channel,$taxonomy) {
             $candidate=$term instanceof WP_Term?$term:
                 (is_numeric($term)&&taxonomy_exists($taxonomy)?get_term((int)$term,$taxonomy):null);
