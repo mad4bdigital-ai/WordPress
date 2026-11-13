@@ -3640,7 +3640,6 @@
         "SECURITY-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/elementor-native-template-parity-contract.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/elementor-native-template-parity-source-contract.py"
       ],
       "needs_new_control": false,
@@ -11696,7 +11695,6 @@
         "PERFORMANCE-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/elementor-native-template-parity-contract.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/elementor-native-template-parity-source-contract.py"
       ],
       "owner_role": "MAD4B CI-only repository source reviewer; independent site/operator release authorization required",
@@ -11716,7 +11714,6 @@
         "EXECUTION-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/elementor-native-template-parity-contract.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/elementor-native-template-parity-source-contract.py"
       ],
       "owner_role": "MAD4B CI-only repository source reviewer; independent site/operator release authorization required",
@@ -11736,7 +11733,6 @@
         "SECURITY-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/elementor-native-template-parity-contract.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/elementor-native-template-parity-source-contract.py"
       ],
       "owner_role": "MAD4B CI-only repository source reviewer; independent site/operator release authorization required",
@@ -11755,7 +11751,6 @@
         "PERFORMANCE-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/elementor-native-template-parity-contract.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/elementor-native-template-parity-source-contract.py"
       ],
       "owner_role": "MAD4B CI-only repository source reviewer; independent site/operator release authorization required",
