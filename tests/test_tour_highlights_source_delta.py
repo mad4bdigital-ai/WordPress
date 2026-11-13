@@ -50,8 +50,38 @@ class TourHighlightsReviewedSource(unittest.TestCase):
             with self.subTest(file=row['path']):
                 path=ROOT/row['path']
                 self.assertTrue(path.is_file() and not path.is_symlink())
-                self.assertEqual(path.stat().st_size,row['bytes'])
-                self.assertEqual(hashlib.sha256(path.read_bytes()).hexdigest(),row['sha256'])
+                actual=path.read_bytes()
+                if row['path'].endswith('/class-mad4b-scp-tour-highlights-v1.php'):
+                    self.verify_hook_readiness_successor(row,actual)
+                else:
+                    self.assertEqual(len(actual),row['bytes'])
+                    self.assertEqual(hashlib.sha256(actual).hexdigest(),row['sha256'])
+
+    def verify_hook_readiness_successor(self,row,actual):
+        review=json.loads((ROOT/'docs/release-coverage/pr814-tour-highlights-hook-readiness-successor-20261114.json').read_text())
+        self.assertEqual(review['contract'],'mad4b.pr814.tour-highlights-append-only-review.v1')
+        self.assertEqual(review['historical_review'],'docs/release-coverage/pr814-pr813-tour-highlights-reconciled-20261113.json')
+        self.assertEqual(review['path'],row['path'])
+        self.assertEqual((review['historical_bytes'],review['historical_sha256']),
+                         (row['bytes'],row['sha256']))
+        self.assertEqual((len(actual),hashlib.sha256(actual).hexdigest()),
+                         (review['current_bytes'],review['current_sha256']))
+        self.assertTrue(review['source_only'])
+        self.assertFalse(review['production_release_approved'])
+        self.assertFalse(review['original313_signed_receipts_issued'])
+        guard=(b'        // WordPress always supplies both hook APIs in a real site request.\n'
+               b'        // During the native Plugins screen zero-touch bootstrap and hermetic\n'
+               b'        // inspection they may deliberately be absent. Loading the lightweight\n'
+               b'        // Tour class must not force WP/Elementor runtime initialization.\n'
+               b"        if (!function_exists('add_filter') || !function_exists('add_action')) return;\n")
+        self.assertEqual(actual.count(guard),1)
+        historic=actual.replace(guard,b'',1)
+        self.assertEqual((len(historic),hashlib.sha256(historic).hexdigest()),
+                         (row['bytes'],row['sha256']))
+        self.assertEqual(set(review['regression_tests']),{
+            'wp-content/plugins/mad4b-site-control-plane/tests/native-plugin-management-menu-runtime.php',
+            'tests/native-tour-highlights/acceptance.php',
+        })
 
     def test_native_jetengine_approvals_do_not_mint_published_facts(self):
         source=(PLUGIN/'includes/class-mad4b-scp-tour-highlights-v1.php').read_text()

@@ -3740,6 +3740,26 @@
   "change_impact_notes": "For each newly introduced registry item, registered MAD4B Ability, PHP service or Admin asset, add a reviewed_capabilities entry with exact id, nonempty existing control_ids, a regression test changed in this PR, owner_role, review_rationale, and status 'reviewed_for_ci_only'. CI fails on uncovered introductions; no entry grants Production. Existing runtime/config source additions and modifications require reviewed_changes entries keyed by exact Git blob, impacted control IDs and test changed in the same PR. Every new capability must explicitly decide whether to expand the checklist or reuse existing controls with a rationale. Static REST/AJAX/Cron surface discoveries remain candidates, never runtime certification.",
   "reviewed_changes": [
     {
+      "path": "wp-content/plugins/mad4b-site-control-plane/bootstrap/mad4b-mcp-adapter-mu-bootstrap.php",
+      "source_blob_sha": "aac27ff9239b7bdcae916ab904a007f74eb9333c",
+      "review_rationale": "Exact code path recognizes OPcache-disabled Local and Development processes as cache-coherent. If PHP OPcache is active, existing manifest, immutable package verification and next-request cache gate remain mandatory. Staging path remains unchanged; Production is never covered by this exception. No change to OAuth, grants, MCP read/write permissions or enrollment.",
+      "owner_role": "Repository source reviewer - cache-free Local/Development MU bootstrap only; no production/Host authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/test_local_cache_free_bootstrap.py"
+      ],
+      "coverage_reuse_rationale": "Existing MCP transport and provider execution admission controls apply. No new operation, site-profile authority, or release capability is created.",
+      "execution_note": "CI must run the new real-PHP opcache disabled/enabled negative regression and disposable WordPress Local OAuth browser E2E. This record does not certify signed Original313/Owner Production readiness."
+    },
+    {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tour-highlights-v1.php",
       "source_blob_sha": "91c2876d6da249edff3f9b7ce4ad913531a43789",
       "control_ids": [

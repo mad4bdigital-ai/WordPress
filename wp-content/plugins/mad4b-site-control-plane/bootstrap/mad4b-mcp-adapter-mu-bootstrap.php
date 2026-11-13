@@ -511,7 +511,15 @@ if ( $mad4b_mcp_mu_profile_enrolled ) {
 	// full-package checksum ledger for unrelated Provider changes.
 	// OAuth, exact-site routing and governed write permissions remain enforced.
 	// If native timestamp validation is disabled, retain the original strict gate.
-	$mad4b_mcp_mu_native_opcache = 'staging' === (string) ( $mad4b_mcp_mu_binding['environment'] ?? '' );
+	$mad4b_mcp_mu_effective_environment = (string) ( $mad4b_mcp_mu_binding['environment'] ?? '' );
+	// A disposable Local/Development PHP runtime with no opcode cache cannot
+	// execute a stale opcode generation. Do not require a package convergence
+	// receipt for that *cache-free* case. If OPcache is active, the original
+	// manifest/receipt gate still applies; Production is never included here.
+	$mad4b_mcp_mu_cache_free_local = in_array( $mad4b_mcp_mu_effective_environment, array( 'local', 'development' ), true )
+		&& ( ! function_exists( 'opcache_get_status' ) || false === opcache_get_status( false ) );
+	$mad4b_mcp_mu_native_opcache = 'staging' === $mad4b_mcp_mu_effective_environment
+		|| $mad4b_mcp_mu_cache_free_local;
 	if ( $mad4b_mcp_mu_native_opcache ) {
 		$mad4b_mcp_mu_status['runtime_cache_convergence'] = 'native_opcache';
 	}

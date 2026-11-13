@@ -307,16 +307,12 @@ try {
 	$expired_provenance['license_expires_on'] = '2020-01-01';
 	add_post_meta( $remote_rights_attachment, MAD4B_SCP_Remote_Media_Adapter::REMOTE_PROVENANCE_META, $expired_provenance, false );
 	$expired_guard = MAD4B_SCP_Remote_Media_Rights::publish_guard( $remote_rights_attachment, array(), array(), '2026-10-06' );
-	if ( 'staging' === wp_get_environment_type() ) {
-        $check( ! is_wp_error( $expired_guard )
-            && 'advisory' === ( $expired_guard['license_mode'] ?? '' )
-            && in_array( 'license_expired_or_invalid', array_column( $expired_guard['license_warnings'] ?? array(), 'code' ), true ),
-            'Staging remote-media license expiry must remain visible as an advisory warning.' );
-    } else {
-        $check( is_wp_error( $expired_guard )
-            && 'mad4b_remote_media_publish_rights_expired' === $expired_guard->get_error_code(),
-            'Production remote-media license expiry must block publication.' );
-    }
+	// The current site-neutral rights contract never permits expired media.
+	// Advisory/enforced modes may differ for missing *non-expired* evidence,
+	// but an explicitly expired license blocks publication in every market.
+	$check( is_wp_error( $expired_guard )
+		&& 'mad4b_remote_media_publish_rights_expired' === $expired_guard->get_error_code(),
+		'Expired remote-media rights must block publication independently of environment.' );
 	delete_post_meta( $remote_rights_attachment, MAD4B_SCP_Remote_Media_Adapter::REMOTE_PROVENANCE_META );
 	add_post_meta( $remote_rights_attachment, MAD4B_SCP_Remote_Media_Adapter::REMOTE_PROVENANCE_META, array(
 		'contract' => MAD4B_SCP_Remote_Media_Adapter::REMOTE_PROVENANCE_CONTRACT,

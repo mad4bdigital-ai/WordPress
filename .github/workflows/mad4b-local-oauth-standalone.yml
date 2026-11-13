@@ -82,6 +82,7 @@ jobs:
           python3 "$root/tests/local-oauth-standalone-contract.py"
           python3 -m unittest discover -s tests -p 'test_certified_mcp_adapter_profile.py' -q
           python3 -m unittest discover -s tests -p 'test_local_oauth_explicit_cli_mcp_scope.py' -q
+          python3 -m unittest discover -s tests -p 'test_local_cache_free_bootstrap.py' -v
           python3 "$root/tests/chatgpt-oauth-lifecycle-contract.py"
           python3 "$root/tests/local-oauth-browser-canary-contract.py"
           python3 "$root/tests/mcp-adapter-compatibility-contract.py"
