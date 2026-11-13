@@ -139,7 +139,38 @@ final class MAD4B_Company_Term_Eligibility_V1 {
         return in_array($value,['enabled','disabled'],true)?$value:'inherit';
     }
 
-    /** Only narrows existing authorizations. No term can enable a disabled service. */
+    /**
+     * Host-verified parent Tour; do not accept a URL parameter or unsigned
+     * JetSmartFilters AJAX value as Tour context.
+     */
+    public static function verified_tour_id(): int {
+        return function_exists('shared_product_verified_presentation_tour_id')
+            ? (int)shared_product_verified_presentation_tour_id() : 0;
+    }
+
+    public static function surface_channel(): string {
+        if (self::verified_tour_id()>0) return 'tour_component';
+        if (function_exists('is_tax') && is_tax('destinations')) return 'destination_discovery';
+        return 'standalone';
+    }
+
+    /**
+     * Visibility in a Tour component is read-only. An inactive standalone
+     * service must not erase the metadata/facets of a published parent Tour.
+     * This never authorizes an independent service result or payment.
+     */
+    public static function query_service_allowed(string $service,string $channel): bool {
+        if ($channel==='tour_component') {
+            return self::verified_tour_id()>0
+                && function_exists('service_channel_allowed')
+                && service_channel_allowed('tours','tour_component')
+                && service_channel_allowed($service,'tour_component');
+        }
+        return function_exists('service_channel_allowed')
+            && service_channel_allowed($service,$channel);
+    }
+
+    /** The original taxonomy/query provider continues to own row selection. */
     public static function decide(WP_Term $term,string $postType,string $channel='destination_discovery',bool $requirePublished=true): array {
         if (!taxonomy_exists($term->taxonomy) || !post_type_exists($postType))
             return ['allowed'=>false,'reason'=>'unknown_source'];
@@ -148,9 +179,9 @@ final class MAD4B_Company_Term_Eligibility_V1 {
         if ($owner==='woocommerce') {
             if (!class_exists('WooCommerce',false) || !function_exists('wc_get_product'))
                 return ['allowed'=>false,'reason'=>'woocommerce_unavailable'];
-        } elseif (!function_exists('service_channel_allowed') ||
-            !service_channel_allowed($owner,$channel))
-            return ['allowed'=>false,'reason'=>'service_inactive'];
+        } elseif (!self::query_service_allowed($owner,$channel))
+            return ['allowed'=>false,'reason'=>$channel==='tour_component'
+                ? 'tour_context_unverified':'service_inactive'];
         $tax=get_taxonomy($term->taxonomy);
         if (!$tax || !in_array($postType,(array)$tax->object_type,true))
             return ['allowed'=>false,'reason'=>'taxonomy_not_owned'];
@@ -181,9 +212,9 @@ final class MAD4B_Company_Term_Eligibility_V1 {
         return ['allowed'=>true,'reason'=>'eligible'];
     }
 
-    public static function for_registered_owners(WP_Term $term,string $channel='destination_discovery'): bool {
+    public static function for_registered_owners(WP_Term $term,string $channel='destination_discovery',bool $requirePublished=true): bool {
         foreach (self::owners($term->taxonomy) as $postType=>$owner)
-            if (self::decide($term,$postType,$channel)['allowed']) return true;
+            if (self::decide($term,$postType,$channel,$requirePublished)['allowed']) return true;
         return false;
     }
 
@@ -203,6 +234,23 @@ final class MAD4B_Company_Term_Eligibility_V1 {
         if (!$binding || ($binding['source']??'')!=='taxonomies') return $options;
         $taxonomy=(string)($binding['taxonomy']??'');
         if (!$taxonomy || !taxonomy_exists($taxonomy)) return $options;
+        // Native Query Builder Terms queries have no post_type. In a server-
+        // verified Tour their returned term list is the source of truth; do
+        // not require a separately published Property or Transportation.
+        $termProviders=array_filter((array)($binding['providers']??[]),
+            static function($source)use($taxonomy) {
+                return is_array($source)
+                    && ($source['query_type']??'')==='terms'
+                    && in_array($taxonomy,(array)($source['taxonomies']??[]),true);
+            });
+        if ($termProviders && self::surface_channel()==='tour_component') {
+            foreach ($options as $key=>$option) {
+                $term=self::option_term($key,$option,$taxonomy);
+                if ($term && !self::for_registered_owners($term,'tour_component',false))
+                    unset($options[$key]);
+            }
+            return $options;
+        }
         $providers=[];
         $unresolved=false;
         foreach ((array)($binding['providers']??[]) as $provider) {
@@ -218,8 +266,11 @@ final class MAD4B_Company_Term_Eligibility_V1 {
             $term=self::option_term($key,$option,$taxonomy);
             if (!$term) continue; // preserve non-term native schema without fabricating scope.
             $allowed=false;
+            $channel=self::surface_channel();
             foreach ($providers as $postType=>$_) {
-                if (self::decide($term,$postType)['allowed']) {$allowed=true;break;}
+                if (self::decide($term,$postType,
+                    $postType==='product'?'search':$channel,
+                    $channel!=='tour_component')['allowed']) {$allowed=true;break;}
             }
             if (!$allowed) unset($options[$key]);
         }
@@ -243,7 +294,8 @@ final class MAD4B_Company_Term_Eligibility_V1 {
         foreach ($terms as $term)
             if ($term instanceof WP_Term) {
                 foreach ($owners as $postType=>$service) {
-                    if (self::decide($term,$postType,$postType==='product'?'search':'destination_discovery')['allowed']) {
+                    if (self::decide($term,$postType,
+                        $postType==='product'?'search':self::surface_channel())['allowed']) {
                         $permitted[]=(int)$term->term_id; break;
                     }
                 }
@@ -262,7 +314,7 @@ final class MAD4B_Company_Term_Eligibility_V1 {
         $owner=(string)$args['mad4b_term_eligibility_service'];
         $postType=(string)(product_navigation_registry()[$owner]['post_type']??'');
         if (!$postType) return $terms;
-        $channel=(string)($args['mad4b_term_eligibility_channel']??'destination_discovery');
+        $channel=(string)($args['mad4b_term_eligibility_channel']??'standalone');
         $taxArg=$args['taxonomy']??'';
         $taxonomy=is_array($taxArg)?(count($taxArg)===1?(string)reset($taxArg):''):(string)$taxArg;
         return array_values(array_filter($terms,static function($term)use($postType,$channel,$taxonomy) {
@@ -270,6 +322,21 @@ final class MAD4B_Company_Term_Eligibility_V1 {
                 (is_numeric($term)&&taxonomy_exists($taxonomy)?get_term((int)$term,$taxonomy):null);
             return !$candidate instanceof WP_Term
                 || self::decide($candidate,$postType,$channel)['allowed'];
+        }));
+    }
+
+    public static function filter_query_builder_terms($items,$query) {
+        if (!is_array($items) || !is_object($query)
+            || (string)($query->query_type??'')!=='terms'
+            || self::surface_channel()!=='tour_component') return $items;
+        $taxonomies=array_values(array_filter((array)($query->query['taxonomy']??[]),
+            static fn($tax)=>is_string($tax)&&taxonomy_exists($tax)));
+        if (!$taxonomies) return $items;
+        return array_values(array_filter($items,static function($item)use($taxonomies) {
+            if (!$item instanceof WP_Term || !in_array($item->taxonomy,$taxonomies,true))
+                return true;
+            if (!self::owners($item->taxonomy)) return true; // not a product taxonomy
+            return self::for_registered_owners($item,'tour_component',false);
         }));
     }
 
@@ -306,13 +373,16 @@ add_action('elementor/frontend/widget/before_render',
     ['MAD4B_Company_Term_Eligibility_V1','capture_search_widget'],5,1);
 add_filter('jet-search/ajax-search/categories-select/args',
     ['MAD4B_Company_Term_Eligibility_V1','search_args'],40);
+// JetEngine Terms Query Builder (including cached results) is independent of WP_Query.
+add_filter('jet-engine/query-builder/query/items',
+    ['MAD4B_Company_Term_Eligibility_V1','filter_query_builder_terms'],1400,2);
 add_filter('jet-smart-filters/filters/filter-options',static function($options,$filterId) {
     return is_array($options)?MAD4B_Company_Term_Eligibility_V1::smart_options($options,(int)$filterId):$options;
 },900,2);
 add_filter('product_navigation_term_args',static function($args,$service,$taxonomy,$language) {
     if (!is_array($args)) return $args;
     $args['mad4b_term_eligibility_service']=(string)$service;
-    $args['mad4b_term_eligibility_channel']='destination_discovery';
+    $args['mad4b_term_eligibility_channel']='standalone';
     return $args;
 },190,4);
 add_filter('get_terms',['MAD4B_Company_Term_Eligibility_V1','navigation_terms'],190,3);
@@ -346,7 +416,8 @@ add_filter('wp_nav_menu_objects',static function($items) {
         $tax=(string)($item->object??'');
         $term=taxonomy_exists($tax)?get_term((int)($item->object_id??0),$tax):null;
         if (!$term instanceof WP_Term || !MAD4B_Company_Term_Eligibility_V1::owners($tax)) continue;
-        if (!MAD4B_Company_Term_Eligibility_V1::for_registered_owners($term))
+        if (!MAD4B_Company_Term_Eligibility_V1::for_registered_owners(
+            $term,MAD4B_Company_Term_Eligibility_V1::surface_channel()))
             $removed[(int)$item->ID]=true;
     }
     // Retain menu parent/child integrity when a taxonomy parent is hidden.
