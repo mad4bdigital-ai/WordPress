@@ -7,5 +7,6 @@
     <!-- Preserve independent per-language curation, never sync EN over ES/AR/FR/DE/IT. -->
     <custom-field action="copy-once">tour_highlights_items</custom-field>
     <custom-field action="copy-once">tour_highlights_mode</custom-field>
+    <custom-field action="copy-once">tour_highlights_display_pattern</custom-field>
   </custom-fields>
 </wpml-config>
