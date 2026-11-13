@@ -174,6 +174,97 @@ final class MAD4B_Tour_Highlights_Presentation_V1 {
         ));
     }
 
+    /**
+     * An editorial mention is only evidence for an eligible, tour-linked term.
+     * Never infer a sibling attraction from a person's name occurring in the
+     * prose (e.g. Khafre != Valley Temple of Khafre).
+     */
+    private static function text_mention(string $content,string $phrase):bool {
+        $phrase=trim((string)preg_replace('/\s+/u',' ',$phrase));
+        if($phrase==='')return false;
+        return preg_match('~(?<![\p{L}\p{N}])'.preg_quote($phrase,'~').'(?![\p{L}\p{N}])~iu',$content)===1;
+    }
+
+    /**
+     * Safe geographic-title variant: "Giza Pyramids" may be mentioned as
+     * "Pyramids" when its verified parent is Giza and NO other eligible
+     * attraction has the same candidate head noun. Do not mine all words from
+     * a term title, or match "Khafre" out of "Valley Temple of Khafre".
+     */
+    private static function parent_head_mentioned(string $content,array $place,array $places):bool {
+        if(($place['kind']??'')!=='place_attraction')return false;
+        $parentId=(int)($place['parent']??0);
+        if($parentId<=0)return false;
+        $parent=get_term($parentId,'destinations');
+        if(!$parent instanceof \WP_Term)return false;
+        $parentName=trim((string)$parent->name);
+        $name=trim((string)($place['label']??''));
+        $prefix=$parentName.' ';
+        if($parentName==='' || mb_stripos($name,$prefix,0,'UTF-8')!==0)return false;
+        $head=trim(mb_substr($name,mb_strlen($prefix,'UTF-8'),null,'UTF-8'));
+        // A single distinct noun is required. Never strip 'of X' qualifiers.
+        if(mb_strlen($head,'UTF-8')<8 || !preg_match('/^[\p{L}]{8,}$/u',$head))return false;
+        foreach($places as $other) {
+            if((int)($other['id']??0)===(int)($place['id']??0)
+                || ($other['kind']??'')!=='place_attraction')continue;
+            if(self::text_mention((string)($other['label']??''),$head))return false;
+        }
+        return self::text_mention($content,$head);
+    }
+
+    /**
+     * Locale-specific names maintained on the original Destination term.
+     * A single source of truth for Tour highlight linking and native JetEngine
+     * preview; never create a second taxonomy or guess translations.
+     *
+     * JetEngine Repeater: tour_highlight_aliases =
+     * [['tour_lang'=>'es','tour_alias'=>'Grandes Pirámides'], ...].
+     */
+    private static function curated_alias_mentioned(string $content,array $place,array $places):string {
+        $id=(int)($place['id']??0);
+        if($id<=0)return '';
+        $lang=self::lang();
+        $all=get_term_meta($id,'tour_highlight_aliases',true);
+        if(!is_array($all))return '';
+        $variants=[];
+        // Native JetEngine Repeater rows: one language + alternative name.
+        foreach($all as $row){
+            if(is_array($row) && ($row['tour_lang']??'')===$lang
+              && is_string($row['tour_alias']??null))$variants[]=$row['tour_alias'];
+        }
+        // Backward-compatible with an associative locale map, if imported.
+        if(!empty($all[$lang]) && is_array($all[$lang]))
+            $variants=array_merge($variants,$all[$lang]);
+        if(!$variants)return '';
+        foreach(array_slice($variants,0,12) as $alias){
+            if(!is_string($alias))continue;
+            $alias=trim(preg_replace('/\s+/u',' ',wp_strip_all_tags($alias)));
+            if(mb_strlen($alias,'UTF-8')<8||mb_strlen($alias,'UTF-8')>120
+              || !preg_match('/\p{L}+\s+\p{L}+/u',$alias)
+              || !self::text_mention($content,$alias))continue;
+            $duplicated=false;
+            foreach($places as $other){
+                if((int)($other['id']??0)===$id)continue;
+                if(mb_strtolower(trim((string)($other['label']??'')),'UTF-8')
+                    ===mb_strtolower($alias,'UTF-8')){$duplicated=true;break;}
+                $candidate=get_term_meta((int)($other['id']??0),'tour_highlight_aliases',true);
+                if(!is_array($candidate))continue;
+                $altNames=[];
+                foreach($candidate as $row)
+                    if(is_array($row)&&($row['tour_lang']??'')===$lang)
+                        $altNames[]=$row['tour_alias']??null;
+                if(!empty($candidate[$lang])&&is_array($candidate[$lang]))
+                    $altNames=array_merge($altNames,$candidate[$lang]);
+                foreach($altNames as $alternative){
+                    if(is_string($alternative)&&mb_strtolower(trim($alternative),'UTF-8')
+                        ===mb_strtolower($alias,'UTF-8')){$duplicated=true;break 2;}
+                }
+            }
+            if(!$duplicated)return $alias;
+        }
+        return '';
+    }
+
     private static function related_links(array $card,array $places):string {
         if(!$places)return '';
         $content=html_entity_decode(wp_strip_all_tags(($card['title']??'').' '.($card['body']??'')),ENT_QUOTES|ENT_HTML5,'UTF-8');
@@ -182,18 +273,23 @@ final class MAD4B_Tour_Highlights_Presentation_V1 {
             $name=trim((string)$place['label']);
             if(mb_strlen($name,'UTF-8')<4)continue;
             // Verifiable text match: only label a place if it is actually mentioned.
-            $hasExact=mb_stripos($content,$name,0,'UTF-8')!==false;
             // A term title may carry a geographic qualifier that is not repeated
             // in editorial text (e.g. 'Gran Esfinge de Giza' vs 'Gran Esfinge').
             // Match only distinctive, multiword prefixes of eligible linked terms.
             $alias=preg_replace('/\s+(?:de|del|of|in|at|di|da|von|bei)\s+[\p{L}\s-]+$/iu','',$name);
             $alias=trim((string)$alias);
             $distinct=mb_strlen($alias,'UTF-8')>=9 && preg_match('/\S+\s+\S+/u',$alias);
-            $hasAlias=$distinct&&$alias!==$name&&mb_stripos($content,$alias,0,'UTF-8')!==false;
-            if(!$hasExact&&!$hasAlias)continue;
-            $links[]='<a class="tour-hl-ui__place" data-tour-term-id="'.esc_attr((string)$place['id']).'" href="'.esc_url($place['url']).'">'
-                .'<span aria-hidden="true">⌖</span> '.esc_html($name).'</a>';
-            if(count($links)>=3)break;
+            $hasAlias=$distinct&&$alias!==$name&&self::text_mention($content,$alias);
+            $hasExact=self::text_mention($content,$name);
+            $curated=(!$hasExact&&!$hasAlias)
+                ?self::curated_alias_mentioned($content,$place,$places):'';
+            $hasParentHead=!$hasExact&&!$hasAlias&&$curated===''
+                &&self::parent_head_mentioned($content,$place,$places);
+            if(!$hasExact&&!$hasAlias&&$curated===''&&!$hasParentHead)continue;
+            $match=$hasExact?'exact':($hasAlias?'qualified':($curated!==''?'curated-alias':'parent-head'));
+            $display=$curated!==''?$curated:$name;
+            $links[]='<a class="tour-hl-ui__place" data-tour-evidence="mentioned" data-tour-match="'.esc_attr($match).'" data-tour-term-id="'.esc_attr((string)$place['id']).'" href="'.esc_url($place['url']).'">'
+                .'<span aria-hidden="true">⌖</span> '.esc_html($display).'</a>';
         }
         if(!$links)return '';
         return '<div class="tour-hl-ui__related">'.implode('',$links).'</div>';
