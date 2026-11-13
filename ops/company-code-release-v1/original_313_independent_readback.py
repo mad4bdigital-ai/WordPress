@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Callable
 
 import company_code_release as release
+import capability_acceptance as capability_checks
 import original_313_code_release_contract as original
 import original_313_host_handler as handler
 
@@ -71,4 +72,15 @@ def independent_verify(
     runtime_check(plan, policy)
     php_check(plan)
     observed = fresh_read(plan)
+    # These are independently signed functional attestations, not Host-only
+    # SHA receipts. The first-party provider must have actually run after Apply.
+    if plan.get("capability_acceptance", {}).get("checks"):
+        intent = receipt_read(release.apply_intent_path(receipts, nonce))
+        if (intent.get("state") != "APPLY_STARTED" or
+                intent.get("plan_sha256") != plan["plan_sha256"] or
+                intent.get("nonce") != nonce or
+                intent.get("site_uuid") != plan["site_uuid"]):
+            raise handler.NotEnrolled("CAPABILITY_ACCEPTANCE_APPLY_INTENT_INVALID")
+        capability_checks.verify_evidence(
+            plan, policy, receipts, nonce, intent["at"])
     return original.independent_release_readback(plan, receipt, observed)
