@@ -8,11 +8,16 @@ defined('ABSPATH') || exit;
 if (!class_exists('MAD4B_Tour_Highlights_V1',false)) {
 final class MAD4B_Tour_Highlights_V1 {
     private static bool $syncing=false;
+    private static array $relatedGroupStack=[];
 
     public static function register():void {
         add_filter('jet-engine/listings/allowed-callbacks',[__CLASS__,'callbacks']);
         add_filter('elementor/frontend/container/should_render',[__CLASS__,'section_visible'],10,2);
         add_action('elementor/frontend/container/before_render',[__CLASS__,'decorate_container'],10,1);
+        // Track actual native JetEngine destination groups, not Elementor element IDs.
+        add_action('elementor/frontend/container/before_render',[__CLASS__,'enter_native_group'],5,1);
+        add_action('elementor/frontend/container/after_render',[__CLASS__,'leave_native_group'],5,1);
+        add_action('elementor/frontend/widget/before_render',[__CLASS__,'localize_native_grid'],5,1);
         // JetEngine writes classic post meta on generic save_post priority 10.
         // The post-type-specific hook runs earlier; use generic save_post at 190.
         add_action('save_post',[__CLASS__,'on_save'],190,3);
@@ -114,6 +119,37 @@ final class MAD4B_Tour_Highlights_V1 {
         $has=self::has_highlights($post);
         $element->add_render_attribute('_wrapper','data-tour-journey-has-highlights',$has?'1':'0');
         if(!$has)$element->add_render_attribute('_wrapper','class','tour-journey--places-only');
+    }
+
+    public static function enter_native_group($element):void {
+        $inside=!empty(self::$relatedGroupStack) && (bool)end(self::$relatedGroupStack);
+        $css=(is_object($element)&&method_exists($element,'get_settings'))
+          ?(string)$element->get_settings('css_classes'):'';
+        if(str_contains(' '.trim($css).' ',' tour-place-group '))$inside=true;
+        self::$relatedGroupStack[]=$inside;
+    }
+
+    public static function leave_native_group($element):void {
+        if(self::$relatedGroupStack)array_pop(self::$relatedGroupStack);
+    }
+
+    public static function localize_native_grid($widget):void {
+        if(empty(self::$relatedGroupStack) || !end(self::$relatedGroupStack)
+            || !is_object($widget)
+            || !method_exists($widget,'get_name')
+            || $widget->get_name()!=='jet-listing-grid'
+            || !method_exists($widget,'get_settings')
+            || !method_exists($widget,'set_settings'))return;
+
+        $lang=(string)apply_filters('wpml_current_language',null);
+        if($lang==='')return;
+        $original=(int)$widget->get_settings('lisitng_id');
+        if($original<=0)return;
+        $localized=(int)apply_filters('wpml_object_id',$original,'jet-engine',false,$lang);
+        if($localized<=0||$localized===$original
+          ||get_post_type($localized)!=='jet-engine'
+          ||get_post_status($localized)!=='publish')return;
+        $widget->set_settings('lisitng_id',(string)$localized);
     }
 
     private static function source_valid(int $post,array $item):bool {
