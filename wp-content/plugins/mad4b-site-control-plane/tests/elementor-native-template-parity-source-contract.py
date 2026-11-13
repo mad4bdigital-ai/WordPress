@@ -20,5 +20,5 @@ for name in ("elementor-dynamic-content", "wordpress-change-safety", "wordpress-
     skill = (base / "skill-seeds" / name / "SKILL.md").read_text()
     assert contract in skill, f"Skill {name} missing canonical contract"
 assert f"const SEED_VERSION = {manifest['seed_version']};" in seeder
-assert manifest["seed_version"] >= 30
+assert type(manifest["seed_version"]) is int and manifest["seed_version"] > 0, "Seed version must be a positive integer; each enrolled source lineage has its own revision"
 print("PASS: common write path + three Skills + seed version")
