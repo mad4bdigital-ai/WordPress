@@ -140,12 +140,6 @@ body.mad4b-destination-preview-frame .elementor-location-archive {
 body.mad4b-destination-preview-frame .elementor-location-archive .e-con-inner {
   max-width:100%!important;
 }
-body.mad4b-destination-preview-frame .elementor-location-archive h1 {
-  font-size:clamp(23px,3.5vw,36px)!important;line-height:1.2!important;
-}
-body.mad4b-destination-preview-frame .elementor-location-archive h2 {
-  font-size:clamp(19px,2.6vw,25px)!important;line-height:1.3!important;
-}
 body.mad4b-destination-preview-frame .elementor-popup-modal:not([aria-hidden="true"]) {
   z-index:2147480000!important;
 }
@@ -153,22 +147,4 @@ body.mad4b-destination-preview-frame .elementor-popup-modal:not([aria-hidden="tr
   body.mad4b-destination-preview-frame .elementor-location-archive .e-con-inner {
     padding-inline:clamp(11px,3vw,19px)!important;
   }
-}
-
-/* Concise About section built from the original JetEngine Dynamic Field output. */
-html.mad4b-destination-preview-frame .mad4b-destination-preview-about {
-  max-width:100%!important;box-sizing:border-box;
-  margin:0 auto 26px!important;padding:clamp(18px,3vw,30px)!important;
-  color:#314f57;background:#fff;
-}
-html.mad4b-destination-preview-frame .mad4b-destination-preview-about h2 {
-  margin:0 0 10px!important;color:#153d49;
-  font-size:clamp(20px,2.5vw,26px)!important;line-height:1.35!important;
-}
-html.mad4b-destination-preview-frame .mad4b-destination-preview-about-copy {
-  font-size:clamp(13px,1.3vw,16px);line-height:1.7;
-  overflow-wrap:anywhere;
-}
-html.mad4b-destination-preview-frame .mad4b-destination-preview-about-copy p {
-  margin:0 0 10px;
 }
