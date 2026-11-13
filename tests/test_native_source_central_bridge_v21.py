@@ -74,6 +74,10 @@ class BridgeReadiness(unittest.TestCase):
     def test_offline_php_registers_only_read_abilities(self):
         with tempfile.TemporaryDirectory(prefix='mad4b-bridge-php-fixture-') as tmp:
             base=Path(tmp)
+            # This directory contains a disposable public test-only JS fixture.
+            # Docker user-namespace remapping must be able to traverse the
+            # read-only bind mount; no enrolled Host secrets are included.
+            base.chmod(0o755)
             path=base/'wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.4.3.js'
             path.parent.mkdir(parents=True)
             path.write_text('window.sourceBridgeFixture = 1;\n')

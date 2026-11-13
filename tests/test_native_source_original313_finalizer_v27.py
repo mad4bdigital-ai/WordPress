@@ -129,6 +129,10 @@ class FirstPartyOriginal313V27(unittest.TestCase):
             'command_sha256':self.command},
         }
         with tempfile.TemporaryDirectory(prefix='mad4b-v27-php-original313-') as t:
+            # The JSON is a generated synthetic test proof, never an Original313
+            # enrolled Host receipt/key. Allow unprivileged Docker read-only
+            # mount traversal without broadening any production authority.
+            Path(t).chmod(0o755)
             file=Path(t)/'source-original313-proof.json'
             file.write_text(json.dumps(root_payload))
             cmd=['docker','run','--rm','--pull=never','--network','none',

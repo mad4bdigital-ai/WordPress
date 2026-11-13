@@ -464,11 +464,22 @@ $read_apply = $dispatch(
 if ( ! $read_apply instanceof WP_REST_Response || 200 !== (int) $read_apply->get_status() ) {
 	$fail( 'Read-only bearer step-up denial did not return an MCP response.', $normalize( $read_apply instanceof WP_REST_Response ? $read_apply->get_data() : $read_apply ) );
 }
-$read_apply_json = wp_json_encode( $normalize( $read_apply->get_data() ), JSON_UNESCAPED_SLASHES );
-if ( false === $read_apply_json
-	|| false === strpos( $read_apply_json, '"isError":true' )
-	|| false === strpos( $read_apply_json, 'The OAuth bearer does not grant the dedicated Full Staging Authority step-up scope.' ) ) {
-	$fail( 'Read-only bearer was not denied by the dedicated authority step-up scope gate.', $normalize( $read_apply->get_data() ) );
+$read_apply_data = $normalize( $read_apply->get_data() );
+// MCP tools/call is allowed to return a successful HTTP/JSON-RPC envelope
+// containing a tool-level isError=true. Require exactly that denied tool
+// result and a reviewed scope-gate message. Neither missing tools nor an
+// unrelated execution error can satisfy the negative security assertion.
+$read_denied_text = isset( $read_apply_data['result']['content'][0]['text'] )
+	? (string) $read_apply_data['result']['content'][0]['text'] : '';
+if ( ! is_array( $read_apply_data )
+	|| (int) ( $read_apply_data['id'] ?? -1 ) !== 720
+	|| true !== ( $read_apply_data['result']['isError'] ?? null )
+	|| isset( $read_apply_data['error'] )
+	|| ! in_array( $read_denied_text, array(
+		'The OAuth bearer does not grant the dedicated Full Staging Authority step-up scope.',
+		'Full authority OAuth step-up scope is required.',
+	), true ) ) {
+	$fail( 'Read-only bearer was not denied by the dedicated authority step-up scope gate.', $read_apply_data );
 }
 
 // Mint a second bearer on the same ChatGPT resource with the dedicated step-up

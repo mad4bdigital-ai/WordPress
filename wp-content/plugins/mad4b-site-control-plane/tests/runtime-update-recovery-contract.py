@@ -43,3 +43,24 @@ assert handler.index('self::require_admin( self::ACTION_SCAN_SOURCE )') < handle
 assert 'source_scan_apply_admission' in handler
 authority = (includes / 'class-mad4b-scp-context-authority.php').read_text()
 assert "isset( $scan['expected_registry_revision'] ) && (int) $scan['expected_registry_revision'] !== self::registry_revision()" in authority
+
+
+# Same-PR Production Readiness evidence for the newly cataloged passive Brand
+# Core status ability. Source assertions are deliberately non-authorizing:
+# no fake owner approval, signed Host receipt, credential or release verdict.
+brand = (includes / 'class-mad4b-scp-brand-core-remote-recovery.php').read_text()
+assert "const STATUS_ABILITY = 'mad4b/brand-core-remote-recovery-status';" in brand
+assert "self::STATUS_ABILITY => array(" in brand
+status_registration = brand.split("self::STATUS_ABILITY => array(", 1)[1].split("self::ALTERNATIVES_ABILITY => array(", 1)[0]
+assert "'callback' => 'status'" in status_registration
+assert "'required' => array()" in status_registration
+assert "'category' => 'mad4b-read'" in brand
+assert "'permission_callback' => array( __CLASS__, 'can_read' )" in brand
+assert "'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true )" in brand
+status_function = brand.split("public static function status( $input = array() )", 1)[1].split("public static function prepare(", 1)[0]
+assert "if ( ! self::can_read() )" in status_function
+assert "'candidate_sha'" in status_function
+assert "'include_host_challenge'" in status_function
+assert "production_authorized" in status_function
+assert not any(x in status_function for x in ("wp_update_post(", "update_option(", "file_put_contents(", "$wpdb->query("))
+print("BRAND_CORE_REMOTE_RECOVERY_STATUS_IMPACT_CONTRACT_PASS: CI-only, no release authority")

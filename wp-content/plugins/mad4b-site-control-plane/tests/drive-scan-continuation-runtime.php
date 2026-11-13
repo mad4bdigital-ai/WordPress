@@ -3,6 +3,10 @@
 define('ABSPATH',__DIR__.'/');
 class WP_Error { private $code; function __construct($c,$m=''){ $this->code=$c; } function get_error_code(){return $this->code;} }
 function is_wp_error($x){return $x instanceof WP_Error;}
+// Native WordPress sanitization for synthetic provider reason codes only.
+function sanitize_key($s){return preg_replace('/[^a-z0-9_-]/','',strtolower((string)$s));}
+function absint($n){return abs((int)$n);}
+
 function wp_json_encode($x,$f=0){return json_encode($x,$f);}
 function wp_salt($x){return 'dedicated-test-only-secret-not-a-real-key';}
 function maybe_serialize($x){return $x;}
@@ -75,7 +79,25 @@ assert_scan(is_wp_error($c::run($scope,$root,true,$prior['scan_cursor'],true,$pr
 $GLOBALS['store']=array();assert_scan(is_wp_error($c::run($scope,$root,true,$prior['scan_cursor'],true,$provider)),'evicted checkpoint accepted cursor');
 foreach(array('duplicate','foreign','shortcut','list_timeout')as$mode){$GLOBALS['store']=array();$result=$c::run($scope,$root,true,'',false,$provider);assert_scan(is_wp_error($result)&&!$GLOBALS['store'],'unsafe provider page persisted');}
 $mode='normal';$GLOBALS['store']=array();$result=$c::run($scope,$root,true,'',false,$provider);$baseline=$GLOBALS['store'];
-foreach(array('incomplete','normalize_timeout')as$mode){assert_scan(is_wp_error($c::run($scope,$root,true,$result['scan_cursor'],false,$provider))&&$baseline===$GLOBALS['store'],'incomplete/failed content advanced checkpoint');}
+// A complete provider inventory may quarantine one file whose content could
+// not be normalized. This is progress, NEVER a complete authorized content
+// scan. Timeout/network failures, unlike reviewable incomplete content, must
+// fail without advancing the encrypted checkpoint.
+$mode='incomplete';
+$quarantined=$c::run($scope,$root,true,$result['scan_cursor'],false,$provider);
+assert_scan(is_array($quarantined)&&$GLOBALS['store']!==$baseline
+ && !empty($quarantined['truncated'])
+ && !empty($quarantined['partial_scan_requires_complete_rescan'])
+ && empty($quarantined['registry_mutation_performed'])
+ && ($quarantined['deferred_count']??0)===1
+ && ($quarantined['deferred_files'][0]['status']??'')==='deferred_review_required'
+ && empty($quarantined['deferred_files'][0]['content_complete']),
+ 'Reviewable incomplete file was not quarantined as non-authorizing');
+$GLOBALS['store']=$baseline;
+$mode='normalize_timeout';
+assert_scan(is_wp_error($c::run($scope,$root,true,$result['scan_cursor'],false,$provider))
+ && $baseline===$GLOBALS['store'],'Provider timeout advanced checkpoint');
+
 $mode='normal';$GLOBALS['wpdb']->fail=true;
 assert_scan(is_wp_error($c::run($scope,$root,true,$result['scan_cursor'],false,$provider))&&$baseline===$GLOBALS['store'],'CAS failure advanced checkpoint');$GLOBALS['wpdb']->fail=false;
 MAD4B_SCP_Audit::$ok=false;

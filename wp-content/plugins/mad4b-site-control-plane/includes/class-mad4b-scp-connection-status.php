@@ -372,6 +372,9 @@ final class MAD4B_SCP_Connection_Status {
 			'mad4b-enrollment' => array( 'MAD4B_SCP_Servers', 'can_enrollment_transport' ),
 			'mad4b-content' => array( 'MAD4B_SCP_Servers', 'can_content_transport' ),
 			'mad4b-write' => array( 'MAD4B_SCP_Servers', 'can_write_transport' ),
+			// Local VPS stdio has a separately guarded callback. Checking its
+			// real identity does not admit HTTP or grant any execution authority.
+			'mad4b-vps-local' => array( 'MAD4B_SCP_Servers', 'can_vps_local_transport' ),
 			'mad4b-admin' => array( 'MAD4B_SCP_Servers', 'can_admin_transport' ),
 			'mad4b-developer' => array( 'MAD4B_SCP_Servers', 'can_developer_transport' ),
 			'mad4b-developer-breakglass' => array( 'MAD4B_SCP_Servers', 'can_developer_breakglass_transport' ),

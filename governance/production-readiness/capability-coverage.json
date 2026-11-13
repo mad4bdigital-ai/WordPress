@@ -6409,6 +6409,28 @@
       "execution_note": "Readiness Python runner invokes three fixed standalone PHP harnesses with strict nonzero exit/timeout failure; no PHPUnit runner, skip, lint-only proof, authorization or remote site requests."
     },
     {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-connection-status.php",
+      "source_blob_sha": "2b99c9bf0f0c6be2f21de5d54b9d7b071716076f",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "MCP-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/local-transport-oauth-isolation-contract.py"
+      ],
+      "owner_role": "Repository CI source reviewer — no Owner/Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP transport, redacted diagnostics, admin nonce, security, and review controls cover the current nonauthorizing source correction. Independent live acceptance remains required.",
+      "review_rationale": "CI-only review of the exact native MCP registration-identity callback coverage: the expected mad4b-vps-local server now maps to the original WP-CLI-only can_vps_local_transport callback. The same-PR Local OAuth regression checks the exact callback and requires the existing isolated permission boundary; no HTTP/VPS-local tool exposure, grant, OAuth scope weakening or Production authority. Full Local OAuth WordPress integration and Original host evidence remain separately required.",
+      "execution_note": "Same-PR source contract checks exact server/callback identity; GitHub OAuth disposable WordPress runtime separately verifies registration and remains fail-closed on mismatched callback."
+    },
+    {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-runtime-diagnostics.php",
       "source_blob_sha": "3f4137123c09e95644eab20e53d3eadf28a4e7a0",
       "control_ids": [
