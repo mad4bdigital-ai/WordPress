@@ -98,6 +98,15 @@ check( ! $result['ready'] && 'official_wire_build' === $result['failures'][0]['s
 $GLOBALS['filters']['mcp_adapter_tool_name'] = static function() { return 'colliding-name'; };
 $result = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( array_slice( $required, 0, 2 ), array( $required[1] ) );
 check( ! $result['ready'] && 'identity' === $result['failures'][0]['stage'], 'Optional tool identity collision must fail closed' );
+check( 'mcp_catalog_identity_collision' === $result['blocker']
+    && array() === $result['tools'] && ! $result['degraded']
+    && 'mcp_identity_collision' === $result['failures'][0]['error_code'],
+    'Optional identity collision left partially executable tool catalog' );
+// Same result when both colliding Abilities are non-optional: do not
+// accidentally scope the critical collision gate to optional flags.
+$required_collision = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( array_slice( $required, 0, 2 ), array() );
+check( ! $required_collision['ready'] && 'mcp_catalog_identity_collision' === $required_collision['blocker']
+    && array() === $required_collision['tools'], 'Required wire identities were not fail-closed' );
 unset( $GLOBALS['filters']['mcp_adapter_tool_name'] );
 wp_register_ability( 'fixture/large', array( 'description' => str_repeat( 'x', 100000 ) ) );
 $result = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( array( $required[0], 'fixture/large' ), array( 'fixture/large' ) );

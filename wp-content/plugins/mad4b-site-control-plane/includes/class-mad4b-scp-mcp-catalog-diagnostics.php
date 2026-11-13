@@ -90,6 +90,10 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 		$out['runtime_class_provenance'] = MAD4B_SCP_MCP_Class_Provenance::status( false, false );
 		$out['source_provenance_observational'] = true;
 		$names = array(); $catalog_bytes = 32;
+		// A colliding wire identity is a catalog-wide integrity failure, not
+		// an isolated optional DTO error. Keep independent optional schema and
+		// size failures quarantined without rejecting required tools.
+		$identity_collision = false;
 		// Validate required tools before optional projections. Direct tools must fit
 		// the same bounded tools/list envelope exercised by HTTP acceptance; large
 		// optional Abilities remain reachable through the stable dispatcher path.
@@ -146,6 +150,9 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 				}
 			} catch ( Throwable $error ) { $failure = array( 'stage' => $stage, 'error_class' => get_class( $error ), 'error_code' => 'mcp_preflight_exception', 'schema_fingerprint' => '' ); }
 			if ( $failure ) {
+				if ( 'mcp_identity_collision' === ( isset( $failure['error_code'] ) ? $failure['error_code'] : '' ) ) {
+					$identity_collision = true;
+				}
 				$failure['failing_ability'] = $name; $failure['source_schema_fingerprint'] = $source_fingerprint; $out['failures'][] = $failure;
 				// Fault isolation: exclude the failed tool and retain only verified
 				// unique wire names; all permission callbacks remain unchanged.
@@ -158,6 +165,12 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
         $out['optional_per_tool_serialized_bytes_limit'] = $limits['max_bytes'];
         $out['catalog_budget'] = $limits;
 		$out['size_policy'] = 'bounded_single_tool_schema_unbounded_total';
+		if ( $identity_collision ) {
+			// Do not expose a partial executable catalog under an ambiguous
+			// MCP tool identity, even when some required tools built successfully.
+			$out['blocker'] = 'mcp_catalog_identity_collision';
+			$out['tools'] = array();
+		}
 		$out['degraded'] = ! empty( $out['failures'] ) && '' === $out['blocker'];
 		$out['ready'] = '' === $out['blocker'] && ! empty( $out['tools'] );
 		if ( ! $out['ready'] && '' === $out['blocker'] ) $out['blocker'] = 'mcp_catalog_empty';
