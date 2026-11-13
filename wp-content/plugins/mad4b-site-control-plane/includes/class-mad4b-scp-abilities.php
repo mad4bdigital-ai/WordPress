@@ -244,7 +244,14 @@ final class MAD4B_SCP_Abilities {
 		if ( in_array( (string) $name, array( 'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute' ), true ) ) {
 			$mcp_meta['surface'] = 'enrollment';
 			$mcp_meta['generic_remote_admin'] = false;
-			$mcp_meta['production_mutation_allowed'] = false;
+            // Discovery/info never mutate. Execution is per-child policy
+            // governed, not unconditional Production authority.
+            $mcp_meta['production_mutation_allowed'] = 'mad4b/enrollment-execute' === $name
+                ? 'policy_governed' : false;
+            if ( 'mad4b/enrollment-execute' === $name ) {
+                $mcp_meta['conditional_enrollment_policy'] = 'per_child_registered_write_policy_v1';
+                $mcp_meta['production_allowed'] = 'policy_governed';
+            }
 		}
 		if ( 'breakglass' === (string) $permission || 'mad4b-breakglass' === (string) $category ) {
 			$mcp_meta['surface'] = 'breakglass';
@@ -1411,6 +1418,18 @@ final class MAD4B_SCP_Abilities {
 		$allowed = MAD4B_SCP_Enrollment_Dispatch::can_execute( $input );
 		if ( is_wp_error( $allowed ) || ! $allowed ) return $allowed;
 		if ( ! class_exists( 'MAD4B_SCP_Remote_Operation_Parity' ) || ! method_exists( 'MAD4B_SCP_Remote_Operation_Parity', 'can_execute' ) ) return new WP_Error( 'mad4b_enrollment_dispatch_authority_unavailable', 'Remote Operation Parity authority check is unavailable.' );
+        $classification = MAD4B_SCP_Enrollment_Dispatch::registered_policy_classification( $input );
+        if ( is_wp_error( $classification ) || ! is_array( $classification ) ) {
+            return is_wp_error( $classification ) ? $classification : new WP_Error(
+                'mad4b_enrollment_dispatch_policy_classification_invalid',
+                'Current registered operation classification is unavailable.' );
+        }
+        // The governed child has already passed exact Site Profile, OAuth
+        // step-up, Registry and current Governance Policy checks. Do not
+        // reapply the unrelated Staging-only legacy Remote Parity guard.
+        if ( 'registered_governance' === ( $classification['policy_class'] ?? '' ) ) {
+            return true;
+        }
 		$params = is_array( $input ) && array_key_exists( 'input', $input ) ? $input['input'] : null;
 		$parity = MAD4B_SCP_Remote_Operation_Parity::can_execute( $params );
 		if ( is_wp_error( $parity ) || ! $parity ) return $parity;

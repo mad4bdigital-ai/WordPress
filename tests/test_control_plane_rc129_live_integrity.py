@@ -57,7 +57,16 @@ class Rc129LiveReview(unittest.TestCase):
                     # review branch even if local-only commits are absent.
                     from test_control_plane_rc129_v29_readonly_overlay import assert_bootstrap_overlay_is_exact
                     assert_bootstrap_overlay_is_exact()
-                    self.assertEqual(SHA(file.read_bytes()),overlay['main_candidate_sha256'])
+                    governed=json.loads((ROOT/'docs/release-coverage/pr808-policy-governed-operator-review-20261113.json').read_text())
+                    self.assertEqual(governed['base_readonly_overlay_sha256'],overlay['main_candidate_sha256'])
+                    self.assertEqual(SHA(file.read_bytes()),governed['policy_main_candidate_sha256'])
+                elif row['path']=='includes/class-mad4b-scp-operator-grant-convergence.php':
+                    # Reviewed source-only governance adapter builds upon the
+                    # immutable RC128-to-RC129 reconciliation; the historical
+                    # snapshot stays pinned in its original manifest.
+                    governed=json.loads((ROOT/'docs/release-coverage/pr808-policy-governed-operator-review-20261113.json').read_text())
+                    self.assertEqual(SHA(file.read_bytes()),
+                        governed['reviewed_source_sha256']['wp-content/plugins/mad4b-site-control-plane/'+row['path']])
                 else:
                     self.assertEqual(SHA(file.read_bytes()),row['candidate_after_sha256'])
 

@@ -18,8 +18,16 @@ def assert_bootstrap_overlay_is_exact():
     """
     doc=json.loads(REVIEW.read_text())
     installed=(ROOT/doc['entrypoint']).read_bytes()
-    assert SHA(installed)==doc['main_candidate_sha256'], 'BOOTSTRAP_CANDIDATE_SHA_DRIFT'
+    # A second exact, non-authorizing source overlay adds one Registry-policy
+    # require to the certified RC129/V29 read-only candidate. Historical
+    # reviewed hashes stay pinned; reconstruct the previous bytes exactly.
+    governed=json.loads((ROOT/'docs/release-coverage/pr808-policy-governed-operator-review-20261113.json').read_text())
+    assert SHA(installed)==governed['policy_main_candidate_sha256'], 'GOVERNED_BOOT_SHA_DRIFT'
     text=installed.decode('utf-8')
+    registered="require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-registered-write-admission.php';\n"
+    assert text.count(registered)==1, 'REGISTRY_POLICY_BOOT_NOT_EXACT'
+    text=text.replace(registered,'',1)
+    assert SHA(text.encode('utf-8'))==doc['main_candidate_sha256'], 'PREVIOUS_BOOT_SHA_DRIFT'
     changes=[
         ("require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operation-registry.php';\n",
          "// Source-only bounded catalog review; never installs or activates a Provider.\nrequire_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-native-source-release-review.php';\n"),

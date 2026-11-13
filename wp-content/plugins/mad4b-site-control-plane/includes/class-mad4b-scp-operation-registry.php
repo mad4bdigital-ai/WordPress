@@ -386,6 +386,51 @@ final class MAD4B_SCP_Operation_Registry {
 		return $row;
 	}
 
+    /**
+     * Exact declarative operation identity, not permission to execute.
+     * No fixed operation allowlist: the first-party catalog owns the policy.
+     * The authority resolver validates Site Profile + Governance separately.
+     */
+    public static function registered_write_policy( $ability_name ) {
+        $ability_name = trim( (string) $ability_name );
+        $catalog = self::catalog();
+        if ( is_wp_error( $catalog ) ) return $catalog;
+        $found = null;
+        foreach ( $catalog['operations'] as $row ) {
+            if ( ! is_array( $row ) || ! isset( $row['write_admission'] ) ) continue;
+            if ( $ability_name !== (string) ( $row['planner'] ?? '' )
+                || $ability_name !== (string) ( $row['executor'] ?? '' ) ) continue;
+            if ( null !== $found ) return new WP_Error( 'mad4b_registered_operation_policy_ambiguous',
+                'More than one registered write policy claims this Ability.' );
+            $found = $row;
+        }
+        if ( ! is_array( $found ) ) return new WP_Error( 'mad4b_registered_operation_policy_missing',
+            'No first-party registered write policy binds this Ability.' );
+        $policy = $found['write_admission'];
+        if ( ! is_array( $policy ) || $policy !== array_intersect_key( $policy, array_flip( array(
+            'contract', 'policy_resolver', 'site_binding', 'write_feature',
+            'owner_step_up_required', 'production_mode', 'approval', 'policy_effect' ) ) )
+            || count( $policy ) !== 8
+            || 'mad4b.registered-operation-write-policy.v1' !== ( $policy['contract'] ?? null )
+            || 'mad4b.policy-resolution.v1' !== ( $policy['policy_resolver'] ?? null )
+            || 'exact_enrolled_managed_site_profile' !== ( $policy['site_binding'] ?? null )
+            || 'write' !== ( $policy['write_feature'] ?? null )
+            || true !== ( $policy['owner_step_up_required'] ?? null )
+            || 'runtime_governance_policy' !== ( $policy['production_mode'] ?? null )
+            || 'canonical_exact_developer_plan' !== ( $policy['approval'] ?? null )
+            || 'preflight_only' !== ( $policy['policy_effect'] ?? null )
+            || true !== ( $found['owner_confirmation_required'] ?? null )
+            || true !== ( $found['required_runtime'] ?? null )
+            || true !== ( $found['durable_resume'] ?? null ) ) {
+            return new WP_Error( 'mad4b_registered_operation_policy_invalid',
+                'Registered operation policy does not meet the canonical owner-write contract.' );
+        }
+        return array( 'operation_id' => (string) $found['id'],
+            'provider' => 'core', 'policy' => $policy,
+            'operation_sha256' => hash( 'sha256', wp_json_encode( $found,
+                JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) ) );
+    }
+
 	public static function operation( $operation_id ) {
 		$operation_id = MAD4B_SCP_Canonicalization::semantic_operation_id( $operation_id );
 		if ( is_wp_error( $operation_id ) ) return $operation_id;

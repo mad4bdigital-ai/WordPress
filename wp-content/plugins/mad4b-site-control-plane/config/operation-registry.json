@@ -304,6 +304,35 @@
       "company_and_site_bound": true,
       "signed_core_evidence_required": true,
       "complete_inventory_coverage_required_for_promotion": true
+    },
+    {
+      "id": "wordpress.developer.operator-grants.converge",
+      "target_kind": "governed_developer_grants",
+      "risk": "exceptional",
+      "planner": "mad4b/operator-grants-converge",
+      "executor": "mad4b/operator-grants-converge",
+      "supports": [
+        "plan",
+        "apply"
+      ],
+      "durable_resume": true,
+      "dependency_impact": false,
+      "generic_mutation_dispatch": false,
+      "required_runtime": true,
+      "pipeline_profile": "governed_mutation_v1",
+      "side_effect_class": "bounded_exact_nhi_grant_convergence",
+      "retry_semantics": "independent_readback_before_retry",
+      "owner_confirmation_required": true,
+      "write_admission": {
+        "contract": "mad4b.registered-operation-write-policy.v1",
+        "policy_resolver": "mad4b.policy-resolution.v1",
+        "site_binding": "exact_enrolled_managed_site_profile",
+        "write_feature": "write",
+        "owner_step_up_required": true,
+        "production_mode": "runtime_governance_policy",
+        "approval": "canonical_exact_developer_plan",
+        "policy_effect": "preflight_only"
+      }
     }
   ],
   "aliases": {

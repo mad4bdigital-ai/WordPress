@@ -24,6 +24,21 @@ class MAD4B_SCP_Site_Profile {
             && ( 'write' !== $feature || empty( $GLOBALS['test_site_write_disabled'] ) );
     }
 }
+class MAD4B_SCP_Registered_Write_Admission {
+    public static function preflight( $name ) {
+        if ( 'mad4b/operator-grants-converge' !== $name || ! empty( $GLOBALS['registered_policy_revoked'] ) )
+            return new WP_Error( 'mad4b_registered_operation_policy_missing' );
+        if ( ! empty( $GLOBALS['test_site_write_disabled'] ) )
+            return new WP_Error( 'mad4b_registered_write_site_unverified' );
+        if ( 'production' === MAD4B_SCP_Site_Profile::current_environment()
+            && empty( $GLOBALS['test_production_governance_active'] ) )
+            return new WP_Error( 'mad4b_registered_write_runtime_policy_required' );
+        if ( ! empty( $GLOBALS['test_governance_denied'] ) )
+            return new WP_Error( 'mad4b_registered_write_governance_denied' );
+        return array( 'state' => 'eligible_for_exact_canonical_plan_only',
+            'authorization_issued' => false, 'mutation_performed' => false );
+    }
+}
 class MAD4B_SCP_Local_OAuth_Server {
     const CHATGPT_CIMD_CLIENT_ID = 'https://chatgpt.com/connector-client';
 }
@@ -116,10 +131,18 @@ $GLOBALS['test_site_authority_revoked'] = true;
 check( 'site authority revoked', MAD4B_SCP_Operator_Grant_Convergence::execute( array( 'action' => 'plan' ) ), 'mad4b_operator_grants_site_not_ready' );
 unset( $GLOBALS['test_site_authority_revoked'] );
 $GLOBALS['test_site_write_disabled'] = true;
-check( 'profile write disabled', MAD4B_SCP_Operator_Grant_Convergence::execute( array( 'action' => 'plan' ) ), 'mad4b_operator_grants_nonproduction_only' );
+check( 'profile write disabled', MAD4B_SCP_Operator_Grant_Convergence::execute( array( 'action' => 'plan' ) ), 'mad4b_registered_write_site_unverified' );
 unset( $GLOBALS['test_site_write_disabled'] );
 $GLOBALS['test_env'] = 'production';
-check( 'production denied', MAD4B_SCP_Operator_Grant_Convergence::execute( array( 'action' => 'plan' ) ), 'mad4b_operator_grants_nonproduction_only' );
+check( 'production write without current governance denied', MAD4B_SCP_Operator_Grant_Convergence::execute( array( 'action' => 'plan' ) ), 'mad4b_registered_write_runtime_policy_required' );
+$GLOBALS['test_production_governance_active'] = true;
+check( 'production with current governance yields read-only canonical plan', MAD4B_SCP_Operator_Grant_Convergence::execute( array( 'action' => 'plan' ) ), null );
+$GLOBALS['registered_policy_revoked'] = true;
+check( 'missing operation policy denied', MAD4B_SCP_Operator_Grant_Convergence::execute( array( 'action' => 'plan' ) ), 'mad4b_registered_operation_policy_missing' );
+unset( $GLOBALS['registered_policy_revoked'] );
+$GLOBALS['test_governance_denied'] = true;
+check( 'policy-denied production rejected', MAD4B_SCP_Operator_Grant_Convergence::execute( array( 'action' => 'plan' ) ), 'mad4b_registered_write_governance_denied' );
+unset( $GLOBALS['test_governance_denied'] );
 if ( MAD4B_SCP_Developer_Authority::$apply_calls !== 0 ) {
     fwrite( STDERR, 'FAIL canonical apply touched' . PHP_EOL ); exit( 3 );
 }
