@@ -95,3 +95,30 @@ This document describes the contract, not an authorization or proof of an indepe
 - Tours.dev published Nile cruise was tested in EN/FR/DE/ES/IT/AR on mobile after the existing Elementor entrance animation became visible. Correct locale labels, taxonomy hierarchy, mode switching back to Explorer, and no page overflow or JS errors were observed. Tour geography only has eligible Country/Governorate levels in this fixture, so Attraction-level behavior was verified on Wayfatours rather than assumed on Tours.dev.
 - The site-specific FastCGI version mechanism was advanced for 90 Wayfatours and 246 Tours.dev exact Tour page paths, not globally. The canonical `/opt/mad4b/operations/tour-highlights-v1/` sources were reconciled with the live files and the superseded semantic experiment preserved in `experimental/` as non-deployed review material.
 - Runtime parity and browser QA do not mean that PR #813 has been merged or independently signed as a formal release. Further subjective visual review of the component on additional tour subtypes remains valid before production rollout beyond current sites.
+
+
+## Native Destination Quick Preview — November 13, 2026
+
+**Purpose:** Clicking an eligible JetEngine destination card in Explorer, Split or Story opens an informational preview without replacing the Tour page. The current Highlight, category, browser URL and form selection remain unchanged.
+
+### Reuse and boundaries
+
+- Reuses the existing Elementor destination taxonomy page as rendered in a same-origin, on-click iframe inside a native keyboard-accessible dialog, following the Extra Options Quick Preview interaction model.
+- It is **not** the Extra Options selection handler: it has no postMessage-based selection, no Fluent Form 6 mutation, no booking CTA, no new WordPress query and no tour price functionality. Extra's existing code and files remain unchanged.
+- The existing Tour Journey section supplies a filtered destination-term list validated by company taxonomy eligibility. The click interceptor only permits an exact same-origin pathname in this list. Modified clicks retain browser behavior; the toolbar provides an explicit full-page link.
+- The destination frame resolves the real Elementor document tree by native wrappers, a H1 inside the hero and an eligible JetEngine Dynamic Field with descriptive text near a heading. It does **not** hardcode template IDs, element IDs, Elementor archive wrapper class names or the position of the About block. This addresses a verified wrapper class difference between Wayfatours and Tours.dev.
+- Its display is **Hero + About** when the native descriptive field is available. An otherwise eligible term can show **Hero only** if no qualifying description exists. Non-content Elementor modules and forms are hidden **inside the iframe only**. Stored Elementor templates and normal destination URLs stay unchanged.
+- The CSS hides header, footer, cookie overlay and inquiry buttons only inside the iframe. The site's actual cookie consent mechanism is unchanged; hiding a second visual overlay does not grant optional consent. A nested Elementor gallery popup stays inside the frame.
+- Only one destination preview is open at a time. Escape works with keyboard focus inside the iframe except while a nested gallery is open. Closing returns focus to the original destination card. The script does not initialize another destination popup in an Extra Quick Preview iframe.
+- The frame loads only on the user's click; no extra destination page is requested in the Tour's initial rendering path.
+
+### Source files and acceptance checks
+
+- assets/tour-destination-quick-preview.js — approved same-origin link interception, native Elementor semantic content discovery, modal lifecycle, focus and gallery isolation.
+- assets/tour-destination-quick-preview.css — responsive dialog and iframe-only informational content rules.
+- includes/class-mad4b-scp-tour-highlights-presentation-v1.php — enqueues the scoped assets on Tour Single and authorized Elementor preview.
+- scripts/qa/tour-destination-preview-browser.py — checks native Hero, JetEngine About or Hero-only fallback, no visible forms, same-origin term link, no page navigation, no horizontal overflow, mode preservation and closing. Example: python scripts/qa/tour-destination-preview-browser.py --url https://example.com/tours-and-activities/example/ --width 390 --modes all --disable-quic
+
+**Observed tests:** Wayfatours published Giza tour EN (desktop 1440px and mobile 390px), ES mobile 390px, and all three Journey modes in EN; Tours.dev Nile cruise EN/FR mobile 390px, with native Luxor/Louxor destination heading and About. No page-level JavaScript exceptions or horizontal overflow observed in those tested cases. This does not claim exhaustive validation of every language/term subtype or a signed Production release.
+
+**Deployment:** Live assets were applied on the two current sites with baseline preflight and backups, not by changing Elementor document data. The GitHub branch remains a Draft PR pending its normal merge and release authority.
