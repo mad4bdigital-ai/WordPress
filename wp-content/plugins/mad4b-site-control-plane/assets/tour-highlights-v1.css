@@ -385,3 +385,229 @@
     font-size:clamp(23px,6.8vw,28px);line-height:1.25;letter-spacing:-.015em;
   }
 }
+
+/* Journey Discovery v2 — designed around one Highlight item + its verified native place.
+   Preserves Elementor/JetEngine destination listings; does not clone native cards. */
+.tour-journey-discovery.jd-v2 {
+  --jd-ink:var(--e-global-color-primary,#173d4a);
+  --jd-accent:#c4a26b;
+  --jd-outline:#cfddd9;
+  --jd-text:#405a61;
+  --jd-paper:#f7f9f8;
+  min-width:0;
+}
+.jd-v2 .tour-hl-ui__grid {align-items:stretch;}
+.jd-v2 .tour-hl-ui__card {position:relative;isolation:isolate;min-width:0;}
+.jd-v2 .tour-hl-ui__card:focus-visible {
+  outline:2px solid var(--jd-ink);outline-offset:3px;
+}
+.jd-v2 .tour-hl-ui__card.jd-active-highlight {
+  background:#f2f7f5;
+  border-color:#9ebfb6;
+  box-shadow:inset 3px 0 0 #3e7777;
+}
+.jd-v2 .tour-hl-ui__card.jd-has-place .tour-hl-ui__number {
+  background:#e7f0ed;color:#174e50;border-color:#c2d9d1;
+}
+.jd-v2 .tour-hl-ui__related {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));
+  gap:9px;
+  margin-top:15px;
+}
+.jd-v2 .jd-place-tile {
+  display:flex;align-items:stretch;position:relative;min-width:0;min-height:76px;
+  background:#fff;border:1px solid #d8e4de;border-radius:11px;
+  box-shadow:0 3px 9px rgba(16,47,63,.04);
+  transition:border-color .18s ease,box-shadow .18s ease,transform .18s ease;
+}
+.jd-v2 .jd-place-tile:hover,
+.jd-v2 .jd-place-tile:focus-within {
+  border-color:#7eafa5;
+  box-shadow:0 5px 16px rgba(15,55,62,.13);
+  transform:translateY(-1px);
+}
+.jd-v2 .jd-place-tile__jump {
+  display:flex;align-items:center;gap:10px;flex:1 1 auto;min-width:0;
+  padding:5px!important;color:var(--jd-ink)!important;
+  text-decoration:none!important;border-radius:10px;
+}
+.jd-v2 .jd-place-tile__jump:focus-visible,.jd-v2 .jd-place-tile__details:focus-visible {
+  outline:2px solid #247f82;outline-offset:3px;
+}
+.jd-v2 .jd-place-tile__media {
+  display:grid;place-items:center;flex:0 0 74px;height:64px;
+  border-radius:8px;overflow:hidden;
+  background:#dcebe5;color:#275a5b;font-size:27px;
+}
+.jd-v2 .jd-place-tile__media img {
+  display:block;width:100%;height:100%;object-fit:cover;
+}
+.jd-v2 .jd-place-tile__copy {display:flex;flex-direction:column;gap:5px;min-width:0;padding:0 2px;}
+.jd-v2 .jd-place-tile__eyebrow {
+  color:#69847c;font-size:9px;letter-spacing:.09em;text-transform:uppercase;
+  font-weight:800;line-height:1.3;
+}
+.jd-v2 .jd-place-tile__name {
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+  overflow:hidden;font-size:12px;line-height:1.38;
+  color:var(--jd-ink);font-weight:750;
+}
+.jd-v2 .jd-place-tile__arrow {
+  flex:0 0 auto;align-self:center;margin-inline-start:auto;
+  color:#376b6b;font-size:17px;line-height:1;
+}
+.jd-v2 .jd-place-tile__details {
+  display:grid;place-items:center;flex:0 0 31px;
+  margin-block:11px;border-inline-start:1px solid #e5ece9;
+  color:#4d6c73!important;font-size:17px;font-weight:700;
+  text-decoration:none!important;
+}
+.jd-v2 .jd-place-tile__details:hover {color:#12575f!important;}
+/* One border system: native Elementor media card supplies the actual visual shell.
+   The JetEngine grid item is now purely a layout wrapper, and cannot clip it. */
+.jd-v2.tour-journey-enhanced .tour-place-group .jet-listing-grid__item {
+  border:0!important;background:transparent!important;
+  border-radius:0!important;overflow:visible!important;
+  padding:3px!important;box-shadow:none!important;
+  transition:none!important;
+}
+.jd-v2.tour-journey-enhanced .tour-place-group .jet-listing-grid__item > .elementor {
+  overflow:visible!important;
+}
+.jd-v2.tour-journey-enhanced .tour-place-group .jet-listing-grid__item > .elementor > .e-con {
+  border-radius:22px!important;overflow:hidden!important;
+  box-shadow:0 8px 22px rgba(16,47,63,.095);
+  transition:transform .22s ease,box-shadow .22s ease;
+}
+.jd-v2.tour-journey-enhanced .tour-place-group .jet-listing-grid__item.jd-place-highlight > .elementor > .e-con,
+.jd-v2.tour-journey-enhanced .tour-place-group .jet-listing-grid__item:focus-within > .elementor > .e-con {
+  box-shadow:0 0 0 3px rgba(26,109,112,.72),0 12px 26px rgba(16,47,63,.16);
+}
+.jd-v2.tour-journey-enhanced .tour-place-group .jet-listing-grid__item:hover > .elementor > .e-con {
+  transform:translateY(-3px);box-shadow:0 14px 29px rgba(16,47,63,.17);
+}
+.jd-v2 .jd-native-place[hidden] {display:none!important;}
+.jd-v2 .tour-place-group .jet-listing-grid__items {padding:2px 0 12px!important;}
+/* Strong directional bridge between content and native destination groups. */
+.jd-v2 .jd-bridge {
+  display:flex;align-items:center;gap:10px;
+  margin:22px 0 0;padding:0 0 2px;
+  min-width:0;text-decoration:none!important;
+  color:#416a6e!important;font-size:12px;font-weight:700;
+}
+.jd-v2 .jd-bridge__line {display:block;flex:0 1 65px;height:1px;background:#acc9be;}
+.jd-v2 .jd-bridge__icon {
+  display:grid;place-items:center;flex:0 0 30px;height:30px;
+  border-radius:50%;background:#e8f3ee;border:1px solid #c8dcd2;
+  color:#2b6364;font-size:19px;
+}
+.jd-v2 .jd-bridge__text {display:block;min-width:0;}
+.jd-v2 .jd-bridge:hover .jd-bridge__text {text-decoration:underline;text-underline-offset:4px;}
+.jd-v2 .tour-journey-places-header {scroll-margin-top:110px;padding-top:16px;}
+.jd-v2 .jd-filter-status {
+  margin:0 0 10px;color:#57777a;font-size:12px;
+  font-weight:650;line-height:1.45;
+}
+.jd-v2 .tour-journey-places-header .tour-journey-layout-select {cursor:pointer;}
+/* Split: highlight collection left, native matched places right; active accent points across. */
+.jd-v2.tour-journey--split.tour-journey-enhanced {column-gap:24px!important;}
+.jd-v2.tour-journey--split > .jd-bridge {display:none!important;}
+.jd-v2.tour-journey--split .tour-hl-ui__card {
+  min-height:0!important;
+  padding:14px 14px 14px 15px!important;
+}
+.jd-v2.tour-journey--split .tour-hl-ui__card.jd-active-highlight:after {
+  content:"";position:absolute;inset-inline-end:-17px;top:26px;
+  width:0;height:0;border-top:8px solid transparent;
+  border-bottom:8px solid transparent;border-inline-start:9px solid #5d9892;
+}
+.jd-v2.tour-journey--split .tour-journey-related-editor {
+  position:sticky;top:96px;align-self:start;
+  padding-inline-start:8px;
+  border-inline-start:2px solid #cdded6;
+}
+.jd-v2.tour-journey--split .tour-place-group .jet-listing-grid__items {
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+}
+.jd-v2.tour-journey--split .tour-hl-ui__related {margin-top:10px;}
+/* Story: highlight items FIRST, destinations are an end-of-story collection.
+   Vertical line and nodes make every highlighted item a real narrative step. */
+.jd-v2.tour-journey--story.tour-journey-enhanced > .tour-journey-heading-editor,
+.jd-v2.tour-journey--story.tour-journey-enhanced > .elementor-element-9ff747a {
+  order:0!important;
+}
+.jd-v2.tour-journey--story.tour-journey-enhanced > .tour-journey-content-editor,
+.jd-v2.tour-journey--story.tour-journey-enhanced > .elementor-element-975121c {
+  order:1!important;
+}
+.jd-v2.tour-journey--story.tour-journey-enhanced > .jd-bridge {order:2!important;}
+.jd-v2.tour-journey--story.tour-journey-enhanced > .tour-journey-related-editor,
+.jd-v2.tour-journey--story.tour-journey-enhanced > .elementor-element-6190bab {
+  order:3!important;margin-top:0!important;
+}
+.jd-v2.tour-journey--story .tour-hl-ui__grid {
+  display:flex!important;flex-direction:column!important;
+  gap:13px!important;position:relative;
+  overflow:visible!important;counter-reset:story;
+  padding-inline-start:26px!important;
+  margin-inline-start:4px!important;
+}
+.jd-v2.tour-journey--story .tour-hl-ui__grid:before {
+  content:"";position:absolute;inset-block:22px 25px;
+  inset-inline-start:6px;width:2px;background:#b4d4ca;
+}
+.jd-v2.tour-journey--story .tour-hl-ui__card {
+  display:flex!important;position:relative;width:100%!important;max-width:100%;
+  min-height:0!important;padding:17px 19px!important;
+  margin:0!important;flex:0 0 auto!important;
+  border-inline-start:3px solid #abcac1!important;
+  border-radius:10px!important;
+}
+.jd-v2.tour-journey--story .tour-hl-ui__card:before {
+  content:"";position:absolute;inset-inline-start:-28px;top:24px;
+  width:14px;height:14px;border-radius:50%;background:#fff;
+  border:3px solid #6b9c91;box-shadow:0 0 0 4px #f5f8f6;
+}
+.jd-v2.tour-journey--story .tour-hl-ui__card.jd-active-highlight {
+  border-inline-start-color:#2d7c7a!important;
+}
+.jd-v2.tour-journey--story .tour-hl-ui__card.jd-active-highlight:before {background:#2d7c7a;}
+.jd-v2.tour-journey--story .tour-hl-ui__copy {width:100%;}
+.jd-v2.tour-journey--story .tour-hl-ui__related {max-width:510px;grid-template-columns:1fr;}
+.jd-v2.tour-journey--story .tour-journey-places-title:before {content:"↳";padding-inline-end:7px;color:#56857f;}
+.jd-v2.tour-journey--story .tour-journey-places-header {border-top:1px solid #d6e6df;padding-top:22px;}
+/* Mobile gets a legible card with a clear next-place affordance, not a cropped frame. */
+@media (max-width:1024px){
+  .jd-v2.tour-journey--split .tour-journey-related-editor {position:static;top:auto;padding-inline-start:0;border-inline-start:0;}
+  .jd-v2.tour-journey--split .tour-hl-ui__card.jd-active-highlight:after {display:none;}
+  .jd-v2.tour-journey--split.tour-journey-enhanced {display:flex!important;flex-direction:column;}
+}
+@media (max-width:767px){
+  .jd-v2 .jd-place-tile__media {flex-basis:70px;height:62px;}
+  .jd-v2 .jd-place-tile__eyebrow {font-size:9px;}
+  .jd-v2 .tour-hl-ui__related {grid-template-columns:1fr;}
+  .jd-v2 .jd-bridge {margin-top:12px;gap:9px;}
+  .jd-v2 .jd-bridge__line {flex-basis:36px;}
+  .jd-v2 .tour-journey-places-header {padding-top:12px;}
+  .jd-v2.tour-journey--story .tour-hl-ui__grid {
+    display:flex!important;flex-direction:column!important;gap:11px!important;
+    padding-inline-start:23px!important;
+    margin-inline:0!important;
+  }
+  .jd-v2.tour-journey--story .tour-hl-ui__card {
+    flex:0 0 auto!important;width:100%!important;
+    min-height:0!important;padding:15px 13px!important;gap:10px;
+  }
+  .jd-v2.tour-journey--story .tour-hl-ui__card:before {inset-inline-start:-25px;}
+  .jd-v2.tour-journey--split .tour-hl-ui__grid {
+    display:flex!important;flex-wrap:nowrap!important;overflow-x:auto!important;
+  }
+  .jd-v2.tour-journey--split .tour-hl-ui__card {flex:0 0 89%!important;}
+  .jd-v2.tour-journey-enhanced .tour-place-group .jet-listing-grid__item > .elementor > .e-con {
+    border-radius:18px!important;
+  }
+}
+@media (prefers-reduced-motion:reduce){
+  .jd-v2 .jd-place-tile,.jd-v2 .tour-place-group .jet-listing-grid__item > .elementor > .e-con {transition:none!important;}
+}
