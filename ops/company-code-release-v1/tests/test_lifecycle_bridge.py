@@ -168,6 +168,35 @@ class OriginalLifecycleBridgeTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError,"ORIGINAL_READ_STATUS_NOT_OBJECT"):
                 m.call_json(["docker","exec","test"])
 
+    def test_single_probe_status_does_not_infer_release_authority(self):
+        target={"target_container":"test-container",
+                "site_uuid":"a3a7cc36-db7e-4a14-8456-b41857def05c"}
+        with (patch.object(m,"resolve_original_target",return_value=target),
+              patch.object(m,"call_json",return_value=self.verify)):
+            report=m.live_probe("wayfatours","production","original312_status")
+        self.assertEqual(report["state"],"READBACK_OBSERVED_NOT_RELEASE_AUTHORITY")
+        self.assertTrue(report["observed_true"])
+        self.assertFalse(report["release_execution_allowed"])
+        self.assertFalse(report["production_mutated"])
+
+    def test_single_probe_timeout_fails_closed_without_leaking_message(self):
+        from subprocess import TimeoutExpired
+        target={"target_container":"test-container",
+                "site_uuid":"a3a7cc36-db7e-4a14-8456-b41857def05c"}
+        with (patch.object(m,"resolve_original_target",return_value=target),
+              patch.object(m,"call_json",
+                           side_effect=TimeoutExpired(["docker","exec"],15))):
+            report=m.live_probe("wayfatours","production","original312_status")
+        self.assertEqual(report["state"],"HOLD_ORIGINAL_STATUS_PROBE_UNAVAILABLE")
+        self.assertEqual(report["probe_error_type"],"TimeoutExpired")
+        self.assertFalse(report["observed_true"])
+        self.assertFalse(report["release_execution_allowed"])
+        self.assertNotIn("docker",str(report))
+
+    def test_single_probe_is_not_a_static_provider_allowlist(self):
+        with self.assertRaisesRegex(ValueError,"UNKNOWN_ORIGINAL_STATUS_PROBE"):
+            m.live_probe("wayfatours","production","source.code.release")
+
     def test_original_handler_ast_enumeration(self):
         with tempfile.TemporaryDirectory() as temp:
             f=pathlib.Path(temp)/"handler.py"

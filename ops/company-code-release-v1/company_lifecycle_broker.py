@@ -350,15 +350,85 @@ def live_reconcile(company: str, environment: str,
     return report
 
 
+STATUS_PROBES = (
+    "original305_scope", "original312_status", "wordpress_dispatch",
+    "original313_legacy_handler", "dynamic306_313_registry",
+)
+
+
+def live_probe(company: str, environment: str, name: str) -> dict:
+    """One bounded readback at a time; a probe is NEVER an executor grant."""
+    if name not in STATUS_PROBES:
+        raise ValueError("UNKNOWN_ORIGINAL_STATUS_PROBE")
+    current = resolve_original_target(company, environment)
+    try:
+        if name == "original305_scope":
+            row = call_json(command305(company, environment))
+            observed = (
+                row.get("contract") ==
+                "mad4b.company-native-wpcli-enrollment.v1" and
+                row.get("state") == "ORIGINAL_305_PERSISTENT_PAIR_ENROLLED" and
+                row.get("company") == company and
+                row.get("environment") == environment and
+                row.get("site_uuid") == current["site_uuid"] and
+                row.get("host_authority_verified") is True and
+                row.get("full_wpcli_active") is True and
+                row.get("persistent_grant_present") is True and
+                row.get("execution_performed") is False)
+        elif name == "original312_status":
+            row = call_json(CENTRAL_312_COMMAND)
+            observed = (row.get("contract") ==
+                        "mad4b.broker-exact-ssh-authority.v1" and
+                        row.get("verifier_registered") is True and
+                        row.get("remote_execution_authority_automatically_granted")
+                        is False and row.get("shell_executed") is False)
+        elif name == "wordpress_dispatch":
+            row = call_json(command_dispatch(current["target_container"]))
+            observed = row.get("dispatch_registered") is True
+        elif name == "original313_legacy_handler":
+            observed = RELEASE_OPERATION in original_handler_operations()
+        else:
+            row = dynamic_status(company, environment)
+            observed = row.get("dynamic_registry_enrolled") is True
+        return {
+            "contract": "mad4b.company-code-release.status-probe.v1",
+            "company": company, "environment": environment,
+            "site_uuid": current["site_uuid"],
+            "probe": name,
+            "state": "READBACK_OBSERVED_NOT_RELEASE_AUTHORITY",
+            "observed_true": bool(observed),
+            "probe_error_type": None,
+            "release_execution_allowed": False,
+            "production_mutated": False,
+        }
+    except (OSError, subprocess.SubprocessError, RuntimeError, ValueError,
+            KeyError, TypeError, SyntaxError) as exc:
+        return {
+            "contract": "mad4b.company-code-release.status-probe.v1",
+            "company": company, "environment": environment,
+            "site_uuid": current["site_uuid"],
+            "probe": name,
+            "state": "HOLD_ORIGINAL_STATUS_PROBE_UNAVAILABLE",
+            "observed_true": False,
+            "probe_error_type": type(exc).__name__,
+            "release_execution_allowed": False,
+            "production_mutated": False,
+        }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=("status",))
     parser.add_argument("--company", required=True)
     parser.add_argument("--environment", required=True,
                         help="Exact enrolled environment identifier")
+    parser.add_argument("--probe", choices=STATUS_PROBES,
+                        help="Read only one Original gate; fail closed")
     args = parser.parse_args()
     assert args.action == "status"
-    report = live_reconcile(args.company, args.environment)
+    report = (live_probe(args.company, args.environment, args.probe)
+              if args.probe else
+              live_reconcile(args.company, args.environment))
     print(json.dumps(report, ensure_ascii=False, sort_keys=True))
 
 
