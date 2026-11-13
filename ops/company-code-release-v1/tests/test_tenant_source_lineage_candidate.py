@@ -1,7 +1,9 @@
 """Guard the full installed Tenant plugin file set in the source candidate."""
 import hashlib
+import importlib.util
 import json
 from pathlib import Path
+import subprocess
 import unittest
 
 OPS = Path(__file__).resolve().parents[2]
@@ -10,6 +12,27 @@ PLUGIN = OPS.parent / "wp-content/plugins/mad4b-tenant-sync"
 
 
 class TenantSourceLineage(unittest.TestCase):
+    def test_immutable_runtime_package_excludes_executable_php_tests(self):
+        pkgpath=OPS/"company-code-release-v1/versioned_plugin_artifact.py"
+        spec=importlib.util.spec_from_file_location(
+            "mad4b_prepared_tenant_package_test",pkgpath)
+        package=importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(package)
+        repo=OPS.parent
+        sha=subprocess.check_output(["git","-C",str(repo),"rev-parse","HEAD"],
+                                    text=True).strip()
+        runtime,excluded=package.inventory_commit(
+            repo,sha,"mad4b-tenant-sync")
+        self.assertEqual(len(runtime),23)
+        self.assertEqual(len(excluded),4)
+        self.assertTrue(all(x.startswith("tests/") for x in excluded))
+        declared=json.loads(MANIFEST.read_text())
+        livepaths={item["path"] for item in declared["files"]
+                   if item["baseline_live_sha256"]}
+        self.assertTrue(livepaths.issubset({item["path"] for item in runtime}))
+        self.assertNotIn("tests/tenant-rejoin-preview-contract.php",
+                         {item["path"] for item in runtime})
+
     def test_candidate_preserves_live_sources_with_exact_reviewed_content(self):
         doc=json.loads(MANIFEST.read_text())
         self.assertEqual(doc["contract"],"mad4b.tenant-source-lineage-snapshot.v1")

@@ -75,6 +75,10 @@ jobs:
               -s ops/company-code-release-v1/tests \
               -p "$spec" -v
           done
+      - name: Immutable plugin package does not ship tenant test scripts
+        run: |
+          python -m unittest discover -s ops/company-code-release-v1/tests -p test_versioned_plugin_artifact.py -v
+          python -m py_compile ops/company-code-release-v1/versioned_plugin_artifact.py
       - name: Tenant plugin full lineage and root-owned offline schema catalog
         run: |
           python -m unittest discover -s ops/company-code-release-v1/tests -p test_tenant_source_lineage_candidate.py -v
