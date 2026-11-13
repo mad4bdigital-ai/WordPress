@@ -24,6 +24,8 @@ from typing import Any, Callable
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
+import capability_acceptance as capability_checks
+
 POLICY_PATH = Path("/etc/mad4b/company-code-release-policy.json")
 AUTH_CONTRACT = "mad4b.company-code-release.authorization.v1"
 PLAN_CONTRACT = "mad4b.company-code-release.plan.v1"
@@ -573,7 +575,10 @@ def make_plan(spec: dict, policy: dict) -> dict:
     dependency_snapshot = php_literal_dependency_snapshot(
         root, repo, spec["git_commit"], rows)
     plugin_profiles = tenant_plugin_profile_snapshot(root, rows)
+    dynamic_acceptance = capability_checks.snapshot(
+        rows, policy, repo, spec["git_commit"], git_bytes, permitted_target)
     payload = {
+        "capability_acceptance": dynamic_acceptance,
         "tenant_plugin_profiles": plugin_profiles,
         "dependency_snapshot": dependency_snapshot,
         "owner_reconciliation": owner_snapshot,
@@ -607,6 +612,16 @@ def confirm_plan(plan: dict, policy: dict, *, expect_preimage: bool) -> None:
             str(Path(entry["root"]).resolve()) != plan.get("target_root") or
             str(Path(policy["source_git_root"]).resolve()) != plan.get("git_root"),
             "PLAN_SCOPE_CHANGED")
+    if "capability_acceptance" in plan:
+        expected_acceptance = capability_checks.snapshot(
+            plan["files"], policy, Path(plan["git_root"]),
+            plan["git_commit"], git_bytes, permitted_target)
+        fail_if(plan["capability_acceptance"] != expected_acceptance,
+                "CAPABILITY_ACCEPTANCE_REGISTRY_DRIFT")
+    else:
+        # Never allow a legacy plan to bypass newly enrolled acceptance.
+        fail_if(policy.get("capability_acceptance") is not None,
+                "CAPABILITY_ACCEPTANCE_SNAPSHOT_REQUIRED")
     catalog_at_plan = plan.get("release_catalog")
     # Plans signed before catalog enrollment remain limited to the explicit
     # original static paths. Never retroactively elevate a legacy plan.
@@ -1020,6 +1035,17 @@ def restore_backup(plan: dict, backup: dict) -> None:
         fail_if(current not in (row["source_sha256"],
                                 row["expected_before_sha256"]),
                 "ROLLBACK_JIT_CONCURRENT_DRIFT:" + row["target"])
+        if path.is_file():
+            current_meta = path.stat()
+            expected_mode = (row["expected_before_mode"]
+                             if row["expected_before_mode"] is not None
+                             else row["source_mode"])
+            fail_if(stat.S_IMODE(current_meta.st_mode) != expected_mode,
+                    "ROLLBACK_JIT_MODE_DRIFT:" + row["target"])
+            if row["expected_before_uid"] is not None:
+                fail_if((current_meta.st_uid, current_meta.st_gid) !=
+                        (row["expected_before_uid"], row["expected_before_gid"]),
+                        "ROLLBACK_JIT_OWNER_DRIFT:" + row["target"])
         content = (base64.b64decode(backup_item["bytes_b64"], validate=True)
                    if backup_item["bytes_b64"] is not None else None)
         if content is None:
