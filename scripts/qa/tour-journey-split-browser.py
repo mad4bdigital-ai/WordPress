@@ -157,12 +157,38 @@ def main():
                 story_link.click()
                 page.wait_for_timeout(130)
                 assert page.evaluate("location.hash.startsWith('#tour-place-panel-')"), "Story pointer lost anchor"
+            # Regression for native image-backed Elementor containers:
+            # removing a white *wrapper* must never remove its background image.
+            media = page.evaluate("""() => {
+                const section=document.querySelector('.tour-journey-discovery');
+                const group=section.querySelector('.tour-place-group[data-tour-active=true]');
+                if(!group)throw Error('No native destination group');
+                const fixture=document.createElement('div');
+                fixture.className='jd-native-place';
+                fixture.innerHTML='<div class="elementor"><div class="e-con" '
+                  +'style="background-image:linear-gradient(#204c50,#204c50);'
+                  +'background-color:white;box-shadow:0 3px 8px #333">'
+                  +'<div class="e-con"><span>Media preserved</span></div></div></div>';
+                group.appendChild(fixture);
+                const node=fixture.querySelector('.elementor > .e-con');
+                const computed=getComputedStyle(node);
+                const result={image:computed.backgroundImage,
+                    background:computed.backgroundColor,shadow:computed.boxShadow};
+                fixture.remove();
+                return result;
+            }""")
+            assert media["image"] != "none" and "gradient" in media["image"], (
+                "original Elementor background image was stripped"
+            )
+            assert media["background"] == "rgba(0, 0, 0, 0)" and media["shadow"] == "none", (
+                "redundant media wrapper remained"
+            )
             assert not errors, "JavaScript page errors"
             print(json.dumps({
                 "ok": True, "http": response.status, "viewport": args.width,
                 "language": page.evaluate("document.documentElement.lang"),
                 "split": initial, "explorer": explorer, "story": story,
-                "jsErrors": errors,
+                "mediaPreservation": media, "jsErrors": errors,
             }, ensure_ascii=False))
             return 0
         except Exception as err:
