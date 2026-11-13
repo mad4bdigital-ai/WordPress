@@ -6,7 +6,7 @@
   "plan_contract": "mad4b.company-code-release.plan.v1",
   "handler": {
     "path": "company-code-release-v1/original_313_host_handler.py",
-    "sha256": "b1c758b61a68205d839ac4e3fcdaab0aafd84686b49639912eec3e8510899f7f"
+    "sha256": "3b4018dbfda6bff6a12fb52f1dfa08ef3be592550368c0556082993b87baa602"
   },
   "verifier": {
     "path": "company-code-release-v1/original_313_independent_readback.py",
@@ -31,11 +31,11 @@
   "dependencies": [
     {
       "path": "company-code-release-v1/capability_acceptance.py",
-      "sha256": "f22bb14fdfb7ae57f39e86f7154d80d4727bbcf1f950a4a70edd92fe3594b994"
+      "sha256": "d706c6f180f33fb59676b6fd9ac65cbd1a5dbb09faff2b725eb511b75ff9e4cf"
     },
     {
       "path": "company-code-release-v1/company_code_release.py",
-      "sha256": "6a1689efb32368e8d3d7ebb42b169c6b599b9a27fa553d427814c9d1d40fce46"
+      "sha256": "03559c0cc96b863861c1858c40f2b539f6508642f6ac7fa4a2e3dc467e6f0dde"
     },
     {
       "path": "company-code-release-v1/company_lifecycle_broker.py",

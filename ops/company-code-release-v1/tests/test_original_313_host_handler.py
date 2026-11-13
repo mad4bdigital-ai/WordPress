@@ -294,6 +294,24 @@ class HostHandlerTests(unittest.TestCase):
                 self.assertFalse(result["original_313_certified"])
                 self.assertFalse(result["original_313_receipt_generated"])
 
+    def test_first_party_producer_dispatch_is_explicit_and_never_invented(self):
+        # Exercise the existing signed-claim and grant gates first. The
+        # dispatcher is forwarded only by the trusted Host Handler.
+        first_party = lambda *args: None
+        with mock.patch.object(handler.original,
+                               "eligible_original_312_claim"),              mock.patch.object(handler.release, "verify_grant"),              mock.patch.object(handler.release, "apply_release") as apply:
+            apply.return_value = {"state": "ABORTED_NO_MUTATION"}
+            result = handler.execute_once(
+                self.job_id, self.plan,
+                {"contract":handler.release.POLICY_CONTRACT,
+                 "receipt_dir":"/tmp/testing-only"},
+                {"original_job_id":self.job_id},
+                original_claim_provider=lambda *_: self.proof,
+                producer_dispatcher=first_party)
+        self.assertEqual(result["host_receipt_state"],"ABORTED_NO_MUTATION")
+        self.assertIs(apply.call_args.kwargs["produce_capabilities"],
+                      first_party)
+
     def test_positive_mock_host_apply_never_certifies_313(self):
         policy={"contract":"mad4b.company-code-release-policy.v1",
                 "receipt_dir":"/var/lib/mad4b/company-code-release/receipts"}

@@ -125,6 +125,20 @@ def checked_policy(policy: dict) -> None:
     fail_if(not isinstance(policy.get("source_git_root"), str), "NO_GIT_ROOT")
 
 
+def backup_json_limit(policy: dict, company: str, environment: str) -> int:
+    """Site/root policy bound applied consistently before writing or reading backups."""
+    entry = target_binding(policy, company, environment)
+    global_limits = policy.get("resource_limits", {})
+    site_limits = entry.get("resource_limits", {})
+    fail_if(not isinstance(global_limits, dict) or
+            not isinstance(site_limits, dict), "RESOURCE_LIMITS_INVALID")
+    limit = site_limits.get("backup_json_bytes",
+                            global_limits.get("backup_json_bytes", 100_000_000))
+    fail_if(type(limit) is not int or not 1_000_000 <= limit <= 512_000_000,
+            "BACKUP_RESOURCE_LIMIT_INVALID")
+    return limit
+
+
 def run(command: list[str], timeout: int = 15) -> bytes:
     process = subprocess.run(command, stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE, timeout=timeout, check=False)
@@ -563,7 +577,7 @@ def make_plan(spec: dict, policy: dict) -> dict:
         dest = root / target
         no_link(dest)
         fail_if(dest.exists() and not dest.is_file(), "NON_FILE_TARGET")
-        old = dest.read_bytes() if dest.exists() else None
+        old = safe_regular(dest) if dest.exists() else None
         old_digest = digest(old) if old is not None else None
         fail_if(before != old_digest, "TARGET_PREIMAGE_MISMATCH:" + target)
         baseline = dest.stat() if old is not None else None
@@ -590,6 +604,7 @@ def make_plan(spec: dict, policy: dict) -> dict:
         rows, policy, repo, spec["git_commit"], git_bytes, permitted_target)
     payload = {
         "capability_acceptance": dynamic_acceptance,
+        "backup_json_max_bytes": backup_json_limit(policy, company, env),
         "tenant_plugin_profiles": plugin_profiles,
         "dependency_snapshot": dependency_snapshot,
         "owner_reconciliation": owner_snapshot,
@@ -623,6 +638,11 @@ def confirm_plan(plan: dict, policy: dict, *, expect_preimage: bool) -> None:
             str(Path(entry["root"]).resolve()) != plan.get("target_root") or
             str(Path(policy["source_git_root"]).resolve()) != plan.get("git_root"),
             "PLAN_SCOPE_CHANGED")
+    expected_backup_bound = backup_json_limit(
+        policy, plan["company"], plan["environment"])
+    fail_if(plan.get("backup_json_max_bytes", 100_000_000) !=
+            expected_backup_bound,
+            "BACKUP_RESOURCE_LIMIT_POLICY_DRIFT")
     if "capability_acceptance" in plan:
         expected_acceptance = capability_checks.snapshot(
             plan["files"], policy, Path(plan["git_root"]),
@@ -997,9 +1017,12 @@ def prepare_backup(plan: dict, policy: dict, receipt_dir: Path,
                 "PREPARE_PREIMAGE_CHANGED")
         backup["files"].append(entry)
     blob = canonical(backup) + b"\n"
+    limit = backup_json_limit(policy, plan["company"], plan["environment"])
+    fail_if(len(blob) > limit,
+            "BACKUP_RESOURCE_LIMIT_EXCEEDED_BEFORE_TARGET_WRITE")
     path = backup_path(receipt_dir, plan)
     if path.exists():
-        fail_if(safe_regular(path, max_size=100_000_000) != blob,
+        fail_if(safe_regular(path, max_size=limit) != blob,
                 "PREPARED_BACKUP_MISMATCH")
     else:
         atomic_write(path, blob, 0o600)
@@ -1010,7 +1033,8 @@ def prepare_backup(plan: dict, policy: dict, receipt_dir: Path,
 
 def load_backup(plan: dict, receipt_dir: Path) -> dict:
     path = backup_path(receipt_dir, plan)
-    contents = safe_regular(path, max_size=100_000_000)
+    contents = safe_regular(
+        path, max_size=plan.get("backup_json_max_bytes", 100_000_000))
     backup = json.loads(contents)
     fail_if(backup.get("contract") != "mad4b.company-code-release.backup.v1" or
             backup.get("plan_sha256") != plan["plan_sha256"],

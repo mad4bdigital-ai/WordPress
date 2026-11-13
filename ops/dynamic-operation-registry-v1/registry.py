@@ -100,6 +100,7 @@ class Registry:
         require(len(self.independent_verifier_public_key) == 32,
                 "INDEPENDENT_SIGNING_KEY_INVALID")
         self.manifests: dict[str, dict] = {}
+        self.manifest_digests: dict[str, str] = {}
         for row in index["providers"]:
             require(isinstance(row, dict), "REGISTRY_ENTRY_INVALID")
             rel = bounded_relative(row.get("manifest"))
@@ -114,6 +115,9 @@ class Registry:
             require(op not in self.manifests,
                     "REGISTRY_DUPLICATE_OPERATION")
             self.manifests[op] = m
+            # Return the byte-exact digest independently validated by the
+            # first-party index, never a new JSON serialization hash.
+            self.manifest_digests[op] = pinned
 
     def validate_manifest(self, m: dict) -> None:
         require(isinstance(m, dict) and
@@ -224,6 +228,10 @@ class Registry:
         require(isinstance(op, str) and op in self.manifests,
                 "PROVIDER_NOT_ENROLLED")
         return self.manifests[op]
+
+    def manifest_sha256(self, op: str) -> str:
+        self.resolve(op)
+        return self.manifest_digests[op]
 
     def summary(self) -> dict:
         return {"contract": CONTRACT, "enrolled_operations":

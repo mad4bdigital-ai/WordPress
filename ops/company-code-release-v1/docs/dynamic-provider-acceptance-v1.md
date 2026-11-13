@@ -122,3 +122,41 @@ be considered installable. The **currently installed** root-only index and
 manifest remain unchanged; first-party enrollment must generate and verify a
 new index digest and full original 306/312/313 dependency closure. A source
 manifest update does not create runtime authority.
+
+## Follow-up hardening — source-first reconciliation and capacity
+
+- First-party Dynamic Registry now returns the exact SHA-256 pinned by its
+  root-owned index for each enrolled manifest, rather than an alternate hash
+  of a reserialized JSON dictionary. No developer-selected provider name is
+  coded into the acceptance engine. This requires first-party installed Registry
+  update before enabling capability acceptance in the root policy.
+- A new source-parity read-only audit reports any deleted or changed paths
+  between the protected VPS Git commit and a candidate branch. The pinned
+  preservation inventory includes the 14 files missing from the old PR #815
+  plus reviewed security-guard changes, all with byte-level content digests.
+  No central source overwrite is inferred from a green CI result.
+- Per-Site or global root policy can set resource_limits.backup_json_bytes.
+  This limit is signed into the release Plan, compared at execution, enforced
+  *before the first target write*, and reused by recovery backup reads.
+  Existing unsigned/legacy plans retain the historical 100 MB default.
+- An optional require_impact_coverage policy gate enforces complete
+  (target, Provider, capability) relationships from a declarative source
+  Impact Graph. A single check for an affected file can no longer cover
+  other required capabilities. The graph remains declarative, not proof that
+  Elementor, WPML or JetEngine dependencies were discovered automatically.
+- Optional require_witnesses enables Evidence v2 with read-only, byte-pinned,
+  root-private, typed Observation Witnesses. First-party policies define each
+  check's measurement types and exact expected values; the original
+  independent readback rechecks the same signed proof and witness bytes.
+  Evidence v1 stays compatible for existing un-enrolled plans.
+- Original 313 Host handler passes an explicitly first-party supplied
+  Provider dispatcher. It does not conjure one or accept executable callbacks
+  from the release request. Until a genuine Provider transport is enrolled,
+  dynamic releases are held before modifying WordPress files.
+
+NOT IMPLEMENTED BY THESE SOURCE PATCHES: coherent HTTP/PHP-FPM+OPcache
+cutover, a real installed producer transport with enforced subprocess timeout,
+a signed 313 finalizer-completion certificate for the next overlapping plan,
+an indexed cross-site durable ledger, PHP worker write-privilege migration,
+or resolving the two stale tenant-sync source files. Production still requires
+Original Source Publisher admission. Never bypass it by direct copying.

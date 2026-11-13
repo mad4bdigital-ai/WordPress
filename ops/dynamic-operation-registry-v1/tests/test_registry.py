@@ -73,6 +73,15 @@ class RegistryTests(unittest.TestCase):
         self.assertNotEqual(digest,registry.command_sha256("company.code.release","2"*64))
         self.assertFalse(registry.summary()["grant_issued"])
 
+    def test_byte_exact_manifest_fingerprint_instead_of_reserialization(self):
+        index=r.Registry(self.root)
+        self.assertEqual(index.manifest_sha256("company.code.release"),
+                         r.sha((self.root/"provider.json").read_bytes()))
+        self.assertNotEqual(index.manifest_sha256("company.code.release"),
+                            r.sha(r.canonical(index.resolve("company.code.release"))))
+        with self.assertRaisesRegex(r.RegistryDenied, "NOT_ENROLLED"):
+            index.manifest_sha256("not.enrolled")
+
     def test_readonly_discovery_not_authorization(self):
         registry=r.Registry(self.root)
         self.assertFalse(registry.summary()["execution_performed"])

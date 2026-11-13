@@ -89,6 +89,22 @@ class DynamicAcceptanceTest(unittest.TestCase):
         with self.assertRaisesRegex(cap.AcceptanceDenied,"CHECK_DUPLICATE"):
             self.make()
 
+    def test_impact_graph_requires_every_owner_capability_not_one_check_per_file(self):
+        self.policy["capability_acceptance"]["require_impact_coverage"]=True
+        self.doc["requirements"]=[{
+            "target":T,"provider":"mad4b.example",
+            "capabilities":["ui.widget"]}]
+        self.assertEqual(self.make()["impact_requirements"],
+                         [[T,"mad4b.example","ui.widget"]])
+        self.doc["requirements"][0]["capabilities"]=["ui.widget","ui.second"]
+        self.policy["capability_acceptance"]["providers"][
+            "mad4b.example"]["capabilities"].append("ui.second")
+        with self.assertRaisesRegex(cap.AcceptanceDenied,"IMPACT_CHECK_MISSING"):
+            self.make()
+        self.doc["requirements"]=[]
+        with self.assertRaisesRegex(cap.AcceptanceDenied,"IMPACT_GRAPH_INCOMPLETE"):
+            self.make()
+
     def test_catalog_cannot_inject_shell_php_url_or_callbacks(self):
         self.doc["checks"][0]["command"]="touch /tmp/injected"
         with self.assertRaisesRegex(cap.AcceptanceDenied,"CHECK_INVALID"):
@@ -108,6 +124,8 @@ class DynamicAcceptanceTest(unittest.TestCase):
         class Registry:
             def __init__(self, manifest):self.manifest=manifest
             def resolve(self, operation):return self.manifest
+            def manifest_sha256(self, operation):
+                return cap.sha(cap.canonical(self.manifest))
         plan={"capability_acceptance":self.snapshot}
         success=cap.verify_producer_enrollment(
             plan,self.policy,registry_factory=lambda:Registry(self.manifest))
@@ -171,6 +189,103 @@ class DynamicAcceptanceTest(unittest.TestCase):
             wrong_signing_key.sign(cap.canonical(payload))).decode()
         with self.assertRaisesRegex(cap.AcceptanceDenied,"SIGNATURE_INVALID"):
             cap.verify_provider_payload(forged,**kwargs)
+
+    def test_v2_typed_witness_rejects_incorrect_measurements_and_time(self):
+        enrolled=self.policy["capability_acceptance"]["providers"]["mad4b.example"]
+        enrolled["require_witnesses"]=True
+        enrolled["witness_schemas"]={
+            "widget.render.parity":{
+                "response_status":{"type":"integer","equals":200},
+                "render_sha256":{"type":"sha256"}}}
+        now=dt.datetime.now(dt.timezone.utc)
+        result={"capability":"ui.widget","id":"widget.render.parity",
+                "passed":True,"witness_sha256":"e"*64}
+        witness={"contract":cap.WITNESS_CONTRACT,
+                 "provider":"mad4b.example",
+                 "producer_operation_id":self.manifest["operation_id"],
+                 "site_uuid":"12345678-1234-1234-1234-123456789abc",
+                 "apply_nonce":"example_nonce_12345678",
+                 "postimage_sha256":"d"*64, "challenge":"c"*64,
+                 "capability":"ui.widget","id":"widget.render.parity",
+                 "observed_at":now.isoformat(),
+                 "readings":{"response_status":200,"render_sha256":"f"*64}}
+        kwargs={"plan":{"site_uuid":witness["site_uuid"]},
+                "enrolled":enrolled,"provider":"mad4b.example",
+                "result":result,"apply_nonce":witness["apply_nonce"],
+                "postimage_sha256":witness["postimage_sha256"],
+                "challenge":witness["challenge"],
+                "postimage_verified_at":now-dt.timedelta(seconds=1),
+                "proof_observed_at":now+dt.timedelta(seconds=1)}
+        cap.validate_witness(witness,**kwargs)
+        invalid=json.loads(json.dumps(witness))
+        invalid["readings"]["response_status"]=500
+        with self.assertRaisesRegex(cap.AcceptanceDenied,"WITNESS_READING_INVALID"):
+            cap.validate_witness(invalid,**kwargs)
+        invalid=json.loads(json.dumps(witness))
+        invalid["challenge"]="a"*64
+        with self.assertRaisesRegex(cap.AcceptanceDenied,"WITNESS_BINDING_INVALID"):
+            cap.validate_witness(invalid,**kwargs)
+        with self.assertRaisesRegex(cap.AcceptanceDenied,"WITNESS_TIME_INVALID"):
+            cap.validate_witness(witness,**{**kwargs,
+                "postimage_verified_at":now+dt.timedelta(seconds=10)})
+
+    def test_v2_signed_witness_file_is_checked_twice(self):
+        with tempfile.TemporaryDirectory() as temp:
+            directory=Path(temp)/"capability-acceptance"
+            witnesses=directory/"witnesses"
+            witnesses.mkdir(parents=True,mode=0o700)
+            directory.chmod(0o700)
+            if witnesses.stat().st_uid != 0:
+                self.skipTest("Root-private verifier fixture")
+            enrollment=self.policy["capability_acceptance"]["providers"][
+                "mad4b.example"]
+            enrollment["require_witnesses"]=True
+            enrollment["witness_schemas"]={
+                "widget.render.parity":{
+                    "response_status":{"type":"integer","equals":200}}}
+            nonce="example_nonce_12345678"
+            begin=dt.datetime.now(dt.timezone.utc)-dt.timedelta(seconds=2)
+            observed=dt.datetime.now(dt.timezone.utc)
+            plan={"plan_sha256":"b"*64,
+                  "site_uuid":"12345678-1234-1234-1234-123456789abc",
+                  "git_commit":"a"*40,
+                  "capability_acceptance":self.snapshot}
+            witness={"contract":cap.WITNESS_CONTRACT,
+                     "provider":"mad4b.example",
+                     "producer_operation_id":self.manifest["operation_id"],
+                     "site_uuid":plan["site_uuid"],"apply_nonce":nonce,
+                     "postimage_sha256":"d"*64,"challenge":"c"*64,
+                     "capability":"ui.widget","id":"widget.render.parity",
+                     "observed_at":observed.isoformat(),
+                     "readings":{"response_status":200}}
+            payload=json.dumps(witness).encode()
+            wp=witnesses/(nonce+".mad4b.example.widget.render.parity.json")
+            wp.write_bytes(payload);wp.chmod(0o600)
+            evidence={"contract":cap.EVIDENCE_V2_CONTRACT,
+                "provider":"mad4b.example",
+                "producer_operation_id":self.manifest["operation_id"],
+                "plan_sha256":plan["plan_sha256"],
+                "site_uuid":plan["site_uuid"],
+                "git_commit":plan["git_commit"],
+                "apply_nonce":nonce,"challenge":"c"*64,
+                "postimage_sha256":"d"*64,
+                "catalog_sha256":self.snapshot["catalog_sha256"],
+                "observed_at":observed.isoformat(),
+                "results":[{"capability":"ui.widget",
+                            "id":"widget.render.parity","passed":True,
+                            "witness_sha256":cap.sha(payload)}]}
+            evidence["signature"]=base64.b64encode(
+                self.sk.sign(cap.canonical(evidence))).decode()
+            ep=directory/(nonce+".mad4b.example.json")
+            ep.write_text(json.dumps(evidence));ep.chmod(0o600)
+            result=cap.verify_evidence(plan,self.policy,Path(temp),nonce,
+                    begin.isoformat(),"c"*64,"d"*64)
+            self.assertEqual(result["verified_checks"],1)
+            wp.write_text(wp.read_text().replace("200","500"))
+            with self.assertRaisesRegex(cap.AcceptanceDenied,
+                                        "WITNESS_DIGEST_DRIFT"):
+                cap.verify_evidence(plan,self.policy,Path(temp),nonce,
+                    begin.isoformat(),"c"*64,"d"*64)
 
     def test_root_private_signed_provider_evidence(self):
         with tempfile.TemporaryDirectory() as temp:

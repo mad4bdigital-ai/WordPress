@@ -42,5 +42,8 @@ class SourceCandidateTests(unittest.TestCase):
             digest="f"*64
             expected=r.sha(b'["mad4b","company-code-release","apply","--plan_sha256='+b"f"*64+b'"]')
             self.assertEqual(index.command_sha256("company.code.release",digest),expected)
-            self.assertEqual(index.resolve("company.code.release")["version"],3)
+            self.assertEqual(index.resolve("company.code.release")["version"],
+                             m["version"])
+            self.assertEqual(index.manifest_sha256("company.code.release"),
+                             r.sha(mpath.read_bytes()))
             self.assertEqual(index.evidence_fields("company.code.release")["file_count"],"integer")
