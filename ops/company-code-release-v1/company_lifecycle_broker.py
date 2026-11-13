@@ -170,15 +170,24 @@ def dynamic_status(company: str, environment: str,
     return result
 
 
-def call_json(command: list[str]) -> dict:
+def call_json(command: list[str], *, status_timeout_seconds: int = 15) -> dict:
+    """A bounded status-only read: never hold a readback waiting on WP-CLI.
+
+    This timeout applies to reporting only, not Apply/Grant/Claim commands.
+    """
+    if type(status_timeout_seconds) is not int or not 1 <= status_timeout_seconds <= 30:
+        raise ValueError("ORIGINAL_STATUS_TIMEOUT_INVALID")
     response = subprocess.run(command, capture_output=True, text=True,
-                              check=False, timeout=45)
+                              check=False, timeout=status_timeout_seconds)
     if response.returncode:
         raise RuntimeError("ORIGINAL_READ_STATUS_FAILED:" + command[0])
     try:
-        return json.loads(response.stdout.strip().splitlines()[-1])
+        data = json.loads(response.stdout.strip().splitlines()[-1])
     except (ValueError, IndexError) as exc:
         raise RuntimeError("ORIGINAL_READ_STATUS_INVALID") from exc
+    if not isinstance(data, dict):
+        raise RuntimeError("ORIGINAL_READ_STATUS_NOT_OBJECT")
+    return data
 
 
 def original_handler_operations(path: Path = ORIGINAL_WORKER) -> set[str]:
@@ -291,19 +300,54 @@ def reconcile(
 
 def live_reconcile(company: str, environment: str,
                    plan_sha256: str | None = None) -> dict:
-    """Original 305, 312 and per-company 313 handler status only; no grants."""
+    """Read-only independent probes; a failed probe never grants authority.
+
+    The first-party target resolver must succeed so status cannot bind to
+    an invented company or container. Other readbacks may independently
+    fail or time out: preserve the successful evidence and return a HOLD
+    with explicit failed probe names instead of losing the whole report.
+    """
     current = resolve_original_target(company, environment)
-    return reconcile(
-        call_json(command305(company, environment)),
-        call_json(CENTRAL_312_COMMAND),
-        call_json(command_dispatch(current["target_container"])),
-        original_handler_operations(),
-        site_uuid=current["site_uuid"],
-        origin=current["canonical_origin"],
-        company=company,
-        environment=environment,
-        dynamic=dynamic_status(company, environment, plan_sha256),
+    failed = []
+
+    def read(name: str, query, empty):
+        try:
+            return query()
+        except (OSError, subprocess.SubprocessError, RuntimeError, ValueError,
+                KeyError, TypeError, SyntaxError) as exc:
+            # Never print untrusted stderr or exception payloads (may include
+            # WP CLI output, paths, tokens or provider-private data).
+            failed.append({"probe": name, "error_type": type(exc).__name__})
+            return empty
+
+    enrollment = read("original305_scope", lambda:
+                      call_json(command305(company, environment)), {})
+    verifier = read("original312_status", lambda:
+                    call_json(CENTRAL_312_COMMAND), {})
+    dispatch = read("wordpress_dispatch", lambda:
+                    call_json(command_dispatch(current["target_container"])), {})
+    legacy_ops = read("original313_legacy_handler",
+                      original_handler_operations, set())
+    dynamic = read("dynamic306_313_registry", lambda:
+                   dynamic_status(company, environment, plan_sha256), {})
+    report = reconcile(
+        enrollment, verifier, dispatch, legacy_ops,
+        site_uuid=current["site_uuid"], origin=current["canonical_origin"],
+        company=company, environment=environment, dynamic=dynamic,
     )
+    report["independent_probe_results"] = {
+        name: ("FAILED" if any(x["probe"] == name for x in failed)
+               else "VERIFIED") for name in (
+                   "original305_scope", "original312_status",
+                   "wordpress_dispatch", "original313_legacy_handler",
+                   "dynamic306_313_registry")
+    }
+    report["failed_readback_probes"] = failed
+    if failed:
+        report["blockers"] = sorted(set(
+            [*report["blockers"], "ORIGINAL_READBACK_PROBES_INCOMPLETE"]))
+        report["state"] = "HOLD_INCOMPLETE_ORIGINAL_READBACK"
+    return report
 
 
 def main() -> None:
