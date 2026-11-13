@@ -122,3 +122,39 @@ This document describes the contract, not an authorization or proof of an indepe
 **Observed tests:** Wayfatours published Giza tour EN (desktop 1440px and mobile 390px), ES mobile 390px, and all three Journey modes in EN; Tours.dev Nile cruise EN/FR mobile 390px, with native Luxor/Louxor destination heading and About. No page-level JavaScript exceptions or horizontal overflow observed in those tested cases. This does not claim exhaustive validation of every language/term subtype or a signed Production release.
 
 **Deployment:** Live assets were applied on the two current sites with baseline preflight and backups, not by changing Elementor document data. The GitHub branch remains a Draft PR pending its normal merge and release authority.
+
+
+## Original multi-type Destination Elementor integration — 2026-11-13
+
+**Owner:** native `destinations` taxonomy, JetEngine term meta and published Elementor "Destination Term Archive Content" documents. This is an original-document migration, not a parallel Elementor template, destination query, HTML widget or new runtime provider.
+
+### Layout and native data contract
+
+- The original Elementor content template still renders its existing About description, Header, map, native recommenders, taxonomy relationships, FAQ and company/WPML settings.
+- The insertion point is the native JetEngine `jet-listing-dynamic-field` widget with `dynamic_field_post_object=description`. One native Elementor container is inserted immediately after this widget. No sibling element is replaced.
+- The new section uses JetEngine Dynamic Visibility (`exists`, context `current_listing`) to show **only populated** term meta: `why_visit`, `highlights` (native JetEngine Dynamic Repeater), `best_time_to_visit`, `travel_tips`, `internal_links`.
+- Long editorial text is in three *original Elementor Nested Accordion* widgets, collapsed by default. Highlights remain visible. On an English Giza Governorate mobile fixture, height decreased from roughly 2085px in the initial fully expanded prototype to about 566px collapsed. On Great Sphinx Attraction, no empty enrichment section is emitted.
+- The existing native Google Maps widget now reads `google_location` and hides when the field is absent. The field stores coordinates as a location string (e.g. latitude, longitude). The native map iframe retains its existing lazy loading. A legacy Spanish `destination` singular taxonomy reference was normalized to `destinations` in the map tag only, preserving other company-specific settings.
+- The existing Destination Header still owns `featured_image`, `image_gellery` and video, and the FAQ remains in its existing content mount. No duplicate gallery, FAQ, map query or checkout logic is added.
+- The field contract responds to real `destination_type` and content coverage rather than inventing separate templates per Continent/Country/Governorate/City/Area/Attraction. The preexisting Elementor/JetEngine hierarchy, WPML relations and query policies continue to select the eligible terms.
+
+### WPML / site-preserving reconciliation
+
+- Inspected original content template family via WPML translation group, not runtime template IDs. Currently present: EN/ES/IT/AR on Tours.dev, EN/ES on Wayfatours. FR/DE dedicated *content* translations are not in this current family; neither has been fabricated or claimed complete. The contract has localized strings for future approved native originals in those languages.
+- Changes were applied directly to the six existing Elementor document records (four source, two Wayfatours), with per-document SHA256 preflight, serialized JSON validation, targeted Elementor CSS invalidation and before-state backups outside the public WordPress directory. Every write had an independent readback. No term data or statuses were changed.
+- `config/elementor/destination-native-template-contract-v1.json` contains one canonical native section with locale labels. `scripts/migrations/destination-native-template-reconcile-v1.php` discovers the original content template family from WPML dynamically. Its default is read-only dry-run. For a future authorized apply, the operator explicitly sets `MAD4B_DEST_TEMPLATE_APPLY=yes` and `MAD4B_DEST_TEMPLATE_BACKUP` to a writable non-public directory, plus `MAD4B_DEST_TEMPLATE_CONTRACT` to the installed JSON. It performs document-level CAS and stops on unexpected Elementor structures; never overwrites a section already present.
+- Reconciler dry-run was tested against both live sites after the direct updates: Tours.dev 4/4 documents and Wayfatours 2/2 documents were already compatible, with zero required writes.
+
+### Quick Preview reuse and regression
+
+- `tour-destination-quick-preview.js` now excludes fields inside the original enrichment section from its About-content discovery, preventing `why_visit` from replacing the actual description if it is longer.
+- When an original rich section exists, the same rendered Elementor DOM is moved into the informational modal below About; no second field query, duplicate data mapping or second widget implementation. The actual Nested Accordion remains interactive in the iframe. Native extra/article links are intentionally suppressed in this informational modal (but remain on the original Destination page); the Full destination page action stays available.
+- Observed Wayfatours Giza Tour → Split → Governorates → Giza: native Quick Preview shows Hero + About + Insights on desktop 1440px and mobile 390px; all three accordion headers and four destination highlight rows appear, accordion expands, modal closes, Tour URL and split selection persist, with no observed JS page error or horizontal overflow.
+- `scripts/qa/tour-destination-preview-browser.py --url <tour-url> --modes split --split-level state_governorate --width 390 --disable-quic` tests this state; `scripts/qa/destination-native-template-browser.py --url <destination-url> --expect rich|basic` covers full native templates.
+
+### Tested destination types and remaining gates
+
+- Direct source HTTP checks: Continent Africa, Country Egypt, Governorate Aswan, City Abu Dhabi, Zone Aswan East Bank and Attraction Abu Simbel Temples all responded 200 without visible PHP Fatal messages. Only the content-rich Country and Governorate rendered extra sections; the other four remained basic, without empty widgets.
+- Source Spanish/Italian Giza and Wayfatours Spanish Giza returned 200 and did not render empty insights. No claim of a completed in-browser Arabic or new dedicated FR/DE archive acceptance test.
+- **Separate work:** editorial coverage remains low for rich meta fields; legacy `destination_public_status` differs from the canonical `is_public` eligibility contract in some terms. This migration does not change either status and is not a solution for missing translations/media governance.
+- **Release status:** live templates and GitHub source are updated, but PR #813 remains Draft/unmerged and no independent original publisher/central signed release receipt is claimed. Follow the normal release gate before broader company rollout.
