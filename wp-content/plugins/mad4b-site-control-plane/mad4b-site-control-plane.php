@@ -28,6 +28,9 @@ if ( ! defined( 'MAD4B_SCP_BOOT_START_AT' ) ) define( 'MAD4B_SCP_BOOT_START_AT',
 define( 'MAD4B_SCP_VERSION', '0.4.0-rc.129' );
 define( 'MAD4B_SCP_FILE', __FILE__ );
 define( 'MAD4B_SCP_DIR', plugin_dir_path( __FILE__ ) );
+// Lightweight, source-verified JetEngine Tour Highlights consumer.
+// Register before the optional fastpath return so Elementor/JetEngine AJAX works.
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-tour-highlights-v1.php';
 define( 'MAD4B_SCP_BOOT_RUNTIME_FILE_SHA256', is_readable( __FILE__ ) ? hash_file( 'sha256', __FILE__ ) : '' );
 $mad4b_scp_boot_provenance_path = MAD4B_SCP_DIR . 'MAD4B-BUILD-PROVENANCE.json';
 define( 'MAD4B_SCP_BOOT_PROVENANCE_SHA256', is_readable( $mad4b_scp_boot_provenance_path ) ? hash_file( 'sha256', $mad4b_scp_boot_provenance_path ) : '' );
