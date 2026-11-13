@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Callable
 
 import company_code_release as release
-import capability_acceptance as capability_checks
+capability_checks = release.capability_checks
 import original_313_code_release_contract as original
 import original_313_host_handler as handler
 

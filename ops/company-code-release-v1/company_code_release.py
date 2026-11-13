@@ -24,7 +24,17 @@ from typing import Any, Callable
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
-import capability_acceptance as capability_checks
+# File-backed companion module: also works under Original 313's pinned
+# importlib file-loader (which does not put this directory on sys.path).
+import importlib.util
+
+_acceptance_path = Path(__file__).with_name("capability_acceptance.py")
+_acceptance_spec = importlib.util.spec_from_file_location(
+    "_mad4b_company_capability_acceptance_v1", _acceptance_path)
+if _acceptance_spec is None or _acceptance_spec.loader is None:
+    raise RuntimeError("CAPABILITY_ACCEPTANCE_MODULE_UNAVAILABLE")
+capability_checks = importlib.util.module_from_spec(_acceptance_spec)
+_acceptance_spec.loader.exec_module(capability_checks)
 
 POLICY_PATH = Path("/etc/mad4b/company-code-release-policy.json")
 AUTH_CONTRACT = "mad4b.company-code-release.authorization.v1"
@@ -1254,7 +1264,9 @@ def overlapping_unresolved_transactions(plan: dict, receipt_dir: Path) -> list[d
 def apply_release(plan: dict, policy: dict, grant: dict, receipt_dir: Path,
                   *, runtime_check: Callable[[dict, dict], None] = assert_runtime_binding,
                   validate_code: Callable[[dict], None] = php_lint,
-                  preflight_code: Callable[[dict], None] = preflight_candidate_php) -> dict:
+                  preflight_code: Callable[[dict], None] = preflight_candidate_php,
+                  validate_capabilities: Callable[[dict, dict, Path, str, str], dict] =
+                      capability_checks.verify_evidence) -> dict:
     """Apply only after external authority. Roll back automatically on any failure."""
     verify_grant(plan, policy, grant, "apply")
     assert_pinned_receipt_directory(policy, receipt_dir)
@@ -1309,6 +1321,14 @@ def apply_release(plan: dict, policy: dict, grant: dict, receipt_dir: Path,
                              preserve_existing_mode=True)
             confirm_plan(plan, policy, expect_preimage=False)
             validate_code(plan)
+            # Do not issue a successful Host Apply receipt when mandatory
+            # first-party capability evidence has not been independently signed.
+            # This is after the write-ahead intent and before terminal success;
+            # a missing/revoked/invalid proof causes the same CAS-protected
+            # automatic Rollback as any other failed runtime acceptance.
+            if plan.get("capability_acceptance", {}).get("checks"):
+                validate_capabilities(
+                    plan, policy, receipt_dir, grant["nonce"], intent["at"])
         except Exception as exc:
             # If the first target drifted before any of our writes, there is
             # nothing to roll back. Record the denial, not a false success.

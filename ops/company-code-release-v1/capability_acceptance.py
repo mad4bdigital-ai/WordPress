@@ -62,7 +62,7 @@ def _registry(policy: dict) -> dict | None:
             not config["catalog_path"].endswith(".json") or
             ".." in Path(config["catalog_path"]).parts or
             not isinstance(config.get("providers"), dict) or
-            not isinstance(config.get("require_coverage", False), bool),
+            not isinstance(config.get("require_coverage", True), bool),
             "CAPABILITY_ACCEPTANCE_REGISTRY_INVALID")
     for provider, item in config["providers"].items():
         _id(provider)
@@ -93,6 +93,7 @@ def snapshot(plan_files: list[dict], policy: dict, repo: Path,
     config = _registry(policy)
     if config is None:
         return {"contract": SNAPSHOT_CONTRACT, "catalog_sha256": None,
+                "catalog_path": None, "require_coverage": False,
                 "checks": [], "enrollment_sha256": None}
     raw = git_bytes(repo, commit, config["catalog_path"])
     deny_if(len(raw) > 200_000, "CAPABILITY_ACCEPTANCE_CATALOG_TOO_LARGE")
@@ -137,7 +138,7 @@ def snapshot(plan_files: list[dict], policy: dict, repo: Path,
         covered.update(matched)
         records.append({"provider": provider, "capability": capability,
                         "id": check_id, "targets": matched})
-    deny_if(config.get("require_coverage", False) and covered != selected,
+    deny_if(config.get("require_coverage", True) and covered != selected,
             "CAPABILITY_ACCEPTANCE_COVERAGE_MISSING")
     # A source-only registration does not grant authority; the trust anchors
     # must already exist in the installed root-owned policy.
@@ -149,6 +150,8 @@ def snapshot(plan_files: list[dict], policy: dict, repo: Path,
         for provider in sorted({r["provider"] for r in records})
     }
     return {"contract": SNAPSHOT_CONTRACT, "catalog_sha256": sha(raw),
+            "catalog_path": config["catalog_path"],
+            "require_coverage": config.get("require_coverage", True),
             "checks": sorted(records, key=lambda r: (r["provider"], r["id"])),
             "enrollment_sha256": sha(canonical(enrollment))}
 
