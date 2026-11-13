@@ -831,8 +831,9 @@ def php_lint(plan: dict) -> None:
                 "COPY_COVERAGE_RUNTIME_ACCEPTANCE_NOT_PROVEN")
 
 
-def assert_pinned_receipt_directory(policy: dict, receipt_dir: Path) -> None:
-    """Single root-owned receipt root fences nonce replay across CLI invocations."""
+def _verify_receipt_directory_owner(policy: dict, receipt_dir: Path,
+                                    *, required_uid: int) -> None:
+    """One invariant for both real root admission and hermetic CI fixtures."""
     bound = policy.get("receipt_dir")
     fail_if(not isinstance(bound, str) or not bound.startswith("/"),
             "RECEIPT_ROOT_NOT_CONFIGURED")
@@ -841,9 +842,15 @@ def assert_pinned_receipt_directory(policy: dict, receipt_dir: Path) -> None:
     no_link(receipt_dir)
     fail_if(receipt_dir.resolve() != exact.resolve(),
             "RECEIPT_DIRECTORY_NOT_PINNED")
-    fail_if(not receipt_dir.is_dir() or receipt_dir.stat().st_uid != 0 or
+    fail_if(not receipt_dir.is_dir() or
+            receipt_dir.stat().st_uid != required_uid or
             stat.S_IMODE(receipt_dir.stat().st_mode) & 0o077,
             "RECEIPTS_MUST_BE_ROOT_PRIVATE")
+
+
+def assert_pinned_receipt_directory(policy: dict, receipt_dir: Path) -> None:
+    """Live executor always requires the original root-owned private ledger."""
+    _verify_receipt_directory_owner(policy, receipt_dir, required_uid=0)
 
 
 def backup_path(receipt_dir: Path, plan: dict) -> Path:

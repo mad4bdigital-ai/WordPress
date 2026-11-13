@@ -4,6 +4,7 @@ import datetime as dt
 import hashlib
 import importlib.util
 import json
+import os
 from pathlib import Path
 import subprocess
 import tempfile
@@ -34,6 +35,18 @@ class CodeReleaseTests(unittest.TestCase):
         self.repo.mkdir()
         self.site.mkdir()
         self.receipts.mkdir(mode=0o700)
+        # Production still requires root (UID 0); hermetic CI tests running as
+        # an unprivileged runner exercise the exact SAME path/mode/CAS guard,
+        # swapping only the expected owner UID in test scope.
+        self.real_receipt_guard = release.assert_pinned_receipt_directory
+        if os.geteuid() != 0:
+            from unittest.mock import patch
+            self.owner_fixture = patch.object(
+                release, 'assert_pinned_receipt_directory',
+                lambda policy, receipts: release._verify_receipt_directory_owner(
+                    policy, receipts, required_uid=os.geteuid()))
+            self.owner_fixture.start()
+            self.addCleanup(self.owner_fixture.stop)
         (self.repo / "ops" / "artifacts").mkdir(parents=True)
         (self.site / "wp-content" / "mu-plugins").mkdir(parents=True)
         self.source = self.repo / "ops" / "artifacts" / "approved.php"
@@ -101,6 +114,14 @@ class CodeReleaseTests(unittest.TestCase):
                                      self.receipts,
                                      runtime_check=lambda p, cfg: None,
                                      validate_code=validator or (lambda p: None))
+
+    def test_original_receipt_guard_never_trusts_unprivileged_ci_uid(self):
+        if os.geteuid() == 0:
+            self.real_receipt_guard(self.policy, self.receipts)
+        else:
+            with self.assertRaisesRegex(release.Denied,
+                                        'RECEIPTS_MUST_BE_ROOT_PRIVATE'):
+                self.real_receipt_guard(self.policy, self.receipts)
 
     def test_plan_is_non_mutating_and_from_git_commit(self):
         self.assertEqual(self.target.read_text(), "<?php echo 'OLD';\n")

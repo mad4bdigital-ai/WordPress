@@ -15,7 +15,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: capability-owner-contract-${{ github.workflow }}-${{ github.ref }}
+  group: capability-owner-contract-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:
@@ -27,6 +27,7 @@ jobs:
       - name: Checkout reviewed source
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - name: Python (hermetic release contract)
         uses: actions/setup-python@v5
