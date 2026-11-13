@@ -10,6 +10,13 @@ on:
 permissions:
   contents: read
 
+env:
+  SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+concurrency:
+  group: mad4b-site-owner-source-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
 jobs:
   provenance:
     name: Source owner contract (PHP ${{ matrix.php }})
@@ -21,6 +28,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ env.SOURCE_SHA }}
           persist-credentials: false
       - uses: shivammathur/setup-php@v2
         with:
