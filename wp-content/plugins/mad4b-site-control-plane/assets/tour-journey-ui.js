@@ -16,7 +16,7 @@
   }
   function init(section){
     if(!section || section.dataset.tourJourneyInitialized==='1')return;
-    const widget=section.querySelector('.elementor-element-6190bab');
+    const widget=section.querySelector('.tour-journey-related-editor, .elementor-element-6190bab');
     // Some Elementor dynamic fields deliberately emit no wrapper in places-only mode.
     if(!widget)return;
     const labels=textFor();
