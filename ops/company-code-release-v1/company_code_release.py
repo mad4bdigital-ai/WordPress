@@ -133,6 +133,47 @@ def git_bytes(repo: Path, commit: str, relative: str) -> bytes:
     return data
 
 
+def registered_release_targets(policy: dict, entry: dict, commit: str) -> set[str]:
+    """Resolve per-company deployable modules from a Git-committed catalog.
+
+    Merely being under mu-plugins is not authority: each target must be explicitly
+    catalogued at the immutable requested commit and scoped by the bound policy.
+    """
+    static = set(entry["allowed_targets"])
+    catalog_path = entry.get("release_catalog")
+    if catalog_path is None:
+        return static
+    fail_if(not isinstance(catalog_path, str) or
+            catalog_path != "ops/company-code-release-v1/catalog/mad4b-release-components.json",
+            "RELEASE_CATALOG_NOT_CANONICAL")
+    catalog = json.loads(git_bytes(Path(policy["source_git_root"]), commit, catalog_path))
+    fail_if(not isinstance(catalog, dict) or
+            catalog.get("contract") != "mad4b.company-release-components.v1" or
+            sorted(catalog) != ["components", "contract"],
+            "RELEASE_CATALOG_INVALID")
+    components = catalog.get("components")
+    fail_if(not isinstance(components, list) or not 1 <= len(components) <= 500,
+            "RELEASE_CATALOG_COMPONENTS_INVALID")
+    for component in components:
+        fail_if(not isinstance(component, dict) or
+                sorted(component) != ["files", "id"] or
+                not isinstance(component["id"], str) or
+                not re.fullmatch(r"mad4b-[a-z0-9-]{3,90}", component["id"]),
+                "RELEASE_COMPONENT_INVALID")
+        files = component["files"]
+        fail_if(not isinstance(files, list) or not 1 <= len(files) <= 24,
+                "RELEASE_COMPONENT_FILES_INVALID")
+        for target in files:
+            fail_if(not isinstance(target, str), "RELEASE_COMPONENT_PATH_INVALID")
+            target = exact_relative(target)
+            fail_if(not permitted_target(target) or
+                    not target.startswith("wp-content/mu-plugins/mad4b-") or
+                    not target.endswith(".php"), "RELEASE_COMPONENT_SCOPE_INVALID")
+            git_bytes(Path(policy["source_git_root"]), commit, target)
+            static.add(target)
+    return static
+
+
 def target_binding(policy: dict, company: str, environment: str) -> dict:
     fail_if(not SCOPE.fullmatch(company) or not SCOPE.fullmatch(environment),
             "INVALID_COMPANY_ENVIRONMENT")
@@ -163,7 +204,7 @@ def make_plan(spec: dict, policy: dict) -> dict:
     files = spec.get("files")
     fail_if(not isinstance(files, list) or not 1 <= len(files) <= 24,
             "INVALID_RELEASE_FILE_COUNT")
-    allowlist = set(entry["allowed_targets"])
+    allowlist = registered_release_targets(policy, entry, spec["git_commit"])
     checks = spec.get("acceptance_checks", ["wp_boot"])
     fail_if(not isinstance(checks, list) or len(checks) < 1 or
             len(checks) > len(ALLOWED_ACCEPTANCE_CHECKS) or
@@ -179,6 +220,8 @@ def make_plan(spec: dict, policy: dict) -> dict:
         target = exact_relative(record.get("target"))
         fail_if(not permitted_target(target) or target not in allowlist,
                 "TARGET_FILE_NOT_ALLOWED")
+        fail_if(target not in set(entry["allowed_targets"]) and source != target,
+                "CATALOG_SOURCE_TARGET_MISMATCH")
         fail_if(target in seen, "DUPLICATE_TARGET")
         seen.add(target)
         before = record.get("expected_before_sha256")
@@ -206,6 +249,7 @@ def make_plan(spec: dict, policy: dict) -> dict:
         "git_commit": spec["git_commit"], "git_root": str(repo.resolve()),
         "target_root": str(root.resolve()), "files": rows,
         "acceptance_checks": checks,
+        "release_catalog": entry.get("release_catalog"),
     }
     payload["plan_sha256"] = digest(canonical(payload))
     payload["changed_count"] = sum(
@@ -229,7 +273,15 @@ def confirm_plan(plan: dict, policy: dict, *, expect_preimage: bool) -> None:
             str(Path(entry["root"]).resolve()) != plan.get("target_root") or
             str(Path(policy["source_git_root"]).resolve()) != plan.get("git_root"),
             "PLAN_SCOPE_CHANGED")
-    allowlist = set(entry["allowed_targets"])
+    catalog_at_plan = plan.get("release_catalog")
+    # Plans signed before catalog enrollment remain limited to the explicit
+    # original static paths. Never retroactively elevate a legacy plan.
+    if catalog_at_plan is None:
+        allowlist = set(entry["allowed_targets"])
+    else:
+        fail_if(catalog_at_plan != entry.get("release_catalog"),
+                "RELEASE_CATALOG_BINDING_DRIFT")
+        allowlist = registered_release_targets(policy, entry, plan["git_commit"])
     checks = plan.get("acceptance_checks", [])
     fail_if(not isinstance(checks, list) or not checks or
             any(not isinstance(check, str) for check in checks) or
@@ -241,6 +293,8 @@ def confirm_plan(plan: dict, policy: dict, *, expect_preimage: bool) -> None:
         target = exact_relative(row["target"])
         fail_if(target not in allowlist or not permitted_target(target),
                 "PLAN_TARGET_NO_LONGER_ALLOWED")
+        fail_if(target not in set(entry["allowed_targets"]) and row["source"] != target,
+                "PLAN_CATALOG_SOURCE_TARGET_MISMATCH")
         fresh = git_bytes(Path(plan["git_root"]), plan["git_commit"], row["source"])
         fail_if(digest(fresh) != row["source_sha256"], "SOURCE_COMMIT_DRIFT")
         target_file = Path(plan["target_root"]) / target
