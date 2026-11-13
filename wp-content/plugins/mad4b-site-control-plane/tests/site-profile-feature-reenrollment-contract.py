@@ -101,12 +101,33 @@ for marker in (
     "mad4b/site-profile-feature-reenrolled",
     "restore_profile",
     "array( 'staging', 'production' )",
-    "mad4b_site_profile_feature_reenroll_environment_denied",
+    "mad4b_site_profile_feature_reenroll_environment_invalid",
     "public static function chatgpt_step_up_tools()",
     "'production_mutation_allowed' => true",
 ):
     if marker not in enrollment:
         raise SystemExit('missing bounded reenrollment/app-mapping guard: ' + marker)
+
+# Execution admission validates the exact currently enrolled environment
+# string and origin; it must not revive a hardcoded Staging/Production denial.
+# Direct tool discovery is a separate presentation contract and does not grant
+# execution authority or bypass OAuth + independent Site Profile checks.
+access = enrollment[enrollment.index('public static function can_execute'):enrollment.index('public static function reenroll_features')]
+for marker in (
+    'verified_bearer_active()',
+    'verified_bearer_has_scope',
+    'user_is_enrolled(',
+    'site_urls_match_enrollment()',
+    'current_origin()',
+    'mad4b_site_profile_feature_reenroll_environment_invalid',
+    'mad4b_site_profile_feature_reenroll_profile_not_exact',
+):
+    if marker not in access:
+        raise SystemExit('missing dynamic enrolled-environment guard: '+marker)
+if 'mad4b_site_profile_feature_reenroll_environment_denied' in access:
+    raise SystemExit('obsolete hardcoded-environment denial resurfaced')
+if "in_array( $environment, array( 'staging', 'production' )" in access:
+    raise SystemExit('staging/production-only admission surfaced in enrolled execution path')
 
 registration = enrollment[enrollment.index('public static function register_ability'):enrollment.index('public static function can_access_transport')]
 if "'write_enabled'" in registration:
