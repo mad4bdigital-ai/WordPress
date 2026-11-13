@@ -387,3 +387,105 @@
     transition:none!important;
   }
 }
+
+
+/* Shared compact taxonomy controls — original Kit roles.
+   Elementor's generic button typography is not allowed to turn a breadcrumb
+   into a large CTA. The actual destination card remains the main action. */
+.tour-journey-discovery.jd-modes-v3 .jd-split-v3__path {
+  gap:4px!important;
+  align-items:center!important;
+  font-size:11px!important;
+  line-height:1.3!important;
+}
+.tour-journey-discovery.jd-modes-v3 .jd-split-v3__path .jd-split-v3__crumb {
+  display:inline-flex!important;
+  justify-content:center!important;
+  align-items:center!important;
+  flex:0 1 auto!important;
+  width:auto!important;
+  min-width:0!important;
+  max-width:100%!important;
+  height:auto!important;
+  min-height:26px!important;
+  margin:0!important;
+  padding:4px 7px!important;
+  border:1px solid var(--jd-split-border)!important;
+  border-radius:6px!important;
+  background-color:var(--e-global-color-3a5c55e,#fbfbfb)!important;
+  color:var(--e-global-color-secondary,#204c50)!important;
+  box-shadow:none!important;
+  font-family:inherit!important;
+  font-size:11px!important;
+  font-weight:650!important;
+  line-height:1.25!important;
+  letter-spacing:normal!important;
+  text-transform:none!important;
+  text-align:center!important;
+  overflow-wrap:anywhere;
+  white-space:normal!important;
+}
+.tour-journey-discovery.jd-modes-v3 .jd-split-v3__path .jd-split-v3__crumb--current{
+  background-color:var(--e-global-color-80789f7,#f9f7f5)!important;
+  font-weight:750!important;
+}
+.tour-journey-discovery.jd-modes-v3 .jd-split-v3__path button.jd-modes-v3__crumb-button{
+  cursor:pointer;
+  text-decoration:none!important;
+  -webkit-appearance:none;
+  appearance:none;
+}
+.tour-journey-discovery.jd-modes-v3 .jd-split-v3__path button.jd-modes-v3__crumb-button:is(:hover,:focus-visible){
+  border-color:var(--jd-split-accent)!important;
+  outline-offset:2px;
+}
+.tour-journey-discovery.jd-modes-v3 .jd-split-v3__path > span[aria-hidden]{
+  font-size:12px!important;
+  line-height:1!important;
+}
+.tour-journey-discovery.jd-modes-v3 .jd-split-v3__level{
+  min-height:32px!important;
+  padding:5px 8px!important;
+  font-size:11px!important;
+  line-height:1.3!important;
+  width:auto;
+}
+.tour-journey-discovery.jd-modes-v3 .jd-modes-v3__story-action{
+  width:auto!important;
+  flex:0 1 auto!important;
+  align-self:flex-start!important;
+  padding:6px 9px!important;
+  min-height:32px!important;
+  font-size:11px!important;
+  white-space:normal!important;
+}
+/* Two or more verified linked destinations are presented as compact visual
+   references inside a Highlight, not duplicate full-size destination cards. */
+.tour-journey-discovery.jd-modes-v3:is(.tour-journey--explorer,.tour-journey--story) .tour-hl-ui__related{
+  display:grid!important;
+  grid-template-columns:repeat(auto-fit,minmax(min(170px,100%),1fr))!important;
+  gap:7px!important;
+  max-width:100%;
+  min-width:0;
+}
+.tour-journey-discovery.jd-modes-v3:is(.tour-journey--explorer,.tour-journey--story) .jd-place-tile{
+  min-height:54px!important;
+  min-width:0;
+}
+.tour-journey-discovery.jd-modes-v3:is(.tour-journey--explorer,.tour-journey--story) .jd-place-tile__media{
+  flex:0 0 50px!important;
+  width:50px!important;
+  height:50px!important;
+  min-width:0;
+}
+@media(max-width:767px){
+  .tour-journey-discovery.jd-modes-v3 .jd-split-v3__path .jd-split-v3__crumb{
+    font-size:10px!important;
+    padding:3px 6px!important;
+    min-height:25px!important;
+  }
+  .tour-journey-discovery.jd-modes-v3 .jd-split-v3__level{
+    min-height:34px!important;
+    font-size:10px!important;
+  }
+}
