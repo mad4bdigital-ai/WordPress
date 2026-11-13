@@ -36,6 +36,11 @@ if _acceptance_spec is None or _acceptance_spec.loader is None:
     raise RuntimeError("CAPABILITY_ACCEPTANCE_MODULE_UNAVAILABLE")
 capability_checks = importlib.util.module_from_spec(_acceptance_spec)
 _acceptance_spec.loader.exec_module(capability_checks)
+_finalization_path = Path(__file__).with_name("finalization_guard.py")
+_finalization_spec = importlib.util.spec_from_file_location(
+    "_mad4b_company_release_finalization_guard_v1", _finalization_path)
+release_finalization = importlib.util.module_from_spec(_finalization_spec)
+_finalization_spec.loader.exec_module(release_finalization)
 
 POLICY_PATH = Path("/etc/mad4b/company-code-release-policy.json")
 AUTH_CONTRACT = "mad4b.company-code-release.authorization.v1"
@@ -639,6 +644,7 @@ def make_plan(spec: dict, policy: dict) -> dict:
         "capability_acceptance": dynamic_acceptance,
         "backup_json_max_bytes": backup_json_limit(policy, company, env),
         "activation_contract": activation_contract(rows, policy, company, env),
+        "finalization_contract": release_finalization.policy_contract(entry),
         "tenant_plugin_profiles": plugin_profiles,
         "dependency_snapshot": dependency_snapshot,
         "owner_reconciliation": owner_snapshot,
@@ -672,6 +678,13 @@ def confirm_plan(plan: dict, policy: dict, *, expect_preimage: bool) -> None:
             str(Path(entry["root"]).resolve()) != plan.get("target_root") or
             str(Path(policy["source_git_root"]).resolve()) != plan.get("git_root"),
             "PLAN_SCOPE_CHANGED")
+    expected_finalization = release_finalization.policy_contract(entry)
+    if "finalization_contract" in plan:
+        fail_if(plan["finalization_contract"] != expected_finalization,
+                "PRIOR_ORIGINAL313_POLICY_DRIFT")
+    else:
+        fail_if(expected_finalization["require_prior_original313"],
+                "PRIOR_ORIGINAL313_POLICY_REQUIRES_NEW_PLAN")
     expected_activation = activation_contract(
         plan["files"], policy, plan["company"], plan["environment"])
     if "activation_contract" in plan:
@@ -1335,7 +1348,8 @@ def apply_release(plan: dict, policy: dict, grant: dict, receipt_dir: Path,
                   validate_capabilities: Callable =
                       capability_checks.verify_evidence,
                   producer_check: Callable = capability_checks.verify_producer_enrollment,
-                  produce_capabilities: Callable | None = None
+                  produce_capabilities: Callable | None = None,
+                  verify_prior_original313: Callable | None = None
                   ) -> dict:
     """Apply only after external authority. Roll back automatically on any failure."""
     verify_grant(plan, policy, grant, "apply")
@@ -1355,6 +1369,14 @@ def apply_release(plan: dict, policy: dict, grant: dict, receipt_dir: Path,
                 "OVERLAPPING_UNRESOLVED_RELEASE_TRANSACTION")
         confirm_plan(plan, policy, expect_preimage=True)
         runtime_check(plan, policy)
+        entry = target_binding(policy, plan["company"], plan["environment"])
+        def read_previous_receipt(path):
+            # Uses the same first-party private receipt contract as Host Apply.
+            data = safe_regular(path, max_size=100_000)
+            return json.loads(data), data
+        release_finalization.admit(
+            plan, entry, receipt_dir, read_previous_receipt,
+            first_party_verifier=verify_prior_original313)
         # An atomic file rename is NOT an atomic HTTP request/plugin release.
         # If the company requires coherent activation, never silently fall back
         # to the legacy per-file writer. A native versioned cutover Provider

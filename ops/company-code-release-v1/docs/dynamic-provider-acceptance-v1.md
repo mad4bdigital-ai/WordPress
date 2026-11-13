@@ -174,3 +174,23 @@ This is a conservative HOLD, NOT an implemented atomic whole-plugin switch.
 Real activation requires a first-party signed versioned-cutover Provider,
 request-bound PHP-FPM/OPcache verification and a coherent rollback. The
 root policy is currently unchanged; no Production cutover is claimed.
+
+## Opt-in prior Original 313 finalization boundary
+
+The Site Profile may set finalization_policy.require_prior_original313=true.
+The choice is plan-pinned. Before any target backup or write, a new Apply
+inspects prior Host APPLIED_VERIFIED receipts for exactly overlapping files
+and matching native Site UUID. Host success is not an Original 313
+certificate. Host self-certification is always rejected.
+
+A first-party Original 313 signature-verifying bridge must verify each
+exact prior Host receipt SHA and produce a tightly bound verified result.
+An absent or mismatched bridge fails closed. No tenant callback, grant or
+local policy may invent Original 313 authority. Disjoint Site/files do not
+block unrelated releases.
+
+This policy is not enabled in Production. Historical Host receipts in the
+current ledger do not establish Original 313 certification. Activating
+this policy before an original enrolled verifier exists will intentionally
+block overlapping new releases; it does not turn historical Host receipts
+into certificates.

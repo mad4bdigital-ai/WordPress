@@ -6,7 +6,7 @@
   "plan_contract": "mad4b.company-code-release.plan.v1",
   "handler": {
     "path": "company-code-release-v1/original_313_host_handler.py",
-    "sha256": "3b4018dbfda6bff6a12fb52f1dfa08ef3be592550368c0556082993b87baa602"
+    "sha256": "4d7b541c2f62f37c77714a1701169a05847d1ad37c4157e836d4cd468630d976"
   },
   "verifier": {
     "path": "company-code-release-v1/original_313_independent_readback.py",
@@ -35,11 +35,15 @@
     },
     {
       "path": "company-code-release-v1/company_code_release.py",
-      "sha256": "1534773941d3887a27c14f1dbf64bdb5befa3fd2641d2fb8f7d45c2f643236a3"
+      "sha256": "5e2be05ae1fcf1b7c054e93385da38a82884976b465925edf37360926af8a68c"
     },
     {
       "path": "company-code-release-v1/company_lifecycle_broker.py",
       "sha256": "849ec834071d1f999899feeb2660017f3934ba7304e397ac6d96ef1bd906b1c7"
+    },
+    {
+      "path": "company-code-release-v1/finalization_guard.py",
+      "sha256": "b1d537e5c7dd92d6ebcdde62dce6427af06f4c212b1f7ecad9e1253a126d78a8"
     },
     {
       "path": "company-code-release-v1/original_313_code_release_contract.py",

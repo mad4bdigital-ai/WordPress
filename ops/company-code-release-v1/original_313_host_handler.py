@@ -237,6 +237,7 @@ def execute_once(
     code_check: Callable[[dict], None] = release.php_lint,
     candidate_preflight_check: Callable[[dict], None] = release.preflight_candidate_php,
     producer_dispatcher: Callable | None = None,
+    independent_prior_finalizer: Callable | None = None,
 ) -> dict:
     """Single already-admitted operation; no worker registration or 313 fraud.
 
@@ -270,6 +271,7 @@ def execute_once(
         # authorized read-only producer dispatcher. No arbitrary plan or
         # request field can provide executable callbacks. Absent means HOLD.
         produce_capabilities=producer_dispatcher,
+        verify_prior_original313=independent_prior_finalizer,
     )
     host_receipt_state = result.get("state")
     observed_state = {
