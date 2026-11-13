@@ -34,13 +34,15 @@ jobs:
         with:
           php-version: ${{ matrix.php }}
           coverage: none
+      - name: Install existing Original Code Release signature dependency
+        run: python3 -m pip install --disable-pip-version-check 'cryptography>=41,<47'
       - name: Verify all registered source fingerprints and release fence
         run: python3 ops/company-code-release-v1/site-owner-sources/verify.py
       - name: Verify collision and drift guards
         run: |
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
             -s ops/company-code-release-v1/site-owner-sources \
-            -p 'test_verify.py' -v
+            -p 'test_*.py' -v
       - name: Lint each site-owned PHP source without executing it
         run: |
           find ops/company-code-release-v1/site-owner-sources/files \

@@ -65,3 +65,27 @@ Add future companies as new variants, subject to an explicit site ID, exact
 runtime path, declared owner and independently inspected source bytes. Preserve
 separate site-specific variants instead of copying older MU code over a newer
 native plugin. New source snapshots are not automatically activated.
+
+
+## Original 305/312/313 source admission (read-only)
+
+The included release_admission.py composes the existing original
+company_code_release pinned target policy, exact Git blob reader,
+target-path scope checks, original site identity resolver, and this
+site-owner source registry. It is a diagnostic contract, not a new code
+executor, registry grant, plugin loader, or a release-catalog expansion.
+
+For Wayfatours Production, the live admission snapshot has confirmed
+both registered preimages and the original native site identity, but
+returns HOLD until the original pinned Git root is reconciled, the exact
+site-owner destinations are explicitly enrolled, and the original
+312 job grant and independent 313 receipt are actually available.
+
+For example, after checking out the reviewed Git commit:
+
+    python3 ops/company-code-release-v1/site-owner-sources/release_admission.py       --candidate-repo /reviewed/worktree --commit FULL_40_CHAR_GIT_COMMIT       --site wayfatours --company wayfatours --environment production
+
+Unknown sites and environments must not inherit Wayfatours settings.
+The original engine remains the only executor and must still independently
+verify its own runtime identities, immutable source/target preimages,
+one-time grants and after-write readback.
