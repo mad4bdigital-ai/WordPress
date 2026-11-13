@@ -81,6 +81,7 @@ jobs:
           python3 "$root/tests/staging-oauth-autoconfig-contract.py"
           python3 "$root/tests/local-oauth-standalone-contract.py"
           python3 -m unittest discover -s tests -p 'test_certified_mcp_adapter_profile.py' -q
+          python3 -m unittest discover -s tests -p 'test_local_oauth_explicit_cli_mcp_scope.py' -q
           python3 "$root/tests/chatgpt-oauth-lifecycle-contract.py"
           python3 "$root/tests/local-oauth-browser-canary-contract.py"
           python3 "$root/tests/mcp-adapter-compatibility-contract.py"
@@ -265,7 +266,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-chatgpt-http-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+          # WP-CLI is deliberately route-only by default. This *single*
+          # disposable CI process must explicitly opt into MCP materialization
+          # before WordPress boot to test the real registered Adapter DTOs.
+          # The flag affects request scope only, not OAuth or write authority.
+          MAD4B_SCP_MCP_CLI_REQUEST=1 php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-chatgpt-http-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
 
       - name: Prove dynamic projection admission through real OAuth and tools/call
         shell: bash
