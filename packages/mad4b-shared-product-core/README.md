@@ -51,3 +51,24 @@ The original `adapters/tour-program-source-contract-v1.php` was recovered verbat
 ## Post-import booking cart bugfix
 
 The first live WordPress test exposed a normalized-cart-to-raw-quote mismatch: `shared_product_booking_v2_cart_draft()` succeeded but `shared_product_booking_v2_cart_quote_preview()` returned `booking_v2_unexpected_keys` for a valid configuration. The cart preview now passes the original already-validated request to the server-side quote validator while retaining normalized identity in the draft. `tests/booking-cart-regression.php` proves the separation. This is a reviewed patch to the imported original and is recorded with its new SHA-256 in `release-manifest.json`. No Woo Cart, Order, Payment, or inventory writes are enabled by this source change.
+
+
+## 2026-11-13 native consumer and company facet parity
+
+The current frozen **source-only** snapshot includes 135 files. The shared company
+eligibility, native facet and consumer registry adapters were independently checked
+byte-for-byte against the two active runtimes: Tours.dev (source) and Wayfatours.
+This source change is not a Production release approval; it updates the candidate
+source and its CI snapshot without enabling automatic deployment.
+
+The contract discovers persisted JetEngine Query Builder definitions and Elementor
+Listing Grid providers, scopes reused JetSmartFilters instances to their active
+renderer, retains nested consumer context, and falls back conservatively for
+unresolved legacy query slugs. Native entity/component separation stays intact.
+Invalidation covers JetEngine query changes, post and term meta changes and
+WooCommerce stock events. WPML canonical term identity uses a single scoped
+read before checking the original hierarchy.
+
+The site-owned destination activation and product-navigation files remain outside
+this Lab package. Their live updates require separate ownership enrollment and
+company release evidence; no duplicate plugin/loader was created.

@@ -7,8 +7,8 @@
     "8.3",
     "8.5"
   ],
-  "source_file_count": 134,
-  "source_manifest_sha256": "aec4cb878aaf891cd4ed830e02a4a4bbced09ff7517fbce706b88c2f3537399c",
+  "source_file_count": 135,
+  "source_manifest_sha256": "1431540ed6e10bd7fc647a86101581827267b32fed03d1c3f3c6433c2af59a95",
   "activation": "local Lab only; production activation not authorized",
   "stage": "requires per-tenant parity, integration tests, editor UI acceptance and explicit rollout approval",
   "deploy_automatically": false,
@@ -21,5 +21,6 @@
     "path": "shared-product-core/pricing/booking-cart-v2.php",
     "sha256": "cac0505d58b69c890f08a58dc580f7aefe1ea7b9fc3491fdf2c61e3b3737a744",
     "reason": "cart_quote_preview_uses_raw_validated_shape"
-  }
+  },
+  "source_import_manifest_sha256": "aec4cb878aaf891cd4ed830e02a4a4bbced09ff7517fbce706b88c2f3537399c"
 }
