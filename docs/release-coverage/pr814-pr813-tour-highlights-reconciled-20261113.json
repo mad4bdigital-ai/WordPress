@@ -1,0 +1,65 @@
+{
+  "contract": "mad4b.pr814.tour-highlights-native-source-reconcile.v1",
+  "pr813_source_head": "91b1501ab72aee085f6166dce03ec30e20aeecbf",
+  "governed_integration_parent": "d89f4dc812430eac40bf058fc2c5099a9f9c07f9",
+  "pr808_historical_bootstrap_sha256": "4b70ca42120f6dc5842b139cebe253d66503977d2b2d3921feb82164808caa3b",
+  "reviewed_bootstrap_sha256": "fdc0a6c7be27604b531a8fc80f5dc08891f8b1e9c5aa6c67c749ae189f328d64",
+  "bootstrap_changed_only_by_three_line_overlay": true,
+  "source_only": true,
+  "installed_verified": false,
+  "migration_performed": false,
+  "editorial_source_facts_approved_by_default": false,
+  "original313_signed_receipts_issued": false,
+  "production_release_approved": false,
+  "reviewed_files": [
+    {
+      "path": "docs/tour-highlights-native-v1.md",
+      "sha256": "bf86954eff62c6e26ac40e82d74fbe5c63c787716b64bd1fea2f9706f857b049",
+      "bytes": 8186
+    },
+    {
+      "path": "scripts/migrations/tour-journey-role-migration.php",
+      "sha256": "eca006b3edb87526e5b493535a3e5052c0141b584089a2f075a099e876a5ac6b",
+      "bytes": 7102
+    },
+    {
+      "path": "scripts/qa/tour-journey-acceptance.php",
+      "sha256": "f87e8e51c317f180bfa86049cafd166eaaab883d8a6f6435d0627730490ff2f0",
+      "bytes": 5454
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/assets/tour-highlights-v1.css",
+      "sha256": "6ab0dd2783dbd4ec7c48adbe7454ef76f204109d68d1b6bb435b2ae7b9b6e9ca",
+      "bytes": 18465
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/assets/tour-journey-ui.js",
+      "sha256": "d99fb388b6183588a6611bc085a4e3b0f5747154ccd512ba15efa1c414e5a6b1",
+      "bytes": 10041
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tour-highlights-presentation-v1.php",
+      "sha256": "363507961d571bf968fed7e265bda7370003866942730af1c1ad6b840569391f",
+      "bytes": 10484
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tour-highlights-v1.php",
+      "sha256": "4e174c6f2197e95ec1c625b426559666d65d05cd9c25d574b87fe1fe8d46c958",
+      "bytes": 15316
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "sha256": "fdc0a6c7be27604b531a8fc80f5dc08891f8b1e9c5aa6c67c749ae189f328d64",
+      "bytes": 67371
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/wpml-config.xml",
+      "sha256": "1739ac519745869be079ec7c3f271604b64b3d6dad536b37627c2a5035483821",
+      "bytes": 666
+    }
+  ],
+  "pr813_latest_source_head": "f36e39f1575563854851165e2ffb36263c68df10",
+  "duplicate_migration_removed_from_unified_source": true,
+  "dynamic_site_expected_group_count": true,
+  "read_only_qa_source_reviewed": true
+}

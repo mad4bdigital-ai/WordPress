@@ -40,6 +40,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 -m unittest discover -s tests -p 'test_unified_mad4b_behavior_invariants.py' -v
+          python3 -m unittest discover -s tests -p 'test_tour_highlights_source_delta.py' -v
           python3 -m unittest discover -s ops/company-code-release-v1/tests -p 'test_dynamic_capability*.py' -q
           python3 -m unittest discover -s ops/dynamic-operation-registry-v1/tests -p 'test_source_candidate.py' -q
           python3 -m unittest discover -s tests -p 'test_native_source*.py' -q
@@ -57,3 +58,5 @@ jobs:
           # A verified MCP Adapter source is an independent requirement.
           # Recovery must not accept disk integrity alone or start the lease.
           php wp-content/plugins/mad4b-site-control-plane/tests/mcp-runtime-recovery-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tour-highlights-v1.php
+          php tests/native-tour-highlights/acceptance.php

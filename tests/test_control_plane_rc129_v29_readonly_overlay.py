@@ -1,3 +1,4 @@
+from tour_highlights_bootstrap_overlay import original_bootstrap_bytes
 """Two V29 readonly abilities over verified RC129 live source: exact overlay."""
 import hashlib
 import json
@@ -17,7 +18,7 @@ def assert_bootstrap_overlay_is_exact():
     an independently fetched review tree.
     """
     doc=json.loads(REVIEW.read_text())
-    installed=(ROOT/doc['entrypoint']).read_bytes()
+    installed=original_bootstrap_bytes((ROOT/doc['entrypoint']).read_bytes())
     # A second exact, non-authorizing source overlay adds one Registry-policy
     # require to the certified RC129/V29 read-only candidate. Historical
     # reviewed hashes stay pinned; reconstruct the previous bytes exactly.

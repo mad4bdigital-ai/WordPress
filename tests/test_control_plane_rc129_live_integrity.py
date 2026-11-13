@@ -1,3 +1,4 @@
+from tour_highlights_bootstrap_overlay import original_bootstrap_bytes
 """Source-only review of verified RC128 live deltas over RC129 staging code.
 
 No live WordPress read/write, no Owner approval, no package/signature issuance.
@@ -60,7 +61,7 @@ class Rc129LiveReview(unittest.TestCase):
                     governed=json.loads((ROOT/'docs/release-coverage/pr808-policy-governed-operator-review-20261113.json').read_text())
                     self.assertEqual(governed['base_readonly_overlay_sha256'],overlay['main_candidate_sha256'])
                     sidecar=json.loads((ROOT/'docs/release-coverage/pr808-developer-policy-sidecar-v2-review-20261113.json').read_text())
-                    self.assertEqual(SHA(file.read_bytes()),
+                    self.assertEqual(SHA(original_bootstrap_bytes(file.read_bytes())),
                         sidecar['source_after_sha256'][str(overlay['entrypoint'])])
                 elif row['path']=='includes/class-mad4b-scp-skill-seeder.php':
                     sidecar=json.loads((ROOT/'docs/release-coverage/pr808-developer-policy-sidecar-v2-review-20261113.json').read_text())
