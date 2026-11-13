@@ -34,6 +34,25 @@ class ExplicitCliMcpContext(unittest.TestCase):
         self.assertIn("'production_changed' => false",source)
         self.assertIn('OAuth bearer initialize failed.',SMOKE.read_text())
 
+    def test_site_precedence_does_not_skip_bearer_scope_or_client_fences(self):
+        plugin = ROOT / 'wp-content/plugins/mad4b-site-control-plane'
+        test = (plugin / 'tests/runtime-local-oauth-chatgpt-http-smoke.php').read_text()
+        operator = (plugin / 'includes/class-mad4b-scp-operator-grant-convergence.php').read_text()
+        developer = (plugin / 'includes/class-mad4b-scp-developer-authority.php').read_text()
+        self.assertIn('$site_denied_first = ! $managed_site_ready && in_array( $code, array(', test)
+        for exact in ('mad4b_developer_authority_site_not_ready',
+                      'mad4b_operator_grants_site_not_ready'):
+            self.assertIn(exact, test)
+        self.assertIn("preg_match( '/scope|step_up|client/'", test)
+        self.assertIn('Known hidden step-up tool was executable.', test)
+        self.assertIn('Every direct step-up permission callback must independently deny this actor.', test)
+        self.assertIn("'mad4b_developer_authority_site_not_ready'", developer)
+        self.assertIn('MAD4B_SCP_Site_Profile::managed_runtime_enabled()', developer)
+        self.assertIn("verified_bearer_has_scope( 'mad4b:authority:step-up' )", operator)
+        self.assertIn('verified_bearer_client_is(', operator)
+        self.assertIn('MAD4B_SCP_Registered_Write_Admission::preflight( self::ABILITY )', operator)
+        self.assertIn('self::can_access( $input )', operator)
+
     @unittest.skipUnless(shutil.which('php'), 'PHP executable not present')
     def test_hermetic_processes_prove_default_denial_and_explicit_scope(self):
         snippet=(

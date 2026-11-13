@@ -324,7 +324,21 @@ $assert_direct_denied = static function ( $bearer, $session, $client_kind ) use 
 		$denial = $bound->check_permission( array() );
 		if ( ! is_wp_error( $denial ) ) $fail( 'Every direct step-up permission callback must independently deny this actor.', $tool_name );
 		$code = $denial->get_error_code();
-		if ( ! preg_match( '/scope|step_up|client/', $code ) ) $fail( 'Direct step-up denial must enforce scope/client before input or plan.', array( 'tool' => $tool_name, 'code' => $code ) );
+		$site_status = MAD4B_SCP_Site_Profile::status();
+		$managed_site_ready = is_array( $site_status ) && ! empty( $site_status['authority_ready'] )
+			&& MAD4B_SCP_Site_Profile::managed_runtime_enabled();
+		// The disposable Local OAuth profile intentionally has no managed
+		// write authority. The canonical Developer Authority may deny on
+		// exact Site Profile BEFORE the bearer scope/client gate. That is a
+		// stronger fail-closed fence, not a new permission to execute.
+		$site_denied_first = ! $managed_site_ready && in_array( $code, array(
+			'mad4b_developer_authority_site_not_ready',
+			'mad4b_operator_grants_site_not_ready',
+		), true );
+		if ( ! preg_match( '/scope|step_up|client/', $code ) && ! $site_denied_first ) {
+			$fail( 'Direct step-up permission must fail on scope/client, or exact unready site authority.',
+				array( 'tool' => $tool_name, 'code' => $code, 'managed_site_ready' => $managed_site_ready ) );
+		}
 	}
 };
 $assert_direct_denied( $token, $session_id, 'read_only' );
