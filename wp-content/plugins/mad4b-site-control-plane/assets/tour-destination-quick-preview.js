@@ -78,37 +78,56 @@
     if(!resolved)throw Error('destination-content-contract-unavailable');
     const {root,modules,hero,about}=resolved;
     root.classList.add('mad4b-destination-preview-root');
+    // The Elementor document and its rendered DOM are the ONE source of both
+    // content and presentation. Do not clone description HTML and do not move
+    // the native Insights container out of its template root: Elementor
+    // selectors are scoped to its .elementor-<document-id> ancestor.
+    const nativeModule=about?.module;
+    const descriptionWidget=about?.source.closest('[data-widget_type="jet-listing-dynamic-field.default"]');
+    const titleWidget=about?.title;
+    const narrativeColumn=descriptionWidget?.parentElement;
+    const templateRoot=nativeModule;
+    const validNarrative=!!(templateRoot && descriptionWidget && titleWidget
+      && narrativeColumn && narrativeColumn===titleWidget.parentElement
+      && templateRoot.contains(narrativeColumn));
+    const nativeInsights=validNarrative
+      ? narrativeColumn.querySelector(':scope > .destination-native-insights')
+      : null;
+    const hasInsights=!!(nativeInsights &&
+      nativeInsights.querySelector('.destination-native-field') &&
+      doc.defaultView.getComputedStyle(nativeInsights).display!=='none');
+
+    // Keep the complete original template wrapper and its Kit CSS cascade
+    // intact, but expose only authorized existing Elementor sibling widgets.
     modules.forEach(module=>{
-      if(module===hero)return;
-      module.hidden=true;
-      module.style.display='none';
+      if(module===hero || (validNarrative && module===nativeModule))return;
+      module.hidden=true;module.style.display='none';
     });
-    // Preserve exactly one original native hero. Recompose the explanatory
-    // panel only from existing JetEngine field markup; don't query or infer.
-    if(about){
-      const compact=doc.createElement('section');
-      compact.className='mad4b-destination-preview-about';
-      const title=doc.createElement('h2');
-      title.textContent=about.title.textContent.trim();
-      const copy=doc.createElement('div');
-      copy.className='mad4b-destination-preview-about-copy';
-      copy.append(about.source.cloneNode(true));
-      compact.append(title,copy);
-      // Keep original Elementor/JetEngine enrichment exactly as rendered by
-      // the Destination Term Archive Content template. Moving the native
-      // element preserves its accordion state and listeners; never request
-      // or reconstruct the same term fields a second time.
-      const nativeInsights=about.module.querySelector('.destination-native-insights');
-      if(nativeInsights&&nativeInsights.querySelector('.destination-native-field')){
-        const fullLinks=nativeInsights.querySelector('.destination-native-internal-links');
-        if(fullLinks){fullLinks.hidden=true;fullLinks.style.display='none';}
-        compact.append(nativeInsights);
+    if(validNarrative){
+      for(const node of [...narrativeColumn.children]){
+        if(node===titleWidget || node===descriptionWidget ||
+           (hasInsights && node===nativeInsights))continue;
+        node.hidden=true;node.style.display='none';
+      }
+      const contentRow=narrativeColumn.parentElement;
+      if(contentRow?.classList.contains('e-con-inner')){
+        for(const node of [...contentRow.children]){
+          if(node===narrativeColumn)continue;
+          node.hidden=true;node.style.display='none';
+        }
+      }
+      if(hasInsights){
+        // The full destination page retains these original links. In the
+        // informational modal, navigation remains via its explicit toolbar.
+        const links=nativeInsights.querySelector('.destination-native-internal-links');
+        if(links){links.hidden=true;links.style.display='none';}
         dialog.dataset.previewModules='hero-about-insights';
       }else{
         dialog.dataset.previewModules='hero-about';
       }
-      hero.after(compact);
     }else{
+      // Fail closed for an unfamiliar Elementor template tree: never expose
+      // its sidebars, forms or recommenders as a fallback to a missing About.
       dialog.dataset.previewModules='hero-only';
     }
     doc.querySelectorAll('form').forEach(el=>{el.inert=true;el.hidden=true;});
