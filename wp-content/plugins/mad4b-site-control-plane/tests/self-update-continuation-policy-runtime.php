@@ -21,24 +21,43 @@ function is_wp_error( $value ) { return $value instanceof WP_Error; }
 final class MAD4B_SCP_Site_Profile {
 	public static $environment = 'staging';
 	public static $write_enabled = true;
+	public static $authority_ready = true;
+	public static function status() {
+		return array(
+			'authority_ready' => self::$authority_ready,
+			'site_uuid' => '123e4567-e89b-42d3-a456-426614174000',
+		);
+	}
+	public static function environment_allowed( $environments, $feature = '' ) {
+		return in_array( self::$environment, (array) $environments, true )
+			&& ( 'write' !== $feature || self::$write_enabled );
+	}
 	public static function configured() { return true; }
 	public static function current_environment() { return self::$environment; }
 	public static function origin_enrolled() { return true; }
 	public static function site_urls_match_enrollment() { return true; }
 	public static function write_enabled() { return self::$write_enabled; }
 }
-final class MAD4B_SCP_Post_Update_Continuation {}
+final class MAD4B_SCP_Post_Update_Continuation {
+	public static function status() { return array(
+		'contract' => 'mad4b.post-update-continuation.v1',
+		'active' => false,
+		'state' => 'absent',
+	); }
+}
 final class MAD4B_SCP_Runtime_Maintenance_Lease {
 	public static $preflight = array();
 	public static function preflight( $requester = '' ) { return self::$preflight; }
 }
 final class MAD4B_SCP_Staging_Write_Authority {
 	public static $checkpoint = array();
+	public static $plan = array();
 	public static $presence = array();
 	public static $binding = array();
 	public static $effective = false;
 	public static $current_readiness = array( 'ready'=>false, 'blockers'=>array( 'fixture_not_ready' ) );
 	public static function persistence_checkpoint() { return self::$checkpoint; }
+	public static function reconciliation_plan() { return self::$plan; }
 	public static function authority_presence_status() { return self::$presence; }
 	public static function candidate_binding_status() { return self::$binding; }
 	public static function current_execution_readiness( $ability_name = '', $input = null ) { return self::$current_readiness; }
@@ -257,5 +276,17 @@ MAD4B_SCP_Site_Profile::$environment = 'production';
 $production = classify();
 check( ! is_wp_error( $production ) && empty( $production['required'] ), 'Production must not use Staging continuation policy' );
 check( empty( $production['production_mutation_allowed'] ), 'Production mutation must remain false' );
+
+// Independently require the exact Site Profile enrollment readback. A
+// source/restore classification is not itself an authority to repair a site.
+MAD4B_SCP_Site_Profile::$environment = 'staging';
+MAD4B_SCP_Site_Profile::$authority_ready = false;
+$site_eligible = new ReflectionMethod( 'MAD4B_SCP_Self_Update', 'bootstrap_site_eligible' );
+$site_eligible->setAccessible( true );
+check( false === $site_eligible->invoke( null ),
+    'missing authenticated Site Profile status admitted bootstrap recovery' );
+MAD4B_SCP_Site_Profile::$authority_ready = true;
+check( true === $site_eligible->invoke( null ),
+    'exact enrolled Site Profile was rejected by bootstrap identity test' );
 
 echo "mad4b.self-update-continuation-policy.v1: PASS\n";
