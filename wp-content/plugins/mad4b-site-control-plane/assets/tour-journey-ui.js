@@ -176,7 +176,7 @@
         }else{media.classList.add('jd-place-tile__media--empty');media.textContent='⌖';}
         const copy=document.createElement('span');copy.className='jd-place-tile__copy';
         const eyebrow=document.createElement('span');eyebrow.className='jd-place-tile__eyebrow';eyebrow.textContent=L.linked;
-        const nameSpan=document.createElement('strong');nameSpan.className='jd-place-tile__name';nameSpan.textContent=matched.name||name;
+        const nameSpan=document.createElement('strong');nameSpan.className='jd-place-tile__name';nameSpan.textContent=name||matched.name;
         copy.append(eyebrow,nameSpan);
         const arrow=document.createElement('span');arrow.className='jd-place-tile__arrow';arrow.setAttribute('aria-hidden','true');arrow.textContent='↘';
         jump.append(media,copy,arrow);
