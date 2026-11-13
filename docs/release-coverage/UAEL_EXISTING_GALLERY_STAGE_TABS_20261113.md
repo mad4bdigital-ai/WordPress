@@ -86,3 +86,12 @@ admission and company-target preimage CAS before any publication. Authenticated
 browser QA of Tours.dev's draft 69715 Quick Preview, Extra 60467/60469,
 EN/ES desktop/mobile, inner gallery close/Escape, image lightbox, scroll
 restoration, and Fluent Form 6 selection is **still required** after deploy.
+
+### Astra back-to-top duplication in a framed Gallery
+
+Astra's native `#ast-scroll-top` is present on the parent website and is
+re-emitted in the authorised Extra Preview iframe. Scoped rules suppress the
+iframe copy, plus the outer page copy only while the native Preview dialog is
+open. The normal site's original scroll-to-top button automatically returns
+on Quick Preview close. This does not alter the theme, global CSS, or any
+other floating controls.
