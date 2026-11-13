@@ -133,6 +133,52 @@ def git_bytes(repo: Path, commit: str, relative: str) -> bytes:
     return data
 
 
+def registered_component_files(component: dict) -> list[str]:
+    """Validate one reviewed MU-plugin component, including owned JS/CSS.
+
+    A nested asset is legal only if that *same* immutable component contains
+    a matching root-level MAD4B PHP loader. Arbitrary mu-plugins assets,
+    unrelated folders, and nested executable PHP are never admitted.
+    """
+    fail_if(not isinstance(component, dict) or
+            sorted(component) != ["files", "id"] or
+            not isinstance(component["id"], str) or
+            not re.fullmatch(r"mad4b-[a-z0-9-]{3,90}", component["id"]),
+            "RELEASE_COMPONENT_INVALID")
+    files = component["files"]
+    fail_if(not isinstance(files, list) or not 1 <= len(files) <= 24 or
+            any(not isinstance(x, str) for x in files),
+            "RELEASE_COMPONENT_FILES_INVALID")
+    files = [exact_relative(x) for x in files]
+    fail_if(len(set(files)) != len(files), "RELEASE_COMPONENT_DUPLICATE_PATH")
+    loaders = {
+        PurePosixPath(x).name[:-4]
+        for x in files
+        if len(PurePosixPath(x).parts) == 3 and
+        PurePosixPath(x).parts[:2] == ("wp-content", "mu-plugins") and
+        PurePosixPath(x).name.startswith("mad4b-") and x.endswith(".php")
+    }
+    fail_if(not loaders, "RELEASE_COMPONENT_NO_ROOT_PHP_LOADER")
+    for target in files:
+        parts = PurePosixPath(target).parts
+        fail_if(not permitted_target(target) or
+                parts[:2] != ("wp-content", "mu-plugins") or
+                not parts[2].startswith("mad4b-"),
+                "RELEASE_COMPONENT_SCOPE_INVALID")
+        if len(parts) == 3 and target.endswith(".php"):
+            continue
+        # Direct child assets of a same-component native MU PHP loader.
+        # No .php, .json, .txt, .md or deeper nested payloads admitted.
+        asset_dir = parts[2]
+        owned = any(loader == asset_dir or
+                    re.fullmatch(re.escape(asset_dir) + r"-v[0-9]+", loader)
+                    for loader in loaders)
+        fail_if(len(parts) != 4 or not owned or
+                PurePosixPath(target).suffix not in (".js", ".css"),
+                "RELEASE_COMPONENT_SCOPE_INVALID")
+    return files
+
+
 def registered_release_targets(policy: dict, entry: dict, commit: str) -> set[str]:
     """Resolve per-company deployable modules from a Git-committed catalog.
 
@@ -154,21 +200,12 @@ def registered_release_targets(policy: dict, entry: dict, commit: str) -> set[st
     components = catalog.get("components")
     fail_if(not isinstance(components, list) or not 1 <= len(components) <= 500,
             "RELEASE_CATALOG_COMPONENTS_INVALID")
+    ids: set[str] = set()
     for component in components:
-        fail_if(not isinstance(component, dict) or
-                sorted(component) != ["files", "id"] or
-                not isinstance(component["id"], str) or
-                not re.fullmatch(r"mad4b-[a-z0-9-]{3,90}", component["id"]),
-                "RELEASE_COMPONENT_INVALID")
-        files = component["files"]
-        fail_if(not isinstance(files, list) or not 1 <= len(files) <= 24,
-                "RELEASE_COMPONENT_FILES_INVALID")
+        files = registered_component_files(component)
+        fail_if(component["id"] in ids, "RELEASE_COMPONENT_DUPLICATE_ID")
+        ids.add(component["id"])
         for target in files:
-            fail_if(not isinstance(target, str), "RELEASE_COMPONENT_PATH_INVALID")
-            target = exact_relative(target)
-            fail_if(not permitted_target(target) or
-                    not target.startswith("wp-content/mu-plugins/mad4b-") or
-                    not target.endswith(".php"), "RELEASE_COMPONENT_SCOPE_INVALID")
             git_bytes(Path(policy["source_git_root"]), commit, target)
             static.add(target)
     return static
