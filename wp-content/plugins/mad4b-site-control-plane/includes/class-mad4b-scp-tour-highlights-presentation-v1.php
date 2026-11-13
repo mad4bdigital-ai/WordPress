@@ -17,11 +17,20 @@ final class MAD4B_Tour_Highlights_Presentation_V1 {
         wp_register_style('tour-highlights-v1',false,[],'1.0.0');
         wp_enqueue_style('tour-highlights-v1');
         wp_add_inline_style('tour-highlights-v1',(string)file_get_contents($css));
+        $splitCss=__DIR__.'/../assets/tour-journey-split-v3.css';
+        if(is_readable($splitCss)){
+            wp_add_inline_style('tour-highlights-v1',(string)file_get_contents($splitCss));
+        }
         $js=__DIR__.'/../assets/tour-journey-ui.js';
         if(is_readable($js)){
             wp_register_script('tour-journey-ui',false,[],'1.1.0',true);
             wp_enqueue_script('tour-journey-ui');
             wp_add_inline_script('tour-journey-ui',(string)file_get_contents($js));
+            // Split's taxonomy hierarchy is intentionally a separate renderer.
+            $splitJs=__DIR__.'/../assets/tour-journey-split-v3.js';
+            if(is_readable($splitJs)){
+                wp_add_inline_script('tour-journey-ui',(string)file_get_contents($splitJs));
+            }
         }
     }
 
@@ -160,8 +169,16 @@ final class MAD4B_Tour_Highlights_Presentation_V1 {
             $name=trim((string)$place['label']);
             if(mb_strlen($name,'UTF-8')<4)continue;
             // Verifiable text match: only label a place if it is actually mentioned.
-            if(mb_stripos($content,$name,0,'UTF-8')===false)continue;
-            $links[]='<a class="tour-hl-ui__place" href="'.esc_url($place['url']).'">'
+            $hasExact=mb_stripos($content,$name,0,'UTF-8')!==false;
+            // A term title may carry a geographic qualifier that is not repeated
+            // in editorial text (e.g. 'Gran Esfinge de Giza' vs 'Gran Esfinge').
+            // Match only distinctive, multiword prefixes of eligible linked terms.
+            $alias=preg_replace('/\s+(?:de|del|of|in|at|di|da|von|bei)\s+[\p{L}\s-]+$/iu','',$name);
+            $alias=trim((string)$alias);
+            $distinct=mb_strlen($alias,'UTF-8')>=9 && preg_match('/\S+\s+\S+/u',$alias);
+            $hasAlias=$distinct&&$alias!==$name&&mb_stripos($content,$alias,0,'UTF-8')!==false;
+            if(!$hasExact&&!$hasAlias)continue;
+            $links[]='<a class="tour-hl-ui__place" data-tour-term-id="'.esc_attr((string)$place['id']).'" href="'.esc_url($place['url']).'">'
                 .'<span aria-hidden="true">⌖</span> '.esc_html($name).'</a>';
             if(count($links)>=3)break;
         }
