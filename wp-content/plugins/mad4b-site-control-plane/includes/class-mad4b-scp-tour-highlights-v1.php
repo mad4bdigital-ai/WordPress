@@ -94,9 +94,16 @@ final class MAD4B_Tour_Highlights_V1 {
         return trim(wp_strip_all_tags((string)get_post_meta($post,'tour_highlights_content',true)))!=='';
     }
 
+    private static function is_discovery_container($element):bool {
+        if(!is_object($element) || !method_exists($element,'get_id'))return false;
+        $css=method_exists($element,'get_settings')?(string)$element->get_settings('css_classes'):'';
+        if(str_contains(' '.trim($css).' ',' tour-journey-discovery-editor '))return true;
+        // Compatibility with already published Elementor documents.
+        return $element->get_id()==='d90c3d1';
+    }
+
     public static function decorate_container($element):void {
-        if(!is_object($element)||!method_exists($element,'get_id')
-          || $element->get_id()!=='d90c3d1')return;
+        if(!self::is_discovery_container($element))return;
         $post=self::context_id();
         if($post<=0)return;
         $element->add_render_attribute('_wrapper','class','tour-journey-discovery');
@@ -172,8 +179,7 @@ final class MAD4B_Tour_Highlights_V1 {
     }
 
     public static function section_visible($visible,$element) {
-        if(!$visible || !is_object($element) || !method_exists($element,'get_id')
-          || $element->get_id()!=='d90c3d1') return $visible;
+        if(!$visible || !self::is_discovery_container($element))return $visible;
         // Keep the container selectable in Elementor's editor, matching JetEngine's native behavior.
         if(class_exists(\Elementor\Plugin::class,false) && \Elementor\Plugin::$instance->editor->is_edit_mode())return $visible;
         $post=self::context_id();
