@@ -34,8 +34,11 @@ directory, so an acknowledged deletion is durable.
 Rollback intent records under the existing receipt lock, not just entries
 belonging to the current plan SHA. A newer signed plan for the **same
 company/environment/site UUID** cannot write any file intersecting an open
-older transaction (including `ROLLBACK_UNVERIFIED` states). This prevents a
-fresh plan from overwriting a half-written version after a worker crash.
+older transaction (including `ROLLBACK_UNVERIFIED` states). This fence uses
+the enrolled **site UUID**, not a hardcoded company/environment label:
+identical WordPress sites with different configured labels cannot bypass it.
+This prevents a fresh plan from overwriting a half-written version after a
+worker crash.
 A disjoint file set may continue without blocking the whole company. Exact
 signed recovery receipts close historical intents, and foreign code remains
 protected by JIT SHA/UID/GID/mode comparisons. This is a ledger fence, not a
@@ -101,13 +104,13 @@ on the tenant and fails admission before any write.
 
 ## Test and rollout status
 
-- Focused release tests: **102/102** locally, including a simulated worker kill
+- Focused release tests: **103/103** locally, including a simulated worker kill
 after the first file, a second kill during rollback, foreign mid-release
 and mid-rollback edits, identity mismatch, preflight parser error, backup
 integrity, and one-time nonce behavior.
 - Original 313 targeted VPS tests: **62/62** (includes root-only admission,
 Host state mapping, independent readback, 305/312 signed lifecycle fixtures).
-- Unprivileged hermetic CI suites: Release 102, Original 313 contract 17,
+- Unprivileged hermetic CI suites: Release 103, Original 313 contract 17,
 independent readback 10, full cycle 5. The Root Admission tests remain
 explicitly VPS-root-only, not skipped with a fake success.
 - **Tenant file metadata:** live Wayfatours' native Experience module is

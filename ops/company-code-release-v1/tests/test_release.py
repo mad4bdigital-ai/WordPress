@@ -498,6 +498,27 @@ class CodeReleaseTests(unittest.TestCase):
                                     'OVERLAPPING_UNRESOLVED_RELEASE_TRANSACTION'):
             self.authorized_apply(grant=signed)
 
+    def test_site_uuid_blocks_overlapping_plan_under_different_environment_label(self):
+        self.crash_after_first_written()
+        self.policy['targets']['demo:qa'] = dict(
+            self.policy['targets']['demo:staging'])
+        next_req=json.loads(json.dumps(self.request))
+        next_req['environment']='qa'
+        next_req['files'][0]['expected_before_sha256']=release.digest(
+            self.target.read_bytes())
+        other=release.make_plan(next_req,self.policy)
+        self.assertNotEqual(other['environment'],self.plan['environment'])
+        self.assertEqual(other['site_uuid'],self.plan['site_uuid'])
+        self.plan=other
+        grant=self.signed_grant_with_nonce('apply','same_site_qa_alias_nonce_2026')
+        grant['environment']='qa'
+        grant['signature']=base64.b64encode(
+            self.private.sign(release.grant_message(grant))).decode()
+        with self.assertRaisesRegex(release.Denied,
+                                    'OVERLAPPING_UNRESOLVED_RELEASE_TRANSACTION'):
+            self.authorized_apply(grant=grant)
+        self.assertIn('NEW',self.target.read_text())
+
     def test_closed_previous_plan_does_not_block_follow_up(self):
         original_plan=self.plan
         outcome=self.authorized_apply()

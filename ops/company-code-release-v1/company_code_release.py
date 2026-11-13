@@ -1214,9 +1214,10 @@ def overlapping_unresolved_transactions(plan: dict, receipt_dir: Path) -> list[d
                 continue
             if kind == "rollback" and key in completed_rollback:
                 continue
-            same_site = (item.get("company") == plan["company"] and
-                         item.get("environment") == plan["environment"] and
-                         item.get("site_uuid") == plan["site_uuid"])
+            # The native site UUID is the enrolled runtime identity.
+            # Company/environment labels may be aliases for the same site;
+            # never let an alias override a pending overlapping transaction.
+            same_site = item.get("site_uuid") == plan["site_uuid"]
             shared = sorted(selected.intersection(files)) if same_site else []
             if shared:
                 conflicts.append({"operation": kind, "plan_sha256": sha,
