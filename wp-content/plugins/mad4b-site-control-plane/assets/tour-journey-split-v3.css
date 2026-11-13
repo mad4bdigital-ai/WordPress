@@ -1,13 +1,14 @@
 
-/* Split-only destination hierarchy — additive, no Explorer or Story overrides. */
-.tour-journey-discovery.jd-split-v3.tour-journey--split {
-  --jd-split-ink:var(--tour-hl-ink,#163a46);
+/* One native destination hierarchy shared across Split, Explorer and Story.
+   JetEngine listing cards remain original; only view layout varies. */
+.tour-journey-discovery.jd-modes-v3 {
+  --jd-split-ink:var(--e-global-color-primary,var(--tour-hl-ink,#163a46));
   --jd-split-muted:#567278;
-  --jd-split-border:#d9e5e0;
-  --jd-split-accent:#26776e;
+  --jd-split-border:var(--e-global-color-62e8100,#d9e5e0);
+  --jd-split-accent:var(--e-global-color-secondary,#26776e);
 }
 .jd-split-v3 .jd-split-v3__panel[hidden]{display:none!important;}
-.tour-journey--split.jd-split-v3 .tour-journey-places-tabs {
+.jd-modes-v3 .tour-journey-places-tabs {
   display:none!important;
 }
 .tour-journey--split.jd-split-v3 .tour-journey-places-header{
@@ -17,39 +18,39 @@
 .tour-journey--split.jd-split-v3 .tour-journey-related-editor {
   padding-inline-start:14px!important;border-inline-start:2px solid #c6dcd2!important;
 }
-.tour-journey--split.jd-split-v3 .jd-split-v3__panel{
+.jd-modes-v3 .jd-split-v3__panel{
   display:flex;flex-direction:column;gap:10px;min-width:0;
   padding:14px 15px 12px;margin:0 0 12px!important;
   border:1px solid var(--jd-split-border);
   border-radius:13px;
   background:linear-gradient(143deg,#f4f9f6,#fff 75%);
 }
-.tour-journey--split.jd-split-v3 .jd-split-v3__kicker{
+.jd-modes-v3 .jd-split-v3__kicker{
   display:block;color:#457d73;letter-spacing:.09em;
   font-size:10px;font-weight:800;text-transform:uppercase;line-height:1.35;
 }
-.tour-journey--split.jd-split-v3 .jd-split-v3__heading {
+.jd-modes-v3 .jd-split-v3__heading {
   margin:0!important;font-size:clamp(14px,1.35vw,19px)!important;
   color:var(--jd-split-ink)!important;line-height:1.4;font-weight:750!important;
   letter-spacing:-.015em;
 }
-.tour-journey--split.jd-split-v3 .jd-split-v3__path{
+.jd-modes-v3 .jd-split-v3__path{
   display:flex;align-items:center;flex-wrap:wrap;gap:5px;
   color:#2b555b;font-size:11px;font-weight:650;
 }
-.tour-journey--split.jd-split-v3 .jd-split-v3__crumb{
+.jd-modes-v3 .jd-split-v3__crumb{
   display:inline-flex;align-items:center;min-width:0;
   padding:5px 8px;border:1px solid #d4e5dc;border-radius:6px;
   background:#eaf4ed;color:#2d5d56;
 }
-.tour-journey--split.jd-split-v3 .jd-split-v3__path span[aria-hidden] {
+.jd-modes-v3 .jd-split-v3__path span[aria-hidden] {
   color:#86aaa0;font-size:17px;font-weight:400;
 }
-.tour-journey--split.jd-split-v3 .jd-split-v3__levels {
+.jd-modes-v3 .jd-split-v3__levels {
   display:flex;flex-wrap:wrap;gap:6px;
   padding:4px 0 0;min-width:0;
 }
-.tour-journey--split.jd-split-v3 .jd-split-v3__level {
+.jd-modes-v3 .jd-split-v3__level {
   display:flex!important;flex:0 1 auto;align-items:center;gap:8px;
   min-height:36px;max-width:100%;
   color:#2c555d!important;background:#fff!important;
@@ -58,35 +59,35 @@
   font-size:11px!important;line-height:1.3!important;font-weight:700!important;
   cursor:pointer;transition:background .15s,border-color .15s;
 }
-.tour-journey--split.jd-split-v3 .jd-split-v3__level strong{
+.jd-modes-v3 .jd-split-v3__level strong{
   display:grid;place-items:center;min-width:19px;height:19px;
   border-radius:10px;padding:0 4px;background:#edf3ef;
   color:#426e66;font-size:10px;
 }
-.tour-journey--split.jd-split-v3 .jd-split-v3__level.is-current {
+.jd-modes-v3 .jd-split-v3__level.is-current {
   color:#fff!important;border-color:#173d4a!important;background:#173d4a!important;
 }
-.tour-journey--split.jd-split-v3 .jd-split-v3__level.is-current strong{
+.jd-modes-v3 .jd-split-v3__level.is-current strong{
   background:rgba(255,255,255,.18);color:#fff;
 }
-.tour-journey--split.jd-split-v3 .jd-split-v3__level:hover:not(.is-current){
+.jd-modes-v3 .jd-split-v3__level:hover:not(.is-current){
   background:#eef6f0!important;border-color:#93bdb0!important;
 }
-.tour-journey--split.jd-split-v3 .jd-split-v3__level:focus-visible,
+.jd-modes-v3 .jd-split-v3__level:focus-visible,
 .tour-journey--split.jd-split-v3 .jd-split-v3__inline button:focus-visible{
   outline:2px solid #26776e!important;outline-offset:3px;
 }
-.tour-journey--split.jd-split-v3 .jd-split-v3__summary {
+.jd-modes-v3 .jd-split-v3__summary {
   color:#48666c;font-size:11px;line-height:1.55;margin:1px 0 0!important;
 }
-.tour-journey--split.jd-split-v3 .jd-split-v3__note {
+.jd-modes-v3 .jd-split-v3__note {
   color:#71878a;font-size:10px;line-height:1.45;margin:0!important;
   border-top:1px solid #e1ebe6;padding-top:9px;
 }
-.tour-journey--split.jd-split-v3 .jd-split-v3__mentioned > .elementor > .e-con{
+.jd-modes-v3 .jd-split-v3__mentioned > .elementor > .e-con{
   box-shadow:0 0 0 2px rgba(38,119,110,.75),0 10px 23px rgba(16,60,67,.12)!important;
 }
-.tour-journey--split.jd-split-v3 .jd-split-v3__associated > .elementor > .e-con{
+.jd-modes-v3 .jd-split-v3__associated > .elementor > .e-con{
   box-shadow:0 5px 17px rgba(13,49,60,.095)!important;
 }
 /* One native JetEngine card per term. Display changes only visibility. */
@@ -106,7 +107,7 @@
     position:static!important;padding-inline-start:0!important;
     border-inline-start:none!important;width:100%!important;
   }
-  .tour-journey--split.jd-split-v3 .jd-split-v3__panel {
+  .jd-modes-v3 .jd-split-v3__panel {
     margin-top:8px!important;padding:12px!important;
   }
   .tour-journey--split.jd-split-v3 .jd-split-v3__inline {
@@ -126,10 +127,10 @@
 }
 @media(max-width:767px){
   .tour-journey--split.jd-split-v3 .tour-journey-places-header{flex-wrap:wrap;}
-  .tour-journey--split.jd-split-v3 .jd-split-v3__levels{
+  .jd-modes-v3 .jd-split-v3__levels{
     display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%;
   }
-  .tour-journey--split.jd-split-v3 .jd-split-v3__level{justify-content:space-between;min-width:0;}
+  .jd-modes-v3 .jd-split-v3__level{justify-content:space-between;min-width:0;}
   .tour-journey--split.jd-split-v3 .tour-place-group .jet-listing-grid__items {
     display:flex!important;flex-wrap:nowrap!important;overflow-x:auto!important;gap:10px!important;
   }
@@ -138,7 +139,7 @@
   }
 }
 @media(prefers-reduced-motion:reduce){
-  .tour-journey--split.jd-split-v3 .jd-split-v3__level{transition:none;}
+  .jd-modes-v3 .jd-split-v3__level{transition:none;}
 }
 
 /* Split deliberately uses one group panel instead of repeating the mini
@@ -215,20 +216,20 @@
   font-weight:750!important;line-height:1.25!important;
   white-space:normal!important;text-align:center!important;cursor:pointer;
 }
-.tour-journey-discovery.tour-journey--split.jd-split-v3 .jd-split-v3__path{
+.tour-journey-discovery.jd-modes-v3 .jd-split-v3__path{
   min-width:0;overflow-wrap:normal;
 }
-.tour-journey-discovery.tour-journey--split.jd-split-v3 .jd-split-v3__crumb--current{
+.tour-journey-discovery.jd-modes-v3 .jd-split-v3__crumb--current{
   background:#d7ede3;border-color:#9acabc;
   font-weight:800;color:#245b53;
 }
-.tour-journey-discovery.tour-journey--split.jd-split-v3 .jd-split-v3__panel{
+.tour-journey-discovery.jd-modes-v3 .jd-split-v3__panel{
   gap:10px!important;
 }
-.tour-journey-discovery.tour-journey--split.jd-split-v3 .jd-split-v3__level{
+.tour-journey-discovery.jd-modes-v3 .jd-split-v3__level{
   min-width:0;max-width:100%;overflow-wrap:normal;
 }
-.tour-journey-discovery.tour-journey--split.jd-split-v3 .jd-split-v3__level span{
+.tour-journey-discovery.jd-modes-v3 .jd-split-v3__level span{
   min-width:0;
 }
 @media(max-width:767px){
@@ -241,7 +242,147 @@
   .tour-journey-discovery.tour-journey--split.jd-split-v3 .jd-split-v3__inline button{
     flex:1 1 auto;white-space:normal!important;
   }
-  .tour-journey-discovery.tour-journey--split.jd-split-v3 .jd-split-v3__level{
+  .tour-journey-discovery.jd-modes-v3 .jd-split-v3__level{
     font-size:11px!important;line-height:1.35!important;padding:7px 8px!important;
+  }
+}
+
+
+/* The native JetEngine destination photo is the card.
+   Some taxonomy templates wrap it inside an extra Elementor flex Container:
+   keep the original inner picture/shape and remove the redundant backing
+   surface/shadow from the intermediary. Do NOT flatten the actual media. */
+.tour-journey-discovery.jd-v2 .tour-place-group .jd-native-place > .elementor > .e-con:has(> .e-con){
+  background:transparent!important;
+  background-image:none!important;
+  border:0!important;
+  box-shadow:none!important;
+  overflow:visible!important;
+  padding:0!important;
+}
+.tour-journey-discovery.jd-v2 .tour-place-group .jd-native-place > .elementor > .e-con:has(> .e-con) > .e-con{
+  min-width:0;
+  max-width:100%;
+}
+/* Mini linked-place chips in Explorer/Story should not form another white
+   "card behind a card". Keep the original image, text and two actions. */
+.tour-journey-discovery.jd-modes-v3:is(.tour-journey--explorer,.tour-journey--story) .jd-place-tile{
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+  padding:0!important;
+  min-height:68px;
+}
+.tour-journey-discovery.jd-modes-v3:is(.tour-journey--explorer,.tour-journey--story) .jd-place-tile:hover,
+.tour-journey-discovery.jd-modes-v3:is(.tour-journey--explorer,.tour-journey--story) .jd-place-tile:focus-within{
+  background:transparent!important;
+  box-shadow:none!important;
+  transform:none!important;
+}
+.tour-journey-discovery.jd-modes-v3:is(.tour-journey--explorer,.tour-journey--story) .jd-place-tile__media {
+  border-radius:10px;
+}
+
+/* Explorer: native JetEngine cards filtered by the same classified model. */
+.tour-journey-discovery.jd-modes-v3:not(.tour-journey--split) .jd-split-v3__panel{
+  display:flex;flex-direction:column;gap:11px;min-width:0;
+  border:1px solid var(--jd-split-border);
+  background:var(--e-global-color-3a5c55e,#fbfbfb);
+  padding:15px 16px;margin:0 0 14px!important;border-radius:12px;
+}
+.tour-journey-discovery.jd-modes-v3:not(.tour-journey--split) .tour-journey-places-header{
+  padding-top:12px!important;
+  border-top:1px solid var(--jd-split-border);
+}
+.tour-journey-discovery.jd-modes-v3 .jd-split-v3__panel[hidden]{display:none!important;}
+.tour-journey-discovery.jd-modes-v3.tour-journey--explorer .jd-split-v3__heading{
+  font-size:clamp(16px,1.5vw,22px)!important;
+}
+.tour-journey-discovery.jd-modes-v3.tour-journey--explorer .jd-split-v3__levels{
+  display:flex;flex-wrap:wrap;gap:8px;border-top:1px solid var(--jd-split-border);
+  padding-top:12px;
+}
+.tour-journey-discovery.jd-modes-v3.tour-journey--explorer .jd-split-v3__summary{
+  font-size:12px;
+}
+.tour-journey-discovery.jd-modes-v3.tour-journey--explorer .tour-place-group .jet-listing-grid__items{
+  display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:13px!important;overflow:visible!important;
+}
+.tour-journey-discovery.jd-modes-v3.tour-journey--explorer[data-jd-active-destination-level="country"] .tour-place-group .jet-listing-grid__items,
+.tour-journey-discovery.jd-modes-v3.tour-journey--explorer[data-jd-active-destination-level="state_governorate"] .tour-place-group .jet-listing-grid__items{
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+}
+
+/* Story: original Highlights FIRST, numbered anchor pointers for each step,
+   then one shared destination context navigator, not replicated listings. */
+.tour-journey-discovery.jd-modes-v3.tour-journey--story .jd-split-v3__panel{
+  border-inline-start:3px solid var(--jd-split-accent);
+  background:var(--e-global-color-3a5c55e,#fbfbfb);
+}
+.tour-journey-discovery.jd-modes-v3.tour-journey--story .jd-split-v3__heading{
+  font-size:clamp(15px,1.4vw,20px)!important;
+}
+.tour-journey-discovery.jd-modes-v3 .jd-modes-v3__story-pointer{
+  display:flex;flex-direction:column;align-items:flex-start;gap:7px;
+  width:100%;min-width:0;margin-top:11px;padding:10px 12px;
+  border-top:1px solid var(--jd-split-border);
+  color:var(--e-global-color-secondary,#204c50);
+  font-size:11px;line-height:1.45;
+}
+.tour-journey-discovery.jd-modes-v3 .jd-modes-v3__story-pointer[hidden]{display:none!important;}
+.tour-journey-discovery.jd-modes-v3 .jd-modes-v3__story-flag{
+  font-weight:750;letter-spacing:.04em;
+}
+.tour-journey-discovery.jd-modes-v3 .jd-modes-v3__story-meta{
+  color:var(--e-global-color-text,#526b70);overflow-wrap:anywhere;
+}
+.tour-journey-discovery.jd-modes-v3 .jd-modes-v3__story-action{
+  display:inline-flex;align-items:center;min-height:34px;max-width:100%;
+  border:1px solid var(--jd-split-border)!important;
+  border-radius:8px!important;background:var(--e-global-color-3a5c55e,#fbfbfb)!important;
+  color:var(--jd-split-ink)!important;padding:7px 11px!important;
+  font:700 11px/1.35 inherit!important;cursor:pointer;text-align:start;
+}
+.tour-journey-discovery.jd-modes-v3 .jd-modes-v3__story-action:is(:hover,:focus-visible){
+  border-color:var(--jd-split-accent)!important;
+  outline-offset:2px;
+}
+.tour-journey-discovery.jd-modes-v3 .jd-modes-v3__story-pointer.is-current{
+  border-top-color:var(--jd-split-accent);
+}
+.jd-modes-v3 .jd-modes-v3__crumb-button{
+  cursor:pointer;font-family:inherit;
+}
+.jd-modes-v3 .jd-modes-v3__crumb-button:hover{
+  border-color:var(--jd-split-accent);
+}
+@media(max-width:1024px){
+  .tour-journey-discovery.jd-modes-v3.tour-journey--explorer .tour-place-group .jet-listing-grid__items{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+}
+@media(max-width:767px){
+  .tour-journey-discovery.jd-modes-v3:not(.tour-journey--split) .jd-split-v3__panel{
+    padding:12px 11px!important;
+  }
+  .tour-journey-discovery.jd-modes-v3:not(.tour-journey--split) .jd-split-v3__levels{
+    display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:7px;width:100%;
+  }
+  .tour-journey-discovery.jd-modes-v3.tour-journey--explorer .tour-place-group .jet-listing-grid__items{
+    display:flex!important;flex-wrap:nowrap!important;overflow-x:auto!important;
+    scroll-snap-type:x mandatory;gap:10px!important;
+  }
+  .tour-journey-discovery.jd-modes-v3.tour-journey--explorer .tour-place-group .jet-listing-grid__item{
+    flex:0 0 78%!important;scroll-snap-align:start;
+  }
+  .tour-journey-discovery.jd-modes-v3 .jd-modes-v3__story-pointer{
+    padding:10px 5px;gap:6px;
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  .tour-journey-discovery.jd-modes-v3 .jd-modes-v3__story-action{
+    transition:none!important;
   }
 }
