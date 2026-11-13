@@ -69,6 +69,46 @@ class OriginalLifecycleBridgeTests(unittest.TestCase):
         self.assertNotIn("ORIGINAL_313_COMPANY_CODE_RELEASE_HANDLER_NOT_REGISTERED",
                          x["blockers"])
 
+    def test_dynamic_route_ready_does_not_imply_a_signed_job_or_receipt(self):
+        x=m.reconcile(
+            self.enroll,self.verify,self.dispatch,{"read","plugin.install"},
+            company="wayfatours",environment="production",
+            site_uuid=self.enroll["site_uuid"],origin="https://wayfatours.com",
+            dynamic={
+                "dynamic_registry_enrolled":True,
+                "dynamic_scope_plan_matched":True,
+                "dynamic_306_digest_registered":True,
+                "dynamic_313_independent_verifier_registered":True,
+                "dynamic_313_finalizer_connected":True,
+            })
+        self.assertFalse(x["original_313_code_release_handler_registered"])
+        self.assertFalse(x["company_code_release_dispatch_ability_registered"])
+        self.assertTrue(x["dynamic_release_route_registered"])
+        self.assertTrue(x["release_route_registered"])
+        self.assertEqual(x["state"],"HOLD_EXACT_SIGNED_JOB_AND_RELEASE_RECEIPT")
+        self.assertFalse(x["code_release_execution_allowed"])
+        self.assertFalse(x["original_signed_job_grant_verified"])
+        self.assertFalse(x["original_313_release_receipt_verified"])
+        self.assertEqual(x["blockers"],[
+            "EXACT_ORIGINAL_306_CLAIM_AND_312_JOB_GRANT_NOT_VERIFIED",
+            "ORIGINAL_313_INDEPENDENT_RELEASE_RECEIPT_NOT_VERIFIED"])
+
+    def test_dynamic_route_without_independent_verifier_stays_on_hold(self):
+        x=m.reconcile(
+            self.enroll,self.verify,self.dispatch,{"read"},
+            company="wayfatours",environment="production",
+            site_uuid=self.enroll["site_uuid"],origin="https://wayfatours.com",
+            dynamic={
+                "dynamic_registry_enrolled":True,
+                "dynamic_scope_plan_matched":True,
+                "dynamic_306_digest_registered":True,
+                "dynamic_313_independent_verifier_registered":False,
+                "dynamic_313_finalizer_connected":True,
+            })
+        self.assertFalse(x["release_route_registered"])
+        self.assertEqual(x["state"],"HOLD_DYNAMIC_ORIGINAL_313_VERIFIER")
+        self.assertIn("DYNAMIC_313_INDEPENDENT_PROOF_VERIFIER_NOT_REGISTERED",x["blockers"])
+
     def test_central313_observed_without_registered_306_plan_is_not_dispatch(self):
         with tempfile.TemporaryDirectory(prefix='mad4b-central313-readonly-') as temp:
             with patch.object(m,'DYNAMIC_ROOT',pathlib.Path(temp)), \
