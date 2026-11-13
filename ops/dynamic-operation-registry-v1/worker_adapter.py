@@ -46,11 +46,81 @@ def indexed_plans(index: registry.Registry, plan_store: Path) -> dict[str, dict]
         digest=path.stem
         registry.require(HEX.fullmatch(digest) is not None,
                          "DYNAMIC_PLAN_FILENAME_INVALID")
-        for operation, manifest in index.manifests.items():
-            # The contract validator below filters mismatched plans.
-            raw=registry.checked_json(path,store)
-            if raw.get("contract") != manifest.get("plan_contract"):
-                continue
+        # Match the immutable first-party manifests ONCE for this plan.
+        # Do not derive the operation from unsigned Job metadata.
+        raw=registry.checked_json(path,store)
+        matching={
+            op:manifest for op,manifest in index.manifests.items()
+            if raw.get("contract")==manifest.get("plan_contract")
+        }
+        protected_ops={
+            op:manifest for op,manifest in matching.items()
+            if manifest.get("source_family") is not None
+        }
+        if protected_ops:
+            # Enrolling any source-family provider makes this shared plan
+            # contract fail closed. In particular, an unsigned pending plan
+            # cannot fallback to a legacy provider sharing the same contract.
+            registry.require(all(
+                isinstance(m.get("source_family"),str) and
+                m.get("source_family") and
+                isinstance(m.get("hooks"),dict) and
+                isinstance(m["hooks"].get("operation_association"),dict)
+                for m in protected_ops.values()),
+                "ORIGINAL306_SOURCE_ASSOCIATION_HOOK_REQUIRED")
+            # A single verifier implementation, pinned in *each* enrolled
+            # source manifest, covers every operation sharing this contract.
+            hooks={(
+                m["hooks"]["operation_association"].get("path"),
+                m["hooks"]["operation_association"].get("sha256"),
+                m["hooks"]["operation_association"].get("entrypoint")
+            ) for m in protected_ops.values()}
+            registry.require(len(hooks)==1,
+                "ORIGINAL306_ASSOCIATION_HOOK_CONFLICT")
+            trust=getattr(index,"operation_association_authority",None)
+            registry.require(isinstance(trust,dict) and
+                             isinstance(trust.get("store"),Path) and
+                             isinstance(trust.get("issuer_public_key_b64"),str),
+                             "ORIGINAL306_SIGNED_ASSOCIATION_TRUST_NOT_ENROLLED")
+            source_operation=next(iter(sorted(protected_ops)))
+            callback=registry.load_provider_hook(
+                index,source_operation,"operation_association")
+            try:
+                proof=callback(raw,index,trust["store"],
+                               trust["issuer_public_key_b64"])
+            except ValueError as exc:
+                # Missing or expired historical association must make THIS
+                # plan non-dispatchable, not disable unrelated valid plans.
+                # All other errors (tampering, scope drift, untrusted store,
+                # hook source change) still abort the full registry index.
+                if str(exc) in (
+                    "ASSOCIATION_FILE_NOT_ENROLLED", "ASSOCIATION_EXPIRED"
+                ):
+                    continue
+                raise
+            operation=proof.get("operation_id") if isinstance(proof,dict) else None
+            registry.require(
+                isinstance(proof,dict) and
+                proof.get("state")=="SIGNED_PLAN_ASSOCIATION_VERIFIED_ONLY" and
+                proof.get("plan_sha256")==digest and
+                proof.get("site_uuid")==raw.get("site_uuid") and
+                proof.get("issuer")=="mad4b-first-party-plan-association" and
+                proof.get("authority_issued") is False and
+                proof.get("job_claimed") is False and
+                proof.get("original313_signed_receipt_issued") is False and
+                # A signed selection may target an enrolled LEGACY provider
+                # sharing this plan contract. This is never an unsigned
+                # fallback: the same independently signed association must
+                # select the exact manifest and operation. Otherwise source
+                # enrollment would strand existing plans permanently.
+                operation in matching and
+                proof.get("manifest_sha256")==registry.sha(
+                    registry.canonical(matching[operation])),
+                "ORIGINAL306_SIGNED_ASSOCIATION_NOT_EXCLUSIVE")
+            selected=[(operation,matching[operation])]
+        else:
+            selected=sorted(matching.items())
+        for operation,manifest in selected:
             plan=admission.checked_plan(store,digest,manifest)
             sha=index.command_sha256(operation,plan["plan_sha256"])
             registry.require(sha not in rows,
@@ -62,6 +132,51 @@ def indexed_plans(index: registry.Registry, plan_store: Path) -> dict[str, dict]
 def digest_table(index: registry.Registry, plan_store: Path) -> dict[str,str]:
     return {digest:row["operation"] for digest,row in
             indexed_plans(index,plan_store).items()}
+
+
+def provider_preclaim(index: registry.Registry, plan_store: Path,
+                      job_id: str, command_sha256: str) -> bool:
+    """Manifest-driven Original 306 admission for future operations.
+
+    This is a pre-Claim read; a first-party original 312 cannot yet be
+    evaluated as a claimed Job. The pinned provider-specific admission must
+    require the exact queued 305 Job and independently enrolled Original 313,
+    plus the signed provider grant. No command can make this run merely by
+    adding a field to a public WordPress request.
+    """
+    if (not isinstance(job_id,str) or
+        re.fullmatch(r"[a-f0-9]{32}",job_id) is None or
+        not isinstance(command_sha256,str) or
+        HEX.fullmatch(command_sha256) is None):
+        return False
+    try:
+        entry=indexed_plans(index,plan_store).get(command_sha256)
+        if not isinstance(entry,dict):
+            return False
+        operation=entry["operation"]
+        manifest=index.resolve(operation)
+        # The Registry owns source verification/import for ALL provider
+        # hooks, including legacy Preclaim and new optional capabilities.
+        # No second dynamic-import policy is maintained in the Worker.
+        preclaim=registry.load_provider_hook(index,operation,"preclaim",
+                                             legacy_entrypoint="verify_claimable")
+        state=preclaim(
+            index,entry["plan"],job_id,command_sha256)
+        return (isinstance(state,dict) and
+            state.get("contract")=="mad4b.original306.dynamic-provider-preclaim.v1"
+            and state.get("state")==
+              "REGISTERED_PROVIDER_ORIGINAL_305_EXACT_SIGNED_PRECLAIM"
+            and state.get("operation_id")==operation
+            and state.get("job_id")==job_id
+            and state.get("command_sha256")==command_sha256
+            and state.get("original_313_finalizer_enrolled") is True
+            and state.get("provider_release_grant_verified") is True
+            and state.get("new_grant_issued") is False
+            and state.get("new_job_issued") is False
+            and state.get("original_313_certified") is False)
+    except (Exception,ValueError):
+        # Never produce a claim as a fallback to unavailable broker/313.
+        return False
 
 
 def select(index: registry.Registry, store: Path,

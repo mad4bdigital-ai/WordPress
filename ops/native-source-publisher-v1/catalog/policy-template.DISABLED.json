@@ -1,0 +1,21 @@
+{
+  "contract": "mad4b.native-source-publisher-policy.v2",
+  "enabled": false,
+  "operation": "source.code.release",
+  "source_git_root": "/opt/hostinger-migrations/hosting-3/etg-commerce-staging/source-git/wordpress",
+  "runtime_registry": "/opt/mad4b-company-transport/native-operator-v1/target-runtime-bindings.v1.json",
+  "receipt_dir": "/var/lib/mad4b/native-source-publisher/receipts",
+  "broker_public_key_b64": "NOT_ENROLLED",
+  "master_approval_public_key_b64": "NOT_ENROLLED",
+  "targets": {
+    "tours-central:staging": {
+      "site_uuid": "e5e64bca-ed62-48d2-b2b3-dff693cd702a",
+      "origin": "https://tours.dev.mad4b.com",
+      "root": "/opt/hostinger-migrations/hosting-3/etg-commerce-staging/site-copy",
+      "container": "php-wkgtkzta35wkkgouwt6ruljc",
+      "allowed_targets": [
+        "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.4.3.js"
+      ]
+    }
+  }
+}
