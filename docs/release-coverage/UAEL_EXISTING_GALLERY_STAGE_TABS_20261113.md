@@ -48,3 +48,41 @@ first-party Git source reconciliation and an exact company-specific release.
 The legacy Worktree is dirty and must not be overwritten automatically.
 Tours.dev staging also needs an enrolled company/environment target before any
 source-first rollout. No live policy file or production code was modified.
+
+## QA Tour 69715 / Extra 60469 native gallery composition
+
+Tour `69715` is a **draft eight-day Cruise**. Its two published optional
+Extras `60467` and `60469` are stage-mode activities; their parent Cruise
+must retain actual day labels. Extra `60469` has a four-stop itinerary, and
+its `Aswan` section carries one legacy number `[3]`: the **existing** UAEL
+Gallery must render `Stop 3 · Aswan`, not `Day 3 · Aswan`. This exact case
+is now covered by the source-only PHP label tests.
+
+In the approved same-origin Extra Quick Preview iframe, the original Elementor
+UAEL Popup remains the **only gallery**. The original child-frame script
+observes that popup opening and closing and informs the existing parent dialog
+through a source-checked, origin-checked postMessage. Parent removes its
+redundant Quick Preview toolbar while the Gallery is active; scoped CSS gives
+the native Popup's `.dialog-message` one vertical scrollport, without
+modifying UAEL/Fancybox. Closing restores the preview chrome and iframe.
+
+The Quick Preview heading previously selected the first JetEngine card field
+(`Featured`), not the actual Tour title. The existing shortcode now exposes
+a server-escaped, WPML-translated child Tour title as a data attribute, which
+the existing parent JS uses directly. No new widget or gallery is created.
+
+### Release scope: keep companies independent
+
+- `mad4b-uael-tour-gallery-tabs`: two common gallery PHP files.
+- `mad4b-extra-quick-preview-native-gallery-interop`: four **existing**
+  Quick Preview files currently deployed on Tours.dev but **not** on Wayfatours.
+  Do not install Quick Preview on Wayfatours as an implicit gallery fix.
+
+Source-only checks: 15 PHP tab-label tests (including Extra 60469), 14
+Node VM state/title/security assertions, 9 Code Release CAS tests, isolated PHP
+lint, Node syntax checks and component non-overlap contract. No site/runtime
+files were changed by these edits. Confirm exact approved Original 305/306/312/313
+admission and company-target preimage CAS before any publication. Authenticated
+browser QA of Tours.dev's draft 69715 Quick Preview, Extra 60467/60469,
+EN/ES desktop/mobile, inner gallery close/Escape, image lightbox, scroll
+restoration, and Fluent Form 6 selection is **still required** after deploy.
