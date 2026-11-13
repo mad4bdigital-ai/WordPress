@@ -3740,6 +3740,29 @@
   "change_impact_notes": "For each newly introduced registry item, registered MAD4B Ability, PHP service or Admin asset, add a reviewed_capabilities entry with exact id, nonempty existing control_ids, a regression test changed in this PR, owner_role, review_rationale, and status 'reviewed_for_ci_only'. CI fails on uncovered introductions; no entry grants Production. Existing runtime/config source additions and modifications require reviewed_changes entries keyed by exact Git blob, impacted control IDs and test changed in the same PR. Every new capability must explicitly decide whether to expand the checklist or reuse existing controls with a rationale. Static REST/AJAX/Cron surface discoveries remain candidates, never runtime certification.",
   "reviewed_changes": [
     {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-catalog-diagnostics.php",
+      "source_blob_sha": "033c5e5f793bddbd6bf9807b62688374c3bfb982",
+      "review_rationale": "CI-only required MCP tool admission hardening. Missing or malformed required WordPress Ability/DTO now rejects the complete MCP catalog with a bounded exact blocker; reviewed optional direct projections can still be isolated. Both official packaged MCP Adapter and authenticated Local OAuth acceptance test the failure behavior. No WP permission, auth scope, owner consent, Host signature, Production deployment or mutations are created.",
+      "owner_role": "Repository source reviewer — CI-only adaptive catalog policy; no site rollout authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-official-required-preflight-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-chatgpt-http-smoke.php"
+      ],
+      "coverage_reuse_rationale": "Existing MCP, provider, execution, security and platform controls already require strict required-tool schema and unique wire identities; source change enforces the previously declared boundary more strictly.",
+      "execution_note": "Real packaged official Adapter PHP fixture and Local OAuth integration must run on exact HEAD; historical Source and Original Host proof remain separate gates."
+    },
+    {
       "regression_tests": [
         "tests/native_runtime_diagnostics_contract.py"
       ],

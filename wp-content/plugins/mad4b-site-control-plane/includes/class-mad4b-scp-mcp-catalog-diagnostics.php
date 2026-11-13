@@ -94,6 +94,10 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 		// an isolated optional DTO error. Keep independent optional schema and
 		// size failures quarantined without rejecting required tools.
 		$identity_collision = false;
+		// A required Ability is a protocol contract, not a best-effort
+		// projection. Only explicitly reviewed optional tools may be
+		// quarantined while keeping the required catalog live.
+		$required_failed = false;
 		// Validate required tools before optional projections. Direct tools must fit
 		// the same bounded tools/list envelope exercised by HTTP acceptance; large
 		// optional Abilities remain reachable through the stable dispatcher path.
@@ -105,8 +109,9 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 				$ability = wp_get_ability( $name );
 				if ( ! $ability ) {
 					$out['failures'][] = array( 'failing_ability' => $name, 'stage' => $stage, 'error_class' => 'Contract', 'error_code' => 'ability_missing', 'source_schema_fingerprint' => '', 'schema_fingerprint' => '' );
-					// A missing Ability is quarantined; never register an unverified tool.
-					// Fault isolation does not grant execution authority.
+					if ( ! in_array( $name, $optional, true ) ) $required_failed = true;
+					// The failed Ability is never advertised; a required failure
+					// also blocks the entire catalog after all evidence is collected.
 					continue;
 				}
 				$stage = 'source_schema_read';
@@ -150,6 +155,7 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 				}
 			} catch ( Throwable $error ) { $failure = array( 'stage' => $stage, 'error_class' => get_class( $error ), 'error_code' => 'mcp_preflight_exception', 'schema_fingerprint' => '' ); }
 			if ( $failure ) {
+				if ( ! in_array( $name, $optional, true ) ) $required_failed = true;
 				if ( 'mcp_identity_collision' === ( isset( $failure['error_code'] ) ? $failure['error_code'] : '' ) ) {
 					$identity_collision = true;
 				}
@@ -169,6 +175,9 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 			// Do not expose a partial executable catalog under an ambiguous
 			// MCP tool identity, even when some required tools built successfully.
 			$out['blocker'] = 'mcp_catalog_identity_collision';
+			$out['tools'] = array();
+		} elseif ( $required_failed ) {
+			$out['blocker'] = 'mcp_required_tool_preflight_failed';
 			$out['tools'] = array();
 		}
 		$out['degraded'] = ! empty( $out['failures'] ) && '' === $out['blocker'];

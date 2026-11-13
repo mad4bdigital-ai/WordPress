@@ -60,7 +60,8 @@ jobs:
           # Production Readiness/Release Verdict, not synthesized here.
           python3 -m unittest discover -s tests -p 'test_ci_portable_native_source_partition.py' -q
           python3 ops/native-source-publisher-v1/ci_portable_native_tests.py
-          python3 -m unittest discover -s tests -p 'test_additive_mad4b_plugin_sources.py' -v
+          # The 238-file historical contract is independently gated: its
+          # unreachable commits must not suppress portable source coverage.
           python3 -m unittest discover -s tests -p 'test_control_plane*contract.py' -v
       - name: Native Elementor and Developer/Operator smoke
         run: |
@@ -79,3 +80,26 @@ jobs:
           node --check wp-content/plugins/mad4b-site-control-plane/assets/tour-journey-ui.js
           node --check wp-content/plugins/mad4b-site-control-plane/assets/tour-journey-split-v3.js
           php -l scripts/migrations/tour-journey-wpml-fr-de-20261113.php
+
+  historical-source-contract:
+    name: Historical source ancestry and additive source contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify exact immutable 238-file historical source
+        run: |
+          python3 ops/native-source-publisher-v1/ci_historical_additive_source_test.py --report /tmp/mad4b-historical-source-contract.json
+      - name: Preserve fail-closed historical source evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mad4b-historical-source-${{ github.event.pull_request.head.sha || github.sha }}
+          path: /tmp/mad4b-historical-source-contract.json
+          if-no-files-found: error

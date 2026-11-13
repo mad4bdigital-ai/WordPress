@@ -84,6 +84,15 @@ $result = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( array( 'fixture/missing'
 check( ! $result['ready'] && 'ability_missing' === $result['failures'][0]['error_code'] && 'ability_lookup' === $result['failures'][0]['stage'], 'Missing Ability lost its diagnostic stage' );
 $result = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( array( $required[0], 'fixture/missing' ), array( 'fixture/missing' ) );
 check( $result['ready'] && $result['degraded'], 'Missing optional Ability blocked required discovery' );
+// A required failure with other valid tools must fail the WHOLE catalog.
+// Distinguish it from the reviewed optional-failure isolation contract.
+$result = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight(
+    array( $required[0], 'fixture/missing' ), array() );
+check( ! $result['ready'] && ! $result['degraded']
+    && array() === $result['tools']
+    && 'mcp_required_tool_preflight_failed' === $result['blocker']
+    && 'fixture/missing' === $result['failures'][0]['failing_ability'],
+    'Required tool absence left a partially executable MCP catalog' );
 $GLOBALS['abilities']['fixture/schema-exception'] = new class( 'fixture/schema-exception', array() ) extends WP_Ability {
 	function get_input_schema() { throw new RuntimeException( 'PRIVATE_SCHEMA_DETAILS' ); }
 };
@@ -92,6 +101,12 @@ check( ! $result['ready'] && 'source_schema_read' === $result['failures'][0]['st
 wp_register_ability( 'fixture/invalid-utf8', array( 'description' => "\xB1\x31" ) );
 $result = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( array( 'fixture/invalid-utf8' ), array() );
 check( ! $result['ready'] && 'wire_serialization' === $result['failures'][0]['stage'], 'Invalid UTF-8 was admitted to wire catalog' );
+$result = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight(
+    array( $required[0], 'fixture/invalid-utf8' ), array() );
+check( ! $result['ready'] && ! $result['degraded']
+    && array() === $result['tools']
+    && 'mcp_required_tool_preflight_failed' === $result['blocker'],
+    'Malformed required DTO did not fail closed alongside a valid tool' );
 $GLOBALS['filters']['mcp_adapter_tool_name'] = static function() { return 'invalid tool name'; };
 $result = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( array( $required[0] ), array() );
 check( ! $result['ready'] && 'official_wire_build' === $result['failures'][0]['stage'] && 'mcp_tool_name_filter_invalid' === $result['failures'][0]['error_code'], 'Invalid third-party name filter lost precise builder evidence' );
