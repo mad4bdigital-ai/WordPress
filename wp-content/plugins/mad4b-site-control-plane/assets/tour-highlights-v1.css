@@ -352,3 +352,36 @@
 .tour-journey--places-only > .elementor-element-975121c {display:none!important}
 .tour-journey--places-only > .elementor-element-6190bab {margin-top:0!important}
 .tour-journey--places-only .tour-journey-places-header {padding-top:8px;border-top:0}
+
+/* Class-based roles let Elementor duplicate sections without preserving IDs. */
+.tour-journey-discovery > .tour-journey-heading-editor {margin-top:32px!important}
+.tour-journey-discovery > .tour-journey-heading-editor .elementor-heading-title {
+ font-size:clamp(24px,2.15vw,32px);font-weight:650;
+ color:var(--tour-hl-ink,#173d4a);line-height:1.22;
+ letter-spacing:-.025em;margin:0;
+}
+.tour-journey-discovery .tour-journey-content-editor,
+.tour-journey-discovery .tour-journey-content-editor .jet-listing-dynamic-field,
+.tour-journey-discovery .tour-journey-content-editor .jet-listing-dynamic-field__content {
+ width:100%;min-width:0;
+}
+.tour-journey-discovery > .tour-journey-related-editor {
+ width:100%;min-width:0;align-self:stretch;margin:8px 0 0!important;
+}
+.tour-journey--split.tour-journey-enhanced > .tour-journey-heading-editor {grid-column:1/-1;grid-row:1}
+.tour-journey--split.tour-journey-enhanced > .tour-journey-content-editor {grid-column:1;grid-row:2}
+.tour-journey--split.tour-journey-enhanced > .tour-journey-related-editor {
+ grid-column:2;grid-row:2;margin-top:0!important;
+}
+.tour-journey--story.tour-journey-enhanced > .tour-journey-heading-editor {order:0!important}
+.tour-journey--story.tour-journey-enhanced > .tour-journey-related-editor {order:1!important;margin-top:0!important}
+.tour-journey--story.tour-journey-enhanced > .tour-journey-content-editor {order:2!important;margin-top:12px}
+.tour-journey--places-only > .tour-journey-heading-editor,
+.tour-journey--places-only > .tour-journey-content-editor {display:none!important}
+.tour-journey--places-only > .tour-journey-related-editor {margin-top:0!important}
+@media(max-width:767px){
+  .tour-journey-discovery > .tour-journey-heading-editor {margin-top:20px!important}
+  .tour-journey-discovery > .tour-journey-heading-editor .elementor-heading-title {
+    font-size:clamp(23px,6.8vw,28px);line-height:1.25;letter-spacing:-.015em;
+  }
+}
