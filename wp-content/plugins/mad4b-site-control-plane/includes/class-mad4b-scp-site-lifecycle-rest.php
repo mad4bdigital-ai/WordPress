@@ -174,8 +174,36 @@ final class MAD4B_SCP_Site_Lifecycle_REST {
         return $response;
     }
 
+    /**
+     * Read-only description of which operations are available and what
+     * exact original authority each mutation needs. This does not inspect
+     * cookies, mint a nonce, or relax reenroll_staging()/can_write().
+     */
+    public static function operation_scope() {
+        $snap=self::snapshot();
+        $env=(string)$snap['wordpress_environment'];
+        $explicit=defined('WP_ENVIRONMENT_TYPE') && WP_ENVIRONMENT_TYPE==='staging';
+        $staging=$env==='staging' && $explicit;
+        return array(
+            'contract'=>self::CONTRACT.'.operation-scope.v1',
+            'read_routes'=>array('status','plan','readback','binding-status','cutover-plan','rollback-plan'),
+            'read_requires_manage_options'=>true,
+            'reenrollment_route'=>'reenroll-staging',
+            'reenrollment_environment_eligible'=>$staging,
+            'reenrollment_requires_admin_and_plugins_capabilities'=>true,
+            'reenrollment_requires_original_browser_cookie_and_rest_nonce'=>true,
+            'reenrollment_requires_exact_current_plan_and_profile_revision'=>true,
+            'reenrollment_requires_origin_and_audit_preflight'=>true,
+            'reenrollment_changes_tenant_site_identity'=>true,
+            'reenrollment_automatically_grants_write_or_oauth'=>false,
+            'production_reenrollment_available'=>false,
+            'mutation_performed'=>false,
+        );
+    }
     public static function status() {
-        return self::rest_response(self::snapshot());
+        $snapshot=self::snapshot();
+        $snapshot['operation_scope']=self::operation_scope();
+        return self::rest_response($snapshot);
     }
 
     private static function rebind_plan() {

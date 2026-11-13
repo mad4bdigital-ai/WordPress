@@ -15,13 +15,50 @@ final class MAD4B_SCP_Skill_Seeder {
 	const CONTRACT = 'mad4b.skill-seeder.v1';
 	const OPTION = 'mad4b_scp_skill_seed_v1';
 	const INSPECTION_CONTRACT = 'mad4b.skill-seed-inspection.v1';
-	const SEED_VERSION = 17;
+	const SEED_VERSION = 30;
 	const SEED_DIR = 'skill-seeds';
 	const SEED_MANIFEST_CONTRACT = 'mad4b.skill-seed-manifest.v1';
 	const SEED_MANIFEST_FILE = 'config/skill-seed-manifest.json';
 
 	private static $ran = false;
 	private static $runtime_status = null;
+
+    /** Enrollment is checked at each worker entry, not only via Skill Registry. */
+    private static function exact_enrolled_site() {
+        return class_exists( 'MAD4B_SCP_Site_Profile' )
+            && MAD4B_SCP_Site_Profile::origin_enrolled()
+            && MAD4B_SCP_Site_Profile::site_urls_match_enrollment();
+    }
+
+	/** Schedule source-owned canonical Skills only after a committed enrollment.
+	 * No Skill-file I/O or provider discovery takes place in profile-save GET.
+	 */
+	public static function schedule_after_profile_saved() {
+		if ( ! class_exists( 'MAD4B_SCP_Skill_Registry', false )
+			|| ! MAD4B_SCP_Skill_Registry::catalog_enabled()
+			|| ! function_exists( 'wp_schedule_single_event' ) ) return;
+		if ( ! wp_next_scheduled( 'mad4b_scp_auto_skill_catalog_reconcile' ) ) {
+			wp_schedule_single_event( time() + 30, 'mad4b_scp_auto_skill_catalog_reconcile' );
+		}
+	}
+
+	/** Worker, not request-serving: audited canonical seed and provider catalog. */
+	public static function auto_reconcile_enrolled() {
+		if ( ! class_exists( 'MAD4B_SCP_Skill_Registry', false )
+			|| ! MAD4B_SCP_Skill_Registry::catalog_enabled()
+            || ! self::exact_enrolled_site() )
+			return self::set_status( 'site_identity_not_enrolled' );
+		$seed = self::reconcile();
+		if ( ! is_array( $seed ) || ( $seed['state'] ?? '' ) !== 'ready' ) return $seed;
+		if ( class_exists( 'MAD4B_SCP_Plugin_Discovery', false )
+			&& class_exists( 'MAD4B_SCP_Skill_Provider_Discovery', false )
+			&& class_exists( 'MAD4B_SCP_Adapter_Registry', false ) ) {
+			$adapters = MAD4B_SCP_Adapter_Registry::instance();
+			$adapters->register_defaults();
+			MAD4B_SCP_Skill_Provider_Discovery::reconcile();
+		}
+		return $seed;
+	}
 
 	/** Explicit operator reconciliation; resets request-local bootstrap guards only. */
 	public static function reconcile() {
@@ -34,7 +71,8 @@ final class MAD4B_SCP_Skill_Seeder {
 		if ( self::$ran ) return self::status();
 		self::$ran = true;
 
-		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::skills_enabled() || ! MAD4B_SCP_Skill_Registry::editor_enabled() ) return self::set_status( 'not_eligible' );
+        if ( ! self::exact_enrolled_site() ) return self::set_status( 'site_identity_not_enrolled' );
+		if ( ! class_exists( 'MAD4B_SCP_Skill_Registry', false ) || ! MAD4B_SCP_Skill_Registry::catalog_enabled() ) return self::set_status( 'not_eligible' );
 
 		$audit_status = class_exists( 'MAD4B_SCP_Audit' ) ? MAD4B_SCP_Audit::storage_status() : array( 'ready' => false );
 		if ( empty( $audit_status['ready'] ) ) return self::set_status( 'audit_unavailable' );
@@ -73,7 +111,10 @@ final class MAD4B_SCP_Skill_Seeder {
 		$cursor = max( 0, (int) $cursor );
 		$limit = max( 1, min( 5, (int) $limit ) );
 
-		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::skills_enabled() || ! MAD4B_SCP_Skill_Registry::editor_enabled() ) {
+        if ( ! self::exact_enrolled_site() ) return new WP_Error(
+            'mad4b_skill_seed_site_identity_not_enrolled',
+            'Canonical Skill seed batch requires the exact enrolled Site Profile.' );
+		if ( ! class_exists( 'MAD4B_SCP_Skill_Registry', false ) || ! MAD4B_SCP_Skill_Registry::catalog_enabled() ) {
 			return new WP_Error( 'mad4b_skill_seed_batch_not_eligible', 'Canonical Skill seed batch reconciliation is not eligible in this runtime.' );
 		}
 

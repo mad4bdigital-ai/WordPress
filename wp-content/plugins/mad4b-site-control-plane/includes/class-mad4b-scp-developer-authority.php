@@ -151,7 +151,7 @@ final class MAD4B_SCP_Developer_Authority {
 				'expected_plan_sha256' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
 				'expected_source_commit_sha' => array( 'type' => 'string', 'minLength' => 40, 'maxLength' => 40, 'pattern' => '^[A-Fa-f0-9]{40}$' ),
 				'expected_site_uuid' => array( 'type' => 'string', 'minLength' => 36, 'maxLength' => 36 ),
-				'expected_environment' => array( 'type' => 'string', 'enum' => array( 'staging', 'development', 'local' ) ),
+				'expected_environment' => array( 'type' => 'string', 'enum' => array( 'staging', 'development', 'local', 'production' ) ),
 				'expected_profile_revision' => array( 'type' => 'integer', 'minimum' => 1 ),
 				'expected_profile_digest' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
 				'confirmation' => array( 'type' => 'string', 'enum' => array( $confirmation ) ),
@@ -177,8 +177,9 @@ final class MAD4B_SCP_Developer_Authority {
 			return new WP_Error('mad4b_developer_actor_resolver_missing','Unified authority resolver unavailable.');
 		$actor=MAD4B_SCP_Execution_Authority::resolve('plan');
 		if(is_wp_error($actor))return $actor;
-		if(!in_array($actor['environment'],array('staging','development','local'),true))
-			return new WP_Error('mad4b_developer_authority_non_production_only','Developer provisioning requires a nonproduction site.');
+		if(!class_exists('MAD4B_SCP_Site_Profile',false) || empty(MAD4B_SCP_Site_Profile::status()['authority_ready']) ||
+			!MAD4B_SCP_Site_Profile::managed_runtime_enabled())
+			return new WP_Error('mad4b_developer_authority_site_not_ready','Developer provisioning requires an enrolled managed runtime.');
 		if('oauth_mcp'===$actor['transport']){
 			$identity=MAD4B_SCP_Identity_Context::current();
 			if(is_wp_error($identity) || !is_array($identity) || !self::identity_has_developer_derivation_material($identity))
@@ -655,7 +656,7 @@ final class MAD4B_SCP_Developer_Authority {
 		if ( ! class_exists( 'MAD4B_SCP_Transport_Context' ) || 'mad4b-chatgpt' !== MAD4B_SCP_Transport_Context::current_server_id() ) return new WP_Error( 'mad4b_developer_dispatch_transport_denied', 'Developer dispatch derivation is limited to the compact ChatGPT transport.' );
 		$scopes = isset( $identity['token_scopes'] ) && is_array( $identity['token_scopes'] ) ? $identity['token_scopes'] : array();
 		if ( ! in_array( 'mad4b:read', $scopes, true ) || ! in_array( 'mad4b:authority:step-up', $scopes, true ) ) return new WP_Error( 'mad4b_developer_dispatch_step_up_scope_required', 'Developer dispatch requires read identity plus the bounded authority step-up scope.' );
-		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || 'staging' !== sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() ) || ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) return new WP_Error( 'mad4b_developer_dispatch_staging_profile_required', 'Developer dispatch is limited to the exact enrolled Staging profile.' );
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::managed_runtime_enabled() || ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) return new WP_Error( 'mad4b_developer_dispatch_staging_profile_required', 'Developer dispatch is limited to the exact enrolled Staging profile.' );
 		if ( ! class_exists( 'MAD4B_SCP_Developer_Runtime' ) || ! MAD4B_SCP_Developer_Runtime::developer_flag_enabled() || ! MAD4B_SCP_Developer_Runtime::direct_execution_enabled() || MAD4B_SCP_Developer_Runtime::kill_switch_enabled() ) return new WP_Error( 'mad4b_developer_dispatch_runtime_not_ready', 'Developer runtime is not enabled for direct governed execution.' );
 
 		$authority = self::status();

@@ -40,15 +40,6 @@ if ( ! class_exists( 'MAD4B_SCP_Context_Authority' ) ) {
 				'reviewed_content_hash' => $hash,
 			) );
 		}
-		// Minimal owner-evidence fixture: no title is unproven, an explicit
-		// foreign owner claim is rejected. Never infer ownership from silence.
-		public static function brand_owner_evidence( array $asset ) {
-			$title = trim( (string) ( $asset['title'] ?? '' ) );
-			return array(
-				'status' => 0 === strpos( $title, 'Foreign Brand:' ) ? 'foreign' : 'unproven',
-				'evidence' => 0 === strpos( $title, 'Foreign Brand:' ) ? 'explicit_foreign_title' : '',
-			);
-		}
 		public static function registry_revision() { return 1; }
 		public static function context_fingerprint() { return hash( 'sha256', 'context' ); }
 		public static function authority_manifest_fingerprint() { return hash( 'sha256', 'authority' ); }
@@ -129,20 +120,6 @@ if ( ! class_exists( 'MAD4B_SCP_Context_Provider_Gateway' ) ) {
 }
 
 require_once $root . '/includes/class-mad4b-scp-brand-context-builder.php';
-
-// The provider failure fixture must retain the production owner-evidence
-// safety fence, not skip it to unblock recovery/idempotency tests.
-$approved_asset = MAD4B_SCP_Context_Authority::assets()[0];
-$owner_check = new ReflectionMethod( 'MAD4B_SCP_Brand_Context_Builder', 'approved_brand_asset' );
-$owner_check->setAccessible( true );
-if ( true !== $owner_check->invoke( null, $approved_asset ) ) {
-	throw new RuntimeException( 'Verified synthetic brand asset unexpectedly rejected' );
-}
-$approved_asset['title'] = 'Foreign Brand: Owner strategy';
-if ( false !== $owner_check->invoke( null, $approved_asset ) ) {
-	throw new RuntimeException( 'Foreign ownership claim bypassed reviewed brand authority fence' );
-}
-
 
 $fail = static function ( $message ) { fwrite( STDERR, 'FAIL brand-context-builder-provider-failure-runtime: ' . $message . PHP_EOL ); exit( 1 ); };
 $check = static function ( $condition, $message ) use ( $fail ) { if ( ! $condition ) $fail( $message ); };

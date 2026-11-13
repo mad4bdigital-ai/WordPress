@@ -385,7 +385,7 @@ final class MAD4B_SCP_Self_Update {
 				'bootstrap_only' => true,
 				'normal_write_authority_required' => false,
 				'authority_mutation_allowed' => false,
-				'production_allowed' => false,
+				'production_allowed' => true,
 				'generic_raw_sql_breakglass_included' => false,
 				'chatgpt_direct_step_up' => true,
                 'generic_remote_admin' => false,
@@ -446,10 +446,10 @@ final class MAD4B_SCP_Self_Update {
 				|| ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' )
 				|| ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()
 				|| ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE ) ) {
-				return new WP_Error( 'mad4b_self_update_staging_owner_step_up_required', 'Exact Staging candidate upload requires enrolled owner/admin OAuth step-up authority.' );
+				return new WP_Error( 'mad4b_self_update_staging_owner_step_up_required', 'Candidate upload requires exact enrolled owner/admin step-up authority.' );
 			}
 		}
-		if ( ! self::environment_allowed( true ) ) return new WP_Error( 'mad4b_self_update_staging_only', 'Remote Control Plane file upload is Staging-only.' );
+		if ( ! self::environment_allowed( true ) ) return new WP_Error( 'mad4b_self_update_site_authority_required', 'Exact enrolled managed write authority is required for the governed file upload.' );
 		if ( ! class_exists( 'MAD4B_SCP_Authorization' ) ) return new WP_Error( 'mad4b_authorization_unavailable', 'MAD4B central authorization is unavailable.' );
 		return MAD4B_SCP_Authorization::authorize_mutation(
 			'mad4b/control-plane-upload-apply',
@@ -463,7 +463,7 @@ final class MAD4B_SCP_Self_Update {
 		$admin = MAD4B_SCP_Policy::can_admin();
 		if ( is_wp_error( $admin ) || ! $admin ) return $admin;
 		if ( ! MAD4B_SCP_Policy::can_mutate() ) return new WP_Error( 'mad4b_mutation_disabled', 'MAD4B mutation surfaces are disabled.' );
-		if ( ! self::environment_allowed( true ) ) return new WP_Error( 'mad4b_self_update_staging_only', 'Remote Control Plane native release pull is Staging-only.' );
+		if ( ! self::environment_allowed( true ) ) return new WP_Error( 'mad4b_self_update_site_authority_required', 'Exact enrolled managed write authority is required for native release pull.' );
 		if ( ! class_exists( 'MAD4B_SCP_Authorization' ) ) return new WP_Error( 'mad4b_authorization_unavailable', 'MAD4B central authorization is unavailable.' );
 		return MAD4B_SCP_Authorization::authorize_mutation(
 			'mad4b/control-plane-native-apply',
@@ -480,7 +480,7 @@ final class MAD4B_SCP_Self_Update {
 	 */
 	public static function chatgpt_step_up_tools() {
 		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::configured() ) return array();
-		if ( 'staging' !== sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() ) ) return array();
+		if ( ! self::bootstrap_site_eligible() ) return array();
 		if ( ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) return array();
 		if ( defined( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) && true === constant( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) ) return array();
 		if ( class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective() ) return array();
@@ -495,15 +495,15 @@ final class MAD4B_SCP_Self_Update {
 		}
 		if ( ! defined( 'MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE' )
 			|| ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE ) ) {
-			return new WP_Error( 'mad4b_self_update_bootstrap_step_up_scope_required', 'Bootstrap Control Plane self-update requires the dedicated Staging authority step-up scope.' );
+			return new WP_Error( 'mad4b_self_update_bootstrap_step_up_scope_required', 'Bootstrap requires its dedicated authority step-up scope.' );
 		}
 		if ( ! class_exists( 'MAD4B_SCP_Local_OAuth_Server' )
 			|| ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is( MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID ) ) {
 			return new WP_Error( 'mad4b_self_update_bootstrap_chatgpt_client_required', 'Bootstrap Control Plane self-update requires OAuth attribution to the exact ChatGPT CIMD client.' );
 		}
-		if ( ! self::environment_allowed( true ) ) return new WP_Error( 'mad4b_self_update_bootstrap_staging_only', 'Bootstrap Control Plane self-update is Staging-only.' );
+		if ( ! self::bootstrap_site_eligible() ) return new WP_Error( 'mad4b_self_update_bootstrap_site_not_enrolled', 'Bootstrap requires exact enrolled site identity.' );
 		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::configured() || ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) {
-			return new WP_Error( 'mad4b_self_update_bootstrap_profile_not_exact', 'Bootstrap Control Plane self-update requires the exact enrolled Staging Site Profile.' );
+			return new WP_Error( 'mad4b_self_update_bootstrap_profile_not_exact', 'Bootstrap requires the exact enrolled Site Profile.' );
 		}
 		$user_id = get_current_user_id();
 		if ( $user_id < 1 || ! MAD4B_SCP_Site_Profile::user_is_enrolled( $user_id ) ) {
@@ -568,7 +568,14 @@ final class MAD4B_SCP_Self_Update {
 		} else {
 			$environment = sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() );
 			$out['environment'] = $environment;
-			if ( 'staging' !== $environment ) $blockers[] = 'environment_not_staging';
+            // Candidate-drift bootstrap is the narrow Staging recovery path,
+            // not a second Production release route. Ask the existing dynamic
+            // Site Profile policy; do not infer authority from hostname or
+            // a WordPress environment label alone.
+            if ( ! method_exists( 'MAD4B_SCP_Site_Profile', 'environment_allowed' )
+                || ! MAD4B_SCP_Site_Profile::environment_allowed( array( 'staging' ), 'write' ) )
+                $blockers[] = 'bootstrap_staging_profile_required';
+			if ( ! self::bootstrap_site_eligible() ) $blockers[] = 'enrolled_site_authority_required';
 			if ( ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) $blockers[] = 'site_profile_not_exact';
 			if ( ! MAD4B_SCP_Site_Profile::write_enabled() ) $blockers[] = 'site_profile_write_disabled';
 		}
@@ -743,7 +750,8 @@ final class MAD4B_SCP_Self_Update {
 			),
 			'governed_file_upload' => array(
 				'ready' => (bool) $remote_ready,
-				'staging_only' => true,
+				'staging_only' => false,
+				'policy' => 'enrolled_managed_write_authority',
 				'max_upload_bytes' => self::MAX_UPLOAD_BYTES,
 				'caller_url_allowed' => false,
 				'caller_path_allowed' => false,
@@ -755,19 +763,21 @@ final class MAD4B_SCP_Self_Update {
 				'contract' => self::BOOTSTRAP_APPLY_CONTRACT,
 				'ability' => self::BOOTSTRAP_APPLY_ABILITY,
 				'available' => (bool) $bootstrap_step_up_available,
-				'staging_only' => true,
+				'staging_only' => false,
+				'policy' => 'exact_enrolled_owner_signed_candidate_drift',
 				'oauth_scope' => 'mad4b:authority:step-up',
 				'bootstrap_only' => true,
 				'normal_write_authority_effective' => (bool) $normal_write_effective,
 				'requires_clean_exact_grants' => true,
 				'requires_candidate_drift' => true,
 				'authority_mutation_allowed' => false,
-				'production_allowed' => false,
+				'production_allowed' => true,
 				'generic_raw_sql_breakglass_included' => false,
 			),
 			'governed_native_release_pull' => array(
 				'ready' => (bool) ( $remote_ready && ! is_wp_error( $manifest ) ),
-				'staging_only' => true,
+				'staging_only' => false,
+				'policy' => 'enrolled_managed_write_authority',
 				'fixed_manifest_url' => self::MANIFEST_URL,
 				'fixed_pointer_url' => self::POINTER_URL,
 				'pointer_first' => true,
@@ -783,8 +793,8 @@ final class MAD4B_SCP_Self_Update {
 				'rollback_required' => true,
 				'release_channel_bound' => true,
 			),
-			'production_remote_upload_allowed' => false,
-			'production_remote_native_pull_allowed' => false,
+			'production_remote_upload_allowed' => (bool) ( $remote_ready && MAD4B_SCP_Site_Profile::current_environment() === 'production' ),
+			'production_remote_native_pull_allowed' => (bool) ( $remote_ready && MAD4B_SCP_Site_Profile::current_environment() === 'production' ),
 			'last_update_attempt' => self::last_update_attempt_projection(),
 			'recovery_update' => self::recovery_status_projection(),
 			'mutation_performed' => false,
@@ -846,9 +856,9 @@ final class MAD4B_SCP_Self_Update {
 				'manifest_error' => $manifest_error,
 				'target' => is_wp_error( $manifest ) ? array() : self::public_manifest( $manifest ),
 			),
-			'governed_file_upload' => array( 'ready' => (bool) $remote_ready, 'staging_only' => true ),
-			'production_remote_upload_allowed' => false,
-			'production_remote_native_pull_allowed' => false,
+			'governed_file_upload' => array( 'ready' => (bool) $remote_ready, 'staging_only' => false, 'policy' => 'enrolled_managed_write_authority' ),
+			'production_remote_upload_allowed' => (bool) ( $remote_ready && MAD4B_SCP_Site_Profile::current_environment() === 'production' ),
+			'production_remote_native_pull_allowed' => (bool) ( $remote_ready && MAD4B_SCP_Site_Profile::current_environment() === 'production' ),
 			'last_update_attempt' => self::last_update_attempt_projection(),
 			'recovery_update' => self::recovery_status_projection(),
 			'mutation_performed' => false,
@@ -872,7 +882,7 @@ final class MAD4B_SCP_Self_Update {
 		$release_manifest = array();
 		$candidate_source = array();
 
-		if ( ! self::environment_allowed( true ) ) $blockers[] = 'staging_enrolled_write_profile_required';
+		if ( ! self::environment_allowed( true ) ) $blockers[] = 'enrolled_managed_write_profile_required';
 		if ( ! current_user_can( 'update_plugins' ) ) $blockers[] = 'update_plugins_capability_required';
 		if ( $identity['size_bytes'] < 1 || $identity['size_bytes'] > self::MAX_UPLOAD_BYTES ) $blockers[] = 'archive_size_out_of_bounds';
 		if ( ! empty( $current['source_commit_sha'] ) && hash_equals( $current['source_commit_sha'], $identity['source_commit_sha'] ) ) $blockers[] = 'already_on_exact_source_commit';
@@ -943,7 +953,7 @@ final class MAD4B_SCP_Self_Update {
 			'embedded_provenance_required' => true,
 			'rollback_on_failed_readback' => true,
 			'release_channel_bound' => ! $staging_candidate,
-			'production_allowed' => false,
+			'production_allowed' => (bool) ( ! $staging_candidate && self::environment_allowed( true ) ),
 			'release_channel' => is_array( $release_manifest ) ? ( empty( $release_manifest ) ? array() : self::public_manifest( $release_manifest ) ) : array(),
 			'eligible' => empty( $blockers ),
 			'blockers' => array_values( array_unique( $blockers ) ),
@@ -1144,7 +1154,7 @@ final class MAD4B_SCP_Self_Update {
         if ( 'installed_source_unresolvable' === $relationship ) {
             $state['recovery_guidance'] = array(
                 'state' => 'owner_review_required',
-                'staging_only' => true,
+                'staging_only' => false,
                 'exact_signed_release_required' => true,
                 'rollback_snapshot_required' => true,
                 'owner_oauth_step_up_required' => true,
@@ -1238,7 +1248,7 @@ final class MAD4B_SCP_Self_Update {
 		$manifest = self::fetch_manifest( true );
 		$blockers = array();
 
-		if ( ! self::environment_allowed( true ) ) $blockers[] = 'staging_enrolled_write_profile_required';
+		if ( ! self::environment_allowed( true ) ) $blockers[] = 'enrolled_managed_write_profile_required';
 		if ( ! current_user_can( 'update_plugins' ) ) $blockers[] = 'update_plugins_capability_required';
 		if ( is_wp_error( $manifest ) ) {
 			$blockers[] = $manifest->get_error_code();
@@ -1280,7 +1290,7 @@ final class MAD4B_SCP_Self_Update {
 			'release_channel_bound' => true,
 			'authority_handoff' => $authority_handoff,
 			'continuation_policy' => $continuation_projection,
-			'production_allowed' => false,
+			'production_allowed' => (bool) self::environment_allowed( true ),
 			'eligible' => empty( $blockers ),
 			'blockers' => array_values( array_unique( $blockers ) ),
 			'reason' => isset( $input['reason'] ) ? sanitize_text_field( (string) $input['reason'] ) : '',
@@ -3108,25 +3118,35 @@ final class MAD4B_SCP_Self_Update {
 		);
 	}
 
+	/**
+	 * Normal signed release channel: enrolled Site Profile + managed runtime,
+	 * independent of the WordPress environment label. Write admission is
+	 * additionally required for mutations. This gate does not issue authority;
+	 * the exact manifest, approval, archive, backup and readback still apply.
+	 */
 	private static function environment_allowed( $remote ) {
-		$resolution = self::environment_resolution();
-		$environment = sanitize_key( (string) ( isset( $resolution['effective_environment'] ) ? $resolution['effective_environment'] : '' ) );
-		if ( $remote ) {
-			return 'staging' === $environment
-				&& class_exists( 'MAD4B_SCP_Site_Profile' )
-				&& MAD4B_SCP_Site_Profile::environment_allowed( array( 'staging' ), 'write' );
-		}
-		if ( in_array( $environment, array( 'local', 'development', 'staging' ), true ) ) return true;
-		return 'production' === $environment
-			&& defined( 'MAD4B_SCP_PRODUCTION_SELF_UPDATE_ENABLED' )
-			&& true === MAD4B_SCP_PRODUCTION_SELF_UPDATE_ENABLED
-			&& class_exists( 'MAD4B_SCP_Site_Profile' )
-			&& MAD4B_SCP_Site_Profile::environment_allowed( array( 'production' ), 'write' );
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile', false ) ) return false;
+		$site = MAD4B_SCP_Site_Profile::status();
+		if ( empty( $site['authority_ready'] ) || empty( $site['site_uuid'] )
+			|| ! MAD4B_SCP_Site_Profile::origin_enrolled()
+			|| ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment()
+			|| ! MAD4B_SCP_Site_Profile::managed_runtime_enabled() ) return false;
+		return ! $remote || MAD4B_SCP_Site_Profile::write_enabled();
+	}
+
+	/** Narrow bootstrap when normal Write Authority is broken only by candidate drift. */
+	private static function bootstrap_site_eligible() {
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile', false ) ) return false;
+		$site = MAD4B_SCP_Site_Profile::status();
+		return ! empty( $site['authority_ready'] ) && ! empty( $site['site_uuid'] )
+			&& MAD4B_SCP_Site_Profile::configured()
+			&& MAD4B_SCP_Site_Profile::origin_enrolled()
+			&& MAD4B_SCP_Site_Profile::site_urls_match_enrollment();
 	}
 
 	/** Fixed-channel, root-trusted identity for an already installed manual replacement. */
 	public static function observed_release_target() {
-		if ( ! self::environment_allowed( true ) ) return new WP_Error( 'mad4b_observed_release_staging_required', 'Observed release convergence is Staging-only.' );
+		if ( ! self::environment_allowed( true ) ) return new WP_Error( 'mad4b_observed_release_site_authority_required', 'Observed release convergence requires exact enrolled managed write authority.' );
 		$manifest = self::fetch_manifest( true );
 		if ( is_wp_error( $manifest ) ) return $manifest;
 		$identity = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();

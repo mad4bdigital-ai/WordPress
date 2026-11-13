@@ -75,7 +75,7 @@ required_self_update = [
     "legacy_stable_fallback",
     "mad4b_self_update_manifest_digest_mismatch",
     "release_verdict_success",
-    "MAD4B_SCP_PRODUCTION_SELF_UPDATE_ENABLED",
+    "MAD4B_SCP_Site_Profile::managed_runtime_enabled()",
     "package_base64",
     "expected_plan_sha256",
     "MAD4B_SCP_Authorization::authorize_mutation",
@@ -89,7 +89,7 @@ required_self_update = [
     "rollback_on_failed_readback",
     "release_channel_bound",
     "target_not_current_governed_release",
-    "MAD4B_SCP_Site_Profile::environment_allowed( array( 'production' ), 'write' )",
+    "MAD4B_SCP_Site_Profile::site_urls_match_enrollment()",
     "caller_url_allowed",
     "caller_path_allowed",
     "installed_plugin_version_from_disk",
@@ -110,6 +110,33 @@ required_self_update = [
 for marker in required_self_update:
     if marker not in self_update:
         raise SystemExit(f"missing dual-channel self-update invariant: {marker}")
+
+# RC129 uses the existing first-party Site Profile dynamic authority rather
+# than a global Production ON/OFF constant. Verify the actual guard function,
+# not just a marker somewhere in the source or a comment-only compatibility
+# alias. This must fail closed for unregistered origins and runtimes.
+release_guard = re.search(
+    r"private static function environment_allowed\(\s*\$remote\s*\)\s*\{(?P<body>.*?)\n\s*\}",
+    self_update,
+    flags=re.S,
+)
+if release_guard is None:
+    raise SystemExit("missing dynamic Control Plane release admission function")
+guard = release_guard.group('body')
+for marker in (
+    "if ( ! class_exists( 'MAD4B_SCP_Site_Profile', false ) ) return false;",
+    "MAD4B_SCP_Site_Profile::status()",
+    "empty( $site['authority_ready'] )",
+    "empty( $site['site_uuid'] )",
+    "MAD4B_SCP_Site_Profile::origin_enrolled()",
+    "MAD4B_SCP_Site_Profile::site_urls_match_enrollment()",
+    "MAD4B_SCP_Site_Profile::managed_runtime_enabled()",
+    "return ! $remote || MAD4B_SCP_Site_Profile::write_enabled();",
+):
+    if marker not in guard:
+        raise SystemExit(f"missing scoped dynamic update admission: {marker}")
+if 'MAD4B_SCP_PRODUCTION_SELF_UPDATE_ENABLED' in guard:
+    raise SystemExit("deprecated static Production update toggle in scoped admission")
 
 # Plugin row remains navigation-only, while the nonce-protected refresh form
 # lives on the fully bootstrapped Runtime Update page. Insist on BOTH surfaces:
@@ -478,11 +505,37 @@ apply_schema = self_update.split("private static function apply_schema()", 1)[1]
 if "package_base64" not in apply_schema or "expected_plan_sha256" not in apply_schema:
     raise SystemExit("upload apply schema is not exact-plan plus bounded-file based")
 
-# Remote upload is Staging-only and Production native updates require an explicit constant.
-if "return 'staging' === $environment" not in self_update:
-    raise SystemExit("governed upload is not explicitly Staging-bound")
-if "defined( 'MAD4B_SCP_PRODUCTION_SELF_UPDATE_ENABLED' )" not in self_update:
-    raise SystemExit("Production native self-update opt-in gate missing")
+# Enrolled profiles and managed runtimes dynamically control permitted
+# Staging and Production release flows. For staged candidate uploads, a
+# separate exact owner opt-in and WordPress Staging identity remain mandatory.
+# Do not reintroduce hardcoded environment labels as global write authority.
+upload_plan_body = self_update.split("public static function upload_plan( $input )", 1)[1].split(
+    "public static function upload_apply( $input )", 1
+)[0]
+upload_apply_body = self_update.split("public static function upload_apply( $input )", 1)[1].split(
+    "public static function native_source_relationship(", 1
+)[0]
+for marker in (
+    "self::environment_allowed( true )",
+    "current_user_can( 'update_plugins' )",
+    "'enrolled_managed_write_profile_required'",
+    "'target_version_older_than_runtime'",
+    "'staging_candidate_host_opt_in_required'",
+    "'explicit_wordpress_staging_environment_required'",
+    "'exact_site_deployment_binding_required'",
+):
+    if marker not in upload_plan_body:
+        raise SystemExit(f"governed dynamic upload plan missing: {marker}")
+for marker in (
+    "self::upload_plan( $plan_input )",
+    "if ( empty( $plan['eligible'] ) )",
+    "hash_equals( $plan['plan_sha256'], $expected )",
+    "MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE",
+    "MAD4B_SCP_Staging_Source_Selector::resolve(",
+    "hash_equals( $plan['target']['archive_sha256'], $actual_sha )",
+):
+    if marker not in upload_apply_body:
+        raise SystemExit(f"governed dynamic upload apply missing: {marker}")
 for marker in (
     "private static function environment_resolution()",
     "MAD4B_SCP_Site_Profile::environment_resolution()",
@@ -805,16 +858,33 @@ for key, expected in {
     "caller_supplied_path_allowed": False,
     "caller_package_bytes_allowed": False,
     "target_derived_from_release_manifest": True,
-    "staging_only": True,
+    "staging_only": False,
     "exact_plan_required": True,
     "exact_one_time_approval_required": True,
+    "exact_archive_sha256_required": True,
+    "embedded_build_provenance_required": True,
+    "backup_before_replace": True,
+    "readback_required": True,
+    "rollback_on_failed_readback": True,
     "release_verdict_required": True,
-    "production_allowed": False,
+    "production_allowed": True,
+    "authority_policy": "exact_enrolled_managed_write_site_plus_original_signed_release_approval",
 }.items():
     if native_handoff.get(key) != expected:
         raise SystemExit(f"deployment handoff governed native pull invariant mismatch: {key}")
-if handoff.get("self_update", {}).get("forbidden", {}).get("production_remote_native_pull") is not True:
-    raise SystemExit("deployment handoff does not explicitly forbid Production remote native pull")
+# Production may use the very same root-trusted signed native Release channel,
+# never a second unreviewed path. Unsigned/caller-supplied and ungated writes
+# remain forbidden on both environments, including for generic uploads.
+for blocker in (
+    "production_without_signed_release_and_original_write_authority",
+    "production_unpromoted_candidate_from_generic_upload",
+    "arbitrary_remote_url",
+    "arbitrary_filesystem_path",
+    "automatic_background_self_update",
+    "bypass_exact_approval",
+):
+    if handoff.get("self_update", {}).get("forbidden", {}).get(blocker) is not True:
+        raise SystemExit(f"deployment handoff must forbid unsafe native release: {blocker}")
 
 # Repository-root publishing is deliberately governed in a separate root-governance PR.
 # This plugin contract only trusts the fixed repository-owned Release manifest.

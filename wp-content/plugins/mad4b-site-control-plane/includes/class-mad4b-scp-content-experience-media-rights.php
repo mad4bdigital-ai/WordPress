@@ -28,10 +28,12 @@ final class MAD4B_SCP_Content_Experience_Media_Rights {
 		$today = self::evaluation_date( $today );
 		if ( is_wp_error( $today ) ) return $today;
 
-		// Staging central controller: missing licence metadata is advisory.
-		// Upstream media identity, provenance, permissions and manifest checks stay active.
-		if ( wp_get_environment_type() === 'staging'
-			&& strtolower( (string) wp_parse_url( home_url('/'), PHP_URL_HOST ) ) === 'tours.dev.mad4b.com' ) {
+		// Site-neutral publication policy, shared with remote media rights.
+		// Absence of licence metadata is advisory by default, not a claim of
+		// legal reuse permission. Identity and provenance checks remain active.
+		$mode = sanitize_key( (string) apply_filters( 'mad4b_remote_media_rights_mode', get_option( 'mad4b_remote_media_rights_mode', 'advisory' ) ) );
+		if ( ! in_array( $mode, array( 'advisory', 'enforced' ), true ) ) return new WP_Error( 'mad4b_media_rights_policy_invalid', 'Media rights policy must be advisory or enforced.' );
+		if ( 'advisory' === $mode ) {
 			$fields = 0;
 			$items = 0;
 			$warnings = array();
@@ -50,7 +52,7 @@ final class MAD4B_SCP_Content_Experience_Media_Rights {
 					if ( is_array( $entry ) && in_array( (string) ( $entry['license'] ?? '' ), $expiry_required, true ) && $expiry === '' )
 						$warnings[] = array( 'field' => $key, 'code' => 'required_expiry_missing' );
 					if ( $expiry !== '' && ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $expiry ) || $expiry < $today ) )
-						$warnings[] = array( 'field' => $key, 'code' => 'license_expired_or_invalid' );
+						return new WP_Error( 'mad4b_content_experience_media_rights_expired', 'An explicitly recorded media license is expired or invalid.', array( 'field' => $key ) );
 				}
 			}
 			return array(

@@ -2,11 +2,7 @@
 from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
-abilities_facade = (root / 'includes/class-mad4b-scp-abilities.php').read_text(encoding='utf-8')
-registration = (root / 'includes/trait-mad4b-scp-abilities-registration.php').read_text(encoding='utf-8')
-assert "require_once __DIR__ . '/trait-mad4b-scp-abilities-registration.php';" in abilities_facade
-assert 'use MAD4B_SCP_Abilities_Registration_Trait;' in abilities_facade
-abilities = abilities_facade + registration
+abilities = (root / 'includes/class-mad4b-scp-abilities.php').read_text(encoding='utf-8')
 overrides = (root / 'includes/class-mad4b-scp-governed-ability-overrides.php').read_text(encoding='utf-8')
 plugin = (root / 'includes/class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
 runtime = (root / 'tests/runtime-readonly-diagnostics-smoke.php').read_text(encoding='utf-8')

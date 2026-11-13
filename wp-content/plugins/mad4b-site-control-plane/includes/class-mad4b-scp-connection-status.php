@@ -373,9 +373,6 @@ final class MAD4B_SCP_Connection_Status {
 			'mad4b-content' => array( 'MAD4B_SCP_Servers', 'can_content_transport' ),
 			'mad4b-write' => array( 'MAD4B_SCP_Servers', 'can_write_transport' ),
 			'mad4b-admin' => array( 'MAD4B_SCP_Servers', 'can_admin_transport' ),
-			// VPS-local is an expected route shell, not an HTTP grant. Validate its
-			// exact existing permission callback rather than treating it as absent.
-			'mad4b-vps-local' => array( 'MAD4B_SCP_Servers', 'can_vps_local_transport' ),
 			'mad4b-developer' => array( 'MAD4B_SCP_Servers', 'can_developer_transport' ),
 			'mad4b-developer-breakglass' => array( 'MAD4B_SCP_Servers', 'can_developer_breakglass_transport' ),
 			'mad4b-breakglass' => array( 'MAD4B_SCP_Servers', 'can_breakglass_transport' ),

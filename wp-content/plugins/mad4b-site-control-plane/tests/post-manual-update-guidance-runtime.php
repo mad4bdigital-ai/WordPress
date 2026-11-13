@@ -80,8 +80,6 @@ guidance_check( is_wp_error( MAD4B_SCP_Brand_Context_Builder::source_scan_apply_
 // entire exact source inventory completed. The scan Apply path is separately
 // rejected before any Context Authority registry mutation.
 if ( ! function_exists( 'sanitize_text_field' ) ) { function sanitize_text_field( $text ) { return trim( (string) $text ); } }
-// Hermetic runtime: provide WordPress core absint without loading or mutating WP.
-if ( ! function_exists( 'absint' ) ) { function absint( $value ) { return abs( (int) $value ); } }
 class MAD4B_SCP_Context_Authority {
  public static $apply_calls = 0;
  static function source( $id ) { return array( 'source_id' => $id, 'provider' => 'google_drive' ); }

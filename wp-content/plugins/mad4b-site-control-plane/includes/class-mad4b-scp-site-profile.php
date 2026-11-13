@@ -449,8 +449,13 @@ final class MAD4B_SCP_Site_Profile {
 			|| ! hash_equals( $stored, self::normalize_origin( site_url( '/' ) ) ) ) return $observed;
 		$code = (string) apply_filters( 'wpml_current_language', '' );
 		if ( 1 !== preg_match( '/^[a-z]{2,8}(?:[-_][a-z0-9]{2,8})?$/Di', $code ) ) return $observed;
-		$languages = apply_filters( 'wpml_active_languages', null, array( 'skip_missing' => 0 ) );
-		if ( ! is_array( $languages ) || ! isset( $languages[ $code ] ) ) return $observed;
+		// WPML's active-languages filter can call wp_reset_query(), changing
+		// the currently rendered JetEngine/Elementor listing item on AJAX.
+		// Use WPML's own current-language identity instead. This is read-only
+		// and remains guarded by the exact canonical origin, scheme and host.
+		$sitepress = $GLOBALS['sitepress'] ?? null;
+		if ( ! ( $sitepress instanceof \SitePress )
+			|| ! hash_equals( $code, (string) $sitepress->get_this_lang() ) ) return $observed;
 		if ( ! hash_equals( $stored . '/' . $code, $observed ) ) return $observed;
 		if ( ! empty( $_SERVER['HTTP_HOST'] ) ) {
 			$expected_host = strtolower( (string) wp_parse_url( $stored, PHP_URL_HOST ) );

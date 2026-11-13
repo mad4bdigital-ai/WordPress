@@ -1,0 +1,73 @@
+{
+  "canonical_manifest_count": 21,
+  "contract": "mad4b.git-exact-portable-skills-reconciliation.v1",
+  "entry_count": 8,
+  "git_object_verified": true,
+  "live_site_modified": false,
+  "source_git_objects": [
+    {
+      "copied_to": 2,
+      "git_sha": "4851edc1e6e2c4910ca07f030e6b1a35cb127c07",
+      "installed_from_source": false,
+      "sha256": "dc3785b698cfd8c255a3cc105306d5534288c70416f590df417c8ae16493cb36",
+      "skill": "nile-cruise-jetengine-lifecycle",
+      "source_path": "/opt/mad4b-company-provisioning/source-worktrees/elementor-native-parity-integrated-20261113/mad4b-site-control-plane/skill-seeds/nile-cruise-jetengine-lifecycle/SKILL.md"
+    },
+    {
+      "copied_to": 2,
+      "git_sha": "4851edc1e6e2c4910ca07f030e6b1a35cb127c07",
+      "installed_from_source": false,
+      "sha256": "ca57658b0fb384a974beb2bed367074f831382d97c15cb6d01b36ba6db3b0d35",
+      "skill": "nile-cruise-rate-readiness",
+      "source_path": "/opt/mad4b-company-provisioning/source-worktrees/elementor-native-parity-integrated-20261113/mad4b-site-control-plane/skill-seeds/nile-cruise-rate-readiness/SKILL.md"
+    },
+    {
+      "copied_to": 2,
+      "git_sha": "4851edc1e6e2c4910ca07f030e6b1a35cb127c07",
+      "installed_from_source": false,
+      "sha256": "0c14518db67be382303d8634ec755e24cdaa6c9225321eb027569c8cc777fc1a",
+      "skill": "nile-intelligent-inheritance",
+      "source_path": "/opt/mad4b-company-provisioning/source-worktrees/elementor-native-parity-integrated-20261113/mad4b-site-control-plane/skill-seeds/nile-intelligent-inheritance/SKILL.md"
+    },
+    {
+      "copied_to": 2,
+      "git_sha": "4851edc1e6e2c4910ca07f030e6b1a35cb127c07",
+      "installed_from_source": false,
+      "sha256": "fa5205370717f908821c81f9b3cc74b463a80559710fc2ca7ef79a1c876ff2a3",
+      "skill": "nile-tour-facts-and-content-hub-extras",
+      "source_path": "/opt/mad4b-company-provisioning/source-worktrees/elementor-native-parity-integrated-20261113/mad4b-site-control-plane/skill-seeds/nile-tour-facts-and-content-hub-extras/SKILL.md"
+    },
+    {
+      "copied_to": 2,
+      "git_sha": "4851edc1e6e2c4910ca07f030e6b1a35cb127c07",
+      "installed_from_source": false,
+      "sha256": "d8e8bd50a1072a1acf4e6201d131bfeaab44b60e71c2702a5c754fad9144680f",
+      "skill": "tour-optional-services-integrity",
+      "source_path": "/opt/mad4b-company-provisioning/source-worktrees/elementor-native-parity-integrated-20261113/mad4b-site-control-plane/skill-seeds/tour-optional-services-integrity/SKILL.md"
+    },
+    {
+      "copied_to": 2,
+      "git_sha": "0a28670f95d73262acac04dfa84619144ff076d1",
+      "installed_from_source": false,
+      "sha256": "06447f02d054214b53818569e952d1f00128a638edc2ec3909315547ea0f43ec",
+      "skill": "wordpress-cache-performance-governor",
+      "source_path": "/opt/mad4b-company-provisioning/source-worktrees/mobile-hit-continuity-v1-20261112/mad4b-site-control-plane/skill-seeds/wordpress-cache-performance-governor/SKILL.md"
+    },
+    {
+      "copied_to": 2,
+      "git_sha": "4851edc1e6e2c4910ca07f030e6b1a35cb127c07",
+      "installed_from_source": false,
+      "sha256": "fe3f6766a91d82d2b6c50a19951a4a483a3ff3a204f9e863e7a0db96371bca40",
+      "skill": "wordpress-mobile-css-delivery",
+      "source_path": "/opt/mad4b-company-provisioning/source-worktrees/elementor-native-parity-integrated-20261113/mad4b-site-control-plane/skill-seeds/wordpress-mobile-css-delivery/SKILL.md"
+    },
+    {
+      "copied_to": 2,
+      "git_sha": "4851edc1e6e2c4910ca07f030e6b1a35cb127c07",
+      "installed_from_source": false,
+      "sha256": "08209c421239966b59869415bcdac25cf144c527435f027c6dd194079a46063c",
+      "skill": "wordpress-performance-intelligence-v2",
+      "source_path": "/opt/mad4b-company-provisioning/source-worktrees/elementor-native-parity-integrated-20261113/mad4b-site-control-plane/skill-seeds/wordpress-performance-intelligence-v2/SKILL.md"
+    }
+  ]
+}

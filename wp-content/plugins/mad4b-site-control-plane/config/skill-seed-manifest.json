@@ -1,6 +1,6 @@
 {
     "contract": "mad4b.skill-seed-manifest.v1",
-    "seed_version": 17,
+    "seed_version": 30,
     "skills": [
         {
             "level": "site",
@@ -97,6 +97,54 @@
             "level": "workflow",
             "target": "settings-lifecycle",
             "name": "wordpress-settings-lifecycle",
+            "enabled": true
+        },
+        {
+            "level": "workflow",
+            "target": "nile-cruise-authoring",
+            "name": "nile-cruise-jetengine-lifecycle",
+            "enabled": true
+        },
+        {
+            "level": "workflow",
+            "target": "nile-cruise-publish",
+            "name": "nile-cruise-rate-readiness",
+            "enabled": true
+        },
+        {
+            "level": "workflow",
+            "target": "tour-optional-services",
+            "name": "tour-optional-services-integrity",
+            "enabled": true
+        },
+        {
+            "level": "workflow",
+            "target": "nile-cruise-classification",
+            "name": "nile-intelligent-inheritance",
+            "enabled": true
+        },
+        {
+            "level": "workflow",
+            "target": "nile-cruise-facts-extras",
+            "name": "nile-tour-facts-and-content-hub-extras",
+            "enabled": true
+        },
+        {
+            "level": "workflow",
+            "target": "mobile-css-delivery",
+            "name": "wordpress-mobile-css-delivery",
+            "enabled": true
+        },
+        {
+            "level": "workflow",
+            "target": "performance-intelligence",
+            "name": "wordpress-performance-intelligence-v2",
+            "enabled": true
+        },
+        {
+            "level": "workflow",
+            "target": "cache-performance-governor",
+            "name": "wordpress-cache-performance-governor",
             "enabled": true
         }
     ]

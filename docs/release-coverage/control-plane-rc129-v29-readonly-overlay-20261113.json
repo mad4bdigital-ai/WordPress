@@ -1,0 +1,23 @@
+{
+  "ability_ids": [
+    "mad4b/original-job-claim-readback",
+    "mad4b/native-source-catalog-status",
+    "mad4b/native-source-catalog-preflight"
+  ],
+  "base_rc129_review_commit": "3630dddac5a0f05f1c1d8a8b7d97409221f008e7",
+  "contract": "mad4b.control-plane-rc129-v29-readonly-overlay.review.v1",
+  "entrypoint": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+  "main_candidate_sha256": "eb2cdff5c1f995b0caec746bb3c0c66e198e977ba98b9fb58822d30dea07912d",
+  "main_preimage_sha256": "e7b602aeb7557ae9c3968c4fd29f7f254749d0163126d5391f9f97c3c10fef7a",
+  "modules_sha256": {
+    "includes/class-mad4b-scp-native-source-release-review.php": "b338aad2408959ff2a1f4737bfda353d3bb228bfc0eef32d418dd9ac2c792a3a",
+    "includes/class-mad4b-scp-original-job-readback.php": "81fca113099a1e491127b8e301d5371f5c87130a12bcd4c6427e22406fd52d0b"
+  },
+  "original_job_mutated": false,
+  "owner_signed_release_approved": false,
+  "prepared_at_utc": "2026-11-13T07:48:44.473586+00:00",
+  "production_mutation_authorized": false,
+  "read_only": true,
+  "registry_provider_enrolled": false,
+  "source_v29_review_commit": "16bec2fa48a19cdccaf861700e018f3dc7c632f1"
+}

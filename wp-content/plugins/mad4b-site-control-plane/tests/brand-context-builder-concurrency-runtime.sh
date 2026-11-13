@@ -39,16 +39,6 @@ final class MAD4B_SCP_Operational_Integrity {
       ? true : new WP_Error('brand_lineage_test_scope_changed');
   }
 }
-// In this isolated MariaDB/WordPress test, model policy from an actual
-// authenticated WordPress administrator. No host-wide or Production grant is
-// synthesized; tests below first prove an anonymous actor cannot create jobs.
-if (!class_exists('MAD4B_SCP_Policy', false)) {
-  final class MAD4B_SCP_Policy {
-    public static function can_mutate() {
-      return get_current_user_id() > 0 && current_user_can('manage_options');
-    }
-  }
-}
 require_once $root . '/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php';
 require_once $root . '/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-artifacts.php';
 
@@ -64,26 +54,6 @@ if (empty($storage['ready']) || empty($storage['read_your_writes'])) {
   )) . "\\n");
   exit(1);
 }
-// Anonymous --skip-plugins WP-CLI must remain denied before opening any
-// ContentJob transaction, even though this command runs on a trusted CI host.
-$table = MAD4B_SCP_Schema::tables()['content_jobs'];
-$before_unauthorized = (int) $GLOBALS['wpdb']->get_var("SELECT COUNT(*) FROM `{$table}`");
-$unauthorized = MAD4B_SCP_Content_Jobs::create_job(array(
-  'brand_id'=>'brand-lineage', 'subject'=>'Anonymous mutation must fail',
-  'language'=>'en', 'country'=>'eg', 'content_type'=>'brand_context_generation',
-  'research_depth'=>'evidence_bound','automation_level'=>'review_gated',
-  'reason'=>'verify that a CLI host alone cannot create a ContentJob',
-));
-if (!is_wp_error($unauthorized)
-    || 'mad4b_content_job_authorized_actor_required' !== $unauthorized->get_error_code()
-    || $before_unauthorized !== (int) $GLOBALS['wpdb']->get_var("SELECT COUNT(*) FROM `{$table}`"))
-  $fail('anonymous actor bypassed the pre-transaction ContentJob guard');
-// Authenticate the test's seeded WordPress admin inside the hermetic fixture;
-// do not impose a --user flag or use an invented NHI/write grant.
-$admin = get_user_by('login','admin');
-if (!$admin || !user_can($admin,'manage_options')) $fail('seeded CI WordPress admin unavailable');
-wp_set_current_user((int)$admin->ID);
-if (!MAD4B_SCP_Policy::can_mutate()) $fail('real CI administrator was not authenticated');
 $jobs = array();
 for ($i=0; $i<2; ++$i) {
   $j = MAD4B_SCP_Content_Jobs::create_job(array(

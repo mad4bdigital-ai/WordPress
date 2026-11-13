@@ -15,7 +15,6 @@ final class MAD4B_SCP_Reconnect_Hardening {
 	const SESSION_DELETE_TOMBSTONE_TTL = 180;
 	const SESSION_META_KEY = 'mcp_adapter_sessions';
 	const CHATGPT_CLIENT_ID = 'https://chatgpt.com/oauth/client.json';
-	const CERTIFIED_STATEFUL_ADAPTER_VERSION = '0.6.1';
 	const FIRST_EMPTY_RACE_MAX_VISIBLE_SESSIONS = 8;
 	const FIRST_EMPTY_RACE_CREATION_SKEW_SECONDS = 30;
 	private static $booted = false;
@@ -43,7 +42,7 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		// A late phase still checks all gates before execution.
 		add_filter( 'rest_pre_dispatch', array( __CLASS__, 'guard_mcp_authenticated_rest_dispatch' ), 4, 3 );
 
-		// MCP Adapter 0.6.x uses a user-meta backed session map shared by MCP servers.
+		// A verified stateful MCP Adapter uses a user-meta backed session map shared by MCP servers.
 		// Do not override its global capacity/timeout knobs from a ChatGPT-only fix;
 		// bounded recovery below addresses only the proven first-session race.
 		// Run after OAuth subject mapping (priority 2), before the MCP Adapter
@@ -101,7 +100,8 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			'delete_cleanup_bound_to_exact_request_object' => true,
 			'request_scope_bound_to_exact_request_object' => true,
 			'nested_rest_request_cannot_clear_outer_initialize_state' => true,
-			'certified_stateful_runtime' => self::session_repair_supported_runtime(),
+			'stateful_runtime_structurally_available' => self::session_repair_supported_runtime(),
+			'certified_stateful_runtime' => true === self::$runtime_integrity_ok,
 			'adapter_session_max_modified' => false,
 			'adapter_inactivity_timeout_modified' => false,
 			'activity_update_interval_modified' => false,
@@ -125,10 +125,19 @@ final class MAD4B_SCP_Reconnect_Hardening {
 	}
 
 
+	private static function stateful_runtime_version() {
+		if ( ! class_exists( '\\WP\\MCP\\Core\\McpAdapter' )
+			|| ! class_exists( '\\WP\\MCP\\Transport\\Infrastructure\\SessionManager' )
+			|| ! defined( 'WP\\MCP\\Core\\McpAdapter::VERSION' ) ) return '';
+		$version = trim( (string) \WP\MCP\Core\McpAdapter::VERSION );
+		// The active provider contract, not a hard-coded version, certifies
+		// Transport ABI and exact on-disk file hashes below.
+		return strlen( $version ) <= 64
+			&& preg_match( '/^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$/D', $version )
+			? $version : '';
+	}
 	private static function session_repair_supported_runtime() {
-		if ( ! class_exists( '\\WP\\MCP\\Core\\McpAdapter' ) || ! class_exists( '\\WP\\MCP\\Transport\\Infrastructure\\SessionManager' ) ) return false;
-		if ( ! defined( 'WP\\MCP\\Core\\McpAdapter::VERSION' ) ) return false;
-		return hash_equals( self::CERTIFIED_STATEFUL_ADAPTER_VERSION, (string) \WP\MCP\Core\McpAdapter::VERSION );
+		return '' !== self::stateful_runtime_version();
 	}
 
 
@@ -161,12 +170,14 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		);
 		$all_transport_files_verified = empty( array_diff( $required_files, $verified ) );
 
-		$ok = isset( $status['status'] )
+		$runtime_version = self::stateful_runtime_version();
+		$ok = '' !== $runtime_version
+			&& isset( $status['status'] )
 			&& 'certified' === $status['status']
 			&& ! empty( $status['runtime_contract_ok'] )
 			&& isset( $status['certified_version'], $status['installed_version'] )
-			&& hash_equals( self::CERTIFIED_STATEFUL_ADAPTER_VERSION, (string) $status['certified_version'] )
-			&& hash_equals( self::CERTIFIED_STATEFUL_ADAPTER_VERSION, (string) $status['installed_version'] )
+			&& hash_equals( $runtime_version, (string) $status['certified_version'] )
+			&& hash_equals( $runtime_version, (string) $status['installed_version'] )
 			&& ! empty( $integrity['required'] )
 			&& ! empty( $integrity['manifest_present'] )
 			&& empty( $integrity['missing'] )
@@ -487,6 +498,9 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		$session_id = method_exists( $request, 'get_header' ) ? trim( (string) $request->get_header( 'mcp-session-id' ) ) : '';
 		if ( '' === $session_id || strlen( $session_id ) > 128 ) return $result;
 		if ( 'DELETE' === $method ) {
+			// No shadow/tombstone edits on a runtime that lacks verified
+			// provider artifact and Transport integrity.
+			if ( ! self::certified_adapter_runtime_integrity_ok() ) return $result;
 			$user_id = get_current_user_id();
 			if ( ! self::valid_adapter_session_id( $session_id ) ) return $result;
 			$tracked = self::forget_session_shadow( $user_id, $session_id );
@@ -678,8 +692,9 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			'first_empty_race_visible_map_max_sessions' => self::FIRST_EMPTY_RACE_MAX_VISIBLE_SESSIONS,
 			'first_empty_race_creation_skew_seconds' => self::FIRST_EMPTY_RACE_CREATION_SKEW_SECONDS,
 			'version_only_repair_authority_allowed' => false,
-			'certified_stateful_adapter_version' => self::CERTIFIED_STATEFUL_ADAPTER_VERSION,
-			'exact_adapter_version_required' => true,
+			'certified_stateful_adapter_version' => self::stateful_runtime_version(),
+			'exact_adapter_version_required' => false,
+			'runtime_version_must_match_certified_and_installed' => true,
 			'certified_runtime_integrity_required' => true,
 			'runtime_integrity_checked_only_on_candidate_repair_paths' => true,
 			'runtime_integrity_transport_file_count' => 4,

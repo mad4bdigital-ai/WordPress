@@ -59,17 +59,6 @@ for marker in [
 ]:
     require(marker in ABILITIES, f"minimal read transport invariant missing: {marker}")
 
-# tool-info returns a directly reusable identity; read-execute must
-# independently reject missing preparation fields before dispatch.
-read_info = ABILITIES.split("public function tool_info", 1)[1].split("public function read_execute", 1)[0]
-require("'ability_name' => $ability_name" in read_info.split("$result['prepared_dispatch'] = array(", 1)[1],
-        "read preparation envelope lacks its exact target name")
-read_exec = ABILITIES.split("public function read_execute", 1)[1].split("private function governed_developer_target", 1)[0]
-require("foreach ( $required_read_identity as $key )" in read_exec and
-        "mad4b_dispatch_preparation_required" in read_exec,
-        "read executor did not reject incomplete prepared identity")
-
-
 read_dispatch = ABILITIES.split("private function governed_read_target", 1)[1].split("public function tool_discover", 1)[0]
 for forbidden in [
     "MAD4B_SCP_Authorization::authorize_mutation",

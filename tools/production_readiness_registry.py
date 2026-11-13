@@ -180,47 +180,6 @@ def current_blob_sha(commit, path):
     return sha
 
 
-def review_exact_core_registration_relocations(base, head, changed, added, removed):
-    """Reconcile relocated *registrations*, never classify an unreviewed capability as safe.
-
-    The first-party Abilities facade was split into a source-only registration
-    trait. A name move is not an API decommission or addition when the same
-    literal call is present at both immutable Git revisions. All source blob
-    behavior-review gates remain independent and MUST still run.
-    """
-    original = PLUGIN + "includes/class-mad4b-scp-abilities.php"
-    target = PLUGIN + "includes/trait-mad4b-scp-abilities-registration.php"
-    statuses = {path: status for status, path in changed}
-    if statuses.get(original) != "M" or statuses.get(target) != "A":
-        return []
-    before = git_text(base, original)
-    after = git_text(head, original)
-    previous_target = git_text(base, target)
-    current_target = git_text(head, target)
-    if not before or after is None or previous_target is not None or not current_target:
-        return []
-    # Source-owned registration statements, NOT incidental literals in grant
-    # allowlists, comments, metadata, or third-party runtime adapters.
-    declarations = re.compile(r"""[$]this->add[(]\s*['"]([a-z0-9]+/[a-z0-9_-]+)['"]""")
-    old_names = set(declarations.findall(before))
-    new_names = set(declarations.findall(current_target))
-    remaining_original = set(declarations.findall(after))
-    moved = []
-    for ability in sorted(set(added).intersection(removed)):
-        if not ability.startswith("ability:"):
-            continue
-        name = ability[len("ability:"):]
-        if (name not in old_names or name not in new_names
-            or name in remaining_original or removed[ability] != original):
-            continue
-        moved.append({"id": ability, "from": original, "to": target,
-                      "review_state": "source_relocation_only",
-                      "authorizing": False, "production_authorized": False})
-        del added[ability]
-        del removed[ability]
-    return moved
-
-
 def new_source_ids(base, head, changed):
     old = catalog_snapshot(base)
     new = catalog_snapshot(head)
@@ -254,12 +213,7 @@ def new_source_ids(base, head, changed):
                 added["admin_asset:" + path] = path
             if status == "D":
                 removed["admin_asset:" + path] = path
-    # Only suppress synthetic A+D for exactly proven first-party relocation.
-    # New/changed PHP source still requires an exact-Git-blob behavior review.
-    relocations = review_exact_core_registration_relocations(
-        base, head, changed, added, removed
-    )
-    return old, new, added, removed, relocations
+    return old, new, added, removed
 
 
 def classify(path, cap, coverage):
@@ -479,16 +433,8 @@ def validate_coverage(coverage, controls, base, head, changed, added, removed):
             ensure(isinstance(tests, list) and tests,
                    "A newly introduced capability must provide regression tests")
             for test in tests:
-                # Historical capability review evidence is append-only; its
-                # original regression file belongs to the introducing PR,
-                # not necessarily to this one. New capabilities still demand
-                # a same-PR test; all changed source Git blobs independently
-                # demand a *new* same-PR regression under reviewed_changes.
-                in_this_pr = capability not in previously_reviewed
-                ensure(isinstance(test, str) and
-                       (test.startswith(PLUGIN + "tests/") or
-                        test.startswith("tests/")) and
-                       (not in_this_pr or test in changed_set) and
+                ensure(isinstance(test, str) and (test.startswith(PLUGIN + "tests/") or
+                       test.startswith("tests/")) and test in changed_set and
                        (ROOT / test).is_file(),
                        "Test evidence must be committed with capability: " + capability)
             accepted.append(capability)
@@ -606,7 +552,7 @@ def evaluate(base, head):
     changed = changed_paths(base, head)
     controls = json.loads((ROOT / CONTROLS).read_text(encoding="utf-8"))
     coverage = json.loads((ROOT / COVERAGE).read_text(encoding="utf-8"))
-    old, current, added, removed, relocations = new_source_ids(base, head, changed)
+    old, current, added, removed = new_source_ids(base, head, changed)
     failures, reviewed, behavior = validate_coverage(
         coverage, controls, base, head, changed, added, removed)
     impact = impact_rows(changed, coverage, added, removed)
@@ -619,7 +565,6 @@ def evaluate(base, head):
         "decision": "PASS_COVERAGE_ONLY" if not failures else "FAIL_UNCOVERED_CHANGES",
         "catalog_baseline_count": len(old),
         "catalog_current_count": len(current),
-        "source_relocations": relocations,
         "introduced": [{"id": k, "source": v} for k, v in sorted(added.items())],
         "retired": [{"id": k, "source": v} for k, v in sorted(removed.items())],
         "reviewed_for_ci_only": reviewed,
@@ -650,7 +595,6 @@ def evaluate(base, head):
         "impact": impact,
         "counts": {"changed_paths": len(changed), "catalog_growth": len(current) - len(old),
                    "new_capabilities": len(added), "removed_capabilities": len(removed),
-                   "reviewed_source_relocations": len(relocations),
                    "coverage_gaps": len(failures),
                    "impacted_files": len(impact),
                    "reviewed_behavior_changes": len(behavior)},

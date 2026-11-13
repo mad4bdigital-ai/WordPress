@@ -2961,7 +2961,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 				if(!response.ok)throw new Error("Updated settings were saved, but the Google setup panels could not be refreshed.");
 				var html=await response.text();
 				var doc=new DOMParser().parseFromString(html,"text/html");
-				["mad4b-google-connection-method","mad4b-google-grants","mad4b-google-auth-setup","mad4b-google-connect"].forEach(function(id){
+				["mad4b-google-primary-signin","mad4b-google-connection-method","mad4b-google-grants","mad4b-google-auth-setup","mad4b-google-connect"].forEach(function(id){
 					var current=document.getElementById(id), next=doc.getElementById(id);
 					if(current&&next)current.replaceWith(next);
 				});

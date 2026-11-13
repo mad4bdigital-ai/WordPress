@@ -216,7 +216,6 @@ for marker in [
     "self::SEED_MANIFEST_CONTRACT",
     "self::SEED_VERSION !== (int) $data['seed_version']",
     "MAD4B_SCP_Site_Profile::origin_enrolled()",
-    "MAD4B_SCP_Skill_Registry::editor_enabled()",
     "MAD4B_SCP_Audit::storage_status()",
     "MAD4B_SCP_Audit::record",
     "mad4b/skill-seed-refresh",
@@ -237,6 +236,10 @@ for marker in [
 ]:
     if marker not in seeder:
         raise SystemExit(f'missing canonical automatic seed/provider handoff guard: {marker}')
+
+# Canonical managed seed synchronization must not require a user-editing UI
+# flag: that independent switch applies to manually authored Skill files.
+assert "MAD4B_SCP_Skill_Registry::editor_enabled()" not in seeder
 
 for marker in [
     "const CONTRACT = 'mad4b.skill-provider-discovery.v1'",

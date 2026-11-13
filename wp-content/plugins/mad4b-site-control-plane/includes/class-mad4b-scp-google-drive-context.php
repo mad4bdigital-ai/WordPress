@@ -68,6 +68,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 	const ANALYTICS_EDIT_SCOPE = 'https://www.googleapis.com/auth/analytics.edit';
 	const TAG_MANAGER_READ_SCOPE = 'https://www.googleapis.com/auth/tagmanager.readonly';
 	const TAG_MANAGER_EDIT_SCOPE = 'https://www.googleapis.com/auth/tagmanager.edit.containers';
+	const TAG_MANAGER_EDIT_VERSIONS_SCOPE = 'https://www.googleapis.com/auth/tagmanager.edit.containerversions';
 	const TAG_MANAGER_PUBLISH_SCOPE = 'https://www.googleapis.com/auth/tagmanager.publish';
 	const SEARCH_CONSOLE_READ_SCOPE = 'https://www.googleapis.com/auth/webmasters.readonly';
 	const GOOGLE_ADS_SCOPE = 'https://www.googleapis.com/auth/adwords';
@@ -303,7 +304,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 					'off' => array( 'label' => 'Off', 'scopes' => array() ),
 					'read' => array( 'label' => 'Read-only', 'scopes' => array( self::TAG_MANAGER_READ_SCOPE ) ),
 					'draft' => array( 'label' => 'Manage workspaces', 'scopes' => array( self::TAG_MANAGER_READ_SCOPE, self::TAG_MANAGER_EDIT_SCOPE ) ),
-					'publish' => array( 'label' => 'Publish (separate approval required)', 'scopes' => array( self::TAG_MANAGER_READ_SCOPE, self::TAG_MANAGER_EDIT_SCOPE, self::TAG_MANAGER_PUBLISH_SCOPE ), 'exclude_from_full_suite' => true, 'sensitivity' => 'sensitive' ),
+					'publish' => array( 'label' => 'Publish (separate approval required)', 'scopes' => array( self::TAG_MANAGER_READ_SCOPE, self::TAG_MANAGER_EDIT_SCOPE, self::TAG_MANAGER_EDIT_VERSIONS_SCOPE, self::TAG_MANAGER_PUBLISH_SCOPE ), 'exclude_from_full_suite' => true, 'sensitivity' => 'sensitive' ),
 				),
 			),
 			'calendar' => array(
@@ -393,7 +394,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 	public static function measurement_broker_grant_for_scope( $scope ) {
 		$scope = trim( (string) $scope );
 		$allowed = array( self::ANALYTICS_READ_SCOPE, self::ANALYTICS_EDIT_SCOPE,
-			self::TAG_MANAGER_READ_SCOPE, self::TAG_MANAGER_EDIT_SCOPE, self::TAG_MANAGER_PUBLISH_SCOPE,
+			self::TAG_MANAGER_READ_SCOPE, self::TAG_MANAGER_EDIT_SCOPE, self::TAG_MANAGER_EDIT_VERSIONS_SCOPE, self::TAG_MANAGER_PUBLISH_SCOPE,
 			self::SEARCH_CONSOLE_READ_SCOPE, self::GOOGLE_ADS_SCOPE );
 		if ( ! in_array( $scope, $allowed, true ) ||
 			! current_user_can( 'manage_options' ) ||
@@ -1343,13 +1344,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 	}
 
 	public static function admin_folder_preview( $folder_id ) {
-        // Per-request only. The admin folder picker and its read-only
-        // onboarding preflight can reuse the exact same provider evidence.
-        // Never persist a folder-access proof across requests.
-        static $verified_in_request = array();
 		$folder_id = self::bounded_drive_id( $folder_id );
-        if ( isset( $verified_in_request[$folder_id] ) )
-            return $verified_in_request[$folder_id];
 		if ( '' === $folder_id ) return new WP_Error( 'mad4b_google_drive_folder_id_invalid', 'Google Drive folder ID is invalid.' );
 		if ( 'root' === strtolower( $folder_id ) ) return array( 'id' => 'root', 'name' => 'My Drive', 'mimeType' => 'application/vnd.google-apps.folder', 'parents' => array() );
 
@@ -1365,8 +1360,6 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$file = self::passive_admin_api_get( $url );
 		if ( is_wp_error( $file ) ) return $file;
 		if ( 'application/vnd.google-apps.folder' !== ( isset( $file['mimeType'] ) ? (string) $file['mimeType'] : '' ) ) return new WP_Error( 'mad4b_google_drive_not_folder', 'Selected Google Drive item is not a folder.' );
-        if ( hash_equals( $folder_id, (string) ( $file['id'] ?? '' ) ) )
-            $verified_in_request[$folder_id] = $file;
 		return $file;
 	}
 
@@ -1462,31 +1455,10 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( ! class_exists( 'MAD4B_SCP_Distributed_Lock' ) ) require_once __DIR__ . '/class-mad4b-scp-distributed-lock.php';
 		$checkpoint = MAD4B_SCP_Operational_Integrity::capture();
 		if ( is_wp_error( $checkpoint ) ) return $checkpoint;
-        // A read-only bounded Drive inventory is valid for the site's enrolled
-        // Staging OR Production environment. Neither a checkpoint nor a scan
-        // grants source mutation/publication authority.
-        $site = class_exists( 'MAD4B_SCP_Site_Profile', false )
-            ? MAD4B_SCP_Site_Profile::status() : array();
-        $environment = (string) ( $checkpoint['scope']['environment'] ?? '' );
-        if ( ! is_array( $site ) || empty( $site['configured'] )
-            || ! in_array( $environment, array( 'staging', 'production' ), true )
-            || ! hash_equals( (string) ( $site['environment'] ?? '' ), $environment )
-            || ! hash_equals( (string) ( $site['configured_environment'] ?? '' ), $environment )
-            || ! hash_equals( (string) ( $site['site_uuid'] ?? '' ),
-                (string) ( $checkpoint['scope']['site_uuid'] ?? '' ) )
-            || empty( $site['origin_match'] ) || empty( $site['environment_match'] )
-            || empty( $site['authority_ready'] ) || empty( $site['deployment_binding_match'] ) )
-            return new WP_Error( 'mad4b_scan_exact_registered_site_required',
-                'Resumable inventory requires the exact enrolled Staging or Production site, trusted scope and binding.' );
-		$grant = self::scan_grant_fingerprint_v1(); if ( is_wp_error( $grant ) ) return $grant;
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile', false ) || empty( MAD4B_SCP_Site_Profile::status()['authority_ready'] ) || !hash_equals( (string) MAD4B_SCP_Site_Profile::site_uuid(), (string) ( $checkpoint['scope']['site_uuid'] ?? '' ) ) ) return new WP_Error( 'mad4b_scan_site_scope_unready', 'Resumable inventory requires the enrolled, integrity-bound company site.' );
+		$grant = self::encrypted_grant_identity_sha256(); if ( is_wp_error( $grant ) ) return $grant;
 		$connection = self::connection_status();
-        // The existing read-only folder request below performs the native
-        // bounded OAuth refresh when the access token expires. The checkpoint
-        // is bound to the stable grant/subject, never a temporary access token.
-        if ( empty($connection['connected']) || empty($connection['read_available'])
-            || !empty($connection['revocation_pending']) || !empty($connection['token_unreadable']) )
-            return new WP_Error('mad4b_scan_connected_read_grant_required',
-                'The existing non-revoked Google read grant must be connected.');
+		if ( empty( $connection['token_healthy'] ) ) return new WP_Error( 'mad4b_scan_fresh_connection_required', 'Verify the governed Google connection refresh before starting or resuming an inventory.' );
 		$source_digest = hash( 'sha256', wp_json_encode( $source ) );
 		$registered = MAD4B_SCP_Context_Authority::source( $source['source_id'] ?? '' );
 		if ( empty($registered) || !hash_equals($source_digest,hash('sha256',wp_json_encode($registered))) ) return new WP_Error('mad4b_scan_source_scope_mismatch','Only the exact currently registered source may be scanned.');
@@ -1504,7 +1476,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 				if ( 'revalidate' === $action ) {
 					$valid = MAD4B_SCP_Operational_Integrity::assert_unchanged( $checkpoint, false );
 					if ( is_wp_error( $valid ) ) return $valid;
-					$current_grant = self::scan_grant_fingerprint_v1();
+					$current_grant = self::encrypted_grant_identity_sha256();
 					$current_source = MAD4B_SCP_Context_Authority::source( $source['source_id'] );
 					return ! is_wp_error( $current_grant ) && hash_equals( $grant, $current_grant )
 						&& hash_equals( $source_digest, hash( 'sha256', wp_json_encode( $current_source ) ) )
@@ -3585,28 +3557,6 @@ final class MAD4B_SCP_Google_Drive_Context {
 	}
 
 	/** Hash encrypted-at-rest identity without leaking the saved credentials. */
-    /**
-     * Token-refresh-stable scan identity, derived from the existing consented
-     * grant and OAuth subject. Never persist or expose the refresh token.
-     * Access token, expiry and refresh timestamps are intentionally excluded.
-     */
-    public static function scan_grant_fingerprint_v1() {
-        $record=self::token_record();
-        if(!is_array($record)||empty($record['refresh_token'])
-            ||!empty($record['revocation_pending']))
-            return new WP_Error('mad4b_scan_stable_grant_missing',
-                'A connected, non-revoked existing Drive grant is required.');
-        $identity=array();
-        // Scope projections may be reordered by the provider on refresh.
-        // Keep the stable refresh identity plus the account, consenting
-        // principal and governed workspace grant binding only.
-        foreach(array('refresh_token','auth_mode','workspace_grant_sha256',
-            'account_email','permission_id','consent_wp_user_id') as $field)
-            $identity[$field]=(string)($record[$field]??'');
-        return hash_hmac('sha256',wp_json_encode($identity,
-            JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE),wp_salt('auth'));
-    }
-
 	public static function encrypted_grant_identity_sha256() {
 		$stored = get_option( self::TOKEN_OPTION, null );
 		if ( ! is_array( $stored ) || ! $stored )

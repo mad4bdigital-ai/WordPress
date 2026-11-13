@@ -13,15 +13,9 @@ import urllib.request
 from pathlib import Path
 
 MAX_ADAPTER_BYTES = 16 * 1024 * 1024
-def is_certified_release_url(version: str, url: str) -> bool:
-    """Allow only the exact official archive path for this certified profile."""
-    return url in (
-        f"https://github.com/WordPress/mcp-adapter/releases/download/v{version}/mcp-adapter.zip",
-        f"https://downloads.wordpress.org/plugin/mcp-adapter.{version}.zip",
-    )
+ALLOWED_INITIAL_PREFIX = "https://github.com/WordPress/mcp-adapter/releases/download/v"
 ALLOWED_FINAL_HOSTS = {
     "github.com",
-    "downloads.wordpress.org",
     "objects.githubusercontent.com",
     "release-assets.githubusercontent.com",
     "github-releases.githubusercontent.com",
@@ -64,12 +58,12 @@ def main() -> int:
         len(expected_sha) != 64
         or expected_bytes < 1
         or expected_bytes > MAX_ADAPTER_BYTES
-        or not is_certified_release_url(version, url)
+        or not url.startswith(ALLOWED_INITIAL_PREFIX)
     ):
         fail("target MCP Adapter profile identity invalid")
 
     parsed = urllib.parse.urlparse(url)
-    if parsed.scheme != "https" or parsed.hostname not in {"github.com", "downloads.wordpress.org"}:
+    if parsed.scheme != "https" or parsed.hostname != "github.com":
         fail("target MCP Adapter package URL is outside the certified GitHub release origin")
 
     request = urllib.request.Request(url, headers={"User-Agent": "MAD4B-Certified-Adapter-CI/1"})

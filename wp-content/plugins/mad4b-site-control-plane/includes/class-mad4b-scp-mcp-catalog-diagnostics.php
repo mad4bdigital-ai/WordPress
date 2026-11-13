@@ -158,21 +158,7 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
         $out['optional_per_tool_serialized_bytes_limit'] = $limits['max_bytes'];
         $out['catalog_budget'] = $limits;
 		$out['size_policy'] = 'bounded_single_tool_schema_unbounded_total';
-		// Optional wire failures can be isolated, but required tools may not
-		// disappear while the preflight still advertises ready=true.
-		$required_names = array_values( array_diff( $abilities, $optional ) );
-		$required_failed = false;
-		foreach ( $out['failures'] as $failure ) {
-			if ( isset( $failure['failing_ability'] )
-				&& in_array( $failure['failing_ability'], $required_names, true ) ) {
-				$required_failed = true;
-				break;
-			}
-		}
-		if ( $required_failed && '' === $out['blocker'] )
-			$out['blocker'] = 'mcp_required_tool_preflight_failed';
-		$out['degraded'] = ! empty( $out['failures'] ) && ! $required_failed
-			&& '' === $out['blocker'];
+		$out['degraded'] = ! empty( $out['failures'] ) && '' === $out['blocker'];
 		$out['ready'] = '' === $out['blocker'] && ! empty( $out['tools'] );
 		if ( ! $out['ready'] && '' === $out['blocker'] ) $out['blocker'] = 'mcp_catalog_empty';
 		return $out;
@@ -315,24 +301,6 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 		return true;
 	}
 
-	/**
-	 * Narrow the JSON UTF-8 failure to a fixed, public MCP field name only.
-	 * No user-supplied field path, schema value, bearer or error message escapes.
-	 * Run only after the original strict JSON_THROW_ON_ERROR check has failed.
-	 */
-	private static function invalid_utf8_wire_component( array $data ) {
-		foreach ( array( 'name', 'title', 'description', 'inputSchema',
-			'outputSchema', 'annotations', 'icons', 'execution' ) as $key ) {
-			if ( ! array_key_exists( $key, $data ) ) continue;
-			try {
-				json_encode( $data[ $key ], JSON_THROW_ON_ERROR );
-			} catch ( JsonException $error ) {
-				if ( 5 === (int) $error->getCode() ) return $key;
-			}
-		}
-		return 'unclassified';
-	}
-
 	/** Official validator plus exact wire serialization. Only bounded diagnostic fields escape. */
 	public static function dto_failure( $dto, $prepared_data = null ) {
 		$stage = 'wire_serialization'; $fingerprint = '';
@@ -371,19 +339,10 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 			if ( isset( $wire->outputSchema ) && ( ! is_object( $wire->outputSchema ) || 'object' !== ( $wire->outputSchema->type ?? '' ) ) ) throw new RuntimeException( 'wire_output_schema_invalid' );
 			return null;
 		} catch ( Throwable $error ) {
-			// JSON encoder error *number* is safe diagnostic evidence. Never
-			// persist raw wire schema, caller input, error message or stack trace.
-			// Keep the required-tool failure and permission gate fail-closed.
-			$json_error = $error instanceof JsonException ? (int) $error->getCode() : 0;
-			if ( $json_error < 0 || $json_error > 10 ) $json_error = 0;
-			$utf8_component = 5 === $json_error && isset( $data ) && is_array( $data )
-				? self::invalid_utf8_wire_component( $data ) : 'not_applicable';
 			return array(
 				'stage' => $stage,
 				'error_class' => get_class( $error ),
 				'error_code' => 'mcp_tool_serialization_invalid',
-				'json_error_number' => $json_error,
-				'json_error_component' => $utf8_component,
 				'schema_fingerprint' => $fingerprint,
 			);
 		}
@@ -509,28 +468,6 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 			if ( ! $failure ) { $safe[] = $dto; continue; }
 			if ( ! $direct_step_up && ! $dynamic ) throw new RuntimeException( 'mad4b_required_catalog_schema_invalid' );
 			$failure['failing_ability'] = $ability;
-			if ( 'description' === ( $failure['json_error_component'] ?? '' )
-				&& function_exists( 'wp_get_ability' )
-				&& class_exists( 'MAD4B_SCP_MCP_Adapter_Compatibility' ) ) {
-				$registered_ability = wp_get_ability( $ability );
-				$wire_fields = MAD4B_SCP_MCP_Adapter_Compatibility::wire_data( $dto );
-				$source_description = is_object( $registered_ability )
-					&& method_exists( $registered_ability, 'get_description' )
-					? $registered_ability->get_description() : null;
-				$wire_description = is_array( $wire_fields )
-					? ( $wire_fields['description'] ?? null ) : null;
-				// Diagnostic booleans and byte lengths only. Never log description
-				// content, WordPress user input, token, or untrusted schema keys.
-				$failure['description_source_is_utf8'] = is_string( $source_description )
-					&& 1 === preg_match( '//u', $source_description );
-				$failure['description_source_wire_equal'] = is_string( $source_description )
-					&& is_string( $wire_description )
-					&& hash_equals( $source_description, $wire_description );
-				$failure['description_source_bytes'] = is_string( $source_description )
-					? strlen( $source_description ) : 0;
-				$failure['description_wire_bytes'] = is_string( $wire_description )
-					? strlen( $wire_description ) : 0;
-			}
 			if ( ! self::$failure_logged ) {
 				self::$failure_logged = true;
 				error_log( '[MAD4B MCP preflight] ' . wp_json_encode( $failure ) );

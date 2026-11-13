@@ -4,7 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 require_once __DIR__ . '/class-mad4b-scp-governed-ability-census.php';
 
 /**
- * Hardened policy/execution helper for bounded Staging enrollment operations.
+ * Hardened policy/execution helper for bounded, policy-governed enrollment.
  *
  * Registration of mad4b/enrollment-* is owned exclusively by MAD4B_SCP_Abilities.
  *
@@ -15,12 +15,13 @@ require_once __DIR__ . '/class-mad4b-scp-governed-ability-census.php';
  * - addressed to the operator role OR the single audited owner-only
  *   staging_write_authority_convergence operation,
  * - remote-parity ready and execution eligible,
- * - Staging/production-denied,
+ * - Legacy Staging-only operations retain their explicit catalog denial,
+ * - New first-party operations require registered Site Profile/Governance proof,
  * - not generic human-decision operations. The owner convergence remains
  *   human-reviewed and must validate exact plan + step-up on the target.
  *
  * Execution additionally requires the dedicated OAuth authority step-up scope,
- * the exact ChatGPT CIMD client, an enrolled Staging administrator, exact
+ * the exact ChatGPT CIMD client, an enrolled administrator, exact
  * catalog registration + dispatch-policy digests, and exact input-schema hash.
  */
 final class MAD4B_SCP_Enrollment_Dispatch {
@@ -38,12 +39,14 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 	 * envelope for known-safe maintenance operations.
 	 */
 	public static function chatgpt_tools() {
-		return self::staging_profile_exact() ? array( self::EXECUTE_ABILITY ) : array();
+		return self::governed_profile_exact() ? array( self::EXECUTE_ABILITY ) : array();
 	}
 
 	public static function can_execute( $input = null ) {
 		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_enrollment_dispatch_admin_required', 'Administrator capability is required.' );
-		if ( ! self::staging_profile_exact() ) return new WP_Error( 'mad4b_enrollment_dispatch_staging_profile_required', 'Exact enrolled Staging Site Profile is required.' );
+        if ( ! self::governed_profile_exact() ) return new WP_Error(
+            'mad4b_enrollment_dispatch_managed_profile_required',
+            'Exact enrolled managed Write profile is required for governed dispatch.' );
 		$user_id = get_current_user_id();
 		if ( $user_id < 1 || ! MAD4B_SCP_Site_Profile::user_is_enrolled( $user_id ) ) {
 			return new WP_Error( 'mad4b_enrollment_dispatch_subject_not_enrolled', 'The authenticated administrator is not enrolled in this Site Profile.' );
@@ -55,7 +58,7 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 			return new WP_Error( 'mad4b_enrollment_dispatch_bearer_required', 'Verified OAuth bearer identity is required.' );
 		}
 		if ( ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE ) ) {
-			return new WP_Error( 'mad4b_enrollment_dispatch_step_up_scope_required', 'Dedicated Staging authority step-up scope is required.' );
+			return new WP_Error( 'mad4b_enrollment_dispatch_step_up_scope_required', 'Dedicated governed authority step-up scope is required.' );
 		}
 		if ( ! class_exists( 'MAD4B_SCP_Local_OAuth_Server' )
 			|| ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is( MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID ) ) {
@@ -68,13 +71,20 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 		return is_wp_error( $operation ) ? $operation : true;
 	}
 
-	private static function staging_profile_exact() {
-		return class_exists( 'MAD4B_SCP_Site_Profile' )
-			&& MAD4B_SCP_Site_Profile::configured()
-			&& 'staging' === sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )
-			&& MAD4B_SCP_Site_Profile::origin_enrolled()
-			&& MAD4B_SCP_Site_Profile::site_urls_match_enrollment();
-	}
+    private static function governed_profile_exact() {
+        // Environment admission derives from first-party Site Profile and
+        // current Governance Policy, never
+        // a baked-in Staging/Production blacklist.
+        if ( ! class_exists( 'MAD4B_SCP_Site_Profile' )
+            || ! class_exists( 'MAD4B_SCP_Policy_Resolution' )
+            || ! MAD4B_SCP_Site_Profile::configured()
+            || ! MAD4B_SCP_Site_Profile::origin_enrolled()
+            || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment()
+            || ! MAD4B_SCP_Site_Profile::managed_runtime_enabled()
+            || ! MAD4B_SCP_Site_Profile::write_enabled() ) return false;
+        $environment = MAD4B_SCP_Site_Profile::current_environment();
+        return MAD4B_SCP_Policy_Resolution::environment_allowed( $environment );
+    }
 
 	private static function generic_raw_sql_breakglass_enabled() {
 		return class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' ) && MAD4B_SCP_Governed_Runtime_Gates::raw_sql_breakglass_enabled();
@@ -108,11 +118,54 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 		if ( ! array_key_exists( 'generic_remote_admin', $mcp ) || false !== $mcp['generic_remote_admin'] ) {
 			return new WP_Error( 'mad4b_enrollment_dispatch_generic_admin_denied', 'Generic remote-admin enrollment targets are not dispatchable.' );
 		}
-		if ( ! array_key_exists( 'production_mutation_allowed', $mcp ) || false !== $mcp['production_mutation_allowed'] ) {
-			return new WP_Error( 'mad4b_enrollment_dispatch_target_production_denied', 'Production-capable enrollment targets are not dispatchable.' );
-		}
+        $governed = 'registered_write_policy_v1' === ( $mcp['governed_operation_policy'] ?? '' )
+            && 'policy_governed' === ( $mcp['production_mutation_allowed'] ?? null )
+            && 'policy_governed' === ( $mcp['production_allowed'] ?? null )
+            && 'registered_operation_policy_v1' === ( $mcp['broker_dispatch_policy'] ?? null );
+        if ( $governed ) {
+            if ( ! class_exists( 'MAD4B_SCP_Registered_Write_Admission' ) ) {
+                return new WP_Error( 'mad4b_enrollment_dispatch_registered_policy_unavailable',
+                    'Registered first-party governance policy unavailable.' );
+            }
+            $admission = MAD4B_SCP_Registered_Write_Admission::preflight( $ability_name );
+            if ( is_wp_error( $admission ) || ! is_array( $admission )
+                || false !== ( $admission['authorization_issued'] ?? null ) ) {
+                return is_wp_error( $admission ) ? $admission
+                    : new WP_Error( 'mad4b_enrollment_dispatch_registered_policy_denied',
+                        'Registered operation governance did not admit this request.' );
+            }
+        } elseif ( ! array_key_exists( 'production_mutation_allowed', $mcp )
+            || false !== $mcp['production_mutation_allowed'] ) {
+            return new WP_Error( 'mad4b_enrollment_dispatch_target_production_denied',
+                'Target has no reviewed registered-governance or legacy Staging policy.' );
+        }
 		return $ability;
 	}
+
+    /**
+     * Non-authorizing classification for the outer WordPress Ability gate.
+     * Determined from the exact current broker operation, NOT caller labels.
+     * Legacy operations still require their existing Staging parity gate.
+     */
+    public static function registered_policy_classification( $input ) {
+        if ( ! is_array( $input ) || empty( $input['operation_id'] ) ) {
+            return new WP_Error( 'mad4b_enrollment_dispatch_operation_required',
+                'Current governed operation identity is required.' );
+        }
+        $current = self::operation( (string) $input['operation_id'] );
+        if ( is_wp_error( $current ) ) return $current;
+        $row = $current['row'];
+        $governed = 'registered_governance' === ( $row['production_policy'] ?? null )
+            && 1 === preg_match( '/^[a-f0-9]{64}$/D',
+                (string) ( $row['registered_policy_sha256'] ?? '' ) );
+        return array(
+            'contract' => 'mad4b.enrollment-registry-policy-classification.v1',
+            'operation_id' => (string) $row['operation_id'],
+            'policy_class' => $governed ? 'registered_governance' : 'legacy_remote_parity',
+            'source' => 'first_party_registered_operation',
+            'authorizing' => false, 'mutation_performed' => false,
+        );
+    }
 
 	public static function input_schema_sha256( $ability ) {
 		return self::ability_input_schema_sha256( $ability );
@@ -135,6 +188,7 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 			'remote_caller_role' => isset( $row['remote_caller_role'] ) ? (string) $row['remote_caller_role'] : '',
 			'remote_mode' => isset( $row['remote_mode'] ) ? (string) $row['remote_mode'] : '',
 			'production_policy' => isset( $row['production_policy'] ) ? (string) $row['production_policy'] : '',
+            'registered_policy_sha256' => isset( $row['registered_policy_sha256'] ) ? (string) $row['registered_policy_sha256'] : '',
 			'human_decision_required' => ! empty( $row['human_decision_required'] ),
 			'remote_registered' => ! empty( $row['remote_registered'] ),
 			'execution_eligible' => ! empty( $row['execution_eligible'] ),
@@ -177,6 +231,13 @@ final class MAD4B_SCP_Enrollment_Dispatch {
                 'callback_pair_digest' => (string) $candidate['callback_pair_digest'],
 				'first_party_callback_source' => (string) $candidate['source'],
 			);
+            $registered_governance = ! empty( $candidate['policy_governed'] );
+            $policy_sha = '';
+            if ( $registered_governance ) {
+                $admitted = MAD4B_SCP_Operation_Registry::registered_write_policy( $name );
+                if ( ! is_array( $admitted ) || is_wp_error( $admitted ) ) continue;
+                $policy_sha = (string) $admitted['operation_sha256'];
+            }
 			$operations[ $id ] = array(
 				'operation_id' => $id, 'feature_id' => 'dynamic_core_enrollment',
                 'broker_dispatch_policy' => (string) $candidate['broker_dispatch_policy'],
@@ -187,12 +248,15 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 				'remote_mode' => 'verified_first_party_oauth_step_up',
 				'remote_caller_role' => ! empty( $candidate['owner_intent_only'] ) ? 'owner' : 'enrolled_operator',
 				'human_decision_required' => true,
-				'production_policy' => 'deny', 'remote_registered' => true,
+				'production_policy' => $registered_governance ? 'registered_governance' : 'deny',
+                'registered_policy_sha256' => $policy_sha, 'remote_registered' => true,
 				'execution_eligible' => true, 'remote_parity_ready' => true,
 				'trust_class' => 'core', 'registrar_id' => 'mad4b-core',
 				'source_plugin' => 'mad4b-site-control-plane',
 				'registration_digest' => hash( 'sha256', wp_json_encode( $identity, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) ),
-				'capability_tags' => array( 'dynamic', 'oauth-step-up', 'staging-only', 'non-authorizing-discovery' ),
+				'capability_tags' => $registered_governance
+                    ? array( 'dynamic', 'oauth-step-up', 'registry-policy-governed', 'non-authorizing-discovery' )
+                    : array( 'dynamic', 'oauth-step-up', 'staging-only', 'non-authorizing-discovery' ),
                 'search_terms' => 'exact_runtime_release_set_v1' === $candidate['broker_dispatch_policy'] ? 'runtime update maintenance recovery' : '',
 			);
 		}
@@ -215,15 +279,23 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 			return new WP_Error( 'mad4b_enrollment_dispatch_operation_unknown', 'Governed enrollment operation is not present in the current catalog.' );
 		}
 		$row = $verified_first_party ? $dynamic[ $operation_id ] : $catalog[ $operation_id ];
-        // A first-party callback is not sufficient authority: the broker
-        // accepts only explicit, owner-reviewed, Staging-only declarations.
-        // Other privileged operations keep their dedicated dispatch lane.
+        // Obtain the live registered Ability's metadata. A forged row or
+        // synthetic policy object must never bypass reviewed first-party
+        // callback provenance or the registered operation policy.
+        $verified_metadata = array();
+        if ( $verified_first_party ) {
+            $registered_ability = function_exists( 'wp_get_ability' )
+                ? wp_get_ability( (string) ( $row['remote_ability'] ?? '' ) ) : null;
+            $metadata = is_object( $registered_ability ) && method_exists( $registered_ability, 'get_meta' )
+                ? $registered_ability->get_meta() : array();
+            $verified_metadata = is_array( $metadata ) && is_array( $metadata['mcp'] ?? null )
+                ? $metadata['mcp'] : array();
+        }
         if ( $verified_first_party && (
             ! MAD4B_SCP_Governed_Ability_Census::reviewed_broker_policy(
-                (string) ( $row['remote_ability'] ?? '' ),
-                array( 'broker_dispatch_policy' => $row['broker_dispatch_policy'] ?? '',
-                    'owner_intent_only' => ! empty( $row['owner_intent_only'] ),
-                    'authority_mutation_allowed' => false, 'normal_write_authority_required' => false ) )
+                (string) ( $row['remote_ability'] ?? '' ), $verified_metadata )
+            || (string) ( $row['broker_dispatch_policy'] ?? '' )
+                !== (string) ( $verified_metadata['broker_dispatch_policy'] ?? '' )
             || empty( $row['callback_pair_digest'] )
             || empty( $row['human_decision_required'] ) ) ) {
             return new WP_Error( 'mad4b_enrollment_dispatch_policy_not_reviewed',
@@ -236,7 +308,11 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 			|| ( ! $verified_first_party && ! $owner_convergence && 'operator' !== ( isset( $row['remote_caller_role'] ) ? (string) $row['remote_caller_role'] : '' ) )
 			|| ( ! $verified_first_party && ! in_array( $ability_name, $enrollment_abilities, true ) )
 			|| ( ! $verified_first_party && ! $owner_convergence && ! empty( $row['human_decision_required'] ) )
-			|| 'deny' !== ( isset( $row['production_policy'] ) ? (string) $row['production_policy'] : '' )
+            || ( $verified_first_party && ! empty( $row['registered_policy_sha256'] )
+                ? 'registered_governance' !== ( $row['production_policy'] ?? '' )
+                : 'deny' !== ( $row['production_policy'] ?? '' ) )
+            || ( 'production' === MAD4B_SCP_Site_Profile::current_environment()
+                && 'registered_governance' !== ( $row['production_policy'] ?? '' ) )
 			|| empty( $row['remote_registered'] )
 			|| empty( $row['execution_eligible'] )
 			|| empty( $row['remote_parity_ready'] ) ) {
@@ -876,6 +952,15 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 	}
 
 	public static function execute( $input ) {
+        // The public Ability's permission callback is not enough: direct
+        // invocations and nested broker calls must re-check the same enrolled
+        // identity + step-up + registered operation policy at execution time.
+        $current_access = self::can_execute( $input );
+        if ( is_wp_error( $current_access ) || true !== $current_access ) {
+            return is_wp_error( $current_access ) ? $current_access
+                : new WP_Error( 'mad4b_enrollment_dispatch_permission_denied',
+                    'Exact current governed enrollment request was not admitted.' );
+        }
 		$operation_id = isset( $input['operation_id'] ) ? (string) $input['operation_id'] : '';
 		$current = self::operation( $operation_id );
 		if ( is_wp_error( $current ) ) return $current;

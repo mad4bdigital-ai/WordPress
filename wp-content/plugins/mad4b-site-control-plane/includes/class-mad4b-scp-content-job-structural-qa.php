@@ -76,9 +76,9 @@ final class MAD4B_SCP_Content_Job_Structural_QA {
   * certificate or permission to skip translation QA.
   */
  public static function attest(string $jobId):array {
-  if(wp_get_environment_type()!=='staging'||
+  if(!class_exists('MAD4B_SCP_Site_Profile',false)||empty(MAD4B_SCP_Site_Profile::status()['authority_ready'])||
      !MAD4B_SCP_Central_Write_Acceptance::permitted())
-   return self::hold('staging_original_actor_required');
+   return self::hold('enrolled_original_actor_required');
   $current=self::inspect($jobId);
   if(($current['state']??'')!=='STRUCTURAL_DOCUMENT_VERIFIED')
    return self::hold('original_structural_qa_hold');

@@ -46,31 +46,6 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 			'mad4b/control-plane-native-apply' => 'core',
 			'mad4b/context-ai-review' => 'core',
 			'mad4b/approval-ai-decide' => 'core',
-            // approval-plan creates only a PENDING, candidate-bound one-time
-            // ticket. Its owned Planning Guard binds verified OAuth admin,
-            // exact mad4b-write NHI grant, certified target/schema, and
-            // budget; a distinct human action is still required to approve.
-            // This is exact grant ELIGIBILITY on enrolled sites, not a
-            // standing delegation, plan approval, or a wildcard grant.
-            'mad4b/approval-plan' => 'core',
-            // The first-party ContentJob aggregate registers these exact
-            // write abilities on the governed core surface. Creation begins
-            // at NEW/INTAKE with brand/site scope and an atomic audit fence;
-            // transition/cancel require revision CAS, legal transitions and
-            // verified rollback or explicit uncertain-outcome reconciliation.
-            // Grant eligibility is not a job, an execution ticket or permission
-            // to publish content. Every remote call retains original NHI,
-            // exact target, approval, mutation budget and audit.
-            'mad4b/content-job-create' => 'core',
-            'mad4b/content-job-transition' => 'core',
-            'mad4b/content-job-cancel' => 'core',
-            // The first-party core Abilities service routes update-post through
-            // Mutation_Manager::execute_post_update. Exact edit_post, modified-
-            // GMT CAS, publication capability, Brand Core review, managed
-            // publication-acceptance, rollback envelope and readback remain
-            // mandatory. This authorizes only eligibility for an exact grant,
-            // never an edit, publish action or standing approval.
-            'mad4b/content-update-post' => 'core',
 
 			// Feature 007 core mutation abilities are part of the reviewed governed
 			// write universe and resolve to the bundled core provider. Keep this
@@ -228,35 +203,10 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 				'mad4b/runtime-release-set-apply' => 'core',
 				'mad4b/staging-offline-attestor-enroll-apply' => 'core',
 				'mad4b/taxonomy-update-term' => 'core',
-				// The first-party Translation Bridge owns both reversible
-				// content mutations under its certified provider key 'translation'.
-				// Keep these exact pairs Staging-only and grant-eligible only after
-				// the existing owner-reviewed plan, ticket and audit.
-				'mad4b/translation-link-posts' => 'translation',
-				'mad4b/translation-set-post-language' => 'translation',
+				'mad4b/translation-link-posts' => 'core',
+				'mad4b/translation-set-post-language' => 'core',
 				'media/import-external' => 'media',
 				'media/remote-import-apply' => 'media',
-                // 12 exact first-party Staging write registrations were
-                // omitted from the source-authorized grant inventory. This
-                // is provider-pair ELIGIBILITY only, not a grant, approval,
-                // dispatch permission or authority to write. Root/path
-                // restrictions, post CAS, one-time approval ticket, audit,
-                // site binding, provider certification and existing kill
-                // switches remain enforced by each target operation.
-                // Elevated admin/file/DB/plugin operations are deliberately
-                // not eligible on Production through this Staging review.
-                'context/native-owner-transfer-apply' => 'google_drive_context',
-                'mad4b/data-processing-record-decision' => 'core',
-                'mad4b/database-update' => 'core',
-                'mad4b/draft-apply' => 'core',
-                'mad4b/filesystem-patch' => 'core',
-                'mad4b/filesystem-write' => 'core',
-                'mad4b/firecrawl-research-capture' => 'core',
-                'mad4b/intent-registry-reconcile' => 'core',
-                'mad4b/mutation-undo' => 'core',
-                'mad4b/plugin-activate' => 'core',
-                'mad4b/plugin-deactivate' => 'core',
-                'mad4b/provider-canary-execute' => 'core',
 			);
 			// Only a registered, exact central Staging diagnostic may receive a
 			// separately approved core grant. General Hub enqueue remains forbidden.

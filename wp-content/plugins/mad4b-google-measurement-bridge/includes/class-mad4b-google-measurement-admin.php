@@ -21,7 +21,9 @@ final class MAD4B_Google_Measurement_Admin {
     public static function binding() {
         $profile=self::site();
         $stored=get_option(self::OPTION,array());
-        if (!$profile || !is_array($stored)) return array('ready'=>false,'reason'=>'site_profile_required');
+        if (!$profile) return array('ready'=>false,'reason'=>'site_profile_required');
+        if (!is_array($stored) || empty($stored))
+            return array('ready'=>false,'reason'=>'resource_binding_not_selected');
         $same=isset($stored['site_uuid'],$stored['profile_digest']) &&
             hash_equals((string)$profile['site_uuid'],(string)$stored['site_uuid']) &&
             hash_equals((string)$profile['profile_digest'],(string)$stored['profile_digest']);

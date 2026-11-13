@@ -26,9 +26,7 @@ final class MAD4B_SCP_Agent_Grant_Lifecycle {
     || !MAD4B_SCP_Site_Profile::origin_enrolled()
     || !MAD4B_SCP_Site_Profile::site_urls_match_enrollment()
     || !MAD4B_SCP_Site_Profile::user_is_enrolled($uid)) return false;
-  $env=class_exists('MAD4B_SCP_Environment')?MAD4B_SCP_Environment::effective():wp_get_environment_type();
-  if (!in_array($env,array('local','development','staging'),true)
-      || (function_exists('wp_get_environment_type') && wp_get_environment_type()==='production')) return false;
+  if (!MAD4B_SCP_Site_Profile::managed_runtime_enabled()) return false;
   // OAuth clients need the platform-verified bearer AND existing authority
   // step-up scope. Browser admin sessions need a genuine WP REST nonce.
   if (class_exists('MAD4B_SCP_OAuth_Resource_Bridge')
@@ -47,7 +45,7 @@ final class MAD4B_SCP_Agent_Grant_Lifecycle {
   $methods=array('status'=>true,'plan'=>true,'request'=>false,'decision'=>false,'apply'=>false,'revoke-plan'=>true,'revoke-apply'=>false);
   $properties=array(
    'agent_public_id'=>array('type'=>'string','minLength'=>36,'maxLength'=>64),
-   'scope'=>array('type'=>'string','enum'=>array('all','local','development','staging')),
+   'scope'=>array('type'=>'string','enum'=>array('all','local','development','staging','production')),
    'reason'=>array('type'=>'string','minLength'=>3,'maxLength'=>500),
    'plan_sha256'=>array('type'=>'string','minLength'=>64,'maxLength'=>64),
    'ticket_id'=>array('type'=>'string','minLength'=>36,'maxLength'=>36),

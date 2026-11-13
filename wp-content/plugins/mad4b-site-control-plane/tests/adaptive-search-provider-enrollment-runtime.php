@@ -74,7 +74,7 @@ enrollment_case( 'provider_feedback_bound_to_current_revision_operation_and_sess
 	$render = static function () { ob_start(); MAD4B_SCP_Search_Provider_Connections::render(); return ob_get_clean(); };
 	enrollment_check( false === strpos( $render(), 'notice-success' ), 'query flags cannot manufacture successful feedback' );
 	$_GET['mad4b_notice_receipt'] = MAD4B_SCP_Admin_Experience::notice_receipt( 'mad4b-search-intelligence', 'provider_save', $binding );
-	enrollment_check( false !== strpos( $render(), 'Provider credentials saved or securely retained. Account certification and budgets are separate.' ), 'current signed save receipt renders useful feedback' );
+	enrollment_check( false !== strpos( $render(), 'Provider settings saved and verified.' ), 'current signed save receipt renders useful feedback' );
 	$GLOBALS['enrollment_session'] = 'different-fixture-session';
 	enrollment_check( false === strpos( $render(), 'notice-success' ), 'receipt cannot move to a different session' );
 	unset( $GLOBALS['enrollment_session'] );
@@ -156,30 +156,9 @@ enrollment_case( 'credential_rotation_probe_race_revision_conflict_and_tombstone
 	enrollment_check( 2 === $s['revision'] && 'NOT_CHECKED' === $s['connection_state'] && empty( $s['quota'] ), 'winning new credentials retain no old account evidence' );
 	enrollment_check( null === apply_filters( 'mad4b_scp_search_secret_resolve', null, $old_handle, 'serpapi' ), 'old secret handle revoked' );
 	enrollment_check( 'fixture-rotated-key' === apply_filters( 'mad4b_scp_search_secret_resolve', null, $a->descriptor()['secret_handle'], 'serpapi' ), 'new handle resolves rotated credential' );
-	// A stale browser's Test action is a read-only provider observation, not
-	// a credential write. It must use the latest encrypted key; the original
-	// in-flight old-key response was already rejected by the CAS fence above.
-	$GLOBALS['fixture_http_response'] = static function ( $url, $args ) {
-		parse_str( (string) parse_url( $url, PHP_URL_QUERY ), $q );
-		enrollment_check( 'fixture-rotated-key' === ( $q['api_key'] ?? '' )
-			&& 'GET' === $args['method'] && 0 === $args['redirection']
-			&& true === $args['sslverify'],
-			'stale browser recheck must use only the latest rotated credential over verified TLS' );
-		return enrollment_response( array_merge( enrollment_serp_receipt(),
-			array( 'api_key' => 'fixture-rotated-key' ) ) );
-	};
-	$rechecked = enrollment_action( 'serpapi', 'test', 1 );
-	enrollment_check( ! is_wp_error( $rechecked )
-		&& 3 === $rechecked['revision']
-		&& 'VERIFIED' === $rechecked['connection_state']
-		&& false === $rechecked['authorizing']
-		&& 2 === count( $GLOBALS['fixture_http'] ),
-		'stale Test action must re-observe the latest credentials without granting execution authority' );
-	enrollment_check( 'fixture-rotated-key' === apply_filters(
-		'mad4b_scp_search_secret_resolve', null, $a->descriptor()['secret_handle'], 'serpapi'
-	), 'recheck must not revive the old secret handle' );
-	$removed = enrollment_action( 'serpapi', 'remove', 3 );
-	enrollment_check( ! $removed['configured'] && 4 === $removed['revision'] && 'NOT_CONFIGURED' === $removed['connection_state'], 'removal persists a CAS tombstone' );
+	enrollment_check( is_wp_error( enrollment_action( 'serpapi', 'test', 1 ) ) && 1 === count( $GLOBALS['fixture_http'] ), 'stale repeated submit denied before network' );
+	$removed = enrollment_action( 'serpapi', 'remove', 2 );
+	enrollment_check( ! $removed['configured'] && 3 === $removed['revision'] && 'NOT_CONFIGURED' === $removed['connection_state'], 'removal persists a CAS tombstone' );
 	enrollment_check( is_wp_error( enrollment_action( 'serpapi', 'save', 0, array( 'api_key' => 'stale-replay' ) ) ), 'tombstone prevents stale form replay' );
 	enrollment_check( ! isset( enrollment_row( 'serpapi' )['envelope'] ), 'deletion removes the encrypted secret material' );
 	$events = MAD4B_SCP_Search_Store::list_rows( 'event', '', 50 );

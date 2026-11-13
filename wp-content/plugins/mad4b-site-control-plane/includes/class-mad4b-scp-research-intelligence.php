@@ -157,8 +157,8 @@ final class MAD4B_SCP_Research_Intelligence {
 	}
 
 	public static function record_serp( $input ) {
-		// Central SERP evidence policy on Staging. Existing historical artifacts stay immutable.
-		if ( 'staging' === wp_get_environment_type() && '1' === getenv( 'MAD4B_CENTRAL_HUB_ENABLED' ) ) {
+		// Central SERP evidence policy when Central Hub is enabled, independent of environment. Existing historical artifacts stay immutable.
+		if ( '1' === getenv( 'MAD4B_CENTRAL_HUB_ENABLED' ) ) {
 			if ( ! class_exists( 'MAD4B_SERP_Presentation_Policy' ) )
 				return new WP_Error( 'mad4b_serp_policy_unavailable', 'Central SERP evidence policy is not loaded.' );
 			$policy = MAD4B_SERP_Presentation_Policy::validate_ingest( $input );
