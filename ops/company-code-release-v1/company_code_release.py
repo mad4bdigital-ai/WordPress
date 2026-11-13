@@ -206,7 +206,11 @@ def registered_release_targets(policy: dict, entry: dict, commit: str) -> set[st
         fail_if(component["id"] in ids, "RELEASE_COMPONENT_DUPLICATE_ID")
         ids.add(component["id"])
         for target in files:
-            git_bytes(Path(policy["source_git_root"]), commit, target)
+            # Validate every declared path and component ownership, but do
+            # not demand unrelated components' blobs be present in this
+            # release branch. The exact requested source is separately
+            # git_bytes-verified inside make_plan and confirm_plan, prior to
+            # any signed Broker action or executor-time CAS.
             static.add(target)
     return static
 
