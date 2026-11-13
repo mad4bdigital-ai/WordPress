@@ -113,4 +113,15 @@ $result = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( array( $required[0], 'fi
 check( $result['ready'] && $result['degraded'] && array( $required[0] ) === $result['tools'] && 'mcp_optional_catalog_size_excluded' === $result['failures'][0]['error_code'], 'Large optional DTO displaced required tools' );
 $result = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( array( 'fixture/large' ), array() );
 check( ! $result['ready'] && 'mcp_required_catalog_size_exceeded' === $result['failures'][0]['error_code'], 'Large required DTO exceeded wire budget' );
+// The governed Operator Grants direct step-up must have a real official
+// Adapter DTO before the OAuth catalog can bind it, even though it may
+// not execute without a separately enrolled Site Profile/owner approval.
+require $include . 'class-mad4b-scp-operator-grant-convergence.php';
+MAD4B_SCP_Operator_Grant_Convergence::register_ability();
+$operator_ability = MAD4B_SCP_Operator_Grant_Convergence::ABILITY;
+check( wp_has_ability( $operator_ability ), 'Operator Grants Ability not registered' );
+$operator_result = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( array( $operator_ability ), array( $operator_ability ) );
+check( $operator_result['ready'] && array( $operator_ability ) === $operator_result['tools'],
+ 'Operator Grants cannot project to official DTO: ' . json_encode( $operator_result ) );
+echo "PASS governed Operator Grants direct step-up official DTO\n";
 echo "PASS real DTO faults: empty input, invalid name filter, identity collision and size budgets\n";

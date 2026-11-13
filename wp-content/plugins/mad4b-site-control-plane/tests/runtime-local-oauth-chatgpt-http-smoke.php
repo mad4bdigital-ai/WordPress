@@ -86,8 +86,50 @@ foreach ( $reviewed_step_up_abilities as $ability_name ) {
     if ( ! in_array( $ability_name, $budget['selected'], true )
         || ! empty( $budget['excluded_optional'] ) )
         $fail( 'Dynamic catalog silently excluded a reviewed direct step-up.', $ability_name );
-    if ( empty( $reviewed_step_up_by_ability[ $ability_name ] ) )
-        $fail( 'Reviewed direct step-up ability has no bound MCP tool.', $ability_name );
+    if ( empty( $reviewed_step_up_by_ability[ $ability_name ] ) ) {
+        // CI-only bounded readback: expose the loss stage, never the bearer,
+        // raw catalog/metadata, signed proof or a privileged invocation.
+        $all_registrations = MAD4B_SCP_Servers::registration_status();
+        $registration = isset( $all_registrations['mad4b-chatgpt'] )
+            && is_array( $all_registrations['mad4b-chatgpt'] )
+            ? $all_registrations['mad4b-chatgpt'] : array();
+        $preflight = isset( $registration['preflight'] )
+            && is_array( $registration['preflight'] )
+            ? $registration['preflight'] : array();
+        $descriptor = isset( $registration['capability_descriptor_evidence'] )
+            && is_array( $registration['capability_descriptor_evidence'] )
+            ? $registration['capability_descriptor_evidence'] : array();
+        $preflight_codes = array();
+        foreach ( (array) ( $preflight['failures'] ?? array() ) as $failure ) {
+            if ( ! is_array( $failure ) || $ability_name !== ( $failure['failing_ability'] ?? '' ) ) continue;
+            $preflight_codes[] = array(
+                'stage' => sanitize_key( (string) ( $failure['stage'] ?? '' ) ),
+                'error_code' => sanitize_key( (string) ( $failure['error_code'] ?? '' ) ),
+                'validator_reason' => sanitize_key( (string) ( $failure['validator_reason'] ?? '' ) ),
+            );
+            if ( count( $preflight_codes ) >= 2 ) break;
+        }
+        $descriptor_codes = array();
+        foreach ( (array) ( $descriptor['blockers'] ?? array() ) as $blocked ) {
+            $prefix = $ability_name . ':';
+            if ( 0 !== strpos( (string) $blocked, $prefix ) ) continue;
+            $descriptor_codes[] = sanitize_key( substr( (string) $blocked, strlen( $prefix ) ) );
+            if ( count( $descriptor_codes ) >= 2 ) break;
+        }
+        $fail( 'Reviewed direct step-up ability has no bound MCP tool.', array(
+            'ability' => $ability_name,
+            'registered' => function_exists( 'wp_has_ability' ) && wp_has_ability( $ability_name ),
+            'base_candidate' => in_array( $ability_name, MAD4B_SCP_Servers::chatgpt_base_tools(), true ),
+            'requested' => in_array( $ability_name, $all_requested, true ),
+            'budget_selected' => in_array( $ability_name, $budget['selected'], true ),
+            'descriptor_bound' => isset( $descriptor['bindings'][ $ability_name ] ),
+            'descriptor_error_codes' => $descriptor_codes,
+            'preflight_ready' => ! empty( $preflight['ready'] ),
+            'preflight_error_codes' => $preflight_codes,
+            'preflight_blocker' => sanitize_key( (string) ( $preflight['blocker'] ?? '' ) ),
+            'registered_tools_count' => count( $preauth_names ),
+        ) );
+    }
 }
 $reviewed_step_up_names = array_values( array_unique( $reviewed_step_up_names ) );
 sort( $reviewed_step_up_names );
