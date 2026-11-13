@@ -31,7 +31,7 @@
   "dependencies": [
     {
       "path": "company-code-release-v1/company_code_release.py",
-      "sha256": "1a392b7cd6a8da16b7a6472c5e56e4ce366e07b301ee0aaf0e4bd46e871e270c"
+      "sha256": "3e6e5b53ade6a7336fba8cd1e447a6eec9e0c46c784f8cc7cca4e1a12c45a4f9"
     },
     {
       "path": "company-code-release-v1/company_lifecycle_broker.py",

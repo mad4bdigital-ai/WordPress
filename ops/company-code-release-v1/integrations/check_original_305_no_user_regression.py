@@ -20,7 +20,14 @@ REQUIRED={
  'single_use_native_nonce':'self::NATIVE_CLI_NONCE.$proof[\'nonce\']',
  'signed_route_and_request_body':'hash_equals($proof[\'body_sha256\'],hash(\'sha256\',$body))',
  'original_company_entitlement':"MAD4B_Manager_Auto_Write_V1::entitlement(",
- 'native_scope_ledger':"($grant['principal_type']??null)!=='signed_vps_wpcli'",
+ 'native_scope_ledger':(
+    "($grant['state']??null)!=='CENTRAL_OPERATION_SCOPE_GRANTED'",
+    "($grant['principal_type']??null)==='signed_vps_wpcli'",
+    "($grant['target_host_id']??null)==='srv2030908'",
+    "($grant['principal_type']??null)==='signed_hostinger_ssh_wpcli'",
+    "MAD4B_Original_Verified_WPCLI_Transport_V1::active(",
+    "MAD4B_Original_Remote_Hostinger_328_V1::active(",
+ ),
  'original_rest_nonce':"wp_verify_nonce($nonce, 'wp_rest')",
  'no_wp_login_fallback':"if (!MAD4B_Central_Dual_Lane_Registry_V1::allowed())",
  'original_command_endpoint':"'callback' => array(__CLASS__, 'accept_command')",
@@ -32,7 +39,9 @@ PROHIBITED={
 }
 
 def evaluate(source:str)->dict:
-    present={k:(token in source) for k,token in REQUIRED.items()}
+    present={k:all(part in source for part in
+                  (tokens if isinstance(tokens,tuple) else (tokens,)))
+             for k,tokens in REQUIRED.items()}
     forbidden={k:(token in source) for k,token in PROHIBITED.items()}
     return {
       'contract':'mad4b.original305-no-wp-user-regression-guard.v1',

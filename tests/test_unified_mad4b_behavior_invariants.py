@@ -90,6 +90,41 @@ class UnifiedSourceNonRegression(unittest.TestCase):
         self.assertIn('company-term-eligibility-v1.php',
             code('packages/mad4b-shared-product-core/mu-plugins/shared-product-core/adapters/presentation-native-filter-policy-v1.php'))
 
+    def test_native_source_dynamic_manifest_matches_current_git_candidate(self):
+        import importlib.util
+        path=ROOT/'ops/native-source-publisher-v1/build_enrollment_candidate.py'
+        spec=importlib.util.spec_from_file_location('unified_native_source_builder',path)
+        builder=importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(builder)
+        candidate=builder.build_all()
+        # New first-party operation descriptors are discovered dynamically.
+        # Do not turn the reviewed first source into a fixed operation allowlist.
+        self.assertIn('source.code.release',candidate)
+        manifest=candidate['source.code.release']
+        stored=json.loads((ROOT/'ops/native-source-publisher-v1/catalog/generated/source.code.release.manifest.json').read_text())
+        self.assertEqual(manifest,stored,'source-only dynamic manifest was not repinned after merge')
+        self.assertEqual(manifest['source_family'],'mad4b.native-source-release.v2')
+        self.assertEqual(manifest['approval_ability'],'mad4b/native-source-release')
+        self.assertEqual(manifest['hooks']['operation_association']['entrypoint'],'exclusive_operation')
+        for row in manifest['dependencies']:
+            # Manifest paths are relative to the dynamic operation registry
+            # family, not always to ops/ itself. Resolve the two canonical
+            # source roots without inventing a new per-operation allowlist.
+            candidates=[ROOT/'ops'/row['path'],
+                        ROOT/'ops/dynamic-operation-registry-v1'/row['path']]
+            matches=[source for source in candidates if source.is_file()]
+            self.assertEqual(len(matches),1,row['path'])
+            self.assertEqual(hashlib.sha256(matches[0].read_bytes()).hexdigest(),row['sha256'])
+        for key in ('preclaim','finalizer'):
+            row=manifest[key]
+            source=ROOT/'ops'/row['path']
+            self.assertTrue(source.is_file())
+            self.assertEqual(hashlib.sha256(source.read_bytes()).hexdigest(),row['sha256'])
+        enrollment=json.loads((ROOT/'ops/native-source-publisher-v1/catalog/publisher-enrollment-proposal.json').read_text())
+        self.assertFalse(enrollment['publisher_enabled'])
+        self.assertFalse(enrollment['registry_enrolled'])
+        self.assertFalse(enrollment['production_writes_authorized'])
+
     def test_review_evidence_is_non_authorizing(self):
         ledger=json.loads(code('governance/production-readiness/capability-coverage.json'))
         self.assertFalse(ledger['authorizing'])
