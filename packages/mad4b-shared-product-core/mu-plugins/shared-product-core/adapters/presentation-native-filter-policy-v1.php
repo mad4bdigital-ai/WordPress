@@ -152,11 +152,15 @@ function shared_presentation_native_filter_invalidate_v1($postId=0):void{
     }
 }
 add_action('set_object_terms',static function($objectId){
-    if(in_array(get_post_type((int)$objectId),['tours-and-activities','properties','transportations','post','help-center'],true))
+    if(in_array(get_post_type((int)$objectId),['tours-and-activities','properties','transportations','post','help-center'],true)
+       || (class_exists('MAD4B_Company_Term_Eligibility_V1',false)
+           && isset(MAD4B_Company_Term_Eligibility_V1::catalog_sources()[get_post_type((int)$objectId)])))
         shared_presentation_native_filter_invalidate_v1();
 },30,1);
 add_action('transition_post_status',static function($new,$old,$post){
-    if($new!==$old && in_array($post->post_type,['tours-and-activities','properties','transportations','post','help-center'],true))
+    if($new!==$old && (in_array($post->post_type,['tours-and-activities','properties','transportations','post','help-center'],true)
+       || (class_exists('MAD4B_Company_Term_Eligibility_V1',false)
+           && isset(MAD4B_Company_Term_Eligibility_V1::catalog_sources()[$post->post_type]))))
         shared_presentation_native_filter_invalidate_v1();
 },30,3);
 add_action('updated_post_meta',static function($id,$postId,$key){
