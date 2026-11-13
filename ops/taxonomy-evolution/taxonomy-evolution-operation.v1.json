@@ -1,0 +1,104 @@
+{
+  "contract": "mad4b.taxonomy-evolution-operation.v1",
+  "operation_id": "wordpress.taxonomy.evolve",
+  "mutation_authorized_by_manifest": false,
+  "authority_owner": "MAD4B Control Plane",
+  "executor": "original site-bound native executor",
+  "source_kind": "versioned_approved_taxonomy_definition",
+  "site_independent": true,
+  "registry_scope": [
+    "company_id",
+    "site_uuid",
+    "origin",
+    "environment"
+  ],
+  "states": {
+    "LEGACY_ONLY": "MIGRATE_LEGACY",
+    "CANONICAL_ONLY": "ADOPT_CANONICAL_NOOP",
+    "DUAL_REGISTRATION": "REVIEW_DUAL_IDENTITY",
+    "NONE_REGISTERED": "PROVISION_SCHEMA",
+    "UNKNOWN": "BLOCK"
+  },
+  "mandatory_stages": [
+    "site_discovery",
+    "native_census",
+    "identity_resolution",
+    "dependency_graph",
+    "restore_checkpoint",
+    "native_plan",
+    "authorization_boundary",
+    "native_execute",
+    "backend_readback",
+    "frontend_readback",
+    "audit_and_resume"
+  ],
+  "dependency_classes": {
+    "mandatory": [
+      "post_type",
+      "taxonomy_definition",
+      "query_definition",
+      "glossary",
+      "meta_schema",
+      "cct_schema"
+    ],
+    "activation_selected": [
+      "program",
+      "filter",
+      "term",
+      "page",
+      "listing",
+      "elementor_template"
+    ],
+    "locally_owned": [
+      "brand",
+      "secret",
+      "payment",
+      "rates",
+      "inventory",
+      "booking",
+      "order",
+      "customer"
+    ]
+  },
+  "identity_preservation": [
+    "term_id",
+    "term_taxonomy_id",
+    "wpml_trid",
+    "term_relationships",
+    "source_identity",
+    "site_bound_local_mapping"
+  ],
+  "wpml": {
+    "active_not_equal_supported": true,
+    "hidden_languages_preserved": true,
+    "publication_separate_from_translation": true,
+    "orphan_identity_to_review": true
+  },
+  "conflict_policy": {
+    "ambiguous_terms": "object_review_only",
+    "unmapped_post_translations": "independent_review",
+    "uncertified_provider_references": "block_native_apply_not_shadow",
+    "dual_taxonomy": "block_native_apply"
+  },
+  "verified_restore_required": true,
+  "complex_legacy_reference_policy": "certified_provider_adapter_only",
+  "shadow": {
+    "mode": "connection_local_mysql_temporary_tables",
+    "production_allowed": false,
+    "never_authorizes_live_apply": true
+  },
+  "forward_rollback_semantics": "independent_native_readback_and_compensating_restore",
+  "production": "separately_authorized_higher_risk_lane",
+  "default": "fail_closed",
+  "artifacts": [
+    "exact_plan_sha256",
+    "source_manifest_sha256",
+    "site_inventory_receipt",
+    "identity_review_set",
+    "dependency_diff",
+    "restore_receipt",
+    "execution_receipt",
+    "readback_receipt"
+  ],
+  "initial_release_state": "spec_and_shadow_test_only"
+}
