@@ -19,6 +19,7 @@ def main():
     parser.add_argument('--width',type=int,default=390)
     parser.add_argument('--modes',choices=['all','explorer','split','story'],default='split')
     parser.add_argument('--disable-quic',action='store_true')
+    parser.add_argument('--split-level',default=None,help='Optional native destination_type level for Split testing')
     args=parser.parse_args()
     if not args.url.startswith('https://') or args.width<300:
         print(json.dumps({'ok':False,'error':'HTTPS and a viewport >=300px required'}))
@@ -46,6 +47,11 @@ def main():
             for mode in modes:
                 select.select_option(mode)
                 page.wait_for_timeout(110)
+                if mode=='split' and args.split_level:
+                    level=page.locator('.jd-split-v3__level[data-kind="'+args.split_level+'"]')
+                    assert level.count()==1,'requested Split taxonomy level not available'
+                    level.click()
+                    page.wait_for_timeout(85)
                 cards=page.locator('.tour-journey-discovery .tour-place-group'
                     '[data-tour-active=true] .jd-native-place:not([hidden]) a[href]')
                 if cards.count()==0:
@@ -81,19 +87,25 @@ def main():
                         href:full?.href,
                         framePath:new URL(f.src).pathname,
                         originalMode:section.dataset.tourJourneyMode,
+                        nativeInsights:!!doc.querySelector('.mad4b-destination-preview-about .destination-native-insights'),
+                        nativeAccordions:doc.querySelectorAll('.mad4b-destination-preview-about .destination-native-insights .e-n-accordion-item').length,
+                        nativeHighlightRows:doc.querySelectorAll('.mad4b-destination-preview-about .destination-native-insights .jet-listing-dynamic-repeater__items li').length,
                         overflow:document.documentElement.scrollWidth>innerWidth
                     };
                 }""")
                 assert page.url==original,'Tour navigated on preview click'
                 assert state['originalMode']==mode,'Tour mode changed'
-                assert state['previewModules'] in ['hero-about','hero-only'],str(state)
+                assert state['previewModules'] in ['hero-about','hero-about-insights','hero-only'],str(state)
                 assert state['hero'],'Native Elementor destination hero is missing'
                 assert state['headerHidden'] and state['cookieHidden'],'duplicate site chrome'
                 assert state['visibleForms']==0,'unsafe embedded form'
                 assert not state['inheritedChildModal'],'nested modal inside destination iframe'
                 assert not state['overflow'],'page width overflow'
-                if state['previewModules']=='hero-about':
+                if state['previewModules'] in ['hero-about','hero-about-insights']:
                     assert state['aboutTitle'] and state['aboutTextLength']>65,'lost JetEngine description'
+                if state['previewModules']=='hero-about-insights':
+                    assert state['nativeInsights'],'original Elementor enrichment was not reused'
+                    assert state['nativeAccordions']>=1,'native nested accordions missing'
                 page.locator('.mad4b-destination-quick-preview-close').click()
                 page.wait_for_timeout(75)
                 assert page.locator('.mad4b-destination-quick-preview-dialog').count()==0, 'Close failed'
