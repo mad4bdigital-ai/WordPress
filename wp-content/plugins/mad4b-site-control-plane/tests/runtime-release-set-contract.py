@@ -313,9 +313,7 @@ for marker in (
     "certified-provider-profiles.json",
     "archive_sha256",
     "archive_bytes",
-    "is_certified_release_url",
-    "https://downloads.wordpress.org/plugin/mcp-adapter.",
-    "https://github.com/WordPress/mcp-adapter/releases/download/v",
+    "ALLOWED_INITIAL_PREFIX",
 ):
     require(marker in certified_materializer, "certified Adapter materializer invariant missing: " + marker)
 runtime_surface = p070.get("runtime_surface") or {}

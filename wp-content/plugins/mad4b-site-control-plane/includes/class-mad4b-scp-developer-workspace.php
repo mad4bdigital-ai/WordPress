@@ -134,7 +134,7 @@ final class MAD4B_SCP_Developer_Workspace {
 			if ( ! isset( $schema['properties'] ) || ! is_array( $schema['properties'] ) ) $schema['properties'] = array();
 			$schema['properties']['expected_source_commit_sha'] = array( 'type' => 'string', 'minLength' => 40, 'maxLength' => 40, 'pattern' => '^[A-Fa-f0-9]{40}$' );
 			$schema['properties']['expected_site_uuid'] = array( 'type' => 'string', 'minLength' => 36, 'maxLength' => 36 );
-			$schema['properties']['expected_environment'] = array( 'type' => 'string', 'enum' => array( 'staging', 'development', 'local' ) );
+			$schema['properties']['expected_environment'] = array( 'type' => 'string', 'enum' => array( 'staging', 'development', 'local', 'production' ) );
 			if ( ! isset( $schema['required'] ) || ! is_array( $schema['required'] ) ) $schema['required'] = array();
 			$schema['required'] = array_values( array_unique( array_merge( $schema['required'], array( 'expected_source_commit_sha', 'expected_site_uuid', 'expected_environment' ) ) ) );
 		}
@@ -213,9 +213,7 @@ final class MAD4B_SCP_Developer_Workspace {
 
 	private static function mutation_gate( array $input, $promotion = false ) {
 		$environment = self::environment();
-		if ( 'production' === $environment ) return new WP_Error( 'mad4b_developer_workspace_production_denied', 'Developer Workspace mutation is never authorized in Production.' );
-		if ( ! in_array( $environment, array( 'staging', 'development', 'local' ), true ) ) return new WP_Error( 'mad4b_developer_workspace_environment_denied', 'Developer Workspace requires an explicit non-Production environment.' );
-		if ( $promotion && 'staging' !== $environment ) return new WP_Error( 'mad4b_developer_workspace_promotion_staging_only', 'Developer Workspace promotion is Staging-only.' );
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile', false ) || empty( MAD4B_SCP_Site_Profile::status()['authority_ready'] ) || ! MAD4B_SCP_Site_Profile::managed_runtime_enabled() || ! MAD4B_SCP_Site_Profile::write_enabled() ) return new WP_Error( 'mad4b_developer_workspace_site_authority_required', 'Enrolled, managed, write-enabled site required.' );
 		if ( ! class_exists( 'MAD4B_SCP_Developer_Runtime' ) || ! MAD4B_SCP_Developer_Runtime::developer_flag_enabled() || ! MAD4B_SCP_Developer_Runtime::direct_execution_enabled() || MAD4B_SCP_Developer_Runtime::kill_switch_enabled() ) {
 			return new WP_Error( 'mad4b_developer_workspace_runtime_not_ready', 'Developer runtime is not ready.' );
 		}
@@ -421,7 +419,7 @@ final class MAD4B_SCP_Developer_Workspace {
 	}
 
 	public static function promote_plan( $input ) {
-		if ( 'staging' !== self::environment() ) return new WP_Error( 'mad4b_developer_workspace_promotion_plan_staging_only', 'Developer Workspace promotion planning is Staging-only.' );
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile', false ) || empty( MAD4B_SCP_Site_Profile::status()['authority_ready'] ) || ! MAD4B_SCP_Site_Profile::managed_runtime_enabled() ) return new WP_Error( 'mad4b_developer_workspace_promotion_plan_site_not_ready', 'Enrolled managed site required for promotion planning.' );
 		$slug = self::valid_slug( isset( $input['project_slug'] ) ? $input['project_slug'] : '' );
 		if ( '' === $slug ) return new WP_Error( 'mad4b_developer_workspace_slug_invalid', 'Workspace project slug is invalid.' );
 		if ( in_array( $slug, array( 'mad4b-site-control-plane', 'mcp-adapter' ), true ) ) return new WP_Error( 'mad4b_developer_workspace_protected_plugin_denied', 'Control Plane and MCP Adapter cannot be promoted through Developer Workspace.' );

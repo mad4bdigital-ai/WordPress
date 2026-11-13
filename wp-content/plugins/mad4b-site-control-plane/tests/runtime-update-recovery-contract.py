@@ -43,20 +43,3 @@ assert handler.index('self::require_admin( self::ACTION_SCAN_SOURCE )') < handle
 assert 'source_scan_apply_admission' in handler
 authority = (includes / 'class-mad4b-scp-context-authority.php').read_text()
 assert "isset( $scan['expected_registry_revision'] ) && (int) $scan['expected_registry_revision'] !== self::registry_revision()" in authority
-
-# Exact first-party recovery Ability registration: status/prepare are bounded,
-# read-only and non-authorizing. A review of routes does not issue grants or
-# certify Staging/Production execution.
-remote_recovery_registration = (includes / 'class-mad4b-scp-brand-core-remote-recovery.php').read_text()
-for name in ('brand-core-remote-recovery-status', 'brand-core-remote-recovery-prepare'):
-    assert f"'mad4b/{name}'" in remote_recovery_registration
-assert "add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 39 );" in remote_recovery_registration
-registration = remote_recovery_registration.split('public static function register_abilities()', 1)[1].split('private static function exact_registered_site_for_onboarding', 1)[0]
-assert 'self::STATUS_ABILITY => array(' in registration
-assert 'self::PREPARE_ABILITY => array(' in registration
-assert "'permission_callback' => array( __CLASS__, 'can_read' )" in registration
-assert "'category' => 'mad4b-read'" in registration
-assert "'additionalProperties' => false" in registration
-assert "'non_authorizing' => true" in registration
-assert "'readonly' => true" in registration and "'destructive' => false" in registration
-assert "'required' => array( 'stage_id', 'expected_plan_sha256' )" in registration

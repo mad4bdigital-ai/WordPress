@@ -33,15 +33,7 @@ governance = read('includes/class-mad4b-scp-governance-abilities.php')
 policy = read('includes/class-mad4b-scp-policy.php')
 adapter = read('includes/adapters/class-mad4b-scp-adapter-base.php')
 adapter_registry = read('includes/class-mad4b-scp-adapter-registry.php')
-abilities_facade = read('includes/class-mad4b-scp-abilities.php')
-abilities_registration = read('includes/trait-mad4b-scp-abilities-registration.php')
-# Test both the active class and its required catalog trait. Checking the
-# facade alone would miss governed tool declarations moved without mutation.
-require(abilities_facade, "require_once __DIR__ . '/trait-mad4b-scp-abilities-registration.php';",
-        'ability-registration-trait-require')
-require(abilities_facade, 'use MAD4B_SCP_Abilities_Registration_Trait;',
-        'ability-registration-trait-binding')
-abilities = abilities_facade + abilities_registration
+abilities = read('includes/class-mad4b-scp-abilities.php')
 servers = read('includes/class-mad4b-scp-servers.php') + read('includes/class-mad4b-scp-server-write-catalog.php') + read('includes/class-mad4b-scp-server-core-catalog.php')
 bootstrap = read('mad4b-site-control-plane.php')
 plugin = read('includes/class-mad4b-scp-plugin.php')

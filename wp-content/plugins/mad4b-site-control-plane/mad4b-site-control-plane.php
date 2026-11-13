@@ -15,9 +15,6 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 // Always register the managed AI credential fence before the foreign REST
 // zero-touch return. Missing/revoked enrollment must fail closed on every site.
 require_once __DIR__ . '/includes/class-mad4b-scp-ai-only-early-auth-guard.php';
-// Preserve private Tour Orders/Bookings registration before REST and CLI
-// zero-touch fastpaths, including fresh installs without a Site Profile.
-require_once __DIR__ . '/includes/class-mad4b-scp-private-operations-boundary.php';
 
 // Request-local, O(1) bootstrap timing markers. No persistent cache, DB
 // writes, user context, file hashing or authority changes. The registration
@@ -518,8 +515,6 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-google-drive-context.php'
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-google-revocation-remote.php';
 // Provider-neutral health, human OAuth handoff and approved refresh lifecycle.
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-connection-center.php';
-// Read-only Company source reconciliation must be registered before MCP descriptor admission.
-require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-company-code-reconciliation.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-context-preflight.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-context-intelligence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-context-provider-gateway.php';
@@ -566,6 +561,8 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-transport-regist
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-hybrid.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-dependency-impact-graph.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operation-registry.php';
+// Source-only bounded catalog review; never installs or activates a Provider.
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-native-source-release-review.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-semantic-intent-router.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operation-pipeline.php';
 // Company-specific inventory/readback abilities are owned by the Company Management Add-on.
@@ -613,6 +610,9 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skill-autoconfig.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skill-registry.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-company-reconcile-skill-set.php';
 MAD4B_SCP_Company_Reconcile_Skill_Set_V1::boot();
+// Read-only Original Dynamic 313 company code-release diagnostics.
+// This is not a dispatcher, broker grant, or publication authority.
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-company-code-release-readiness.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skill-seeder.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skill-resource-reader.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skill-resource-writer.php';
@@ -773,6 +773,9 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-fcp-local-observability.p
 MAD4B_SCP_FCP_Local_Observability::boot();
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-fcp-queue-readback.php';
 MAD4B_SCP_FCP_Queue_Readback::boot();
+// Central Original305 Job/Claim observation only, not an execution authority.
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-original-job-readback.php';
+MAD4B_SCP_Original_Job_Readback::boot();
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-native-capability-browser-provider.php';
 add_filter( 'mad4b_browser_acceptance_providers', array( 'MAD4B_SCP_Native_Capability_Browser_Provider', 'register' ), 15 );
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skills-admin-ui.php';
@@ -885,8 +888,7 @@ if ( ! $mad4b_passive_admin_read || '' !== $mad4b_diagnostic_catalog_target ) {
 	MAD4B_SCP_MCP_Hybrid::boot();
 	MAD4B_SCP_Dependency_Impact_Graph::boot();
 	MAD4B_SCP_Operation_Registry::boot();
-	// Hook definitions only: neither compare nor plan runs on bootstrap.
-	MAD4B_SCP_Company_Code_Reconciliation::boot();
+	MAD4B_SCP_Native_Source_Release_Review::boot();
 	MAD4B_SCP_Operation_Pipeline::boot();
 	MAD4B_SCP_Provider_Autopilot::boot();
 	MAD4B_SCP_Plugin_Transaction::boot();

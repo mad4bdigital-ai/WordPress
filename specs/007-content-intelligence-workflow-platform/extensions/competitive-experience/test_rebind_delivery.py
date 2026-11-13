@@ -78,11 +78,7 @@ class FingerprintTests(unittest.TestCase):
 
     def test_real_archival_manifests_accept_only_exact_reviewed_successors(self):
         report = module.refresh()
-        drift = {row["manifest"]: row["drift_paths"]
-                 for row in report["results"] if row["drift_paths"]}
-        self.assertEqual(report["drift_count"], 0,
-                         "Unreviewed archived source changes (historical SHA untouched): "
-                         + json.dumps(drift, sort_keys=True))
+        self.assertEqual(report["drift_count"], 0)
         self.assertEqual(report["manifest_count"], 10)
         self.assertEqual(report["binding_count"], 227)
         self.assertFalse(report["runtime_certification_inferred"])

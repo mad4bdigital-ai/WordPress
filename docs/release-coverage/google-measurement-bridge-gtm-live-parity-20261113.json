@@ -1,0 +1,40 @@
+{
+  "contract": "mad4b.google-measurement-bridge.rc129-live-gtm-source-review.v1",
+  "independent_owner_release_approved": false,
+  "live_version": "0.1.3",
+  "reviewed_files": [
+    {
+      "candidate_sha256": "653462318e04acefcec5b6bd693b2c26e23010ba82ed9ab0a736160125af243c",
+      "path": "includes/class-mad4b-google-measurement-admin.php",
+      "previous_sha256": "ff8a98cd4b4cae1d5f99c1ca7876d4a26dabf679e940b3478391c5e34a46ffea",
+      "source": "live_tours_dev_readonly_snapshot"
+    },
+    {
+      "candidate_sha256": "d0af5bbb52b2e864e8020f856fbe081dc7768a24ebc134c423d81c2632e1f45d",
+      "path": "includes/class-mad4b-google-measurement-gtm-consent-audit.php",
+      "previous_sha256": null,
+      "source": "live_tours_dev_readonly_snapshot"
+    },
+    {
+      "candidate_sha256": "acff925aadb8768f9a6d61d22995e5082128278ca64bcf6a7a129c02ad87db3d",
+      "path": "mad4b-google-measurement-bridge.php",
+      "previous_sha256": "92277460bf7fd3ce34195af0091a624688d897b68b0ecfa18016f8fb7578a4f1",
+      "source": "live_tours_dev_readonly_snapshot"
+    },
+    {
+      "candidate_sha256": "a457593d663028a6c9e1748e7266b923137f332c958f82efc809283452683800",
+      "path": "tests/gtm-live-provider-partial-consent-contract.php",
+      "previous_sha256": null,
+      "source": "live_tours_dev_readonly_snapshot"
+    },
+    {
+      "candidate_sha256": "017e37b4284138f0d6be16ec118857edd7bb6873a6b7b86758ad35fbf2c5efa2",
+      "path": "tests/gtm-portfolio-consent-contract.php",
+      "previous_sha256": null,
+      "source": "live_tours_dev_readonly_snapshot"
+    }
+  ],
+  "scope": "source-only, existing first-party plugin, no credentials",
+  "source_live_bytes_verified": true,
+  "wordpress_mutated": false
+}

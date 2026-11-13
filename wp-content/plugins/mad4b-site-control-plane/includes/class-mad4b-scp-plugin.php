@@ -57,6 +57,11 @@ final class MAD4B_SCP_Plugin {
 		if ( self::$booted ) return;
 		self::$booted = true;
 
+		// Lightweight event registration only. Filesystem reconciliation runs
+		// in a scheduled company-enrollment job, never in public page serving.
+		add_action( 'mad4b_scp_site_profile_saved', array( 'MAD4B_SCP_Skill_Seeder', 'schedule_after_profile_saved' ), 20 );
+		add_action( 'mad4b_scp_auto_skill_catalog_reconcile', array( 'MAD4B_SCP_Skill_Seeder', 'auto_reconcile_enrolled' ), 20 );
+
 		// Admin navigation is presentation-only and must stay visible on every
 		// wp-admin screen, including zero-touch third-party/plugin pages. Register
 		// menu hooks before the heavy-runtime zero-touch gate; render callbacks stay

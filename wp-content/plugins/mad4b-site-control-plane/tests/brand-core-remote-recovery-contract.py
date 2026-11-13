@@ -334,7 +334,7 @@ for marker in (
     "MAD4B_SCP_Authorization::native_binding_callback_is_claimed( $input )",
     "MAD4B_SCP_Site_Profile::commit_record_with_audit(",
     "MAD4B_SCP_Site_Profile_Enrollment::can_execute(",
-    "|| (string) ( $site['configured_environment'] ?? '' ) !== (string) ( $site['wordpress_environment'] ?? '' )",
+    "'staging' !== ( $site['configured_environment'] ?? '' )",
     "'production_authorized' => false",
     "'independent_host_attestation_certified' => false",
     "function private_location(",

@@ -598,8 +598,8 @@ final class MAD4B_SCP_Context_Preflight {
 		// The draft remains non-authoritative, and approval, current evidence,
 		// idempotency, review and materialization stay independent gates.
 		if ( 'context/brand-draft-create' === $ability_name ) {
-			if ( ! function_exists( 'wp_get_environment_type' ) || 'staging' !== wp_get_environment_type() )
-				return new WP_Error( 'mad4b_brand_draft_bootstrap_staging_only', 'Brand draft bootstrap is permitted on Staging only.' );
+			if ( ! class_exists( 'MAD4B_SCP_Site_Profile', false ) || empty( MAD4B_SCP_Site_Profile::status()['authority_ready'] ) )
+				return new WP_Error( 'mad4b_brand_draft_bootstrap_site_unready', 'Brand draft bootstrap requires a verified enrolled site.' );
 			if ( ! class_exists( 'MAD4B_SCP_Brand_Context_Builder' ) || ! method_exists( 'MAD4B_SCP_Brand_Context_Builder', 'draft_preflight' ) )
 				return new WP_Error( 'mad4b_brand_draft_bootstrap_preflight_unavailable', 'The evidence-bound draft preflight must be available.' );
 			$receipt = class_exists( 'MAD4B_SCP_Staging_Write_Authority' )

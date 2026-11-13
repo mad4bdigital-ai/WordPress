@@ -6,12 +6,7 @@ repo = Path(__file__).resolve().parents[4]
 wp = repo / 'wp-content' / 'plugins' / 'mad4b-site-control-plane'
 
 write = (wp / 'includes' / 'class-mad4b-scp-staging-write-authority.php').read_text(encoding='utf-8')
-abilities_facade = (wp / 'includes' / 'class-mad4b-scp-abilities.php').read_text(encoding='utf-8')
-ability_registration = (wp / 'includes' / 'trait-mad4b-scp-abilities-registration.php').read_text(encoding='utf-8')
-if ("require_once __DIR__ . '/trait-mad4b-scp-abilities-registration.php';" not in abilities_facade
-        or "use MAD4B_SCP_Abilities_Registration_Trait;" not in abilities_facade):
-    raise SystemExit("governed write registration trait is not bound by the abilities facade")
-abilities = abilities_facade + ability_registration
+abilities = (wp / 'includes' / 'class-mad4b-scp-abilities.php').read_text(encoding='utf-8')
 grant_reconcile = (wp / 'includes' / 'class-mad4b-scp-staging-write-grant-reconciliation.php').read_text(encoding='utf-8')
 grant_plan = (wp / 'includes' / 'class-mad4b-scp-staging-write-grant-reconciliation-plan.php').read_text(encoding='utf-8')
 planning = (wp / 'includes' / 'class-mad4b-scp-staging-write-planning-guard.php').read_text(encoding='utf-8')

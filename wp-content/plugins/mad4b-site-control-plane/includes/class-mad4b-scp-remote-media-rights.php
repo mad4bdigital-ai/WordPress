@@ -96,9 +96,13 @@ final class MAD4B_SCP_Remote_Media_Rights {
 	public static function publish_guard( $featured_media_id, array $field_specs, array $effective_meta, $today = '' ) {
 		$today = self::evaluation_date( $today );
 		if ( is_wp_error( $today ) ) return $today;
-		// Staging policy: licensing metadata is advisory; identity/provenance
-		// mismatches remain blocking inside state_evidence().
-		$advisory = wp_get_environment_type() === 'staging';
+		// Site-neutral editorial default: missing rights metadata is advisory,
+		// while exact attachment/source/provenance identity remains mandatory.
+		// Operators can explicitly select enforced mode for stricter workflows.
+		// Advisory never establishes copyright permission or a verified license.
+		$rights_mode = sanitize_key( (string) apply_filters( 'mad4b_remote_media_rights_mode', get_option( 'mad4b_remote_media_rights_mode', 'advisory' ) ) );
+		if ( ! in_array( $rights_mode, array( 'advisory', 'enforced' ), true ) ) return new WP_Error( 'mad4b_remote_media_rights_policy_invalid', 'Media rights policy must be advisory or enforced.' );
+		$advisory = 'advisory' === $rights_mode;
 		$state = self::state_evidence( $featured_media_id, $field_specs, $effective_meta );
 		if ( is_wp_error( $state ) ) return $state;
 		$nearest_expiry = '';
@@ -118,8 +122,9 @@ final class MAD4B_SCP_Remote_Media_Rights {
 			$expiry = (string) $row['license_expires_on'];
 			if ( '' !== $expiry ) {
 				if ( ! self::valid_iso_date( $expiry ) || $expiry < $today ) {
-					if ( ! $advisory ) return new WP_Error( 'mad4b_remote_media_publish_rights_expired', 'Remote media license is invalid or expired.', array( 'attachment_id' => $id, 'expired_on' => $expiry, 'evaluated_on' => $today ) );
-					$warnings[] = array( 'attachment_id' => $id, 'code' => 'license_expired_or_invalid' );
+					// A known invalid/expired license is a concrete restriction, not merely
+					// absent evidence. Keep it blocking in either policy mode.
+					return new WP_Error( 'mad4b_remote_media_publish_rights_expired', 'Remote media license is invalid or expired.', array( 'attachment_id' => $id, 'expired_on' => $expiry, 'evaluated_on' => $today ) );
 				} elseif ( '' === $nearest_expiry || $expiry < $nearest_expiry ) $nearest_expiry = $expiry;
 			}
 		}

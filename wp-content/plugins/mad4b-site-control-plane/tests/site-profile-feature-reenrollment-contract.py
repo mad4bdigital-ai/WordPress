@@ -101,7 +101,7 @@ for marker in (
     "mad4b/site-profile-feature-reenrolled",
     "restore_profile",
     "array( 'staging', 'production' )",
-    "mad4b_site_profile_feature_reenroll_environment_invalid",
+    "mad4b_site_profile_feature_reenroll_environment_denied",
     "public static function chatgpt_step_up_tools()",
     "'production_mutation_allowed' => true",
 ):

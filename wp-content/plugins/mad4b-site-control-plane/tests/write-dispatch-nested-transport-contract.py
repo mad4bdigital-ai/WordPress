@@ -5,12 +5,7 @@ import textwrap
 
 root = Path(__file__).resolve().parents[1]
 transport = (root / "includes" / "class-mad4b-scp-transport-context.php").read_text(encoding="utf-8")
-abilities_facade = (root / "includes" / "class-mad4b-scp-abilities.php").read_text(encoding="utf-8")
-registration = (root / "includes" / "trait-mad4b-scp-abilities-registration.php").read_text(encoding="utf-8")
-if ("require_once __DIR__ . '/trait-mad4b-scp-abilities-registration.php';" not in abilities_facade
-        or "use MAD4B_SCP_Abilities_Registration_Trait;" not in abilities_facade):
-    raise SystemExit("write dispatcher registration trait is not bound")
-abilities = abilities_facade + registration
+abilities = (root / "includes" / "class-mad4b-scp-abilities.php").read_text(encoding="utf-8")
 servers = (root / "includes" / "class-mad4b-scp-servers.php").read_text(encoding="utf-8")
 authorization = (root / "includes" / "class-mad4b-scp-authorization.php").read_text(encoding="utf-8")
 decision_graph = (root / "includes" / "class-mad4b-scp-authorization-decision-graph.php").read_text(encoding="utf-8")

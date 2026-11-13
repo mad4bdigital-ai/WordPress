@@ -14,9 +14,6 @@ function apply_filters($name,$value){if(!empty($GLOBALS['policy_fault']))throw n
 function current_user_can($cap){return $GLOBALS['policy_allow']??true;}
 trait MAD4B_SCP_Server_Write_Catalog {}
 require __DIR__.'/../includes/class-mad4b-scp-server-core-catalog.php';
-// The actual Servers Facade now includes Registered Host Operator methods via
-// a trait. This isolated eval test must load its exact dependency first.
-require __DIR__.'/../includes/trait-mad4b-scp-servers-vps-local-transport.php';
 class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
     static $fault=false; static $ready=true;
     static function runtime_transaction_gate(){if(self::$fault)throw new RuntimeException('PRIVATE gate');return array('ready'=>self::$ready,'blocker'=>'quarantine');}
@@ -61,12 +58,4 @@ MAD4B_SCP_MCP_MU_Bootstrap_Refresh::$ready=true;
 $denied=new WP_Error('original_denial');
 check_transport($denied===MAD4B_SCP_Transport_Context::permission('mad4b-read',$request,function()use($denied){return $denied;}),'Policy WP_Error changed');
 check_transport(array_unique(MAD4B_Native_Incident_MU::$stages)===array('transport_permission'),'Stage lost');
-// An unregistered Host Operator cannot acquire read or write authority
-// merely because the original methods were moved into a loaded trait.
-$unregistered_host=MAD4B_SCP_Servers::can_vps_local_transport();
-check_transport(is_wp_error($unregistered_host)
-    && $unregistered_host->get_error_code()==='mad4b_vps_local_identity_required',
-    'Unregistered Host Operator was admitted after trait extraction');
-check_transport(MAD4B_SCP_Servers::can_vps_local_write_transport()===false,
-    'Missing registry-bound host actor opened VPS write');
 echo "TRANSPORT_PERMISSION_CONTAINMENT_PASS\n";

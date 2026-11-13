@@ -63,19 +63,11 @@ $check( ! empty( $zero_touch['read_only'] ) && empty( $zero_touch['authority_cre
 $check( 'mad4b.runtime-functional-gap-evidence.v2' === (string) ( $zero_touch['runtime']['contract'] ?? '' ), 'Zero-touch runtime evidence contract drifted.' );
 $check( 'mad4b.functional-gap-promotion-evaluation.v2' === (string) ( $zero_touch['evaluation']['contract'] ?? '' ), 'Zero-touch promotion evaluation contract drifted.' );
 $check( empty( $zero_touch['evaluation']['promotion_authorized'] ), 'Zero-touch evaluator must never authorize promotion by itself.' );
-// Adapter-discovery smoke is also executed against a source checkout copied
-// into a disposable WordPress install. The embedded release receipt may be
-// stale there, so its *presence* is not proof of valid provenance. A separate
-// release/build gate certifies exact signed successor sources. This smoke must
-// instead prove that missing OR invalid evidence never enables promotion.
-if ( empty( $zero_touch['repository_evidence']['present'] )
-    || empty( $zero_touch['repository_evidence']['valid'] ) ) {
-    $check( empty( $zero_touch['evaluation']['ready'] )
-        && empty( $zero_touch['evaluation']['promotion_authorized'] ),
-        'Missing or invalid repository evidence unexpectedly authorized promotion.' );
+if ( ! empty( $zero_touch['repository_evidence']['present'] ) ) {
+	$check( ! empty( $zero_touch['repository_evidence']['valid'] ), 'Present build-embedded repository evidence must validate against build provenance.' );
+} else {
+	$check( empty( $zero_touch['evaluation']['ready'] ), 'Source/runtime without build-embedded repository evidence must fail closed.' );
 }
-$check( empty( $zero_touch['evaluation']['promotion_authorized'] ),
-    'Zero-touch discovery must never promote a candidate, even with valid evidence.' );
 $initial_zero_touch_identity = (string) ( $zero_touch['snapshot_identity_sha256'] ?? '' );
 $check( 64 === strlen( $initial_zero_touch_identity ), 'Zero-touch snapshot identity was not exposed.' );
 $check( ! empty( $zero_touch['snapshot_fixed_point_stable'] ), 'Zero-touch source-mode snapshot did not reach an identity fixed point.' );

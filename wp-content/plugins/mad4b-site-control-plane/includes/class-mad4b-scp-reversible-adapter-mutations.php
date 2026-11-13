@@ -265,7 +265,7 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 		// A separate child journal records the exact parent, actor and observed
 		// after-state BEFORE restoration. If this insert fails, the parent stays
 		// undo_pending: reconciliation, never an untracked retry.
-		$undo_row = array(
+		$inserted = $wpdb->insert( $t['mutations'], array(
 			'mutation_id' => $recovery_id,
 			'request_id' => isset( $identity['request_id'] ) ? $identity['request_id'] : MAD4B_SCP_Identity_Context::request_id(),
 			'parent_mutation_id' => $mutation_id,
@@ -293,13 +293,7 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 			'error_code' => '',
 			'created_at' => $now,
 			'updated_at' => $now,
-		);
-		// Preserve numeric principal and reversibility types in the durable child journal.
-		$undo_formats = array();
-		foreach ( array_keys( $undo_row ) as $column ) {
-			$undo_formats[] = in_array( $column, array( 'agent_id', 'wp_user_id', 'reversible' ), true ) ? '%d' : '%s';
-		}
-		$inserted = $wpdb->insert( $t['mutations'], $undo_row, $undo_formats ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		if ( 1 !== $inserted ) return self::undo_recovery_required( $mutation_id, $recovery_id, 'Undo child intent could not be persisted before restore.' );
 		if ( 1 !== self::update_record( $recovery_id, array( 'status' => 'executing', 'verification_code' => 'undo_restore_started' ) ) ) {
 			return self::undo_recovery_required( $mutation_id, $recovery_id, 'Undo child intent could not enter executing state.' );

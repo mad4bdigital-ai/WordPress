@@ -25,6 +25,18 @@ final class MAD4B_SCP_Skill_Registry {
 		return self::$levels;
 	}
 
+	/**
+	 * A company-owned Skill catalog is always readable/provisionable after
+	 * exact Site Profile enrollment. This never enables the authoring editor,
+	 * scripts, OAuth, credentials or company writes. During enrollment's
+	 * unbound phase the catalog must remain off.
+	 */
+	public static function catalog_enabled() {
+		return class_exists( 'MAD4B_SCP_Site_Profile', false )
+			&& MAD4B_SCP_Site_Profile::origin_enrolled()
+			&& MAD4B_SCP_Site_Profile::site_urls_match_enrollment();
+	}
+
 	public static function storage_root() {
 		$root = defined( 'WP_CONTENT_DIR' ) ? WP_CONTENT_DIR . '/' . self::ROOT_DIRNAME : '';
 		$root = apply_filters( 'mad4b_scp_skill_storage_root', $root );
@@ -49,6 +61,8 @@ final class MAD4B_SCP_Skill_Registry {
 		$exists = '' !== $root && is_dir( $root );
 		return array(
 			'contract' => self::CONTRACT,
+			'catalog_enabled' => self::catalog_enabled(),
+			'auto_provision_scoped_to_enrolled_site' => true,
 			'editor_enabled' => self::editor_enabled(),
 			'scripts_editor_enabled' => self::scripts_enabled(),
 			'storage_initialized' => $exists,

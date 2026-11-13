@@ -191,8 +191,7 @@ final class MAD4B_SCP_Company_Tenant_Migration {
             static fn($c)=>empty($caps[$c])));
         $existing=(string)get_option(MAD4B_SCP_Company_Master_Admin::MIGRATION,'');
         $blockers=[];$warnings=[];
-        if(wp_get_environment_type()!=='staging'||!defined('WP_ENVIRONMENT_TYPE')
-            ||WP_ENVIRONMENT_TYPE!=='staging')$blockers[]='explicit_staging_only';
+        if(empty($s['authority_ready'])||empty($s['site_uuid']))$blockers[]='enrolled_site_authority_required';
         foreach(['authority_ready','origin_match','deployment_binding_match',
             'same_origin_clone_protection'] as $key)
             if(empty($s[$key]))$blockers[]='site_authority_'.$key;

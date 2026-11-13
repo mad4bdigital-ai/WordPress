@@ -34,8 +34,10 @@ final class MAD4B_SCP_Skill_Provider_Discovery {
 		self::$ran = true;
 
 		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::origin_enrolled() ) return self::set_status( 'site_profile_not_enrolled' );
-		if ( ! MAD4B_SCP_Site_Profile::skills_enabled() ) return self::set_status( 'site_profile_skills_disabled' );
-		if ( ! MAD4B_SCP_Skill_Registry::editor_enabled() ) return self::set_status( 'skill_editor_disabled' );
+		// Provider-owned Skill reconciliation is independent of arbitrary
+		// editor flags: it only mutates digest-verified MAD4B-managed files.
+		// User-authored Skills and plugin authority remain protected.
+		if ( ! MAD4B_SCP_Skill_Registry::catalog_enabled() ) return self::set_status( 'company_skill_catalog_not_enrolled' );
 		if ( ! class_exists( 'MAD4B_SCP_Plugin_Discovery' ) ) return self::set_status( 'plugin_discovery_unavailable' );
 
 		// Provider reconciliation is a second-stage lifecycle. Never create/toggle

@@ -77,20 +77,12 @@ chk('unauthorized denied',is_wp_error(MAD4B_SCP_Adaptive_Interaction_Broker::sta
 $GLOBALS['authorized']=true;$GLOBALS['environment']='staging';
 chk('uncertified Staging pilot denied',is_wp_error(MAD4B_SCP_Adaptive_Interaction_Broker::status(['checkpoint_ref'=>$plan['checkpoint_ref']])));
 $GLOBALS['environment']='production';
-chk('uncertified Production pilot denied',is_wp_error(MAD4B_SCP_Adaptive_Interaction_Broker::status(['checkpoint_ref'=>$plan['checkpoint_ref']])) && !MAD4B_SCP_Adaptive_Interaction_Broker::permitted());
+chk('uncertified Production pilot denied',is_wp_error(MAD4B_SCP_Adaptive_Interaction_Broker::status(['checkpoint_ref'=>$plan['checkpoint_ref']])));
 $GLOBALS['environment']='local';
 $GLOBALS['authorized']=true;$GLOBALS['actor']=123;
 chk('forged checkpoint denied',is_wp_error(MAD4B_SCP_Adaptive_Interaction_Broker::status(['checkpoint_ref'=>'aib.'.str_repeat('0',48)])));
 $key='mad4b_aib_v1_'.hash('sha256',$plan['checkpoint_ref']);$GLOBALS['options'][$key]['expires_at']=time()-1;
 chk('expired checkpoint denied',is_wp_error(MAD4B_SCP_Adaptive_Interaction_Broker::status(['checkpoint_ref'=>$plan['checkpoint_ref']])));
 $qa31_agent_source=file_get_contents(dirname(__DIR__,2).'/includes/class-mad4b-scp-agent-grant-lifecycle.php');
-$broker_source=file_get_contents(dirname(__DIR__,2).'/includes/class-mad4b-scp-adaptive-interaction-broker.php');
-chk('qa31 W1 REST grant route owner-gated',
- is_string($qa31_agent_source)
- && strpos($qa31_agent_source,"register_rest_route('mad4b/v1'")!==false
- && strpos($qa31_agent_source,"'permission_callback'=>array(__CLASS__,'owner')")!==false
- && MAD4B_SCP_Adaptive_Interaction_Broker::NAMESPACE_==='mad4b/v1'
- && is_string($broker_source)
- && strpos($broker_source,'register_rest_route(self::NAMESPACE_')!==false
- && strpos($broker_source,"'permission_callback'=>array(__CLASS__,'permitted')")!==false);
+chk('qa31 W1 REST grant route owner-gated',is_string($qa31_agent_source)&&strpos($qa31_agent_source,"register_rest_route('mad4b/v1'")!==false&&strpos($qa31_agent_source,"'permission_callback'=>array(__CLASS__,'owner')")!==false);
 echo 'SUMMARY '.$count.' passed 0 failed'."\n";

@@ -4,14 +4,22 @@ if (!defined('ABSPATH')) exit;
 final class MAD4B_SCP_Research_Groups {
  const VERSION='mad4b.research-groups.v1';
  private static function tables(){global $wpdb;return array($wpdb->prefix.'mad4b_research_groups',$wpdb->prefix.'mad4b_research_records');}
+ public static function schema_ready(): bool {
+  global $wpdb;
+  foreach(self::tables() as $table){
+   if($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s',$wpdb->esc_like($table)))!==$table)return false;
+  }
+  return true;
+ }
  private static function allowed(){
-  return wp_get_environment_type()==='staging' &&
+  return class_exists('MAD4B_SCP_Site_Profile', false) &&
+   !empty(MAD4B_SCP_Site_Profile::status()['authority_ready']) &&
    (current_user_can('manage_options') ||
     (class_exists('MAD4B_Native_Origin_Content_Jobs_V1',false) &&
      MAD4B_Native_Origin_Content_Jobs_V1::is_admitted()));
  }
  public static function install(){
-  if(!current_user_can('manage_options')) return new WP_Error('mad4b_research_scope_denied','Staging administrator required.');
+  if(!current_user_can('manage_options')) return new WP_Error('mad4b_research_scope_denied','Enrolled administrator required.');
   global $wpdb;require_once ABSPATH.'wp-admin/includes/upgrade.php';
   list($g,$r)=self::tables();$c=$wpdb->get_charset_collate();
   dbDelta("CREATE TABLE $g (
@@ -44,7 +52,8 @@ final class MAD4B_SCP_Research_Groups {
   return array('contract'=>self::VERSION,'tables'=>array($g,$r));
  }
  public static function group($task_key,$site_uuid,$locale='en'){
-  if(!self::allowed()) return new WP_Error('mad4b_research_scope_denied','Staging administrator required.');
+  if(!self::allowed()) return new WP_Error('mad4b_research_scope_denied','Enrolled administrator required.');
+  if(!self::schema_ready())return new WP_Error('mad4b_research_schema_not_ready','Research tables require authorized installation.');
   $task_key=(string)$task_key;$site_uuid=(string)$site_uuid;
   if(!preg_match('/^[a-zA-Z0-9._:-]{8,128}$/',$task_key)||!preg_match('/^[a-zA-Z0-9-]{16,64}$/',$site_uuid))return new WP_Error('mad4b_research_identity_invalid','Invalid task/site identity.');
   global $wpdb;list($g,)=self::tables();
@@ -56,7 +65,8 @@ final class MAD4B_SCP_Research_Groups {
   return $wpdb->get_row($wpdb->prepare("SELECT * FROM $g WHERE group_uid=%s",$uid),ARRAY_A);
  }
  public static function add_record($group_id,$provider,$locale,$url,$data){
-  if(!self::allowed())return new WP_Error('mad4b_research_scope_denied','Staging administrator required.');
+  if(!self::allowed())return new WP_Error('mad4b_research_scope_denied','Enrolled administrator required.');
+  if(!self::schema_ready())return new WP_Error('mad4b_research_schema_not_ready','Research tables require authorized installation.');
   global $wpdb;list($g,$r)=self::tables();$group_id=absint($group_id);
   if(!$wpdb->get_var($wpdb->prepare("SELECT id FROM $g WHERE id=%d",$group_id)))return new WP_Error('mad4b_research_group_missing','Group not found.');
   if(!is_array($data)||strlen(wp_json_encode($data))>65536||!in_array(sanitize_key($provider),array('firecrawl','serph_api','manual_research','native_wp_source'),true)||!preg_match('/^[a-z]{2}(?:[-_][a-z]{2})?$/i',$locale)||strlen($url)>2048||!wp_http_validate_url($url))return new WP_Error('mad4b_research_record_invalid','Unsupported research record.');
@@ -68,7 +78,8 @@ final class MAD4B_SCP_Research_Groups {
   return $wpdb->get_row($wpdb->prepare("SELECT * FROM $r WHERE record_uid=%s",$uid),ARRAY_A);
  }
  public static function records($group_id){
-  if(!self::allowed())return new WP_Error('mad4b_research_scope_denied','Staging administrator required.');
+  if(!self::allowed())return new WP_Error('mad4b_research_scope_denied','Enrolled administrator required.');
+  if(!self::schema_ready())return new WP_Error('mad4b_research_schema_not_ready','Research tables require authorized installation.');
   global $wpdb;list(,$r)=self::tables();
   return $wpdb->get_results($wpdb->prepare("SELECT id,group_id,record_uid,provider_id,locale,source_url,source_sha256,captured_at FROM $r WHERE group_id=%d ORDER BY id ASC LIMIT 100",absint($group_id)),ARRAY_A);
  }

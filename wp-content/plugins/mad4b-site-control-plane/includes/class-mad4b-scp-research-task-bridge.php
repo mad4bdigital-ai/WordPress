@@ -8,10 +8,10 @@ final class MAD4B_SCP_Research_Task_Bridge {
  const CONTRACT='mad4b.research-task-bridge.v1';
  const BINDING_META='_mad4b_research_group_uid';
  const TASK_META='_mad4b_research_task_key';
- private static function allowed(){return wp_get_environment_type()==='staging' && current_user_can('manage_options');}
+ private static function allowed(){return class_exists('MAD4B_SCP_Site_Profile',false) && !empty(MAD4B_SCP_Site_Profile::status()['authority_ready']) && current_user_can('manage_options');}
  private static function error($code,$message){return new WP_Error($code,$message);}
  public static function bind($task_key,$site_uuid,$post_id,$locale='en'){
-  if(!self::allowed())return self::error('mad4b_research_bind_denied','Staging operator required.');
+  if(!self::allowed())return self::error('mad4b_research_bind_denied','Enrolled site operator required.');
   $post_id=absint($post_id);$post=get_post($post_id);
   if(!$post||$post->post_type!=='tours-and-activities'||$post->post_status!=='draft'||!current_user_can('edit_post',$post_id))return self::error('mad4b_research_target_not_draft','A writable tour draft is required.');
   $group=MAD4B_SCP_Research_Groups::group($task_key,$site_uuid,$locale);
@@ -24,7 +24,8 @@ final class MAD4B_SCP_Research_Task_Bridge {
   return array('contract'=>self::CONTRACT,'group_id'=>(int)$group['id'],'group_uid'=>$group['group_uid'],'task_key'=>$task_key,'post_id'=>$post_id,'binding_verified'=>true);
  }
  public static function preflight($post_id){
-  if(!self::allowed())return self::error('mad4b_research_read_denied','Staging operator required.');
+  if(!self::allowed())return self::error('mad4b_research_read_denied','Enrolled site operator required.');
+  if(!class_exists('MAD4B_SCP_Research_Groups',false)||!MAD4B_SCP_Research_Groups::schema_ready())return self::error('mad4b_research_schema_not_ready','Research tables not installed for this site.');
   global $wpdb;$post_id=absint($post_id);$post=get_post($post_id);
   if(!$post)return self::error('mad4b_research_post_missing','Target post unavailable.');
   $uid=(string)get_post_meta($post_id,self::BINDING_META,true);

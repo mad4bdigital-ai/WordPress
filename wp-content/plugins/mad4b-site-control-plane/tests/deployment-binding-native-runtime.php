@@ -123,9 +123,7 @@ $GLOBALS['options'][MAD4B_SCP_Site_Profile::OPTION] = array(
 );
 $original = $GLOBALS['options'][MAD4B_SCP_Site_Profile::OPTION];
 MAD4B_SCP_Deployment_Binding_Native::register_abilities();
-bn_assert( count( $GLOBALS['abilities'] ) === 7
-    && isset( $GLOBALS['abilities'][ MAD4B_SCP_Deployment_Binding_Native::ENVIRONMENT_STATUS ] ),
-    'Staging status/plan/apply/handoff/readback and read-only Production/environment status' );
+bn_assert( count( $GLOBALS['abilities'] ) === 6, 'Staging status/plan/apply/handoff/readback and read-only Production status' );
 // The one-time approval ticket is minted AFTER approval-plan validates the
 // target schema. Requiring the ticket inside that schema is a cycle; runtime
 // apply still denies requests lacking the real ticket.

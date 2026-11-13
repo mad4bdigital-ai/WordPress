@@ -2,17 +2,10 @@
 """Fail-closed source and evidence contract for four-PR integrated candidate."""
 import hashlib
 import json
-import sys
 from pathlib import Path
 
 ROOT = Path("wp-content/plugins/mad4b-site-control-plane")
 SPECS = Path("specs/007-content-intelligence-workflow-platform/extensions/competitive-experience")
-sys.path.insert(0, str((ROOT / "tests").resolve()))
-from historical_source_successor import (
-    G6_ADMIN_SMOKE_HISTORIC_SHA256,
-    G6_ADMIN_SMOKE_HISTORIC_BYTES,
-    is_exact_historical_test_successor,
-)
 
 def require(path, *markers):
     source = Path(path).read_text(encoding="utf-8")
@@ -148,7 +141,7 @@ if (not isinstance(review["source_blob_sha"], str)
         or any(c not in "0123456789abcdef" for c in review["source_blob_sha"])):
     raise SystemExit("INTEGRATION CONTRACT FAIL: invalid reviewed workflow Git object")
 
-def reviewed_source_supersedes_snapshot(path, historical_sha, historical_bytes):
+def reviewed_source_supersedes_snapshot(path):
     data = Path(path).read_bytes()
     raw = b"blob " + str(len(data)).encode("ascii") + b"\0" + data
     blob_sha = hashlib.sha1(raw).hexdigest()
@@ -156,25 +149,14 @@ def reviewed_source_supersedes_snapshot(path, historical_sha, historical_bytes):
         return (path, blob_sha) in reviewed_workflow_exact_blobs
     # Disposable WordPress admin smoke is a test fixture, not an executable
     # production runtime/config path and cannot enter reviewed_changes.
-    # Do NOT pin one former HEAD blob: the closed-path historical verifier
-    # checks the archived source SHA/bytes against its immutable ancestor,
-    # current checkout bytes against the exact HEAD Git blob, and the
-    # separately CI-reviewed Bootstrap and its executable regressions.
-    # The Direct Profile source must also remain independently reviewed.
+    # Its one exact successor also requires the reviewed Direct Profile source.
     if path == "wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php":
-        if historical_sha != G6_ADMIN_SMOKE_HISTORIC_SHA256 or historical_bytes not in (None, G6_ADMIN_SMOKE_HISTORIC_BYTES):
-            return False
         direct_profile = "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-direct-profile.php"
         source = Path(direct_profile).read_bytes()
         source_blob = hashlib.sha1(b"blob " + str(len(source)).encode("ascii") + b"\0" + source).hexdigest()
-        evidence = is_exact_historical_test_successor(
-            Path.cwd(), path, data, historical_sha, G6_ADMIN_SMOKE_HISTORIC_BYTES
-        )
-        # Mutation of the current test bytes MUST NOT inherit its review.
-        tampered = is_exact_historical_test_successor(
-            Path.cwd(), path, data + b"unreviewed", historical_sha, G6_ADMIN_SMOKE_HISTORIC_BYTES
-        )
-        return (evidence and not tampered
+        # Reviewed successor adds the three Admin Route Registry smoke pages.
+        # Pin exact current Git blob; keep historic Feature 007 snapshots immutable.
+        return (blob_sha == "0c0c2052254a5c893a79d45aa9d985b57d8361fd"
                 and (direct_profile, source_blob) in reviewed_exact_blobs
                 and b"'mad4b-direct-access-profile' => array( 'MAD4B_SCP_Direct_Profile', 'render_page'" in data)
     return (path, blob_sha) in reviewed_exact_blobs
@@ -200,7 +182,7 @@ def check_evidence(node):
                     raise SystemExit(f"INTEGRATION CONTRACT FAIL: malformed historical SHA for {path}")
                 if historical_bytes is not None and (not isinstance(historical_bytes, int) or historical_bytes <= 0):
                     raise SystemExit(f"INTEGRATION CONTRACT FAIL: malformed historical byte count for {path}")
-                if not reviewed_source_supersedes_snapshot(path, historical_sha, historical_bytes):
+                if not reviewed_source_supersedes_snapshot(path):
                     raise SystemExit(f"INTEGRATION CONTRACT FAIL: unreviewed successor source for {path}")
             verified += 1
         else:

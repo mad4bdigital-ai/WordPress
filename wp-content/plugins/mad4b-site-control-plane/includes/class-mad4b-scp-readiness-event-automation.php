@@ -33,8 +33,8 @@ final class MAD4B_SCP_Readiness_Event_Automation {
         return $table === $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s',$table));
     }
     public static function schema_prepare() {
-        if(wp_get_environment_type()!=='staging')
-            return new WP_Error('readiness_schema_staging_only','Staging only.',array('status'=>403));
+        if(!class_exists('MAD4B_SCP_Site_Profile',false) || empty(MAD4B_SCP_Site_Profile::status()['authority_ready']) || !self::allowed())
+            return new WP_Error('readiness_schema_authority_required','Enrolled company administrator required.',array('status'=>403));
         if(self::installed())return array('status'=>'existing','table'=>self::table());
         global $wpdb;
         $table=self::table();

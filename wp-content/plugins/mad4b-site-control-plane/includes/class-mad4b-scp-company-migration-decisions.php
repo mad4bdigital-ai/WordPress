@@ -13,7 +13,7 @@ final class MAD4B_SCP_Company_Migration_Decisions {
         global $wpdb; return $wpdb->prefix.'mad4b_company_migration_decisions';
     }
     public static function install(): bool {
-        if(wp_get_environment_type()!=='staging')return false;
+        if(!class_exists('MAD4B_SCP_Site_Profile',false)||empty(MAD4B_SCP_Site_Profile::status()['authority_ready'])||!current_user_can('manage_options'))return false;
         require_once ABSPATH.'wp-admin/includes/upgrade.php';
         global $wpdb;
         $t=self::table(); $collate=$wpdb->get_charset_collate();
@@ -49,8 +49,7 @@ final class MAD4B_SCP_Company_Migration_Decisions {
     }
     private static function identity(): string {
         $s=MAD4B_SCP_Site_Profile::status();
-        if(wp_get_environment_type()!=='staging' || !defined('WP_ENVIRONMENT_TYPE')
-            || WP_ENVIRONMENT_TYPE!=='staging' || empty($s['authority_ready'])
+        if(empty($s['site_uuid']) || empty($s['authority_ready'])
             || empty($s['origin_match']) || empty($s['deployment_binding_match'])
             || empty($s['same_origin_clone_protection']))return '';
         return (string)($s['site_uuid']??'');
@@ -157,7 +156,7 @@ final class MAD4B_SCP_Company_Migration_Decisions {
     public static function propose($asset,$decision,$reason,$source_sha,$target_sha,$expected_id) {
         if(!self::can_propose())return self::err('mad4b_decision_proposer_denied','Company operations permission needed',403);
         $site=self::identity();
-        if(!$site || !self::ready())return self::err('mad4b_decision_site_unready','Staging company identity/schema not ready');
+        if(!$site || !self::ready())return self::err('mad4b_decision_site_unready','Enrolled company identity/schema not ready');
         if(!MAD4B_SCP_Migration_Decision_Catalog::asset_supported($asset)
          || !isset(MAD4B_SCP_Migration_Decision_Catalog::choices()[$decision]))
             return self::err('mad4b_decision_invalid_choice','Unregistered migration choice',400);

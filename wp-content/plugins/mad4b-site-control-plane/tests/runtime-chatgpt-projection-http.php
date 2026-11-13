@@ -145,36 +145,7 @@ try {
     $expired = $call( $read, $read_session, 'mad4b-chatgpt-tool-projection-discover', array( 'transport_action' => 'schema', 'snapshot' => str_repeat( 'f', 64 ), 'schema_sha256' => $descriptor['sha256'] ) );
     $error_text = $expired['result']['content'][0]['text'] ?? '';
     $error_envelope = json_decode( $error_text, true );
-    if ( empty( $expired['result']['isError'] ) || 410 !== ( $error_envelope['status'] ?? null ) || 'mad4b.catalog-error.v1' !== ( $error_envelope['contract'] ?? '' ) ) {
-        // Preserve strict expiry/error behavior; include only bounded catalog
-        // provenance to distinguish registration, projection and transport.
-        // No bearer, session, schema body or failure response payload is logged.
-        $registration = MAD4B_SCP_Servers::registration_status();
-        $status = is_array( $registration['mad4b-chatgpt'] ?? null )
-            ? $registration['mad4b-chatgpt'] : array();
-        $catalog = is_array( $status['catalog_evidence'] ?? null )
-            ? $status['catalog_evidence'] : array();
-        $preflight = is_array( $status['preflight'] ?? null )
-            ? $status['preflight'] : array();
-        $fail( 'Pinned Adapter lost catalog expiry status on the wire: ' . wp_json_encode( array(
-            'http_status' => isset( $response ) && is_object( $response ) ? $response->get_status() : 0,
-            'rpc_error_code' => $expired['error']['code'] ?? null,
-            'registered' => ! empty( $status['registered'] ),
-            'registration_error' => sanitize_key( (string) ( $status['error'] ?? '' ) ),
-            'registered_tools' => (int) ( $status['tool_count'] ?? 0 ),
-            'requested_tools' => (int) ( $status['requested_tool_count'] ?? 0 ),
-            'preflight_blocker' => sanitize_key( (string) ( $preflight['blocker'] ?? '' ) ),
-            'preflight_failures' => array_slice( array_map( static function ( $item ) {
-                return array(
-                    'ability' => sanitize_text_field( (string) ( $item['failing_ability'] ?? '' ) ),
-                    'stage' => sanitize_key( (string) ( $item['stage'] ?? '' ) ),
-                    'code' => sanitize_key( (string) ( $item['error_code'] ?? '' ) ),
-                );
-            }, (array) ( $preflight['failures'] ?? array() ) ), 0, 8 ),
-            'catalog_blocker' => sanitize_key( (string) ( $catalog['blocker'] ?? '' ) ),
-            'missing_count' => count( (array) ( $catalog['missing_abilities'] ?? array() ) ),
-        ) ) );
-    }
+    if ( empty( $expired['result']['isError'] ) || 410 !== ( $error_envelope['status'] ?? null ) || 'mad4b.catalog-error.v1' !== ( $error_envelope['contract'] ?? '' ) ) $fail( 'Pinned Adapter lost catalog expiry status on the wire.' );
     list( $response, $catalog ) = $dispatch( $read, 'tools/list', array(), $read_session );
     $names = array_column( $catalog['result']['tools'] ?? array(), 'name' );
     if ( ! in_array( 'mad4b-diagnostics-health', $names, true ) || in_array( 'mad4b-ci-unsafe-write-projection-fixture', $names, true ) ) $fail( 'Read catalog did not enforce dynamic classification.' );
