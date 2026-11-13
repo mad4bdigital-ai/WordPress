@@ -645,8 +645,16 @@ def confirm_plan(plan: dict, policy: dict, *, expect_preimage: bool) -> None:
         target_file = Path(plan["target_root"]) / target
         no_link(target_file)
         actual = digest(target_file.read_bytes()) if target_file.is_file() else None
-        expected = row["expected_before_sha256"] if expect_preimage else row["source_sha256"]
-        fail_if(actual != expected, "TARGET_CONTENT_DRIFT:" + target)
+        if expect_preimage is None:
+            # Only a separately signed rollback may inspect a mixed state
+            # recorded by a durable interrupted-apply intent.
+            valid = actual in (row["expected_before_sha256"],
+                               row["source_sha256"])
+        else:
+            expected = (row["expected_before_sha256"] if expect_preimage
+                        else row["source_sha256"])
+            valid = actual == expected
+        fail_if(not valid, "TARGET_CONTENT_DRIFT:" + target)
 
 
 def grant_message(grant: dict) -> bytes:
@@ -690,6 +698,14 @@ def atomic_write(path: Path, data: bytes, mode: int = 0o644) -> None:
             stream.flush()
             os.fsync(stream.fileno())
         os.replace(name, path)
+        # A file fsync alone does not make its renamed directory entry
+        # durable across sudden host power loss. This also protects the
+        # write-ahead intent before touching any live PHP target.
+        dir_fd = os.open(str(path.parent), os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(dir_fd)
+        finally:
+            os.close(dir_fd)
     finally:
         if os.path.exists(name):
             os.unlink(name)
@@ -784,6 +800,44 @@ def assert_runtime_binding(
     fail_if(len(matching) != 1 or
             str(Path(matching[0]["Source"]).resolve()) != plan["target_root"],
             "TARGET_CONTAINER_MOUNT_MISMATCH")
+
+
+def preflight_candidate_php(plan: dict) -> None:
+    """Lint exact immutable Git PHP bytes inside the bound PHP container.
+
+    This runs *before any application write*. No temporary target file is
+    created. WP bootstrap after apply is still mandatory, because lint does
+    not prove include order, runtime dependencies or functional parity.
+    """
+    for row in plan["files"]:
+        if not row["target"].endswith(".php"):
+            continue
+        data = git_bytes(Path(plan["git_root"]), plan["git_commit"], row["source"])
+        fail_if(digest(data) != row["source_sha256"] or
+                len(data) != row["source_bytes"],
+                "CANDIDATE_SOURCE_DRIFT_BEFORE_LINT")
+        result = subprocess.run(
+            ["docker", "exec", "-i", plan["container"], "php", "-l"],
+            input=data, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            timeout=30, check=False,
+        )
+        fail_if(result.returncode != 0 or
+                b"No syntax errors detected" not in result.stdout,
+                "CANDIDATE_PHP_SYNTAX_NOT_PROVEN:" + row["target"])
+
+
+def assert_target_preimage(root: Path, row: dict) -> None:
+    """Recheck CAS immediately before each file write under the release lock.
+
+    Original plan-level CAS alone cannot fence an independent writer between
+    the first and second file of a multi-file release.
+    """
+    path = root / row["target"]
+    no_link(path)
+    fail_if(path.exists() and not path.is_file(), "JIT_TARGET_NOT_REGULAR")
+    actual = digest(safe_regular(path)) if path.is_file() else None
+    fail_if(actual != row["expected_before_sha256"],
+            "TARGET_JIT_PREIMAGE_DRIFT:" + row["target"])
 
 
 def php_lint(plan: dict) -> None:
@@ -920,6 +974,11 @@ def restore_backup(plan: dict, backup: dict) -> None:
     for row in reversed(plan["files"]):
         backup_item = records[row["target"]]
         path = root / row["target"]
+        no_link(path)
+        current = digest(safe_regular(path)) if path.is_file() else None
+        fail_if(current not in (row["source_sha256"],
+                                row["expected_before_sha256"]),
+                "ROLLBACK_JIT_CONCURRENT_DRIFT:" + row["target"])
         content = (base64.b64decode(backup_item["bytes_b64"], validate=True)
                    if backup_item["bytes_b64"] is not None else None)
         if content is None:
@@ -928,9 +987,118 @@ def restore_backup(plan: dict, backup: dict) -> None:
         else:
             atomic_write(path, content, backup_item["mode"])
 
+def apply_intent_path(receipt_dir: Path, nonce: str) -> Path:
+    fail_if(not NONCE.fullmatch(nonce), "INVALID_APPLY_NONCE")
+    return receipt_dir / (nonce + ".intent.json")
+
+
+def open_apply_intents(plan: dict, receipt_dir: Path) -> list[dict]:
+    """Read a root-private transaction journal without quadratic receipt scans.
+
+    A terminal failure marked ROLLBACK_UNVERIFIED remains unresolved until a
+    separately signed rollback succeeds. Existing successful/recovered
+    receipts are never recycled as authorization for a new apply.
+    """
+    possible: list[dict] = []
+    for path in sorted(receipt_dir.glob("*.intent.json")):
+        try:
+            item = json.loads(safe_regular(path, max_size=100_000))
+        except (TypeError, ValueError) as exc:
+            raise Denied("CORRUPT_APPLY_INTENT") from exc
+        if item.get("plan_sha256") != plan["plan_sha256"]:
+            continue
+        fail_if(item.get("contract") != "mad4b.company-code-release.intent.v1" or
+                item.get("state") != "APPLY_STARTED" or
+                item.get("company") != plan["company"] or
+                item.get("site_uuid") != plan["site_uuid"] or
+                item.get("environment") != plan["environment"] or
+                item.get("files") != [row["target"] for row in plan["files"]] or
+                not isinstance(item.get("nonce"), str) or
+                path != apply_intent_path(receipt_dir, item["nonce"]),
+                "APPLY_INTENT_IDENTITY_DRIFT")
+        terminal = receipt_dir / (item["nonce"] + ".json")
+        if terminal.exists():
+            status = json.loads(safe_regular(terminal, max_size=100_000))
+            fail_if(status.get("contract") != RECEIPT_CONTRACT or
+                    status.get("plan_sha256") != plan["plan_sha256"] or
+                    status.get("nonce") != item["nonce"],
+                    "APPLY_TERMINAL_RECEIPT_DRIFT")
+            if status.get("state") != "ROLLBACK_UNVERIFIED":
+                continue
+        possible.append(item)
+    if not possible:
+        return []
+    # One pass over receipts for all open intents, rather than one complete
+    # directory scan per intent. No source code/secret material is logged.
+    recovered = set()
+    for receipt_file in receipt_dir.glob("*.json"):
+        if receipt_file.name.endswith((".backup.json", ".intent.json")):
+            continue
+        report = json.loads(safe_regular(receipt_file, max_size=100_000))
+        if (report.get("contract") == RECEIPT_CONTRACT and
+                report.get("state") == "RECOVERY_ROLLBACK_VERIFIED" and
+                report.get("plan_sha256") == plan["plan_sha256"]):
+            recovered.add(report.get("recovered_apply_nonce"))
+    return [item for item in possible if item["nonce"] not in recovered]
+
+
+def rollback_intent_path(receipt_dir: Path, nonce: str) -> Path:
+    fail_if(not NONCE.fullmatch(nonce), "INVALID_ROLLBACK_NONCE")
+    return receipt_dir / (nonce + ".rollback-intent.json")
+
+
+def open_rollback_intents(plan: dict, receipt_dir: Path) -> list[dict]:
+    """Bound, root-private recovery evidence for interrupted signed rollback."""
+    possible=[]
+    for path in sorted(receipt_dir.glob("*.rollback-intent.json")):
+        try:
+            item=json.loads(safe_regular(path,max_size=100_000))
+        except (TypeError,ValueError) as exc:
+            raise Denied("CORRUPT_ROLLBACK_INTENT") from exc
+        if item.get("plan_sha256") != plan["plan_sha256"]:
+            continue
+        fail_if(item.get("contract") != "mad4b.company-code-release.rollback-intent.v1" or
+                item.get("state") != "ROLLBACK_STARTED" or
+                item.get("company") != plan["company"] or
+                item.get("site_uuid") != plan["site_uuid"] or
+                item.get("environment") != plan["environment"] or
+                item.get("files") != [row["target"] for row in plan["files"]] or
+                not isinstance(item.get("nonce"),str) or
+                path != rollback_intent_path(receipt_dir,item["nonce"]),
+                "ROLLBACK_INTENT_IDENTITY_DRIFT")
+        terminal=receipt_dir/(item["nonce"]+".json")
+        if terminal.exists():
+            record=json.loads(safe_regular(terminal,max_size=100_000))
+            fail_if(record.get("contract")!=RECEIPT_CONTRACT or
+                    record.get("nonce")!=item["nonce"] or
+                    record.get("plan_sha256")!=plan["plan_sha256"],
+                    "ROLLBACK_TERMINAL_RECEIPT_DRIFT")
+            if record.get("state") in ("ROLLBACK_VERIFIED",
+                                       "RECOVERY_ROLLBACK_VERIFIED"):
+                continue
+        possible.append(item)
+    if not possible:
+        return []
+    completed=set()
+    for receipt_file in receipt_dir.glob("*.json"):
+        if receipt_file.name.endswith((".backup.json", ".intent.json")):
+            continue
+        record=json.loads(safe_regular(receipt_file,max_size=100_000))
+        if (record.get("contract")==RECEIPT_CONTRACT and
+                record.get("plan_sha256")==plan["plan_sha256"] and
+                record.get("state") in ("ROLLBACK_VERIFIED",
+                                        "RECOVERY_ROLLBACK_VERIFIED")):
+            for nonce in record.get("recovered_rollback_nonces",[]):
+                completed.add(nonce)
+    open_entries=[item for item in possible if item["nonce"] not in completed]
+    fail_if(len(open_entries)>64,"EXCESS_OPEN_ROLLBACK_INTENTS")
+    return open_entries
+
+
 def apply_release(plan: dict, policy: dict, grant: dict, receipt_dir: Path,
                   *, runtime_check: Callable[[dict, dict], None] = assert_runtime_binding,
-                  validate_code: Callable[[dict], None] = php_lint) -> dict:
+                  validate_code: Callable[[dict], None] = php_lint,
+                  preflight_code: Callable[[dict], None] = preflight_candidate_php) -> dict:
     """Apply only after external authority. Roll back automatically on any failure."""
     verify_grant(plan, policy, grant, "apply")
     assert_pinned_receipt_directory(policy, receipt_dir)
@@ -938,11 +1106,33 @@ def apply_release(plan: dict, policy: dict, grant: dict, receipt_dir: Path,
     with open(lock, "a+") as lockfile:
         fcntl.flock(lockfile, fcntl.LOCK_EX | fcntl.LOCK_NB)
         nonce_path = receipt_dir / (grant["nonce"] + ".json")
-        fail_if(nonce_path.exists(), "GRANT_ALREADY_USED")
+        intent_path = apply_intent_path(receipt_dir, grant["nonce"])
+        fail_if(nonce_path.exists() or intent_path.exists(),
+                "GRANT_ALREADY_USED")
+        fail_if(bool(open_apply_intents(plan, receipt_dir)),
+                "UNRESOLVED_APPLY_INTENT")
+        fail_if(bool(open_rollback_intents(plan, receipt_dir)),
+                "UNRESOLVED_ROLLBACK_INTENT")
         confirm_plan(plan, policy, expect_preimage=True)
         runtime_check(plan, policy)
-        prepare_backup(plan, policy, receipt_dir, runtime_check=runtime_check)
+        prepared = prepare_backup(plan, policy, receipt_dir,
+                                  runtime_check=runtime_check)
         backup = load_backup(plan, receipt_dir)
+        # A syntax error must never reach the first production target write.
+        # This uses the tenant-bound PHP interpreter rather than host PHP.
+        preflight_code(plan)
+        # Durable write-ahead evidence exists *before* the first file change.
+        # An interrupted process cannot be confused with a clean Apply.
+        intent = {
+            "contract": "mad4b.company-code-release.intent.v1",
+            "state": "APPLY_STARTED", "plan_sha256": plan["plan_sha256"],
+            "company": plan["company"], "environment": plan["environment"],
+            "site_uuid": plan["site_uuid"], "nonce": grant["nonce"],
+            "backup_sha256": prepared["backup_sha256"],
+            "files": [row["target"] for row in plan["files"]],
+            "at": dt.datetime.now(dt.timezone.utc).isoformat(),
+        }
+        atomic_write(intent_path, canonical(intent) + b"\n", 0o600)
         root = Path(plan["target_root"])
         changed = []
         state, failure = "APPLIED_VERIFIED", None
@@ -950,22 +1140,31 @@ def apply_release(plan: dict, policy: dict, grant: dict, receipt_dir: Path,
             for row in plan["files"]:
                 data = git_bytes(Path(plan["git_root"]), plan["git_commit"], row["source"])
                 path = root / row["target"]
+                assert_target_preimage(root, row)
                 atomic_write(path, data, row["source_mode"])
                 changed.append(row["target"])
             confirm_plan(plan, policy, expect_preimage=False)
             validate_code(plan)
         except Exception as exc:
+            # If the first target drifted before any of our writes, there is
+            # nothing to roll back. Record the denial, not a false success.
+            if not changed:
+                state = "ABORTED_NO_MUTATION"
+                failure = type(exc).__name__ + ":" + str(exc)[:160]
+            else:
+                state = "ROLLBACK_UNVERIFIED"
             # A backup's existence is not proof of a successful restore.
             # Concurrent edits can make rollback unsafe, so never overwrite
             # them and never claim ROLLED_BACK without exact CAS readback.
-            failure = type(exc).__name__ + ":" + str(exc)[:160]
-            try:
-                restore_backup(plan, backup)
-                confirm_plan(plan, policy, expect_preimage=True)
-                state = "ROLLED_BACK"
-            except Exception as rollback_exc:
-                state = "ROLLBACK_UNVERIFIED"
-                failure += ";rollback=" + type(rollback_exc).__name__ + ":" + str(rollback_exc)[:120]
+            if changed:
+                failure = type(exc).__name__ + ":" + str(exc)[:160]
+                try:
+                    restore_backup(plan, backup)
+                    confirm_plan(plan, policy, expect_preimage=True)
+                    state = "ROLLED_BACK"
+                except Exception as rollback_exc:
+                    state = "ROLLBACK_UNVERIFIED"
+                    failure += ";rollback=" + type(rollback_exc).__name__ + ":" + str(rollback_exc)[:120]
         receipt = {
             "contract": RECEIPT_CONTRACT, "state": state,
             "company": plan["company"], "environment": plan["environment"],
@@ -992,7 +1191,8 @@ def rollback_release(plan: dict, policy: dict, grant: dict, receipt_dir: Path,
     with open(receipt_dir / ".company-code-release.lock", "a+") as lockfile:
         fcntl.flock(lockfile, fcntl.LOCK_EX | fcntl.LOCK_NB)
         nonce_path = receipt_dir / (grant["nonce"] + ".json")
-        fail_if(nonce_path.exists(), "GRANT_ALREADY_USED")
+        intent_path = rollback_intent_path(receipt_dir, grant["nonce"])
+        fail_if(nonce_path.exists() or intent_path.exists(), "GRANT_ALREADY_USED")
         # Rollback is still a governed write: recheck source SHA, immutable
         # plan, current file catalog and live applied content before restoring.
         # Do not let an old grant override a subsequently revoked target scope.
@@ -1005,13 +1205,49 @@ def rollback_release(plan: dict, policy: dict, grant: dict, receipt_dir: Path,
                     receipt.get("state") == "APPLIED_VERIFIED"):
                 found_previous = True
                 break
-        fail_if(not found_previous, "NO_VERIFIED_APPLY_TO_ROLLBACK")
-        confirm_plan(plan, policy, expect_preimage=False)
+        pending = open_apply_intents(plan, receipt_dir)
+        interrupted_rollbacks = open_rollback_intents(plan, receipt_dir)
+        fail_if(not found_previous and not pending and not interrupted_rollbacks,
+                "NO_VERIFIED_APPLY_TO_ROLLBACK")
+        fail_if(len(pending) > 1, "MULTIPLE_OPEN_APPLY_INTENTS")
+        if not pending and not interrupted_rollbacks:
+            confirm_plan(plan, policy, expect_preimage=False)
+        else:
+            # The original Apply ended without a terminal success receipt.
+            # only exact original/prepared or exact signed postimage bytes.
+            # A foreign concurrent byte is never overwritten.
+            confirm_plan(plan, policy, expect_preimage=None)
         runtime_check(plan, policy)
         backup = load_backup(plan, receipt_dir)
+        if pending:
+            blob = safe_regular(backup_path(receipt_dir, plan),
+                                max_size=100_000_000)
+            fail_if(pending[0].get("backup_sha256") != digest(blob),
+                    "APPLY_INTENT_BACKUP_CHANGED")
+        # The signed rollback itself can be interrupted while restoring a
+        # multi-file release. Persist a private intent before modifying any
+        # target so a *fresh separately signed rollback* can resume it.
+        intent={
+            "contract":"mad4b.company-code-release.rollback-intent.v1",
+            "state":"ROLLBACK_STARTED","plan_sha256":plan["plan_sha256"],
+            "company":plan["company"],"environment":plan["environment"],
+            "site_uuid":plan["site_uuid"],"nonce":grant["nonce"],
+            "backup_sha256":digest(safe_regular(
+                backup_path(receipt_dir,plan),max_size=100_000_000)),
+            "files":[row["target"] for row in plan["files"]],
+            "at":dt.datetime.now(dt.timezone.utc).isoformat(),
+        }
+        for earlier in interrupted_rollbacks:
+            fail_if(earlier.get("backup_sha256") != intent["backup_sha256"],
+                    "ROLLBACK_INTENT_BACKUP_CHANGED")
+        atomic_write(intent_path,canonical(intent)+b"\n",0o600)
         restore_backup(plan, backup)
         confirm_plan(plan, policy, expect_preimage=True)
-        result = {"contract": RECEIPT_CONTRACT, "state": "ROLLBACK_VERIFIED",
+        result = {"contract": RECEIPT_CONTRACT,
+                  "state": ("RECOVERY_ROLLBACK_VERIFIED" if pending
+                            else "ROLLBACK_VERIFIED"),
+                  "recovered_apply_nonce": (pending[0]["nonce"] if pending else None),
+                  "recovered_rollback_nonces": [x["nonce"] for x in interrupted_rollbacks],
                   "company": plan["company"], "environment": plan["environment"],
                   "site_uuid": plan["site_uuid"],
                   "git_commit": plan["git_commit"],

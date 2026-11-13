@@ -270,6 +270,30 @@ class HostHandlerTests(unittest.TestCase):
                         original_claim_provider=lambda job,p:self.proof)
                 apply.assert_not_called()
 
+    def test_host_propagates_incomplete_release_states_without_false_rollback(self):
+        policy={"contract":"mad4b.company-code-release-policy.v1",
+                "receipt_dir":"/var/lib/mad4b/company-code-release/receipts"}
+        cases={
+          "ROLLED_BACK":"HOST_APPLY_ROLLED_BACK",
+          "ABORTED_NO_MUTATION":"HOST_APPLY_ABORTED_NO_MUTATION",
+          "ROLLBACK_UNVERIFIED":"HOST_APPLY_INCIDENT_RECOVERY_REQUIRED",
+          "UNKNOWN":"HOST_APPLY_RESULT_UNRECOGNIZED_HOLD",
+        }
+        for underlying,expected in cases.items():
+            with self.subTest(state=underlying):
+                with mock.patch.object(handler.release,"verify_grant",return_value=None):
+                    with mock.patch.object(handler.release,"apply_release",
+                                           return_value={"state":underlying}):
+                        result=handler.execute_once(
+                            self.job_id,self.plan,policy,
+                            {"contract":"signed-fixture","original_job_id":self.job_id},
+                            original_claim_provider=lambda job,p:self.proof)
+                self.assertEqual(result["state"],expected)
+                self.assertEqual(result["incident_requires_recovery"],
+                                 underlying=="ROLLBACK_UNVERIFIED")
+                self.assertFalse(result["original_313_certified"])
+                self.assertFalse(result["original_313_receipt_generated"])
+
     def test_positive_mock_host_apply_never_certifies_313(self):
         policy={"contract":"mad4b.company-code-release-policy.v1",
                 "receipt_dir":"/var/lib/mad4b/company-code-release/receipts"}

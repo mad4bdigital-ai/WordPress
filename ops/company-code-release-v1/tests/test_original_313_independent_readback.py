@@ -77,6 +77,17 @@ class Independent313Tests(unittest.TestCase):
         with self.assertRaisesRegex(original.GateDenied,"NOT_ELIGIBLE"):
             self.call()
 
+    def test_unverified_host_incident_never_enters_original_readback(self):
+        for state in ('ROLLBACK_UNVERIFIED','ABORTED_NO_MUTATION',
+                      'ROLLED_BACK','APPLY_STARTED'):
+            with self.subTest(state=state):
+                receipt={**self.receipt,'state':state}
+                with mock.patch.object(independent.release,'confirm_plan') as confirm:
+                    with self.assertRaisesRegex(handler.NotEnrolled,
+                                                'HOST_APPLY_NOT_VERIFIED'):
+                        self.call(receipt=receipt)
+                    confirm.assert_not_called()
+
     def test_receipt_wrong_company_rejected(self):
         receipt={**self.receipt,"company":"foreign"}
         with self.assertRaisesRegex(handler.NotEnrolled,"HOST_RECEIPT_SCOPE_MISMATCH"):
