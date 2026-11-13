@@ -132,6 +132,8 @@ jobs:
           php wp-content/plugins/mad4b-site-control-plane/tests/skill-task-composition-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/skill-task-abilities-runtime.php
           python3 wp-content/plugins/mad4b-site-control-plane/tests/dynamic-skills-contract.py
+          php wp-content/plugins/mad4b-site-control-plane/tests/elementor-native-template-parity-contract.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/elementor-native-template-parity-source-contract.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/skill-runtime-certification-contract.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/staging-write-authority-contract.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/plugin-lifecycle-data-retention-contract.py
