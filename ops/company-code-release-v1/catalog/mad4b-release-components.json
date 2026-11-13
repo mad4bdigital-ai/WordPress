@@ -24,6 +24,14 @@
         "wp-content/mu-plugins/mad4b-extra-quick-preview/quick-preview.css"
       ],
       "id": "mad4b-extra-quick-preview-native-gallery-interop"
+    },
+    {
+      "id": "mad4b-native-reviews-help-preview-visibility",
+      "files": [
+        "wp-content/mu-plugins/mad4b-home-reviews-native-visibility.php",
+        "wp-content/mu-plugins/mad4b-need-help-native-visibility.php",
+        "wp-content/mu-plugins/mad4b-single-reviews-native-visibility.php"
+      ]
     }
   ],
   "contract": "mad4b.company-release-components.v1"
