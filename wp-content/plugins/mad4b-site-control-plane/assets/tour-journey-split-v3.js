@@ -1,7 +1,8 @@
 (() => {
   'use strict';
-  /* Split is a progressive enhancement of the already-rendered JetEngine lists.
-     Explorer and Story remain owned by the original Journey UI. */
+  /* One progressive enhancement of the EXISTING Journey UI and JetEngine lists.
+     Split, Explorer and Story share one approved taxonomy / evidence registry.
+     Modes differ in presentation, never in terms, permissions or queries. */
   const order=['country','state_governorate','city','zone_area','place_attraction'];
   const groupKey={country:'countries',state_governorate:'regions',city:'cities',
     zone_area:'zones',place_attraction:'attractions'};
@@ -33,6 +34,38 @@
       path:'التدرج الجغرافي',direct:'مذكور في الهايلايت',associated:'مرتبط بالرحلة',
       note:'ليس بالضرورة أن تكون كل الوجهات المرتبطة ضمن الزيارات المشمولة.',open:'استكشف الأماكن',places:'أماكن'}
   };
+  const modesCopy={
+    en:{browse:'Explore all tour places',levels:'Explore by destination type',
+      story:'Places behind this highlight',storyContext:'Tour destination context',
+      linked:'Mentioned in highlight',associated:'Other tour-related places',
+      storyButton:'Explore places for this highlight',contextButton:'Browse tour places',
+      tourContext:'Tour-level context, not a confirmed visit',all:'All connected destinations'},
+    es:{browse:'Explorar todos los destinos',levels:'Explorar por tipo de destino',
+      story:'Lugares de este momento',storyContext:'Contexto del viaje',
+      linked:'Mencionados en el destacado',associated:'Otros lugares relacionados',
+      storyButton:'Explorar los lugares de este momento',contextButton:'Ver lugares del viaje',
+      tourContext:'Contexto del viaje; no es una visita confirmada',all:'Todos los destinos vinculados'},
+    fr:{browse:'Découvrir tous les lieux',levels:'Explorer par type de destination',
+      story:'Lieux de ce temps fort',storyContext:'Contexte du voyage',
+      linked:'Mentionné dans ce temps fort',associated:'Autres lieux du voyage',
+      storyButton:'Explorer les lieux de cette étape',contextButton:'Voir les lieux du voyage',
+      tourContext:'Contexte du voyage, pas une visite confirmée',all:'Toutes les destinations'},
+    de:{browse:'Alle Reiseziele entdecken',levels:'Nach Reisezieltyp entdecken',
+      story:'Orte dieses Highlights',storyContext:'Kontext der Reise',
+      linked:'Im Highlight erwähnt',associated:'Weitere Reiseorte',
+      storyButton:'Orte dieses Highlights entdecken',contextButton:'Reiseorte ansehen',
+      tourContext:'Reisekontext, kein bestätigter Besuch',all:'Alle verbundenen Reiseziele'},
+    it:{browse:'Esplora tutte le destinazioni',levels:'Esplora per tipo di destinazione',
+      story:'Luoghi di questo momento',storyContext:'Contesto del viaggio',
+      linked:'Citato in questo momento',associated:'Altri luoghi del viaggio',
+      storyButton:'Esplora i luoghi di questo momento',contextButton:'Esplora i luoghi del viaggio',
+      tourContext:'Contesto del viaggio, non una visita confermata',all:'Tutte le destinazioni'},
+    ar:{browse:'استكشف جميع وجهات الرحلة',levels:'استكشف حسب نوع الوجهة',
+      story:'أماكن مرتبطة بهذه المحطة',storyContext:'سياق وجهات الرحلة',
+      linked:'مذكورة في هذا العنصر',associated:'وجهات أخرى مرتبطة بالرحلة',
+      storyButton:'استكشف أماكن هذا العنصر',contextButton:'استكشف وجهات الرحلة',
+      tourContext:'سياق جغرافي للرحلة، وليس زيارة مؤكدة',all:'كل الوجهات المرتبطة'}
+  };
   function normalized(url){
     try{const u=new URL(url,document.baseURI);return u.origin+u.pathname.replace(/\/+$/,'/');}catch{return '';}
   }
@@ -50,6 +83,7 @@
     const lang=document.documentElement.lang?.split('-')[0]?.toLowerCase()||'en';
     const L=strings[lang]||strings.en;
     const TL=typeLabels[lang]||typeLabels.en;
+    const M=modesCopy[lang]||modesCopy.en;
     const termMap=new Map(terms.map(t=>[Number(t.id),t]));
     const entries=[];
     const presentGroups=new Map();
@@ -70,8 +104,9 @@
     const cards=[...section.querySelectorAll('.tour-hl-ui__card')];
     if(!cards.length)return;
     section.dataset.jdSplitReady='1';
-    section.classList.add('jd-split-v3');
-    const panel=document.createElement('section');panel.className='jd-split-v3__panel';
+    section.classList.add('jd-split-v3','jd-modes-v3');
+    section.dataset.jdModesVersion='3';
+    const panel=document.createElement('section');panel.className='jd-split-v3__panel jd-modes-v3__panel';
     panel.hidden=true;
     const kicker=document.createElement('span');kicker.className='jd-split-v3__kicker';
     const h=document.createElement('h4');h.className='jd-split-v3__heading';
@@ -126,6 +161,75 @@
         sourced:referenced.length>0
       };
     }
+    const mentionedAcrossTour=new Set();
+    cards.forEach(card=>card.querySelectorAll('.jd-place-tile__details[href]').forEach(link=>{
+      const href=normalized(link.href);
+      const entry=entries.find(e=>e.href===href);
+      if(entry)mentionedAcrossTour.add(Number(entry.term.id));
+    }));
+    function exploreModel(){
+      return {sourced:mentionedAcrossTour.size>0,related:entries.map(entry=>({
+        ...entry,evidence:mentionedAcrossTour.has(Number(entry.term.id))?'mentioned':'associated'
+      })).sort((a,b)=>order.indexOf(a.term.kind)-order.indexOf(b.term.kind))};
+    }
+    // The hierarchy remains read-only; category and evidence always originate
+    // from server-approved Term + JetEngine listing data (no second query).
+    function commonAncestors(related,kind){
+      const chains=related.map(e=>anc(e.term));
+      const first=chains[0]||[];
+      const shared=[];
+      for(let i=0;i<first.length;i++){
+        if(chains.every(chain=>Number(chain[i]?.id)===Number(first[i].id)))shared.push(first[i]);
+        else break;
+      }
+      return related.length===1&&kind!=='place_attraction'?shared:
+        shared.filter(t=>t.kind!=='place_attraction');
+    }
+    const storyPointers=new Map();
+    function ensureStoryPointers(){
+      cards.forEach((card,i)=>{
+        let pointer=storyPointers.get(card);
+        if(pointer)return;
+        pointer=document.createElement('div');
+        pointer.className='jd-modes-v3__story-pointer';
+        const flag=document.createElement('span');flag.className='jd-modes-v3__story-flag';
+        flag.textContent=String(i+1).padStart(2,'0')+' · '+M.story;
+        const meta=document.createElement('span');meta.className='jd-modes-v3__story-meta';
+        const action=document.createElement('button');action.type='button';
+        action.className='jd-modes-v3__story-action';
+        action.addEventListener('click',()=>{
+          card.click(); // existing Journey controller updates canonical selection first
+          requestAnimationFrame(()=>requestAnimationFrame(()=>{
+            header.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});
+            levels.querySelector('button.is-current')?.focus({preventScroll:true});
+            const target=[...presentGroups.values()].find(g=>g.dataset.tourActive==='true');
+            if(target?.id&&history.replaceState)
+              history.replaceState(history.state,'',location.pathname+location.search+'#'+encodeURIComponent(target.id));
+          }));
+        });
+        pointer.append(flag,meta,action);
+        card.append(pointer);
+        storyPointers.set(card,pointer);
+      });
+    }
+    function updateStoryPointers(active){
+      ensureStoryPointers();
+      cards.forEach(card=>{
+        const pointer=storyPointers.get(card);
+        const data=mapped(card);
+        const direct=data.related.filter(e=>e.evidence==='mentioned').length;
+        const meta=pointer.querySelector('.jd-modes-v3__story-meta');
+        const action=pointer.querySelector('button');
+        // Never label broad tour geography as a visit asserted by a Highlight.
+        meta.textContent=direct
+          ?String(direct)+' '+M.linked+' · '+String(data.related.length-direct)+' '+M.associated
+          :M.tourContext;
+        action.textContent=direct?M.storyButton:M.contextButton;
+        pointer.classList.toggle('is-current',card===active);
+        pointer.classList.toggle('is-context-only',direct===0);
+        pointer.hidden=section.dataset.tourJourneyMode!=='story';
+      });
+    }
     function activeOriginal(group){
       [...presentGroups.values()].forEach(g=>{
         const yes=g===group;
@@ -158,18 +262,24 @@
       // Breadcrumb reflects the active taxonomy level, not a single arbitrary
       // attraction when multiple sibling attractions belong to one highlight.
       path.replaceChildren();
-      const representative=related.find(e=>e.evidence==='mentioned')||related[0];
-      const chain=anc(representative.term);
-      const context=kind==='place_attraction'?chain.slice(0,-1):chain;
+      const context=commonAncestors(related,kind);
       context.forEach((term,i)=>{
         if(i){
           const sep=document.createElement('span');sep.textContent='›';
           sep.setAttribute('aria-hidden','true');path.append(sep);
         }
-        const crumb=document.createElement('span');crumb.className='jd-split-v3__crumb';
-        crumb.textContent=term.name;path.append(crumb);
+        const inModel=model.related.some(e=>Number(e.term.id)===Number(term.id));
+        const canDrill=inModel&&presentGroups.has(groupKey[term.kind])&&term.kind!==kind;
+        const crumb=document.createElement(canDrill?'button':'span');
+        crumb.className='jd-split-v3__crumb';
+        crumb.textContent=term.name;
+        if(canDrill){
+          crumb.type='button';crumb.classList.add('jd-modes-v3__crumb-button');
+          crumb.addEventListener('click',()=>showKind(term.kind));
+        }
+        path.append(crumb);
       });
-      if(kind==='place_attraction'){
+      if(related.length>1||kind==='place_attraction'){
         if(path.children.length){
           const sep=document.createElement('span');sep.textContent='›';
           sep.setAttribute('aria-hidden','true');path.append(sep);
@@ -180,19 +290,25 @@
         path.append(crumb);
       }
       path.hidden=!path.children.length;
+      const mode=section.dataset.tourJourneyMode;
       const matchedNames=related.filter(e=>e.evidence==='mentioned').map(e=>e.term.name);
-      summary.textContent=String(related.length)+' '+TL[kind]
-        +' · '+direct+' '+L.direct+' · '+String(related.length-direct)+' '+L.associated
-        +(matchedNames.length?' · '+matchedNames.join(', '):'');
+      summary.textContent=String(related.length)+' '+(TL[kind]||L.places)
+        +' · '+direct+' '+(mode==='split'?L.direct:M.linked)
+        +' · '+String(related.length-direct)+' '+(mode==='split'?L.associated:M.associated)
+        +(mode==='split'&&matchedNames.length?' · '+matchedNames.join(', '):'');
+      panel.dataset.jdContextMode=mode;
+      section.dataset.jdActiveDestinationLevel=kind;
       section.dataset.jdSplitLevel=kind;
     }
-    function display(card,preferred=null){
+    function display(card,preferred=null,mode='split'){
       selected=card;
-      model=mapped(card);
+      model=mode==='explorer'?exploreModel():mapped(card);
       if(!model.related.length){panel.hidden=true;return;}
       panel.hidden=false;
-      kicker.textContent=model.sourced?L.heading:L.context;
-      h.textContent=card.querySelector('.tour-hl-ui__title')?.textContent?.trim()||L.context;
+      kicker.textContent=mode==='explorer'?M.levels:
+        mode==='story'?(model.sourced?M.story:M.storyContext):(model.sourced?L.heading:L.context);
+      h.textContent=mode==='explorer'?M.browse:
+        (card.querySelector('.tour-hl-ui__title')?.textContent?.trim()||L.context);
       levels.replaceChildren();
       const available=order.filter(k=>model.related.some(e=>e.term.kind===k)
         &&presentGroups.has(groupKey[k]));
@@ -204,6 +320,7 @@
         const text=document.createElement('span');text.textContent=TL[k]||k;
         const badge=document.createElement('strong');badge.textContent=String(n);
         button.append(text,badge);
+        button.setAttribute('aria-pressed','false');
         button.addEventListener('click',()=>showKind(k));
         levels.append(button);
       });
@@ -211,6 +328,7 @@
         available.includes('place_attraction')&&model.sourced?'place_attraction':
           available.includes('state_governorate')?'state_governorate':available[0];
       if(next)showKind(next);
+      if(mode==='split'){
       let inline=card.querySelector('.jd-split-v3__inline');
       if(!inline){
         inline=document.createElement('div');inline.className='jd-split-v3__inline';
@@ -224,18 +342,29 @@
       }
       inline.querySelector('.jd-split-v3__inline-count').textContent=String(model.related.length)+' '+L.places;
       cards.forEach(c=>{if(c!==card)c.querySelector('.jd-split-v3__inline')?.remove();});
+      }
+      if(mode==='story')updateStoryPointers(card);
     }
     function cleanup(){
       panel.hidden=true;
       cards.forEach(c=>c.querySelector('.jd-split-v3__inline')?.remove());
-      entries.forEach(e=>{e.item.classList.remove('jd-split-v3__mentioned','jd-split-v3__associated');});
+      entries.forEach(e=>{
+        e.item.hidden=false;
+        e.item.classList.remove('jd-split-v3__mentioned','jd-split-v3__associated');
+      });
+      storyPointers.forEach(p=>{p.hidden=true;});
     }
     function refresh(){
-      if(section.dataset.tourJourneyMode!=='split'){cleanup();return;}
+      const mode=section.dataset.tourJourneyMode;
+      if(!['split','explorer','story'].includes(mode)){cleanup();return;}
       const card=section.querySelector('.tour-hl-ui__card.jd-active-highlight')||cards[0];
       if(!card){cleanup();return;}
-      const old=selected===card?currentKind:null;
-      display(card,old);
+      const old=currentKind;
+      if(mode!=='split'){
+        cards.forEach(c=>c.querySelector('.jd-split-v3__inline')?.remove());
+      }
+      if(mode!=='story')storyPointers.forEach(p=>{p.hidden=true;});
+      display(card,old,mode);
     }
     // The original Journey script processes clicks and mode changes first.
     // The Split-specific renderer reads the resulting active item on the next frame.
