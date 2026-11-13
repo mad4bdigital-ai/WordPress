@@ -35,7 +35,7 @@
     },
     {
       "path": "company-code-release-v1/company_code_release.py",
-      "sha256": "03559c0cc96b863861c1858c40f2b539f6508642f6ac7fa4a2e3dc467e6f0dde"
+      "sha256": "1534773941d3887a27c14f1dbf64bdb5befa3fd2641d2fb8f7d45c2f643236a3"
     },
     {
       "path": "company-code-release-v1/company_lifecycle_broker.py",

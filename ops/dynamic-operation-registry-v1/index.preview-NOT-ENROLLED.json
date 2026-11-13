@@ -4,7 +4,7 @@
   "providers": [
     {
       "manifest": "dynamic-operation-registry-v1/providers/company.code.release/manifest.json",
-      "sha256": "a84312e3cad82b4823fc32f6015b04ca5b273f83ba4a8096991749d949ea285a"
+      "sha256": "a7588362374863865d109acca24ddf9b0660b2d3712943dc5cf3784ab3ce2ed1"
     }
   ],
   "source_preview_only": true,

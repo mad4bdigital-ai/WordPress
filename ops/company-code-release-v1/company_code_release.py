@@ -139,6 +139,39 @@ def backup_json_limit(policy: dict, company: str, environment: str) -> int:
     return limit
 
 
+def activation_contract(plan_files: list[dict], policy: dict,
+                        company: str, environment: str) -> dict:
+    """Declare multi-file HTTP risk without claiming atomic cutover exists."""
+    entry = target_binding(policy, company, environment)
+    setting = entry.get("activation_policy", {})
+    fail_if(not isinstance(setting, dict) or
+            not isinstance(setting.get("require_coherent_cutover", False), bool),
+            "ACTIVATION_POLICY_INVALID")
+    groups: dict[str, list[str]] = {}
+    for row in plan_files:
+        parts = PurePosixPath(row["target"]).parts
+        if len(parts) >= 4 and parts[:2] == ("wp-content", "plugins"):
+            owner = "/".join(parts[:3])
+        elif len(parts) >= 3 and parts[:2] == ("wp-content", "mu-plugins"):
+            owner = "/".join(parts[:2])
+        else:
+            owner = "unknown"
+        groups.setdefault(owner, []).append(row["target"])
+    changed_php = any(row["target"].endswith(".php") for row in plan_files)
+    # Even different Plugins may be loaded together by a single request.
+    has_coherence_risk = changed_php and len(plan_files) > 1
+    return {
+        "contract": "mad4b.company-release-activation-risk.v1",
+        "require_coherent_cutover": setting.get("require_coherent_cutover", False),
+        "multi_file_php_risk": has_coherence_risk,
+        "affected_owners": [
+            {"owner": k, "files": sorted(v)} for k, v in sorted(groups.items())
+        ],
+        "activation_strategy": "legacy_per_file_replace",
+        "coherent_http_cutover_proven": False,
+    }
+
+
 def run(command: list[str], timeout: int = 15) -> bytes:
     process = subprocess.run(command, stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE, timeout=timeout, check=False)
@@ -605,6 +638,7 @@ def make_plan(spec: dict, policy: dict) -> dict:
     payload = {
         "capability_acceptance": dynamic_acceptance,
         "backup_json_max_bytes": backup_json_limit(policy, company, env),
+        "activation_contract": activation_contract(rows, policy, company, env),
         "tenant_plugin_profiles": plugin_profiles,
         "dependency_snapshot": dependency_snapshot,
         "owner_reconciliation": owner_snapshot,
@@ -638,6 +672,14 @@ def confirm_plan(plan: dict, policy: dict, *, expect_preimage: bool) -> None:
             str(Path(entry["root"]).resolve()) != plan.get("target_root") or
             str(Path(policy["source_git_root"]).resolve()) != plan.get("git_root"),
             "PLAN_SCOPE_CHANGED")
+    expected_activation = activation_contract(
+        plan["files"], policy, plan["company"], plan["environment"])
+    if "activation_contract" in plan:
+        fail_if(plan["activation_contract"] != expected_activation,
+                "ACTIVATION_CONTRACT_POLICY_DRIFT")
+    else:
+        fail_if(expected_activation["require_coherent_cutover"],
+                "ACTIVATION_CONTRACT_REQUIRED_FOR_POLICY")
     expected_backup_bound = backup_json_limit(
         policy, plan["company"], plan["environment"])
     fail_if(plan.get("backup_json_max_bytes", 100_000_000) !=
@@ -1313,6 +1355,15 @@ def apply_release(plan: dict, policy: dict, grant: dict, receipt_dir: Path,
                 "OVERLAPPING_UNRESOLVED_RELEASE_TRANSACTION")
         confirm_plan(plan, policy, expect_preimage=True)
         runtime_check(plan, policy)
+        # An atomic file rename is NOT an atomic HTTP request/plugin release.
+        # If the company requires coherent activation, never silently fall back
+        # to the legacy per-file writer. A native versioned cutover Provider
+        # must be integrated in a separate signed first-party release.
+        activation = activation_contract(
+            plan["files"], policy, plan["company"], plan["environment"])
+        fail_if(activation["require_coherent_cutover"] and
+                activation["multi_file_php_risk"],
+                "COHERENT_HTTP_CUTOVER_PROVIDER_NOT_ENROLLED")
         prepared = prepare_backup(plan, policy, receipt_dir,
                                   runtime_check=runtime_check)
         backup = load_backup(plan, receipt_dir)

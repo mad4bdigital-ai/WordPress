@@ -160,3 +160,17 @@ a signed 313 finalizer-completion certificate for the next overlapping plan,
 an indexed cross-site durable ledger, PHP worker write-privilege migration,
 or resolving the two stale tenant-sync source files. Production still requires
 Original Source Publisher admission. Never bypass it by direct copying.
+
+## Coherent-activation admission (source-only opt-in)
+
+A company/site policy may declare activation_policy.require_coherent_cutover
+as a boolean. The immutable release Plan pins the affected plugin/MU owners,
+all selected files and whether PHP spans multiple target files. When coherent
+activation is required for a multi-file PHP release, the existing file-level
+writer denies BEFORE creating any Apply Intent or modifying WordPress.
+Changing this policy after planning also invalidates the signed Plan.
+
+This is a conservative HOLD, NOT an implemented atomic whole-plugin switch.
+Real activation requires a first-party signed versioned-cutover Provider,
+request-bound PHP-FPM/OPcache verification and a coherent rollback. The
+root policy is currently unchanged; no Production cutover is claimed.
