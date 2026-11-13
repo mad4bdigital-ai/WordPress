@@ -12,7 +12,11 @@ final class MAD4B_Tour_Highlights_V1 {
     public static function register():void {
         add_filter('jet-engine/listings/allowed-callbacks',[__CLASS__,'callbacks']);
         add_filter('elementor/frontend/container/should_render',[__CLASS__,'section_visible'],10,2);
-        add_action('save_post_tours-and-activities',[__CLASS__,'on_save'],190,3);
+        // JetEngine writes classic post meta on generic save_post priority 10.
+        // The post-type-specific hook runs earlier; use generic save_post at 190.
+        add_action('save_post',[__CLASS__,'on_save'],190,3);
+        // REST field updates may arrive after save_post; finalize after REST insertion.
+        add_action('rest_after_insert_tours-and-activities',[__CLASS__,'on_rest_save'],190,3);
     }
 
     public static function callbacks($callbacks) {
@@ -191,10 +195,14 @@ final class MAD4B_Tour_Highlights_V1 {
     }
 
     public static function on_save(int $post,$postObj,$update):void {
-        if(self::$syncing || wp_is_post_revision($post)||wp_is_post_autosave($post))return;
+        if(get_post_type($post)!=='tours-and-activities' || self::$syncing || wp_is_post_revision($post)||wp_is_post_autosave($post))return;
         $mode=self::mode($post);
         if(!in_array($mode,['assisted','auto'],true))return;
         self::sync($post,true); // Editor-time only; never during frontend render.
+    }
+
+    public static function on_rest_save($post,$request,$creating):void {
+        if($post instanceof WP_Post)self::on_save((int)$post->ID,$post,!$creating);
     }
 }
 MAD4B_Tour_Highlights_V1::register();
