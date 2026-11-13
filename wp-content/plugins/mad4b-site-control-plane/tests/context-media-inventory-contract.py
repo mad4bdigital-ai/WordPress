@@ -21,7 +21,15 @@ contracts = {
     'mandatory_scope_coverage_guard': 'governed_context_required_mime_not_scanned' in authority and 'required_outside_scan_scope_count' in authority,
     'ui_mime_checkboxes': 'name="mime_types[]"' in admin and 'name="mime_types[]"' in media,
     'standalone_ui_no_attachment_list': 'Attachment IDs (comma-separated' not in media,
-    'ui_source_dispatch': 'MAD4B_SCP_Context_Source_Pipeline::scan_complete(' in admin,
+    # Media uses a persisted resumable, read-only scan session; do not demand
+    # the synchronous MCP/Pipeline entrypoint from the Admin handler.
+    'ui_media_resumable_dispatch': 'MAD4B_SCP_WordPress_Media_Context::begin_scan( $types )' in admin
+        and "'scan_session'" in admin and 'wp_safe_redirect(' in admin,
+    'ui_media_read_only_checkpoint': "set_transient('mad4b_wp_media_scan_'" in media
+        and "'write_policy'=>'read_only'" in media,
+    # Drive Admin still has to prove complete-source admission before replacing assets.
+    'ui_drive_complete_scan_admission': 'MAD4B_SCP_Brand_Context_Builder::source_scan_apply_admission(' in admin
+        and "true === ( $scan['complete'] ?? null )" in admin,
 }
 for label, valid in contracts.items():
     print(f"{label}: {'PASS' if valid else 'FAIL'}")

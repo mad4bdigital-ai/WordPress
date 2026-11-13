@@ -186,11 +186,14 @@
       "path": "includes/class-mad4b-scp-runtime-components-admin-ui.php"
     },
     {
-      "action": "fast_forward_reviewed_live_delta_from_rc128",
-      "candidate_after_sha256": "b2f315db60ec7d0963923fa33ce1345c388c22f974ad5a52cbfdd2b2e274197d",
+      "action": "reviewed_live_plus_rc129_diagnostic_compatibility",
+      "candidate_after_sha256": "49c500b48c7f8aea761fb51ff0645cb19a6511be6b30c2d09319e2da58197d74",
       "candidate_before_sha256": "34c238dfcc51a782ff3484af19ef3510863b5dd941450fa533a4cbb673795eb2",
+      "diagnostic_compatibility_reason": "Preserve the existing blocked native update reason without changing dynamic enrolled site/managed-runtime gate or signing authority",
       "live_sha256": "b2f315db60ec7d0963923fa33ce1345c388c22f974ad5a52cbfdd2b2e274197d",
-      "path": "includes/class-mad4b-scp-self-update.php"
+      "path": "includes/class-mad4b-scp-self-update.php",
+      "reviewed_followup_security_reason": "Preserve dynamic managed normal releases while limiting candidate-drift bootstrap to enrolled Staging write policy; verified with negative Production runtime fixture",
+      "source_live_pre_compat_sha256": "b2f315db60ec7d0963923fa33ce1345c388c22f974ad5a52cbfdd2b2e274197d"
     },
     {
       "action": "fast_forward_reviewed_live_delta_from_rc128",

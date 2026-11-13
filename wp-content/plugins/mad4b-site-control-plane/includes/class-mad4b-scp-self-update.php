@@ -568,6 +568,13 @@ final class MAD4B_SCP_Self_Update {
 		} else {
 			$environment = sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() );
 			$out['environment'] = $environment;
+            // Candidate-drift bootstrap is the narrow Staging recovery path,
+            // not a second Production release route. Ask the existing dynamic
+            // Site Profile policy; do not infer authority from hostname or
+            // a WordPress environment label alone.
+            if ( ! method_exists( 'MAD4B_SCP_Site_Profile', 'environment_allowed' )
+                || ! MAD4B_SCP_Site_Profile::environment_allowed( array( 'staging' ), 'write' ) )
+                $blockers[] = 'bootstrap_staging_profile_required';
 			if ( ! self::bootstrap_site_eligible() ) $blockers[] = 'enrolled_site_authority_required';
 			if ( ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) $blockers[] = 'site_profile_not_exact';
 			if ( ! MAD4B_SCP_Site_Profile::write_enabled() ) $blockers[] = 'site_profile_write_disabled';
@@ -1442,7 +1449,7 @@ final class MAD4B_SCP_Self_Update {
 	private static function native_update_ui_state( $manifest = null ) {
 		$blockers = array();
 		if ( ! current_user_can( 'update_plugins' ) ) $blockers[] = 'update_plugins_capability_required';
-		if ( ! self::environment_allowed( false ) ) $blockers[] = 'native_update_site_policy_blocked';
+		if ( ! self::environment_allowed( false ) ) $blockers[] = 'native_update_environment_policy_blocked';
 		if ( null === $manifest ) $manifest = self::fetch_manifest();
 		if ( is_wp_error( $manifest ) ) {
 			$blockers[] = sanitize_key( $manifest->get_error_code() );
