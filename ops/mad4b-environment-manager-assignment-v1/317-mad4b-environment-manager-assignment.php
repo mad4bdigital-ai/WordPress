@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Exact Environment Manager Assignment (Central Staging)
  * Description: Owner-authenticated, environment-scoped Portfolio assignment lifecycle. No SSH grants.
- * Version: 0.1.0
+ * Version: 0.1.1
  */
 defined('ABSPATH') || exit;
 
@@ -155,7 +155,11 @@ final class MAD4B_Environment_Manager_Assignment_V1 {
     }
     public static function rest_get(WP_REST_Request $request) {
         if(!current_user_can('manage_options'))return self::failure('admin_required',403);
-        return rest_ensure_response(self::plan((string)$request['company']));
+        $plan=self::plan((string)$request['company']);
+        // Read-only session readiness for the current authenticated REST request.
+        // This is NOT a grant; every POST independently repeats owner() and CAS checks.
+        $plan['owner_action_session_verified']=self::owner($request);
+        return rest_ensure_response($plan);
     }
     public static function rest_write(WP_REST_Request $request) {
         if(!self::owner($request))return self::failure('original_owner_stepup_required',403);
