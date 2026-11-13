@@ -15,7 +15,16 @@ function is_admin() { return false; }
 class WP_Error { public $code; public function __construct( $code ) { $this->code = $code; } }
 function is_wp_error( $v ) { return $v instanceof WP_Error; }
 class MAD4B_SCP_Policy { public static function can_read() { return $GLOBALS['allowed']; } }
-class MAD4B_SCP_Site_Profile { public static function status() { return array( 'configured_environment' => 'staging', 'origin_match' => true, 'environment_match' => true ); } }
+class MAD4B_SCP_Site_Profile {
+    public static $bound = true;
+    public static function status() {
+        return array( 'configured_environment' => 'staging',
+            'configured' => self::$bound, 'authority_ready' => self::$bound,
+            'origin_match' => true, 'environment_match' => true,
+            'deployment_binding_match' => self::$bound,
+            'mutation_pending_audit' => false );
+    }
+}
 class MAD4B_SCP_Query_Monitor_Evidence_Bridge {}
 class MAD4B_SCP_Frontend_Origin_Diagnostic {}
 require __DIR__ . '/../bootstrap/mad4b-native-incident-mu.php';
@@ -38,6 +47,15 @@ $meta = $GLOBALS['registered_abilities'][MAD4B_SCP_Native_Runtime_Diagnostics::A
 $check( $meta['annotations']['readonly'] && ! $meta['show_in_rest'], 'remote read surface misclassified' );
 $status = MAD4B_SCP_Native_Runtime_Diagnostics::status();
 $check( ! is_wp_error( $status ) && $status['site_profile_staging_enrolled'] && $status['read_only'] && ! $status['authority_granted'], 'status not restricted to verified read evidence' );
+// An incomplete Site Profile must remain diagnostic-only and cannot
+// pretend to be an enrolled Staging acceptance.
+MAD4B_SCP_Site_Profile::$bound = false;
+$unbound = MAD4B_SCP_Native_Runtime_Diagnostics::status();
+$check( is_array( $unbound ) && false === $unbound['read_only_scope_ready']
+    && false === $unbound['site_profile_staging_enrolled']
+    && false === $unbound['paired_probe']['available'],
+    'Unbound Site Profile incorrectly admitted Staging paired probe' );
+MAD4B_SCP_Site_Profile::$bound = true;
 $check( 'QUERY_MONITOR_NOT_LOADED_IN_THIS_REQUEST' === $status['query_monitor']['status'] && ! $status['query_monitor']['collector_snapshot_taken_in_this_read'], 'Query Monitor unknown runtime mislabeled absent' );
 $check( 'RECORDER_NOT_ACTIVE' === $status['incidents']['state'], 'fallback fatal recorder state incorrect' );
 $check( 'NOT_TESTED_BY_SITE_LOCAL_DIAGNOSTICS' === $status['external_mcp_acceptance']['state']

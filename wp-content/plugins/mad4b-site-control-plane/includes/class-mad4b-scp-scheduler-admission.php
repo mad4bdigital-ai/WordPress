@@ -125,6 +125,9 @@ final class MAD4B_SCP_Scheduler_Admission {
 			'reasons' => array_values( array_unique( $reasons ) ),
 			'evidence' => $evidence,
 			'decision_fingerprint' => self::digest( array( $decision, $reasons, $evidence, $quotas ) ),
+            'global_runtime' => class_exists('MAD4B_SCP_Global_Runtime_Lifecycle')
+                ? MAD4B_SCP_Global_Runtime_Lifecycle::observe_native_lane('scheduler_admission',
+                    array('decision'=>$decision,'reasons'=>$reasons)) : null,
 			'dispatch_performed' => false,
 			'authority_bypassed' => false,
 			'mutation_performed' => false,

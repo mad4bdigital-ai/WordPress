@@ -103,6 +103,63 @@
   ],
   "reviewed_capabilities": [
     {
+      "id": "admin_asset:wp-content/plugins/mad4b-site-control-plane/assets/tour-destination-quick-preview.js",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/test_pr813_destination_additive_reconcile.py"
+      ],
+      "owner_role": "Repository UI and Browser source reviewer; read-only native Destination Quick Preview",
+      "review_rationale": "Same-origin native Elementor destination Quick Preview built from JetEngine term URLs; does not clone destination forms, create independent data store or enable commerce mutations.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing native Elementor UI and Browser security controls cover this bounded visual interaction, no new operation category.",
+      "execution_note": "Source-contract regression passed; visual page / WPML parity requires authorized original-site browser QA."
+    },
+    {
+      "id": "admin_asset:wp-content/plugins/mad4b-site-control-plane/assets/tour-destination-quick-preview.css",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/test_pr813_destination_additive_reconcile.py"
+      ],
+      "owner_role": "Repository UI and Browser source reviewer; read-only native Destination Quick Preview",
+      "review_rationale": "Readonly Elementor Brand Kit and responsive dialog CSS for destination information; no editor markup replacement or publish permission.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing native Elementor UI and Browser security controls cover this bounded visual interaction, no new operation category.",
+      "execution_note": "Source-contract regression passed; visual page / WPML parity requires authorized original-site browser QA."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tour-highlights-presentation-v1.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/test_pr813_destination_additive_reconcile.py"
+      ],
+      "owner_role": "Source reviewer — native JetEngine/Elementor Tour Highlights Presentation, no WordPress write",
+      "review_rationale": "Existing native Elementor view-only Tour Highlights presentation is retained. One scoped Quick Preview handler imports the original JetEngine destination cards without changing editorial rights, taxonomy writes or Original313 authority.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The native view-only PHP presentation is already within governed UI, platform and security controls; no new trust or write operation is created.",
+      "execution_note": "Source acceptance and SHA-bound additive regression only; authorized real-site browser verification still pending."
+    },
+    {
       "regression_tests": [
         "tests/native_runtime_diagnostics_contract.py"
       ],
@@ -3605,11 +3662,287 @@
       "new_control_ids": [],
       "coverage_reuse_rationale": "Existing MCP admission, platform identity, security, owner-scoped administrative rights and execution-denial controls cover these staging-only authorization surfaces, without granting Production execution or public access.",
       "review_rationale": "New surface ability:mad4b/staging-write-grant-reconcile-staging is source-pinned in the W1 authority integration and assessed with hermetic owner-browser, agent REST route, Site Profile, OAuth, replay, write grant, exact mapping and negative permission fixtures. This is only CI source review, not evidence that the route is registered, usable, or authorized in Production."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-elementor-native-template-parity.php",
+      "owner_role": "MAD4B CI-only repository source reviewer; independent Site Owner production attestation required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/elementor-native-template-parity-source-contract.py"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Reuses existing governance, platform template integrity, and security fail-closed controls; the new class only guards already governed Elementor write paths and creates no new authority surface.",
+      "review_rationale": "New source service validates original Elementor display-condition owners and JetEngine listing relationships before governed writes. Eleven hermetic guard cases and one adapter/source contract test provide changed-file evidence. This CI review does not certify WordPress live runtime, WPML translation correctness, signature enrollment, or production permissions."
+    },
+    {
+      "id": "ability:mad4b/native-source-catalog-preflight",
+      "owner_role": "MAD4B repository CI-only source integration reviewer; independent signed Owner release authorization still required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/test_native_source_central_review_source.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-source-release-review-contract.py"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Reuse the existing UPDATES-01, CROSSPLUGIN-01, RECOVERY-01, ROLLOUT-01, SECURITY-01 checks for bounded read-only interfaces; no additional executable permission or first-party authority is introduced.",
+      "review_rationale": "Exact PR #804 source inspection and tests. Introduce source-family-neutral catalog status and fail-closed preflight reads with explicit false write authorization, no WP options mutation, no release publishing and no invented owner approval. This declares CI evidence only, not live verification or release authority."
+    },
+    {
+      "id": "ability:mad4b/native-source-catalog-status",
+      "owner_role": "MAD4B repository CI-only source integration reviewer; independent signed Owner release authorization still required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/test_native_source_central_review_source.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-source-release-review-contract.py"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Reuse the existing UPDATES-01, CROSSPLUGIN-01, RECOVERY-01, ROLLOUT-01, SECURITY-01 checks for bounded read-only interfaces; no additional executable permission or first-party authority is introduced.",
+      "review_rationale": "Exact PR #804 source inspection and tests. Introduce source-family-neutral catalog status and fail-closed preflight reads with explicit false write authorization, no WP options mutation, no release publishing and no invented owner approval. This declares CI evidence only, not live verification or release authority."
+    },
+    {
+      "id": "ability:mad4b/original-job-claim-readback",
+      "owner_role": "MAD4B repository CI-only source integration reviewer; independent signed Owner release authorization still required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/test_native_source_original_job_readback_php.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-source-release-review-contract.py"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Reuse the existing MCP-01, PROVIDERS-01, EXECUTION-01, AUTOMATION-01, PERFORMANCE-01 checks for bounded read-only interfaces; no additional executable permission or first-party authority is introduced.",
+      "review_rationale": "Exact PR #804 source inspection and tests. Add bounded admin-only readback of Original305 Job/Claim, with truncated-data denials, scope isolation and no authorization, 312 certification, signed 313 receipt or write mutation. This declares CI evidence only, not live verification or release authority."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-source-release-review.php",
+      "owner_role": "MAD4B repository CI-only source integration reviewer; independent signed Owner release authorization still required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/test_native_source_central_review_source.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-source-release-review-contract.py"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Reuse the existing UPDATES-01, CROSSPLUGIN-01, RECOVERY-01, ROLLOUT-01, SECURITY-01 checks for bounded read-only interfaces; no additional executable permission or first-party authority is introduced.",
+      "review_rationale": "Exact PR #804 source inspection and tests. Introduce source-family-neutral catalog status and fail-closed preflight reads with explicit false write authorization, no WP options mutation, no release publishing and no invented owner approval. This declares CI evidence only, not live verification or release authority."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-original-job-readback.php",
+      "owner_role": "MAD4B repository CI-only source integration reviewer; independent signed Owner release authorization still required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/test_native_source_original_job_readback_php.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-source-release-review-contract.py"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Reuse the existing MCP-01, PROVIDERS-01, EXECUTION-01, AUTOMATION-01, PERFORMANCE-01 checks for bounded read-only interfaces; no additional executable permission or first-party authority is introduced.",
+      "review_rationale": "Exact PR #804 source inspection and tests. Add bounded admin-only readback of Original305 Job/Claim, with truncated-data denials, scope isolation and no authorization, 312 certification, signed 313 receipt or write mutation. This declares CI evidence only, not live verification or release authority."
     }
   ],
   "lifecycle": [],
   "change_impact_notes": "For each newly introduced registry item, registered MAD4B Ability, PHP service or Admin asset, add a reviewed_capabilities entry with exact id, nonempty existing control_ids, a regression test changed in this PR, owner_role, review_rationale, and status 'reviewed_for_ci_only'. CI fails on uncovered introductions; no entry grants Production. Existing runtime/config source additions and modifications require reviewed_changes entries keyed by exact Git blob, impacted control IDs and test changed in the same PR. Every new capability must explicitly decide whether to expand the checklist or reuse existing controls with a rationale. Static REST/AJAX/Cron surface discoveries remain candidates, never runtime certification.",
   "reviewed_changes": [
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "5403ea6ecd7962c8cee51dc164bc9da0ecdbed04",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/test_pr813_destination_additive_reconcile.py"
+      ],
+      "owner_role": "Repository source reviewer — PR813 exact early privacy and read-only reconciliation, no host grant",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Restore exact early private Orders/Bookings confidentiality guard before zero-touch exits and existing signed-evidence read-only company code comparison. Preserve every newer PR814 Original305/313, route, source review and delegated operation hook; no arbitrary executable source.",
+      "coverage_reuse_rationale": "Existing security, platform and governance controls enforce rights and read-only evidence checks; no new release Provider or production authorization.",
+      "execution_note": "Existing early private operations PHP regression and new additive checksum regression must pass CI. Original313 and owner approval stay independent."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/assets/tour-destination-quick-preview.css",
+      "source_blob_sha": "7e88c2d46150c68878ab74bdd8fc2924b27b9dcb",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/test_pr813_destination_additive_reconcile.py"
+      ],
+      "owner_role": "Repository source reviewer — nonauthorizing native destination preview reconciliation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "View-only accessible Destination Quick Preview styling uses the original Elementor document and Brand Kit. Applies to existing Tour Journey UI and does not materialize a second Elementor template or media pipeline.",
+      "coverage_reuse_rationale": "Preserve existing UI/Browser/Platform controls and source review; this change creates no new WordPress Ability or release authority.",
+      "execution_note": "Exact commit CI tests and live authorized Elementor browser verification remain required; no Original313, owner certificate or deployment is granted."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/assets/tour-destination-quick-preview.js",
+      "source_blob_sha": "07f42eec80c7fa73705b2da7120769f2207317fa",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/test_pr813_destination_additive_reconcile.py"
+      ],
+      "owner_role": "Repository source reviewer — nonauthorizing native destination preview reconciliation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Source-only same-origin lazy iframe dialog for native Tour Destination cards. No cloned Elementor content, no extra option commerce action, no automatic new WordPress routes or owner privileges. Dynamic destination terms remain the sole data source.",
+      "coverage_reuse_rationale": "Preserve existing UI/Browser/Platform controls and source review; this change creates no new WordPress Ability or release authority.",
+      "execution_note": "Exact commit CI tests and live authorized Elementor browser verification remain required; no Original313, owner certificate or deployment is granted."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tour-highlights-presentation-v1.php",
+      "source_blob_sha": "20cb805e89789005ccddb2033efb10cc4adf8ad5",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/test_pr813_destination_additive_reconcile.py"
+      ],
+      "owner_role": "Repository source reviewer — nonauthorizing native destination preview reconciliation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Reviewed additive, read-only native Elementor/JetEngine destination Quick Preview enqueue. Preserves original Tour Highlights editorial source, WPML and review status. Requires new source-delta acceptance and cannot certify live destination templates.",
+      "coverage_reuse_rationale": "Preserve existing UI/Browser/Platform controls and source review; this change creates no new WordPress Ability or release authority.",
+      "execution_note": "Exact commit CI tests and live authorized Elementor browser verification remain required; no Original313, owner certificate or deployment is granted."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tour-highlights-v1.php",
+      "source_blob_sha": "91c2876d6da249edff3f9b7ce4ad913531a43789",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-plugin-management-menu-runtime.php",
+        "tests/native-tour-highlights/acceptance.php"
+      ],
+      "owner_role": "Repository source-review maintainer — CI-only early WordPress bootstrap lifecycle; no Host/Production delegation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing site-neutral WordPress platform, zero-touch admin lifecycle and security controls cover the hook-registration timing guard. No new execution or authorization surface, no changes to registered hooks when native WordPress APIs are present.",
+      "review_rationale": "For the current content-addressed source, the lightweight Tour Highlights class loads before the native plugin-management fast path but must defer registering JetEngine/Elementor hooks when the WordPress hook APIs are absent in an isolated zero-touch inspection. Explicit positive fixture confirms all Elementor, JetEngine and editor hooks are still registered in normal WordPress, while plugin-management fixture proves no heavy boot or filter registration occurs without native hook APIs.",
+      "execution_note": "Hermetic PHP 8.3/8.5 positive and negative tests required; actual installed WordPress/Elementor lifecycle and independent Production/Original313 acceptance are not certified by this CI-only record."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-approval-bootstrap.php",
+      "source_blob_sha": "f286da0b8c59b5bc1545e70163929b1c40041184",
+      "review_rationale": "CI-only direct MCP materialization classification correction. Required transport names come from existing native chatgpt_direct_read_transport_tools and chatgpt_dispatch_transport_tools, while additional reviewed base conveniences, dynamic projections, profile controls and guarded direct step-ups are optional. Missing/malformed required DTOs still fail whole catalog; foreign tools cannot become optional by presence in a request. Both source-runtime negative fixtures assert the boundary; no OAuth client, permission callback, grant, approval or Production authority changes.",
+      "owner_role": "Repository code reviewer — source-only optional MCP catalog module extraction",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "tests/remote-execution/chatgpt-optional-catalog-smoke.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-optional-materialization-runtime.php"
+      ],
+      "coverage_reuse_rationale": "Same existing MCP, provider, security, execution and platform controls; requirement classification is now derived from original transport registry instead of treating every auxiliary base convenience as a required protocol tool.",
+      "execution_note": "Check the full disposable Local OAuth and dynamic projection HTTP matrix after exact-head CI. Catalog and Host authority remain separate; Original313 and Owner evidence not granted."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-catalog-diagnostics.php",
+      "source_blob_sha": "033c5e5f793bddbd6bf9807b62688374c3bfb982",
+      "review_rationale": "CI-only required MCP tool admission hardening. Missing or malformed required WordPress Ability/DTO now rejects the complete MCP catalog with a bounded exact blocker; reviewed optional direct projections can still be isolated. Both official packaged MCP Adapter and authenticated Local OAuth acceptance test the failure behavior. No WP permission, auth scope, owner consent, Host signature, Production deployment or mutations are created.",
+      "owner_role": "Repository source reviewer — CI-only adaptive catalog policy; no site rollout authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-official-required-preflight-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-chatgpt-http-smoke.php"
+      ],
+      "coverage_reuse_rationale": "Existing MCP, provider, execution, security and platform controls already require strict required-tool schema and unique wire identities; source change enforces the previously declared boundary more strictly.",
+      "execution_note": "Real packaged official Adapter PHP fixture and Local OAuth integration must run on exact HEAD; historical Source and Original Host proof remain separate gates."
+    },
     {
       "regression_tests": [
         "tests/native_runtime_diagnostics_contract.py"
@@ -6278,6 +6611,28 @@
       "coverage_reuse_rationale": "Existing MCP transport, redacted diagnostics, admin nonce, security, and review controls cover the current nonauthorizing source correction. Independent live acceptance remains required.",
       "review_rationale": "CI-only correction of exact Staging Enrollment registration evidence: endpoint diagnostic now reads the same capability_descriptor_evidence field written by server creation. Display retains bounded Ability/error codes and fail-closed registration; no route recovery or grants are inferred.",
       "execution_note": "Readiness Python runner invokes three fixed standalone PHP harnesses with strict nonzero exit/timeout failure; no PHPUnit runner, skip, lint-only proof, authorization or remote site requests."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-connection-status.php",
+      "source_blob_sha": "2b99c9bf0f0c6be2f21de5d54b9d7b071716076f",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "MCP-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/local-transport-oauth-isolation-contract.py"
+      ],
+      "owner_role": "Repository CI source reviewer — no Owner/Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP transport, redacted diagnostics, admin nonce, security, and review controls cover the current nonauthorizing source correction. Independent live acceptance remains required.",
+      "review_rationale": "CI-only review of the exact native MCP registration-identity callback coverage: the expected mad4b-vps-local server now maps to the original WP-CLI-only can_vps_local_transport callback. The same-PR Local OAuth regression checks the exact callback and requires the existing isolated permission boundary; no HTTP/VPS-local tool exposure, grant, OAuth scope weakening or Production authority. Full Local OAuth WordPress integration and Original host evidence remain separately required.",
+      "execution_note": "Same-PR source contract checks exact server/callback identity; GitHub OAuth disposable WordPress runtime separately verifies registration and remains fail-closed on mismatched callback."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-runtime-diagnostics.php",
@@ -11538,6 +11893,250 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "The existing original Agent Registry exact grant, Staging-only provider review, site profile, mutation gate, owner approval, checkpoint, readback and audit safeguards govern this single diagnostic, without wildcard rights.",
       "review_rationale": "Exact source review allows a core grant to be considered only for mad4b/hub-queue-site-health-enqueue when the Ability is registered on the correct central Staging site. No grant is issued merely because this provider pair appears; broad hub-bulk-enqueue remains outside the reviewed policy and Production is not enabled."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/skill-seed-manifest.json",
+      "source_blob_sha": "70800c6253779d484e9b711dfaccbc015c5e8e3b",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/elementor-native-template-parity-source-contract.py"
+      ],
+      "owner_role": "MAD4B CI-only repository source reviewer; independent site/operator release authorization required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Current platform governance, native Elementor execution and managed Skill delivery controls already cover this bounded code change; no additional runtime write capability or permission is introduced.",
+      "review_rationale": "Changed Git blob reviewed for conditional-owner/listing preservation and native managed Skill synchronization. Tests exercise guarded Elementor mutations and reject unreviewed duplicate/relocated visibility providers. This record is source-only CI coverage, not a signed deployment acceptance."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-elementor-adapter.php",
+      "source_blob_sha": "d5235bba3b37101c3b36546c210d7f6682f628bf",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/elementor-native-template-parity-source-contract.py"
+      ],
+      "owner_role": "MAD4B CI-only repository source reviewer; independent site/operator release authorization required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Current platform governance, native Elementor execution and managed Skill delivery controls already cover this bounded code change; no additional runtime write capability or permission is introduced.",
+      "review_rationale": "Changed Git blob reviewed for conditional-owner/listing preservation and native managed Skill synchronization. Tests exercise guarded Elementor mutations and reject unreviewed duplicate/relocated visibility providers. This record is source-only CI coverage, not a signed deployment acceptance."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-elementor-native-template-parity.php",
+      "source_blob_sha": "5a41ea8d243c515471333b46b445ceba3b99efa4",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/elementor-native-template-parity-source-contract.py"
+      ],
+      "owner_role": "MAD4B CI-only repository source reviewer; independent site/operator release authorization required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Current platform governance, native Elementor execution and managed Skill delivery controls already cover this bounded code change; no additional runtime write capability or permission is introduced.",
+      "review_rationale": "Changed Git blob reviewed for conditional-owner/listing preservation and native managed Skill synchronization. Tests exercise guarded Elementor mutations and reject unreviewed duplicate/relocated visibility providers. This record is source-only CI coverage, not a signed deployment acceptance."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-seeder.php",
+      "source_blob_sha": "fb9de28ec82b767c6e7cfd32bbe0f5e796e91d6b",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/elementor-native-template-parity-source-contract.py"
+      ],
+      "owner_role": "MAD4B CI-only repository source reviewer; independent site/operator release authorization required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Current platform governance, native Elementor execution and managed Skill delivery controls already cover this bounded code change; no additional runtime write capability or permission is introduced.",
+      "review_rationale": "Changed Git blob reviewed for conditional-owner/listing preservation and native managed Skill synchronization. Tests exercise guarded Elementor mutations and reject unreviewed duplicate/relocated visibility providers. This record is source-only CI coverage, not a signed deployment acceptance."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/skill-seed-manifest.json",
+      "source_blob_sha": "23fa371b8b983f067a9bbdd77a08971529464c6d",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/dynamic-skills-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/elementor-native-template-parity-source-contract.py"
+      ],
+      "owner_role": "MAD4B CI-only repository source reviewer; independent site/operator release authorization required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Current platform governance, native Elementor execution and managed Skill delivery controls already cover this bounded code change; no additional runtime write capability or permission is introduced.",
+      "review_rationale": "Integration successor keeps the current reviewed v30 Skill manifest/Seeder and its exact enrolled Site Profile guard, while preserving the independent Elementor parity service and legacy v18 review record. Two-parent source merge is non-authorizing; deployment evidence still required."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-seeder.php",
+      "source_blob_sha": "75afd409ed9ed0b9f8189a30bd3494958844514a",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/dynamic-skills-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/elementor-native-template-parity-source-contract.py"
+      ],
+      "owner_role": "MAD4B CI-only repository source reviewer; independent site/operator release authorization required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Current platform governance, native Elementor execution and managed Skill delivery controls already cover this bounded code change; no additional runtime write capability or permission is introduced.",
+      "review_rationale": "Integration successor keeps the current reviewed v30 Skill manifest/Seeder and its exact enrolled Site Profile guard, while preserving the independent Elementor parity service and legacy v18 review record. Two-parent source merge is non-authorizing; deployment evidence still required."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "1c3821631be8b2fe1bcaf1581cc85e7ec621e8d2",
+      "owner_role": "MAD4B repository source review (CI-only); first-party Production approval and source publication separate",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PROVIDERS-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-source-release-review-contract.py"
+      ],
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing signed Original305/306/312/313, Source CAS, governance and release integrity control coverage retained without any new permission, arbitrary source registry entry or unverified execution evidence.",
+      "review_rationale": "Exact Git blob 1c3821631be8b2fe1bcaf1581cc85e7ec621e8d2 reviewed in PR #804; tested with same-PR regression fixtures. Add only existing WordPress read-only Job Claim observation and Native Source catalog preflight bootstrap, without installing a write Ability, changing Original306/313 signer or authorizing a source release. No independent release authority is provided."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-source-release-review.php",
+      "source_blob_sha": "81c394d5e96797e5725b59716b1cae52239549db",
+      "owner_role": "MAD4B repository source review (CI-only); first-party Production approval and source publication separate",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/test_native_source_central_review_source.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-source-release-review-contract.py"
+      ],
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing signed Original305/306/312/313, Source CAS, governance and release integrity control coverage retained without any new permission, arbitrary source registry entry or unverified execution evidence.",
+      "review_rationale": "Exact Git blob 81c394d5e96797e5725b59716b1cae52239549db reviewed in PR #804; tested with same-PR regression fixtures. Introduce source-family-neutral catalog status and fail-closed preflight reads with explicit false write authorization, no WP options mutation, no release publishing and no invented owner approval. No independent release authority is provided."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-original-job-readback.php",
+      "source_blob_sha": "b27ebb7b940c13bbcca0eaee552efcd6f9a75e35",
+      "owner_role": "MAD4B repository source review (CI-only); first-party Production approval and source publication separate",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/test_native_source_original_job_readback_php.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-source-release-review-contract.py"
+      ],
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing signed Original305/306/312/313, Source CAS, governance and release integrity control coverage retained without any new permission, arbitrary source registry entry or unverified execution evidence.",
+      "review_rationale": "Exact Git blob b27ebb7b940c13bbcca0eaee552efcd6f9a75e35 reviewed in PR #804; tested with same-PR regression fixtures. Add bounded admin-only readback of Original305 Job/Claim, with truncated-data denials, scope isolation and no authorization, 312 certification, signed 313 receipt or write mutation. No independent release authority is provided."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-original-job-readback.php",
+      "source_blob_sha": "e1d16ced5076dc7b889fc54153b66e5dda916605",
+      "owner_role": "MAD4B repository source review (CI-only); first-party Production approval and source publication separate",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/test_native_source_original_job_readback_php.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-source-release-review-contract.py"
+      ],
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing signed Original305/306/312/313, Source CAS, governance and release integrity control coverage retained without any new permission, arbitrary source registry entry or unverified execution evidence.",
+      "review_rationale": "Integration successor: preserve Central controller/verified registered company production target readback and established FCP queue boot; the sibling snapshot remains a historical CI-only review. Exact current blob independently tested; no grant, Original312 result or Production authorization."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "a478b401b6ab146f49916c3d9f9507845362920f",
+      "owner_role": "MAD4B repository source review (CI-only); first-party Production approval and source publication separate",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PROVIDERS-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-source-release-review-contract.py"
+      ],
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing signed Original305/306/312/313, Source CAS, governance and release integrity control coverage retained without any new permission, arbitrary source registry entry or unverified execution evidence.",
+      "review_rationale": "Integration successor: preserve Central controller/verified registered company production target readback and established FCP queue boot; the sibling snapshot remains a historical CI-only review. Exact current blob independently tested; no grant, Original312 result or Production authorization."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "35690d991908568219d0a439cd5e2042f7b6f188",
+      "owner_role": "MAD4B repository source review (CI-only); first-party Production approval and source publication separate",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PROVIDERS-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "tests/test_control_plane_rc129_v29_readonly_overlay.py",
+        "tests/test_native_source_central_review_source.py",
+        "tests/test_native_source_readback_provenance.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-source-release-review-contract.py"
+      ],
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing signed Original305/306/312/313, Source CAS, governance and release integrity control coverage retained without any new permission, arbitrary source registry entry or unverified execution evidence.",
+      "review_rationale": "Integration successor: exact source bytes equal pre-reviewed PR808 V2 Developer/Registry Bootstrap from commit 46c0c77b937b6d14b3e5fc9f1df35f1a8654368f. Removed redundant second require without altering existing Native Source Review boot, Original305 Job/Claim readback, Elementor/QAs or any write authority; duplicate historical sibling snapshots remain in audit. CI-only, not owner-signed Production release."
     }
   ],
   "code_change_rules": {

@@ -80,6 +80,9 @@ jobs:
           node --check "$root/assets/chatgpt-connection.js"
           python3 "$root/tests/staging-oauth-autoconfig-contract.py"
           python3 "$root/tests/local-oauth-standalone-contract.py"
+          python3 -m unittest discover -s tests -p 'test_certified_mcp_adapter_profile.py' -q
+          python3 -m unittest discover -s tests -p 'test_local_oauth_explicit_cli_mcp_scope.py' -q
+          python3 -m unittest discover -s tests -p 'test_local_cache_free_bootstrap.py' -v
           python3 "$root/tests/chatgpt-oauth-lifecycle-contract.py"
           python3 "$root/tests/local-oauth-browser-canary-contract.py"
           python3 "$root/tests/mcp-adapter-compatibility-contract.py"
@@ -165,26 +168,13 @@ jobs:
           ADAPTER_ARCHIVE=wp-content/plugins/mcp-adapter.zip
           EXPECTED_ADAPTER_VERSION=0.6.1
 
-          if [ "$ADAPTER_PROFILE" = "target-0.7.0" ]; then
-            python3 - <<'PY' > /tmp/mad4b-target-adapter.env
-          import json, shlex
-          from pathlib import Path
-          root=Path('wp-content/plugins/mad4b-site-control-plane/config')
-          policy=json.loads((root/'runtime-release-policy.json').read_text(encoding='utf-8'))
-          profiles=json.loads((root/'certified-provider-profiles.json').read_text(encoding='utf-8'))
-          version=str(policy['target_adapter_version'])
-          profile=profiles['providers']['mcp_adapter'][version]
-          for key,value in {
-              'TARGET_VERSION':version,
-              'TARGET_SHA':profile['archive_sha256'],
-              'TARGET_BYTES':str(profile['archive_bytes']),
-              'TARGET_URL':profile['package_url'],
-              'TARGET_AUTOLOAD_SHA':str((profile.get('critical_files') or {}).get('vendor/autoload_packages.php') or ''),
-          }.items():
-              print(f'{key}={shlex.quote(str(value))}')
-          PY
+          if [[ "$ADAPTER_PROFILE" == target-* ]]; then
+            # Exact test version comes from the matrix label. The retired
+            # target_adapter_version config key cannot override certified
+            # Provider authority or silently select another archive.
+            python3 tools/resolve-certified-mcp-adapter-profile.py \
+              --profile "$ADAPTER_PROFILE" > /tmp/mad4b-target-adapter.env
             source /tmp/mad4b-target-adapter.env
-            test "$TARGET_VERSION" = "0.7.0"
             curl --fail --location --silent --show-error "$TARGET_URL" -o /tmp/mcp-adapter-target.zip
             test "$(stat -c '%s' /tmp/mcp-adapter-target.zip)" = "$TARGET_BYTES"
             echo "$TARGET_SHA  /tmp/mcp-adapter-target.zip" | sha256sum --check --strict
@@ -193,12 +183,12 @@ jobs:
           fi
 
           python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/materialize-packaged-plugin.py" --archive "$ADAPTER_ARCHIVE" --plugins-dir "$WP_PATH/wp-content/plugins" --slug mcp-adapter
-          if [ "$ADAPTER_PROFILE" = "target-0.7.0" ]; then
+          if [[ "$ADAPTER_PROFILE" == target-* ]]; then
             test -r "$WP_PATH/wp-content/plugins/mcp-adapter/vendor/autoload_packages.php"
             OBSERVED_AUTOLOAD_SHA="$(sha256sum "$WP_PATH/wp-content/plugins/mcp-adapter/vendor/autoload_packages.php" | awk '{print $1}')"
             echo "MAD4B_TARGET_070_AUTOLOAD_PACKAGES_SHA256=$OBSERVED_AUTOLOAD_SHA"
             if ! [[ "$TARGET_AUTOLOAD_SHA" =~ ^[a-f0-9]{64}$ ]]; then
-              echo "::error::Exact 0.7.0 vendor/autoload_packages.php SHA is missing from certified-provider-profiles.json; observed=$OBSERVED_AUTOLOAD_SHA"
+              echo "::error::Exact certified $TARGET_VERSION vendor/autoload_packages.php SHA is missing from certified-provider-profiles.json; observed=$OBSERVED_AUTOLOAD_SHA"
               exit 1
             fi
             test "$OBSERVED_AUTOLOAD_SHA" = "$TARGET_AUTOLOAD_SHA"
@@ -277,7 +267,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-chatgpt-http-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+          # WP-CLI is deliberately route-only by default. This *single*
+          # disposable CI process must explicitly opt into MCP materialization
+          # before WordPress boot to test the real registered Adapter DTOs.
+          # The flag affects request scope only, not OAuth or write authority.
+          MAD4B_SCP_MCP_CLI_REQUEST=1 php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-chatgpt-http-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
 
       - name: Prove dynamic projection admission through real OAuth and tools/call
         shell: bash
@@ -287,7 +281,7 @@ jobs:
           mkdir -p /tmp/mad4b-wordpress/wp-content/mu-plugins
           cp "$root/runtime-chatgpt-projection-fixtures.php" /tmp/mad4b-wordpress/wp-content/mu-plugins/mad4b-projection-ci.php
           php /tmp/wp-cli.phar eval-file "$root/runtime-chatgpt-projection-http-seed.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
-          php /tmp/wp-cli.phar eval-file "$root/runtime-chatgpt-projection-http.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+          MAD4B_SCP_MCP_CLI_REQUEST=1 php /tmp/wp-cli.phar eval-file "$root/runtime-chatgpt-projection-http.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
           php /tmp/wp-cli.phar option delete mad4b_scp_chatgpt_tool_projection_v1 --path=/tmp/mad4b-wordpress
           rm /tmp/mad4b-wordpress/wp-content/mu-plugins/mad4b-projection-ci.php
 

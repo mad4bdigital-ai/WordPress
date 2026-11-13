@@ -145,7 +145,36 @@ try {
     $expired = $call( $read, $read_session, 'mad4b-chatgpt-tool-projection-discover', array( 'transport_action' => 'schema', 'snapshot' => str_repeat( 'f', 64 ), 'schema_sha256' => $descriptor['sha256'] ) );
     $error_text = $expired['result']['content'][0]['text'] ?? '';
     $error_envelope = json_decode( $error_text, true );
-    if ( empty( $expired['result']['isError'] ) || 410 !== ( $error_envelope['status'] ?? null ) || 'mad4b.catalog-error.v1' !== ( $error_envelope['contract'] ?? '' ) ) $fail( 'Pinned Adapter lost catalog expiry status on the wire.' );
+    if ( empty( $expired['result']['isError'] ) || 410 !== ( $error_envelope['status'] ?? null ) || 'mad4b.catalog-error.v1' !== ( $error_envelope['contract'] ?? '' ) ) {
+        // Independent CI diagnostic: preserve the exact source-generated
+        // fail-closed blocker without copying OAuth tokens, request payloads,
+        // schema JSON, site origins, credentials or dynamic tool inputs.
+        $registered = MAD4B_SCP_Servers::registration_status();
+        $registration = isset( $registered['mad4b-chatgpt'] ) && is_array( $registered['mad4b-chatgpt'] )
+            ? $registered['mad4b-chatgpt'] : array();
+        $preflight = isset( $registration['preflight'] ) && is_array( $registration['preflight'] )
+            ? $registration['preflight'] : array();
+        $failures = array();
+        foreach ( array_slice( (array)( $preflight['failures'] ?? array() ), 0, 5 ) as $row ) {
+            if ( ! is_array( $row ) ) continue;
+            $failures[] = array(
+                'error_code' => sanitize_key( (string)( $row['error_code'] ?? '' ) ),
+                'stage' => sanitize_key( (string)( $row['stage'] ?? '' ) ),
+                'ability_name' => (string)( $row['failing_ability'] ?? '' ),
+            );
+        }
+        $catalog = isset( $registration['catalog_evidence'] ) && is_array( $registration['catalog_evidence'] )
+            ? $registration['catalog_evidence'] : array();
+        $fail( 'Pinned Adapter lost catalog expiry status on the wire: ' . wp_json_encode( array(
+            'registered' => ! empty( $registration['registered'] ),
+            'requested_tools' => (int)( $registration['requested_tool_count'] ?? 0 ),
+            'registered_tools' => (int)( $registration['tool_count'] ?? 0 ),
+            'catalog_blocker' => (string)( $catalog['blocker'] ?? '' ),
+            'preflight_blocker' => (string)( $preflight['blocker'] ?? '' ),
+            'first_failure_records' => $failures,
+            'denial_http_status' => (int)( $expired['error']['data']['status'] ?? 0 ),
+        ) ) );
+    }
     list( $response, $catalog ) = $dispatch( $read, 'tools/list', array(), $read_session );
     $names = array_column( $catalog['result']['tools'] ?? array(), 'name' );
     if ( ! in_array( 'mad4b-diagnostics-health', $names, true ) || in_array( 'mad4b-ci-unsafe-write-projection-fixture', $names, true ) ) $fail( 'Read catalog did not enforce dynamic classification.' );

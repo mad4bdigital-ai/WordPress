@@ -86,8 +86,6 @@ final class MAD4B_SCP_Skills_Admin_UI {
 			if ( 'save' === $action ) $message = self::handle_save();
 			if ( 'save_resource' === $action ) $message = self::handle_save_resource();
 			if ( 'reconcile_managed' === $action ) $message = self::handle_reconcile_managed();
-			if ( 'source_add' === $action ) $message = SCP_External_Skill_Sources::handle_admin( 'add', $_POST );
-			if ( 'source_remove' === $action ) $message = SCP_External_Skill_Sources::handle_admin( 'remove', $_POST );
 		}
 
 		$status = MAD4B_SCP_Skill_Registry::status();
@@ -109,10 +107,12 @@ final class MAD4B_SCP_Skills_Admin_UI {
 			echo esc_html__( 'A current certificate is missing or stale. Use the managed reconciliation step below, then inspect the renewed certificate; this page does not grant new Write authority.', 'mad4b-site-control-plane' );
 			echo '</p></div>';
 		}
-		if ( empty( $status['editor_enabled'] ) ) {
-			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Managed Skills editor is disabled', 'mad4b-site-control-plane' ) . '</strong> — ';
-			echo esc_html__( 'An authorized Staging host operator must review MAD4B_SKILLS_EDITOR_ENABLED in wp-config.php or the managed host bootstrap. Do not enable Production editing or retry a failed remote reconciliation until this prerequisite and the exact build are verified.', 'mad4b-site-control-plane' );
+		if ( empty( $status['editor_enabled'] ) && ! empty( $status['catalog_enabled'] ) ) {
+			echo '<div class="notice notice-info inline"><p><strong>' . esc_html__( 'Managed Skills catalog is active', 'mad4b-site-control-plane' ) . '</strong> — ';
+			echo esc_html__( 'Canonical Skills are provisioned and discoverable automatically for this enrolled company. Skill authoring and scripts remain separately permissioned.', 'mad4b-site-control-plane' );
 			echo '</p></div>';
+		} elseif ( empty( $status['editor_enabled'] ) ) {
+			echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'Skill authoring is unavailable; company enrollment and catalog readiness must be reviewed independently.', 'mad4b-site-control-plane' ) . '</p></div>';
 		}
 		if ( isset( $status['storage_writable'] ) && false === $status['storage_writable'] ) {
 			echo '<div class="notice notice-error inline"><p>' . esc_html__( 'Managed Skills storage is not writable. Review the owned filesystem directory and host permissions; do not bypass the governed Skill registry.', 'mad4b-site-control-plane' ) . '</p></div>';
@@ -123,7 +123,6 @@ final class MAD4B_SCP_Skills_Admin_UI {
 		self::render_editor( $status, $selected );
 		self::render_resource_editor( $status, $selected );
 		self::render_export( $status );
-		SCP_External_Skill_Sources::render_admin();
 		echo '</div>';
 	}
 
@@ -144,6 +143,7 @@ final class MAD4B_SCP_Skills_Admin_UI {
 
 		echo '<h2>' . esc_html__( 'Skill registry', 'mad4b-site-control-plane' ) . '</h2>';
 		echo '<table class="widefat striped" style="max-width:1000px"><tbody>';
+		self::row( 'Company Skill catalog auto-enabled', ! empty( $status['catalog_enabled'] ) ? 'yes' : 'no' );
 		self::row( 'Editor enabled', ! empty( $status['editor_enabled'] ) ? 'yes' : 'no' );
 		self::row( 'Scripts editor enabled', ! empty( $status['scripts_editor_enabled'] ) ? 'yes' : 'no' );
 		self::row( 'Storage initialized', ! empty( $status['storage_initialized'] ) ? 'yes' : 'no' );
@@ -155,7 +155,7 @@ final class MAD4B_SCP_Skills_Admin_UI {
 		if ( ! empty( $identity['identity_token'] ) ) self::row( 'Snapshot identity', $identity['identity_token'] );
 		echo '</tbody></table>';
 
-		if ( empty( $status['editor_enabled'] ) ) {
+		if ( empty( $status['editor_enabled'] ) && empty( $status['catalog_enabled'] ) ) {
 			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Authoring is fail-closed.', 'mad4b-site-control-plane' ) . '</strong> ';
 			echo esc_html__( 'On an explicitly enrolled non-production Site Profile the Control Plane enables the Skill editor automatically unless an explicit MAD4B_SKILLS_EDITOR_ENABLED=false kill-switch is present. Production is never enabled by installation and requires both explicit editor gates. These switches do not enable MCP mutation.', 'mad4b-site-control-plane' );
 			echo '</p></div>';

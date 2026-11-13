@@ -1,0 +1,45 @@
+{
+  "command": {
+    "bound_operation_id": "company.code.release.receipt.reconcile",
+    "flag": "--plan_sha256=",
+    "format": "wpcli.argv.json.v1",
+    "mode": "plan_sha256",
+    "prefix": [
+      "mad4b",
+      "company-code-release",
+      "receipt-reconcile"
+    ]
+  },
+  "contract": "mad4b.dynamic-operation-provider.v1",
+  "dependencies": [
+    {
+      "path": "receipt-reconcile-v1/recovery_plan.py",
+      "sha256": "71ec1b3311c532af66457f53e41139bb4a8cc5c9f938597867fc495dff3ccf16"
+    },
+    {
+      "path": "receipt-reconcile-v1/historical_audit.py",
+      "sha256": "07e8daa6a678d56499c2c20092034a767e7058525e2c65b0c343a51dad28c4ec"
+    },
+    {
+      "path": "receipt-reconcile-v1/signed_recovery_admission.py",
+      "sha256": "b651c63476394a43013fd5f353f8bccb202a34e3099e215029655471e30bd16d"
+    }
+  ],
+  "evidence": {
+    "path": "dynamic-operation-registry-v1/providers/company.code.release.receipt.reconcile/evidence-schema.json",
+    "sha256": "12cc0fb634695a48374003898cea81fefd1b9a0b247c0f0e4c64a149a96c9e67"
+  },
+  "evidence_schema": "code_release.receipt_reconcile.v1",
+  "handler": {
+    "path": "receipt-reconcile-v1/host_handler.py",
+    "sha256": "93332a83876158d7e5349ebd91d8d16e2e43ed4058194cdbfb3af9742f608356"
+  },
+  "operation_id": "company.code.release.receipt.reconcile",
+  "plan_contract": "mad4b.company-code-release.receipt-reconcile-plan.v1",
+  "provider": "mad4b-code-receipt",
+  "verifier": {
+    "path": "receipt-reconcile-v1/independent_readback.py",
+    "sha256": "8cae93267aa41a48bb06459810bd05fbaa04bd134fd2cd15bceaa6cd266056e6"
+  },
+  "version": 1
+}

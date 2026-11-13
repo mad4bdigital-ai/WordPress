@@ -1,11 +1,6 @@
 {
   "contract": "mad4b.runtime-release-policy.v1",
   "provider": "mcp_adapter",
-  "target_adapter_version": "0.7.0",
-  "supported_transition_adapter_versions": [
-    "0.6.1",
-    "0.7.0"
-  ],
   "update_order": [
     "control_plane",
     "mcp_adapter"
@@ -33,5 +28,9 @@
     "caller_package_bytes_allowed": false,
     "certified_profile_package_url_allowed": true,
     "archive_sha256_required": true
-  }
+  },
+  "installed_adapter_version_gate": false,
+  "adapter_compatibility_source": "dependency_manager.adapter_read_runtime_observation",
+  "adapter_release_target_source": "certified_runtime_release_set.mcp_adapter",
+  "exact_artifact_identity_required_when_updating": true
 }

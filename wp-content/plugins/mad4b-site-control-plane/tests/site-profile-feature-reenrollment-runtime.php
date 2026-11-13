@@ -59,6 +59,16 @@ seed_profile();$in=input_now();$in['expected_profile_digest']=str_repeat('c',64)
 seed_profile();$in=input_now();$in['expected_source_commit_sha']=str_repeat('c',40);err(MAD4B_SCP_Site_Profile_Enrollment::reenroll_features($in),'mad4b_site_profile_feature_reenroll_candidate_mismatch','candidate mismatch denied');
 seed_profile();$in=input_now();$in['expected_build_fingerprint']=str_repeat('c',64);err(MAD4B_SCP_Site_Profile_Enrollment::reenroll_features($in),'mad4b_site_profile_feature_reenroll_fingerprint_mismatch','fingerprint mismatch denied');
 $before=seed_profile('production','https://client.test');$in=input_now();$r=MAD4B_SCP_Site_Profile_Enrollment::reenroll_features($in);ok(!is_wp_error($r),'Production Phase A succeeds');$after=get_option(MAD4B_SCP_Site_Profile::OPTION,array());ok(!empty($after['features']['acceptance'])&&!empty($after['features']['skills'])&&empty($after['features']['write'])&&empty($after['features']['production_write_confirmed']),'Production Phase A enables only bounded non-write features');
+// Exact enrolled Development identity follows the same bounded Phase A
+// non-write contract, without a hidden Staging/Production-only execution list.
+$before=seed_profile('development','https://dev.client.test');
+$in=input_now();$r=MAD4B_SCP_Site_Profile_Enrollment::reenroll_features($in);
+ok(!is_wp_error($r),'Enrolled development profile should not be rejected by a static environment list');
+$after=get_option(MAD4B_SCP_Site_Profile::OPTION,array());
+ok(!empty($after['features']['acceptance'])&&!empty($after['features']['skills'])
+  && empty($after['features']['write']) && empty($after['features']['production_write_confirmed']),
+  'Development Phase A unexpectedly issued write or production authority');
+
 seed_profile();$GLOBALS['site']='https://other.client.test';MAD4B_SCP_Site_Profile::reset_cache();$in=input_now();err(MAD4B_SCP_Site_Profile_Enrollment::reenroll_features($in),'mad4b_site_profile_feature_reenroll_profile_not_exact','site URL mismatch denied');
 seed_profile();$GLOBALS['admin']=false;$in=input_now();err(MAD4B_SCP_Site_Profile_Enrollment::reenroll_features($in),'mad4b_site_profile_feature_reenroll_admin_required','non-admin denied');
 seed_profile();$GLOBALS['uid']=8;$in=input_now();err(MAD4B_SCP_Site_Profile_Enrollment::reenroll_features($in),'mad4b_site_profile_feature_reenroll_subject_not_enrolled','wrong subject denied');

@@ -1,0 +1,613 @@
+
+/* Tour Highlights — component-scope only, no duplicate Elementor widgets */
+.elementor-element-d90c3d1 {
+  --tour-hl-ink: var(--e-global-color-primary, #173d4a);
+  --tour-hl-strong: var(--e-global-color-secondary, #102f3f);
+  --tour-hl-accent: var(--e-global-color-accent, #bb9b62);
+  --tour-hl-paper: #f8f9f7;
+  --tour-hl-border: #e5e9e6;
+  --tour-hl-body: #4c5c62;
+  min-width: 0;
+}
+.elementor-element-d90c3d1 > .elementor-widget-heading {margin-top:32px!important;}
+.elementor-element-d90c3d1 > .elementor-widget-heading .elementor-heading-title {
+  font-size: clamp(24px, 2.15vw, 32px);
+  font-weight: 650;
+  color: var(--tour-hl-ink);
+  line-height: 1.22;
+  letter-spacing: -.025em;
+  margin: 0;
+}
+.elementor-element-d90c3d1 .elementor-element-975121c,
+.elementor-element-d90c3d1 .jet-listing-dynamic-field,
+.elementor-element-d90c3d1 .jet-listing-dynamic-field__content { width: 100%; min-width: 0; }
+.elementor-element-d90c3d1 .tour-hl-ui {
+  width:100%;
+  min-width:0;
+  container-type:inline-size;
+  color:var(--tour-hl-strong);
+  font-family:inherit;
+}
+.tour-hl-ui__intro {
+  display:flex;align-items:center;gap:10px;
+  margin: 0 0 16px;min-height:24px;
+}
+.tour-hl-ui__label {
+  font-family:inherit;font-size:11px;line-height:1.35;font-weight:700;
+  letter-spacing:.12em;text-transform:uppercase;
+  color:var(--tour-hl-ink);
+}
+.tour-hl-ui__count {
+  display:inline-flex;align-items:center;justify-content:center;
+  border:1px solid var(--tour-hl-border);
+  color:var(--tour-hl-ink);
+  font-size:11px;line-height:20px;font-weight:700;
+  border-radius:100px;min-width:26px;height:24px;padding:0 7px;
+}
+.tour-hl-ui__intro:after {
+  content:""; height:1px;flex:1;background:var(--tour-hl-border);
+}
+.tour-hl-ui__hint {display:none}
+.tour-hl-ui__grid {
+  list-style:none!important;margin:0!important;padding:0!important;
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;
+}
+.tour-hl-ui__card {
+  background:var(--tour-hl-paper);
+  border:1px solid var(--tour-hl-border);
+  border-radius:12px;
+  min-width:0;min-height:145px;
+  padding:20px 20px 20px 17px;
+  display:flex;gap:16px;align-items:flex-start;
+  box-shadow:none;
+  transition:border-color .18s ease, background-color .18s ease;
+}
+.tour-hl-ui__card:hover {border-color:#b8ccc8;background:#f3f7f5;}
+.tour-hl-ui__card:only-child {grid-column:1/-1;min-height:0;}
+.tour-hl-ui__number {
+  display:grid;place-items:center;flex:0 0 32px;width:32px;height:32px;
+  border:1px solid #d7e2de;border-radius:50%;
+  background:#fff;color:var(--tour-hl-ink);
+  font-size:11px;font-weight:800;font-variant-numeric:tabular-nums;
+  letter-spacing:.03em;
+}
+.tour-hl-ui__copy {min-width:0;overflow-wrap:anywhere;padding-top:2px;}
+.tour-hl-ui__title {
+  font-size:16px!important;line-height:1.4!important;
+  font-weight:700!important;color:var(--tour-hl-ink)!important;
+  margin:0 0 7px!important;letter-spacing:-.01em;
+}
+.tour-hl-ui__description {
+  color:var(--tour-hl-body);font-size:14px;line-height:1.65;font-weight:400;
+}
+.tour-hl-ui__description:only-child {font-size:15px;line-height:1.7;color:var(--tour-hl-strong);}
+.tour-hl-ui__description > :first-child {margin-top:0!important;}
+.tour-hl-ui__description > :last-child {margin-bottom:0!important;}
+.tour-hl-ui__description a {color:var(--tour-hl-ink);text-decoration:underline;text-underline-offset:3px;}
+.tour-hl-ui__grid:focus-visible {outline:2px solid var(--tour-hl-ink);outline-offset:4px;}
+@container (max-width: 640px) {
+  .tour-hl-ui__grid {grid-template-columns:1fr;}
+}
+@media (max-width: 767px) {
+  .elementor-element-d90c3d1 > .elementor-widget-heading {margin-top:20px!important;}
+  .elementor-element-d90c3d1 > .elementor-widget-heading .elementor-heading-title {
+    font-size:clamp(23px,6.8vw,28px);line-height:1.25;letter-spacing:-.015em;
+  }
+  .tour-hl-ui__intro {margin-bottom:13px;}
+  .tour-hl-ui__hint {
+    display:inline-flex;align-items:center;gap:4px;margin-inline-start:auto;
+    white-space:nowrap;color:#557178;font-size:11px;line-height:1.3;font-weight:500;
+  }
+  .tour-hl-ui__arrow {font-size:18px;color:var(--tour-hl-ink);line-height:1;}
+  .tour-hl-ui__intro:after {display:none}
+  .tour-hl-ui__grid {
+    display:flex;flex-wrap:nowrap;gap:10px;overflow-x:auto;overscroll-behavior-inline:contain;
+    scroll-snap-type:x mandatory;scroll-padding-inline:2px;
+    padding:0 1px 12px!important; margin:0 -1px!important;
+    -webkit-overflow-scrolling:touch;scrollbar-width:thin;
+  }
+  .tour-hl-ui__card {
+    flex:0 0 88%;scroll-snap-align:start;
+    padding:18px 16px;min-height:184px;
+    border-radius:11px;gap:13px;
+  }
+  .tour-hl-ui__card:only-child {flex-basis:100%;min-height:0;}
+  .tour-hl-ui__number {flex-basis:30px;width:30px;height:30px;}
+  .tour-hl-ui__title {font-size:15px!important;line-height:1.4!important;}
+  .tour-hl-ui__description {font-size:14px;line-height:1.6;}
+}
+@media (max-width: 350px) {
+ .tour-hl-ui__card {flex-basis:92%;padding:15px 13px;}
+ .tour-hl-ui__hint {font-size:10px;}
+}
+@media (prefers-reduced-motion: reduce) {
+ .tour-hl-ui__card {transition:none;}
+ .tour-hl-ui__grid {scroll-behavior:auto;}
+}
+
+/* Journey Discovery: one Elementor section, original JetEngine listings, four view patterns */
+.tour-journey-discovery {min-width:0;}
+.tour-journey-discovery .tour-hl-ui__related {
+ display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-top:13px;
+}
+.tour-journey-discovery .tour-hl-ui__place {
+ display:inline-flex;align-items:center;gap:5px;min-width:0;
+ border:1px solid #cddfd8;border-radius:5px;
+ padding:5px 9px;color:var(--tour-hl-ink,#173d4a)!important;
+ background:#f0f7f2;font-size:12px;font-weight:650;line-height:1.4;
+ text-decoration:none!important;
+}
+.tour-journey-discovery .tour-hl-ui__place:hover,
+.tour-journey-discovery .tour-hl-ui__place:focus-visible {background:#dfeee6;outline-offset:2px;}
+.tour-journey-discovery > .elementor-element-6190bab {
+ width:100%;min-width:0;align-self:stretch;
+ margin:8px 0 0!important;
+}
+.tour-journey-related .elementor-widget-container {min-width:0;}
+.tour-journey-places-header {
+ display:flex;align-items:center;justify-content:space-between;gap:12px;
+ border-top:1px solid var(--tour-hl-border,#e5e9e6);
+ padding:23px 0 12px;
+}
+.tour-journey-places-intro {min-width:0;max-width:640px;}
+.tour-journey-places-title {
+ color:var(--tour-hl-ink,#173d4a)!important;
+ font-size:clamp(19px,1.65vw,24px)!important;line-height:1.35!important;
+ font-weight:700!important;margin:0 0 5px!important;
+ letter-spacing:-.018em;
+}
+.tour-journey-places-subtitle {
+ margin:0!important;color:var(--tour-hl-body,#4c5c62);
+ font-size:13px;line-height:1.55;
+}
+.tour-journey-layout-label {display:inline-flex;flex-direction:column;gap:4px;min-width:138px;flex:0 0 auto;}
+.tour-journey-layout-label span {color:#536970;font-size:11px;font-weight:650;}
+.tour-journey-layout-select {
+ width:100%;max-width:180px;height:36px;min-height:36px;
+ background:#fff!important;border:1px solid #dbe4e1!important;
+ border-radius:6px!important;color:#173d4a!important;
+ padding:6px 30px 6px 10px!important;font-size:12px!important;line-height:1.2!important;
+ box-shadow:none!important;
+}
+.tour-journey-places-tabs {
+ display:flex;gap:7px;align-items:center;
+ overflow-x:auto;max-width:100%;
+ scroll-behavior:smooth;scrollbar-width:thin;
+ padding:5px 0 14px;
+ border-bottom:1px solid var(--tour-hl-border,#e5e9e6);
+ margin-bottom:16px;
+}
+.tour-journey-place-tab {
+ flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;
+ background:#f7f9f8!important;color:#33555e!important;
+ border:1px solid #e0e7e3!important;border-radius:7px!important;
+ padding:8px 12px!important;font:650 12px/1.3 inherit!important;
+ font-family:inherit!important;line-height:1.3!important;font-size:12px!important;font-weight:650!important;
+ min-height:37px;cursor:pointer;
+}
+.tour-journey-place-tab:hover {background:#ebf3ef!important;}
+.tour-journey-place-tab[aria-selected="true"] {
+ background:#173d4a!important;color:#fff!important;border-color:#173d4a!important;
+}
+.tour-journey-place-tab:focus-visible {
+ outline:2px solid #1f6f70!important;outline-offset:2px!important;
+}
+.tour-journey-place-count {
+ display:grid;place-items:center;min-width:19px;height:19px;padding:0 5px;
+ border-radius:9px;background:#e6eeec;color:#244b52;font-size:10px;font-weight:700;
+}
+.tour-journey-place-tab[aria-selected="true"] .tour-journey-place-count {
+ background:rgba(255,255,255,.2);color:#fff;
+}
+.tour-journey-enhanced .tour-place-group[hidden] {display:none!important;}
+.tour-journey-enhanced .tour-place-group[data-tour-active="true"] > .e-con:first-child {display:none!important;}
+.tour-journey-enhanced .tour-place-group {min-width:0;margin:0!important;padding:0!important;}
+.tour-journey-enhanced .tour-place-group > .elementor-widget-jet-listing-grid {min-width:0;width:100%!important;}
+.tour-journey-enhanced .tour-place-group .jet-listing-grid__items {
+ display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;
+ gap:12px!important;margin:0!important;padding:0!important;
+}
+.tour-journey-enhanced .tour-place-group .jet-listing-grid__item {
+ min-width:0!important;width:auto!important;max-width:none!important;
+ padding:0!important;margin:0!important;overflow:hidden;
+ border:1px solid #e2e9e6;border-radius:10px;background:#f6f8f7;
+}
+.tour-journey-enhanced .tour-place-group .jet-listing-grid__item > .elementor {
+ min-width:0;height:100%;width:100%;
+}
+.tour-journey-enhanced .tour-place-group .jet-listing-grid__item > .elementor > .e-con {
+ min-height:238px!important;height:100%!important;
+}
+.tour-journey-enhanced .tour-place-group .jet-listing-grid__item :is(a,button):focus-visible {
+ outline:2px solid #c6a471;outline-offset:2px;
+}
+.tour-journey--split.tour-journey-enhanced {
+ display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);
+ align-items:start;column-gap:22px!important;row-gap:12px!important;
+}
+.tour-journey--split.tour-journey-enhanced > .elementor-element-9ff747a {
+ grid-column:1/-1;grid-row:1;
+}
+.tour-journey--split.tour-journey-enhanced > .elementor-element-975121c {
+ grid-column:1;grid-row:2;
+}
+.tour-journey--split.tour-journey-enhanced > .elementor-element-6190bab {
+ grid-column:2;grid-row:2;
+ margin-top:0!important;
+}
+.tour-journey--split .tour-hl-ui__grid {grid-template-columns:1fr!important;}
+.tour-journey--split .tour-hl-ui__card {min-height:0;padding:15px!important;}
+.tour-journey--split .tour-place-group .jet-listing-grid__items {
+ grid-template-columns:repeat(2,minmax(0,1fr))!important;
+}
+.tour-journey--split .tour-journey-places-header {padding-top:0;border:0;}
+.tour-journey--story .tour-hl-ui__grid {display:block!important;column-count:1;}
+.tour-journey--story .tour-hl-ui__card {
+ min-height:0;max-width:none;margin-bottom:9px;
+ padding:13px 15px;background:#fff;
+ border-inline-start:3px solid #bca47a;border-radius:8px;
+}
+.tour-journey--story .tour-place-group .jet-listing-grid__items {
+ display:flex!important;gap:12px!important;flex-wrap:nowrap!important;
+ overflow-x:auto!important;scroll-snap-type:x mandatory;overscroll-behavior-inline:contain;
+ padding-bottom:10px!important;
+}
+.tour-journey--story .tour-place-group .jet-listing-grid__item {
+ flex:0 0 240px!important;scroll-snap-align:start;
+}
+.tour-journey--compact .tour-hl-ui__grid {gap:7px!important;}
+.tour-journey--compact .tour-hl-ui__card {min-height:0!important;padding:12px!important;gap:10px!important;}
+.tour-journey--compact .tour-hl-ui__number {
+ width:26px;height:26px;flex-basis:26px;font-size:10px;
+}
+.tour-journey--compact .tour-hl-ui__description {font-size:12px;line-height:1.5;}
+.tour-journey--compact .tour-place-group .jet-listing-grid__items {grid-template-columns:repeat(4,minmax(0,1fr))!important;}
+@media (max-width:1024px) {
+ .tour-journey--split.tour-journey-enhanced {display:flex!important;flex-direction:column;}
+ .tour-journey--split.tour-journey-enhanced > * {width:100%!important;}
+ .tour-journey-enhanced .tour-place-group .jet-listing-grid__items {grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+ .tour-journey--compact .tour-place-group .jet-listing-grid__items {grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+}
+@media (max-width:767px) {
+ .tour-journey-places-header {padding-top:17px;align-items:flex-end;gap:10px;}
+ .tour-journey-places-title {font-size:18px!important;}
+ .tour-journey-places-subtitle {font-size:12px;}
+ .tour-journey-layout-label {min-width:110px;}
+ .tour-journey-layout-select {max-width:125px;}
+ .tour-journey-places-tabs {padding-bottom:11px;}
+ .tour-journey-enhanced .tour-place-group .jet-listing-grid__items,
+ .tour-journey--compact .tour-place-group .jet-listing-grid__items {
+   display:flex!important;flex-wrap:nowrap!important;gap:10px!important;
+   overflow-x:auto!important;scroll-snap-type:x mandatory;
+   overscroll-behavior-inline:contain;padding-bottom:12px!important;
+ }
+ .tour-journey-enhanced .tour-place-group .jet-listing-grid__item {
+    flex:0 0 80%!important;scroll-snap-align:start;
+ }
+ .tour-journey-enhanced .tour-place-group .jet-listing-grid__item > .elementor > .e-con {min-height:280px!important;}
+ .tour-journey--split .tour-hl-ui__grid {display:flex!important;flex-wrap:nowrap!important;}
+ .tour-journey--split .tour-hl-ui__card {flex:0 0 88%;}
+ .tour-journey--story .tour-hl-ui__grid {display:block!important;overflow:visible!important;}
+ .tour-journey--story .tour-hl-ui__card {width:100%!important;flex:auto!important;min-height:0!important;}
+ .tour-journey--compact .tour-hl-ui__grid {display:grid!important;grid-template-columns:1fr!important;overflow:visible!important;}
+ .tour-journey--compact .tour-hl-ui__card {flex:auto!important;}
+}
+@media (prefers-reduced-motion:reduce) {
+ .tour-journey-places-tabs {scroll-behavior:auto;}
+}
+
+
+/* View contracts: Story genuinely prioritizes destinations.
+   The same Elementor widget is only reordered; it is never duplicated. */
+.tour-journey--story.tour-journey-enhanced > .elementor-element-9ff747a {order:0!important}
+.tour-journey--story.tour-journey-enhanced > .elementor-element-6190bab {
+  order:1!important;margin-top:0!important;
+}
+.tour-journey--story.tour-journey-enhanced > .elementor-element-975121c {
+  order:2!important;margin-top:12px;
+}
+.tour-journey--story .tour-journey-places-header {border-top:0;padding-top:6px}
+
+/* Compact progressive disclosure: no content removed from markup. */
+.tour-journey--compact .tour-hl-ui__grid {
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:9px!important;
+}
+.tour-journey--compact .tour-hl-ui__card {
+  min-height:88px!important;padding:12px!important;gap:9px!important;
+}
+.tour-journey--compact.tour-journey-enhanced .tour-hl-ui__card.is-collapsible:not(.is-expanded) .tour-hl-ui__description {
+  display:none!important;
+}
+.tour-hl-ui__expand {display:none!important}
+.tour-journey--compact.tour-journey-enhanced .tour-hl-ui__card.is-collapsible .tour-hl-ui__expand {
+  display:inline-flex!important;align-items:center;min-height:28px;
+  margin-top:6px;padding:3px 8px!important;background:#fff!important;
+  color:var(--tour-hl-ink,#173d4a)!important;border:1px solid #ccdcd6!important;
+  border-radius:5px!important;font-family:inherit!important;
+  font-size:11px!important;font-weight:650!important;line-height:1.35!important;
+  cursor:pointer;
+}
+.tour-hl-ui__expand:focus-visible {outline:2px solid #1b6e7b!important;outline-offset:2px!important}
+.tour-journey--compact.tour-journey-enhanced .tour-hl-ui__title {font-size:13px!important;line-height:1.4!important;}
+.tour-journey--compact.tour-journey-enhanced .tour-hl-ui__related {margin-top:6px}
+@media (max-width:767px) {
+  .tour-journey--compact .tour-hl-ui__grid {
+    display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    overflow:visible!important;padding-bottom:0!important;
+  }
+  .tour-journey--compact .tour-hl-ui__card {
+    width:auto!important;flex:auto!important;min-height:78px!important;
+    padding:10px!important;gap:7px!important;
+  }
+  .tour-journey--compact .tour-hl-ui__number {
+    flex:0 0 24px!important;width:24px!important;height:24px!important;
+  }
+}
+@media (max-width:350px) {
+  .tour-journey--compact .tour-hl-ui__grid {grid-template-columns:1fr!important}
+}
+
+/* A destination-only Tour must still render its verified related locations. */
+.tour-journey--places-only > .elementor-element-9ff747a,
+.tour-journey--places-only > .elementor-element-975121c {display:none!important}
+.tour-journey--places-only > .elementor-element-6190bab {margin-top:0!important}
+.tour-journey--places-only .tour-journey-places-header {padding-top:8px;border-top:0}
+
+/* Class-based roles let Elementor duplicate sections without preserving IDs. */
+.tour-journey-discovery > .tour-journey-heading-editor {margin-top:32px!important}
+.tour-journey-discovery > .tour-journey-heading-editor .elementor-heading-title {
+ font-size:clamp(24px,2.15vw,32px);font-weight:650;
+ color:var(--tour-hl-ink,#173d4a);line-height:1.22;
+ letter-spacing:-.025em;margin:0;
+}
+.tour-journey-discovery .tour-journey-content-editor,
+.tour-journey-discovery .tour-journey-content-editor .jet-listing-dynamic-field,
+.tour-journey-discovery .tour-journey-content-editor .jet-listing-dynamic-field__content {
+ width:100%;min-width:0;
+}
+.tour-journey-discovery > .tour-journey-related-editor {
+ width:100%;min-width:0;align-self:stretch;margin:8px 0 0!important;
+}
+.tour-journey--split.tour-journey-enhanced > .tour-journey-heading-editor {grid-column:1/-1;grid-row:1}
+.tour-journey--split.tour-journey-enhanced > .tour-journey-content-editor {grid-column:1;grid-row:2}
+.tour-journey--split.tour-journey-enhanced > .tour-journey-related-editor {
+ grid-column:2;grid-row:2;margin-top:0!important;
+}
+.tour-journey--story.tour-journey-enhanced > .tour-journey-heading-editor {order:0!important}
+.tour-journey--story.tour-journey-enhanced > .tour-journey-related-editor {order:1!important;margin-top:0!important}
+.tour-journey--story.tour-journey-enhanced > .tour-journey-content-editor {order:2!important;margin-top:12px}
+.tour-journey--places-only > .tour-journey-heading-editor,
+.tour-journey--places-only > .tour-journey-content-editor {display:none!important}
+.tour-journey--places-only > .tour-journey-related-editor {margin-top:0!important}
+@media(max-width:767px){
+  .tour-journey-discovery > .tour-journey-heading-editor {margin-top:20px!important}
+  .tour-journey-discovery > .tour-journey-heading-editor .elementor-heading-title {
+    font-size:clamp(23px,6.8vw,28px);line-height:1.25;letter-spacing:-.015em;
+  }
+}
+
+/* Journey Discovery v2 — designed around one Highlight item + its verified native place.
+   Preserves Elementor/JetEngine destination listings; does not clone native cards. */
+.tour-journey-discovery.jd-v2 {
+  --jd-ink:var(--e-global-color-primary,#173d4a);
+  --jd-accent:#c4a26b;
+  --jd-outline:#cfddd9;
+  --jd-text:#405a61;
+  --jd-paper:#f7f9f8;
+  min-width:0;
+}
+.jd-v2 .tour-hl-ui__grid {align-items:stretch;}
+.jd-v2 .tour-hl-ui__card {position:relative;isolation:isolate;min-width:0;}
+.jd-v2 .tour-hl-ui__card:focus-visible {
+  outline:2px solid var(--jd-ink);outline-offset:3px;
+}
+.jd-v2 .tour-hl-ui__card.jd-active-highlight {
+  background:#f2f7f5;
+  border-color:#9ebfb6;
+  box-shadow:inset 3px 0 0 #3e7777;
+}
+.jd-v2 .tour-hl-ui__card.jd-has-place .tour-hl-ui__number {
+  background:#e7f0ed;color:#174e50;border-color:#c2d9d1;
+}
+.jd-v2 .tour-hl-ui__related {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));
+  gap:9px;
+  margin-top:15px;
+}
+.jd-v2 .jd-place-tile {
+  display:flex;align-items:stretch;position:relative;min-width:0;min-height:76px;
+  background:#fff;border:1px solid #d8e4de;border-radius:11px;
+  box-shadow:0 3px 9px rgba(16,47,63,.04);
+  transition:border-color .18s ease,box-shadow .18s ease,transform .18s ease;
+}
+.jd-v2 .jd-place-tile:hover,
+.jd-v2 .jd-place-tile:focus-within {
+  border-color:#7eafa5;
+  box-shadow:0 5px 16px rgba(15,55,62,.13);
+  transform:translateY(-1px);
+}
+.jd-v2 .jd-place-tile__jump {
+  display:flex;align-items:center;gap:10px;flex:1 1 auto;min-width:0;
+  padding:5px!important;color:var(--jd-ink)!important;
+  text-decoration:none!important;border-radius:10px;
+}
+.jd-v2 .jd-place-tile__jump:focus-visible,.jd-v2 .jd-place-tile__details:focus-visible {
+  outline:2px solid #247f82;outline-offset:3px;
+}
+.jd-v2 .jd-place-tile__media {
+  display:grid;place-items:center;flex:0 0 74px;height:64px;
+  border-radius:8px;overflow:hidden;
+  background:#dcebe5;color:#275a5b;font-size:27px;
+}
+.jd-v2 .jd-place-tile__media img {
+  display:block;width:100%;height:100%;object-fit:cover;
+}
+.jd-v2 .jd-place-tile__copy {display:flex;flex-direction:column;gap:5px;min-width:0;padding:0 2px;}
+.jd-v2 .jd-place-tile__eyebrow {
+  color:#69847c;font-size:9px;letter-spacing:.09em;text-transform:uppercase;
+  font-weight:800;line-height:1.3;
+}
+.jd-v2 .jd-place-tile__name {
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+  overflow:hidden;font-size:12px;line-height:1.38;
+  color:var(--jd-ink);font-weight:750;
+}
+.jd-v2 .jd-place-tile__arrow {
+  flex:0 0 auto;align-self:center;margin-inline-start:auto;
+  color:#376b6b;font-size:17px;line-height:1;
+}
+.jd-v2 .jd-place-tile__details {
+  display:grid;place-items:center;flex:0 0 31px;
+  margin-block:11px;border-inline-start:1px solid #e5ece9;
+  color:#4d6c73!important;font-size:17px;font-weight:700;
+  text-decoration:none!important;
+}
+.jd-v2 .jd-place-tile__details:hover {color:#12575f!important;}
+/* One border system: native Elementor media card supplies the actual visual shell.
+   The JetEngine grid item is now purely a layout wrapper, and cannot clip it. */
+.jd-v2.tour-journey-enhanced .tour-place-group .jet-listing-grid__item {
+  border:0!important;background:transparent!important;
+  border-radius:0!important;overflow:visible!important;
+  padding:3px!important;box-shadow:none!important;
+  transition:none!important;
+}
+.jd-v2.tour-journey-enhanced .tour-place-group .jet-listing-grid__item > .elementor {
+  overflow:visible!important;
+}
+.jd-v2.tour-journey-enhanced .tour-place-group .jet-listing-grid__item > .elementor > .e-con {
+  border-radius:22px!important;overflow:hidden!important;
+  box-shadow:0 8px 22px rgba(16,47,63,.095);
+  transition:transform .22s ease,box-shadow .22s ease;
+}
+.jd-v2.tour-journey-enhanced .tour-place-group .jet-listing-grid__item.jd-place-highlight > .elementor > .e-con,
+.jd-v2.tour-journey-enhanced .tour-place-group .jet-listing-grid__item:focus-within > .elementor > .e-con {
+  box-shadow:0 0 0 3px rgba(26,109,112,.72),0 12px 26px rgba(16,47,63,.16);
+}
+.jd-v2.tour-journey-enhanced .tour-place-group .jet-listing-grid__item:hover > .elementor > .e-con {
+  transform:translateY(-3px);box-shadow:0 14px 29px rgba(16,47,63,.17);
+}
+.jd-v2 .jd-native-place[hidden] {display:none!important;}
+.jd-v2 .tour-place-group .jet-listing-grid__items {padding:2px 0 12px!important;}
+/* Strong directional bridge between content and native destination groups. */
+.jd-v2 .jd-bridge {
+  display:flex;align-items:center;gap:10px;
+  margin:22px 0 0;padding:0 0 2px;
+  min-width:0;text-decoration:none!important;
+  color:#416a6e!important;font-size:12px;font-weight:700;
+}
+.jd-v2 .jd-bridge__line {display:block;flex:0 1 65px;height:1px;background:#acc9be;}
+.jd-v2 .jd-bridge__icon {
+  display:grid;place-items:center;flex:0 0 30px;height:30px;
+  border-radius:50%;background:#e8f3ee;border:1px solid #c8dcd2;
+  color:#2b6364;font-size:19px;
+}
+.jd-v2 .jd-bridge__text {display:block;min-width:0;}
+.jd-v2 .jd-bridge:hover .jd-bridge__text {text-decoration:underline;text-underline-offset:4px;}
+.jd-v2 .tour-journey-places-header {scroll-margin-top:110px;padding-top:16px;}
+.jd-v2 .jd-filter-status {
+  margin:0 0 10px;color:#57777a;font-size:12px;
+  font-weight:650;line-height:1.45;
+}
+.jd-v2 .tour-journey-places-header .tour-journey-layout-select {cursor:pointer;}
+/* Split: highlight collection left, native matched places right; active accent points across. */
+.jd-v2.tour-journey--split.tour-journey-enhanced {column-gap:24px!important;}
+.jd-v2.tour-journey--split > .jd-bridge {display:none!important;}
+.jd-v2.tour-journey--split .tour-hl-ui__card {
+  min-height:0!important;
+  padding:14px 14px 14px 15px!important;
+}
+.jd-v2.tour-journey--split .tour-hl-ui__card.jd-active-highlight:after {
+  content:"";position:absolute;inset-inline-end:-17px;top:26px;
+  width:0;height:0;border-top:8px solid transparent;
+  border-bottom:8px solid transparent;border-inline-start:9px solid #5d9892;
+}
+.jd-v2.tour-journey--split .tour-journey-related-editor {
+  position:sticky;top:96px;align-self:start;
+  padding-inline-start:8px;
+  border-inline-start:2px solid #cdded6;
+}
+.jd-v2.tour-journey--split .tour-place-group .jet-listing-grid__items {
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+}
+.jd-v2.tour-journey--split .tour-hl-ui__related {margin-top:10px;}
+/* Story: highlight items FIRST, destinations are an end-of-story collection.
+   Vertical line and nodes make every highlighted item a real narrative step. */
+.jd-v2.tour-journey--story.tour-journey-enhanced > .tour-journey-heading-editor,
+.jd-v2.tour-journey--story.tour-journey-enhanced > .elementor-element-9ff747a {
+  order:0!important;
+}
+.jd-v2.tour-journey--story.tour-journey-enhanced > .tour-journey-content-editor,
+.jd-v2.tour-journey--story.tour-journey-enhanced > .elementor-element-975121c {
+  order:1!important;
+}
+.jd-v2.tour-journey--story.tour-journey-enhanced > .jd-bridge {order:2!important;}
+.jd-v2.tour-journey--story.tour-journey-enhanced > .tour-journey-related-editor,
+.jd-v2.tour-journey--story.tour-journey-enhanced > .elementor-element-6190bab {
+  order:3!important;margin-top:0!important;
+}
+.jd-v2.tour-journey--story .tour-hl-ui__grid {
+  display:flex!important;flex-direction:column!important;
+  gap:13px!important;position:relative;
+  overflow:visible!important;counter-reset:story;
+  padding-inline-start:26px!important;
+  margin-inline-start:4px!important;
+}
+.jd-v2.tour-journey--story .tour-hl-ui__grid:before {
+  content:"";position:absolute;inset-block:22px 25px;
+  inset-inline-start:6px;width:2px;background:#b4d4ca;
+}
+.jd-v2.tour-journey--story .tour-hl-ui__card {
+  display:flex!important;position:relative;width:100%!important;max-width:100%;
+  min-height:0!important;padding:17px 19px!important;
+  margin:0!important;flex:0 0 auto!important;
+  border-inline-start:3px solid #abcac1!important;
+  border-radius:10px!important;
+}
+.jd-v2.tour-journey--story .tour-hl-ui__card:before {
+  content:"";position:absolute;inset-inline-start:-28px;top:24px;
+  width:14px;height:14px;border-radius:50%;background:#fff;
+  border:3px solid #6b9c91;box-shadow:0 0 0 4px #f5f8f6;
+}
+.jd-v2.tour-journey--story .tour-hl-ui__card.jd-active-highlight {
+  border-inline-start-color:#2d7c7a!important;
+}
+.jd-v2.tour-journey--story .tour-hl-ui__card.jd-active-highlight:before {background:#2d7c7a;}
+.jd-v2.tour-journey--story .tour-hl-ui__copy {width:100%;}
+.jd-v2.tour-journey--story .tour-hl-ui__related {max-width:510px;grid-template-columns:1fr;}
+.jd-v2.tour-journey--story .tour-journey-places-title:before {content:"↳";padding-inline-end:7px;color:#56857f;}
+.jd-v2.tour-journey--story .tour-journey-places-header {border-top:1px solid #d6e6df;padding-top:22px;}
+/* Mobile gets a legible card with a clear next-place affordance, not a cropped frame. */
+@media (max-width:1024px){
+  .jd-v2.tour-journey--split .tour-journey-related-editor {position:static;top:auto;padding-inline-start:0;border-inline-start:0;}
+  .jd-v2.tour-journey--split .tour-hl-ui__card.jd-active-highlight:after {display:none;}
+  .jd-v2.tour-journey--split.tour-journey-enhanced {display:flex!important;flex-direction:column;}
+}
+@media (max-width:767px){
+  .jd-v2 .jd-place-tile__media {flex-basis:70px;height:62px;}
+  .jd-v2 .jd-place-tile__eyebrow {font-size:9px;}
+  .jd-v2 .tour-hl-ui__related {grid-template-columns:1fr;}
+  .jd-v2 .jd-bridge {margin-top:12px;gap:9px;}
+  .jd-v2 .jd-bridge__line {flex-basis:36px;}
+  .jd-v2 .tour-journey-places-header {padding-top:12px;}
+  .jd-v2.tour-journey--story .tour-hl-ui__grid {
+    display:flex!important;flex-direction:column!important;gap:11px!important;
+    padding-inline-start:23px!important;
+    margin-inline:0!important;
+  }
+  .jd-v2.tour-journey--story .tour-hl-ui__card {
+    flex:0 0 auto!important;width:100%!important;
+    min-height:0!important;padding:15px 13px!important;gap:10px;
+  }
+  .jd-v2.tour-journey--story .tour-hl-ui__card:before {inset-inline-start:-25px;}
+  .jd-v2.tour-journey--split .tour-hl-ui__grid {
+    display:flex!important;flex-wrap:nowrap!important;overflow-x:auto!important;
+  }
+  .jd-v2.tour-journey--split .tour-hl-ui__card {flex:0 0 89%!important;}
+  .jd-v2.tour-journey-enhanced .tour-place-group .jet-listing-grid__item > .elementor > .e-con {
+    border-radius:18px!important;
+  }
+}
+@media (prefers-reduced-motion:reduce){
+  .jd-v2 .jd-place-tile,.jd-v2 .tour-place-group .jet-listing-grid__item > .elementor > .e-con {transition:none!important;}
+}

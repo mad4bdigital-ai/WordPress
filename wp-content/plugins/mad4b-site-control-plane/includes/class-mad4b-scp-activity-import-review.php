@@ -68,7 +68,7 @@ final class MAD4B_SCP_Activity_Import_Review {
                 'batch_limit', 'skip_unchanged', 'dry_run', 'error_policy', 'rollback_policy'
             ),
             'max_preview_rows' => self::MAX_ROWS,
-            'staging_only' => true
+            'site_neutral_signed_intake' => true
         );
     }
     /**
@@ -496,9 +496,9 @@ final class MAD4B_SCP_Activity_Import_Review {
         return is_wp_error( $source ) ? $source : true;
     }
     public static function receive_signed( $request ) {
-        if ( ! method_exists( 'MAD4B_SCP_Site_Profile', 'environment_allowed' ) ||
-            ! MAD4B_SCP_Site_Profile::environment_allowed( array( 'staging' ) ) )
-            return self::error( 'mad4b_import_intake_staging_only', 'External intake is restricted to enrolled Staging.' );
+        if ( ! class_exists( 'MAD4B_SCP_Site_Profile', false ) ||
+            empty( MAD4B_SCP_Site_Profile::status()['authority_ready'] ) )
+            return self::error( 'mad4b_import_intake_site_unenrolled', 'Exact enrolled site is required.' );
         $sender = self::verified_sender( $request );
         if ( is_wp_error( $sender ) ) return $sender;
         $data = json_decode( $request->get_body(), true );
@@ -507,8 +507,8 @@ final class MAD4B_SCP_Activity_Import_Review {
             ! is_string( $data['nonce'] ) || ! preg_match( '/^[A-Za-z0-9_-]{16,100}$/D', $data['nonce'] ) ||
             (string) $data['site_uuid'] !== (string) MAD4B_SCP_Site_Profile::site_uuid() )
             return self::error( 'mad4b_import_webhook_replay_or_site', 'Fresh site-bound signed request required.' );
-        // Reuse the same profile validator; inbound HMAC carries data authority
-        // only for STAGING, never a WordPress-post mutation or approval.
+        // Reuse the same profile validator; inbound HMAC carries bounded data authority
+        // for the enrolled company, never WordPress-post mutation or approval.
         $nonce_key = 'mad4b_import_nonce_' . hash( 'sha256',
             $data['site_uuid'] . '|' . $sender['key_id'] . '|' . $data['nonce'] );
         $nonce_receipt = MAD4B_SCP_Batch_Atomic_Mutex::reserve_signed_nonce(

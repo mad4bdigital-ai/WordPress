@@ -1,0 +1,17 @@
+{
+  "contract": "mad4b.pr814.tour-highlights-append-only-review.v1",
+  "historical_review": "docs/release-coverage/pr814-pr813-tour-highlights-reconciled-20261113.json",
+  "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tour-highlights-v1.php",
+  "historical_sha256": "13961f2d0d8b748f00817b489a5f81d741ef1b5c1c408542298fa8331fdba64d",
+  "historical_bytes": 17939,
+  "current_sha256": "ec3dd25092a86d7ef9b74cf541ce8fbf0bb9984a2a93f4d2e54024fc05cfdfe7",
+  "current_bytes": 18332,
+  "change": "guard native hook registration until WordPress add_filter and add_action APIs exist",
+  "regression_tests": [
+    "wp-content/plugins/mad4b-site-control-plane/tests/native-plugin-management-menu-runtime.php",
+    "tests/native-tour-highlights/acceptance.php"
+  ],
+  "source_only": true,
+  "production_release_approved": false,
+  "original313_signed_receipts_issued": false
+}

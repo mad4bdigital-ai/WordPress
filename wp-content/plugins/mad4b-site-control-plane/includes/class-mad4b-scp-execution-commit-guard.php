@@ -192,9 +192,7 @@ final class MAD4B_SCP_Execution_Commit_Guard {
 		if ( is_wp_error( $kill_switch ) ) return $kill_switch;
 		if ( ! empty( $kill_switch['active'] ) ) return self::error( 'KILL_SWITCHED', 'Execution kill switch is active.' );
 
-		$mutation_gate = class_exists( 'MAD4B_SCP_Policy' ) && method_exists( 'MAD4B_SCP_Policy', 'mutation_gate_status' )
-			? MAD4B_SCP_Policy::mutation_gate_status()
-			: array( 'effective' => false, 'source' => 'unavailable' );
+		$mutation_gate = self::actor_mutation_gate_status();
 		$policy = array(
 			'mutation_gate_effective' => ! empty( $mutation_gate['effective'] ),
 			'mutation_gate_source' => isset( $mutation_gate['source'] ) ? (string) $mutation_gate['source'] : 'unknown',
@@ -421,10 +419,31 @@ final class MAD4B_SCP_Execution_Commit_Guard {
 		return is_array( $filtered ) ? self::canonicalize( $filtered ) : self::error( 'DENIED', 'Target-state dependency projection is invalid.' );
 	}
 
+    /**
+     * Exact-actor mutation gate at commit time. The global Production gate
+     * remains disabled for MCP/NHI by default. A locally authenticated WP
+     * admin is checked by Policy::can_mutate(), which verifies a real login
+     * session or explicit WP-CLI --user, site enrollment, caps and kill switch.
+     * A remote bearer impersonating the same WP user must never pass here.
+     */
+    private static function actor_mutation_gate_status() {
+        $gate = class_exists( 'MAD4B_SCP_Policy' )
+            ? MAD4B_SCP_Policy::mutation_gate_status()
+            : array( 'effective' => false, 'source' => 'unavailable' );
+        $native_production = 'production' === ( $gate['environment'] ?? '' )
+            && empty( $gate['effective'] )
+            && class_exists( 'MAD4B_SCP_Policy' )
+            && MAD4B_SCP_Policy::can_mutate();
+        if ( $native_production ) {
+            $gate['effective'] = true;
+            $gate['source'] = 'verified_native_wordpress_production';
+            $gate['native_wordpress_principal_only'] = true;
+        }
+        return $gate;
+    }
+
 	private static function kill_switch_material( $ability, $provider, array $claim, $input ) {
-		$gate = class_exists( 'MAD4B_SCP_Policy' ) && method_exists( 'MAD4B_SCP_Policy', 'mutation_gate_status' )
-			? MAD4B_SCP_Policy::mutation_gate_status()
-			: array( 'effective' => false, 'source' => 'unavailable' );
+		$gate = self::actor_mutation_gate_status();
 		$default = array(
 			'active' => empty( $gate['effective'] ),
 			'revision' => 'governed-mutation-gate:v2:' . ( empty( $gate['effective'] ) ? 'disabled' : 'enabled' ) . ':' . ( isset( $gate['source'] ) ? sanitize_key( (string) $gate['source'] ) : 'unknown' ),

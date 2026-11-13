@@ -56,7 +56,7 @@ assert "(! empty( $connection['connected'] ) || ! empty( $connection['revocation
 
 
 # Dynamic Google consent and bottleneck controls stay explicit in the runtime contract.
-require(drive, "'include_granted_scopes' => 'true'", "incremental Google OAuth consent")
+require(drive, "'include_granted_scopes' => 'false'", "explicit Google OAuth grant selection, no implicit previous-scope union")
 require(drive, "REFRESH_FAILURE_COOLDOWN_SECONDS", "Google refresh retry cooldown")
 require(drive, "mad4b_google_drive_reconnect_required", "terminal refresh fail-fast")
 require(drive, "network_retry_suppressed", "refresh retry suppression evidence")

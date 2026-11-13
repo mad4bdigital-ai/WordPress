@@ -75,6 +75,16 @@ class MAD4B_SCP_Audit {
 class MAD4B_SCP_Provider_Contracts {
     static function installed_version( $provider ) { return '0.7.0'; }
 }
+// The production planner now requires observed MCP Adapter read interfaces,
+// not an installed-version match alone. Model an independently observed
+// synthetic runtime and prove failure without that evidence below.
+class MAD4B_SCP_Dependency_Manager {
+    public static $observed_read = true;
+    static function adapter_read_runtime_observation() {
+        return array( 'read_runtime_ready' => self::$observed_read,
+            'version_gate' => false, 'evidence' => array( 'test_only' => true ) );
+    }
+}
 class MAD4B_SCP_Self_Update {
     static function cached_status() { return array( 'current' => $GLOBALS['pair']['control_plane'] ); }
     static function native_plan( $input ) {
@@ -123,6 +133,14 @@ foreach ( array( 'version', 'source_commit_sha', 'build_fingerprint', 'package_m
 check( ! $model::transaction_recovery_from_signals( $transaction, $GLOBALS['pair'], false )['eligible'], 'active lease or continuation ignored' );
 $stored = invoke( 'write_transaction', $transaction );
 check( is_array( $stored ), 'initial atomic add failed' );
+// A missing observed read interface MUST block even a recoverable
+// transaction; this fixture cannot mint production or publisher evidence.
+MAD4B_SCP_Dependency_Manager::$observed_read = false;
+$read_unverified = $model::plan( array( 'reason' => 'test missing adapter runtime proof' ) );
+check( ! $read_unverified['eligible']
+    && in_array( 'installed_adapter_runtime_capabilities_unverified',
+        $read_unverified['blockers'], true ), 'unverified Adapter capabilities admitted' );
+MAD4B_SCP_Dependency_Manager::$observed_read = true;
 $plan = $model::plan( array( 'reason' => 'test exact reconciliation' ) );
 check( $plan['eligible'] && 'reconcile_failed_transaction' === $plan['operation'], 'safe stale release set could not plan recovery' );
 // An unknown failure against the *same* release cannot replay a component.

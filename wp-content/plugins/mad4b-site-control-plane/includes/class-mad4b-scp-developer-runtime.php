@@ -447,8 +447,7 @@ final class MAD4B_SCP_Developer_Runtime {
 
 	private static function runtime_gate( $breakglass, $input = array(), $needs_process_backend = true ) {
 		$environment = self::environment();
-		if ( 'production' === $environment ) return new WP_Error( 'mad4b_developer_production_denied', 'Developer execution is never authorized in Production.' );
-		if ( ! in_array( $environment, array( 'staging', 'development', 'local' ), true ) ) return new WP_Error( 'mad4b_developer_environment_denied', 'Developer execution requires an explicit non-Production environment.' );
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile', false ) || empty( MAD4B_SCP_Site_Profile::status()['authority_ready'] ) || ! MAD4B_SCP_Site_Profile::managed_runtime_enabled() || ! MAD4B_SCP_Site_Profile::write_enabled() ) return new WP_Error( 'mad4b_developer_site_authority_required', 'Enrolled, managed, write-enabled site required for Developer execution.' );
 		if ( ! self::developer_flag_enabled() ) return new WP_Error( 'mad4b_developer_disabled', 'Developer Plane is disabled.' );
 		if ( ! self::direct_execution_enabled() ) return new WP_Error( 'mad4b_developer_direct_execution_disabled', 'Direct developer execution backend is disabled.' );
 		if ( $needs_process_backend ) {
@@ -481,8 +480,7 @@ final class MAD4B_SCP_Developer_Runtime {
 
 	public static function breakglass_flag_enabled() {
 		if ( self::kill_switch_enabled() || ! self::developer_flag_enabled() ) return false;
-		$environment = self::environment();
-		if ( ! in_array( $environment, array( 'staging', 'development', 'local' ), true ) ) return false;
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile', false ) || empty( MAD4B_SCP_Site_Profile::status()['authority_ready'] ) || ! MAD4B_SCP_Site_Profile::managed_runtime_enabled() || ! MAD4B_SCP_Site_Profile::write_enabled() ) return false;
 		return defined( 'MAD4B_MCP_DEVELOPER_BREAKGLASS_ENABLED' )
 			? true === constant( 'MAD4B_MCP_DEVELOPER_BREAKGLASS_ENABLED' )
 			: '1' === (string) get_option( 'mad4b_scp_developer_breakglass_enabled', '0' );
@@ -865,8 +863,7 @@ final class MAD4B_SCP_Developer_Runtime {
 	 */
 	public static function lint_workspace_php_file( $absolute_file, $workspace_root ) {
 		$environment = self::environment();
-		if ( 'production' === $environment ) return new WP_Error( 'mad4b_developer_workspace_lint_production_denied', 'Workspace lint is never authorized in Production.' );
-		if ( ! in_array( $environment, array( 'staging', 'development', 'local' ), true ) ) return new WP_Error( 'mad4b_developer_workspace_lint_environment_denied', 'Workspace lint requires an explicit non-Production environment.' );
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile', false ) || empty( MAD4B_SCP_Site_Profile::status()['authority_ready'] ) || ! MAD4B_SCP_Site_Profile::managed_runtime_enabled() || ! MAD4B_SCP_Site_Profile::write_enabled() ) return new WP_Error( 'mad4b_developer_workspace_lint_site_authority_required', 'Workspace lint requires an enrolled, managed, write-enabled site.' );
 		if ( ! self::developer_flag_enabled() || ! self::direct_execution_enabled() || self::kill_switch_enabled() ) return new WP_Error( 'mad4b_developer_workspace_lint_runtime_not_ready', 'Developer runtime is not ready for workspace lint.' );
 		if ( ! function_exists( 'proc_open' ) ) return new WP_Error( 'mad4b_developer_proc_open_unavailable', 'proc_open is unavailable on this runtime.' );
 		if ( '' === self::prlimit_binary() ) return new WP_Error( 'mad4b_developer_resource_limiter_unavailable', 'Workspace lint requires the Developer resource limiter.' );

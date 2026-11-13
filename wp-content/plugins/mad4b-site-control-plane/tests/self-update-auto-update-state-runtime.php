@@ -8,6 +8,7 @@ $GLOBALS['mad4b_auto_transient'] = (object) array();
 $GLOBALS['mad4b_auto_forced'] = null;
 $GLOBALS['mad4b_effective_environment'] = 'staging';
 $GLOBALS['mad4b_profile_write_allowed'] = true;
+$GLOBALS['mad4b_profile_verified'] = true;
 
 function sanitize_key( $key ) {
 	$key = strtolower( (string) $key );
@@ -38,6 +39,16 @@ function apply_filters( $hook, $value ) {
 	return $value;
 }
 final class MAD4B_SCP_Site_Profile {
+    public static function status() {
+        return array(
+            'authority_ready' => (bool) $GLOBALS['mad4b_profile_verified'],
+            'site_uuid' => 'a3a7cc36-db7e-4a14-8456-b41857def05c',
+        );
+    }
+    public static function origin_enrolled() { return (bool) $GLOBALS['mad4b_profile_verified']; }
+    public static function site_urls_match_enrollment() { return (bool) $GLOBALS['mad4b_profile_verified']; }
+    public static function managed_runtime_enabled() { return (bool) $GLOBALS['mad4b_profile_verified']; }
+    public static function write_enabled() { return (bool) $GLOBALS['mad4b_profile_write_allowed']; }
 	public static function environment_resolution() {
 		return array(
 			'contract' => 'mad4b.site-profile-environment-resolution.v1',
@@ -115,12 +126,25 @@ if ( true !== $environment_allowed->invoke( null, true ) ) {
 	fwrite( STDERR, "exact Staging write profile did not enable governed remote self-update\n" );
 	exit( 6 );
 }
+// The read/planning lane is permitted on an enrolled Production runtime;
+// actual remote mutation remains denied without current write authority.
 $GLOBALS['mad4b_effective_environment'] = 'production';
 $GLOBALS['mad4b_profile_write_allowed'] = false;
-if ( false !== $environment_allowed->invoke( null, false ) ) {
-	fwrite( STDERR, "Production native self-update bypassed explicit production gate\n" );
-	exit( 7 );
+if ( true !== $environment_allowed->invoke( null, false )
+    || false !== $environment_allowed->invoke( null, true ) ) {
+    fwrite( STDERR, "Production read versus write boundary is not enforced\n" );
+    exit( 7 );
 }
+// An unenrolled origin/runtime must fail closed for both read and write,
+// independent of the WordPress environment label or a mutable hostname.
+$GLOBALS['mad4b_profile_verified'] = false;
+$GLOBALS['mad4b_profile_write_allowed'] = true;
+if ( false !== $environment_allowed->invoke( null, false )
+    || false !== $environment_allowed->invoke( null, true ) ) {
+    fwrite( STDERR, "Unverified Site Profile gained release admission\n" );
+    exit( 12 );
+}
+$GLOBALS['mad4b_profile_verified'] = true;
 
 
 /** Check/read UI remains visible to a site admin who cannot install plugins. */

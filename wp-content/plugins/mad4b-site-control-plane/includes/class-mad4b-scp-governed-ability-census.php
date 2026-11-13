@@ -75,6 +75,14 @@ final class MAD4B_SCP_Governed_Ability_Census {
         }
     }
 
+    /** Read-only diagnostics for exact first-party callbacks; no raw code. */
+    private static function callback_probe( $callback ) {
+        $identity = self::callback_identity( $callback );
+        return array( 'kind' => '' !== $identity ? 'verified_first_party' : 'unavailable',
+            'callback_identity_sha256' => '' !== $identity ? hash( 'sha256', $identity ) : '',
+            'authorizing' => false );
+    }
+
     private static function callback_is_ours( $callback ) {
         return '' !== self::callback_identity( $callback );
     }
@@ -162,10 +170,27 @@ final class MAD4B_SCP_Governed_Ability_Census {
                 || false !== ( $annotations['readonly'] ?? null )
                 || ! method_exists( $ability, 'execute' )
                 || ! method_exists( $ability, 'get_input_schema' ) ) continue;
+            $policy_governed = 'registered_write_policy_v1' === ( $mcp['governed_operation_policy'] ?? '' )
+                && 'policy_governed' === ( $mcp['production_mutation_allowed'] ?? null )
+                && 'policy_governed' === ( $mcp['production_allowed'] ?? null )
+                && 'registered_operation_policy_v1' === ( $mcp['broker_dispatch_policy'] ?? '' )
+                && true === ( $mcp['owner_intent_only'] ?? null );
+            if ( $policy_governed ) {
+                if ( ! class_exists( 'MAD4B_SCP_Operation_Registry' )
+                    || ! method_exists( 'MAD4B_SCP_Operation_Registry', 'registered_write_policy' ) ) continue;
+                $registered = MAD4B_SCP_Operation_Registry::registered_write_policy( $name );
+                if ( is_wp_error( $registered ) || ! is_array( $registered ) ) continue;
+            }
             if ( 'staging' === $mode || 'projection' === $mode ) {
-                if ( false !== ( $mcp['production_mutation_allowed'] ?? null )
-                    || true === ( $mcp['production_allowed'] ?? false )
+                if ( ! $policy_governed && ( false !== ( $mcp['production_mutation_allowed'] ?? null )
+                    || true === ( $mcp['production_allowed'] ?? false ) )
                     || true === ( $mcp['direct_only_excluded_from_staging_broker'] ?? false ) ) continue;
+                // Preserve legacy Staging-only admission until each original
+                // operation is explicitly enrolled with a certified Registry
+                // policy; do not infer authorization from global environment
+                // flags or an unrelated registered operation.
+                if ( 'staging' === $mode && ! $policy_governed
+                    && 'staging' !== MAD4B_SCP_Site_Profile::current_environment() ) continue;
                 // Structural MCP presentation can include reviewed direct
                 // step-ups. The generic Enrollment broker requires independent,
                 // explicit first-party owner-review opt-in. No metadata-only
@@ -201,7 +226,8 @@ final class MAD4B_SCP_Governed_Ability_Census {
                 'callback_pair_digest' => $callback_digest,
                 'source' => 'verified_first_party_php_callbacks',
                 'authority_effect' => 'none',
-                'execution_lane' => 'staging' === $mode ? 'staging_enrollment' : ( 'projection' === $mode ? 'structural_projection' : 'direct_only' ),
+                'execution_lane' => 'staging' === $mode ? ( $policy_governed ? 'registered_governed_enrollment' : 'staging_enrollment' ) : ( 'projection' === $mode ? 'structural_projection' : 'direct_only' ),
+                'policy_governed' => $policy_governed,
             );
         }
         ksort( $result, SORT_STRING );
@@ -211,6 +237,15 @@ final class MAD4B_SCP_Governed_Ability_Census {
     public static function reviewed_broker_policy( $name, array $mcp ) {
         $policy = (string) ( $mcp['broker_dispatch_policy'] ?? '' );
         if ( 'owner_attestation_v1' === $policy ) return true === ( $mcp['owner_intent_only'] ?? null );
+        if ( 'registered_operation_policy_v1' === $policy ) {
+            if ( true !== ( $mcp['owner_intent_only'] ?? null )
+                || 'registered_write_policy_v1' !== ( $mcp['governed_operation_policy'] ?? null )
+                || 'policy_governed' !== ( $mcp['production_mutation_allowed'] ?? null )
+                || 'policy_governed' !== ( $mcp['production_allowed'] ?? null )
+                || ! class_exists( 'MAD4B_SCP_Operation_Registry' ) ) return false;
+            $row = MAD4B_SCP_Operation_Registry::registered_write_policy( $name );
+            return is_array( $row ) && ! is_wp_error( $row );
+        }
         // Exact first-party runtime maintenance only. Callback provenance,
         // target permission, enrolled subject, OAuth and plan still revalidate.
         return 'exact_runtime_release_set_v1' === $policy
@@ -224,7 +259,6 @@ final class MAD4B_SCP_Governed_Ability_Census {
     public static function eligible() {
         if ( ! class_exists( 'MAD4B_SCP_Site_Profile' )
             || ! MAD4B_SCP_Site_Profile::configured()
-            || 'staging' !== (string) MAD4B_SCP_Site_Profile::current_environment()
             || ! MAD4B_SCP_Site_Profile::origin_enrolled()
             || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) return array();
         return self::scan( 'staging' );

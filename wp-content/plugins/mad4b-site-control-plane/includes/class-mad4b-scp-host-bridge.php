@@ -50,6 +50,7 @@ final class MAD4B_SCP_Host_Bridge {
 		self::register( 'mad4b/host-operation-repair-plan', 'Plan Host Operation Repair', 'repair_plan', true );
 		self::register( 'mad4b/host-operation-requeue', 'Requeue Host Operation', 'requeue', false );
 		self::register( 'mad4b/host-operation-receipt', 'Read Host Operation Receipt', 'receipt', true );
+		self::register( 'mad4b/host-node-inventory-verification', 'Verify Signed Host Node Inventory', 'node_inventory_verification', true );
 		self::register( 'mad4b/host-environment-sync-verification', 'Verify Fresh Host Environment Synchronization', 'environment_sync_verification', true );
 		self::register( 'mad4b/host-doctor', 'Host Runner Doctor', 'doctor', true );
 		self::register( 'mad4b/host-identity-migration-plan', 'Dynamic Host Identity Migration Readiness', 'host_identity_migration_plan', true );
@@ -458,6 +459,117 @@ final class MAD4B_SCP_Host_Bridge {
 	 * File readback alone is not evidence of a working Staging bootstrap.
 	 * Never returns wp-config contents, binding secret or Host credentials.
 	 */
+    /**
+     * PERMANENT ORIGINAL HOST NODE INVENTORY TRUST BOUNDARY:
+     * Never accept a spool file, Option flag, or SHA as proof of a Host
+     * membership. Reconstruct the exact read-only payload and verify it
+     * with the ALREADY ENROLLED Host Ed25519 public key.
+     * A signed local node is NOT an attestation of whole-company topology.
+     */
+    public static function node_inventory_verification( $input ) {
+        if ( ! is_array( $input ) || array_keys( $input ) !== array( 'job_id' ) )
+            return new WP_Error( 'mad4b_host_node_exact_job_required' );
+        $read = self::receipt( $input );
+        if ( is_wp_error( $read ) ) return $read;
+        $row = $read['receipt'] ?? null;
+        $result = is_array( $row['result'] ?? null ) ? $row['result'] : array();
+        $seal = is_array( $row['host_node_inventory_attestation'] ?? null )
+            ? $row['host_node_inventory_attestation'] : array();
+        $target = self::target_identity();
+        if ( is_wp_error( $target ) ) return $target;
+        $job_id = self::job_id_from_input( $input );
+        if ( is_wp_error( $job_id ) ) return $job_id;
+        if ( ! is_array( $row ) || ( $row['contract'] ?? '' ) !== 'mad4b.tool-execution-receipt.v1'
+            || ( $row['job_id'] ?? '' ) !== $job_id
+            || ( $row['operation_id'] ?? '' ) !== 'host.node-inventory.read'
+            || ( $row['site_uuid'] ?? '' ) !== $target['site_uuid']
+            || ( $row['environment'] ?? '' ) !== $target['environment']
+            // PERMANENT CROSS-MOUNT NODE RECEIPT CONTRACT:
+            // VPS and Docker have different physical WordPress root paths.
+            // The original Host signer and shared Site Binding, not the
+            // raw physical path, establish this READ-ONLY node observation.
+            || ( $row['target_fingerprint'] ?? '' ) !== ( $result['target_fingerprint'] ?? '' )
+            || ( $row['mutation_performed'] ?? true ) !== false
+            || ( $row['readback_verdict'] ?? '' ) !== 'PASS'
+            || ( $result['contract'] ?? '' ) !== 'mad4b.host-node-inventory-observation.v1'
+            || ( $result['operation_id'] ?? '' ) !== 'host.node-inventory.read'
+            || ( $result['site_uuid'] ?? '' ) !== $target['site_uuid']
+            || ( $result['environment'] ?? '' ) !== $target['environment']
+            || ( $result['wp_config_sha256'] ?? '' ) !== $target['wp_config_sha256']
+            || ( $result['site_binding_sha256'] ?? '' ) !== self::digest( array(
+                'site_uuid' => $target['site_uuid'],
+                'environment' => $target['environment'],
+                'wp_config_sha256' => $target['wp_config_sha256'],
+            ) )
+            || ( $result['runner_profile_id'] ?? '' ) !== ( $row['profile_id'] ?? '' )
+            || ( $result['runner_source_sha256'] ?? '' ) !== ( $row['runner_source_sha256'] ?? '' )
+            || ( $result['executor_fingerprint'] ?? '' ) !== ( $row['executor_fingerprint'] ?? '' )
+            || ( $result['read_only'] ?? false ) !== true
+            || ( $result['mutation_performed'] ?? true ) !== false
+            || ( $result['entire_fleet_certified'] ?? true ) !== false
+            || ( $result['company_topology_certified'] ?? true ) !== false )
+            return new WP_Error( 'mad4b_host_node_receipt_scope_untrusted' );
+        $completed = strtotime( (string) ( $row['completed_at'] ?? '' ) );
+        if ( false === $completed || $completed > time() + 30 || $completed < time() - 900 )
+            return new WP_Error( 'mad4b_host_node_receipt_stale' );
+        $public_b64 = defined( 'MAD4B_SCP_HOST_ENVIRONMENT_RECEIPT_PUBLIC_KEY_B64' )
+            ? (string) MAD4B_SCP_HOST_ENVIRONMENT_RECEIPT_PUBLIC_KEY_B64 : '';
+        $public = base64_decode( $public_b64, true );
+        $signature = base64_decode( (string) ( $seal['signature_b64'] ?? '' ), true );
+        if ( ! function_exists( 'sodium_crypto_sign_verify_detached' )
+            || ! is_string( $public ) || strlen( $public ) !== SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES
+            || ! is_string( $signature ) || strlen( $signature ) !== SODIUM_CRYPTO_SIGN_BYTES
+            || ( $seal['contract'] ?? '' ) !== 'mad4b.host-node-inventory-ed25519-attestation.v1'
+            || ( $seal['payload_contract'] ?? '' ) !== 'mad4b.host-node-inventory-signed-payload.v1'
+            || ( $seal['algorithm'] ?? '' ) !== 'Ed25519'
+            || ! hash_equals( hash( 'sha256', $public ), (string) ( $seal['pinned_public_key_sha256'] ?? '' ) ) )
+            return new WP_Error( 'mad4b_host_node_signed_receipt_unavailable' );
+        $result_json = wp_json_encode( self::canonicalize( $result ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+        if ( ! is_string( $result_json ) )
+            return new WP_Error( 'mad4b_host_node_result_invalid' );
+        $payload = array(
+            'contract' => 'mad4b.host-node-inventory-signed-payload.v1',
+            'job_id' => $row['job_id'],
+            'profile_id' => $row['profile_id'],
+            'site_uuid' => $row['site_uuid'],
+            'environment' => $row['environment'],
+            'operation_id' => $row['operation_id'],
+            'target_fingerprint' => $row['target_fingerprint'],
+            'runner_source_sha256' => $row['runner_source_sha256'],
+            'executor_fingerprint' => $row['executor_fingerprint'],
+            'plan_sha256' => $row['plan_sha256'],
+            'completed_at' => $row['completed_at'],
+            'readback_verdict' => $row['readback_verdict'],
+            'mutation_performed' => $row['mutation_performed'],
+            'result_sha256' => hash( 'sha256', $result_json ),
+        );
+        $encoded = wp_json_encode( self::canonicalize( $payload ),
+            JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+        if ( ! is_string( $encoded ) || ! sodium_crypto_sign_verify_detached( $signature, $encoded, $public ) )
+            return new WP_Error( 'mad4b_host_node_independent_signature_invalid' );
+        $node_id = (string) ( $result['node_id'] ?? '' );
+        $enrolled = 1 === preg_match( '/^[A-Za-z0-9._:-]{1,128}$/D', $node_id )
+            && ( $result['node_id_enrolled'] ?? false ) === true;
+        return array(
+            'contract' => 'mad4b.host-node-inventory-signed-readback.v1',
+            'job_id' => $job_id,
+            'signature_verified' => true,
+            'local_node_enrolled' => $enrolled,
+            'node_id' => $enrolled ? $node_id : null,
+            'runner_profile_id' => (string) $row['profile_id'],
+            'site_uuid' => (string) $row['site_uuid'],
+            'environment' => (string) $row['environment'],
+            'target_fingerprint' => (string) $row['target_fingerprint'],
+            'site_binding_sha256' => (string) $result['site_binding_sha256'],
+            'site_binding_independent_of_container_mount' => true,
+            'local_node_proof' => $enrolled ? 'SIGNED_LOCAL_NODE_OBSERVED' : 'SIGNED_UNENROLLED_NODE',
+            'company_topology_verified' => false,
+            'cluster_verified' => false,
+            'write_authority_issued' => false,
+            'mutation_performed' => false,
+        );
+    }
+
 	public static function environment_sync_verification( $input ) {
 		if ( ! is_array( $input ) || array_diff( array_keys( $input ), array( 'job_id' ) ) )
 			return new WP_Error( 'mad4b_host_environment_verification_input_invalid', 'Only an exact Host job ID may be inspected.' );

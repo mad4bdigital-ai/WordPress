@@ -8,8 +8,10 @@ fleet=(root/'includes/class-mad4b-scp-provider-closure-matrix.php').read_text(en
 assert "adapter_read_runtime_ready(" in dep
 assert "adapter_read_runtime_observation()" in dep
 assert "'read_ready' => $read_ready" in dep
-assert "'write_certification_ready' => empty( $hard_blockers )" in dep
-assert "'mcp_adapter_version_drift'" in dep
+assert "'write_certification_ready' => $write_certification_ready" in dep
+assert "$write_certification_ready = empty( $hard_blockers ) && empty( $adapter_certification_blockers );" in dep
+assert "'mcp_adapter_identity_unverified'" in dep
+assert "installed_adapter_version_gate" not in dep
 assert "installed_mcp_adapter_integrity" in dep
 assert "runtime_from_official_plugin" in dep
 assert "read_continuity_status(" in provider

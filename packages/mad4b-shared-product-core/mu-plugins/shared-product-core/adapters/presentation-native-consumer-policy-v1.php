@@ -6,16 +6,32 @@
  * names or a hard-coded list of filter IDs. Does not change saved widgets.
  */
 defined('ABSPATH') || exit;
-if (wp_get_environment_type() !== 'local') return;
+if ((!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || !MAD4B_COMMERCE_RUNTIME_ENABLED)
+    && (!defined('MAD4B_PRESENTATION_RUNTIME_ENABLED') || !MAD4B_PRESENTATION_RUNTIME_ENABLED)) return;
 
-function shared_presentation_native_consumers_v1(): array {
-    static $building=false;
-    if($building)return [];
-    $cached=get_transient('shared_presentation_native_consumers_v1');
-    if(is_array($cached)&&($cached['version']??null)===1)return $cached['filters'];
-
-    $building=true;
+/**
+ * Persistent site-local ID index for published Elementor JetSmartFilters consumers.
+ *
+ * The legacy _elementor_data LIKE scan is a one-time, bounded bootstrap only.
+ * Each subsequent Elementor save/status change updates one ID, and each cache
+ * miss consumes the small indexed set rather than scanning serialized JSON.
+ *
+ * The index contains post IDs, NOT filter rights. Binding ownership and
+ * postmeta/provider checks remain live in shared_presentation_native_consumers_v1().
+ */
+function shared_presentation_native_consumer_index_v2(): ?array {
+    $stored=get_option('shared_presentation_native_consumer_ids_v2',null);
+    if(is_array($stored) && ($stored['version']??null)===2 &&
+       isset($stored['ids']) && is_array($stored['ids'])){
+        $ids=array_values(array_unique(array_filter(
+            array_map('absint',$stored['ids']),static fn($id)=>$id>0
+        )));
+        sort($ids,SORT_NUMERIC);
+        return $ids;
+    }
     global $wpdb;
+    // Cold bootstrap for existing templates, once per site, preserving the
+    // exact source match and the 1001-document safety bound.
     $rows=$wpdb->get_col($wpdb->prepare(
        "SELECT p.ID FROM {$wpdb->posts} p JOIN {$wpdb->postmeta} pm
         ON pm.post_id=p.ID AND pm.meta_key='_elementor_data'
@@ -23,15 +39,104 @@ function shared_presentation_native_consumers_v1(): array {
         AND pm.meta_value LIKE %s ORDER BY p.ID ASC LIMIT 1001",
         '%'.$wpdb->esc_like('jet-smart-filters-').'%'
     ));
+    if(!is_array($rows)||$wpdb->last_error!==''||count($rows)>1000)return null;
+    $ids=array_values(array_unique(array_map('absint',$rows)));
+    sort($ids,SORT_NUMERIC);
+    // Autoload off: never impose a site-wide per-request option load.
+    update_option('shared_presentation_native_consumer_ids_v2',
+        ['version'=>2,'ids'=>$ids],false);
+    return $ids;
+}
+
+function shared_presentation_native_consumer_index_refresh_v2(int $postId,bool $deleted=false):void {
+    if($postId<=0)return;
+    $stored=get_option('shared_presentation_native_consumer_ids_v2',null);
+    if(!is_array($stored)||($stored['version']??null)!==2 ||
+       !isset($stored['ids'])||!is_array($stored['ids']))return;
+    $ids=array_fill_keys(array_map('absint',$stored['ids']),true);
+    unset($ids[0]);
+    $eligible=!$deleted
+        && in_array(get_post_type($postId),['elementor_library','page'],true)
+        && get_post_status($postId)==='publish';
+    if($eligible){
+        $data=get_post_meta($postId,'_elementor_data',true);
+        $eligible=is_string($data)&&str_contains($data,'jet-smart-filters-');
+    }
+    if($eligible)$ids[$postId]=true;
+    else unset($ids[$postId]);
+    $next=array_map('intval',array_keys($ids));
+    sort($next,SORT_NUMERIC);
+    $previous=array_values(array_unique(array_map('absint',$stored['ids'])));
+    sort($previous,SORT_NUMERIC);
+    if($next!==$previous)update_option('shared_presentation_native_consumer_ids_v2',
+        ['version'=>2,'ids'=>$next],false);
+}
+
+// Save-time updates are intentionally separated from the runtime read path.
+// All changes also invalidate the existing compiled binding transient.
+add_action('save_post',static function($postId){
+    shared_presentation_native_consumer_index_refresh_v2((int)$postId);
+},40,1);
+add_action('transition_post_status',static function($new,$old,$post){
+    if(!is_object($post)||!in_array($post->post_type,['elementor_library','page'],true))return;
+    if($new!==$old){
+        shared_presentation_native_consumer_index_refresh_v2((int)$post->ID);
+        shared_presentation_native_consumer_invalidate_v1((int)$post->ID);
+    }
+},40,3);
+add_action('before_delete_post',static function($postId){
+    shared_presentation_native_consumer_index_refresh_v2((int)$postId,true);
+    shared_presentation_native_consumer_invalidate_v1((int)$postId);
+},40,1);
+foreach(['added_post_meta','updated_post_meta','deleted_post_meta'] as $hook){
+    add_action($hook,static function($metaId,$postId,$key){
+        if($key==='_elementor_data')
+            shared_presentation_native_consumer_index_refresh_v2((int)$postId);
+    },40,3);
+}
+
+function shared_presentation_native_consumers_v1(): array {
+    static $building=false;
+    if($building)return [];
+    $cached=get_transient('shared_presentation_native_consumers_v1');
+    if(is_array($cached)&&($cached['version']??null)===2)return $cached['filters'];
+
+    $building=true;
+    global $wpdb;
+    $rows=shared_presentation_native_consumer_index_v2();
     if(!is_array($rows)||count($rows)>1000){$building=false;return [];}
+    // A stale or tampered ID index never authorizes unpublished templates.
+    // One posts-primary-key lookup is indexed; no JSON LIKE and no N+1 status queries.
+    if($rows){
+        $ids=array_values(array_filter(array_map('absint',$rows)));
+        $placeholders=implode(',',array_fill(0,count($ids),'%d'));
+        $rows=$wpdb->get_col($wpdb->prepare(
+            "SELECT ID FROM {$wpdb->posts} WHERE ID IN ($placeholders)
+             AND post_status='publish'
+             AND post_type IN ('elementor_library','page') ORDER BY ID ASC",
+            ...$ids
+        ));
+        if(!is_array($rows)||$wpdb->last_error!==''){$building=false;return [];}
+    }
     $providers=[];
     if(class_exists('\Jet_Engine\Query_Builder\Manager')){
         $manager=\Jet_Engine\Query_Builder\Manager::instance();
         foreach((array)($manager->queries??[]) as $obj) {
-            if(($obj->query_type??'')!=='posts')continue;
             $slug=(string)($obj->query_id??'');
-            $types=array_values(array_filter((array)($obj->query['post_type']??[]),'is_string'));
-            if($slug&&count($types)===1)$providers[$slug]=$types[0];
+            $kind=(string)($obj->query_type??'');
+            if(!$slug)continue;
+            if($kind==='posts'){
+                $types=array_values(array_filter((array)($obj->query['post_type']??[]),'is_string'));
+                if(count($types)===1) $providers[$slug]=[
+                    'post_type'=>$types[0],'query_type'=>'posts','taxonomies'=>[]
+                ];
+            }elseif($kind==='terms'){
+                $tax=array_values(array_filter((array)($obj->query['taxonomy']??[]),
+                    static fn($name)=>is_string($name)&&taxonomy_exists($name)));
+                if($tax) $providers[$slug]=[
+                    'post_type'=>'','query_type'=>'terms','taxonomies'=>$tax
+                ];
+            }
         }
     }
     // WordPress native blog archive Query #76 has a separate signed provider
@@ -41,7 +146,9 @@ function shared_presentation_native_consumers_v1(): array {
             $p=shared_presentation_provider_v2($slot);
             if($p && preg_match('~^jet-engine/([a-z0-9_-]+)$~',$p['provider'],$m)){
                 $type=(string)($p['entity_type']??'');
-                if($type)$providers[$m[1]]=$type;
+                if($type)$providers[$m[1]]=[
+                    'post_type'=>$type,'query_type'=>'posts','taxonomies'=>[]
+                ];
             }
         }
     }
@@ -61,14 +168,19 @@ function shared_presentation_native_consumers_v1(): array {
                 ||get_post_status($id)!=='publish')continue;
               $tax=(string)get_post_meta($id,'_source_taxonomy',true);
               if(!taxonomy_exists($tax)||get_post_meta($id,'_data_source',true)!=='taxonomies')continue;
-              $type=(string)($providers[$slug]??'');
-              // Owner cannot be guessed from similarly named query variables.
-              // Unresolved widgets are recorded but not granted policy rights.
+              $provider=$providers[$slug]??[
+                  'post_type'=>'','query_type'=>'unresolved','taxonomies'=>[]
+              ];
+              $type=(string)($provider['post_type']??'');
+              // Term query metadata proves only its taxonomy, never a Tour ID.
+              // Tour context is verified independently at render time.
+              if(($provider['query_type']??'')==='terms'
+                  && !in_array($tax,(array)($provider['taxonomies']??[]),true))continue;
               if($type&& !in_array($type,(array)get_taxonomy($tax)->object_type,true))continue;
               $bindings[$id]['taxonomy']=$tax;
               $bindings[$id]['source']='taxonomies';
               $bindings[$id]['filter_type']=(string)get_post_meta($id,'_filter_type',true);
-              $bindings[$id]['providers'][$slug]=['post_type'=>$type];
+              $bindings[$id]['providers'][$slug]=$provider;
               $bindings[$id]['template_ids'][$templateId]=true;
             }
         }
@@ -85,7 +197,7 @@ function shared_presentation_native_consumers_v1(): array {
     }
     unset($b);
     ksort($bindings,SORT_NUMERIC);
-    set_transient('shared_presentation_native_consumers_v1',['version'=>1,'filters'=>$bindings],5*MINUTE_IN_SECONDS);
+    set_transient('shared_presentation_native_consumers_v1',['version'=>2,'filters'=>$bindings],5*MINUTE_IN_SECONDS);
     $building=false;
     return $bindings;
 }

@@ -1,0 +1,23 @@
+{
+  "contract": "mad4b.dynamic-evidence-schema.v1",
+  "schema_id": "code_release.receipt_reconcile.v1",
+  "success_state": "CENTRAL_RECOVERY_RECEIPT_INDEPENDENTLY_CERTIFIED",
+  "fields": {
+    "result_status": "string",
+    "file_count": "integer",
+    "readback_sha256": "sha256",
+    "source_grant_sha256": "sha256",
+    "host_receipt_sha256": "sha256",
+    "source_reservation_sha256": "sha256",
+    "source_finish_attempt_sha256": "sha256",
+    "recovery_plan_sha256": "sha256",
+    "original_job_id": "string",
+    "original_plan_sha256": "sha256",
+    "original_313_certified": "boolean",
+    "new_recovery_grant_verified": "boolean",
+    "old_grant_reauthorized": "boolean",
+    "current_job_execution_eligible": "boolean",
+    "production_mutation": "boolean",
+    "job_replayed": "boolean"
+  }
+}

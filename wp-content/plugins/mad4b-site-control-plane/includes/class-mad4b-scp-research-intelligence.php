@@ -157,6 +157,13 @@ final class MAD4B_SCP_Research_Intelligence {
 	}
 
 	public static function record_serp( $input ) {
+		// Central SERP evidence policy when Central Hub is enabled, independent of environment. Existing historical artifacts stay immutable.
+		if ( '1' === getenv( 'MAD4B_CENTRAL_HUB_ENABLED' ) ) {
+			if ( ! class_exists( 'MAD4B_SERP_Presentation_Policy' ) )
+				return new WP_Error( 'mad4b_serp_policy_unavailable', 'Central SERP evidence policy is not loaded.' );
+			$policy = MAD4B_SERP_Presentation_Policy::validate_ingest( $input );
+			if ( is_wp_error( $policy ) ) return $policy;
+		}
 		$base = self::provider_observation( $input, 'serp' );
 		if ( is_wp_error( $base ) ) return $base;
 		$records = isset( $input['results'] ) && is_array( $input['results'] ) ? $input['results'] : array();
@@ -172,6 +179,10 @@ final class MAD4B_SCP_Research_Intelligence {
 				'features' => self::canonicalize( isset( $input['features'] ) && is_array( $input['features'] ) ? $input['features'] : array() ),
 			)
 		);
+		if ( isset( $policy ) && is_array( $policy ) ) {
+			$payload['presentation_evidence_class'] = $policy['evidence_class'];
+			$payload['presentation_policy_contract'] = $policy['contract'];
+		}
 		$payload['snapshot_sha256'] = self::digest( $payload );
 		return self::persist_observation( (string) $input['job_id'], 'serp_research', 'SERP_RESEARCH', $payload, 'SERP snapshot observation' );
 	}
@@ -434,5 +445,9 @@ final class MAD4B_SCP_Research_Intelligence {
 		return $value;
 	}
 }
+
+// Catalog classification is an always-on, read-only Research Intelligence policy.
+// Load it through the existing module (not an environment-specific MU plugin).
+require_once __DIR__ . '/class-mad4b-scp-catalog-intent-policy.php';
 
 MAD4B_SCP_Research_Intelligence::boot();

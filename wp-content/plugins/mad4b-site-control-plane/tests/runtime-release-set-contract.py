@@ -23,7 +23,11 @@ handoff = json.loads((CONFIG / "staging-deployment-handoff.json").read_text(enco
 protocol = json.loads((CONFIG / "mcp-protocol-profiles.json").read_text(encoding="utf-8"))
 
 require(policy.get("contract") == "mad4b.runtime-release-policy.v1", "runtime release policy contract mismatch")
-require(policy.get("target_adapter_version") == "0.7.0", "runtime release policy target must be MCP Adapter 0.7.0")
+require(policy.get("installed_adapter_version_gate") is False, "MCP Adapter runtime version must be observational")
+require("target_adapter_version" not in policy and "supported_transition_adapter_versions" not in policy,
+        "runtime policy must not pin a target or allowed versions")
+require(policy.get("adapter_release_target_source") == "certified_runtime_release_set.mcp_adapter",
+        "component update target must be independently certified")
 require(policy.get("update_order") == ["control_plane", "mcp_adapter"], "runtime release update order must cross a reboot boundary")
 require(policy.get("pair_certification_required") is True, "exact pair certification must remain required")
 require(policy.get("exact_provider_profile_required") is True, "exact provider profile must remain required")
@@ -32,15 +36,12 @@ require(policy.get("authority", {}).get("breakglass_required") is False, "Breakg
 
 require(handoff.get("contract") == "mad4b.wordpress-deployment-handoff.v2", "staging deployment handoff contract mismatch")
 handoff_adapter = ((handoff.get("target") or {}).get("mcp_adapter") or {})
-target_adapter_version = str(policy.get("target_adapter_version") or "")
-require(
-    handoff_adapter.get("required_version_source") == "runtime_release_policy.target_adapter_version",
-    "staging deployment handoff must declare runtime release policy as the Adapter version source",
-)
-require(
-    handoff_adapter.get("required_version") == target_adapter_version,
-    "staging deployment handoff Adapter version drifted from runtime release policy",
-)
+require(handoff_adapter.get("version_gate") is False and "required_version" not in handoff_adapter,
+        "deployment must accept capability-compatible installed Adapter")
+require(handoff_adapter.get("compatibility_source") == "dependency_manager.adapter_read_runtime_observation",
+        "Adapter capability evidence source missing")
+require(handoff_adapter.get("exact_release_target_source") == "certified_runtime_release_set.mcp_adapter",
+        "actual Adapter update still requires exact certified artifact")
 
 authority_handoff = ((handoff.get("post_deploy") or {}).get("authority_handoff") or {})
 require(
@@ -274,14 +275,10 @@ adapter_profiles = (profiles.get("providers") or {}).get("mcp_adapter") or {}
 p070 = adapter_profiles.get("0.7.0") or {}
 require(p070.get("version") == "0.7.0", "MCP Adapter 0.7.0 exact profile missing")
 protocol_adapter = protocol.get("certified_adapter") or {}
-require(
-    protocol_adapter.get("version") == policy.get("target_adapter_version"),
-    "MCP protocol catalog Adapter drifted from runtime release policy",
-)
-require(
-    protocol_adapter.get("version_source") == "runtime_release_policy.target_adapter_version",
-    "MCP protocol catalog lacks canonical Adapter version source",
-)
+require(protocol_adapter.get("version_gate") is False,
+        "MCP protocol reference must not become installed Adapter version gate")
+require(protocol_adapter.get("version_source") == "certified_provider_profile_reference",
+        "Protocol revision inventory must use a reviewed provider reference, not runtime release target")
 transport_compat = p070.get("transport_compatibility") or {}
 expected_protocols = list(transport_compat.get("modern_per_request_revisions") or []) + list(
     reversed(transport_compat.get("legacy_session_revisions") or [])

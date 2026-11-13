@@ -19,6 +19,9 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_EVIDENCE = ROOT / "wp-content/plugins/mad4b-site-control-plane/tests/fixtures/pr403-live-runtime-incidents.json"
 ENGINE = ROOT / "tools/mad4b_predictive_dependency_gate.py"
 SOURCE_SHA = re.compile(r"^[a-f0-9]{40}$")
+# The adapter label is observed evidence, not a release gate. Allow future
+# semver/build labels without pinning a particular version or major number.
+ADAPTER_LABEL = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._+\-]{0,95}$")
 FORBIDDEN_EVIDENCE = re.compile(r"(?i)(access[_-]?token|refresh[_-]?token|password|authorization:|cookie:|private[_-]?key)")
 IMPACT_CLASS = {
     "opaque_mcp_read": "mcp_transport",
@@ -108,8 +111,9 @@ def validated_evidence(path: Path) -> dict:
             raise ValueError("owner receipt status must be explicit")
         if site.get("candidate_binding_matches") not in (True, False, None):
             raise ValueError("binding unknown must be null")
-        if site.get("runtime_adapter") != "0.7.0":
-            raise ValueError("runtime adapter cannot be inferred")
+        adapter = site.get("runtime_adapter")
+        if not isinstance(adapter, str) or not ADAPTER_LABEL.fullmatch(adapter):
+            raise ValueError("last-confirmed runtime adapter label must be bounded and explicit")
     return doc
 
 
@@ -314,6 +318,12 @@ def run_php_fault_probes() -> list[dict]:
 
 
 def self_test():
+    # Historical incident snapshots may observe any deployed adapter revision.
+    # No version ceiling, equality pin, or implicit approval is inferred.
+    for valid in ("0.7.0", "0.7.1", "10.43.2031-rc.8", "v2032.1+build"):
+        assert ADAPTER_LABEL.fullmatch(valid)
+    for invalid in ("", "../../unknown", "0.7.0\nprivate_key", "x" * 97):
+        assert ADAPTER_LABEL.fullmatch(invalid) is None
     engine = load_engine()
     fake = {
         "contract": "mad4b.live-staging-incident-snapshot.v1",

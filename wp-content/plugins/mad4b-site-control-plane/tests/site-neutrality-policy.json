@@ -181,9 +181,11 @@
     },
     "config/certified-provider-profiles.json": {
       "hosts": [
-        "github.com"
+        "downloads.wordpress.org",
+        "github.com",
+        "wordpress.org"
       ],
-      "rationale": "Reviewed provider/service/documentation endpoints or reserved examples; never a tenant origin default."
+      "rationale": "Reviewed provider/service/documentation endpoints or reserved examples; never a tenant origin default. Official WordPress provider source and documentation domains; no tenant default."
     },
     "includes/class-mad4b-scp-public-holidays.php": {
       "hosts": [
@@ -224,9 +226,145 @@
         "api.github.com"
       ],
       "rationale": "Immutable public GitHub REST source-reader authority only, not a tenant or site default. This exact hostname pin rejects config drift to unreviewed providers; HTTPS, TLS, DNS and redirect checks remain governed by Egress Policy."
+    },
+    "includes/class-mad4b-scp-context-local-document-normalizer.php": {
+      "hosts": [
+        "schemas.openxmlformats.org"
+      ],
+      "rationale": "OOXML XML namespace identifier; not a tenant or outbound request."
+    },
+    "includes/class-mad4b-scp-core-web-vitals.php": {
+      "hosts": [
+        "www.googleapis.com"
+      ],
+      "rationale": "Google PageSpeed Insights public API endpoint; provider-only, never tenant origin."
+    },
+    "includes/class-mad4b-scp-firecrawl-provider.php": {
+      "hosts": [
+        "api.firecrawl.dev",
+        "firecrawl.mad4b.com"
+      ],
+      "rationale": "Named Firecrawl Cloud/first-party gateway provider endpoints; user-selected mode and configured credentials, not a site default."
+    },
+    "includes/class-mad4b-scp-mcp-adapter-dynamic-integrity.php": {
+      "hosts": [
+        "downloads.wordpress.org"
+      ],
+      "rationale": "Official WordPress extension download authority; not a tenant target."
+    },
+    "includes/class-mad4b-scp-native-search-console.php": {
+      "hosts": [
+        "www.googleapis.com"
+      ],
+      "rationale": "Google Search Console API authority; bounded OAuth provider, not a tenant."
+    },
+    "includes/class-mad4b-scp-provider-setup-coverage.php": {
+      "hosts": [
+        "api.example.com"
+      ],
+      "rationale": "Reserved documentation placeholder URL, not a transport default."
+    },
+    "includes/class-mad4b-scp-unified-provider-routing.php": {
+      "hosts": [
+        "api.firecrawl.dev"
+      ],
+      "rationale": "Registered Firecrawl API endpoint; provider-specific Cloud mode, not a tenant origin."
+    },
+    "includes/class-mad4b-scp-company-domain-cloudflare.php": {
+      "hosts": [
+        "api.cloudflare.com"
+      ],
+      "rationale": "Cloudflare zone-scoped API, with persisted tenant-specific zone and token binding, not a tenant origin default; requests require the provider authorization and bounded /client/v4 path."
     }
   },
   "optional_named_tag_integrations": [
     "includes/integrations/class-mad4b-scp-elementor-bridge-compatibility.php"
-  ]
+  ],
+  "reviewed_business_models": {
+    "includes/adapters/class-mad4b-scp-chatbotx-governed-writes.php": {
+      "models": [
+        "tours-and-activities"
+      ],
+      "rationale": "Reviewed tourism-domain module or optional provider adapter, not a global site-type default. A user still needs the enrolled Site Profile and the exact WordPress/Ability operation permissions."
+    },
+    "includes/adapters/class-mad4b-scp-chatbotx-provider-adapter.php": {
+      "models": [
+        "tours-and-activities"
+      ],
+      "rationale": "Reviewed tourism-domain module or optional provider adapter, not a global site-type default. A user still needs the enrolled Site Profile and the exact WordPress/Ability operation permissions."
+    },
+    "includes/adapters/class-mad4b-scp-chatbotx-write-preflight.php": {
+      "models": [
+        "tours-and-activities"
+      ],
+      "rationale": "Reviewed tourism-domain module or optional provider adapter, not a global site-type default. A user still needs the enrolled Site Profile and the exact WordPress/Ability operation permissions."
+    },
+    "includes/class-mad4b-scp-brand-experience-quality.php": {
+      "models": [
+        "tours-and-activities"
+      ],
+      "rationale": "Reviewed tourism-domain module or optional provider adapter, not a global site-type default. A user still needs the enrolled Site Profile and the exact WordPress/Ability operation permissions."
+    },
+    "includes/class-mad4b-scp-company-operations-policy.php": {
+      "models": [
+        "tours-and-activities"
+      ],
+      "rationale": "Reviewed tourism-domain module or optional provider adapter, not a global site-type default. A user still needs the enrolled Site Profile and the exact WordPress/Ability operation permissions."
+    },
+    "includes/class-mad4b-scp-company-tenant-migration.php": {
+      "models": [
+        "tour_type",
+        "tours-and-activities"
+      ],
+      "rationale": "Reviewed tourism-domain module or optional provider adapter, not a global site-type default. A user still needs the enrolled Site Profile and the exact WordPress/Ability operation permissions."
+    },
+    "includes/class-mad4b-scp-content-readiness-alerts.php": {
+      "models": [
+        "tours-and-activities"
+      ],
+      "rationale": "Reviewed tourism-domain module or optional provider adapter, not a global site-type default. A user still needs the enrolled Site Profile and the exact WordPress/Ability operation permissions."
+    },
+    "includes/class-mad4b-scp-firecrawl-provider.php": {
+      "models": [
+        "tours-and-activities"
+      ],
+      "rationale": "Reviewed tourism-domain module or optional provider adapter, not a global site-type default. A user still needs the enrolled Site Profile and the exact WordPress/Ability operation permissions."
+    },
+    "includes/class-mad4b-scp-frontend-impact-priority.php": {
+      "models": [
+        "tours-and-activities"
+      ],
+      "rationale": "Reviewed tourism-domain module or optional provider adapter, not a global site-type default. A user still needs the enrolled Site Profile and the exact WordPress/Ability operation permissions."
+    },
+    "includes/class-mad4b-scp-provider-field-intelligence.php": {
+      "models": [
+        "tours-and-activities"
+      ],
+      "rationale": "Reviewed tourism-domain module or optional provider adapter, not a global site-type default. A user still needs the enrolled Site Profile and the exact WordPress/Ability operation permissions."
+    },
+    "includes/class-mad4b-scp-research-task-bridge.php": {
+      "models": [
+        "tours-and-activities"
+      ],
+      "rationale": "Reviewed tourism-domain module or optional provider adapter, not a global site-type default. A user still needs the enrolled Site Profile and the exact WordPress/Ability operation permissions."
+    },
+    "includes/class-mad4b-scp-tour-highlights-presentation-v1.php": {
+      "models": [
+        "tours-and-activities"
+      ],
+      "rationale": "Reviewed optional tourism-domain JetEngine/Elementor Tour Highlights consumer, not a global CPT default. The exact Tour post type only confines existing editor-time postmeta proposals and front-end rendering; it grants no new write authority and does not weaken Site Profile, Company Term Eligibility, WPML, signed release or CAS checks. Cross-company custom Tour post types require a separate governed service catalog contract before runtime broadening."
+    },
+    "includes/class-mad4b-scp-tour-highlights-v1.php": {
+      "models": [
+        "tours-and-activities"
+      ],
+      "rationale": "Reviewed optional tourism-domain JetEngine/Elementor Tour Highlights consumer, not a global CPT default. The exact Tour post type only confines existing editor-time postmeta proposals and front-end rendering; it grants no new write authority and does not weaken Site Profile, Company Term Eligibility, WPML, signed release or CAS checks. Cross-company custom Tour post types require a separate governed service catalog contract before runtime broadening."
+    },
+    "includes/class-mad4b-scp-tour-workflow-runtime.php": {
+      "models": [
+        "tours-and-activities"
+      ],
+      "rationale": "Reviewed tourism-domain module or optional provider adapter, not a global site-type default. A user still needs the enrolled Site Profile and the exact WordPress/Ability operation permissions."
+    }
+  }
 }

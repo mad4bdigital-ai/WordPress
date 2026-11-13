@@ -244,7 +244,14 @@ final class MAD4B_SCP_Abilities {
 		if ( in_array( (string) $name, array( 'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute' ), true ) ) {
 			$mcp_meta['surface'] = 'enrollment';
 			$mcp_meta['generic_remote_admin'] = false;
-			$mcp_meta['production_mutation_allowed'] = false;
+            // Discovery/info never mutate. Execution is per-child policy
+            // governed, not unconditional Production authority.
+            $mcp_meta['production_mutation_allowed'] = 'mad4b/enrollment-execute' === $name
+                ? 'policy_governed' : false;
+            if ( 'mad4b/enrollment-execute' === $name ) {
+                $mcp_meta['conditional_enrollment_policy'] = 'per_child_registered_write_policy_v1';
+                $mcp_meta['production_allowed'] = 'policy_governed';
+            }
 		}
 		if ( 'breakglass' === (string) $permission || 'mad4b-breakglass' === (string) $category ) {
 			$mcp_meta['surface'] = 'breakglass';
@@ -393,7 +400,13 @@ final class MAD4B_SCP_Abilities {
 	public function tool_discover( $input ) {
 		$abuse = class_exists( 'MAD4B_SCP_Abuse_Budget' ) ? MAD4B_SCP_Abuse_Budget::admit( 'discovery', is_array($input)?$input:array() ) : new WP_Error( 'mad4b_abuse_budget_unavailable', 'Discovery abuse-budget runtime is unavailable.' );
 		if ( is_wp_error( $abuse ) ) return $abuse;
+		// PERMANENT BEHAVIOR CONTRACT: read discovery is never an authorization
+		// preflight. An optional provider/catalog exception should return a bounded
+		// typed WP_Error instead of an uncaught MCP internal failure.
+		// Do NOT broaden readonly annotations to admit write/admin abilities.
+		try {
 		$query = isset( $input['query'] ) ? strtolower( trim( (string) $input['query'] ) ) : '';
+		$query = substr( $query, 0, 160 );
 		$limit = isset( $input['limit'] ) ? max( 1, min( 100, absint( $input['limit'] ) ) ) : 50;
 		$items = array();
 		$candidates = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::chatgpt_full_catalog_candidates() : array();
@@ -404,6 +417,11 @@ final class MAD4B_SCP_Abilities {
 			$meta = $ability->get_meta();
 			$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
 			if ( ! array_key_exists( 'readonly', $annotations ) || true !== $annotations['readonly'] ) continue;
+			// Discovery must not suggest admin/content-authority abilities as
+			// generic reads merely because their callback is non-mutating.
+			// Original lane enforcement in governed_read_target remains unchanged.
+			$surface = isset( $meta['mcp']['surface'] ) ? sanitize_key( (string) $meta['mcp']['surface'] ) : '';
+			if ( ! in_array( $surface, array( '', 'read' ), true ) ) continue;
 			$label = method_exists( $ability, 'get_label' ) ? (string) $ability->get_label() : '';
 			$description = method_exists( $ability, 'get_description' ) ? (string) $ability->get_description() : '';
 			$category = method_exists( $ability, 'get_category' ) ? (string) $ability->get_category() : '';
@@ -413,8 +431,18 @@ final class MAD4B_SCP_Abilities {
 			if ( count( $items ) >= $limit ) break;
 		}
 		return array( 'contract' => 'mad4b.chatgpt-read-discovery.v1', 'query' => $query, 'items' => $items, 'count' => count( $items ), 'read_only' => true, 'mutation_performed' => false );
+		} catch ( Throwable $error ) {
+			// Log only the exception class, never credentials, query payload,
+			// subject identifiers or stack arguments.
+			error_log( 'MAD4B_READ_DISCOVERY_EXCEPTION class=' . get_class( $error ) );
+			return new WP_Error(
+				'mad4b_read_discovery_catalog_unavailable',
+				'Read ability discovery is temporarily unavailable; the site and already-registered abilities remain independent.',
+				array( 'read_only' => true, 'authorizing' => false, 'retryable' => true,
+					'mutation_performed' => false )
+			);
+		}
 	}
-
 	public function tool_info( $input ) {
 		$ability_name = (string) $input['ability_name'];
 		$ability = $this->governed_read_target( $ability_name );
@@ -729,8 +757,16 @@ final class MAD4B_SCP_Abilities {
 	public function can_write_dispatch( $input = null ) {
 		$request_scope = self::request_scope_admit( 'can_write_dispatch' );
 		if ( is_wp_error( $request_scope ) ) return $request_scope;
-		if ( ! MAD4B_SCP_Policy::can_admin() ) return false;
-		if ( ! MAD4B_SCP_Policy::can_mutate() ) return new WP_Error( 'mad4b_write_dispatch_mutation_disabled', 'Governed mutation authority is not currently ready.' );
+		$delegation_identity = class_exists( 'MAD4B_SCP_Identity_Context' )
+			&& method_exists( 'MAD4B_SCP_Identity_Context', 'current' )
+			? MAD4B_SCP_Identity_Context::current() : null;
+		$delegated = class_exists( 'MAD4B_SCP_Delegation_Mode' )
+			&& is_array( $delegation_identity )
+			&& MAD4B_SCP_Delegation_Mode::DELEGATED
+				=== MAD4B_SCP_Delegation_Mode::mode_for_identity( $delegation_identity );
+		if ( ! $delegated && ! MAD4B_SCP_Policy::can_admin() ) return false;
+		if ( ! $delegated && ! MAD4B_SCP_Policy::can_mutate() )
+			return new WP_Error( 'mad4b_write_dispatch_mutation_disabled', 'Governed mutation authority is not currently ready.' );
 		if ( ! is_array( $input ) || empty( $input['ability_name'] ) || empty( $input['expected_input_schema_sha256'] ) ) return new WP_Error( 'mad4b_write_dispatch_target_required', 'A governed write target and prepared schema identity are required.' );
 		$ability_name = (string) $input['ability_name'];
 		$ability = $this->governed_write_target( $ability_name, true );
@@ -740,6 +776,25 @@ final class MAD4B_SCP_Abilities {
 		$actual = $this->ability_input_schema_sha256( $ability );
 		$expected = strtolower( trim( (string) $input['expected_input_schema_sha256'] ) );
 		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $expected ) || ! hash_equals( strtolower( $actual ), $expected ) ) return new WP_Error( 'mad4b_write_dispatch_schema_drift', 'Requested write ability input schema changed after planning.', array( 'ability_name' => $ability_name, 'current_input_schema_sha256' => $actual ) );
+		if ( $delegated ) {
+			// No owner impersonation, generic admin control or approval issuance:
+			// only a verified signed preparation for a draft content bundle can
+			// enroll an exact WordPress-user-owned execution actor.
+			if ( 'mad4b/content-apply-bundle' !== $ability_name
+				|| ! is_array( $input['input'] ?? null )
+				|| empty( $input['_mad4b_approval_ticket_id'] )
+				|| ! is_string( $input['_mad4b_approval_ticket_id'] ) )
+				return new WP_Error( 'mad4b_delegation_prepared_draft_only', 'Verified delegated write dispatch requires a prepared draft target and exact approval-ticket reference.' );
+			$capability_guard = MAD4B_SCP_Delegation_Mode::authorize_ability(
+				$delegation_identity, $ability_name, $input['input'] );
+			if ( is_wp_error( $capability_guard ) || true !== $capability_guard )
+				return is_wp_error( $capability_guard ) ? $capability_guard
+					: new WP_Error( 'mad4b_delegation_capability_denied', 'WordPress user lacks exact draft permission.' );
+			$actor = MAD4B_SCP_Delegation_Mode::ensure_content_actor( $delegation_identity, true );
+			if ( is_wp_error( $actor ) ) return $actor;
+			if ( ! MAD4B_SCP_Policy::can_mutate() )
+				return new WP_Error( 'mad4b_delegation_runtime_gate_denied', 'Delegated content actor is enrolled but the site write gate is not ready.' );
+		}
 		// Governance metadata is bound only after the signed preparation contract
 		// and exact schema identity have passed current-request revalidation.
 		$captured = $this->capture_write_dispatch_governance_envelope( $input );
@@ -781,20 +836,55 @@ final class MAD4B_SCP_Abilities {
 		$ability = $this->governed_write_target( $ability_name, false );
 		if ( is_wp_error( $ability ) ) return $ability;
 		$schema = method_exists( $ability, 'get_input_schema' ) ? $ability->get_input_schema() : null;
+		$schema_sha256 = $this->ability_input_schema_sha256( $ability );
 		$meta = $ability->get_meta();
-		return array(
+		$eligible = in_array( $ability_name, MAD4B_SCP_Servers::write_tools(), true );
+		$result = array(
 			'contract' => 'mad4b.chatgpt-write-ability-info.v1',
 			'ability_name' => $ability_name,
 			'label' => method_exists( $ability, 'get_label' ) ? (string) $ability->get_label() : '',
 			'description' => method_exists( $ability, 'get_description' ) ? (string) $ability->get_description() : '',
 			'category' => method_exists( $ability, 'get_category' ) ? (string) $ability->get_category() : '',
 			'input_schema' => $schema,
-			'input_schema_sha256' => $this->ability_input_schema_sha256( $ability ),
+			'input_schema_sha256' => $schema_sha256,
 			'annotations' => isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array(),
-			'runtime_eligible' => in_array( $ability_name, MAD4B_SCP_Servers::write_tools(), true ),
+			'runtime_eligible' => $eligible,
 			'read_only' => true,
 			'mutation_performed' => false,
 		);
+		// Preparation is non-authorizing. Write-execute still enforces signed
+		// identity, target permission, one-time approval and anti-replay.
+		if ( ! $eligible ) return $result;
+		if ( ! class_exists( 'MAD4B_SCP_Capability_Descriptor_Registry' )
+			|| ! class_exists( 'MAD4B_SCP_Ability_Catalog_Transport' )
+			|| ! class_exists( 'MAD4B_SCP_Preparation_Receipt' ) ) {
+			return new WP_Error( 'mad4b_write_preparation_runtime_unavailable', 'Governed write preparation is unavailable; execution remains denied.' );
+		}
+		$row = MAD4B_SCP_Capability_Descriptor_Registry::describe( $ability_name );
+		if ( is_wp_error( $row ) ) return $row;
+		if ( empty( $row['execution_eligible'] )
+			|| ! in_array( $row['execution_lane'] ?? '', array( 'write', 'content', 'admin' ), true ) ) {
+			return new WP_Error( 'mad4b_write_preparation_target_denied', 'Target is not eligible for governed write preparation.' );
+		}
+		if ( ! isset( $row['input_schema_sha256'], $row['classification_sha256'] )
+			|| ! hash_equals( (string) $row['input_schema_sha256'], $schema_sha256 ) ) {
+			return new WP_Error( 'mad4b_write_preparation_schema_drift', 'Target schema changed during write preparation.' );
+		}
+		$receipt = MAD4B_SCP_Preparation_Receipt::issue( $row );
+		if ( is_wp_error( $receipt ) ) return $receipt;
+		if ( ! is_string( $receipt ) || '' === $receipt ) {
+			return new WP_Error( 'mad4b_write_preparation_receipt_unavailable', 'Signed preparation evidence is unavailable; execution remains denied.' );
+		}
+		$result['prepared_dispatch'] = array(
+			'expected_input_schema_sha256' => $schema_sha256,
+			'expected_execution_lane' => (string) $row['execution_lane'],
+			'expected_classification_sha256' => (string) $row['classification_sha256'],
+			'expected_authority_scope_sha256' => MAD4B_SCP_Ability_Catalog_Transport::current_authority_scope(),
+			'preparation_receipt' => $receipt,
+		);
+		$result['dispatch_tool'] = 'mad4b/write-execute';
+		$result['preparation_contract'] = MAD4B_SCP_Preparation_Receipt::CONTRACT;
+		return $result;
 	}
 
 	private function governance_envelope_hash( $value ) {
@@ -1000,11 +1090,49 @@ final class MAD4B_SCP_Abilities {
 		);
 	}
 
+	/**
+	 * QA14 non-authorizing transport checkpoints, only for staging Brand
+	 * Append. Never log the document, Context Receipt, signed preparation token,
+	 * OAuth identity or full ticket ID. Nothing in this diagnostic changes
+	 * claims, approval or provider mutation admission, and audit-storage errors
+	 * do not grant any execution privilege.
+	 */
+	private static function observe_brand_append_dispatch( $phase, $input ) {
+		if ( ! is_array( $input )
+			|| 'context/brand-draft-append' !== (string) ( $input['ability_name'] ?? '' )
+			|| ! function_exists( 'wp_get_environment_type' )
+			|| 'staging' !== wp_get_environment_type()
+			|| ! class_exists( 'MAD4B_SCP_Audit' ) ) return false;
+		if ( ! in_array( $phase, array( 'dispatch_entered', 'target_admitted' ), true ) ) return false;
+		$ticket = (string) ( $input['_mad4b_approval_ticket_id'] ?? '' );
+		$nested = isset( $input['input'] ) && is_array( $input['input'] ) ? $input['input'] : array();
+		if ( '' === $ticket ) $ticket = (string) ( $nested['_mad4b_approval_ticket_id'] ?? '' );
+		$logged = MAD4B_SCP_Audit::record(
+			'mad4b/write-append-transport-boundary',
+			array(
+				'contract' => 'mad4b.write-append-transport-boundary.qa14.v1',
+				'phase' => $phase,
+				'target_ability' => 'context/brand-draft-append',
+				'ticket_sha256' => '' !== $ticket ? hash( 'sha256', $ticket ) : '',
+				'schema_pin_present' => ! empty( $input['expected_input_schema_sha256'] ),
+				'signed_context_present' => isset( $input['_mad4b_context_receipt'] ) || isset( $nested['_mad4b_context_receipt'] ),
+				'mutation_performed' => false,
+			),
+			'observed'
+		);
+		return ! is_wp_error( $logged );
+	}
+
 	public function write_execute( $input ) {
 		$abuse = class_exists( 'MAD4B_SCP_Abuse_Budget' ) ? MAD4B_SCP_Abuse_Budget::admit( 'execute', is_array($input)?$input:array() ) : new WP_Error( 'mad4b_abuse_budget_unavailable', 'Execution abuse-budget runtime is unavailable.' );
 		if ( is_wp_error( $abuse ) ) return $abuse;
 		$request_scope = self::request_scope_admit( 'write_execute' );
 		if ( is_wp_error( $request_scope ) ) return $request_scope;
+		// QA14: a narrowly scoped, privacy-safe *entry* checkpoint. If this
+		// event is absent, the append request never reached this validated
+		// WordPress dispatch method (or failed before request-scope admission).
+		// This diagnostic never authorizes or executes the target operation.
+		self::observe_brand_append_dispatch( 'dispatch_entered', $input );
 		$ability_name = (string) $input['ability_name'];
 		$ability = $this->governed_write_target( $ability_name, true );
 		if ( is_wp_error( $ability ) ) return $ability;
@@ -1024,6 +1152,7 @@ final class MAD4B_SCP_Abilities {
 		// Keep the original one-time ticket for a *fresh* plan, never auto-retry.
 		$target_admission = $this->trusted_write_target_admission( $ability_name, $params );
 		if ( is_wp_error( $target_admission ) ) return $target_admission;
+		self::observe_brand_append_dispatch( 'target_admitted', $input );
 		$approval_ticket_id = class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
 			? MAD4B_SCP_Staging_Write_Authority::approval_ticket_from_input( $params )
 			: ( is_array( $params ) && isset( $params['_mad4b_approval_ticket_id'] ) ? strtolower( trim( (string) $params['_mad4b_approval_ticket_id'] ) ) : '' );
@@ -1289,6 +1418,18 @@ final class MAD4B_SCP_Abilities {
 		$allowed = MAD4B_SCP_Enrollment_Dispatch::can_execute( $input );
 		if ( is_wp_error( $allowed ) || ! $allowed ) return $allowed;
 		if ( ! class_exists( 'MAD4B_SCP_Remote_Operation_Parity' ) || ! method_exists( 'MAD4B_SCP_Remote_Operation_Parity', 'can_execute' ) ) return new WP_Error( 'mad4b_enrollment_dispatch_authority_unavailable', 'Remote Operation Parity authority check is unavailable.' );
+        $classification = MAD4B_SCP_Enrollment_Dispatch::registered_policy_classification( $input );
+        if ( is_wp_error( $classification ) || ! is_array( $classification ) ) {
+            return is_wp_error( $classification ) ? $classification : new WP_Error(
+                'mad4b_enrollment_dispatch_policy_classification_invalid',
+                'Current registered operation classification is unavailable.' );
+        }
+        // The governed child has already passed exact Site Profile, OAuth
+        // step-up, Registry and current Governance Policy checks. Do not
+        // reapply the unrelated Staging-only legacy Remote Parity guard.
+        if ( 'registered_governance' === ( $classification['policy_class'] ?? '' ) ) {
+            return true;
+        }
 		$params = is_array( $input ) && array_key_exists( 'input', $input ) ? $input['input'] : null;
 		$parity = MAD4B_SCP_Remote_Operation_Parity::can_execute( $params );
 		if ( is_wp_error( $parity ) || ! $parity ) return $parity;
@@ -1321,7 +1462,7 @@ final class MAD4B_SCP_Abilities {
 			'enrollment',
 			$operation_id,
 			static function () use ( $input ) {
-				return MAD4B_SCP_Enrollment_Dispatch::execute( is_array( $input ) ? $input : array() );
+				return MAD4B_SCP_Enrollment_Dispatch::execute_for_mcp( is_array( $input ) ? $input : array() );
 			}
 		);
 		if ( is_wp_error( $execution ) ) {
@@ -1343,6 +1484,20 @@ final class MAD4B_SCP_Abilities {
 					'automatic_retry_performed' => false,
 					'production_mutation' => false,
 					'mutation_performed' => null,
+				);
+			}
+			if ( in_array( $operation_id, array( 'staging_write_grant_reconciliation', 'staging_write_authority_convergence' ), true ) ) {
+				$known = array( 'mad4b_approved_auto_grants_blocked', 'mad4b_enrollment_dispatch_dispatch_not_started', 'mad4b_enrollment_dispatch_dispatch_target_error', 'mad4b_enrollment_dispatch_dispatch_execution_exception' );
+				$raw = sanitize_key( (string) $execution->get_error_code() );
+				return array(
+					'contract' => 'mad4b.chatgpt-enrollment-mutation-reconciliation.v1',
+					'operation_id' => $operation_id, 'state' => 'reconciliation_required',
+					'dispatch_error_code' => in_array( $raw, $known, true ) ? $raw : 'enrollment_dispatch_rejected_unclassified',
+					'generic_checkpoint_supported' => false, 'authorizing' => false,
+					'grant_changes_not_assumed' => true, 'reconciliation_required' => true,
+					'blind_retry_allowed' => false, 'automatic_retry_performed' => false,
+					'mutation_performed' => null, 'production_mutation' => false,
+					'next_action' => 'read_exact_grant_plan_and_owner_journal_before_retry',
 				);
 			}
 			return $execution;

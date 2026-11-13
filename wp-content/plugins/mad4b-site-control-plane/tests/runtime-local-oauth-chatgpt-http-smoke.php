@@ -72,10 +72,9 @@ foreach ( $preauth_tools as $dto ) {
 	$reviewed_step_up_by_ability[ $ability_name ] = (string) $tool_name;
 	$reviewed_step_up_names[] = (string) $tool_name;
 }
-// The server formally designates reviewed direct step-ups OPTIONAL under
-// the 36-tool budget. Compare against the same deterministic selection as
-// registration: only budget-retained tools must be bound. Missing optional
-// tools must be explicitly excluded by that policy, not silently disappear.
+// Reviewed direct step-ups are independently validated, not dropped by any
+// historical 36/64-tool display estimate. Every valid projected Ability
+// must remain in the dynamic MCP registration.
 $all_requested = MAD4B_SCP_Servers::chatgpt_tools();
 // Use the authoritative server-side optional classification. Reconstructing
 // it without the Direct Profile/management priority can mark a registered
@@ -84,14 +83,53 @@ $optional = MAD4B_SCP_Servers::chatgpt_materialization_optional_tools( $all_requ
 $budget = MAD4B_SCP_MCP_Catalog_Diagnostics::budget_projection( $all_requested, $optional );
 if ( empty( $budget['ready'] ) ) $fail( 'Reviewed direct-step-up catalog budget itself is invalid.', $budget );
 foreach ( $reviewed_step_up_abilities as $ability_name ) {
-    if ( ! in_array( $ability_name, $budget['selected'], true ) ) {
-        if ( ! in_array( $ability_name, $budget['excluded_optional'], true )
-            || ! empty( $reviewed_step_up_by_ability[ $ability_name ] ) )
-            $fail( 'Non-selected direct step-up is not a genuine bounded optional exclusion.', $ability_name );
-        continue;
+    if ( ! in_array( $ability_name, $budget['selected'], true )
+        || ! empty( $budget['excluded_optional'] ) )
+        $fail( 'Dynamic catalog silently excluded a reviewed direct step-up.', $ability_name );
+    if ( empty( $reviewed_step_up_by_ability[ $ability_name ] ) ) {
+        // CI-only bounded readback: expose the loss stage, never the bearer,
+        // raw catalog/metadata, signed proof or a privileged invocation.
+        $all_registrations = MAD4B_SCP_Servers::registration_status();
+        $registration = isset( $all_registrations['mad4b-chatgpt'] )
+            && is_array( $all_registrations['mad4b-chatgpt'] )
+            ? $all_registrations['mad4b-chatgpt'] : array();
+        $preflight = isset( $registration['preflight'] )
+            && is_array( $registration['preflight'] )
+            ? $registration['preflight'] : array();
+        $descriptor = isset( $registration['capability_descriptor_evidence'] )
+            && is_array( $registration['capability_descriptor_evidence'] )
+            ? $registration['capability_descriptor_evidence'] : array();
+        $preflight_codes = array();
+        foreach ( (array) ( $preflight['failures'] ?? array() ) as $failure ) {
+            if ( ! is_array( $failure ) || $ability_name !== ( $failure['failing_ability'] ?? '' ) ) continue;
+            $preflight_codes[] = array(
+                'stage' => sanitize_key( (string) ( $failure['stage'] ?? '' ) ),
+                'error_code' => sanitize_key( (string) ( $failure['error_code'] ?? '' ) ),
+                'validator_reason' => sanitize_key( (string) ( $failure['validator_reason'] ?? '' ) ),
+            );
+            if ( count( $preflight_codes ) >= 2 ) break;
+        }
+        $descriptor_codes = array();
+        foreach ( (array) ( $descriptor['blockers'] ?? array() ) as $blocked ) {
+            $prefix = $ability_name . ':';
+            if ( 0 !== strpos( (string) $blocked, $prefix ) ) continue;
+            $descriptor_codes[] = sanitize_key( substr( (string) $blocked, strlen( $prefix ) ) );
+            if ( count( $descriptor_codes ) >= 2 ) break;
+        }
+        $fail( 'Reviewed direct step-up ability has no bound MCP tool.', array(
+            'ability' => $ability_name,
+            'registered' => function_exists( 'wp_has_ability' ) && wp_has_ability( $ability_name ),
+            'base_candidate' => in_array( $ability_name, MAD4B_SCP_Servers::chatgpt_base_tools(), true ),
+            'requested' => in_array( $ability_name, $all_requested, true ),
+            'budget_selected' => in_array( $ability_name, $budget['selected'], true ),
+            'descriptor_bound' => isset( $descriptor['bindings'][ $ability_name ] ),
+            'descriptor_error_codes' => $descriptor_codes,
+            'preflight_ready' => ! empty( $preflight['ready'] ),
+            'preflight_error_codes' => $preflight_codes,
+            'preflight_blocker' => sanitize_key( (string) ( $preflight['blocker'] ?? '' ) ),
+            'registered_tools_count' => count( $preauth_names ),
+        ) );
     }
-    if ( empty( $reviewed_step_up_by_ability[ $ability_name ] ) )
-        $fail( 'Budget-retained reviewed direct step-up ability has no bound MCP tool.', $ability_name );
 }
 $reviewed_step_up_names = array_values( array_unique( $reviewed_step_up_names ) );
 sort( $reviewed_step_up_names );
@@ -106,8 +144,8 @@ foreach ( array(
 ) as $forbidden_internal ) {
 	if ( in_array( $forbidden_internal, $preauth_names, true ) ) $fail( 'Low-level enrollment primitive leaked into pre-auth direct catalog.', $forbidden_internal );
 }
-if ( count( $preauth_names ) > MAD4B_SCP_MCP_Catalog_Diagnostics::MAX_TOOLS ) {
-	$fail( 'Pre-auth stable catalog exceeded the MCP refresh budget.', array( 'tool_count' => count( $preauth_names ), 'budget' => MAD4B_SCP_MCP_Catalog_Diagnostics::MAX_TOOLS ) );
+if ( empty( $preauth_names ) ) {
+    $fail( 'Pre-auth stable catalog unexpectedly empty after actual registration.' );
 }
 
 // Observe the final pre_http_request state after the local loopback guards have
@@ -265,8 +303,8 @@ foreach ( $reviewed_step_up_names as $hidden_step_up ) {
 // Every registered direct mutation is execution-gated, even when the caller knows its hidden name.
 $classification = MAD4B_SCP_MCP_Catalog_Diagnostics::classification_snapshot();
 $registered_step_names = array_keys( array_filter( $classification, static function ( $row ) { return ! empty( $row['direct_step_up'] ); } ) );
-if ( empty( $registered_step_names ) || count( $preauth_names ) > MAD4B_SCP_MCP_Catalog_Diagnostics::MAX_TOOLS ) {
-    $fail( 'Reviewed registered catalog must remain nonempty and within its budget.', array(
+if ( empty( $registered_step_names ) || empty( $preauth_names ) ) {
+    $fail( 'Reviewed registered catalog must remain nonempty, without a fixed count limit.', array(
         'reviewed_count' => count( $registered_step_names ),
         'preauth_count' => count( $preauth_names ),
         'owner_census' => class_exists( 'MAD4B_SCP_Governed_Ability_Census' )
@@ -286,7 +324,21 @@ $assert_direct_denied = static function ( $bearer, $session, $client_kind ) use 
 		$denial = $bound->check_permission( array() );
 		if ( ! is_wp_error( $denial ) ) $fail( 'Every direct step-up permission callback must independently deny this actor.', $tool_name );
 		$code = $denial->get_error_code();
-		if ( ! preg_match( '/scope|step_up|client/', $code ) ) $fail( 'Direct step-up denial must enforce scope/client before input or plan.', array( 'tool' => $tool_name, 'code' => $code ) );
+		$site_status = MAD4B_SCP_Site_Profile::status();
+		$managed_site_ready = is_array( $site_status ) && ! empty( $site_status['authority_ready'] )
+			&& MAD4B_SCP_Site_Profile::managed_runtime_enabled();
+		// The disposable Local OAuth profile intentionally has no managed
+		// write authority. The canonical Developer Authority may deny on
+		// exact Site Profile BEFORE the bearer scope/client gate. That is a
+		// stronger fail-closed fence, not a new permission to execute.
+		$site_denied_first = ! $managed_site_ready && in_array( $code, array(
+			'mad4b_developer_authority_site_not_ready',
+			'mad4b_operator_grants_site_not_ready',
+		), true );
+		if ( ! preg_match( '/scope|step_up|client/', $code ) && ! $site_denied_first ) {
+			$fail( 'Direct step-up permission must fail on scope/client, or exact unready site authority.',
+				array( 'tool' => $tool_name, 'code' => $code, 'managed_site_ready' => $managed_site_ready ) );
+		}
 	}
 };
 $assert_direct_denied( $token, $session_id, 'read_only' );
@@ -317,7 +369,8 @@ try {
 	$rich_budget = MAD4B_SCP_MCP_Catalog_Diagnostics::budget_projection( $preflight_catalog, $rich_optional );
 	$required_rich = array_values( array_diff( $preflight_catalog, $rich_optional ) );
 	if ( empty( $rich_budget['ready'] )
-		|| count( $rich_budget['selected'] ) > MAD4B_SCP_MCP_Catalog_Diagnostics::MAX_TOOLS
+        || $rich_budget['selected'] !== $preflight_catalog
+        || ! empty( $rich_budget['excluded_optional'] )
 		|| array_diff( $required_rich, $rich_budget['selected'] )
 		|| array_filter( $preflight_catalog, static function ( $name ) { return 0 === strpos( $name, 'provider/rich-step-' ); } ) )
 		$fail( 'Provider growth must not widen the reviewed direct catalog or exhaust its effective budget.', $rich_budget );
@@ -365,12 +418,10 @@ foreach ( array(
 	if ( in_array( $hidden_tool, $names, true ) ) $fail( 'OAuth bearer tools/list leaked a capability that must stay behind governed discovery.', $hidden_tool );
 }
 
-if ( count( $names ) > 36 ) {
-	$fail( 'OAuth bearer tools/list exceeded the session-safe refresh/fanout budget.', array( 'tool_count' => count( $names ), 'budget' => 36 ) );
-}
-if ( $tools_payload_bytes > 131072 ) {
-	$fail( 'OAuth bearer tools/list exceeded the refresh payload budget.', array( 'payload_bytes' => $tools_payload_bytes, 'budget_bytes' => 131072 ) );
-}
+// Complete tools/list discovery has no fixed global count or byte ceiling.
+// Check the actual protocol, per-tool schema validity and authorization
+// boundaries instead. Payload size remains a measured performance metric,
+// never a reason to suppress valid tools or silently truncate the catalog.
 
 $refresh_latency_budget_ms = 5000.0;
 if ( $initialize_elapsed_ms > $refresh_latency_budget_ms ) {
@@ -413,11 +464,22 @@ $read_apply = $dispatch(
 if ( ! $read_apply instanceof WP_REST_Response || 200 !== (int) $read_apply->get_status() ) {
 	$fail( 'Read-only bearer step-up denial did not return an MCP response.', $normalize( $read_apply instanceof WP_REST_Response ? $read_apply->get_data() : $read_apply ) );
 }
-$read_apply_json = wp_json_encode( $normalize( $read_apply->get_data() ), JSON_UNESCAPED_SLASHES );
-if ( false === $read_apply_json
-	|| false === strpos( $read_apply_json, '"isError":true' )
-	|| false === strpos( $read_apply_json, 'The OAuth bearer does not grant the dedicated Full Staging Authority step-up scope.' ) ) {
-	$fail( 'Read-only bearer was not denied by the dedicated authority step-up scope gate.', $normalize( $read_apply->get_data() ) );
+$read_apply_data = $normalize( $read_apply->get_data() );
+// MCP tools/call is allowed to return a successful HTTP/JSON-RPC envelope
+// containing a tool-level isError=true. Require exactly that denied tool
+// result and a reviewed scope-gate message. Neither missing tools nor an
+// unrelated execution error can satisfy the negative security assertion.
+$read_denied_text = isset( $read_apply_data['result']['content'][0]['text'] )
+	? (string) $read_apply_data['result']['content'][0]['text'] : '';
+if ( ! is_array( $read_apply_data )
+	|| (int) ( $read_apply_data['id'] ?? -1 ) !== 720
+	|| true !== ( $read_apply_data['result']['isError'] ?? null )
+	|| isset( $read_apply_data['error'] )
+	|| ! in_array( $read_denied_text, array(
+		'The OAuth bearer does not grant the dedicated Full Staging Authority step-up scope.',
+		'Full authority OAuth step-up scope is required.',
+	), true ) ) {
+	$fail( 'Read-only bearer was not denied by the dedicated authority step-up scope gate.', $read_apply_data );
 }
 
 // Mint a second bearer on the same ChatGPT resource with the dedicated step-up
@@ -501,7 +563,7 @@ foreach ( $reviewed_step_up_names as $visible_step_up ) {
 foreach ( array( 'mad4b-site-profile-feature-reenroll', 'mad4b-site-profile-write-enable', 'mad4b-staging-write-grant-reconcile', 'mad4b-staging-write-candidate-bind' ) as $forbidden_internal ) {
 	if ( in_array( $forbidden_internal, $step_names, true ) ) $fail( 'Step-up bearer exposed an internal enrollment primitive directly.', $forbidden_internal );
 }
-if ( count( $step_names ) > MAD4B_SCP_MCP_Catalog_Diagnostics::MAX_TOOLS ) $fail( 'Step-up bearer exceeded direct catalog budget.', count( $step_names ) );
+if ( empty( $step_names ) ) $fail( 'Step-up bearer returned an empty governed catalog.' );
 foreach ( $step_wire->result->tools as $dto ) {
 	if ( ! isset( $dto->inputSchema->properties ) || ! is_object( $dto->inputSchema->properties ) ) $fail( 'Actual wire input properties must remain a JSON object.', $dto->name );
 }
@@ -683,11 +745,41 @@ $foreign_apply = $dispatch(
 if ( ! $foreign_apply instanceof WP_REST_Response || 200 !== (int) $foreign_apply->get_status() ) {
 	$fail( 'Foreign-client step-up denial did not return an MCP response.', $normalize( $foreign_apply instanceof WP_REST_Response ? $foreign_apply->get_data() : $foreign_apply ) );
 }
-$foreign_apply_json = wp_json_encode( $normalize( $foreign_apply->get_data() ), JSON_UNESCAPED_SLASHES );
-if ( false === $foreign_apply_json
-	|| false === strpos( $foreign_apply_json, '"isError":true' )
-	|| false === strpos( $foreign_apply_json, 'Full Staging Authority step-up requires OAuth attribution to the exact ChatGPT CIMD client.' ) ) {
-	$fail( 'Foreign OAuth client carrying step-up scope was not denied by exact-client attribution.', $normalize( $foreign_apply->get_data() ) );
+$foreign_apply_data = $normalize( $foreign_apply->get_data() );
+// The two source-reviewed, exact client-attribution denials across Adapter
+// generations are equivalent. A generic MCP error, successful tool result or
+// missing-tool failure is not an authorization-boundary proof.
+$foreign_client_denied = static function ( $response ) {
+    $text = isset( $response['result']['content'][0]['text'] )
+        && is_string( $response['result']['content'][0]['text'] )
+        ? $response['result']['content'][0]['text'] : '';
+    return is_array( $response )
+        && ( $response['jsonrpc'] ?? '' ) === '2.0'
+        && ( $response['id'] ?? null ) === 725
+        && true === ( $response['result']['isError'] ?? null )
+        && ! isset( $response['error'] )
+        && in_array( $text, array(
+            'Full Staging Authority step-up requires OAuth attribution to the exact ChatGPT CIMD client.',
+            'Enrolled ChatGPT OAuth client is required.',
+        ), true );
+};
+if ( ! $foreign_client_denied( $foreign_apply_data ) ) {
+    $fail( 'Foreign OAuth client carrying step-up scope was not denied by exact-client attribution.', $foreign_apply_data );
+}
+// Adversarial negative controls: the assertion must fail if an unrelated error
+// or missing denial is misclassified as the exact-client permission gate.
+$forged_foreign_denial = array(
+    'jsonrpc' => '2.0', 'id' => 725,
+    'result' => array(
+        'isError' => true,
+        'content' => array( array( 'type' => 'text', 'text' => 'Some unrelated MCP error.' ) ),
+    ),
+);
+if ( $foreign_client_denied( $forged_foreign_denial )
+    || $foreign_client_denied( array_merge( $foreign_apply_data, array( 'id' => 726 ) ) )
+    || $foreign_client_denied( array_merge( $foreign_apply_data, array(
+        'result' => array( 'isError' => false, 'content' => $foreign_apply_data['result']['content'] ?? array() ) ) ) ) ) {
+    $fail( 'Foreign-client denial check accepted unrelated, replayed or successful execution evidence.' );
 }
 
 // Restore the read bearer/session for the remaining read-dispatch proof.

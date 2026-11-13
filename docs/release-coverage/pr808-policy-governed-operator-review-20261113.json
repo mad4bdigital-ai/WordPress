@@ -1,0 +1,29 @@
+{
+  "ability_name": "mad4b/operator-grants-converge",
+  "base_github_commit": "c94b66d7eab7c75db1b5444b4e74d71c918618aa",
+  "base_readonly_overlay_sha256": "eb2cdff5c1f995b0caec746bb3c0c66e198e977ba98b9fb58822d30dea07912d",
+  "contract": "mad4b.pr808.policy-governed-operator-review.v1",
+  "historical_signed_developer_plan_untouched": true,
+  "legacy_enrollment_policy_preserved": true,
+  "original312_313_receipts_issued": false,
+  "policy_allow_is_write_authority": false,
+  "policy_main_candidate_sha256": "dc8ba90682848c6c09e2b212c25467049714ce3b2cad79386166452f98f10485",
+  "preflight_parent_ability_verified": true,
+  "production_changed": false,
+  "production_policy_runtime_test_scope": "hermetic_mock_only",
+  "registered_operation_id": "wordpress.developer.operator-grants.converge",
+  "registry_admission_is_grant": false,
+  "reviewed_at_utc": "2026-11-13T09:42:49.211471+00:00",
+  "reviewed_source_sha256": {
+    "wp-content/plugins/mad4b-site-control-plane/config/operation-registry.json": "fc853d73e0f681da860a6f566bf176dd023a4351d1ab40d718a22d0cb93d1ca9",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php": "95abcad00a651254d1c672feb30cde56e43befc85383a631494c6f305d698ffb",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-enrollment-dispatch.php": "44fd3e6bdbdd2648c78bfd7a39e043b117843404ea23196c3c4cc1b584585ed3",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-governed-ability-census.php": "58236c8c96a0e3a39e569451dd2bc9333f3f011899258864b27522a3a8425ad9",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operation-registry.php": "b81463cb3fe50e95d6cc95357ba9e9f79324b363d79b7136bc049f8f5c7682e5",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-grant-convergence.php": "49ea9b89aa16a1fa85bb4d8d07cca9d47991aa1dfe2ad5fc86cadd0d86eceb76",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-registered-write-admission.php": "6c07b0ee37c00c5f0238b2138286ca08b1c449d9bb066d24520ff17a789baba7",
+    "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php": "dc8ba90682848c6c09e2b212c25467049714ce3b2cad79386166452f98f10485"
+  },
+  "signed_owner_release_approved": false,
+  "site_changed": false
+}

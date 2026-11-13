@@ -30,6 +30,8 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--plugins-dir", required=True)
     parser.add_argument("--timeout", type=int, default=30)
+    parser.add_argument("--version", default=None,
+                        help="Exact reviewed provider profile to materialize for this CI job, not a runtime minimum")
     args = parser.parse_args()
 
     root = Path(__file__).resolve().parents[1]
@@ -40,7 +42,11 @@ def main() -> int:
     if policy.get("contract") != "mad4b.runtime-release-policy.v1":
         fail("runtime release policy contract mismatch")
 
-    version = str(policy.get("target_adapter_version") or "").strip()
+    # The materializer explicitly downloads a reviewed release artifact for
+    # a CI fixture; it does not impose its version on installed runtimes.
+    protocol = json.loads((config / "mcp-protocol-profiles.json").read_text(encoding="utf-8"))
+    reference = (protocol.get("certified_adapter") or {}).get("version")
+    version = str(args.version if args.version is not None else reference or "").strip()
     profile = ((profiles.get("providers") or {}).get("mcp_adapter") or {}).get(version) or {}
     if not version or profile.get("version") != version:
         fail("target MCP Adapter profile missing")
@@ -104,7 +110,7 @@ def main() -> int:
         "version": version,
         "archive_sha256": actual_sha,
         "archive_bytes": len(payload),
-        "source": "runtime_release_policy+certified_provider_profile",
+        "source": "explicit_or_protocol_reference+certified_provider_profile",
         "materialization": materialization,
         "status": "passed",
     }

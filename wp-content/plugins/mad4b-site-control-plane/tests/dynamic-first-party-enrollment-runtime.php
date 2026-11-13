@@ -58,8 +58,15 @@ class MAD4B_SCP_Site_Profile {
     public static function configured() { return true; }
     public static function current_environment() { return self::$env; }
     public static function origin_enrolled() { return true; }
+    public static function managed_runtime_enabled() { return empty( $GLOBALS['test_managed_runtime_revoked'] ); }
+    public static function write_enabled() { return empty( $GLOBALS['test_profile_write_revoked'] ); }
     public static function site_urls_match_enrollment() { return true; }
     public static function user_is_enrolled( $user ) { return 7 === $user; }
+}
+class MAD4B_SCP_Policy_Resolution {
+    public static function environment_allowed( $environment ) {
+        return empty( $GLOBALS['test_governance_environment_denied'] );
+    }
 }
 class MAD4B_SCP_Policy { public static function can_breakglass() { return false; } }
 class MAD4B_SCP_Local_OAuth_Server { const CHATGPT_CIMD_CLIENT_ID = 'https://chatgpt.com/oauth/client.json'; }

@@ -15,7 +15,6 @@ final class MAD4B_SCP_Reconnect_Hardening {
 	const SESSION_DELETE_TOMBSTONE_TTL = 180;
 	const SESSION_META_KEY = 'mcp_adapter_sessions';
 	const CHATGPT_CLIENT_ID = 'https://chatgpt.com/oauth/client.json';
-	const CERTIFIED_STATEFUL_ADAPTER_VERSION = '0.6.1';
 	const FIRST_EMPTY_RACE_MAX_VISIBLE_SESSIONS = 8;
 	const FIRST_EMPTY_RACE_CREATION_SKEW_SECONDS = 30;
 	private static $booted = false;
@@ -43,7 +42,7 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		// A late phase still checks all gates before execution.
 		add_filter( 'rest_pre_dispatch', array( __CLASS__, 'guard_mcp_authenticated_rest_dispatch' ), 4, 3 );
 
-		// MCP Adapter 0.6.x uses a user-meta backed session map shared by MCP servers.
+		// A verified stateful MCP Adapter uses a user-meta backed session map shared by MCP servers.
 		// Do not override its global capacity/timeout knobs from a ChatGPT-only fix;
 		// bounded recovery below addresses only the proven first-session race.
 		// Run after OAuth subject mapping (priority 2), before the MCP Adapter
@@ -101,7 +100,8 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			'delete_cleanup_bound_to_exact_request_object' => true,
 			'request_scope_bound_to_exact_request_object' => true,
 			'nested_rest_request_cannot_clear_outer_initialize_state' => true,
-			'certified_stateful_runtime' => self::session_repair_supported_runtime(),
+			'stateful_runtime_structurally_available' => self::session_repair_supported_runtime(),
+			'certified_stateful_runtime' => true === self::$runtime_integrity_ok,
 			'adapter_session_max_modified' => false,
 			'adapter_inactivity_timeout_modified' => false,
 			'activity_update_interval_modified' => false,
@@ -125,10 +125,19 @@ final class MAD4B_SCP_Reconnect_Hardening {
 	}
 
 
+	private static function stateful_runtime_version() {
+		if ( ! class_exists( '\\WP\\MCP\\Core\\McpAdapter' )
+			|| ! class_exists( '\\WP\\MCP\\Transport\\Infrastructure\\SessionManager' )
+			|| ! defined( 'WP\\MCP\\Core\\McpAdapter::VERSION' ) ) return '';
+		$version = trim( (string) \WP\MCP\Core\McpAdapter::VERSION );
+		// The active provider contract, not a hard-coded version, certifies
+		// Transport ABI and exact on-disk file hashes below.
+		return strlen( $version ) <= 64
+			&& preg_match( '/^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$/D', $version )
+			? $version : '';
+	}
 	private static function session_repair_supported_runtime() {
-		if ( ! class_exists( '\\WP\\MCP\\Core\\McpAdapter' ) || ! class_exists( '\\WP\\MCP\\Transport\\Infrastructure\\SessionManager' ) ) return false;
-		if ( ! defined( 'WP\\MCP\\Core\\McpAdapter::VERSION' ) ) return false;
-		return hash_equals( self::CERTIFIED_STATEFUL_ADAPTER_VERSION, (string) \WP\MCP\Core\McpAdapter::VERSION );
+		return '' !== self::stateful_runtime_version();
 	}
 
 
@@ -161,12 +170,14 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		);
 		$all_transport_files_verified = empty( array_diff( $required_files, $verified ) );
 
-		$ok = isset( $status['status'] )
+		$runtime_version = self::stateful_runtime_version();
+		$ok = '' !== $runtime_version
+			&& isset( $status['status'] )
 			&& 'certified' === $status['status']
 			&& ! empty( $status['runtime_contract_ok'] )
 			&& isset( $status['certified_version'], $status['installed_version'] )
-			&& hash_equals( self::CERTIFIED_STATEFUL_ADAPTER_VERSION, (string) $status['certified_version'] )
-			&& hash_equals( self::CERTIFIED_STATEFUL_ADAPTER_VERSION, (string) $status['installed_version'] )
+			&& hash_equals( $runtime_version, (string) $status['certified_version'] )
+			&& hash_equals( $runtime_version, (string) $status['installed_version'] )
 			&& ! empty( $integrity['required'] )
 			&& ! empty( $integrity['manifest_present'] )
 			&& empty( $integrity['missing'] )
@@ -487,6 +498,9 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		$session_id = method_exists( $request, 'get_header' ) ? trim( (string) $request->get_header( 'mcp-session-id' ) ) : '';
 		if ( '' === $session_id || strlen( $session_id ) > 128 ) return $result;
 		if ( 'DELETE' === $method ) {
+			// No shadow/tombstone edits on a runtime that lacks verified
+			// provider artifact and Transport integrity.
+			if ( ! self::certified_adapter_runtime_integrity_ok() ) return $result;
 			$user_id = get_current_user_id();
 			if ( ! self::valid_adapter_session_id( $session_id ) ) return $result;
 			$tracked = self::forget_session_shadow( $user_id, $session_id );
@@ -678,8 +692,9 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			'first_empty_race_visible_map_max_sessions' => self::FIRST_EMPTY_RACE_MAX_VISIBLE_SESSIONS,
 			'first_empty_race_creation_skew_seconds' => self::FIRST_EMPTY_RACE_CREATION_SKEW_SECONDS,
 			'version_only_repair_authority_allowed' => false,
-			'certified_stateful_adapter_version' => self::CERTIFIED_STATEFUL_ADAPTER_VERSION,
-			'exact_adapter_version_required' => true,
+			'certified_stateful_adapter_version' => self::stateful_runtime_version(),
+			'exact_adapter_version_required' => false,
+			'runtime_version_must_match_certified_and_installed' => true,
 			'certified_runtime_integrity_required' => true,
 			'runtime_integrity_checked_only_on_candidate_repair_paths' => true,
 			'runtime_integrity_transport_file_count' => 4,
@@ -920,8 +935,55 @@ final class MAD4B_SCP_Reconnect_Hardening {
 	 * still receive restart_grace until the actual authority is reconciled.
 	 * This is a transport admission, not a tool ability permission grant.
 	 */
+	/**
+	 * A historical self-update checkpoint may outlive its own build. Pending
+	 * Skills or an obsolete native update offer must not prevent authenticated
+	 * diagnosis and the exact owner/apply operation from repairing the site.
+	 * This never certifies those dependencies as ready and never authorizes
+	 * target execution. The current build must have valid disk provenance.
+	 */
+	private static function historical_exact_package_recovery_lane( $grace ) {
+		if ( ! is_array($grace) || empty($grace['active'])
+			|| empty($grace['persisted_checkpoint_pending'])
+			|| 'pending_manual_resume' !== ($grace['state']??null)
+			|| empty($grace['resume_blocker'])
+			|| ! empty($grace['exact_runtime_identity_match'])
+			|| ! empty($grace['quiet_period_active'])
+			|| ! is_int($grace['checkpoint_age_seconds']??null)
+			|| $grace['checkpoint_age_seconds'] < 60
+			|| ! class_exists('MAD4B_SCP_Environment',false)
+			|| 'staging' !== MAD4B_SCP_Environment::effective()
+			|| ! class_exists('MAD4B_SCP_Site_Profile',false)
+			|| ! MAD4B_SCP_Site_Profile::origin_enrolled()
+			|| ! class_exists('MAD4B_SCP_OAuth_Resource_Bridge',false)
+			|| ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()
+			|| ! class_exists('MAD4B_SCP_Local_OAuth_Server',false)
+			|| ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is(
+				MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID )
+			|| ! class_exists('MAD4B_SCP_Live_Acceptance_Observer',false)
+			|| ! method_exists('MAD4B_SCP_Live_Acceptance_Observer','build_provenance_status') ) return false;
+		$current = $grace['current_identity']??array();
+		$target = $grace['target_identity']??array();
+		if ( ! is_array($current) || ! is_array($target) ) return false;
+		$source = (string)($current['source_commit_sha']??'');
+		$previous = (string)($target['source_commit_sha']??'');
+		if ( ! preg_match('/^[a-f0-9]{40}$/D',$source)
+			|| ! preg_match('/^[a-f0-9]{40}$/D',$previous)
+			|| hash_equals($source,$previous) ) return false;
+		$verified = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
+		if ( ! is_array($verified) || empty($verified['runtime_manifest_match']) || ! empty($verified['stale']) ) return false;
+		foreach( array('source_commit_sha','build_fingerprint','package_manifest_digest') as $key ) {
+			if ( empty($current[$key]) || empty($verified[$key])
+				|| ! is_string($current[$key]) || ! is_string($verified[$key])
+				|| ! hash_equals($current[$key],$verified[$key]) ) return false;
+		}
+		return true;
+	}
+
 	private static function historical_authenticated_read_tool_admission( $request, $grace, $post_auth_phase ) {
-		if ( ! $post_auth_phase || empty($grace['active']) || empty($grace['historical_mcp_read_safe'])
+		if ( ! $post_auth_phase || empty($grace['active'])
+			|| ( empty($grace['historical_mcp_read_safe'])
+				&& ! self::historical_exact_package_recovery_lane($grace) )
 			|| ! function_exists('is_user_logged_in') || ! is_user_logged_in()
 			|| ! function_exists('current_user_can') || ! current_user_can('read')
 			|| ! is_object($request) || ! method_exists($request,'get_json_params') ) return false;
@@ -942,10 +1004,11 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			'mad4b-enrollment-info','mad4b-enrollment-discover',
 		);
 		if ( in_array( $name, $read_only, true ) ) return true;
-		// A historic self-update may block new Write until the exact Write owner
-		// convergence operation completes. Admit only that purpose-built
-		// recovery tool to its *existing* owner-attested, SHA-pinned executor.
-		// This never admits arbitrary writes, tours, plugin installs or grants.
+		// A historical self-update may block the owner-attestation that
+		// exact-head Write convergence requires. Admit only that explicit
+		// non-granting owner decision or the reviewed convergence apply.
+		// The target callbacks still own approval, identity, receipt, audit
+		// and replay checks. This is transport admission, NOT authority.
 		if ( ! in_array( $name, array(
 			'mad4b-staging-write-authority-convergence-apply',
 			'mad4b-enrollment-execute'
@@ -958,14 +1021,100 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			? $rpc['params']['arguments'] : array();
 		$args = $dispatch;
 		if ( 'mad4b-enrollment-execute' === $name ) {
-			if ( 'staging_write_authority_convergence' !== ($dispatch['operation_id']??null)
-				|| ! isset($dispatch['input']) || ! is_array($dispatch['input']) ) return false;
+			$operation = $dispatch['operation_id'] ?? '';
+			$owner_attest = 'core_step_up_mad4b_staging_write_owner_attest_2cc8769d389d' === $operation;
+			$grant_reconcile = 'staging_write_grant_reconciliation' === $operation;
+			$skills_reconcile = 'managed_skills_reconciliation' === $operation;
+			if ( ! $owner_attest && ! $grant_reconcile && ! $skills_reconcile && 'staging_write_authority_convergence' !== $operation ) return false;
+			if ( count($dispatch) !== 5 || ! isset($dispatch['input']) || ! is_array($dispatch['input']) ) return false;
 			foreach( array( 'expected_registration_digest', 'expected_dispatch_policy_digest',
 				'expected_input_schema_sha256' ) as $field ) {
 				if( ! isset($dispatch[$field]) || ! is_string($dispatch[$field])
 					|| 1 !== preg_match( '/^[a-f0-9]{64}$/iD', $dispatch[$field] ) ) return false;
 			}
 			$args = $dispatch['input'];
+			// Exact Managed Skills reconciliation uses the existing Enrollment
+			// dispatcher and the target's audited batch/receipt contract. An old
+			// paused self-update must not deadlock this independent recovery lane.
+			// This permits transport ONLY, never execution by itself.
+			if ( $skills_reconcile ) {
+				if ( count( $args ) !== 4
+					|| 'RECONCILE MANAGED SKILLS' !== ( $args['confirmation'] ?? '' )
+					|| ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge', false )
+					|| ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()
+					|| ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope(
+						MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE )
+					|| ! class_exists( 'MAD4B_SCP_Local_OAuth_Server', false )
+					|| ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is(
+						MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID )
+					|| ! MAD4B_SCP_Site_Profile::user_is_enrolled( get_current_user_id() )
+					|| ! class_exists( 'MAD4B_SCP_Remote_Operation_Parity', false ) ) return false;
+				$identity = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer', false )
+					? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status() : array();
+				if ( empty( $identity['identity_ready'] ) ) return false;
+				foreach ( array(
+					'expected_source_commit_sha' => 'source_commit_sha',
+					'expected_build_fingerprint' => 'build_fingerprint',
+					'expected_package_manifest_digest' => 'package_manifest_digest'
+				) as $key => $source ) {
+					if ( ! isset( $args[$key], $identity[$source] )
+						|| ! is_string( $args[$key] )
+						|| ! hash_equals( (string) $identity[$source], $args[$key] ) ) return false;
+				}
+				return true;
+			}
+			// Restore only TRANSPORT admission for the exact staging grant
+			// reconciliation. The target retains OAuth, plan, approval, grant,
+			// replay and audit authority. Do not mutate anything in this check.
+			if ( $grant_reconcile ) {
+				if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge', false )
+					|| ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()
+					|| ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope(
+						MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE )
+					|| ! class_exists( 'MAD4B_SCP_Local_OAuth_Server', false )
+					|| ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is(
+						MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID )
+					|| ! MAD4B_SCP_Site_Profile::user_is_enrolled( get_current_user_id() )
+					|| ! class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation', false )
+					|| 'RECONCILE EXACT STAGING WRITE AUTHORITY' !== ( $args['confirmation'] ?? null )
+					|| ! isset( $args['expected_plan_sha256'] )
+					|| ! is_string( $args['expected_plan_sha256'] )
+					|| 1 !== preg_match( '/^[a-f0-9]{64}$/iD', $args['expected_plan_sha256'] ) ) return false;
+				$identity = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer', false )
+					? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status() : array();
+				if ( empty( $identity['identity_ready'] ) ) return false;
+				foreach ( array(
+					'expected_source_commit_sha' => 'source_commit_sha',
+					'expected_build_fingerprint' => 'build_fingerprint',
+					'expected_package_manifest_digest' => 'package_manifest_digest',
+					'expected_artifact_identity' => 'artifact_identity'
+				) as $name => $key ) {
+					if ( ! isset( $args[$name], $identity[$key] )
+						|| ! is_string( $args[$name] )
+						|| ! hash_equals( (string) $identity[$key], $args[$name] ) ) return false;
+				}
+				return true;
+			}
+			if ( $owner_attest ) {
+				// This owner-only intent cannot grant Write, Developer or
+				// Breakglass. Do not admit another operation or altered schema.
+				if ( count($args) !== 2
+					|| 'AUTHORIZE EXACT STAGING WRITE CONVERGENCE' !== ($args['confirmation']??null)
+					|| ! isset($args['review_digest']) || ! is_string($args['review_digest'])
+					|| 1 !== preg_match('/^[a-f0-9]{64}$/D', $args['review_digest'])
+					|| ! class_exists('MAD4B_SCP_OAuth_Resource_Bridge', false)
+					|| ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()
+					|| ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope(
+						MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE )
+					|| ! class_exists('MAD4B_SCP_Local_OAuth_Server', false)
+					|| ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is(
+						MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID )
+					|| ! class_exists('MAD4B_SCP_Site_Profile', false)
+					|| ! MAD4B_SCP_Site_Profile::user_is_enrolled(get_current_user_id())
+					|| ! class_exists('MAD4B_SCP_Staging_Write_Owner_Intent', false)
+					|| true !== MAD4B_SCP_Staging_Write_Owner_Intent::can_remote_attest() ) return false;
+				return true;
+			}
 		}
 		if ( 'ENABLE GOVERNED STAGING WRITE AUTHORITY' !== ( $args['confirmation'] ?? '' )
 			|| ! isset( $args['expected_plan_sha256'] )
@@ -1113,6 +1262,13 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		if ( ! empty( $status['ready'] ) ) return;
 		$blockers = ! empty( $status['blockers'] ) ? implode( ', ', array_map( 'sanitize_key', $status['blockers'] ) ) : 'reconnect_not_ready';
 		echo '<div class="notice notice-warning inline"><p>' . esc_html( 'ChatGPT reconnect is not ready. Blockers: ' . $blockers . '.' ) . '</p></div>';
+		$grace = isset( $status['restart_grace'] ) && is_array( $status['restart_grace'] ) ? $status['restart_grace'] : array();
+		if ( in_array( 'runtime_restart_grace', (array) ( $status['blockers'] ?? array() ), true )
+			&& ! empty( $grace['operator_action_required'] ) ) {
+			$old_version = (string) ( $grace['target_identity']['version'] ?? 'unknown' );
+			$reason = (string) ( $grace['resume_blocker'] ?? 'manual_operator_review' );
+			echo '<div class="notice notice-info inline"><p>' . esc_html( 'Runtime convergence is paused at an older manual checkpoint, not waiting for a short restart delay. Target: ' . $old_version . '. Reason: ' . $reason . '. Inspect the authorized runtime recovery plan; this screen cannot override its stop policy.' ) . '</p></div>';
+		}
 	}
 
 	public static function is_resource_request_path( $path ) {

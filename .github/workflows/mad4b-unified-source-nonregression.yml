@@ -1,0 +1,105 @@
+name: MAD4B Unified Source Nonregression
+on:
+  push:
+    branches:
+      - 'integration/mad4b-unified-source-*'
+  pull_request:
+    paths:
+      - '.github/workflows/mad4b-unified-source-nonregression.yml'
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'ops/company-code-release-v1/**'
+      - 'plugins/mad4b-wordpress/skills/**'
+      - 'packages/mad4b-shared-product-core/**'
+      - 'tests/test_unified_mad4b_behavior_invariants.py'
+permissions:
+  contents: read
+concurrency:
+  group: mad4b-unified-source-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  behavior-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          # Historic 238-file and 69-conflict source contracts use exact
+          # immutable Git ancestors. Shallow HEAD checkout is insufficient.
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install signed source proof verifier
+        run: python -m pip install 'cryptography>=42,<49'
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+      - name: Prepare pinned isolated PHP original schema verifier
+        run: |
+          set -euo pipefail
+          # Offline Python acceptance uses --pull=never; ensure the exact
+          # public test image is locally available before hermetic checks.
+          docker image inspect php:8.5-cli >/dev/null 2>&1 || docker pull php:8.5-cli
+      - name: Semantic non-regression and source integrity
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p 'test_unified_mad4b_behavior_invariants.py' -v
+          python3 -m unittest discover -s tests -p 'test_tour_highlights_source_delta.py' -v
+          python3 -m unittest discover -s tests -p 'test_tour_highlights_site_neutral_scope.py' -v
+          python3 -m unittest discover -s ops/company-code-release-v1/tests -p 'test_dynamic_capability*.py' -q
+          # The actual Registry requires a root-owned, non-writable enrolled
+          # directory; the test creates an EPHEMERAL candidate under /tmp.
+          # Execute this isolated test as root rather than spoofing ownership
+          # or weakening the production Registry root trust gate.
+          sudo -n -E "$(command -v python3)" -m unittest discover -s ops/dynamic-operation-registry-v1/tests -p 'test_source_candidate.py' -q
+          # GitHub is not the Original Host: run all portable tests
+          # dynamically and report every Host-bound module as RELEASE HOLD.
+          # Current real signed host readback is enforced separately by
+          # Production Readiness/Release Verdict, not synthesized here.
+          python3 -m unittest discover -s tests -p 'test_ci_portable_native_source_partition.py' -q
+          python3 ops/native-source-publisher-v1/ci_portable_native_tests.py
+          # The 238-file historical contract is independently gated: its
+          # unreachable commits must not suppress portable source coverage.
+          python3 -m unittest discover -s tests -p 'test_control_plane*contract.py' -v
+      - name: Native Elementor and Developer/Operator smoke
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-elementor-native-template-parity.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/elementor-native-template-parity-contract.php
+          php tests/remote-execution/developer-authority-policy-v2-smoke.php
+          php tests/remote-execution/skill-seeder-exact-site-denial-smoke.php
+          php tests/remote-execution/operator-grants-convergence-smoke.php
+          php tests/native-original-job-readback/acceptance.php
+          # A verified MCP Adapter source is an independent requirement.
+          # Recovery must not accept disk integrity alone or start the lease.
+          php wp-content/plugins/mad4b-site-control-plane/tests/mcp-runtime-recovery-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tour-highlights-v1.php
+          php tests/native-tour-highlights/acceptance.php
+          node --check wp-content/plugins/mad4b-site-control-plane/assets/tour-journey-ui.js
+          node --check wp-content/plugins/mad4b-site-control-plane/assets/tour-journey-split-v3.js
+          php -l scripts/migrations/tour-journey-wpml-fr-de-20261113.php
+
+  historical-source-contract:
+    name: Historical source ancestry and additive source contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify exact immutable 238-file historical source
+        run: |
+          python3 ops/native-source-publisher-v1/ci_historical_additive_source_test.py --report /tmp/mad4b-historical-source-contract.json
+      - name: Preserve fail-closed historical source evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mad4b-historical-source-${{ github.event.pull_request.head.sha || github.sha }}
+          path: /tmp/mad4b-historical-source-contract.json
+          if-no-files-found: error

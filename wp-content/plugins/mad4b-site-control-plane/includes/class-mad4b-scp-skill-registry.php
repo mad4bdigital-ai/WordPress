@@ -16,12 +16,25 @@ final class MAD4B_SCP_Skill_Registry {
 	const ROOT_DIRNAME = 'mad4b-skills';
 	const META_FILE = '.mad4b.json';
 	const MAX_SKILL_BYTES = 262144;
-	const MAX_SCAN_SKILLS = 500;
+	const MAX_SCAN_SKILLS = 500; // Legacy informational constant; no longer a scan ceiling.
+	const MAX_PAGE_SIZE = 100;
 
 	private static $levels = array( 'site', 'connection', 'provider', 'adapter', 'workflow' );
 
 	public static function levels() {
 		return self::$levels;
+	}
+
+	/**
+	 * A company-owned Skill catalog is always readable/provisionable after
+	 * exact Site Profile enrollment. This never enables the authoring editor,
+	 * scripts, OAuth, credentials or company writes. During enrollment's
+	 * unbound phase the catalog must remain off.
+	 */
+	public static function catalog_enabled() {
+		return class_exists( 'MAD4B_SCP_Site_Profile', false )
+			&& MAD4B_SCP_Site_Profile::origin_enrolled()
+			&& MAD4B_SCP_Site_Profile::site_urls_match_enrollment();
 	}
 
 	public static function storage_root() {
@@ -48,6 +61,8 @@ final class MAD4B_SCP_Skill_Registry {
 		$exists = '' !== $root && is_dir( $root );
 		return array(
 			'contract' => self::CONTRACT,
+			'catalog_enabled' => self::catalog_enabled(),
+			'auto_provision_scoped_to_enrolled_site' => true,
 			'editor_enabled' => self::editor_enabled(),
 			'scripts_editor_enabled' => self::scripts_enabled(),
 			'storage_initialized' => $exists,
@@ -96,7 +111,6 @@ final class MAD4B_SCP_Skill_Registry {
 					if ( is_wp_error( $entry ) ) continue;
 					if ( null !== $enabled_filter && $enabled_filter !== ! empty( $entry['enabled'] ) ) continue;
 					$items[] = self::summary( $entry );
-					if ( count( $items ) >= self::MAX_SCAN_SKILLS ) break 3;
 				}
 			}
 		}
@@ -473,7 +487,7 @@ final class MAD4B_SCP_Skill_Registry {
 		$out = array();
 		$entries = @scandir( $path );
 		if ( ! is_array( $entries ) ) return $out;
-		foreach ( array_slice( $entries, 0, self::MAX_SCAN_SKILLS + 2 ) as $entry ) {
+		foreach ( $entries as $entry ) {
 			if ( '.' === $entry || '..' === $entry || ! is_dir( $path . '/' . $entry ) || is_link( $path . '/' . $entry ) ) continue;
 			$out[] = $entry;
 		}
