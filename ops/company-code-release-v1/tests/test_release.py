@@ -436,6 +436,349 @@ class CodeReleaseTests(unittest.TestCase):
         self.assertEqual(result["state"], "APPLIED_VERIFIED", result)
         self.assertEqual((self.site / target).read_text(), source.read_text())
 
+    def test_retired_legacy_mu_cannot_be_recreated_by_ordinary_release(self):
+        self.capability_portability_fixture()
+        self.target.unlink()
+        request = json.loads(json.dumps(self.request))
+        request["files"][0]["expected_before_sha256"] = None
+        with self.assertRaisesRegex(release.Denied,
+                                    "LEGACY_OWNER_REINTRODUCTION_NOT_CERTIFIED"):
+            release.make_plan(request, self.policy)
+
+    def test_plugin_new_install_with_legacy_absent_keeps_cas_readback(self):
+        _, canonical, target = self.capability_portability_fixture()
+        self.target.unlink()
+        canonical.unlink()  # A new owner module has not been installed yet.
+        request = json.loads(json.dumps(self.request))
+        request["files"][0]["target"] = target
+        request["files"][0]["expected_before_sha256"] = None
+        plan = release.make_plan(request, self.policy)
+        self.assertFalse(plan["owner_reconciliation"]["relations"][0][
+            "replacement_present"])
+        self.plan = plan
+        outcome = self.authorized_apply()
+        self.assertEqual(outcome["state"], "APPLIED_VERIFIED", outcome)
+        self.assertTrue(canonical.is_file())
+        release.confirm_plan(plan, self.policy, expect_preimage=False)
+
+    def test_second_source_successor_cannot_take_tenant_owner(self):
+        path, canonical, target = self.capability_portability_fixture()
+        root = self.repo / "wp-content/plugins/mad4b-alternate"
+        root.mkdir(parents=True,exist_ok=True)
+        (root / "mad4b-portability.json").write_text(json.dumps({
+            "contract": "mad4b.plugin-portability-profile.v1",
+            "plugin": "mad4b-alternate",
+            "company_specific_legacy_mu_replacements": [{
+                "legacy_file":"mad4b-approved.php",
+                "replacement":"src/other-owner.php",
+                "reconcile_contract":"mad4b.option-owner-v1",
+            }]
+        }))
+        shell("git", "-C", str(self.repo), "add", ".")
+        shell("git", "-C", str(self.repo), "-c", "user.name=Test",
+              "-c", "user.email=test@example.invalid", "commit", "-qm", "alternate")
+        self.request["git_commit"] = shell("git", "-C", str(self.repo), "rev-parse", "HEAD")
+        request = json.loads(json.dumps(self.request))
+        request["files"][0]["target"] = target
+        request["files"][0]["expected_before_sha256"] = release.digest(canonical.read_bytes())
+        with self.assertRaisesRegex(release.Denied,
+                                    "PORTABILITY_OWNER_MIGRATION_CONFLICT"):
+            release.make_plan(request, self.policy)
+
+    def test_unrelated_portability_feature_label_changes_not_owner_transfer(self):
+        profile, canonical, target = self.capability_portability_fixture()
+        contents=json.loads(profile.read_text())
+        contents["features"]=["new-unrelated-feature"]
+        profile.write_text(json.dumps(contents))
+        # Do not infer an ownership migration from unrelated feature metadata.
+        source_profile = self.repo / "wp-content/plugins/mad4b-experience/mad4b-portability.json"
+        source_profile.parent.mkdir(parents=True,exist_ok=True)
+        source_profile.write_text(json.dumps({
+            "contract":"mad4b.plugin-portability-profile.v1",
+            "plugin":"mad4b-experience",
+            "features":["a-different-feature"],
+            "company_specific_legacy_mu_replacements":contents[
+                "company_specific_legacy_mu_replacements"],
+        }))
+        shell("git", "-C", str(self.repo), "add", ".")
+        shell("git", "-C", str(self.repo), "-c", "user.name=Test",
+              "-c", "user.email=test@example.invalid", "commit", "-qm", "unrelated")
+        self.request["git_commit"] = shell("git", "-C", str(self.repo), "rev-parse", "HEAD")
+        self.policy["targets"]["demo:staging"]["allowed_targets"].append(
+            "wp-content/plugins/mad4b-experience/mad4b-portability.json")
+        request=json.loads(json.dumps(self.request))
+        request["files"][0].update(
+            source="wp-content/plugins/mad4b-experience/mad4b-portability.json",
+            target="wp-content/plugins/mad4b-experience/mad4b-portability.json",
+            expected_before_sha256=release.digest(profile.read_bytes()))
+        plan = release.make_plan(request, self.policy)
+        self.assertEqual(plan["owner_reconciliation"]["relations"][0][
+            "selected_role"], "profile")
+        self.plan=plan
+        result=self.authorized_apply()
+        self.assertEqual(result["state"], "APPLIED_VERIFIED", result)
+
+    def test_owner_manifest_behavior_contract_change_needs_independent_proof(self):
+        profile,_,_=self.capability_portability_fixture()
+        target= "wp-content/plugins/mad4b-experience/mad4b-portability.json"
+        self.policy["targets"]["demo:staging"]["allowed_targets"].append(target)
+        remote=self.repo / target
+        remote.parent.mkdir(parents=True, exist_ok=True)
+        data=json.loads(profile.read_text())
+        data["company_specific_legacy_mu_replacements"][0][
+            "replacement_activation_check"]="must-prove-runtime-reflection"
+        remote.write_text(json.dumps(data))
+        shell("git", "-C", str(self.repo), "add", ".")
+        shell("git", "-C", str(self.repo), "-c", "user.name=Test",
+              "-c", "user.email=test@example.invalid", "commit", "-qm", "behavior-change")
+        self.request["git_commit"] = shell("git", "-C", str(self.repo), "rev-parse", "HEAD")
+        request=json.loads(json.dumps(self.request))
+        request["files"][0].update(source=target,target=target,
+            expected_before_sha256=release.digest(profile.read_bytes()))
+        with self.assertRaisesRegex(release.Denied,
+                                    "OWNER_PROFILE_MIGRATION_REQUIRES_PROOF"):
+            release.make_plan(request, self.policy)
+
+    def source_literal_include_fixture(self):
+        prefix="wp-content/plugins/mad4b-commerce"
+        source = prefix + "/modules/compat/shared-core-loader.php"
+        dependency = prefix + "/runtime-phases/00-foundation.php"
+        old_loader=self.site / source
+        old_loader.parent.mkdir(parents=True,exist_ok=True)
+        old_loader.write_text("<?php echo 'old loader';\n")
+        new_loader=self.repo / source
+        new_loader.parent.mkdir(parents=True,exist_ok=True)
+        new_loader.write_text("<?php\nrequire __DIR__ . '/../../runtime-phases/00-foundation.php';\n")
+        shell("git", "-C", str(self.repo), "add", ".")
+        shell("git", "-C", str(self.repo), "-c", "user.name=Test",
+              "-c", "user.email=test@example.invalid", "commit", "-qm", "source-load")
+        self.request["git_commit"]=shell("git", "-C", str(self.repo), "rev-parse", "HEAD")
+        self.policy["targets"]["demo:staging"]["allowed_targets"].extend(
+            [source,dependency])
+        request=json.loads(json.dumps(self.request))
+        request["files"][0].update(source=source,target=source,
+            expected_before_sha256=release.digest(old_loader.read_bytes()))
+        return request,dependency
+
+    def test_missing_source_phase_dependency_blocked_before_site_write(self):
+        request,dep=self.source_literal_include_fixture()
+        with self.assertRaisesRegex(release.Denied,"PHP_STATIC_INCLUDE_MISSING"):
+            release.make_plan(request,self.policy)
+        self.assertIn("old loader",(self.site/request["files"][0]["target"]).read_text())
+
+    def test_existing_source_phase_dependency_hash_pinned_and_rechecked(self):
+        request,dep=self.source_literal_include_fixture()
+        d=self.site/dep;d.parent.mkdir(parents=True,exist_ok=True);d.write_text("<?php echo 'old module';\n")
+        plan=release.make_plan(request,self.policy)
+        self.assertEqual(plan["dependency_snapshot"]["dependencies"][0]["path"],dep)
+        release.confirm_plan(plan,self.policy,expect_preimage=True)
+        d.write_text("<?php echo 'concurrent';\n")
+        with self.assertRaisesRegex(release.Denied,"PHP_LITERAL_DEPENDENCY_STATE_DRIFT"):
+            release.confirm_plan(plan,self.policy,expect_preimage=True)
+
+    def test_source_phase_dependency_can_ship_in_same_signed_release(self):
+        request,dep=self.source_literal_include_fixture()
+        source=self.repo/dep;source.parent.mkdir(parents=True,exist_ok=True)
+        source.write_text("<?php echo 'native phase';\n")
+        shell("git", "-C", str(self.repo), "add", ".")
+        shell("git", "-C", str(self.repo), "-c", "user.name=Test",
+              "-c", "user.email=test@example.invalid", "commit", "-qm", "phase")
+        request["git_commit"]=shell("git", "-C", str(self.repo), "rev-parse", "HEAD")
+        (self.site/dep).parent.mkdir(parents=True,exist_ok=True)
+        request["files"].append({'source':dep,'target':dep,
+                                  'expected_before_sha256':None})
+        plan=release.make_plan(request,self.policy)
+        self.assertEqual(plan["dependency_snapshot"]["dependencies"],[])
+        self.plan=plan
+        result=self.authorized_apply()
+        self.assertEqual(result["state"],"APPLIED_VERIFIED",result)
+        self.assertTrue((self.site/dep).is_file())
+        release.confirm_plan(plan,self.policy,expect_preimage=False)
+
+    def test_untrusted_literal_include_cannot_escape_site(self):
+        request,dep=self.source_literal_include_fixture()
+        code=self.repo/request["files"][0]["source"]
+        code.write_text("<?php\nrequire __DIR__ . '/../../../../../../../etc/passwd.php';\n")
+        shell("git", "-C", str(self.repo), "add", ".")
+        shell("git", "-C", str(self.repo), "-c", "user.name=Test",
+              "-c", "user.email=test@example.invalid", "commit", "-qm", "escape")
+        request["git_commit"]=shell("git", "-C", str(self.repo), "rev-parse", "HEAD")
+        with self.assertRaisesRegex(release.Denied,
+                                    "PHP_STATIC_INCLUDE_OUTSIDE_DEPLOY_SCOPE"):
+            release.make_plan(request,self.policy)
+
+    def test_concurrent_target_edit_requires_unverified_rollback_incident(self):
+        def validator(_):
+            self.target.write_text("<?php echo 'concurrent external edit';\n")
+            raise RuntimeError("deliberate post-apply validation failure")
+        result=self.authorized_apply(validator=validator)
+        self.assertEqual(result["state"],"ROLLBACK_UNVERIFIED",result)
+        self.assertIn("concurrent external edit",self.target.read_text())
+        self.assertTrue(result["broker_grant_signature_verified"])
+        self.assertFalse(result["original_313_receipt"])
+        receipt=self.receipts / (self.grant()["nonce"]+".json")
+        self.assertTrue(receipt.exists(),"do not lose a partial-state failure receipt")
+        self.assertEqual(json.loads(receipt.read_text())["state"],"ROLLBACK_UNVERIFIED")
+        with self.assertRaisesRegex(release.Denied,"GRANT_ALREADY_USED"):
+            self.authorized_apply()
+
+    def test_dependency_drift_during_rollback_reports_unverified_readback(self):
+        request,dependency=self.source_literal_include_fixture()
+        module=self.site/dependency;module.parent.mkdir(parents=True,exist_ok=True)
+        module.write_text("<?php echo 'original';\n")
+        self.plan=release.make_plan(request,self.policy)
+        def validator(_):
+            module.write_text("<?php echo 'externally updated';\n")
+            raise RuntimeError("WordPress bootstrap failed")
+        result=self.authorized_apply(validator=validator)
+        self.assertEqual(result["state"],"ROLLBACK_UNVERIFIED",result)
+        self.assertIn("old loader",(self.site/request["files"][0]["target"]).read_text())
+        self.assertIn("externally updated",module.read_text())
+        self.assertIn("PHP_LITERAL_DEPENDENCY_STATE_DRIFT",result["failed_reason"])
+
+    def native_plugin_catalog_fixture(self, *, feature='trust-support-dynamic',
+                                     has_profile=True, eligible=True,
+                                     with_capabilities=True):
+        plugin="mad4b-experience"
+        rel=f'wp-content/plugins/{plugin}/src/presentation/modules/373-native.php'
+        css=f'wp-content/plugins/{plugin}/src/presentation/assets/mad4b-card.css'
+        manifest=f'wp-content/plugins/{plugin}/mad4b-portability.json'
+        for path,content in [(rel,"<?php echo 'source native';\n"),
+                             (css,'.mad4b-consult { display:grid; }\n')]:
+            artifact=self.repo/path;artifact.parent.mkdir(parents=True,exist_ok=True)
+            artifact.write_text(content)
+            (self.site/path).parent.mkdir(parents=True,exist_ok=True)
+        if has_profile:
+            profile={'contract':'mad4b.plugin-portability-profile.v1',
+                     'plugin':plugin,'scope':'tenant-portable',
+                     'features':['trust-support-dynamic'],
+                     'sensitive_central_authority_not_included':eligible,
+                     'financial_or_customer_data_automatic_write':False,
+                     'company_specific_legacy_mu_replacements':[]}
+            artifact=self.repo/manifest
+            artifact.parent.mkdir(parents=True,exist_ok=True)
+            artifact.write_text(json.dumps(profile))
+        catalog=self.repo/'ops/company-code-release-v1/catalog/mad4b-release-components.json'
+        catalog.parent.mkdir(parents=True,exist_ok=True)
+        component={'id':'mad4b-consultation-card','files':[rel,css]}
+        if with_capabilities:component['capabilities']=[feature]
+        catalog.write_text(json.dumps({'contract':'mad4b.company-release-components.v1',
+                                       'components':[component]}))
+        shell("git", "-C", str(self.repo), "add", ".")
+        shell("git", "-C", str(self.repo), "-c", "user.name=Test",
+              "-c", "user.email=test@example.invalid", "commit", "-qm", "plugin catalog")
+        commit=shell('git','-C',str(self.repo),'rev-parse','HEAD')
+        self.policy['targets']['demo:staging']['release_catalog']=(
+            'ops/company-code-release-v1/catalog/mad4b-release-components.json')
+        request=json.loads(json.dumps(self.request))
+        request['git_commit']=commit
+        request['files']=[{'source':rel,'target':rel,'expected_before_sha256':None},
+                          {'source':css,'target':css,'expected_before_sha256':None}]
+        return request,rel,css
+
+    def test_dynamic_catalog_registered_tenant_portable_plugin_and_assets(self):
+        request,mod,css=self.native_plugin_catalog_fixture()
+        plan=release.make_plan(request,self.policy)
+        self.assertEqual(len(plan['files']),2)
+        self.assertEqual(plan['owner_reconciliation']['relations'],[])
+        self.plan=plan
+        result=self.authorized_apply()
+        self.assertEqual(result['state'],'APPLIED_VERIFIED',result)
+        self.assertTrue((self.site/mod).is_file())
+        self.assertTrue((self.site/css).is_file())
+        release.confirm_plan(plan,self.policy,expect_preimage=False)
+
+    def test_dynamic_plugin_catalog_denies_missing_portability_profile(self):
+        request,_,_=self.native_plugin_catalog_fixture(has_profile=False)
+        with self.assertRaisesRegex(release.Denied,'GIT_SOURCE_MUST_BE_REGULAR_FILE'):
+            release.make_plan(request,self.policy)
+
+    def test_dynamic_plugin_catalog_denies_unknown_capability(self):
+        request,_,_=self.native_plugin_catalog_fixture(feature='unregistered-feature')
+        with self.assertRaisesRegex(release.Denied,'RELEASE_PLUGIN_CAPABILITY_NOT_REGISTERED'):
+            release.make_plan(request,self.policy)
+
+    def test_dynamic_plugin_catalog_denies_sensitive_central_authority(self):
+        request,_,_=self.native_plugin_catalog_fixture(eligible=False)
+        with self.assertRaisesRegex(release.Denied,'PORTABLE_PLUGIN_PROFILE_NOT_ELIGIBLE'):
+            release.make_plan(request,self.policy)
+
+    def test_dynamic_plugin_catalog_requires_typed_capability_membership(self):
+        request,_,_=self.native_plugin_catalog_fixture(with_capabilities=False)
+        with self.assertRaisesRegex(release.Denied,'RELEASE_PLUGIN_CAPABILITY_CONTRACT_REQUIRED'):
+            release.make_plan(request,self.policy)
+
+    def test_plugin_catalog_cannot_redirect_source_path(self):
+        request,mod,css=self.native_plugin_catalog_fixture()
+        request['files'][0]['source']='ops/artifacts/approved.php'
+        with self.assertRaisesRegex(release.Denied,'CATALOG_SOURCE_TARGET_MISMATCH'):
+            release.make_plan(request,self.policy)
+
+    def test_duplicate_component_membership_not_a_release_privilege(self):
+        request,mod,css=self.native_plugin_catalog_fixture()
+        catalog=self.repo/'ops/company-code-release-v1/catalog/mad4b-release-components.json'
+        obj=json.loads(catalog.read_text())
+        obj['components'].append({'id':'mad4b-another-owning-module','files':[mod],
+                                  'capabilities':['trust-support-dynamic']})
+        catalog.write_text(json.dumps(obj))
+        shell('git','-C',str(self.repo),'add','.')
+        shell('git','-C',str(self.repo),'-c','user.name=Test',
+              '-c','user.email=test@example.invalid','commit','-qm','duplicate module')
+        request['git_commit']=shell('git','-C',str(self.repo),'rev-parse','HEAD')
+        with self.assertRaisesRegex(release.Denied,'RELEASE_COMPONENT_SCOPE_OR_DUPLICATE_INVALID'):
+            release.make_plan(request,self.policy)
+
+    def test_tenant_plugin_profile_change_invalidates_pending_release(self):
+        request,mod,css=self.native_plugin_catalog_fixture()
+        profile=self.site/'wp-content/plugins/mad4b-experience/mad4b-portability.json'
+        profile.parent.mkdir(parents=True,exist_ok=True)
+        profile.write_text(json.dumps({
+            'contract':'mad4b.plugin-portability-profile.v1',
+            'plugin':'mad4b-experience','scope':'tenant-portable',
+            'features':['trust-support-dynamic'],'company_field':'Wayfa-owned value'}))
+        plan=release.make_plan(request,self.policy)
+        self.assertEqual(plan['tenant_plugin_profiles']['profiles'][0]['plugin'],
+                         'mad4b-experience')
+        release.confirm_plan(plan,self.policy,expect_preimage=True)
+        payload=json.loads(profile.read_text());payload['company_field']='newer live value'
+        profile.write_text(json.dumps(payload))
+        with self.assertRaisesRegex(release.Denied,'TENANT_PLUGIN_PROFILE_STATE_DRIFT'):
+            release.confirm_plan(plan,self.policy,expect_preimage=True)
+
+    def test_unregistered_tenant_plugin_profile_identity_fails_closed(self):
+        request,mod,css=self.native_plugin_catalog_fixture()
+        profile=self.site/'wp-content/plugins/mad4b-experience/mad4b-portability.json'
+        profile.write_text(json.dumps({'contract':'mad4b.plugin-portability-profile.v1',
+                                       'plugin':'mad4b-foreign','scope':'tenant-portable'}))
+        with self.assertRaisesRegex(release.Denied,
+                                    'TENANT_PORTABILITY_IDENTITY_MISMATCH|PORTABILITY_PLUGIN_IDENTITY_INVALID'):
+            release.make_plan(request,self.policy)
+
+    def test_legacy_tenant_profile_without_features_is_compatible(self):
+        request,mod,css=self.native_plugin_catalog_fixture()
+        profile=self.site/'wp-content/plugins/mad4b-experience/mad4b-portability.json'
+        profile.write_text(json.dumps({'contract':'mad4b.plugin-portability-profile.v1',
+                                       'plugin':'mad4b-experience'}))
+        plan=release.make_plan(request,self.policy)
+        self.assertEqual(plan['tenant_plugin_profiles']['profiles'][0]['features_preimage'],[])
+        release.confirm_plan(plan,self.policy,expect_preimage=True)
+
+    def test_dynamic_component_cannot_grant_two_plugins_together(self):
+        request,mod,css=self.native_plugin_catalog_fixture()
+        other='wp-content/plugins/mad4b-second/src/other.php'
+        source=self.repo/other;source.parent.mkdir(parents=True,exist_ok=True)
+        source.write_text('<?php echo "second";')
+        catalog=self.repo/'ops/company-code-release-v1/catalog/mad4b-release-components.json'
+        record=json.loads(catalog.read_text())
+        record['components'][0]['files'].append(other)
+        catalog.write_text(json.dumps(record))
+        shell('git','-C',str(self.repo),'add','.')
+        shell('git','-C',str(self.repo),'-c','user.name=Test',
+              '-c','user.email=test@example.invalid','commit','-qm','cross owner')
+        request['git_commit']=shell('git','-C',str(self.repo),'rev-parse','HEAD')
+        with self.assertRaisesRegex(release.Denied,'RELEASE_COMPONENT_CROSSES_PLUGIN_OWNERS'):
+            release.make_plan(request,self.policy)
+
     def test_untrusted_portability_path_is_rejected(self):
         manifest, _, _ = self.capability_portability_fixture()
         record = json.loads(manifest.read_text())
