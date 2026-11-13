@@ -193,6 +193,33 @@ class OriginalLifecycleBridgeTests(unittest.TestCase):
         self.assertFalse(report["release_execution_allowed"])
         self.assertNotIn("docker",str(report))
 
+    def test_dynamic306_local_probe_does_not_claim_original313(self):
+        target={"target_container":"test-container",
+                "site_uuid":"a3a7cc36-db7e-4a14-8456-b41857def05c"}
+        with (patch.object(m,"resolve_original_target",return_value=target),
+              patch.object(m,"dynamic_status",return_value={
+                  "dynamic_registry_enrolled":True,
+                  "dynamic_scope_plan_matched":True,
+                  "dynamic_306_digest_registered":True,
+                  "dynamic_313_independent_verifier_registered":False,
+                  "dynamic_313_finalizer_connected":False}) as dyn):
+            result=m.live_probe("wayfatours","production","dynamic306_registry")
+        self.assertTrue(result["observed_true"])
+        self.assertFalse(result["release_execution_allowed"])
+        self.assertFalse(result["production_mutated"])
+        self.assertEqual(dyn.call_args.kwargs["include_central_313"],False)
+
+    def test_dynamic306_registry_presence_without_matching_digest_is_not_success(self):
+        target={"target_container":"test-container",
+                "site_uuid":"a3a7cc36-db7e-4a14-8456-b41857def05c"}
+        with (patch.object(m,"resolve_original_target",return_value=target),
+              patch.object(m,"dynamic_status",return_value={
+                  "dynamic_registry_enrolled":True,
+                  "dynamic_scope_plan_matched":True,
+                  "dynamic_306_digest_registered":False})):
+            result=m.live_probe("wayfatours","production","dynamic306_registry")
+        self.assertFalse(result["observed_true"])
+
     def test_single_probe_is_not_a_static_provider_allowlist(self):
         with self.assertRaisesRegex(ValueError,"UNKNOWN_ORIGINAL_STATUS_PROBE"):
             m.live_probe("wayfatours","production","source.code.release")

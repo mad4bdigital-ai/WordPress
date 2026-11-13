@@ -39,7 +39,7 @@
     },
     {
       "path": "company-code-release-v1/company_lifecycle_broker.py",
-      "sha256": "d6277789577999e63ae20b06873a5c7095a85e0384aa62fc3317456b05e42917"
+      "sha256": "48547aa21e58e90ddd65540485af022585a5345bc0dbda55080c8eeb795a1bab"
     },
     {
       "path": "company-code-release-v1/finalization_guard.py",

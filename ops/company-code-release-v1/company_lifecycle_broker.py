@@ -104,7 +104,8 @@ ACTIVE_ORIGINAL_306_WORKER = Path(
 
 
 def dynamic_status(company: str, environment: str,
-                   plan_sha256: str | None = None) -> dict:
+                   plan_sha256: str | None = None,
+                   include_central_313: bool = True) -> dict:
     """Observe installed 306/313 independently. Never creates signed authority."""
     result = {
         "dynamic_registry_enrolled": False,
@@ -145,7 +146,8 @@ def dynamic_status(company: str, environment: str,
             )
     finally:
         sys.path[:] = old
-    if not result["dynamic_306_digest_registered"]:
+    if not result["dynamic_306_digest_registered"] or not include_central_313:
+        # A completed Original306 readback is NOT a Central313 certificate.
         return result
     sys.path.insert(0, "/opt/mad4b-company-transport")
     try:
@@ -352,7 +354,7 @@ def live_reconcile(company: str, environment: str,
 
 STATUS_PROBES = (
     "original305_scope", "original312_status", "wordpress_dispatch",
-    "original313_legacy_handler", "dynamic306_313_registry",
+    "original313_legacy_handler", "dynamic306_registry",
 )
 
 
@@ -388,8 +390,14 @@ def live_probe(company: str, environment: str, name: str) -> dict:
         elif name == "original313_legacy_handler":
             observed = RELEASE_OPERATION in original_handler_operations()
         else:
-            row = dynamic_status(company, environment)
-            observed = row.get("dynamic_registry_enrolled") is True
+            row = dynamic_status(company, environment,
+                                 include_central_313=False)
+            observed = (
+                row.get("dynamic_registry_enrolled") is True and
+                row.get("dynamic_scope_plan_matched") is True and
+                row.get("dynamic_306_digest_registered") is True)
+            # Central313 is intentionally *not* queried by this quick
+            # local Original306 probe and is never inferred from it.
         return {
             "contract": "mad4b.company-code-release.status-probe.v1",
             "company": company, "environment": environment,

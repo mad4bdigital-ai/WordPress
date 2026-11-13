@@ -280,8 +280,10 @@ Original312 status independently, without a full sequential 305/312/dispatch/
 `python3 ops/company-code-release-v1/company_lifecycle_broker.py status --company <company> --environment <environment> --probe original312_status`
 
 Supported diagnostic probes are Original305 scope, Original312 status, WP
-dispatch, legacy Original313 handler and dynamic Original306/313 registry
-readback. **These are diagnostic stages, not static Provider allowlists.**
+dispatch, legacy Original313 handler, and local dynamic Original306 registry
+readback. The local dynamic306_registry probe deliberately **does not**
+call Central313. The complete lifecycle check may query Central313 separately
+and remains a separate, potentially slower status read. **These are diagnostic stages, not static Provider allowlists.**
 Each external status subprocess has a 15-second upper bound, and failures
 return `HOLD_ORIGINAL_STATUS_PROBE_UNAVAILABLE` with the sanitized exception
 class, not private stderr or tokens. A complete lifecycle report preserves
