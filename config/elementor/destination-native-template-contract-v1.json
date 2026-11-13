@@ -175,16 +175,16 @@
                 "library": "fa-solid"
               },
               "title_tag": "h3",
-              "normal_title_color": "#153E49",
-              "hover_title_color": "#245A54",
-              "active_title_color": "#153E49",
-              "normal_icon_color": "#245A54",
-              "hover_icon_color": "#245A54",
-              "active_icon_color": "#245A54",
+              "normal_title_color": "#102D40",
+              "hover_title_color": "#204C50",
+              "active_title_color": "#102D40",
+              "normal_icon_color": "#204C50",
+              "hover_icon_color": "#B48A46",
+              "active_icon_color": "#204C50",
               "accordion_background_normal_background": "classic",
-              "accordion_background_normal_color": "#F8FBF9",
+              "accordion_background_normal_color": "#FBFBFB",
               "accordion_background_active_background": "classic",
-              "accordion_background_active_color": "#F1F7F3",
+              "accordion_background_active_color": "#FBFBFB",
               "accordion_padding": {
                 "unit": "px",
                 "top": "13",
@@ -201,7 +201,82 @@
                 "left": "16",
                 "isLinked": false
               },
-              "_css_classes": "destination-native-native-accordion"
+              "_css_classes": "destination-native-native-accordion",
+              "__globals__": {
+                "normal_title_color": "globals/colors?id=primary",
+                "hover_title_color": "globals/colors?id=secondary",
+                "active_title_color": "globals/colors?id=primary",
+                "normal_icon_color": "globals/colors?id=secondary",
+                "hover_icon_color": "globals/colors?id=accent",
+                "active_icon_color": "globals/colors?id=secondary",
+                "accordion_background_normal_color": "globals/colors?id=3a5c55e",
+                "accordion_background_hover_color": "globals/colors?id=80789f7",
+                "accordion_background_active_color": "globals/colors?id=3a5c55e",
+                "accordion_border_normal_color": "globals/colors?id=62e8100",
+                "accordion_border_hover_color": "globals/colors?id=secondary",
+                "accordion_border_active_color": "globals/colors?id=secondary",
+                "content_border_color": "globals/colors?id=secondary",
+                "content_background_color": "globals/colors?id=3a5c55e"
+              },
+              "accordion_background_hover_color": "#F9F7F5",
+              "accordion_border_normal_color": "#D9D1CA",
+              "accordion_border_hover_color": "#204C50",
+              "accordion_border_active_color": "#204C50",
+              "content_border_color": "#204C50",
+              "content_background_color": "#FBFBFB",
+              "accordion_border_normal_border": "solid",
+              "accordion_border_normal_width": {
+                "unit": "px",
+                "top": "1",
+                "right": "1",
+                "bottom": "1",
+                "left": "1",
+                "isLinked": true
+              },
+              "accordion_border_hover_border": "solid",
+              "accordion_border_hover_width": {
+                "unit": "px",
+                "top": "1",
+                "right": "1",
+                "bottom": "1",
+                "left": "1",
+                "isLinked": true
+              },
+              "accordion_border_active_border": "solid",
+              "accordion_border_active_width": {
+                "unit": "px",
+                "top": "1",
+                "right": "1",
+                "bottom": "1",
+                "left": "1",
+                "isLinked": true
+              },
+              "accordion_border_radius": {
+                "unit": "px",
+                "top": "10",
+                "right": "10",
+                "bottom": "10",
+                "left": "10",
+                "isLinked": true
+              },
+              "content_border_border": "solid",
+              "content_border_width": {
+                "unit": "px",
+                "top": "0",
+                "right": "1",
+                "bottom": "1",
+                "left": "1",
+                "isLinked": false
+              },
+              "content_border_radius": {
+                "unit": "px",
+                "top": "0",
+                "right": "0",
+                "bottom": "10",
+                "left": "10",
+                "isLinked": false
+              },
+              "content_background_background": "classic"
             },
             "elements": [
               {
@@ -210,7 +285,15 @@
                 "settings": {
                   "content_width": "full",
                   "flex_direction": "column",
-                  "_title": "Why visit panel"
+                  "_title": "Why visit panel",
+                  "border_radius": {
+                    "unit": "px",
+                    "top": "0",
+                    "right": "0",
+                    "bottom": "10",
+                    "left": "10",
+                    "isLinked": false
+                  }
                 },
                 "elements": [
                   {
@@ -259,7 +342,7 @@
             "left": "1",
             "isLinked": true
           },
-          "border_color": "#DCE6E2",
+          "border_color": "#D9D1CA",
           "border_radius": {
             "unit": "px",
             "top": "10",
@@ -269,7 +352,7 @@
             "isLinked": true
           },
           "background_background": "classic",
-          "background_color": "#FAFCFB",
+          "background_color": "#FBFBFB",
           "jedv_enabled": "yes",
           "jedv_type": "show",
           "jedv_relation": "AND",
@@ -280,7 +363,11 @@
               "jedv_field": "highlights",
               "jedv_context": "current_listing"
             }
-          ]
+          ],
+          "__globals__": {
+            "border_color": "globals/colors?id=62e8100",
+            "background_color": "globals/colors?id=3a5c55e"
+          }
         },
         "elements": [
           {
@@ -404,16 +491,16 @@
                 "library": "fa-solid"
               },
               "title_tag": "h3",
-              "normal_title_color": "#153E49",
-              "hover_title_color": "#245A54",
-              "active_title_color": "#153E49",
-              "normal_icon_color": "#245A54",
-              "hover_icon_color": "#245A54",
-              "active_icon_color": "#245A54",
+              "normal_title_color": "#102D40",
+              "hover_title_color": "#204C50",
+              "active_title_color": "#102D40",
+              "normal_icon_color": "#204C50",
+              "hover_icon_color": "#B48A46",
+              "active_icon_color": "#204C50",
               "accordion_background_normal_background": "classic",
-              "accordion_background_normal_color": "#F8FBF9",
+              "accordion_background_normal_color": "#FBFBFB",
               "accordion_background_active_background": "classic",
-              "accordion_background_active_color": "#F1F7F3",
+              "accordion_background_active_color": "#FBFBFB",
               "accordion_padding": {
                 "unit": "px",
                 "top": "13",
@@ -430,7 +517,82 @@
                 "left": "16",
                 "isLinked": false
               },
-              "_css_classes": "destination-native-native-accordion"
+              "_css_classes": "destination-native-native-accordion",
+              "__globals__": {
+                "normal_title_color": "globals/colors?id=primary",
+                "hover_title_color": "globals/colors?id=secondary",
+                "active_title_color": "globals/colors?id=primary",
+                "normal_icon_color": "globals/colors?id=secondary",
+                "hover_icon_color": "globals/colors?id=accent",
+                "active_icon_color": "globals/colors?id=secondary",
+                "accordion_background_normal_color": "globals/colors?id=3a5c55e",
+                "accordion_background_hover_color": "globals/colors?id=80789f7",
+                "accordion_background_active_color": "globals/colors?id=3a5c55e",
+                "accordion_border_normal_color": "globals/colors?id=62e8100",
+                "accordion_border_hover_color": "globals/colors?id=secondary",
+                "accordion_border_active_color": "globals/colors?id=secondary",
+                "content_border_color": "globals/colors?id=secondary",
+                "content_background_color": "globals/colors?id=3a5c55e"
+              },
+              "accordion_background_hover_color": "#F9F7F5",
+              "accordion_border_normal_color": "#D9D1CA",
+              "accordion_border_hover_color": "#204C50",
+              "accordion_border_active_color": "#204C50",
+              "content_border_color": "#204C50",
+              "content_background_color": "#FBFBFB",
+              "accordion_border_normal_border": "solid",
+              "accordion_border_normal_width": {
+                "unit": "px",
+                "top": "1",
+                "right": "1",
+                "bottom": "1",
+                "left": "1",
+                "isLinked": true
+              },
+              "accordion_border_hover_border": "solid",
+              "accordion_border_hover_width": {
+                "unit": "px",
+                "top": "1",
+                "right": "1",
+                "bottom": "1",
+                "left": "1",
+                "isLinked": true
+              },
+              "accordion_border_active_border": "solid",
+              "accordion_border_active_width": {
+                "unit": "px",
+                "top": "1",
+                "right": "1",
+                "bottom": "1",
+                "left": "1",
+                "isLinked": true
+              },
+              "accordion_border_radius": {
+                "unit": "px",
+                "top": "10",
+                "right": "10",
+                "bottom": "10",
+                "left": "10",
+                "isLinked": true
+              },
+              "content_border_border": "solid",
+              "content_border_width": {
+                "unit": "px",
+                "top": "0",
+                "right": "1",
+                "bottom": "1",
+                "left": "1",
+                "isLinked": false
+              },
+              "content_border_radius": {
+                "unit": "px",
+                "top": "0",
+                "right": "0",
+                "bottom": "10",
+                "left": "10",
+                "isLinked": false
+              },
+              "content_background_background": "classic"
             },
             "elements": [
               {
@@ -439,7 +601,15 @@
                 "settings": {
                   "content_width": "full",
                   "flex_direction": "column",
-                  "_title": "Best time to visit panel"
+                  "_title": "Best time to visit panel",
+                  "border_radius": {
+                    "unit": "px",
+                    "top": "0",
+                    "right": "0",
+                    "bottom": "10",
+                    "left": "10",
+                    "isLinked": false
+                  }
                 },
                 "elements": [
                   {
@@ -540,16 +710,16 @@
                 "library": "fa-solid"
               },
               "title_tag": "h3",
-              "normal_title_color": "#153E49",
-              "hover_title_color": "#245A54",
-              "active_title_color": "#153E49",
-              "normal_icon_color": "#245A54",
-              "hover_icon_color": "#245A54",
-              "active_icon_color": "#245A54",
+              "normal_title_color": "#102D40",
+              "hover_title_color": "#204C50",
+              "active_title_color": "#102D40",
+              "normal_icon_color": "#204C50",
+              "hover_icon_color": "#B48A46",
+              "active_icon_color": "#204C50",
               "accordion_background_normal_background": "classic",
-              "accordion_background_normal_color": "#F8FBF9",
+              "accordion_background_normal_color": "#FBFBFB",
               "accordion_background_active_background": "classic",
-              "accordion_background_active_color": "#F1F7F3",
+              "accordion_background_active_color": "#FBFBFB",
               "accordion_padding": {
                 "unit": "px",
                 "top": "13",
@@ -566,7 +736,82 @@
                 "left": "16",
                 "isLinked": false
               },
-              "_css_classes": "destination-native-native-accordion"
+              "_css_classes": "destination-native-native-accordion",
+              "__globals__": {
+                "normal_title_color": "globals/colors?id=primary",
+                "hover_title_color": "globals/colors?id=secondary",
+                "active_title_color": "globals/colors?id=primary",
+                "normal_icon_color": "globals/colors?id=secondary",
+                "hover_icon_color": "globals/colors?id=accent",
+                "active_icon_color": "globals/colors?id=secondary",
+                "accordion_background_normal_color": "globals/colors?id=3a5c55e",
+                "accordion_background_hover_color": "globals/colors?id=80789f7",
+                "accordion_background_active_color": "globals/colors?id=3a5c55e",
+                "accordion_border_normal_color": "globals/colors?id=62e8100",
+                "accordion_border_hover_color": "globals/colors?id=secondary",
+                "accordion_border_active_color": "globals/colors?id=secondary",
+                "content_border_color": "globals/colors?id=secondary",
+                "content_background_color": "globals/colors?id=3a5c55e"
+              },
+              "accordion_background_hover_color": "#F9F7F5",
+              "accordion_border_normal_color": "#D9D1CA",
+              "accordion_border_hover_color": "#204C50",
+              "accordion_border_active_color": "#204C50",
+              "content_border_color": "#204C50",
+              "content_background_color": "#FBFBFB",
+              "accordion_border_normal_border": "solid",
+              "accordion_border_normal_width": {
+                "unit": "px",
+                "top": "1",
+                "right": "1",
+                "bottom": "1",
+                "left": "1",
+                "isLinked": true
+              },
+              "accordion_border_hover_border": "solid",
+              "accordion_border_hover_width": {
+                "unit": "px",
+                "top": "1",
+                "right": "1",
+                "bottom": "1",
+                "left": "1",
+                "isLinked": true
+              },
+              "accordion_border_active_border": "solid",
+              "accordion_border_active_width": {
+                "unit": "px",
+                "top": "1",
+                "right": "1",
+                "bottom": "1",
+                "left": "1",
+                "isLinked": true
+              },
+              "accordion_border_radius": {
+                "unit": "px",
+                "top": "10",
+                "right": "10",
+                "bottom": "10",
+                "left": "10",
+                "isLinked": true
+              },
+              "content_border_border": "solid",
+              "content_border_width": {
+                "unit": "px",
+                "top": "0",
+                "right": "1",
+                "bottom": "1",
+                "left": "1",
+                "isLinked": false
+              },
+              "content_border_radius": {
+                "unit": "px",
+                "top": "0",
+                "right": "0",
+                "bottom": "10",
+                "left": "10",
+                "isLinked": false
+              },
+              "content_background_background": "classic"
             },
             "elements": [
               {
@@ -575,7 +820,15 @@
                 "settings": {
                   "content_width": "full",
                   "flex_direction": "column",
-                  "_title": "Travel tips panel"
+                  "_title": "Travel tips panel",
+                  "border_radius": {
+                    "unit": "px",
+                    "top": "0",
+                    "right": "0",
+                    "bottom": "10",
+                    "left": "10",
+                    "isLinked": false
+                  }
                 },
                 "elements": [
                   {
@@ -624,7 +877,7 @@
             "left": "1",
             "isLinked": true
           },
-          "border_color": "#DCE6E2",
+          "border_color": "#D9D1CA",
           "border_radius": {
             "unit": "px",
             "top": "10",
@@ -634,7 +887,7 @@
             "isLinked": true
           },
           "background_background": "classic",
-          "background_color": "#FAFCFB",
+          "background_color": "#FBFBFB",
           "jedv_enabled": "yes",
           "jedv_type": "show",
           "jedv_relation": "AND",
@@ -645,7 +898,11 @@
               "jedv_field": "internal_links",
               "jedv_context": "current_listing"
             }
-          ]
+          ],
+          "__globals__": {
+            "border_color": "globals/colors?id=62e8100",
+            "background_color": "globals/colors?id=3a5c55e"
+          }
         },
         "elements": [
           {
@@ -741,6 +998,24 @@
       "Beste Reisezeit",
       "Reisetipps",
       "Mehr erfahren"
+    ]
+  },
+  "brand_style": {
+    "source": "Elementor Kit Global Colors",
+    "roles": {
+      "surface_border": "62e8100",
+      "surface": "3a5c55e",
+      "hover_surface": "80789f7",
+      "primary": "primary",
+      "secondary": "secondary",
+      "accent": "accent"
+    },
+    "border_width_px": 1,
+    "border_radius_px": 10,
+    "states": [
+      "normal",
+      "hover",
+      "active"
     ]
   }
 }
