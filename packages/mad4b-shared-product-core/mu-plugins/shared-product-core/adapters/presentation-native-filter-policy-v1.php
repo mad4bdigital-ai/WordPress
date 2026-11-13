@@ -97,7 +97,14 @@ function shared_presentation_native_filter_options_v1(array $options,int $filter
             $hasSpecializedPricingSource=true;
             continue;
         }
-        if($owner && (!function_exists('service_visible_in_current_page')
+        // Native Tour-component filters are read-only: disabling a separate
+        // service must not erase a linked Tour's taxonomy controls.
+        // Outside a verified Tour, the original service policy still applies.
+        $channel=class_exists('MAD4B_Company_Term_Eligibility_V1',false)
+            ?MAD4B_Company_Term_Eligibility_V1::surface_channel():'standalone';
+        if($owner && $channel==='tour_component'){
+            if(!MAD4B_Company_Term_Eligibility_V1::query_service_allowed($owner,$channel))continue;
+        }elseif($owner && (!function_exists('service_visible_in_current_page')
             || !service_visible_in_current_page($type)))continue;
         $types[$type]=true;
     }
