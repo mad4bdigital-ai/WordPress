@@ -83,6 +83,13 @@ final class MAD4B_SCP_Operator_Grant_Convergence {
              empty( MAD4B_SCP_Site_Profile::status()['authority_ready'] ) ) {
             return new WP_Error( 'mad4b_operator_grants_site_not_ready', 'Exact enrolled managed-runtime authority required.' );
         }
+        // This Provider's registered Ability forbids Production mutation.
+        // Reuse the canonical dynamic Site Profile write boundary instead
+        // of trusting a caller environment label or an OAuth claim alone.
+        if ( ! MAD4B_SCP_Site_Profile::nonproduction_governed( 'write' ) ) {
+            return new WP_Error( 'mad4b_operator_grants_nonproduction_only',
+                'Exact enrolled non-production Write policy is required for Operator grants.' );
+        }
         $identity = MAD4B_SCP_Identity_Context::current();
         if ( is_wp_error( $identity ) || ! is_array( $identity ) ||
              ! in_array( 'mad4b:authority:step-up', $identity['token_scopes'] ?? array(), true ) ) {

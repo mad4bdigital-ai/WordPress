@@ -7,11 +7,22 @@ class WP_Error {
     public function get_error_code() { return $this->code; }
 }
 function is_wp_error( $x ) { return $x instanceof WP_Error; }
+function sanitize_key( $name ) {
+    return preg_replace( '/[^a-z0-9_\-]/', '', strtolower( (string) $name ) );
+}
 function add_action( ...$args ) {}
 function get_option( $name, $default = '' ) { return $default; }
 function wp_get_environment_type() { return $GLOBALS['test_env'] ?? 'staging'; }
 class MAD4B_SCP_Site_Profile {
     public static function current_environment() { return $GLOBALS['test_env'] ?? 'staging'; }
+    public static function managed_runtime_enabled() { return empty( $GLOBALS['test_managed_runtime_disabled'] ); }
+    public static function status() {
+        return array( 'authority_ready' => empty( $GLOBALS['test_site_authority_revoked'] ) );
+    }
+    public static function nonproduction_governed( $feature = '' ) {
+        return in_array( self::current_environment(), array( 'local', 'development', 'staging' ), true )
+            && ( 'write' !== $feature || empty( $GLOBALS['test_site_write_disabled'] ) );
+    }
 }
 class MAD4B_SCP_Local_OAuth_Server {
     const CHATGPT_CIMD_CLIENT_ID = 'https://chatgpt.com/connector-client';
@@ -98,8 +109,17 @@ unset( $GLOBALS['test_bearer_revoked'] );
 $GLOBALS['test_verified_scope_missing'] = true;
 check( 'verified scope absent denied', MAD4B_SCP_Operator_Grant_Convergence::execute( array( 'action' => 'plan' ) ), 'mad4b_operator_grants_step_up_required' );
 unset( $GLOBALS['test_verified_scope_missing'] );
+$GLOBALS['test_managed_runtime_disabled'] = true;
+check( 'managed runtime disabled', MAD4B_SCP_Operator_Grant_Convergence::execute( array( 'action' => 'plan' ) ), 'mad4b_operator_grants_site_not_ready' );
+unset( $GLOBALS['test_managed_runtime_disabled'] );
+$GLOBALS['test_site_authority_revoked'] = true;
+check( 'site authority revoked', MAD4B_SCP_Operator_Grant_Convergence::execute( array( 'action' => 'plan' ) ), 'mad4b_operator_grants_site_not_ready' );
+unset( $GLOBALS['test_site_authority_revoked'] );
+$GLOBALS['test_site_write_disabled'] = true;
+check( 'profile write disabled', MAD4B_SCP_Operator_Grant_Convergence::execute( array( 'action' => 'plan' ) ), 'mad4b_operator_grants_nonproduction_only' );
+unset( $GLOBALS['test_site_write_disabled'] );
 $GLOBALS['test_env'] = 'production';
-check( 'production denied', MAD4B_SCP_Operator_Grant_Convergence::execute( array( 'action' => 'plan' ) ), 'mad4b_operator_grants_staging_only' );
+check( 'production denied', MAD4B_SCP_Operator_Grant_Convergence::execute( array( 'action' => 'plan' ) ), 'mad4b_operator_grants_nonproduction_only' );
 if ( MAD4B_SCP_Developer_Authority::$apply_calls !== 0 ) {
     fwrite( STDERR, 'FAIL canonical apply touched' . PHP_EOL ); exit( 3 );
 }

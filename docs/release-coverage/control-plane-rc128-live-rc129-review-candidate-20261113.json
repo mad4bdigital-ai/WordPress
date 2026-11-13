@@ -124,8 +124,9 @@
     },
     {
       "action": "fast_forward_reviewed_live_delta_from_rc128",
-      "candidate_after_sha256": "70bd96163aa125f6e317daea7dc06632793e3b60557b373b6399a4a8761f3246",
+      "candidate_after_sha256": "8bb67b1c6d1375339aa191607f06afb5924355be2456775cb90cf23a2d05557f",
       "candidate_before_sha256": "e31db389b5e21fc76e580a5af3b107145e7c2a59a83bbdde03ddaf177209c712",
+      "followup_review_reason": "Align published non-production policy with runtime gate, preserving managed site enrollment and signed source checks",
       "live_sha256": "70bd96163aa125f6e317daea7dc06632793e3b60557b373b6399a4a8761f3246",
       "path": "includes/class-mad4b-scp-operator-grant-convergence.php"
     },
