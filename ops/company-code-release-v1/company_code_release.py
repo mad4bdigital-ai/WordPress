@@ -133,6 +133,185 @@ def git_bytes(repo: Path, commit: str, relative: str) -> bytes:
     return data
 
 
+def registered_release_targets(policy: dict, entry: dict, commit: str) -> set[str]:
+    """Resolve per-company deployable modules from a Git-committed catalog.
+
+    Merely being under mu-plugins is not authority: each target must be explicitly
+    catalogued at the immutable requested commit and scoped by the bound policy.
+    """
+    static = set(entry["allowed_targets"])
+    catalog_path = entry.get("release_catalog")
+    if catalog_path is None:
+        return static
+    fail_if(not isinstance(catalog_path, str) or
+            catalog_path != "ops/company-code-release-v1/catalog/mad4b-release-components.json",
+            "RELEASE_CATALOG_NOT_CANONICAL")
+    catalog = json.loads(git_bytes(Path(policy["source_git_root"]), commit, catalog_path))
+    fail_if(not isinstance(catalog, dict) or
+            catalog.get("contract") != "mad4b.company-release-components.v1" or
+            sorted(catalog) != ["components", "contract"],
+            "RELEASE_CATALOG_INVALID")
+    components = catalog.get("components")
+    fail_if(not isinstance(components, list) or not 1 <= len(components) <= 500,
+            "RELEASE_CATALOG_COMPONENTS_INVALID")
+    for component in components:
+        fail_if(not isinstance(component, dict) or
+                sorted(component) != ["files", "id"] or
+                not isinstance(component["id"], str) or
+                not re.fullmatch(r"mad4b-[a-z0-9-]{3,90}", component["id"]),
+                "RELEASE_COMPONENT_INVALID")
+        files = component["files"]
+        fail_if(not isinstance(files, list) or not 1 <= len(files) <= 24,
+                "RELEASE_COMPONENT_FILES_INVALID")
+        for target in files:
+            fail_if(not isinstance(target, str), "RELEASE_COMPONENT_PATH_INVALID")
+            target = exact_relative(target)
+            fail_if(not permitted_target(target) or
+                    not target.startswith("wp-content/mu-plugins/mad4b-") or
+                    not target.endswith(".php"), "RELEASE_COMPONENT_SCOPE_INVALID")
+            git_bytes(Path(policy["source_git_root"]), commit, target)
+            static.add(target)
+    return static
+
+
+def capability_owner_snapshot(
+    root: Path, proposed_targets: set[str], *,
+    repo: Path | None = None, commit: str | None = None,
+) -> dict:
+    """Reconcile functional ownership from target and immutable source profiles.
+
+    A physical MU file is NOT a permanent owner. Likewise, a replacement PHP
+    file does not prove that its hooks are active or behavior is equivalent.
+    The portability profile describes lineage; a separate independently
+    verified owner-transition receipt is required to switch active owners.
+    """
+    plugins = root / "wp-content" / "plugins"
+    profile_inputs: list[tuple[str, str, bytes]] = []
+    if plugins.is_dir():
+        no_link(plugins)
+        target_profiles = sorted(plugins.glob("mad4b-*/mad4b-portability.json"))
+        fail_if(len(target_profiles) > 250, "PORTABILITY_PROFILE_COUNT_EXCEEDED")
+        for profile in target_profiles:
+            no_link(profile)
+            profile_inputs.append((
+                "target", profile.parent.name,
+                safe_regular(profile, max_size=200_000)))
+    if repo is not None and commit is not None:
+        fail_if(not GIT_SHA.fullmatch(commit), "COMMIT_MUST_BE_FULL_SHA")
+        # The source profile is read from the exact Git tree, never from a
+        # mutable Tours.dev working tree. Git is an input for *candidate*
+        # ownership only; it is not authority to detach tenant legacy hooks.
+        names = run(["git", "-C", str(repo), "ls-tree", "-r", "--name-only",
+                     commit, "--", "wp-content/plugins"], timeout=35).decode().splitlines()
+        source_profiles = sorted(path for path in names if re.fullmatch(
+            r"wp-content/plugins/(mad4b-[a-z0-9-]+)/mad4b-portability\.json", path))
+        fail_if(len(source_profiles) > 250, "SOURCE_PORTABILITY_PROFILE_COUNT_EXCEEDED")
+        for path in source_profiles:
+            data = git_bytes(repo, commit, path)
+            fail_if(len(data) > 200_000, "SOURCE_PORTABILITY_PROFILE_TOO_LARGE")
+            profile_inputs.append(("source", PurePosixPath(path).parent.name, data))
+    owners: dict[tuple[str, str], dict] = {}
+    for origin, plugin, raw in profile_inputs:
+        try:
+            meta = json.loads(raw)
+        except (TypeError, ValueError) as exc:
+            raise Denied("INVALID_PORTABILITY_MANIFEST") from exc
+        fail_if(not isinstance(meta, dict) or
+                meta.get("contract") != "mad4b.plugin-portability-profile.v1" or
+                meta.get("plugin") != plugin,
+                "PORTABILITY_PLUGIN_IDENTITY_INVALID")
+        migrations = meta.get("company_specific_legacy_mu_replacements", [])
+        fail_if(not isinstance(migrations, list) or len(migrations) > 100,
+                "PORTABILITY_MIGRATION_SHAPE_INVALID")
+        for migration in migrations:
+            fail_if(not isinstance(migration, dict),
+                    "PORTABILITY_MIGRATION_ENTRY_INVALID")
+            legacy = migration.get("legacy_file")
+            replacement = migration.get("replacement")
+            fail_if(not isinstance(legacy, str) or not isinstance(replacement, str) or
+                    not re.fullmatch(r"[a-zA-Z0-9_-]{1,150}\.php", legacy),
+                    "PORTABILITY_LEGACY_PATH_INVALID")
+            replace_path = exact_relative(replacement)
+            fail_if(not replace_path.startswith("src/") or
+                    not replace_path.endswith(".php"),
+                    "PORTABILITY_REPLACEMENT_PATH_INVALID")
+            legacy_target = "wp-content/mu-plugins/" + legacy
+            replacement_target = "wp-content/plugins/" + plugin + "/" + replace_path
+            key = (legacy_target, replacement_target)
+            row = owners.setdefault(key, {
+                "component": plugin,
+                "migration_contract": str(migration.get("reconcile_contract", "")),
+                "legacy_target": legacy_target,
+                "replacement_target": replacement_target,
+                "source_manifest_sha256": None,
+                "target_manifest_sha256": None,
+            })
+            marker = origin + "_manifest_sha256"
+            fail_if(row["component"] != plugin or row[marker] is not None,
+                    "MULTIPLE_CAPABILITY_OWNERS_IN_PORTABILITY")
+            fail_if(row["migration_contract"] !=
+                    str(migration.get("reconcile_contract", "")),
+                    "PORTABILITY_CONTRACT_LINEAGE_CONFLICT")
+            row[marker] = digest(raw)
+    # Only an explicitly proposed migration relation is an admission gate;
+    # no global hardcoded list of files to preserve is ever materialized.
+    rows: list[dict] = []
+    selected_legacy: dict[str, str] = {}
+    selected_canonical: dict[str, str] = {}
+    for (legacy_target, replacement_target), relation in sorted(owners.items()):
+        touched = {legacy_target, replacement_target} & proposed_targets
+        manifest_target = ("wp-content/plugins/" + relation["component"] +
+                           "/mad4b-portability.json")
+        profile_selected = manifest_target in proposed_targets
+        if not touched and not profile_selected:
+            continue
+        if legacy_target in selected_legacy and selected_legacy[legacy_target] != replacement_target:
+            raise Denied("PORTABILITY_OWNER_MIGRATION_CONFLICT")
+        if replacement_target in selected_canonical and selected_canonical[replacement_target] != legacy_target:
+            raise Denied("PORTABILITY_OWNER_MIGRATION_CONFLICT")
+        selected_legacy[legacy_target] = replacement_target
+        selected_canonical[replacement_target] = legacy_target
+        legacy_path = root / legacy_target
+        new_path = root / replacement_target
+        no_link(legacy_path)
+        no_link(new_path)
+        fail_if((legacy_path.exists() and not legacy_path.is_file()) or
+                (new_path.exists() and not new_path.is_file()),
+                "OWNER_ARTIFACT_NOT_REGULAR")
+        legacy_exists = legacy_path.is_file()
+        replacement_exists = new_path.is_file()
+        if (profile_selected and legacy_exists and
+                relation["source_manifest_sha256"] !=
+                relation["target_manifest_sha256"]):
+            # A new portability profile can silently reassign a live MU
+            # capability just as easily as a PHP file replacement. Require
+            # the original independent owner-transition certification.
+            raise Denied("OWNER_PROFILE_MIGRATION_REQUIRES_PROOF")
+        if touched == {legacy_target, replacement_target}:
+            raise Denied("DUAL_OWNER_MIGRATION_NOT_CERTIFIED")
+        if replacement_target in touched and legacy_exists:
+            raise Denied("OWNER_TRANSITION_RUNTIME_PROOF_REQUIRED")
+        rows.append({**relation,
+            # The selected profile file itself is checked by source Git and
+            # exact CAS. Do not pin its mutable *old* digest across Apply.
+            "target_manifest_sha256": (None if profile_selected else
+                                       relation["target_manifest_sha256"]),
+            "manifest_target_selected": profile_selected,
+            "legacy_present": legacy_exists,
+            "replacement_present": replacement_exists,
+            "legacy_other_sha256": (digest(safe_regular(legacy_path))
+                if legacy_exists and legacy_target not in proposed_targets else None),
+            "replacement_other_sha256": (digest(safe_regular(new_path))
+                if replacement_exists and replacement_target not in proposed_targets else None),
+            "selected_role": ("legacy" if legacy_target in touched else
+                              "canonical" if replacement_target in touched else
+                              "profile"),
+            "runtime_owner_inferred": False,
+            "retirement_authorized": False,
+        })
+    return {"contract": "mad4b.company-capability-owner-snapshot.v1", "relations": rows}
+
+
 def target_binding(policy: dict, company: str, environment: str) -> dict:
     fail_if(not SCOPE.fullmatch(company) or not SCOPE.fullmatch(environment),
             "INVALID_COMPANY_ENVIRONMENT")
@@ -163,7 +342,7 @@ def make_plan(spec: dict, policy: dict) -> dict:
     files = spec.get("files")
     fail_if(not isinstance(files, list) or not 1 <= len(files) <= 24,
             "INVALID_RELEASE_FILE_COUNT")
-    allowlist = set(entry["allowed_targets"])
+    allowlist = registered_release_targets(policy, entry, spec["git_commit"])
     checks = spec.get("acceptance_checks", ["wp_boot"])
     fail_if(not isinstance(checks, list) or len(checks) < 1 or
             len(checks) > len(ALLOWED_ACCEPTANCE_CHECKS) or
@@ -179,6 +358,8 @@ def make_plan(spec: dict, policy: dict) -> dict:
         target = exact_relative(record.get("target"))
         fail_if(not permitted_target(target) or target not in allowlist,
                 "TARGET_FILE_NOT_ALLOWED")
+        fail_if(target not in set(entry["allowed_targets"]) and source != target,
+                "CATALOG_SOURCE_TARGET_MISMATCH")
         fail_if(target in seen, "DUPLICATE_TARGET")
         seen.add(target)
         before = record.get("expected_before_sha256")
@@ -199,13 +380,16 @@ def make_plan(spec: dict, policy: dict) -> dict:
             "source_bytes": len(src),
             "source_mode": 0o644,  # executable scripts do not run as part of release
         })
+    owner_snapshot = capability_owner_snapshot(root, seen, repo=repo, commit=spec["git_commit"])
     payload = {
+        "owner_reconciliation": owner_snapshot,
         "contract": PLAN_CONTRACT, "company": company,
         "environment": env, "site_uuid": entry["site_uuid"],
         "origin": entry["origin"], "container": entry["container"],
         "git_commit": spec["git_commit"], "git_root": str(repo.resolve()),
         "target_root": str(root.resolve()), "files": rows,
         "acceptance_checks": checks,
+        "release_catalog": entry.get("release_catalog"),
     }
     payload["plan_sha256"] = digest(canonical(payload))
     payload["changed_count"] = sum(
@@ -229,7 +413,22 @@ def confirm_plan(plan: dict, policy: dict, *, expect_preimage: bool) -> None:
             str(Path(entry["root"]).resolve()) != plan.get("target_root") or
             str(Path(policy["source_git_root"]).resolve()) != plan.get("git_root"),
             "PLAN_SCOPE_CHANGED")
-    allowlist = set(entry["allowed_targets"])
+    catalog_at_plan = plan.get("release_catalog")
+    # Plans signed before catalog enrollment remain limited to the explicit
+    # original static paths. Never retroactively elevate a legacy plan.
+    if catalog_at_plan is None:
+        allowlist = set(entry["allowed_targets"])
+    else:
+        fail_if(catalog_at_plan != entry.get("release_catalog"),
+                "RELEASE_CATALOG_BINDING_DRIFT")
+        allowlist = registered_release_targets(policy, entry, plan["git_commit"])
+    # Re-evaluate the current tenant/source functional ownership immediately
+    # before execution, independently of the registered target allowlist.
+    owners_now = capability_owner_snapshot(
+        Path(plan["target_root"]), {row["target"] for row in plan["files"]},
+        repo=Path(plan["git_root"]), commit=plan["git_commit"])
+    fail_if(plan.get("owner_reconciliation") != owners_now,
+            "CAPABILITY_OWNER_STATE_DRIFT")
     checks = plan.get("acceptance_checks", [])
     fail_if(not isinstance(checks, list) or not checks or
             any(not isinstance(check, str) for check in checks) or
@@ -241,6 +440,8 @@ def confirm_plan(plan: dict, policy: dict, *, expect_preimage: bool) -> None:
         target = exact_relative(row["target"])
         fail_if(target not in allowlist or not permitted_target(target),
                 "PLAN_TARGET_NO_LONGER_ALLOWED")
+        fail_if(target not in set(entry["allowed_targets"]) and row["source"] != target,
+                "PLAN_CATALOG_SOURCE_TARGET_MISMATCH")
         fresh = git_bytes(Path(plan["git_root"]), plan["git_commit"], row["source"])
         fail_if(digest(fresh) != row["source_sha256"], "SOURCE_COMMIT_DRIFT")
         target_file = Path(plan["target_root"]) / target

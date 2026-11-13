@@ -14,6 +14,58 @@ No shell commands can be supplied in a release manifest. No WordPress database c
 
 The host policy maps an exact company:environment binding to target root, container, site UUID, canonical origin and explicit files. Staging, Production, QA and other registered environments use the SAME rules: there is no environment-name-based override or separate production_enabled switch. The release executor contains no Wayfatours-specific paths. Wayfatours is the first request fixture only.
 
+## Capability ownership, not file retention (source/tenant parity)
+
+`company_code_release.py` now calls the existing plan/confirm/apply/readback
+path's **read-only** `capability_owner_snapshot` rather than using any protected
+MU filename inventory. The snapshot is hashed into the immutable release plan;
+`confirm_plan` rechecks it before an independently signed Apply and after write.
+It neither changes the approved path catalog nor creates a grant.
+
+The ownership graph is discovered dynamically from `mad4b-portability.json`
+profiles (contract `mad4b.plugin-portability-profile.v1`) in **both**:
+
+- the exact source Git commit's plugin manifests; and
+- the enrolled tenant's current plugin manifests and MU/plugin file preimages.
+
+`company_specific_legacy_mu_replacements` records describe a **capability**
+transition: `legacy_file` -> `replacement`, scoped by the actual plugin
+manifest and its reconcile contract. A legacy MU file is not protected forever:
+
+- **Legacy owner still live:** continue bounded maintenance of the current
+  legacy owner under the existing file CAS and signed Broker authority.
+- **Canonical plugin already installed, MU physically retired:** updating the
+  canonical module is permitted, subject to existing allowlist, signed grant,
+  tenant binding, PHP/WordPress acceptance, and independent readback. The old
+  file need not be restored to satisfy an inventory count.
+- **Both files physically present:** file presence alone is **not** proof of
+  runtime ownership. Replacing the plugin's owner module must stop until a
+  separate original, read-only **runtime-owner and semantic-parity receipt**
+  proves that the MU is not the active handler. The current generic file release
+  deliberately cannot issue this receipt or migrate two active handlers.
+- **Both owners in one ordinary file release:** fail closed. This executor does
+  not implement atomic MU retirement / plugin activation as a filename rename.
+- **Source-only migration metadata:** also applies to the tenant. Missing
+  target portability metadata cannot silently hide a source MU->Plugin move.
+- **Conflicting source and tenant owner mappings:** hold and reconcile the
+  *capability*, not by overwriting either site or permanently pinning the MU.
+- **Unrelated MU files:** not protected, blocked or auto-deleted by name/count.
+
+A verified migration is a separate owner-lifecycle transaction: read current
+hook/class owner, preserve live tenant settings and translated Elementor/JetEngine
+conditions, compare behavioral contracts, check one active handler, then perform
+an original signed tenant write, independent runtime readback, and rollback if
+not equivalent. This code's snapshot is an admission fence, **not** a claim that
+such a signed migration or full operational parity is already implemented.
+It never changes the WordPress database; Elementor document writes remain with
+the original native Elementor/CAS provider.
+
+The owner index rejects unsafe paths, duplicate owners and unexpected profile
+changes. Git Worktree changes cannot alter a pinned source migration, and a
+concurrent MU reappearance invalidates an already approved canonical plugin
+plan. The manifest's free-text `replacement_activation_check` is informational;
+it is **not** executed or trusted as a runtime proof.
+
 ## Files
 
 - company_code_release.py: host release planner, original-305/312/313-aware non-authorizing doctor and signed executor.

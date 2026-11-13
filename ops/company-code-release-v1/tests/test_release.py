@@ -194,6 +194,258 @@ class CodeReleaseTests(unittest.TestCase):
         self.assertEqual(plan["changed_count"], 1)
         self.assertFalse((self.site / "wp-content/mu-plugins/mad4b-new.php").exists())
 
+    def capability_portability_fixture(self):
+        """The example class moved to a plugin; a MU path isn't a permanent owner."""
+        plugin = self.site / "wp-content/plugins/mad4b-experience"
+        relative = "src/presentation/modules/374-mad4b-owner-bridge.php"
+        replacement = plugin / relative
+        replacement.parent.mkdir(parents=True)
+        replacement.write_text("<?php echo 'PLUGIN';\n")
+        manifest = plugin / "mad4b-portability.json"
+        manifest.write_text(json.dumps({
+            "contract": "mad4b.plugin-portability-profile.v1",
+            "plugin": "mad4b-experience",
+            "company_specific_legacy_mu_replacements": [{
+                "legacy_file": "mad4b-approved.php",
+                "replacement": relative,
+                "reconcile_contract": "mad4b.option-owner-v1",
+            }],
+        }))
+        target = "wp-content/plugins/mad4b-experience/" + relative
+        self.policy["targets"]["demo:staging"]["allowed_targets"].append(target)
+        return manifest, replacement, target
+
+    def test_legacy_mu_file_is_not_permanently_protected(self):
+        manifest, new_file, target = self.capability_portability_fixture()
+        # Legitimate legacy maintenance may continue while the canonical
+        # module is parked. The record does not infer the active hook owner.
+        plan = release.make_plan(self.request, self.policy)
+        self.assertEqual(len(plan["owner_reconciliation"]["relations"]), 1)
+        entry = plan["owner_reconciliation"]["relations"][0]
+        self.assertEqual(entry["selected_role"], "legacy")
+        self.assertTrue(entry["replacement_present"])
+        self.assertFalse(entry["runtime_owner_inferred"])
+        self.assertFalse(entry["retirement_authorized"])
+        release.confirm_plan(plan, self.policy, expect_preimage=True)
+
+    def test_replacement_with_existing_legacy_owner_requires_proof(self):
+        _, new_file, target = self.capability_portability_fixture()
+        request = json.loads(json.dumps(self.request))
+        request["files"][0]["target"] = target
+        request["files"][0]["expected_before_sha256"] = release.digest(
+            new_file.read_bytes())
+        with self.assertRaisesRegex(release.Denied,
+                                    "OWNER_TRANSITION_RUNTIME_PROOF_REQUIRED"):
+            release.make_plan(request, self.policy)
+        self.assertIn("OLD", self.target.read_text())
+
+    def test_retired_mu_file_does_not_block_canonical_plugin_update(self):
+        _, new_file, target = self.capability_portability_fixture()
+        self.target.unlink()  # Retirement is represented, not performed by planner.
+        request = json.loads(json.dumps(self.request))
+        request["files"][0]["target"] = target
+        request["files"][0]["expected_before_sha256"] = release.digest(
+            new_file.read_bytes())
+        plan = release.make_plan(request, self.policy)
+        relation = plan["owner_reconciliation"]["relations"][0]
+        self.assertFalse(relation["legacy_present"])
+        self.assertTrue(relation["replacement_present"])
+        self.assertEqual(relation["selected_role"], "canonical")
+        release.confirm_plan(plan, self.policy, expect_preimage=True)
+        # A concurrent reintroduction of the old MU owner MUST invalidate
+        # the pinned release even when the plugin's own preimage is unchanged.
+        self.target.write_text("<?php echo 'unexpected second owner';")
+        with self.assertRaisesRegex(release.Denied,
+                                    "OWNER_TRANSITION_RUNTIME_PROOF_REQUIRED"):
+            release.confirm_plan(plan, self.policy, expect_preimage=True)
+
+    def test_cannot_transfer_both_owners_via_unsigned_file_pair(self):
+        _, new_file, target = self.capability_portability_fixture()
+        request = json.loads(json.dumps(self.request))
+        request["files"].append({
+            "source": "ops/artifacts/approved.php", "target": target,
+            "expected_before_sha256": release.digest(new_file.read_bytes()),
+        })
+        with self.assertRaisesRegex(release.Denied,
+                                    "DUAL_OWNER_MIGRATION_NOT_CERTIFIED"):
+            release.make_plan(request, self.policy)
+
+    def test_portability_manifest_drift_blocks_original_release(self):
+        manifest, _, _ = self.capability_portability_fixture()
+        plan = release.make_plan(self.request, self.policy)
+        record = json.loads(manifest.read_text())
+        record["company_specific_legacy_mu_replacements"][0][
+            "reconcile_contract"] = "later-owner-revision"
+        manifest.write_text(json.dumps(record))
+        with self.assertRaisesRegex(release.Denied,
+                                    "CAPABILITY_OWNER_STATE_DRIFT"):
+            release.confirm_plan(plan, self.policy, expect_preimage=True)
+
+    def test_unrelated_mu_patch_does_not_impose_legacy_file_retention(self):
+        self.capability_portability_fixture()
+        request = json.loads(json.dumps(self.request))
+        request["files"][0]["target"] = "wp-content/mu-plugins/mad4b-new.php"
+        request["files"][0]["expected_before_sha256"] = None
+        plan = release.make_plan(request, self.policy)
+        self.assertEqual(plan["owner_reconciliation"]["relations"], [])
+        release.confirm_plan(plan, self.policy, expect_preimage=True)
+
+    def source_portability_fixture(self):
+        """An immutable source can declare MU -> plugin migration before Wayfa does."""
+        root = self.repo / "wp-content/plugins/mad4b-experience"
+        root.mkdir(parents=True, exist_ok=True)
+        replacement = "src/presentation/modules/374-mad4b-owner-bridge.php"
+        path = root / "mad4b-portability.json"
+        path.write_text(json.dumps({
+            "contract": "mad4b.plugin-portability-profile.v1",
+            "plugin": "mad4b-experience",
+            "company_specific_legacy_mu_replacements": [{
+                "legacy_file": "mad4b-approved.php",
+                "replacement": replacement,
+                "reconcile_contract": "mad4b.owner-transition-v1",
+            }],
+        }))
+        shell("git", "-C", str(self.repo), "add", ".")
+        shell("git", "-C", str(self.repo), "-c", "user.name=Test",
+              "-c", "user.email=test@example.invalid", "commit", "-qm", "profile")
+        self.commit = shell("git", "-C", str(self.repo), "rev-parse", "HEAD")
+        self.request["git_commit"] = self.commit
+        target = "wp-content/plugins/mad4b-experience/" + replacement
+        self.policy["targets"]["demo:staging"]["allowed_targets"].append(target)
+        return path, target
+
+    def test_git_source_only_migration_blocks_late_target_plugin_copy(self):
+        _, target = self.source_portability_fixture()
+        self.assertFalse((self.site / "wp-content/plugins/mad4b-experience/mad4b-portability.json").exists())
+        request = json.loads(json.dumps(self.request))
+        request["files"][0]["target"] = target
+        request["files"][0]["expected_before_sha256"] = None
+        with self.assertRaisesRegex(release.Denied,
+                                    "OWNER_TRANSITION_RUNTIME_PROOF_REQUIRED"):
+            release.make_plan(request, self.policy)
+        # Source Git is a candidate lineage, never permission to take over
+        # an existing MU hook owner on the target tenant.
+        self.assertIn("OLD", self.target.read_text())
+
+    def test_source_only_owner_mapping_is_discovered_without_global_mu_block(self):
+        _, _ = self.source_portability_fixture()
+        plan = release.make_plan(self.request, self.policy)
+        migration = plan["owner_reconciliation"]["relations"][0]
+        self.assertEqual(migration["selected_role"], "legacy")
+        self.assertIsNotNone(migration["source_manifest_sha256"])
+        self.assertIsNone(migration["target_manifest_sha256"])
+        release.confirm_plan(plan, self.policy, expect_preimage=True)
+        # Working-tree edits cannot rewrite the source proof pinned by Git.
+        source = self.repo / "wp-content/plugins/mad4b-experience/mad4b-portability.json"
+        source.write_text("{bad uncommitted JSON}")
+        release.confirm_plan(plan, self.policy, expect_preimage=True)
+
+    def test_divergent_source_and_tenant_successor_is_not_silently_overridden(self):
+        self.source_portability_fixture()
+        target = self.site / "wp-content/plugins/mad4b-experience"
+        target.mkdir(parents=True, exist_ok=True)
+        (target / "mad4b-portability.json").write_text(json.dumps({
+            "contract": "mad4b.plugin-portability-profile.v1",
+            "plugin": "mad4b-experience",
+            "company_specific_legacy_mu_replacements": [{
+                "legacy_file": "mad4b-approved.php",
+                "replacement": "src/presentation/modules/another-owner.php",
+                "reconcile_contract": "mad4b.owner-transition-v1",
+            }],
+        }))
+        with self.assertRaisesRegex(release.Denied,
+                                    "PORTABILITY_OWNER_MIGRATION_CONFLICT"):
+            release.make_plan(self.request, self.policy)
+
+    def test_canonical_plugin_release_readback_after_legacy_retirement(self):
+        _, new_file, target = self.capability_portability_fixture()
+        self.target.unlink()
+        request = json.loads(json.dumps(self.request))
+        request["files"][0]["target"] = target
+        request["files"][0]["expected_before_sha256"] = release.digest(new_file.read_bytes())
+        plan = release.make_plan(request, self.policy)
+        self.plan = plan
+        result = self.authorized_apply()
+        self.assertEqual(result["state"], "APPLIED_VERIFIED")
+        self.assertEqual(new_file.read_text(), "<?php echo 'NEW';\n")
+        release.confirm_plan(plan, self.policy, expect_preimage=False)
+        self.assertFalse(self.target.exists())
+
+    def test_cannot_install_source_only_owner_manifest_over_active_mu(self):
+        _, _ = self.source_portability_fixture()
+        target = "wp-content/plugins/mad4b-experience/mad4b-portability.json"
+        self.policy["targets"]["demo:staging"]["allowed_targets"].append(target)
+        request = json.loads(json.dumps(self.request))
+        request["files"][0].update(source=target, target=target,
+                                   expected_before_sha256=None)
+        with self.assertRaisesRegex(release.Denied,
+                                    "OWNER_PROFILE_MIGRATION_REQUIRES_PROOF"):
+            release.make_plan(request, self.policy)
+
+    def test_portability_manifest_can_install_after_mu_retired(self):
+        _, _ = self.source_portability_fixture()
+        (self.site / "wp-content/plugins/mad4b-experience").mkdir(parents=True)
+        target = "wp-content/plugins/mad4b-experience/mad4b-portability.json"
+        self.policy["targets"]["demo:staging"]["allowed_targets"].append(target)
+        self.target.unlink()
+        request = json.loads(json.dumps(self.request))
+        request["files"][0].update(source=target, target=target,
+                                   expected_before_sha256=None)
+        plan = release.make_plan(request, self.policy)
+        self.assertEqual(plan["owner_reconciliation"]["relations"][0][
+            "selected_role"], "profile")
+        self.assertTrue(plan["owner_reconciliation"]["relations"][0][
+            "manifest_target_selected"])
+        release.confirm_plan(plan, self.policy, expect_preimage=True)
+        self.plan = plan
+        result = self.authorized_apply()
+        self.assertEqual(result["state"], "APPLIED_VERIFIED", result)
+        release.confirm_plan(plan, self.policy, expect_preimage=False)
+
+    def test_existing_dynamic_catalog_stays_functional_with_owner_gate(self):
+        # The original registered host Provider has a newer dynamic catalog
+        # than the source branch. The feature must preserve that authority
+        # contract, not regress to a fixed MU allowlist.
+        target = "wp-content/mu-plugins/mad4b-catalog-migration-test.php"
+        source = self.repo / target
+        source.parent.mkdir(parents=True, exist_ok=True)
+        source.write_text("<?php echo 'catalog target';\n")
+        catalog = self.repo / "ops/company-code-release-v1/catalog/mad4b-release-components.json"
+        catalog.parent.mkdir(parents=True, exist_ok=True)
+        catalog.write_text(json.dumps({
+            "contract": "mad4b.company-release-components.v1",
+            "components": [{"id": "mad4b-catalog-source-test", "files": [target]}],
+        }))
+        shell("git", "-C", str(self.repo), "add", ".")
+        shell("git", "-C", str(self.repo), "-c", "user.name=Test",
+              "-c", "user.email=test@example.invalid", "commit", "-qm", "catalog")
+        self.commit = shell("git", "-C", str(self.repo), "rev-parse", "HEAD")
+        self.policy["targets"]["demo:staging"]["release_catalog"] = (
+            "ops/company-code-release-v1/catalog/mad4b-release-components.json")
+        request = json.loads(json.dumps(self.request))
+        request["git_commit"] = self.commit
+        request["files"][0].update(source=target, target=target,
+                                   expected_before_sha256=None)
+        plan = release.make_plan(request, self.policy)
+        self.assertEqual(plan["release_catalog"],
+                         self.policy["targets"]["demo:staging"]["release_catalog"])
+        self.assertEqual(plan["owner_reconciliation"]["relations"], [])
+        release.confirm_plan(plan, self.policy, expect_preimage=True)
+        self.plan = plan
+        result = self.authorized_apply()
+        self.assertEqual(result["state"], "APPLIED_VERIFIED", result)
+        self.assertEqual((self.site / target).read_text(), source.read_text())
+
+    def test_untrusted_portability_path_is_rejected(self):
+        manifest, _, _ = self.capability_portability_fixture()
+        record = json.loads(manifest.read_text())
+        record["company_specific_legacy_mu_replacements"][0][
+            "replacement"] = "src/../../other-plugin/untrusted.php"
+        manifest.write_text(json.dumps(record))
+        with self.assertRaisesRegex(release.Denied,
+                                    "NONCANONICAL_FILE_PATH|UNSAFE_FILE_PATH"):
+            release.make_plan(self.request, self.policy)
+
     def test_production_plan_uses_exact_binding_without_environment_waiver(self):
         # Production is no longer categorically denied, but its site profile,
         # per-file preimage and separate signature remain mandatory.
