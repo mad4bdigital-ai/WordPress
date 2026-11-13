@@ -50,8 +50,6 @@ def independent_verify(
         authority_proof, plan, job_id, min_window_seconds=20
     )
     release.verify_grant(plan, policy, grant, "apply")
-    release.confirm_plan(plan, policy, expect_preimage=False)
-    runtime_check(plan, policy)
     receipts = Path(policy["receipt_dir"])
     release.assert_pinned_receipt_directory(policy, receipts)
     nonce = grant.get("nonce")
@@ -65,6 +63,12 @@ def independent_verify(
             receipt.get("site_uuid") != plan["site_uuid"] or
             receipt.get("git_commit") != plan["git_commit"]):
         raise handler.NotEnrolled("INDEPENDENT_HOST_RECEIPT_SCOPE_MISMATCH")
+    # Do not reclassify an incomplete/partial Host Apply as an ordinary
+    # postimage drift. It must first finish a separately signed recovery.
+    if receipt.get("state") != "APPLIED_VERIFIED":
+        raise handler.NotEnrolled("INDEPENDENT_HOST_APPLY_NOT_VERIFIED")
+    release.confirm_plan(plan, policy, expect_preimage=False)
+    runtime_check(plan, policy)
     php_check(plan)
     observed = fresh_read(plan)
     return original.independent_release_readback(plan, receipt, observed)

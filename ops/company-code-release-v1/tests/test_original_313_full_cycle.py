@@ -10,6 +10,8 @@ from __future__ import annotations
 import base64
 import datetime as dt
 import json
+import os
+import stat
 from pathlib import Path
 import subprocess
 import sys
@@ -35,6 +37,15 @@ class WholeReleaseLifecycleFixture(unittest.TestCase):
         self.site=root/"wordpress"
         self.receipts=root/"receipts"
         self.repo.mkdir();self.site.mkdir();self.receipts.mkdir(mode=0o700)
+        # The live ledger always requires UID 0. Non-root CI exercises the
+        # identical mode/path check with its own fixture UID only.
+        if os.geteuid() != 0:
+            from unittest.mock import patch
+            fixture=patch.object(release,'assert_pinned_receipt_directory',
+                lambda policy,receipts:release._verify_receipt_directory_owner(
+                    policy,receipts,required_uid=os.geteuid()))
+            fixture.start()
+            self.addCleanup(fixture.stop)
         (self.repo/"ops"/"artifacts").mkdir(parents=True)
         (self.site/"wp-content"/"mu-plugins").mkdir(parents=True)
         self.rel="wp-content/mu-plugins/mad4b-full-cycle.php"
@@ -127,13 +138,26 @@ class WholeReleaseLifecycleFixture(unittest.TestCase):
             original_claim_provider=lambda job,plan: self.authority,
             runtime_check=lambda _p,_policy:None,
             code_check=lambda _p:None,
+            candidate_preflight_check=lambda _p:None,
         )
+
+    def fixture_private_receipt(self, path: Path) -> dict:
+        # CI has no root: preserve exact fixed path, owner, symlink and mode
+        # checks against the test UID only. Production trusted_load keeps UID0.
+        self.assertEqual(path.parent.resolve(),self.receipts.resolve())
+        self.assertFalse(path.is_symlink())
+        mode=path.stat()
+        self.assertEqual(mode.st_uid,os.geteuid())
+        self.assertEqual(stat.S_IMODE(mode.st_mode) & 0o077,0)
+        return json.loads(path.read_text())
 
     def independent(self):
         return reader.independent_verify(
             self.job,self.plan,self.policy,self.grant,self.authority,
             runtime_check=lambda _p,_policy:None,
             php_check=lambda _p:None,
+            receipt_read=(host.trusted_load if os.geteuid()==0
+                          else self.fixture_private_receipt),
         )
 
     def test_real_git_signed_apply_independent_readback_then_signed_rollback(self):

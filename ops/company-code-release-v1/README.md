@@ -118,6 +118,11 @@ checks, independent browser behavior and an approved rollback. This release
 module handles **code files only**; it must not duplicate Elementor/JetEngine
 DB writers or claim their success.
 
+For the production fail-safe journal, just-in-time CAS, prewrite syntax
+verification, interrupted Apply/Rollback recovery, review dimensions and
+operational limits, see
+[`docs/transaction-journal-cas-audit-v1.md`](docs/transaction-journal-cas-audit-v1.md).
+
 ## Files
 
 - company_code_release.py: host release planner, original-305/312/313-aware non-authorizing doctor and signed executor.

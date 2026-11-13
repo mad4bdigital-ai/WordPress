@@ -109,11 +109,12 @@ class CodeReleaseTests(unittest.TestCase):
         ).decode()
         return item
 
-    def authorized_apply(self, grant=None, *, validator=None):
+    def authorized_apply(self, grant=None, *, validator=None, preflight=None):
         return release.apply_release(self.plan, self.policy, grant or self.grant(),
                                      self.receipts,
                                      runtime_check=lambda p, cfg: None,
-                                     validate_code=validator or (lambda p: None))
+                                     validate_code=validator or (lambda p: None),
+                                     preflight_code=preflight or (lambda p: None))
 
     def test_original_receipt_guard_never_trusts_unprivileged_ci_uid(self):
         if os.geteuid() == 0:
@@ -122,6 +123,467 @@ class CodeReleaseTests(unittest.TestCase):
             with self.assertRaisesRegex(release.Denied,
                                         'RECEIPTS_MUST_BE_ROOT_PRIVATE'):
                 self.real_receipt_guard(self.policy, self.receipts)
+
+    def signed_grant_with_nonce(self, action: str, nonce: str) -> dict:
+        data = self.grant(action=action)
+        data["nonce"] = nonce
+        data["signature"] = base64.b64encode(
+            self.private.sign(release.grant_message(data))).decode()
+        return data
+
+    def two_file_transaction(self):
+        second = self.site / "wp-content/mu-plugins/mad4b-new.php"
+        second.write_text("<?php echo 'ORIGINAL SECOND';\n")
+        candidate = self.repo / "ops/artifacts/second.php"
+        candidate.write_text("<?php echo 'NEW SECOND';\n")
+        shell("git", "-C", str(self.repo), "add", ".")
+        shell("git", "-C", str(self.repo), "-c", "user.name=Test",
+              "-c", "user.email=test@example.invalid", "commit", "-qm", "two files")
+        self.request["git_commit"] = shell("git", "-C", str(self.repo), "rev-parse", "HEAD")
+        self.request["files"].append({
+            "source": "ops/artifacts/second.php",
+            "target": "wp-content/mu-plugins/mad4b-new.php",
+            "expected_before_sha256": release.digest(second.read_bytes()),
+        })
+        self.plan = release.make_plan(self.request, self.policy)
+        return second
+
+    def crash_after_first_written(self):
+        second = self.two_file_transaction()
+        original_atomic = release.atomic_write
+        def crash(path, data, mode=0o644,**kwargs):
+            result = original_atomic(path, data, mode, **kwargs)
+            if path == self.target:
+                raise KeyboardInterrupt('simulated killed worker after first file')
+            return result
+        from unittest.mock import patch
+        with patch.object(release, 'atomic_write', side_effect=crash):
+            with self.assertRaisesRegex(KeyboardInterrupt, 'simulated killed worker'):
+                self.authorized_apply()
+        self.assertIn('NEW', self.target.read_text())
+        self.assertIn('ORIGINAL SECOND', second.read_text())
+        return second
+
+    def test_preflight_rejects_candidate_before_first_target_write(self):
+        def reject(_):
+            raise release.Denied('CANDIDATE_PHP_SYNTAX_NOT_PROVEN')
+        with self.assertRaisesRegex(release.Denied,
+                                    'CANDIDATE_PHP_SYNTAX_NOT_PROVEN'):
+            self.authorized_apply(preflight=reject)
+        self.assertIn('OLD', self.target.read_text())
+        self.assertFalse(list(self.receipts.glob('*.intent.json')))
+        self.assertFalse([f for f in self.receipts.glob('*.json')
+                          if not f.name.endswith('.backup.json')])
+
+    def test_php_candidate_preflight_uses_exact_git_blob_and_bound_php(self):
+        from unittest.mock import patch
+        with patch.object(release.subprocess, 'run') as runner:
+            runner.return_value = subprocess.CompletedProcess(
+                args=[],returncode=0,stdout=b'No syntax errors detected in Standard input code',stderr=b'')
+            with patch.object(release, 'git_bytes',
+                              return_value=b"<?php echo 'NEW';\n"):
+                release.preflight_candidate_php(self.plan)
+            kwargs=runner.call_args.kwargs
+            self.assertEqual(runner.call_args.args[0],
+                ['docker','exec','-i',self.plan['container'],'php','-l'])
+            self.assertEqual(kwargs['input'],b"<?php echo 'NEW';\n")
+            self.assertFalse(kwargs['check'])
+        self.assertIn('OLD',self.target.read_text())
+
+    def test_php_candidate_preflight_rejects_invalid_php(self):
+        from unittest.mock import patch
+        with patch.object(release.subprocess, 'run') as runner:
+            runner.return_value = subprocess.CompletedProcess(
+                args=[],returncode=255,stdout=b'Errors parsing Standard input code',stderr=b'parse error')
+            with patch.object(release, 'git_bytes',
+                              return_value=b"<?php echo 'NEW';\n"):
+                with self.assertRaisesRegex(release.Denied,'CANDIDATE_PHP_SYNTAX_NOT_PROVEN'):
+                    release.preflight_candidate_php(self.plan)
+        self.assertIn('OLD',self.target.read_text())
+
+    def test_jit_cas_stops_external_writer_before_first_file(self):
+        from unittest.mock import patch
+        original = release.assert_target_preimage
+        def external_edit(root, row):
+            self.target.write_text('<?php echo "foreign newest";')
+            return original(root, row)
+        with patch.object(release,'assert_target_preimage',side_effect=external_edit):
+            outcome = self.authorized_apply()
+        self.assertEqual(outcome['state'],'ABORTED_NO_MUTATION',outcome)
+        self.assertIn('TARGET_JIT_PREIMAGE_DRIFT',outcome['failed_reason'])
+        self.assertIn('foreign newest',self.target.read_text())
+        self.assertFalse(outcome['original_313_receipt'])
+
+    def test_jit_cas_blocks_external_writer_mid_multi_file_release(self):
+        second = self.two_file_transaction()
+        original_atomic=release.atomic_write
+        from unittest.mock import patch
+        def write_with_external_edit(path,data,mode=0o644,**kwargs):
+            value=original_atomic(path,data,mode,**kwargs)
+            if path==self.target:
+                second.write_text('<?php echo "foreign second file";')
+            return value
+        with patch.object(release,'atomic_write',side_effect=write_with_external_edit):
+            result=self.authorized_apply()
+        self.assertEqual(result['state'],'ROLLBACK_UNVERIFIED',result)
+        self.assertIn('TARGET_JIT_PREIMAGE_DRIFT',result['failed_reason'])
+        self.assertIn('foreign second file',second.read_text())
+        self.assertIn('NEW',self.target.read_text())
+        self.assertTrue((self.receipts/(self.grant()['nonce']+'.intent.json')).exists())
+        self.assertFalse(result['original_313_receipt'])
+
+    def test_interrupted_apply_has_signed_crash_recovery(self):
+        second = self.crash_after_first_written()
+        open_intents = release.open_apply_intents(self.plan,self.receipts)
+        self.assertEqual(len(open_intents),1)
+        self.assertEqual(open_intents[0]['state'],'APPLY_STARTED')
+        with self.assertRaisesRegex(release.Denied,'GRANT_ALREADY_USED'):
+            self.authorized_apply()
+        new_apply=self.signed_grant_with_nonce('apply','fresh_same_plan_signed_nonce_2026')
+        with self.assertRaisesRegex(release.Denied,'UNRESOLVED_APPLY_INTENT'):
+            self.authorized_apply(grant=new_apply)
+        rollback=self.signed_grant_with_nonce('rollback','recovery_rollback_nonce_2026')
+        result=release.rollback_release(self.plan,self.policy,rollback,self.receipts,
+                                        runtime_check=lambda p,c:None)
+        self.assertEqual(result['state'],'RECOVERY_ROLLBACK_VERIFIED',result)
+        self.assertEqual(result['recovered_apply_nonce'],self.grant()['nonce'])
+        self.assertIn('OLD',self.target.read_text())
+        self.assertIn('ORIGINAL SECOND',second.read_text())
+        self.assertEqual(release.open_apply_intents(self.plan,self.receipts),[])
+        self.assertFalse(result['original_313_receipt'])
+        again=self.signed_grant_with_nonce('rollback','second_recovery_nonce_2026')
+        with self.assertRaisesRegex(release.Denied,'NO_VERIFIED_APPLY_TO_ROLLBACK'):
+            release.rollback_release(self.plan,self.policy,again,self.receipts,
+                                     runtime_check=lambda p,c:None)
+
+    def test_signed_recovery_refuses_foreign_concurrent_bytes(self):
+        second=self.crash_after_first_written()
+        second.write_text('<?php echo "foreign after crash";')
+        rollback=self.signed_grant_with_nonce('rollback','recovery_rejects_foreign_2026')
+        with self.assertRaisesRegex(release.Denied,'TARGET_CONTENT_DRIFT'):
+            release.rollback_release(self.plan,self.policy,rollback,self.receipts,
+                                     runtime_check=lambda p,c:None)
+        self.assertIn('NEW',self.target.read_text())
+        self.assertIn('foreign after crash',second.read_text())
+        self.assertEqual(len(release.open_apply_intents(self.plan,self.receipts)),1)
+
+    def test_signed_recovery_refuses_tampered_backup_evidence(self):
+        self.crash_after_first_written()
+        path=release.backup_path(self.receipts,self.plan)
+        path.write_text(path.read_text()+'\n')
+        rollback=self.signed_grant_with_nonce('rollback','tamper_backup_check_2026')
+        with self.assertRaisesRegex(release.Denied,'APPLY_INTENT_BACKUP_CHANGED'):
+            release.rollback_release(self.plan,self.policy,rollback,self.receipts,
+                                     runtime_check=lambda p,c:None)
+        self.assertIn('NEW',self.target.read_text())
+
+    def crash_during_signed_rollback(self):
+        second=self.two_file_transaction()
+        result=self.authorized_apply()
+        self.assertEqual(result['state'],'APPLIED_VERIFIED',result)
+        from unittest.mock import patch
+        atomic_original=release.atomic_write
+        def crash(path,data,mode=0o644,**kwargs):
+            response=atomic_original(path,data,mode,**kwargs)
+            if path==second:
+                raise KeyboardInterrupt('simulate SIGKILL during rollback')
+            return response
+        first_rollback=self.signed_grant_with_nonce('rollback',
+            'first_rollback_crash_nonce_2026')
+        with patch.object(release,'atomic_write',side_effect=crash):
+            with self.assertRaisesRegex(KeyboardInterrupt,'simulate SIGKILL'):
+                release.rollback_release(self.plan,self.policy,first_rollback,
+                    self.receipts,runtime_check=lambda p,c:None)
+        self.assertIn('NEW',self.target.read_text())
+        self.assertIn('ORIGINAL SECOND',second.read_text())
+        return second,first_rollback
+
+    def test_signed_rollback_interruption_is_recoverable_without_old_grant_replay(self):
+        second,old_grant=self.crash_during_signed_rollback()
+        open_intents=release.open_rollback_intents(self.plan,self.receipts)
+        self.assertEqual(len(open_intents),1)
+        self.assertEqual(open_intents[0]['state'],'ROLLBACK_STARTED')
+        with self.assertRaisesRegex(release.Denied,'GRANT_ALREADY_USED'):
+            release.rollback_release(self.plan,self.policy,old_grant,
+                self.receipts,runtime_check=lambda p,c:None)
+        new_grant=self.signed_grant_with_nonce('rollback',
+            'second_signed_rollback_nonce_2026')
+        result=release.rollback_release(self.plan,self.policy,new_grant,
+            self.receipts,runtime_check=lambda p,c:None)
+        self.assertEqual(result['state'],'ROLLBACK_VERIFIED',result)
+        self.assertIn(old_grant['nonce'],result['recovered_rollback_nonces'])
+        self.assertEqual(release.open_rollback_intents(self.plan,self.receipts),[])
+        self.assertIn('OLD',self.target.read_text())
+        self.assertIn('ORIGINAL SECOND',second.read_text())
+        self.assertFalse(result['original_313_receipt'])
+
+    def test_rollback_crash_recovery_rejects_external_concurrent_code(self):
+        second,_=self.crash_during_signed_rollback()
+        self.target.write_text('<?php echo "external after crash";')
+        grant=self.signed_grant_with_nonce('rollback',
+            'rollback_crash_foreign_code_2026')
+        with self.assertRaisesRegex(release.Denied,'TARGET_CONTENT_DRIFT'):
+            release.rollback_release(self.plan,self.policy,grant,self.receipts,
+                runtime_check=lambda p,c:None)
+        self.assertIn('external after crash',self.target.read_text())
+        self.assertEqual(len(release.open_rollback_intents(self.plan,self.receipts)),1)
+
+    def test_failed_rollback_unverified_is_recoverable_after_external_reconcile(self):
+        def fail_with_external_edit(_):
+            self.target.write_text('<?php echo "external conflict";')
+            raise RuntimeError('validator failure after external edit')
+        outcome=self.authorized_apply(validator=fail_with_external_edit)
+        self.assertEqual(outcome['state'],'ROLLBACK_UNVERIFIED',outcome)
+        self.assertEqual(len(release.open_apply_intents(self.plan,self.receipts)),1)
+        # A human reconciles the foreign edit back to exactly the signed
+        # postimage. No success is inferred until an independent signed rollback.
+        self.target.write_bytes(self.source.read_bytes())
+        signed=self.signed_grant_with_nonce('rollback',
+            'rollback_unverified_recovery_2026')
+        result=release.rollback_release(self.plan,self.policy,signed,self.receipts,
+            runtime_check=lambda p,c:None)
+        self.assertEqual(result['state'],'RECOVERY_ROLLBACK_VERIFIED',result)
+        self.assertIn('OLD',self.target.read_text())
+        self.assertFalse(release.open_apply_intents(self.plan,self.receipts))
+
+    def test_durable_atomic_write_syncs_file_and_parent_directory(self):
+        from unittest.mock import patch
+        target=Path(self.tmp.name)/'durable-test-receipt.json'
+        fsyncs=[]
+        actual=release.os.fsync
+        def tracked(fd):
+            fsyncs.append(fd)
+            return actual(fd)
+        with patch.object(release.os,'fsync',side_effect=tracked):
+            release.atomic_write(target,b'{"durable":true}\n',0o600)
+        self.assertEqual(target.read_bytes(),b'{"durable":true}\n')
+        self.assertGreaterEqual(len(fsyncs),2)
+
+    def test_signed_rollback_uses_jit_cas_and_preserves_foreign_writer(self):
+        second,_=self.crash_during_signed_rollback()
+        original=release.atomic_write
+        from unittest.mock import patch
+        def concurrent(path,data,mode=0o644,**kwargs):
+            result=original(path,data,mode,**kwargs)
+            if path==second:
+                self.target.write_text('<?php echo "foreign while restoring";')
+            return result
+        grant=self.signed_grant_with_nonce('rollback',
+            'jit_rollback_guard_nonce_2026')
+        with patch.object(release,'atomic_write',side_effect=concurrent):
+            with self.assertRaisesRegex(release.Denied,'ROLLBACK_JIT_CONCURRENT_DRIFT'):
+                release.rollback_release(self.plan,self.policy,grant,self.receipts,
+                    runtime_check=lambda p,c:None)
+        self.assertIn('foreign while restoring',self.target.read_text())
+        self.assertIn('ORIGINAL SECOND',second.read_text())
+        self.assertGreaterEqual(len(release.open_rollback_intents(self.plan,self.receipts)),2)
+
+    def test_apply_intent_cannot_cross_company_identity(self):
+        self.crash_after_first_written()
+        file=release.apply_intent_path(self.receipts,self.grant()['nonce'])
+        item=json.loads(file.read_text())
+        item['company']='different-site'
+        file.write_text(json.dumps(item))
+        with self.assertRaisesRegex(release.Denied,'APPLY_INTENT_IDENTITY_DRIFT'):
+            release.open_apply_intents(self.plan,self.receipts)
+        self.assertIn('NEW',self.target.read_text())
+
+    def test_apply_and_signed_rollback_preserve_tenant_file_owner_and_mode(self):
+        import os, stat
+        os.chmod(self.target,0o664)
+        self.plan=release.make_plan(self.request,self.policy)
+        before=self.target.stat()
+        outcome=self.authorized_apply()
+        self.assertEqual(outcome['state'],'APPLIED_VERIFIED',outcome)
+        after=self.target.stat()
+        self.assertEqual((after.st_uid,after.st_gid,stat.S_IMODE(after.st_mode)),
+                         (before.st_uid,before.st_gid,0o664))
+        signed=self.signed_grant_with_nonce('rollback',
+            'tenant_metadata_rollback_2026')
+        result=release.rollback_release(self.plan,self.policy,signed,self.receipts,
+                                       runtime_check=lambda p,c:None)
+        self.assertEqual(result['state'],'ROLLBACK_VERIFIED',result)
+        restored=self.target.stat()
+        self.assertEqual((restored.st_uid,restored.st_gid,
+                          stat.S_IMODE(restored.st_mode)),
+                         (before.st_uid,before.st_gid,0o664))
+        self.assertIn('OLD',self.target.read_text())
+
+    def test_signed_plan_blocks_tenant_chmod_without_content_change(self):
+        import os
+        os.chmod(self.target,0o664)
+        with self.assertRaisesRegex(release.Denied,'TARGET_METADATA_DRIFT'):
+            self.authorized_apply()
+        self.assertIn('OLD',self.target.read_text())
+        self.assertFalse(list(self.receipts.glob('*.intent.json')))
+
+    def test_jit_cas_blocks_metadata_edit_after_backup(self):
+        import os
+        from unittest.mock import patch
+        actual=release.assert_target_preimage
+        def changed(root,row):
+            os.chmod(self.target,0o664)
+            return actual(root,row)
+        with patch.object(release,'assert_target_preimage',side_effect=changed):
+            result=self.authorized_apply()
+        self.assertEqual(result['state'],'ABORTED_NO_MUTATION',result)
+        self.assertIn('TARGET_JIT_METADATA_DRIFT',result['failed_reason'])
+        self.assertIn('OLD',self.target.read_text())
+
+    def test_rollback_of_new_file_fsyncs_deletion_directory(self):
+        from unittest.mock import patch
+        new_file=self.site/'wp-content/mu-plugins/mad4b-new.php'
+        request=json.loads(json.dumps(self.request))
+        request['files'][0]['target']='wp-content/mu-plugins/mad4b-new.php'
+        request['files'][0]['expected_before_sha256']=None
+        self.plan=release.make_plan(request,self.policy)
+        result=self.authorized_apply()
+        self.assertEqual(result['state'],'APPLIED_VERIFIED',result)
+        self.assertTrue(new_file.exists())
+        original=release.fsync_parent_directory
+        seen=[]
+        def observed(path):
+            seen.append(path)
+            return original(path)
+        signed=self.signed_grant_with_nonce('rollback','signed_new_file_rollback_2026')
+        with patch.object(release,'fsync_parent_directory',side_effect=observed):
+            rolled=release.rollback_release(self.plan,self.policy,signed,self.receipts,
+                                           runtime_check=lambda p,c:None)
+        self.assertEqual(rolled['state'],'ROLLBACK_VERIFIED',rolled)
+        self.assertFalse(new_file.exists())
+        self.assertIn(new_file,seen)
+
+    def test_other_signed_plan_cannot_overwrite_interrupted_file(self):
+        self.crash_after_first_written()
+        other_request=json.loads(json.dumps(self.request))
+        other_request['files'][0]['expected_before_sha256']=release.digest(
+            self.target.read_bytes())
+        next_plan=release.make_plan(other_request,self.policy)
+        self.assertNotEqual(next_plan['plan_sha256'],self.plan['plan_sha256'])
+        self.plan=next_plan
+        signed=self.signed_grant_with_nonce('apply','different_plan_nonce_2026')
+        with self.assertRaisesRegex(release.Denied,
+                                    'OVERLAPPING_UNRESOLVED_RELEASE_TRANSACTION'):
+            self.authorized_apply(grant=signed)
+        self.assertIn('NEW',self.target.read_text())
+        self.assertFalse((self.receipts/(signed['nonce']+'.intent.json')).exists())
+
+    def test_unrelated_signed_plan_can_continue_without_touching_paused_release(self):
+        self.crash_after_first_written()
+        rel='wp-content/mu-plugins/mad4b-independent.php'
+        source=self.repo/'ops/artifacts/independent.php'
+        source.write_text('<?php echo "independent";\n')
+        self.policy['targets']['demo:staging']['allowed_targets'].append(rel)
+        shell('git','-C',str(self.repo),'add','.')
+        shell('git','-C',str(self.repo),'-c','user.name=Test',
+              '-c','user.email=test@example.invalid','commit','-qm','independent')
+        other_request=json.loads(json.dumps(self.request))
+        other_request['git_commit']=shell('git','-C',str(self.repo),'rev-parse','HEAD')
+        other_request['files']=[{'source':'ops/artifacts/independent.php',
+                                 'target':rel,'expected_before_sha256':None}]
+        self.plan=release.make_plan(other_request,self.policy)
+        signed=self.signed_grant_with_nonce('apply','unrelated_file_nonce_2026')
+        outcome=self.authorized_apply(grant=signed)
+        self.assertEqual(outcome['state'],'APPLIED_VERIFIED',outcome)
+        self.assertEqual((self.site/rel).read_text(),source.read_text())
+        self.assertIn('NEW',self.target.read_text())
+
+    def test_other_plan_blocks_while_rollback_is_interrupted(self):
+        self.crash_during_signed_rollback()
+        changed=json.loads(json.dumps(self.request))
+        changed['files'][0]['expected_before_sha256']=release.digest(self.target.read_bytes())
+        self.plan=release.make_plan(changed,self.policy)
+        signed=self.signed_grant_with_nonce('apply','other_during_rollback_2026')
+        with self.assertRaisesRegex(release.Denied,
+                                    'OVERLAPPING_UNRESOLVED_RELEASE_TRANSACTION'):
+            self.authorized_apply(grant=signed)
+
+    def test_site_uuid_blocks_overlapping_plan_under_different_environment_label(self):
+        self.crash_after_first_written()
+        self.policy['targets']['demo:qa'] = dict(
+            self.policy['targets']['demo:staging'])
+        next_req=json.loads(json.dumps(self.request))
+        next_req['environment']='qa'
+        next_req['files'][0]['expected_before_sha256']=release.digest(
+            self.target.read_bytes())
+        other=release.make_plan(next_req,self.policy)
+        self.assertNotEqual(other['environment'],self.plan['environment'])
+        self.assertEqual(other['site_uuid'],self.plan['site_uuid'])
+        self.plan=other
+        grant=self.signed_grant_with_nonce('apply','same_site_qa_alias_nonce_2026')
+        grant['environment']='qa'
+        grant['signature']=base64.b64encode(
+            self.private.sign(release.grant_message(grant))).decode()
+        with self.assertRaisesRegex(release.Denied,
+                                    'OVERLAPPING_UNRESOLVED_RELEASE_TRANSACTION'):
+            self.authorized_apply(grant=grant)
+        self.assertIn('NEW',self.target.read_text())
+
+    def test_closed_previous_plan_does_not_block_follow_up(self):
+        original_plan=self.plan
+        outcome=self.authorized_apply()
+        self.assertEqual(outcome['state'],'APPLIED_VERIFIED',outcome)
+        request=json.loads(json.dumps(self.request))
+        request['files'][0]['expected_before_sha256']=release.digest(self.target.read_bytes())
+        self.plan=release.make_plan(request,self.policy)
+        self.assertNotEqual(self.plan['plan_sha256'],original_plan['plan_sha256'])
+        self.assertFalse(release.overlapping_unresolved_transactions(
+            self.plan,self.receipts))
+        signed=self.signed_grant_with_nonce('apply','fresh_after_success_2026')
+        result=self.authorized_apply(grant=signed)
+        self.assertEqual(result['state'],'APPLIED_VERIFIED',result)
+
+    def test_postrename_fsync_failure_must_restore_real_changes(self):
+        # The atomic rename has already updated the target when fsync raises.
+        # A failed atomic_write() return is NOT evidence of zero mutations.
+        from unittest.mock import patch
+        original=release.fsync_parent_directory
+        triggered=[]
+        def fail_after_rename(path):
+            if path==self.target and not triggered:
+                triggered.append(True)
+                raise OSError('disk sync unavailable after atomic rename')
+            return original(path)
+        with patch.object(release,'fsync_parent_directory',side_effect=fail_after_rename):
+            result=self.authorized_apply()
+        self.assertEqual(result['state'],'ROLLED_BACK',result)
+        self.assertIn('disk sync unavailable',result['failed_reason'])
+        self.assertIn('OLD',self.target.read_text())
+        self.assertTrue(triggered)
+
+    def test_postrename_fsync_and_rollback_failure_reports_incident(self):
+        from unittest.mock import patch
+        original=release.fsync_parent_directory
+        def fail_after_rename(path):
+            if path==self.target:
+                raise OSError('storage sync interrupted')
+            return original(path)
+        with patch.object(release,'fsync_parent_directory',side_effect=fail_after_rename):
+            result=self.authorized_apply()
+        self.assertEqual(result['state'],'ROLLBACK_UNVERIFIED',result)
+        # Bytes can look restored after atomic rename, but directory fsync
+        # failed: do not report a verified durable rollback.
+        self.assertIn('OLD',self.target.read_text())
+        self.assertIn('rollback=',result['failed_reason'])
+        self.assertEqual(len(release.open_apply_intents(self.plan,self.receipts)),1)
+
+    def test_cross_plan_recovery_closed_after_signed_restore(self):
+        self.crash_after_first_written()
+        old_plan=self.plan
+        recovery=self.signed_grant_with_nonce('rollback','signed_cross_plan_recovery_2026')
+        result=release.rollback_release(self.plan,self.policy,recovery,self.receipts,
+                                        runtime_check=lambda p,c:None)
+        self.assertEqual(result['state'],'RECOVERY_ROLLBACK_VERIFIED',result)
+        request=json.loads(json.dumps(self.request))
+        request['files']=request['files'][:1]
+        next_plan=release.make_plan(request,self.policy)
+        self.assertNotEqual(next_plan['plan_sha256'],old_plan['plan_sha256'])
+        self.assertEqual(release.overlapping_unresolved_transactions(
+            next_plan,self.receipts),[])
+        self.plan=next_plan
+        signed=self.signed_grant_with_nonce('apply','apply_after_recovered_plan_2026')
+        outcome=self.authorized_apply(grant=signed)
+        self.assertEqual(outcome['state'],'APPLIED_VERIFIED',outcome)
 
     def test_plan_is_non_mutating_and_from_git_commit(self):
         self.assertEqual(self.target.read_text(), "<?php echo 'OLD';\n")
@@ -831,7 +1293,8 @@ class CodeReleaseTests(unittest.TestCase):
         ).decode()
         outcome = release.apply_release(
             plan, self.policy, production_grant, self.receipts,
-            runtime_check=lambda p,c:None, validate_code=lambda p:None
+            runtime_check=lambda p,c:None, validate_code=lambda p:None,
+            preflight_code=lambda p:None
         )
         self.assertEqual(outcome["state"], "APPLIED_VERIFIED")
         self.assertEqual(self.target.read_text(), "<?php echo 'NEW';\n")

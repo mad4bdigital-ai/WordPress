@@ -235,6 +235,7 @@ def execute_once(
     runtime_check: Callable[[dict, dict], None] =
         release.assert_runtime_binding,
     code_check: Callable[[dict], None] = release.php_lint,
+    candidate_preflight_check: Callable[[dict], None] = release.preflight_candidate_php,
 ) -> dict:
     """Single already-admitted operation; no worker registration or 313 fraud.
 
@@ -263,12 +264,19 @@ def execute_once(
     result = release.apply_release(
         plan, policy, release_grant, receipts,
         runtime_check=runtime_check, validate_code=code_check,
+        preflight_code=candidate_preflight_check,
     )
+    host_receipt_state = result.get("state")
+    observed_state = {
+        "APPLIED_VERIFIED": "HOST_APPLIED_PENDING_INDEPENDENT_ORIGINAL_313",
+        "ROLLED_BACK": "HOST_APPLY_ROLLED_BACK",
+        "ABORTED_NO_MUTATION": "HOST_APPLY_ABORTED_NO_MUTATION",
+        "ROLLBACK_UNVERIFIED": "HOST_APPLY_INCIDENT_RECOVERY_REQUIRED",
+    }.get(host_receipt_state, "HOST_APPLY_RESULT_UNRECOGNIZED_HOLD")
     return {
         "contract": "mad4b.company-code-release.original313-candidate.v1",
-        "state": "HOST_APPLIED_PENDING_INDEPENDENT_ORIGINAL_313"
-                 if result.get("state") == "APPLIED_VERIFIED"
-                 else "HOST_APPLY_ROLLED_BACK",
+        "state": observed_state,
+        "incident_requires_recovery": host_receipt_state == "ROLLBACK_UNVERIFIED",
         "job_id": job_id,
         "plan_sha256": plan["plan_sha256"],
         "host_receipt_state": result.get("state"),
