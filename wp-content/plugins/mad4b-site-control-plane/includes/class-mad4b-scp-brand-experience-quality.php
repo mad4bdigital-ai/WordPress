@@ -4,6 +4,7 @@
  * Discovery is read-only; content & media changes belong to native Content Jobs.
  */
 defined('ABSPATH') || exit;
+require_once __DIR__.'/class-mad4b-scp-brand-integrity.php';
 
 final class MAD4B_SCP_Brand_Experience_Quality {
     const CONTRACT = 'mad4b.brand-experience-quality.v1';
@@ -156,7 +157,7 @@ final class MAD4B_SCP_Brand_Experience_Quality {
                 && preg_match('/\b(?:budget|cheap|low[- ]cost)\b/i',$title)===1;
             $repeat=self::hook_repeats_title($title,$excerpt);
             $facts = array();
-            foreach (array('highlight_rows','_description','itinerary_item_description') as $field) {
+            foreach (array('tour_highlights_content','_description','itinerary_item_description') as $field) {
                 $snippet=self::compact_text(get_post_meta($id,$field,true),420);
                 if ($snippet !== '') $facts[$field]=$snippet;
             }
@@ -205,9 +206,14 @@ final class MAD4B_SCP_Brand_Experience_Quality {
             $issues[]=self::issue('tours-and-activities',$id,'brand_experiential_media_authenticity',
                 'medium','Authenticity of experience-led underwater or wildlife tour imagery requires visual review',$e);
         }
-        // An incomplete inventory cannot close issues for unvisited posts.
+        // Brand Integrity observes all published language variants and source
+        // fields. Incomplete inventory cannot close issues for unseen posts.
+        $integrity=MAD4B_SCP_Brand_Integrity::discover($cfg);
+        if (empty($integrity['complete'])) $partial=true;
+        $issues=array_merge($issues,(array)($integrity['issues']??array()));
         return array('complete'=>!$partial,'issues'=>$issues,'evaluated'=>$evaluated,
-            'brand'=>$brand,'partial'=>$partial);
+            'brand'=>$brand,'partial'=>$partial,
+            'brand_integrity_scanned'=>absint($integrity['scanned']??0));
     }
 
     public static function primary_color() {
