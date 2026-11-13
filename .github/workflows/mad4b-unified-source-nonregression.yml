@@ -24,6 +24,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          # Historic 238-file and 69-conflict source contracts use exact
+          # immutable Git ancestors. Shallow HEAD checkout is insufficient.
+          fetch-depth: 0
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
@@ -33,6 +36,7 @@ jobs:
           set -euo pipefail
           python3 -m unittest discover -s tests -p 'test_unified_mad4b_behavior_invariants.py' -v
           python3 -m unittest discover -s tests -p 'test_native_source*.py' -q
+          python3 -m unittest discover -s tests -p 'test_additive_mad4b_plugin_sources.py' -v
           python3 -m unittest discover -s tests -p 'test_control_plane*contract.py' -v
       - name: Native Elementor and Developer/Operator smoke
         run: |
@@ -42,3 +46,4 @@ jobs:
           php tests/remote-execution/developer-authority-policy-v2-smoke.php
           php tests/remote-execution/skill-seeder-exact-site-denial-smoke.php
           php tests/remote-execution/operator-grants-convergence-smoke.php
+          php tests/native-original-job-readback/acceptance.php
