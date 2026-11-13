@@ -79,7 +79,8 @@ def audit(*, runtime_plan: dict, image_description: dict,
           registry=None, original_source_policy=None,
           role_bindings: dict | None = None,
           approved_blueprint: dict | None = None,
-          running_image_id: str | None = None) -> dict:
+          running_image_id: str | None = None,
+          topology_readback: dict | None = None) -> dict:
     """Independently reconstruct health and enrollment blockers from readback."""
     runtime.verify_plan(runtime_plan)
     holds = []
@@ -130,6 +131,18 @@ def audit(*, runtime_plan: dict, image_description: dict,
                     raise ValueError("manifest mismatch")
             except (ValueError, RuntimeError, KeyError, OSError, AttributeError):
                 holds.append("ORIGINAL_PROVIDER_NOT_ENROLLED:" + role)
+    # Whole-site code/volume coverage is a mandatory prerequisite.
+    # An isolated one-plugin image must never be treated as replacement for
+    # WordPress core, shared plugins, MU code, themes or mutable site data.
+    if (not isinstance(topology_readback,dict) or
+        topology_readback.get("contract") !=
+            "mad4b.immutable-runtime.site-topology-audit.v1" or
+        topology_readback.get("runtime_plan_sha256") !=
+            runtime_plan["runtime_plan_sha256"] or
+        topology_readback.get("blockers") is None):
+        holds.append("FULL_SITE_TOPOLOGY_READBACK_REQUIRED")
+    elif topology_readback["blockers"]:
+        holds.append("FULL_SITE_CODE_AND_VOLUME_TOPOLOGY_INCOMPLETE")
     if original_source_policy is not True:
         holds.append("ORIGINAL_NATIVE_SOURCE_PUBLISHER_POLICY_NOT_ENROLLED")
     # The original Broker/independent Finalizer must assert these separately

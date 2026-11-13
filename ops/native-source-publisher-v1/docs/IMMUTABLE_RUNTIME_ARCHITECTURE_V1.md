@@ -107,3 +107,42 @@ non-writability of candidate plugin PHP from the PHP worker. Evidence SHA:
 This proves only the isolated FastCGI routing fixture, not the Production
 PHP-FPM pool, the complete WordPress application, persistent data,
 PHP/JS cache coherence, or original signed 312/313 release authorization.
+
+## Whole-Site Code/Volume Topology: independently scanned site readiness
+
+An additional \`runtime_topology.py\` read-only source inspector evaluates
+the entire WordPress runtime filesystem, not just the first tested plugin.
+It records only code structure, ownership/mode metadata and mount
+destinations/readonly flags; it **does not read wp-config.php or mount
+source secrets**. Plugin, MU and Theme entry inventories are site-neutral and
+derived from the actual filesystem; symbolic links are explicitly held.
+
+The BlueGreen Controller now requires the topology readback to match the
+same signed-content runtime-plan SHA. Missing, mismatched or incomplete
+topology causes an additional explicit HOLD; Source Publisher approvals,
+original signed 312 authority, request/DB checks and independent 313
+finalization remain separate mandatory gates.
+
+Actual Wayfatours read-only snapshot taken 2026-11-13:
+- 131 installed Plugin code entries (directory + standalone PHP file basis)
+- 5 Theme code entries
+- 311 MU code entries (standalone PHP files and code directories)
+- 1 Plugin layer in the candidate OCI Image; 130 other installed Plugin
+  entries lack source-artifact coverage
+- Current WordPress core at /var/www/html is a writable bind mount and
+  wp-load.php is owned by UID 33 and writable by its owner.
+- The Base image includes /usr/src/wordpress/wp-load.php, but the candidate
+  has no WordPress core at the required /var/www/html/wp-load.php path.
+- Secret/config segregation and separately scoped writable data volumes
+  have not yet been demonstrated, so both are mandatory HOLD conditions.
+
+These are filesystem entries, **not an assertion that 131 plugins are active**.
+The snapshot has SHA-256
+\`37f92e4583bf8d47c31fe473b2670a5399816fca098485863a17014f8831b4c5\`
+at the root-private VPS report path
+\`.../immutable-runtime-v1/runtime-topology-readback-v2.json\`.
+
+No WordPress code, live Docker mounts, routes, secrets, credentials or DB
+contents were modified by this audit. Before any real image cutover, a
+first-party native runtime composer must supply complete pinned core,
+shared plugins, MU code and themes, with an explicit Site data-mount policy.

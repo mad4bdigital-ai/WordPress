@@ -92,6 +92,26 @@ class RuntimeControllerTest(unittest.TestCase):
         self.assertIn("ORIGINAL_PROVIDER_NOT_ENROLLED:publisher",
                       state["blockers"])
 
+    def test_incomplete_or_unbound_whole_site_topology_blocks_activation(self):
+        view={"Id":"sha256:"+"b"*64,
+              "Config":{"Labels":{"org.mad4b.runtime.plan":
+                 self.plan["runtime_plan_sha256"],
+                 "org.mad4b.runtime.site":self.plan["site"]["site_uuid"]}}}
+        missing=code.audit(runtime_plan=self.plan,image_description=view)
+        self.assertIn("FULL_SITE_TOPOLOGY_READBACK_REQUIRED",missing["blockers"])
+        wrong={"contract":"mad4b.immutable-runtime.site-topology-audit.v1",
+              "runtime_plan_sha256":"0"*64,"blockers":[]}
+        unbound=code.audit(runtime_plan=self.plan,image_description=view,
+                           topology_readback=wrong)
+        self.assertIn("FULL_SITE_TOPOLOGY_READBACK_REQUIRED",unbound["blockers"])
+        real={"contract":"mad4b.immutable-runtime.site-topology-audit.v1",
+             "runtime_plan_sha256":self.plan["runtime_plan_sha256"],
+             "blockers":["FULL_INSTALLED_PLUGIN_CODE_COVERAGE_MISSING"]}
+        incomplete=code.audit(runtime_plan=self.plan,image_description=view,
+                              topology_readback=real)
+        self.assertIn("FULL_SITE_CODE_AND_VOLUME_TOPOLOGY_INCOMPLETE",
+                      incomplete["blockers"])
+
     def test_missing_provider_and_wrong_image_label_are_detected(self):
         view={"Id":"sha256:"+"b"*64,
               "Config":{"Labels":{"org.mad4b.runtime.plan":"z"*64}}}
