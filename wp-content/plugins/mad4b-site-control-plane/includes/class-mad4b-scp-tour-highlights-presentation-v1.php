@@ -17,6 +17,12 @@ final class MAD4B_Tour_Highlights_Presentation_V1 {
         wp_register_style('tour-highlights-v1',false,[],'1.0.0');
         wp_enqueue_style('tour-highlights-v1');
         wp_add_inline_style('tour-highlights-v1',(string)file_get_contents($css));
+        $js=__DIR__.'/../assets/tour-journey-ui.js';
+        if(is_readable($js)){
+            wp_register_script('tour-journey-ui',false,[],'1.1.0',true);
+            wp_enqueue_script('tour-journey-ui');
+            wp_add_inline_script('tour-journey-ui',(string)file_get_contents($js));
+        }
     }
 
     private static function elementor_preview():bool {
@@ -134,10 +140,40 @@ final class MAD4B_Tour_Highlights_Presentation_V1 {
         return $items;
     }
 
+    private static function verified_places():array {
+        if(!class_exists('MAD4B_Tour_Highlights_V1',false))return [];
+        $post=MAD4B_Tour_Highlights_V1::get_tour_id();
+        if(!$post)return [];
+        // Reuse the single dynamic policy result; the editorial chip may
+        // reference a specific attraction/city but not a broad country.
+        return array_values(array_filter(
+            MAD4B_Tour_Highlights_V1::related_places($post),
+            static fn($item)=>in_array($item['kind'],['place_attraction','city','zone_area'],true)
+        ));
+    }
+
+    private static function related_links(array $card,array $places):string {
+        if(!$places)return '';
+        $content=html_entity_decode(wp_strip_all_tags(($card['title']??'').' '.($card['body']??'')),ENT_QUOTES|ENT_HTML5,'UTF-8');
+        $links=[];
+        foreach($places as $place) {
+            $name=trim((string)$place['label']);
+            if(mb_strlen($name,'UTF-8')<4)continue;
+            // Verifiable text match: only label a place if it is actually mentioned.
+            if(mb_stripos($content,$name,0,'UTF-8')===false)continue;
+            $links[]='<a class="tour-hl-ui__place" href="'.esc_url($place['url']).'">'
+                .'<span aria-hidden="true">⌖</span> '.esc_html($name).'</a>';
+            if(count($links)>=3)break;
+        }
+        if(!$links)return '';
+        return '<div class="tour-hl-ui__related">'.implode('',$links).'</div>';
+    }
+
     public static function render($html):string {
         if(!is_string($html)||trim(wp_strip_all_tags($html))==='')return '';
         $cards=self::cards($html);
         if(!$cards)return wp_kses_post($html);
+        $places=self::verified_places();
         $labels=self::translations();$count=count($cards);
         $many=$count>1;
         $output='<div class="tour-hl-ui" data-tour-hl-version="1" data-tour-hl-count="'.$count.'">';
@@ -151,6 +187,7 @@ final class MAD4B_Tour_Highlights_Presentation_V1 {
             $output.='<li class="tour-hl-ui__card"><span class="tour-hl-ui__number" aria-hidden="true">'.$number.'</span><div class="tour-hl-ui__copy">';
             if($card['title']!=='')$output.='<h3 class="tour-hl-ui__title">'.esc_html($card['title']).'</h3>';
             if(trim(wp_strip_all_tags($card['body']))!=='')$output.='<div class="tour-hl-ui__description">'.wp_kses_post($card['body']).'</div>';
+            $output.=self::related_links($card,$places);
             $output.='</div></li>';
         }
         $output.='</ol></div>';
