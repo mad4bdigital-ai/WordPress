@@ -72,9 +72,13 @@ foreach($rows as $row) {
     'tour-journey-related-editor'=>$templates[0]
   ];
   $missing=[];
-  foreach($roles as $role=>$child)
-    if(!in_array($role,preg_split('/\s+/u',trim((string)($child['settings']['css_classes']??''))),true))
+  foreach($roles as $role=>$child){
+    $dataClasses=preg_split('/\s+/u',trim((string)($child['settings']['css_classes']??'')));
+    $renderClasses=preg_split('/\s+/u',trim((string)($child['settings']['_css_classes']??'')));
+    // Elementor widgets emit Advanced CSS Classes from _css_classes, not css_classes.
+    if(!in_array($role,$dataClasses,true)||!in_array($role,$renderClasses,true))
       $missing[]=$role;
+  }
   if($missing){$report['errors'][]=['doc'=>$id,'code'=>'roles_missing','roles'=>$missing];continue;}
   $template=(int)($templates[0]['settings']['template_id']??0);
   $lang=(string)$wpdb->get_var($wpdb->prepare(
