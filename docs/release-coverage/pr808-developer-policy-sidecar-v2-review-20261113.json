@@ -1,0 +1,30 @@
+{
+  "base_pr_commit": "d1876d4e2cc0439d5cb77d46cc45d08bb22c8df4",
+  "ci_dynamic_skills_missing_portable_skills_tracked_separately": true,
+  "contract": "mad4b.developer-plan-policy-sidecar-review.v2",
+  "historical_signed_plan_approvals_changed": false,
+  "legacy_canonical_plan_schema_changed": false,
+  "legacy_contract": "mad4b.developer-authority.v1",
+  "legacy_plan_production_allowed_field_changed": false,
+  "legacy_plan_sha_algorithm_changed": false,
+  "legacy_v1_developer_source_sha256_unchanged": "f98848537d910d509ea05edc4fd555fa2db1d00517efe9ad9f233820bd3dd5a4",
+  "live_deployment_performed": false,
+  "live_grants_issued": false,
+  "original312_313_receipts_issued": false,
+  "preceding_review_sha256": "c993de90a7e3e1282cdfa2f970c2854a8f4e88ddd0f08f91908f2e4d6884b4f2",
+  "prior_source_sha256": {
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-grant-convergence.php": "49ea9b89aa16a1fa85bb4d8d07cca9d47991aa1dfe2ad5fc86cadd0d86eceb76",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-seeder.php": "f1edddaaf3ab81a5cd74a6a3be4946a23c32500752b8d3089d02514a7f8bb66a",
+    "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php": "dc8ba90682848c6c09e2b212c25467049714ce3b2cad79386166452f98f10485"
+  },
+  "source_after_sha256": {
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-developer-authority-policy-v2.php": "0d360f9dc3a6603e93c93c544cf182f3e530adee2879fa09b5b9816f4336f94e",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-grant-convergence.php": "b400b1ea0afbf7fb6d3e115fd8b8e568bcb89ef308fc5a0bf3b58efb0b0e3405",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-seeder.php": "a6c7361ee429ffc0a2fbe5d51b866fc89223ab5ae7527abed3becc124013a08f",
+    "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php": "4b70ca42120f6dc5842b139cebe253d66503977d2b2d3921feb82164808caa3b",
+    "wp-content/plugins/mad4b-site-control-plane/tests/developer-runtime-contract.py": "2b347bd2cf43ec652a8611331f197e21be06aa4400260ddfb14a41f8899f8d0f",
+    "wp-content/plugins/mad4b-site-control-plane/tests/dynamic-skills-contract.py": "ac3b9e18b849a2b53732d3422795dfb72b7527e33466e3e3e396ce5c5e0ce472"
+  },
+  "source_review_only": true,
+  "v2_read_only_projection": true
+}

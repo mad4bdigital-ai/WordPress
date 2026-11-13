@@ -23,11 +23,20 @@ class RegisteredGovernanceSourceReview(unittest.TestCase):
         self.assertFalse(record['registry_admission_is_grant'])
         self.assertFalse(record['policy_allow_is_write_authority'])
         self.assertFalse(record['original312_313_receipts_issued'])
+        sidecar=json.loads((ROOT/'docs/release-coverage/pr808-developer-policy-sidecar-v2-review-20261113.json').read_text())
+        self.assertEqual(sidecar['base_pr_commit'],'d1876d4e2cc0439d5cb77d46cc45d08bb22c8df4')
+        self.assertFalse(sidecar['legacy_canonical_plan_schema_changed'])
+        self.assertFalse(sidecar['legacy_plan_sha_algorithm_changed'])
+        self.assertFalse(sidecar['legacy_plan_production_allowed_field_changed'])
         for name,expected in record['reviewed_source_sha256'].items():
             with self.subTest(path=name):
                 path=ROOT/name
                 self.assertTrue(path.is_file() and not path.is_symlink())
-                self.assertEqual(SHA(path.read_bytes()),expected)
+                if name in sidecar['source_after_sha256']:
+                    self.assertEqual(sidecar['prior_source_sha256'][name],expected)
+                    self.assertEqual(SHA(path.read_bytes()),sidecar['source_after_sha256'][name])
+                else:
+                    self.assertEqual(SHA(path.read_bytes()),expected)
 
     def test_no_hardcoded_operator_environment_blacklist(self):
         op=(ROOT/REL/'includes/class-mad4b-scp-operator-grant-convergence.php').read_text()

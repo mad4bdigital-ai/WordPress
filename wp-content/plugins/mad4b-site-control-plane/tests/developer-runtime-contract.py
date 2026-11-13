@@ -65,7 +65,16 @@ assert "can_developer_read" in policy
 assert "can_developer_runtime_status" in policy
 assert "MAD4B_SCP_Agent_Registry::exact_grant( $agent['id'], 'mad4b-developer', 'mad4b/developer-runtime-status', 'core' )" in policy
 assert "can_developer_breakglass" in policy
-assert "mad4b_developer_production_denied" in developer
+# Production is no longer a universal blacklist. Exact enrolled Write and
+# governed operation admission are evaluated for each current request.
+start = developer.index( "private static function runtime_gate( " )
+end = developer.index( "public static function kill_switch_enabled", start )
+runtime_gate = developer[start:end]
+assert "MAD4B_SCP_Site_Profile::write_enabled()" in runtime_gate
+assert "MAD4B_SCP_Site_Profile::managed_runtime_enabled()" in runtime_gate
+assert "mad4b_developer_site_authority_required" in runtime_gate
+assert "mad4b_developer_root_execution_denied" in runtime_gate
+assert "mad4b_developer_production_denied" not in runtime_gate
 assert "mad4b_developer_root_execution_denied" in developer
 assert "expected_source_commit_sha" in developer
 assert "expected_site_uuid" in developer
@@ -128,8 +137,11 @@ assert "proc_open" in developer
 assert "public static function lint_workspace_php_file" in developer
 assert "mad4b/developer-workspace-php-lint" in developer
 assert "array( PHP_BINARY, '-l', $file )" in developer
-assert "mad4b_developer_workspace_lint_production_denied" in developer
-assert "mad4b_developer_workspace_lint_environment_denied" in developer
+workspace_lint = developer.split("public static function lint_workspace_php_file(", 1)[1]
+assert "mad4b_developer_workspace_lint_site_authority_required" in workspace_lint
+assert "mad4b_developer_workspace_lint_runtime_not_ready" in workspace_lint
+assert "mad4b_developer_workspace_lint_web_root_denied" in workspace_lint
+assert "mad4b_developer_workspace_lint_escape" in workspace_lint
 assert "mad4b_developer_workspace_lint_runtime_not_ready" in developer
 assert "MAD4B_SCP_Developer_Runtime::lint_workspace_php_file( $absolute, $project )" in workspace
 assert "private static function php_token_parse" in workspace

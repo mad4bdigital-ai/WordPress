@@ -7,6 +7,7 @@ class WP_Error {
     public function get_error_code() { return $this->code; }
 }
 function is_wp_error( $x ) { return $x instanceof WP_Error; }
+function wp_json_encode( $value, $options = 0 ) { return json_encode( $value, $options ); }
 function sanitize_key( $name ) {
     return preg_replace( '/[^a-z0-9_\-]/', '', strtolower( (string) $name ) );
 }
@@ -35,7 +36,16 @@ class MAD4B_SCP_Registered_Write_Admission {
             return new WP_Error( 'mad4b_registered_write_runtime_policy_required' );
         if ( ! empty( $GLOBALS['test_governance_denied'] ) )
             return new WP_Error( 'mad4b_registered_write_governance_denied' );
-        return array( 'state' => 'eligible_for_exact_canonical_plan_only',
+        return array(
+            'contract' => 'mad4b.registered-write-admission.v1',
+            'state' => 'eligible_for_exact_canonical_plan_only',
+            'ability' => $name,
+            'operation_id' => 'wordpress.developer.operator-grants.converge',
+            'environment' => MAD4B_SCP_Site_Profile::current_environment(),
+            'site_uuid' => '11111111-1111-4111-8111-111111111111',
+            'profile_revision' => 2,
+            'profile_digest' => str_repeat( 'c', 64 ),
+            'policy_sha256' => str_repeat( 'd', 64 ),
             'authorization_issued' => false, 'mutation_performed' => false );
     }
 }
@@ -75,22 +85,28 @@ class MAD4B_SCP_Developer_Authority {
         if ( ! empty( $GLOBALS['test_scope_drift'] ) ) $ops[] = 'mad4b/developer-shell-unrestricted';
         $rows = array_fill( 0, 9, array( 'ability' => 'legacy', 'exact_grant_present' => true ) );
         foreach ( $ops as $ability ) $rows[] = array( 'ability' => $ability, 'exact_grant_present' => false );
-        return array(
+        $plan = array(
+            'contract' => 'mad4b.developer-authority.v1',
+            'production_allowed' => false,
+            'environment' => MAD4B_SCP_Site_Profile::current_environment(),
             'ready_to_apply' => empty( $GLOBALS['test_plan_blocked'] ),
             'blockers' => empty( $GLOBALS['test_plan_blocked'] ) ? array() : array( 'uncertified_manifest' ),
             'tool_count' => count( $rows ),
             'rows' => $rows,
-            'plan_sha256' => str_repeat( 'a', 64 ),
             'source_commit_sha' => str_repeat( 'b', 40 ),
             'site_uuid' => '11111111-1111-4111-8111-111111111111',
             'site_profile_revision' => 2, 'site_profile_digest' => str_repeat( 'c', 64 ),
         );
+        $plan['plan_sha256'] = hash( 'sha256', wp_json_encode( $plan,
+            JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+        return $plan;
     }
     public static function apply( $input ) {
         ++self::$apply_calls;
         return new WP_Error( 'test_must_not_reach_canonical_apply' );
     }
 }
+require_once __DIR__ . '/../../wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-developer-authority-policy-v2.php';
 require_once __DIR__ . '/../../wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-grant-convergence.php';
 function check( $label, $value, $expected_error ) {
     $error = is_wp_error( $value ) ? $value->get_error_code() : '';
@@ -99,7 +115,12 @@ function check( $label, $value, $expected_error ) {
     }
     if ( ! $expected_error && ( $error || ! is_array( $value ) || empty( $value['ready_to_apply'] )
         || count( $value['new_grants'] ?? array() ) !== 5
-        || ! empty( $value['mutation_performed'] ) ) ) {
+        || ! empty( $value['mutation_performed'] )
+        || ( $value['developer_policy_v2']['contract'] ?? null )
+            !== MAD4B_SCP_Developer_Authority_Policy_V2::CONTRACT
+        || ( $value['developer_policy_v2']['legacy_plan_sha256'] ?? null )
+            !== $value['canonical_plan_sha256']
+        || ( $value['developer_policy_v2']['authorization_issued'] ?? null ) !== false ) ) {
         fwrite( STDERR, 'FAIL ' . $label . ': expected read-only exact-five plan' . PHP_EOL ); exit( 2 );
     }
     echo 'PASS ', $label, PHP_EOL;

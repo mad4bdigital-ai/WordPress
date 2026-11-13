@@ -183,8 +183,21 @@ final class MAD4B_SCP_Operator_Grant_Convergence {
                 return new WP_Error( 'mad4b_operator_grants_scope_drift',
                     'Canonical plan must add exactly the five new Operator abilities.' );
             }
+            // Compute an additive V2 policy view over the *unchanged* V1
+            // canonical Developer Authority plan. It must not change the
+            // signed plan SHA, create rights or bypass the exact Apply gate.
+            if ( ! class_exists( 'MAD4B_SCP_Developer_Authority_Policy_V2' ) ) {
+                return new WP_Error( 'mad4b_operator_grants_policy_projection_missing',
+                    'Current Developer plan policy compatibility runtime unavailable.' );
+            }
+            $live_policy = MAD4B_SCP_Registered_Write_Admission::preflight( self::ABILITY );
+            if ( is_wp_error( $live_policy ) ) return $live_policy;
+            $policy_v2 = MAD4B_SCP_Developer_Authority_Policy_V2::project(
+                $plan, $live_policy, self::ABILITY );
+            if ( is_wp_error( $policy_v2 ) ) return $policy_v2;
             $response = array(
                 'contract' => self::CONTRACT,
+                'developer_policy_v2' => $policy_v2,
                 'state' => 'review_exact_five_grants',
                 'target_environment' => sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() ),
                 'server_id' => 'mad4b-developer',

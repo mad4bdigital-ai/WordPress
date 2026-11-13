@@ -307,6 +307,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operator-sessions.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operator-operation-policy.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operator-bridge.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-registered-write-admission.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-developer-authority-policy-v2.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operator-grant-convergence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operator-attestation.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operator-receipt-verifier.php';

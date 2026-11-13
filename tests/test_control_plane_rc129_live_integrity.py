@@ -59,14 +59,23 @@ class Rc129LiveReview(unittest.TestCase):
                     assert_bootstrap_overlay_is_exact()
                     governed=json.loads((ROOT/'docs/release-coverage/pr808-policy-governed-operator-review-20261113.json').read_text())
                     self.assertEqual(governed['base_readonly_overlay_sha256'],overlay['main_candidate_sha256'])
-                    self.assertEqual(SHA(file.read_bytes()),governed['policy_main_candidate_sha256'])
+                    sidecar=json.loads((ROOT/'docs/release-coverage/pr808-developer-policy-sidecar-v2-review-20261113.json').read_text())
+                    self.assertEqual(SHA(file.read_bytes()),
+                        sidecar['source_after_sha256'][str(overlay['entrypoint'])])
+                elif row['path']=='includes/class-mad4b-scp-skill-seeder.php':
+                    sidecar=json.loads((ROOT/'docs/release-coverage/pr808-developer-policy-sidecar-v2-review-20261113.json').read_text())
+                    key='wp-content/plugins/mad4b-site-control-plane/'+row['path']
+                    self.assertEqual(sidecar['prior_source_sha256'][key],row['candidate_after_sha256'])
+                    self.assertEqual(SHA(file.read_bytes()),sidecar['source_after_sha256'][key])
                 elif row['path']=='includes/class-mad4b-scp-operator-grant-convergence.php':
                     # Reviewed source-only governance adapter builds upon the
                     # immutable RC128-to-RC129 reconciliation; the historical
                     # snapshot stays pinned in its original manifest.
                     governed=json.loads((ROOT/'docs/release-coverage/pr808-policy-governed-operator-review-20261113.json').read_text())
-                    self.assertEqual(SHA(file.read_bytes()),
-                        governed['reviewed_source_sha256']['wp-content/plugins/mad4b-site-control-plane/'+row['path']])
+                    sidecar=json.loads((ROOT/'docs/release-coverage/pr808-developer-policy-sidecar-v2-review-20261113.json').read_text())
+                    key='wp-content/plugins/mad4b-site-control-plane/'+row['path']
+                    self.assertEqual(sidecar['prior_source_sha256'][key],governed['reviewed_source_sha256'][key])
+                    self.assertEqual(SHA(file.read_bytes()),sidecar['source_after_sha256'][key])
                 else:
                     self.assertEqual(SHA(file.read_bytes()),row['candidate_after_sha256'])
 

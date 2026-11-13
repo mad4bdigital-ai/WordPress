@@ -22,8 +22,13 @@ def assert_bootstrap_overlay_is_exact():
     # require to the certified RC129/V29 read-only candidate. Historical
     # reviewed hashes stay pinned; reconstruct the previous bytes exactly.
     governed=json.loads((ROOT/'docs/release-coverage/pr808-policy-governed-operator-review-20261113.json').read_text())
-    assert SHA(installed)==governed['policy_main_candidate_sha256'], 'GOVERNED_BOOT_SHA_DRIFT'
+    sidecar=json.loads((ROOT/'docs/release-coverage/pr808-developer-policy-sidecar-v2-review-20261113.json').read_text())
+    assert SHA(installed)==sidecar['source_after_sha256'][str(doc['entrypoint'])], 'SIDECAR_V2_BOOT_SHA_DRIFT'
     text=installed.decode('utf-8')
+    v2="require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-developer-authority-policy-v2.php';\n"
+    assert text.count(v2)==1, 'POLICY_V2_BOOT_NOT_EXACT'
+    text=text.replace(v2,'',1)
+    assert SHA(text.encode('utf-8'))==governed['policy_main_candidate_sha256'], 'GOVERNED_BOOT_SHA_DRIFT'
     registered="require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-registered-write-admission.php';\n"
     assert text.count(registered)==1, 'REGISTRY_POLICY_BOOT_NOT_EXACT'
     text=text.replace(registered,'',1)
