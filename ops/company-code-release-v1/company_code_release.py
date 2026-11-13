@@ -617,10 +617,17 @@ def make_plan(spec: dict, policy: dict) -> dict:
         old = dest.read_bytes() if dest.exists() else None
         old_digest = digest(old) if old is not None else None
         fail_if(before != old_digest, "TARGET_PREIMAGE_MISMATCH:" + target)
+        baseline = dest.stat() if old is not None else None
         rows.append({
             "source": source, "target": target,
             "source_sha256": digest(src),
             "expected_before_sha256": before,
+            # Preserve tenant-owned existing file metadata, including
+            # Wayfatours' www-data ownership and group-writable mode.
+            "expected_before_mode": (stat.S_IMODE(baseline.st_mode)
+                                     if baseline is not None else None),
+            "expected_before_uid": baseline.st_uid if baseline is not None else None,
+            "expected_before_gid": baseline.st_gid if baseline is not None else None,
             "source_bytes": len(src),
             "source_mode": 0o644,  # executable scripts do not run as part of release
         })
@@ -719,6 +726,13 @@ def confirm_plan(plan: dict, policy: dict, *, expect_preimage: bool) -> None:
                         else row["source_sha256"])
             valid = actual == expected
         fail_if(not valid, "TARGET_CONTENT_DRIFT:" + target)
+        if row.get("expected_before_mode") is not None and target_file.is_file():
+            metadata = target_file.stat()
+            fail_if((stat.S_IMODE(metadata.st_mode), metadata.st_uid,
+                     metadata.st_gid) !=
+                    (row["expected_before_mode"], row["expected_before_uid"],
+                     row["expected_before_gid"]),
+                    "TARGET_METADATA_DRIFT:" + target)
 
 
 def grant_message(grant: dict) -> bytes:
@@ -751,25 +765,45 @@ def verify_grant(plan: dict, policy: dict, grant: dict, action: str) -> None:
         raise Denied("BROKER_SIGNATURE_OR_EXPIRY_INVALID") from exc
 
 
-def atomic_write(path: Path, data: bytes, mode: int = 0o644) -> None:
+def fsync_parent_directory(path: Path) -> None:
+    """Make renames and newly created/deleted directory entries durable."""
+    dir_fd = os.open(str(path.parent), os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        os.fsync(dir_fd)
+    finally:
+        os.close(dir_fd)
+
+
+def atomic_write(path: Path, data: bytes, mode: int = 0o644,
+                 *, preserve_existing_mode: bool = False) -> None:
+    """Atomic replacement without silently changing tenant file ownership.
+
+    Existing company-owned plugin files often belong to www-data, while the
+    enrolled Host executor runs as root. A root-created temp file replacing
+    one of those paths must inherit the original UID/GID. For source upgrades,
+    the signed original mode is also preserved; backup restores explicitly
+    pass their stored original mode. New files still use release policy mode.
+    """
     no_link(path)
     fail_if(not path.parent.is_dir(), "TARGET_PARENT_NOT_PRESENT")
+    fail_if(path.exists() and not path.is_file(), "NON_REGULAR_ATOMIC_TARGET")
+    previous = path.stat() if path.is_file() else None
+    desired_mode = (stat.S_IMODE(previous.st_mode)
+                    if preserve_existing_mode and previous is not None else mode)
     fd, name = tempfile.mkstemp(prefix=".mad4b-code-release-", dir=path.parent)
     try:
         with os.fdopen(fd, "wb") as stream:
-            os.fchmod(stream.fileno(), mode)
+            if previous is not None:
+                temporary = os.fstat(stream.fileno())
+                if (temporary.st_uid != previous.st_uid or
+                        temporary.st_gid != previous.st_gid):
+                    os.fchown(stream.fileno(), previous.st_uid, previous.st_gid)
+            os.fchmod(stream.fileno(), desired_mode)
             stream.write(data)
             stream.flush()
             os.fsync(stream.fileno())
         os.replace(name, path)
-        # A file fsync alone does not make its renamed directory entry
-        # durable across sudden host power loss. This also protects the
-        # write-ahead intent before touching any live PHP target.
-        dir_fd = os.open(str(path.parent), os.O_RDONLY | os.O_DIRECTORY)
-        try:
-            os.fsync(dir_fd)
-        finally:
-            os.close(dir_fd)
+        fsync_parent_directory(path)
     finally:
         if os.path.exists(name):
             os.unlink(name)
@@ -902,6 +936,13 @@ def assert_target_preimage(root: Path, row: dict) -> None:
     actual = digest(safe_regular(path)) if path.is_file() else None
     fail_if(actual != row["expected_before_sha256"],
             "TARGET_JIT_PREIMAGE_DRIFT:" + row["target"])
+    if row.get("expected_before_mode") is not None and path.is_file():
+        metadata = path.stat()
+        fail_if((stat.S_IMODE(metadata.st_mode), metadata.st_uid,
+                 metadata.st_gid) !=
+                (row["expected_before_mode"], row["expected_before_uid"],
+                 row["expected_before_gid"]),
+                "TARGET_JIT_METADATA_DRIFT:" + row["target"])
 
 
 def php_lint(plan: dict) -> None:
@@ -1048,6 +1089,7 @@ def restore_backup(plan: dict, backup: dict) -> None:
         if content is None:
             if path.is_file():
                 path.unlink()
+                fsync_parent_directory(path)
         else:
             atomic_write(path, content, backup_item["mode"])
 
@@ -1159,6 +1201,94 @@ def open_rollback_intents(plan: dict, receipt_dir: Path) -> list[dict]:
     return open_entries
 
 
+def overlapping_unresolved_transactions(plan: dict, receipt_dir: Path) -> list[dict]:
+    """Stop a new release from overwriting an older interrupted release.
+
+    Unfinished Apply and Rollback journals are indexed across *all* plan
+    hashes for the same registered company/site; comparing only the current
+    plan allows a different signed plan to replace partially written code.
+    Unrelated tenants and genuinely disjoint file sets remain independent.
+    This read-only journal guard runs under the original receipt-root flock.
+    """
+    selected = {row["target"] for row in plan["files"]}
+    receipts: dict[tuple[str, str], dict] = {}
+    for path in receipt_dir.glob("*.json"):
+        if path.name.endswith((".backup.json", ".intent.json",
+                                ".rollback-intent.json")):
+            continue
+        record = json.loads(safe_regular(path, max_size=100_000))
+        nonce = record.get("nonce")
+        plan_sha = record.get("plan_sha256")
+        fail_if(record.get("contract") != RECEIPT_CONTRACT or
+                not isinstance(nonce, str) or not NONCE.fullmatch(nonce) or
+                not isinstance(plan_sha, str) or not HEX_SHA.fullmatch(plan_sha) or
+                path.name != nonce + ".json",
+                "RELEASE_JOURNAL_TERMINAL_IDENTITY_INVALID")
+        receipts[(plan_sha, nonce)] = record
+    completed_apply: set[tuple[str, str]] = set()
+    completed_rollback: set[tuple[str, str]] = set()
+    for (plan_sha, _), record in receipts.items():
+        if record.get("state") == "RECOVERY_ROLLBACK_VERIFIED":
+            nonce = record.get("recovered_apply_nonce")
+            if isinstance(nonce, str):
+                completed_apply.add((plan_sha, nonce))
+        if record.get("state") in ("ROLLBACK_VERIFIED",
+                                    "RECOVERY_ROLLBACK_VERIFIED"):
+            for nonce in record.get("recovered_rollback_nonces", []):
+                if isinstance(nonce, str):
+                    completed_rollback.add((plan_sha, nonce))
+    conflicts = []
+    for kind, suffix, contract, start_state in (
+        ("apply", ".intent.json", "mad4b.company-code-release.intent.v1", "APPLY_STARTED"),
+        ("rollback", ".rollback-intent.json",
+         "mad4b.company-code-release.rollback-intent.v1", "ROLLBACK_STARTED"),
+    ):
+        for path in sorted(receipt_dir.glob("*" + suffix)):
+            try:
+                item = json.loads(safe_regular(path, max_size=100_000))
+            except (TypeError, ValueError) as exc:
+                raise Denied("RELEASE_JOURNAL_INTENT_CORRUPT") from exc
+            nonce = item.get("nonce")
+            sha = item.get("plan_sha256")
+            files = item.get("files")
+            fail_if(item.get("contract") != contract or
+                    item.get("state") != start_state or
+                    not isinstance(nonce, str) or not NONCE.fullmatch(nonce) or
+                    not isinstance(sha, str) or not HEX_SHA.fullmatch(sha) or
+                    path.name != nonce + suffix or
+                    not isinstance(files, list) or
+                    not 1 <= len(files) <= 24 or
+                    len(files) != len(set(files)) or
+                    any(not isinstance(f, str) or exact_relative(f) != f
+                        for f in files),
+                    "RELEASE_JOURNAL_INTENT_INVALID")
+            key = (sha, nonce)
+            terminal = receipts.get(key)
+            if terminal is not None:
+                fail_if(terminal.get("company") != item.get("company") or
+                        terminal.get("environment") != item.get("environment") or
+                        terminal.get("site_uuid") != item.get("site_uuid"),
+                        "RELEASE_JOURNAL_TERMINAL_SCOPE_DRIFT")
+                if kind == "apply" and terminal.get("state") != "ROLLBACK_UNVERIFIED":
+                    continue
+                if kind == "rollback" and terminal.get("state") in (
+                        "ROLLBACK_VERIFIED", "RECOVERY_ROLLBACK_VERIFIED"):
+                    continue
+            if kind == "apply" and key in completed_apply:
+                continue
+            if kind == "rollback" and key in completed_rollback:
+                continue
+            # The native site UUID is the enrolled runtime identity.
+            # Company/environment labels may be aliases for the same site;
+            # never let an alias override a pending overlapping transaction.
+            same_site = item.get("site_uuid") == plan["site_uuid"]
+            shared = sorted(selected.intersection(files)) if same_site else []
+            if shared:
+                conflicts.append({"operation": kind, "plan_sha256": sha,
+                                  "overlap": shared})
+    return conflicts
+
+
 def apply_release(plan: dict, policy: dict, grant: dict, receipt_dir: Path,
                   *, runtime_check: Callable[[dict, dict], None] = assert_runtime_binding,
                   validate_code: Callable[[dict], None] = php_lint,
@@ -1177,6 +1307,8 @@ def apply_release(plan: dict, policy: dict, grant: dict, receipt_dir: Path,
                 "UNRESOLVED_APPLY_INTENT")
         fail_if(bool(open_rollback_intents(plan, receipt_dir)),
                 "UNRESOLVED_ROLLBACK_INTENT")
+        fail_if(bool(overlapping_unresolved_transactions(plan, receipt_dir)),
+                "OVERLAPPING_UNRESOLVED_RELEASE_TRANSACTION")
         confirm_plan(plan, policy, expect_preimage=True)
         runtime_check(plan, policy)
         prepared = prepare_backup(plan, policy, receipt_dir,
@@ -1205,8 +1337,14 @@ def apply_release(plan: dict, policy: dict, grant: dict, receipt_dir: Path,
                 data = git_bytes(Path(plan["git_root"]), plan["git_commit"], row["source"])
                 path = root / row["target"]
                 assert_target_preimage(root, row)
-                atomic_write(path, data, row["source_mode"])
+                # Record the write attempt *before* atomic replace. If the
+                # rename succeeded but parent fsync raised, the file may
+                # already contain the new bytes even though atomic_write did
+                # not return. Recovery must inspect and restore that state;
+                # never claim ABORTED_NO_MUTATION after an ambiguous rename.
                 changed.append(row["target"])
+                atomic_write(path, data, row["source_mode"],
+                             preserve_existing_mode=True)
             confirm_plan(plan, policy, expect_preimage=False)
             validate_code(plan)
         except Exception as exc:
