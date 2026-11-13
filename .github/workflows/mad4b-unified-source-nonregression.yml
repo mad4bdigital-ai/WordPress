@@ -42,7 +42,11 @@ jobs:
           python3 -m unittest discover -s tests -p 'test_unified_mad4b_behavior_invariants.py' -v
           python3 -m unittest discover -s tests -p 'test_tour_highlights_source_delta.py' -v
           python3 -m unittest discover -s ops/company-code-release-v1/tests -p 'test_dynamic_capability*.py' -q
-          python3 -m unittest discover -s ops/dynamic-operation-registry-v1/tests -p 'test_source_candidate.py' -q
+          # The actual Registry requires a root-owned, non-writable enrolled
+          # directory; the test creates an EPHEMERAL candidate under /tmp.
+          # Execute this isolated test as root rather than spoofing ownership
+          # or weakening the production Registry root trust gate.
+          sudo -n -E "$(command -v python3)" -m unittest discover -s ops/dynamic-operation-registry-v1/tests -p 'test_source_candidate.py' -q
           python3 -m unittest discover -s tests -p 'test_native_source*.py' -q
           python3 -m unittest discover -s tests -p 'test_additive_mad4b_plugin_sources.py' -v
           python3 -m unittest discover -s tests -p 'test_control_plane*contract.py' -v

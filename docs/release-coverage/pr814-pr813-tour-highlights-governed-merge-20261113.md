@@ -62,3 +62,26 @@ ref containment, current CI acceptance and an independent source/release
 policy verdict. Deletion of branches is not authorized by this document.
 
 **Follow-up PR813 heads:** the original review branch advanced to `f36e39f1575563854851165e2ffb36263c68df10` with a CAS role migration and read-only QA. The duplicated byte-identical migration path was consolidated into the canonical `scripts/migrations/tour-journey-role-migration.php`; no migration was run. The QA script now uses PHP 7.4-compatible `strpos` and optionally enforces a site-supplied group count rather than a fleet-wide hardcoded `5`.
+
+## Latest PR813 head reconciliation — 4c3d737a4a8c (Nov 13)
+
+Incorporates the verified new Elementor/JetEngine widget localization
+using first-party native container/widget hooks. Only an actual descendant
+of a `tour-place-group` container may have its in-memory JetEngine Listing
+ID localized via WPML; absent, unlinked or unpublished localized Listings
+remain untouched. PHP 7.4 support is preserved by using `strpos` rather
+than `str_contains`. The isolated acceptance covers FR success, DE draft
+denial, unrelated containers, nested scope exits, missing locale and no
+postmeta mutations.
+
+The source review now pins **12** exact files: the previously approved nine
+plus the read-only Playwright Journey acceptance and two separately scoped
+Tours.dev one-off WPML migrations. Both migration scripts are **not runtime
+Provider handlers** and were **not invoked**. They require independent source
+readback and governed deployment acceptance before any `apply` action;
+source inclusion is not permission to write Elementor or WPML data. No
+visual screenshot or live production verification was performed.
+
+The Original306 ephemeral Registry source candidate unit test is executed
+with root ownership in CI; its real first-party trusted-root check remains
+unchanged, and a source-only fixture cannot authorize a new Grant.

@@ -9,10 +9,18 @@ $GLOBALS['hooks']=array();
 $GLOBALS['meta_write_count']=0;
 function add_action($name,$callback,$priority=10,$args=1){$GLOBALS['hooks'][]=$name;}
 function add_filter($name,$callback,$priority=10,$args=1){$GLOBALS['hooks'][]=$name;}
-function get_post_type($id){return $id===7?'tours-and-activities':'unknown';}
-function get_post_status($id){return $id===7?'publish':'draft';}
+function get_post_type($id){return $id===7?'tours-and-activities':(in_array($id,[910,920],true)?'jet-engine':'unknown');}
+function get_post_status($id){return $id===7||$id===910?'publish':'draft';}
 function get_post_meta($id,$key,$single=false){return $GLOBALS['meta'][$id][$key]??'';}
 function get_option($name,$fallback=array()){return $name==='look-and-feel'?array('tour_highlights_default_mode'=>'manual'): $fallback;}
+$GLOBALS['language']='';
+function apply_filters($name,$value,...$args){
+ if($name==='wpml_current_language')return $GLOBALS['language'];
+ if($name==='wpml_object_id'&&$args===['jet-engine',false,'fr']&&$value===45927)return 910;
+ if($name==='wpml_object_id'&&$args===['jet-engine',false,'de']&&$value===45927)return 920;
+ return $value;
+}
+
 function get_queried_object_id(){return 7;}
 function get_the_ID(){return 7;}
 function wp_strip_all_tags($raw){return strip_tags($raw);}
@@ -70,4 +78,33 @@ prove(in_array('tour-journey--places-only',$element->attrs['class']??array(),tru
 prove(in_array('0',$element->attrs['data-tour-journey-has-highlights']??array(),true),'hidden highlights state not marked');
 prove($GLOBALS['meta_write_count']===1,'frontend render wrote to postmeta');
 prove(in_array('elementor/frontend/container/should_render',$GLOBALS['hooks'],true),'missing native Elementor display hook');
-echo 'PASS Native Tour Highlights: legacy safe, scoped company destinations, draft-only proposals, locale+row approvals, service-denial, places-only display, no frontend writes'.PHP_EOL;
+// Native Elementor container and JetEngine widget localization must follow
+// the actual place-group ancestry and must never persist Elementor settings.
+final class NativeGroup {private $classes;function __construct($classes){$this->classes=$classes;}
+ function get_settings($name){return $name==='css_classes'?$this->classes:'';}}
+final class NativeGrid {public $settings=array('lisitng_id'=>45927);public $writes=0;
+ function get_name(){return 'jet-listing-grid';}
+ function get_settings($key){return $this->settings[$key]??'';}
+ function set_settings($key,$value){$this->settings[$key]=$value;$this->writes++;}}
+$GLOBALS['language']='fr';
+$outside=new NativeGrid();$klass::localize_native_grid($outside);
+prove($outside->writes===0,'unrelated native Grid was localized');
+$klass::enter_native_group(new NativeGroup('unrelated-section'));
+$outsideNested=new NativeGrid();$klass::localize_native_grid($outsideNested);
+prove($outsideNested->writes===0,'unrelated nested section was localized');
+$klass::enter_native_group(new NativeGroup('destination-layout tour-place-group'));
+$nested=new NativeGrid();$klass::localize_native_grid($nested);
+prove($nested->settings['lisitng_id']==='910'&&$nested->writes===1,'FR linked JetEngine listing not localized');
+$klass::enter_native_group(new NativeGroup('inner-nested'));$de=new NativeGrid();
+$GLOBALS['language']='de';$klass::localize_native_grid($de);
+prove($de->settings['lisitng_id']===45927&&$de->writes===0,'unpublished DE listing was published');
+$klass::leave_native_group(null);$klass::leave_native_group(null);
+$nowOutside=new NativeGrid();$klass::localize_native_grid($nowOutside);
+prove($nowOutside->writes===0,'leaving place-group did not restore isolation');
+$klass::leave_native_group(null);
+$GLOBALS['language']='';$unknown=new NativeGrid();$klass::enter_native_group(new NativeGroup('tour-place-group'));
+$klass::localize_native_grid($unknown);$klass::leave_native_group(null);
+prove($unknown->writes===0,'missing WPML language silently rewired listing');
+prove($GLOBALS['meta_write_count']===1,'render-only listing localization wrote postmeta');
+prove(in_array('elementor/frontend/widget/before_render',$GLOBALS['hooks'],true),'native Elementor Grid localization hook missing');
+echo 'PASS Native Tour Highlights: legacy safe, scoped company destinations, draft-only proposals, locale+row approvals, service-denial, places-only display, WPML Grid isolation, no frontend writes'.PHP_EOL;

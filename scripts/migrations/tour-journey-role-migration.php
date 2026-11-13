@@ -31,12 +31,12 @@ $isRelated=function($node)use(&$relatedCache):bool {
     }
     return $relatedCache[$id];
 };
-$addClass=function(&$node,$class):bool {
+$addClass=function(&$node,$class,$field='css_classes'):bool {
     if(!isset($node['settings'])||!is_array($node['settings']))$node['settings']=[];
-    $existing=preg_split('/\s+/u',trim((string)($node['settings']['css_classes']??'')),-1,PREG_SPLIT_NO_EMPTY);
+    $existing=preg_split('/\s+/u',trim((string)($node['settings'][$field]??'')),-1,PREG_SPLIT_NO_EMPTY);
     if(in_array($class,$existing,true))return false;
     $existing[]=$class;
-    $node['settings']['css_classes']=implode(' ',array_unique($existing));
+    $node['settings'][$field]=implode(' ',array_unique($existing));
     return true;
 };
 $out=[];
@@ -85,10 +85,13 @@ foreach($rows as $row) {
                     if(($child['widgetType']??'')==='jet-listing-dynamic-field'
                         && ($child['settings']['dynamic_field_post_meta']??'')==='tour_highlights_content') {
                         if($addClass($child,'tour-journey-content-editor'))$changes++;
+                        if($addClass($child,'tour-journey-content-editor','_css_classes'))$changes++;
                     }elseif(($child['widgetType']??'')==='heading'){
                         if($addClass($child,'tour-journey-heading-editor'))$changes++;
+                        if($addClass($child,'tour-journey-heading-editor','_css_classes'))$changes++;
                     }elseif($isRelated($child)){
                         if($addClass($child,'tour-journey-related-editor'))$changes++;
+                        if($addClass($child,'tour-journey-related-editor','_css_classes'))$changes++;
                     }
                 }
                 unset($child,$target);

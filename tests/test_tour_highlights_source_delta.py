@@ -40,8 +40,8 @@ class TourHighlightsReviewedSource(unittest.TestCase):
                      'original313_signed_receipts_issued','production_release_approved'):
             self.assertFalse(self.review[flag])
         rows=self.review['reviewed_files']
-        self.assertEqual(len(rows),9)
-        self.assertEqual(len({r['path'] for r in rows}),9)
+        self.assertEqual(len(rows),12)
+        self.assertEqual(len({r['path'] for r in rows}),12)
         for row in rows:
             with self.subTest(file=row['path']):
                 path=ROOT/row['path']
@@ -86,6 +86,44 @@ class TourHighlightsReviewedSource(unittest.TestCase):
         self.assertIn('($expectedGroups!==null && $groups!==$expectedGroups)',qa)
         self.assertNotIn('str_contains(',qa,'QA must run with declared PHP 7.4 minimum')
         self.assertNotIn('$groups!==5',qa,'Group count must come from site QA, not a hardcoded fleet rule')
+
+    def test_wpml_grid_localization_is_source_scoped_and_does_not_write(self):
+        code=(PLUGIN/'includes/class-mad4b-scp-tour-highlights-v1.php').read_text()
+        for required in ('enter_native_group','leave_native_group',
+                         'localize_native_grid',
+                         'elementor/frontend/widget/before_render',
+                         'wpml_current_language',"'wpml_object_id'",
+                         'tour-place-group', 'get_post_status($localized)',
+                         'get_post_type($localized)'):
+            self.assertIn(required,code)
+        self.assertNotIn('str_contains(',code)
+        self.assertIn("$widget->set_settings('lisitng_id'",code)
+        # The localization path modifies only in-memory Elementor settings.
+        section=code.split('public static function localize_native_grid(',1)[1].split(
+            'private static function source_valid(',1)[0]
+        for mutation in ('update_post_meta(', 'wp_update_post(', 'wp_insert_post(',
+                         '$wpdb->query(', 'delete_post_meta('):
+            self.assertNotIn(mutation,section)
+
+    def test_site_specific_wpml_migrations_are_not_runtime_providers(self):
+        script=ROOT/'scripts/migrations/tour-journey-wpml-fr-de-20261113.php'
+        content=script.read_text()
+        self.assertIn("$site!=='https://tours.dev.mad4b.com'",content)
+        self.assertIn("'TOUR_DEST_ACTION'",content)
+        self.assertIn("'preflight','apply','verify'",content)
+        self.assertIn('DOCUMENT_CAS_CONFLICT',content)
+        self.assertIn('LOCAL_LISTING_READBACK_FAILED',content)
+        self.assertNotIn('str_contains(',content)
+        second=(ROOT/'scripts/migrations/tour-journey-wpml-independent-20261113.php').read_text()
+        self.assertIn("get_option('home')!=='https://tours.dev.mad4b.com'",second)
+        self.assertIn("'TOUR_DEST_ACTION'",second)
+        self.assertIn("'preflight','apply','verify'",second)
+        self.assertIn('update_post_meta(',second)
+        self.assertFalse(self.review['latest_wpml_migrations_executed'])
+        self.assertFalse(self.review['latest_playwright_visual_acceptance_performed'])
+        browser=(ROOT/'scripts/qa/tour-journey-browser.py').read_text()
+        self.assertIn('https://',browser)
+        self.assertIn('playwright.sync_api',browser)
 
     def test_wpml_translation_is_independent_per_locale(self):
         tree=ET.parse(PLUGIN/'wpml-config.xml')
