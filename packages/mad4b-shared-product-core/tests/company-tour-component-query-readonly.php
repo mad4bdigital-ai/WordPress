@@ -50,7 +50,7 @@ if ($term instanceof WP_Term) {
             'post_type'=>'','query_type'=>'terms',
             'taxonomies'=>[$term->taxonomy]]]];
     $pre=function()use($filterId,$testBinding){
-        return ['version'=>2,'filters'=>[$filterId=>$testBinding]];
+        return ['version'=>3,'filters'=>[$filterId=>$testBinding]];
     };
     add_filter('pre_transient_shared_presentation_native_consumers_v1',$pre,99,0);
     $queryOptions=[['value'=>$term->term_id,'label'=>$term->name]];

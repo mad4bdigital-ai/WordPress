@@ -8,7 +8,81 @@ defined('ABSPATH') || exit;
 
 final class MAD4B_Company_Term_Eligibility_V1 {
     const META = 'mad4b_public_term_visibility';
+    private static bool $publicTermPurgePending=false;
     private static array $searchSources=[];
+
+    // Current renderer is authoritative; a shared filter ID can serve several
+    // distinct JetEngine providers on different Elementor surfaces.
+    private static array $activeFacetRender=[];
+
+    public static function begin_facet_render($widget): void {
+        if (!is_object($widget) || !method_exists($widget,'get_name')
+            || !str_starts_with((string)$widget->get_name(),'jet-smart-filters-')
+            || !method_exists($widget,'get_settings_for_display')
+            || !method_exists($widget,'get_id')) return;
+        $settings=(array)$widget->get_settings_for_display();
+        // Only JetEngine provider consumers can narrow JetEngine query
+        // ownership. A widget for another provider must never reuse its ID.
+        if (($settings['content_provider']??'')!=='jet-engine') return;
+        $raw=$settings['filter_id']??$settings['selected_filter']??null;
+        // Elementor serializes the native JSF filter ID as a one-item array.
+        // Without normalizing it, the current widget/query scope is lost.
+        if (is_array($raw) && count($raw)===1) $raw=reset($raw);
+        if (!is_scalar($raw) || !ctype_digit((string)$raw)) return;
+        $filterId=(int)$raw;
+        $queryId=(string)($settings['query_id']??'');
+        if (!$filterId || $queryId===''
+            || !function_exists('shared_presentation_native_facet_binding_v1')) return;
+        $binding=shared_presentation_native_facet_binding_v1($filterId);
+        if (!is_array($binding) || !isset($binding['providers'][$queryId]))return;
+        // Nested/repeated Elementor instances may use the same Filter CPT.
+        // Keep a stack to restore the outer query after an inner widget exits.
+        self::$activeFacetRender[$filterId][]=[
+            'widget_id'=>(string)$widget->get_id(),
+            'query_id'=>$queryId,
+        ];
+    }
+
+    public static function finish_facet_render($widget): void {
+        if (!is_object($widget) || !method_exists($widget,'get_id')) return;
+        $id=(string)$widget->get_id();
+        foreach (self::$activeFacetRender as $filterId=>$stack) {
+            foreach (array_reverse(array_keys($stack)) as $idx)
+                if (($stack[$idx]['widget_id']??'')===$id)
+                    unset(self::$activeFacetRender[$filterId][$idx]);
+            self::$activeFacetRender[$filterId]=array_values(
+                self::$activeFacetRender[$filterId]);
+            if (!self::$activeFacetRender[$filterId])
+                unset(self::$activeFacetRender[$filterId]);
+        }
+    }
+
+    public static function consumer_scoped_binding(int $filterId): ?array {
+        if (!function_exists('shared_presentation_native_facet_binding_v1'))return null;
+        $binding=shared_presentation_native_facet_binding_v1($filterId);
+        if (!is_array($binding) || !is_array($binding['providers']??null))return $binding;
+        $providers=$binding['providers'];
+        $stack=self::$activeFacetRender[$filterId]??[];
+        $active=end($stack);
+        $activeId=(string)($active['query_id']??'');
+        if ($activeId!=='' && isset($providers[$activeId])) {
+            $binding['providers']=[$activeId=>$providers[$activeId]];
+            return $binding;
+        }
+        // Fallback only on an authenticated WordPress post-type archive.
+        // Destination, home, AJAX and single Tour surfaces are ambiguous.
+        if (function_exists('is_post_type_archive') && is_post_type_archive()) {
+            $current=get_query_var('post_type');
+            if (is_array($current) && count($current)===1)$current=reset($current);
+            if (is_string($current) && post_type_exists($current)) {
+                $matching=array_filter($providers,
+                    static fn($p)=>is_array($p) && ($p['post_type']??'')===$current);
+                if ($matching) $binding['providers']=$matching;
+            }
+        }
+        return $binding;
+    }
+
 
     /** Use JetSearch's actual Elementor widget settings, never a guessed taxonomy owner. */
     public static function capture_search_widget($widget): void {
@@ -124,9 +198,48 @@ final class MAD4B_Company_Term_Eligibility_V1 {
         return $ids;
     }
 
+    /**
+     * Prime a request-local, complete WPML term identity map in one indexed
+     * read instead of one wpml_object_id DB query per public facet option.
+     * Inheritance logic remains identical to the WPML default-language ID.
+     */
     private static function canonical(WP_Term $term): int {
         $default=(string)apply_filters('wpml_default_language','en');
-        $canonical=(int)apply_filters('wpml_object_id',$term->term_id,$term->taxonomy,false,$default);
+        if (defined('ICL_SITEPRESS_VERSION') && $default!=='') {
+            static $identity=[];
+            $scope=$term->taxonomy.'|'.$default;
+            if (!array_key_exists($scope,$identity)) {
+                global $wpdb;
+                $sql="SELECT loc.term_id AS local_id, canon.term_id AS canonical_id
+                    FROM {$wpdb->term_taxonomy} loc
+                    JOIN {$wpdb->prefix}icl_translations localized
+                      ON localized.element_id=loc.term_taxonomy_id
+                      AND localized.element_type=%s
+                    JOIN {$wpdb->prefix}icl_translations original
+                      ON original.trid=localized.trid
+                      AND original.element_type=localized.element_type
+                      AND original.language_code=%s
+                    JOIN {$wpdb->term_taxonomy} canon
+                      ON canon.term_taxonomy_id=original.element_id
+                      AND canon.taxonomy=loc.taxonomy
+                    WHERE loc.taxonomy=%s";
+                $rows=$wpdb->get_results($wpdb->prepare(
+                    $sql,'tax_'.$term->taxonomy,$default,$term->taxonomy
+                ),ARRAY_A);
+                if (!is_array($rows) || $wpdb->last_error!=='') {
+                    $identity[$scope]=null; // WPML's own filter remains fallback.
+                } else {
+                    $map=[];
+                    foreach ($rows as $row)
+                        $map[(int)$row['local_id']]=(int)$row['canonical_id'];
+                    $identity[$scope]=$map;
+                }
+            }
+            if (is_array($identity[$scope]))
+                return $identity[$scope][(int)$term->term_id]??(int)$term->term_id;
+        }
+        $canonical=(int)apply_filters('wpml_object_id',
+            $term->term_id,$term->taxonomy,false,$default);
         return $canonical>0?$canonical:(int)$term->term_id;
     }
 
@@ -230,7 +343,7 @@ final class MAD4B_Company_Term_Eligibility_V1 {
 
     public static function smart_options(array $options,int $filterId): array {
         if ((is_admin()&&!wp_doing_ajax()) || !function_exists('shared_presentation_native_facet_binding_v1')) return $options;
-        $binding=shared_presentation_native_facet_binding_v1($filterId);
+        $binding=self::consumer_scoped_binding($filterId);
         if (!$binding || ($binding['source']??'')!=='taxonomies') return $options;
         $taxonomy=(string)($binding['taxonomy']??'');
         if (!$taxonomy || !taxonomy_exists($taxonomy)) return $options;
@@ -258,15 +371,24 @@ final class MAD4B_Company_Term_Eligibility_V1 {
             if (!$type) {$unresolved=true;continue;}
             if (self::owners($taxonomy)[$type]??false) $providers[$type]=true;
         }
-        // An unknown provider may have a separate native policy (rates, activities).
-        // Never pretend to authorize it by guessing the service from the taxonomy.
-        if (!$providers || ($unresolved && $taxonomy==='destinations')) return $options;
+        // An orphaned/custom JetEngine query has no verifiable post type.
+        // It may not grant blanket public eligibility. Fall back to the
+        // intersection with the actual registered product-service catalog;
+        // this is a conservative display projection, NOT provider identity.
+        $fallback=(!$providers);
+        if ($fallback) {
+            foreach (self::owners($taxonomy) as $postType=>$service)
+                $providers[$postType]=true;
+        }
+        if (!$providers) return $options; // not a product taxonomy
         foreach ($options as $key=>$option) {
             if ($key==='' || (is_array($option)&&($option['value']??null)==='')) continue;
             $term=self::option_term($key,$option,$taxonomy);
             if (!$term) continue; // preserve non-term native schema without fabricating scope.
             $allowed=false;
-            $channel=self::surface_channel();
+            // Unknown source IDs must never infer a Tour-component capability
+            // merely because the generic menu/filter was rendered on a Tour.
+            $channel=$fallback?'standalone':self::surface_channel();
             foreach ($providers as $postType=>$_) {
                 if (self::decide($term,$postType,
                     $postType==='product'?'search':$channel,
@@ -288,18 +410,25 @@ final class MAD4B_Company_Term_Eligibility_V1 {
         $selected=self::$searchSources[$widgetId]??[];
         if ($selected) $owners=array_intersect_key($owners,array_fill_keys($selected,true));
         if (!$owners) { $args['include']=[0];return $args; }
-        $terms=get_terms(['taxonomy'=>$taxonomy,'hide_empty'=>false,'number'=>0,'fields'=>'all']);
-        if (is_wp_error($terms)) return $args;
+        // Return IDs from WPML's native language-scoped Terms Query. In
+        // WordPress 7/WPML, hydrating every term through get_term() can issue
+        // a separate WPML translation query per option; the immutable native
+        // WP_Term instance avoids that extra translation lookup.
+        $termIds=get_terms(['taxonomy'=>$taxonomy,'hide_empty'=>false,
+            'number'=>0,'fields'=>'ids']);
+        if (is_wp_error($termIds)) return $args;
         $permitted=[];
-        foreach ($terms as $term)
+        foreach ((array)$termIds as $termId) {
+            $term=WP_Term::get_instance((int)$termId,$taxonomy);
             if ($term instanceof WP_Term) {
                 foreach ($owners as $postType=>$service) {
                     if (self::decide($term,$postType,
-                        $postType==='product'?'search':self::surface_channel())['allowed']) {
+                        $postType==='product'?'search':'standalone')['allowed']) {
                         $permitted[]=(int)$term->term_id; break;
                     }
                 }
             }
+        }
         if (!empty($args['include'])) {
             $permitted=array_values(array_intersect($permitted,array_map('absint',(array)$args['include'])));
         }
@@ -351,6 +480,24 @@ final class MAD4B_Company_Term_Eligibility_V1 {
         echo '</select><p class="description">Does not override Service Activation, destination hierarchy, or published-content eligibility. WPML terms inherit canonical default-language policy.</p></td></tr>';
     }
 
+    /** Coalesce JetEngine/WPML term changes into one safe public HTML epoch. */
+    public static function mark_public_term_changed(int $termId): void {
+        $term=WP_Term::get_instance($termId);
+        if(!$term instanceof WP_Term)return;
+        if($term->taxonomy==='destinations' ||
+            in_array($term->taxonomy,self::editable_taxonomies(),true))
+            self::$publicTermPurgePending=true;
+    }
+
+    public static function purge_changed_public_terms(): void {
+        if(!self::$publicTermPurgePending)return;
+        self::$publicTermPurgePending=false;
+        $cacheClass='RankMath\Sitemap\Cache';
+        if(class_exists($cacheClass) && method_exists($cacheClass,'invalidate_storage'))
+            $cacheClass::invalidate_storage();
+        do_action('mad4b/public_html/safe_purge_all','company_term_visibility_changed');
+    }
+
     public static function save_term(int $termId): void {
         if (!isset($_POST['mad4b_term_visibility_nonce'],$_POST['mad4b_term_visibility'])) return;
         $term=get_term($termId);
@@ -363,14 +510,17 @@ final class MAD4B_Company_Term_Eligibility_V1 {
         if (!in_array($value,['inherit','enabled','disabled'],true)) return;
         if ($value==='inherit') delete_term_meta($canonical,self::META);
         else update_term_meta($canonical,self::META,$value);
-        $cacheClass='RankMath\Sitemap\Cache';
-        if (class_exists($cacheClass)) $cacheClass::invalidate_storage();
-        do_action('mad4b/public_html/safe_purge_all','company_term_eligibility');
+        self::mark_public_term_changed($canonical);
     }
 }
 
 add_action('elementor/frontend/widget/before_render',
     ['MAD4B_Company_Term_Eligibility_V1','capture_search_widget'],5,1);
+add_action('elementor/frontend/widget/before_render',
+    ['MAD4B_Company_Term_Eligibility_V1','begin_facet_render'],6,1);
+add_action('elementor/frontend/widget/after_render',
+    ['MAD4B_Company_Term_Eligibility_V1','finish_facet_render'],999,1);
+
 add_filter('jet-search/ajax-search/categories-select/args',
     ['MAD4B_Company_Term_Eligibility_V1','search_args'],40);
 // JetEngine Terms Query Builder (including cached results) is independent of WP_Query.
@@ -400,7 +550,7 @@ add_filter('product_navigation_sections',static function($sections,$language,$su
                 if (!preg_match('/^([a-z0-9_-]+):(\d+)$/D',$key,$m) || !taxonomy_exists($m[1])) return true;
                 $term=get_term((int)$m[2],$m[1]);
                 return !$term instanceof WP_Term ||
-                    MAD4B_Company_Term_Eligibility_V1::decide($term,$postType)['allowed'];
+                    MAD4B_Company_Term_Eligibility_V1::decide($term,$postType,'standalone')['allowed'];
             }));
     }
     unset($section);
@@ -417,7 +567,7 @@ add_filter('wp_nav_menu_objects',static function($items) {
         $term=taxonomy_exists($tax)?get_term((int)($item->object_id??0),$tax):null;
         if (!$term instanceof WP_Term || !MAD4B_Company_Term_Eligibility_V1::owners($tax)) continue;
         if (!MAD4B_Company_Term_Eligibility_V1::for_registered_owners(
-            $term,MAD4B_Company_Term_Eligibility_V1::surface_channel()))
+            $term,'standalone'))
             $removed[(int)$item->ID]=true;
     }
     // Retain menu parent/child integrity when a taxonomy parent is hidden.
@@ -437,7 +587,18 @@ add_action('init',static function() {
 },99);
 add_action('edited_term',static function($termId) {
     MAD4B_Company_Term_Eligibility_V1::save_term((int)$termId);
+    MAD4B_Company_Term_Eligibility_V1::mark_public_term_changed((int)$termId);
 },90,1);
+// JetEngine direct meta writes and Destination Activation WPML cascades do
+// not necessarily pass through edited_term. Invalidate after the whole batch.
+foreach(['added_term_meta','updated_term_meta','deleted_term_meta'] as $hook)
+    add_action($hook,static function($metaId,$termId,$key) {
+        if(in_array((string)$key,[
+            MAD4B_Company_Term_Eligibility_V1::META,'is_public','destination_type'
+        ],true))MAD4B_Company_Term_Eligibility_V1::mark_public_term_changed((int)$termId);
+    },45,3);
+add_action('shutdown',
+    ['MAD4B_Company_Term_Eligibility_V1','purge_changed_public_terms'],990,0);
 
 // Search engines must not publish inactive product taxonomies in sitemaps.
 // Destinations keep their dedicated activation and SEO authority.
@@ -464,6 +625,10 @@ function mad4b_company_term_woo_invalidate_v1($productId=0): void {
 }
 add_action('woocommerce_update_product','mad4b_company_term_woo_invalidate_v1',30,1);
 add_action('woocommerce_new_product','mad4b_company_term_woo_invalidate_v1',30,1);
+add_action('woocommerce_product_set_stock_status',
+    'mad4b_company_term_woo_invalidate_v1',30,1);
+add_action('woocommerce_variation_set_stock_status',
+    'mad4b_company_term_woo_invalidate_v1',30,1);
 add_action('set_object_terms',static function($objectId) {
     if (get_post_type((int)$objectId)==='product') mad4b_company_term_woo_invalidate_v1((int)$objectId);
 },45,1);

@@ -99,7 +99,7 @@ function shared_presentation_native_consumers_v1(): array {
     static $building=false;
     if($building)return [];
     $cached=get_transient('shared_presentation_native_consumers_v1');
-    if(is_array($cached)&&($cached['version']??null)===2)return $cached['filters'];
+    if(is_array($cached)&&($cached['version']??null)===3)return $cached['filters'];
 
     $building=true;
     global $wpdb;
@@ -152,8 +152,56 @@ function shared_presentation_native_consumers_v1(): array {
             }
         }
     }
+    // A native Listing Grid may be the JetSmartFilters provider without a
+    // saved JetEngine Query Builder row. Its Elementor widget ID is the query
+    // target, and its *actual saved native CPT* proves ownership.
+    $listingProviders=function($nodes)use(&$listingProviders,$providers):array {
+        $found=[];$conflicts=[];
+        foreach((array)$nodes as $node){
+            if(!is_array($node))continue;
+            if(($node['widgetType']??'')==='jet-listing-grid') {
+                $settings=(array)($node['settings']??[]);
+                $slug=(string)($settings['_element_id']??'');
+                $type='';
+                $custom=(string)($settings['custom_query']??'');
+                if($custom==='yes'){
+                    $qid=(string)($settings['custom_query_id']??'');
+                    $queryProvider=$providers[$qid]??null;
+                    if(is_array($queryProvider)&&
+                        ($queryProvider['query_type']??'')==='posts')
+                        $type=(string)($queryProvider['post_type']??'');
+                }elseif(($settings['use_custom_post_types']??'')==='yes'){
+                    $types=array_values(array_unique(array_filter(
+                        (array)($settings['custom_post_types']??[]),
+                        static fn($t)=>is_string($t)&&post_type_exists($t)
+                    )));
+                    if(count($types)===1)$type=$types[0];
+                }
+                if($slug!=='' && $type!=='' && post_type_exists($type)){
+                    if(isset($found[$slug]) && ($found[$slug]['post_type']??'')!==$type){
+                        unset($found[$slug]);$conflicts[$slug]=true;
+                    }elseif(!isset($conflicts[$slug])){
+                        $found[$slug]=['post_type'=>$type,'query_type'=>'posts',
+                            'taxonomies'=>[],'origin'=>'elementor_native_listing'];
+                    }
+                }
+            }
+            if(isset($node['elements'])&&is_array($node['elements'])){
+                $sub=$listingProviders($node['elements']);
+                foreach($sub as $slug=>$descriptor) {
+                    if(isset($found[$slug]) &&
+                       ($found[$slug]['post_type']??'')!==($descriptor['post_type']??'')){
+                        unset($found[$slug]);$conflicts[$slug]=true;
+                    }elseif(!isset($conflicts[$slug])){
+                        $found[$slug]=$descriptor;
+                    }
+                }
+            }
+        }
+        return $found;
+    };
     $bindings=[];
-    $visit=function($nodes,$templateId)use(&$visit,&$bindings,$providers){
+    $visit=function($nodes,$templateId,$localProviders)use(&$visit,&$bindings,$providers){
       foreach((array)$nodes as $node){
         if(!is_array($node))continue;
         $widget=(string)($node['widgetType']??'');
@@ -168,7 +216,7 @@ function shared_presentation_native_consumers_v1(): array {
                 ||get_post_status($id)!=='publish')continue;
               $tax=(string)get_post_meta($id,'_source_taxonomy',true);
               if(!taxonomy_exists($tax)||get_post_meta($id,'_data_source',true)!=='taxonomies')continue;
-              $provider=$providers[$slug]??[
+              $provider=$providers[$slug]??$localProviders[$slug]??[
                   'post_type'=>'','query_type'=>'unresolved','taxonomies'=>[]
               ];
               $type=(string)($provider['post_type']??'');
@@ -180,16 +228,22 @@ function shared_presentation_native_consumers_v1(): array {
               $bindings[$id]['taxonomy']=$tax;
               $bindings[$id]['source']='taxonomies';
               $bindings[$id]['filter_type']=(string)get_post_meta($id,'_filter_type',true);
+              $prior=$bindings[$id]['providers'][$slug]??null;
+              if(is_array($prior)
+                  && ($prior['post_type']??'')!==($provider['post_type']??'')){
+                  $provider=['post_type'=>'','query_type'=>'ambiguous',
+                      'taxonomies'=>[],'origin'=>'conflicting_consumer_templates'];
+              }
               $bindings[$id]['providers'][$slug]=$provider;
               $bindings[$id]['template_ids'][$templateId]=true;
             }
         }
-        if(isset($node['elements']))$visit($node['elements'],$templateId);
+        if(isset($node['elements']))$visit($node['elements'],$templateId,$localProviders);
       }
     };
     foreach($rows as $id){
         $nodes=json_decode((string)get_post_meta((int)$id,'_elementor_data',true),true);
-        if(is_array($nodes))$visit($nodes,(int)$id);
+        if(is_array($nodes))$visit($nodes,(int)$id,$listingProviders($nodes));
     }
     foreach($bindings as $id=>&$b){
         $b['template_ids']=array_map('intval',array_keys($b['template_ids']));
@@ -197,7 +251,7 @@ function shared_presentation_native_consumers_v1(): array {
     }
     unset($b);
     ksort($bindings,SORT_NUMERIC);
-    set_transient('shared_presentation_native_consumers_v1',['version'=>2,'filters'=>$bindings],5*MINUTE_IN_SECONDS);
+    set_transient('shared_presentation_native_consumers_v1',['version'=>3,'filters'=>$bindings],5*MINUTE_IN_SECONDS);
     $building=false;
     return $bindings;
 }
@@ -232,3 +286,26 @@ foreach(['added_post_meta','updated_post_meta','deleted_post_meta'] as $hook){
             shared_presentation_native_consumer_invalidate_v1((int)$postId);
     },35,3);
 }
+
+
+// Query Builder definitions live in JetEngine's custom data table, NOT WP posts.
+// The native editor emits this event only after a successful add/edit.
+add_action('jet-engine/query-builder/after-query-update',static function(){
+    shared_presentation_native_consumer_invalidate_v1();
+    do_action('mad4b/public_html/safe_purge_all','native_query_builder_definition_updated');
+},40,0);
+
+// JetEngine's delete endpoint has no after-query-update event.
+// Accept only a successful DELETE on its registered REST route.
+add_filter('rest_post_dispatch',static function($response,$server,$request){
+    if (!$request instanceof WP_REST_Request ||
+        strtoupper((string)$request->get_method())!=='DELETE' ||
+        !preg_match('~^/jet-engine/v[0-9]+/delete-query/[^/]+$~D',
+            (string)$request->get_route()) ||
+        !$response instanceof WP_REST_Response) return $response;
+    $data=$response->get_data();
+    if (!is_array($data) || ($data['success']??false)!==true)return $response;
+    shared_presentation_native_consumer_invalidate_v1();
+    do_action('mad4b/public_html/safe_purge_all','native_query_builder_definition_deleted');
+    return $response;
+},45,3);
