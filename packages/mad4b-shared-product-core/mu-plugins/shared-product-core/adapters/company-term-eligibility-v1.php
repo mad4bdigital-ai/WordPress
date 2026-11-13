@@ -8,31 +8,120 @@ defined('ABSPATH') || exit;
 
 final class MAD4B_Company_Term_Eligibility_V1 {
     const META = 'mad4b_public_term_visibility';
+    private static array $searchSources=[];
+
+    /** Use JetSearch's actual Elementor widget settings, never a guessed taxonomy owner. */
+    public static function capture_search_widget($widget): void {
+        if (!is_object($widget) || !method_exists($widget,'get_name')
+            || $widget->get_name()!=='jet-ajax-search'
+            || !method_exists($widget,'get_settings_for_display')
+            || !method_exists($widget,'get_id')) return;
+        $settings=(array)$widget->get_settings_for_display();
+        $raw=$settings['search_source']??[];
+        $types=[];
+        foreach ((array)$raw as $type)
+            if (is_string($type) && post_type_exists($type)) $types[$type]=true;
+        if ($types) self::$searchSources['jet_ajax_search_categories_'.$widget->get_id()]=array_keys($types);
+    }
+
+
+
+    /** Discover catalog sources from the actual company/WooCommerce CPT registry. */
+    public static function catalog_sources(): array {
+        static $sources=null;
+        if ($sources!==null) return $sources;
+        $sources=[];
+        if (function_exists('product_navigation_registry')) {
+            foreach ((array)product_navigation_registry() as $service=>$entry) {
+                $type=(string)($entry['post_type']??'');
+                if ($type!=='' && post_type_exists($type)) $sources[$type]=(string)$service;
+            }
+        }
+        if (function_exists('service_channel_owner')) {
+            foreach (get_post_types([], 'names') as $type) {
+                $service=service_channel_owner($type);
+                if (is_string($service) && $service!=='') $sources[$type]=$service;
+            }
+        }
+        if (class_exists('WooCommerce',false) && function_exists('wc_get_product')
+            && post_type_exists('product')) $sources['product']='woocommerce';
+        return $sources;
+    }
+
+    private static function public_facet_taxonomy(string $taxonomy): bool {
+        $tax=get_taxonomy($taxonomy);
+        if (!$tax) return false;
+        // WooCommerce product attributes may have public=false but remain native facets.
+        return (bool)$tax->public ||
+            (function_exists('taxonomy_is_product_attribute')
+                && taxonomy_is_product_attribute($taxonomy) && (bool)$tax->show_ui);
+    }
 
     public static function owners(string $taxonomy): array {
-        if (!taxonomy_exists($taxonomy) || !function_exists('product_navigation_registry')) return [];
+        if (!self::public_facet_taxonomy($taxonomy)) return [];
         $tax=get_taxonomy($taxonomy);
-        if (!$tax || !$tax->public) return [];
         $owners=[];
-        foreach ((array) product_navigation_registry() as $service=>$definition) {
-            $postType=(string)($definition['post_type']??'');
-            if ($postType && in_array($postType,(array)$tax->object_type,true)
-                && post_type_exists($postType)) $owners[$postType]=(string)$service;
+        foreach (self::catalog_sources() as $postType=>$service) {
+            if (post_type_exists($postType) && in_array($postType,(array)$tax->object_type,true))
+                $owners[$postType]=$service;
         }
         return $owners;
     }
 
     public static function editable_taxonomies(): array {
-        if (!function_exists('product_navigation_registry')) return [];
         $found=[];
-        foreach ((array)product_navigation_registry() as $definition) {
-            $postType=(string)($definition['post_type']??'');
-            if (!$postType || !post_type_exists($postType)) continue;
-            foreach ((array)get_object_taxonomies($postType) as $tax) {
-                if ($tax!=='destinations' && self::owners($tax)) $found[$tax]=true;
+        foreach (self::catalog_sources() as $postType=>$service) {
+            foreach ((array)get_object_taxonomies($postType) as $taxonomy) {
+                $tax=get_taxonomy($taxonomy);
+                if ($taxonomy!=='destinations' && $tax && $tax->show_ui && self::owners($taxonomy))
+                    $found[$taxonomy]=true;
             }
         }
         return array_keys($found);
+    }
+
+    /** Catalog eligibility follows WooCommerce visibility and stock policy. */
+    private static function woo_visible_terms(string $taxonomy,string $channel='standalone'): array {
+        $key='mad4b_wc_catalog_facet_terms_v1_'.md5($taxonomy.'|'.$channel);
+        $cached=get_transient($key);
+        if (is_array($cached)) return $cached;
+        if (!function_exists('wc_get_product_visibility_term_ids')) return [];
+        $visibility=wc_get_product_visibility_term_ids();
+        $blockedTerm=$channel==='search'?'exclude-from-search':'exclude-from-catalog';
+        $exclusions=[(int)($visibility[$blockedTerm]??0)];
+        if (get_option('woocommerce_hide_out_of_stock_items')==='yes')
+            $exclusions[]=(int)($visibility['outofstock']??0);
+        $exclusions=array_values(array_filter($exclusions));
+        global $wpdb;
+        $sql="SELECT DISTINCT tt.term_id FROM {$wpdb->posts} p
+            JOIN {$wpdb->term_relationships} rel ON rel.object_id=p.ID
+            JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id=rel.term_taxonomy_id
+            WHERE tt.taxonomy=%s AND p.post_type='product'
+              AND p.post_status='publish' AND p.post_password=''";
+        if ($exclusions) {
+            $slots=implode(',',array_fill(0,count($exclusions),'%d'));
+            $sql.=" AND NOT EXISTS (
+                SELECT 1 FROM {$wpdb->term_relationships} hidden_rel
+                JOIN {$wpdb->term_taxonomy} hidden_tax
+                  ON hidden_tax.term_taxonomy_id=hidden_rel.term_taxonomy_id
+                WHERE hidden_rel.object_id=p.ID
+                  AND hidden_tax.taxonomy='product_visibility'
+                  AND hidden_tax.term_id IN ($slots))";
+        }
+        $rows=$wpdb->get_col($wpdb->prepare($sql,$taxonomy,...$exclusions));
+        if ($wpdb->last_error!=='') return [];
+        $result=[];
+        foreach ((array)$rows as $id) {
+            foreach (array_merge([(int)$id],array_map('intval',get_ancestors((int)$id,$taxonomy,'taxonomy'))) as $termId) {
+                $result[$termId]=true;
+                $canonical=(int)apply_filters('wpml_object_id',$termId,$taxonomy,false,
+                    (string)apply_filters('wpml_default_language','en'));
+                if ($canonical>0) $result[$canonical]=true;
+            }
+        }
+        $ids=array_keys($result);
+        set_transient($key,$ids,5*MINUTE_IN_SECONDS);
+        return $ids;
     }
 
     private static function canonical(WP_Term $term): int {
@@ -54,8 +143,12 @@ final class MAD4B_Company_Term_Eligibility_V1 {
     public static function decide(WP_Term $term,string $postType,string $channel='destination_discovery',bool $requirePublished=true): array {
         if (!taxonomy_exists($term->taxonomy) || !post_type_exists($postType))
             return ['allowed'=>false,'reason'=>'unknown_source'];
-        $owner=function_exists('service_channel_owner')?service_channel_owner($postType):null;
-        if (!$owner || !function_exists('service_channel_allowed') ||
+        $owner=self::owners($term->taxonomy)[$postType]??null;
+        if (!$owner) return ['allowed'=>false,'reason'=>'source_not_in_catalog'];
+        if ($owner==='woocommerce') {
+            if (!class_exists('WooCommerce',false) || !function_exists('wc_get_product'))
+                return ['allowed'=>false,'reason'=>'woocommerce_unavailable'];
+        } elseif (!function_exists('service_channel_allowed') ||
             !service_channel_allowed($owner,$channel))
             return ['allowed'=>false,'reason'=>'service_inactive'];
         $tax=get_taxonomy($term->taxonomy);
@@ -74,9 +167,13 @@ final class MAD4B_Company_Term_Eligibility_V1 {
             }
         }
         if ($requirePublished) {
-            if (!function_exists('shared_presentation_published_facet_terms_v1'))
-                return ['allowed'=>false,'reason'=>'source_missing'];
-            $published=shared_presentation_published_facet_terms_v1($postType,$term->taxonomy);
+            if ($owner==='woocommerce') {
+                $published=self::woo_visible_terms($term->taxonomy,$channel);
+            } else {
+                if (!function_exists('shared_presentation_published_facet_terms_v1'))
+                    return ['allowed'=>false,'reason'=>'source_missing'];
+                $published=shared_presentation_published_facet_terms_v1($postType,$term->taxonomy);
+            }
             if (!in_array((int)$term->term_id,$published,true) &&
                 !in_array(self::canonical($term),$published,true))
                 return ['allowed'=>false,'reason'=>'no_published_content'];
@@ -134,11 +231,23 @@ final class MAD4B_Company_Term_Eligibility_V1 {
         $taxonomy=(string)($args['taxonomy']??'');
         $owners=self::owners($taxonomy);
         if (!$owners) return $args;
+        // The widget may search only Tours while a taxonomy is also assigned
+        // to Properties or Woo products. Keep those independently eligible.
+        $widgetId=(string)($args['id']??'');
+        $selected=self::$searchSources[$widgetId]??[];
+        if ($selected) $owners=array_intersect_key($owners,array_fill_keys($selected,true));
+        if (!$owners) { $args['include']=[0];return $args; }
         $terms=get_terms(['taxonomy'=>$taxonomy,'hide_empty'=>false,'number'=>0,'fields'=>'all']);
         if (is_wp_error($terms)) return $args;
         $permitted=[];
         foreach ($terms as $term)
-            if ($term instanceof WP_Term && self::for_registered_owners($term)) $permitted[]=(int)$term->term_id;
+            if ($term instanceof WP_Term) {
+                foreach ($owners as $postType=>$service) {
+                    if (self::decide($term,$postType,$postType==='product'?'search':'destination_discovery')['allowed']) {
+                        $permitted[]=(int)$term->term_id; break;
+                    }
+                }
+            }
         if (!empty($args['include'])) {
             $permitted=array_values(array_intersect($permitted,array_map('absint',(array)$args['include'])));
         }
@@ -187,10 +296,14 @@ final class MAD4B_Company_Term_Eligibility_V1 {
         if (!in_array($value,['inherit','enabled','disabled'],true)) return;
         if ($value==='inherit') delete_term_meta($canonical,self::META);
         else update_term_meta($canonical,self::META,$value);
+        $cacheClass='RankMath\Sitemap\Cache';
+        if (class_exists($cacheClass)) $cacheClass::invalidate_storage();
         do_action('mad4b/public_html/safe_purge_all','company_term_eligibility');
     }
 }
 
+add_action('elementor/frontend/widget/before_render',
+    ['MAD4B_Company_Term_Eligibility_V1','capture_search_widget'],5,1);
 add_filter('jet-search/ajax-search/categories-select/args',
     ['MAD4B_Company_Term_Eligibility_V1','search_args'],40);
 add_filter('jet-smart-filters/filters/filter-options',static function($options,$filterId) {
@@ -255,6 +368,37 @@ add_action('edited_term',static function($termId) {
     MAD4B_Company_Term_Eligibility_V1::save_term((int)$termId);
 },90,1);
 
+// Search engines must not publish inactive product taxonomies in sitemaps.
+// Destinations keep their dedicated activation and SEO authority.
+add_filter('rank_math/sitemap/entry',static function($entry,$type,$term) {
+    if ($type!=='term' || !$term instanceof WP_Term
+        || $term->taxonomy==='destinations'
+        || !MAD4B_Company_Term_Eligibility_V1::owners($term->taxonomy)) return $entry;
+    return MAD4B_Company_Term_Eligibility_V1::for_registered_owners($term,'standalone')
+        ? $entry : false;
+},1250,3);
+
 add_action('update_option_destination-activation',static function($old,$new) {
     if ($old!==$new)do_action('mad4b/public_html/safe_purge_all','company_destination_eligibility');
 },30,2);
+
+
+// Woo catalog changes invalidate only Woo facet snapshots, not Redis or other services.
+function mad4b_company_term_woo_invalidate_v1($productId=0): void {
+    if (!class_exists('WooCommerce',false)) return;
+    foreach (get_object_taxonomies('product') as $taxonomy) {
+        foreach (['standalone','destination_discovery','search','tour_component'] as $channel)
+            delete_transient('mad4b_wc_catalog_facet_terms_v1_'.md5($taxonomy.'|'.$channel));
+    }
+}
+add_action('woocommerce_update_product','mad4b_company_term_woo_invalidate_v1',30,1);
+add_action('woocommerce_new_product','mad4b_company_term_woo_invalidate_v1',30,1);
+add_action('set_object_terms',static function($objectId) {
+    if (get_post_type((int)$objectId)==='product') mad4b_company_term_woo_invalidate_v1((int)$objectId);
+},45,1);
+add_action('transition_post_status',static function($new,$old,$post) {
+    if ($new!==$old && $post instanceof WP_Post && $post->post_type==='product')
+        mad4b_company_term_woo_invalidate_v1((int)$post->ID);
+},45,3);
+add_action('update_option_woocommerce_hide_out_of_stock_items',
+    'mad4b_company_term_woo_invalidate_v1',30,0);
