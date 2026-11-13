@@ -57,6 +57,10 @@ class MAD4B_Company_Term_Eligibility_V1 { public static function decide($term,$c
 require dirname(__DIR__,2).'/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tour-highlights-v1.php';
 function prove($assertion,$why){if(!$assertion){fwrite(STDERR,'FAIL: '.$why."\n");exit(2);}}
 $klass='MAD4B_Tour_Highlights_V1';
+prove(in_array('elementor/frontend/container/before_render',$GLOBALS['hooks'],true)
+    &&in_array('jet-engine/listings/allowed-callbacks',$GLOBALS['hooks'],true)
+    &&in_array('save_post',$GLOBALS['hooks'],true),
+    'Native Elementor/JetEngine/editor hook registration vanished from WordPress context');
 prove($klass::mode(7)==='manual','manual must remain fallback');
 prove($klass::render() === 'Legacy Nile highlights','manual changed legacy content');
 $GLOBALS['meta'][7]['tour_highlights_mode']='assisted';

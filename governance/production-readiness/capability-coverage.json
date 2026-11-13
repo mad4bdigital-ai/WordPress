@@ -3740,6 +3740,27 @@
   "change_impact_notes": "For each newly introduced registry item, registered MAD4B Ability, PHP service or Admin asset, add a reviewed_capabilities entry with exact id, nonempty existing control_ids, a regression test changed in this PR, owner_role, review_rationale, and status 'reviewed_for_ci_only'. CI fails on uncovered introductions; no entry grants Production. Existing runtime/config source additions and modifications require reviewed_changes entries keyed by exact Git blob, impacted control IDs and test changed in the same PR. Every new capability must explicitly decide whether to expand the checklist or reuse existing controls with a rationale. Static REST/AJAX/Cron surface discoveries remain candidates, never runtime certification.",
   "reviewed_changes": [
     {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tour-highlights-v1.php",
+      "source_blob_sha": "91c2876d6da249edff3f9b7ce4ad913531a43789",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-plugin-management-menu-runtime.php",
+        "tests/native-tour-highlights/acceptance.php"
+      ],
+      "owner_role": "Repository source-review maintainer — CI-only early WordPress bootstrap lifecycle; no Host/Production delegation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing site-neutral WordPress platform, zero-touch admin lifecycle and security controls cover the hook-registration timing guard. No new execution or authorization surface, no changes to registered hooks when native WordPress APIs are present.",
+      "review_rationale": "For the current content-addressed source, the lightweight Tour Highlights class loads before the native plugin-management fast path but must defer registering JetEngine/Elementor hooks when the WordPress hook APIs are absent in an isolated zero-touch inspection. Explicit positive fixture confirms all Elementor, JetEngine and editor hooks are still registered in normal WordPress, while plugin-management fixture proves no heavy boot or filter registration occurs without native hook APIs.",
+      "execution_note": "Hermetic PHP 8.3/8.5 positive and negative tests required; actual installed WordPress/Elementor lifecycle and independent Production/Original313 acceptance are not certified by this CI-only record."
+    },
+    {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-approval-bootstrap.php",
       "source_blob_sha": "f286da0b8c59b5bc1545e70163929b1c40041184",
       "review_rationale": "CI-only direct MCP materialization classification correction. Required transport names come from existing native chatgpt_direct_read_transport_tools and chatgpt_dispatch_transport_tools, while additional reviewed base conveniences, dynamic projections, profile controls and guarded direct step-ups are optional. Missing/malformed required DTOs still fail whole catalog; foreign tools cannot become optional by presence in a request. Both source-runtime negative fixtures assert the boundary; no OAuth client, permission callback, grant, approval or Production authority changes.",

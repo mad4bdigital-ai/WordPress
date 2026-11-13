@@ -11,6 +11,11 @@ final class MAD4B_Tour_Highlights_V1 {
     private static array $relatedGroupStack=[];
 
     public static function register():void {
+        // WordPress always supplies both hook APIs in a real site request.
+        // During the native Plugins screen zero-touch bootstrap and hermetic
+        // inspection they may deliberately be absent. Loading the lightweight
+        // Tour class must not force WP/Elementor runtime initialization.
+        if (!function_exists('add_filter') || !function_exists('add_action')) return;
         add_filter('jet-engine/listings/allowed-callbacks',[__CLASS__,'callbacks']);
         add_filter('elementor/frontend/container/should_render',[__CLASS__,'section_visible'],10,2);
         add_action('elementor/frontend/container/before_render',[__CLASS__,'decorate_container'],10,1);

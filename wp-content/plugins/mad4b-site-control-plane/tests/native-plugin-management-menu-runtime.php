@@ -30,6 +30,10 @@ function native_nav_assert( $ok, $message ) {
 // weakening the hook registration performed under an actual WordPress runtime.
 native_nav_assert( ! function_exists( 'add_filter' ),
     'Fixture must model native early-admin lifecycle without WP filter hooks' );
+native_nav_assert( class_exists( 'MAD4B_Tour_Highlights_V1', false )
+    && empty( $GLOBALS['native_nav_hooks']['elementor/frontend/container/before_render'] )
+    && empty( $GLOBALS['native_nav_hooks']['save_post'] ),
+    'Native plugin-management GET must not initialize Tour Highlights runtime hooks' );
 native_nav_assert( class_exists( 'MAD4B_SCP_Native_General_Settings_Contract', false ),
     'Scoped General Settings contract must load without requiring WP hook APIs' );
 native_nav_assert( defined( 'MAD4B_SCP_EARLY_ZERO_TOUCH_REASON' )
