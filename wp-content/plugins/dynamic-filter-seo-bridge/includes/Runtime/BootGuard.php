@@ -26,12 +26,11 @@ final class BootGuard {
     }
 
     public static function shouldHold(): bool {
-        // Persistent hold=false is NOT release authority. Recheck the source,
-        // detached receipt and independent provider certificate every request,
-        // including when a previously trusted certificate has been revoked.
+        // Even an existing manual unlock must pass source identity and exact
+        // installed-file integrity checks. External release certificates are
+        // only a boot gate when explicitly requested by site configuration.
         if ( empty( self::releaseReadiness()['ready'] ) ) { return true; }
-        // Development overrides can only bypass the manual hold after an
-        // independently certified exact package has passed the authority gate.
+        // Development overrides only bypass the manual hold, never integrity.
         if (defined('DFSB_FORCE_FULL_BOOT') && DFSB_FORCE_FULL_BOOT) { return false; }
         $state = self::state();
         if (self::$build === '' || (string)($state['build'] ?? '') !== self::$build) { return true; }
@@ -155,17 +154,20 @@ final class BootGuard {
         $integrity = ! empty( $identity['valid'] )
             && ! empty( $identity['installed_content_valid'] )
             && ! empty( $identity['provenance_complete'] )
-            && ! empty( $identity['package_provenance_valid'] )
-            && 'ok' === (string) ( $identity['exact_build_reason'] ?? '' )
-            && 1 === preg_match( '/^[a-f0-9]{64}$/D', $packageSha );
+            && 'ok' === (string) ( $identity['exact_build_reason'] ?? '' );
 
+        // Deployments may opt into the additional certification policy.
+        // Its absence must not prevent safe runtime initialization when the
+        // embedded identity and actual installed-content hashes are valid.
+        $certificationRequired = defined( 'DFSB_REQUIRE_RELEASE_CERTIFICATION' )
+            && (bool) DFSB_REQUIRE_RELEASE_CERTIFICATION;
         $provider = array();
         $source = array();
         $authorityAvailable = class_exists( 'MAD4B_SCP_Provider_Contracts' )
             && method_exists( 'MAD4B_SCP_Provider_Contracts', 'get_for_version' )
             && class_exists( 'MAD4B_SCP_Cross_Plugin_Deployment' )
             && method_exists( 'MAD4B_SCP_Cross_Plugin_Deployment', 'sources' );
-        if ( $authorityAvailable && $integrity ) {
+        if ( $authorityAvailable && $integrity && $certificationRequired ) {
             $provider = \MAD4B_SCP_Provider_Contracts::get_for_version( 'dynamic-filter-seo-bridge', $version );
             $sources = \MAD4B_SCP_Cross_Plugin_Deployment::sources();
             $source = isset( $sources['dynamic-filter-seo-bridge'] )
@@ -175,6 +177,8 @@ final class BootGuard {
 
         $plugin = 'dynamic-filter-seo-bridge/dynamic-filter-seo-bridge.php';
         $certified = $integrity
+            && ! empty( $identity['package_provenance_valid'] )
+            && 1 === preg_match( '/^[a-f0-9]{64}$/D', $packageSha )
             && $authorityAvailable
             && is_array( $provider ) && ! empty( $provider )
             && is_array( $source ) && ! empty( $source )
@@ -192,17 +196,21 @@ final class BootGuard {
             && hash_equals( $packageSha, strtolower( (string) ( $source['artifact_sha256'] ?? '' ) ) )
             && ! empty( $provider['require_runtime_integrity'] );
 
+        $ready = $integrity && ( ! $certificationRequired || $certified );
         $reason = (string) ( $identity['exact_build_reason'] ?? 'unverified' );
         if ( 'ok' === $reason ) {
             if ( ! $integrity ) {
-                $reason = 'certified_release_receipt_required';
-            } elseif ( ! $certified ) {
-                $reason = 'independent_provider_certificate_required';
+                $reason = 'installed_content_integrity_required';
+            } elseif ( $certificationRequired && ! $certified ) {
+                $reason = empty( $identity['package_provenance_valid'] )
+                    ? 'certified_release_receipt_required'
+                    : 'independent_provider_certificate_required';
             }
         }
         return array(
-            'ready' => (bool) $certified,
-            'reason' => $certified ? 'ok' : $reason,
+            'ready' => (bool) $ready,
+            'reason' => $ready ? 'ok' : $reason,
+            'certification_required' => (bool) $certificationRequired,
             'installed_content_valid' => ! empty( $identity['installed_content_valid'] ),
             'provenance_complete' => ! empty( $identity['provenance_complete'] ),
             'package_provenance_valid' => ! empty( $identity['package_provenance_valid'] ),
