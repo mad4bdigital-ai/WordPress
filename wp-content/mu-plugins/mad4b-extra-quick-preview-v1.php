@@ -112,6 +112,9 @@ final class MAD4B_Extra_Quick_Preview_V1 {
     .'@media(max-width:767px){body.mad4b-extra-quickview-frame .mad4b-extra-preview-cta-action{align-items:stretch}body.mad4b-extra-quickview-frame .mad4b-extra-preview-cta-add{width:100%}}'
     .'body.mad4b-extra-quickview-frame .site-content,body.mad4b-extra-quickview-frame .ast-container{margin:0 auto!important;max-width:1200px!important;padding:0 16px!important}'
     .'body.mad4b-extra-quickview-frame{--wp-admin--admin-bar--height:0px;scroll-padding-top:8px}'
+    // Astra outputs its own fixed scroll-to-top in every Tour Single. The
+    // parent page already owns scrolling; omit this duplicate in the iframe.
+    .'body.mad4b-extra-quickview-frame #ast-scroll-top{display:none!important}'
     // Only the authorized iframe: let the ORIGINAL Elementor popup own the
     // single vertical scrolling surface. No iframe-body/outer dialog scroll.
     .'html.mad4b-extra-quickview-gallery-active,body.mad4b-extra-quickview-frame.mad4b-extra-quickview-gallery-active{height:100%!important;overflow:hidden!important}'
