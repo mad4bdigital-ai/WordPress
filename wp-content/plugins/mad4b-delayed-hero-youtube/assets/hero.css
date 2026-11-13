@@ -1,0 +1,79 @@
+.elementor-element-e991bc9[data-mad4b-yt-id]{
+ position:relative;background-position:center!important;background-size:cover!important;background-repeat:no-repeat!important;
+}
+.elementor-element-e991bc9[data-mad4b-yt-id]>.mad4b-yt-hero-layer{
+ position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0;opacity:0;transition:opacity .7s ease;
+}
+.elementor-element-e991bc9[data-mad4b-yt-id]>.mad4b-yt-hero-layer.mad4b-ready{opacity:1}
+.elementor-element-e991bc9[data-mad4b-yt-id]>.mad4b-yt-hero-layer iframe{
+ position:absolute;left:50%;top:50%;width:max(100%,177.778vh);height:max(100%,56.25vw);
+ min-width:100%;min-height:100%;transform:translate(-50%,-50%);border:0;pointer-events:none;
+}
+/* Only real Hero content gets stacking. Elementor shape dividers must keep their
+ * absolute positioning and full width; including .elementor-shape here makes
+ * desktop dividers 1/3-width flex children. */
+.elementor-element-e991bc9[data-mad4b-yt-id]>:not(.mad4b-yt-hero-layer):not(.elementor-background-video-container):not(.elementor-shape){
+ position:relative;z-index:1;
+}
+@media(prefers-reduced-motion:reduce){
+ .elementor-element-e991bc9[data-mad4b-yt-id]>.mad4b-yt-hero-layer{display:none!important;transition:none!important}
+}
+
+/* Hero visual parity v0.2.1 — top-to-bottom gradient entrance, not a sudden
+ * overlay paint. The video stays under the branded gradient and readable copy.
+ * This applies only to the shared delayed-video hero, on all WPML homepages. */
+.elementor-element-e991bc9[data-mad4b-yt-id]::before {
+ z-index:1!important;
+ pointer-events:none!important;
+}
+.elementor-element-e991bc9[data-mad4b-yt-id]>.elementor-shape {
+ z-index:2!important;
+}
+.elementor-element-e991bc9[data-mad4b-yt-id]>:not(.mad4b-yt-hero-layer):not(.elementor-background-video-container):not(.elementor-shape) {
+ z-index:3!important;
+}
+/* The base 16:9 YouTube frame already fills the hero; zoom its centre to crop
+ * intrinsic dark edge bands without stretching the picture or changing layout. */
+.elementor-element-e991bc9[data-mad4b-yt-id]>.mad4b-yt-hero-layer iframe {
+ transform:translate(-50%,-50%) scale(1.20)!important;
+ transform-origin:center center;
+}
+@media(max-width:767px) {
+ .elementor-element-e991bc9[data-mad4b-yt-id]>.mad4b-yt-hero-layer iframe {
+  transform:translate(-50%,-50%) scale(1.30)!important;
+ }
+}
+@media(prefers-reduced-motion:no-preference) {
+ .elementor-element-e991bc9[data-mad4b-yt-id]::before {
+  animation:mad4b-hero-gradient-top-down 1150ms cubic-bezier(.22,1,.36,1) both!important;
+ }
+}
+@keyframes mad4b-hero-gradient-top-down {
+ 0% { clip-path:inset(0 0 100% 0);opacity:0; }
+ 25% { opacity:.20; }
+ 100% { clip-path:inset(0 0 0 0);opacity:var(--mad4b-hero-gradient-final-opacity,.5); }
+}
+
+/* v0.3.0: Explicit click-to-play. No third-party iframe exists before click.
+   Keep the hero text/CTA and Elementor shape dividers interactive. */
+.elementor-element-e991bc9[data-mad4b-yt-mode="click_to_play"]>.mad4b-yt-hero-play{
+ position:absolute!important;right:clamp(12px,2.5vw,28px)!important;
+ bottom:clamp(18px,4vh,48px)!important;z-index:5!important;
+ display:inline-flex;align-items:center;justify-content:center;gap:.35rem;
+ padding:10px 16px;border:1px solid rgba(255,255,255,.55);
+ border-radius:24px;background:rgba(7,32,53,.86);
+ color:#fff;font:600 13px/1.4 system-ui,sans-serif;
+ cursor:pointer;max-width:calc(100% - 32px);min-height:44px;
+ box-shadow:0 2px 14px rgba(0,0,0,.16);transition:background .2s ease;
+}
+.elementor-element-e991bc9[data-mad4b-yt-mode="click_to_play"]>.mad4b-yt-hero-play:hover{
+ background:rgba(7,32,53,.97);
+}
+.elementor-element-e991bc9[data-mad4b-yt-mode="click_to_play"]>.mad4b-yt-hero-play:focus-visible{
+ outline:3px solid #fff;outline-offset:3px;
+}
+@media (max-width:767px){
+ .elementor-element-e991bc9[data-mad4b-yt-mode="click_to_play"]>.mad4b-yt-hero-play{
+  bottom:18px!important;right:14px!important;
+ }
+}
