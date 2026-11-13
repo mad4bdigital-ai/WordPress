@@ -55,6 +55,21 @@ class ExactGalleryReleaseCAS(unittest.TestCase):
         self.assertEqual(found[0]['files'],self.files)
         self.assertTrue(all(core.permitted_target(f) for f in self.files))
 
+    def test_shared_native_visibility_uses_one_independent_catalog_component(self):
+        files=[
+            'wp-content/mu-plugins/mad4b-home-reviews-native-visibility.php',
+            'wp-content/mu-plugins/mad4b-need-help-native-visibility.php',
+            'wp-content/mu-plugins/mad4b-single-reviews-native-visibility.php',
+        ]
+        catalog=json.loads(CATALOG.read_text())
+        component=[c for c in catalog['components']
+                   if c['id']=='mad4b-native-reviews-help-preview-visibility']
+        self.assertEqual(len(component),1)
+        self.assertEqual(core.registered_component_files(component[0]),files)
+        self.assertTrue(all((ROOT / name).is_file() for name in files))
+        # No implicit content mutation or shared-scope approval arises from
+        # merely registering the sources in the Git-pinned release catalog.
+
     def test_git_bound_release_plan_and_executor_preimage(self):
         plan=core.make_plan(self.spec,self.policy)
         self.assertEqual(len(plan['files']),2)
