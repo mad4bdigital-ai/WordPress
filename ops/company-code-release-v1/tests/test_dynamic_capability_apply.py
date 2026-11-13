@@ -64,12 +64,18 @@ class DynamicCapabilityApplyTests(unittest.TestCase):
 
     def test_unenrolled_runtime_provider_blocks_before_first_write(self):
         self.enroll()
-        with self.assertRaisesRegex(Exception, "PRODUCER_"):
+        def missing_original_registry(*_):
+            raise release.capability_checks.AcceptanceDenied(
+                "CAPABILITY_ACCEPTANCE_PRODUCER_NOT_REGISTERED")
+        with self.assertRaisesRegex(
+                release.capability_checks.AcceptanceDenied,
+                "CAPABILITY_ACCEPTANCE_PRODUCER_NOT_REGISTERED"):
             release.apply_release(
                 self.plan, self.policy, self.grant(), self.receipts,
                 runtime_check=lambda *_:None,
                 validate_code=lambda *_:None,
-                preflight_code=lambda *_:None)
+                preflight_code=lambda *_:None,
+                producer_check=missing_original_registry)
         self.assertIn("OLD",self.target.read_text())
         self.assertFalse(list(self.receipts.glob("*.intent.json")))
 
