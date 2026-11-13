@@ -125,6 +125,22 @@ class SourcePublisher(unittest.TestCase):
       self.registry.resolve(op))))
   self.assertNotEqual(self.plan1['plan_sha256'],self.plan2['plan_sha256'])
 
+ def test_original_registry_and_source_bindings_keep_distinct_digest_contracts(self):
+  # The first-party Original Registry authenticates exact file bytes
+  # in its Index. Original306 signed association and Source Publisher
+  # then use the canonical JSON digest of the resolved trusted Manifest.
+  manifest=self.registry.resolve(self.manifest1['operation_id'])
+  raw_json=json.dumps(manifest,ensure_ascii=False,sort_keys=True,indent=2).encode()
+  canonical=lib.canonical(manifest)
+  self.assertNotEqual(lib.sha(raw_json),lib.sha(canonical))
+  self.assertEqual(lib.sha(canonical),lib.sha(lib.core.canonical(manifest)))
+  self.assertEqual(self.plan1[lib.BINDING_KEY]['manifest_sha256'],
+                   lib.sha(canonical))
+  # Existing installed first-party Registry has no manifest_sha256 method.
+  self.assertFalse(hasattr(self.registry,'manifest_sha256'))
+  self.assertEqual(lib.check_plan(self.plan1,self.policy,registry=self.registry),
+                   manifest)
+
  def test_original_core_digest_contract_is_preserved(self):
   for plan in (self.plan1,self.plan2):
    original=lib.core_plan(plan)
