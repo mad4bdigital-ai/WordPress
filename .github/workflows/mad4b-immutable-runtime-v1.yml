@@ -58,6 +58,7 @@ jobs:
       - name: Isolated HTTP BlueGreen QA script syntax (no production execution)
         run: |
           bash -n ops/native-source-publisher-v1/tests/isolated_bluegreen_http_qa.sh
+          bash -n ops/native-source-publisher-v1/tests/isolated_bluegreen_fpm_qa.sh
       - name: Prevent accidental registration or secrets in source
         run: |
           test ! -f /etc/mad4b/native-source-publisher-policy.v2.json

@@ -83,3 +83,27 @@ It is a *real local HTTP routing test* and a useful integration fixture,
 but **NOT** real WordPress/FPM/caching/DB/schema correctness proof. PHP used
 the CLI built-in development server for QA; Original 312/313 and a real
 site-scoped front-door traffic provider remain required for Production.
+
+
+## Actual isolated PHP-FPM + OPcache HTTP experiment
+
+An additional QA harness \`tests/isolated_bluegreen_fpm_qa.sh\` uses *real
+PHP-FPM pools* in separate A and B containers, a disposable Nginx FastCGI
+router, root-owned read-only plugin files and a private Docker network.
+It is executed only when the already-built, exact-plan-labeled candidate
+Image is supplied; no Production router or running service is touched.
+
+A private permission bug discovered and fixed before successful QA: PHP-FPM
+workers run under UID 33 and cannot traverse a root-private QA directory
+mounted as their script root. Test code is now staged in a separate
+readable, test-only \`public/\` subdirectory while evidence remains private.
+
+The real HTTP observations are again A → B → in-flight A → rollback A.
+The subsequent hardened run also asserted \`PHP_SAPI=fpm-fcgi\`, effective
+worker UID 33, OPcache running in both FPM pools, and root ownership and
+non-writability of candidate plugin PHP from the PHP worker. Evidence SHA:
+\`cc3e6d80d5982aaf3b0e0758943e48c8554cc97bca4ee5323735bd71043cb67f\`.
+
+This proves only the isolated FastCGI routing fixture, not the Production
+PHP-FPM pool, the complete WordPress application, persistent data,
+PHP/JS cache coherence, or original signed 312/313 release authorization.
