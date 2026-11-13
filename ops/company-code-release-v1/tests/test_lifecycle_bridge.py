@@ -2,6 +2,7 @@ import ast
 import importlib.util
 import pathlib
 import tempfile
+from unittest.mock import patch
 import unittest
 
 ROOT=pathlib.Path(__file__).resolve().parents[1]
@@ -67,6 +68,96 @@ class OriginalLifecycleBridgeTests(unittest.TestCase):
                       x["blockers"])
         self.assertNotIn("ORIGINAL_313_COMPANY_CODE_RELEASE_HANDLER_NOT_REGISTERED",
                          x["blockers"])
+
+    def test_dynamic_route_ready_does_not_imply_a_signed_job_or_receipt(self):
+        x=m.reconcile(
+            self.enroll,self.verify,self.dispatch,{"read","plugin.install"},
+            company="wayfatours",environment="production",
+            site_uuid=self.enroll["site_uuid"],origin="https://wayfatours.com",
+            dynamic={
+                "dynamic_registry_enrolled":True,
+                "dynamic_scope_plan_matched":True,
+                "dynamic_306_digest_registered":True,
+                "dynamic_313_independent_verifier_registered":True,
+                "dynamic_313_finalizer_connected":True,
+            })
+        self.assertFalse(x["original_313_code_release_handler_registered"])
+        self.assertFalse(x["company_code_release_dispatch_ability_registered"])
+        self.assertTrue(x["dynamic_release_route_registered"])
+        self.assertTrue(x["release_route_registered"])
+        self.assertEqual(x["state"],"HOLD_EXACT_SIGNED_JOB_AND_RELEASE_RECEIPT")
+        self.assertFalse(x["code_release_execution_allowed"])
+        self.assertFalse(x["original_signed_job_grant_verified"])
+        self.assertFalse(x["original_313_release_receipt_verified"])
+        self.assertEqual(x["blockers"],[
+            "EXACT_ORIGINAL_306_CLAIM_AND_312_JOB_GRANT_NOT_VERIFIED",
+            "ORIGINAL_313_INDEPENDENT_RELEASE_RECEIPT_NOT_VERIFIED"])
+
+    def test_dynamic_route_without_independent_verifier_stays_on_hold(self):
+        x=m.reconcile(
+            self.enroll,self.verify,self.dispatch,{"read"},
+            company="wayfatours",environment="production",
+            site_uuid=self.enroll["site_uuid"],origin="https://wayfatours.com",
+            dynamic={
+                "dynamic_registry_enrolled":True,
+                "dynamic_scope_plan_matched":True,
+                "dynamic_306_digest_registered":True,
+                "dynamic_313_independent_verifier_registered":False,
+                "dynamic_313_finalizer_connected":True,
+            })
+        self.assertFalse(x["release_route_registered"])
+        self.assertEqual(x["state"],"HOLD_DYNAMIC_ORIGINAL_313_VERIFIER")
+        self.assertIn("DYNAMIC_313_INDEPENDENT_PROOF_VERIFIER_NOT_REGISTERED",x["blockers"])
+
+    def test_central313_observed_without_registered_306_plan_is_not_dispatch(self):
+        with tempfile.TemporaryDirectory(prefix='mad4b-central313-readonly-') as temp:
+            with patch.object(m,'DYNAMIC_ROOT',pathlib.Path(temp)), \
+                 patch.object(m,'central_313_status',return_value={
+                    'independent_verifier_ready':True,
+                    'original_313_finalizer_connected':True,
+                    'operational_ready':True}):
+                observed=m.dynamic_status('wayfatours','production','a'*64)
+        self.assertTrue(observed['central_313_status_observed'])
+        self.assertTrue(observed['central_313_operational_ready'])
+        self.assertTrue(observed['central_313_finalizer_configured'])
+        self.assertFalse(observed['dynamic_scope_plan_matched'])
+        self.assertFalse(observed['dynamic_306_digest_registered'])
+        self.assertFalse(observed['dynamic_313_finalizer_connected'])
+        report=m.reconcile(self.enroll,self.verify,self.dispatch,
+             {'read','plugin.install'},company='wayfatours',
+             environment='production',origin='https://wayfatours.com',
+             site_uuid=self.enroll['site_uuid'],dynamic=observed)
+        self.assertTrue(report['central_313_operational_ready'])
+        self.assertFalse(report['code_release_execution_allowed'])
+        self.assertFalse(report['original_signed_job_grant_verified'])
+        self.assertIn('ORIGINAL_313_COMPANY_CODE_RELEASE_HANDLER_NOT_REGISTERED',
+                      report['blockers'])
+
+    def test_central313_unavailable_is_not_assumed_ready(self):
+        with tempfile.TemporaryDirectory(prefix='mad4b-central313-down-') as temp:
+            with patch.object(m,'DYNAMIC_ROOT',pathlib.Path(temp)), \
+                 patch.object(m,'central_313_status',side_effect=RuntimeError('UNAVAILABLE')):
+                observed=m.dynamic_status('wayfatours','production')
+        self.assertFalse(observed['central_313_status_observed'])
+        self.assertFalse(observed['central_313_operational_ready'])
+        self.assertFalse(observed['dynamic_313_finalizer_connected'])
+
+    def test_central313_scope_requires_current_first_party_and_no_fake_receipt(self):
+        fixture={'contract':'mad4b.dynamic-313-wordpress.v1',
+          'first_party_proof_enrolled':True,'operation_id':'company.code.release',
+          'job_issued':False,'grant_issued':False,'original_313_receipt_issued':False,
+          'production_mutated':False,'independent_verifier_ready':True,
+          'original_313_finalizer_connected':True,'operational_ready':True}
+        x=m.central_313_status(central_reader=lambda:fixture)
+        self.assertTrue(x['operational_ready'])
+        for key,value in [('operation_id','plugin.install'),
+                          ('first_party_proof_enrolled',False),
+                          ('job_issued',True),('grant_issued',True),
+                          ('original_313_receipt_issued',True),
+                          ('production_mutated',True)]:
+            with self.subTest(key=key):
+                with self.assertRaises(RuntimeError):
+                    m.central_313_status(central_reader=lambda:{**fixture,key:value})
 
     def test_305_wrong_uuid_denied(self):
         self.enroll["site_uuid"]="00000000-0000-0000-0000-000000000000"

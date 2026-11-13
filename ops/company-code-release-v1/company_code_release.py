@@ -133,6 +133,88 @@ def git_bytes(repo: Path, commit: str, relative: str) -> bytes:
     return data
 
 
+def registered_component_files(component: dict) -> list[str]:
+    """Validate one reviewed MU-plugin component, including owned JS/CSS.
+
+    A nested asset is legal only if that *same* immutable component contains
+    a matching root-level MAD4B PHP loader. Arbitrary mu-plugins assets,
+    unrelated folders, and nested executable PHP are never admitted.
+    """
+    fail_if(not isinstance(component, dict) or
+            sorted(component) != ["files", "id"] or
+            not isinstance(component["id"], str) or
+            not re.fullmatch(r"mad4b-[a-z0-9-]{3,90}", component["id"]),
+            "RELEASE_COMPONENT_INVALID")
+    files = component["files"]
+    fail_if(not isinstance(files, list) or not 1 <= len(files) <= 24 or
+            any(not isinstance(x, str) for x in files),
+            "RELEASE_COMPONENT_FILES_INVALID")
+    files = [exact_relative(x) for x in files]
+    fail_if(len(set(files)) != len(files), "RELEASE_COMPONENT_DUPLICATE_PATH")
+    loaders = {
+        PurePosixPath(x).name[:-4]
+        for x in files
+        if len(PurePosixPath(x).parts) == 3 and
+        PurePosixPath(x).parts[:2] == ("wp-content", "mu-plugins") and
+        PurePosixPath(x).name.startswith("mad4b-") and x.endswith(".php")
+    }
+    fail_if(not loaders, "RELEASE_COMPONENT_NO_ROOT_PHP_LOADER")
+    for target in files:
+        parts = PurePosixPath(target).parts
+        fail_if(not permitted_target(target) or
+                parts[:2] != ("wp-content", "mu-plugins") or
+                not parts[2].startswith("mad4b-"),
+                "RELEASE_COMPONENT_SCOPE_INVALID")
+        if len(parts) == 3 and target.endswith(".php"):
+            continue
+        # Direct child assets of a same-component native MU PHP loader.
+        # No .php, .json, .txt, .md or deeper nested payloads admitted.
+        asset_dir = parts[2]
+        owned = any(loader == asset_dir or
+                    re.fullmatch(re.escape(asset_dir) + r"-v[0-9]+", loader)
+                    for loader in loaders)
+        fail_if(len(parts) != 4 or not owned or
+                PurePosixPath(target).suffix not in (".js", ".css"),
+                "RELEASE_COMPONENT_SCOPE_INVALID")
+    return files
+
+
+def registered_release_targets(policy: dict, entry: dict, commit: str) -> set[str]:
+    """Resolve per-company deployable modules from a Git-committed catalog.
+
+    Merely being under mu-plugins is not authority: each target must be explicitly
+    catalogued at the immutable requested commit and scoped by the bound policy.
+    """
+    static = set(entry["allowed_targets"])
+    catalog_path = entry.get("release_catalog")
+    if catalog_path is None:
+        return static
+    fail_if(not isinstance(catalog_path, str) or
+            catalog_path != "ops/company-code-release-v1/catalog/mad4b-release-components.json",
+            "RELEASE_CATALOG_NOT_CANONICAL")
+    catalog = json.loads(git_bytes(Path(policy["source_git_root"]), commit, catalog_path))
+    fail_if(not isinstance(catalog, dict) or
+            catalog.get("contract") != "mad4b.company-release-components.v1" or
+            sorted(catalog) != ["components", "contract"],
+            "RELEASE_CATALOG_INVALID")
+    components = catalog.get("components")
+    fail_if(not isinstance(components, list) or not 1 <= len(components) <= 500,
+            "RELEASE_CATALOG_COMPONENTS_INVALID")
+    ids: set[str] = set()
+    for component in components:
+        files = registered_component_files(component)
+        fail_if(component["id"] in ids, "RELEASE_COMPONENT_DUPLICATE_ID")
+        ids.add(component["id"])
+        for target in files:
+            # Validate every declared path and component ownership, but do
+            # not demand unrelated components' blobs be present in this
+            # release branch. The exact requested source is separately
+            # git_bytes-verified inside make_plan and confirm_plan, prior to
+            # any signed Broker action or executor-time CAS.
+            static.add(target)
+    return static
+
+
 def target_binding(policy: dict, company: str, environment: str) -> dict:
     fail_if(not SCOPE.fullmatch(company) or not SCOPE.fullmatch(environment),
             "INVALID_COMPANY_ENVIRONMENT")
@@ -163,7 +245,7 @@ def make_plan(spec: dict, policy: dict) -> dict:
     files = spec.get("files")
     fail_if(not isinstance(files, list) or not 1 <= len(files) <= 24,
             "INVALID_RELEASE_FILE_COUNT")
-    allowlist = set(entry["allowed_targets"])
+    allowlist = registered_release_targets(policy, entry, spec["git_commit"])
     checks = spec.get("acceptance_checks", ["wp_boot"])
     fail_if(not isinstance(checks, list) or len(checks) < 1 or
             len(checks) > len(ALLOWED_ACCEPTANCE_CHECKS) or
@@ -179,6 +261,8 @@ def make_plan(spec: dict, policy: dict) -> dict:
         target = exact_relative(record.get("target"))
         fail_if(not permitted_target(target) or target not in allowlist,
                 "TARGET_FILE_NOT_ALLOWED")
+        fail_if(target not in set(entry["allowed_targets"]) and source != target,
+                "CATALOG_SOURCE_TARGET_MISMATCH")
         fail_if(target in seen, "DUPLICATE_TARGET")
         seen.add(target)
         before = record.get("expected_before_sha256")
@@ -206,6 +290,7 @@ def make_plan(spec: dict, policy: dict) -> dict:
         "git_commit": spec["git_commit"], "git_root": str(repo.resolve()),
         "target_root": str(root.resolve()), "files": rows,
         "acceptance_checks": checks,
+        "release_catalog": entry.get("release_catalog"),
     }
     payload["plan_sha256"] = digest(canonical(payload))
     payload["changed_count"] = sum(
@@ -229,7 +314,15 @@ def confirm_plan(plan: dict, policy: dict, *, expect_preimage: bool) -> None:
             str(Path(entry["root"]).resolve()) != plan.get("target_root") or
             str(Path(policy["source_git_root"]).resolve()) != plan.get("git_root"),
             "PLAN_SCOPE_CHANGED")
-    allowlist = set(entry["allowed_targets"])
+    catalog_at_plan = plan.get("release_catalog")
+    # Plans signed before catalog enrollment remain limited to the explicit
+    # original static paths. Never retroactively elevate a legacy plan.
+    if catalog_at_plan is None:
+        allowlist = set(entry["allowed_targets"])
+    else:
+        fail_if(catalog_at_plan != entry.get("release_catalog"),
+                "RELEASE_CATALOG_BINDING_DRIFT")
+        allowlist = registered_release_targets(policy, entry, plan["git_commit"])
     checks = plan.get("acceptance_checks", [])
     fail_if(not isinstance(checks, list) or not checks or
             any(not isinstance(check, str) for check in checks) or
@@ -241,6 +334,8 @@ def confirm_plan(plan: dict, policy: dict, *, expect_preimage: bool) -> None:
         target = exact_relative(row["target"])
         fail_if(target not in allowlist or not permitted_target(target),
                 "PLAN_TARGET_NO_LONGER_ALLOWED")
+        fail_if(target not in set(entry["allowed_targets"]) and row["source"] != target,
+                "PLAN_CATALOG_SOURCE_TARGET_MISMATCH")
         fresh = git_bytes(Path(plan["git_root"]), plan["git_commit"], row["source"])
         fail_if(digest(fresh) != row["source_sha256"], "SOURCE_COMMIT_DRIFT")
         target_file = Path(plan["target_root"]) / target
@@ -695,6 +790,16 @@ def release_admission_doctor(
             row.get("dynamic_313_independent_verifier_registered") is True)
         state["dynamic_313_finalizer_connected"] = (
             row.get("dynamic_313_finalizer_connected") is True)
+        # Read independently from the ORIGINAL Central WordPress trust config.
+        # This reports the previously hidden, already-enrolled 313 capability
+        # without conflating it with an enrolled exact 306 Job or release grant.
+        for key in (
+            "central_313_status_observed",
+            "central_313_operational_ready",
+            "central_313_finalizer_configured",
+            "central_313_independent_verifier_registered",
+        ):
+            state[key] = row.get(key) is True
         state["broker_dispatch_registration"] = (
             "registered_not_execution_authority" if
             row.get("company_code_release_dispatch_ability_registered") is True
