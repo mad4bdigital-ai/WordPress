@@ -1,0 +1,94 @@
+/* Archive mobile cinema banner: compact without changing other Elementor heroes.
+ * Source branding/background image and Elementor shape dividers are preserved. */
+@media(max-width:767px) {
+ body.post-type-archive-tours-and-activities .elementor-element-6cda41f5.e-con {
+  box-sizing:border-box;
+  min-height:0!important;
+  height:clamp(168px,47vw,198px)!important;
+  max-height:198px!important;
+  padding:clamp(12px,3vw,18px) 12px clamp(28px,7vw,40px)!important;
+  display:flex;
+  flex-direction:column;
+  justify-content:center!important;
+  gap:clamp(3px,1.2vw,7px)!important;
+  background-position:center center!important;
+  overflow:hidden;
+ }
+ body.post-type-archive-tours-and-activities .elementor-element-6cda41f5 .elementor-heading-title {
+  font-size:clamp(22px,6.3vw,28px)!important;
+  line-height:1.14!important;
+  letter-spacing:-.015em;
+  margin-block:0!important;
+ }
+ body.post-type-archive-tours-and-activities .elementor-element-6cda41f5 .jet-breadcrumbs {
+  font-size:11px;line-height:1.25;
+ }
+ body.post-type-archive-tours-and-activities .elementor-element-6cda41f5>.elementor-shape-bottom svg {
+  height:clamp(28px,9vw,40px)!important;
+ }
+ body.post-type-archive-tours-and-activities .elementor-element-6cda41f5>.elementor-shape-bottom {
+  height:clamp(28px,9vw,40px)!important;
+ }
+ body.post-type-archive-tours-and-activities .elementor-element-6cda41f5>.elementor-shape-top {
+  height:clamp(12px,3vw,18px)!important;
+ }
+}
+/* The existing Elementor inquiry banner remains the sole UI. Its title and
+ * price occupy one baseline, with a full-width action below, never 0$. */
+body.post-type-archive-tours-and-activities .elementor-34607 .elementor-element-b512fea .elementor-widget-container {
+ visibility:hidden;
+}
+@media(max-width:767px) {
+ body.post-type-archive-tours-and-activities .elementor-34607 .elementor-element-5f71a5d5.e-con {
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:stretch!important;
+  justify-content:center!important;
+  gap:4px!important;
+  min-height:0!important;
+  padding:5px 9px 7px!important;
+  grid-template-columns:none!important;
+ }
+ body.post-type-archive-tours-and-activities .elementor-34607 .elementor-element-f271149.e-con {
+  display:flex!important;
+  flex-direction:row!important;
+  justify-content:center!important;
+  align-items:baseline!important;
+  flex-wrap:nowrap!important;
+  gap:7px!important;
+  width:100%;
+  min-width:0;
+ }
+ body.post-type-archive-tours-and-activities .elementor-34607 .elementor-element-792acb7,
+ body.post-type-archive-tours-and-activities .elementor-34607 .elementor-element-b512fea {
+  width:auto!important;
+  flex:0 1 auto;
+  min-width:0;
+  margin:0!important;
+ }
+ body.post-type-archive-tours-and-activities .elementor-34607 .elementor-element-792acb7 .elementor-heading-title {
+  font-size:clamp(12px,3.35vw,14px)!important;
+  font-weight:600;
+  line-height:1.25;
+  white-space:nowrap;
+  margin:0!important;
+ }
+ body.post-type-archive-tours-and-activities .elementor-34607 .elementor-element-b512fea .elementor-widget-container {
+  font-size:clamp(10px,2.85vw,12px)!important;
+  line-height:1.25;
+  font-variant-numeric:tabular-nums;
+  text-align:start;
+  white-space:nowrap;
+  margin:0!important;
+ }
+ body.post-type-archive-tours-and-activities .elementor-34607 .elementor-element-7b9f120c {
+  width:100%;
+  min-height:0;
+  margin:0!important;
+ }
+ body.post-type-archive-tours-and-activities .elementor-34607 .elementor-element-7b9f120c .elementor-button {
+  padding:7px 12px!important;
+  min-height:31px;
+  line-height:1.2;
+ }
+}
