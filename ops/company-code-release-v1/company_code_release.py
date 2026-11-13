@@ -14,6 +14,7 @@ import fcntl
 import hashlib
 import json
 import os
+import posixpath
 from pathlib import Path, PurePosixPath
 import re
 import stat
@@ -154,29 +155,87 @@ def registered_release_targets(policy: dict, entry: dict, commit: str) -> set[st
     components = catalog.get("components")
     fail_if(not isinstance(components, list) or not 1 <= len(components) <= 500,
             "RELEASE_CATALOG_COMPONENTS_INVALID")
+    registered_components: set[str] = set()
+    catalog_files: set[str] = set()
+    portable_plugins: dict[str, dict] = {}
     for component in components:
         fail_if(not isinstance(component, dict) or
-                sorted(component) != ["files", "id"] or
-                not isinstance(component["id"], str) or
+                not isinstance(component.get("id"), str) or
                 not re.fullmatch(r"mad4b-[a-z0-9-]{3,90}", component["id"]),
                 "RELEASE_COMPONENT_INVALID")
-        files = component["files"]
+        fail_if(component["id"] in registered_components,
+                "DUPLICATE_RELEASE_COMPONENT")
+        registered_components.add(component["id"])
+        files = component.get("files")
         fail_if(not isinstance(files, list) or not 1 <= len(files) <= 24,
                 "RELEASE_COMPONENT_FILES_INVALID")
-        for target in files:
-            fail_if(not isinstance(target, str), "RELEASE_COMPONENT_PATH_INVALID")
-            target = exact_relative(target)
-            fail_if(not permitted_target(target) or
-                    not target.startswith("wp-content/mu-plugins/mad4b-") or
-                    not target.endswith(".php"), "RELEASE_COMPONENT_SCOPE_INVALID")
+        capabilities = component.get("capabilities")
+        plugin_ids: set[str] = set()
+        for value in files:
+            fail_if(not isinstance(value, str), "RELEASE_COMPONENT_PATH_INVALID")
+            target = exact_relative(value)
+            fail_if(not permitted_target(target) or target in catalog_files,
+                    "RELEASE_COMPONENT_SCOPE_OR_DUPLICATE_INVALID")
+            parts = PurePosixPath(target).parts
+            if parts[1] == "mu-plugins":
+                fail_if(not target.startswith("wp-content/mu-plugins/mad4b-") or
+                        not target.endswith(".php"),
+                        "RELEASE_COMPONENT_MU_SCOPE_INVALID")
+            else:
+                plugin = parts[2]
+                fail_if(not re.fullmatch(r"mad4b-[a-z0-9-]{3,90}", plugin) or
+                        not target.endswith((".php", ".css", ".js", ".json", ".md", ".txt")) or
+                        any(part in ("vendor", "node_modules", "tests", ".git", "uploads")
+                            for part in parts[3:]),
+                        "RELEASE_COMPONENT_PLUGIN_SCOPE_INVALID")
+                plugin_ids.add(plugin)
             git_bytes(Path(policy["source_git_root"]), commit, target)
-            static.add(target)
+            catalog_files.add(target)
+        if plugin_ids:
+            fail_if(len(plugin_ids) != 1,
+                    "RELEASE_COMPONENT_CROSSES_PLUGIN_OWNERS")
+            fail_if(set(component) != {"id", "files", "capabilities"} or
+                    not isinstance(capabilities, list) or not 1 <= len(capabilities) <= 40 or
+                    len(capabilities) != len(set(map(str,capabilities))) or
+                    any(not isinstance(x,str) or
+                        not re.fullmatch(r"[a-z][a-z0-9-]{1,70}", x)
+                        for x in capabilities),
+                    "RELEASE_PLUGIN_CAPABILITY_CONTRACT_REQUIRED")
+            for plugin in sorted(plugin_ids):
+                if plugin not in portable_plugins:
+                    manifest_path=("wp-content/plugins/"+plugin+
+                                   "/mad4b-portability.json")
+                    try:
+                        profile=json.loads(git_bytes(
+                            Path(policy["source_git_root"]), commit, manifest_path))
+                    except (ValueError, TypeError) as exc:
+                        raise Denied("PORTABLE_PLUGIN_PROFILE_INVALID") from exc
+                    fail_if(not isinstance(profile,dict) or
+                            profile.get("contract")!="mad4b.plugin-portability-profile.v1" or
+                            profile.get("plugin")!=plugin or
+                            profile.get("scope")!="tenant-portable" or
+                            profile.get("sensitive_central_authority_not_included") is not True or
+                            profile.get("financial_or_customer_data_automatic_write") is not False or
+                            not isinstance(profile.get("features"),list) or
+                            any(not isinstance(f, str) or
+                                not re.fullmatch(r"[a-z][a-z0-9-]{1,70}", f)
+                                for f in profile.get("features", [])),
+                            "PORTABLE_PLUGIN_PROFILE_NOT_ELIGIBLE")
+                    portable_plugins[plugin]=profile
+                fail_if(not set(capabilities).issubset(
+                        set(portable_plugins[plugin]["features"])),
+                        "RELEASE_PLUGIN_CAPABILITY_NOT_REGISTERED")
+        else:
+            fail_if(set(component) != {"id", "files"},
+                    "RELEASE_MU_COMPONENT_SCHEMA_INVALID")
+        static.update(files)
     return static
 
 
 def capability_owner_snapshot(
     root: Path, proposed_targets: set[str], *,
     repo: Path | None = None, commit: str | None = None,
+    preimages: dict[str, str | None] | None = None,
 ) -> dict:
     """Reconcile functional ownership from target and immutable source profiles.
 
@@ -245,6 +304,8 @@ def capability_owner_snapshot(
                 "replacement_target": replacement_target,
                 "source_manifest_sha256": None,
                 "target_manifest_sha256": None,
+                "source_migration_sha256": None,
+                "target_migration_sha256": None,
             })
             marker = origin + "_manifest_sha256"
             fail_if(row["component"] != plugin or row[marker] is not None,
@@ -253,6 +314,15 @@ def capability_owner_snapshot(
                     str(migration.get("reconcile_contract", "")),
                     "PORTABILITY_CONTRACT_LINEAGE_CONFLICT")
             row[marker] = digest(raw)
+            row[origin + "_migration_sha256"] = digest(canonical(migration))
+    # Do not miss a second successor just because *its* file isn't selected.
+    # One legacy owner with two canonical claimants is an ambiguous transition
+    # even if the request happens to modify only one canonical PHP module.
+    by_legacy: dict[str, set[str]] = {}
+    by_replacement: dict[str, set[str]] = {}
+    for legacy, replacement in owners:
+        by_legacy.setdefault(legacy, set()).add(replacement)
+        by_replacement.setdefault(replacement, set()).add(legacy)
     # Only an explicitly proposed migration relation is an admission gate;
     # no global hardcoded list of files to preserve is ever materialized.
     rows: list[dict] = []
@@ -265,6 +335,9 @@ def capability_owner_snapshot(
         profile_selected = manifest_target in proposed_targets
         if not touched and not profile_selected:
             continue
+        fail_if(len(by_legacy[legacy_target]) != 1 or
+                len(by_replacement[replacement_target]) != 1,
+                "PORTABILITY_OWNER_MIGRATION_CONFLICT")
         if legacy_target in selected_legacy and selected_legacy[legacy_target] != replacement_target:
             raise Denied("PORTABILITY_OWNER_MIGRATION_CONFLICT")
         if replacement_target in selected_canonical and selected_canonical[replacement_target] != legacy_target:
@@ -280,9 +353,14 @@ def capability_owner_snapshot(
                 "OWNER_ARTIFACT_NOT_REGULAR")
         legacy_exists = legacy_path.is_file()
         replacement_exists = new_path.is_file()
+        # A signed source release must never resurrect a retired MU owner.
+        # Rollback of an existing one is handled by its separate lifecycle.
+        fail_if(legacy_target in touched and not legacy_exists and
+                (preimages is None or preimages.get(legacy_target) is None),
+                "LEGACY_OWNER_REINTRODUCTION_NOT_CERTIFIED")
         if (profile_selected and legacy_exists and
-                relation["source_manifest_sha256"] !=
-                relation["target_manifest_sha256"]):
+                relation["source_migration_sha256"] !=
+                relation["target_migration_sha256"]):
             # A new portability profile can silently reassign a live MU
             # capability just as easily as a PHP file replacement. Require
             # the original independent owner-transition certification.
@@ -296,9 +374,17 @@ def capability_owner_snapshot(
             # exact CAS. Do not pin its mutable *old* digest across Apply.
             "target_manifest_sha256": (None if profile_selected else
                                        relation["target_manifest_sha256"]),
+            "target_migration_sha256": (None if profile_selected else
+                                        relation["target_migration_sha256"]),
             "manifest_target_selected": profile_selected,
-            "legacy_present": legacy_exists,
-            "replacement_present": replacement_exists,
+            # Selected file postimages may be new, but its pinned CAS preimage
+            # remains the same evidence at plan, apply and final readback.
+            "legacy_present": (preimages.get(legacy_target) is not None
+                               if preimages is not None and legacy_target in touched
+                               else legacy_exists),
+            "replacement_present": (preimages.get(replacement_target) is not None
+                                    if preimages is not None and replacement_target in touched
+                                    else replacement_exists),
             "legacy_other_sha256": (digest(safe_regular(legacy_path))
                 if legacy_exists and legacy_target not in proposed_targets else None),
             "replacement_other_sha256": (digest(safe_regular(new_path))
@@ -310,6 +396,100 @@ def capability_owner_snapshot(
             "retirement_authorized": False,
         })
     return {"contract": "mad4b.company-capability-owner-snapshot.v1", "relations": rows}
+
+
+# Narrow, fail-closed recognition of literal __DIR__ PHP includes. Dynamic
+# require expressions are explicitly outside this partial static guarantee;
+# WordPress boot validation still runs after signed apply.
+LITERAL_DIR_INCLUDE = re.compile(
+    r"(?m)^\s*(?:require|require_once|include|include_once)\s*"
+    r"\(?\s*__DIR__\s*\.\s*(['\"])([^'\"]+)\1\s*\)?\s*;"
+)
+
+
+def php_literal_dependency_snapshot(
+    root: Path, repo: Path, commit: str, rows: list[dict],
+) -> dict:
+    """Pin non-release literal PHP includes and reject absent cross-file deps.
+
+    Source code is read from Git but the resolution of __DIR__ uses the
+    target tenant's path (source and target layouts need not be identical).
+    """
+    selected = {row["target"] for row in rows}
+    dependencies: dict[str, dict] = {}
+    for row in rows:
+        if not row["target"].endswith(".php"):
+            continue
+        src = git_bytes(repo, commit, row["source"])
+        # Only ASCII PHP include statements are parsed; ignoring other bytes
+        # avoids treating an untrusted source blob as an executable program.
+        source_text = src.decode("utf-8", errors="replace")
+        for match in LITERAL_DIR_INCLUDE.finditer(source_text):
+            fragment = match.group(2)
+            fail_if("$" in fragment or "\\" in fragment or "\x00" in fragment,
+                    "PHP_STATIC_INCLUDE_UNSAFE")
+            path = posixpath.normpath(posixpath.join(
+                posixpath.dirname(row["target"]), fragment.lstrip("/")))
+            fail_if(not path.startswith("wp-content/") or
+                    not path.endswith(".php") or not permitted_target(path),
+                    "PHP_STATIC_INCLUDE_OUTSIDE_DEPLOY_SCOPE")
+            if path in selected:
+                # The included file is itself SHA-pinned by this same plan.
+                continue
+            dependency = root / path
+            fail_if(not dependency.is_file(), "PHP_STATIC_INCLUDE_MISSING:" + path)
+            dep_digest = digest(safe_regular(dependency))
+            dependencies[path] = {"sha256": dep_digest}
+    return {"contract": "mad4b.release-literal-php-dependencies.v1",
+            "dependencies": [{"path": name, **data}
+                             for name, data in sorted(dependencies.items())]}
+
+
+def tenant_plugin_profile_snapshot(root: Path, rows: list[dict]) -> dict:
+    """Freeze tenant plugin manifest provenance without importing demo values.
+
+    Plugin code ownership and runtime activation are separate. A target profile
+    is a company-owned input: any concurrent change invalidates the plan, but
+    absence of a profile does not fabricate an active plugin installation.
+    """
+    selected = {row["target"]: row["expected_before_sha256"] for row in rows}
+    plugins = sorted({parts[2] for row in rows
+                      if (parts := PurePosixPath(row["target"]).parts)
+                      and len(parts) >= 4 and parts[:2] == ("wp-content", "plugins")
+                      and parts[2].startswith("mad4b-")})
+    records=[]
+    for plugin in plugins:
+        rel="wp-content/plugins/" + plugin + "/mad4b-portability.json"
+        path=root/rel
+        no_link(path)
+        present=path.is_file()
+        fail_if(path.exists() and not present,"TENANT_PORTABILITY_NOT_REGULAR")
+        features=[]
+        if present:
+            raw=safe_regular(path,max_size=200_000)
+            try:
+                obj=json.loads(raw)
+            except (ValueError,TypeError) as exc:
+                raise Denied("TENANT_PORTABILITY_INVALID") from exc
+            fail_if(not isinstance(obj,dict) or
+                    obj.get("contract")!="mad4b.plugin-portability-profile.v1" or
+                    obj.get("plugin")!=plugin or
+                    obj.get("scope") not in (None,"tenant-portable") or
+                    not isinstance(obj.get("features",[]),list),
+                    "TENANT_PORTABILITY_IDENTITY_MISMATCH")
+            # Older tenant profiles may predate the optional feature inventory.
+            # Preserve their existing functions without pretending the newer
+            # source's feature list has already been adopted at this site.
+            features=sorted(set(str(f) for f in obj.get("features",[])))
+        records.append({"plugin":plugin,"profile_target":rel,
+                        "profile_pinned_sha256": (selected[rel] if rel in selected
+                                                 else digest(raw) if present else None),
+                        "profile_present_preimage": (selected[rel] is not None
+                            if rel in selected else present),
+                        "features_preimage": ([] if rel in selected else features),
+                        "runtime_activation_inferred":False})
+    return {"contract":"mad4b.tenant-plugin-profile-snapshot.v1",
+            "profiles":records}
 
 
 def target_binding(policy: dict, company: str, environment: str) -> dict:
@@ -380,8 +560,15 @@ def make_plan(spec: dict, policy: dict) -> dict:
             "source_bytes": len(src),
             "source_mode": 0o644,  # executable scripts do not run as part of release
         })
-    owner_snapshot = capability_owner_snapshot(root, seen, repo=repo, commit=spec["git_commit"])
+    owner_snapshot = capability_owner_snapshot(
+        root, seen, repo=repo, commit=spec["git_commit"],
+        preimages={row["target"]: row["expected_before_sha256"] for row in rows})
+    dependency_snapshot = php_literal_dependency_snapshot(
+        root, repo, spec["git_commit"], rows)
+    plugin_profiles = tenant_plugin_profile_snapshot(root, rows)
     payload = {
+        "tenant_plugin_profiles": plugin_profiles,
+        "dependency_snapshot": dependency_snapshot,
         "owner_reconciliation": owner_snapshot,
         "contract": PLAN_CONTRACT, "company": company,
         "environment": env, "site_uuid": entry["site_uuid"],
@@ -426,9 +613,20 @@ def confirm_plan(plan: dict, policy: dict, *, expect_preimage: bool) -> None:
     # before execution, independently of the registered target allowlist.
     owners_now = capability_owner_snapshot(
         Path(plan["target_root"]), {row["target"] for row in plan["files"]},
-        repo=Path(plan["git_root"]), commit=plan["git_commit"])
+        repo=Path(plan["git_root"]), commit=plan["git_commit"],
+        preimages={row["target"]: row["expected_before_sha256"]
+                   for row in plan["files"]})
     fail_if(plan.get("owner_reconciliation") != owners_now,
             "CAPABILITY_OWNER_STATE_DRIFT")
+    dependencies_now = php_literal_dependency_snapshot(
+        Path(plan["target_root"]), Path(plan["git_root"]),
+        plan["git_commit"], plan["files"])
+    fail_if(plan.get("dependency_snapshot") != dependencies_now,
+            "PHP_LITERAL_DEPENDENCY_STATE_DRIFT")
+    target_profiles_now = tenant_plugin_profile_snapshot(
+        Path(plan["target_root"]), plan["files"])
+    fail_if(plan.get("tenant_plugin_profiles") != target_profiles_now,
+            "TENANT_PLUGIN_PROFILE_STATE_DRIFT")
     checks = plan.get("acceptance_checks", [])
     fail_if(not isinstance(checks, list) or not checks or
             any(not isinstance(check, str) for check in checks) or
@@ -633,8 +831,9 @@ def php_lint(plan: dict) -> None:
                 "COPY_COVERAGE_RUNTIME_ACCEPTANCE_NOT_PROVEN")
 
 
-def assert_pinned_receipt_directory(policy: dict, receipt_dir: Path) -> None:
-    """Single root-owned receipt root fences nonce replay across CLI invocations."""
+def _verify_receipt_directory_owner(policy: dict, receipt_dir: Path,
+                                    *, required_uid: int) -> None:
+    """One invariant for both real root admission and hermetic CI fixtures."""
     bound = policy.get("receipt_dir")
     fail_if(not isinstance(bound, str) or not bound.startswith("/"),
             "RECEIPT_ROOT_NOT_CONFIGURED")
@@ -643,9 +842,15 @@ def assert_pinned_receipt_directory(policy: dict, receipt_dir: Path) -> None:
     no_link(receipt_dir)
     fail_if(receipt_dir.resolve() != exact.resolve(),
             "RECEIPT_DIRECTORY_NOT_PINNED")
-    fail_if(not receipt_dir.is_dir() or receipt_dir.stat().st_uid != 0 or
+    fail_if(not receipt_dir.is_dir() or
+            receipt_dir.stat().st_uid != required_uid or
             stat.S_IMODE(receipt_dir.stat().st_mode) & 0o077,
             "RECEIPTS_MUST_BE_ROOT_PRIVATE")
+
+
+def assert_pinned_receipt_directory(policy: dict, receipt_dir: Path) -> None:
+    """Live executor always requires the original root-owned private ledger."""
+    _verify_receipt_directory_owner(policy, receipt_dir, required_uid=0)
 
 
 def backup_path(receipt_dir: Path, plan: dict) -> Path:
@@ -750,9 +955,17 @@ def apply_release(plan: dict, policy: dict, grant: dict, receipt_dir: Path,
             confirm_plan(plan, policy, expect_preimage=False)
             validate_code(plan)
         except Exception as exc:
-            state, failure = "ROLLED_BACK", type(exc).__name__ + ":" + str(exc)[:160]
-            restore_backup(plan, backup)
-            confirm_plan(plan, policy, expect_preimage=True)
+            # A backup's existence is not proof of a successful restore.
+            # Concurrent edits can make rollback unsafe, so never overwrite
+            # them and never claim ROLLED_BACK without exact CAS readback.
+            failure = type(exc).__name__ + ":" + str(exc)[:160]
+            try:
+                restore_backup(plan, backup)
+                confirm_plan(plan, policy, expect_preimage=True)
+                state = "ROLLED_BACK"
+            except Exception as rollback_exc:
+                state = "ROLLBACK_UNVERIFIED"
+                failure += ";rollback=" + type(rollback_exc).__name__ + ":" + str(rollback_exc)[:120]
         receipt = {
             "contract": RECEIPT_CONTRACT, "state": state,
             "company": plan["company"], "environment": plan["environment"],

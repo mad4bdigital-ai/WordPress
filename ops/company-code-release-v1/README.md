@@ -66,6 +66,58 @@ concurrent MU reappearance invalidates an already approved canonical plugin
 plan. The manifest's free-text `replacement_activation_check` is informational;
 it is **not** executed or trusted as a runtime proof.
 
+## Multiaxis release hardening (source-only, additive)
+
+The canonical signed release path now checks more than a file SHA:
+
+| Dimension | Release-time proof | Boundary |
+|---|---|---|
+| Functional ownership | Source-Git and tenant Portability Profile lineage, migration contract fingerprint, single-target owner graph | Does not infer active hooks or permit automatic MU retirement |
+| Dynamic admission | Registered immutable catalog component → plugin or MU code/assets, plugin feature in tenant-portable profile | Requires unchanged per-company policy, signed Broker plan, exact source equals target for dynamic paths |
+| Tenant state | Actual tenant portability profile SHA, plugin identity and current feature inventory | No imported source demo options, WPML settings or Elementor document writes |
+| Dependency | Literal PHP `__DIR__` requires/includes resolved against the **target** runtime; missing includes denied before any write | Dynamic variable includes cannot be proven statically; mandatory post-apply WordPress boot remains |
+| Concurrency | Target file preimages, non-target dependency SHA, source Git SHA, actual container/site binding and profile changes | Conflict means fresh plan, never silent overwrite |
+| Readback | Executor-time original CAS plus independent file SHA, PHP lint, WordPress bootstrap | Native Elementor content must be handled by its separate original WP CAS provider |
+| Incident & rollback | Protected backup, separate signed rollback grant, `ROLLBACK_UNVERIFIED` incident for concurrent edits | No success claim or nonce replay while rollback evidence is missing |
+| Runtime owner observer | `runtime_owner_observer.php` observes loaded class origins and WordPress hook callbacks | Read-only, **not** an independent functional-parity certificate or signed migration grant |
+| Regression automation | `.github/workflows/mad4b-capability-owner-release-contract.yml`, Python contract + PHP observer fixture | Host production rollout still requires original first-party enrollment |
+
+### Dynamic catalog: portable native Plugins
+
+Existing MU component catalog entries remain valid. A new native Plugin
+component may declare `id`, `files` and `capabilities`, where each capability
+must appear in that Plugin's **immutable Git** `mad4b-portability.json`.
+The profile must identify the same plugin and explicitly require
+`scope=tenant-portable`, `sensitive_central_authority_not_included=true`,
+and `financial_or_customer_data_automatic_write=false`.
+The catalog cannot bundle two Plugins into one component, duplicate a path,
+include vendor/tests/uploads paths or redirect source blobs to another target.
+No catalog entry on its own is write authority. A signed Broker grant,
+original execution enrollment, host policy and precise CAS are still mandatory.
+Source-only manifest review never means the tenant has already activated it.
+
+### Observability and evidence
+
+The read-only WordPress observer reports plugin and legacy file SHA,
+actual `get_included_files()` membership, declared PHP class origins and
+callback counts in the real `$wp_filter`. It distinguishes observed legacy,
+canonical and dual-hook states, but does not execute a replacement, import
+translations, inspect customer bookings or claim semantic parity.
+
+A real Wayfatours readback observed 3 legacy hook callbacks vs 0 canonical
+for the portable Options Bridge. Tours.dev's alias is implemented by the
+native Plugin, without the legacy MU file. Neither state authorizes an
+automatic owner transfer. The independent signed transition still needs
+field/option parity, WPML group retention, one active handler, production
+feature smoke tests and post-apply receipts.
+
+Full release acceptance should run the immutable Git + tenant CAS contract,
+actual Company runtime metadata, original 306/312/313 authority, Elementor and
+JetEngine semantic reconciliation, native WPML coverage, asset-cache/cold-load
+checks, independent browser behavior and an approved rollback. This release
+module handles **code files only**; it must not duplicate Elementor/JetEngine
+DB writers or claim their success.
+
 ## Files
 
 - company_code_release.py: host release planner, original-305/312/313-aware non-authorizing doctor and signed executor.
