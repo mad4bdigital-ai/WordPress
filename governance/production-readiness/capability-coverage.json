@@ -3740,6 +3740,29 @@
   "change_impact_notes": "For each newly introduced registry item, registered MAD4B Ability, PHP service or Admin asset, add a reviewed_capabilities entry with exact id, nonempty existing control_ids, a regression test changed in this PR, owner_role, review_rationale, and status 'reviewed_for_ci_only'. CI fails on uncovered introductions; no entry grants Production. Existing runtime/config source additions and modifications require reviewed_changes entries keyed by exact Git blob, impacted control IDs and test changed in the same PR. Every new capability must explicitly decide whether to expand the checklist or reuse existing controls with a rationale. Static REST/AJAX/Cron surface discoveries remain candidates, never runtime certification.",
   "reviewed_changes": [
     {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-approval-bootstrap.php",
+      "source_blob_sha": "f286da0b8c59b5bc1545e70163929b1c40041184",
+      "review_rationale": "CI-only direct MCP materialization classification correction. Required transport names come from existing native chatgpt_direct_read_transport_tools and chatgpt_dispatch_transport_tools, while additional reviewed base conveniences, dynamic projections, profile controls and guarded direct step-ups are optional. Missing/malformed required DTOs still fail whole catalog; foreign tools cannot become optional by presence in a request. Both source-runtime negative fixtures assert the boundary; no OAuth client, permission callback, grant, approval or Production authority changes.",
+      "owner_role": "Repository code reviewer — source-only optional MCP catalog module extraction",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "tests/remote-execution/chatgpt-optional-catalog-smoke.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-optional-materialization-runtime.php"
+      ],
+      "coverage_reuse_rationale": "Same existing MCP, provider, security, execution and platform controls; requirement classification is now derived from original transport registry instead of treating every auxiliary base convenience as a required protocol tool.",
+      "execution_note": "Check the full disposable Local OAuth and dynamic projection HTTP matrix after exact-head CI. Catalog and Host authority remain separate; Original313 and Owner evidence not granted."
+    },
+    {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-catalog-diagnostics.php",
       "source_blob_sha": "033c5e5f793bddbd6bf9807b62688374c3bfb982",
       "review_rationale": "CI-only required MCP tool admission hardening. Missing or malformed required WordPress Ability/DTO now rejects the complete MCP catalog with a bounded exact blocker; reviewed optional direct projections can still be isolated. Both official packaged MCP Adapter and authenticated Local OAuth acceptance test the failure behavior. No WP permission, auth scope, owner consent, Host signature, Production deployment or mutations are created.",
