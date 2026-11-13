@@ -103,6 +103,39 @@ ACTIVE_ORIGINAL_306_WORKER = Path(
 )
 
 
+def central_313_status(*, central_reader=None) -> dict:
+    """Original Central 313 read-only status, not an execution authority."""
+    if central_reader is not None:
+        # A source test double never establishes live execution authority.
+        central=central_reader()
+    else:
+        sys.path.insert(0, "/opt/mad4b-company-transport")
+        try:
+            from central_wpcli_runtime import central_wp
+            from wpcli_dynamic_actor import resolve_actor
+            central = call_json(central_wp()+["--user="+str(resolve_actor()),
+                                        "mad4b", "dynamic-313-proof", "status"])
+        finally:
+            if sys.path[0] == "/opt/mad4b-company-transport":
+                sys.path.pop(0)
+    if not (central.get("contract") == "mad4b.dynamic-313-wordpress.v1"
+            and central.get("first_party_proof_enrolled") is True
+            and central.get("operation_id") == RELEASE_OPERATION
+            and central.get("job_issued") is False
+            and central.get("grant_issued") is False
+            and central.get("original_313_receipt_issued") is False
+            and central.get("production_mutated") is False):
+        raise RuntimeError("CENTRAL_313_PROOF_STATUS_NOT_SCOPE_VERIFIED")
+    return {
+        "independent_verifier_ready":
+            central.get("independent_verifier_ready") is True,
+        "original_313_finalizer_connected":
+            central.get("original_313_finalizer_connected") is True,
+        "operational_ready":
+            central.get("operational_ready") is True,
+    }
+
+
 def dynamic_status(company: str, environment: str,
                    plan_sha256: str | None = None) -> dict:
     """Observe installed 306/313 independently. Never creates signed authority."""
@@ -112,7 +145,27 @@ def dynamic_status(company: str, environment: str,
         "dynamic_313_independent_verifier_registered": False,
         "dynamic_313_finalizer_connected": False,
         "dynamic_scope_plan_matched": False,
+        "central_313_independent_verifier_registered": False,
+        "central_313_finalizer_configured": False,
+        "central_313_operational_ready": False,
+        "central_313_status_observed": False,
     }
+    # Original WordPress Central's operational readiness is independently
+    # observable even when the exact Host 306 plan was not enrolled. Never
+    # turn this metadata into a Host preclaim, Apply right, or fake grant.
+    try:
+        status=central_313_status()
+        result["central_313_status_observed"] = True
+        result["central_313_independent_verifier_registered"] = (
+            status["independent_verifier_ready"] is True)
+        result["central_313_finalizer_configured"] = (
+            status["original_313_finalizer_connected"] is True)
+        result["central_313_operational_ready"] = (
+            status["operational_ready"] is True)
+    except (RuntimeError, OSError, ValueError, KeyError,
+            subprocess.TimeoutExpired):
+        # Busy/unavailable Central is unverified, never assumed ready.
+        pass
     if not (DYNAMIC_ROOT / "index.json").is_file():
         return result
     old = list(sys.path)
@@ -145,28 +198,11 @@ def dynamic_status(company: str, environment: str,
             )
     finally:
         sys.path[:] = old
-    if not result["dynamic_306_digest_registered"]:
-        return result
-    sys.path.insert(0, "/opt/mad4b-company-transport")
-    try:
-        from central_wpcli_runtime import central_wp
-        from wpcli_dynamic_actor import resolve_actor
-        central = call_json(
-            central_wp()+["--user="+str(resolve_actor()),
-                          "mad4b", "dynamic-313-proof", "status"]
-        )
-    finally:
-        if sys.path[0] == "/opt/mad4b-company-transport":
-            sys.path.pop(0)
-    if (central.get("contract") == "mad4b.dynamic-313-wordpress.v1" and
-            central.get("first_party_proof_enrolled") is True and
-            central.get("operation_id") == RELEASE_OPERATION):
+    if result["dynamic_306_digest_registered"]:
         result["dynamic_313_independent_verifier_registered"] = (
-            central.get("independent_verifier_ready") is True
-        )
+            result["central_313_independent_verifier_registered"])
         result["dynamic_313_finalizer_connected"] = (
-            central.get("original_313_finalizer_connected") is True
-        )
+            result["central_313_operational_ready"])
     return result
 
 
@@ -276,6 +312,14 @@ def reconcile(
         "dynamic_306_digest_registered": bool(dynamic_306),
         "dynamic_313_independent_verifier_registered": bool(dynamic_313_proof),
         "dynamic_313_finalizer_connected": bool(dynamic_313_finish),
+        "central_313_status_observed":
+            dynamic.get("central_313_status_observed") is True,
+        "central_313_operational_ready":
+            dynamic.get("central_313_operational_ready") is True,
+        "central_313_finalizer_configured":
+            dynamic.get("central_313_finalizer_configured") is True,
+        "central_313_independent_verifier_registered":
+            dynamic.get("central_313_independent_verifier_registered") is True,
         "legacy_staging_ssh_installation_is_authoritative": False,
         "original_signed_job_grant_verified": False,
         "original_313_release_receipt_verified": False,
