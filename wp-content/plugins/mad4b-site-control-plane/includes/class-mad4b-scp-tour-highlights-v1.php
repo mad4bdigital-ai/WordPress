@@ -111,13 +111,16 @@ final class MAD4B_Tour_Highlights_V1 {
     public static function section_visible($visible,$element) {
         if(!$visible || !is_object($element) || !method_exists($element,'get_id')
           || $element->get_id()!=='d90c3d1') return $visible;
+        // Keep the container selectable in Elementor's editor, matching JetEngine's native behavior.
+        if(class_exists(\Elementor\Plugin::class,false) && \Elementor\Plugin::$instance->editor->is_edit_mode())return $visible;
         $post=self::context_id();
         if(!$post)return $visible;
         $mode=self::mode($post);
         if($mode==='hide')return false;
-        if($mode==='auto' && !self::approved_items($post))return false;
-        if($mode==='manual' && trim(wp_strip_all_tags((string)get_post_meta($post,'tour_highlights_content',true)))==='')return false;
-        return $visible;
+        if($mode==='auto')return (bool)self::approved_items($post);
+        // Manual or Assisted with no approved rows: hide only if editorial text is empty.
+        if(trim(wp_strip_all_tags((string)get_post_meta($post,'tour_highlights_content',true)))!=='')return $visible;
+        return $mode==='assisted' && (bool)self::approved_items($post);
     }
 
     public static function suggest(int $post):array {
@@ -210,6 +213,11 @@ MAD4B_Tour_Highlights_V1::register();
 
 if (!function_exists('tour_highlights_render_approved')) {
     function tour_highlights_render_approved($value) {
-        return MAD4B_Tour_Highlights_V1::render($value);
+        return class_exists('MAD4B_Tour_Highlights_Presentation_V1',false)
+            ? MAD4B_Tour_Highlights_Presentation_V1::render(MAD4B_Tour_Highlights_V1::render($value))
+            : MAD4B_Tour_Highlights_V1::render($value);
     }
 }
+
+// Native JetEngine presentation adapter. Loaded from the same shared plugin as the resolver.
+require_once __DIR__ . '/class-mad4b-scp-tour-highlights-presentation-v1.php';
