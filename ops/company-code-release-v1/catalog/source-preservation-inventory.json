@@ -1,0 +1,75 @@
+{
+  "contract": "mad4b.release-source-preservation-inventory.v1",
+  "original_source_commit": "eb46469d5dc2a470cda670904c73a1f47270da04",
+  "candidate_was_compared_to": "4c04a91ff79cd1f3507aae1f15ae51aa7648ed9a",
+  "files": [
+    {
+      "path": "ops/company-code-release-v1/capability_acceptance.py",
+      "sha256": "d706c6f180f33fb59676b6fd9ac65cbd1a5dbb09faff2b725eb511b75ff9e4cf"
+    },
+    {
+      "path": "ops/company-code-release-v1/integrations/check_original_305_no_user_regression.py",
+      "sha256": "8275f49865b7e89edcecae36b267a2e33ce8c99ac6e9545619570d48036f294f"
+    },
+    {
+      "path": "ops/company-code-release-v1/integrations/enroll_exact_media_alt_fix_release.py",
+      "sha256": "8f58725a7d96dd41391e903b1ed48a6ab7cabb99bdc25e43dbaf0449a4eff861"
+    },
+    {
+      "path": "ops/company-code-release-v1/integrations/enroll_exact_media_associate_release.py",
+      "sha256": "2404534ec1a5c274cd61f800f39997edd9e113aa39e55eec0c87f1eb520a7275"
+    },
+    {
+      "path": "ops/company-code-release-v1/integrations/enroll_exact_media_chain_closure_release.py",
+      "sha256": "12530d083b8b7f748c954b6a4148b2aef003f97939eea17c3571393b412ab479"
+    },
+    {
+      "path": "ops/company-code-release-v1/integrations/enroll_exact_media_discovery_release.py",
+      "sha256": "29d07a07673232760394238db203857ee046aa3abe3763bc26a19415b6550dd0"
+    },
+    {
+      "path": "ops/company-code-release-v1/integrations/enroll_exact_source_plan_v1.py",
+      "sha256": "2cb9c334f061993b9ed3b4fbfd1b212f9e2fdbc219a093661dc1e038468dbd0c"
+    },
+    {
+      "path": "ops/company-code-release-v1/integrations/issue_media_alt_fix_code_release.py",
+      "sha256": "b749ff584897a3c1ff1a93ddb5779b0882332e6343804319e0b5f585c43446ae"
+    },
+    {
+      "path": "ops/company-code-release-v1/integrations/issue_media_associate_code_release.py",
+      "sha256": "0209bed0c74385c1cb0600906282ebe237254550fc1c54e5720f02014f31d15e"
+    },
+    {
+      "path": "ops/company-code-release-v1/integrations/issue_media_chain_closure_release.py",
+      "sha256": "f2e49f796ad3daf7e0f0ba5fc6bf7fb917738b0149cb90b82d9287a7214f7984"
+    },
+    {
+      "path": "ops/company-code-release-v1/integrations/issue_media_discovery_code_release.py",
+      "sha256": "7fdf0cab6f4ea1053b705a843c7f0057468e5cd4fc6b4d28ac95be34696b57b5"
+    },
+    {
+      "path": "ops/company-code-release-v1/integrations/issue_media_visual_guard_release.py",
+      "sha256": "1633cf91eed4a3985fa63a7f30ac858f038b3de79033a2213166918a0ed5d19f"
+    },
+    {
+      "path": "ops/company-code-release-v1/integrations/issue_media_visual_lineage_release.py",
+      "sha256": "4b8b0985ea04d7b8b52b8d717f980ff418625edfd24c0233fd558f729542cd5c"
+    },
+    {
+      "path": "ops/company-code-release-v1/integrations/issue_media_visual_lineage_v101_release.py",
+      "sha256": "04c3397821a767859729a10f022982d94db062de3f6d02fdf3bde6a3eadd22a8"
+    },
+    {
+      "path": "ops/company-code-release-v1/integrations/repair_exact_media_release_plan_mirror.py",
+      "sha256": "aa5e1d2c1e83d9335e93d461cbb535e035a0cd1186340e9d0d412864c632e89a"
+    },
+    {
+      "path": "ops/company-code-release-v1/tests/test_exact_code_plan_enrollment.py",
+      "sha256": "5b53b6abab0d8ce1466ba26c8058d820c3c5c48eda3f5be12c96bd1b57683634"
+    },
+    {
+      "path": "ops/company-code-release-v1/tests/test_original_305_no_user_guard.py",
+      "sha256": "b792772e7d041a54f51e1e447d43ec1e05149e6399c4ffee5c869dd19b1db26b"
+    }
+  ]
+}

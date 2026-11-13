@@ -51,6 +51,14 @@ jobs:
       - name: Source provider manifest and immutable dependency closure
         run: |
           python -m unittest discover -s ops/company-code-release-v1/tests -p test_source_provider_manifest_pinning.py -v
+      - name: Preserve VPS integrations and validate scoped rollback capacity
+        run: |
+          for spec in test_source_parity.py test_source_preservation_inventory.py test_tenant_plugin_drift.py test_backup_resource_bound.py test_coherent_activation_gate.py test_prior_original313_finalization.py; do
+            python -m unittest discover -s ops/company-code-release-v1/tests -p "$spec" -q
+          done
+      - name: Portable original registry digest contract
+        run: |
+          python -m unittest discover -s ops/company-code-release-v1/tests -p test_registry_manifest_contract.py -q
       - name: Original release owner+dependency+CAS+rollback regression
         run: |
           python -m unittest discover \
@@ -58,7 +66,7 @@ jobs:
             -p test_release.py -v
       - name: Original 313 hermetic grant and readback contracts
         run: |
-          for spec in test_original_313_contract.py test_original_313_independent_readback.py test_original_313_full_cycle.py; do
+          for spec in test_original_313_contract.py test_original_313_host_handler.py test_original_313_independent_readback.py test_original_313_full_cycle.py; do
             python -m unittest discover \
               -s ops/company-code-release-v1/tests \
               -p "$spec" -v

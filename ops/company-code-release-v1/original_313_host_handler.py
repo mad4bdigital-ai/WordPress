@@ -236,6 +236,8 @@ def execute_once(
         release.assert_runtime_binding,
     code_check: Callable[[dict], None] = release.php_lint,
     candidate_preflight_check: Callable[[dict], None] = release.preflight_candidate_php,
+    producer_dispatcher: Callable | None = None,
+    independent_prior_finalizer: Callable | None = None,
 ) -> dict:
     """Single already-admitted operation; no worker registration or 313 fraud.
 
@@ -265,6 +267,11 @@ def execute_once(
         plan, policy, release_grant, receipts,
         runtime_check=runtime_check, validate_code=code_check,
         preflight_code=candidate_preflight_check,
+        # The first-party Original Handler must explicitly enroll a real,
+        # authorized read-only producer dispatcher. No arbitrary plan or
+        # request field can provide executable callbacks. Absent means HOLD.
+        produce_capabilities=producer_dispatcher,
+        verify_prior_original313=independent_prior_finalizer,
     )
     host_receipt_state = result.get("state")
     observed_state = {

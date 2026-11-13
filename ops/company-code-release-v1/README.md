@@ -269,3 +269,38 @@ private rollback receipts. An unknown/newer hash is never overwritten.
 The original scheduled source-release service is updated to select v4 and
 signed-preclaim guards by name and to retain the full original guard chain.
 These guards do not issue 305 Jobs, Broker Grants or 313 receipts.
+
+
+### Original status probing without another release engine (2026-11-13)
+
+Use the existing read-only lifecycle bridge to diagnose the slow Central
+Original312 status independently, without a full sequential 305/312/dispatch/
+306/313 status chain:
+
+`python3 ops/company-code-release-v1/company_lifecycle_broker.py status --company <company> --environment <environment> --probe original312_status`
+
+Supported diagnostic probes are Original305 scope, Original312 status, WP
+dispatch, legacy Original313 handler, and local dynamic Original306 registry
+readback. The local dynamic306_registry probe deliberately **does not**
+call Central313. The complete lifecycle check may query Central313 separately
+and remains a separate, potentially slower status read. **These are diagnostic stages, not static Provider allowlists.**
+Each external status subprocess has a 15-second upper bound, and failures
+return `HOLD_ORIGINAL_STATUS_PROBE_UNAVAILABLE` with the sanitized exception
+class, not private stderr or tokens. A complete lifecycle report preserves
+independently verified probes, but any error puts it in a HOLD state.
+Every probe, including a positive Original312 status, returns
+`release_execution_allowed=false` and `production_mutated=false`.
+
+On 2026-11-13, the isolated Original312 status probe returned
+`observed_true=true` for Wayfatours Production. It did **not** issue a Job,
+Grant or signed Original313 receipt. The existing First-Party Registry
+already has 15 matching Company Code Release Production digests.
+Historic host receipts remain 313-uncertified. The narrow first-party
+historical readback of the covered Tenant Sync release was denied because
+the live PHP postimage differed from the old pinned version. Do NOT revert
+newer company PHP merely to manufacture an old receipt; require fresh
+correctly scoped source reconciliation and real independent 313 authority.
+
+The Provider source manifest pins the changed diagnostic module by SHA
+and must pass source closure before first-party enrollment. It does NOT
+update the installed root Index or authorize mutation.

@@ -36,6 +36,11 @@ if _acceptance_spec is None or _acceptance_spec.loader is None:
     raise RuntimeError("CAPABILITY_ACCEPTANCE_MODULE_UNAVAILABLE")
 capability_checks = importlib.util.module_from_spec(_acceptance_spec)
 _acceptance_spec.loader.exec_module(capability_checks)
+_finalization_path = Path(__file__).with_name("finalization_guard.py")
+_finalization_spec = importlib.util.spec_from_file_location(
+    "_mad4b_company_release_finalization_guard_v1", _finalization_path)
+release_finalization = importlib.util.module_from_spec(_finalization_spec)
+_finalization_spec.loader.exec_module(release_finalization)
 
 POLICY_PATH = Path("/etc/mad4b/company-code-release-policy.json")
 AUTH_CONTRACT = "mad4b.company-code-release.authorization.v1"
@@ -123,6 +128,53 @@ def checked_policy(policy: dict) -> None:
             "POLICY_CONTRACT_INVALID")
     fail_if(not isinstance(policy.get("targets"), dict), "NO_TARGET_REGISTRY")
     fail_if(not isinstance(policy.get("source_git_root"), str), "NO_GIT_ROOT")
+
+
+def backup_json_limit(policy: dict, company: str, environment: str) -> int:
+    """Site/root policy bound applied consistently before writing or reading backups."""
+    entry = target_binding(policy, company, environment)
+    global_limits = policy.get("resource_limits", {})
+    site_limits = entry.get("resource_limits", {})
+    fail_if(not isinstance(global_limits, dict) or
+            not isinstance(site_limits, dict), "RESOURCE_LIMITS_INVALID")
+    limit = site_limits.get("backup_json_bytes",
+                            global_limits.get("backup_json_bytes", 100_000_000))
+    fail_if(type(limit) is not int or not 1_000_000 <= limit <= 512_000_000,
+            "BACKUP_RESOURCE_LIMIT_INVALID")
+    return limit
+
+
+def activation_contract(plan_files: list[dict], policy: dict,
+                        company: str, environment: str) -> dict:
+    """Declare multi-file HTTP risk without claiming atomic cutover exists."""
+    entry = target_binding(policy, company, environment)
+    setting = entry.get("activation_policy", {})
+    fail_if(not isinstance(setting, dict) or
+            not isinstance(setting.get("require_coherent_cutover", False), bool),
+            "ACTIVATION_POLICY_INVALID")
+    groups: dict[str, list[str]] = {}
+    for row in plan_files:
+        parts = PurePosixPath(row["target"]).parts
+        if len(parts) >= 4 and parts[:2] == ("wp-content", "plugins"):
+            owner = "/".join(parts[:3])
+        elif len(parts) >= 3 and parts[:2] == ("wp-content", "mu-plugins"):
+            owner = "/".join(parts[:2])
+        else:
+            owner = "unknown"
+        groups.setdefault(owner, []).append(row["target"])
+    changed_php = any(row["target"].endswith(".php") for row in plan_files)
+    # Even different Plugins may be loaded together by a single request.
+    has_coherence_risk = changed_php and len(plan_files) > 1
+    return {
+        "contract": "mad4b.company-release-activation-risk.v1",
+        "require_coherent_cutover": setting.get("require_coherent_cutover", False),
+        "multi_file_php_risk": has_coherence_risk,
+        "affected_owners": [
+            {"owner": k, "files": sorted(v)} for k, v in sorted(groups.items())
+        ],
+        "activation_strategy": "legacy_per_file_replace",
+        "coherent_http_cutover_proven": False,
+    }
 
 
 def run(command: list[str], timeout: int = 15) -> bytes:
@@ -563,7 +615,7 @@ def make_plan(spec: dict, policy: dict) -> dict:
         dest = root / target
         no_link(dest)
         fail_if(dest.exists() and not dest.is_file(), "NON_FILE_TARGET")
-        old = dest.read_bytes() if dest.exists() else None
+        old = safe_regular(dest) if dest.exists() else None
         old_digest = digest(old) if old is not None else None
         fail_if(before != old_digest, "TARGET_PREIMAGE_MISMATCH:" + target)
         baseline = dest.stat() if old is not None else None
@@ -590,6 +642,9 @@ def make_plan(spec: dict, policy: dict) -> dict:
         rows, policy, repo, spec["git_commit"], git_bytes, permitted_target)
     payload = {
         "capability_acceptance": dynamic_acceptance,
+        "backup_json_max_bytes": backup_json_limit(policy, company, env),
+        "activation_contract": activation_contract(rows, policy, company, env),
+        "finalization_contract": release_finalization.policy_contract(entry),
         "tenant_plugin_profiles": plugin_profiles,
         "dependency_snapshot": dependency_snapshot,
         "owner_reconciliation": owner_snapshot,
@@ -623,6 +678,26 @@ def confirm_plan(plan: dict, policy: dict, *, expect_preimage: bool) -> None:
             str(Path(entry["root"]).resolve()) != plan.get("target_root") or
             str(Path(policy["source_git_root"]).resolve()) != plan.get("git_root"),
             "PLAN_SCOPE_CHANGED")
+    expected_finalization = release_finalization.policy_contract(entry)
+    if "finalization_contract" in plan:
+        fail_if(plan["finalization_contract"] != expected_finalization,
+                "PRIOR_ORIGINAL313_POLICY_DRIFT")
+    else:
+        fail_if(expected_finalization["require_prior_original313"],
+                "PRIOR_ORIGINAL313_POLICY_REQUIRES_NEW_PLAN")
+    expected_activation = activation_contract(
+        plan["files"], policy, plan["company"], plan["environment"])
+    if "activation_contract" in plan:
+        fail_if(plan["activation_contract"] != expected_activation,
+                "ACTIVATION_CONTRACT_POLICY_DRIFT")
+    else:
+        fail_if(expected_activation["require_coherent_cutover"],
+                "ACTIVATION_CONTRACT_REQUIRED_FOR_POLICY")
+    expected_backup_bound = backup_json_limit(
+        policy, plan["company"], plan["environment"])
+    fail_if(plan.get("backup_json_max_bytes", 100_000_000) !=
+            expected_backup_bound,
+            "BACKUP_RESOURCE_LIMIT_POLICY_DRIFT")
     if "capability_acceptance" in plan:
         expected_acceptance = capability_checks.snapshot(
             plan["files"], policy, Path(plan["git_root"]),
@@ -997,9 +1072,12 @@ def prepare_backup(plan: dict, policy: dict, receipt_dir: Path,
                 "PREPARE_PREIMAGE_CHANGED")
         backup["files"].append(entry)
     blob = canonical(backup) + b"\n"
+    limit = backup_json_limit(policy, plan["company"], plan["environment"])
+    fail_if(len(blob) > limit,
+            "BACKUP_RESOURCE_LIMIT_EXCEEDED_BEFORE_TARGET_WRITE")
     path = backup_path(receipt_dir, plan)
     if path.exists():
-        fail_if(safe_regular(path, max_size=100_000_000) != blob,
+        fail_if(safe_regular(path, max_size=limit) != blob,
                 "PREPARED_BACKUP_MISMATCH")
     else:
         atomic_write(path, blob, 0o600)
@@ -1010,7 +1088,8 @@ def prepare_backup(plan: dict, policy: dict, receipt_dir: Path,
 
 def load_backup(plan: dict, receipt_dir: Path) -> dict:
     path = backup_path(receipt_dir, plan)
-    contents = safe_regular(path, max_size=100_000_000)
+    contents = safe_regular(
+        path, max_size=plan.get("backup_json_max_bytes", 100_000_000))
     backup = json.loads(contents)
     fail_if(backup.get("contract") != "mad4b.company-code-release.backup.v1" or
             backup.get("plan_sha256") != plan["plan_sha256"],
@@ -1269,7 +1348,8 @@ def apply_release(plan: dict, policy: dict, grant: dict, receipt_dir: Path,
                   validate_capabilities: Callable =
                       capability_checks.verify_evidence,
                   producer_check: Callable = capability_checks.verify_producer_enrollment,
-                  produce_capabilities: Callable | None = None
+                  produce_capabilities: Callable | None = None,
+                  verify_prior_original313: Callable | None = None
                   ) -> dict:
     """Apply only after external authority. Roll back automatically on any failure."""
     verify_grant(plan, policy, grant, "apply")
@@ -1289,6 +1369,23 @@ def apply_release(plan: dict, policy: dict, grant: dict, receipt_dir: Path,
                 "OVERLAPPING_UNRESOLVED_RELEASE_TRANSACTION")
         confirm_plan(plan, policy, expect_preimage=True)
         runtime_check(plan, policy)
+        entry = target_binding(policy, plan["company"], plan["environment"])
+        def read_previous_receipt(path):
+            # Uses the same first-party private receipt contract as Host Apply.
+            data = safe_regular(path, max_size=100_000)
+            return json.loads(data), data
+        release_finalization.admit(
+            plan, entry, receipt_dir, read_previous_receipt,
+            first_party_verifier=verify_prior_original313)
+        # An atomic file rename is NOT an atomic HTTP request/plugin release.
+        # If the company requires coherent activation, never silently fall back
+        # to the legacy per-file writer. A native versioned cutover Provider
+        # must be integrated in a separate signed first-party release.
+        activation = activation_contract(
+            plan["files"], policy, plan["company"], plan["environment"])
+        fail_if(activation["require_coherent_cutover"] and
+                activation["multi_file_php_risk"],
+                "COHERENT_HTTP_CUTOVER_PROVIDER_NOT_ENROLLED")
         prepared = prepare_backup(plan, policy, receipt_dir,
                                   runtime_check=runtime_check)
         backup = load_backup(plan, receipt_dir)

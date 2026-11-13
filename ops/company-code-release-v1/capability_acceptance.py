@@ -12,6 +12,7 @@ import datetime as dt
 import hashlib
 import importlib.util
 import json
+import os
 from pathlib import Path
 import re
 import stat
@@ -30,6 +31,8 @@ CATALOG_CONTRACT = "mad4b.company-capability-acceptance-catalog.v1"
 REGISTRY_CONTRACT = "mad4b.company-capability-acceptance-registry.v1"
 SNAPSHOT_CONTRACT = "mad4b.company-capability-acceptance-snapshot.v1"
 EVIDENCE_CONTRACT = "mad4b.company-capability-acceptance-evidence.v1"
+EVIDENCE_V2_CONTRACT = "mad4b.company-capability-acceptance-evidence.v2"
+WITNESS_CONTRACT = "mad4b.company-capability-observation-witness.v1"
 ID = re.compile(r"^[a-z][a-z0-9._-]{2,100}$")
 NONCE = re.compile(r"^[a-zA-Z0-9_-]{16,96}$")
 
@@ -71,7 +74,8 @@ def _registry(policy: dict) -> dict | None:
             ".." in Path(config["catalog_path"]).parts or
             not isinstance(config.get("providers"), dict) or
             len(config["providers"]) > 256 or
-            not isinstance(config.get("require_coverage", True), bool),
+            not isinstance(config.get("require_coverage", True), bool) or
+            not isinstance(config.get("require_impact_coverage", False), bool),
             "CAPABILITY_ACCEPTANCE_REGISTRY_INVALID")
     for provider, item in config["providers"].items():
         _id(provider)
@@ -108,6 +112,7 @@ def snapshot(plan_files: list[dict], policy: dict, repo: Path,
     if config is None:
         return {"contract": SNAPSHOT_CONTRACT, "catalog_sha256": None,
                 "catalog_path": None, "require_coverage": False,
+                "require_impact_coverage": False, "impact_requirements": [],
                 "checks": [], "enrollment_sha256": None}
     raw = git_bytes(repo, commit, config["catalog_path"])
     deny_if(len(raw) > 200_000, "CAPABILITY_ACCEPTANCE_CATALOG_TOO_LARGE")
@@ -116,7 +121,8 @@ def snapshot(plan_files: list[dict], policy: dict, repo: Path,
     except (ValueError, TypeError) as exc:
         raise AcceptanceDenied("CAPABILITY_ACCEPTANCE_CATALOG_INVALID") from exc
     deny_if(not isinstance(catalog, dict) or
-            set(catalog) != {"contract", "checks"} or
+            set(catalog) not in ({"contract", "checks"},
+                                 {"contract", "checks", "requirements"}) or
             catalog.get("contract") != CATALOG_CONTRACT or
             not isinstance(catalog["checks"], list) or
             len(catalog["checks"]) > 500,
@@ -158,6 +164,46 @@ def snapshot(plan_files: list[dict], policy: dict, repo: Path,
                         "id": check_id, "targets": matched})
     deny_if(config.get("require_coverage", True) and covered != selected,
             "CAPABILITY_ACCEPTANCE_COVERAGE_MISSING")
+    # A full-file check does not prove that all affected functional
+    # capabilities were observed. Require a declared, provider-owned impact
+    # graph and a matching check for every (target, provider, capability).
+    reqs = catalog.get("requirements", [])
+    deny_if(not isinstance(reqs, list) or len(reqs) > 500,
+            "CAPABILITY_ACCEPTANCE_IMPACT_GRAPH_INVALID")
+    required, impact_covered = set(), set()
+    for relation in reqs:
+        deny_if(not isinstance(relation, dict) or
+                set(relation) != {"target", "provider", "capabilities"} or
+                not isinstance(relation.get("target"), str) or
+                not permitted_target(relation["target"]) or
+                not isinstance(relation.get("capabilities"), list) or
+                not 1 <= len(relation["capabilities"]) <= 100,
+                "CAPABILITY_ACCEPTANCE_IMPACT_RELATION_INVALID")
+        target = relation["target"]
+        provider = _id(relation["provider"])
+        caps = [_id(c) for c in relation["capabilities"]]
+        deny_if(len(set(caps)) != len(caps),
+                "CAPABILITY_ACCEPTANCE_IMPACT_DUPLICATE")
+        if target not in selected:
+            continue
+        entry = config["providers"].get(provider)
+        deny_if(not isinstance(entry, dict) or
+                entry.get("enabled") is not True or
+                not set(caps).issubset(set(entry["capabilities"])),
+                "CAPABILITY_ACCEPTANCE_IMPACT_OWNER_UNENROLLED")
+        for capability in caps:
+            key = (target, provider, capability)
+            deny_if(key in required,
+                    "CAPABILITY_ACCEPTANCE_IMPACT_DUPLICATE")
+            required.add(key)
+        impact_covered.add(target)
+    actual = {(target, row["provider"], row["capability"])
+              for row in records for target in row["targets"]}
+    deny_if(not required.issubset(actual),
+            "CAPABILITY_ACCEPTANCE_IMPACT_CHECK_MISSING")
+    deny_if(config.get("require_impact_coverage", False) and
+            impact_covered != selected,
+            "CAPABILITY_ACCEPTANCE_IMPACT_GRAPH_INCOMPLETE")
     # A source-only registration does not grant authority; the trust anchors
     # must already exist in the installed root-owned policy.
     enrollment = {
@@ -174,6 +220,8 @@ def snapshot(plan_files: list[dict], policy: dict, repo: Path,
     return {"contract": SNAPSHOT_CONTRACT, "catalog_sha256": sha(raw),
             "catalog_path": config["catalog_path"],
             "require_coverage": config.get("require_coverage", True),
+            "require_impact_coverage": config.get("require_impact_coverage", False),
+            "impact_requirements": [list(x) for x in sorted(required)],
             "checks": sorted(records, key=lambda r: (r["provider"], r["id"])),
             "enrollment_sha256": sha(canonical(enrollment))}
 
@@ -228,7 +276,9 @@ def verify_producer_enrollment(
         deny_if(not isinstance(manifest, dict) or
                 manifest.get("operation_id") != operation_id or
                 manifest.get("provider") != provider or
-                sha(canonical(manifest)) != entry["producer_manifest_sha256"],
+                not callable(getattr(registry, "manifest_sha256", None)) or
+                registry.manifest_sha256(operation_id) !=
+                    entry["producer_manifest_sha256"],
                 "CAPABILITY_ACCEPTANCE_PRODUCER_MANIFEST_DRIFT")
         observed.append(operation_id)
     return {"producer_operations": observed}
@@ -246,17 +296,99 @@ def postimage_fingerprint(plan: dict, observed: dict) -> str:
 def _private_file(path: Path) -> tuple[dict, str]:
     for piece in [path, *path.parents]:
         deny_if(piece.is_symlink(), "CAPABILITY_ACCEPTANCE_SYMLINK_DENIED")
-    deny_if(not path.is_file(), "CAPABILITY_ACCEPTANCE_EVIDENCE_MISSING")
-    st = path.stat()
-    deny_if(not stat.S_ISREG(st.st_mode) or st.st_uid != 0 or
-            stat.S_IMODE(st.st_mode) & 0o077 or st.st_size > 100_000,
-            "CAPABILITY_ACCEPTANCE_EVIDENCE_UNTRUSTED")
+    parent = path.parent.stat()
+    deny_if(not stat.S_ISDIR(parent.st_mode) or parent.st_uid != 0 or
+            stat.S_IMODE(parent.st_mode) & 0o077,
+            "CAPABILITY_ACCEPTANCE_EVIDENCE_PARENT_UNTRUSTED")
     try:
-        raw = path.read_bytes()
-        deny_if(len(raw) > 100_000, "CAPABILITY_ACCEPTANCE_EVIDENCE_TOO_LARGE")
-        return json.loads(raw), sha(raw)
-    except (ValueError, TypeError) as exc:
-        raise AcceptanceDenied("CAPABILITY_ACCEPTANCE_EVIDENCE_INVALID") from exc
+        fd = os.open(str(path), os.O_RDONLY |
+                     getattr(os, "O_NOFOLLOW", 0) |
+                     getattr(os, "O_CLOEXEC", 0))
+    except FileNotFoundError as exc:
+        raise AcceptanceDenied("CAPABILITY_ACCEPTANCE_EVIDENCE_MISSING") from exc
+    try:
+        st = os.fstat(fd)
+        deny_if(not stat.S_ISREG(st.st_mode) or st.st_uid != 0 or
+                st.st_nlink != 1 or
+                stat.S_IMODE(st.st_mode) & 0o077 or st.st_size > 100_000,
+                "CAPABILITY_ACCEPTANCE_EVIDENCE_UNTRUSTED")
+        with os.fdopen(fd, "rb") as stream:
+            fd = -1
+            raw = stream.read(100_001)
+        deny_if(len(raw) > 100_000,
+                "CAPABILITY_ACCEPTANCE_EVIDENCE_TOO_LARGE")
+        try:
+            return json.loads(raw), sha(raw)
+        except (ValueError, TypeError) as exc:
+            raise AcceptanceDenied(
+                "CAPABILITY_ACCEPTANCE_EVIDENCE_INVALID") from exc
+    finally:
+        if fd >= 0:
+            os.close(fd)
+
+
+def _witness_schema(enrolled: dict, check_id: str) -> dict:
+    schemas = enrolled.get("witness_schemas")
+    deny_if(not isinstance(schemas, dict) or
+            not isinstance(schemas.get(check_id), dict) or
+            not 1 <= len(schemas[check_id]) <= 50,
+            "CAPABILITY_ACCEPTANCE_WITNESS_SCHEMA_MISSING")
+    for field, definition in schemas[check_id].items():
+        _id(field)
+        deny_if(not isinstance(definition, dict) or
+                set(definition) not in ({"type"}, {"type", "equals"}) or
+                definition.get("type") not in
+                    ("integer", "boolean", "string", "sha256"),
+                "CAPABILITY_ACCEPTANCE_WITNESS_SCHEMA_INVALID")
+    return schemas[check_id]
+
+
+def validate_witness(witness: dict, *, plan: dict, enrolled: dict,
+                     provider: str, result: dict, apply_nonce: str,
+                     postimage_sha256: str, challenge: str,
+                     postimage_verified_at: dt.datetime,
+                     proof_observed_at: dt.datetime) -> None:
+    """Typed, policy-owned measurements, not an ungrounded success label."""
+    fields = _witness_schema(enrolled, result["id"])
+    deny_if(not isinstance(witness, dict) or set(witness) != {
+                "contract", "provider", "producer_operation_id", "site_uuid",
+                "apply_nonce", "postimage_sha256", "challenge",
+                "capability", "id", "observed_at", "readings"} or
+            witness["contract"] != WITNESS_CONTRACT or
+            witness["provider"] != provider or
+            witness["producer_operation_id"] !=
+                enrolled["producer_operation_id"] or
+            witness["site_uuid"] != plan["site_uuid"] or
+            witness["apply_nonce"] != apply_nonce or
+            witness["postimage_sha256"] != postimage_sha256 or
+            witness["challenge"] != challenge or
+            witness["capability"] != result["capability"] or
+            witness["id"] != result["id"] or
+            not isinstance(witness["readings"], dict) or
+            set(witness["readings"]) != set(fields),
+            "CAPABILITY_ACCEPTANCE_WITNESS_BINDING_INVALID")
+    try:
+        observed_at = dt.datetime.fromisoformat(witness["observed_at"])
+    except (TypeError, ValueError) as exc:
+        raise AcceptanceDenied("CAPABILITY_ACCEPTANCE_WITNESS_TIME_INVALID") from exc
+    deny_if(observed_at.tzinfo is None or
+            observed_at < postimage_verified_at or
+            observed_at > proof_observed_at,
+            "CAPABILITY_ACCEPTANCE_WITNESS_TIME_INVALID")
+    for name, definition in fields.items():
+        value = witness["readings"][name]
+        kind = definition["type"]
+        valid = (
+            (kind == "integer" and type(value) is int) or
+            (kind == "boolean" and type(value) is bool) or
+            (kind == "string" and isinstance(value, str) and
+             0 < len(value) <= 1024) or
+            (kind == "sha256" and isinstance(value, str) and
+             re.fullmatch(r"[a-f0-9]{64}", value) is not None)
+        )
+        deny_if(not valid or
+                ("equals" in definition and value != definition["equals"]),
+                "CAPABILITY_ACCEPTANCE_WITNESS_READING_INVALID:" + name)
 
 
 def verify_provider_payload(
@@ -272,7 +404,10 @@ def verify_provider_payload(
                 "observed_at", "postimage_sha256", "challenge",
                 "producer_operation_id", "results", "signature"},
             "CAPABILITY_ACCEPTANCE_EVIDENCE_SCHEMA_INVALID")
-    deny_if(evidence["contract"] != EVIDENCE_CONTRACT or
+    requiring_witnesses = enrolled.get("require_witnesses") is True
+    expected_contract = (
+        EVIDENCE_V2_CONTRACT if requiring_witnesses else EVIDENCE_CONTRACT)
+    deny_if(evidence["contract"] != expected_contract or
             evidence["provider"] != provider or
             evidence["producer_operation_id"] !=
                 enrolled["producer_operation_id"] or
@@ -292,10 +427,16 @@ def verify_provider_payload(
             "CAPABILITY_ACCEPTANCE_EVIDENCE_TIME_INVALID")
     expected = {(c["capability"], c["id"]) for c in declared}
     results = evidence["results"]
+    fields = ({"capability", "id", "passed", "witness_sha256"}
+              if requiring_witnesses else {"capability", "id", "passed"})
     deny_if(not isinstance(results, list) or
             any(not isinstance(r, dict) or
-                set(r) != {"capability", "id", "passed"} or
+                set(r) != fields or
                 r.get("passed") is not True or
+                (requiring_witnesses and (
+                    not isinstance(r.get("witness_sha256"), str) or
+                    re.fullmatch(r"[a-f0-9]{64}",
+                                 r["witness_sha256"]) is None)) or
                 not isinstance(r.get("capability"), str) or
                 not isinstance(r.get("id"), str) for r in results) or
             {(r["capability"], r["id"]) for r in results} != expected or
@@ -358,6 +499,22 @@ def verify_evidence(plan: dict, policy: dict, receipts: Path,
             declared=declared, apply_nonce=apply_nonce,
             postimage_verified_at=start, challenge=challenge,
             postimage_sha256=postimage_sha256)
+        if enrolled.get("require_witnesses") is True:
+            for observation in evidence["results"]:
+                check_id = _id(observation["id"])
+                witness_path = (directory / "witnesses" /
+                                (apply_nonce + "." + provider + "." +
+                                 check_id + ".json"))
+                doc, witness_sha = _private_file(witness_path)
+                deny_if(witness_sha != observation["witness_sha256"],
+                        "CAPABILITY_ACCEPTANCE_WITNESS_DIGEST_DRIFT")
+                validate_witness(
+                    doc, plan=plan, enrolled=enrolled, provider=provider,
+                    result=observation, apply_nonce=apply_nonce,
+                    postimage_sha256=postimage_sha256, challenge=challenge,
+                    postimage_verified_at=start,
+                    proof_observed_at=dt.datetime.fromisoformat(
+                        evidence["observed_at"]))
         verified.append(provider)
         evidence_digests[provider] = evidence_digest
     return {"verified_providers": verified, "verified_checks": len(checks),

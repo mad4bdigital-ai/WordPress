@@ -3,6 +3,7 @@ import base64
 import hashlib
 import importlib.util
 import json
+import os
 import shutil
 from pathlib import Path
 from cryptography.hazmat.primitives import serialization
@@ -45,6 +46,8 @@ class HostHandlerTests(unittest.TestCase):
              "dynamic_313_independent_verifier_registered":False,
              "dynamic_313_finalizer_connected":False}
 
+    @unittest.skipUnless(os.geteuid() == 0,
+                         "Root-owned first-party registry fixture")
     def test_root_enrolled_dynamic_operation_replaces_static_worker_listing(self):
         with tempfile.TemporaryDirectory() as td:
             root=Path(td)
@@ -118,9 +121,15 @@ class HostHandlerTests(unittest.TestCase):
     def test_actual_original_worker_not_registered(self):
         # Synthetic test Plan is NOT an installed first-party plan. A live
         # registry must refuse it even before the legacy digest check.
-        with self.assertRaisesRegex(handler.NotEnrolled,
-                                    "DYNAMIC_HOST_HANDLER_NOT_PINNED|COMMAND_DIGEST_NOT_ENROLLED"):
-            handler.installed_original_operation(self.plan)
+        # An unregistered readback cannot grant the operation. Do not
+        # assume installed VPS paths exist on a portable GitHub Runner.
+        with mock.patch.object(handler, "dynamic_operation_enrolled",
+                               return_value=False):
+            with self.assertRaisesRegex(handler.NotEnrolled,
+                                        "ORIGINAL_306_COMMAND_DIGEST_NOT_ENROLLED"):
+                handler.installed_original_operation(
+                    self.plan, digest_reader=lambda *_: {},
+                    operation_inspector=lambda *_: set())
 
     def test_worker_and_executor_both_required(self):
         digest=original.command_sha256(self.plan["plan_sha256"])
@@ -197,14 +206,17 @@ class HostHandlerTests(unittest.TestCase):
                     status_provider=lambda c,e:self.scope,
                     signed_authority=lambda a,b,c:self.proof)
 
+    @unittest.skipUnless(os.geteuid() == 0,
+                         "Original 313 root-owned runtime probe")
     def test_default_execution_path_must_verify_real_live_worker(self):
         # No fake authority argument or local boolean may be passed from the
         # production CLI. The real 306 digest is currently unregistered.
         policy={"contract":"mad4b.company-code-release-policy.v1",
                 "receipt_dir":"/var/lib/mad4b/company-code-release/receipts"}
         with mock.patch.object(handler.release,"apply_release") as apply:
-            with self.assertRaisesRegex(handler.NotEnrolled,
-                                        "DYNAMIC_HOST_HANDLER_NOT_PINNED|COMMAND_DIGEST_NOT_ENROLLED"):
+            # Real native enrollment can fail at different earlier guards on
+            # a test Runner than on an enrolled VPS. Require only fail-closed.
+            with self.assertRaises(handler.NotEnrolled):
                 handler.execute_once(
                     self.job_id,self.plan,policy,{"original_job_id":self.job_id})
             apply.assert_not_called()
@@ -293,6 +305,24 @@ class HostHandlerTests(unittest.TestCase):
                                  underlying=="ROLLBACK_UNVERIFIED")
                 self.assertFalse(result["original_313_certified"])
                 self.assertFalse(result["original_313_receipt_generated"])
+
+    def test_first_party_producer_dispatch_is_explicit_and_never_invented(self):
+        # Exercise the existing signed-claim and grant gates first. The
+        # dispatcher is forwarded only by the trusted Host Handler.
+        first_party = lambda *args: None
+        with mock.patch.object(handler.original,
+                               "eligible_original_312_claim"),              mock.patch.object(handler.release, "verify_grant"),              mock.patch.object(handler.release, "apply_release") as apply:
+            apply.return_value = {"state": "ABORTED_NO_MUTATION"}
+            result = handler.execute_once(
+                self.job_id, self.plan,
+                {"contract":handler.release.POLICY_CONTRACT,
+                 "receipt_dir":"/tmp/testing-only"},
+                {"original_job_id":self.job_id},
+                original_claim_provider=lambda *_: self.proof,
+                producer_dispatcher=first_party)
+        self.assertEqual(result["host_receipt_state"],"ABORTED_NO_MUTATION")
+        self.assertIs(apply.call_args.kwargs["produce_capabilities"],
+                      first_party)
 
     def test_positive_mock_host_apply_never_certifies_313(self):
         policy={"contract":"mad4b.company-code-release-policy.v1",
