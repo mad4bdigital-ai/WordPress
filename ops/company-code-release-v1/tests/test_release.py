@@ -151,8 +151,8 @@ class CodeReleaseTests(unittest.TestCase):
     def crash_after_first_written(self):
         second = self.two_file_transaction()
         original_atomic = release.atomic_write
-        def crash(path, data, mode=0o644):
-            result = original_atomic(path, data, mode)
+        def crash(path, data, mode=0o644,**kwargs):
+            result = original_atomic(path, data, mode, **kwargs)
             if path == self.target:
                 raise KeyboardInterrupt('simulated killed worker after first file')
             return result
@@ -218,8 +218,8 @@ class CodeReleaseTests(unittest.TestCase):
         second = self.two_file_transaction()
         original_atomic=release.atomic_write
         from unittest.mock import patch
-        def write_with_external_edit(path,data,mode=0o644):
-            value=original_atomic(path,data,mode)
+        def write_with_external_edit(path,data,mode=0o644,**kwargs):
+            value=original_atomic(path,data,mode,**kwargs)
             if path==self.target:
                 second.write_text('<?php echo "foreign second file";')
             return value
@@ -283,8 +283,8 @@ class CodeReleaseTests(unittest.TestCase):
         self.assertEqual(result['state'],'APPLIED_VERIFIED',result)
         from unittest.mock import patch
         atomic_original=release.atomic_write
-        def crash(path,data,mode=0o644):
-            response=atomic_original(path,data,mode)
+        def crash(path,data,mode=0o644,**kwargs):
+            response=atomic_original(path,data,mode,**kwargs)
             if path==second:
                 raise KeyboardInterrupt('simulate SIGKILL during rollback')
             return response
@@ -363,8 +363,8 @@ class CodeReleaseTests(unittest.TestCase):
         second,_=self.crash_during_signed_rollback()
         original=release.atomic_write
         from unittest.mock import patch
-        def concurrent(path,data,mode=0o644):
-            result=original(path,data,mode)
+        def concurrent(path,data,mode=0o644,**kwargs):
+            result=original(path,data,mode,**kwargs)
             if path==second:
                 self.target.write_text('<?php echo "foreign while restoring";')
             return result
@@ -387,6 +387,71 @@ class CodeReleaseTests(unittest.TestCase):
         with self.assertRaisesRegex(release.Denied,'APPLY_INTENT_IDENTITY_DRIFT'):
             release.open_apply_intents(self.plan,self.receipts)
         self.assertIn('NEW',self.target.read_text())
+
+    def test_apply_and_signed_rollback_preserve_tenant_file_owner_and_mode(self):
+        import os, stat
+        os.chmod(self.target,0o664)
+        self.plan=release.make_plan(self.request,self.policy)
+        before=self.target.stat()
+        outcome=self.authorized_apply()
+        self.assertEqual(outcome['state'],'APPLIED_VERIFIED',outcome)
+        after=self.target.stat()
+        self.assertEqual((after.st_uid,after.st_gid,stat.S_IMODE(after.st_mode)),
+                         (before.st_uid,before.st_gid,0o664))
+        signed=self.signed_grant_with_nonce('rollback',
+            'tenant_metadata_rollback_2026')
+        result=release.rollback_release(self.plan,self.policy,signed,self.receipts,
+                                       runtime_check=lambda p,c:None)
+        self.assertEqual(result['state'],'ROLLBACK_VERIFIED',result)
+        restored=self.target.stat()
+        self.assertEqual((restored.st_uid,restored.st_gid,
+                          stat.S_IMODE(restored.st_mode)),
+                         (before.st_uid,before.st_gid,0o664))
+        self.assertIn('OLD',self.target.read_text())
+
+    def test_signed_plan_blocks_tenant_chmod_without_content_change(self):
+        import os
+        os.chmod(self.target,0o664)
+        with self.assertRaisesRegex(release.Denied,'TARGET_METADATA_DRIFT'):
+            self.authorized_apply()
+        self.assertIn('OLD',self.target.read_text())
+        self.assertFalse(list(self.receipts.glob('*.intent.json')))
+
+    def test_jit_cas_blocks_metadata_edit_after_backup(self):
+        import os
+        from unittest.mock import patch
+        actual=release.assert_target_preimage
+        def changed(root,row):
+            os.chmod(self.target,0o664)
+            return actual(root,row)
+        with patch.object(release,'assert_target_preimage',side_effect=changed):
+            result=self.authorized_apply()
+        self.assertEqual(result['state'],'ABORTED_NO_MUTATION',result)
+        self.assertIn('TARGET_JIT_METADATA_DRIFT',result['failed_reason'])
+        self.assertIn('OLD',self.target.read_text())
+
+    def test_rollback_of_new_file_fsyncs_deletion_directory(self):
+        from unittest.mock import patch
+        new_file=self.site/'wp-content/mu-plugins/mad4b-new.php'
+        request=json.loads(json.dumps(self.request))
+        request['files'][0]['target']='wp-content/mu-plugins/mad4b-new.php'
+        request['files'][0]['expected_before_sha256']=None
+        self.plan=release.make_plan(request,self.policy)
+        result=self.authorized_apply()
+        self.assertEqual(result['state'],'APPLIED_VERIFIED',result)
+        self.assertTrue(new_file.exists())
+        original=release.fsync_parent_directory
+        seen=[]
+        def observed(path):
+            seen.append(path)
+            return original(path)
+        signed=self.signed_grant_with_nonce('rollback','signed_new_file_rollback_2026')
+        with patch.object(release,'fsync_parent_directory',side_effect=observed):
+            rolled=release.rollback_release(self.plan,self.policy,signed,self.receipts,
+                                           runtime_check=lambda p,c:None)
+        self.assertEqual(rolled['state'],'ROLLBACK_VERIFIED',rolled)
+        self.assertFalse(new_file.exists())
+        self.assertIn(new_file,seen)
 
     def test_plan_is_non_mutating_and_from_git_commit(self):
         self.assertEqual(self.target.read_text(), "<?php echo 'OLD';\n")

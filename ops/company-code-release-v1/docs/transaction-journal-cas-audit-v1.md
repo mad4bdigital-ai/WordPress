@@ -17,10 +17,16 @@ The default **preflight** runs inside the exact bound target container using
 its signed Git commit. It rejects invalid PHP **before the first file write**.
 It does not treat PHP syntax as proof of business behavior or include order.
 
-For each file, the Executor revalidates the expected original SHA immediately
-before `atomic_write`, even when a previous file in the same release has
-already been applied. Atomic write fsyncs the new file **and its parent
+For each file, the Executor revalidates the expected original SHA **and
+signed original UID/GID/mode** immediately before `atomic_write`, even when a
+previous file in the same release has already been applied. Existing tenant
+files retain their original owner, group and mode through Apply and Rollback;
+new files continue using the original code release policy mode. This prevents
+a root executor from silently turning a `www-data`-owned Plugin file into a
+root-owned file, or discarding Wayfatours' original group permission. Atomic write fsyncs the new file **and its parent
 directory** to make the private journal durable before live code is changed.
+A Rollback that removes a newly introduced file also fsyncs its parent
+directory, so an acknowledged deletion is durable.
 
 ## Exact journal contracts
 
@@ -71,15 +77,20 @@ on the tenant and fails admission before any write.
 
 ## Test and rollout status
 
-- Focused release tests: **91/91** locally, including a simulated worker kill
+- Focused release tests: **95/95** locally, including a simulated worker kill
 after the first file, a second kill during rollback, foreign mid-release
 and mid-rollback edits, identity mismatch, preflight parser error, backup
 integrity, and one-time nonce behavior.
 - Original 313 targeted VPS tests: **62/62** (includes root-only admission,
 Host state mapping, independent readback, 305/312 signed lifecycle fixtures).
-- Unprivileged hermetic CI suites: Release 91, Original 313 contract 17,
+- Unprivileged hermetic CI suites: Release 95, Original 313 contract 17,
 independent readback 10, full cycle 5. The Root Admission tests remain
 explicitly VPS-root-only, not skipped with a fake success.
+- **Tenant file metadata:** live Wayfatours' native Experience module is
+`www-data:www-data` mode `0664`. On an isolated temporary fixture (not live
+WordPress) the root-owned executor's atomic update preserved exactly
+UID `33`, GID `33` and mode `0664` after changing PHP bytes. Signed-plan
+metadata CAS and signed rollback parity are independently unit-tested.
 - Native PHP hook observer: **4/4** fixture states, only read-only observations
 of the live WordPress runtime.
 - Earlier broad `test_exact_code_plan_enrollment.py`: original four preimage

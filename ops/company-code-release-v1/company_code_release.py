@@ -553,10 +553,17 @@ def make_plan(spec: dict, policy: dict) -> dict:
         old = dest.read_bytes() if dest.exists() else None
         old_digest = digest(old) if old is not None else None
         fail_if(before != old_digest, "TARGET_PREIMAGE_MISMATCH:" + target)
+        baseline = dest.stat() if old is not None else None
         rows.append({
             "source": source, "target": target,
             "source_sha256": digest(src),
             "expected_before_sha256": before,
+            # Preserve tenant-owned existing file metadata, including
+            # Wayfatours' www-data ownership and group-writable mode.
+            "expected_before_mode": (stat.S_IMODE(baseline.st_mode)
+                                     if baseline is not None else None),
+            "expected_before_uid": baseline.st_uid if baseline is not None else None,
+            "expected_before_gid": baseline.st_gid if baseline is not None else None,
             "source_bytes": len(src),
             "source_mode": 0o644,  # executable scripts do not run as part of release
         })
@@ -655,6 +662,13 @@ def confirm_plan(plan: dict, policy: dict, *, expect_preimage: bool) -> None:
                         else row["source_sha256"])
             valid = actual == expected
         fail_if(not valid, "TARGET_CONTENT_DRIFT:" + target)
+        if row.get("expected_before_mode") is not None and target_file.is_file():
+            metadata = target_file.stat()
+            fail_if((stat.S_IMODE(metadata.st_mode), metadata.st_uid,
+                     metadata.st_gid) !=
+                    (row["expected_before_mode"], row["expected_before_uid"],
+                     row["expected_before_gid"]),
+                    "TARGET_METADATA_DRIFT:" + target)
 
 
 def grant_message(grant: dict) -> bytes:
@@ -687,25 +701,45 @@ def verify_grant(plan: dict, policy: dict, grant: dict, action: str) -> None:
         raise Denied("BROKER_SIGNATURE_OR_EXPIRY_INVALID") from exc
 
 
-def atomic_write(path: Path, data: bytes, mode: int = 0o644) -> None:
+def fsync_parent_directory(path: Path) -> None:
+    """Make renames and newly created/deleted directory entries durable."""
+    dir_fd = os.open(str(path.parent), os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        os.fsync(dir_fd)
+    finally:
+        os.close(dir_fd)
+
+
+def atomic_write(path: Path, data: bytes, mode: int = 0o644,
+                 *, preserve_existing_mode: bool = False) -> None:
+    """Atomic replacement without silently changing tenant file ownership.
+
+    Existing company-owned plugin files often belong to www-data, while the
+    enrolled Host executor runs as root. A root-created temp file replacing
+    one of those paths must inherit the original UID/GID. For source upgrades,
+    the signed original mode is also preserved; backup restores explicitly
+    pass their stored original mode. New files still use release policy mode.
+    """
     no_link(path)
     fail_if(not path.parent.is_dir(), "TARGET_PARENT_NOT_PRESENT")
+    fail_if(path.exists() and not path.is_file(), "NON_REGULAR_ATOMIC_TARGET")
+    previous = path.stat() if path.is_file() else None
+    desired_mode = (stat.S_IMODE(previous.st_mode)
+                    if preserve_existing_mode and previous is not None else mode)
     fd, name = tempfile.mkstemp(prefix=".mad4b-code-release-", dir=path.parent)
     try:
         with os.fdopen(fd, "wb") as stream:
-            os.fchmod(stream.fileno(), mode)
+            if previous is not None:
+                temporary = os.fstat(stream.fileno())
+                if (temporary.st_uid != previous.st_uid or
+                        temporary.st_gid != previous.st_gid):
+                    os.fchown(stream.fileno(), previous.st_uid, previous.st_gid)
+            os.fchmod(stream.fileno(), desired_mode)
             stream.write(data)
             stream.flush()
             os.fsync(stream.fileno())
         os.replace(name, path)
-        # A file fsync alone does not make its renamed directory entry
-        # durable across sudden host power loss. This also protects the
-        # write-ahead intent before touching any live PHP target.
-        dir_fd = os.open(str(path.parent), os.O_RDONLY | os.O_DIRECTORY)
-        try:
-            os.fsync(dir_fd)
-        finally:
-            os.close(dir_fd)
+        fsync_parent_directory(path)
     finally:
         if os.path.exists(name):
             os.unlink(name)
@@ -838,6 +872,13 @@ def assert_target_preimage(root: Path, row: dict) -> None:
     actual = digest(safe_regular(path)) if path.is_file() else None
     fail_if(actual != row["expected_before_sha256"],
             "TARGET_JIT_PREIMAGE_DRIFT:" + row["target"])
+    if row.get("expected_before_mode") is not None and path.is_file():
+        metadata = path.stat()
+        fail_if((stat.S_IMODE(metadata.st_mode), metadata.st_uid,
+                 metadata.st_gid) !=
+                (row["expected_before_mode"], row["expected_before_uid"],
+                 row["expected_before_gid"]),
+                "TARGET_JIT_METADATA_DRIFT:" + row["target"])
 
 
 def php_lint(plan: dict) -> None:
@@ -984,6 +1025,7 @@ def restore_backup(plan: dict, backup: dict) -> None:
         if content is None:
             if path.is_file():
                 path.unlink()
+                fsync_parent_directory(path)
         else:
             atomic_write(path, content, backup_item["mode"])
 
@@ -1141,7 +1183,8 @@ def apply_release(plan: dict, policy: dict, grant: dict, receipt_dir: Path,
                 data = git_bytes(Path(plan["git_root"]), plan["git_commit"], row["source"])
                 path = root / row["target"]
                 assert_target_preimage(root, row)
-                atomic_write(path, data, row["source_mode"])
+                atomic_write(path, data, row["source_mode"],
+                             preserve_existing_mode=True)
                 changed.append(row["target"])
             confirm_plan(plan, policy, expect_preimage=False)
             validate_code(plan)
