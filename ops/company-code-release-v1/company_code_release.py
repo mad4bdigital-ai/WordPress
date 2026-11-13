@@ -749,6 +749,16 @@ def release_admission_doctor(
             row.get("dynamic_313_independent_verifier_registered") is True)
         state["dynamic_313_finalizer_connected"] = (
             row.get("dynamic_313_finalizer_connected") is True)
+        # Read independently from the ORIGINAL Central WordPress trust config.
+        # This reports the previously hidden, already-enrolled 313 capability
+        # without conflating it with an enrolled exact 306 Job or release grant.
+        for key in (
+            "central_313_status_observed",
+            "central_313_operational_ready",
+            "central_313_finalizer_configured",
+            "central_313_independent_verifier_registered",
+        ):
+            state[key] = row.get(key) is True
         state["broker_dispatch_registration"] = (
             "registered_not_execution_authority" if
             row.get("company_code_release_dispatch_ability_registered") is True
