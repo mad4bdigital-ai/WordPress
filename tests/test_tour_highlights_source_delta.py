@@ -18,17 +18,37 @@ class TourHighlightsReviewedSource(unittest.TestCase):
     def setUpClass(cls):
         cls.review=json.loads(REVIEW.read_text())
 
+    def reviewed_historical_main(self, actual):
+        # PR813 added three small *independent* early privacy/reconciliation
+        # hooks after the PR808 Tour Highlights overlay. Remove only these
+        # exact SHA-bound additions before checking the historical certificate.
+        meta=json.loads((ROOT/'docs/release-coverage/pr814-pr813-destination-preview-additive-20261114.json').read_text())['original_plugin_entry']
+        self.assertEqual(meta['path'],MAIN)
+        self.assertEqual((len(actual),hashlib.sha256(actual).hexdigest()),
+                         (meta['current_bytes'],meta['current_sha256']))
+        lines=actual.splitlines(True)
+        for add in reversed(meta['additions']):
+            pos=add['start_line']
+            section=b''.join(lines[pos:pos+add['line_count']])
+            self.assertEqual(hashlib.sha256(section).hexdigest(),add['sha256'])
+            del lines[pos:pos+add['line_count']]
+        historic=b''.join(lines)
+        self.assertEqual((len(historic),hashlib.sha256(historic).hexdigest()),
+                         (meta['historical_bytes'],meta['historical_sha256']))
+        return historic
+
     def test_exact_old_bootstrap_reconstructed_with_only_three_new_lines(self):
-        original=current_source_verified()
+        candidate=self.reviewed_historical_main((ROOT/MAIN).read_bytes())
+        original=original_bootstrap_bytes(candidate)
         self.assertEqual(hashlib.sha256(original).hexdigest(),BASE_SHA256)
-        self.assertEqual(hashlib.sha256((ROOT/MAIN).read_bytes()).hexdigest(),CANDIDATE_SHA256)
+        self.assertEqual(hashlib.sha256(candidate).hexdigest(),CANDIDATE_SHA256)
         self.assertEqual(self.review['reviewed_bootstrap_sha256'],CANDIDATE_SHA256)
-        self.assertEqual((ROOT/MAIN).read_bytes().count(ANCHOR+INSERT),1)
+        self.assertEqual(candidate.count(ANCHOR+INSERT),1)
         self.assertEqual(len(INSERT.splitlines()),3)
-        for altered in ((ROOT/MAIN).read_bytes()+b'\n',
-                        (ROOT/MAIN).read_bytes().replace(b'JetEngine AJAX',b'Unverified AJAX'),
+        for altered in (candidate+b'\n',
+                        candidate.replace(b'JetEngine AJAX',b'Unverified AJAX'),
                         original,
-                        (ROOT/MAIN).read_bytes().replace(INSERT,b'')):
+                        candidate.replace(INSERT,b'')):
             with self.assertRaises(SourceOverlayDenied):
                 original_bootstrap_bytes(altered)
 
@@ -51,11 +71,34 @@ class TourHighlightsReviewedSource(unittest.TestCase):
                 path=ROOT/row['path']
                 self.assertTrue(path.is_file() and not path.is_symlink())
                 actual=path.read_bytes()
-                if row['path'].endswith('/class-mad4b-scp-tour-highlights-v1.php'):
+                if row['path']==MAIN:
+                    historical=self.reviewed_historical_main(actual)
+                    self.assertEqual((len(historical),hashlib.sha256(historical).hexdigest()),
+                                     (row['bytes'],row['sha256']))
+                elif row['path'].endswith('/class-mad4b-scp-tour-highlights-v1.php'):
                     self.verify_hook_readiness_successor(row,actual)
+                elif row['path'].endswith('/class-mad4b-scp-tour-highlights-presentation-v1.php'):
+                    self.verify_destination_preview_addition(row,actual)
                 else:
                     self.assertEqual(len(actual),row['bytes'])
                     self.assertEqual(hashlib.sha256(actual).hexdigest(),row['sha256'])
+
+    def verify_destination_preview_addition(self,row,actual):
+        review=json.loads((ROOT/'docs/release-coverage/pr814-pr813-destination-preview-additive-20261114.json').read_text())
+        item=review['presentation']
+        self.assertEqual(item['path'],row['path'])
+        self.assertEqual((item['historical_bytes'],item['historical_sha256']),
+                         (row['bytes'],row['sha256']))
+        self.assertEqual((len(actual),hashlib.sha256(actual).hexdigest()),
+                         (item['current_bytes'],item['current_sha256']))
+        lines=actual.splitlines(True)
+        start=item['insertion_line']
+        insertion=b''.join(lines[start:start+item['insertion_line_count']])
+        self.assertEqual(hashlib.sha256(insertion).hexdigest(),item['insertion_sha256'])
+        original=b''.join(lines[:start]+lines[start+item['insertion_line_count']:])
+        self.assertEqual((len(original),hashlib.sha256(original).hexdigest()),
+                         (row['bytes'],row['sha256']))
+        self.assertFalse(review['production_release_approved'])
 
     def verify_hook_readiness_successor(self,row,actual):
         review=json.loads((ROOT/'docs/release-coverage/pr814-tour-highlights-hook-readiness-successor-20261114.json').read_text())

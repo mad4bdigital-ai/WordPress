@@ -514,10 +514,13 @@ if ( $mad4b_mcp_mu_profile_enrolled ) {
 	$mad4b_mcp_mu_effective_environment = (string) ( $mad4b_mcp_mu_binding['environment'] ?? '' );
 	// A disposable Local/Development PHP runtime with no opcode cache cannot
 	// execute a stale opcode generation. Do not require a package convergence
-	// receipt for that *cache-free* case. If OPcache is active, the original
+	// receipt for that *cache-free* case. An unavailable status function is
+	// NOT evidence of a disabled, loaded opcode cache (disable_functions).
+	// If OPcache is active, the original
 	// manifest/receipt gate still applies; Production is never included here.
 	$mad4b_mcp_mu_cache_free_local = in_array( $mad4b_mcp_mu_effective_environment, array( 'local', 'development' ), true )
-		&& ( ! function_exists( 'opcache_get_status' ) || false === opcache_get_status( false ) );
+		&& ( ! extension_loaded( 'Zend OPcache' )
+			|| ( function_exists( 'opcache_get_status' ) && false === opcache_get_status( false ) ) );
 	$mad4b_mcp_mu_native_opcache = 'staging' === $mad4b_mcp_mu_effective_environment
 		|| $mad4b_mcp_mu_cache_free_local;
 	if ( $mad4b_mcp_mu_native_opcache ) {

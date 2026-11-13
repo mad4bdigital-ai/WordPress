@@ -31,6 +31,18 @@ final class MAD4B_Tour_Highlights_Presentation_V1 {
             if(is_readable($splitJs)){
                 wp_add_inline_script('tour-journey-ui',(string)file_get_contents($splitJs));
             }
+            // Retain the existing JetEngine tour listing as the only data
+            // source. Preview is lazy, same-origin and informational only.
+            $destinationCss=__DIR__.'/../assets/tour-destination-quick-preview.css';
+            $destinationJs=__DIR__.'/../assets/tour-destination-quick-preview.js';
+            if(is_readable($destinationCss) && is_readable($destinationJs)){
+                wp_register_style('tour-destination-preview',false,['tour-highlights-v1'],'1.0.0');
+                wp_enqueue_style('tour-destination-preview');
+                wp_add_inline_style('tour-destination-preview',(string)file_get_contents($destinationCss));
+                wp_register_script('tour-destination-preview',false,['tour-journey-ui'],'1.0.0',true);
+                wp_enqueue_script('tour-destination-preview');
+                wp_add_inline_script('tour-destination-preview',(string)file_get_contents($destinationJs));
+            }
         }
     }
 

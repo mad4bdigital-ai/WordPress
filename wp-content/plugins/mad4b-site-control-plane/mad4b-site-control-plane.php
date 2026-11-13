@@ -15,6 +15,9 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 // Always register the managed AI credential fence before the foreign REST
 // zero-touch return. Missing/revoked enrollment must fail closed on every site.
 require_once __DIR__ . '/includes/class-mad4b-scp-ai-only-early-auth-guard.php';
+// PR813's early privacy fence must survive foreign REST/CLI zero-touch routes.
+// Its source is already present; preserve all newer PR814 security hooks.
+require_once __DIR__ . '/includes/class-mad4b-scp-private-operations-boundary.php';
 
 // Request-local, O(1) bootstrap timing markers. No persistent cache, DB
 // writes, user context, file hashing or authority changes. The registration
@@ -520,6 +523,9 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-google-drive-context.php'
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-google-revocation-remote.php';
 // Provider-neutral health, human OAuth handoff and approved refresh lifecycle.
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-connection-center.php';
+// Existing PR813 read-only Core-signed code inventory comparison; not a new
+// publisher, broker, grant or certificate. Retain PR814 source review separately.
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-company-code-reconciliation.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-context-preflight.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-context-intelligence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-context-provider-gateway.php';
@@ -894,6 +900,7 @@ if ( ! $mad4b_passive_admin_read || '' !== $mad4b_diagnostic_catalog_target ) {
 	MAD4B_SCP_Dependency_Impact_Graph::boot();
 	MAD4B_SCP_Operation_Registry::boot();
 	MAD4B_SCP_Native_Source_Release_Review::boot();
+	MAD4B_SCP_Company_Code_Reconciliation::boot();
 	MAD4B_SCP_Operation_Pipeline::boot();
 	MAD4B_SCP_Provider_Autopilot::boot();
 	MAD4B_SCP_Plugin_Transaction::boot();

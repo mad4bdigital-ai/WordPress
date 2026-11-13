@@ -103,6 +103,63 @@
   ],
   "reviewed_capabilities": [
     {
+      "id": "admin_asset:wp-content/plugins/mad4b-site-control-plane/assets/tour-destination-quick-preview.js",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/test_pr813_destination_additive_reconcile.py"
+      ],
+      "owner_role": "Repository UI and Browser source reviewer; read-only native Destination Quick Preview",
+      "review_rationale": "Same-origin native Elementor destination Quick Preview built from JetEngine term URLs; does not clone destination forms, create independent data store or enable commerce mutations.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing native Elementor UI and Browser security controls cover this bounded visual interaction, no new operation category.",
+      "execution_note": "Source-contract regression passed; visual page / WPML parity requires authorized original-site browser QA."
+    },
+    {
+      "id": "admin_asset:wp-content/plugins/mad4b-site-control-plane/assets/tour-destination-quick-preview.css",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/test_pr813_destination_additive_reconcile.py"
+      ],
+      "owner_role": "Repository UI and Browser source reviewer; read-only native Destination Quick Preview",
+      "review_rationale": "Readonly Elementor Brand Kit and responsive dialog CSS for destination information; no editor markup replacement or publish permission.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing native Elementor UI and Browser security controls cover this bounded visual interaction, no new operation category.",
+      "execution_note": "Source-contract regression passed; visual page / WPML parity requires authorized original-site browser QA."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tour-highlights-presentation-v1.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/test_pr813_destination_additive_reconcile.py"
+      ],
+      "owner_role": "Source reviewer — native JetEngine/Elementor Tour Highlights Presentation, no WordPress write",
+      "review_rationale": "Existing native Elementor view-only Tour Highlights presentation is retained. One scoped Quick Preview handler imports the original JetEngine destination cards without changing editorial rights, taxonomy writes or Original313 authority.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The native view-only PHP presentation is already within governed UI, platform and security controls; no new trust or write operation is created.",
+      "execution_note": "Source acceptance and SHA-bound additive regression only; authorized real-site browser verification still pending."
+    },
+    {
       "regression_tests": [
         "tests/native_runtime_diagnostics_contract.py"
       ],
@@ -3740,24 +3797,84 @@
   "change_impact_notes": "For each newly introduced registry item, registered MAD4B Ability, PHP service or Admin asset, add a reviewed_capabilities entry with exact id, nonempty existing control_ids, a regression test changed in this PR, owner_role, review_rationale, and status 'reviewed_for_ci_only'. CI fails on uncovered introductions; no entry grants Production. Existing runtime/config source additions and modifications require reviewed_changes entries keyed by exact Git blob, impacted control IDs and test changed in the same PR. Every new capability must explicitly decide whether to expand the checklist or reuse existing controls with a rationale. Static REST/AJAX/Cron surface discoveries remain candidates, never runtime certification.",
   "reviewed_changes": [
     {
-      "path": "wp-content/plugins/mad4b-site-control-plane/bootstrap/mad4b-mcp-adapter-mu-bootstrap.php",
-      "source_blob_sha": "aac27ff9239b7bdcae916ab904a007f74eb9333c",
-      "review_rationale": "Exact code path recognizes OPcache-disabled Local and Development processes as cache-coherent. If PHP OPcache is active, existing manifest, immutable package verification and next-request cache gate remain mandatory. Staging path remains unchanged; Production is never covered by this exception. No change to OAuth, grants, MCP read/write permissions or enrollment.",
-      "owner_role": "Repository source reviewer - cache-free Local/Development MU bootstrap only; no production/Host authorization",
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "5403ea6ecd7962c8cee51dc164bc9da0ecdbed04",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/test_pr813_destination_additive_reconcile.py"
+      ],
+      "owner_role": "Repository source reviewer — PR813 exact early privacy and read-only reconciliation, no host grant",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true,
       "needs_new_control": false,
+      "review_rationale": "Restore exact early private Orders/Bookings confidentiality guard before zero-touch exits and existing signed-evidence read-only company code comparison. Preserve every newer PR814 Original305/313, route, source review and delegated operation hook; no arbitrary executable source.",
+      "coverage_reuse_rationale": "Existing security, platform and governance controls enforce rights and read-only evidence checks; no new release Provider or production authorization.",
+      "execution_note": "Existing early private operations PHP regression and new additive checksum regression must pass CI. Original313 and owner approval stay independent."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/assets/tour-destination-quick-preview.css",
+      "source_blob_sha": "7e88c2d46150c68878ab74bdd8fc2924b27b9dcb",
       "control_ids": [
-        "MCP-01",
-        "PROVIDERS-01",
-        "EXECUTION-01"
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
       ],
       "regression_tests": [
-        "tests/test_local_cache_free_bootstrap.py"
+        "tests/test_pr813_destination_additive_reconcile.py"
       ],
-      "coverage_reuse_rationale": "Existing MCP transport and provider execution admission controls apply. No new operation, site-profile authority, or release capability is created.",
-      "execution_note": "CI must run the new real-PHP opcache disabled/enabled negative regression and disposable WordPress Local OAuth browser E2E. This record does not certify signed Original313/Owner Production readiness."
+      "owner_role": "Repository source reviewer — nonauthorizing native destination preview reconciliation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "View-only accessible Destination Quick Preview styling uses the original Elementor document and Brand Kit. Applies to existing Tour Journey UI and does not materialize a second Elementor template or media pipeline.",
+      "coverage_reuse_rationale": "Preserve existing UI/Browser/Platform controls and source review; this change creates no new WordPress Ability or release authority.",
+      "execution_note": "Exact commit CI tests and live authorized Elementor browser verification remain required; no Original313, owner certificate or deployment is granted."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/assets/tour-destination-quick-preview.js",
+      "source_blob_sha": "07f42eec80c7fa73705b2da7120769f2207317fa",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/test_pr813_destination_additive_reconcile.py"
+      ],
+      "owner_role": "Repository source reviewer — nonauthorizing native destination preview reconciliation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Source-only same-origin lazy iframe dialog for native Tour Destination cards. No cloned Elementor content, no extra option commerce action, no automatic new WordPress routes or owner privileges. Dynamic destination terms remain the sole data source.",
+      "coverage_reuse_rationale": "Preserve existing UI/Browser/Platform controls and source review; this change creates no new WordPress Ability or release authority.",
+      "execution_note": "Exact commit CI tests and live authorized Elementor browser verification remain required; no Original313, owner certificate or deployment is granted."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tour-highlights-presentation-v1.php",
+      "source_blob_sha": "20cb805e89789005ccddb2033efb10cc4adf8ad5",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/test_pr813_destination_additive_reconcile.py"
+      ],
+      "owner_role": "Repository source reviewer — nonauthorizing native destination preview reconciliation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Reviewed additive, read-only native Elementor/JetEngine destination Quick Preview enqueue. Preserves original Tour Highlights editorial source, WPML and review status. Requires new source-delta acceptance and cannot certify live destination templates.",
+      "coverage_reuse_rationale": "Preserve existing UI/Browser/Platform controls and source review; this change creates no new WordPress Ability or release authority.",
+      "execution_note": "Exact commit CI tests and live authorized Elementor browser verification remain required; no Original313, owner certificate or deployment is granted."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tour-highlights-v1.php",

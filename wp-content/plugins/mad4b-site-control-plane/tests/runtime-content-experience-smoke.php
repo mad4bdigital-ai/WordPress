@@ -918,6 +918,18 @@ try {
 	$missing_expiry = $rights_usage;
 	$missing_expiry[0]['license_expires_on'] = '';
 	update_post_meta( $post_id, 'ci_gallery_usage', $missing_expiry );
+	// A site-neutral advisory policy records missing expiry as a warning, not
+	// a licence claim. This test's strict negative assertions must explicitly
+	// select the existing enforced policy instead of assuming Production
+	// implies enforcement (the installed policy is company-configurable).
+	$advisory_missing_expiry = $rights_guard();
+	$check( ! is_wp_error( $advisory_missing_expiry )
+		&& 'advisory' === ( $advisory_missing_expiry['license_mode'] ?? '' )
+		&& in_array( 'required_expiry_missing', array_column( $advisory_missing_expiry['license_warnings'] ?? array(), 'code' ), true )
+		&& 'not_determined_by_system' === ( $advisory_missing_expiry['legal_reuse_permission'] ?? '' ),
+		'Advisory rights must warn about missing expiry without granting reuse permission.' );
+	$strict_rights_mode = static function ( $mode ) { return 'enforced'; };
+	add_filter( 'mad4b_remote_media_rights_mode', $strict_rights_mode, PHP_INT_MAX );
 	$missing_expiry_result = $rights_guard();
 	$check( is_wp_error( $missing_expiry_result ) &&
 		'mad4b_content_experience_media_rights_expiry_required' === $missing_expiry_result->get_error_code(),
@@ -938,6 +950,7 @@ try {
 		2 === (int) $valid_rights['checked_item_count'] &&
 		'2099-12-31' === $valid_rights['nearest_expiry'],
 		'Valid persisted gallery rights must preserve exact expiry identity.' );
+	remove_filter( 'mad4b_remote_media_rights_mode', $strict_rights_mode, PHP_INT_MAX );
 	$still_blocked = MAD4B_SCP_Content_Experience_Runtime::operation_plan( 'ci-trip', 'publish', $publish_input );
 	$check( is_wp_error( $still_blocked ) &&
 		'mad4b_publication_brand_core_recovery_required' === $still_blocked->get_error_code() &&
