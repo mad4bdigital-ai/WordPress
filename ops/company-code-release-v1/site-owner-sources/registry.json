@@ -1,0 +1,55 @@
+{
+  "contract": "mad4b.site-owner-source-registry.v1",
+  "release_boundary": {
+    "deployable": false,
+    "auto_apply": false,
+    "ownership_transfer": false,
+    "requires": "separately_authorized_company_code_release_and_independent_readback"
+  },
+  "capabilities": [
+    {
+      "capability": "destination_activation",
+      "runtime_symbol": "destinations_activation_allowed",
+      "variants": [
+        {
+          "site": "wayfatours",
+          "environment": "production",
+          "runtime_path": "wp-content/plugins/destinations-compatibility/includes/activation.php",
+          "source_artifact": "ops/company-code-release-v1/site-owner-sources/files/shared/destinations-compatibility/activation.php",
+          "sha256": "24e3262d5ce95fb999d08497defd167faf86c95fe28d4bfae72bccca443b4404",
+          "owner_kind": "native-plugin"
+        },
+        {
+          "site": "tours.dev",
+          "environment": "staging",
+          "runtime_path": "wp-content/plugins/destinations-compatibility/includes/activation.php",
+          "source_artifact": "ops/company-code-release-v1/site-owner-sources/files/shared/destinations-compatibility/activation.php",
+          "sha256": "24e3262d5ce95fb999d08497defd167faf86c95fe28d4bfae72bccca443b4404",
+          "owner_kind": "native-plugin"
+        }
+      ]
+    },
+    {
+      "capability": "destination_navigation",
+      "runtime_symbol": "native_destinations_sale_term_index",
+      "variants": [
+        {
+          "site": "wayfatours",
+          "environment": "production",
+          "runtime_path": "wp-content/mu-plugins/product-navigation-native-destinations.php",
+          "source_artifact": "ops/company-code-release-v1/site-owner-sources/files/wayfatours/product-navigation-native-destinations.php",
+          "sha256": "7845de6243bce848103296a9f3cdd22924498d28d682ac7b8d9d68b7a568927a",
+          "owner_kind": "mu-plugin"
+        },
+        {
+          "site": "tours.dev",
+          "environment": "staging",
+          "runtime_path": "wp-content/plugins/mad4b-platform/modules/presentation/product-navigation-native-destinations.php",
+          "source_artifact": "ops/company-code-release-v1/site-owner-sources/files/tours-dev/product-navigation-native-destinations.php",
+          "sha256": "e3bcc77a285e22484769dcebc9aae4f654b02b7b9fe2ab26743bed4cfcdd8e57",
+          "owner_kind": "native-plugin"
+        }
+      ]
+    }
+  ]
+}
