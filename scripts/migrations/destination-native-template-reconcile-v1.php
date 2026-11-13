@@ -101,6 +101,109 @@ function mad4b_dest_patch_map(array &$nodes,int &$found,int &$changed):void{
   }
  });
 }
+/**
+ * Reconcile native Elementor styles only, without replacing original
+ * widgets or overwriting translated content and local company settings.
+ * Colors are Elementor Kit global references, not hardcoded CSS overrides.
+ */
+function mad4b_dest_sync_brand_style(array &$nodes,array $canonical,int &$changed):void{
+ $seedWidgets=[];$seedCards=[];
+ $accordionKeys=[
+  'normal_title_color','hover_title_color','active_title_color',
+  'normal_icon_color','hover_icon_color','active_icon_color',
+  'accordion_background_normal_color','accordion_background_hover_color','accordion_background_active_color',
+  'accordion_border_normal_color','accordion_border_hover_color','accordion_border_active_color',
+  'content_border_color','content_background_color',
+  'accordion_border_normal_border','accordion_border_normal_width',
+  'accordion_border_hover_border','accordion_border_hover_width',
+  'accordion_border_active_border','accordion_border_active_width',
+  'accordion_border_radius','content_border_border','content_border_width',
+  'content_border_radius','content_background_background'
+ ];
+ $cardKeys=['border_color','background_color','border_radius','border_width'];
+ $tree=[$canonical];
+ mad4b_dest_walk($tree,static function($n)use(&$seedWidgets,&$seedCards,$accordionKeys,$cardKeys){
+  $settings=$n['settings']??[];
+  $css=(string)($settings['_css_classes']??$settings['css_classes']??'');
+  if(($n['widgetType']??'')==='nested-accordion' && $css==='destination-native-native-accordion'){
+   if($seedWidgets)return;
+   foreach($accordionKeys as $key){
+    if(!array_key_exists($key,$settings))WP_CLI::error('incomplete Kit accordion contract: '.$key);
+    $seedWidgets['settings'][$key]=$settings[$key];
+   }
+   $seedWidgets['settings']['__globals__']=(array)($settings['__globals__']??[]);
+   $panel=$n['elements'][0]??null;
+   if(($panel['elType']??'')!=='container' || !isset($panel['settings']['border_radius']))
+    WP_CLI::error('missing native accordion panel-radius contract');
+   $seedWidgets['panel_radius']=$panel['settings']['border_radius'];
+  }
+  foreach(['highlights','internal-links'] as $role){
+   if(!str_contains(' '.$css.' ',' destination-native-'.$role.' '))continue;
+   if(isset($seedCards[$role]))continue;
+   foreach($cardKeys as $key){
+    if(!array_key_exists($key,$settings))WP_CLI::error('incomplete Kit card contract: '.$key);
+    $seedCards[$role]['settings'][$key]=$settings[$key];
+   }
+   $seedCards[$role]['settings']['__globals__']=(array)($settings['__globals__']??[]);
+  }
+ });
+ if(!$seedWidgets||count($seedCards)!==2)WP_CLI::error('invalid Kit design contract');
+ $seen=['accordion'=>0,'highlights'=>0,'internal-links'=>0];
+ $sync=static function(array &$target,array $source,array $keys,int &$changed):void{
+  foreach($keys as $k){
+   if(!array_key_exists($k,$source))continue;
+   if(!array_key_exists($k,$target)||$target[$k]!==$source[$k]){
+    $target[$k]=$source[$k];$changed++;
+   }
+  }
+  $globals=$source['__globals__']??[];
+  if($globals){
+   if(!isset($target['__globals__'])||!is_array($target['__globals__']))$target['__globals__']=[];
+   foreach($globals as $key=>$ref){
+    if(!isset($target['__globals__'][$key])||$target['__globals__'][$key]!==$ref){
+      $target['__globals__'][$key]=$ref;$changed++;
+    }
+   }
+  }
+ };
+ mad4b_dest_walk($nodes,static function(&$node)use($seedWidgets,$seedCards,$accordionKeys,$cardKeys,&$changed,&$seen,$sync){
+  $settings=$node['settings']??[];
+  $css=(string)($settings['_css_classes']??$settings['css_classes']??'');
+  if(($node['widgetType']??'')==='nested-accordion'&&$css==='destination-native-native-accordion'){
+   $seen['accordion']++;
+   $sync($node['settings'],$seedWidgets['settings'],$accordionKeys,$changed);
+   if(($node['elements'][0]['elType']??'')!=='container')
+    WP_CLI::error('unexpected native accordion child');
+   if(($node['elements'][0]['settings']['border_radius']??null)!==$seedWidgets['panel_radius']){
+    $node['elements'][0]['settings']['border_radius']=$seedWidgets['panel_radius'];$changed++;
+   }
+  }else{
+   foreach(['highlights','internal-links'] as $role){
+    if(!str_contains(' '.$css.' ',' destination-native-'.$role.' '))continue;
+    $seen[$role]++;
+    $sync($node['settings'],$seedCards[$role]['settings'],$cardKeys,$changed);
+   }
+  }
+ });
+ if($seen!==['accordion'=>3,'highlights'=>1,'internal-links'=>1])
+  WP_CLI::error('unexpected native Elementor block counts: '.wp_json_encode($seen));
+}
+function mad4b_dest_require_kit_colors(array $spec):void{
+ if(empty($spec['brand_style']['roles']))return;
+ if(!class_exists('\Elementor\Plugin')||!\Elementor\Plugin::$instance->kits_manager)
+  WP_CLI::error('Elementor Kit unavailable');
+ $kit=\Elementor\Plugin::$instance->kits_manager->get_active_kit();
+ if(!$kit)WP_CLI::error('No active Elementor Kit');
+ $colors=array_merge((array)$kit->get_settings_for_display('system_colors'),
+                      (array)$kit->get_settings_for_display('custom_colors'));
+ $available=[];
+ foreach($colors as $color)if(!empty($color['_id']))$available[(string)$color['_id']]=true;
+ foreach($spec['brand_style']['roles'] as $role=>$id){
+  if(!isset($available[(string)$id]))WP_CLI::error("Brand Kit role $role token $id is missing; refusing fixed-color fallback");
+ }
+}
+mad4b_dest_require_kit_colors($spec);
+
 $base=$wpdb->get_results(
  $wpdb->prepare("SELECT p.ID,tr.trid FROM {$wpdb->posts} p
  JOIN {$wpdb->prefix}icl_translations tr ON tr.element_id=p.ID AND tr.element_type=%s
@@ -135,12 +238,15 @@ foreach($docs as $doc){
    mad4b_dest_insert($tree,$section,$inserted);
    if($inserted!==1)WP_CLI::error("ambiguous About location in template $id");
   }
+  $styleChanges=0;
+  mad4b_dest_sync_brand_style($tree,$spec['section'],$styleChanges);
   $maps=0;$mapChanges=0;
   mad4b_dest_patch_map($tree,$maps,$mapChanges);
   if($maps!==1)WP_CLI::error("expected one original maps widget, found $maps for template $id");
-  $altered=!$existing || $mapChanges>0;
+  $altered=!$existing || $mapChanges>0 || $styleChanges>0;
   WP_CLI::log(wp_json_encode(['template'=>$id,'language'=>$lang,'enrichment'=>$existing?'present':'add',
-    'map'=>$mapChanges?'patch':'present','action'=>$apply?'apply':'dry-run']));
+    'map'=>$mapChanges?'patch':'present','kit_style'=>$styleChanges?'patch':'present',
+    'kit_style_changes'=>$styleChanges,'action'=>$apply?'apply':'dry-run']));
   if(!$apply||!$altered)continue;
   $before=$row['meta_value'];
   $after=wp_json_encode($tree,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
