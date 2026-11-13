@@ -1,0 +1,27 @@
+[Unit]
+Description=MAD4B original verified 305 306 313 v4 and 328 source regression guards
+After=local-fs.target
+ConditionPathExists=/opt/mad4b-company-provisioning/spec-kit/company-reconcile-orchestrator/scripts/guard_original_328_release.py
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+UMask=0077
+ExecStart=/usr/bin/python3 /opt/mad4b-company-provisioning/spec-kit/company-reconcile-orchestrator/scripts/guard_original_305_intake_release.py --apply
+ExecStart=/usr/bin/python3 /opt/mad4b-company-provisioning/spec-kit/company-reconcile-orchestrator/scripts/guard_original_328_release.py --apply
+ExecStart=/usr/bin/python3 /opt/mad4b-company-provisioning/spec-kit/company-reconcile-orchestrator/scripts/guard_original_313_v4_release.py --apply
+ExecStart=/usr/bin/python3 /opt/mad4b-company-provisioning/spec-kit/company-reconcile-orchestrator/scripts/guard_original_305_sealed_helper_release.py --apply
+ExecStart=/usr/bin/python3 /opt/mad4b-company-provisioning/spec-kit/company-reconcile-orchestrator/scripts/guard_original_306_broker_release.py --apply
+ExecStart=/usr/bin/python3 /opt/mad4b-company-provisioning/spec-kit/company-reconcile-orchestrator/scripts/guard_original_313_worker_preclaim_release.py --apply
+ExecStart=/usr/bin/python3 /opt/mad4b-company-provisioning/spec-kit/company-reconcile-orchestrator/scripts/guard_original_full_wpcli_independent_reader_release.py --apply
+ExecStart=/usr/bin/python3 /opt/mad4b-company-provisioning/spec-kit/company-reconcile-orchestrator/scripts/guard_original_full_wpcli_receipt_resume_release.py --apply
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/hostinger-migrations/hosting-3/etg-commerce-staging/site-copy/wp-content/plugins/mad4b-platform/modules/authority /opt/hostinger-migrations/hosting-3/etg-commerce-staging/site-copy/wp-content/plugins/mad4b-platform/modules/services /opt/mad4b-company-provisioning/backups /opt/mad4b-company-provisioning/reports /run/lock /opt/hostinger-migrations/hosting-3/etg-commerce-staging/site-copy/wp-content/plugins/mad4b-platform/modules/compat /opt/mad4b-company-transport/native-313-independent
+ProtectHome=true
+PrivateTmp=true
+Nice=10
+TimeoutStartSec=35s
+StandardOutput=journal
+StandardError=journal

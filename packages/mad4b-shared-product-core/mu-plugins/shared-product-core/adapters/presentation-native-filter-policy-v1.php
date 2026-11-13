@@ -5,7 +5,33 @@
  * published company services/posts supply eligible option IDs.
  */
 defined('ABSPATH') || exit;
-if(wp_get_environment_type()!=='local')return;
+if ((!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || !MAD4B_COMMERCE_RUNTIME_ENABLED)
+    && (!defined('MAD4B_PRESENTATION_RUNTIME_ENABLED') || !MAD4B_PRESENTATION_RUNTIME_ENABLED)) return;
+
+/**
+ * Shared Product Core: public Tour discovery constraints for native listings.
+ * Mirrors the original published-facet definition, but retains WordPress's
+ * native WP_Query so taxonomies, WPML and other source filters still run.
+ * No rate/price/booking authorization is implied by discoverability.
+ */
+function shared_presentation_public_tour_query_args_v1(array $args): array {
+    $args['post_type']='tours-and-activities';
+    $args['post_status']='publish';
+    $args['has_password']=false;
+    $args['suppress_filters']=false;
+    $args['meta_query']=[
+        'relation'=>'AND',
+        ['relation'=>'OR',
+            ['key'=>'tour_public_status','compare'=>'NOT EXISTS'],
+            ['key'=>'tour_public_status','value'=>['0','false','no','disabled'],'compare'=>'NOT IN'],
+        ],
+        ['relation'=>'OR',
+            ['key'=>'tour_mode','compare'=>'NOT EXISTS'],
+            ['key'=>'tour_mode','value'=>'extra_trip','compare'=>'!='],
+        ],
+    ];
+    return $args;
+}
 
 function shared_presentation_published_facet_terms_v1(string $postType,string $taxonomy): array {
     $key='shared_facet_post_terms_'.md5($postType.'|'.$taxonomy);
@@ -126,14 +152,21 @@ function shared_presentation_native_filter_invalidate_v1($postId=0):void{
     }
 }
 add_action('set_object_terms',static function($objectId){
-    if(in_array(get_post_type((int)$objectId),['tours-and-activities','properties','transportations','post','help-center'],true))
+    if(in_array(get_post_type((int)$objectId),['tours-and-activities','properties','transportations','post','help-center'],true)
+       || (class_exists('MAD4B_Company_Term_Eligibility_V1',false)
+           && isset(MAD4B_Company_Term_Eligibility_V1::catalog_sources()[get_post_type((int)$objectId)])))
         shared_presentation_native_filter_invalidate_v1();
 },30,1);
 add_action('transition_post_status',static function($new,$old,$post){
-    if($new!==$old && in_array($post->post_type,['tours-and-activities','properties','transportations','post','help-center'],true))
+    if($new!==$old && (in_array($post->post_type,['tours-and-activities','properties','transportations','post','help-center'],true)
+       || (class_exists('MAD4B_Company_Term_Eligibility_V1',false)
+           && isset(MAD4B_Company_Term_Eligibility_V1::catalog_sources()[$post->post_type]))))
         shared_presentation_native_filter_invalidate_v1();
 },30,3);
 add_action('updated_post_meta',static function($id,$postId,$key){
     if(in_array($key,['tour_mode','tour_public_status'],true) && get_post_type((int)$postId)==='tours-and-activities')
         shared_presentation_native_filter_invalidate_v1();
 },30,3);
+
+// Shared term visibility contract consumed by native search/filter/navigation.
+require_once __DIR__ . '/company-term-eligibility-v1.php';

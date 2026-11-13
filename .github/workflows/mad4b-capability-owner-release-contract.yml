@@ -1,0 +1,64 @@
+name: MAD4B Capability Owner & Company Code Release Contract
+
+on:
+  pull_request:
+    paths:
+      - 'ops/company-code-release-v1/**'
+      - '.github/workflows/mad4b-capability-owner-release-contract.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'ops/company-code-release-v1/**'
+      - '.github/workflows/mad4b-capability-owner-release-contract.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: capability-owner-contract-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  owner-release-contract:
+    name: Owner lineage, dependencies, CAS and rollback
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout reviewed source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Python (hermetic release contract)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install test-only signed-grant verifier
+        run: python -m pip install 'cryptography>=42,<49'
+      - name: Syntax and import boundary
+        run: |
+          python -m py_compile \
+            ops/company-code-release-v1/company_code_release.py \
+            ops/company-code-release-v1/tests/test_release.py
+      - name: Original release owner+dependency+CAS+rollback regression
+        run: |
+          python -m unittest discover \
+            -s ops/company-code-release-v1/tests \
+            -p test_release.py -v
+      - name: Original 313 hermetic grant and readback contracts
+        run: |
+          for spec in test_original_313_contract.py test_original_313_independent_readback.py test_original_313_full_cycle.py; do
+            python -m unittest discover \
+              -s ops/company-code-release-v1/tests \
+              -p "$spec" -v
+          done
+      - name: Native WordPress owner-hook observer contract (PHP)
+        run: |
+          php -l ops/company-code-release-v1/runtime_owner_observer.php
+          php -l ops/company-code-release-v1/tests/test_runtime_owner_observer.php
+          php ops/company-code-release-v1/tests/test_runtime_owner_observer.php
+      - name: Reject accidental third-party/site-write artifacts
+        shell: bash
+        run: |
+          test ! -d .git/hooks/mad4b-deploy
+          test ! -f ops/company-code-release-v1/production-grant.json

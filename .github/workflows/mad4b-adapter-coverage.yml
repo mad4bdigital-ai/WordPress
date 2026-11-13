@@ -8,6 +8,10 @@ on:
       - 'wp-content/plugins/*.php'
       - 'wp-content/mu-plugins.zip'
       - 'wp-content/mu-plugins/**'
+      - 'tests/uael-stage-gallery/**'
+      - 'tests/native-visibility-preview/**'
+      - 'tests/test_uael_existing_gallery_release_catalog.py'
+      - 'ops/company-code-release-v1/**'
       - 'wp-content/themes/**'
       - 'wp-content/*.php'
       - 'wp-includes/version.php'
@@ -24,6 +28,10 @@ on:
       - 'wp-content/plugins/*.php'
       - 'wp-content/mu-plugins.zip'
       - 'wp-content/mu-plugins/**'
+      - 'tests/uael-stage-gallery/**'
+      - 'tests/native-visibility-preview/**'
+      - 'tests/test_uael_existing_gallery_release_catalog.py'
+      - 'ops/company-code-release-v1/**'
       - 'wp-content/themes/**'
       - 'wp-content/*.php'
       - 'wp-includes/version.php'
@@ -94,6 +102,34 @@ jobs:
           cat /tmp/mad4b-repository-plugin-adapter-coverage.json
           cat /tmp/mad4b-repository-plugin-artifact-coverage.json
           cat /tmp/mad4b-repository-runtime-component-coverage.json
+
+      - name: Verify existing UAEL gallery and optional Extra Quick Preview source contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/mu-plugins/mad4b-uael-tour-gallery-addon.php
+          php -l wp-content/mu-plugins/mad4b-uael-server-defer-v1.php
+          php -l wp-content/mu-plugins/mad4b-extra-quick-preview-v1.php
+          php tests/uael-stage-gallery/test-native-category-labels.php
+          node --check wp-content/mu-plugins/mad4b-extra-quick-preview/quick-preview.js
+          node --check wp-content/mu-plugins/mad4b-extra-quick-preview/quick-preview-frame.js
+          node tests/uael-stage-gallery/quickview-gallery-interop.test.js
+          python3 tests/uael-stage-gallery/quickview-gallery-boundary.test.py
+          python3 -m unittest discover -s tests -p test_uael_existing_gallery_release_catalog.py -q
+
+      - name: Verify native Elementor reviews/help in real WP preview vs editor
+        shell: bash
+        run: |
+          set -euo pipefail
+          for path in wp-content/mu-plugins/mad4b-home-reviews-native-visibility.php wp-content/mu-plugins/mad4b-need-help-native-visibility.php wp-content/mu-plugins/mad4b-single-reviews-native-visibility.php; do
+            php -l "$path"
+          done
+          for mode in "0 0 0 0" "1 0 0 0" "1 1 0 0" "1 0 1 0" "1 0 0 1"; do
+            read -r preview editor admin ajax <<< "$mode"
+            for plugin in need-help single-reviews home-reviews; do
+              MAD4B_TEST_PLUGIN="$plugin" MAD4B_TEST_PREVIEW="$preview" MAD4B_TEST_EDITOR="$editor" MAD4B_TEST_ADMIN="$admin" MAD4B_TEST_AJAX="$ajax" php tests/native-visibility-preview/preview-guards.php
+            done
+          done
 
       - name: Upload repository adapter coverage evidence
         uses: actions/upload-artifact@v4
