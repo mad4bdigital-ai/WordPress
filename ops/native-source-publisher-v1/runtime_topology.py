@@ -81,6 +81,8 @@ def audit(*, current: dict, live_mounts: list[dict],
           runtime_plan: dict, candidate_core_in_target_root: bool,
           candidate_wordpress_config_external: bool,
           proposed_writable_data_mounts: list[str],
+          candidate_mounts: list[dict] | None = None,
+          candidate_code_root_protected: bool = False,
           code_root: str = CODE_ROOT) -> dict:
     """Fail closed on incomplete code, unclassified writable mounts and rootfs."""
     if not isinstance(current,dict) or current.get("core_present") is not True:
@@ -118,13 +120,49 @@ def audit(*, current: dict, live_mounts: list[dict],
         if dest==code_root:
             code_binding=mount
     blockers=[]
+    legacy_risks=[]
+    # A writable legacy A is a reason to migrate, not grounds to forbid
+    # activating a verified immutable B. Preserve the former for rollback.
     if code_binding is not None and code_binding.get("RW") is True:
-        blockers.append("LIVE_WORDPRESS_CODE_ROOT_WRITABLE_BIND")
+        legacy_risks.append("LIVE_WORDPRESS_CODE_ROOT_WRITABLE_BIND")
     if current["code_file_owner_uid"] != 0 or (
             int(current["code_file_mode"],8)&0o222):
-        blockers.append("LIVE_WORDPRESS_CORE_WRITABLE_BY_RUNTIME")
+        legacy_risks.append("LIVE_WORDPRESS_CORE_WRITABLE_BY_RUNTIME")
     if current.get("unreviewed_code_symlink_count",0):
         blockers.append("LIVE_CODE_SYMLINKS_REQUIRE_EXPLICIT_PROVENANCE")
+    if candidate_code_root_protected is not True:
+        blockers.append("CANDIDATE_CODE_ROOT_PROVENANCE_NOT_PROVEN")
+    if not isinstance(candidate_mounts,list):
+        blockers.append("CANDIDATE_MOUNT_TOPOLOGY_NOT_DECLARED")
+    else:
+        seen=set()
+        for mount in candidate_mounts:
+            if (not isinstance(mount,dict) or
+                not isinstance(mount.get("Destination"),str) or
+                type(mount.get("RW")) is not bool):
+                raise TopologyHold("CANDIDATE_MOUNT_RECORD_INVALID")
+            dest=mount["Destination"]
+            if not dest.startswith("/") or ".." in dest.split("/") or "//" in dest:
+                raise TopologyHold("CANDIDATE_MOUNT_DESTINATION_INVALID")
+            if dest in seen:
+                raise TopologyHold("CANDIDATE_MOUNT_DUPLICATED")
+            seen.add(dest)
+            if dest==code_root:
+                blockers.append("CANDIDATE_IMAGE_CODE_ROOT_SHADOWED_BY_BIND")
+            elif dest.startswith(code_root+"/") and mount["RW"] and dest not in allowed:
+                blockers.append("CANDIDATE_UNDECLARED_WRITABLE_CODE_MOUNT")
+            if dest in allowed:
+                if not mount["RW"] or mount.get("Type") not in ("bind","volume"):
+                    blockers.append("CANDIDATE_DATA_MOUNT_NOT_DURABLE_WRITABLE_STORAGE")
+                for identity_key in ("source_fingerprint_sha256",
+                                     "data_migration_receipt_sha256"):
+                    value=mount.get(identity_key)
+                    if not isinstance(value,str) or re.fullmatch(r"[a-f0-9]{64}",value) is None:
+                        blockers.append("CANDIDATE_DATA_VOLUME_IDENTITY_NOT_PINNED")
+        # Declaration alone is not proof that externally mutable data
+        # has an independently scoped, preserved storage identity.
+        if any(path not in seen for path in allowed):
+            blockers.append("CANDIDATE_DECLARED_DATA_VOLUME_MISSING")
     if candidate_core_in_target_root is not True:
         blockers.append("CANDIDATE_CORE_NOT_IN_WORDPRESS_RUNTIME_PATH")
     if candidate_wordpress_config_external is not True:
@@ -141,12 +179,18 @@ def audit(*, current: dict, live_mounts: list[dict],
         blockers.append("MU_PLUGIN_CODE_LAYERS_NOT_DECLARED")
     if not allowed:
         blockers.append("WRITABLE_DATA_VOLUME_POLICY_NOT_DECLARED")
-    # This is inspection only. The final native Original operation must
-    # independently prove each policy, DB and request-level capability.
-    blockers.append("ORIGINAL_NATIVE_SIGNED_RUNTIME_ACTIVATION_NOT_ADMITTED")
+    # Structural readiness is independent of original 312/313 authorization;
+    # even a valid candidate NEVER grants itself permission to activate.
+    original_requirements=[
+        "ORIGINAL_NATIVE_SIGNED_RUNTIME_ACTIVATION_REQUIRED",
+        "ORIGINAL312_EXACT_SCOPE_GRANT_REQUIRED",
+        "ORIGINAL313_INDEPENDENT_FINALIZATION_REQUIRED",
+        "REAL_HTTP_REQUEST_DRAIN_AND_DATABASE_PROOFS_REQUIRED",
+    ]
     return {
         "contract": CONTRACT,
-        "state": "HOLD_INCOMPLETE_WORDPRESS_RUNTIME_TOPOLOGY",
+        "state": ("HOLD_INCOMPLETE_WORDPRESS_RUNTIME_TOPOLOGY" if blockers else
+                  "CANDIDATE_STRUCTURALLY_READY_AWAITING_ORIGINAL_NATIVE_AUTHORITY"),
         "runtime_plan_sha256": runtime_plan["runtime_plan_sha256"],
         "code_root": code_root,
         "current_code_structure_sha256": current["structure_sha256"],
@@ -159,7 +203,9 @@ def audit(*, current: dict, live_mounts: list[dict],
         "current_code_file_owner_uid": current["code_file_owner_uid"],
         "live_mounts_redacted": mounts,
         "proposed_writable_data_destinations": allowed,
+        "legacy_risks": sorted(set(legacy_risks)),
         "blockers": sorted(set(blockers)),
+        "original_native_requirements": original_requirements,
         "db_modified": False,
         "site_files_modified": False,
         "host_traffic_modified": False,

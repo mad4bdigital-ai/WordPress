@@ -48,7 +48,8 @@ class TopologyTests(unittest.TestCase):
 
     def test_real_site_coverage_is_held_even_when_one_plugin_matches(self):
         r=self.check()
-        self.assertIn("LIVE_WORDPRESS_CODE_ROOT_WRITABLE_BIND",r["blockers"])
+        self.assertIn("LIVE_WORDPRESS_CODE_ROOT_WRITABLE_BIND",r["legacy_risks"])
+        self.assertNotIn("LIVE_WORDPRESS_CODE_ROOT_WRITABLE_BIND",r["blockers"])
         self.assertIn("CANDIDATE_CORE_NOT_IN_WORDPRESS_RUNTIME_PATH",r["blockers"])
         self.assertIn("THEME_CODE_LAYERS_NOT_DECLARED",r["blockers"])
         self.assertIn("MU_PLUGIN_CODE_LAYERS_NOT_DECLARED",r["blockers"])
@@ -82,8 +83,51 @@ class TopologyTests(unittest.TestCase):
             "/var/www/html/wp-content/uploads"])
         self.assertEqual(r["proposed_writable_data_destinations"],
                          ["/var/www/html/wp-content/uploads"])
-        self.assertIn("ORIGINAL_NATIVE_SIGNED_RUNTIME_ACTIVATION_NOT_ADMITTED",
-                      r["blockers"])
+        self.assertIn("ORIGINAL_NATIVE_SIGNED_RUNTIME_ACTIVATION_REQUIRED",
+                      r["original_native_requirements"])
+
+    def test_legacy_writable_code_does_not_deadlock_immutable_migration(self):
+        self.current["families"]["themes"]=[]
+        self.current["families"]["mu-plugins"]=[]
+        data="/var/www/html/wp-content/uploads"
+        result=self.check(
+            candidate_core_in_target_root=True,
+            candidate_wordpress_config_external=True,
+            candidate_code_root_protected=True,
+            proposed_writable_data_mounts=[data],
+            candidate_mounts=[{
+                "Destination":data,"RW":True,"Type":"volume",
+                "source_fingerprint_sha256":"a"*64,
+                "data_migration_receipt_sha256":"b"*64}])
+        self.assertEqual(result["blockers"],[])
+        self.assertEqual(result["state"],
+            "CANDIDATE_STRUCTURALLY_READY_AWAITING_ORIGINAL_NATIVE_AUTHORITY")
+        self.assertIn("LIVE_WORDPRESS_CODE_ROOT_WRITABLE_BIND",
+                      result["legacy_risks"])
+        self.assertFalse(result["host_traffic_modified"])
+        self.assertIn("ORIGINAL312_EXACT_SCOPE_GRANT_REQUIRED",
+                      result["original_native_requirements"])
+
+    def test_unproven_or_ephemeral_mutable_data_volume_must_block(self):
+        data="/var/www/html/wp-content/uploads"
+        tmpfs=self.check(proposed_writable_data_mounts=[data],
+              candidate_mounts=[{"Destination":data,"RW":True,"Type":"tmpfs"}])
+        self.assertIn("CANDIDATE_DATA_MOUNT_NOT_DURABLE_WRITABLE_STORAGE",
+                      tmpfs["blockers"])
+        self.assertIn("CANDIDATE_DATA_VOLUME_IDENTITY_NOT_PINNED",
+                      tmpfs["blockers"])
+
+    def test_new_candidate_cannot_shadow_immutable_code_root(self):
+        result=self.check(
+            candidate_mounts=[{"Destination":"/var/www/html",
+                               "RW":False,"Type":"bind"}])
+        self.assertIn("CANDIDATE_IMAGE_CODE_ROOT_SHADOWED_BY_BIND",
+                      result["blockers"])
+        result=self.check(
+            candidate_mounts=[{"Destination":"/var/www/html/wp-content/plugins",
+                               "RW":True,"Type":"bind"}])
+        self.assertIn("CANDIDATE_UNDECLARED_WRITABLE_CODE_MOUNT",
+                      result["blockers"])
 
     def test_single_file_plugin_and_mu_subdir_are_not_silently_ignored(self):
         (self.root/"wp-content/plugins/single-plugin.php").write_text("<?php")

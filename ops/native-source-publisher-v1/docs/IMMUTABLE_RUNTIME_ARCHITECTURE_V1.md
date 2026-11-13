@@ -146,3 +146,24 @@ No WordPress code, live Docker mounts, routes, secrets, credentials or DB
 contents were modified by this audit. Before any real image cutover, a
 first-party native runtime composer must supply complete pinned core,
 shared plugins, MU code and themes, with an explicit Site data-mount policy.
+
+## Legacy-to-immutable migration cannot deadlock
+
+The source topology auditor separates \`legacy_risks\` for the *currently
+running* mutable A from *candidate* B structural \`blockers\`. Otherwise a
+writable legacy /var/www/html bind would make deploying the first safe B
+impossible. A can be preserved during transition even though it has legacy
+risks; B must independently meet the immutable code-root and complete-code
+coverage contract.
+
+The candidate code root may not be shadowed by ANY bind, not even a read-only
+one, until a first-party source-provenance Provider is registered for it.
+Writable submounts must be explicitly declared under wp-content, distinct and
+non-overlapping. Candidate data volumes must be durable bind/volume storage,
+writable, and bound to a source fingerprint plus pinned migration receipt SHA;
+an empty new volume or a tmpfs does not qualify.
+
+Structural readiness, if later achieved, means only
+\`CANDIDATE_STRUCTURALLY_READY_AWAITING_ORIGINAL_NATIVE_AUTHORITY\`. It is
+never an Original312 Release Grant, an Original313 receipt, a live DB
+compatibility proof or authorization to redirect Production traffic.
