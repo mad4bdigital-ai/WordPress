@@ -3627,6 +3627,25 @@
       "new_control_ids": [],
       "coverage_reuse_rationale": "Existing MCP admission, platform identity, security, owner-scoped administrative rights and execution-denial controls cover these staging-only authorization surfaces, without granting Production execution or public access.",
       "review_rationale": "New surface ability:mad4b/staging-write-grant-reconcile-staging is source-pinned in the W1 authority integration and assessed with hermetic owner-browser, agent REST route, Site Profile, OAuth, replay, write grant, exact mapping and negative permission fixtures. This is only CI source review, not evidence that the route is registered, usable, or authorized in Production."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-elementor-native-template-parity.php",
+      "owner_role": "MAD4B CI-only repository source reviewer; independent Site Owner production attestation required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/elementor-native-template-parity-source-contract.py"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Reuses existing governance, platform template integrity, and security fail-closed controls; the new class only guards already governed Elementor write paths and creates no new authority surface.",
+      "review_rationale": "New source service validates original Elementor display-condition owners and JetEngine listing relationships before governed writes. Eleven hermetic guard cases and one adapter/source contract test provide changed-file evidence. This CI review does not certify WordPress live runtime, WPML translation correctness, signature enrollment, or production permissions."
     }
   ],
   "lifecycle": [],
@@ -11667,6 +11686,80 @@
       "coverage_reuse_rationale": "Existing private Tour Operations hooks, REST/CLI early fences, per-module capabilities and source-bound MCP/Write controls stay independently authoritative. This record does not authorize new grants or Runtime Release Set promotion.",
       "review_rationale": "Examined the successor Bootstrap relative to reviewed source 4a83dc4b3ad5df67d9e43bea8e8b52d4eae80c0d: rc.104 to rc.129 marker, additive module requires/explicit boot registration and optional Staging readiness pathways. A previously removed early private Tour Orders/Bookings boundary was restored before foreign REST and passive WP-CLI exits; existing early AI credential guard remains first. The changed Python contract checks required module paths, version parity, explicit boot order and private CPT/JetEngine route guards. Independent PHP 7.4–8.5 lint, G6/G9 hermetic behavior, Auth and Production Readiness remain separate. No site data, grant, ticket or deployment was changed.",
       "execution_note": "This exact Git blob is reviewed only as a non-authorizing source successor for G6/G9 historical delivery check and runtime source discovery. Feature-level runtime certification and production release gates remain independent."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/skill-seed-manifest.json",
+      "source_blob_sha": "70800c6253779d484e9b711dfaccbc015c5e8e3b",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/elementor-native-template-parity-source-contract.py"
+      ],
+      "owner_role": "MAD4B CI-only repository source reviewer; independent site/operator release authorization required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Current platform governance, native Elementor execution and managed Skill delivery controls already cover this bounded code change; no additional runtime write capability or permission is introduced.",
+      "review_rationale": "Changed Git blob reviewed for conditional-owner/listing preservation and native managed Skill synchronization. Tests exercise guarded Elementor mutations and reject unreviewed duplicate/relocated visibility providers. This record is source-only CI coverage, not a signed deployment acceptance."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-elementor-adapter.php",
+      "source_blob_sha": "d5235bba3b37101c3b36546c210d7f6682f628bf",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/elementor-native-template-parity-source-contract.py"
+      ],
+      "owner_role": "MAD4B CI-only repository source reviewer; independent site/operator release authorization required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Current platform governance, native Elementor execution and managed Skill delivery controls already cover this bounded code change; no additional runtime write capability or permission is introduced.",
+      "review_rationale": "Changed Git blob reviewed for conditional-owner/listing preservation and native managed Skill synchronization. Tests exercise guarded Elementor mutations and reject unreviewed duplicate/relocated visibility providers. This record is source-only CI coverage, not a signed deployment acceptance."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-elementor-native-template-parity.php",
+      "source_blob_sha": "5a41ea8d243c515471333b46b445ceba3b99efa4",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/elementor-native-template-parity-source-contract.py"
+      ],
+      "owner_role": "MAD4B CI-only repository source reviewer; independent site/operator release authorization required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Current platform governance, native Elementor execution and managed Skill delivery controls already cover this bounded code change; no additional runtime write capability or permission is introduced.",
+      "review_rationale": "Changed Git blob reviewed for conditional-owner/listing preservation and native managed Skill synchronization. Tests exercise guarded Elementor mutations and reject unreviewed duplicate/relocated visibility providers. This record is source-only CI coverage, not a signed deployment acceptance."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-seeder.php",
+      "source_blob_sha": "fb9de28ec82b767c6e7cfd32bbe0f5e796e91d6b",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/elementor-native-template-parity-source-contract.py"
+      ],
+      "owner_role": "MAD4B CI-only repository source reviewer; independent site/operator release authorization required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Current platform governance, native Elementor execution and managed Skill delivery controls already cover this bounded code change; no additional runtime write capability or permission is introduced.",
+      "review_rationale": "Changed Git blob reviewed for conditional-owner/listing preservation and native managed Skill synchronization. Tests exercise guarded Elementor mutations and reject unreviewed duplicate/relocated visibility providers. This record is source-only CI coverage, not a signed deployment acceptance."
     }
   ],
   "code_change_rules": {

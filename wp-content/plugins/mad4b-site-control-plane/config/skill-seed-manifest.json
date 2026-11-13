@@ -1,6 +1,6 @@
 {
     "contract": "mad4b.skill-seed-manifest.v1",
-    "seed_version": 17,
+    "seed_version": 18,
     "skills": [
         {
             "level": "site",
