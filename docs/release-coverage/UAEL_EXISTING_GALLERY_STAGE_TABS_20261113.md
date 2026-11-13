@@ -111,3 +111,18 @@ signature and 313 evidence requirements remain unchanged. The existing MAD4B
 Adapter Coverage GitHub Action runs the 15 PHP label cases, Node VM frame
 cases, ownership contract and expanded Python source CAS tests directly on the
 reviewed PR head, without adding another release provider or CI workflow.
+
+### Existing dynamic Catalog Git blob validation (CI correction)
+
+`registered_release_targets()` validates every component's schema, path,
+asset ownership and duplicates. The older eager Git blob loop also required
+**all unrelated components** to be in the checked-out release branch. The
+reviewed GitHub branch did not carry the original composite-media files, so
+its gallery-only CI plan was incorrectly blocked with
+`GIT_SOURCE_MUST_BE_REGULAR_FILE`. The original `make_plan()` and
+`confirm_plan()` already validate exact requested Git source blobs and CAS
+before Apply. The registry now defers Git blob reading to these existing
+selected-target checks, preserving fail-closed behavior for a missing
+requested file without importing unrelated Media modules or weakening grants.
+Tests assert only catalog + selected sources are read and any explicitly
+requested missing source remains rejected.
