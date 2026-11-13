@@ -40,6 +40,17 @@ jobs:
           python -m py_compile \
             ops/company-code-release-v1/company_code_release.py \
             ops/company-code-release-v1/tests/test_release.py
+      - name: Dynamic capability admission and signed functional evidence
+        run: |
+          python -m py_compile ops/company-code-release-v1/capability_acceptance.py
+          for spec in test_dynamic_capability_acceptance.py test_dynamic_capability_apply.py; do
+            python -m unittest discover \
+              -s ops/company-code-release-v1/tests \
+              -p "$spec" -v
+          done
+      - name: Source provider manifest and immutable dependency closure
+        run: |
+          python -m unittest discover -s ops/company-code-release-v1/tests -p test_source_provider_manifest_pinning.py -v
       - name: Original release owner+dependency+CAS+rollback regression
         run: |
           python -m unittest discover \
