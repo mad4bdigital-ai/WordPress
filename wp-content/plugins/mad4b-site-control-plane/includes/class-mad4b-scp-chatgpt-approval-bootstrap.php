@@ -50,23 +50,10 @@ final class MAD4B_SCP_ChatGPT_Approval_Bootstrap {
         ) );
         $profile_tools = class_exists( 'MAD4B_SCP_Direct_Profile' )
             ? MAD4B_SCP_Direct_Profile::catalog_tools() : array();
-        // The stable transport contract is the actual registered read and
-        // dispatch inventory, not every convenience Ability available at
-        // boot. Auxiliary base tools may be quarantined if their descriptor
-        // or official DTO fails, but never the fixed required transport.
-        // Derive this from the native source registry, not a static tool list.
-        $required_transport = array_values( array_unique( array_merge(
-            MAD4B_SCP_Servers::chatgpt_direct_read_transport_tools(),
-            MAD4B_SCP_Servers::chatgpt_dispatch_transport_tools()
-        ) ) );
-        $base_convenience = array_values( array_diff(
-            MAD4B_SCP_Servers::chatgpt_base_tools(), $required_transport
-        ) );
         return array_values( array_intersect(
-            array_values( array_diff( array_unique( array_merge(
-                $management, $dynamic_optional, $reviewed, $profile_tools,
-                $base_convenience
-            ) ), $required_transport ) ),
+            array_values( array_unique( array_merge(
+                $management, $dynamic_optional, $reviewed, $profile_tools
+            ) ) ),
             $requested_tools
         ) );
     }

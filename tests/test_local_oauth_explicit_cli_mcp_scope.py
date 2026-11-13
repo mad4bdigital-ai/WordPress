@@ -16,15 +16,22 @@ REQUEST=ROOT/'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-s
 SMOKE=ROOT/'wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-chatgpt-http-smoke.php'
 
 class ExplicitCliMcpContext(unittest.TestCase):
-    def test_only_the_disposable_oauth_smoke_opted_into_live_adapter(self):
+    def test_both_disposable_oauth_mcp_processes_opt_in_but_not_background_cli(self):
         workflow=WORKFLOW.read_text()
         name='Prove local OAuth bearer through REST initialize session tools/list and tools/call'
         self.assertEqual(workflow.count('name: '+name),1)
         portion=workflow.split('name: '+name,1)[1].split('      - name:',1)[0]
         self.assertIn('MAD4B_SCP_MCP_CLI_REQUEST=1 php /tmp/wp-cli.phar eval-file',portion)
         self.assertIn('runtime-local-oauth-chatgpt-http-smoke.php',portion)
-        self.assertEqual(workflow.count('MAD4B_SCP_MCP_CLI_REQUEST=1'),1)
         self.assertIn('php /tmp/wp-cli.phar eval-file',portion)
+        projection='Prove dynamic projection admission through real OAuth and tools/call'
+        self.assertEqual(workflow.count('name: '+projection),1)
+        projection_step=workflow.split('name: '+projection,1)[1].split('      - name:',1)[0]
+        self.assertIn('MAD4B_SCP_MCP_CLI_REQUEST=1 php /tmp/wp-cli.phar eval-file "$root/runtime-chatgpt-projection-http.php"', projection_step)
+        self.assertIn('php /tmp/wp-cli.phar eval-file "$root/runtime-chatgpt-projection-http-seed.php"', projection_step)
+        independent=workflow.split('name: Prove projection through independent HTTP requests',1)[1].split('      - name:',1)[0]
+        self.assertNotIn('MAD4B_SCP_MCP_CLI_REQUEST=1', independent)
+        self.assertEqual(workflow.count('MAD4B_SCP_MCP_CLI_REQUEST=1'),2)
 
     def test_existing_wpcli_scope_is_exact_opt_in_and_has_no_authorization(self):
         source=REQUEST.read_text()

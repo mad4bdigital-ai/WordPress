@@ -418,8 +418,8 @@ def validate_coverage(coverage, controls, base, head, changed, added, removed):
             ensure(isinstance(ctl, list) and len(ctl) >= 2 and
                    len(set(ctl)) == len(ctl) and set(ctl) <= ctl_ids,
                    "Insufficient / unknown control coverage: " + capability)
-            ensure(set(ctl) & set(rule["controls"]),
-                   "Coverage does not address mapped impact: " + capability)
+            if not (set(ctl) & set(rule["controls"])):
+                missing.append("review_controls_do_not_cover_mapped_impact")
             needs_new = rec.get("needs_new_control")
             ensure(type(needs_new) is bool,
                    "New capability requires explicit checklist growth decision: " + capability)
@@ -433,11 +433,12 @@ def validate_coverage(coverage, controls, base, head, changed, added, removed):
             ensure(isinstance(tests, list) and tests,
                    "A newly introduced capability must provide regression tests")
             for test in tests:
-                ensure(isinstance(test, str) and (test.startswith(PLUGIN + "tests/") or
-                       test.startswith("tests/")) and test in changed_set and
-                       (ROOT / test).is_file(),
-                       "Test evidence must be committed with capability: " + capability)
-            accepted.append(capability)
+                if not (isinstance(test, str)
+                        and (test.startswith(PLUGIN + "tests/") or test.startswith("tests/"))
+                        and test in changed_set and (ROOT / test).is_file()):
+                    missing.append("same_pr_capability_regression_missing")
+            if not missing:
+                accepted.append(capability)
         if missing:
             failures.append({"id": capability, "source": path,
                              "risk": rule["risk"], "controls": rule["controls"],
@@ -510,16 +511,22 @@ def validate_coverage(coverage, controls, base, head, changed, added, removed):
                              "reasons": ["exact_source_change_review_missing"]})
             continue
         rule = classify(path, path, coverage)
-        ensure(set(rec["control_ids"]) & set(rule["controls"]),
-               "Behavior review does not address impacted area: " + path)
-        if identity not in old_map:
-            ensure(all(isinstance(test, str) and
-                       (test.startswith("tests/") or test.startswith(PLUGIN + "tests/"))
-                       and test in changed_set and (ROOT / test).is_file()
-                       for test in rec["regression_tests"]),
-                   "Changed behavior requires a regression test in same PR: " + path)
-        reviewed_behavior.append({"path": path, "git_blob": identity[1],
-                                  "control_ids": rec["control_ids"]})
+        behavior_missing = []
+        if not (set(rec["control_ids"]) & set(rule["controls"])):
+            behavior_missing.append("review_controls_do_not_cover_mapped_impact")
+        if identity not in old_map and not all(
+                isinstance(test, str)
+                and (test.startswith("tests/") or test.startswith(PLUGIN + "tests/"))
+                and test in changed_set and (ROOT / test).is_file()
+                for test in rec["regression_tests"]):
+            behavior_missing.append("same_pr_behavior_regression_missing")
+        if behavior_missing:
+            failures.append({"id": "behavior:" + path, "source": path,
+                             "risk": rule["risk"], "controls": rule["controls"],
+                             "reasons": behavior_missing})
+        else:
+            reviewed_behavior.append({"path": path, "git_blob": identity[1],
+                                      "control_ids": rec["control_ids"]})
     return failures, accepted, reviewed_behavior
 
 
@@ -598,6 +605,10 @@ def evaluate(base, head):
                    "coverage_gaps": len(failures),
                    "impacted_files": len(impact),
                    "reviewed_behavior_changes": len(behavior)},
+        "coverage_gap_reasons": {
+            reason: sum(reason in gap["reasons"] for gap in failures)
+            for reason in sorted({reason for gap in failures for reason in gap["reasons"]})
+        },
     }
 
 
@@ -629,6 +640,22 @@ def emit(report, out):
     target.mkdir(parents=True, exist_ok=True)
     (target / "capability-impact.json").write_text(
         json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    # Independent, bounded review queue. This is NOT permission, trust,
+    # evidence sufficiency or an automatically approved operation registry.
+    (target / "capability-coverage-gaps.json").write_text(
+        json.dumps({
+            "contract": "mad4b.readiness-uncovered-changes.v1",
+            "exact_head_sha": report["exact_head_sha"],
+            "base_sha": report["source_base_sha"],
+            "decision": report["decision"],
+            "authorizing": False,
+            "production_authorized": False,
+            "independent_owner_approval_present": False,
+            "uncovered_count": len(report["coverage_gaps"]),
+            "reason_counts": report["coverage_gap_reasons"],
+            "items": report["coverage_gaps"],
+        }, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8")
     with (target / "capability-impact.csv").open("w", newline="", encoding="utf-8-sig") as fh:
         w = safe_writer(fh)
         w.writerow(("Path", "Change", "Area", "Risk", "Suggested control IDs",
@@ -740,6 +767,10 @@ def emit(report, out):
              "", "| Measure | Count |", "| --- | ---: |"]
     for k, v in report["counts"].items():
         lines.append("| {} | {} |".format(k, v))
+    if report["coverage_gaps"]:
+        lines += ["", "### Gap reasons (full exact-head inventory in artifact)", ""]
+        for reason, amount in sorted(report["coverage_gap_reasons"].items()):
+            lines.append("- {}: {}".format(reason, amount))
     if report["coverage_gaps"]:
         lines += ["", "### Uncovered capability / lifecycle changes", ""]
         for g in report["coverage_gaps"]:

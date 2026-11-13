@@ -111,11 +111,19 @@ jobs:
             test -n "$BASE_SHA"
           fi
           echo "Readiness compared exact head $EXACT_HEAD against fork $BASE_SHA"
+          # On missing coverage, retain the exact-head gap report artifact,
+          # preserve nonzero exit status, and never continue to certification.
+          set +e
           python3 tools/production_readiness_registry.py evaluate \
             --base-sha "$BASE_SHA" \
             --head-sha "$EXACT_HEAD" \
             --out artifacts/production-readiness
-          cat artifacts/production-readiness/capability-impact.md >> "$GITHUB_STEP_SUMMARY"
+          COVERAGE_RESULT=$?
+          set -e
+          if test -f artifacts/production-readiness/capability-impact.md; then
+            cat artifacts/production-readiness/capability-impact.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit "$COVERAGE_RESULT"
       - name: Setup PHP for mapped WordPress runtime regressions
         uses: shivammathur/setup-php@v2
         with:

@@ -2,6 +2,7 @@
 """Fail-closed negative regression suite for dynamic capability review enforcement."""
 import copy
 import sys
+import tempfile
 from pathlib import Path
 from unittest import mock
 
@@ -122,11 +123,38 @@ with mock.patch.object(reg, "json_file", side_effect=initial_baseline), \
     stale_test["reviewed_capabilities"][0]["regression_tests"] = [
         "tests/unrelated-existing-test.py"
     ]
-    try:
-        reg.validate_coverage(stale_test, controls, base, head, changed, added, {})
-        raise AssertionError("Existing unmodified test must not certify new capability")
-    except ValueError as exc:
-        assert "Test evidence must be committed" in str(exc)
+    failures, accepted, _ = reg.validate_coverage(
+        stale_test, controls, base, head, changed, added, {})
+    assert not accepted and any(
+        "same_pr_capability_regression_missing" in gap["reasons"]
+        for gap in failures), "Existing unmodified test must not certify new capability"
+
+    control_mismatch = copy.deepcopy(covered)
+    control_mismatch["reviewed_capabilities"][0]["control_ids"] = [
+        "PLATFORM-01", "UPDATES-01"]
+    failures, accepted, _ = reg.validate_coverage(
+        control_mismatch, controls, base, head, changed, added, {})
+    assert not accepted and any(
+        "review_controls_do_not_cover_mapped_impact" in gap["reasons"]
+        for gap in failures), "Wrong mapped controls must remain review-blocking"
+
+    source_mismatch = copy.deepcopy(covered)
+    source_mismatch["reviewed_changes"][0]["control_ids"] = [
+        "PLATFORM-01", "UPDATES-01"]
+    failures, accepted, behavior = reg.validate_coverage(
+        source_mismatch, controls, base, head, changed, added, {})
+    assert not behavior and any(
+        "review_controls_do_not_cover_mapped_impact" in gap["reasons"]
+        for gap in failures), "Wrong source controls must never count as reviewed behavior"
+
+    stale_source_test = copy.deepcopy(covered)
+    stale_source_test["reviewed_changes"][0]["regression_tests"] = [
+        "tests/unrelated-existing-test.py"]
+    failures, accepted, behavior = reg.validate_coverage(
+        stale_source_test, controls, base, head, changed, added, {})
+    assert not behavior and any(
+        "same_pr_behavior_regression_missing" in gap["reasons"]
+        for gap in failures), "Unchanged test must never certify new source behavior"
 
     forged = copy.deepcopy(covered)
     forged["reviewed_capabilities"][0]["production_authorized"] = True
@@ -379,5 +407,35 @@ with mock.patch.object(reg, "json_file", side_effect=initial_baseline):
                 "Impact classification contract drift" in str(exc))
     else:
         raise AssertionError("Unbounded precedence override allowed")
+
+
+
+# The complete gap artifact is generated even when coverage must fail.
+# It never represents independent Owner approval or a Production decision.
+with tempfile.TemporaryDirectory(prefix='mad4b-readiness-gaps-') as temp:
+    sample = {
+        'contract': 'mad4b.dynamic-readiness-capability-impact.v1',
+        'source_base_sha': base, 'exact_head_sha': head,
+        'authorizing': False, 'production_authorized': False,
+        'decision': 'FAIL_UNCOVERED_CHANGES',
+        'counts': {'coverage_gaps': 1},
+        'coverage_gaps': [{
+            'id': cap, 'source': path, 'risk': 'P0',
+            'controls': ['SECURITY-01'],
+            'reasons': ['reviewed_coverage_missing'],
+        }],
+        'coverage_gap_reasons': {'reviewed_coverage_missing': 1},
+        'introduced': [], 'retired': [], 'impact': [],
+    }
+    with mock.patch.object(reg, 'json_file', return_value=controls):
+        reg.emit(sample, temp)
+    artifact = json.loads((Path(temp) / 'capability-coverage-gaps.json').read_text())
+    assert artifact['contract'] == 'mad4b.readiness-uncovered-changes.v1'
+    assert artifact['exact_head_sha'] == head
+    assert artifact['uncovered_count'] == 1 and len(artifact['items']) == 1
+    assert not artifact['authorizing'] and not artifact['production_authorized']
+    assert not artifact['independent_owner_approval_present']
+    assert artifact['decision'] == 'FAIL_UNCOVERED_CHANGES'
+    assert 'reviewed_coverage_missing' in (Path(temp) / 'capability-impact.md').read_text()
 
 print("DYNAMIC_READINESS_NEGATIVE_REGRESSIONS: PASS")

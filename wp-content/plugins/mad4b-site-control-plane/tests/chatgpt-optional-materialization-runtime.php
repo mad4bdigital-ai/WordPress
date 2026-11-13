@@ -41,13 +41,17 @@ foreach ( $required as $name ) {
     if ( in_array( $name, $classified, true ) )
         throw new RuntimeException( 'REQUIRED_TRANSPORT_BECAME_OPTIONAL:' . $name );
 }
-foreach ( array( 'mad4b/reviewed-auxiliary-read', 'mad4b/chatgpt-tool-projection-apply',
+foreach ( array( 'mad4b/chatgpt-tool-projection-apply',
     'mad4b-ci/verified-dynamic-read', 'mad4b/direct-profile-optional' ) as $name ) {
     if ( ! in_array( $name, $classified, true ) )
         throw new RuntimeException( 'REVIEWED_OPTIONAL_MISCLASSIFIED:' . $name );
 }
+// The pre-existing contract keeps unreviewed auxiliary base tools outside
+// optional admission. Do not silently relax this gate to fix a CLI fixture.
+if ( in_array( 'mad4b/reviewed-auxiliary-read', $classified, true ) )
+    throw new RuntimeException( 'UNREVIEWED_BASE_CONVENIENCE_ADMITTED' );
 if ( in_array( 'external/never-reviewed', $classified, true ) )
     throw new RuntimeException( 'FOREIGN_UNREVIEWED_TOOL_BECAME_OPTIONAL' );
 if ( $optional::materialization_optional_tools( $required ) !== array() )
     throw new RuntimeException( 'REQUIRED_ONLY_PREVIEW_NOT_FAIL_CLOSED' );
-echo "CHATGPT_MATERIALIZATION_OPTIONAL_POLICY_PASS: stable transport required; auxiliary reviewed tools optional; foreign denied\n";
+echo "CHATGPT_MATERIALIZATION_OPTIONAL_POLICY_PASS: stable transport required; reviewed direct/projection optional; unreviewed auxiliary denied\n";
