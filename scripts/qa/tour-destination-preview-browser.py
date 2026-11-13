@@ -67,7 +67,14 @@ def main():
                 state=page.evaluate("""() => {
                     const d=document.querySelector('dialog.mad4b-destination-quick-preview-dialog');
                     const f=d.querySelector('iframe'), doc=f.contentDocument;
-                    const about=doc.querySelector('.mad4b-destination-preview-about');
+                    // The ABOUT widget, Dynamic Field and native Insights must
+                    // remain in their original Elementor document tree.
+                    const about=[...doc.querySelectorAll('[data-widget_type="jet-listing-dynamic-field.default"]')]
+                      .find(el=>!el.closest('.destination-native-insights,.jet-listing-grid__item')
+                        && el.getBoundingClientRect().height>0 && el.textContent.trim().length>65);
+                    const originalModule=about?.closest('.elementor[data-elementor-id]');
+                    const title=about?.parentElement?.querySelector('[data-widget_type="heading.default"]');
+                    const insights=originalModule?.querySelector('.destination-native-insights');
                     const section=document.querySelector('.tour-journey-discovery');
                     const full=d.querySelector('.mad4b-destination-quick-preview-full');
                     return {
@@ -75,7 +82,7 @@ def main():
                         loaded:doc.readyState,
                         previewModules:d.dataset.previewModules,
                         hero:doc.querySelector('h1')?.textContent?.trim(),
-                        aboutTitle:about?.querySelector('h2')?.textContent?.trim(),
+                        aboutTitle:title?.textContent?.trim(),
                         aboutTextLength:about?.textContent?.trim()?.length||0,
                         headerHidden:!doc.querySelector('.elementor-location-header')
                           ||getComputedStyle(doc.querySelector('.elementor-location-header')).display==='none',
@@ -87,9 +94,17 @@ def main():
                         href:full?.href,
                         framePath:new URL(f.src).pathname,
                         originalMode:section.dataset.tourJourneyMode,
-                        nativeInsights:!!doc.querySelector('.mad4b-destination-preview-about .destination-native-insights'),
-                        nativeAccordions:doc.querySelectorAll('.mad4b-destination-preview-about .destination-native-insights .e-n-accordion-item').length,
-                        nativeHighlightRows:doc.querySelectorAll('.mad4b-destination-preview-about .destination-native-insights .jet-listing-dynamic-repeater__items li').length,
+                        nativeInsights:!!insights,
+                        originalModulePreserved:!!originalModule,
+                        nativeInsightSameModule:!!insights && insights.closest('.elementor[data-elementor-id]')===originalModule,
+                        noClonedAbout:!doc.querySelector('.mad4b-destination-preview-about'),
+                        nativeAccordions:insights?.querySelectorAll('.e-n-accordion-item').length||0,
+                        nativeHighlightRows:insights?.querySelectorAll('.jet-listing-dynamic-repeater__items li').length||0,
+                        kitBorder:(()=>{const t=insights?.querySelector('summary');if(!t)return null;
+                          const css=doc.defaultView.getComputedStyle(t);
+                          return {width:css.borderTopWidth,radius:css.borderTopLeftRadius,color:css.borderTopColor};
+                        })(),
+                        frameOverflow:doc.documentElement.scrollWidth>f.clientWidth+1,
                         overflow:document.documentElement.scrollWidth>innerWidth
                     };
                 }""")
@@ -100,12 +115,18 @@ def main():
                 assert state['headerHidden'] and state['cookieHidden'],'duplicate site chrome'
                 assert state['visibleForms']==0,'unsafe embedded form'
                 assert not state['inheritedChildModal'],'nested modal inside destination iframe'
+                assert state['noClonedAbout'],'old cloned About markup still active'
+                assert not state['frameOverflow'],'iframe horizontal overflow'
                 assert not state['overflow'],'page width overflow'
                 if state['previewModules'] in ['hero-about','hero-about-insights']:
                     assert state['aboutTitle'] and state['aboutTextLength']>65,'lost JetEngine description'
+                    assert state['originalModulePreserved'],'native Elementor document wrapper missing'
                 if state['previewModules']=='hero-about-insights':
                     assert state['nativeInsights'],'original Elementor enrichment was not reused'
                     assert state['nativeAccordions']>=1,'native nested accordions missing'
+                    assert state['nativeInsightSameModule'],'Insights removed from original Elementor CSS scope'
+                    assert state['kitBorder']['width']=='1px' and state['kitBorder']['radius']=='10px', (
+                        'native Kit border style was lost: '+str(state['kitBorder']))
                 page.locator('.mad4b-destination-quick-preview-close').click()
                 page.wait_for_timeout(75)
                 assert page.locator('.mad4b-destination-quick-preview-dialog').count()==0, 'Close failed'
