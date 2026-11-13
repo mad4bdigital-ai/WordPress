@@ -491,6 +491,16 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 					return self::compensated_error( new WP_Error( 'mad4b_publication_brand_core_drift', 'Brand Core authority changed after the exact publication plan.' ), $before );
 				}
 
+                // Site-scoped Brand Integrity uses the existing rollback and
+                // publication transition; no global post-save interception.
+                if (!class_exists('MAD4B_SCP_Brand_Integrity',false))
+                    return self::compensated_error(new WP_Error(
+                        'mad4b_brand_integrity_guard_missing',
+                        'Mandatory brand integrity publisher guard unavailable.'),$before);
+                $brand_integrity=MAD4B_SCP_Brand_Integrity::publication_preflight($post_id);
+                if (is_wp_error($brand_integrity))
+                    return self::compensated_error($brand_integrity,$before);
+
 				update_post_meta( $post_id, self::MARKER_META, (string) $profile['slug'] );
 				update_post_meta( $post_id, self::REVISION_META, (int) $profile['revision'] );
 				update_post_meta( $post_id, self::AUTHORITY_META, (string) $profile['authority_sha256'] );

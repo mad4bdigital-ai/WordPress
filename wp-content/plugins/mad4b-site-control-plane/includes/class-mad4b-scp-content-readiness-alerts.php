@@ -16,6 +16,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
     const VERSION = '1.0.0';
     const PAGE = 'mad4b-content-readiness-alerts';
     const STORE = 'mad4b_content_readiness_issues_v1';
+    const RESOLVED_ARCHIVE = 'mad4b_content_readiness_resolved_archive_v1';
     const POLICY = 'mad4b_content_readiness_rules_v1';
     const AUDIT = 'mad4b_content_readiness_audit_v1';
     const MAX_POSTS = 3000;
@@ -618,7 +619,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         if($type!=='tours-and-activities'||get_post_status($id)!=='publish'||
            !class_exists('MAD4B_SCP_Research_Groups')||
            !class_exists('MAD4B_SCP_Site_Profile'))return false;
-        $highlight=get_post_meta($id,'highlight_rows',true);
+        $highlight=get_post_meta($id,'tour_highlights_content',true);
         if(!is_string($highlight)||strlen($highlight)>60000)return false;
         $text=trim(wp_strip_all_tags($highlight));
         if(!preg_match('/\bhotel\s+pick[ -]?up\b/i',$text) ||
@@ -651,7 +652,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         ],JSON_UNESCAPED_SLASHES));
         if(!hash_equals((string)($e['source_sha256']??''),$source))return false;
         // A stored classification alone cannot outlive changed tour copy.
-        $quotes=(array)($e['source_snippets']['highlight_rows']??[]);
+        $quotes=(array)($e['source_snippets']['tour_highlights_content']??$e['source_snippets']['highlight_rows']??[]);
         $matched=false;
         $now=trim(preg_replace('/\s+/u',' ',$text));
         foreach($quotes as $quote){
@@ -702,10 +703,14 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                 'A governed ContentJob intake is updating the issue ledger; retry after it completes.');
         try {
         $old=(array)get_option(self::STORE,array());$now=gmdate('c');$new=$old;
+        // Resolve history is archived only when capacity demands it.
+        $archive=(array)get_option(self::RESOLVED_ARCHIVE,array());
+        $reopened_archived=array();
         $seen=array();
         foreach ($scan['issues'] as $row) {
             $key=$row['id'];$seen[$key]=true;
-            $previous=$new[$key]??array();
+            $previous=$new[$key]??($archive[$key]??array());
+            if(!isset($new[$key])&&isset($archive[$key]))$reopened_archived[$key]=true;
             $status=($previous['status']??'')==='resolved'?'open':($previous['status']??'open');
             $new[$key]=array_merge($previous,$row,
                 array('status'=>$status,'first_seen'=>$previous['first_seen']??$now,'last_seen'=>$now,
@@ -719,15 +724,32 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
             // Brand review is a ContentJob intake REQUEST, never a direct
             // publish/write grant. Keep exact revisions and the live site brand.
             if (($row['source']??'')==='mad4b-brand-experience' &&
-                in_array($code,['brand_listing_message_alignment','brand_experiential_media_authenticity'],true)
+                in_array($code,['brand_listing_message_alignment','brand_experiential_media_authenticity','brand_identity_attribution_mismatch','brand_external_link_attribution_mismatch'],true)
                 && ($row['post_type']??'')==='tours-and-activities') {
                 $e=(array)($row['source_evidence']??[]);
                 $brand=(array)($e['brand_scope']??[]);
                 $post_id=absint($row['object_id']??0);
                 $actual_site=class_exists('MAD4B_SCP_Site_Profile')
                     ? (string)MAD4B_SCP_Site_Profile::site_uuid() : '';
+                $canonical_id=self::canonical($post_id,'tours-and-activities');
+                // WPML may leave a published translated sibling while the
+                // primary-language parent is still a draft. Give that live
+                // page its own explicit review intake; do not publish or
+                // authorize the unpublished canonical source.
+                $orphan_translation=$post_id>0
+                    && $post_id!==$canonical_id && $canonical_id>0
+                    && get_post_status($canonical_id)!=='publish'
+                    && in_array($code,array(
+                        'brand_identity_attribution_mismatch',
+                        'brand_external_link_attribution_mismatch'),true);
+                $published_translation_review=$post_id>0
+                    && $post_id!==$canonical_id && $canonical_id>0
+                    && get_post_status($post_id)==='publish'
+                    && in_array($code,array(
+                        'brand_identity_attribution_mismatch',
+                        'brand_external_link_attribution_mismatch'),true);
                 if($post_id && get_post_status($post_id)==='publish'
-                    && $post_id===self::canonical($post_id,'tours-and-activities')
+                    && ($post_id===$canonical_id || $published_translation_review)
                     && $actual_site!=='' && hash_equals($actual_site,(string)($brand['site_uuid']??''))
                     && preg_match('/^[a-f0-9]{64}$/D',(string)($e['source_sha256']??''))
                     && preg_match('/^[a-f0-9]{64}$/D',(string)($e['brand_evidence_sha256']??''))) {
@@ -738,15 +760,18 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                             && ($previous['source_evidence']['brand_evidence_sha256']??'')===$e['brand_evidence_sha256'])
                             ?'LINKED':'PRIORITY_INTAKE',
                         'source_issue_id'=>$key,'gap_code'=>$code,
-                        'priority'=>$code==='brand_listing_message_alignment'?82:76,
+                        'priority'=>in_array($code,['brand_identity_attribution_mismatch','brand_external_link_attribution_mismatch'],true)?95:($code==='brand_listing_message_alignment'?82:76),
                         'site_uuid'=>$actual_site,'brand_id'=>(string)($brand['brand_id']??''),
                         'brand_revision'=>absint($brand['revision']??0),
                         'brand_evidence_sha256'=>(string)$e['brand_evidence_sha256'],
                         'brand_authority_level'=>(string)($e['authority_level']??'provisional'),
                         'post_type'=>'tours-and-activities','source_post_id'=>$post_id,
                         'canonical_post_id'=>$post_id,
+                        'review_scope'=>$orphan_translation?'published_translation_orphan':
+                            ($published_translation_review?'published_translation_copy_review':'canonical_published_tour'),
+                        'unpublished_parent_post_id'=>$orphan_translation?$canonical_id:0,
                         'source_sha256'=>(string)$e['source_sha256'],
-                        'content_type'=>$code==='brand_listing_message_alignment'?'editorial_review':'media_review',
+                        'content_type'=>$code==='brand_experiential_media_authenticity'?'media_review':'editorial_review',
                         'deduplication_key'=>hash('sha256',$actual_site.'|'.$post_id.'|'.$code.'|'.$e['brand_evidence_sha256'].'|'.$e['source_sha256']),
                         'reason'=>(string)($e['review_guidance']??'Brand-aware source review required'),
                         'requires_governed_content_job_admission'=>true,
@@ -1023,12 +1048,66 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
             if(!self::rule_enabled_for($row,$rules))continue;
             $new[$key]['status']='resolved';$new[$key]['resolved_at']=$now;
         }
-        if (count($new)>self::MAX_ISSUES)
-            return new WP_Error('mad4b_readiness_capacity_exceeded','Issue registry capacity exceeded. Nothing saved.');
+        $archived_this_scan=array();
+        if(count($new)>self::MAX_ISSUES){
+            // Keep all actionable issues, and preserve resolved history in a
+            // cold, non-autoload WordPress option. No destructive truncation.
+            $active=0;$resolved=array();
+            foreach($new as $key=>$entry){
+                if(($entry['status']??'open')==='resolved')$resolved[$key]=$entry;
+                else $active++;
+            }
+            if($active>self::MAX_ISSUES)
+                return new WP_Error('mad4b_readiness_active_capacity_exceeded',
+                    'Actionable findings exceed the bounded issue registry. No records were changed.',
+                    array('active'=>$active,'capacity'=>self::MAX_ISSUES));
+            // Retain the most recently resolved records for the normal board.
+            // The 100-entry reserve shrinks if more active issues are present.
+            uasort($resolved,static function($a,$b){
+                $x=(string)($a['resolved_at']??$a['last_seen']??'');
+                $y=(string)($b['resolved_at']??$b['last_seen']??'');
+                return strcmp($y,$x);
+            });
+            $retain=min(100,max(0,self::MAX_ISSUES-$active-50));
+            foreach($resolved as $key=>$entry){
+                if($retain>0){--$retain;continue;}
+                $archived_this_scan[$key]=$entry;
+                unset($new[$key]);
+            }
+            if(count($new)>self::MAX_ISSUES)
+                return new WP_Error('mad4b_readiness_capacity_exceeded',
+                    'Issue registry capacity exceeded after resolved-history planning; nothing saved.');
+        }
+        // Stage the archival copy before trimming the active ledger. If a
+        // later write fails, duplicate resolved history is safe; loss is not.
+        $next_archive=$archive;
+        foreach($archived_this_scan as $key=>$row)$next_archive[$key]=$row;
+        if($next_archive!==$archive){
+            update_option(self::RESOLVED_ARCHIVE,$next_archive,false);
+            if((array)get_option(self::RESOLVED_ARCHIVE,array())!==$next_archive)
+                return new WP_Error('mad4b_readiness_archive_readback_failed',
+                    'Resolved-history archive was not verified; active ledger unchanged.');
+        }
         update_option(self::STORE,$new,false);
         $verified=(array)get_option(self::STORE,array());
         if($verified!==$new)
-            return new WP_Error('mad4b_readiness_scan_readback_failed','Issue ledger write was not confirmed.');
+            return new WP_Error('mad4b_readiness_scan_readback_failed',
+                'Issue ledger write was not confirmed. Archived copies were retained.');
+        // A previously resolved issue can reopen with its original history.
+        // Remove its stale archival copy only after its active readback passed.
+        foreach(array_keys($reopened_archived) as $key)unset($next_archive[$key]);
+        foreach(array_keys($new) as $key)unset($next_archive[$key]);
+        if($next_archive!==(array)get_option(self::RESOLVED_ARCHIVE,array())){
+            update_option(self::RESOLVED_ARCHIVE,$next_archive,false);
+            if((array)get_option(self::RESOLVED_ARCHIVE,array())!==$next_archive)
+                self::audit('archive_cleanup_deferred',array(
+                    'active_records_verified'=>count($new),
+                    'archive_cleanup_required'=>true));
+        }
+        if($archived_this_scan)self::audit('resolved_archive',array(
+            'moved'=>count($archived_this_scan),
+            'active_retained'=>count($new),
+            'archive_sha256'=>hash('sha256',serialize($next_archive))));
         self::audit('scan',['scanned'=>$scan['scanned'],'current'=>count($scan['issues'])]);
         // Only newly confirmed source transitions enter the local event journal.
         // Event automation ingests held outbox rows, never dispatches email here.
@@ -1044,6 +1123,12 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
             return str_starts_with((string)($issue['code']??''),'pres_browser_')
                 ? MAD4B_SCP_Presentation_Integrity_V1::browser_covered()
                 : MAD4B_SCP_Presentation_Integrity_V1::covered();
+        // Brand Experience provides a complete, site-bound tour inventory
+        // before ledger reconciliation. Once the finding disappears from a
+        // complete pass, its historical issue may safely close.
+        if (($issue['source']??'')==='mad4b-brand-experience')
+            return class_exists('MAD4B_SCP_Brand_Experience_Quality',false);
+
         if (($issue['source']??'')==='mad4b-listing-media-browser') {
             return class_exists('MAD4B_Listing_Media_Diagnostics',false) &&
                 (MAD4B_Listing_Media_Diagnostics::browser_readback()['live']??'')==='background_present';
