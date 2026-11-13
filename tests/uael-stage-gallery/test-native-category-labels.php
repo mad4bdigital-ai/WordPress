@@ -18,6 +18,7 @@ $label=static fn($section,$timeline,$is_stage,$show=true,$lang=null)=>
 $group=['id'=>192,'title'=>'Luxor','days'=>[1,2,5,7]];
 $expect('day tour stop numbers',$label($group,$visits,true),'Stops 1, 2, 5, 7 · Luxor');
 $expect('single stop',$label(['id'=>192,'title'=>'Valley of the Kings','days'=>[2]],$visits,true),'Stop 2 · Valley of the Kings');
+$expect('actual 60469 Aswan stage',$label(['id'=>192,'title'=>'Aswan','days'=>[3]],$visits,true),'Stop 3 · Aswan');
 $expect('multi day preserved',$label($group,$multi,false),'Days 1, 2, 5, 7 · Luxor');
 $expect('single day preserved',$label(['id'=>192,'title'=>'Luxor','days'=>[1]],$multi,false),'Day 1 · Luxor');
 $expect('unmatched stages never labeled as days',$label(['id'=>192,'title'=>'Luxor','days'=>[99]],$visits,true),'Luxor');
@@ -37,4 +38,4 @@ $ar_stage=['days_plural'=>'مراحل','day_label'=>'محطة','days'=>$visits['
 $expect('Arabic stages',$label($group,$ar_stage,true,true,$ar),'مراحل 1, 2, 5, 7 · Luxor');
 $expect('original source unchanged',implode(',',$group['days']),'1,2,5,7');
 if($failures){echo json_encode(['ok'=>false,'failures'=>$failures],JSON_UNESCAPED_UNICODE)."\n";exit(1);}
-echo json_encode(['ok'=>true,'tests'=>14,'code'=>'NATIVE_UAEL_CATEGORY_LABEL_PARITY'],JSON_UNESCAPED_SLASHES)."\n";
+echo json_encode(['ok'=>true,'tests'=>15,'code'=>'NATIVE_UAEL_CATEGORY_LABEL_PARITY'],JSON_UNESCAPED_SLASHES)."\n";
