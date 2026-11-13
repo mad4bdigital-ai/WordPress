@@ -1,0 +1,62 @@
+name: MAD4B Immutable Runtime Release Contract
+
+on:
+  pull_request:
+    paths:
+      - 'ops/native-source-publisher-v1/**'
+      - 'ops/company-code-release-v1/versioned_plugin_artifact.py'
+      - 'ops/company-code-release-v1/tests/test_versioned_plugin_artifact.py'
+      - 'ops/dynamic-operation-registry-v1/providers/source.code.release/**'
+      - 'wp-content/plugins/mad4b-tenant-sync/**'
+      - '.github/workflows/mad4b-immutable-runtime-v1.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'ops/native-source-publisher-v1/**'
+      - 'ops/dynamic-operation-registry-v1/providers/source.code.release/**'
+      - '.github/workflows/mad4b-immutable-runtime-v1.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: immutable-runtime-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  original-publisher-and-runtime:
+    name: Original source publisher and immutable runtime contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact review source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Signed grant verifier (test dependency)
+        run: python -m pip install 'cryptography>=42,<49'
+      - name: First-party source provider tests
+        run: |
+          python -m unittest discover -s tests -p test_native_source_publisher_v1.py -v
+          python -m unittest discover -s ops/native-source-publisher-v1/tests -v
+      - name: Root-private archive and immutable candidate tests
+        run: |
+          sudo -E "$(which python)" -m unittest discover -s ops/native-source-publisher-v1/tests -p test_oci_candidate.py -v
+          sudo -E "$(which python)" -m unittest discover -s ops/company-code-release-v1/tests -p test_versioned_plugin_artifact.py -v
+      - name: No schema/provider source drift
+        run: |
+          python -m unittest discover -s ops/native-source-publisher-v1/tests -p test_source_enrollment_parity.py -v
+      - name: Plugin PHP syntax and source packaging
+        run: |
+          find wp-content/plugins/mad4b-tenant-sync -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+          python -m unittest discover -s ops/company-code-release-v1/tests -p test_tenant_source_lineage_candidate.py -v
+      - name: Prevent accidental registration or secrets in source
+        run: |
+          test ! -f /etc/mad4b/native-source-publisher-policy.v2.json
+          test ! -f ops/native-source-publisher-v1/production-private-key
+          python -m py_compile ops/native-source-publisher-v1/*.py

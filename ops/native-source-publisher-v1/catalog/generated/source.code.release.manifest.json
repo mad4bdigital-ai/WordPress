@@ -1,0 +1,43 @@
+{
+  "approval_ability": "mad4b/native-source-release",
+  "command": {
+    "bound_operation_id": "source.code.release",
+    "flag": "--plan_sha256=",
+    "format": "wpcli.argv.json.v1",
+    "mode": "plan_sha256",
+    "prefix": [
+      "mad4b",
+      "native-source-publisher",
+      "apply"
+    ]
+  },
+  "contract": "mad4b.dynamic-operation-provider.v1",
+  "dependencies": [
+    {
+      "path": "native-source-publisher-v1/native_source_publisher.py",
+      "sha256": "8f43e0d13caab5ad0d2bb3584ee81f4eb6bdca4107918f1d5f6a02ca5378d6ef"
+    },
+    {
+      "path": "company-code-release-v1/company_code_release.py",
+      "sha256": "5e2be05ae1fcf1b7c054e93385da38a82884976b465925edf37360926af8a68c"
+    }
+  ],
+  "evidence": {
+    "path": "dynamic-operation-registry-v1/providers/source.code.release/evidence-schema.json",
+    "sha256": "da3bd77cce4acfe85106cb0c7aa1192e9580a1a41c733f1d6c2b23a72a6c65b3"
+  },
+  "evidence_schema": "source_code_release.v1",
+  "handler": {
+    "path": "native-source-publisher-v1/original_313_host_handler.py",
+    "sha256": "7f5638c9edf0154a9af037ac98c4a2a6d3857e86ef5a52e0c170352a3f9976e3"
+  },
+  "operation_id": "source.code.release",
+  "plan_contract": "mad4b.company-code-release.plan.v1",
+  "provider": "mad4b-source-release",
+  "source_family": "mad4b.native-source-release.v2",
+  "verifier": {
+    "path": "native-source-publisher-v1/original_313_independent_readback.py",
+    "sha256": "0e24ad1cb049d301239e410cdd442fe1805c4856408efe3a64f7bb7b69815289"
+  },
+  "version": 1
+}
