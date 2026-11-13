@@ -27,6 +27,11 @@ jobs:
           # Historic 238-file and 69-conflict source contracts use exact
           # immutable Git ancestors. Shallow HEAD checkout is insufficient.
           fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install signed source proof verifier
+        run: python -m pip install 'cryptography>=42,<49'
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
@@ -35,6 +40,8 @@ jobs:
         run: |
           set -euo pipefail
           python3 -m unittest discover -s tests -p 'test_unified_mad4b_behavior_invariants.py' -v
+          python3 -m unittest discover -s ops/company-code-release-v1/tests -p 'test_dynamic_capability*.py' -q
+          python3 -m unittest discover -s ops/dynamic-operation-registry-v1/tests -p 'test_source_candidate.py' -q
           python3 -m unittest discover -s tests -p 'test_native_source*.py' -q
           python3 -m unittest discover -s tests -p 'test_additive_mad4b_plugin_sources.py' -v
           python3 -m unittest discover -s tests -p 'test_control_plane*contract.py' -v

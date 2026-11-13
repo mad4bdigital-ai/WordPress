@@ -42,5 +42,9 @@ class SourceCandidateTests(unittest.TestCase):
             digest="f"*64
             expected=r.sha(b'["mad4b","company-code-release","apply","--plan_sha256='+b"f"*64+b'"]')
             self.assertEqual(index.command_sha256("company.code.release",digest),expected)
-            self.assertEqual(index.resolve("company.code.release")["version"],3)
+            # Preview must follow the exact source-pinned provider revision;
+            # a v3 assertion would incorrectly reject reviewed v4 capability
+            # additions without testing command or evidence compatibility.
+            self.assertGreaterEqual(m["version"],4)
+            self.assertEqual(index.resolve("company.code.release")["version"],m["version"])
             self.assertEqual(index.evidence_fields("company.code.release")["file_count"],"integer")

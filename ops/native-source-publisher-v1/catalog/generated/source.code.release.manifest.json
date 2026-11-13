@@ -19,7 +19,7 @@
     },
     {
       "path": "company-code-release-v1/company_code_release.py",
-      "sha256": "20e2753525e94d8e7f0790dbae6a9df0cb00ce5c18e604c14a1aab080992fc65"
+      "sha256": "d922204de29a9a4380249094086d40cc0e7fbc5df947601103da7366112e7600"
     },
     {
       "path": "executor-time-cas-v1/preclaim.py",

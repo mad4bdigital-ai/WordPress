@@ -8,11 +8,13 @@ first-party Broker path, not implied by this local evidence.
 """
 from __future__ import annotations
 
+import datetime as dt
 import json
 from pathlib import Path
 from typing import Callable
 
 import company_code_release as release
+capability_checks = release.capability_checks
 import original_313_code_release_contract as original
 import original_313_host_handler as handler
 
@@ -71,4 +73,38 @@ def independent_verify(
     runtime_check(plan, policy)
     php_check(plan)
     observed = fresh_read(plan)
+    # These are independently signed functional attestations, not Host-only
+    # SHA receipts. The first-party provider must have actually run after Apply.
+    if plan.get("capability_acceptance", {}).get("checks"):
+        intent = receipt_read(release.apply_intent_path(receipts, nonce))
+        if (intent.get("state") != "APPLY_STARTED" or
+                intent.get("plan_sha256") != plan["plan_sha256"] or
+                intent.get("nonce") != nonce or
+                intent.get("site_uuid") != plan["site_uuid"]):
+            raise handler.NotEnrolled("CAPABILITY_ACCEPTANCE_APPLY_INTENT_INVALID")
+        # Original 313 must not accept signed evidence observed before the
+        # Host finished complete postimage CAS, PHP lint and WordPress boot.
+        postimage_at = receipt.get("postimage_verified_at")
+        try:
+            postimage_time = dt.datetime.fromisoformat(postimage_at)
+            intent_time = dt.datetime.fromisoformat(intent["at"])
+            times_valid = (
+                postimage_time.tzinfo is not None and
+                intent_time.tzinfo is not None and
+                postimage_time >= intent_time
+            )
+        except (TypeError, ValueError, KeyError):
+            times_valid = False
+        if not times_valid:
+            raise handler.NotEnrolled("CAPABILITY_ACCEPTANCE_POSTIMAGE_TIME_MISSING")
+        challenge = receipt.get("acceptance_challenge")
+        postimage_sha256 = receipt.get("postimage_sha256")
+        if postimage_sha256 != capability_checks.postimage_fingerprint(
+                plan, observed):
+            raise handler.NotEnrolled("CAPABILITY_ACCEPTANCE_POSTIMAGE_DRIFT")
+        proof = capability_checks.verify_evidence(
+            plan, policy, receipts, nonce, postimage_at, challenge,
+            postimage_sha256)
+        if proof["evidence_sha256"] != receipt.get("capability_evidence_sha256"):
+            raise handler.NotEnrolled("CAPABILITY_ACCEPTANCE_HOST_EVIDENCE_DRIFT")
     return original.independent_release_readback(plan, receipt, observed)

@@ -2,15 +2,15 @@
   "contract": "mad4b.dynamic-operation-provider.v1",
   "operation_id": "company.code.release",
   "provider": "mad4b-company-release",
-  "version": 3,
+  "version": 4,
   "plan_contract": "mad4b.company-code-release.plan.v1",
   "handler": {
     "path": "company-code-release-v1/original_313_host_handler.py",
-    "sha256": "6c9d68dab8fd3b3dcbf705471db78c04f31e910fcc4ea1b6e9967287b0f415e7"
+    "sha256": "b1c758b61a68205d839ac4e3fcdaab0aafd84686b49639912eec3e8510899f7f"
   },
   "verifier": {
     "path": "company-code-release-v1/original_313_independent_readback.py",
-    "sha256": "2b78784e9a4f6c0835a73784f20c49f8f41a519ce9c292eca2acb32425aab815"
+    "sha256": "ccdd0aa3fabe7a1096a85c46bc1d3214e6e9658599a4cb41345c2fd182751c02"
   },
   "evidence_schema": "code_release.v2",
   "evidence": {
@@ -30,12 +30,16 @@
   },
   "dependencies": [
     {
+      "path": "company-code-release-v1/capability_acceptance.py",
+      "sha256": "f22bb14fdfb7ae57f39e86f7154d80d4727bbcf1f950a4a70edd92fe3594b994"
+    },
+    {
       "path": "company-code-release-v1/company_code_release.py",
-      "sha256": "3e6e5b53ade6a7336fba8cd1e447a6eec9e0c46c784f8cc7cca4e1a12c45a4f9"
+      "sha256": "d922204de29a9a4380249094086d40cc0e7fbc5df947601103da7366112e7600"
     },
     {
       "path": "company-code-release-v1/company_lifecycle_broker.py",
-      "sha256": "849ec834071d1f999899feeb2660017f3934ba7304e397ac6d96ef1bd906b1c7"
+      "sha256": "93903d41e7669ca6904c23d496cdef9d67095456036ce0e4aff0e45c034a99e6"
     },
     {
       "path": "company-code-release-v1/original_313_code_release_contract.py",

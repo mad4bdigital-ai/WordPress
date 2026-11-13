@@ -125,6 +125,43 @@ class UnifiedSourceNonRegression(unittest.TestCase):
         self.assertFalse(enrollment['registry_enrolled'])
         self.assertFalse(enrollment['production_writes_authorized'])
 
+    def test_dynamic_provider_catalog_pins_current_source_without_enrollment(self):
+        # Iterate declared Providers rather than maintaining a fixed list of
+        # allowed operation names. Adding a reviewed provider must require
+        # its own exact source pins but no changes to executable dispatch.
+        base=ROOT/'ops/dynamic-operation-registry-v1'
+        preview=json.loads((base/'index.preview-NOT-ENROLLED.json').read_text())
+        self.assertFalse(preview['installed_by_first_party'])
+        self.assertFalse(preview['production_mutated'])
+        self.assertTrue(preview['source_preview_only'])
+        self.assertTrue(preview['providers'])
+        seen=set()
+        for candidate in preview['providers']:
+            rel=candidate['manifest']
+            with self.subTest(manifest=rel):
+                self.assertTrue(rel.startswith('dynamic-operation-registry-v1/providers/'))
+                self.assertNotIn('..',Path(rel).parts)
+                file=ROOT/'ops'/rel
+                self.assertTrue(file.is_file() and not file.is_symlink())
+                data=file.read_bytes()
+                self.assertEqual(hashlib.sha256(data).hexdigest(),candidate['sha256'])
+                manifest=json.loads(data)
+                op=manifest['operation_id']
+                self.assertNotIn(op,seen)
+                seen.add(op)
+                self.assertEqual(manifest['contract'],'mad4b.dynamic-operation-provider.v1')
+                if op=='company.code.release':
+                    self.assertIn('company-code-release-v1/capability_acceptance.py',
+                                  {d['path'] for d in manifest['dependencies']})
+                if op=='company.code.release':
+                    self.assertGreaterEqual(manifest['version'],4)
+                for row in [manifest['handler'],manifest['verifier'],
+                            manifest['evidence'],*manifest['dependencies']]:
+                    dep=ROOT/'ops'/row['path']
+                    self.assertTrue(dep.is_file() and not dep.is_symlink(),row['path'])
+                    self.assertEqual(hashlib.sha256(dep.read_bytes()).hexdigest(),
+                                     row['sha256'],row['path'])
+
     def test_mcp_runtime_recovery_keeps_independent_official_source_gate(self):
         recovery=(CONTROL/'includes/class-mad4b-scp-mcp-runtime-recovery.php').read_text()
         dependency=(CONTROL/'includes/class-mad4b-scp-dependency-manager.php').read_text()
