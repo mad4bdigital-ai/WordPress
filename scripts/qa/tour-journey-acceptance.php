@@ -77,17 +77,31 @@ foreach($rows as $row) {
       $missing[]=$role;
   if($missing){$report['errors'][]=['doc'=>$id,'code'=>'roles_missing','roles'=>$missing];continue;}
   $template=(int)($templates[0]['settings']['template_id']??0);
-  $source=(string)get_post_meta($template,'_elementor_data',true);
-  if(!$template||get_post_type($template)!=='elementor_library'
-    ||substr_count($source,'"widgetType":"jet-listing-grid"')<2) {
-      $report['errors'][]=['doc'=>$id,'code'=>'missing_native_listing','template'=>$template];continue;
-  }
-  $report['passed']++;
-  $report['templates'][(string)$id]=$template;
-  $lang=$wpdb->get_var($wpdb->prepare(
+  $lang=(string)$wpdb->get_var($wpdb->prepare(
    "SELECT language_code FROM {$wpdb->prefix}icl_translations
     WHERE element_id=%d AND element_type='post_elementor_library' LIMIT 1",$id));
-  $report['languages'][(string)$id]=(string)$lang;
+  // WPML may preserve the English reference in Elementor JSON while resolving
+  // the corresponding translated template at render time. Test that actual
+  // resolved template, rather than forcing a redundant DB rewrite.
+  $resolved=(int)apply_filters('wpml_object_id',$template,'elementor_library',false,$lang);
+  $templateLang=(string)$wpdb->get_var($wpdb->prepare(
+   "SELECT language_code FROM {$wpdb->prefix}icl_translations
+    WHERE element_id=%d AND element_type='post_elementor_library' LIMIT 1",$resolved));
+  if($template<=0||$lang===''||$resolved<=0||$templateLang!==$lang
+    || get_post_type($resolved)!=='elementor_library'
+    || get_post_status($resolved)!=='publish'){
+    $report['errors'][]=['doc'=>$id,'code'=>'template_locale_unresolvable',
+      'doc_locale'=>$lang,'reference_id'=>$template,
+      'resolved_id'=>$resolved,'resolved_locale'=>$templateLang];continue;
+  }
+  $source=(string)get_post_meta($resolved,'_elementor_data',true);
+  if(substr_count($source,'"widgetType":"jet-listing-grid"')<2) {
+    $report['errors'][]=['doc'=>$id,'code'=>'missing_native_listing','template'=>$resolved];continue;
+  }
+  $report['passed']++;
+  $report['templates'][(string)$id]=$resolved;
+  $report['template_references'][(string)$id]=$template;
+  $report['languages'][(string)$id]=$lang;
   $listing=json_decode($source,true);
   $groups=0;
   if(is_array($listing))foreach($listing as $group) {
@@ -99,6 +113,9 @@ foreach($rows as $row) {
 $rules=(array)(get_option('icl_sitepress_settings',[])['custom_fields_translation']??[]);
 $report['display_pattern_wpml_copy_once']=(int)($rules['tour_highlights_display_pattern']??0)===3;
 if(!$report['display_pattern_wpml_copy_once'])$report['errors'][]=['code'=>'wpml_display_pattern_copy_once'];
+$report['native_localization_hook']=(bool)has_action('elementor/frontend/widget/before_render',
+  [MAD4B_Tour_Highlights_V1::class,'localize_native_grid']);
+if(!$report['native_localization_hook'])$report['errors'][]=['code'=>'native_listing_localization_hook_missing'];
 $report['passed_final']=count($report['errors'])===0 && $report['document_count']===$report['passed'];
 echo wp_json_encode($report,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n";
 if(!$report['passed_final'])exit(5);
