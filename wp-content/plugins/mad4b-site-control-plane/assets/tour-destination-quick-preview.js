@@ -59,9 +59,10 @@
       for(const module of modules){
         if(module===hero)continue;
         const headings=[...module.querySelectorAll('[data-widget_type="heading.default"]')]
-          .filter(w=>!w.closest('.jet-listing-grid__item') && w.textContent.trim().length>0);
+          .filter(w=>!w.closest('.jet-listing-grid__item,.destination-native-insights')
+            && w.textContent.trim().length>0);
         const fields=[...module.querySelectorAll('[data-widget_type="jet-listing-dynamic-field.default"]')]
-          .filter(w=>!w.closest('.jet-listing-grid__item'));
+          .filter(w=>!w.closest('.jet-listing-grid__item,.destination-native-insights'));
         for(const field of fields){
           const source=field.querySelector('.jet-listing-dynamic-field__content')||field;
           const length=source.textContent.trim().length;
@@ -93,8 +94,20 @@
       copy.className='mad4b-destination-preview-about-copy';
       copy.append(about.source.cloneNode(true));
       compact.append(title,copy);
+      // Keep original Elementor/JetEngine enrichment exactly as rendered by
+      // the Destination Term Archive Content template. Moving the native
+      // element preserves its accordion state and listeners; never request
+      // or reconstruct the same term fields a second time.
+      const nativeInsights=about.module.querySelector('.destination-native-insights');
+      if(nativeInsights&&nativeInsights.querySelector('.destination-native-field')){
+        const fullLinks=nativeInsights.querySelector('.destination-native-internal-links');
+        if(fullLinks){fullLinks.hidden=true;fullLinks.style.display='none';}
+        compact.append(nativeInsights);
+        dialog.dataset.previewModules='hero-about-insights';
+      }else{
+        dialog.dataset.previewModules='hero-about';
+      }
       hero.after(compact);
-      dialog.dataset.previewModules='hero-about';
     }else{
       dialog.dataset.previewModules='hero-only';
     }
