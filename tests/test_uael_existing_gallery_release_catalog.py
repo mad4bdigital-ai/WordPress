@@ -6,6 +6,7 @@ modified. The source Git commit—not working tree content—is authoritative.
 from __future__ import annotations
 import hashlib,importlib.util,json,subprocess,sys,tempfile,unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT=Path(__file__).resolve().parents[1]
 SPEC=importlib.util.spec_from_file_location('mad4b_gallery_release_source_only',
@@ -135,6 +136,29 @@ class ExactGalleryReleaseCAS(unittest.TestCase):
         with self.assertRaises(core.Denied):
             core.registered_component_files({
                 'id':'mad4b-gallery-test','files':[f,f]})
+
+    def test_only_requested_git_blobs_are_read_not_unrelated_catalog_components(self):
+        # GitHub's reviewed branch can lack unrelated first-party Media files.
+        # A gallery-only plan must validate those component declarations, but
+        # must never fetch every other component's Git blob.
+        with patch.object(core,'git_bytes',wraps=core.git_bytes) as read:
+            p=core.make_plan(self.spec,self.policy)
+        self.assertEqual(p['changed_count'],2)
+        fetched=[call.args[2] for call in read.call_args_list]
+        self.assertIn('ops/company-code-release-v1/catalog/mad4b-release-components.json',fetched)
+        for target in self.files:
+            self.assertIn(target,fetched)
+        self.assertEqual(len(fetched),1+len(self.files))
+
+    def test_requested_missing_git_file_is_still_denied(self):
+        missing='wp-content/mu-plugins/mad4b-nonexistent-ci-gate-file.php'
+        p=json.loads(json.dumps(self.policy))
+        p['targets']['example-company:staging']['allowed_targets'].append(missing)
+        request=json.loads(json.dumps(self.spec))
+        request['files']=[{'source':missing,'target':missing,
+                          'expected_before_sha256':None}]
+        with self.assertRaises(core.Denied):
+            core.make_plan(request,p)
 
     def test_denied_without_registered_release_catalog(self):
         denied=json.loads(json.dumps(self.policy))
