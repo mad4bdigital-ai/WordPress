@@ -68,3 +68,8 @@ html:has(> body > dialog.mad4b-extra-quick-preview-dialog[open]) {
    width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;
  }
 }
+
+/* Astra's original page scroll-to-top must not float behind a modal.
+   When the original Quick Preview closes, the ordinary site control returns. */
+html:has(> body > dialog.mad4b-extra-quick-preview-dialog[open])
+ body #ast-scroll-top {display:none!important;}
