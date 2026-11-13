@@ -19,7 +19,7 @@ concurrency:
 jobs:
   behavior-contract:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 18
     steps:
       - uses: actions/checkout@v4
         with:
@@ -36,6 +36,12 @@ jobs:
         with:
           php-version: '8.3'
           coverage: none
+      - name: Prepare pinned isolated PHP original schema verifier
+        run: |
+          set -euo pipefail
+          # Offline Python acceptance uses --pull=never; ensure the exact
+          # public test image is locally available before hermetic checks.
+          docker image inspect php:8.5-cli >/dev/null 2>&1 || docker pull php:8.5-cli
       - name: Semantic non-regression and source integrity
         run: |
           set -euo pipefail
@@ -47,7 +53,12 @@ jobs:
           # Execute this isolated test as root rather than spoofing ownership
           # or weakening the production Registry root trust gate.
           sudo -n -E "$(command -v python3)" -m unittest discover -s ops/dynamic-operation-registry-v1/tests -p 'test_source_candidate.py' -q
-          python3 -m unittest discover -s tests -p 'test_native_source*.py' -q
+          # GitHub is not the Original Host: run all portable tests
+          # dynamically and report every Host-bound module as RELEASE HOLD.
+          # Current real signed host readback is enforced separately by
+          # Production Readiness/Release Verdict, not synthesized here.
+          python3 -m unittest discover -s tests -p 'test_ci_portable_native_source_partition.py' -q
+          python3 ops/native-source-publisher-v1/ci_portable_native_tests.py
           python3 -m unittest discover -s tests -p 'test_additive_mad4b_plugin_sources.py' -v
           python3 -m unittest discover -s tests -p 'test_control_plane*contract.py' -v
       - name: Native Elementor and Developer/Operator smoke
