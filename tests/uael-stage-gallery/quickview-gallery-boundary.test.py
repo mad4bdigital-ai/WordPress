@@ -17,6 +17,8 @@ assert 'event.origin!==location.origin' in parent
 assert 'data-mad4b-uael-tour="1"' in frame
 assert 'window.parent.postMessage({type:GALLERY,open},location.origin);' in frame
 assert 'quick-preview-gallery-active' in css
+assert 'body.mad4b-extra-quickview-frame #ast-scroll-top{display:none!important}' in php
+assert 'body #ast-scroll-top {display:none!important;}' in css
 assert 'elementor-popup-modal:has([data-mad4b-uael-tour="1"])' in php
 assert 'elementor/frontend/builder_content_data' in php
 assert 'class MAD4B_UAEL_Tour_Gallery' not in php
