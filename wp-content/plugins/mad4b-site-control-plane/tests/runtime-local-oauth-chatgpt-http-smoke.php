@@ -745,11 +745,41 @@ $foreign_apply = $dispatch(
 if ( ! $foreign_apply instanceof WP_REST_Response || 200 !== (int) $foreign_apply->get_status() ) {
 	$fail( 'Foreign-client step-up denial did not return an MCP response.', $normalize( $foreign_apply instanceof WP_REST_Response ? $foreign_apply->get_data() : $foreign_apply ) );
 }
-$foreign_apply_json = wp_json_encode( $normalize( $foreign_apply->get_data() ), JSON_UNESCAPED_SLASHES );
-if ( false === $foreign_apply_json
-	|| false === strpos( $foreign_apply_json, '"isError":true' )
-	|| false === strpos( $foreign_apply_json, 'Full Staging Authority step-up requires OAuth attribution to the exact ChatGPT CIMD client.' ) ) {
-	$fail( 'Foreign OAuth client carrying step-up scope was not denied by exact-client attribution.', $normalize( $foreign_apply->get_data() ) );
+$foreign_apply_data = $normalize( $foreign_apply->get_data() );
+// The two source-reviewed, exact client-attribution denials across Adapter
+// generations are equivalent. A generic MCP error, successful tool result or
+// missing-tool failure is not an authorization-boundary proof.
+$foreign_client_denied = static function ( $response ) {
+    $text = isset( $response['result']['content'][0]['text'] )
+        && is_string( $response['result']['content'][0]['text'] )
+        ? $response['result']['content'][0]['text'] : '';
+    return is_array( $response )
+        && ( $response['jsonrpc'] ?? '' ) === '2.0'
+        && ( $response['id'] ?? null ) === 725
+        && true === ( $response['result']['isError'] ?? null )
+        && ! isset( $response['error'] )
+        && in_array( $text, array(
+            'Full Staging Authority step-up requires OAuth attribution to the exact ChatGPT CIMD client.',
+            'Enrolled ChatGPT OAuth client is required.',
+        ), true );
+};
+if ( ! $foreign_client_denied( $foreign_apply_data ) ) {
+    $fail( 'Foreign OAuth client carrying step-up scope was not denied by exact-client attribution.', $foreign_apply_data );
+}
+// Adversarial negative controls: the assertion must fail if an unrelated error
+// or missing denial is misclassified as the exact-client permission gate.
+$forged_foreign_denial = array(
+    'jsonrpc' => '2.0', 'id' => 725,
+    'result' => array(
+        'isError' => true,
+        'content' => array( array( 'type' => 'text', 'text' => 'Some unrelated MCP error.' ) ),
+    ),
+);
+if ( $foreign_client_denied( $forged_foreign_denial )
+    || $foreign_client_denied( array_merge( $foreign_apply_data, array( 'id' => 726 ) ) )
+    || $foreign_client_denied( array_merge( $foreign_apply_data, array(
+        'result' => array( 'isError' => false, 'content' => $foreign_apply_data['result']['content'] ?? array() ) ) ) ) ) {
+    $fail( 'Foreign-client denial check accepted unrelated, replayed or successful execution evidence.' );
 }
 
 // Restore the read bearer/session for the remaining read-dispatch proof.

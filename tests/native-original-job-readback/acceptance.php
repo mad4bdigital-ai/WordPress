@@ -54,7 +54,13 @@ class FakeDB {
  }
 }
 $wpdb=new FakeDB;
-require '/work/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-original-job-readback.php';
+// Resolve the immutable source under this test's own checkout, not a Docker
+// mount path that exists only inside an optional /work container.
+$source_file = dirname( __DIR__, 2 ) . '/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-original-job-readback.php';
+if ( ! is_file( $source_file ) || is_link( $source_file ) ) {
+    throw new RuntimeException( 'READBACK_SOURCE_UNAVAILABLE' );
+}
+require $source_file;
 $cls='MAD4B_SCP_Original_Job_Readback';
 $cls::boot();
 $cls::boot();
