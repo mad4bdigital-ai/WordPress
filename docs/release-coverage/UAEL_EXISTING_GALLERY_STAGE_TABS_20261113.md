@@ -95,3 +95,19 @@ iframe copy, plus the outer page copy only while the native Preview dialog is
 open. The normal site's original scroll-to-top button automatically returns
 on Quick Preview close. This does not alter the theme, global CSS, or any
 other floating controls.
+
+### Review-contract fix: owned MU-plugin assets
+
+The Git-pinned `company.code.release` catalog previously accepted only root
+MU PHP in a declarative component. That meant the already reviewed Quick
+Preview JS/CSS files could not pass exact plan admission. The existing
+`registered_release_targets()` now delegates to a strict component validator:
+root-level `mad4b-*.php` or JS/CSS direct children of a `mad4b-*` folder
+paired in **that same catalog component** with its exact PHP loader (`name.php`
+or `name-vN.php`). It rejects nested PHP, other extensions, unrelated plugin
+folders, duplicate paths, path escapes and deeper subdirectories. Git commit
+contents, source/target equality, site UUID, preimage CAS, original Broker
+signature and 313 evidence requirements remain unchanged. The existing MAD4B
+Adapter Coverage GitHub Action runs the 15 PHP label cases, Node VM frame
+cases, ownership contract and expanded Python source CAS tests directly on the
+reviewed PR head, without adding another release provider or CI workflow.
