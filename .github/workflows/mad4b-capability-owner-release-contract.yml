@@ -4,11 +4,15 @@ on:
   pull_request:
     paths:
       - 'ops/company-code-release-v1/**'
+      - 'wp-content/plugins/mad4b-tenant-sync/**'
+      - 'tests/tenant-dynamic-schema-catalog-offline.php'
       - '.github/workflows/mad4b-capability-owner-release-contract.yml'
   push:
     branches: [master]
     paths:
       - 'ops/company-code-release-v1/**'
+      - 'wp-content/plugins/mad4b-tenant-sync/**'
+      - 'tests/tenant-dynamic-schema-catalog-offline.php'
       - '.github/workflows/mad4b-capability-owner-release-contract.yml'
 
 permissions:
@@ -71,6 +75,16 @@ jobs:
               -s ops/company-code-release-v1/tests \
               -p "$spec" -v
           done
+      - name: Tenant plugin full lineage and root-owned offline schema catalog
+        run: |
+          python -m unittest discover -s ops/company-code-release-v1/tests -p test_tenant_source_lineage_candidate.py -v
+          find wp-content/plugins/mad4b-tenant-sync -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+          temp=$(mktemp -d)
+          mkdir -p "$temp/wp-content/plugins" "$temp/tests"
+          cp -a wp-content/plugins/mad4b-tenant-sync "$temp/wp-content/plugins/"
+          cp tests/tenant-dynamic-schema-catalog-offline.php "$temp/tests/"
+          sudo chown -R 0:0 "$temp/wp-content/plugins/mad4b-tenant-sync"
+          php "$temp/tests/tenant-dynamic-schema-catalog-offline.php"
       - name: Native WordPress owner-hook observer contract (PHP)
         run: |
           php -l ops/company-code-release-v1/runtime_owner_observer.php
