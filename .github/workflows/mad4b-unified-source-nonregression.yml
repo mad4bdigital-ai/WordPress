@@ -47,3 +47,6 @@ jobs:
           php tests/remote-execution/skill-seeder-exact-site-denial-smoke.php
           php tests/remote-execution/operator-grants-convergence-smoke.php
           php tests/native-original-job-readback/acceptance.php
+          # A verified MCP Adapter source is an independent requirement.
+          # Recovery must not accept disk integrity alone or start the lease.
+          php wp-content/plugins/mad4b-site-control-plane/tests/mcp-runtime-recovery-runtime.php

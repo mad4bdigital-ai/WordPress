@@ -125,6 +125,17 @@ class UnifiedSourceNonRegression(unittest.TestCase):
         self.assertFalse(enrollment['registry_enrolled'])
         self.assertFalse(enrollment['production_writes_authorized'])
 
+    def test_mcp_runtime_recovery_keeps_independent_official_source_gate(self):
+        recovery=(CONTROL/'includes/class-mad4b-scp-mcp-runtime-recovery.php').read_text()
+        dependency=(CONTROL/'includes/class-mad4b-scp-dependency-manager.php').read_text()
+        fixture=(CONTROL/'tests/mcp-runtime-recovery-runtime.php').read_text()
+        self.assertIn("empty( $integrity['source_verified'] )",recovery)
+        self.assertIn('mcp_adapter_official_source_unverified',recovery)
+        self.assertIn("$read['source_verified'] = ! empty( $read['ready'] )",dependency)
+        self.assertIn("'source_unverified'",fixture)
+        self.assertIn("'source_verified'=>$ready && 'source_unverified' !== $GLOBALS['case']",fixture)
+        self.assertIn('unverified official source acquired a privileged maintenance lease',fixture)
+
     def test_review_evidence_is_non_authorizing(self):
         ledger=json.loads(code('governance/production-readiness/capability-coverage.json'))
         self.assertFalse(ledger['authorizing'])
