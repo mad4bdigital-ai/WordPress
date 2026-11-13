@@ -281,6 +281,10 @@ def reconcile(
         dynamic.get("dynamic_313_finalizer_connected") is True
     )
     dispatch_ready = dispatch.get("dispatch_registered") is True
+    # The dynamic provider is enrolled through the Original worker registry,
+    # not the legacy Original 313 static --operation choices or site WP ability.
+    dynamic_route_ready = dynamic_306 and dynamic_313_proof and dynamic_313_finish
+    release_route_ready = (supported and dispatch_ready) or dynamic_route_ready
     blockers = []
     if not valid305:
         blockers.append("ORIGINAL_305_COMPANY_SCOPE_NOT_VERIFIED")
@@ -307,6 +311,8 @@ def reconcile(
         "original_312_verifier_registered": bool(valid312),
         "original_313_code_release_handler_registered": bool(supported),
         "company_code_release_dispatch_ability_registered": bool(dispatch_ready),
+        "dynamic_release_route_registered": bool(dynamic_route_ready),
+        "release_route_registered": bool(release_route_ready),
         "dynamic_registry_enrolled":
             bool(dynamic.get("dynamic_registry_enrolled") is True),
         "dynamic_306_digest_registered": bool(dynamic_306),
@@ -325,10 +331,15 @@ def reconcile(
         "original_313_release_receipt_verified": False,
         "code_release_execution_allowed": False,
         "production_mutated": False,
-        "state": ("HOLD_DYNAMIC_ORIGINAL_313_FINALIZER" if
-                  dynamic_306 and not dynamic_313_finish else
-                  "READY_FOR_ORIGINAL_HANDLER_ENROLLMENT")
-        if valid305 and valid312 else "HOLD_ORIGINAL_305_OR_312",
+        "state": (
+            "HOLD_ORIGINAL_305_OR_312" if not (valid305 and valid312)
+            else "HOLD_DYNAMIC_ORIGINAL_313_VERIFIER"
+            if dynamic_306 and not dynamic_313_proof
+            else "HOLD_DYNAMIC_ORIGINAL_313_FINALIZER"
+            if dynamic_306 and not dynamic_313_finish
+            else "HOLD_EXACT_SIGNED_JOB_AND_RELEASE_RECEIPT"
+            if release_route_ready else "READY_FOR_ORIGINAL_HANDLER_ENROLLMENT"
+        ),
         "blockers": blockers,
     }
 
