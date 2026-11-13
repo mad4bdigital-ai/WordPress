@@ -15,6 +15,15 @@
         "wp-content/mu-plugins/mad4b-uael-server-defer-v1.php"
       ],
       "id": "mad4b-uael-tour-gallery-tabs"
+    },
+    {
+      "files": [
+        "wp-content/mu-plugins/mad4b-extra-quick-preview-v1.php",
+        "wp-content/mu-plugins/mad4b-extra-quick-preview/quick-preview.js",
+        "wp-content/mu-plugins/mad4b-extra-quick-preview/quick-preview-frame.js",
+        "wp-content/mu-plugins/mad4b-extra-quick-preview/quick-preview.css"
+      ],
+      "id": "mad4b-extra-quick-preview-native-gallery-interop"
     }
   ],
   "contract": "mad4b.company-release-components.v1"
