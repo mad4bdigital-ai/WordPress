@@ -348,6 +348,18 @@
       ],
       "rationale": "Reviewed tourism-domain module or optional provider adapter, not a global site-type default. A user still needs the enrolled Site Profile and the exact WordPress/Ability operation permissions."
     },
+    "includes/class-mad4b-scp-tour-highlights-presentation-v1.php": {
+      "models": [
+        "tours-and-activities"
+      ],
+      "rationale": "Reviewed optional tourism-domain JetEngine/Elementor Tour Highlights consumer, not a global CPT default. The exact Tour post type only confines existing editor-time postmeta proposals and front-end rendering; it grants no new write authority and does not weaken Site Profile, Company Term Eligibility, WPML, signed release or CAS checks. Cross-company custom Tour post types require a separate governed service catalog contract before runtime broadening."
+    },
+    "includes/class-mad4b-scp-tour-highlights-v1.php": {
+      "models": [
+        "tours-and-activities"
+      ],
+      "rationale": "Reviewed optional tourism-domain JetEngine/Elementor Tour Highlights consumer, not a global CPT default. The exact Tour post type only confines existing editor-time postmeta proposals and front-end rendering; it grants no new write authority and does not weaken Site Profile, Company Term Eligibility, WPML, signed release or CAS checks. Cross-company custom Tour post types require a separate governed service catalog contract before runtime broadening."
+    },
     "includes/class-mad4b-scp-tour-workflow-runtime.php": {
       "models": [
         "tours-and-activities"

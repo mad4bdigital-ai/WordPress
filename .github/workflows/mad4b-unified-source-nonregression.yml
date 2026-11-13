@@ -47,6 +47,7 @@ jobs:
           set -euo pipefail
           python3 -m unittest discover -s tests -p 'test_unified_mad4b_behavior_invariants.py' -v
           python3 -m unittest discover -s tests -p 'test_tour_highlights_source_delta.py' -v
+          python3 -m unittest discover -s tests -p 'test_tour_highlights_site_neutral_scope.py' -v
           python3 -m unittest discover -s ops/company-code-release-v1/tests -p 'test_dynamic_capability*.py' -q
           # The actual Registry requires a root-owned, non-writable enrolled
           # directory; the test creates an EPHEMERAL candidate under /tmp.
