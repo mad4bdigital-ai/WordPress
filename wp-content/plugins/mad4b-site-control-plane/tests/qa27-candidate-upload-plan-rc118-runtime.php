@@ -20,10 +20,18 @@ function current_user_can($cap){return in_array($cap,['update_plugins','manage_o
 function wp_get_environment_type(){return 'staging';}
 function get_current_user_id(){return 1;}
 class MAD4B_SCP_Site_Profile {
+ public static $authority_ready=true;
+ public static $managed_runtime=true;
+ public static $write_enabled=true;
+ public static function configured(){return true;}
+ public static function origin_enrolled(){return true;}
+ public static function site_urls_match_enrollment(){return true;}
+ public static function managed_runtime_enabled(){return self::$managed_runtime;}
+ public static function write_enabled(){return self::$write_enabled;}
  public static function environment_allowed($env,$op){return in_array('staging',$env,true) && $op==='write';}
  public static function wordpress_environment_explicit(){return true;}
  public static function user_is_enrolled($id){return $id===1;}
- public static function status(){return ['site_uuid'=>'d745d81f-6fc4-5c6a-99dd-d953c92137bf','deployment_binding_configured'=>true,'same_origin_clone_protection'=>true];}
+ public static function status(){return ['site_uuid'=>'d745d81f-6fc4-5c6a-99dd-d953c92137bf','deployment_binding_configured'=>true,'same_origin_clone_protection'=>true,'authority_ready'=>self::$authority_ready];}
 }
 function wp_safe_remote_get($url,$args){
  if(!str_starts_with($url,'https://api.github.com/repos/mad4bdigital-ai/WordPress/git/commits/'))return new WP_Error('foreign_source');
@@ -55,6 +63,15 @@ $check=function($name,$input,$expected) {
  return $p;
 };
 try{
+ // Both managed runtime and explicit Write readiness are required, never
+ // inferred from a staging environment label or successful GitHub lookup.
+ foreach (array('authority_ready','managed_runtime','write_enabled') as $flag) {
+  MAD4B_SCP_Site_Profile::$$flag=false;
+  $denied=$check('missing_'. $flag . '_denied',$input,false);
+  if(!in_array('enrolled_managed_write_profile_required',$denied['blockers'],true))
+   throw new Exception('missing_managed_profile_denial_'.$flag);
+  MAD4B_SCP_Site_Profile::$$flag=true;
+ }
  $plan=$check('remote_verified_staging_exact_match',$input,true);
  $unauthorized=MAD4B_SCP_Self_Update::upload_apply(array_merge($input,[
   'expected_plan_sha256'=>$plan['plan_sha256'],
