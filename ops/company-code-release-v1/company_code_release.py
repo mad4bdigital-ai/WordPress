@@ -1305,6 +1305,7 @@ def apply_release(plan: dict, policy: dict, grant: dict, receipt_dir: Path,
         atomic_write(intent_path, canonical(intent) + b"\n", 0o600)
         root = Path(plan["target_root"])
         changed = []
+        postimage_verified_at = None
         state, failure = "APPLIED_VERIFIED", None
         try:
             for row in plan["files"]:
@@ -1321,6 +1322,9 @@ def apply_release(plan: dict, policy: dict, grant: dict, receipt_dir: Path,
                              preserve_existing_mode=True)
             confirm_plan(plan, policy, expect_preimage=False)
             validate_code(plan)
+            # An attestation from before the complete postimage/bootstrap
+            # check is stale even when signed and issued after APPLY_STARTED.
+            postimage_verified_at = dt.datetime.now(dt.timezone.utc).isoformat()
             # Do not issue a successful Host Apply receipt when mandatory
             # first-party capability evidence has not been independently signed.
             # This is after the write-ahead intent and before terminal success;
@@ -1328,7 +1332,8 @@ def apply_release(plan: dict, policy: dict, grant: dict, receipt_dir: Path,
             # automatic Rollback as any other failed runtime acceptance.
             if plan.get("capability_acceptance", {}).get("checks"):
                 validate_capabilities(
-                    plan, policy, receipt_dir, grant["nonce"], intent["at"])
+                    plan, policy, receipt_dir, grant["nonce"],
+                    postimage_verified_at)
         except Exception as exc:
             # If the first target drifted before any of our writes, there is
             # nothing to roll back. Record the denial, not a false success.
@@ -1356,6 +1361,8 @@ def apply_release(plan: dict, policy: dict, grant: dict, receipt_dir: Path,
             "plan_sha256": plan["plan_sha256"], "nonce": grant["nonce"],
             "files": [x["target"] for x in plan["files"]],
             "failed_reason": failure,
+            "postimage_verified_at": (postimage_verified_at
+                                      if state == "APPLIED_VERIFIED" else None),
             # Signature verification is NOT an original Broker/313 receipt.
             "broker_grant_signature_verified": True,
             "broker_receipt_verified": False,

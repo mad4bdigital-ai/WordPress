@@ -49,7 +49,7 @@ class Independent313Tests(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def call(self, *, receipt=None, observed=None):
+    def call(self, *, receipt=None, observed=None, intent=None):
         with mock.patch.object(independent.release,"verify_grant",return_value=None):
             with mock.patch.object(independent.release,"confirm_plan",return_value=None):
                 with mock.patch.object(independent.release,"assert_pinned_receipt_directory",return_value=None):
@@ -58,7 +58,10 @@ class Independent313Tests(unittest.TestCase):
                         runtime_check=lambda p,c:None,
                         php_check=lambda p:None,
                         fresh_read=lambda p: self.expected if observed is None else observed,
-                        receipt_read=lambda p: self.receipt if receipt is None else receipt,
+                        receipt_read=lambda p: (
+                            intent if intent is not None and
+                            p.name.endswith(".intent.json") else
+                            self.receipt if receipt is None else receipt),
                     )
 
     def test_valid_independent_readback_still_waits_for_original_313(self):
@@ -66,6 +69,25 @@ class Independent313Tests(unittest.TestCase):
         self.assertEqual(result["state"],"HOST_READBACK_VERIFIED_PENDING_ORIGINAL_313")
         self.assertFalse(result["original_313_certified"])
         self.assertEqual(result["file_count"],1)
+
+    def test_provider_proof_requires_host_postimage_timestamp(self):
+        self.plan["capability_acceptance"] = {"checks": [
+            {"provider": "demo.provider", "capability": "ui.render",
+             "id": "render.parity", "targets": list(self.expected)}]}
+        signed_content = {k: v for k, v in self.plan.items()
+                          if k not in ("plan_sha256", "changed_count")}
+        self.plan["plan_sha256"] = release.digest(release.canonical(signed_content))
+        self.proof["command_sha256"] = original.command_sha256(
+            self.plan["plan_sha256"])
+        self.receipt["plan_sha256"] = self.plan["plan_sha256"]
+        intent = {"state": "APPLY_STARTED",
+                  "plan_sha256": self.plan["plan_sha256"],
+                  "nonce": self.grant["nonce"],
+                  "site_uuid": self.plan["site_uuid"],
+                  "at": "2026-11-13T09:00:00+00:00"}
+        with self.assertRaisesRegex(handler.NotEnrolled,
+                                    "POSTIMAGE_TIME_MISSING"):
+            self.call(intent=intent)
 
     def test_wrong_job_bound_grant_rejected(self):
         self.grant["original_job_id"]="b"*32

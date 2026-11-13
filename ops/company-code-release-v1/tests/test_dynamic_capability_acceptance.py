@@ -111,6 +111,12 @@ class DynamicAcceptanceTest(unittest.TestCase):
             with self.assertRaisesRegex(cap.AcceptanceDenied,"BINDING_INVALID"):
                 cap.verify_evidence(plan,self.policy,Path(temp),nonce,begin)
             write(payload)
+            # Signed pre-Apply evidence must not certify a later postimage.
+            with self.assertRaisesRegex(cap.AcceptanceDenied, "EVIDENCE_TIME_INVALID"):
+                cap.verify_evidence(
+                    plan, self.policy, Path(temp), nonce,
+                    (now + dt.timedelta(seconds=2)).isoformat())
+            write(payload)
             row=json.loads(path.read_text())
             row["signature"]=base64.b64encode(b"invalid").decode()
             path.write_text(json.dumps(row))

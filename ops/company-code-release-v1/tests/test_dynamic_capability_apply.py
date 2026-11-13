@@ -90,10 +90,9 @@ class DynamicCapabilityApplyTests(unittest.TestCase):
         result = self.apply(validate_capabilities=attest)
         self.assertEqual(result["state"], "APPLIED_VERIFIED", result)
         self.assertIn("NEW", self.target.read_text())
-        intent_path = release.apply_intent_path(self.receipts, self.grant()["nonce"])
-        intent = json.loads(intent_path.read_text())
-        verified = contract.verify_evidence(self.plan, self.policy,
-                                            self.receipts, self.grant()["nonce"], intent["at"])
+        verified = contract.verify_evidence(
+            self.plan, self.policy, self.receipts, self.grant()["nonce"],
+            result["postimage_verified_at"])
         self.assertEqual(verified["verified_providers"], ["demo.capability"])
 
     def test_registered_provider_revocation_invalidates_plan(self):

@@ -171,7 +171,7 @@ def _private_file(path: Path) -> dict:
 
 
 def verify_evidence(plan: dict, policy: dict, receipts: Path,
-                    apply_nonce: str, apply_started: str) -> dict:
+                    apply_nonce: str, postimage_verified_at: str) -> dict:
     """Verify signed, exact-plan provider evidence after Apply.
 
     Independent verification is intentionally separate from the Host's
@@ -185,8 +185,8 @@ def verify_evidence(plan: dict, policy: dict, receipts: Path,
     deny_if(config is None or not isinstance(apply_nonce, str) or
             NONCE.fullmatch(apply_nonce) is None,
             "CAPABILITY_ACCEPTANCE_NOT_ENROLLED")
-    start = dt.datetime.fromisoformat(apply_started)
-    deny_if(start.tzinfo is None, "CAPABILITY_ACCEPTANCE_INTENT_TIME_INVALID")
+    start = dt.datetime.fromisoformat(postimage_verified_at)
+    deny_if(start.tzinfo is None, "CAPABILITY_ACCEPTANCE_POSTIMAGE_TIME_INVALID")
     by_provider: dict[str, list[dict]] = {}
     for item in checks:
         by_provider.setdefault(item["provider"], []).append(item)
