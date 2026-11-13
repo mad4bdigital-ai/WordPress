@@ -62,7 +62,7 @@ final class MAD4B_Tour_Highlights_V1 {
             $company=get_option('look-and-feel',[]);
             $v=is_array($company)?(string)($company['tour_highlights_default_pattern']??'explorer'):'explorer';
         }
-        return in_array($v,['explorer','split','story','compact'],true)?$v:'explorer';
+        return in_array($v,['explorer','split','story'],true)?$v:'explorer';
     }
 
     public static function related_places(int $post):array {
@@ -86,7 +86,7 @@ final class MAD4B_Tour_Highlights_V1 {
             if(empty($decision['allowed']))continue;
             $url=get_term_link($term,'destinations');
             if(is_wp_error($url)||!is_string($url)||$url==='')continue;
-            $cache[$post][]=['id'=>$term->term_id,'label'=>$term->name,'url'=>$url,'kind'=>$kind];
+            $cache[$post][]=['id'=>$term->term_id,'parent'=>(int)$term->parent,'label'=>$term->name,'url'=>$url,'kind'=>$kind];
         }
         return $cache[$post];
     }
@@ -114,6 +114,19 @@ final class MAD4B_Tour_Highlights_V1 {
         $element->add_render_attribute('_wrapper','class','tour-journey-discovery');
         $element->add_render_attribute('_wrapper','class','tour-journey--'.self::display_pattern($post));
         $element->add_render_attribute('_wrapper','data-tour-journey-mode',self::display_pattern($post));
+        // Existing taxonomy is the sole source of the Split hierarchy.
+        // The payload contains only eligible terms linked to this Tour.
+        $placeTree=array_map(static fn($place)=>[
+            'id'=>(int)$place['id'],
+            'parent'=>(int)($place['parent']??0),
+            'name'=>(string)$place['label'],
+            'kind'=>(string)$place['kind'],
+            'url'=>(string)$place['url'],
+        ],self::related_places($post));
+        $encoded=wp_json_encode($placeTree,JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT);
+        if(is_string($encoded)){
+            $element->add_render_attribute('_wrapper','data-tour-destinations',$encoded);
+        }
         // Destinations remain available when Tour Highlights are hidden or
         // awaiting review; never suppress the whole combined discovery section.
         $has=self::has_highlights($post);
