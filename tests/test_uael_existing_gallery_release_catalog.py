@@ -68,6 +68,74 @@ class ExactGalleryReleaseCAS(unittest.TestCase):
         with self.assertRaises(core.Denied):
             core.confirm_plan(plan,self.policy,expect_preimage=False)
 
+    def test_component_owns_nested_js_and_css_under_matching_mu_php_loader(self):
+        files=['wp-content/mu-plugins/mad4b-extra-quick-preview-v1.php',
+               'wp-content/mu-plugins/mad4b-extra-quick-preview/quick-preview.js',
+               'wp-content/mu-plugins/mad4b-extra-quick-preview/quick-preview-frame.js',
+               'wp-content/mu-plugins/mad4b-extra-quick-preview/quick-preview.css']
+        registry=json.loads(CATALOG.read_text())
+        component=next(x for x in registry['components']
+                       if x['id']=='mad4b-extra-quick-preview-native-gallery-interop')
+        self.assertEqual(core.registered_component_files(component),files)
+        self.assertTrue(all(core.permitted_target(f) for f in files))
+        request=json.loads(json.dumps(self.spec))
+        request['files']=[]
+        for f in files:
+            dest=self.site/f
+            dest.parent.mkdir(parents=True,exist_ok=True)
+            dest.write_bytes(b'/* old Quick Preview source */')
+            request['files'].append({'source':f,'target':f,
+                'expected_before_sha256':hashlib.sha256(dest.read_bytes()).hexdigest()})
+        plan=core.make_plan(request,self.policy)
+        self.assertEqual([x['target'] for x in plan['files']],files)
+        self.assertEqual(plan['changed_count'],len(files))
+        core.confirm_plan(plan,self.policy,expect_preimage=True)
+
+    def test_nested_asset_denied_if_no_owned_root_php_loader(self):
+        component={'id':'mad4b-gallery-test','files':[
+            'wp-content/mu-plugins/mad4b-extra-quick-preview/quick-preview.js']}
+        with self.assertRaises(core.Denied):
+            core.registered_component_files(component)
+
+    def test_nested_asset_denied_if_different_component_loader(self):
+        component={'id':'mad4b-gallery-test','files':[
+            'wp-content/mu-plugins/mad4b-extra-quick-preview-v1.php',
+            'wp-content/mu-plugins/mad4b-other-addon/javascript.js']}
+        with self.assertRaises(core.Denied):
+            core.registered_component_files(component)
+
+    def test_nested_unapproved_extension_and_deep_subfolder_denied(self):
+        loader='wp-content/mu-plugins/mad4b-extra-quick-preview-v1.php'
+        for bad in (
+            'wp-content/mu-plugins/mad4b-extra-quick-preview/evil.php',
+            'wp-content/mu-plugins/mad4b-extra-quick-preview/rules.json',
+            'wp-content/mu-plugins/mad4b-extra-quick-preview/test.md',
+            'wp-content/mu-plugins/mad4b-extra-quick-preview/assets/nested.js',
+            'wp-content/mu-plugins/mad4b-extra-quick-preview/../other.js',
+            'wp-content/mu-plugins/mad4b-extra-quick-preview\\bad.js',
+        ):
+            with self.subTest(path=bad):
+                with self.assertRaises(core.Denied):
+                    core.registered_component_files({
+                        'id':'mad4b-gallery-test','files':[loader,bad]})
+
+    def test_nested_asset_owner_must_match_exact_loader_or_version(self):
+        file='wp-content/mu-plugins/mad4b-extra-quick-preview/quick-preview.js'
+        for loader in (
+            'wp-content/mu-plugins/mad4b-extra-quick-preview-other.php',
+            'wp-content/mu-plugins/mad4b-extra-quick-preview-v1-evil.php',
+        ):
+            with self.subTest(loader=loader):
+                with self.assertRaises(core.Denied):
+                    core.registered_component_files({
+                        'id':'mad4b-gallery-test','files':[loader,file]})
+
+    def test_duplicate_component_resource_denied(self):
+        f='wp-content/mu-plugins/mad4b-example.php'
+        with self.assertRaises(core.Denied):
+            core.registered_component_files({
+                'id':'mad4b-gallery-test','files':[f,f]})
+
     def test_denied_without_registered_release_catalog(self):
         denied=json.loads(json.dumps(self.policy))
         denied['targets']['example-company:staging'].pop('release_catalog')
