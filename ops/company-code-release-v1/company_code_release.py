@@ -17,6 +17,7 @@ import os
 import posixpath
 from pathlib import Path, PurePosixPath
 import re
+import secrets
 import stat
 import subprocess
 import tempfile
@@ -1265,8 +1266,11 @@ def apply_release(plan: dict, policy: dict, grant: dict, receipt_dir: Path,
                   *, runtime_check: Callable[[dict, dict], None] = assert_runtime_binding,
                   validate_code: Callable[[dict], None] = php_lint,
                   preflight_code: Callable[[dict], None] = preflight_candidate_php,
-                  validate_capabilities: Callable[[dict, dict, Path, str, str], dict] =
-                      capability_checks.verify_evidence) -> dict:
+                  validate_capabilities: Callable =
+                      capability_checks.verify_evidence,
+                  producer_check: Callable = capability_checks.verify_producer_enrollment,
+                  produce_capabilities: Callable | None = None
+                  ) -> dict:
     """Apply only after external authority. Roll back automatically on any failure."""
     verify_grant(plan, policy, grant, "apply")
     assert_pinned_receipt_directory(policy, receipt_dir)
@@ -1291,6 +1295,15 @@ def apply_release(plan: dict, policy: dict, grant: dict, receipt_dir: Path,
         # A syntax error must never reach the first production target write.
         # This uses the tenant-bound PHP interpreter rather than host PHP.
         preflight_code(plan)
+        # A policy entry/key is NOT a running Provider. Verify the exact
+        # first-party installed dynamic producer before any target mutation.
+        if plan.get("capability_acceptance", {}).get("checks"):
+            producer_check(plan, policy)
+            # Registration is not an execution path. A pinned first-party
+            # Host adapter must supply an independently authorized Provider
+            # dispatcher. Never start writing if this is not wired.
+            fail_if(produce_capabilities is None,
+                    "CAPABILITY_ACCEPTANCE_PRODUCER_DISPATCH_NOT_ENROLLED")
         # Durable write-ahead evidence exists *before* the first file change.
         # An interrupted process cannot be confused with a clean Apply.
         intent = {
@@ -1306,6 +1319,9 @@ def apply_release(plan: dict, policy: dict, grant: dict, receipt_dir: Path,
         root = Path(plan["target_root"])
         changed = []
         postimage_verified_at = None
+        postimage_sha256 = None
+        challenge = None
+        provider_evidence_sha256 = None
         state, failure = "APPLIED_VERIFIED", None
         try:
             for row in plan["files"]:
@@ -1325,15 +1341,43 @@ def apply_release(plan: dict, policy: dict, grant: dict, receipt_dir: Path,
             # An attestation from before the complete postimage/bootstrap
             # check is stale even when signed and issued after APPLY_STARTED.
             postimage_verified_at = dt.datetime.now(dt.timezone.utc).isoformat()
+            # A fresh unpredictable challenge is minted only AFTER the complete
+            # postimage and boot verification. A pre-signed acceptance from a
+            # previous execution is never valid for this release instance.
+            if plan.get("capability_acceptance", {}).get("checks"):
+                observed = {row["target"]: digest(safe_regular(
+                    root / row["target"])) for row in plan["files"]}
+                postimage_sha256 = capability_checks.postimage_fingerprint(
+                    plan, observed)
+                challenge = secrets.token_hex(32)
             # Do not issue a successful Host Apply receipt when mandatory
             # first-party capability evidence has not been independently signed.
             # This is after the write-ahead intent and before terminal success;
             # a missing/revoked/invalid proof causes the same CAS-protected
             # automatic Rollback as any other failed runtime acceptance.
             if plan.get("capability_acceptance", {}).get("checks"):
-                validate_capabilities(
+                # Callback is first-party Host code, not an operation supplied
+                # by the mutable site, Git catalog, plan or Broker grant.
+                produce_capabilities(
                     plan, policy, receipt_dir, grant["nonce"],
-                    postimage_verified_at)
+                    postimage_verified_at, challenge, postimage_sha256)
+                evidence_result = validate_capabilities(
+                    plan, policy, receipt_dir, grant["nonce"],
+                    postimage_verified_at, challenge, postimage_sha256)
+                fail_if(not isinstance(evidence_result, dict) or
+                        evidence_result.get("verified_checks") != len(
+                            plan["capability_acceptance"]["checks"]) or
+                        not isinstance(evidence_result.get("evidence_sha256"), dict),
+                        "CAPABILITY_ACCEPTANCE_RESULT_INVALID")
+                provider_evidence_sha256 = evidence_result["evidence_sha256"]
+                # Detect independent modifications while a Provider is observing
+                # the website. JIT checks alone do not protect this later window.
+                confirm_plan(plan, policy, expect_preimage=False)
+                after = {row["target"]: digest(safe_regular(
+                    root / row["target"])) for row in plan["files"]}
+                fail_if(capability_checks.postimage_fingerprint(plan, after) !=
+                        postimage_sha256,
+                        "CAPABILITY_ACCEPTANCE_POSTIMAGE_CHANGED")
         except Exception as exc:
             # If the first target drifted before any of our writes, there is
             # nothing to roll back. Record the denial, not a false success.
@@ -1363,6 +1407,12 @@ def apply_release(plan: dict, policy: dict, grant: dict, receipt_dir: Path,
             "failed_reason": failure,
             "postimage_verified_at": (postimage_verified_at
                                       if state == "APPLIED_VERIFIED" else None),
+            "postimage_sha256": (postimage_sha256
+                                 if state == "APPLIED_VERIFIED" else None),
+            "acceptance_challenge": (challenge
+                                     if state == "APPLIED_VERIFIED" else None),
+            "capability_evidence_sha256": (
+                provider_evidence_sha256 if state == "APPLIED_VERIFIED" else None),
             # Signature verification is NOT an original Broker/313 receipt.
             "broker_grant_signature_verified": True,
             "broker_receipt_verified": False,

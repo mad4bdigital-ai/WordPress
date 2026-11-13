@@ -97,6 +97,14 @@ def independent_verify(
             times_valid = False
         if not times_valid:
             raise handler.NotEnrolled("CAPABILITY_ACCEPTANCE_POSTIMAGE_TIME_MISSING")
-        capability_checks.verify_evidence(
-            plan, policy, receipts, nonce, postimage_at)
+        challenge = receipt.get("acceptance_challenge")
+        postimage_sha256 = receipt.get("postimage_sha256")
+        if postimage_sha256 != capability_checks.postimage_fingerprint(
+                plan, observed):
+            raise handler.NotEnrolled("CAPABILITY_ACCEPTANCE_POSTIMAGE_DRIFT")
+        proof = capability_checks.verify_evidence(
+            plan, policy, receipts, nonce, postimage_at, challenge,
+            postimage_sha256)
+        if proof["evidence_sha256"] != receipt.get("capability_evidence_sha256"):
+            raise handler.NotEnrolled("CAPABILITY_ACCEPTANCE_HOST_EVIDENCE_DRIFT")
     return original.independent_release_readback(plan, receipt, observed)

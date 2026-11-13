@@ -21,11 +21,16 @@ class DynamicAcceptanceTest(unittest.TestCase):
         self.sk=Ed25519PrivateKey.generate()
         key=self.sk.public_key().public_bytes(serialization.Encoding.Raw,
                                                serialization.PublicFormat.Raw)
+        self.manifest={"operation_id":"mad4b.example.functional-check",
+                       "provider":"mad4b.example"}
         self.policy={"capability_acceptance":{
             "contract":cap.REGISTRY_CONTRACT,
             "catalog_path":"ops/company-code-release-v1/catalog/capability-acceptance.json",
             "providers":{"mad4b.example":{"enabled":True,"capabilities":["ui.widget"],
-                "public_key_b64":base64.b64encode(key).decode()}}}}
+                "public_key_b64":base64.b64encode(key).decode(),
+                "producer_operation_id":self.manifest["operation_id"],
+                "producer_manifest_sha256":cap.sha(
+                    cap.canonical(self.manifest))}}}}
         self.doc={"contract":cap.CATALOG_CONTRACT,"checks":[{
             "provider":"mad4b.example","capability":"ui.widget",
             "id":"widget.render.parity","targets":[T]}]}
@@ -58,6 +63,27 @@ class DynamicAcceptanceTest(unittest.TestCase):
         with self.assertRaisesRegex(cap.AcceptanceDenied,"PROVIDER_NOT_ENROLLED"):
             self.make()
 
+    def test_disabled_unused_provider_does_not_block_other_producers(self):
+        config=self.policy["capability_acceptance"]
+        config["providers"]["another.provider"]={
+            "enabled":False,
+            "capabilities":["ui.widget"],
+            "producer_operation_id":"another.provider.check",
+            "producer_manifest_sha256":"0"*64,
+            "public_key_b64":config["providers"][
+                "mad4b.example"]["public_key_b64"],
+        }
+        self.assertEqual(len(self.make()["checks"]),1)
+        config["providers"]["mad4b.example"]["enabled"]=False
+        with self.assertRaisesRegex(cap.AcceptanceDenied,
+                                    "PROVIDER_NOT_ENROLLED"):
+            self.make()
+
+    def test_noncanonical_catalog_target_rejected(self):
+        self.doc["checks"][0]["targets"]=[T.replace("/includes/", "//includes/")]
+        with self.assertRaisesRegex(cap.AcceptanceDenied, "TARGET_INVALID"):
+            self.make()
+
     def test_duplicate_check_rejected(self):
         self.doc["checks"].append(dict(self.doc["checks"][0]))
         with self.assertRaisesRegex(cap.AcceptanceDenied,"CHECK_DUPLICATE"):
@@ -68,6 +94,84 @@ class DynamicAcceptanceTest(unittest.TestCase):
         with self.assertRaisesRegex(cap.AcceptanceDenied,"CHECK_INVALID"):
             self.make()
 
+    def test_unregistered_producer_is_denied_before_execution(self):
+        class MissingRegistry:
+            def resolve(self, operation):
+                raise ValueError("missing operation")
+        plan={"capability_acceptance":self.snapshot}
+        with self.assertRaisesRegex(cap.AcceptanceDenied,
+                                    "PRODUCER_NOT_REGISTERED"):
+            cap.verify_producer_enrollment(
+                plan,self.policy,registry_factory=lambda:MissingRegistry())
+
+    def test_exact_installed_producer_manifest_required(self):
+        class Registry:
+            def __init__(self, manifest):self.manifest=manifest
+            def resolve(self, operation):return self.manifest
+        plan={"capability_acceptance":self.snapshot}
+        success=cap.verify_producer_enrollment(
+            plan,self.policy,registry_factory=lambda:Registry(self.manifest))
+        self.assertEqual(success["producer_operations"],
+                         [self.manifest["operation_id"]])
+        fake={**self.manifest,"provider":"foreign.owner"}
+        with self.assertRaisesRegex(cap.AcceptanceDenied,
+                                    "PRODUCER_MANIFEST_DRIFT"):
+            cap.verify_producer_enrollment(
+                plan,self.policy,registry_factory=lambda:Registry(fake))
+
+    def test_signed_provider_payload_runs_in_unprivileged_ci(self):
+        now=dt.datetime.now(dt.timezone.utc)
+        payload={
+            "contract":cap.EVIDENCE_CONTRACT,
+            "provider":"mad4b.example",
+            "producer_operation_id":self.manifest["operation_id"],
+            "plan_sha256":"b"*64,
+            "site_uuid":"12345678-1234-1234-1234-123456789abc",
+            "git_commit":"a"*40,
+            "apply_nonce":"example_nonce_12345678",
+            "challenge":"c"*64,
+            "postimage_sha256":"d"*64,
+            "catalog_sha256":self.snapshot["catalog_sha256"],
+            "observed_at":now.isoformat(),
+            "results":[{"capability":"ui.widget",
+                        "id":"widget.render.parity","passed":True}],
+        }
+        def signed(item):
+            obj=json.loads(json.dumps(item))
+            obj["signature"]=base64.b64encode(
+                self.sk.sign(cap.canonical(item))).decode()
+            return obj
+        plan={"plan_sha256":payload["plan_sha256"],
+              "site_uuid":payload["site_uuid"],
+              "git_commit":payload["git_commit"],
+              "capability_acceptance":self.snapshot}
+        kwargs={
+            "plan":plan,
+            "enrolled":self.policy["capability_acceptance"]["providers"][
+                "mad4b.example"],
+            "provider":"mad4b.example",
+            "declared":self.snapshot["checks"],
+            "apply_nonce":payload["apply_nonce"],
+            "postimage_verified_at":now-dt.timedelta(seconds=1),
+            "challenge":payload["challenge"],
+            "postimage_sha256":payload["postimage_sha256"],
+        }
+        cap.verify_provider_payload(signed(payload),**kwargs)
+        tampered=signed(payload)
+        tampered["results"][0]["passed"]=False
+        with self.assertRaisesRegex(cap.AcceptanceDenied,"CHECKS_NOT_PROVEN"):
+            cap.verify_provider_payload(tampered,**kwargs)
+        modified=signed(payload)
+        modified["challenge"]="e"*64
+        with self.assertRaisesRegex(cap.AcceptanceDenied,"BINDING_INVALID"):
+            cap.verify_provider_payload(modified,**kwargs)
+        wrong_signing_key=Ed25519PrivateKey.generate()
+        forged=dict(payload)
+        forged["signature"]=base64.b64encode(
+            wrong_signing_key.sign(cap.canonical(payload))).decode()
+        with self.assertRaisesRegex(cap.AcceptanceDenied,"SIGNATURE_INVALID"):
+            cap.verify_provider_payload(forged,**kwargs)
+
     def test_root_private_signed_provider_evidence(self):
         with tempfile.TemporaryDirectory() as temp:
             directory=Path(temp)/"capability-acceptance"
@@ -75,6 +179,8 @@ class DynamicAcceptanceTest(unittest.TestCase):
             if directory.stat().st_uid != 0:
                 self.skipTest("root-only receipt admission fixture")
             nonce="example_nonce_12345678"
+            challenge="c"*64
+            postimage_sha256="d"*64
             now=dt.datetime.now(dt.timezone.utc)
             begin=(now-dt.timedelta(seconds=2)).isoformat()
             plan={"plan_sha256":"b"*64,
@@ -82,9 +188,12 @@ class DynamicAcceptanceTest(unittest.TestCase):
                   "git_commit":"a"*40,
                   "capability_acceptance":self.snapshot}
             payload={"contract":cap.EVIDENCE_CONTRACT,
-                "provider":"mad4b.example","plan_sha256":plan["plan_sha256"],
+                "provider":"mad4b.example",
+                "producer_operation_id":self.manifest["operation_id"],
+                "plan_sha256":plan["plan_sha256"],
                 "site_uuid":plan["site_uuid"],"git_commit":plan["git_commit"],
-                "apply_nonce":nonce,
+                "apply_nonce":nonce, "challenge":challenge,
+                "postimage_sha256":postimage_sha256,
                 "catalog_sha256":self.snapshot["catalog_sha256"],
                 "observed_at":now.isoformat(),
                 "results":[{"capability":"ui.widget",
@@ -97,31 +206,40 @@ class DynamicAcceptanceTest(unittest.TestCase):
                 path.write_text(json.dumps(evidence))
                 path.chmod(0o600)
             write(payload)
-            got=cap.verify_evidence(plan,self.policy,Path(temp),nonce,begin)
+            got=cap.verify_evidence(plan,self.policy,Path(temp),nonce,begin,challenge,postimage_sha256)
             self.assertEqual(got["verified_checks"],1)
             row=json.loads(path.read_text())
             row["results"][0]["passed"]=False
             path.write_text(json.dumps(row))
             with self.assertRaisesRegex(cap.AcceptanceDenied,"CHECKS_NOT_PROVEN"):
-                cap.verify_evidence(plan,self.policy,Path(temp),nonce,begin)
+                cap.verify_evidence(plan,self.policy,Path(temp),nonce,begin,challenge,postimage_sha256)
             write(payload)
             row=json.loads(path.read_text())
             row["catalog_sha256"]="c"*64
             path.write_text(json.dumps(row))
             with self.assertRaisesRegex(cap.AcceptanceDenied,"BINDING_INVALID"):
-                cap.verify_evidence(plan,self.policy,Path(temp),nonce,begin)
+                cap.verify_evidence(plan,self.policy,Path(temp),nonce,begin,challenge,postimage_sha256)
             write(payload)
             # Signed pre-Apply evidence must not certify a later postimage.
             with self.assertRaisesRegex(cap.AcceptanceDenied, "EVIDENCE_TIME_INVALID"):
                 cap.verify_evidence(
                     plan, self.policy, Path(temp), nonce,
-                    (now + dt.timedelta(seconds=2)).isoformat())
+                    (now + dt.timedelta(seconds=2)).isoformat(),
+                    challenge, postimage_sha256)
             write(payload)
+            with self.assertRaisesRegex(cap.AcceptanceDenied, "BINDING_INVALID"):
+                cap.verify_evidence(
+                    plan, self.policy, Path(temp), nonce, begin,
+                    "e"*64, postimage_sha256)
+            with self.assertRaisesRegex(cap.AcceptanceDenied, "BINDING_INVALID"):
+                cap.verify_evidence(
+                    plan, self.policy, Path(temp), nonce, begin,
+                    challenge, "f"*64)
             row=json.loads(path.read_text())
             row["signature"]=base64.b64encode(b"invalid").decode()
             path.write_text(json.dumps(row))
             with self.assertRaisesRegex(cap.AcceptanceDenied,"SIGNATURE_INVALID"):
-                cap.verify_evidence(plan,self.policy,Path(temp),nonce,begin)
+                cap.verify_evidence(plan,self.policy,Path(temp),nonce,begin,challenge,postimage_sha256)
 
 if __name__=="__main__":
     unittest.main()

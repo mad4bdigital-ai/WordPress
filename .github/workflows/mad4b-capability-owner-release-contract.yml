@@ -48,6 +48,9 @@ jobs:
               -s ops/company-code-release-v1/tests \
               -p "$spec" -v
           done
+      - name: Source provider manifest and immutable dependency closure
+        run: |
+          python -m unittest discover -s ops/company-code-release-v1/tests -p test_source_provider_manifest_pinning.py -v
       - name: Original release owner+dependency+CAS+rollback regression
         run: |
           python -m unittest discover \

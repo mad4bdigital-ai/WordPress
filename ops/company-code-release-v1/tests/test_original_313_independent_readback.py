@@ -89,6 +89,54 @@ class Independent313Tests(unittest.TestCase):
                                     "POSTIMAGE_TIME_MISSING"):
             self.call(intent=intent)
 
+    def dynamic_fixture(self):
+        self.plan["capability_acceptance"] = {"checks": [
+            {"provider": "demo.provider", "capability": "ui.render",
+             "id": "render.parity", "targets": list(self.expected)}]}
+        signed = {k:v for k,v in self.plan.items()
+                  if k not in ("plan_sha256","changed_count")}
+        self.plan["plan_sha256"] = release.digest(release.canonical(signed))
+        self.proof["command_sha256"] = original.command_sha256(
+            self.plan["plan_sha256"])
+        self.receipt["plan_sha256"] = self.plan["plan_sha256"]
+        self.receipt["postimage_verified_at"] = "2026-11-13T10:00:00+00:00"
+        self.receipt["acceptance_challenge"] = "c"*64
+        self.receipt["postimage_sha256"] = (
+            release.capability_checks.postimage_fingerprint(
+                self.plan, self.expected))
+        self.receipt["capability_evidence_sha256"] = {"demo.provider":"d"*64}
+        return {"state":"APPLY_STARTED",
+                "plan_sha256":self.plan["plan_sha256"],
+                "nonce":self.grant["nonce"],
+                "site_uuid":self.plan["site_uuid"],
+                "at":"2026-11-13T09:59:59+00:00"}
+
+    def test_independent_proof_matches_exact_host_evidence_digest(self):
+        intent=self.dynamic_fixture()
+        outcome={"evidence_sha256":{"demo.provider":"d"*64},
+                 "verified_checks":1}
+        with mock.patch.object(independent.capability_checks,
+                               "verify_evidence",return_value=outcome):
+            receipt=self.call(intent=intent)
+        self.assertEqual(receipt["state"],
+                         "HOST_READBACK_VERIFIED_PENDING_ORIGINAL_313")
+
+    def test_independent_proof_rejects_changed_evidence_after_host_apply(self):
+        intent=self.dynamic_fixture()
+        changed={"evidence_sha256":{"demo.provider":"e"*64},
+                 "verified_checks":1}
+        with mock.patch.object(independent.capability_checks,
+                               "verify_evidence",return_value=changed):
+            with self.assertRaisesRegex(handler.NotEnrolled,
+                                        "HOST_EVIDENCE_DRIFT"):
+                self.call(intent=intent)
+
+    def test_independent_proof_rejects_changed_postimage_snapshot(self):
+        intent=self.dynamic_fixture()
+        self.receipt["postimage_sha256"]="f"*64
+        with self.assertRaisesRegex(handler.NotEnrolled,"POSTIMAGE_DRIFT"):
+            self.call(intent=intent)
+
     def test_wrong_job_bound_grant_rejected(self):
         self.grant["original_job_id"]="b"*32
         with self.assertRaisesRegex(handler.NotEnrolled,"JOB_AND_GRANT_MISMATCH"):
