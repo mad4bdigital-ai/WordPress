@@ -14,6 +14,92 @@
   "reviewed_files": [
     {
       "path": "docs/tour-highlights-native-v1.md",
+      "sha256": "528867d85c1d8a1f08421615ac48916541a7196106f51e04d1a9c4c79cd71e1b",
+      "bytes": 15863
+    },
+    {
+      "path": "scripts/migrations/tour-journey-role-migration.php",
+      "sha256": "888e77ee6165e6eeedf8cf2cf440eb4e13ac96addaef4a59db18d52e24157d8d",
+      "bytes": 7415
+    },
+    {
+      "path": "scripts/migrations/tour-journey-wpml-fr-de-20261113.php",
+      "sha256": "6e7b4cda4969d783f2b9c1845fb0e5f007119733f453d7d6980f332702b010fd",
+      "bytes": 8070
+    },
+    {
+      "path": "scripts/migrations/tour-journey-wpml-independent-20261113.php",
+      "sha256": "2b90ec825d4592507e670eaf921e6bc080058262422039dd666cb1a207d10b49",
+      "bytes": 2154
+    },
+    {
+      "path": "scripts/qa/tour-journey-acceptance.php",
+      "sha256": "0a32f2a0ca8fb0774b9e7983f020d7fc5439713f1442bcc06e5be29f78249ef8",
+      "bytes": 6869
+    },
+    {
+      "path": "scripts/qa/tour-journey-browser.py",
+      "sha256": "58ac8f4130fbde19fc0b1d2b36bb2971cf5c2780095936dad56c2209917e20b3",
+      "bytes": 4569
+    },
+    {
+      "path": "scripts/qa/tour-journey-split-browser.py",
+      "sha256": "b3bc08633b37a856f7ef80904a36fcc72eb2f89f755dbe6496c0ef39b6ffdda1",
+      "bytes": 6789
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/assets/tour-highlights-v1.css",
+      "sha256": "16fb38a162bcaafaed426fe60a340206838a02d3cf5458d066220c2b4eeee1e9",
+      "bytes": 28947
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/assets/tour-journey-split-v3.css",
+      "sha256": "f71ead919396999f0637e7c56b846a12d7905e850e2f7efa1adb8840024f01d6",
+      "bytes": 10920
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/assets/tour-journey-split-v3.js",
+      "sha256": "2b499c8db24f748a143df73f1752e05bdf1f380e77c725e9faa4d51d19e845c8",
+      "bytes": 14763
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/assets/tour-journey-ui.js",
+      "sha256": "4d00ac57ad73dc94e74d7222a4a2a5c58f911393be057a089f6860f82e911447",
+      "bytes": 17179
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tour-highlights-presentation-v1.php",
+      "sha256": "0ecf5459324cca95314551f13d9d00ebcb0d78be31b8304fc0b2662be6beb125",
+      "bytes": 11658
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tour-highlights-v1.php",
+      "sha256": "13961f2d0d8b748f00817b489a5f81d741ef1b5c1c408542298fa8331fdba64d",
+      "bytes": 17939
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "sha256": "fdc0a6c7be27604b531a8fc80f5dc08891f8b1e9c5aa6c67c749ae189f328d64",
+      "bytes": 67371
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/wpml-config.xml",
+      "sha256": "1739ac519745869be079ec7c3f271604b64b3d6dad536b37627c2a5035483821",
+      "bytes": 666
+    }
+  ],
+  "pr813_latest_source_head": "4c3d737a4a8c2764c9dce1f28dfec3a2266a9390",
+  "duplicate_migration_removed_from_unified_source": true,
+  "dynamic_site_expected_group_count": true,
+  "read_only_qa_source_reviewed": true,
+  "pr813_previous_verified_head": "f36e39f1575563854851165e2ffb36263c68df10",
+  "latest_wpml_migrations_source_only": true,
+  "latest_wpml_migrations_executed": false,
+  "latest_playwright_visual_acceptance_performed": false,
+  "frontend_jetengine_listing_locale_scoped": true,
+  "reviewed_files_prior_to_split_v3": [
+    {
+      "path": "docs/tour-highlights-native-v1.md",
       "sha256": "f78932cba2148b987aa37c7a6a272fbad2874a109a5c198da715adcc639c0032",
       "bytes": 11358
     },
@@ -73,13 +159,11 @@
       "bytes": 666
     }
   ],
-  "pr813_latest_source_head": "4c3d737a4a8c2764c9dce1f28dfec3a2266a9390",
-  "duplicate_migration_removed_from_unified_source": true,
-  "dynamic_site_expected_group_count": true,
-  "read_only_qa_source_reviewed": true,
-  "pr813_previous_verified_head": "f36e39f1575563854851165e2ffb36263c68df10",
-  "latest_wpml_migrations_source_only": true,
-  "latest_wpml_migrations_executed": false,
-  "latest_playwright_visual_acceptance_performed": false,
-  "frontend_jetengine_listing_locale_scoped": true
+  "pr813_split_v3_head": "4e008e851cbd93e40d321cfa7c4af9d3b951f78b",
+  "split_v3_source_reviewed": true,
+  "split_v3_browser_acceptance_run_during_this_merge": false,
+  "split_v3_live_installation_verified_during_this_merge": false,
+  "split_v3_existing_native_jetengine_cards_only": true,
+  "split_v3_unverified_related_placements_are_not_asserted_visits": true,
+  "split_v3_source_only": true
 }

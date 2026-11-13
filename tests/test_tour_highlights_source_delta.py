@@ -40,8 +40,12 @@ class TourHighlightsReviewedSource(unittest.TestCase):
                      'original313_signed_receipts_issued','production_release_approved'):
             self.assertFalse(self.review[flag])
         rows=self.review['reviewed_files']
-        self.assertEqual(len(rows),12)
-        self.assertEqual(len({r['path'] for r in rows}),12)
+        self.assertEqual(len(rows),15)
+        self.assertEqual(len({r['path'] for r in rows}),15)
+        self.assertEqual(len(self.review['reviewed_files_prior_to_split_v3']),12)
+        self.assertFalse(self.review['split_v3_browser_acceptance_run_during_this_merge'])
+        self.assertFalse(self.review['split_v3_live_installation_verified_during_this_merge'])
+        self.assertTrue(self.review['split_v3_source_only'])
         for row in rows:
             with self.subTest(file=row['path']):
                 path=ROOT/row['path']
@@ -124,6 +128,38 @@ class TourHighlightsReviewedSource(unittest.TestCase):
         browser=(ROOT/'scripts/qa/tour-journey-browser.py').read_text()
         self.assertIn('https://',browser)
         self.assertIn('playwright.sync_api',browser)
+
+    def test_split_v3_uses_existing_native_jetengine_card_hierarchy(self):
+        split_js=(PLUGIN/'assets/tour-journey-split-v3.js').read_text()
+        split_css=(PLUGIN/'assets/tour-journey-split-v3.css').read_text()
+        presentation=(PLUGIN/'includes/class-mad4b-scp-tour-highlights-presentation-v1.php').read_text()
+        engine=(PLUGIN/'includes/class-mad4b-scp-tour-highlights-v1.php').read_text()
+        browser=(ROOT/'scripts/qa/tour-journey-split-browser.py').read_text()
+        for token in ("'country'", "'state_governorate'", "'place_attraction'",
+                      'section.dataset.tourDestinations', 'new Map(terms.map(',
+                      "widget.querySelectorAll('.tour-place-group')",
+                      "group.querySelectorAll('.jet-listing-grid__item')",
+                      'const byId=new Map(',
+                      "document.documentElement.lang", "section.dataset.jdSplitReady"):
+            self.assertIn(token,split_js)
+        for lang in ('en:', 'ar:', 'fr:', 'de:', 'es:', 'it:'):
+            self.assertIn(lang,split_js)
+        self.assertIn('tour-journey-split-v3.css',presentation)
+        self.assertIn('tour-journey-split-v3.js',presentation)
+        self.assertIn('wp_add_inline_script',presentation)
+        self.assertIn('data-tour-destinations',engine)
+        self.assertIn("'parent'=>(int)$term->parent",engine)
+        self.assertIn("'kind'=>(string)$place['kind']",engine)
+        self.assertIn('.jd-split-v3__panel',split_css)
+        self.assertIn('pageOverflow',browser)
+        self.assertIn('nativeTemplateCount',browser)
+        # The Split display may rearrange existing JetEngine cards, but it
+        # must not invent or render a second destination Listing or back-end.
+        self.assertNotIn('cloneNode(',split_js)
+        self.assertNotIn('wp_remote_post(',engine)
+        self.assertNotIn('wp_insert_post(',engine)
+        self.assertTrue(self.review['split_v3_existing_native_jetengine_cards_only'])
+        self.assertTrue(self.review['split_v3_unverified_related_placements_are_not_asserted_visits'])
 
     def test_wpml_translation_is_independent_per_locale(self):
         tree=ET.parse(PLUGIN/'wpml-config.xml')

@@ -9,8 +9,8 @@ $GLOBALS['hooks']=array();
 $GLOBALS['meta_write_count']=0;
 function add_action($name,$callback,$priority=10,$args=1){$GLOBALS['hooks'][]=$name;}
 function add_filter($name,$callback,$priority=10,$args=1){$GLOBALS['hooks'][]=$name;}
-function get_post_type($id){return $id===7?'tours-and-activities':(in_array($id,[910,920],true)?'jet-engine':'unknown');}
-function get_post_status($id){return $id===7||$id===910?'publish':'draft';}
+function get_post_type($id){return in_array($id,[7,8],true)?'tours-and-activities':(in_array($id,[910,920],true)?'jet-engine':'unknown');}
+function get_post_status($id){return in_array($id,[7,8,910],true)?'publish':'draft';}
 function get_post_meta($id,$key,$single=false){return $GLOBALS['meta'][$id][$key]??'';}
 function get_option($name,$fallback=array()){return $name==='look-and-feel'?array('tour_highlights_default_mode'=>'manual'): $fallback;}
 $GLOBALS['language']='';
@@ -24,6 +24,7 @@ function apply_filters($name,$value,...$args){
 function get_queried_object_id(){return 7;}
 function get_the_ID(){return 7;}
 function wp_strip_all_tags($raw){return strip_tags($raw);}
+function wp_json_encode($value,$flags=0){return json_encode($value,$flags);}
 function esc_html($raw){return htmlspecialchars((string)$raw,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8');}
 function wp_kses_post($raw){return strip_tags((string)$raw,'<p><strong><em><a><ul><li>');}
 function is_wp_error($raw){return false;}
@@ -34,10 +35,18 @@ function update_post_meta($id,$key,$value,$previous=null){
  if(($GLOBALS['meta'][$id][$key]??'')!==$previous)return false;
  $GLOBALS['meta'][$id][$key]=$value;$GLOBALS['meta_write_count']++;return true;
 }
-class WP_Term { public $term_id;public $name;public function __construct($id,$name){$this->term_id=$id;$this->name=$name;} }
+class WP_Term { public $term_id;public $name;public $parent;
+ public function __construct($id,$name,$parent=0){$this->term_id=$id;$this->name=$name;$this->parent=$parent;} }
 $GLOBALS['term']=new WP_Term(33,'Luxor');
-function wp_get_object_terms($id,$taxonomy,$args=array()){return $id===7&&$taxonomy==='destinations'?array($GLOBALS['term']):array();}
-function get_term_meta($id,$name,$single=false){return $id===33&&$name==='destination_type'?'place_attraction':'';}
+$GLOBALS['hierarchy_terms']=array(new WP_Term(11,'Egypt'),new WP_Term(12,'Luxor Governorate',11),new WP_Term(33,'Luxor Temple',12));
+function wp_get_object_terms($id,$taxonomy,$args=array()){
+ if($taxonomy!=='destinations')return array();
+ return $id===7?array($GLOBALS['term']):($id===8?$GLOBALS['hierarchy_terms']:array());
+}
+function get_term_meta($id,$name,$single=false){
+ if($name!=='destination_type')return '';
+ return $id===11?'country':($id===12?'state_governorate':($id===33?'place_attraction':''));
+}
 function get_term($id,$taxonomy){return $id===33&&$taxonomy==='destinations'?$GLOBALS['term']:null;}
 function has_term($id,$taxonomy,$post){return $id===33&&$taxonomy==='destinations'&&$post===7;}
 function get_term_link($term,$tax=''){return 'https://example.invalid/locations/luxor/';}
@@ -77,6 +86,19 @@ $klass::decorate_container($element);
 prove(in_array('tour-journey--places-only',$element->attrs['class']??array(),true),'places-only frontend mode not emitted');
 prove(in_array('0',$element->attrs['data-tour-journey-has-highlights']??array(),true),'hidden highlights state not marked');
 prove($GLOBALS['meta_write_count']===1,'frontend render wrote to postmeta');
+$encoded=$element->attrs['data-tour-destinations'][0]??'';
+$payload=json_decode($encoded,true);
+prove(is_array($payload)&&count($payload)===1
+  &&$payload[0]['id']===33&&$payload[0]['parent']===0
+  &&$payload[0]['kind']==='place_attraction',
+  'source-linked term payload not exact, unique or canonical');
+$hierarchy=$klass::related_places(8);
+prove(count($hierarchy)===3
+ && $hierarchy[0]['kind']==='country' && $hierarchy[0]['parent']===0
+ && $hierarchy[1]['kind']==='state_governorate' && $hierarchy[1]['parent']===11
+ && $hierarchy[2]['kind']==='place_attraction' && $hierarchy[2]['parent']===12,
+ 'destination hierarchy did not preserve canonical taxonomy parent/type');
+prove($GLOBALS['meta_write_count']===1,'taxonomy hierarchy read wrote postmeta');
 prove(in_array('elementor/frontend/container/should_render',$GLOBALS['hooks'],true),'missing native Elementor display hook');
 // Native Elementor container and JetEngine widget localization must follow
 // the actual place-group ancestry and must never persist Elementor settings.

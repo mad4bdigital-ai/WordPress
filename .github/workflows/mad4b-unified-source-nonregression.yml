@@ -75,3 +75,6 @@ jobs:
           php wp-content/plugins/mad4b-site-control-plane/tests/mcp-runtime-recovery-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tour-highlights-v1.php
           php tests/native-tour-highlights/acceptance.php
+          node --check wp-content/plugins/mad4b-site-control-plane/assets/tour-journey-ui.js
+          node --check wp-content/plugins/mad4b-site-control-plane/assets/tour-journey-split-v3.js
+          php -l scripts/migrations/tour-journey-wpml-fr-de-20261113.php
