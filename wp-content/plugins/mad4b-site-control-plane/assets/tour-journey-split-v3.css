@@ -253,11 +253,10 @@
    keep the original inner picture/shape and remove the redundant backing
    surface/shadow from the intermediary. Do NOT flatten the actual media. */
 .tour-journey-discovery.jd-v2 .tour-place-group .jd-native-place > .elementor > .e-con:has(> .e-con){
-  background:transparent!important;
-  background-image:none!important;
+  /* Never overwrite a dynamic Elementor background image on this element. */
+  background-color:transparent!important;
   border:0!important;
   box-shadow:none!important;
-  overflow:visible!important;
   padding:0!important;
 }
 .tour-journey-discovery.jd-v2 .tour-place-group .jd-native-place > .elementor > .e-con:has(> .e-con) > .e-con{
@@ -342,7 +341,9 @@
   border:1px solid var(--jd-split-border)!important;
   border-radius:8px!important;background:var(--e-global-color-3a5c55e,#fbfbfb)!important;
   color:var(--jd-split-ink)!important;padding:7px 11px!important;
-  font:700 11px/1.35 inherit!important;cursor:pointer;text-align:start;
+  font-family:inherit!important;font-size:11px!important;
+  font-weight:700!important;line-height:1.35!important;
+  cursor:pointer;text-align:start;
 }
 .tour-journey-discovery.jd-modes-v3 .jd-modes-v3__story-action:is(:hover,:focus-visible){
   border-color:var(--jd-split-accent)!important;
