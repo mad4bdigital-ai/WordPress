@@ -158,3 +158,22 @@ This document describes the contract, not an authorization or proof of an indepe
 - Source Spanish/Italian Giza and Wayfatours Spanish Giza returned 200 and did not render empty insights. No claim of a completed in-browser Arabic or new dedicated FR/DE archive acceptance test.
 - **Separate work:** editorial coverage remains low for rich meta fields; legacy `destination_public_status` differs from the canonical `is_public` eligibility contract in some terms. This migration does not change either status and is not a solution for missing translations/media governance.
 - **Release status:** live templates and GitHub source are updated, but PR #813 remains Draft/unmerged and no independent original publisher/central signed release receipt is claimed. Follow the normal release gate before broader company rollout.
+
+
+## Brand Kit-driven Destination Accordion borders — 2026-11-13
+
+**Problem:** the newly inserted native Elementor Nested Accordion titles inherited Elementor's squared gray default borders, while the sibling Destination Highlights and Further Reading native containers used 1px/10px rounded cards.
+
+**Resolution inside the original Elementor widget/template settings, not another frontend CSS layer:**
+
+- Native Accordion `accordion_border_{normal,hover,active}` settings now consistently use a **1px solid** border; `accordion_border_radius` is **10px**. The nested content panel gets its own native Elementor Container `border_radius` (bottom 10px) to avoid square corners on expand.
+- Original Highlights and Further Reading containers also use a **1px / 10px** surface outline.
+- Elementor `__globals__` binds the styles to **Kit 60050** Global Colors already present on both current sites: `62e8100` (Cold bg = subtle border), `3a5c55e` (Silver = surface), `80789f7` (Warm bg = hover surface), plus the built-in `primary`, `secondary` and `accent` roles. Values are resolved by Elementor at render time; changing the Kit token changes the derived border.
+- The active/hover outline uses Kit Secondary; there are no new Kit colors, global CSS overrides or static company-name selectors.
+- Six existing WPML original content templates were adjusted with per-document optimistic CAS, nonpublic backups and Elementor post-CSS invalidation: Tours.dev EN/ES/IT/AR, Wayfatours EN/ES.
+- The declarative original template contract now stores the Kit style and role references. Its existing WP-CLI reconciler validates the required Global Color IDs in the active company's Kit **before** applying; it patches existing original widget style keys without replacing their translated content. Missing token -> fail-closed, not an unbranded fallback. Post-deployment dry-run on both sites: **6/6 templates present, 0 style changes pending**.
+- Only Destination page generation keys were rotated (Tours.dev 853, Wayfatours 536). No global cache purge.
+- Browser acceptance: Wayfatours desktop 1440px/mobile 390px and Tours.dev mobile 390px verified the Accordion/Highlight borders both compute to `rgb(217,209,202)`, 1px, 10px; on open, border uses `rgb(32,76,80)`, the lower content-panel corners remain 10px. No horizontal overflow. Existing Giza Quick Preview mobile (Split→Governorates) stayed functional with 3 native accordions and no page-level JS exceptions.
+- Regression `scripts/qa/destination-native-template-browser.py` checks consistent widths, radii, card/accordion border colors, Kit role availability and opened content radius.
+
+**Scope:** this fixes original Destination Insights cards, not every Elementor accordion sitewide. Other companies with nonmatching Kit custom token IDs must provide a compatible semantic-token mapping rather than inheriting Wayfatours' custom IDs blindly. The PR is Draft/unmerged and does not itself grant independent release authority.
