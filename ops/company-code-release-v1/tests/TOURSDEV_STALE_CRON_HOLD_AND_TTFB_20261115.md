@@ -1,0 +1,19 @@
+# Tours.dev — obsolete cron isolation and live TTFB triage (15 Nov 2026 EET)
+
+Direct, source-bound host repair. **Seven root cron entries had become nonfunctional** after container-name and filesystem migration. Two referenced missing files (`ai-only-local-cycle.sh`, `content-job.../runtime-cycle.sh`); one content reconciler referenced the missing Docker alias `etg-commerce-staging-php`; two autonomous CSS and two JavaScript CPU jobs referenced the same missing alias and a superseded Nginx cache-key form. Their logs showed repeated `No such container`, `not found`, and `STAGING_WPCLI_UNAVAILABLE`; no successful CSS admission or certification was being performed by them. Repairing the alias alone would risk unreviewed obsolete CSS/JS behavior and CPU spikes.
+
+## Safe action
+
+All **seven** confirmed broken jobs were explicitly commented as `MAD4B_STALE_RUNTIME_HOLD_20261115 reason=... original=...`, leaving the full original schedule and arguments visible for scoped restoration. Two actual working jobs remain active: Wayfatours UAEL proof candidate renewal and the guarded stale Playwright QA janitor. Exact crontab CAS was checked before installing, and the entire previous root crontab is backed up at `/opt/mad4b-company-provisioning/backups/toursdev-stale-cron-hold-20261115/root-crontab-before-80b0f676d35ba00a.txt`. Restore only a selected line after verifying its new native Company/Site provider contract, execution container by live Docker label, and Nginx/cache version. **Do not reintroduce old container aliases or bulk-restore the crontab.** The paused content-reconciliation automation will not run until a compatible replacement is certified; no published content was deleted.
+
+## What did not improve and must remain fail closed
+
+Tours.dev public homepage EN/ES is still `MISS`, `Cache-Control: private, no-store` and `X-MAD4B-Mobile-CSS-Ready: 0`; observed 3.94s EN and 5.11s ES TTFB in last pair. Verified Critical CSS manifest at CSS Epoch 102 does not match live Epoch 123, and actual source HTML contains three stylesheets including a separate UAEL asset. Its full-CSS fallback requires a single fully verified blocking stylesheet. Browser HTML policy also verifies base WooCommerce USD against the request's actual filtered WCML currency (a live HTTP diagnostic recorded EUR); the edge cache key is not reliably segmented by the resolved currency. **Never force** public caching on when that context is not matched: an existing USD HTML response could otherwise serve an EUR visitor, including prices.
+
+WordPress OPcache (512MiB, 20k files) and Redis persistent object cache are already enabled; native secondary listing lazy modes are already `auto`. A cold tour PHP diagnostic sampled >1,200 SQL queries (~0.4s SQL) in ~5.6s PHP, dominated by Elementor templates and JetEngine fragments. Fragment cache was edited concurrently by another local source worker during this audit (multiple recent source SHAs). It was **not overwritten**; no currency-policy, pricing, source CSS, WPML or WordPress code changes were made in this repair. Existing source TTFB requires a **new** currency/market-partitioned cache admission contract plus exact live CSS proof and dedicated rendering optimization, with EN/ES/market/checkout correctness and independent readback.
+
+## Observed host health
+
+After the preceding Playwright orphan cleanup and this cron hold, 8-vCPU host load was ~3.29 one-minute at 23:28 UTC; RAM available ~20 GiB, swap used ~5.6GiB but without sustained swap I/O. Wayfatours EN/ES returned HTTP 200 in ~20ms. This is a **partial** performance fix: obsolete jobs are stopped; the Tours.dev TTFB gap remains, and no Original313 signed release was claimed.
+
+Machine-readable receipt: `ops/company-code-release-v1/reports/toursdev-stale-cron-hold-20261115.json`.
