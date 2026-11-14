@@ -11,6 +11,10 @@ final class MAD4B_SCP_Brand_Integrity {
     const MAX_BATCH = 500;
     const MAX_FIELD_BYTES = 524288;
     const MAX_ISSUES_PER_POST = 25;
+    const MAX_TEXT_FIELDS_PER_POST = 1000;
+    const MAX_NESTING_DEPTH = 24;
+    const MAX_DISCOVERY_BATCHES = 20;
+    const MAX_SCANNED_TEXT_CHARS = 24000;
 
     private static function clean($text) {
         $text = html_entity_decode(wp_strip_all_tags((string)$text), ENT_QUOTES | ENT_HTML5, 'UTF-8');
@@ -119,6 +123,11 @@ final class MAD4B_SCP_Brand_Integrity {
             $host=(string)preg_replace('/^www\./i','',$host);
             if ($host === '' || isset($allowed[$host])) continue;
             $anchor=mb_substr(self::clean($entry[4]??''),0,160);
+            // An ordinary source citation or partner link is NOT a brand
+            // violation. A conversion CTA in editorial copy is advisory;
+            // a company-owned internal-linking field is a hard mismatch.
+            $cta=preg_match('/\b(?:book\s+(?:our|your)\s+(?:tour|trip)|reserve\s+your\s+tour|explore\s+our\s+(?:tours|trips)|reserva\s+tu\s+tour|réservez\s+votre\s+voyage)\b/iu',$anchor)===1;
+            if(!$promotional && !$cta)continue;
             $out[hash('sha256',$href)]=array('host'=>$host,
                 'anchor_text'=>$anchor,
                 'url_sha256'=>hash('sha256',$href),
@@ -128,34 +137,64 @@ final class MAD4B_SCP_Brand_Integrity {
         return array_values($out);
     }
 
-    private static function append_leaf(array &$fields, $path, $value, $depth=0) {
-        if ($depth > 8 || count($fields) > 250) return;
+    private static function coverage_gap(array &$coverage, $path, $reason) {
+        $coverage['complete'] = false;
+        $coverage['gap_count'] = (int)($coverage['gap_count']??0)+1;
+        if (count($coverage['gap_samples'])<12)
+            $coverage['gap_samples'][]=array('field_path'=>$path,'reason'=>$reason);
+    }
+
+    private static function append_leaf(array &$fields, $path, $value, $depth=0, array &$coverage=array()) {
+        if ($depth > self::MAX_NESTING_DEPTH) {
+            self::coverage_gap($coverage,$path,'nesting_limit');
+            return;
+        }
+        if (count($fields) >= self::MAX_TEXT_FIELDS_PER_POST) {
+            self::coverage_gap($coverage,$path,'text_field_budget');
+            return;
+        }
         if (is_array($value)) {
             foreach ($value as $key=>$entry) {
                 if (is_string($key) && preg_match('/(?:password|secret|token|private_key|api_key|nonce|license)/i',$key))
                     continue;
-                self::append_leaf($fields, $path.'.'.(string)$key, $entry, $depth+1);
+                self::append_leaf($fields, $path.'.'.(string)$key, $entry, $depth+1,$coverage);
             }
             return;
         }
-        if (!is_string($value) || $value === '' || strlen($value) > self::MAX_FIELD_BYTES) return;
+        if (!is_string($value) || $value === '') return;
+        if (strlen($value)>self::MAX_FIELD_BYTES) {
+            self::coverage_gap($coverage,$path,'field_bytes_exceeded');
+            return;
+        }
         if ($depth <= 2 && ($value[0] === '[' || $value[0] === '{')) {
-            $json = json_decode($value, true, 9);
+            $json = json_decode($value, true, 26);
             if (is_array($json)) {
-                self::append_leaf($fields,$path,$json,$depth+1);
+                self::append_leaf($fields,$path,$json,$depth+1,$coverage);
                 return;
             }
         }
+        // Rendered CSS/JS assets are not editorial source fields. They have
+        // separate asset integrity controls and browser-rendered QA.
+        if(preg_match('/(?:^|[._])(?:custom_css|custom_js|javascript|stylesheet|script_code)(?:$|[._])/i',$path))
+            return;
         // Only scan customer-visible textual Elementor settings. Selectors,
         // placeholders, filters and serialized option choices are not brands.
         if (str_contains($path,'meta._elementor_data.') &&
             !preg_match('/\.(?:editor|item_editor_content|html|text_content|text|title|subtitle|heading|description|content|item_title|item_text)$/D',$path)) return;
         $text = self::clean($value);
-        if ($text !== '' && mb_strlen($text) >= 12) $fields[$path] = array(
-            'text' => mb_substr($text,0,24000), 'html' => $value);
+        if ($text !== '' && mb_strlen($text) >= 12 && !preg_match('~^(?:https?://|//)\S+$~i',$text)) {
+            if (mb_strlen($text)>self::MAX_SCANNED_TEXT_CHARS)
+                self::coverage_gap($coverage,$path,'scanned_text_excerpt_limit');
+            if (substr_count(strtolower($value),'<a ')>80)
+                self::coverage_gap($coverage,$path,'link_count_limit');
+            $fields[$path] = array(
+                'text'=>mb_substr($text,0,self::MAX_SCANNED_TEXT_CHARS),
+                'html'=>$value);
+        }
     }
 
-    private static function fields($post_id) {
+    private static function fields($post_id, array &$coverage) {
+        $coverage = array('complete'=>true,'gap_count'=>0,'gap_samples'=>array());
         $post = get_post($post_id);
         if (!($post instanceof WP_Post)) return array();
         $fields = array();
@@ -163,7 +202,7 @@ final class MAD4B_SCP_Brand_Integrity {
         foreach (array('post_title','post_excerpt','post_content') as $column) {
             if ($post->post_type==='elementor_library' &&
                 $column==='post_content' && $elementor_data!=='') continue;
-            self::append_leaf($fields,$column,(string)$post->$column);
+            self::append_leaf($fields,$column,(string)$post->$column,0,$coverage);
         }
         $meta = get_post_meta($post_id);
         foreach ((array)$meta as $key=>$values) {
@@ -177,9 +216,12 @@ final class MAD4B_SCP_Brand_Integrity {
             // JetEngine repeater values and the Woo/CPT textual description
             // are actual guest-facing content in tour templates. Field names,
             // unlike third-party brand names, are documented source types.
-            if (!preg_match('/^(?:tour_|rank_math_|_elementor_|_description$|itinerary_item$|includes$|excludes$|.*(?:content|description|summary|intro|headline|heading|title|subtitle|message|copy|blurb|tagline|html|text|faq|link|cta|why_book|editor).*)/i',$key)) continue;
+            // Every non-private public field may contain a customer-visible
+            // sentence, regardless of a plugin's field naming convention.
+            // Candidate detection remains contextual; data/media-only scalar
+            // values cannot independently produce an attribution finding.
             foreach ((array)$values as $index=>$value)
-                self::append_leaf($fields,'meta.'.$key.'.'.$index,maybe_unserialize($value));
+                self::append_leaf($fields,'meta.'.$key.'.'.$index,maybe_unserialize($value),0,$coverage);
         }
         return $fields;
     }
@@ -218,7 +260,8 @@ final class MAD4B_SCP_Brand_Integrity {
                 $first = explode(' ', $name)[0];
                 if (in_array($first,array('your','our','my','the','this','these','those',
                     'their','his','her','its','a','an','you','we','us','vos','votre',
-                    'su','sus','tu','tus','il','la','le','les','die','der','das'),true)) continue;
+                    'su','sus','tu','tus','il','la','le','les','die','der','das',
+                    'ihre','ihren','ihr','ihrem','ihres','unsere','unseren','unserer'),true)) continue;
                 if ($rule === 'promotional_brand_with' &&
                     count(preg_split('/\s+/u',$candidate)) < 2) continue;
                 if ($rule !== 'promotional_attribution_ar' && !preg_match('/^\p{Lu}/u',$candidate)) continue;
@@ -250,9 +293,15 @@ final class MAD4B_SCP_Brand_Integrity {
     }
 
     public static function scan_post($post_id, $brand=null, $include_unpublished=false) {
+        $report=self::scan_post_report($post_id,$brand,$include_unpublished);
+        return $report['issues'];
+    }
+
+    public static function scan_post_report($post_id, $brand=null, $include_unpublished=false) {
         $post_id = absint($post_id);
         $post = get_post($post_id);
-        if (!$post || (!$include_unpublished && $post->post_status!=='publish')) return array();
+        if (!$post || (!$include_unpublished && $post->post_status!=='publish'))
+            return array('complete'=>true,'issues'=>array(),'gap_count'=>0,'gap_samples'=>array(),'field_count'=>0);
         if (!is_array($brand)) {
             $brand = class_exists('MAD4B_SCP_Brand_Experience_Quality',false)
                 ? MAD4B_SCP_Brand_Experience_Quality::brand_context() : array();
@@ -260,9 +309,13 @@ final class MAD4B_SCP_Brand_Integrity {
         $identity = self::identity($brand);
         // Missing site identity fails closed into an operator review, not a
         // guessed brand replacement or a false publication decision.
-        if (empty($identity['scope']['brand_name'])) return array();
+        if (empty($identity['scope']['brand_name']))
+            return array('complete'=>false,'issues'=>array(),'gap_count'=>1,
+                'gap_samples'=>array(array('reason'=>'site_identity_missing')),'field_count'=>0);
         $issues = array();
-        foreach (self::fields($post_id) as $path=>$value) {
+        $coverage=array();
+        $fields=self::fields($post_id,$coverage);
+        foreach ($fields as $path=>$value) {
             foreach (self::analyze_links($value['html'],$path,$identity['scope']) as $link) {
                 $code = 'brand_external_link_attribution_mismatch';
                 $key = hash('sha256',get_current_blog_id().'|'.$post->post_type.'|'.$post_id.'|'
@@ -283,7 +336,10 @@ final class MAD4B_SCP_Brand_Integrity {
                         'confidence'=>$link['confidence'],
                         'review_guidance'=>'Check domain ownership and site authorization for this link. Replace with an approved site-specific destination in an authorized content job.',
                         'review_only'=>true,'publication_authorized'=>false,'auto_replacement_authorized'=>false));
-                if (count($issues)>=self::MAX_ISSUES_PER_POST) break 2;
+                if (count($issues)>=self::MAX_ISSUES_PER_POST) {
+                    self::coverage_gap($coverage,$path,'issue_limit_reached');
+                    break 2;
+                }
             }
             foreach (self::analyze_text($value['text'],$identity) as $match) {
                 $code = 'brand_identity_attribution_mismatch';
@@ -309,10 +365,113 @@ final class MAD4B_SCP_Brand_Integrity {
                         'auto_replacement_authorized'=>false,
                     ),
                 );
-                if (count($issues) >= self::MAX_ISSUES_PER_POST) break 2;
+                if (count($issues) >= self::MAX_ISSUES_PER_POST) {
+                    self::coverage_gap($coverage,$path,'issue_limit_reached');
+                    break 2;
+                }
             }
         }
-        return array_values($issues);
+        return array(
+            'complete'=>!empty($coverage['complete']),
+            'gap_count'=>(int)$coverage['gap_count'],
+            'gap_samples'=>$coverage['gap_samples'],
+            'field_count'=>count($fields),
+            'issues'=>array_values($issues)
+        );
+    }
+
+    /**
+     * A published tour may already contain historical issues. A governed edit
+     * must be allowed to repair them, while never introducing a high-confidence
+     * issue or silently changing the source while keeping the same issue ID.
+     */
+    public static function newly_introduced_high(array $before, array $after) {
+        $known=array();
+        foreach((array)($before['issues']??array()) as $row) {
+            if (!is_array($row) || empty($row['id'])) continue;
+            $known[(string)$row['id']]=(string)($row['source_evidence']['source_sha256']??'');
+        }
+        $added=array();
+        foreach((array)($after['issues']??array()) as $row) {
+            if(!is_array($row) || ($row['severity']??'')!=='high') continue;
+            $key=(string)($row['id']??'');
+            $current=(string)($row['source_evidence']['source_sha256']??'');
+            if($key==='' || !isset($known[$key]) || !hash_equals($known[$key],$current))
+                $added[]=$row;
+        }
+        return $added;
+    }
+
+    private static function blockers($post_id, array $issues, $reason) {
+        $evidence=array();
+        foreach(array_slice($issues,0,12) as $row)$evidence[]=array(
+            'issue_id'=>(string)($row['id']??''),
+            'field_path'=>(string)($row['source_evidence']['field_path']??''),
+            'candidate'=>(string)($row['source_evidence']['matched_entity']??'')
+        );
+        return new WP_Error('mad4b_brand_integrity_publication_blocked',
+            $reason,array('contract'=>self::CONTRACT,'post_id'=>absint($post_id),
+                'issue_count'=>count($issues),'evidence'=>$evidence,
+                'auto_replacement_authorized'=>false));
+    }
+
+    public static function live_update_preflight($post_id,array $baseline) {
+        if(empty($baseline['complete']))
+            return new WP_Error('mad4b_brand_integrity_baseline_incomplete',
+                'Live update baseline coverage was not complete.');
+        $report=self::scan_post_report($post_id,null,true);
+        if(empty($report['complete']))
+            return new WP_Error('mad4b_brand_integrity_coverage_incomplete',
+                'Live update coverage was incomplete.',
+                array('post_id'=>absint($post_id),'gap_count'=>$report['gap_count'],
+                    'gap_samples'=>$report['gap_samples']));
+        $added=self::newly_introduced_high($baseline,$report);
+        if($added)return self::blockers($post_id,$added,
+            'Live content update would introduce or alter a high-confidence brand mismatch.');
+        return array('contract'=>self::CONTRACT,'allowed'=>true,
+            'historic_issue_count'=>count($report['issues']),'new_high_confidence_issues'=>0);
+    }
+
+    /**
+     * Review changed payload BEFORE touching an already-public document.
+     * The final source scan after helpers/media protects against changes
+     * introduced by integrations outside this normalized input.
+     */
+    public static function payload_preflight(array $input) {
+        if (!class_exists('MAD4B_SCP_Brand_Experience_Quality',false))
+            return new WP_Error('mad4b_brand_integrity_context_missing','Brand provider unavailable.');
+        $brand=MAD4B_SCP_Brand_Experience_Quality::brand_context();
+        $identity=self::identity($brand);
+        if(empty($identity['scope']['brand_name']))
+            return new WP_Error('mad4b_brand_integrity_identity_missing','Site brand identity unavailable.');
+        $fields=array();$coverage=array('complete'=>true,'gap_count'=>0,'gap_samples'=>array());
+        foreach(array('post_title','post_content','post_excerpt') as $key) {
+            if(array_key_exists($key,$input) && $input[$key]!==null)
+                self::append_leaf($fields,$key,$input[$key],0,$coverage);
+        }
+        foreach((array)($input['meta']??array()) as $key=>$value) {
+            if(!is_string($key) || preg_match('/(?:password|secret|token|private_key|api_key|nonce|license|_oembed|cache|session)/i',$key))
+                continue;
+            self::append_leaf($fields,'meta.'.$key.'.0',$value,0,$coverage);
+        }
+        if(!$coverage['complete'])return new WP_Error('mad4b_brand_integrity_payload_incomplete',
+            'The planned content payload could not be inspected completely.',
+            array('gap_count'=>$coverage['gap_count'],'samples'=>$coverage['gap_samples']));
+        $blockers=array();
+        foreach($fields as $path=>$value) {
+            foreach(self::analyze_text($value['text'],$identity) as $found)
+                if(($found['confidence']??'')==='high')$blockers[]=array(
+                    'id'=>hash('sha256',$path.'|'.$found['candidate']),
+                    'source_evidence'=>array('field_path'=>$path,'matched_entity'=>$found['candidate']));
+            foreach(self::analyze_links($value['html'],$path,$identity['scope']) as $link)
+                if(($link['confidence']??'')==='high')$blockers[]=array(
+                    'id'=>hash('sha256',$path.'|'.$link['host']),
+                    'source_evidence'=>array('field_path'=>$path,'matched_entity'=>$link['host']));
+        }
+        if($blockers)return self::blockers(0,$blockers,
+            'Proposed content payload contains a high-confidence brand mismatch.');
+        return array('contract'=>self::CONTRACT,'allowed'=>true,
+            'candidate_fields_checked'=>count($fields));
     }
 
     /**
@@ -328,22 +487,17 @@ final class MAD4B_SCP_Brand_Integrity {
         if (empty($brand['scope']['brand_name']))
             return new WP_Error('mad4b_brand_integrity_identity_missing',
                 'Site Brand Core has no authoritative brand name.');
-        $issues = self::scan_post($post_id, $brand, true);
+        $report = self::scan_post_report($post_id, $brand, true);
+        if (!$report['complete'])
+            return new WP_Error('mad4b_brand_integrity_coverage_incomplete',
+                'Brand Integrity could not inspect all candidate source fields.',
+                array('post_id'=>absint($post_id),'gap_count'=>$report['gap_count'],
+                    'gap_samples'=>$report['gap_samples']));
+        $issues = $report['issues'];
         $high = array_values(array_filter($issues,
             static fn($issue)=>(string)($issue['severity']??'')==='high'));
-        if ($high) {
-            $evidence = array();
-            foreach (array_slice($high,0,12) as $row) $evidence[] = array(
-                'issue_id'=>$row['id'],
-                'field_path'=>(string)($row['source_evidence']['field_path']??''),
-                'candidate'=>(string)($row['source_evidence']['matched_entity']??''),
-            );
-            return new WP_Error('mad4b_brand_integrity_publication_blocked',
-                'Potential attribution to another company was found in the proposed content; editorial review is required before publication.',
-                array('contract'=>self::CONTRACT,'post_id'=>absint($post_id),
-                    'issue_count'=>count($high),'evidence'=>$evidence,
-                    'auto_replacement_authorized'=>false));
-        }
+        if($high)return self::blockers($post_id,$high,
+            'Potential attribution to another company was found in proposed content.');
         return array('contract'=>self::CONTRACT,'allowed'=>true,
             'review_issues'=>count($issues),'post_id'=>absint($post_id));
     }
@@ -364,13 +518,66 @@ final class MAD4B_SCP_Brand_Integrity {
         $brand = class_exists('MAD4B_SCP_Brand_Experience_Quality',false)
             ? MAD4B_SCP_Brand_Experience_Quality::brand_context() : array();
         $issues = array();
-        foreach ($ids as $id) foreach (self::scan_post($id,$brand) as $issue) $issues[] = $issue;
-        return array('contract'=>self::CONTRACT,'complete'=>!$more,
+        $incomplete = array();
+        $gaps=0;
+        foreach ($ids as $id) {
+            $report=self::scan_post_report($id,$brand);
+            foreach($report['issues'] as $issue)$issues[]=$issue;
+            if (!$report['complete']) {
+                $gaps+=(int)$report['gap_count'];
+                if(count($incomplete)<20)$incomplete[]=array(
+                    'post_id'=>$id,'gap_count'=>$report['gap_count'],
+                    'samples'=>$report['gap_samples']);
+            }
+        }
+        return array('contract'=>self::CONTRACT,
+            'complete'=>!$more && $gaps===0,'pagination_complete'=>!$more,
+            'coverage_complete'=>$gaps===0,'coverage_gap_count'=>$gaps,
+            'incomplete_posts'=>$incomplete,
             'scanned'=>count($ids),'last_id'=>$ids?end($ids):absint($after_id),
             'issues'=>$issues,'site_uuid'=>(string)($brand['scope']['site_uuid']??''));
     }
 
     public static function discover($cfg=null) {
-        return self::scan_batch(array('tours-and-activities'),0,self::MAX_BATCH);
+        // The scan is owned by the existing Content Readiness scheduler.
+        // Additional approved post types may register via the site-scoped
+        // source provider. A new post beyond the first 500 must never escape
+        // detection solely because its ID is later in the inventory.
+        // Providers may ADD approved visible content types but cannot remove
+        // the canonical tour type and silently close existing tour findings.
+        $extensions=apply_filters('mad4b/brand_integrity/scannable_post_types',
+            array(),$cfg);
+        if(!is_array($extensions))$extensions=array();
+        $types=array_merge(array('tours-and-activities','page','elementor_library'),$extensions);
+        $types=array_values(array_unique(array_filter(array_map('sanitize_key',$types),
+            static fn($type)=>post_type_exists($type))));
+        $brand=class_exists('MAD4B_SCP_Brand_Experience_Quality',false)
+            ? MAD4B_SCP_Brand_Experience_Quality::brand_context():array();
+        if(empty($brand['scope']['brand_name']) || empty($brand['scope']['site_uuid']))
+            return array('contract'=>self::CONTRACT,'complete'=>false,
+                'scanned'=>0,'issues'=>array(),'coverage_reason'=>'brand_context_missing',
+                'site_uuid'=>(string)($brand['scope']['site_uuid']??''));
+        if(!$types)return array('contract'=>self::CONTRACT,'complete'=>false,
+            'scanned'=>0,'issues'=>array(),'coverage_reason'=>'post_types_not_registered',
+            'site_uuid'=>(string)$brand['scope']['site_uuid']);
+        $after=0;$scanned=0;$issues=array();$gaps=0;$incomplete=array();
+        $covered=false;
+        for($page=0;$page<self::MAX_DISCOVERY_BATCHES;$page++) {
+            $batch=self::scan_batch($types,$after,self::MAX_BATCH);
+            $scanned+=(int)$batch['scanned'];
+            foreach($batch['issues'] as $issue)$issues[]=$issue;
+            $gaps+=(int)($batch['coverage_gap_count']??0);
+            foreach((array)($batch['incomplete_posts']??array()) as $record)
+                if(count($incomplete)<20)$incomplete[]=$record;
+            if(!empty($batch['pagination_complete'])){$covered=true;break;}
+            if((int)$batch['last_id']<=$after)break;
+            $after=(int)$batch['last_id'];
+        }
+        return array('contract'=>self::CONTRACT,'complete'=>$covered&&$gaps===0,
+            'pagination_complete'=>$covered,'coverage_complete'=>$gaps===0,
+            'coverage_gap_count'=>$gaps,'incomplete_posts'=>$incomplete,
+            'scanned'=>$scanned,'issues'=>$issues,
+            'site_uuid'=>(string)$brand['scope']['site_uuid'],
+            'post_types'=>$types,'coverage_reason'=>$covered?'':'pagination_budget_exhausted');
     }
 }

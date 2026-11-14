@@ -608,7 +608,8 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         return array('contract'=>'mad4b.content-readiness.discovery.v1','complete'=>$complete,
             'post_counts'=>$counts,'scanned'=>$scanned,'issues'=>$issues,
             'completeness_evaluated'=>absint($completeness['evaluated']??0),
-            'completeness_skipped_unknown'=>absint($completeness['skipped_unknown']??0));
+            'completeness_skipped_unknown'=>absint($completeness['skipped_unknown']??0),
+            'brand_integrity_coverage'=>(array)($experience['brand_integrity_coverage']??array()));
     }
     /**
      * First-party source determines whether a FIXED origin is applicable.
@@ -1108,7 +1109,21 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
             'moved'=>count($archived_this_scan),
             'active_retained'=>count($new),
             'archive_sha256'=>hash('sha256',serialize($next_archive))));
-        self::audit('scan',['scanned'=>$scan['scanned'],'current'=>count($scan['issues'])]);
+        // A zero finding count is a valid clean result only with complete
+        // site-bound source coverage. Keep the proof in the original audit.
+        $coverage=(array)($scan['brand_integrity_coverage']??array());
+        self::audit('scan',array(
+            'scanned'=>$scan['scanned'],'current'=>count($scan['issues']),
+            'brand_integrity'=>array(
+                'complete'=>!empty($coverage['complete']),
+                'scanned'=>absint($coverage['scanned']??0),
+                'coverage_gap_count'=>absint($coverage['coverage_gap_count']??0),
+                'issue_count'=>absint($coverage['issue_count']??0),
+                'post_types'=>(array)($coverage['scan_post_types']??array()),
+                'site_uuid'=>(string)($coverage['site_uuid']??''),
+                'contract'=>(string)($coverage['contract']??''),
+            )));
+
         // Only newly confirmed source transitions enter the local event journal.
         // Event automation ingests held outbox rows, never dispatches email here.
         if(class_exists('MAD4B_SCP_Readiness_Integrations'))

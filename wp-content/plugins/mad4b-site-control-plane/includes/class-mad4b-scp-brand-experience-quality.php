@@ -137,14 +137,23 @@ final class MAD4B_SCP_Brand_Experience_Quality {
                     'review_guidance'=>'Review the exact site-bound Brand Context assets and their current revisions; do not promote presentation tokens into approved brand strategy.',
                     'review_only'=>true,'publication_authorized'=>false));
         }
-        if (!post_type_exists('tours-and-activities')) return array('complete'=>true,
-            'issues'=>[],'evaluated'=>0,'brand'=>$brand);
-        $ids = get_posts(array('post_type'=>'tours-and-activities','post_status'=>'publish',
-            'posts_per_page'=>self::MAX_TOURS+1,'fields'=>'ids','suppress_filters'=>true,
-            'orderby'=>'ID','order'=>'ASC','no_found_rows'=>true));
-        if (count($ids)>self::MAX_TOURS) {
-            $partial=true; $ids=array_slice($ids,0,self::MAX_TOURS);
-        }
+        // Brand Quality's editorial/media checks and Brand Integrity's copy
+        // inventory share a complete-paging contract. The former must not
+        // silently stop at 500 tours, blocking closure or missing newer IDs.
+        // Companies with no Tour CPT still scan their published pages/templates.
+        global $wpdb;
+        $tour_type_registered=post_type_exists('tours-and-activities');
+        $last=0;
+        $covered=!$tour_type_registered;
+        for($page=0;$page<MAD4B_SCP_Brand_Integrity::MAX_DISCOVERY_BATCHES
+                && $tour_type_registered;$page++) {
+            $ids=array_map('intval',(array)$wpdb->get_col($wpdb->prepare(
+                "SELECT ID FROM {$wpdb->posts}
+                 WHERE ID > %d AND post_type=%s AND post_status='publish'
+                 ORDER BY ID ASC LIMIT %d",
+                 $last,'tours-and-activities',self::MAX_TOURS+1)));
+            $more=count($ids)>self::MAX_TOURS;
+            if($more)$ids=array_slice($ids,0,self::MAX_TOURS);
         foreach ($ids as $post_id) {
             $id=(int)$post_id;
             if (self::source_id($id,'tours-and-activities')!==$id) continue;
@@ -206,6 +215,12 @@ final class MAD4B_SCP_Brand_Experience_Quality {
             $issues[]=self::issue('tours-and-activities',$id,'brand_experiential_media_authenticity',
                 'medium','Authenticity of experience-led underwater or wildlife tour imagery requires visual review',$e);
         }
+            if(!$more){$covered=true;break;}
+            $next=(int)end($ids);
+            if($next<=$last)break;
+            $last=$next;
+        }
+        if(!$covered)$partial=true;
         // Brand Integrity observes all published language variants and source
         // fields. Incomplete inventory cannot close issues for unseen posts.
         $integrity=MAD4B_SCP_Brand_Integrity::discover($cfg);
@@ -213,7 +228,18 @@ final class MAD4B_SCP_Brand_Experience_Quality {
         $issues=array_merge($issues,(array)($integrity['issues']??array()));
         return array('complete'=>!$partial,'issues'=>$issues,'evaluated'=>$evaluated,
             'brand'=>$brand,'partial'=>$partial,
-            'brand_integrity_scanned'=>absint($integrity['scanned']??0));
+            'brand_integrity_scanned'=>absint($integrity['scanned']??0),
+            'brand_integrity_coverage'=>array(
+                'contract'=>MAD4B_SCP_Brand_Integrity::CONTRACT,
+                'complete'=>!empty($integrity['complete']),
+                'pagination_complete'=>!empty($integrity['pagination_complete']),
+                'coverage_complete'=>!empty($integrity['coverage_complete']),
+                'coverage_gap_count'=>absint($integrity['coverage_gap_count']??0),
+                'scan_post_types'=>(array)($integrity['post_types']??array()),
+                'issue_count'=>count((array)($integrity['issues']??array())),
+                'scanned'=>absint($integrity['scanned']??0),
+                'site_uuid'=>(string)($integrity['site_uuid']??''),
+            ));
     }
 
     public static function primary_color() {

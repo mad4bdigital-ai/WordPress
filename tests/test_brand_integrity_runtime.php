@@ -49,7 +49,8 @@ $link_cases = array(
     array('<a href="//other.test/tours">Our tour collection</a>','meta.tour_internal_linking_exploration_content.0','high'),
     array('<a href="'.home_url('/tours'). '">Our tours</a>','meta.tour_internal_linking_exploration_content.0',null),
     array('<a href="/tours/">Our tours</a>','meta.tour_internal_linking_exploration_content.0',null),
-    array('<a href="https://other.test/about">Hotel partner</a>','post_content','needs_review'),
+    array('<a href="https://other.test/about">Hotel partner</a>','post_content',null),
+    array('<a href="https://other.test/book">Book your tour</a>','post_content','needs_review'),
 );
 foreach ($link_cases as $n=>$case) {
     $matched = MAD4B_SCP_Brand_Integrity::analyze_links($case[0],$case[1],array());
