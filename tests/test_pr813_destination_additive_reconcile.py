@@ -3,6 +3,7 @@ from pathlib import Path
 import hashlib
 import json
 import unittest
+import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 REVIEW = ROOT / "docs/release-coverage/pr814-pr813-destination-preview-additive-20261114.json"
@@ -31,27 +32,50 @@ class DestinationAdditiveReview(unittest.TestCase):
                 self.assertEqual(len(body), item["bytes"])
                 self.assertEqual(hashlib.sha256(body).hexdigest(), item["sha256"])
 
-    def test_presentation_is_exact_addition_to_historical_reviewed_source(self):
+    def test_presentation_historical_addition_and_current_successor_both_proven(self):
         row = self.review["presentation"]
-        self.assertEqual(row["insertion_line_count"], 12)
-        actual = (ROOT / row["path"]).read_bytes()
-        self.assertEqual((len(actual), hashlib.sha256(actual).hexdigest()),
+        path = row["path"]
+
+        def git_source(sha):
+            result = subprocess.run(["git", "show", sha + ":" + path],
+                                    cwd=ROOT, capture_output=True, check=True)
+            return result.stdout
+
+        # Historical source and additive source remain immutable, but the
+        # current checked-out file is an explicitly reviewed newer successor.
+        historical = git_source(self.review["pr814_original_base_sha"])
+        self.assertEqual((len(historical), hashlib.sha256(historical).hexdigest()),
+                         (row["historical_bytes"], row["historical_sha256"]))
+        additive = git_source("c2214ebb92bf9f007b9b2c82bff67c8dfdb5fa5f")
+        self.assertEqual((len(additive), hashlib.sha256(additive).hexdigest()),
                          (row["current_bytes"], row["current_sha256"]))
-        lines = actual.splitlines(True)
+        lines = additive.splitlines(True)
         start = row["insertion_line"]
         insertion = b"".join(lines[start:start + row["insertion_line_count"]])
         self.assertEqual(hashlib.sha256(insertion).hexdigest(), row["insertion_sha256"])
         self.assertIn(b"tour-destination-quick-preview.js", insertion)
         self.assertIn(b"wp_add_inline_script", insertion)
-        self.assertIn(b"['tour-journey-ui']", insertion)
-        historical = b"".join(lines[:start] + lines[start + row["insertion_line_count"]:])
-        self.assertEqual((len(historical), hashlib.sha256(historical).hexdigest()),
-                         (row["historical_bytes"], row["historical_sha256"]))
+        self.assertEqual(b"".join(lines[:start] + lines[start + row["insertion_line_count"]:]), historical)
+
         reviewed = json.loads((ROOT / self.review["preserved_historical_review"]).read_text())
-        base = [f for f in reviewed["reviewed_files"] if f["path"] == row["path"]]
+        base = [f for f in reviewed["reviewed_files"] if f["path"] == path]
         self.assertEqual(len(base), 1)
         self.assertEqual((base[0]["bytes"], base[0]["sha256"]),
                          (row["historical_bytes"], row["historical_sha256"]))
+
+        successor = (ROOT / path).read_bytes()
+        identity = hashlib.sha1(b"blob " + str(len(successor)).encode() + b"\0" + successor).hexdigest()
+        coverage = json.loads((ROOT / "governance/production-readiness/capability-coverage.json").read_text())
+        current = [record for record in coverage["reviewed_changes"]
+                   if record.get("path") == path and record.get("source_blob_sha") == identity]
+        self.assertEqual(len(current), 1)
+        self.assertEqual(current[0]["status"], "reviewed_for_ci_only")
+        self.assertIs(current[0]["production_authorized"], False)
+        self.assertTrue(current[0]["live_evidence_required"])
+        self.assertIn("tests/test_journey_successor_no_regression.py", current[0]["regression_tests"])
+        self.assertIn(b"wp_enqueue_script('tour-destination-preview',$assets.", successor)
+        self.assertIn(b"['tour-journey-split-v3']", successor)
+        self.assertNotIn(b"wp_add_inline_script('tour-destination-preview'", successor)
 
     def test_native_destination_contract_remains_read_only_without_duplicate_cards(self):
         asset = (ROOT / "wp-content/plugins/mad4b-site-control-plane/assets/"
@@ -65,7 +89,9 @@ class DestinationAdditiveReview(unittest.TestCase):
             self.assertIn(phrase, asset)
         for forbidden in ("cloneNode(", "wp_remote_post(", "wp_insert_post("):
             self.assertNotIn(forbidden, asset)
-        self.assertIn("wp_enqueue_script('tour-destination-preview')", presentation)
+        self.assertIn("wp_enqueue_script('tour-destination-preview',$assets.'tour-destination-quick-preview.js'", presentation)
+        self.assertIn("['tour-journey-split-v3'],(string)filemtime($destinationJs),true", presentation)
+        self.assertNotIn("wp_add_inline_script('tour-destination-preview'", presentation)
         self.assertIn("data-tour-destinations", source)
         self.assertIn("if (!function_exists('add_filter') || !function_exists('add_action')) return;", source)
 
