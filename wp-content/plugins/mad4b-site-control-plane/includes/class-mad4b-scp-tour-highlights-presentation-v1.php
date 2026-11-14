@@ -21,6 +21,18 @@ final class MAD4B_Tour_Highlights_Presentation_V1 {
         if(is_readable($splitCss)){
             wp_add_inline_style('tour-highlights-v1',(string)file_get_contents($splitCss));
         }
+        // Cacheable, versioned first-party JS reduces uncacheable Tour HTML.
+        // The original native scripts and dependency order are unchanged;
+        // Elementor, JetEngine and the private booking widgets stay untouched.
+        $assets=plugins_url('assets/',dirname(__DIR__).'/mad4b-site-control-plane.php');
+        $js=__DIR__.'/../assets/tour-journey-ui.js';
+        $splitJs=__DIR__.'/../assets/tour-journey-split-v3.js';
+        if(is_readable($js)&&is_readable($splitJs)){
+            wp_enqueue_script('tour-journey-ui',$assets.'tour-journey-ui.js',
+                [],(string)filemtime($js),true);
+            wp_enqueue_script('tour-journey-split-v3',$assets.'tour-journey-split-v3.js',
+                ['tour-journey-ui'],(string)filemtime($splitJs),true);
+        }
         // Shared Quick Preview interaction contract, scoped to native Journey
         // destination cards. Unlike Extras, this is purely informational and
         // never touches selection controls or the Fluent Form projection.
@@ -30,20 +42,9 @@ final class MAD4B_Tour_Highlights_Presentation_V1 {
             wp_register_style('tour-destination-preview',false,['tour-highlights-v1'],'1.0.0');
             wp_enqueue_style('tour-destination-preview');
             wp_add_inline_style('tour-destination-preview',(string)file_get_contents($destinationCss));
-            wp_register_script('tour-destination-preview',false,['tour-journey-ui'],'1.0.0',true);
-            wp_enqueue_script('tour-destination-preview');
-            wp_add_inline_script('tour-destination-preview',(string)file_get_contents($destinationJs));
-        }
-        $js=__DIR__.'/../assets/tour-journey-ui.js';
-        if(is_readable($js)){
-            wp_register_script('tour-journey-ui',false,[],'1.1.0',true);
-            wp_enqueue_script('tour-journey-ui');
-            wp_add_inline_script('tour-journey-ui',(string)file_get_contents($js));
-            // Split's taxonomy hierarchy is intentionally a separate renderer.
-            $splitJs=__DIR__.'/../assets/tour-journey-split-v3.js';
-            if(is_readable($splitJs)){
-                wp_add_inline_script('tour-journey-ui',(string)file_get_contents($splitJs));
-            }
+            if(is_readable($js)&&is_readable($splitJs))
+                wp_enqueue_script('tour-destination-preview',$assets.'tour-destination-quick-preview.js',
+                    ['tour-journey-split-v3'],(string)filemtime($destinationJs),true);
         }
     }
 
@@ -74,7 +75,7 @@ final class MAD4B_Tour_Highlights_Presentation_V1 {
         $raw=trim($text);
         if($raw==='')return [];
         $title='';$body=$raw;
-        if(preg_match('~^\s*<strong\b[^>]*>(.*?)</strong>\s*[:：\-–]?\s*~isu',$raw,$match)){
+        if(preg_match('~^\s*(?:<span\b[^>]*>\s*)?<strong\b[^>]*>(.*?)</strong>\s*(?:</span>\s*)?[:：\-–]?\s*~isu',$raw,$match)){
             $title=trim(wp_strip_all_tags($match[1]));
             $title=preg_replace('/[\s:：.]+$/u','',$title);
             $body=substr($raw,strlen($match[0]));
@@ -84,6 +85,16 @@ final class MAD4B_Tour_Highlights_Presentation_V1 {
             $title=preg_replace('/[\s:：.]+$/u','',$title);
             $body=substr($raw,strlen($match[0]));
             $body=preg_replace('/^\s*[:：\-–]\s*/u','',$body);
+        }
+        if($title==='' && preg_match('~^\s*([^:：\n]{2,80})\s*[:：]\s*(.+)$~us',$raw,$m)
+          && !preg_match('/^\s*[•·\-–]/u',$raw)){
+            $title=trim(wp_strip_all_tags($m[1]));
+            $body=trim($m[2]);
+        } elseif($title==='' && !preg_match('/<[^>]+>/', $raw)
+          && mb_strlen(wp_strip_all_tags($raw),'UTF-8')<=75
+          && !preg_match('/^\s*[•·\-–]/u',$raw)
+          && !preg_match('/[.!?؟،;,]$/u',$raw)){
+            $title=wp_strip_all_tags($raw);$body='';
         }
         if(trim(wp_strip_all_tags($body))==='' && $title==='')return [];
         return ['title'=>$title,'body'=>wp_kses_post(trim($body))];
@@ -100,6 +111,18 @@ final class MAD4B_Tour_Highlights_Presentation_V1 {
         if(preg_match('~<(table|iframe|blockquote|video|audio|figure)\b~i',$html)){
             return [['title'=>'','body'=>wp_kses_post($html)]];
         }
+        // WPML may store a translation as plain UTF-8 lines instead of HTML.
+        // Preserve every authored line and paragraph boundary instead of
+        // collapsing an entire cruise itinerary to one unselectable card.
+        // A trailing <br> should not turn a plain translated bullet list into
+        // one giant HTML text node.
+        $isPlain=!preg_match('/<\/?(?!br\b)[a-z][^>]*>/i',$html);
+        if($isPlain){
+            $plain=html_entity_decode(preg_replace('~<br\s*/?>~i',"\n",$html),ENT_QUOTES|ENT_HTML5,'UTF-8');
+            $lines=preg_split('/\R+/u',$plain,-1,PREG_SPLIT_NO_EMPTY);
+            $parts=[];
+            foreach($lines as $line)if(trim($line)!=='')$parts[]=esc_html(trim($line));
+        } else{
         $parts=[];
         if(class_exists('DOMDocument')){
             $dom=new \DOMDocument('1.0','UTF-8');
@@ -122,6 +145,13 @@ final class MAD4B_Tour_Highlights_Presentation_V1 {
                             }
                             if($child->nodeType!==XML_ELEMENT_NODE)continue;
                             $tag=strtolower($child->nodeName);
+                            // Outer UL/LI wrappers in imported WPML markup are
+                            // not single Highlights: nested leaf <li> items are.
+                            if($tag==='li'&&$child instanceof \DOMElement
+                                &&$child->getElementsByTagName('li')->length>0){
+                                $walk($child);
+                                continue;
+                            }
                             if(in_array($tag,['p','li','h2','h3','h4','h5','h6'],true)){
                                 $inside=self::inner_html($child);
                                 if(preg_match('~<br\s*/?>~i',$inside)){
@@ -144,6 +174,7 @@ final class MAD4B_Tour_Highlights_Presentation_V1 {
             $plain=wp_strip_all_tags($plain);
             $parts=preg_split('/\r?\n+/u',$plain,-1,PREG_SPLIT_NO_EMPTY)?:[$html];
         }
+        } // end HTML parsing; $parts retained in their original order
         $items=[];
         foreach($parts as $part){
             $parsed=self::segment($part);
@@ -160,6 +191,18 @@ final class MAD4B_Tour_Highlights_Presentation_V1 {
             return [['title'=>'','body'=>wp_kses_post($html)]];
         }
         return $items;
+    }
+
+    public static function card_keys(array $cards):array {
+        $seen=[];$keys=[];
+        foreach($cards as $card){
+            $raw=html_entity_decode(wp_strip_all_tags((string)($card['title']??'').' '.(string)($card['body']??'')),ENT_QUOTES|ENT_HTML5,'UTF-8');
+            $raw=mb_strtolower(trim((string)preg_replace('/\s+/u',' ',$raw)),'UTF-8');
+            $hash=substr(hash('sha256',$raw),0,20);
+            $seen[$hash]=($seen[$hash]??0)+1;
+            $keys[]='hl-'.$hash.($seen[$hash]>1?'-'.$seen[$hash]:'');
+        }
+        return $keys;
     }
 
     private static function verified_places():array {
@@ -273,7 +316,7 @@ final class MAD4B_Tour_Highlights_Presentation_V1 {
      * auto: only verified text matches; explicit: one or several manually
      * chosen, still tour-linked and company-eligible terms; none: hide links.
      */
-    private static function place_binding(int $tour,int $step):array {
+    private static function place_binding(int $tour,int $step,string $key=''):array {
         if($tour<=0||$step<=0||$step>80)return ['policy'=>'auto','ids'=>[]];
         static $registry=[];
         if(!array_key_exists($tour,$registry)){
@@ -290,11 +333,60 @@ final class MAD4B_Tour_Highlights_Presentation_V1 {
                     if(is_string($ids))$ids=preg_split('/[\s,|]+/',$ids,-1,PREG_SPLIT_NO_EMPTY);
                     if(!is_array($ids))$ids=[];
                     $ids=array_values(array_unique(array_filter(array_map('absint',array_slice($ids,0,40)))));
-                    $registry[$tour][$index]=['policy'=>$policy,'ids'=>$ids];
+                    $itemKey=(string)($row['item_key']??'');
+                    if($itemKey!==''&&!preg_match('/^hl-[a-f0-9]{20}(?:-[0-9]{1,3})?$/D',$itemKey))continue;
+                    $registry[$tour][$index]=['policy'=>$policy,'ids'=>$ids,'item_key'=>$itemKey];
                 }
             }
         }
-        return $registry[$tour][$step]??['policy'=>'auto','ids'=>[]];
+        // Once a stable key exists, the binding follows that Highlight across
+        // reorders. A copy/edit with an unmatched key FAILS CLOSED instead of
+        // attaching the old place to the wrong text.
+        if($key!==''){
+            foreach($registry[$tour] as $row){
+                if(($row['item_key']??'')===$key)return $row;
+            }
+        }
+        $legacy=$registry[$tour][$step]??null;
+        if($legacy!==null&&($legacy['item_key']??'')==='')return $legacy;
+        return ['policy'=>'auto','ids'=>[]];
+    }
+
+    /**
+     * Conservative certainty gate (six supported company languages).
+     * This intentionally recognizes explicit exclusion and optional phrasing
+     * before a place can become a visit, even when its name is an exact match.
+     * Ambiguous clauses must NOT become an included itinerary stop.
+     */
+    private static function visit_certainty(string $text,string $phrase):string {
+        if(!self::text_mention($text,$phrase))return 'absent';
+        $text=html_entity_decode(wp_strip_all_tags($text),ENT_QUOTES|ENT_HTML5,'UTF-8');
+        $normalized=trim((string)preg_replace('/\s+/u',' ',$text));
+        $at=mb_stripos($normalized,$phrase,0,'UTF-8');
+        if($at===false)return 'absent';
+        $start=max(0,$at-110);
+        $window=mb_substr($normalized,$start,mb_strlen($phrase,'UTF-8')+200,'UTF-8');
+        // Exclusion has precedence over optional language.
+        $excluded=[
+            'not\\s+(?:included|visited|visiting|part\\s+of|on\\s+this\\s+tour|stopping\\s+at)',
+            '(?:exclude[ds]?|exclusion|skip(?:ping|ped)?|do\\s+not\\s+visit|no\\s+visit|without\\s+visiting)',
+            '(?:no\\s+(?:incluid[oa]|visitad[oa])|sin\\s+(?:visitar|visita)|excluid[oa]|omitid[oa])',
+            '(?:non\\s+(?:inclus(?:e|es)?|visit[ée])|sans\\s+visiter|exclu[es]?)',
+            '(?:nicht\\s+(?:enthalten|inklusive|besucht)|ohne\\s+besuch|ausgeschlossen)',
+            '(?:non\\s+(?:inclus[oa]|previst[oa])|senza\\s+visita|esclus[oa])',
+            '(?:غير\\s+(?:مشمول|مشملة|متضمن|مضمن|مدرج|متاح)|لا\\s+(?:تشمل|يشمل|نزور|نقوم\\s+بزيارة)|بدون\\s+زيارة|يستثنى|مستبعد)'
+        ];
+        foreach($excluded as $pattern)if(preg_match('~(?<![\\p{L}])(?:'.$pattern.')(?![\\p{L}])~iu',$window))return 'excluded';
+        $optional=[
+            '(?:optional|if\\s+time\\s+permits|if\\s+available|on\\s+request|subject\\s+to\\s+availability|may\\s+visit|can\\s+visit|possible\\s+stop|alternative\\s+visit)',
+            '(?:opcional|si\\s+hay\\s+tiempo|seg[uú]n\\s+disponibilidad|alternativ[oa])',
+            '(?:facultativ[eo]|en\\s+option|si\\s+le\\s+temps\\s+le\\s+permet|selon\\s+disponibilit[ée])',
+            '(?:optional|wahlweise|bei\\s+verf[uü]gbarkeit|wenn\\s+die\\s+zeit\\s+reicht)',
+            '(?:facoltativ[oa]|opzional[ea]|se\\s+il\\s+tempo\\s+lo\\s+permette|su\\s+richiesta)',
+            '(?:اختيار[ىي]|اختياري[ة]?|حسب\\s+التوفر|عند\\s+الطلب|إذا\\s+سمح\\s+الوقت|في\\s+حال\\s+توفر\\s+الوقت|زيارة\\s+بديلة)'
+        ];
+        foreach($optional as $pattern)if(preg_match('~(?<![\\p{L}])(?:'.$pattern.')(?![\\p{L}])~iu',$window))return 'optional';
+        return 'included';
     }
 
     /**
@@ -332,7 +424,7 @@ final class MAD4B_Tour_Highlights_Presentation_V1 {
             foreach($byId as $id=>$place){
                 $name=(string)($place['label']??'');
                 if(mb_strlen($name,'UTF-8')<5)continue;
-                if(self::text_mention($text,$name))$mentioned[$id]=$place;
+                if(self::visit_certainty($text,$name)==='included')$mentioned[$id]=$place;
             }
             if(!$mentioned)continue;
             $anchorIds=array_intersect_key($mentioned,$direct);
@@ -351,9 +443,9 @@ final class MAD4B_Tour_Highlights_Presentation_V1 {
         return array_values($found);
     }
 
-    private static function related_links(array $card,array $places,int $step,int $tour):string {
+    private static function related_links(array $card,array $places,int $step,int $tour,string $itemKey=''):string {
         if(!$places)return '';
-        $rule=self::place_binding($tour,$step);
+        $rule=self::place_binding($tour,$step,$itemKey);
         if($rule['policy']==='none')return '';
         $explicit=$rule['policy']==='explicit';
         // WPML translations may keep the source repeater IDs while the
@@ -395,6 +487,14 @@ final class MAD4B_Tour_Highlights_Presentation_V1 {
             $hasParentHead=!$hasExact&&!$hasAlias&&$curated===''
                 &&self::parent_head_mentioned($content,$place,$places);
             if(!$explicit&&!$hasExact&&!$hasAlias&&$curated===''&&!$hasParentHead)continue;
+            // Surface a destination only when its mention is not excluded or
+            // conditional. Exact editorial overrides remain context, never
+            // automatic proof that the Tour includes a visit.
+            if(!$explicit){
+                $phrase=$hasExact?$name:($hasAlias?$alias:($curated!==''?$curated:$name));
+                $certainty=self::visit_certainty($content,$phrase);
+                if($certainty==='excluded'||$certainty==='optional')continue;
+            }
             // A one-word governorate is useful only on a genuine exact
             // mention. The generic country 'Egypt' remains excluded.
             if(!$explicit&&($place['kind']??'')==='state_governorate'&&!$hasExact)continue;
@@ -438,6 +538,7 @@ final class MAD4B_Tour_Highlights_Presentation_V1 {
         if(!$cards)return wp_kses_post($html);
         $places=self::verified_places();
         $labels=self::translations();$count=count($cards);
+        $keys=self::card_keys($cards);
         $many=$count>1;
         $output='<div class="tour-hl-ui" data-tour-hl-version="1" data-tour-hl-count="'.$count.'">';
         $output.='<div class="tour-hl-ui__intro"><span class="tour-hl-ui__label">'.esc_html($labels['label']).'</span>';
@@ -447,10 +548,10 @@ final class MAD4B_Tour_Highlights_Presentation_V1 {
         $output.='<ol class="tour-hl-ui__grid" '.($many?'tabindex="0" ':'').'aria-label="'.esc_attr($labels['scroll_label']).'">';
         foreach($cards as $index=>$card){
             $number=str_pad((string)($index+1),2,'0',STR_PAD_LEFT);
-            $output.='<li class="tour-hl-ui__card"><span class="tour-hl-ui__number" aria-hidden="true">'.$number.'</span><div class="tour-hl-ui__copy">';
+            $output.='<li class="tour-hl-ui__card" data-journey-item-id="'.esc_attr($keys[$index]).'"><span class="tour-hl-ui__number" aria-hidden="true">'.$number.'</span><div class="tour-hl-ui__copy">';
             if($card['title']!=='')$output.='<h3 class="tour-hl-ui__title">'.esc_html($card['title']).'</h3>';
             if(trim(wp_strip_all_tags($card['body']))!=='')$output.='<div class="tour-hl-ui__description">'.wp_kses_post($card['body']).'</div>';
-            $output.=self::related_links($card,$places,$index+1,MAD4B_Tour_Highlights_V1::get_tour_id());
+            $output.=self::related_links($card,$places,$index+1,MAD4B_Tour_Highlights_V1::get_tour_id(),$keys[$index]);
             $output.='</div></li>';
         }
         $output.='</ol></div>';
