@@ -84,7 +84,8 @@ class AdmissionContractTest(unittest.TestCase):
         self.assertFalse(row["release_execution_allowed"])
         self.assertIn("EXACT_ORIGINAL_312_JOB_GRANT_NOT_PROVIDED", row["blockers"])
         activation = next(x for x in row["targets"] if x["capability"] == "destination_activation")
-        self.assertFalse(activation["original_target_path_supported"])
+        self.assertTrue(activation["original_target_path_supported"])
+        self.assertTrue(activation["exact_source_to_runtime_mapping_authorized"])
 
     def test_runtime_drift_halts_before_admission(self):
         first = self.variants[0]

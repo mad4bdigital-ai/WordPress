@@ -31,6 +31,28 @@ def source_at_commit(repo: Path, sha: str, path: str) -> bytes:
     return release.git_bytes(repo, sha, path)
 
 
+def same_original_git_store(candidate: Path, pinned: Path) -> bool:
+    """Verify distinct worktrees share the original trusted Git object store.
+
+    A different worktree HEAD is not a change of release authority: the original
+    executor reads exact objects by SHA from its pinned source Git root.
+    """
+    def git_common(root: Path) -> Path:
+        result = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "--path-format=absolute",
+             "--git-common-dir"],
+            capture_output=True, text=True, check=False, timeout=12,
+        )
+        if result.returncode != 0:
+            raise verify.InvalidProvenance("SOURCE_GIT_COMMON_DIR_UNAVAILABLE")
+        path = Path(result.stdout.strip())
+        if not path.is_absolute() or not path.is_dir():
+            raise verify.InvalidProvenance("SOURCE_GIT_COMMON_DIR_INVALID")
+        return path.resolve(strict=True)
+
+    return git_common(candidate) == git_common(pinned)
+
+
 def assess(
     *,
     repo: Path,
@@ -109,54 +131,71 @@ def assess(
         blockers.append(identity_blocker)
     pinned_git_root = Path(policy["source_git_root"]).resolve()
     candidate_root = repo.resolve()
-    if candidate_root != pinned_git_root:
-        blockers.append("PINNED_GIT_SOURCE_ROOT_DIFFERS_FROM_REVIEWED_CANDIDATE")
     if not SHA.fullmatch(commit):
         raise verify.InvalidProvenance("COMMIT_SHA_INVALID")
+    same_store = same_original_git_store(candidate_root, pinned_git_root)
+    if not same_store:
+        blockers.append("PINNED_GIT_REPOSITORY_IDENTITY_NOT_MATCHED")
     # Compare all owner artifacts with the exact *Git* commit, not mutable files.
     verified = 0
     for variant in variants:
         source = source_at_commit(repo, commit, variant["source_artifact"])
         if hashlib.sha256(source).hexdigest() != variant["sha256"]:
             raise verify.InvalidProvenance("COMMITTED_OWNER_SOURCE_HASH_DRIFT")
+        if same_store:
+            # No symbolic worktree or mutable HEAD substitution is allowed.
+            # Verify the same object at the same SHA from the original pinned
+            # release Git authority, before any target catalog inspection.
+            pinned = source_at_commit(pinned_git_root, commit,
+                                      variant["source_artifact"])
+            if pinned != source:
+                raise verify.InvalidProvenance("PINNED_GIT_COMMIT_OBJECT_DRIFT")
         verified += 1
 
     # An unmodified static policy can accept only its exact explicit files.
     # Catalog expansion is attempted only if the commit belongs to the PINNED
     # release source repository, through the original catalog validator.
     allowlist = set(entry["allowed_targets"])
-    if candidate_root == pinned_git_root:
+    if same_store:
         try:
             allowlist = release.registered_release_targets(policy, entry, commit)
         except (release.Denied, OSError, subprocess.TimeoutExpired):
             blockers.append("ORIGINAL_RELEASE_CATALOG_NOT_VERIFIED")
+    site_owner_targets = set()
+    if same_store:
+        site_owner_targets = release.explicitly_enrolled_site_owner_targets(
+            policy, entry, commit, company=company, environment=environment,
+            proposed_targets={v["runtime_path"] for v in variants})
     statuses = []
     for v in variants:
         target = v["runtime_path"]
         explicit = target in allowlist
-        shape = release.permitted_target(target)
-        # A source-only site-owned artifact is not a source-target file in the
-        # original runtime Git tree. Do not silently substitute its path.
+        shape = release.permitted_target(target) or target in site_owner_targets
+        # The approved Original release is permitted to map a canonical source
+        # blob to another runtime path ONLY when the target is explicitly
+        # enrolled in the host policy. The source-only registry never grants it.
         committed_target = False
-        if candidate_root == pinned_git_root:
-            try:
-                original = source_at_commit(repo, commit, target)
-                committed_target = hashlib.sha256(original).hexdigest() == v["sha256"]
-            except (release.Denied, subprocess.TimeoutExpired, OSError):
-                pass
+        if same_store:
+            source = source_at_commit(pinned_git_root, commit,
+                                      v["source_artifact"])
+            committed_target = hashlib.sha256(source).hexdigest() == v["sha256"]
         blockers_for_target = []
         if not explicit:
             blockers_for_target.append("TARGET_NOT_IN_ORIGINAL_SIGNED_POLICY_OR_CATALOG")
         if not shape:
             blockers_for_target.append("TARGET_PATH_OUTSIDE_ORIGINAL_EXECUTOR_SCOPE")
         if not committed_target:
-            blockers_for_target.append("ORIGINAL_GIT_TARGET_ARTIFACT_NOT_ENROLLED")
+            blockers_for_target.append("ORIGINAL_GIT_OWNER_SOURCE_ARTIFACT_NOT_ENROLLED")
         statuses.append({
             "capability": v["capability"],
             "target": target,
             "original_target_allowed": explicit,
             "original_target_path_supported": shape,
             "original_git_target_verified": committed_target,
+            "exact_source_to_runtime_mapping_authorized": (
+                committed_target and explicit and
+                (target in set(entry["allowed_targets"]) or
+                 v["source_artifact"] == target)),
             "eligible_for_original_plan": not blockers_for_target,
             "blockers": blockers_for_target,
         })
@@ -173,6 +212,7 @@ def assess(
         "source_committed_variants_verified": verified,
         "runtime_preimages_verified": len(statuses),
         "source_git_root_pinned_to_candidate": candidate_root == pinned_git_root,
+        "source_git_original_object_store_verified": same_store,
         "original_native_site_identity_verified": identity_verified,
         "targets": statuses,
         "blockers": list(dict.fromkeys(blockers)),

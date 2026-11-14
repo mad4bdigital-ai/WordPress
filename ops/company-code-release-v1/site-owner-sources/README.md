@@ -89,3 +89,30 @@ Unknown sites and environments must not inherit Wayfatours settings.
 The original engine remains the only executor and must still independently
 verify its own runtime identities, immutable source/target preimages,
 one-time grants and after-write readback.
+
+
+## Original Git object store and narrow site-owner release scope
+
+The original host release policy pins a **Git repository root**, not a HEAD
+branch. Two independently checked-out worktrees may have different filesystem
+paths and mutable HEAD pointers while referencing the same immutable Git object
+store. Admission now checks the common Git directory and reads every registered
+source from the **same exact commit** through the pinned root, before evaluating
+the root-owned target allowlist.
+
+The Original Code Release executor has a protected extension for native plugins
+outside the usual MAD4B prefix. It resolves the versioned site-owner registry
+from the exact commit and requires the exact company/environment owner, exact
+source SHA-256 and *separately installed root-owned* target allowlist entry.
+No site-owner source record alone grants execution; signed grant, immutable
+plan/target compare-and-swap and independent Original313 readback remain
+mandatory. A source-only registry is not a permission catalog.
+
+The original MU component release catalog is checked for completeness at CI
+using verify_catalog_sources.py. Its four existing Composite Media entries
+have byte-verified source artifacts. Missing Git blob references are not
+treated as an authorization or silently skipped.
+
+Host-owned policy enrollment, plan signing, the independent original job claim
+and Original313 receipt remain separate lifecycle actions, not part of Git
+pull-request tests. The current CI is *not* a production release certificate.
