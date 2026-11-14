@@ -4162,6 +4162,462 @@
       "review_rationale": "Only the original Firecrawl status poll hook is reviewed. Source hermetic PHP checks that unbound, write-disabled, foreign-origin and unreviewed runs never invoke the provider; valid existing review-only crawl statuses are bounded to three per tick with no new crawl or publication. This review does not approve crawl initiation, external credentials or full Firecrawl service updates.",
       "coverage_reuse_rationale": "The existing Automation and Performance controls are sufficient for scheduled observation of current source, not for other privileged methods on the same service. Negative hermetic source tests are newly changed in this PR.",
       "execution_note": "The service and native PHP behavior source reviews remain separately open P0; Cron review grants no executable authority, new job, credential or Production mutation."
+    },
+    {
+      "id": "ability:mad4b/artifact-append",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/converged-grant-eligibility-hermetic.php"
+      ],
+      "owner_role": "MAD4B native Staging grant-eligibility source reviewer (CI-only, not owner/executor)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original OAuth, ticket, governance and security controls remain authoritative. This source mapping is nonauthorizing, with all per-Ability execution and owner approvals independently enforced.",
+      "review_rationale": "Reviewed exact first-party Staging grant eligibility mapping for mad4b/artifact-append. Executed original policy owner in isolated PHP 7.4/8.5 tests and asserted exact core provider, separate Production/local/development denial, absence of wildcard/raw SQL candidates and no grant issuance. This review does not certify the target Ability implementation, Owner OAuth, approvals or executor."
+    },
+    {
+      "id": "ability:mad4b/fleet-intake-auto",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/converged-grant-eligibility-hermetic.php"
+      ],
+      "owner_role": "MAD4B native Staging grant-eligibility source reviewer (CI-only, not owner/executor)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original OAuth, ticket, governance and security controls remain authoritative. This source mapping is nonauthorizing, with all per-Ability execution and owner approvals independently enforced.",
+      "review_rationale": "Reviewed exact first-party Staging grant eligibility mapping for mad4b/fleet-intake-auto. Executed original policy owner in isolated PHP 7.4/8.5 tests and asserted exact core provider, separate Production/local/development denial, absence of wildcard/raw SQL candidates and no grant issuance. This review does not certify the target Ability implementation, Owner OAuth, approvals or executor."
+    },
+    {
+      "id": "ability:mad4b/fleet-intake-plan",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/converged-grant-eligibility-hermetic.php"
+      ],
+      "owner_role": "MAD4B native Staging grant-eligibility source reviewer (CI-only, not owner/executor)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original OAuth, ticket, governance and security controls remain authoritative. This source mapping is nonauthorizing, with all per-Ability execution and owner approvals independently enforced.",
+      "review_rationale": "Reviewed exact first-party Staging grant eligibility mapping for mad4b/fleet-intake-plan. Executed original policy owner in isolated PHP 7.4/8.5 tests and asserted exact core provider, separate Production/local/development denial, absence of wildcard/raw SQL candidates and no grant issuance. This review does not certify the target Ability implementation, Owner OAuth, approvals or executor."
+    },
+    {
+      "id": "ability:mad4b/fleet-intake-save",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/converged-grant-eligibility-hermetic.php"
+      ],
+      "owner_role": "MAD4B native Staging grant-eligibility source reviewer (CI-only, not owner/executor)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original OAuth, ticket, governance and security controls remain authoritative. This source mapping is nonauthorizing, with all per-Ability execution and owner approvals independently enforced.",
+      "review_rationale": "Reviewed exact first-party Staging grant eligibility mapping for mad4b/fleet-intake-save. Executed original policy owner in isolated PHP 7.4/8.5 tests and asserted exact core provider, separate Production/local/development denial, absence of wildcard/raw SQL candidates and no grant issuance. This review does not certify the target Ability implementation, Owner OAuth, approvals or executor."
+    },
+    {
+      "id": "ability:mad4b/hub-source-sync-request",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/converged-grant-eligibility-hermetic.php"
+      ],
+      "owner_role": "MAD4B native Staging grant-eligibility source reviewer (CI-only, not owner/executor)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original OAuth, ticket, governance and security controls remain authoritative. This source mapping is nonauthorizing, with all per-Ability execution and owner approvals independently enforced.",
+      "review_rationale": "Reviewed exact first-party Staging grant eligibility mapping for mad4b/hub-source-sync-request. Executed original policy owner in isolated PHP 7.4/8.5 tests and asserted exact core provider, separate Production/local/development denial, absence of wildcard/raw SQL candidates and no grant issuance. This review does not certify the target Ability implementation, Owner OAuth, approvals or executor."
+    },
+    {
+      "id": "ability:mad4b/hub-universal-vps-enqueue",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/converged-grant-eligibility-hermetic.php"
+      ],
+      "owner_role": "MAD4B native Staging grant-eligibility source reviewer (CI-only, not owner/executor)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original OAuth, ticket, governance and security controls remain authoritative. This source mapping is nonauthorizing, with all per-Ability execution and owner approvals independently enforced.",
+      "review_rationale": "Reviewed exact central-enrolled Staging VPS eligibility for mad4b/hub-universal-vps-enqueue. Original PHP owner requires registered WordPress Ability and scoped host proof. Same-PR PHP 7.4/8.5 fixture checks denial without enrolled scope, allowed candidate only after enrolled scope, and Production denial. This never opens an independent VPS transport or issues an Agent grant."
+    },
+    {
+      "id": "ability:mad4b/page-r1-create-apply",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/converged-grant-eligibility-hermetic.php"
+      ],
+      "owner_role": "MAD4B native Staging grant-eligibility source reviewer (CI-only, not owner/executor)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original OAuth, ticket, governance and security controls remain authoritative. This source mapping is nonauthorizing, with all per-Ability execution and owner approvals independently enforced.",
+      "review_rationale": "Reviewed exact first-party Staging grant eligibility mapping for mad4b/page-r1-create-apply. Executed original policy owner in isolated PHP 7.4/8.5 tests and asserted exact core provider, separate Production/local/development denial, absence of wildcard/raw SQL candidates and no grant issuance. This review does not certify the target Ability implementation, Owner OAuth, approvals or executor."
+    },
+    {
+      "id": "ability:mad4b/page-r1-publish-apply",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/converged-grant-eligibility-hermetic.php"
+      ],
+      "owner_role": "MAD4B native Staging grant-eligibility source reviewer (CI-only, not owner/executor)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original OAuth, ticket, governance and security controls remain authoritative. This source mapping is nonauthorizing, with all per-Ability execution and owner approvals independently enforced.",
+      "review_rationale": "Reviewed exact first-party Staging grant eligibility mapping for mad4b/page-r1-publish-apply. Executed original policy owner in isolated PHP 7.4/8.5 tests and asserted exact core provider, separate Production/local/development denial, absence of wildcard/raw SQL candidates and no grant issuance. This review does not certify the target Ability implementation, Owner OAuth, approvals or executor."
+    },
+    {
+      "id": "ability:mad4b/page-r1-update-apply",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/converged-grant-eligibility-hermetic.php"
+      ],
+      "owner_role": "MAD4B native Staging grant-eligibility source reviewer (CI-only, not owner/executor)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original OAuth, ticket, governance and security controls remain authoritative. This source mapping is nonauthorizing, with all per-Ability execution and owner approvals independently enforced.",
+      "review_rationale": "Reviewed exact first-party Staging grant eligibility mapping for mad4b/page-r1-update-apply. Executed original policy owner in isolated PHP 7.4/8.5 tests and asserted exact core provider, separate Production/local/development denial, absence of wildcard/raw SQL candidates and no grant issuance. This review does not certify the target Ability implementation, Owner OAuth, approvals or executor."
+    },
+    {
+      "id": "ability:mad4b/post-r1-create-apply",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/converged-grant-eligibility-hermetic.php"
+      ],
+      "owner_role": "MAD4B native Staging grant-eligibility source reviewer (CI-only, not owner/executor)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original OAuth, ticket, governance and security controls remain authoritative. This source mapping is nonauthorizing, with all per-Ability execution and owner approvals independently enforced.",
+      "review_rationale": "Reviewed exact first-party Staging grant eligibility mapping for mad4b/post-r1-create-apply. Executed original policy owner in isolated PHP 7.4/8.5 tests and asserted exact core provider, separate Production/local/development denial, absence of wildcard/raw SQL candidates and no grant issuance. This review does not certify the target Ability implementation, Owner OAuth, approvals or executor."
+    },
+    {
+      "id": "ability:mad4b/post-r1-publish-apply",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/converged-grant-eligibility-hermetic.php"
+      ],
+      "owner_role": "MAD4B native Staging grant-eligibility source reviewer (CI-only, not owner/executor)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original OAuth, ticket, governance and security controls remain authoritative. This source mapping is nonauthorizing, with all per-Ability execution and owner approvals independently enforced.",
+      "review_rationale": "Reviewed exact first-party Staging grant eligibility mapping for mad4b/post-r1-publish-apply. Executed original policy owner in isolated PHP 7.4/8.5 tests and asserted exact core provider, separate Production/local/development denial, absence of wildcard/raw SQL candidates and no grant issuance. This review does not certify the target Ability implementation, Owner OAuth, approvals or executor."
+    },
+    {
+      "id": "ability:mad4b/post-r1-update-apply",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/converged-grant-eligibility-hermetic.php"
+      ],
+      "owner_role": "MAD4B native Staging grant-eligibility source reviewer (CI-only, not owner/executor)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original OAuth, ticket, governance and security controls remain authoritative. This source mapping is nonauthorizing, with all per-Ability execution and owner approvals independently enforced.",
+      "review_rationale": "Reviewed exact first-party Staging grant eligibility mapping for mad4b/post-r1-update-apply. Executed original policy owner in isolated PHP 7.4/8.5 tests and asserted exact core provider, separate Production/local/development denial, absence of wildcard/raw SQL candidates and no grant issuance. This review does not certify the target Ability implementation, Owner OAuth, approvals or executor."
+    },
+    {
+      "id": "ability:mad4b/properties-r1-create-apply",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/converged-grant-eligibility-hermetic.php"
+      ],
+      "owner_role": "MAD4B native Staging grant-eligibility source reviewer (CI-only, not owner/executor)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original OAuth, ticket, governance and security controls remain authoritative. This source mapping is nonauthorizing, with all per-Ability execution and owner approvals independently enforced.",
+      "review_rationale": "Reviewed exact first-party Staging grant eligibility mapping for mad4b/properties-r1-create-apply. Executed original policy owner in isolated PHP 7.4/8.5 tests and asserted exact core provider, separate Production/local/development denial, absence of wildcard/raw SQL candidates and no grant issuance. This review does not certify the target Ability implementation, Owner OAuth, approvals or executor."
+    },
+    {
+      "id": "ability:mad4b/properties-r1-publish-apply",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/converged-grant-eligibility-hermetic.php"
+      ],
+      "owner_role": "MAD4B native Staging grant-eligibility source reviewer (CI-only, not owner/executor)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original OAuth, ticket, governance and security controls remain authoritative. This source mapping is nonauthorizing, with all per-Ability execution and owner approvals independently enforced.",
+      "review_rationale": "Reviewed exact first-party Staging grant eligibility mapping for mad4b/properties-r1-publish-apply. Executed original policy owner in isolated PHP 7.4/8.5 tests and asserted exact core provider, separate Production/local/development denial, absence of wildcard/raw SQL candidates and no grant issuance. This review does not certify the target Ability implementation, Owner OAuth, approvals or executor."
+    },
+    {
+      "id": "ability:mad4b/properties-r1-update-apply",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/converged-grant-eligibility-hermetic.php"
+      ],
+      "owner_role": "MAD4B native Staging grant-eligibility source reviewer (CI-only, not owner/executor)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original OAuth, ticket, governance and security controls remain authoritative. This source mapping is nonauthorizing, with all per-Ability execution and owner approvals independently enforced.",
+      "review_rationale": "Reviewed exact first-party Staging grant eligibility mapping for mad4b/properties-r1-update-apply. Executed original policy owner in isolated PHP 7.4/8.5 tests and asserted exact core provider, separate Production/local/development denial, absence of wildcard/raw SQL candidates and no grant issuance. This review does not certify the target Ability implementation, Owner OAuth, approvals or executor."
+    },
+    {
+      "id": "ability:mad4b/tours-and-activities-r1-create-apply",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/converged-grant-eligibility-hermetic.php"
+      ],
+      "owner_role": "MAD4B native Staging grant-eligibility source reviewer (CI-only, not owner/executor)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original OAuth, ticket, governance and security controls remain authoritative. This source mapping is nonauthorizing, with all per-Ability execution and owner approvals independently enforced.",
+      "review_rationale": "Reviewed exact first-party Staging grant eligibility mapping for mad4b/tours-and-activities-r1-create-apply. Executed original policy owner in isolated PHP 7.4/8.5 tests and asserted exact core provider, separate Production/local/development denial, absence of wildcard/raw SQL candidates and no grant issuance. This review does not certify the target Ability implementation, Owner OAuth, approvals or executor."
+    },
+    {
+      "id": "ability:mad4b/tours-and-activities-r1-publish-apply",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/converged-grant-eligibility-hermetic.php"
+      ],
+      "owner_role": "MAD4B native Staging grant-eligibility source reviewer (CI-only, not owner/executor)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original OAuth, ticket, governance and security controls remain authoritative. This source mapping is nonauthorizing, with all per-Ability execution and owner approvals independently enforced.",
+      "review_rationale": "Reviewed exact first-party Staging grant eligibility mapping for mad4b/tours-and-activities-r1-publish-apply. Executed original policy owner in isolated PHP 7.4/8.5 tests and asserted exact core provider, separate Production/local/development denial, absence of wildcard/raw SQL candidates and no grant issuance. This review does not certify the target Ability implementation, Owner OAuth, approvals or executor."
+    },
+    {
+      "id": "ability:mad4b/tours-and-activities-r1-update-apply",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/converged-grant-eligibility-hermetic.php"
+      ],
+      "owner_role": "MAD4B native Staging grant-eligibility source reviewer (CI-only, not owner/executor)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original OAuth, ticket, governance and security controls remain authoritative. This source mapping is nonauthorizing, with all per-Ability execution and owner approvals independently enforced.",
+      "review_rationale": "Reviewed exact first-party Staging grant eligibility mapping for mad4b/tours-and-activities-r1-update-apply. Executed original policy owner in isolated PHP 7.4/8.5 tests and asserted exact core provider, separate Production/local/development denial, absence of wildcard/raw SQL candidates and no grant issuance. This review does not certify the target Ability implementation, Owner OAuth, approvals or executor."
+    },
+    {
+      "id": "ability:mad4b/tours-and-activities-r2-create-apply",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/converged-grant-eligibility-hermetic.php"
+      ],
+      "owner_role": "MAD4B native Staging grant-eligibility source reviewer (CI-only, not owner/executor)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original OAuth, ticket, governance and security controls remain authoritative. This source mapping is nonauthorizing, with all per-Ability execution and owner approvals independently enforced.",
+      "review_rationale": "Reviewed exact first-party Staging grant eligibility mapping for mad4b/tours-and-activities-r2-create-apply. Executed original policy owner in isolated PHP 7.4/8.5 tests and asserted exact core provider, separate Production/local/development denial, absence of wildcard/raw SQL candidates and no grant issuance. This review does not certify the target Ability implementation, Owner OAuth, approvals or executor."
+    },
+    {
+      "id": "ability:mad4b/tours-and-activities-r2-publish-apply",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/converged-grant-eligibility-hermetic.php"
+      ],
+      "owner_role": "MAD4B native Staging grant-eligibility source reviewer (CI-only, not owner/executor)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original OAuth, ticket, governance and security controls remain authoritative. This source mapping is nonauthorizing, with all per-Ability execution and owner approvals independently enforced.",
+      "review_rationale": "Reviewed exact first-party Staging grant eligibility mapping for mad4b/tours-and-activities-r2-publish-apply. Executed original policy owner in isolated PHP 7.4/8.5 tests and asserted exact core provider, separate Production/local/development denial, absence of wildcard/raw SQL candidates and no grant issuance. This review does not certify the target Ability implementation, Owner OAuth, approvals or executor."
+    },
+    {
+      "id": "ability:mad4b/tours-and-activities-r2-update-apply",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/converged-grant-eligibility-hermetic.php"
+      ],
+      "owner_role": "MAD4B native Staging grant-eligibility source reviewer (CI-only, not owner/executor)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original OAuth, ticket, governance and security controls remain authoritative. This source mapping is nonauthorizing, with all per-Ability execution and owner approvals independently enforced.",
+      "review_rationale": "Reviewed exact first-party Staging grant eligibility mapping for mad4b/tours-and-activities-r2-update-apply. Executed original policy owner in isolated PHP 7.4/8.5 tests and asserted exact core provider, separate Production/local/development denial, absence of wildcard/raw SQL candidates and no grant issuance. This review does not certify the target Ability implementation, Owner OAuth, approvals or executor."
+    },
+    {
+      "id": "ability:mad4b/transportations-r1-create-apply",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/converged-grant-eligibility-hermetic.php"
+      ],
+      "owner_role": "MAD4B native Staging grant-eligibility source reviewer (CI-only, not owner/executor)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original OAuth, ticket, governance and security controls remain authoritative. This source mapping is nonauthorizing, with all per-Ability execution and owner approvals independently enforced.",
+      "review_rationale": "Reviewed exact first-party Staging grant eligibility mapping for mad4b/transportations-r1-create-apply. Executed original policy owner in isolated PHP 7.4/8.5 tests and asserted exact core provider, separate Production/local/development denial, absence of wildcard/raw SQL candidates and no grant issuance. This review does not certify the target Ability implementation, Owner OAuth, approvals or executor."
+    },
+    {
+      "id": "ability:mad4b/transportations-r1-publish-apply",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/converged-grant-eligibility-hermetic.php"
+      ],
+      "owner_role": "MAD4B native Staging grant-eligibility source reviewer (CI-only, not owner/executor)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original OAuth, ticket, governance and security controls remain authoritative. This source mapping is nonauthorizing, with all per-Ability execution and owner approvals independently enforced.",
+      "review_rationale": "Reviewed exact first-party Staging grant eligibility mapping for mad4b/transportations-r1-publish-apply. Executed original policy owner in isolated PHP 7.4/8.5 tests and asserted exact core provider, separate Production/local/development denial, absence of wildcard/raw SQL candidates and no grant issuance. This review does not certify the target Ability implementation, Owner OAuth, approvals or executor."
+    },
+    {
+      "id": "ability:mad4b/transportations-r1-update-apply",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/converged-grant-eligibility-hermetic.php"
+      ],
+      "owner_role": "MAD4B native Staging grant-eligibility source reviewer (CI-only, not owner/executor)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original OAuth, ticket, governance and security controls remain authoritative. This source mapping is nonauthorizing, with all per-Ability execution and owner approvals independently enforced.",
+      "review_rationale": "Reviewed exact first-party Staging grant eligibility mapping for mad4b/transportations-r1-update-apply. Executed original policy owner in isolated PHP 7.4/8.5 tests and asserted exact core provider, separate Production/local/development denial, absence of wildcard/raw SQL candidates and no grant issuance. This review does not certify the target Ability implementation, Owner OAuth, approvals or executor."
     }
   ],
   "lifecycle": [],
@@ -12805,6 +13261,25 @@
       "review_rationale": "The first-party Server Core Catalog trait retains native Read/ChatGPT/Enrollment declarations without adding host-only VPS enqueue to those public-read surfaces. Exact hermetic PHP 7.4/8.5 tests inspect source catalog declarations while retaining the separate guarded VPS-local facade.",
       "coverage_reuse_rationale": "Reuse original Governance/Platform/Security source controls with exact regression tests from this branch. Native transporter and provider permissions are never manufactured by a review entry.",
       "execution_note": "The exact source blob is reviewed as CI-only; the live sites retain different native facade revisions. CAS deployment, exact independent readback and Original313 remain held."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-grant-reconciliation.php",
+      "source_blob_sha": "b412261b82aa44156d56dcd29ab1aec4944812e8",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/converged-grant-eligibility-hermetic.php"
+      ],
+      "owner_role": "MAD4B original native grant reconciliation source reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance, platform and security controls apply to the exact source change; original per-Ability privilege gates are unchanged by this review.",
+      "review_rationale": "Inspected the exact source diff: 24 new Staging-only allowlist entries, comprising 23 first-party mappings and one conditionally bound central VPS enqueue. Original gate still enforces existing Agent identity, authenticated OAuth, current environment, current enrolled user and exact delegate admission. Hermetic original PHP checks Staging, Production, local, development and missing scope. This source review does not certify or execute the per-Ability handlers or owner releases."
     }
   ],
   "code_change_rules": {

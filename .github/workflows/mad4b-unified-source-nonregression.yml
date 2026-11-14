@@ -93,6 +93,7 @@ jobs:
           php tests/readiness-core-web-vitals-rest-cron-hermetic.php
           php tests/servers-native-core-catalog-hermetic.php
           php tests/readiness-native-cron-ownership-hermetic.php
+          php tests/converged-grant-eligibility-hermetic.php
           php wp-content/plugins/mad4b-site-control-plane/tests/live-write-provider-snapshot-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/mcp-preflight-registration-failure-runtime.php
           # An incomplete or missing Context Authority may not validate
