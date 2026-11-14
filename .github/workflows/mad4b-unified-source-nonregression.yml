@@ -95,6 +95,8 @@ jobs:
           php tests/readiness-native-cron-ownership-hermetic.php
           php tests/converged-grant-eligibility-hermetic.php
           php tests/chatbotx-native-adapter-surface-hermetic.php
+          php tests/content-job-register-native-hermetic.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/content-job-domain-contract.py
           php wp-content/plugins/mad4b-site-control-plane/tests/live-write-provider-snapshot-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/mcp-preflight-registration-failure-runtime.php
           # An incomplete or missing Context Authority may not validate

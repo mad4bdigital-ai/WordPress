@@ -5088,6 +5088,204 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing mapped provider, security, MCP execution or platform controls apply to a source-only adapter registration and fail-closed write contract; they do not certify external endpoints or owner consent.",
       "review_rationale": "The original ChatbotX provider service wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-write-preflight.php participates in a bounded native first-party adapter contract. PHP fixtures execute the exact original class methods, require vendor plugin activation, reject unapproved provider writes and unknown Ability preflight, and do not perform external network, send email or create content."
+    },
+    {
+      "id": "ability:mad4b/content-job-elementor-executor-preflight",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/content-job-register-native-hermetic.php"
+      ],
+      "owner_role": "MAD4B original ContentJob Ability registration reviewer — CI-only, not WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing ability/domain controls are retained; original aggregate registration, immutable job state and separate governor gates remain source-owned.",
+      "review_rationale": "Original ContentJob PHP service was executed hermetically on PHP 7.4/8.5, using only dependency stubs. Exact Ability mad4b/content-job-elementor-executor-preflight was registered with correct closed schema, native permission callback, read vs write annotations and no public MCP surface. High-risk group apply requires a source snapshot and max 8 target IDs; typed write applies require an exact source digest. Invalid structural job identities are denied. Does not attest the independent underlying CWA, Elementor or WPML executor, Owner OAuth or Production host receipt."
+    },
+    {
+      "id": "ability:mad4b/content-job-group-apply",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/content-job-register-native-hermetic.php"
+      ],
+      "owner_role": "MAD4B original ContentJob Ability registration reviewer — CI-only, not WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing ability/domain controls are retained; original aggregate registration, immutable job state and separate governor gates remain source-owned.",
+      "review_rationale": "Original ContentJob PHP service was executed hermetically on PHP 7.4/8.5, using only dependency stubs. Exact Ability mad4b/content-job-group-apply was registered with correct closed schema, native permission callback, read vs write annotations and no public MCP surface. High-risk group apply requires a source snapshot and max 8 target IDs; typed write applies require an exact source digest. Invalid structural job identities are denied. Does not attest the independent underlying CWA, Elementor or WPML executor, Owner OAuth or Production host receipt."
+    },
+    {
+      "id": "ability:mad4b/content-job-group-plan",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/content-job-register-native-hermetic.php"
+      ],
+      "owner_role": "MAD4B original ContentJob Ability registration reviewer — CI-only, not WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing ability/domain controls are retained; original aggregate registration, immutable job state and separate governor gates remain source-owned.",
+      "review_rationale": "Original ContentJob PHP service was executed hermetically on PHP 7.4/8.5, using only dependency stubs. Exact Ability mad4b/content-job-group-plan was registered with correct closed schema, native permission callback, read vs write annotations and no public MCP surface. High-risk group apply requires a source snapshot and max 8 target IDs; typed write applies require an exact source digest. Invalid structural job identities are denied. Does not attest the independent underlying CWA, Elementor or WPML executor, Owner OAuth or Production host receipt."
+    },
+    {
+      "id": "ability:mad4b/content-job-mcp-provider-preflight",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/content-job-register-native-hermetic.php"
+      ],
+      "owner_role": "MAD4B original ContentJob Ability registration reviewer — CI-only, not WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing ability/domain controls are retained; original aggregate registration, immutable job state and separate governor gates remain source-owned.",
+      "review_rationale": "Original ContentJob PHP service was executed hermetically on PHP 7.4/8.5, using only dependency stubs. Exact Ability mad4b/content-job-mcp-provider-preflight was registered with correct closed schema, native permission callback, read vs write annotations and no public MCP surface. High-risk group apply requires a source snapshot and max 8 target IDs; typed write applies require an exact source digest. Invalid structural job identities are denied. Does not attest the independent underlying CWA, Elementor or WPML executor, Owner OAuth or Production host receipt."
+    },
+    {
+      "id": "ability:mad4b/content-job-relationship-plan",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/content-job-register-native-hermetic.php"
+      ],
+      "owner_role": "MAD4B original ContentJob Ability registration reviewer — CI-only, not WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing ability/domain controls are retained; original aggregate registration, immutable job state and separate governor gates remain source-owned.",
+      "review_rationale": "Original ContentJob PHP service was executed hermetically on PHP 7.4/8.5, using only dependency stubs. Exact Ability mad4b/content-job-relationship-plan was registered with correct closed schema, native permission callback, read vs write annotations and no public MCP surface. High-risk group apply requires a source snapshot and max 8 target IDs; typed write applies require an exact source digest. Invalid structural job identities are denied. Does not attest the independent underlying CWA, Elementor or WPML executor, Owner OAuth or Production host receipt."
+    },
+    {
+      "id": "ability:mad4b/content-job-structural-cwa-apply",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/content-job-register-native-hermetic.php"
+      ],
+      "owner_role": "MAD4B original ContentJob Ability registration reviewer — CI-only, not WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing ability/domain controls are retained; original aggregate registration, immutable job state and separate governor gates remain source-owned.",
+      "review_rationale": "Original ContentJob PHP service was executed hermetically on PHP 7.4/8.5, using only dependency stubs. Exact Ability mad4b/content-job-structural-cwa-apply was registered with correct closed schema, native permission callback, read vs write annotations and no public MCP surface. High-risk group apply requires a source snapshot and max 8 target IDs; typed write applies require an exact source digest. Invalid structural job identities are denied. Does not attest the independent underlying CWA, Elementor or WPML executor, Owner OAuth or Production host receipt."
+    },
+    {
+      "id": "ability:mad4b/content-job-structural-qa-attest",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/content-job-register-native-hermetic.php"
+      ],
+      "owner_role": "MAD4B original ContentJob Ability registration reviewer — CI-only, not WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing ability/domain controls are retained; original aggregate registration, immutable job state and separate governor gates remain source-owned.",
+      "review_rationale": "Original ContentJob PHP service was executed hermetically on PHP 7.4/8.5, using only dependency stubs. Exact Ability mad4b/content-job-structural-qa-attest was registered with correct closed schema, native permission callback, read vs write annotations and no public MCP surface. High-risk group apply requires a source snapshot and max 8 target IDs; typed write applies require an exact source digest. Invalid structural job identities are denied. Does not attest the independent underlying CWA, Elementor or WPML executor, Owner OAuth or Production host receipt."
+    },
+    {
+      "id": "ability:mad4b/content-job-structural-qa-plan",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/content-job-register-native-hermetic.php"
+      ],
+      "owner_role": "MAD4B original ContentJob Ability registration reviewer — CI-only, not WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing ability/domain controls are retained; original aggregate registration, immutable job state and separate governor gates remain source-owned.",
+      "review_rationale": "Original ContentJob PHP service was executed hermetically on PHP 7.4/8.5, using only dependency stubs. Exact Ability mad4b/content-job-structural-qa-plan was registered with correct closed schema, native permission callback, read vs write annotations and no public MCP surface. High-risk group apply requires a source snapshot and max 8 target IDs; typed write applies require an exact source digest. Invalid structural job identities are denied. Does not attest the independent underlying CWA, Elementor or WPML executor, Owner OAuth or Production host receipt."
+    },
+    {
+      "id": "ability:mad4b/content-job-typed-relation-write-apply",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/content-job-register-native-hermetic.php"
+      ],
+      "owner_role": "MAD4B original ContentJob Ability registration reviewer — CI-only, not WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing ability/domain controls are retained; original aggregate registration, immutable job state and separate governor gates remain source-owned.",
+      "review_rationale": "Original ContentJob PHP service was executed hermetically on PHP 7.4/8.5, using only dependency stubs. Exact Ability mad4b/content-job-typed-relation-write-apply was registered with correct closed schema, native permission callback, read vs write annotations and no public MCP surface. High-risk group apply requires a source snapshot and max 8 target IDs; typed write applies require an exact source digest. Invalid structural job identities are denied. Does not attest the independent underlying CWA, Elementor or WPML executor, Owner OAuth or Production host receipt."
+    },
+    {
+      "id": "ability:mad4b/content-job-typed-relation-write-plan",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/content-job-register-native-hermetic.php"
+      ],
+      "owner_role": "MAD4B original ContentJob Ability registration reviewer — CI-only, not WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing ability/domain controls are retained; original aggregate registration, immutable job state and separate governor gates remain source-owned.",
+      "review_rationale": "Original ContentJob PHP service was executed hermetically on PHP 7.4/8.5, using only dependency stubs. Exact Ability mad4b/content-job-typed-relation-write-plan was registered with correct closed schema, native permission callback, read vs write annotations and no public MCP surface. High-risk group apply requires a source snapshot and max 8 target IDs; typed write applies require an exact source digest. Invalid structural job identities are denied. Does not attest the independent underlying CWA, Elementor or WPML executor, Owner OAuth or Production host receipt."
+    },
+    {
+      "id": "ability:mad4b/content-workflow-modes",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/content-job-register-native-hermetic.php"
+      ],
+      "owner_role": "MAD4B original ContentJob Ability registration reviewer — CI-only, not WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing ability/domain controls are retained; original aggregate registration, immutable job state and separate governor gates remain source-owned.",
+      "review_rationale": "Original ContentJob PHP service was executed hermetically on PHP 7.4/8.5, using only dependency stubs. Exact Ability mad4b/content-workflow-modes was registered with correct closed schema, native permission callback, read vs write annotations and no public MCP surface. High-risk group apply requires a source snapshot and max 8 target IDs; typed write applies require an exact source digest. Invalid structural job identities are denied. Does not attest the independent underlying CWA, Elementor or WPML executor, Owner OAuth or Production host receipt."
     }
   ],
   "lifecycle": [],
@@ -13826,6 +14024,24 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Original platform governance/security code-change control IDs apply to exact bundled source and this newly executed native PHP regression.",
       "review_rationale": "Reviewed native ChatbotX adapter, deny-first write preflight, and governed write callbacks. The original adapter registers only on installed and active native bridge, enumerates 11 read and 3 write tools, constrains schema and idempotency; the delegated write functions keep central mutation guard before any side effect. PHP 7.4/8.5 hermetic fixture proves negative paths, not a live provider write, OAuth consent, certification, email delivery or Production publication."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php",
+      "source_blob_sha": "6414871eaef0a7ab4e19d9ecf7cfc1200c1a76c4",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/content-job-register-native-hermetic.php"
+      ],
+      "owner_role": "MAD4B ContentJob aggregate source reviewer — CI-only, no publish authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance/platform/security controls apply to the current immutable ContentJob source and a same-PR original-class regression.",
+      "review_rationale": "Inspected exact ContentJob source: 18 WordPress abilities including 11 new guarded interfaces; original source contains no direct wp_insert_post/wp_update_post or external network calls, and durable lifecycle requires transactional storage, revision checks, terminal state finality and append-only events. Same-PR PHP 7.4/8.5 fixture proves permissions, constrained schemas and invalid identity denial; existing source-level ContentJob domain contract checks transaction and forbidden side effects. Separate delegated CWA/Provider operations still require distinct execution acceptance and live readback."
     }
   ],
   "code_change_rules": {
