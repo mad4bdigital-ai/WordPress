@@ -5584,6 +5584,215 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing governance, native execution and provider/security controls remain owner of this sensitive tenant role mutation. Source-only CI cannot authorize Production or change global admin powers.",
       "review_rationale": "The original Company Tenant Migration WordPress class is executed against a controlled in-memory WP environment under PHP 7.4/8.5. Fixture verifies two private REST methods, original manage_options+activate_plugins permission, owner browser consent, exact Site Profile binding, plan digest CAS, site-level GET_LOCK, exact system-power removals, receipt readback, and forced audit-error restoration of the preexisting role and receipt. No real WordPress roles, users, content, providers, commerce data or production environment are modified."
+    },
+    {
+      "id": "rest:mad4b/v1/admin/company-communication",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/company-communication-policy-rest-hermetic.php"
+      ],
+      "owner_role": "MAD4B native company communication and tenant options source reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original admin/browser/security and tenant identity/OAuth policy controls continue to scope these same WordPress settings endpoints, not production SMTP or commerce writes.",
+      "review_rationale": "Executed original first-party company communication, WordPress team membership, sender and operational policy classes under PHP 7.4/8.5. Native REST registration exposes only seven expected endpoints and nine bounded HTTP methods, each with custom Company Operations permission callback. Anonymous requests are denied; no source-only registration sends messages or modifies settings, and hard_delete_policy remains disabled by default. Actual sender credential setup, SMTP delivery, commerce mail routing and live option writes are not certified."
+    },
+    {
+      "id": "rest:mad4b/v1/admin/company-communication/preview",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/company-communication-policy-rest-hermetic.php"
+      ],
+      "owner_role": "MAD4B native company communication and tenant options source reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original admin/browser/security and tenant identity/OAuth policy controls continue to scope these same WordPress settings endpoints, not production SMTP or commerce writes.",
+      "review_rationale": "Executed original first-party company communication, WordPress team membership, sender and operational policy classes under PHP 7.4/8.5. Native REST registration exposes only seven expected endpoints and nine bounded HTTP methods, each with custom Company Operations permission callback. Anonymous requests are denied; no source-only registration sends messages or modifies settings, and hard_delete_policy remains disabled by default. Actual sender credential setup, SMTP delivery, commerce mail routing and live option writes are not certified."
+    },
+    {
+      "id": "rest:mad4b/v1/admin/company-communication/team",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "SECURITY-01",
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/company-communication-policy-rest-hermetic.php"
+      ],
+      "owner_role": "MAD4B native company communication and tenant options source reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original admin/browser/security and tenant identity/OAuth policy controls continue to scope these same WordPress settings endpoints, not production SMTP or commerce writes.",
+      "review_rationale": "Executed original first-party company communication, WordPress team membership, sender and operational policy classes under PHP 7.4/8.5. Native REST registration exposes only seven expected endpoints and nine bounded HTTP methods, each with custom Company Operations permission callback. Anonymous requests are denied; no source-only registration sends messages or modifies settings, and hard_delete_policy remains disabled by default. Actual sender credential setup, SMTP delivery, commerce mail routing and live option writes are not certified."
+    },
+    {
+      "id": "rest:mad4b/v1/admin/company-communication/users",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "SECURITY-01",
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/company-communication-policy-rest-hermetic.php"
+      ],
+      "owner_role": "MAD4B native company communication and tenant options source reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original admin/browser/security and tenant identity/OAuth policy controls continue to scope these same WordPress settings endpoints, not production SMTP or commerce writes.",
+      "review_rationale": "Executed original first-party company communication, WordPress team membership, sender and operational policy classes under PHP 7.4/8.5. Native REST registration exposes only seven expected endpoints and nine bounded HTTP methods, each with custom Company Operations permission callback. Anonymous requests are denied; no source-only registration sends messages or modifies settings, and hard_delete_policy remains disabled by default. Actual sender credential setup, SMTP delivery, commerce mail routing and live option writes are not certified."
+    },
+    {
+      "id": "rest:mad4b/v1/admin/company-policies",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/company-communication-policy-rest-hermetic.php"
+      ],
+      "owner_role": "MAD4B native company communication and tenant options source reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original admin/browser/security and tenant identity/OAuth policy controls continue to scope these same WordPress settings endpoints, not production SMTP or commerce writes.",
+      "review_rationale": "Executed original first-party company communication, WordPress team membership, sender and operational policy classes under PHP 7.4/8.5. Native REST registration exposes only seven expected endpoints and nine bounded HTTP methods, each with custom Company Operations permission callback. Anonymous requests are denied; no source-only registration sends messages or modifies settings, and hard_delete_policy remains disabled by default. Actual sender credential setup, SMTP delivery, commerce mail routing and live option writes are not certified."
+    },
+    {
+      "id": "rest:mad4b/v1/admin/company-sender-policy",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/company-communication-policy-rest-hermetic.php"
+      ],
+      "owner_role": "MAD4B native company communication and tenant options source reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original admin/browser/security and tenant identity/OAuth policy controls continue to scope these same WordPress settings endpoints, not production SMTP or commerce writes.",
+      "review_rationale": "Executed original first-party company communication, WordPress team membership, sender and operational policy classes under PHP 7.4/8.5. Native REST registration exposes only seven expected endpoints and nine bounded HTTP methods, each with custom Company Operations permission callback. Anonymous requests are denied; no source-only registration sends messages or modifies settings, and hard_delete_policy remains disabled by default. Actual sender credential setup, SMTP delivery, commerce mail routing and live option writes are not certified."
+    },
+    {
+      "id": "rest:mad4b/v1/admin/company-sender-policy/preview",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/company-communication-policy-rest-hermetic.php"
+      ],
+      "owner_role": "MAD4B native company communication and tenant options source reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original admin/browser/security and tenant identity/OAuth policy controls continue to scope these same WordPress settings endpoints, not production SMTP or commerce writes.",
+      "review_rationale": "Executed original first-party company communication, WordPress team membership, sender and operational policy classes under PHP 7.4/8.5. Native REST registration exposes only seven expected endpoints and nine bounded HTTP methods, each with custom Company Operations permission callback. Anonymous requests are denied; no source-only registration sends messages or modifies settings, and hard_delete_policy remains disabled by default. Actual sender credential setup, SMTP delivery, commerce mail routing and live option writes are not certified."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-communication-team.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/company-communication-policy-rest-hermetic.php"
+      ],
+      "owner_role": "MAD4B native company communication and tenant options source reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original admin/browser/security and tenant identity/OAuth policy controls continue to scope these same WordPress settings endpoints, not production SMTP or commerce writes.",
+      "review_rationale": "Executed original first-party company communication, WordPress team membership, sender and operational policy classes under PHP 7.4/8.5. Native REST registration exposes only seven expected endpoints and nine bounded HTTP methods, each with custom Company Operations permission callback. Anonymous requests are denied; no source-only registration sends messages or modifies settings, and hard_delete_policy remains disabled by default. Actual sender credential setup, SMTP delivery, commerce mail routing and live option writes are not certified."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-communication.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/company-communication-policy-rest-hermetic.php"
+      ],
+      "owner_role": "MAD4B native company communication and tenant options source reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original admin/browser/security and tenant identity/OAuth policy controls continue to scope these same WordPress settings endpoints, not production SMTP or commerce writes.",
+      "review_rationale": "Executed original first-party company communication, WordPress team membership, sender and operational policy classes under PHP 7.4/8.5. Native REST registration exposes only seven expected endpoints and nine bounded HTTP methods, each with custom Company Operations permission callback. Anonymous requests are denied; no source-only registration sends messages or modifies settings, and hard_delete_policy remains disabled by default. Actual sender credential setup, SMTP delivery, commerce mail routing and live option writes are not certified."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-operations-policy.php",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/company-communication-policy-rest-hermetic.php"
+      ],
+      "owner_role": "MAD4B native company communication and tenant options source reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original admin/browser/security and tenant identity/OAuth policy controls continue to scope these same WordPress settings endpoints, not production SMTP or commerce writes.",
+      "review_rationale": "Executed original first-party company communication, WordPress team membership, sender and operational policy classes under PHP 7.4/8.5. Native REST registration exposes only seven expected endpoints and nine bounded HTTP methods, each with custom Company Operations permission callback. Anonymous requests are denied; no source-only registration sends messages or modifies settings, and hard_delete_policy remains disabled by default. Actual sender credential setup, SMTP delivery, commerce mail routing and live option writes are not certified."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-sender-policy.php",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/company-communication-policy-rest-hermetic.php"
+      ],
+      "owner_role": "MAD4B native company communication and tenant options source reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original admin/browser/security and tenant identity/OAuth policy controls continue to scope these same WordPress settings endpoints, not production SMTP or commerce writes.",
+      "review_rationale": "Executed original first-party company communication, WordPress team membership, sender and operational policy classes under PHP 7.4/8.5. Native REST registration exposes only seven expected endpoints and nine bounded HTTP methods, each with custom Company Operations permission callback. Anonymous requests are denied; no source-only registration sends messages or modifies settings, and hard_delete_policy remains disabled by default. Actual sender credential setup, SMTP delivery, commerce mail routing and live option writes are not certified."
     }
   ],
   "lifecycle": [],
@@ -14415,6 +14624,84 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing governance, platform and security source controls bind current immutable source blob and executed original-class rollback/authority tests.",
       "review_rationale": "Inspected original tenant role migration: touches only master_admin role and its receipt; neither content/settings/products/bookings nor existing user identities are imported or overwritten. Hermetic PHP executes denied guest, no-plugin-admin, unready Site Profile, stale-CAS, valid owner role delta, audit intent/receipt and faulted audit rollback with exact SQL-lock release. A real Site Owner, Original Core release, live MariaDB concurrency and independent readback remain explicitly untested."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-communication.php",
+      "source_blob_sha": "6c46cf44f82e882836720bef845120ef469a25fe",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/company-communication-policy-rest-hermetic.php"
+      ],
+      "owner_role": "MAD4B exact company tenant communication/settings source reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source-change controls protect the exact original Company Options/Email/Team source and its new native REST authorization fixture.",
+      "review_rationale": "Source read and hermetic original-class registration inspected: each company policy, sender, team or communication endpoint requires the company-specific WordPress capability, not global administrator privilege; outbound email is not requested by registration, sender provider and external transport remain separately certified, and hard deletion is off unless explicitly enabled. PHP fixture verifies role-specific denial, methods and nonmutation; does not claim runtime SMTP or staff data correctness."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-communication-team.php",
+      "source_blob_sha": "bd9cb8c81d1f569e5762957c794b70ff12b2606c",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/company-communication-policy-rest-hermetic.php"
+      ],
+      "owner_role": "MAD4B exact company tenant communication/settings source reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source-change controls protect the exact original Company Options/Email/Team source and its new native REST authorization fixture.",
+      "review_rationale": "Source read and hermetic original-class registration inspected: each company policy, sender, team or communication endpoint requires the company-specific WordPress capability, not global administrator privilege; outbound email is not requested by registration, sender provider and external transport remain separately certified, and hard deletion is off unless explicitly enabled. PHP fixture verifies role-specific denial, methods and nonmutation; does not claim runtime SMTP or staff data correctness."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-sender-policy.php",
+      "source_blob_sha": "b4ba68b994daaa71c55a69927e818f590025137d",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/company-communication-policy-rest-hermetic.php"
+      ],
+      "owner_role": "MAD4B exact company tenant communication/settings source reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source-change controls protect the exact original Company Options/Email/Team source and its new native REST authorization fixture.",
+      "review_rationale": "Source read and hermetic original-class registration inspected: each company policy, sender, team or communication endpoint requires the company-specific WordPress capability, not global administrator privilege; outbound email is not requested by registration, sender provider and external transport remain separately certified, and hard deletion is off unless explicitly enabled. PHP fixture verifies role-specific denial, methods and nonmutation; does not claim runtime SMTP or staff data correctness."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-operations-policy.php",
+      "source_blob_sha": "e1f54fa453577d1cdcabed53637dd46ffb4b9ca7",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/company-communication-policy-rest-hermetic.php"
+      ],
+      "owner_role": "MAD4B exact company tenant communication/settings source reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source-change controls protect the exact original Company Options/Email/Team source and its new native REST authorization fixture.",
+      "review_rationale": "Source read and hermetic original-class registration inspected: each company policy, sender, team or communication endpoint requires the company-specific WordPress capability, not global administrator privilege; outbound email is not requested by registration, sender provider and external transport remain separately certified, and hard deletion is off unless explicitly enabled. PHP fixture verifies role-specific denial, methods and nonmutation; does not claim runtime SMTP or staff data correctness."
     }
   ],
   "code_change_rules": {
