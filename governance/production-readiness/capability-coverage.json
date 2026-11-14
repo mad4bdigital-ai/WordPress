@@ -12361,6 +12361,27 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing signed Original305/306/312/313, Source CAS, governance and release integrity control coverage retained without any new permission, arbitrary source registry entry or unverified execution evidence.",
       "review_rationale": "Integration successor: exact source bytes equal pre-reviewed PR808 V2 Developer/Registry Bootstrap from commit 46c0c77b937b6d14b3e5fc9f1df35f1a8654368f. Removed redundant second require without altering existing Native Source Review boot, Original305 Job/Claim readback, Elementor/QAs or any write authority; duplicate historical sibling snapshots remain in audit. CI-only, not owner-signed Production release."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-provider-connections.php",
+      "source_blob_sha": "aef56537a5b272cccaa7f0d149bdc33bd31cd81f",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-enrollment-runtime.php"
+      ],
+      "owner_role": "Source-only Adaptive Search provider credential lifecycle reviewer; independent live authority not claimed",
+      "review_rationale": "The account-test action transmits the currently stored API credentials and persists a CAS account receipt. An old browser revision must not probe credentials that were rotated by another request. Exact revision preflight now denies before outbound HTTP, while CAS still blocks a rotation during an in-flight observation; failed or stale responses cannot overwrite the new encrypted credential.",
+      "coverage_reuse_rationale": "Use existing MCP, provider lifecycle, execution and security controls with an exact same-PR 8-fixture 114-assertion matrix in PHP 7.4, 8.3 and 8.5. No new ability, endpoint, grant, paid-search path, provider certification or source ownership is introduced.",
+      "execution_note": "Only hermetic enrolled-Staging runtime source tests passed; all Production Owner and Original313 evidence remain pending. Historical review rows and release gates are unchanged."
     }
   ],
   "code_change_rules": {

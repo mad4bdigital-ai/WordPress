@@ -83,12 +83,14 @@ final class MAD4B_SCP_Search_Provider_Connections {
 		$old = MAD4B_SCP_Search_Store::read( self::KIND, $id ); if ( is_wp_error( $old ) ) return $old;
 		if ( null !== $old && ( ! is_array( $old ) || ! isset( $old['_revision'] ) || ! is_int( $old['_revision'] ) || $old['_revision'] < 1 ) ) return MAD4B_SCP_Search_Contracts::error( 'connection_record_invalid' );
 
-		// A saved-account check observes current credentials; its browser revision
-		// is not a credential edit. Keep strict CAS for actual save/remove writes.
+		// Account checks are read-only at the external provider, but they do
+		// transmit active credentials and persist a fresh account receipt.
+		// A stale browser revision must not silently probe a newly rotated key.
+		// Deny before network; CAS still blocks concurrent post-probe drift.
 		$credentials = isset( $input['credentials'] ) && is_array( $input['credentials'] ) ? $input['credentials'] : array();
 		$blank_save = 'save' === $action && ! count( array_filter( $credentials, static function ( $value ) { return '' !== $value; } ) );
 		$current_revision = null === $old ? 0 : $old['_revision'];
-		if ( 'test' !== $action && ! $blank_save && $current_revision !== $input['expected_revision'] ) {
+		if ( ! $blank_save && $current_revision !== $input['expected_revision'] ) {
 			error_log( '[MAD4B Search Provider] revision conflict provider=' . $id . ' operation=' . $action . ' posted_revision=' . $input['expected_revision'] . ' saved_revision=' . $current_revision );
 			return MAD4B_SCP_Search_Contracts::error( 'connection_revision_conflict', 'Provider credentials changed in another request. Your attempted change was not applied.' );
 		}
