@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import importlib.util
 import json
 from pathlib import Path, PurePosixPath
 import re
@@ -22,6 +23,8 @@ OP = re.compile(r"^[a-z][a-z0-9_.-]{2,79}$")
 SHA = re.compile(r"^[0-9a-f]{64}$")
 WORD = re.compile(r"^[a-zA-Z0-9_.:-]{1,96}$")
 CLI_WORD = re.compile(r"^[a-zA-Z0-9_./:-]{1,96}$")
+HOOK_NAME = re.compile(r"^[a-z][a-z0-9_]{2,63}$")
+HOOK_SYMBOL = re.compile(r"^[a-z][a-zA-Z0-9_]{1,95}$")
 REQUIRED = ("operation_id", "provider", "version", "plan_contract",
             "handler", "verifier", "evidence_schema", "evidence", "command")
 
@@ -77,6 +80,63 @@ def checked_json(path: Path, root: Path) -> dict:
     return obj
 
 
+def load_provider_hook(index: "Registry", operation: str, name: str,
+                       *, legacy_entrypoint: str | None = None):
+    """Single first-party SHA-pinned Python callback loader for every provider.
+
+    Exactly one manifest registered in the original Root Registry controls
+    which module and symbol can be imported. Legacy preclaim/finalizer
+    slots remain supported for existing providers without fingerprint drift.
+
+    Rechecking the SHA at CALL time matters: initial registry enrollment
+    is not a substitute for checking current source before importing.
+    """
+    require(isinstance(operation,str) and OP.fullmatch(operation)
+            and isinstance(name,str) and HOOK_NAME.fullmatch(name),
+            "DYNAMIC_PROVIDER_HOOK_REFERENCE_INVALID")
+    manifest=index.resolve(operation)
+    dynamic=manifest.get("hooks",{})
+    require(isinstance(dynamic,dict),"DYNAMIC_PROVIDER_HOOK_MAP_INVALID")
+    if name in dynamic:
+        item=dynamic[name]
+        require(isinstance(item,dict)
+                and set(item)=={"path","sha256","entrypoint"},
+                "DYNAMIC_PROVIDER_HOOK_DECLARATION_INVALID")
+        entrypoint=item.get("entrypoint")
+    else:
+        require(name in ("preclaim","finalizer")
+                and isinstance(legacy_entrypoint,str),
+                "DYNAMIC_PROVIDER_HOOK_NOT_ENROLLED")
+        item=manifest.get(name)
+        require(isinstance(item,dict)
+                and set(item)=={"path","sha256"},
+                "DYNAMIC_PROVIDER_HOOK_NOT_ENROLLED")
+        entrypoint=legacy_entrypoint
+    require(isinstance(entrypoint,str)
+            and HOOK_SYMBOL.fullmatch(entrypoint)
+            and isinstance(item.get("sha256"),str)
+            and SHA.fullmatch(item["sha256"]),
+            "DYNAMIC_PROVIDER_HOOK_SOURCE_INVALID")
+    rel=bounded_relative(item.get("path"))
+    require(rel.endswith(".py"),"DYNAMIC_PROVIDER_HOOK_NOT_PYTHON")
+    path=index.root/rel
+    raw=protected_file(path,index.root,maximum=2_000_000)
+    require(sha(raw)==item["sha256"],"DYNAMIC_PROVIDER_HOOK_SOURCE_DRIFT")
+    spec=importlib.util.spec_from_file_location(
+        "_mad4b_original_provider_"+sha(
+            (operation+"|"+name+"|"+item["sha256"]).encode())[:18],path)
+    require(spec is not None and spec.loader is not None,
+            "DYNAMIC_PROVIDER_HOOK_LOADER_UNAVAILABLE")
+    module=importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    require(Path(module.__file__)==path
+            and callable(getattr(module,entrypoint,None)),
+            "DYNAMIC_PROVIDER_HOOK_ENTRYPOINT_INVALID")
+    require(sha(protected_file(path,index.root,maximum=2_000_000))==
+            item["sha256"],"DYNAMIC_PROVIDER_HOOK_CHANGED_DURING_LOAD")
+    return getattr(module,entrypoint)
+
+
 class Registry:
     def __init__(self, root: Path):
         self.root = Path(root)
@@ -99,6 +159,38 @@ class Registry:
             raise RegistryDenied("INDEPENDENT_SIGNING_KEY_NOT_ENROLLED") from exc
         require(len(self.independent_verifier_public_key) == 32,
                 "INDEPENDENT_SIGNING_KEY_INVALID")
+        # Optional first-party Original306 signed plan-association trust
+        # anchor. This is not a grant, signer or operation selector. Only a
+        # root-owned enrolled index can supply it. No independent authority
+        # is implied by index presence.
+        self.operation_association_authority = None
+        config=index.get("operation_association_authority")
+        if config is not None:
+            require(isinstance(config,dict) and set(config)=={
+                "contract","store","issuer_public_key_b64"},
+                "ORIGINAL306_ASSOCIATION_AUTHORITY_SHAPE_INVALID")
+            require(config["contract"]==
+                    "mad4b.original306.plan-association-trust.v1" and
+                    isinstance(config["store"],str),
+                    "ORIGINAL306_ASSOCIATION_AUTHORITY_CONTRACT_INVALID")
+            home=Path(config["store"])
+            require(home.is_absolute() and not home.is_symlink() and
+                    ".." not in home.parts and
+                    home.as_posix()==config["store"],
+                    "ORIGINAL306_ASSOCIATION_STORE_PATH_INVALID")
+            try:
+                public=base64.b64decode(
+                    config["issuer_public_key_b64"],validate=True)
+            except (TypeError,ValueError) as exc:
+                raise RegistryDenied(
+                    "ORIGINAL306_ASSOCIATION_ISSUER_INVALID") from exc
+            require(len(public)==32 and
+                    public!=self.independent_verifier_public_key,
+                    "ORIGINAL306_ASSOCIATION_ISSUER_NOT_INDEPENDENT")
+            self.operation_association_authority={
+                "store":home,
+                "issuer_public_key_b64":config["issuer_public_key_b64"]
+            }
         self.manifests: dict[str, dict] = {}
         for row in index["providers"]:
             require(isinstance(row, dict), "REGISTRY_ENTRY_INVALID")
@@ -139,6 +231,56 @@ class Registry:
             blob = protected_file(self.root / rel, self.root)
             require(sha(blob) == component["sha256"],
                     "PROVIDER_COMPONENT_DRIFT:" + entry)
+        # Optional workflow components are first-party, digest-pinned source
+        # code just like the execution handler and independent verifier.
+        # The installed Worker may call a provider-specific preclaim ONLY
+        # after this registry checks its exact immutable component.
+        for component_type in ("preclaim","finalizer"):
+            if component_type not in m:
+                continue
+            component=m[component_type]
+            require(isinstance(component,dict)
+                    and set(component)=={"path","sha256"}
+                    and isinstance(component["path"],str)
+                    and isinstance(component["sha256"],str)
+                    and SHA.fullmatch(component["sha256"]),
+                    "DYNAMIC_PROVIDER_COMPONENT_SHAPE_INVALID:"+component_type)
+            rel=bounded_relative(component["path"])
+            require(rel.endswith(".py")
+                    and rel not in (m["handler"]["path"],m["verifier"]["path"]),
+                    "DYNAMIC_PROVIDER_COMPONENT_PATH_INVALID:"+component_type)
+            blob=protected_file(self.root/rel,self.root,maximum=2_000_000)
+            require(sha(blob)==component["sha256"],
+                    "DYNAMIC_PROVIDER_COMPONENT_DRIFT:"+component_type)
+        # Extensible trusted workflow hooks share the same root Registry
+        # source checks as preclaim/finalizer/handler/verifier. These are
+        # dynamic *capability names*, not operation IDs or permissions.
+        # A hook cannot enroll itself via a WP option or an unsigned Job.
+        hooks=m.get("hooks",{})
+        require(isinstance(hooks,dict) and len(hooks)<=16,
+                "DYNAMIC_PROVIDER_HOOK_MAP_INVALID")
+        occupied={
+            m["handler"]["path"],m["verifier"]["path"],
+            *(m[k]["path"] for k in ("preclaim","finalizer") if k in m),
+        }
+        for name,item in hooks.items():
+            require(isinstance(name,str) and HOOK_NAME.fullmatch(name)
+                    and name not in ("handler","verifier","preclaim","finalizer")
+                    and isinstance(item,dict)
+                    and set(item)=={"path","sha256","entrypoint"}
+                    and isinstance(item["path"],str)
+                    and isinstance(item["sha256"],str)
+                    and SHA.fullmatch(item["sha256"])
+                    and isinstance(item["entrypoint"],str)
+                    and HOOK_SYMBOL.fullmatch(item["entrypoint"]),
+                    "DYNAMIC_PROVIDER_HOOK_DECLARATION_INVALID")
+            rel=bounded_relative(item["path"])
+            require(rel.endswith(".py") and rel not in occupied,
+                    "DYNAMIC_PROVIDER_HOOK_COMPONENT_COLLISION")
+            occupied.add(rel)
+            raw=protected_file(self.root/rel,self.root,maximum=2_000_000)
+            require(sha(raw)==item["sha256"],
+                    "DYNAMIC_PROVIDER_HOOK_SOURCE_DRIFT:"+name)
         # A handler cannot be made immutable while its imported Python
         # dependencies are mutable. Independently content-pin every declared
         # first-party dependency before the Provider is considered enrolled.

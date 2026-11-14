@@ -501,6 +501,8 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin-transaction.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cross-plugin-deployment.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cross-plugin-admin.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operation-resume.php';
+// Read-only source catalog review; does not enroll a write Provider.
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-native-source-release-review.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-execution-state-view.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin-activation-state.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin-lifecycle.php';
@@ -684,6 +686,9 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-opt-in.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-native-cron-acceptance.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-native-hybrid-acceptance.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-site-capability-discovery.php';
+// Bounded Original305 Job/Claim readback only; no grant or execution.
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-original-job-readback.php';
+MAD4B_SCP_Original_Job_Readback::boot();
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-native-capability-browser-provider.php';
 add_filter( 'mad4b_browser_acceptance_providers', array( 'MAD4B_SCP_Native_Capability_Browser_Provider', 'register' ), 15 );
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skills-admin-ui.php';
@@ -787,6 +792,7 @@ if ( ! $mad4b_passive_admin_read || '' !== $mad4b_diagnostic_catalog_target ) {
 	MAD4B_SCP_MCP_Hybrid::boot();
 	MAD4B_SCP_Dependency_Impact_Graph::boot();
 	MAD4B_SCP_Operation_Registry::boot();
+	MAD4B_SCP_Native_Source_Release_Review::boot();
 	MAD4B_SCP_Operation_Pipeline::boot();
 	MAD4B_SCP_Provider_Autopilot::boot();
 	MAD4B_SCP_Plugin_Transaction::boot();

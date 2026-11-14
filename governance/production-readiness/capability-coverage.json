@@ -3605,6 +3605,116 @@
       "new_control_ids": [],
       "coverage_reuse_rationale": "Existing MCP admission, platform identity, security, owner-scoped administrative rights and execution-denial controls cover these staging-only authorization surfaces, without granting Production execution or public access.",
       "review_rationale": "New surface ability:mad4b/staging-write-grant-reconcile-staging is source-pinned in the W1 authority integration and assessed with hermetic owner-browser, agent REST route, Site Profile, OAuth, replay, write grant, exact mapping and negative permission fixtures. This is only CI source review, not evidence that the route is registered, usable, or authorized in Production."
+    },
+    {
+      "id": "ability:mad4b/native-source-catalog-preflight",
+      "owner_role": "MAD4B repository CI-only source integration reviewer; independent signed Owner release authorization still required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/test_native_source_central_review_source.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-source-release-review-contract.py"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Reuse the existing UPDATES-01, CROSSPLUGIN-01, RECOVERY-01, ROLLOUT-01, SECURITY-01 checks for bounded read-only interfaces; no additional executable permission or first-party authority is introduced.",
+      "review_rationale": "Exact PR #804 source inspection and tests. Introduce source-family-neutral catalog status and fail-closed preflight reads with explicit false write authorization, no WP options mutation, no release publishing and no invented owner approval. This declares CI evidence only, not live verification or release authority."
+    },
+    {
+      "id": "ability:mad4b/native-source-catalog-status",
+      "owner_role": "MAD4B repository CI-only source integration reviewer; independent signed Owner release authorization still required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/test_native_source_central_review_source.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-source-release-review-contract.py"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Reuse the existing UPDATES-01, CROSSPLUGIN-01, RECOVERY-01, ROLLOUT-01, SECURITY-01 checks for bounded read-only interfaces; no additional executable permission or first-party authority is introduced.",
+      "review_rationale": "Exact PR #804 source inspection and tests. Introduce source-family-neutral catalog status and fail-closed preflight reads with explicit false write authorization, no WP options mutation, no release publishing and no invented owner approval. This declares CI evidence only, not live verification or release authority."
+    },
+    {
+      "id": "ability:mad4b/original-job-claim-readback",
+      "owner_role": "MAD4B repository CI-only source integration reviewer; independent signed Owner release authorization still required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/test_native_source_original_job_readback_php.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-source-release-review-contract.py"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Reuse the existing MCP-01, PROVIDERS-01, EXECUTION-01, AUTOMATION-01, PERFORMANCE-01 checks for bounded read-only interfaces; no additional executable permission or first-party authority is introduced.",
+      "review_rationale": "Exact PR #804 source inspection and tests. Add bounded admin-only readback of Original305 Job/Claim, with truncated-data denials, scope isolation and no authorization, 312 certification, signed 313 receipt or write mutation. This declares CI evidence only, not live verification or release authority."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-source-release-review.php",
+      "owner_role": "MAD4B repository CI-only source integration reviewer; independent signed Owner release authorization still required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/test_native_source_central_review_source.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-source-release-review-contract.py"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Reuse the existing UPDATES-01, CROSSPLUGIN-01, RECOVERY-01, ROLLOUT-01, SECURITY-01 checks for bounded read-only interfaces; no additional executable permission or first-party authority is introduced.",
+      "review_rationale": "Exact PR #804 source inspection and tests. Introduce source-family-neutral catalog status and fail-closed preflight reads with explicit false write authorization, no WP options mutation, no release publishing and no invented owner approval. This declares CI evidence only, not live verification or release authority."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-original-job-readback.php",
+      "owner_role": "MAD4B repository CI-only source integration reviewer; independent signed Owner release authorization still required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/test_native_source_original_job_readback_php.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-source-release-review-contract.py"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Reuse the existing MCP-01, PROVIDERS-01, EXECUTION-01, AUTOMATION-01, PERFORMANCE-01 checks for bounded read-only interfaces; no additional executable permission or first-party authority is introduced.",
+      "review_rationale": "Exact PR #804 source inspection and tests. Add bounded admin-only readback of Original305 Job/Claim, with truncated-data denials, scope isolation and no authorization, 312 certification, signed 313 receipt or write mutation. This declares CI evidence only, not live verification or release authority."
     }
   ],
   "lifecycle": [],
@@ -11538,6 +11648,71 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "The existing original Agent Registry exact grant, Staging-only provider review, site profile, mutation gate, owner approval, checkpoint, readback and audit safeguards govern this single diagnostic, without wildcard rights.",
       "review_rationale": "Exact source review allows a core grant to be considered only for mad4b/hub-queue-site-health-enqueue when the Ability is registered on the correct central Staging site. No grant is issued merely because this provider pair appears; broad hub-bulk-enqueue remains outside the reviewed policy and Production is not enabled."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "1c3821631be8b2fe1bcaf1581cc85e7ec621e8d2",
+      "owner_role": "MAD4B repository source review (CI-only); first-party Production approval and source publication separate",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PROVIDERS-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-source-release-review-contract.py"
+      ],
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing signed Original305/306/312/313, Source CAS, governance and release integrity control coverage retained without any new permission, arbitrary source registry entry or unverified execution evidence.",
+      "review_rationale": "Exact Git blob 1c3821631be8b2fe1bcaf1581cc85e7ec621e8d2 reviewed in PR #804; tested with same-PR regression fixtures. Add only existing WordPress read-only Job Claim observation and Native Source catalog preflight bootstrap, without installing a write Ability, changing Original306/313 signer or authorizing a source release. No independent release authority is provided."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-source-release-review.php",
+      "source_blob_sha": "81c394d5e96797e5725b59716b1cae52239549db",
+      "owner_role": "MAD4B repository source review (CI-only); first-party Production approval and source publication separate",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/test_native_source_central_review_source.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-source-release-review-contract.py"
+      ],
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing signed Original305/306/312/313, Source CAS, governance and release integrity control coverage retained without any new permission, arbitrary source registry entry or unverified execution evidence.",
+      "review_rationale": "Exact Git blob 81c394d5e96797e5725b59716b1cae52239549db reviewed in PR #804; tested with same-PR regression fixtures. Introduce source-family-neutral catalog status and fail-closed preflight reads with explicit false write authorization, no WP options mutation, no release publishing and no invented owner approval. No independent release authority is provided."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-original-job-readback.php",
+      "source_blob_sha": "b27ebb7b940c13bbcca0eaee552efcd6f9a75e35",
+      "owner_role": "MAD4B repository source review (CI-only); first-party Production approval and source publication separate",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/test_native_source_original_job_readback_php.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-source-release-review-contract.py"
+      ],
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing signed Original305/306/312/313, Source CAS, governance and release integrity control coverage retained without any new permission, arbitrary source registry entry or unverified execution evidence.",
+      "review_rationale": "Exact Git blob b27ebb7b940c13bbcca0eaee552efcd6f9a75e35 reviewed in PR #804; tested with same-PR regression fixtures. Add bounded admin-only readback of Original305 Job/Claim, with truncated-data denials, scope isolation and no authorization, 312 certification, signed 313 receipt or write mutation. No independent release authority is provided."
     }
   ],
   "code_change_rules": {
