@@ -14,6 +14,10 @@ final class MAD4B_Tour_Highlights_V1 {
         add_filter('jet-engine/listings/allowed-callbacks',[__CLASS__,'callbacks']);
         add_filter('elementor/frontend/container/should_render',[__CLASS__,'section_visible'],10,2);
         add_action('elementor/frontend/container/before_render',[__CLASS__,'decorate_container'],10,1);
+        // Reuse the native Journey Term Grid Query 182. This adds only
+        // source-verified geographic matches missing from the editorial Tour
+        // taxonomy without saving or mutating its canonical terms.
+        add_action('jet-engine/query-builder/listings/on-query',[__CLASS__,'extend_native_governorate_grid'],24,3);
         // Track actual native JetEngine destination groups, not Elementor element IDs.
         add_action('elementor/frontend/container/before_render',[__CLASS__,'enter_native_group'],5,1);
         add_action('elementor/frontend/container/after_render',[__CLASS__,'leave_native_group'],5,1);
@@ -60,35 +64,150 @@ final class MAD4B_Tour_Highlights_V1 {
         $v=(string)get_post_meta($post,'tour_highlights_display_pattern',true);
         if($v==='' || $v==='inherit'){
             $company=get_option('look-and-feel',[]);
-            $v=is_array($company)?(string)($company['tour_highlights_default_pattern']??'explorer'):'explorer';
+            $v=is_array($company)?(string)($company['tour_highlights_default_pattern']??'split'):'split';
         }
-        return in_array($v,['explorer','split','story'],true)?$v:'explorer';
+        return in_array($v,['explorer','split','story'],true)?$v:'split';
+    }
+
+    /**
+     * Eligible Tour terms + high-confidence, read-only geographic mentions.
+     *
+     * A Tour can explicitly mention Aswan without having an Aswan term
+     * assignment yet. Restrict discovery to governorates under the canonical
+     * country parent already linked to that Tour; match entire term names with
+     * Unicode word boundaries against the authored Highlights.
+     * This never creates a Tour taxonomy assignment, asserts an included visit,
+     * or selects a sibling attraction from a shared geographic parent.
+     */
+    /**
+     * WPML locale belongs to the queried Tour, not a mutable global language.
+     * WP-CLI audits can switch languages within one request, while WPML's term
+     * object caches may still contain another translation. Fail closed for
+     * mismatched Terms; do not modify any taxonomy relationships.
+     */
+    private static function journey_tour_locale(int $post):string {
+        if(!has_filter('wpml_element_language_code'))return '';
+        $locale=apply_filters('wpml_element_language_code',null,[
+            'element_id'=>$post,'element_type'=>'post_tours-and-activities'
+        ]);
+        if(is_string($locale)&&preg_match('/^[a-z]{2,5}(?:-[a-z0-9]+)?$/i',$locale))
+            return $locale;
+        // A not-yet-registered draft must still obey the active WPML locale.
+        $fallback=apply_filters('wpml_current_language',null);
+        return is_string($fallback)?$fallback:'';
+    }
+
+    private static function journey_term_locale_matches(WP_Term $term,string $locale):bool {
+        if($locale==='')return true; // WPML disabled / no active language.
+        $actual=apply_filters('wpml_element_language_code',null,[
+            'element_id'=>(int)$term->term_taxonomy_id,
+            'element_type'=>'tax_destinations'
+        ]);
+        return is_string($actual)&&$actual===$locale;
     }
 
     public static function related_places(int $post):array {
-        // Request-local cache only; every new request validates current taxonomy
-        // and company activation policy instead of reusing stale front-end facts.
         static $cache=[];
-        if(array_key_exists($post,$cache))return $cache[$post];
-        $cache[$post]=[];
+        $tourLocale=self::journey_tour_locale($post);
+        $runtimeLocale=(string)apply_filters('wpml_current_language',null);
+        $cacheKey=$post.':'.$tourLocale.':'.$runtimeLocale;
+        if(array_key_exists($cacheKey,$cache))return $cache[$cacheKey];
+        $cache[$cacheKey]=[];
         if($post<=0 || get_post_type($post)!=='tours-and-activities'
             || !class_exists('MAD4B_Company_Term_Eligibility_V1',false))return [];
-        $terms=wp_get_object_terms($post,'destinations',['fields'=>'all']);
-        if(!is_array($terms)||is_wp_error($terms))return [];
+        $assigned=wp_get_object_terms($post,'destinations',['fields'=>'all']);
+        if(!is_array($assigned)||is_wp_error($assigned))return [];
         $eligibleTypes=['place_attraction','city','zone_area','state_governorate','country'];
-        foreach($terms as $term) {
-            if(!$term instanceof WP_Term)continue;
+        $countryIds=[];
+        $used=[];
+        foreach($assigned as $term){
+            if(!$term instanceof WP_Term || !self::journey_term_locale_matches($term,$tourLocale))continue;
             $kind=(string)get_term_meta($term->term_id,'destination_type',true);
             if(!in_array($kind,$eligibleTypes,true))continue;
             $decision=MAD4B_Company_Term_Eligibility_V1::decide(
-                $term,'tours-and-activities','destination_discovery',get_post_status($post)==='publish'
-            );
+                $term,'tours-and-activities','destination_discovery',get_post_status($post)==='publish');
             if(empty($decision['allowed']))continue;
             $url=get_term_link($term,'destinations');
             if(is_wp_error($url)||!is_string($url)||$url==='')continue;
-            $cache[$post][]=['id'=>$term->term_id,'parent'=>(int)$term->parent,'label'=>$term->name,'url'=>$url,'kind'=>$kind];
+            $id=(int)$term->term_id;
+            $used[$id]=true;
+            if($kind==='country')$countryIds[$id]=$id;
+            $cache[$cacheKey][]=['id'=>$id,'parent'=>(int)$term->parent,
+                'label'=>$term->name,'url'=>$url,'kind'=>$kind,'evidence'=>'assigned'];
         }
-        return $cache[$post];
+        // A governorate already linked to the Tour also proves its canonical
+        // country parent, even if that country was not attached separately.
+        foreach($assigned as $term){
+            if(!$term instanceof WP_Term || !self::journey_term_locale_matches($term,$tourLocale))continue;
+            $parent=(int)$term->parent;$depth=0;
+            while($parent>0 && $depth++<5){
+                $ancestor=get_term($parent,'destinations');
+                if(!$ancestor instanceof WP_Term||is_wp_error($ancestor)
+                    || !self::journey_term_locale_matches($ancestor,$tourLocale))break;
+                if((string)get_term_meta($ancestor->term_id,'destination_type',true)==='country'){
+                    $countryIds[(int)$ancestor->term_id]=(int)$ancestor->term_id;
+                    break;
+                }
+                $parent=(int)$ancestor->parent;
+            }
+        }
+        $raw=(string)get_post_meta($post,'tour_highlights_content',true);
+        $content=html_entity_decode(wp_strip_all_tags($raw),ENT_QUOTES|ENT_HTML5,'UTF-8');
+        $content=trim(preg_replace('/\s+/u',' ',$content));
+        if(!$countryIds||mb_strlen($content,'UTF-8')<12)return $cache[$cacheKey];
+        $candidates=0;
+        foreach(array_slice(array_values($countryIds),0,4) as $country){
+            $regions=get_terms(['taxonomy'=>'destinations','parent'=>$country,
+                'hide_empty'=>false,'number'=>100,'orderby'=>'name']);
+            if(is_wp_error($regions)||!is_array($regions))continue;
+            foreach($regions as $region){
+                if(++$candidates>200)break 2;
+                if(!$region instanceof WP_Term||isset($used[$region->term_id])
+                    || !self::journey_term_locale_matches($region,$tourLocale))continue;
+                if((string)get_term_meta($region->term_id,'destination_type',true)!=='state_governorate')continue;
+                $name=trim((string)$region->name);
+                if(mb_strlen($name,'UTF-8')<4 || mb_strlen($name,'UTF-8')>85)continue;
+                // Unicode boundaries and full term labels. No subword or
+                // arbitrary alias/sibling matching.
+                if(!preg_match('~(?<![\p{L}\p{N}])'.preg_quote($name,'~').'(?![\p{L}\p{N}])~iu',$content))continue;
+                $decision=MAD4B_Company_Term_Eligibility_V1::decide(
+                    $region,'tours-and-activities','destination_discovery',get_post_status($post)==='publish');
+                if(empty($decision['allowed']))continue;
+                $url=get_term_link($region,'destinations');
+                if(is_wp_error($url)||!is_string($url)||$url==='')continue;
+                $id=(int)$region->term_id;$used[$id]=true;
+                $cache[$cacheKey][]=['id'=>$id,'parent'=>(int)$region->parent,
+                    'label'=>$name,'url'=>$url,'kind'=>'state_governorate',
+                    'evidence'=>'exact-highlight-mention'];
+            }
+        }
+        return $cache[$cacheKey];
+    }
+
+    /** Native JetEngine Query Builder's existing governorates Listing Grid. */
+    public static function extend_native_governorate_grid($query,$settings,$widget=null):void {
+        if(!is_object($query)||($query->query_type??'')!=='terms'
+            || (int)($query->id??0)!==182
+            || !is_array($settings)
+            || (int)($settings['custom_query_id']??0)!==182
+            || !method_exists($query,'set_filtered_prop')
+            || !is_singular('tours-and-activities'))return;
+        $tour=(int)get_queried_object_id();
+        if(!$tour||get_post_type($tour)!=='tours-and-activities')return;
+        $places=self::related_places($tour);
+        $ids=array_values(array_unique(array_map('intval',array_column(
+            array_values(array_filter($places,
+                static fn($p)=>($p['kind']??'')==='state_governorate')), 'id'))));
+        if(!$ids || count($ids)>40)return;
+        // Query Builder's merge_default_props() MERGES arrays, so passing
+        // [] through set_filtered_prop('object_ids',[]) cannot remove the
+        // current Tour ID. Override the validated instance's final arguments
+        // directly: an exact whitelist, read-only, only for this native Grid.
+        $query->final_query['object_ids']=[];
+        $query->final_query['include']=$ids;
+        $query->final_query['exclude']=[];
+        $query->set_filtered_prop('hide_empty',false);
+        $query->set_filtered_prop('number',count($ids));
     }
 
     public static function has_highlights(int $post):bool {
@@ -122,6 +241,7 @@ final class MAD4B_Tour_Highlights_V1 {
             'name'=>(string)$place['label'],
             'kind'=>(string)$place['kind'],
             'url'=>(string)$place['url'],
+            'evidence'=>(string)($place['evidence']??'assigned'),
         ],self::related_places($post));
         $encoded=wp_json_encode($placeTree,JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT);
         if(is_string($encoded)){
