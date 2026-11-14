@@ -47,6 +47,70 @@ Production deployment or replacement of company-specific live files.
   Owner approval. Historic six control IDs are retained, with three mapped
   MCP/Provider/Execution controls appended.
 
+## Additional source review on the converged branch (15 Nov 2026)
+
+The following original first-party classes were directly exercised by
+same-branch hermetic PHP 7.4/8.5 tests and bound to exact-source CI-only
+capability reviews. Each reviewed path retains production_authorized=false:
+
+* 23 Staging-only core grant eligibility pairs and one exactly enrolled VPS
+  enqueue candidate. No actual Agent grants or approvals were created.
+* ChatbotX optional provider: 11 declared read and 3 separately governed
+  mutating abilities, installed-provider admission and fail-closed preflight.
+  No real CRM email, ticket or draft was created.
+* ContentJob: 18 native WordPress Ability registrations, including 11 new
+  guarded interfaces; read/write and snapshot digest/schema fences.
+* Company team administrator: 4 REST endpoints, no global WordPress Admin
+  elevation and deny-before-mutation for ownerless role migration.
+* Company user lifecycle: 3 REST routes / 4 methods, suspended login/REST
+  denial, protected account deletion refusal and username confirmation.
+* Company code reconciliation: 2 private read-only Abilities and
+  manifest-bound page comparison, with a synthetic receipt-verifier stub.
+  Real independent Original Core signature validation is still required.
+* Company tenant role migration: original REST admission, owner browser
+  consent, site identity preflight, exact digest CAS, DB lock, role capability
+  removal, audit receipt, and forced-failure rollback using an in-memory DB
+  fixture. Real MariaDB concurrency and live Owner approval remain separate.
+* Company communications and Sender/Operations options: 7 scoped REST routes
+  and 9 HTTP methods, custom company capability, no email sent by registration
+  and hard deletion disabled by default.
+* Original Brand Experience/Readiness classes: three approved source asset
+  categories required for full brand authority, current source hash and
+  complete same-site/post-type scanner coverage needed before closing
+  historical attribution issues.
+* Native Skill Seeder Cron: one scheduled hook, disabled-catalog and
+  missing/foreign-origin worker denial. The complete Skill file mutation
+  owner remains unreviewed; Cron evidence cannot certify it.
+* Tenant identity review added as a stricter P0 domain rule, without
+  changing/removing any historical control ID or reducing preexisting scope.
+
+All changes reuse the existing platform classes and original source-review
+registry. They do not create an alternate execution engine, add API
+credentials, self-approve Owner steps, or modify the live WordPress database.
+
+## Concurrent branch retention and live WP-CLI validation
+
+A separate branch contributed native Tour Rate facets and Elementor CSS
+integrity (b9f2fa941e) plus source-owned WPML canonical FastCGI paths
+(f1506fbfe2). Merge 447927780f preserves both branches alongside this
+Readiness review. All three resulting MU PHP file SHA256 values exactly
+match the already installed PHP on both Tours.dev and Wayfatours.
+
+Native WordPress read-only WP-CLI tests on both sites succeeded:
+
+* rate-facet-lookfeel-contract.php — 11 scenarios/site,
+  including the three company-selected modes and preserving Program scope.
+* cache-control-wpml-canonical-path-contract.php — four discovered
+  translated Tour pairs/site, original language restored, no FastCGI purge.
+* rate-facet-elementor-css-integrity-contract.php — original Elementor
+  document 48317, compiled CSS complete and adaptive_labels active.
+
+Both sites have active FluentCRM and MCP Adapter, but read-only discovery
+shows several fluent-crm/* requested tool names lack registered WordPress
+Abilities in either environment. The Wayfatours WP-CLI bootstrap logs these
+as errors. These are not certified native abilities and are separate from
+the passed Tour Rate / WPML validation.
+
 ## Live verification boundaries
 
 Read-only Brand Integrity tour scan returned complete with no issues:
@@ -58,10 +122,12 @@ release of all MAD4B PHP sources.
 ## Still HOLD
 
 The exact-head dynamic capability-coverage gate remains FAIL_UNCOVERED_CHANGES:
-480 uncovered items (382 P0 / 98 P1) after the source-only review.
-They are 246 missing exact-source-change reviews and 234 missing
-capability-coverage reviews; two earlier malformed-special conditions
-were addressed without changing any original authority permissions.
+373 uncovered items (294 P0 / 79 P1) after these source-only reviews,
+down from 480 (107 fewer). They are 230 missing exact-source-change
+reviews and 143 missing capability-coverage reviews, composed of
+92 services, 27 Ability candidates, 16 REST routes, 6 UI assets and
+2 operation-registry entries. The separate local branch source audit has
+no production release authority, and no untested file is bulk-attested.
 Full host-authorized tests, current GitHub Actions on a published head,
 signed Owner attestation, independent Original313 release and site-specific
 CAS readback are still required for a Production release. Do not bulk-approve
@@ -70,5 +136,6 @@ plugins.
 
 Evidence:
 * /opt/mad4b-company-provisioning/backups/pr814-readiness-final-special-p0-20261115/
+* /opt/mad4b-company-provisioning/backups/pr814-readiness-0036a95-20261115/
 * /opt/mad4b-company-provisioning/backups/pr814-historical-source-98e85e2e-20261115.json
 * /opt/mad4b-company-provisioning/backups/pr814-local-branch-audit-20261115.json
