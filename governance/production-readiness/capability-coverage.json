@@ -5829,6 +5829,23 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Original AI/localization/provider source controls apply to scoped editorial review and evidence-only ledger. The existing ContentJob owner retains all mutation permissions.",
       "review_rationale": "Original Content Readiness ledger source method rule_enabled_for was exercised directly by reflection on PHP 7.4/8.5, with original dependencies loaded. A historical Brand Integrity mismatch or external-link issue can be resolved only when the same-site brand source matches a complete, coverage-complete scanner inventory including the exact post type; truncated, missing and cross-site scans fail closed. No ledger mutation or ContentJob intake occurred."
+    },
+    {
+      "id": "cron:mad4b_scp_auto_skill_catalog_reconcile",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/native-skills-seeder-enrollment-cron-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party Skill catalog Cron admission reviewer, CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing automation/performance controls remain responsible for native Skill seeder scheduling, not background host grant issuance.",
+      "review_rationale": "Native PHP 7.4/8.5 source test verifies skill seeder startup: a disabled registry cannot enqueue, profile-saved schedule deduplicates the exact Cron hook, and worker with missing enrollment or same-origin mismatch denies before any Skill-file updates. This is a Cron-only review; full 605-line Skill file reconciliation and provider-managed changes remain separately unreviewed and do not inherit automation authority."
     }
   ],
   "lifecycle": [],
