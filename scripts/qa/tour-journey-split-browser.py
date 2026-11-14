@@ -69,6 +69,7 @@ def main():
               };
             }""")
             assert initial["mode"] == "split" and initial["ready"] == "1"
+            assert page.locator(".tour-journey-discovery").get_attribute("data-jd-modes-version") == "3", "Unified modes runtime missing"
             assert initial["taxonomyCount"] >= 1
             assert initial["nativeTemplateCount"] == 1
             assert not initial["splitHidden"] and not initial["pageOverflow"]
@@ -88,10 +89,16 @@ def main():
                     ).length,
                     path:s.querySelector('.jd-split-v3__path')?.textContent.trim(),
                     pageOverflow:document.documentElement.scrollWidth>innerWidth,
+                    wrappers:[...s.querySelectorAll('.tour-place-group[data-tour-active=true] .jd-native-place:not([hidden]) > .elementor > .e-con')]
+                      .filter(el=>el.querySelector(':scope > .e-con'))
+                      .map(el=>({background:getComputedStyle(el).backgroundColor,
+                        shadow:getComputedStyle(el).boxShadow})),
                   };
                 }""")
                 assert state["kind"] == level["kind"]
                 assert state["visible"] == level["count"], "Wrong native card count for category"
+                assert all(el["background"]=="rgba(0, 0, 0, 0)" and el["shadow"]=="none"
+                           for el in state["wrappers"]), "Redundant white image-card backing remains"
                 assert not state["pageOverflow"]
 
             select.select_option("explorer")
@@ -100,32 +107,88 @@ def main():
               const s=document.querySelector('.tour-journey-discovery');
               return {
                 mode:s.dataset.tourJourneyMode,
-                hidden:s.querySelector('.jd-split-v3__panel').hidden,
+                taxonomyPanelVisible:!s.querySelector('.jd-split-v3__panel').hidden,
+                levels:[...s.querySelectorAll('.jd-split-v3__level')].map(n=>n.dataset.kind),
+                miniCards:[...s.querySelectorAll('.jd-place-tile')].map(n=>({
+                  background:getComputedStyle(n).backgroundColor,
+                  border:getComputedStyle(n).borderTopWidth
+                })),
                 visible:s.querySelectorAll(
                   '.tour-place-group[data-tour-active=true] .jd-native-place:not([hidden])'
                 ).length,
                 overflow:document.documentElement.scrollWidth>innerWidth
               };
             }""")
-            assert explorer["mode"] == "explorer" and explorer["hidden"]
+            assert explorer["mode"] == "explorer" and explorer["taxonomyPanelVisible"]
             assert explorer["visible"] >= 1 and not explorer["overflow"]
+            assert explorer["levels"] and set(explorer["levels"])==set(x["kind"] for x in initial["levels"])
+            assert all(card["background"] == "rgba(0, 0, 0, 0)"
+                       and card["border"] == "0px" for card in explorer["miniCards"]), "white card behind Explorer place"
+            # All original JetEngine cards and levels are navigable.
+            for level in initial["levels"]:
+                page.locator('.jd-split-v3__level[data-kind="' + level["kind"] + '"]').click()
+                page.wait_for_timeout(55)
+                count=page.locator('.tour-place-group[data-tour-active=true] .jd-native-place:not([hidden])').count()
+                assert count==level["count"], "Explorer taxonomy count mismatch"
             select.select_option("story")
             page.wait_for_timeout(100)
             story = page.evaluate("""() => {
               const s=document.querySelector('.tour-journey-discovery');
               return {
                 mode:s.dataset.tourJourneyMode,
-                splitHidden:s.querySelector('.jd-split-v3__panel').hidden,
+                taxonomyPanelVisible:!s.querySelector('.jd-split-v3__panel').hidden,
+                levels:[...s.querySelectorAll('.jd-split-v3__level')].map(n=>n.dataset.kind),
+                pointers:[...s.querySelectorAll('.jd-modes-v3__story-pointer')].filter(n=>getComputedStyle(n).display!=='none').length,
+                highlights:s.querySelectorAll('.tour-hl-ui__card').length,
+                miniCards:[...s.querySelectorAll('.jd-place-tile')].map(n=>({
+                  background:getComputedStyle(n).backgroundColor,
+                  border:getComputedStyle(n).borderTopWidth
+                })),
                 overflow:document.documentElement.scrollWidth>innerWidth
               };
             }""")
-            assert story["mode"] == "story" and story["splitHidden"] and not story["overflow"]
+            assert story["mode"] == "story" and story["taxonomyPanelVisible"] and not story["overflow"]
+            assert story["pointers"]==story["highlights"], "Story item pointer count mismatch"
+            assert set(story["levels"])==set(x["kind"] for x in initial["levels"])
+            assert all(card["background"]=="rgba(0, 0, 0, 0)" and card["border"]=="0px"
+                       for card in story["miniCards"]), "white card behind Story place"
+            story_link=page.locator(".jd-modes-v3__story-action").first
+            if story_link.count():
+                story_link.click()
+                page.wait_for_timeout(130)
+                assert page.evaluate("location.hash.startsWith('#tour-place-panel-')"), "Story pointer lost anchor"
+            # Regression for native image-backed Elementor containers:
+            # removing a white *wrapper* must never remove its background image.
+            media = page.evaluate("""() => {
+                const section=document.querySelector('.tour-journey-discovery');
+                const group=section.querySelector('.tour-place-group[data-tour-active=true]');
+                if(!group)throw Error('No native destination group');
+                const fixture=document.createElement('div');
+                fixture.className='jd-native-place';
+                fixture.innerHTML='<div class="elementor"><div class="e-con" '
+                  +'style="background-image:linear-gradient(#204c50,#204c50);'
+                  +'background-color:white;box-shadow:0 3px 8px #333">'
+                  +'<div class="e-con"><span>Media preserved</span></div></div></div>';
+                group.appendChild(fixture);
+                const node=fixture.querySelector('.elementor > .e-con');
+                const computed=getComputedStyle(node);
+                const result={image:computed.backgroundImage,
+                    background:computed.backgroundColor,shadow:computed.boxShadow};
+                fixture.remove();
+                return result;
+            }""")
+            assert media["image"] != "none" and "gradient" in media["image"], (
+                "original Elementor background image was stripped"
+            )
+            assert media["background"] == "rgba(0, 0, 0, 0)" and media["shadow"] == "none", (
+                "redundant media wrapper remained"
+            )
             assert not errors, "JavaScript page errors"
             print(json.dumps({
                 "ok": True, "http": response.status, "viewport": args.width,
                 "language": page.evaluate("document.documentElement.lang"),
                 "split": initial, "explorer": explorer, "story": story,
-                "jsErrors": errors,
+                "mediaPreservation": media, "jsErrors": errors,
             }, ensure_ascii=False))
             return 0
         except Exception as err:
