@@ -5793,6 +5793,42 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Original admin/browser/security and tenant identity/OAuth policy controls continue to scope these same WordPress settings endpoints, not production SMTP or commerce writes.",
       "review_rationale": "Executed original first-party company communication, WordPress team membership, sender and operational policy classes under PHP 7.4/8.5. Native REST registration exposes only seven expected endpoints and nine bounded HTTP methods, each with custom Company Operations permission callback. Anonymous requests are denied; no source-only registration sends messages or modifies settings, and hard_delete_policy remains disabled by default. Actual sender credential setup, SMTP delivery, commerce mail routing and live option writes are not certified."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-experience-quality.php",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "tests/brand-quality-readiness-coverage-hermetic.php"
+      ],
+      "owner_role": "MAD4B original Brand Quality and Readiness source reviewer — CI-only, no publication authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original AI/localization/provider source controls apply to scoped editorial review and evidence-only ledger. The existing ContentJob owner retains all mutation permissions.",
+      "review_rationale": "Original Brand Experience Quality asset approvals and site-bound evidence scope were exercised directly in PHP 7.4/8.5. Current Strategy, Tone and Editorial source hashes must all match for approved authority; a stale approved review downgrades authority and changes source-evidence SHA. Brand recommendations remain advisory, never publish media or posts."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "tests/brand-quality-readiness-coverage-hermetic.php"
+      ],
+      "owner_role": "MAD4B original Brand Quality and Readiness source reviewer — CI-only, no publication authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original AI/localization/provider source controls apply to scoped editorial review and evidence-only ledger. The existing ContentJob owner retains all mutation permissions.",
+      "review_rationale": "Original Content Readiness ledger source method rule_enabled_for was exercised directly by reflection on PHP 7.4/8.5, with original dependencies loaded. A historical Brand Integrity mismatch or external-link issue can be resolved only when the same-site brand source matches a complete, coverage-complete scanner inventory including the exact post type; truncated, missing and cross-site scans fail closed. No ledger mutation or ContentJob intake occurred."
     }
   ],
   "lifecycle": [],
@@ -14702,6 +14738,44 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing source-change controls protect the exact original Company Options/Email/Team source and its new native REST authorization fixture.",
       "review_rationale": "Source read and hermetic original-class registration inspected: each company policy, sender, team or communication endpoint requires the company-specific WordPress capability, not global administrator privilege; outbound email is not requested by registration, sender provider and external transport remain separately certified, and hard deletion is off unless explicitly enabled. PHP fixture verifies role-specific denial, methods and nonmutation; does not claim runtime SMTP or staff data correctness."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-experience-quality.php",
+      "source_blob_sha": "d42184db27dc136def5c3f179f5b42e37fd7813e",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "tests/brand-quality-readiness-coverage-hermetic.php"
+      ],
+      "owner_role": "MAD4B Brand source-scope and Readiness immutable evidence reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing AI/localization/provider controls remain intact; the same original-class PHP fixture now checks exact matching brand evidence, source scope and fail-closed issue resolution.",
+      "review_rationale": "Original PHP source inspected for brand strategy/tone/editorial source hashes, unreviewed media advisories, URL-linked source mismatch and Readiness issue closure. Hermetic PHP tests approved vs stale three-category Brand Context, source SHA changes and the exact Content Readiness rule predicate for two Brand Integrity issue classes including incomplete, foreign site and absent post-type evidence. Tests do not invoke a live scanner, patch content, create ContentJobs or certify independent image authenticity."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php",
+      "source_blob_sha": "b06b328391319b18ace8e4118ee2e0e5b619eff6",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "tests/brand-quality-readiness-coverage-hermetic.php"
+      ],
+      "owner_role": "MAD4B Brand source-scope and Readiness immutable evidence reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing AI/localization/provider controls remain intact; the same original-class PHP fixture now checks exact matching brand evidence, source scope and fail-closed issue resolution.",
+      "review_rationale": "Original PHP source inspected for brand strategy/tone/editorial source hashes, unreviewed media advisories, URL-linked source mismatch and Readiness issue closure. Hermetic PHP tests approved vs stale three-category Brand Context, source SHA changes and the exact Content Readiness rule predicate for two Brand Integrity issue classes including incomplete, foreign site and absent post-type evidence. Tests do not invoke a live scanner, patch content, create ContentJobs or certify independent image authenticity."
     }
   ],
   "code_change_rules": {
