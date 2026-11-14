@@ -64,3 +64,36 @@ second checks native JetEngine Look & Feel field enrollment and the exact
 compiled Elementor border. Both must pass on each company before a release.
 
 Review/test-source files never issue a release grant or Original313 receipt.
+
+## WPML canonical FastCGI invalidation (native Cache Control)
+
+The original MAD4B Cache Control owner now resolves translated Tour and
+taxonomy permalinks within the target WPML language, restoring the previous
+language via finally. Applying wpml_permalink without switching locale could
+previously return a redirected Spanish alias with an English slug. The
+native FastCGI generation keys need the final canonical path.
+
+Wayfatours' 7-day Nile cruise Spanish canonical path is:
+
+/es/tours-and-activities/crucero-por-el-cairo-y-el-nilo-7-dias/
+
+The former alias /es/tours-and-activities/7-day-egypt-nile-cruise-tour/
+301-redirects to it, and rotating the alias's key does not invalidate
+its cached destination page. Cache Control now includes the real
+canonical path in both source-post and translated-post previews. It
+also resolves language-specific native term archives when the optional
+direct-taxonomy scope is selected.
+
+After the code change, Wayfatours rotated only the two canonical 7-day
+tour paths (EN and ES). Browser tests confirmed localized Package/Season
+labels with the native Price Rates border on both desktop and mobile,
+including on a subsequent origin FastCGI HIT. No global or Redis flush.
+
+Read-only source-level regression, covering discovered published Tour
+translation pairs with distinct slugs:
+
+- wp eval-file scripts/qa/cache-control-wpml-canonical-path-contract.php
+
+The test independently resolves the translated slug and checks that both
+preview entrypoints include the canonical path, reject its old redirect
+alias, and restore WPML's initial language. The test never purges cache.
