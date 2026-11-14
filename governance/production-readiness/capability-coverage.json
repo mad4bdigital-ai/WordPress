@@ -3906,6 +3906,45 @@
       "review_rationale": "The existing provider REST registration retains its precise named WordPress permission callback, anonymous access denial, independent owner OAuth consent and exact refreshed-grant approval. No new REST route, site scope or write privilege introduced by the scoped read-only OAuth TTL integrity fix.",
       "coverage_reuse_rationale": "Use existing REST MCP, Provider, Execution, OAuth and Security controls; same-PR actual hermetic tests assert all five callback bindings and anonymous denial, plus existing approved-refresh and consent behavior. CI review never grants a live operation.",
       "execution_note": "Runs source-only on PHP 7.4, 8.3, 8.5. Production and Original313 require independently signed release acceptance and real site readback."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-integrity.php",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "tests/test_brand_integrity_runtime.php",
+        "tests/test_brand_integrity_lifecycle_runtime.php"
+      ],
+      "owner_role": "Source-review maintainer — company-neutral Brand Integrity content scanning, no WordPress mutation grant",
+      "review_rationale": "Brand Integrity is a site-scoped, read-only provider that analyzes current customer-visible content and emits coverage evidence. Existing Content Experience is the sole controlled writer. Unknown brands are checked contextually, not with a competitor denylist; no automatic publication or bypass authority is introduced.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuse mapped AI, localization and provider source controls; dynamic tenant identity and negative WordPress candidate tests carry the actual behavior proof.",
+      "execution_note": "Source CI review only; production runtime release and independent trust authority unchanged."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tour-highlights-v1.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/test_journey_successor_no_regression.py"
+      ],
+      "owner_role": "CI source reviewer — original native Tour Highlights owner, no company release or write delegation",
+      "review_rationale": "The original native Tour Highlights class keeps WordPress hook readiness, JetEngine manual and assisted fallback, PHP 7.4 compatibility, explicit destination binding and the default Split presentation policy, while native company/page options remain the data owner. PR813 and original PR814 regressions were reconciled against both live sites.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuse original Source Governance, Platform and Security controls for existing native JetEngine/Elementor tour display. No new edit, publication, cross-company grant or execution authority introduced.",
+      "execution_note": "Exact source regression and read-only diff review only. Independent site acceptance, release authority and Original313 signed receipt are still mandatory."
     }
   ],
   "lifecycle": [],
@@ -12382,6 +12421,89 @@
       "review_rationale": "The account-test action transmits the currently stored API credentials and persists a CAS account receipt. An old browser revision must not probe credentials that were rotated by another request. Exact revision preflight now denies before outbound HTTP, while CAS still blocks a rotation during an in-flight observation; failed or stale responses cannot overwrite the new encrypted credential.",
       "coverage_reuse_rationale": "Use existing MCP, provider lifecycle, execution and security controls with an exact same-PR 8-fixture 114-assertion matrix in PHP 7.4, 8.3 and 8.5. No new ability, endpoint, grant, paid-search path, provider certification or source ownership is introduced.",
       "execution_note": "Only hermetic enrolled-Staging runtime source tests passed; all Production Owner and Original313 evidence remain pending. Historical review rows and release gates are unchanged."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-integrity.php",
+      "source_blob_sha": "14e83d1f5e6299d4e69219f1c22735f14a3d24cf",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "tests/test_brand_integrity_runtime.php",
+        "tests/test_brand_integrity_lifecycle_runtime.php",
+        "tests/test_brand_integrity_lifecycle_contract.py"
+      ],
+      "owner_role": "CI source reviewer — bounded MAD4B integration review, no Production owner delegation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "The site-scoped Brand Integrity analyzer reads registered visible WordPress content without competitor denylist or direct writes; bounded, complete-coverage scans, source-field CAS and localized first-party identity are exercised by original candidate/live source tests. This exact file is CI-reviewed only, not a publication or rollback authority.",
+      "coverage_reuse_rationale": "The existing mapped policy controls and exact source regressions cover only this reviewed delta; non-automatic deployment, independent signed release, site-safe readback and Owner authority are retained.",
+      "execution_note": "Reviewed exact source blob with read-only CI and WP-CLI regression; no Original313, no owner attestation and no company-wide promotion."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-runtime.php",
+      "source_blob_sha": "8faf2326059c9e423e5f1ef1d67596c257c4a267",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "tests/test_brand_integrity_lifecycle_runtime.php",
+        "tests/test_brand_integrity_lifecycle_contract.py"
+      ],
+      "owner_role": "CI source reviewer — bounded MAD4B integration review, no Production owner delegation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "The existing Content Experience writer adds source-bound Brand Integrity preflight and post-mutation compensating rollback. It never opens a new generic publisher, overrides native user permissions or grants Production writes. Exact candidate create/update guard and negative cases tested, independent live release remains pending.",
+      "coverage_reuse_rationale": "The existing mapped policy controls and exact source regressions cover only this reviewed delta; non-automatic deployment, independent signed release, site-safe readback and Owner authority are retained.",
+      "execution_note": "Reviewed exact source blob with read-only CI and WP-CLI regression; no Original313, no owner attestation and no company-wide promotion."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tour-highlights-presentation-v1.php",
+      "source_blob_sha": "843f2456ca253a1b92fbfb083921b96597d6bd26",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/test_journey_successor_no_regression.py"
+      ],
+      "owner_role": "CI source reviewer — bounded MAD4B integration review, no Production owner delegation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Reconciled latest PR813 presentation with exact Tours.dev and Wayfatours native Elementor/JetEngine sources: cacheable first-party Journey JavaScript, preserved dependency order, informational destination Quick Preview and stable split/accordion modes. No content write or replacement Elementor renderer introduced.",
+      "coverage_reuse_rationale": "The existing mapped policy controls and exact source regressions cover only this reviewed delta; non-automatic deployment, independent signed release, site-safe readback and Owner authority are retained.",
+      "execution_note": "Reviewed exact source blob with read-only CI and WP-CLI regression; no Original313, no owner attestation and no company-wide promotion."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tour-highlights-v1.php",
+      "source_blob_sha": "37794313c7afc08436dddc7a815629436a9443b0",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/test_journey_successor_no_regression.py"
+      ],
+      "owner_role": "CI source reviewer — bounded MAD4B integration review, no Production owner delegation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Retains current WordPress lifecycle guard, the JetEngine empty-callback manual-copy fallback, PHP 7.4-safe string matching and native per-tour/company presentation policy. PR813 merge was reconciled against both site PHP source files; the source-only review cannot attest future Production deployment.",
+      "coverage_reuse_rationale": "The existing mapped policy controls and exact source regressions cover only this reviewed delta; non-automatic deployment, independent signed release, site-safe readback and Owner authority are retained.",
+      "execution_note": "Reviewed exact source blob with read-only CI and WP-CLI regression; no Original313, no owner attestation and no company-wide promotion."
     }
   ],
   "code_change_rules": {
