@@ -308,20 +308,27 @@ final class MAD4B_SCP_Brand_Context_Builder {
 	}
 
 	private static function approved_brand_asset( array $asset ) {
-        // Defense in depth: old review receipts must not grant another
-        // company's explicitly branded source authority in this site.
-        if ( class_exists('MAD4B_SCP_Context_Authority') ) {
-            $ownership=MAD4B_SCP_Context_Authority::brand_owner_evidence($asset);
-            if('foreign'===($ownership['status']??''))return false;
-        }
+        // Cheap, exact-content review gate first. A large task-knowledge
+        // catalog must not repeat expensive Operational Scope checks for every
+        // unreviewed or non-Brand document.
 		$current = isset( $asset['content_hash'] ) ? strtolower( trim( (string) $asset['content_hash'] ) ) : '';
 		$reviewed = isset( $asset['reviewed_content_hash'] ) ? strtolower( trim( (string) $asset['reviewed_content_hash'] ) ) : '';
-		return 'ready' === ( isset( $asset['status'] ) ? (string) $asset['status'] : '' )
-			&& 'brand_authority' === ( isset( $asset['authority_class'] ) ? (string) $asset['authority_class'] : '' )
-			&& 'approved' === ( isset( $asset['review_status'] ) ? (string) $asset['review_status'] : '' )
-			&& 1 === preg_match( '/^[a-f0-9]{64}$/', $current )
-			&& 1 === preg_match( '/^[a-f0-9]{64}$/', $reviewed )
-			&& hash_equals( $current, $reviewed );
+        if ( 'ready' !== (string)($asset['status']??'')
+            || 'brand_authority' !== (string)($asset['authority_class']??'')
+            || 'approved' !== (string)($asset['review_status']??'')
+            || !preg_match('/^[a-f0-9]{64}$/',$current)
+            || !preg_match('/^[a-f0-9]{64}$/',$reviewed)
+            || !hash_equals($current,$reviewed) ) return false;
+        // Original enrolled site/source/brand binding is authoritative.
+        // No extra document fields, creator certificate or title prefix.
+        if ( !is_callable(array('MAD4B_SCP_Context_Authority','brand_asset_binding_evidence'))
+            || !is_callable(array('MAD4B_SCP_Context_Authority','brand_owner_evidence')) ) return false;
+        $binding=MAD4B_SCP_Context_Authority::brand_asset_binding_evidence($asset);
+        if ( !is_array($binding) || 'bound'!==($binding['status']??'') ) return false;
+        // A conflicting brand claim is negative evidence only, never a
+        // requirement to include the company's name in the document.
+        $text_claim=MAD4B_SCP_Context_Authority::brand_owner_evidence($asset);
+        return is_array($text_claim) && 'foreign'!==($text_claim['status']??'');
 	}
 
 	private static function approved_assets_by_category() {

@@ -47,6 +47,7 @@ jobs:
           set -euo pipefail
           python3 -m unittest discover -s tests -p 'test_unified_mad4b_behavior_invariants.py' -v
           python3 -m unittest discover -s tests -p 'test_tour_highlights_source_delta.py' -v
+          python3 -m unittest discover -s tests -p 'test_pr813_destination_additive_reconcile.py' -v
           python3 -m unittest discover -s tests -p 'test_tour_highlights_site_neutral_scope.py' -v
           python3 -m unittest discover -s ops/company-code-release-v1/tests -p 'test_dynamic_capability*.py' -q
           # The actual Registry requires a root-owned, non-writable enrolled
@@ -77,6 +78,13 @@ jobs:
           php wp-content/plugins/mad4b-site-control-plane/tests/mcp-runtime-recovery-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tour-highlights-v1.php
           php tests/native-tour-highlights/acceptance.php
+          # An incomplete or missing Context Authority may not validate
+          # another company's Brand Core; do not fatal on hermetic shims.
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-context-builder.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/brand-context-owner-evidence-hermetic.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/brand-context-owner-evidence-hermetic.php --without-class
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/brand-asset-source-binding-hermetic.php
           node --check wp-content/plugins/mad4b-site-control-plane/assets/tour-journey-ui.js
           node --check wp-content/plugins/mad4b-site-control-plane/assets/tour-journey-split-v3.js
           php -l scripts/migrations/tour-journey-wpml-fr-de-20261113.php

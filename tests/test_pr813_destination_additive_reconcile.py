@@ -93,6 +93,31 @@ class DestinationAdditiveReview(unittest.TestCase):
         self.assertTrue(self.review["pr813_missing_early_private_cpt_and_readonly_reconcile_recovered"])
         self.assertFalse(item["new_authority_granted"])
 
+    def test_immutable_historical_bootstrap_recovered_only_from_exact_successor(self):
+        import tempfile
+        from unittest.mock import patch
+        import tour_highlights_bootstrap_overlay as historical
+        current=(ROOT / historical.MAIN).read_bytes()
+        old=historical.original_bootstrap_bytes(current)
+        self.assertEqual(hashlib.sha256(old).hexdigest(),historical.BASE_SHA256)
+        self.assertEqual(hashlib.sha256(current).hexdigest(),
+                         historical.DESTINATION_SUCCESSOR_SHA256)
+        for mutated in (current + b"\\n",
+                        current.replace(b"Company_Code_Reconciliation::boot()",
+                                        b"Company_Code_Reconciliation::apply()")):
+            with self.subTest(label=mutated[-40:]):
+                with self.assertRaises(historical.SourceOverlayDenied):
+                    historical.original_bootstrap_bytes(mutated)
+        with tempfile.TemporaryDirectory() as td:
+            fake=Path(td) / historical.DESTINATION_REVIEW
+            fake.parent.mkdir(parents=True)
+            corrupted=json.loads((ROOT / historical.DESTINATION_REVIEW).read_text())
+            corrupted["original_plugin_entry"]["additions"][0]["sha256"]="0"*64
+            fake.write_text(json.dumps(corrupted))
+            with patch.object(historical, "ROOT", Path(td)):
+                with self.assertRaises(historical.SourceOverlayDenied):
+                    historical.original_bootstrap_bytes(current)
+
     def test_php74_cas_reconciler_keeps_identity_and_backup_barriers(self):
         script = (ROOT / "scripts/migrations/destination-native-template-reconcile-v1.php").read_text()
         for token in ("MAD4B_DEST_TEMPLATE_APPLY", "MAD4B_DEST_TEMPLATE_CONTRACT",
