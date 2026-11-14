@@ -25,8 +25,13 @@ final class MAD4B_Tour_Highlights_V1 {
         // JetEngine writes classic post meta on generic save_post priority 10.
         // The post-type-specific hook runs earlier; use generic save_post at 190.
         add_action('save_post',[__CLASS__,'on_save'],190,3);
+        // Native JetEngine fields are persisted earlier in save_post. Resolve
+        // new legacy item_number bindings to a stable item_key only on save,
+        // never during frontend output. Existing bound keys remain immutable.
+        add_action('save_post',[__CLASS__,'on_binding_save'],360,3);
         // REST field updates may arrive after save_post; finalize after REST insertion.
         add_action('rest_after_insert_tours-and-activities',[__CLASS__,'on_rest_save'],190,3);
+        add_action('rest_after_insert_tours-and-activities',[__CLASS__,'on_rest_binding_save'],380,3);
     }
 
     public static function callbacks($callbacks) {
@@ -186,7 +191,16 @@ final class MAD4B_Tour_Highlights_V1 {
 
     /** Native JetEngine Query Builder's existing governorates Listing Grid. */
     public static function extend_native_governorate_grid($query,$settings,$widget=null):void {
-        if(!is_object($query)||($query->query_type??'')!=='terms'
+        // JetEngine Query 182 is reused by six native Journey templates AND
+        // other listing widgets. Only modify it while Elementor is rendering
+        // the real tour-place-group, never by query ID on its own.
+        $inNativeJourney=!empty(self::$relatedGroupStack)
+            && (bool)end(self::$relatedGroupStack);
+        if(!$inNativeJourney
+            || !is_object($widget)
+            || !method_exists($widget,'get_name')
+            || $widget->get_name()!=='jet-listing-grid'
+            || !is_object($query)||($query->query_type??'')!=='terms'
             || (int)($query->id??0)!==182
             || !is_array($settings)
             || (int)($settings['custom_query_id']??0)!==182
@@ -430,6 +444,33 @@ final class MAD4B_Tour_Highlights_V1 {
         return $result;
     }
 
+    public static function on_binding_save(int $post,$postObj,$update):void {
+        if(get_post_type($post)!=='tours-and-activities'
+          || wp_is_post_revision($post) || wp_is_post_autosave($post)
+          || !class_exists('MAD4B_Tour_Highlights_Presentation_V1',false))return;
+        $original=get_post_meta($post,'mad4b_journey_place_bindings_v1',true);
+        if(!is_array($original)||!$original)return;
+        $cards=MAD4B_Tour_Highlights_Presentation_V1::cards(
+            (string)get_post_meta($post,'tour_highlights_content',true));
+        $keys=MAD4B_Tour_Highlights_Presentation_V1::card_keys($cards);
+        if(!$keys)return;
+        $updated=$original;$changed=false;
+        foreach($updated as &$row){
+            if(!is_array($row))continue;
+            $old=trim((string)($row['item_key']??''));
+            if($old!=='')continue; // no silent re-bind on edit/reorder
+            $number=(int)($row['item_number']??0);
+            if($number<=0||$number>count($keys))continue;
+            $row['item_key']=$keys[$number-1];
+            $changed=true;
+        }
+        unset($row);
+        if(!$changed)return;
+        // WP metadata CAS protects concurrent Tour edits; the original row
+        // count/order remains untouched and no taxonomy data is written.
+        update_post_meta($post,'mad4b_journey_place_bindings_v1',$updated,$original);
+    }
+
     public static function on_save(int $post,$postObj,$update):void {
         if(get_post_type($post)!=='tours-and-activities' || self::$syncing || wp_is_post_revision($post)||wp_is_post_autosave($post))return;
         $mode=self::mode($post);
@@ -439,6 +480,10 @@ final class MAD4B_Tour_Highlights_V1 {
 
     public static function on_rest_save($post,$request,$creating):void {
         if($post instanceof WP_Post)self::on_save((int)$post->ID,$post,!$creating);
+    }
+
+    public static function on_rest_binding_save($post,$request,$creating):void {
+        if($post instanceof WP_Post)self::on_binding_save((int)$post->ID,$post,!$creating);
     }
 }
 MAD4B_Tour_Highlights_V1::register();
