@@ -253,3 +253,32 @@ Verified editorial examples include **Khan El-Khalili**, **El Moez Street**, **C
 - Data backfill manifests and sensitive operational backups remain on the authorized VPS, not hardcoded into runtime matchers. A source canonical release must separately reconcile concurrent source-only PHP changes and pass the full PR checks.
 
 **Status:** live data and representative view checks verified; PR #813 remains a Draft/unmerged change set without a signed Original release receipt.
+
+
+## WPML and Destination eligibility separation — 2026-11-14
+
+**Root cause and containment.** A mixed-language audit can ask WordPress for Spanish Tour 57563 while the mutable WPML request language remains English. The unguarded `wp_get_object_terms` then returned English translations belonging to that tour's WPML group, which contaminated combined audit results. The original Tour→Destination term relationships in the database were independently verified to use their correct per-language term taxonomy IDs. No WPML assignment mutation or translation rewrite was required.
+
+**Original runtime correction.** In `MAD4B_Tour_Highlights_V1::related_places()`, an independent WordPress/WPML element-language assertion now compares every returned Destination term's WPML language against the Tour's recorded translation language. The request-local cache key includes the Tour ID, recorded Tour language and active request language. Incorrect runtime context fails closed (zero places), whereas correct EN/ES/IT contexts preserve the original 33/31/31 terms for the long 8-day Tour. For the newer source-only read-only governorate discovery, Term, ancestor and inferred governorate language must also match before inclusion. No taxonomy relationships or content were rewritten.
+
+**Provenance contract.** The source JetEngine/Elementor renderer retains one approved registry but labels distinct sources:
+
+- `mentioned`: a tour-linked attraction explicitly and uniquely mentioned in a Highlight;
+- `itinerary`: another verified attraction listed in the same authored Itinerary stop and allowed by the original bounded companion rule;
+- `editorial-context`: an editor-associated (and still eligible) term, not a claim that a visit is included;
+- `geographic-context`: a city, zone, country or governorate providing location hierarchy, not a confirmed visit.
+
+The original Journey JS and mini preview labels preserve these evidence types in EN/ES/FR/DE/IT/AR. Geographic context is only embedded beside a real attraction reference within the SAME Highlight; generic service text such as “Islamic Cairo tour” or a stand-alone destination region is not converted into a visit or a Story pointer. Broader Tour context remains discoverable in Explorer and the original native JetEngine listing; native Elementor templates and term relations remain authoritative.
+
+**Live verification.** PHP regression cases passed on source and Wayfatours: wrong context for Spanish Tour 57563 yields zero term leaks; correct ES restores 31; all tested assigned and inferred terms match the Tour's WPML language. Native Illustrator / WordPress semantic evidence tests confirmed Cairo Citadel + Muhammad Ali Mosque as mentioned, Cairo as geographic context, and blank destination links on generic service items. Source Giza sample shows Great Pyramids + Great Sphinx plus Valley Temple only when independently verified in the original same-stop Itinerary; Wayfatours links the two stated attractions without inventing the temple. Live HTML passed without PHP fatal, including a case with only geographic context. Both 390px and 1440px browser checks passed with JS errors=0 and no horizontal overflow.
+
+**Stable independent audit.** `scripts/qa/destination-alias-coverage-scan.php` now contains an independent per-term WPML language readback and separate counts by provenance, plus live PHP SHA-256 and eligibility/Highlight-content fingerprints. Reports with differing eligibility hashes must never be interpreted as pure alias-related gains. Current accepted data:
+
+| Contract | Tours | Highlight cards | Mentioned attraction links | Itinerary links | Geographic context links | Locale leaks |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Wayfatours | 84 | 528 | 119 | 0 | 44 | **0** |
+| Tours.dev | 216 | 1,231 | 183 | 8 | 71 | **0** |
+
+The link count intentionally decreased after removing geography-only service-item link associations; this is a semantic correction, not deleted Destination relationships. Tours.dev has an additional **read-only exact-geography inference**, evidenced and counted separately; Wayfatours currently exposes assigned terms only. Do not silently deploy source-only query discovery to a company that has not passed its native Query Builder contract.
+
+**Regression gates:** `scripts/qa/wpml-journey-evidence-contract.php` and `scripts/qa/wpml-journey-evidence-browser.py` test WordPress language isolation, native link evidence, viewport and JS safety. After canary tests, only existing Tour HTML generation keys were rotated (**246 source, 90 Wayfatours**) without a global object/cache purge. Changes are staged in **PR #813 (Draft)**; no signed Original release receipt or full CI approval is claimed.
