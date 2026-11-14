@@ -12702,6 +12702,69 @@
       "review_rationale": "Exact current Core Web Vitals source is now assessed for 4 admin-permission-gated REST routes, 3 original WP-Cron hooks, and one registered read-only diagnostic Ability. Direct PHP 7.4/8.5 fixture tests registration and denial. The rest of the original plugin, credential security and runtime rollout are not certified by this narrow source review.",
       "coverage_reuse_rationale": "The existing Governance/Platform/Security source controls remain unchanged; the new same-PR regression exercises source contract without altering execution rights.",
       "execution_note": "No automatic deployment, Site Owner approval, Production promotion or Original313 receipt."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
+      "source_blob_sha": "9f873295f5b754932c5786701ef09c31e4a0c8a7",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/test_servers_single_owner_convergence.py",
+        "tests/servers-native-core-catalog-hermetic.php"
+      ],
+      "owner_role": "MAD4B native MCP Server source reviewer — CI-only, without Site Owner or Host authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "The existing Server facade owns exact restricted transport admission, including non-impersonating registered VPS-local CLI, site-UUID binding, WP_CLI root restrictions and required-tool preflight failure precedence. The newest facade delegates the source provider snapshot to its single native trait; do not copy the older live facade implementation back into the source.",
+      "coverage_reuse_rationale": "Reuse original Governance/Platform/Security source controls with exact regression tests from this branch. Native transporter and provider permissions are never manufactured by a review entry.",
+      "execution_note": "The exact source blob is reviewed as CI-only; the live sites retain different native facade revisions. CAS deployment, exact independent readback and Original313 remain held."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-write-catalog.php",
+      "source_blob_sha": "512a2d8f2817bea44409a4923b4eae30ddeddc6c",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/test_servers_single_owner_convergence.py",
+        "tests/servers-native-core-catalog-hermetic.php"
+      ],
+      "owner_role": "MAD4B native MCP Server source reviewer — CI-only, without Site Owner or Host authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "The request-local Write catalog trait is the single source owner of live_write_provider_snapshot. Original hermetic PHP tests exercise real core precedence over adapters, denial of unmounted abilities and empty-runtime no-grant behavior. No mutation, approval, provider certification or host execution is inferred from catalog visibility.",
+      "coverage_reuse_rationale": "Reuse original Governance/Platform/Security source controls with exact regression tests from this branch. Native transporter and provider permissions are never manufactured by a review entry.",
+      "execution_note": "The exact source blob is reviewed as CI-only; the live sites retain different native facade revisions. CAS deployment, exact independent readback and Original313 remain held."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-core-catalog.php",
+      "source_blob_sha": "015180f657097cb717d48b1639d3b47a51401d59",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/test_servers_single_owner_convergence.py",
+        "tests/servers-native-core-catalog-hermetic.php"
+      ],
+      "owner_role": "MAD4B native MCP Server source reviewer — CI-only, without Site Owner or Host authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "The first-party Server Core Catalog trait retains native Read/ChatGPT/Enrollment declarations without adding host-only VPS enqueue to those public-read surfaces. Exact hermetic PHP 7.4/8.5 tests inspect source catalog declarations while retaining the separate guarded VPS-local facade.",
+      "coverage_reuse_rationale": "Reuse original Governance/Platform/Security source controls with exact regression tests from this branch. Native transporter and provider permissions are never manufactured by a review entry.",
+      "execution_note": "The exact source blob is reviewed as CI-only; the live sites retain different native facade revisions. CAS deployment, exact independent readback and Original313 remain held."
     }
   ],
   "code_change_rules": {

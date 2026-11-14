@@ -58,6 +58,7 @@ jobs:
           python3 -m unittest discover -s tests -p 'test_certified_mcp_adapter_profile.py' -v
           python3 -m unittest discover -s tests -p 'test_ci_legacy_contract_convergence.py' -v
           python3 -m unittest discover -s tests -p 'test_dynamic_readiness_rest_ability_owner.py' -v
+          python3 -m unittest discover -s tests -p 'test_servers_single_owner_convergence.py' -v
           python3 -m unittest discover -s tools -p 'test_mad4b_standalone_build.py' -v
           python3 -m unittest discover -s ops/company-code-release-v1/tests -p 'test_dynamic_capability*.py' -q
           # The actual Registry requires a root-owned, non-writable enrolled
@@ -89,6 +90,9 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tour-highlights-v1.php
           php tests/native-tour-highlights/acceptance.php
           php tests/readiness-core-web-vitals-rest-cron-hermetic.php
+          php tests/servers-native-core-catalog-hermetic.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/live-write-provider-snapshot-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/mcp-preflight-registration-failure-runtime.php
           # An incomplete or missing Context Authority may not validate
           # another company's Brand Core; do not fatal on hermetic shims.
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-context-builder.php
