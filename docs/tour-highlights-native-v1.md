@@ -217,3 +217,39 @@ This document describes the contract, not an authorization or proof of an indepe
 - HTTP checks after scoped cache invalidation: EN/ES first Highlight renders two verified links, Spanish using its own WPML Term IDs. No PHP Fatal in tested documents.
 - Reversible migration scripts: `scripts/migrations/jetengine-destination-highlight-aliases-cas.php` and `scripts/migrations/destination-highlight-aliases-terms-cas.php`. Both are dry-run by default, require nonpublic baseline backups and explicit approval/expected hashes for writes.
 - PR #813 remains Draft/unmerged; no independently signed release admission is claimed. Existing unrelated full-PR Production Readiness, Site Neutrality and Admin Performance CI failures require separate remediation.
+
+
+## Evidence-only multilingual Destination aliases — verified backfill (2026-11-14)
+
+### Source and eligibility coverage
+
+Audited the **original eligible Destination list** via `MAD4B_Tour_Highlights_V1::related_places`, the real JetEngine Highlight renderer and WPML's tour locale, without building a parallel taxonomy:
+
+| Site | Published tours with Highlights scanned | Highlight cards | Editorial aliases appended | Native Destination terms changed |
+| --- | ---: | ---: | ---: | ---: |
+| Wayfatours Production | 84 | 528 | 15 | 14 |
+| Tours.dev source | 216 | 1,231 | 30 | 27 |
+
+The **first** verified batch was 5 terms on Wayfatours and 8 on source (one new name per term). The **second**, evidence-gated additive batch was 10 names on 9 Wayfatours terms and 22 names on 20 source terms. One source term already had a first-batch name; existing rows were preserved and extended, not replaced.
+
+Every second-batch row has a published Tour ID, exact 1-based Highlight index, matching language, and a verbatim phrase in the published Highlight. The application checked its link to the **original eligible WPML term ID**, exact Term name, source-content evidence and uniqueness, persisted a nonpublic baseline and used per-term serialized-value CAS for edits. No taxonomy relationship, tour text, stored Elementor document or booking/pricing data was edited. No single-word generic landmark guesses were inserted.
+
+Verified editorial examples include **Khan El-Khalili**, **El Moez Street**, **Cairo Citadel**, Spanish **Jan el Jalili**, **Tunis Village**, **Magic Lake**, **Wadi El Hitan**, and Italian **Via Al Muizz**, **Sfinge di Giza**, **Grand Egyptian Museum**, and **Montagna Al-Madoura**. Terms already assigned to a Tour but not supported by a concrete Highlight remain tour context, not an invented confirmed visit.
+
+### Readback and acceptance
+
+- Independent meta readback: **30/30** added alias rows on **27 source terms** and **15/15** on **14 Wayfatours terms**; original JetEngine native 19-field schema left intact.
+- Wayfatours full source-bound audit went from **210** verified links before the backfill to **228** afterward (**+18**). The link-level diff did not remove previously linked destinations.
+- Tours.dev gained **9** source-bound links in batch 1. Its later full audit also reflected simultaneous changes in eligible place coverage (from 485 to 613) and other source code outside this backfill; **do not attribute the aggregate reported link increase to alias edits**. Specifically scoped audits isolated new links on the affected Tours. Source-side concurrent code was **not overwritten**.
+- 9 live tour-page HTML smoke checks (EN, ES, IT; both sites) passed: all expected term IDs present in rendered Highlight links, intended `curated-alias` provenance, no PHP Fatal.
+- Only the **16 affected source pages** and **8 affected Wayfatours pages** had their existing HTML generation keys rotated for batch 2, with no global cache purge. Every target path was validated against the published permalink and existing generation key.
+- Remaining exceptions are intentionally review-only: generic mentions like *Corniche* without a sufficiently distinguishing confirmed label, Khafre appearing without an independent Valley Temple visit, and cross-locale taxonomy/eligibility shifts in long combined test Tours. They are **not** repaired by adding speculative aliases.
+
+### Permanent controlled workflow
+
+- `scripts/qa/destination-alias-coverage-scan.php` — original WordPress/JetEngine+WPML read-only audit.
+- `scripts/migrations/verified-alias-merge-cas.php` — generic evidence-validated **dry-run by default** updater; required nonpublic backup and input SHA on apply; handles new and existing repeater rows.
+- Earlier schema and term insert tools remain available, but should not be used to overwrite populated alias repeaters.
+- Data backfill manifests and sensitive operational backups remain on the authorized VPS, not hardcoded into runtime matchers. A source canonical release must separately reconcile concurrent source-only PHP changes and pass the full PR checks.
+
+**Status:** live data and representative view checks verified; PR #813 remains a Draft/unmerged change set without a signed Original release receipt.
