@@ -1044,9 +1044,10 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         // Only close rules evaluated by this scan; removing a configured rule
         // must not silently resolve its pre-existing open issues.
         $rules=self::rules();
+        $brand_coverage=(array)($scan['brand_integrity_coverage']??array());
         foreach ($new as $key=>$row) {
             if(isset($seen[$key]) || ($row['status']??'')==='resolved')continue;
-            if(!self::rule_enabled_for($row,$rules))continue;
+            if(!self::rule_enabled_for($row,$rules,$brand_coverage))continue;
             $new[$key]['status']='resolved';$new[$key]['resolved_at']=$now;
         }
         $archived_this_scan=array();
@@ -1133,16 +1134,31 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
             $wpdb->get_var($wpdb->prepare('SELECT RELEASE_LOCK(%s)',$readinessLock));
         }
     }
-    private static function rule_enabled_for($issue,$cfg) {
+    private static function rule_enabled_for($issue,$cfg,array $brand_coverage=array()) {
         if (($issue['source']??'')==='mad4b-presentation-integrity')
             return str_starts_with((string)($issue['code']??''),'pres_browser_')
                 ? MAD4B_SCP_Presentation_Integrity_V1::browser_covered()
                 : MAD4B_SCP_Presentation_Integrity_V1::covered();
-        // Brand Experience provides a complete, site-bound tour inventory
-        // before ledger reconciliation. Once the finding disappears from a
-        // complete pass, its historical issue may safely close.
-        if (($issue['source']??'')==='mad4b-brand-experience')
-            return class_exists('MAD4B_SCP_Brand_Experience_Quality',false);
+        // A complete scan of one post-type set must never silently close a
+        // historical Brand Integrity issue belonging to a type no longer in
+        // the enrolled/site-authorized inventory. Scope and source coverage
+        // must be verified before resolving an absent issue.
+        if (($issue['source']??'')==='mad4b-brand-experience') {
+            if(!class_exists('MAD4B_SCP_Brand_Experience_Quality',false))return false;
+            if(in_array((string)($issue['code']??''),array(
+                'brand_identity_attribution_mismatch',
+                'brand_external_link_attribution_mismatch'),true)) {
+                $site=(string)($brand_coverage['site_uuid']??'');
+                $source_site=(string)($issue['source_evidence']['brand_scope']['site_uuid']??'');
+                return !empty($brand_coverage['complete'])
+                    && !empty($brand_coverage['coverage_complete'])
+                    && $site!=='' && $source_site!==''
+                    && hash_equals($site,$source_site)
+                    && in_array((string)($issue['post_type']??''),
+                        (array)($brand_coverage['scan_post_types']??array()),true);
+            }
+            return true;
+        }
 
         if (($issue['source']??'')==='mad4b-listing-media-browser') {
             return class_exists('MAD4B_Listing_Media_Diagnostics',false) &&

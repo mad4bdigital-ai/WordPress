@@ -41,6 +41,11 @@ $cases['css_source_not_editorial_copy']=$engine::payload_preflight(array(
         'custom_css'=>'/* Why travelers choose Meridian Path */ .box { color: #fff; }'
     ))
 ));
+$cases['oversized_css_not_a_text_gap']=$engine::payload_preflight(array(
+    'meta'=>array('_elementor_page_settings'=>array(
+        'custom_css'=>str_repeat('a',524289),
+    ))
+));
 $cases['ordinary_german_grammar']=$engine::payload_preflight(array(
     'meta'=>array('accomodation'=>'Bitte wählen Sie Ihre Präferenzen für die Reise aus.')
 ));
@@ -67,14 +72,15 @@ $cases['real_report_complete']=!empty($report['complete']);
 $cases['real_update_allowed']=$engine::live_update_preflight($real,$report);
 $cases['missing_identity_report']=$engine::scan_post_report($real,array('scope'=>array()));
 $full=$engine::discover();
-$public_types=array_filter(array('tours-and-activities','page','elementor_library'),
-    static fn($type)=>post_type_exists($type));
+$required_types=array_values(array_filter(array('post','page','product','elementor_library'),
+    static fn($type)=>post_type_exists($type)));
+$scanned_types=array_values((array)($full['post_types']??array()));
 $total_public=0;
-foreach($public_types as $type)$total_public+=(int)(wp_count_posts($type)->publish??0);
+foreach($scanned_types as $type)$total_public+=(int)(wp_count_posts($type)->publish??0);
 $cases['default_discovery_complete']=!empty($full['complete']);
-$cases['default_discovery_inventory']=$full['scanned']>=$total_public;
+$cases['default_discovery_inventory']=$full['scanned']===$total_public;
 $cases['default_discovery_coverage_gaps']=(int)($full['coverage_gap_count']??-1);
-$cases['default_scanned_post_types']=array_values((array)($full['post_types']??array()));
+$cases['default_scanned_post_types']=empty(array_diff($required_types,$scanned_types));
 $expect=array(
     'good_payload'=>null,
     'bad_payload'=>'mad4b_brand_integrity_publication_blocked',
@@ -85,6 +91,7 @@ $expect=array(
     'ordinary_german_grammar'=>null,
     'unregistered_elementor_text_setting'=>'mad4b_brand_integrity_publication_blocked',
     'css_source_not_editorial_copy'=>null,
+    'oversized_css_not_a_text_gap'=>null,
     'oversized_payload'=>'mad4b_brand_integrity_payload_incomplete',
     'too_many_fields'=>'mad4b_brand_integrity_payload_incomplete',
     'unchanged_high_count'=>0,
@@ -96,7 +103,7 @@ $expect=array(
     'default_discovery_complete'=>true,
     'default_discovery_inventory'=>true,
     'default_discovery_coverage_gaps'=>0,
-    'default_scanned_post_types'=>$public_types
+    'default_scanned_post_types'=>true
 );
 $failed=array();
 foreach($expect as $key=>$wanted){
@@ -104,13 +111,8 @@ foreach($expect as $key=>$wanted){
     if(is_wp_error($observed))$observed=$observed->get_error_code();
     elseif(is_array($observed)){
         if($key==='missing_identity_report')$observed=!empty($observed['complete']);
-        elseif($key==='default_scanned_post_types')$observed=array_values($observed);
         else $observed=null===($observed['allowed']??null)?'invalid_success_contract':null;
     } elseif($key==='real_report_complete')$observed=(bool)$observed;
-    if($key==='default_scanned_post_types') {
-        $wanted=array_values($wanted);sort($wanted);
-        if(is_array($observed))sort($observed);
-    }
     if($observed!==$wanted)$failed[]=array('case'=>$key,'expected'=>$wanted,'actual'=>$observed);
 }
 echo wp_json_encode(array('contract'=>'mad4b.brand-integrity.lifecycle-qa.v1',

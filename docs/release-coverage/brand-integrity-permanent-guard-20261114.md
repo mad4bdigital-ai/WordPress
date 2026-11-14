@@ -20,13 +20,20 @@ paginates in 500-post batches, with a 20-page maximum. All incomplete fields,
 unexpectedly deep structures, hit limits, text-size limits and unfinished
 pagination yield incomplete coverage, never a clean certificate.
 
-Required coverage includes published Tours, Pages, Posts, Elementor templates
-and registered Products. The site-scoped source provider may ADD other
-registered content types but cannot remove mandatory baseline content.
+Company-neutral baseline coverage includes published Posts, Pages,
+Elementor templates and registered Products. Additional customer-facing CPTs
+are selected dynamically from the company's existing Content Readiness policy
+and the actual WordPress public/queryable/searchable type registry.
+The site-scoped provider may ADD approved display types, not remove the
+baseline. No fixed tourism business-model identifier belongs in the
+shared Brand Integrity runtime.
 
 The Brand Experience result now includes scannable types, coverage gap count,
 scanned count, source site UUID and issue count. The original Content
 Readiness audit persists a bounded coverage proof when reconciliation succeeds.
+Closing an old Brand Integrity issue additionally requires complete current
+coverage of the issue's original post type AND the same site UUID. Removing
+a CPT from configuration cannot automatically resolve an issue from that CPT.
 
 ## Governed mutation lifecycle
 
@@ -67,16 +74,25 @@ duplicate plugin or MU implementations.
 
 | Site | Published Tours | Full editorial inventory | Coverage gaps | Confirmed Brand findings |
 | --- | ---: | ---: | ---: | ---: |
-| Tours.dev | 221 | 833 | 0 | 0 |
-| Wayfatours | 84 | 368 | 0 | 0 |
+| Tours.dev | 221 | 1,552 | 0 | 0 |
+| Wayfatours | 84 | 515 | 0 | 0 |
 
-Optional site-approved CPT extension tested read-only: Tours.dev 1,665
-items, Wayfatours 1,102, both zero coverage gaps or findings. Additional
-types such as Properties, Stations and Help Center require explicit source
-provider registration so private operational CPTs are not exposed.
+An optional broader approved CPT scope was also tested read-only:
+Tours.dev 1,665 items, Wayfatours 1,102; both had zero coverage gaps and
+zero confirmed attribution findings. Operational and private CPTs remain
+outside the default global baseline.
 
-- Candidate text/link cases: 31/31 passed on each site
-- Candidate lifecycle cases: 19/19 passed on each site
+Generic welcome text is no longer treated as company attribution by itself:
+"Welcome to WordPress" and "Welcome to Luxor" are insufficient evidence.
+The optional contextual entity provider may raise ambiguous cases for
+editorial review; explicit company-claim phrases still trigger first-party
+detection. Large CSS source values do not count as an editorial-text
+coverage failure.
+
+- Candidate text/link cases: 35/35 passed on each site
+- Candidate lifecycle cases: 22/22 passed on each site
+- Ledger closure scope regression: 6/6 on each site
+- Site Neutrality contract: PASS (829 runtime files, PHP 8.5 hermetic CLI)
 - Live Story signal severity regression: 3/3 on each site
 - Host supervisor pure unit tests: 6/6
 - Original Readiness CLI plan/run succeeded on both sites after MU repair,

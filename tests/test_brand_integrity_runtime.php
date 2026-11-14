@@ -13,6 +13,10 @@ $identity = array('normalized'=>array('wayfa tours'=>true,'wayfa'=>true,'wayfato
     'scope'=>array('brand_name'=>'Wayfa Tours'));
 $tests = array(
     array('Choosing ORBITA means a better travel experience', 'ORBITA'),
+    array('Welcome to WordPress. This is your first post.', null),
+    array('Welcome to Luxor. This tour begins in the morning.', null),
+    array('Welcome to Luminara Travel.', null),
+    array('We at Meridian Path. Experience Cairo by night.', 'Meridian Path'),
     array('Choosing Wayfa Tours means a better travel experience', null),
     array('Choosing WayfaTours means a better travel experience', null),
     array('Why travelers choose All Royal Egypt.', 'All Royal Egypt'),

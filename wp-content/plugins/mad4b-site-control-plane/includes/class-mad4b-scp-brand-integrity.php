@@ -162,6 +162,10 @@ final class MAD4B_SCP_Brand_Integrity {
             return;
         }
         if (!is_string($value) || $value === '') return;
+        // Source-path exclusions precede length checks: non-editorial CSS
+        // must not turn a complete publication/scan into a false gap.
+        if(preg_match('/(?:^|[._])(?:custom_css|custom_js|javascript|stylesheet|script_code)(?:$|[._])/i',$path))
+            return;
         if (strlen($value)>self::MAX_FIELD_BYTES) {
             self::coverage_gap($coverage,$path,'field_bytes_exceeded');
             return;
@@ -173,10 +177,6 @@ final class MAD4B_SCP_Brand_Integrity {
                 return;
             }
         }
-        // Rendered CSS/JS assets are not editorial source fields. They have
-        // separate asset integrity controls and browser-rendered QA.
-        if(preg_match('/(?:^|[._])(?:custom_css|custom_js|javascript|stylesheet|script_code)(?:$|[._])/i',$path))
-            return;
         // Elementor and third-party widgets may register arbitrary dynamic
         // textual setting names. Scan every eligible source leaf rather than
         // maintaining a fixed widget-property allowlist; styling/script fields
@@ -231,10 +231,15 @@ final class MAD4B_SCP_Brand_Integrity {
         $matches = array();
         $text = self::clean($text);
         if ($text === '') return $matches;
-        $proper = '([\p{Lu}][\p{L}\p{M}\p{N}\x{2019}\x{0027}&.\-]*(?:\s+(?:[\p{Lu}][\p{L}\p{M}\p{N}\x{2019}\x{0027}&.\-]*|&)){0,5})';
+        // Only explicit corporate attribution is a first-party signal.
+        // "Welcome to X" alone also introduces software, cities and articles,
+        // so it needs contextual-provider evidence rather than an issue.
+        // Sentence punctuation must never extend a candidate into the next
+        // sentence; dotted legal abbreviations remain provider-reviewable.
+        $proper = '([\p{Lu}][\p{L}\p{M}\p{N}\x{2019}\x{0027}&\-]*(?:\s+(?:[\p{Lu}][\p{L}\p{M}\p{N}\x{2019}\x{0027}&\-]*|&)){0,5})';
         $patterns = array(
             'promotional_attribution_en' =>
-                '/(?i:\b(?:choosing|why\s+(?:\p{L}+\s+){0,3}choose|trusting|booking\s+with|travel(?:ling)?\s+with|we\s+at|here\s+at|welcome\s+to))\s+'.$proper.'/u',
+                '/(?i:\b(?:choosing|why\s+(?:\p{L}+\s+){0,3}choose|trusting|booking\s+with|travel(?:ling)?\s+with|we\s+at|here\s+at))\s+'.$proper.'/u',
             'promotional_attribution_europe' =>
                 '/(?i:\b(?:elige|elegir|gracias\s+por\s+elegir|reserva\s+con|viaja\s+con|choisir|voyagez\s+avec|réservez\s+avec|merci\s+d[\x{2019}\x{0027}]avoir\s+choisi|scegli(?:ere)?|grazie\s+per\s+aver\s+scelto|prenota\s+con|viaggia\s+con|wählen\s+sie|vielen\s+dank,?\s+dass\s+sie\s+sich\s+für|buchen\s+mit))\s+'.$proper.'/u',
             'promotional_brand_with' =>
@@ -271,7 +276,8 @@ final class MAD4B_SCP_Brand_Integrity {
                 $excerpt = mb_substr($text,max(0,mb_strlen(substr($text,0,$offset))-65),200);
                 $matches[] = array('candidate'=>$candidate,'rule'=>$rule,
                     'excerpt'=>$excerpt,'confidence'=>in_array($rule,
-                        array('promotional_attribution_ar','promotional_brand_experience','promotional_brand_experience_es'),true)
+                        array('promotional_attribution_ar','promotional_brand_experience',
+                            'promotional_brand_experience_es'),true)
                         ?'needs_review':'high');
             }
         }
@@ -543,13 +549,31 @@ final class MAD4B_SCP_Brand_Integrity {
         // Additional approved post types may register via the site-scoped
         // source provider. A new post beyond the first 500 must never escape
         // detection solely because its ID is later in the inventory.
-        // Providers may ADD approved visible content types but cannot remove
-        // the canonical tour type and silently close existing tour findings.
+        // Baseline is company-neutral WordPress editorial content. Additional
+        // publicly queryable customer content types come from the site's
+        // existing Content Readiness policy and registered CPT definitions,
+        // not a tourism-specific type or a global hardcoded business model.
+        // Forms, bookings and operational CPTs excluded from search are
+        // deliberately not auto-read; an authorized provider may explicitly
+        // add other safe display surfaces.
+        $base=array('post','page','product','elementor_library');
+        $policy=is_array($cfg)?(array)($cfg['post_types']??array()):array();
+        if(!$policy && class_exists('MAD4B_SCP_Content_Readiness_Alerts',false))
+            $policy=(array)(MAD4B_SCP_Content_Readiness_Alerts::rules()['post_types']??array());
+        $visible=array();
+        foreach($policy as $entry){
+            if(!is_string($entry))continue;
+            $type=sanitize_key($entry);
+            $obj=post_type_exists($type)?get_post_type_object($type):null;
+            if($obj && !empty($obj->public) && !empty($obj->publicly_queryable)
+                && empty($obj->exclude_from_search))
+                $visible[]=$type;
+        }
         $extensions=apply_filters('mad4b/brand_integrity/scannable_post_types',
             array(),$cfg);
         if(!is_array($extensions))$extensions=array();
-        $types=array_merge(array('tours-and-activities','page','elementor_library'),$extensions);
-        $types=array_values(array_unique(array_filter(array_map('sanitize_key',$types),
+        $types=array_values(array_unique(array_filter(array_map('sanitize_key',
+            array_merge($base,$visible,$extensions)),
             static fn($type)=>post_type_exists($type))));
         $brand=class_exists('MAD4B_SCP_Brand_Experience_Quality',false)
             ? MAD4B_SCP_Brand_Experience_Quality::brand_context():array();
