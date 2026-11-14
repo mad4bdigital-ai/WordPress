@@ -21,6 +21,13 @@ class WP_Error {
 $GLOBALS['mad4b_cwv_hooks'] = array();
 $GLOBALS['mad4b_cwv_routes'] = array();
 $GLOBALS['mad4b_cwv_is_admin'] = false;
+$GLOBALS['mad4b_cwv_abilities'] = array();
+function wp_has_ability( $name ) {
+    return isset( $GLOBALS['mad4b_cwv_abilities'][ $name ] );
+}
+function wp_register_ability( $name, $config ) {
+    $GLOBALS['mad4b_cwv_abilities'][ $name ] = $config;
+}
 function add_action( $name, $callback, $priority = 10, $args = 1 ) {
     $GLOBALS['mad4b_cwv_hooks'][] = $name;
 }
@@ -38,6 +45,22 @@ function assert_cwv( $condition, $message ) {
 }
 require dirname( __DIR__ ) .
     '/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-web-vitals.php';
+
+MAD4B_SCP_Core_Web_Vitals::register_ability();
+assert_cwv( array_keys( $GLOBALS['mad4b_cwv_abilities'] ) ===
+    array( 'mad4b/core-web-vitals-status' ),
+    'Original read-only WordPress Ability missing or extra' );
+$ability = $GLOBALS['mad4b_cwv_abilities']['mad4b/core-web-vitals-status'];
+assert_cwv( ( $ability['execute_callback'] ?? null ) ===
+    array( 'MAD4B_SCP_Core_Web_Vitals', 'status' ),
+    'Read-only Ability handler was replaced' );
+assert_cwv( ( $ability['permission_callback'] ?? null ) ===
+    array( 'MAD4B_SCP_Policy', 'can_read' ),
+    'Original WordPress read permission callback missing' );
+assert_cwv( ! empty( $ability['meta']['annotations']['readonly'] )
+    && empty( $ability['meta']['annotations']['destructive'] )
+    && empty( $ability['meta']['mcp']['public'] ),
+    'Read-only MCP metadata or public access changed' );
 
 $hooks = array(
     'mad4b_core_web_vitals_daily',

@@ -3945,6 +3945,183 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Reuse original Source Governance, Platform and Security controls for existing native JetEngine/Elementor tour display. No new edit, publication, cross-company grant or execution authority introduced.",
       "execution_note": "Exact source regression and read-only diff review only. Independent site acceptance, release authority and Original313 signed receipt are still mandatory."
+    },
+    {
+      "id": "ability:mad4b/core-web-vitals-status",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-core-web-vitals-rest-cron-hermetic.php",
+        "tests/test_dynamic_readiness_rest_ability_owner.py"
+      ],
+      "owner_role": "MAD4B native Core Web Vitals technical source reviewer — CI-only, not Site Owner or release signer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Exact read-only WordPress Ability for saved Core Web Vitals diagnostics, with original MAD4B_SCP_Policy::can_read callback and private MCP read metadata. Source fixture denies changes to the handler or mutation/public annotations; production bearer and site admission are not attested here.",
+      "coverage_reuse_rationale": "The existing mapped WordPress platform, admin security, MCP read or automation controls apply as indicated. Exact hermetic PHP and source inventories exercise only the scoped registration change; Owner attestation, Original313 and live readback remain independent.",
+      "execution_note": "Source and hermetic fixture only; no live route acceptance, signed host provenance, new ability permissions or production mutation authorized."
+    },
+    {
+      "id": "cron:mad4b_core_web_vitals_daily",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-core-web-vitals-rest-cron-hermetic.php",
+        "tests/test_dynamic_readiness_rest_ability_owner.py"
+      ],
+      "owner_role": "MAD4B native Core Web Vitals technical source reviewer — CI-only, not Site Owner or release signer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Original scheduled WordPress hook for Core Web Vitals field-data lifecycle. Independent PHP fixture checks exact callback registration; static source verifier resolves real event hooks rather than the daily recurrence. Background execution and third-party API quotas are not attested by source tests, and no job is scheduled by this CI review.",
+      "coverage_reuse_rationale": "The existing mapped WordPress platform, admin security, MCP read or automation controls apply as indicated. Exact hermetic PHP and source inventories exercise only the scoped registration change; Owner attestation, Original313 and live readback remain independent.",
+      "execution_note": "Source and hermetic fixture only; no live route acceptance, signed host provenance, new ability permissions or production mutation authorized."
+    },
+    {
+      "id": "cron:mad4b_core_web_vitals_device_worker",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-core-web-vitals-rest-cron-hermetic.php",
+        "tests/test_dynamic_readiness_rest_ability_owner.py"
+      ],
+      "owner_role": "MAD4B native Core Web Vitals technical source reviewer — CI-only, not Site Owner or release signer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Original scheduled WordPress hook for Core Web Vitals field-data lifecycle. Independent PHP fixture checks exact callback registration; static source verifier resolves real event hooks rather than the daily recurrence. Background execution and third-party API quotas are not attested by source tests, and no job is scheduled by this CI review.",
+      "coverage_reuse_rationale": "The existing mapped WordPress platform, admin security, MCP read or automation controls apply as indicated. Exact hermetic PHP and source inventories exercise only the scoped registration change; Owner attestation, Original313 and live readback remain independent.",
+      "execution_note": "Source and hermetic fixture only; no live route acceptance, signed host provenance, new ability permissions or production mutation authorized."
+    },
+    {
+      "id": "cron:mad4b_core_web_vitals_refresh_once",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-core-web-vitals-rest-cron-hermetic.php",
+        "tests/test_dynamic_readiness_rest_ability_owner.py"
+      ],
+      "owner_role": "MAD4B native Core Web Vitals technical source reviewer — CI-only, not Site Owner or release signer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Original scheduled WordPress hook for Core Web Vitals field-data lifecycle. Independent PHP fixture checks exact callback registration; static source verifier resolves real event hooks rather than the daily recurrence. Background execution and third-party API quotas are not attested by source tests, and no job is scheduled by this CI review.",
+      "coverage_reuse_rationale": "The existing mapped WordPress platform, admin security, MCP read or automation controls apply as indicated. Exact hermetic PHP and source inventories exercise only the scoped registration change; Owner attestation, Original313 and live readback remain independent.",
+      "execution_note": "Source and hermetic fixture only; no live route acceptance, signed host provenance, new ability permissions or production mutation authorized."
+    },
+    {
+      "id": "rest:mad4b/v1/admin/core-web-vitals",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/readiness-core-web-vitals-rest-cron-hermetic.php",
+        "tests/test_dynamic_readiness_rest_ability_owner.py"
+      ],
+      "owner_role": "MAD4B native Core Web Vitals technical source reviewer — CI-only, not Site Owner or release signer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Exact existing Core Web Vitals administrative REST route: the hermetic PHP fixture executes native registration, confirms GET vs POST, binds the original WordPress manage_options permission callback, asserts anonymous denial 403 on every route and rejects unexpected route registrations. No REST access, credential or write permission is granted by this review.",
+      "coverage_reuse_rationale": "The existing mapped WordPress platform, admin security, MCP read or automation controls apply as indicated. Exact hermetic PHP and source inventories exercise only the scoped registration change; Owner attestation, Original313 and live readback remain independent.",
+      "execution_note": "Source and hermetic fixture only; no live route acceptance, signed host provenance, new ability permissions or production mutation authorized."
+    },
+    {
+      "id": "rest:mad4b/v1/admin/core-web-vitals/lifecycle",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/readiness-core-web-vitals-rest-cron-hermetic.php",
+        "tests/test_dynamic_readiness_rest_ability_owner.py"
+      ],
+      "owner_role": "MAD4B native Core Web Vitals technical source reviewer — CI-only, not Site Owner or release signer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Exact existing Core Web Vitals administrative REST route: the hermetic PHP fixture executes native registration, confirms GET vs POST, binds the original WordPress manage_options permission callback, asserts anonymous denial 403 on every route and rejects unexpected route registrations. No REST access, credential or write permission is granted by this review.",
+      "coverage_reuse_rationale": "The existing mapped WordPress platform, admin security, MCP read or automation controls apply as indicated. Exact hermetic PHP and source inventories exercise only the scoped registration change; Owner attestation, Original313 and live readback remain independent.",
+      "execution_note": "Source and hermetic fixture only; no live route acceptance, signed host provenance, new ability permissions or production mutation authorized."
+    },
+    {
+      "id": "rest:mad4b/v1/admin/core-web-vitals/refresh",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/readiness-core-web-vitals-rest-cron-hermetic.php",
+        "tests/test_dynamic_readiness_rest_ability_owner.py"
+      ],
+      "owner_role": "MAD4B native Core Web Vitals technical source reviewer — CI-only, not Site Owner or release signer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Exact existing Core Web Vitals administrative REST route: the hermetic PHP fixture executes native registration, confirms GET vs POST, binds the original WordPress manage_options permission callback, asserts anonymous denial 403 on every route and rejects unexpected route registrations. No REST access, credential or write permission is granted by this review.",
+      "coverage_reuse_rationale": "The existing mapped WordPress platform, admin security, MCP read or automation controls apply as indicated. Exact hermetic PHP and source inventories exercise only the scoped registration change; Owner attestation, Original313 and live readback remain independent.",
+      "execution_note": "Source and hermetic fixture only; no live route acceptance, signed host provenance, new ability permissions or production mutation authorized."
+    },
+    {
+      "id": "rest:mad4b/v1/admin/core-web-vitals/settings",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/readiness-core-web-vitals-rest-cron-hermetic.php",
+        "tests/test_dynamic_readiness_rest_ability_owner.py"
+      ],
+      "owner_role": "MAD4B native Core Web Vitals technical source reviewer — CI-only, not Site Owner or release signer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Exact existing Core Web Vitals administrative REST route: the hermetic PHP fixture executes native registration, confirms GET vs POST, binds the original WordPress manage_options permission callback, asserts anonymous denial 403 on every route and rejects unexpected route registrations. No REST access, credential or write permission is granted by this review.",
+      "coverage_reuse_rationale": "The existing mapped WordPress platform, admin security, MCP read or automation controls apply as indicated. Exact hermetic PHP and source inventories exercise only the scoped registration change; Owner attestation, Original313 and live readback remain independent.",
+      "execution_note": "Source and hermetic fixture only; no live route acceptance, signed host provenance, new ability permissions or production mutation authorized."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-web-vitals.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-core-web-vitals-rest-cron-hermetic.php",
+        "tests/test_dynamic_readiness_rest_ability_owner.py"
+      ],
+      "owner_role": "MAD4B native Core Web Vitals technical source reviewer — CI-only, not Site Owner or release signer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Core Web Vitals retains the single native provider for private admin REST, read-only WordPress diagnostics and bounded WordPress Cron. This service is not an alternate source of capabilities and never grants external PageSpeed credentials or publication rights. The source-only contract checks registered routes, hooks, and permission callbacks.",
+      "coverage_reuse_rationale": "The existing mapped WordPress platform, admin security, MCP read or automation controls apply as indicated. Exact hermetic PHP and source inventories exercise only the scoped registration change; Owner attestation, Original313 and live readback remain independent.",
+      "execution_note": "Source and hermetic fixture only; no live route acceptance, signed host provenance, new ability permissions or production mutation authorized."
     }
   ],
   "lifecycle": [],
@@ -12504,6 +12681,27 @@
       "review_rationale": "Retains current WordPress lifecycle guard, the JetEngine empty-callback manual-copy fallback, PHP 7.4-safe string matching and native per-tour/company presentation policy. PR813 merge was reconciled against both site PHP source files; the source-only review cannot attest future Production deployment.",
       "coverage_reuse_rationale": "The existing mapped policy controls and exact source regressions cover only this reviewed delta; non-automatic deployment, independent signed release, site-safe readback and Owner authority are retained.",
       "execution_note": "Reviewed exact source blob with read-only CI and WP-CLI regression; no Original313, no owner attestation and no company-wide promotion."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-web-vitals.php",
+      "source_blob_sha": "a70bfc23212bb9289d3ab218dc08a530f46c5ad1",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-core-web-vitals-rest-cron-hermetic.php",
+        "tests/test_dynamic_readiness_rest_ability_owner.py"
+      ],
+      "owner_role": "Core Web Vitals PHP source reviewer — private REST, read-only diagnostics and scheduled jobs only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Exact current Core Web Vitals source is now assessed for 4 admin-permission-gated REST routes, 3 original WP-Cron hooks, and one registered read-only diagnostic Ability. Direct PHP 7.4/8.5 fixture tests registration and denial. The rest of the original plugin, credential security and runtime rollout are not certified by this narrow source review.",
+      "coverage_reuse_rationale": "The existing Governance/Platform/Security source controls remain unchanged; the new same-PR regression exercises source contract without altering execution rights.",
+      "execution_note": "No automatic deployment, Site Owner approval, Production promotion or Original313 receipt."
     }
   ],
   "code_change_rules": {
