@@ -1,0 +1,105 @@
+{
+  "contract": "mad4b.elementor-native-mode-frame-cache.dual-site-qa.v1",
+  "timestamp_utc": "2026-11-14T21:09:34.100818+00:00",
+  "status": "LIVE_EN_ES_SOURCE_WAYFA_ENABLED__ORIGINAL313_UNSIGNED",
+  "scope": "Verified public EN+ES homepage only. Elementor native getCurrentDeviceMode remains source of truth; frame-lifetime cache invalidated on next animation frame, viewport resizing, orientation, visibility and pageshow.",
+  "source_code_sha256": {
+    "source_owner": "ddc35fe2860e453c0fe9da9d9a0205450e518608040b5f0e2a5a34462d4409a1",
+    "wayfa_owner": "6b95452e862906b09a98916f4eb593ea021a2826894537cbe7b80fa5c27900cc",
+    "js_asset": "336e797e1327d5f55fec91f1d8e8b33401b1968544daf5e1b20ceebf29e4e4a3",
+    "patcher": "7781b8e39d3c1befc2da17deca60340c2163f8bfe0d72a2af7663ef1c0d8aaaa",
+    "hermetic_test": "1aec3f1c9d1ec724fed8de20dd61ba5a8eb2c43a5843c4f04bc7e38e049620c6",
+    "browser_test": "e05e42d69efc19fb11e427b4deac0f0994933f8d37d4c64fb9b1ea4562a72c7d"
+  },
+  "prior_owner_sha256": {
+    "source": "8de670ce3b8b209259343cac894e8baab503ff14485135aeaa415c5c904e2d25",
+    "wayfa": "afb382ebd940a2f00ff21b673979fb0d84706556a064fcc43f741841a23fe317"
+  },
+  "company_opt_in": "mad4b_perf_elementor_device_mode_frame_cache_v1",
+  "company_asset_proof": "mad4b_perf_elementor_device_mode_frame_cache_sha256_v1",
+  "per_site_backup_paths": [
+    "/opt/mad4b-company-provisioning/backups/elementor-device-mode-frame-cache-v1-20261114/tours-dev-406-pre-frame-cache.php",
+    "/opt/mad4b-company-provisioning/backups/elementor-device-mode-frame-cache-v1-20261114/wayfatours-406-pre-frame-cache.php"
+  ],
+  "first_ab_sample": {
+    "wayfatours_ES_820_native_calls_before": 1355,
+    "after": 8,
+    "tbt_before_ms": 781,
+    "after_ms": 534,
+    "cls_before": 0.005004,
+    "cls_after": 0.005004,
+    "test_source_sha256": {
+      "before": "5301a4c1f8aedc00d442f65223f180fc3dde7608eaa54de10e0704f58116c1a3",
+      "after": "0daa9e32257a9f5e27b8759fb71d367fa5cd4c2f5770a0e6c545893e4d35cd50"
+    }
+  },
+  "qa_results": {
+    "wayfa_es_820": {
+      "site": "wayfatours.com",
+      "language": "es",
+      "width_px": 820,
+      "http": 200,
+      "cache": "HIT",
+      "CLS": 0.005004,
+      "TBT_ms": 536,
+      "FCP_ms": 1468,
+      "LCP_ms": 3984,
+      "responsive_modes_pass": true,
+      "errors": [],
+      "evidence_sha256": "ea953506358c22458240712e66c8cb60e5fc9781a5083e92afabbe1e8fff29bc"
+    },
+    "wayfa_en_390": {
+      "site": "wayfatours.com",
+      "language": "en",
+      "width_px": 390,
+      "http": 200,
+      "cache": "HIT",
+      "CLS": 0.000654,
+      "TBT_ms": 663,
+      "FCP_ms": 1516,
+      "LCP_ms": 1628,
+      "responsive_modes_pass": true,
+      "errors": [],
+      "evidence_sha256": "9096408db3325c85c7abc7d98cb4b9430df58aabed550f9163fc7e717447b4b3"
+    },
+    "wayfa_es_1024": {
+      "site": "wayfatours.com",
+      "language": "es",
+      "width_px": 1024,
+      "http": 200,
+      "cache": "HIT",
+      "CLS": 0.03578,
+      "TBT_ms": 534,
+      "FCP_ms": 1472,
+      "LCP_ms": 3988,
+      "responsive_modes_pass": true,
+      "errors": [],
+      "evidence_sha256": "d03b95ec42590e9af908190a26b38a19a6c3e784247d3ee7efc3f4e975847328"
+    },
+    "source_es_820": {
+      "site": "tours.dev.mad4b.com",
+      "language": "es",
+      "width_px": 820,
+      "http": 200,
+      "cache": "MISS",
+      "CLS": 0.000455,
+      "TBT_ms": 927,
+      "FCP_ms": 11064,
+      "LCP_ms": 11324,
+      "responsive_modes_pass": true,
+      "errors": [],
+      "evidence_sha256": "326316196961a7268e3d291ca80c659fcceffbe602ed6bd30799a7a6948f9847"
+    }
+  },
+  "unit_tests": "PASS 13/13 Node.js hermetic mode-cache controls",
+  "php_lint": "PASS on both live PHP containers",
+  "functional_smoke": "PASS Wayfatours ES 390 and Tours.dev ES 390 responsive hero, search popup, calendar, no browser exceptions",
+  "uncertainty": {
+    "TBT": "Variable under host load; this implementation addresses repeated getComputedStyle probes and does not certify site-wide TBT below 200ms.",
+    "VPS": "Observed load-average >14, swap 8GB completely used, multiple background WP-CLI/media and long-lived Chrome/Playwright workloads. No unowned processes terminated.",
+    "ToursDev": "HTML MISS in audited samples, not directly comparable with Wayfatours FastCGI HIT."
+  },
+  "original313_signed": false,
+  "lighthouse_independent": false,
+  "rollback": "Per site set mad4b_perf_elementor_device_mode_frame_cache_v1=off; native MAD4B cache owner socket_purge / and /es/ only. Rollback snapshot recorded for code, do not overwrite company-specific changes blindly."
+}
