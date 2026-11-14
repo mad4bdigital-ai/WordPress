@@ -1,0 +1,135 @@
+{
+  "contract": "mad4b.native-critical-css.midband-production-readback.v1",
+  "site": "wayfatours.com",
+  "verified_utc": "2026-11-13T23:29:29.948529+00:00",
+  "status": "PRODUCTION_EN_ES_MIDBAND_768_991_VERIFIED__ORIGINAL313_UNSIGNED",
+  "production_manifest_sha256": "284404871a74df7218e3c644b1ceb8a64dd045a0201095bfd53267c41710df9d",
+  "manifest_backup_sha256": "2f298975d2eb87e7507d4cf0b51b9b073f9d8d73617ea66d5008655ccbd0ed87",
+  "qa_evidence_sha256": "298c65bfaf6bcb5036d9caaf5f8a7ab98fc6b09c2e802d85f98126d042ccb37b",
+  "generator_contract": "mad4b.critical-css.cssom-midband-candidate.v1",
+  "source_bundles": {
+    "en": "292adbae92f0762f7e3e053c47e094f67f38d3ca238662d1cec4b6e853805021",
+    "es": "e18e57ce594076ebea409dd63046abf4b385c8fbc50dfcdbe7f10b6e38fb065e"
+  },
+  "critical_sha256": {
+    "en": "e5390e6f6fb854059ac5c81b19fda4313952af7d6654c797f0911ce1fceb0481",
+    "es": "66f52124aa4e4f7a4caff5324123bc0647e08428c1ed9ce0e16b85692d3f4f78"
+  },
+  "lighthouse_independently_measured": false,
+  "signed_original313_receipt": false,
+  "TBT_certified": false,
+  "scope": {
+    "public_mobile_home": true,
+    "wpml_locales": [
+      "en",
+      "es"
+    ],
+    "new_css_active_width_px_min": 768,
+    "new_css_active_width_px_max": 991,
+    "phone_390_unmodified_by_midband": true,
+    "widths_992_1024_unmodified_by_midband": true
+  },
+  "lab_before_820": {
+    "en": 0.567881,
+    "es": 0.561506
+  },
+  "lab_after_820": {
+    "en": 0.079349,
+    "es": 0.066192
+  },
+  "live_browser": [
+    {
+      "locale": "en",
+      "width_px": 820,
+      "FCP_ms": 1688,
+      "LCP_ms": 3216,
+      "CLS": 0.077579,
+      "TBT_ms": 1235,
+      "origin_cache": "HIT",
+      "css_ready": 1,
+      "qa_json_sha256": "9a05a4475ace2494b3c3d3527d693ede631422bf3230c1bc7bc6de1dc8849345"
+    },
+    {
+      "locale": "es",
+      "width_px": 820,
+      "FCP_ms": 1656,
+      "LCP_ms": 2884,
+      "CLS": 0.063907,
+      "TBT_ms": 1644,
+      "origin_cache": "HIT",
+      "css_ready": 1,
+      "qa_json_sha256": "6ab4ea91792dff1e5cd19b86941561c691d051e075d3c18a113d330022a83e8a"
+    },
+    {
+      "locale": "en",
+      "width_px": 991,
+      "FCP_ms": 1556,
+      "LCP_ms": 3472,
+      "CLS": 0.071622,
+      "TBT_ms": 901,
+      "origin_cache": "HIT",
+      "css_ready": 1,
+      "qa_json_sha256": "f970a2a6f9bf7aefa461f5a0a4286462871b63bc8483d3a98a30ab81fb4653de"
+    },
+    {
+      "locale": "es",
+      "width_px": 991,
+      "FCP_ms": 1456,
+      "LCP_ms": 3996,
+      "CLS": 0.073068,
+      "TBT_ms": 610,
+      "origin_cache": "HIT",
+      "css_ready": 1,
+      "qa_json_sha256": "568523e9dfc4d1695fcb1d56c6405b740eb2ba1a87f0e41f37f73032b1c7059a"
+    },
+    {
+      "locale": "en",
+      "width_px": 390,
+      "FCP_ms": 1488,
+      "LCP_ms": 1612,
+      "CLS": 0.000654,
+      "TBT_ms": 749,
+      "origin_cache": "HIT",
+      "css_ready": 1,
+      "qa_json_sha256": "0898883bda9be9b338fbd42c87506b7e06ac5807394ba242aa21298c57305763"
+    },
+    {
+      "locale": "es",
+      "width_px": 390,
+      "FCP_ms": 1416,
+      "LCP_ms": 1484,
+      "CLS": 0.000931,
+      "TBT_ms": 789,
+      "origin_cache": "HIT",
+      "css_ready": 1,
+      "qa_json_sha256": "3ba074099a10ac3310ea0fe6b7652e3892e50cfa1da6656761f7eef5e25f2619"
+    }
+  ],
+  "interaction": {
+    "search_popup_EN": true,
+    "calendar_EN": true,
+    "search_popup_ES": true,
+    "calendar_ES": true,
+    "no_console_errors": true
+  },
+  "independent_exact_hash_readback": [
+    [
+      "en",
+      "ready",
+      "HIT",
+      "1"
+    ],
+    [
+      "es",
+      "ready",
+      "HIT",
+      "1"
+    ]
+  ],
+  "followup": {
+    "CLS_992_1024": "open: delayed header/menu CSS/initialization causes a separate layout jump",
+    "city_slider_geometry": "open: late shift ~0.05-0.08 persists near lower content",
+    "main_thread_TBT": "open: observed throttled lab values up to >1s, does not certify PageSpeed stabilization"
+  },
+  "rollback": "Restore backed-up manifest only if CAS verified, then use MAD4B_Cache_Control_V1::socket_purge([\"/\",\"/es/\"]). Keep old Critical CSS files immutable; do not purge all WordPress or Redis caches."
+}

@@ -1,0 +1,68 @@
+{
+  "contract": "mad4b.native-city-slider.ssr-geometry-live-dual-site.v1",
+  "created_at_utc": "2026-11-14T20:21:12.009843+00:00",
+  "status": "LIVE_EN_ES_NATIVE_CSS_OWNER_VERIFIED__ORIGINAL313_UNSIGNED",
+  "sites": [
+    "tours.dev.mad4b.com",
+    "wayfatours.com"
+  ],
+  "code_old_sha256": "aad8302256a47fdf6c5a2e20136a4609db9f9d58cd074b289c279e67eb5d0ef5",
+  "code_live_sha256": "8b75f514fbb94285d5ad90e4f7f292c1205ede6dc8bfac0d8d8e5655fbf55efb",
+  "source_code_relpath": "wp-content/mu-plugins/419-mad4b-city-card-shape-policy.php",
+  "controls": {
+    "option": "mad4b_city_slider_firstpaint_geometry_v1",
+    "proof_option": "mad4b_city_slider_firstpaint_geometry_proofs_v1",
+    "contract": "mad4b.native-city-slider.ssr-geometry-proof.v1",
+    "both_sites_enabled": true,
+    "wpml_source_listing_id": 45927,
+    "en_listing_id": 45927,
+    "es_listing_id": 68823,
+    "language_bound_css_assets": true,
+    "template_sha_guard": true,
+    "kit_breakpoint_guard": true,
+    "native_swiper_only": true
+  },
+  "regression": {
+    "hermetic_wpml_tenant_source_hash_tests": "12/12 PASS on both host PHP environments",
+    "browser_gate": "verify_city_slider_ssr_browser.js; read only, Chromium CPU x4 network ~1.6Mbps"
+  },
+  "main_thread": {
+    "wayfatours_live_820_english_before_tbt_ms": 574,
+    "wayfatours_live_820_english_after_tbt_ms": 749,
+    "wayfatours_live_820_spanish_after_tbt_ms": 1533,
+    "source_live_820_spanish_after_tbt_ms": 1149,
+    "not_certified": true,
+    "attribution": "1.2 MB first-party LiteSpeed JS bundle includes Elementor frontend and frontend listeners; CPU/JS execution after ~8s dominates; admin-ajax preference-state is asynchronous, not equivalent to TBT",
+    "litespeed_official_unoptimized_diagnostic": {
+      "path": "/?LSCWP_CTRL=before_optm",
+      "read_only_probe": true,
+      "cache": "BYPASS",
+      "FCP_ms": 7140,
+      "LCP_ms": 7424,
+      "TBT_ms": 1030,
+      "CLS": 0.00014,
+      "qualification": "Disables CSS and JS optimization together, so it cannot isolate the cost of JS combining or demonstrate a safe production change. No optimizer setting was modified."
+    }
+  },
+  "cls": {
+    "wayfa_en_820_before": 0.07758,
+    "wayfa_en_820_after": 0.00364,
+    "wayfa_es_820_before": 0.06417,
+    "wayfa_es_820_after": 0.00474,
+    "source_es_820_after": 0.00045,
+    "wayfa_en_390_after": 0.000654,
+    "wayfa_es_1024_after": 0.040713
+  },
+  "live_code_sha256": {
+    "tours.dev.mad4b.com": "8b75f514fbb94285d5ad90e4f7f292c1205ede6dc8bfac0d8d8e5655fbf55efb",
+    "wayfatours.com": "8b75f514fbb94285d5ad90e4f7f292c1205ede6dc8bfac0d8d8e5655fbf55efb"
+  },
+  "evidence_paths": [
+    "/opt/mad4b-company-provisioning/reports/dual-site-tbt-cls-20261114/"
+  ],
+  "scope": "Wayfatours and Tours.dev EN+ES home, CSS applies only at Elementor tablet 768-991; no fleet auto activation or original313 signed grant",
+  "original313_receipt_signed": false,
+  "independent_lighthouse_score": null,
+  "source_origin_caveat": "Tours.dev observed x-mad4b-preset-cache MISS; its FCP under throttling cannot be compared directly with Wayfatours HIT",
+  "rollback": "Feature flag mad4b_city_slider_firstpaint_geometry_v1 off per company, then exact previous file snapshot and targeted page cache version if required. Do not replace translations or run global purges."
+}

@@ -1,0 +1,140 @@
+{
+  "contract": "mad4b.native-critical-css.full-midband.direct-production-readback.v2",
+  "site": "wayfatours.com",
+  "verified_utc": "2026-11-14T19:07:55.590672+00:00",
+  "status": "PRODUCTION_EN_ES_768_1024_VERIFIED__ORIGINAL313_UNSIGNED",
+  "manifest_before_sha256": "284404871a74df7218e3c644b1ceb8a64dd045a0201095bfd53267c41710df9d",
+  "manifest_current_sha256": "946930797212564cd29d69c465adcb9c6d3d5faa946525650ed002d852b6b52e",
+  "source_qa_sha256": "7d28d312774289a840d26dbb5afc3a8d0fc30c87ec339cf46df40251129e6a44",
+  "native_exact_hash_readback": [
+    [
+      "en",
+      "ready",
+      "HIT",
+      "1"
+    ],
+    [
+      "es",
+      "ready",
+      "HIT",
+      "1"
+    ]
+  ],
+  "source_keys": {
+    "en": "292adbae92f0762f7e3e053c47e094f67f38d3ca238662d1cec4b6e853805021",
+    "es": "e18e57ce594076ebea409dd63046abf4b385c8fbc50dfcdbe7f10b6e38fb065e"
+  },
+  "critical_asset_sha256": {
+    "en": "f169d55325ce1f9c0f98de87c331d8420a674dc59947302bf1e43209c8bdc968",
+    "es": "84539358db5448bae3e8a6a38ec55b87d89fcb8ebd8146664cdb776fa732bc01"
+  },
+  "generator_sha256": "6783c3854f9aa9b6693840557878a415553ff5bf37c514b24ac3c9f1e303ef1c",
+  "generator_hermetic_tests_sha256": "8f4ebab4e8eda9764108af8b09a2d73ace56b1bbca5f7fac27fad422258fd2ee",
+  "test_result": "14/14 PASS (normal and python -O)",
+  "scope": {
+    "templates": "Wayfatours homepage only",
+    "languages": [
+      "en",
+      "es"
+    ],
+    "responsive_band_px": [
+      768,
+      1024
+    ],
+    "other_widths": "original CSS media remains unchanged",
+    "no_company_fleet_auto_rollout": true
+  },
+  "lab_cls_1024": {
+    "en": 0.041551,
+    "es": 0.036348
+  },
+  "live_browser": [
+    {
+      "lang": "en",
+      "width_px": 390,
+      "FCP_ms": 1616,
+      "LCP_ms": 1748,
+      "CLS": 0.000654,
+      "TBT_ms": 743,
+      "cache": "HIT",
+      "css_ready": true,
+      "browser_errors": 0,
+      "evidence_sha256": "0c2d3cde43120ffdd09a9e8285dbe54bd7b6e4c9299cb220cb82ae63f398e8f2"
+    },
+    {
+      "lang": "en",
+      "width_px": 992,
+      "FCP_ms": 1580,
+      "LCP_ms": 3860,
+      "CLS": 0.041028,
+      "TBT_ms": 1152,
+      "cache": "HIT",
+      "css_ready": true,
+      "browser_errors": 0,
+      "evidence_sha256": "62ca8a3100df8dac9725145131a2c1e96c6124c94046c7c759c2effe4b3e14ce"
+    },
+    {
+      "lang": "en",
+      "width_px": 1024,
+      "FCP_ms": 1564,
+      "LCP_ms": 3452,
+      "CLS": 0.041485,
+      "TBT_ms": 1194,
+      "cache": "HIT",
+      "css_ready": true,
+      "browser_errors": 0,
+      "evidence_sha256": "861119d9cb3bfab70e88e89d3788912e25985820911ed10d002fcb5c2c893ca0"
+    },
+    {
+      "lang": "es",
+      "width_px": 390,
+      "FCP_ms": 1500,
+      "LCP_ms": 1568,
+      "CLS": 0.000931,
+      "TBT_ms": 738,
+      "cache": "HIT",
+      "css_ready": true,
+      "browser_errors": 0,
+      "evidence_sha256": "549452d76ad43d57b1b9bae79cf28058e4dbefaf88aacabd96fffe9af091d700"
+    },
+    {
+      "lang": "es",
+      "width_px": 992,
+      "FCP_ms": 1492,
+      "LCP_ms": 3880,
+      "CLS": 0.035475,
+      "TBT_ms": 578,
+      "cache": "HIT",
+      "css_ready": true,
+      "browser_errors": 0,
+      "evidence_sha256": "3c707cfbfe44ebea0a3f4014864876a2fe77b37b6d4c06e92a4828cee99c682d"
+    },
+    {
+      "lang": "es",
+      "width_px": 1024,
+      "FCP_ms": 1508,
+      "LCP_ms": 3484,
+      "CLS": 0.03627,
+      "TBT_ms": 655,
+      "cache": "HIT",
+      "css_ready": true,
+      "browser_errors": 0,
+      "evidence_sha256": "6b22c9df151e0f2c67532da05137ca3673cfde470be9db6e5b714aca801c6230"
+    }
+  ],
+  "mobile_popup_and_calendar": {
+    "EN": true,
+    "ES": true
+  },
+  "outstanding": {
+    "city_grid_slider_CLS": "~0.03–0.08 late shift can still occur",
+    "main_thread_TBT": "not certified; measured several hundred ms to >1 second in throttled tests",
+    "lighthouse_score": "not independently measured"
+  },
+  "original313_signed": false,
+  "TBT_certified": false,
+  "rollback": {
+    "previous_manifest_backup_sha256": "284404871a74df7218e3c644b1ceb8a64dd045a0201095bfd53267c41710df9d",
+    "method": "CAS compare current manifest SHA; restore old manifest and invalidate only /, /es/ via native cache provider; keep old assets immutable"
+  }
+}

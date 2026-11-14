@@ -1,0 +1,99 @@
+{
+  "contract": "mad4b.uael.home.proof-lifecycle-direct-repair.v1",
+  "created_utc": "2026-11-14T22:55:56.759184+00:00",
+  "site": "wayfatours.com",
+  "scope": "Company-owned 394-MU engine existing builder; production JS/CSS resources unchanged. No source-wide fleet rollout.",
+  "implementation": {
+    "builder_source": "ops/company-code-release-v1/overlays/wayfatours/mad4b-uael-home-selective-builder.php",
+    "builder_old_sha256": "1c1da6378e9823e51275a5de5b1f1c4584f8e93e5c24b472d2045afa0cdb0a2b",
+    "builder_installed_sha256": "ff78a7d4aa3cdc1d144dfac844a91a6699be15bae7fc11d2f720132c5fed8ca5",
+    "worker_source": "ops/company-code-release-v1/tools/uael-home-candidate-cycle-v1.py",
+    "worker_installed_sha256": "4842642ec7efccdfb8f1ebc3d946b6e578df0eb2e08bee83afe9892207d629de",
+    "cron": "29 * * * *; nice + ionice, one site, resource/lock guards; never runs browser; candidate file only",
+    "test": "6/6 lifecycle unit tests; WordPress original independent candidate readback READY",
+    "immutable_backups": [
+      "/opt/mad4b-company-provisioning/backups/uael-home-lifecycle-v11-20261114/builder-original-1c1da6378e98.php",
+      "/opt/mad4b-company-provisioning/backups/uael-home-lifecycle-v11-20261114/root-crontab-before-uael.txt"
+    ]
+  },
+  "live_certification": {
+    "live_manifest_sha256": "6a6ee95484c05740eb4257bf24f94c1bef2e6a3343622b9595e5518d3e2808e1",
+    "live_epoch": "0",
+    "current_manifest_epoch": "0",
+    "new_candidate_sha256": "106009179616264fb64d34dd42354cd75bd1e516ab8936ae6fce5db4933c5c80",
+    "new_candidate_epoch": "1794689150.148167",
+    "graph_nodes": 43,
+    "candidate_independent_readback": "READY",
+    "runtime_live_manifest_modified": false,
+    "runtime_css_changed": false,
+    "runtime_litespeed_settings_changed": false,
+    "css_release": "HOLD_LCP_AND_TBT_REGRESSION_IN_CONTROLLED_SAMPLES",
+    "original313_signed": false,
+    "current_wp_epoch_option": "1794689150.148167"
+  },
+  "benchmark": [
+    {
+      "locale": "en",
+      "width": 390,
+      "native_css_bundle_sha256": "292adbae92f0762f7e3e053c47e094f67f38d3ca238662d1cec4b6e853805021",
+      "candidate_css_bundle_sha256": "23ad7086ff6f1a74781c11b627761011f8e056eb8235ca9bc883bc67946abe8c",
+      "baseline": {
+        "FCP_ms": 1808,
+        "LCP_ms": 2568,
+        "TBT_ms": 976,
+        "CLS": 0
+      },
+      "candidate": {
+        "FCP_ms": 1756,
+        "LCP_ms": 2292,
+        "TBT_ms": 1297,
+        "CLS": 0
+      },
+      "delta": {
+        "FCP_ms": -52,
+        "LCP_ms": -276,
+        "TBT_ms": 321
+      },
+      "browser_interaction_pass": true,
+      "source_evidence_sha256": {
+        "baseline": "240cb8bc051327c88725adcf18a8dd24b5156cdc5444f12a1b8493fa1b14e830",
+        "candidate": "a0c49ee5a91f26bb9079924735acf5588c58fc3e97e73a90f49e1d3383ce34c0"
+      }
+    },
+    {
+      "locale": "es",
+      "width": 390,
+      "native_css_bundle_sha256": "e18e57ce594076ebea409dd63046abf4b385c8fbc50dfcdbe7f10b6e38fb065e",
+      "candidate_css_bundle_sha256": "6ed48f39d5bb481dbc571fdef920446ec87c2a7b32b102d5279c9ed5a537a05f",
+      "baseline": {
+        "FCP_ms": 1584,
+        "LCP_ms": 1688,
+        "TBT_ms": 904,
+        "CLS": 0.00093
+      },
+      "candidate": {
+        "FCP_ms": 1788,
+        "LCP_ms": 2224,
+        "TBT_ms": 1367,
+        "CLS": 0.00093
+      },
+      "delta": {
+        "FCP_ms": 204,
+        "LCP_ms": 536,
+        "TBT_ms": 463
+      },
+      "browser_interaction_pass": true,
+      "source_evidence_sha256": {
+        "baseline": "40036bbe6d20a5c67cef2f7b67af89648eab11ce88cb1f657c54d7f5a04316de",
+        "candidate": "e8882a6e32955d0c3b9916e9323e5ec209b58f25b8ff2b25805d25e8e7236e83"
+      }
+    }
+  ],
+  "conclusions": [
+    "CSS and JS unused rules are time-window coverage, not proven dead code.",
+    "UAEL 751,778 bytes raw (~78,528 bytes gzip savings) is an identified avoidable load for the current anonymous homepage, but exact-LiteSpeed+critical-CSS validation must pass before promotion.",
+    "The 390px Spanish A/B observed LCP +536ms and TBT +463ms; CSS-only release is explicitly held.",
+    "A matching native graph proof nearing TTL can renew before expiration without a CSS strategy switch. Changed Elementor template graph never auto-promotes a candidate."
+  ],
+  "followup_gate": "Require 2+ paired tests per language/mobile/tablet at stable CPU load, no LCP/TBT regress, exact resulting LiteSpeed source CSS SHA, trusted critical CSS gate pass, archive/tour/form/price/Swiper/browser & cache HIT regression before promoting candidate. No global CSS/JS removal."
+}

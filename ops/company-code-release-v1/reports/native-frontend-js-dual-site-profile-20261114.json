@@ -1,0 +1,177 @@
+{
+  "contract": "mad4b.native-frontend-js.dual-site-profile.v1",
+  "created_at_utc": "2026-11-14T20:36:55.626044+00:00",
+  "status": "LIVE_DIAGNOSIS_ONLY__NO_JAVASCRIPT_OPTIMIZER_CHANGES",
+  "sites": {
+    "wayfatours.com": {
+      "evidence_sha256": "c878dedb1e4a437d2a4e6e6b00bc3e9399f6017c737069bb3e64d57d5dd5767e",
+      "url": "https://wayfatours.com/es/",
+      "cache": "UPDATING",
+      "FCP_ms": 1544,
+      "LCP_ms": 3476,
+      "CLS": 0.005004,
+      "TBT_ms": 515,
+      "script_owners": [
+        {
+          "url": "https://wayfatours.com/wp-content/litespeed/js/b4646c66fc41ed0aeec3033ff8feeb12.js",
+          "total_script_ms": 665,
+          "forced_layout_ms": 186,
+          "count": 16,
+          "longest_ms": 215
+        },
+        {
+          "url": "https://wayfatours.com/wp-includes/js/jquery/jquery.min.js",
+          "total_script_ms": 217,
+          "forced_layout_ms": 62,
+          "count": 5,
+          "longest_ms": 122
+        },
+        {
+          "url": "https://wayfatours.com/wp-content/mu-plugins/assets/mad4b-static-js/navigation-listings.b3445f2b621d.ffe682b93e87.min.js",
+          "total_script_ms": 29,
+          "forced_layout_ms": 0,
+          "count": 1,
+          "longest_ms": 29
+        },
+        {
+          "url": "https://wayfatours.com/wp-content/plugins/elementor/assets/js/chunks/nested-tabs.min.js",
+          "total_script_ms": 14,
+          "forced_layout_ms": 0,
+          "count": 1,
+          "longest_ms": 14
+        },
+        {
+          "url": "https://wayfatours.com/wp-content/plugins/elementor/assets/js/chunks/background-slideshow.min.js",
+          "total_script_ms": 11,
+          "forced_layout_ms": 0,
+          "count": 1,
+          "longest_ms": 11
+        },
+        {
+          "url": "https://wayfatours.com/wp-content/plugins/elementor/assets/js/chunks/background-video.min.js",
+          "total_script_ms": 10,
+          "forced_layout_ms": 0,
+          "count": 1,
+          "longest_ms": 10
+        },
+        {
+          "url": "https://wayfatours.com/wp-content/plugins/elementor-pro/assets/js/mega-menu.82093824ddb3f5531ab4.bundle.min.js",
+          "total_script_ms": 10,
+          "forced_layout_ms": 1,
+          "count": 1,
+          "longest_ms": 10
+        },
+        {
+          "url": "https://wayfatours.com/wp-content/plugins/elementor/assets/lib/swiper/v8/swiper.min.js",
+          "total_script_ms": 9,
+          "forced_layout_ms": 1,
+          "count": 1,
+          "longest_ms": 9
+        },
+        {
+          "url": "https://wayfatours.com/es/",
+          "total_script_ms": 9,
+          "forced_layout_ms": 1,
+          "count": 1,
+          "longest_ms": 9
+        }
+      ],
+      "longtask_count": 9,
+      "blocking_loaf_ms": 1021
+    },
+    "tours.dev.mad4b.com": {
+      "evidence_sha256": "4004ceb6d997a6fed11047761ea05e6de3cd51593ebeffa55496604a287604bc",
+      "url": "https://tours.dev.mad4b.com/es/",
+      "cache": "MISS",
+      "FCP_ms": 9712,
+      "LCP_ms": 10032,
+      "CLS": 0.000455,
+      "TBT_ms": 1370,
+      "script_owners": [
+        {
+          "url": "https://tours.dev.mad4b.com/wp-content/litespeed/js/d4b4dd934e6d2b144239d0e477f44dc5.js",
+          "total_script_ms": 432,
+          "forced_layout_ms": 165,
+          "count": 10,
+          "longest_ms": 130
+        },
+        {
+          "url": "https://tours.dev.mad4b.com/wp-content/litespeed/js/2683db112f283991193b98d53d1f5cdd.js",
+          "total_script_ms": 322,
+          "forced_layout_ms": 67,
+          "count": 6,
+          "longest_ms": 146
+        },
+        {
+          "url": "https://tours.dev.mad4b.com/wp-content/litespeed/js/80d9c6961cff48df11f6aecb78dea0c7.js",
+          "total_script_ms": 244,
+          "forced_layout_ms": 237,
+          "count": 1,
+          "longest_ms": 244
+        },
+        {
+          "url": "https://tours.dev.mad4b.com/wp-content/litespeed/js/e95430b45311020169b9db18da770ef4.js",
+          "total_script_ms": 75,
+          "forced_layout_ms": 74,
+          "count": 1,
+          "longest_ms": 75
+        },
+        {
+          "url": "https://tours.dev.mad4b.com/wp-content/mu-plugins/mad4b-adaptive-media/runtime.js",
+          "total_script_ms": 55,
+          "forced_layout_ms": 47,
+          "count": 1,
+          "longest_ms": 55
+        },
+        {
+          "url": "https://tours.dev.mad4b.com/wp-content/litespeed/js/8cbbbfe93e71d04caaaa2e3adfaf1a1e.js",
+          "total_script_ms": 36,
+          "forced_layout_ms": 0,
+          "count": 1,
+          "longest_ms": 36
+        },
+        {
+          "url": "https://tours.dev.mad4b.com/wp-content/litespeed/js/d40ea1d0e968c8d12e8a035cc33bc972.js",
+          "total_script_ms": 28,
+          "forced_layout_ms": 16,
+          "count": 1,
+          "longest_ms": 28
+        },
+        {
+          "url": "https://tours.dev.mad4b.com/wp-content/plugins/mad4b-experience/src/presentation/assets/mad4b-city-visible-image.js",
+          "total_script_ms": 26,
+          "forced_layout_ms": 19,
+          "count": 1,
+          "longest_ms": 26
+        },
+        {
+          "url": "https://tours.dev.mad4b.com/wp-content/litespeed/js/886d7c72aac16b4d7fad967aaa37b029.js",
+          "total_script_ms": 21,
+          "forced_layout_ms": 13,
+          "count": 1,
+          "longest_ms": 21
+        }
+      ],
+      "longtask_count": 17,
+      "blocking_loaf_ms": 1682
+    }
+  },
+  "method": "Native Chrome PerformanceObserver longtask + long-animation-frame ownership and resource timing; Playwright Pixel 5 viewport 820px, 4x CPU, 1.6 Mbps and 150 ms RTT",
+  "findings": {
+    "wayfatours": "LiteSpeed JS Combine option=1, exact large combined asset contains Elementor initialization and page handlers; jQuery main-thread callbacks also expensive. No native request-specific  JS-only comparison has passed.",
+    "tours_dev": "LiteSpeed JS Combine option empty/off, multiple minified sources visible; HTML path is cold/MISS, FCP LCP much later and TBT still high.",
+    "visitor_preference_ajax": "Network request latency is asynchronous, should not be equated to main-thread TBT without a main-thread stack attribution.",
+    "ab_no_optimization": "Official LiteSpeed ?LSCWP_CTRL=before_optm bypass disables both CSS and JS optimization; observed Wayfa 820px FCP 7140ms and TBT 1030ms under BYPASS; not an isolated JS comparison."
+  },
+  "intentionally_unchanged": [
+    "litespeed.conf.optm-js_comb",
+    "litespeed.conf.optm-js_defer",
+    "litespeed.conf.optm-css_comb",
+    "Elementor frontend initialization code",
+    "JetEngine/Swiper/Fluent Forms dependency ordering"
+  ],
+  "next_safe_test": "Capture per-initiator JavaScript costs and compare JS-only combine profiles under an authorized isolated/uncached canary with the *same* HTML/CSS/fastcgi context. Independently browser-test live search, calendar, Swiper and booking flow before any production JS deferral or Combine change.",
+  "signed_original313": false,
+  "TBT_release_certified": false,
+  "Lighthouse_certified": false
+}
