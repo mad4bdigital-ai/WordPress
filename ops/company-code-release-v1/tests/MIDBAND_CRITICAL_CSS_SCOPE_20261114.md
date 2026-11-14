@@ -1,5 +1,7 @@
 # Native Critical CSS: Verified intermediate viewports (Wayfatours EN/ES)
 
+> **Historical 768–991px stage (superseded):** The active 14 November 2026 production release now covers 768–1024px. See `FULL_MIDBAND_CRITICAL_CSS_V2_20261114.md` and its exact live receipt. The results below describe the earlier admission only.
+
 ## Production change — 14 November 2026 (Egypt local time)
 
 The **existing** `MAD4B_Verified_Critical_CSS_V1` owner is unchanged. Two exact SHA-256 manifest entries for current LiteSpeed combined CSS were requalified to use two new critical CSS artifacts; every other historical entry, desktop flow, mobile 390px flow, WordPress option and full-CSS fallback is preserved. Only homepage EN `/` and ES `/es/` FastCGI path versions were invalidated by native `MAD4B_Cache_Control_V1::socket_purge` (not a global flush).
