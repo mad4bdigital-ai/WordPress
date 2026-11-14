@@ -1,0 +1,69 @@
+name: MAD4B Site Owner Sources — provenance only
+
+on:
+  pull_request:
+    paths:
+      - 'ops/company-code-release-v1/**'
+      - 'wp-content/mu-plugins/mad4b-composite-media-*.php'
+      - 'wp-content/mu-plugins/mad4b-unified-media-apply.php'
+      - '.github/workflows/mad4b-site-owner-source-provenance.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+concurrency:
+  group: mad4b-site-owner-source-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  provenance:
+    name: Source owner contract (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.3', '8.5']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Install existing Original Code Release signature dependency
+        run: python3 -m pip install --disable-pip-version-check 'cryptography>=41,<47'
+      - name: Verify all registered source fingerprints and release fence
+        run: python3 ops/company-code-release-v1/site-owner-sources/verify.py
+      - name: Verify collision and drift guards
+        run: |
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
+            -s ops/company-code-release-v1/site-owner-sources \
+            -p 'test_*.py' -v
+      - name: Verify immutable Original Code Release catalog source closure
+        run: python3 ops/company-code-release-v1/site-owner-sources/verify_catalog_sources.py
+      - name: Verify Original Code Release constraints and signed-plan tests
+        # These hermetic tests exercise the host executor's root-only private
+        # receipt directory; run as root only on the throwaway CI runner.
+        # Never relax RECEIPTS_MUST_BE_ROOT_PRIVATE in production code.
+        run: |
+          sudo -E env PYTHONDONTWRITEBYTECODE=1 "$(command -v python3)" -m unittest discover \
+            -s ops/company-code-release-v1/tests -p 'test_release.py' -v
+      - name: Lint site-owner and Original catalog PHP sources
+        run: |
+          find ops/company-code-release-v1/site-owner-sources/files \
+            -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+          python3 - <<'CHECK' > /tmp/mad4b-original-source-files.txt
+          import json
+          p='ops/company-code-release-v1/catalog/mad4b-release-components.json'
+          doc=json.load(open(p))
+          for row in doc['components']:
+              for path in row['files']:
+                  print(path)
+          CHECK
+          while IFS= read -r file; do php -l "$file"; done < /tmp/mad4b-original-source-files.txt

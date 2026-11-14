@@ -80,6 +80,92 @@ class CodeReleaseTests(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
+    def site_owner_fixture(self, *, explicit: bool = True,
+                           alias: str = "demo", tampered: bool = False) -> str:
+        """Native plugin target requires both policy and exact Git lineage."""
+        plugin_target = "wp-content/plugins/destinations-compatibility/includes/activation.php"
+        versioned_source = (
+            "ops/company-code-release-v1/site-owner-sources/"
+            "files/shared/destinations-compatibility/activation.php"
+        )
+        path = self.repo / versioned_source
+        path.parent.mkdir(parents=True)
+        path.write_bytes(b"<?php function destinations_activation_allowed(){return true;}\n")
+        runtime = self.site / plugin_target
+        runtime.parent.mkdir(parents=True)
+        runtime.write_bytes(b"<?php function destinations_activation_allowed(){return false;}\n")
+        manifest = {
+            "contract": "mad4b.site-owner-source-registry.v1",
+            "release_boundary": {
+                "deployable": False, "auto_apply": False, "ownership_transfer": False,
+                "requires": "separately_authorized_company_code_release_and_independent_readback",
+            },
+            "capabilities": [{
+                "capability": "destination_activation",
+                "runtime_symbol": "destinations_activation_allowed",
+                "variants": [{
+                    "site": alias, "environment": "staging",
+                    "runtime_path": plugin_target,
+                    "source_artifact": versioned_source,
+                    "sha256": ("0" * 64 if tampered else release.digest(path.read_bytes())),
+                    "owner_kind": "native-plugin",
+                }],
+            }],
+        }
+        manifest_path = (
+            self.repo / "ops/company-code-release-v1/"
+            "site-owner-sources/registry.json"
+        )
+        manifest_path.write_text(json.dumps(manifest))
+        shell("git", "-C", str(self.repo), "add", ".")
+        shell("git", "-C", str(self.repo),
+              "-c", "user.name=Test", "-c", "user.email=test@example.invalid",
+              "commit", "-qm", "add site owner")
+        self.commit = shell("git", "-C", str(self.repo), "rev-parse", "HEAD")
+        self.request["git_commit"] = self.commit
+        self.request["files"] = [{
+            "source": versioned_source,
+            "target": plugin_target,
+            "expected_before_sha256": release.digest(runtime.read_bytes()),
+        }]
+        if explicit:
+            self.policy["targets"]["demo:staging"]["allowed_targets"].append(plugin_target)
+        return plugin_target
+
+    def test_original_registry_permits_exact_site_owner_only_with_policy(self):
+        target = self.site_owner_fixture()
+        plan = release.make_plan(self.request, self.policy)
+        self.assertEqual(plan["files"][0]["target"], target)
+        self.assertEqual(plan["changed_count"], 1)
+        self.assertTrue(release.confirm_plan(plan, self.policy, expect_preimage=True) is None)
+        self.assertIn("false", (self.site / target).read_text())
+        # A plan is evidence only. The original grant remains mandatory.
+        with self.assertRaisesRegex((release.Denied, TypeError),
+                                    "BROKER_GRANT|subscriptable"):
+            release.verify_grant(plan, self.policy, {}, "apply")
+
+    def test_git_owner_without_explicit_policy_cannot_extend_plugin_scope(self):
+        self.site_owner_fixture(explicit=False)
+        with self.assertRaisesRegex(release.Denied, "TARGET_FILE_NOT_ALLOWED"):
+            release.make_plan(self.request, self.policy)
+
+    def test_site_owner_registry_hash_mismatch_denied(self):
+        self.site_owner_fixture(tampered=True)
+        with self.assertRaisesRegex(release.Denied, "SITE_OWNER_SOURCE_DIGEST_DRIFT"):
+            release.make_plan(self.request, self.policy)
+
+    def test_other_company_site_owner_does_not_grant_target(self):
+        self.site_owner_fixture(alias="another-company")
+        with self.assertRaisesRegex(release.Denied, "TARGET_FILE_NOT_ALLOWED"):
+            release.make_plan(self.request, self.policy)
+
+    def test_legacy_plugin_namespace_without_owner_registry_is_denied(self):
+        path = "wp-content/plugins/destinations-compatibility/includes/activation.php"
+        self.policy["targets"]["demo:staging"]["allowed_targets"].append(path)
+        self.request["files"][0]["target"] = path
+        with self.assertRaisesRegex(release.Denied, "GIT_SOURCE_MUST_BE_REGULAR_FILE"):
+            release.make_plan(self.request, self.policy)
+
     def grant(self, action="apply"):
         item = {
             "contract": release.AUTH_CONTRACT,

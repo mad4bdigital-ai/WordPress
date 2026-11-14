@@ -174,6 +174,101 @@ def registered_release_targets(policy: dict, entry: dict, commit: str) -> set[st
     return static
 
 
+def explicitly_enrolled_site_owner_targets(
+    policy: dict, entry: dict, commit: str, *,
+    company: str, environment: str, proposed_targets: set[str],
+) -> set[str]:
+    """Additional exact native plugin targets, never inferred from Git alone.
+
+    Native plugins outside the MAD4B/ETG namespace are eligible ONLY when:
+    (1) the root-owned, immutable site policy explicitly allows the exact path,
+    (2) the immutable Git commit contains the fail-closed source-only owner
+    registry and its exact source byte digest, and
+    (3) the registered company/environment owns that exact runtime path.
+    This is not a grant and never authorizes writing by itself.
+    """
+    special = {target for target in proposed_targets
+               if target in set(entry["allowed_targets"])
+               and not permitted_target(target)}
+    if not special:
+        return set()
+    rel = "ops/company-code-release-v1/site-owner-sources/registry.json"
+    root = Path(policy["source_git_root"])
+    try:
+        manifest = json.loads(git_bytes(root, commit, rel))
+    except (ValueError, TypeError) as exc:
+        raise Denied("SITE_OWNER_REGISTRY_NOT_VALID_JSON") from exc
+    fail_if(not isinstance(manifest, dict) or sorted(manifest) !=
+            ["capabilities", "contract", "release_boundary"] or
+            manifest.get("contract") != "mad4b.site-owner-source-registry.v1",
+            "SITE_OWNER_REGISTRY_CONTRACT_INVALID")
+    expected_fence = {
+        "deployable": False, "auto_apply": False, "ownership_transfer": False,
+        "requires": "separately_authorized_company_code_release_and_independent_readback",
+    }
+    fail_if(manifest.get("release_boundary") != expected_fence,
+            "SITE_OWNER_REGISTRY_RELEASE_FENCE_CHANGED")
+    capabilities = manifest.get("capabilities")
+    fail_if(not isinstance(capabilities, list) or
+            not 1 <= len(capabilities) <= 250,
+            "SITE_OWNER_REGISTRY_COMPONENTS_INVALID")
+    site_alias = entry.get("owner_site_alias", company)
+    fail_if(not isinstance(site_alias, str) or not
+            re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{1,100}", site_alias),
+            "SITE_OWNER_ALIAS_INVALID")
+    allowlist = set(entry["allowed_targets"])
+    approved: set[str] = set()
+    observed: set[tuple[str, str]] = set()
+    for component in capabilities:
+        fail_if(not isinstance(component, dict) or
+                sorted(component) != ["capability", "runtime_symbol", "variants"] or
+                not isinstance(component["capability"], str) or
+                not re.fullmatch(r"[a-z][a-z0-9_]{2,100}",
+                                 component["capability"]) or
+                not isinstance(component["runtime_symbol"], str) or
+                not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*",
+                                 component["runtime_symbol"]),
+                "SITE_OWNER_COMPONENT_INVALID")
+        variants = component["variants"]
+        fail_if(not isinstance(variants, list) or
+                not 1 <= len(variants) <= 250,
+                "SITE_OWNER_VARIANTS_INVALID")
+        for variant in variants:
+            fail_if(not isinstance(variant, dict) or
+                    sorted(variant) != [
+                        "environment", "owner_kind", "runtime_path",
+                        "sha256", "site", "source_artifact"
+                    ], "SITE_OWNER_VARIANT_SHAPE_INVALID")
+            if (variant["site"], variant["environment"]) != (site_alias, environment):
+                continue
+            target = exact_relative(variant["runtime_path"])
+            key = (variant["site"], component["capability"])
+            fail_if(key in observed or target in approved,
+                    "SITE_OWNER_DUPLICATE_OR_AMBIGUOUS_CAPABILITY")
+            observed.add(key)
+            # Existing MU paths need no extra expansion here. Do not grant any
+            # target that the pinned host policy has not explicitly enrolled.
+            if target not in special:
+                continue
+            fail_if(not target.startswith("wp-content/plugins/") or
+                    len(PurePosixPath(target).parts) < 4 or
+                    variant["owner_kind"] != "native-plugin" or
+                    not target.endswith(".php"),
+                    "SITE_OWNER_NON_PLUGIN_SCOPE_INVALID")
+            source = exact_relative(variant["source_artifact"])
+            fail_if(not source.startswith(
+                "ops/company-code-release-v1/site-owner-sources/files/") or
+                not source.endswith(".php"),
+                "SITE_OWNER_SOURCE_UNSCOPED")
+            sha = variant["sha256"]
+            fail_if(not isinstance(sha, str) or not HEX_SHA.fullmatch(sha),
+                    "SITE_OWNER_DIGEST_INVALID")
+            data = git_bytes(root, commit, source)
+            fail_if(digest(data) != sha, "SITE_OWNER_SOURCE_DIGEST_DRIFT")
+            approved.add(target)
+    return approved
+
+
 def capability_owner_snapshot(
     root: Path, proposed_targets: set[str], *,
     repo: Path | None = None, commit: str | None = None,
@@ -343,6 +438,11 @@ def make_plan(spec: dict, policy: dict) -> dict:
     fail_if(not isinstance(files, list) or not 1 <= len(files) <= 24,
             "INVALID_RELEASE_FILE_COUNT")
     allowlist = registered_release_targets(policy, entry, spec["git_commit"])
+    owner_targets = explicitly_enrolled_site_owner_targets(
+        policy, entry, spec["git_commit"], company=company, environment=env,
+        proposed_targets={
+            exact_relative(record.get("target")) for record in files
+            if isinstance(record, dict)})
     checks = spec.get("acceptance_checks", ["wp_boot"])
     fail_if(not isinstance(checks, list) or len(checks) < 1 or
             len(checks) > len(ALLOWED_ACCEPTANCE_CHECKS) or
@@ -356,7 +456,8 @@ def make_plan(spec: dict, policy: dict) -> dict:
         fail_if(not isinstance(record, dict), "INVALID_FILE_RECORD")
         source = exact_relative(record.get("source"))
         target = exact_relative(record.get("target"))
-        fail_if(not permitted_target(target) or target not in allowlist,
+        fail_if(not (permitted_target(target) or target in owner_targets)
+                or target not in allowlist,
                 "TARGET_FILE_NOT_ALLOWED")
         fail_if(target not in set(entry["allowed_targets"]) and source != target,
                 "CATALOG_SOURCE_TARGET_MISMATCH")
@@ -422,6 +523,11 @@ def confirm_plan(plan: dict, policy: dict, *, expect_preimage: bool) -> None:
         fail_if(catalog_at_plan != entry.get("release_catalog"),
                 "RELEASE_CATALOG_BINDING_DRIFT")
         allowlist = registered_release_targets(policy, entry, plan["git_commit"])
+    owner_targets = explicitly_enrolled_site_owner_targets(
+        policy, entry, plan["git_commit"],
+        company=plan["company"], environment=plan["environment"],
+        proposed_targets={
+            exact_relative(row["target"]) for row in plan["files"]})
     # Re-evaluate the current tenant/source functional ownership immediately
     # before execution, independently of the registered target allowlist.
     owners_now = capability_owner_snapshot(
@@ -438,7 +544,8 @@ def confirm_plan(plan: dict, policy: dict, *, expect_preimage: bool) -> None:
             "PLAN_ACCEPTANCE_CHECK_NOT_ALLOWED")
     for row in plan["files"]:
         target = exact_relative(row["target"])
-        fail_if(target not in allowlist or not permitted_target(target),
+        fail_if(target not in allowlist or not
+                (permitted_target(target) or target in owner_targets),
                 "PLAN_TARGET_NO_LONGER_ALLOWED")
         fail_if(target not in set(entry["allowed_targets"]) and row["source"] != target,
                 "PLAN_CATALOG_SOURCE_TARGET_MISMATCH")
