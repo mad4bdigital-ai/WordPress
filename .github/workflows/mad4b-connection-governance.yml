@@ -70,6 +70,8 @@ jobs:
           php -l "$root/tests/runtime-mcp-mixed-class-first-request.php"
           php -l "$root/tests/runtime-mcp-mixed-class-recovered.php"
           python3 "$root/tests/connection-readiness-contract.py"
+          php "$root/tests/provider-session-ttl-partial-context.php"
+          php "$root/tests/provider-session-ttl-partial-context.php" --valid-provider
           python3 "$root/tests/staging-write-authority-contract.py"
           python3 "$root/tests/mcp-side-channel-governance-contract.py"
           python3 "$root/tests/mcp-provider-isolation-contract.py"

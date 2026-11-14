@@ -23,6 +23,16 @@ function current_user_can( $cap ) { return ! empty( $GLOBALS['fixture_admin'] );
 function get_current_user_id() { return 7; }
 function add_action( $name, $callback, $priority = 10, $accepted = 1 ) { add_filter( $name, $callback, $priority, $accepted ); }
 function add_filter( $name, $callback, $priority = 10, $accepted = 1 ) { $GLOBALS['fixture_filters'][ $name ][ $priority ][] = array( $callback, $accepted ); }
+// WordPress fires action callbacks without a filter return value. Keep hook
+// order and accepted arg count in this hermetic provider test; absence of
+// do_action is not an acceptable substitute for production hook behavior.
+function do_action( $name, ...$args ) {
+    $groups = isset( $GLOBALS['fixture_filters'][ $name ] ) ? $GLOBALS['fixture_filters'][ $name ] : array();
+    ksort( $groups );
+    foreach ( $groups as $callbacks ) foreach ( $callbacks as $row ) {
+        call_user_func_array( $row[0], array_slice( $args, 0, $row[1] ) );
+    }
+}
 function apply_filters( $name, $value, ...$args ) {
 	$groups = isset( $GLOBALS['fixture_filters'][ $name ] ) ? $GLOBALS['fixture_filters'][ $name ] : array(); ksort( $groups );
 	foreach ( $groups as $callbacks ) foreach ( $callbacks as $row ) $value = call_user_func_array( $row[0], array_slice( array_merge( array( $value ), $args ), 0, $row[1] ) );

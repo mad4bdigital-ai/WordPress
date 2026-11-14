@@ -16,6 +16,19 @@ final class MAD4B_SCP_Provider_Connection_Center {
     const RECONNECT_CONFIRM = 'RECONNECT EXISTING STAGING PROVIDER GRANT';
     const PROVIDER_GOOGLE = 'google_drive';
 
+    /**
+     * Diagnostics must survive partial/older provider loads, but never
+     * manufacture a consent session lifetime. Zero is a blocked/unavailable
+     * state, not a default expiry or permission grant.
+     */
+    private static function native_oauth_session_ttl_seconds() {
+        if ( ! class_exists( 'MAD4B_SCP_Google_Drive_Context' )
+            || ! is_callable( array( 'MAD4B_SCP_Google_Drive_Context', 'authorization_session_ttl_seconds' ) ) )
+            return 0;
+        $seconds = (int) MAD4B_SCP_Google_Drive_Context::authorization_session_ttl_seconds();
+        return $seconds > 0 ? $seconds : 0;
+    }
+
     public static function boot() {
         add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 39 );
         add_action( 'rest_api_init', array( __CLASS__, 'register_rest_routes' ), 39 );
@@ -198,6 +211,11 @@ final class MAD4B_SCP_Provider_Connection_Center {
     private static function begin_reconnect( array $input ) {
         $allowed = self::reconnect_admission( $input );
         if ( is_wp_error( $allowed ) || true !== $allowed ) return $allowed;
+        $consent_ttl = self::native_oauth_session_ttl_seconds();
+        if ( $consent_ttl <= 0 )
+            return new WP_Error( 'mad4b_provider_oauth_session_policy_unavailable',
+                'Provider authorization session policy is unavailable; no consent session was initiated.',
+                array( 'status' => 503, 'mutation_performed' => false ) );
         $mode = MAD4B_SCP_Google_Drive_Context::auth_mode();
         $grants = MAD4B_SCP_Google_Drive_Context::workspace_grants_status();
         $selection = isset( $grants['selection'] ) && is_array( $grants['selection'] ) ? $grants['selection'] : array();
@@ -212,7 +230,7 @@ final class MAD4B_SCP_Provider_Connection_Center {
         return array( 'contract' => self::CONTRACT . '.reconnect.v2',
             'provider' => $input['provider'], 'state' => 'owner_consent_pending',
             'authorization_url' => $url,
-            'consent_expires_in_seconds' => MAD4B_SCP_Google_Drive_Context::authorization_session_ttl_seconds(),
+            'consent_expires_in_seconds' => $consent_ttl,
             'reconnect_request_expires_at' => null,
             'reconnect_request_renewable' => true,
             'new_authorization_session_required_after_expiry' => true,
@@ -500,7 +518,7 @@ final class MAD4B_SCP_Provider_Connection_Center {
             'consent_requires_browser' => in_array( $action, array( 'oauth_handoff', 'resolve_pending_revocation' ), true ),
             'reconnect_request_expires_at' => null,
             'reconnect_request_renewable' => true,
-            'oauth_authorization_session_ttl_seconds' => MAD4B_SCP_Google_Drive_Context::authorization_session_ttl_seconds(),
+            'oauth_authorization_session_ttl_seconds' => self::native_oauth_session_ttl_seconds(),
             'one_time_approval_required_for_remote_refresh' => true,
             'next_ability' => $refresh ? self::REFRESH : '',
             'read_only' => true, 'mutation_performed' => false,

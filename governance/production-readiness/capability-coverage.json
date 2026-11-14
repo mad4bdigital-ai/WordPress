@@ -3791,11 +3791,150 @@
       "new_control_ids": [],
       "coverage_reuse_rationale": "Reuse the existing MCP-01, PROVIDERS-01, EXECUTION-01, AUTOMATION-01, PERFORMANCE-01 checks for bounded read-only interfaces; no additional executable permission or first-party authority is introduced.",
       "review_rationale": "Exact PR #804 source inspection and tests. Add bounded admin-only readback of Original305 Job/Claim, with truncated-data denials, scope isolation and no authorization, 312 certification, signed 313 receipt or write mutation. This declares CI evidence only, not live verification or release authority."
+    },
+    {
+      "id": "rest:mad4b/v1/provider-connections",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "OAUTH-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-session-ttl-partial-context.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-center-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-source-contract.py"
+      ],
+      "owner_role": "Provider-connection source interface reviewer (CI-only; no owner authorization)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "The existing provider REST registration retains its precise named WordPress permission callback, anonymous access denial, independent owner OAuth consent and exact refreshed-grant approval. No new REST route, site scope or write privilege introduced by the scoped read-only OAuth TTL integrity fix.",
+      "coverage_reuse_rationale": "Use existing REST MCP, Provider, Execution, OAuth and Security controls; same-PR actual hermetic tests assert all five callback bindings and anonymous denial, plus existing approved-refresh and consent behavior. CI review never grants a live operation.",
+      "execution_note": "Runs source-only on PHP 7.4, 8.3, 8.5. Production and Original313 require independently signed release acceptance and real site readback."
+    },
+    {
+      "id": "rest:mad4b/v1/provider-connections/(?P<provider>[a-z][a-z0-9_-]{0,63})/plan",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "OAUTH-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-session-ttl-partial-context.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-center-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-source-contract.py"
+      ],
+      "owner_role": "Provider-connection source interface reviewer (CI-only; no owner authorization)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "The existing provider REST registration retains its precise named WordPress permission callback, anonymous access denial, independent owner OAuth consent and exact refreshed-grant approval. No new REST route, site scope or write privilege introduced by the scoped read-only OAuth TTL integrity fix.",
+      "coverage_reuse_rationale": "Use existing REST MCP, Provider, Execution, OAuth and Security controls; same-PR actual hermetic tests assert all five callback bindings and anonymous denial, plus existing approved-refresh and consent behavior. CI review never grants a live operation.",
+      "execution_note": "Runs source-only on PHP 7.4, 8.3, 8.5. Production and Original313 require independently signed release acceptance and real site readback."
+    },
+    {
+      "id": "rest:mad4b/v1/provider-connections/(?P<provider>[a-z][a-z0-9_-]{0,63})/reconnect",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "OAUTH-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-session-ttl-partial-context.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-center-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-source-contract.py"
+      ],
+      "owner_role": "Provider-connection source interface reviewer (CI-only; no owner authorization)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "The existing provider REST registration retains its precise named WordPress permission callback, anonymous access denial, independent owner OAuth consent and exact refreshed-grant approval. No new REST route, site scope or write privilege introduced by the scoped read-only OAuth TTL integrity fix.",
+      "coverage_reuse_rationale": "Use existing REST MCP, Provider, Execution, OAuth and Security controls; same-PR actual hermetic tests assert all five callback bindings and anonymous denial, plus existing approved-refresh and consent behavior. CI review never grants a live operation.",
+      "execution_note": "Runs source-only on PHP 7.4, 8.3, 8.5. Production and Original313 require independently signed release acceptance and real site readback."
+    },
+    {
+      "id": "rest:mad4b/v1/provider-connections/(?P<provider>[a-z][a-z0-9_-]{0,63})/reconnect/complete",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "OAUTH-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-session-ttl-partial-context.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-center-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-source-contract.py"
+      ],
+      "owner_role": "Provider-connection source interface reviewer (CI-only; no owner authorization)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "The existing provider REST registration retains its precise named WordPress permission callback, anonymous access denial, independent owner OAuth consent and exact refreshed-grant approval. No new REST route, site scope or write privilege introduced by the scoped read-only OAuth TTL integrity fix.",
+      "coverage_reuse_rationale": "Use existing REST MCP, Provider, Execution, OAuth and Security controls; same-PR actual hermetic tests assert all five callback bindings and anonymous denial, plus existing approved-refresh and consent behavior. CI review never grants a live operation.",
+      "execution_note": "Runs source-only on PHP 7.4, 8.3, 8.5. Production and Original313 require independently signed release acceptance and real site readback."
+    },
+    {
+      "id": "rest:mad4b/v1/provider-connections/(?P<provider>[a-z][a-z0-9_-]{0,63})/refresh",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "OAUTH-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-session-ttl-partial-context.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-center-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-source-contract.py"
+      ],
+      "owner_role": "Provider-connection source interface reviewer (CI-only; no owner authorization)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "The existing provider REST registration retains its precise named WordPress permission callback, anonymous access denial, independent owner OAuth consent and exact refreshed-grant approval. No new REST route, site scope or write privilege introduced by the scoped read-only OAuth TTL integrity fix.",
+      "coverage_reuse_rationale": "Use existing REST MCP, Provider, Execution, OAuth and Security controls; same-PR actual hermetic tests assert all five callback bindings and anonymous denial, plus existing approved-refresh and consent behavior. CI review never grants a live operation.",
+      "execution_note": "Runs source-only on PHP 7.4, 8.3, 8.5. Production and Original313 require independently signed release acceptance and real site readback."
     }
   ],
   "lifecycle": [],
   "change_impact_notes": "For each newly introduced registry item, registered MAD4B Ability, PHP service or Admin asset, add a reviewed_capabilities entry with exact id, nonempty existing control_ids, a regression test changed in this PR, owner_role, review_rationale, and status 'reviewed_for_ci_only'. CI fails on uncovered introductions; no entry grants Production. Existing runtime/config source additions and modifications require reviewed_changes entries keyed by exact Git blob, impacted control IDs and test changed in the same PR. Every new capability must explicitly decide whether to expand the checklist or reuse existing controls with a rationale. Static REST/AJAX/Cron surface discoveries remain candidates, never runtime certification.",
   "reviewed_changes": [
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-connection-center.php",
+      "source_blob_sha": "ae0d9ab6ece76799d15f420c89aa68cced3e213b",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "SECURITY-01",
+        "PROVIDERS-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-session-ttl-partial-context.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-center-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-source-contract.py"
+      ],
+      "owner_role": "MAD4B governed OAuth Provider Source reviewer — exact read-only plan and owner-consent denial",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Read-only OAuth plan tolerates a partial or older Google Drive Context provider without a PHP fatal error or an invented authorization-session lifetime. Owner consent initiation must deny when the original provider TTL is unavailable. Valid native provider TTL is preserved; no token, OAuth grant, Site Profile, Production authorization or provider source is changed.",
+      "coverage_reuse_rationale": "Original native consent/PKCE and Company Site Profile policies remain authoritative; fail-closed TTL projection and session planning add no new permissions.",
+      "execution_note": "Exact native PHP 7.4, 8.3 and 8.5 tests pass for missing and valid TTL, existing owner handoff and mutation denied. CI-only evidence is not Owner/Original313 release."
+    },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-drive-scan-continuation.php",
       "source_blob_sha": "d440f529a5a022a266961872d2de16d97bf17074",
