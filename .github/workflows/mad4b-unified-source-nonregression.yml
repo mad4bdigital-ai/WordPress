@@ -57,6 +57,7 @@ jobs:
           python3 -m unittest discover -s tests -p 'test_readiness_supervisor.py' -v
           python3 -m unittest discover -s tests -p 'test_certified_mcp_adapter_profile.py' -v
           python3 -m unittest discover -s tests -p 'test_ci_legacy_contract_convergence.py' -v
+          python3 -m unittest discover -s tests -p 'test_dynamic_readiness_rest_ability_owner.py' -v
           python3 -m unittest discover -s tools -p 'test_mad4b_standalone_build.py' -v
           python3 -m unittest discover -s ops/company-code-release-v1/tests -p 'test_dynamic_capability*.py' -q
           # The actual Registry requires a root-owned, non-writable enrolled
