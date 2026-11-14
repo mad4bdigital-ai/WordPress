@@ -67,6 +67,47 @@ class ReadinessSurfaceConvergence(unittest.TestCase):
             self.assertFalse({r for r in reg.registered_surfaces(HEAD, SOURCE)
                               if r.startswith("rest:")})
 
+    def test_original_wordpress_actions_are_not_phantom_abilities(self):
+        actual = reg.php_capabilities(HEAD, SOURCE)
+        self.assertNotIn("ability:mad4b/performance/release_verified", actual)
+        self.assertIn("ability:mad4b/core-web-vitals-status", actual)
+        source = """<?php
+            function register_abilities() {
+                add_action('mad4b/same-name', 'handler');
+                add_filter('mad4b/filter', 'handler');
+                wp_register_ability('mad4b/same-name', array());
+            }
+        """
+        with mock.patch.object(reg, "git_text", return_value=source):
+            found = reg.php_capabilities(HEAD, SOURCE)
+            self.assertIn("ability:mad4b/same-name", found)
+            self.assertNotIn("ability:mad4b/filter", found)
+
+    def test_real_wordpress_cron_hooks_are_not_recurrence_labels(self):
+        routes = reg.registered_surfaces(HEAD, SOURCE)
+        self.assertEqual(
+            {entry for entry in routes if entry.startswith("cron:")},
+            {"cron:" + name for name in
+             ("mad4b_core_web_vitals_daily",
+              "mad4b_core_web_vitals_refresh_once",
+              "mad4b_core_web_vitals_device_worker")},
+        )
+        self.assertNotIn("cron:daily", routes)
+
+    def test_nested_cron_arguments_are_scanned_without_invention(self):
+        fixture = """<?php
+            class MAD4B_Test {
+                const EVENT = 'mad4b_real_cron';
+                function boot() {
+                    wp_schedule_event(max(time(), intval($due)), 'daily', self::EVENT);
+                    wp_schedule_single_event(time()+10, 'mad4b_oneshot', array($x,$y));
+                    wp_schedule_event(time()+20, 'hourly', $untrusted_hook);
+                }
+            }
+        """
+        self.assertEqual(reg.cron_event_candidates(fixture),
+                         {"cron:mad4b_real_cron", "cron:mad4b_oneshot"})
+
     def test_mention_is_never_registered_owner(self):
         marker = "wp-content/plugins/mad4b-site-control-plane/includes/example.php"
         mocked = SimpleNamespace(

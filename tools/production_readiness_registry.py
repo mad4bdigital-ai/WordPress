@@ -55,8 +55,16 @@ REST_VARIABLE_ROUTE = re.compile(
     r"""\$(?P<base>[a-zA-Z_]\w*)\s*(?:\.\s*(?P<q>['"])(?P<suffix>/[a-z0-9_/-]+)(?P=q))?\s*,""",
     re.I,
 )
+HOOK_FIRST_ARG = re.compile(
+    r"""add_(?:action|filter)\s*\(\s*(?P<q>['"])(?P<hook>mad4b/[a-z0-9._/-]+)(?P=q)""",
+    re.I,
+)
 AJAX_ROUTE = re.compile(r"""add_action\s*\(\s*['"](wp_ajax_(?:nopriv_)?[a-z0-9_-]+)['"]""", re.I)
-CRON_SCHEDULE = re.compile(r"""wp_schedule_(?:single_)?event\s*\(\s*[^,]+,\s*(?:[^,]+,\s*)?['"]([a-z0-9_-]+)['"]""", re.I)
+CRON_CALL = re.compile(r"wp_schedule_(?P<single>single_)?event\s*\(", re.I)
+CRON_CONST = re.compile(
+    r"""\bconst\s+(?P<name>[A-Z][A-Z0-9_]*)\s*=\s*(?P<q>['"])(?P<value>[a-z0-9_-]+)(?P=q)\s*;""",
+    re.I,
+)
 
 
 def git(*args, checked=True):
@@ -163,6 +171,68 @@ def rest_variable_surfaces(src):
     return detected, aliases
 
 
+
+def split_php_call_arguments(src, start):
+    """Split one PHP call's top-level arguments, respecting nested functions.
+
+    Static source analysis only. Incomplete/malformed source remains unknown;
+    do not invent an event hook or confuse a recurrence like "daily" with one.
+    """
+    args, part, depth, quote, escaped = [], [], 0, None, False
+    for char in src[start:]:
+        if quote is not None:
+            part.append(char)
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == quote:
+                quote = None
+            continue
+        if char in ("'", '"'):
+            quote = char
+            part.append(char)
+        elif char == "(" or char == "[":
+            depth += 1
+            part.append(char)
+        elif char == ")" or char == "]":
+            if depth == 0:
+                if char != ")":
+                    return []
+                args.append("".join(part).strip())
+                return args
+            depth -= 1
+            part.append(char)
+        elif char == "," and depth == 0:
+            args.append("".join(part).strip())
+            part = []
+        else:
+            part.append(char)
+    return []
+
+
+def cron_event_candidates(src):
+    """Inventory actual hook argument, not recurrence, for WordPress Cron."""
+    constants = {}
+    for entry in CRON_CONST.finditer(src):
+        constants.setdefault(entry.group("name"), set()).add(entry.group("value"))
+    rows = set()
+    for call in CRON_CALL.finditer(src):
+        args = split_php_call_arguments(src, call.end())
+        hook_index = 1 if call.group("single") else 2
+        if len(args) <= hook_index:
+            continue
+        expression = args[hook_index]
+        literal = re.fullmatch(r"""['"]([a-z0-9_-]+)['"]""", expression, re.I)
+        if literal:
+            rows.add(identifier("cron", literal.group(1)))
+            continue
+        const = re.fullmatch(r"(?:self|static)::([A-Z][A-Z0-9_]*)", expression)
+        if const and len(constants.get(const.group(1), set())) == 1:
+            rows.add(identifier("cron", next(iter(constants[const.group(1)]))))
+    return rows
+
+
 def php_capabilities(ref, path):
     src = git_text(ref, path)
     if not src or not PHP_DECLARATION.search(src):
@@ -178,6 +248,13 @@ def php_capabilities(ref, path):
         return whole[:start] + "__rest_namespace__" + whole[end:]
 
     ability_source = REST_ROUTE.sub(mask_rest_namespace, src)
+    # WordPress event/filter hooks are not wp_register_ability registrations.
+    # Mask only the first argument in add_action/add_filter, not same-named
+    # Ability literals which may still appear elsewhere in this source.
+    ability_source = HOOK_FIRST_ARG.sub(
+        lambda match: match.group(0).replace(match.group("hook"), "__event_hook__", 1),
+        ability_source,
+    )
     _, aliases = rest_variable_surfaces(src)
     for name, start, end in sorted(aliases, key=lambda x: x[1], reverse=True):
         # Do not suppress if the same PHP variable is directly used as an
@@ -213,7 +290,7 @@ def registered_surfaces(ref, path):
     variables, _ = rest_variable_surfaces(src)
     rows.update(variables)
     rows.update(identifier("ajax", x) for x in AJAX_ROUTE.findall(src))
-    rows.update(identifier("cron", x) for x in CRON_SCHEDULE.findall(src))
+    rows.update(cron_event_candidates(src))
     return rows
 
 

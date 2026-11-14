@@ -88,6 +88,7 @@ jobs:
           php wp-content/plugins/mad4b-site-control-plane/tests/mcp-runtime-recovery-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tour-highlights-v1.php
           php tests/native-tour-highlights/acceptance.php
+          php tests/readiness-core-web-vitals-rest-cron-hermetic.php
           # An incomplete or missing Context Authority may not validate
           # another company's Brand Core; do not fatal on hermetic shims.
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-context-builder.php
