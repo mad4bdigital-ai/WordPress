@@ -27,7 +27,10 @@ class TourHighlightsExplicitTourModel(unittest.TestCase):
             with self.subTest(file=name):
                 row=self.policy['reviewed_business_models'][name]
                 self.assertEqual(row['models'],['tours-and-activities'])
-                self.assertIn('optional tourism-domain',row['rationale'])
+                # The latest native Journey review calls this an explicitly
+                # bounded tourism component, not a general fleet model.
+                self.assertIn('intentionally bounded tourism component',row['rationale'])
+                self.assertIn('no',row['rationale'].lower())
                 self.assertNotIn('FIXED_BUSINESS_MODEL',scan.inspect(name,
                     (ROOT/'wp-content/plugins/mad4b-site-control-plane'/name).read_text(),self.policy))
         self.assertNotIn('includes/class-mad4b-scp-site-profile.php',
