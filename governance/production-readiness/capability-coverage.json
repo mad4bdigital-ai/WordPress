@@ -5520,6 +5520,57 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing ability/security/provider controls apply to exact original page-only immutable evidence and never supply owner approval or file mutation.",
       "review_rationale": "Executed exact new Company Code Reconciliation PHP class on PHP 7.4/8.5. Two original private read Abilities are registered with closed schemas, native read permissions and no destructive flag. A deliberately stubbed original receipt verifier covers valid and invalid source/target receipt, manifest SHA binding, same-company/different-site scope, path traversal denial and protected-file no-overwrite. Inventory-page reference is evidence-only, not an extra registered privilege. Does not claim the stub is a real crypto signature or permit file transfer."
+    },
+    {
+      "id": "rest:mad4b/v1/company-tenant-migration/commit",
+      "control_ids": [
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/company-tenant-migration-rollback-hermetic.php"
+      ],
+      "owner_role": "MAD4B native company role migration source/rollback reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance, native execution and provider/security controls remain owner of this sensitive tenant role mutation. Source-only CI cannot authorize Production or change global admin powers.",
+      "review_rationale": "The original Company Tenant Migration WordPress class is executed against a controlled in-memory WP environment under PHP 7.4/8.5. Fixture verifies two private REST methods, original manage_options+activate_plugins permission, owner browser consent, exact Site Profile binding, plan digest CAS, site-level GET_LOCK, exact system-power removals, receipt readback, and forced audit-error restoration of the preexisting role and receipt. No real WordPress roles, users, content, providers, commerce data or production environment are modified."
+    },
+    {
+      "id": "rest:mad4b/v1/company-tenant-migration/plan",
+      "control_ids": [
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/company-tenant-migration-rollback-hermetic.php"
+      ],
+      "owner_role": "MAD4B native company role migration source/rollback reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance, native execution and provider/security controls remain owner of this sensitive tenant role mutation. Source-only CI cannot authorize Production or change global admin powers.",
+      "review_rationale": "The original Company Tenant Migration WordPress class is executed against a controlled in-memory WP environment under PHP 7.4/8.5. Fixture verifies two private REST methods, original manage_options+activate_plugins permission, owner browser consent, exact Site Profile binding, plan digest CAS, site-level GET_LOCK, exact system-power removals, receipt readback, and forced audit-error restoration of the preexisting role and receipt. No real WordPress roles, users, content, providers, commerce data or production environment are modified."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-tenant-migration.php",
+      "control_ids": [
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/company-tenant-migration-rollback-hermetic.php"
+      ],
+      "owner_role": "MAD4B native company role migration source/rollback reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance, native execution and provider/security controls remain owner of this sensitive tenant role mutation. Source-only CI cannot authorize Production or change global admin powers.",
+      "review_rationale": "The original Company Tenant Migration WordPress class is executed against a controlled in-memory WP environment under PHP 7.4/8.5. Fixture verifies two private REST methods, original manage_options+activate_plugins permission, owner browser consent, exact Site Profile binding, plan digest CAS, site-level GET_LOCK, exact system-power removals, receipt readback, and forced audit-error restoration of the preexisting role and receipt. No real WordPress roles, users, content, providers, commerce data or production environment are modified."
     }
   ],
   "lifecycle": [],
@@ -14333,6 +14384,24 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing governance/platform/security source controls keep exact source owner and signature-bound evidence fail-closed.",
       "review_rationale": "This exact source contains only signed-page bounded planning/comparison, no filesystem, shell, WordPress content writes, grant creation or allow-to-apply output. The original PHP class is executed on PHP 7.4/8.5 with synthetic receipt validation; it enforces company/site/fingerprint, path, sha and protected-source preservation. Actual Original Core cryptographic verification, full inventory, Host authority and Site Owner remain separate live checks."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-tenant-migration.php",
+      "source_blob_sha": "d2356e26b3c36511cd888cfff06de49d198cf0d9",
+      "control_ids": [
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/company-tenant-migration-rollback-hermetic.php"
+      ],
+      "owner_role": "MAD4B source-only tenant role integrity and rollback reviewer, no Owner/Host release authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance, platform and security source controls bind current immutable source blob and executed original-class rollback/authority tests.",
+      "review_rationale": "Inspected original tenant role migration: touches only master_admin role and its receipt; neither content/settings/products/bookings nor existing user identities are imported or overwritten. Hermetic PHP executes denied guest, no-plugin-admin, unready Site Profile, stale-CAS, valid owner role delta, audit intent/receipt and faulted audit rollback with exact SQL-lock release. A real Site Owner, Original Core release, live MariaDB concurrency and independent readback remain explicitly untested."
     }
   ],
   "code_change_rules": {
