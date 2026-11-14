@@ -4,7 +4,7 @@ import vm from 'node:vm';
 
 const source = readFileSync(new URL('../assets/admin-settings-persistence.js', import.meta.url), 'utf8');
 
-async function fixture(responseKind = 'success', profile = false, refreshMode = '', viewCase = '') {
+async function fixture(responseKind = 'success', profile = false, refreshMode = '', viewCase = '', nativeSubmitAvailable = true) {
   const listeners = new Map();
   const controls = [
     { name: 'action', value: 'mad4b_site_profile_save', disabled: false },
@@ -28,6 +28,17 @@ async function fixture(responseKind = 'success', profile = false, refreshMode = 
     removeAttribute() {},
     getAttribute: name => name === 'data-mad4b-refresh-selector' ? selector : '',
     matches: value => value === '.mad4b-settings-ajax-form',
+    // Match native validated submission semantics: unlike form.submit(),
+    // requestSubmit preserves built-in validation and a triggering button.
+    requestSubmit(submitter) {
+      fallback++;
+      assert.equal(controls[0].disabled, false, 'restore controls before native fallback');
+      assert.equal(form.dataset.mad4bBusy, undefined, 'clear AJAX busy state first');
+      assert.equal(submitter, undefined, 'no synthetic submitter for this fixture');
+      listeners.get('submit')?.({ target: form, preventDefault() {
+        throw new Error('A validated native fallback must not re-enter AJAX');
+      } });
+    },
     querySelectorAll: value => value === '[data-mad4b-one-time-confirm]' ? controls.slice(6, 8) : controls,
     querySelector: value => value === '[data-mad4b-settings-feedback]'
       ? feedback
@@ -35,6 +46,8 @@ async function fixture(responseKind = 'success', profile = false, refreshMode = 
         ? section
         : controls.find(c => value.includes(`"${c.name}"`)) || null,
   };
+
+  if (!nativeSubmitAvailable) delete form.requestSubmit;
 
   let replacedWith = null;
   const currentWorkspace = { replaceWith(node) { replacedWith = node; } };
@@ -116,8 +129,7 @@ async function fixture(responseKind = 'success', profile = false, refreshMode = 
       HTMLFormElement: {
         prototype: {
           submit() {
-            fallback++;
-            assert.equal(controls[0].disabled, false);
+            throw new Error('Legacy submit() bypasses native browser validation');
           }
         }
       }
@@ -183,7 +195,11 @@ async function fixture(responseKind = 'success', profile = false, refreshMode = 
   assert.equal(postBody?.get('unchecked'), null);
   assert.equal(controls[0].disabled, false);
   assert.equal(controls[8].disabled, true);
-  assert.equal(fallback, responseKind === 'sentinel' ? 1 : 0);
+  assert.equal(fallback, responseKind === 'sentinel' && nativeSubmitAvailable ? 1 : 0);
+  if (responseKind === 'sentinel' && !nativeSubmitAvailable) {
+    assert.match(feedback.textContent, /validated fallback unavailable/i);
+    assert.equal(form.dataset.mad4bBusy, undefined, 'unsupported browser must release AJAX busy state');
+  }
 
   if (responseKind === 'success') {
     assert.equal(controls[3].value, '3');
@@ -211,6 +227,7 @@ async function fixture(responseKind = 'success', profile = false, refreshMode = 
 }
 
 for (const kind of ['success', 'sentinel', 'nonce', 'malformed']) await fixture(kind);
+await fixture('sentinel', false, '', '', false); // Never fall back to legacy submit() when requestSubmit is absent.
 await fixture('success', true);
 await fixture('success', true, 'ok');
 await fixture('success', true, 'missing');
@@ -219,4 +236,4 @@ for (const viewCase of ['brand-ok', 'brand-stale', 'brand-type-mismatch', 'brand
   await fixture('success', false, 'ok', viewCase);
 }
 
-console.log('mad4b.admin-settings-persistence-runtime.v3: 16/16 PASS');
+console.log('mad4b.admin-settings-persistence-runtime.v3: 17/17 PASS');
