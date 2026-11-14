@@ -54,9 +54,9 @@ def build(source: Path, source_sha: str, critical: Path, critical_sha: str,
         if len(css) > 5000 or re.search(r'@import|@font-face|url\s*\(|</style|<script',css,re.I):
             raise ValueError('Unexpected external CSS rule')
         missing.append(''.join(v+'{' for v in parents)+css+'}'*len(parents))
-    if not 1 <= len(missing) <= 250 or sum(map(len,missing)) > 60000:
+    if not 1 <= len(missing) <= 400 or sum(map(len,missing)) > 80000:
         raise ValueError('Out-of-bounds missing-rule extraction')
-    supplemental = ('\n/* MAD4B QA: exact CSSOM missing rules for 820px first viewport */\n'
+    supplemental = (f'\n/* MAD4B QA: exact CSSOM missing rules for {evidence["width"]}px first viewport */\n'
                     f'@media (min-width:{width_min}px) and (max-width:{width_max}px){{\n'
                     + '\n'.join(missing)+'\n}\n')
     if reserve:
@@ -94,10 +94,29 @@ def main(argv=None):
     ap.add_argument('--min-width',required=True,type=int)
     ap.add_argument('--max-width',required=True,type=int)
     ap.add_argument('--reserve-json',help='audited geometry reservation policy')
+    ap.add_argument('--append-to',help='exact previous critical file to which QA supplement will be added')
+    ap.add_argument('--append-to-sha',help='SHA-256 of the verified previous critical file')
     opt=ap.parse_args(argv)
     reserved=json.loads(Path(opt.reserve_json).read_text()) if opt.reserve_json else {}
     result,proof=build(Path(opt.source),opt.source_sha,Path(opt.critical),opt.critical_sha,
                        Path(opt.cssom),opt.min_width,opt.max_width,reserved)
+    if opt.append_to or opt.append_to_sha:
+        if not opt.append_to or not opt.append_to_sha or not re.fullmatch('[a-f0-9]{64}',opt.append_to_sha):
+            ap.error('Both a valid --append-to and --append-to-sha are required')
+        previous_file=Path(opt.append_to)
+        if previous_file.is_symlink() or not previous_file.is_file():
+            ap.error('Previous admitted CSS must be a regular file')
+        previous=previous_file.read_bytes()
+        original=Path(opt.critical).read_bytes()
+        if sha(previous)!=opt.append_to_sha or not previous.startswith(original):
+            ap.error('Previous CSS hash/base mismatch')
+        supplement=result[len(original):]
+        result=previous+supplement
+        if len(result)>=1048576:
+            ap.error('Composed Critical CSS exceeds size limit')
+        proof['composed_from_sha256']=opt.append_to_sha
+        proof['candidate_sha256']=sha(result)
+        proof['candidate_bytes']=len(result)
     path=Path(opt.output)
     if path.is_symlink():ap.error('No symlink output')
     if path.exists():
