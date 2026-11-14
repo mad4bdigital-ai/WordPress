@@ -224,7 +224,9 @@
         ||String(i+1);
       activate.setAttribute('aria-label',L.show+': '+readable.slice(0,110));
       activate.setAttribute('aria-pressed','false');
-      activate.addEventListener('click',e=>{e.stopPropagation();selectHighlight(card);});
+      // Let the event bubble: the original Split/Story controller listens at
+      // the section boundary to rebuild the right-hand place panel.
+      activate.addEventListener('click',()=>selectHighlight(card));
       card.prepend(activate);
       card.removeAttribute('role');
       card.removeAttribute('tabindex');

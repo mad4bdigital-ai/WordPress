@@ -611,3 +611,19 @@
 @media (prefers-reduced-motion:reduce){
   .jd-v2 .jd-place-tile,.jd-v2 .tour-place-group .jet-listing-grid__item > .elementor > .e-con {transition:none!important;}
 }
+
+
+/* WCAG: real native toggle is a sibling of the place links, never a
+ * role=button ancestor. Preserve the Elementor design tokens and layout. */
+.tour-journey-discovery .tour-hl-ui__card{position:relative;}
+.tour-journey-discovery .tour-hl-ui__card .jd-highlight-activate{
+  position:absolute;inset:0;width:100%;height:100%;margin:0;padding:0;
+  border:0;background:transparent;opacity:0;z-index:1;cursor:pointer;
+}
+.tour-journey-discovery .tour-hl-ui__card a,
+.tour-journey-discovery .tour-hl-ui__card button:not(.jd-highlight-activate){
+  position:relative;z-index:2;
+}
+.tour-journey-discovery .tour-hl-ui__card:has(.jd-highlight-activate:focus-visible){
+  outline:3px solid var(--e-global-color-accent,#b68d52);outline-offset:3px;
+}

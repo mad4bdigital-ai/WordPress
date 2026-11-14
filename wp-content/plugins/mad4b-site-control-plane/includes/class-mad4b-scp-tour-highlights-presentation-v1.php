@@ -225,7 +225,17 @@ final class MAD4B_Tour_Highlights_Presentation_V1 {
     private static function text_mention(string $content,string $phrase):bool {
         $phrase=trim((string)preg_replace('/\s+/u',' ',$phrase));
         if($phrase==='')return false;
-        return preg_match('~(?<![\p{L}\p{N}])'.preg_quote($phrase,'~').'(?![\p{L}\p{N}])~iu',$content)===1;
+        $pattern=static fn($term)=>'~(?<![\p{L}\p{N}])'.preg_quote($term,'~').'(?![\p{L}\p{N}])~iu';
+        if(preg_match($pattern($phrase),$content)===1)return true;
+        // WPML may use Lúxor while the editorial copy says Luxor.
+        // Fold only diacritics; never infer substring or geographic siblings.
+        if(function_exists('remove_accents')){
+            $foldedPhrase=remove_accents($phrase);
+            $foldedContent=remove_accents($content);
+            if($foldedPhrase!==$phrase || $foldedContent!==$content)
+                return preg_match($pattern($foldedPhrase),$foldedContent)===1;
+        }
+        return false;
     }
 
     /**
@@ -527,7 +537,37 @@ final class MAD4B_Tour_Highlights_Presentation_V1 {
                     .'<span aria-hidden="true">⌖</span> '.esc_html((string)$place['label']).'</a>';
             }
         }
-        if(!$links)return '';
+        if(!$links&&$geographicContextLinks){
+            // Geographic-only Highlights are legitimate when the editor
+            // explicitly names a place in the heading, or describes a journey
+            // with named stops/route. Merely saying "Cairo tour service" in
+            // generic logistics copy never becomes a confirmed visit.
+            $heading=html_entity_decode(wp_strip_all_tags((string)($card['title']??'')),ENT_QUOTES|ENT_HTML5,'UTF-8');
+            $namedHeading=false;
+            foreach($places as $place){
+                if(($place['kind']??'')!=='state_governorate')continue;
+                if(self::text_mention($heading,(string)($place['label']??''))){
+                    $namedHeading=true;break;
+                }
+            }
+            // Two explicitly named governorates are valid route context in
+            // all six locales, even when the travel verb has a translation
+            // not represented by English keywords (e.g. أبحر بين أسوان والأقصر).
+            $routeMention=count($geographicContextLinks)>=2;
+            $travelAction=preg_match('~(?<![\p{L}])(?:visit|explore|sail|naveg|navig|besuch|visita|voyage|reise|recorr|أبحر|ابحر|تنقل|توجه|استكشف|اكتشف|زيارة|سافر|تجوّل|تجول|زُر|زر)[\p{L}]*~iu',$content);
+            // Some legacy Highlights begin with a comma-separated SEO query
+            // string mentioning many destinations. It is not an itinerary
+            // route, even though several geographic names are present.
+            $keywordDump=mb_strlen($content,'UTF-8')>230
+                &&preg_match_all('/[,،]/u',$content)>5;
+            // A location in a vague promotional heading (e.g. "Cairo's
+            // Classics") is not a visit. Require a clear travel action or a
+            // multi-destination route. Even a named heading must not elevate
+            // an SEO keyword list into mapped itinerary stops.
+            if($keywordDump||(!$routeMention&&!$travelAction))
+                $geographicContextLinks=[];
+        }
+        if(!$links&&!$geographicContextLinks)return '';
         $links=array_merge($links,$geographicContextLinks);
         return '<div class="tour-hl-ui__related">'.implode('',$links).'</div>';
     }

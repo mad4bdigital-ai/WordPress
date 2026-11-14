@@ -262,7 +262,9 @@
       });
       const direct=related.filter(e=>e.evidence==='mentioned').length;
       const inItinerary=related.filter(e=>e.evidence==='itinerary').length;
-      const other=related.length-direct-inItinerary;
+      const geographic=related.filter(e=>
+        e.evidence==='geographic-context'||e.evidence==='editorial-context').length;
+      const other=related.length-direct-inItinerary-geographic;
       // Breadcrumb reflects the active taxonomy level, not a single arbitrary
       // attraction when multiple sibling attractions belong to one highlight.
       path.replaceChildren();
@@ -299,6 +301,7 @@
       const evidenceSummary=[
         direct?String(direct)+' '+(mode==='split'?L.direct:M.linked):'',
         inItinerary?String(inItinerary)+' '+L.itinerary:'',
+        geographic?String(geographic)+' '+L.context:'',
         other?String(other)+' '+(mode==='split'?L.associated:M.associated):''
       ].filter(Boolean).join(' · ');
       summary.textContent=String(related.length)+' '+(TL[kind]||L.places)
@@ -367,8 +370,14 @@
       // The inline card count refers to source-linked destinations only.
       // Geographic breadcrumbs (country/governorate) are useful context but
       // are not extra places visited or linked by the Highlight.
-      const directlyLinked=model.related.filter(e=>
+      const includedVisits=model.related.filter(e=>
         e.evidence==='mentioned'||e.evidence==='itinerary').length;
+      const contextual=model.related.filter(e=>
+        e.evidence==='geographic-context'||e.evidence==='editorial-context').length;
+      // Mixed attractions + geographic breadcrumb: never count the region as
+      // an extra included attraction. Geographic-only highlights keep their
+      // true number of named destinations (e.g. Aswan AND Luxor).
+      const directlyLinked=includedVisits||contextual;
       inline.querySelector('.jd-split-v3__inline-count').textContent=String(directlyLinked)+' '+L.places;
       cards.forEach(c=>{if(c!==card)c.querySelector('.jd-split-v3__inline')?.remove();});
       }
