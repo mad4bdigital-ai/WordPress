@@ -5376,6 +5376,78 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing mapped admin/browser/security controls cover the same native WordPress company permission callback; permission does not confer global administrator role.",
       "review_rationale": "Original Company Master Admin class was loaded in hermetic PHP 7.4 and 8.5. Direct native registration confirmed 4 exact REST endpoints, GET vs POST separation, a common custom company capability permission callback, anonymous denial and no unprivileged staff/translation/task mutation. Production migration and Staging ownerless migration are rejected. Does not exercise real account creation, real WPML/FluentBoards updates or browser authorization."
+    },
+    {
+      "id": "rest:mad4b/v1/admin/company-team/users/(?P<id>\\\\d+)",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/company-user-native-lifecycle-hermetic.php"
+      ],
+      "owner_role": "MAD4B original company user lifecycle source reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing Admin/Browser/Security and Governance/Platform controls remain binding to the original tenant permission, not global WordPress admin authority.",
+      "review_rationale": "Original company staff lifecycle class is executed in isolated PHP 7.4/8.5. Three REST routes, four HTTP methods, and native company-capability permission callbacks are exercised; anonymous denial, administrator/current-owner deletion refusal, username confirmation, suspended REST authentication and WP login refusal are asserted. No real account is mutated, and no new role or global admin authority is introduced by this source-only review."
+    },
+    {
+      "id": "rest:mad4b/v1/admin/company-team/users/(?P<id>\\\\d+)/lifecycle",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/company-user-native-lifecycle-hermetic.php"
+      ],
+      "owner_role": "MAD4B original company user lifecycle source reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing Admin/Browser/Security and Governance/Platform controls remain binding to the original tenant permission, not global WordPress admin authority.",
+      "review_rationale": "Original company staff lifecycle class is executed in isolated PHP 7.4/8.5. Three REST routes, four HTTP methods, and native company-capability permission callbacks are exercised; anonymous denial, administrator/current-owner deletion refusal, username confirmation, suspended REST authentication and WP login refusal are asserted. No real account is mutated, and no new role or global admin authority is introduced by this source-only review."
+    },
+    {
+      "id": "rest:mad4b/v1/admin/company-team/users/(?P<id>\\\\d+)/preflight",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/company-user-native-lifecycle-hermetic.php"
+      ],
+      "owner_role": "MAD4B original company user lifecycle source reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing Admin/Browser/Security and Governance/Platform controls remain binding to the original tenant permission, not global WordPress admin authority.",
+      "review_rationale": "Original company staff lifecycle class is executed in isolated PHP 7.4/8.5. Three REST routes, four HTTP methods, and native company-capability permission callbacks are exercised; anonymous denial, administrator/current-owner deletion refusal, username confirmation, suspended REST authentication and WP login refusal are asserted. No real account is mutated, and no new role or global admin authority is introduced by this source-only review."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-user-lifecycle.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/company-user-native-lifecycle-hermetic.php"
+      ],
+      "owner_role": "MAD4B original company user lifecycle source reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing Admin/Browser/Security and Governance/Platform controls remain binding to the original tenant permission, not global WordPress admin authority.",
+      "review_rationale": "Original company staff lifecycle class is executed in isolated PHP 7.4/8.5. Three REST routes, four HTTP methods, and native company-capability permission callbacks are exercised; anonymous denial, administrator/current-owner deletion refusal, username confirmation, suspended REST authentication and WP login refusal are asserted. No real account is mutated, and no new role or global admin authority is introduced by this source-only review."
     }
   ],
   "lifecycle": [],
@@ -14151,6 +14223,25 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing admin/browser/security source controls remain mapped; local CI review is not an account mutation grant.",
       "review_rationale": "Original class source keeps tenant-only manage_company_operations authority, no automatic Production role migration, explicit Staging owner browser cookie/nonce admission, approved staff roles and no broad WordPress admin capability grant. Hermetic source test exercises its four REST declarations, denies guest writes and rejects Production and ownerless Staging migrations. Does not authorize real employee management or remote company-tenant operations."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-user-lifecycle.php",
+      "source_blob_sha": "ddf87cfab7dc00a8e12a6d2c679fa1921595ec25",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/company-user-native-lifecycle-hermetic.php"
+      ],
+      "owner_role": "MAD4B company user lifecycle no-production-authority source reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance/platform/security controls remain mapped to exact original user-lifecycle source and updated hermetic negative tests.",
+      "review_rationale": "Exact native company user lifecycle source inspected for tenant-only permission, protected current user/administrators, suspension-first deletion, exact username confirmation, completeness of task and content dependencies, audit and WordPress login / REST suspension blocks. Original methods were exercised only on bounded denial paths with PHP 7.4/8.5. Destructive live account deletion remains untested and is NOT approved or released by this review."
     }
   ],
   "code_change_rules": {
