@@ -396,7 +396,20 @@ jobs:
           require rtrim( $_SERVER['DOCUMENT_ROOT'], '/' ) . '/index.php';
           PHP
 
-          php -S 127.0.0.1:8088 -t "$WP_PATH" /tmp/mad4b-wp-router.php >/tmp/mad4b-browser-server.log 2>&1 &
+          # This disposable loopback-only Local browser fixture has no
+          # persistent opcode cache. Prove that exact runtime property instead
+          # of bypassing the original cache-convergence guard in application
+          # code. Production/Staging policies remain unchanged.
+          php -d opcache.enable_cli=0 -r '
+          if ( extension_loaded( "Zend OPcache" )
+              && function_exists( "opcache_get_status" )
+              && false !== opcache_get_status( false ) ) {
+              fwrite( STDERR, "LOCAL_OAUTH_BROWSER_OPCACHE_NOT_DISABLED\n" );
+              exit( 1 );
+          }
+          echo "LOCAL_OAUTH_BROWSER_CACHE_FREE: PASS\n";
+          '
+          php -d opcache.enable_cli=0 -S 127.0.0.1:8088 -t "$WP_PATH" /tmp/mad4b-wp-router.php >/tmp/mad4b-browser-server.log 2>&1 &
           SERVER_PID=$!
           trap 'kill "$SERVER_PID" 2>/dev/null || true; cat /tmp/mad4b-browser-server.log || true' EXIT
           for i in $(seq 1 40); do

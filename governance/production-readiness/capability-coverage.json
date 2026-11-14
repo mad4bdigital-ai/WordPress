@@ -3797,6 +3797,31 @@
   "change_impact_notes": "For each newly introduced registry item, registered MAD4B Ability, PHP service or Admin asset, add a reviewed_capabilities entry with exact id, nonempty existing control_ids, a regression test changed in this PR, owner_role, review_rationale, and status 'reviewed_for_ci_only'. CI fails on uncovered introductions; no entry grants Production. Existing runtime/config source additions and modifications require reviewed_changes entries keyed by exact Git blob, impacted control IDs and test changed in the same PR. Every new capability must explicitly decide whether to expand the checklist or reuse existing controls with a rationale. Static REST/AJAX/Cron surface discoveries remain candidates, never runtime certification.",
   "reviewed_changes": [
     {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-drive-scan-continuation.php",
+      "source_blob_sha": "d440f529a5a022a266961872d2de16d97bf17074",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "SECURITY-02",
+        "MCP-01",
+        "PROVIDERS-01",
+        "RECOVERY-01",
+        "EXECUTION-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/drive-scan-continuation-runtime.php"
+      ],
+      "owner_role": "Repository Google Drive scanner runtime compatibility reviewer; source-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Replace PHP 8 str_starts_with with equivalent literal-prefix strpos comparison for Google-native MIME, maintaining binary size gating, original sealed cursor/CAS, normalized-only inventory and no write readiness. Exact PHP 7.4, 8.3 and 8.5 source-only traversal regression tested.",
+      "coverage_reuse_rationale": "Native provider and operational scope/security controls unchanged; no new Provider, source ownership or execution capability.",
+      "execution_note": "Runtime source-only scan QA is not a Production, Original313 or human Owner approval."
+    },
+    {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-context-builder.php",
       "source_blob_sha": "bce973b8a6957e5c820253fc3b6ab4d4cf642a78",
       "control_ids": [
