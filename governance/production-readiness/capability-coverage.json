@@ -4618,6 +4618,169 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Original OAuth, ticket, governance and security controls remain authoritative. This source mapping is nonauthorizing, with all per-Ability execution and owner approvals independently enforced.",
       "review_rationale": "Reviewed exact first-party Staging grant eligibility mapping for mad4b/transportations-r1-update-apply. Executed original policy owner in isolated PHP 7.4/8.5 tests and asserted exact core provider, separate Production/local/development denial, absence of wildcard/raw SQL candidates and no grant issuance. This review does not certify the target Ability implementation, Owner OAuth, approvals or executor."
+    },
+    {
+      "id": "ability:mad4b/build-provenance-status",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-router-source-hermetic.php"
+      ],
+      "owner_role": "MAD4B read-only Control Plane route source reviewer — CI-only, not updater Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing native MCP/Provider/Execution or update/rollout controls remain applicable. CI fixture checks only the read-only route contract and never mints cross-Ability install rights.",
+      "review_rationale": "This exact source only references a separately governed native Ability as a plan/readback navigation instruction, not an independent registration or execution permission. Current PHP fixture exercises original reducer with unsigned source, Staging/Production, mismatch, permission-reuse denial and separate Owner approval. Actual referenced Ability implementation remains independently governed."
+    },
+    {
+      "id": "ability:mad4b/control-plane-native-apply",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-router-source-hermetic.php"
+      ],
+      "owner_role": "MAD4B read-only Control Plane route source reviewer — CI-only, not updater Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing native MCP/Provider/Execution or update/rollout controls remain applicable. CI fixture checks only the read-only route contract and never mints cross-Ability install rights.",
+      "review_rationale": "This exact source only references a separately governed native Ability as a plan/readback navigation instruction, not an independent registration or execution permission. Current PHP fixture exercises original reducer with unsigned source, Staging/Production, mismatch, permission-reuse denial and separate Owner approval. Actual referenced Ability implementation remains independently governed."
+    },
+    {
+      "id": "ability:mad4b/control-plane-native-plan",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-router-source-hermetic.php"
+      ],
+      "owner_role": "MAD4B read-only Control Plane route source reviewer — CI-only, not updater Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing native MCP/Provider/Execution or update/rollout controls remain applicable. CI fixture checks only the read-only route contract and never mints cross-Ability install rights.",
+      "review_rationale": "This exact source only references a separately governed native Ability as a plan/readback navigation instruction, not an independent registration or execution permission. Current PHP fixture exercises original reducer with unsigned source, Staging/Production, mismatch, permission-reuse denial and separate Owner approval. Actual referenced Ability implementation remains independently governed."
+    },
+    {
+      "id": "ability:mad4b/control-plane-selected-head-apply",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-router-source-hermetic.php"
+      ],
+      "owner_role": "MAD4B read-only Control Plane route source reviewer — CI-only, not updater Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing native MCP/Provider/Execution or update/rollout controls remain applicable. CI fixture checks only the read-only route contract and never mints cross-Ability install rights.",
+      "review_rationale": "This exact source only references a separately governed native Ability as a plan/readback navigation instruction, not an independent registration or execution permission. Current PHP fixture exercises original reducer with unsigned source, Staging/Production, mismatch, permission-reuse denial and separate Owner approval. Actual referenced Ability implementation remains independently governed."
+    },
+    {
+      "id": "ability:mad4b/control-plane-test-route",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-router-source-hermetic.php"
+      ],
+      "owner_role": "MAD4B read-only Control Plane route source reviewer — CI-only, not updater Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing native MCP/Provider/Execution or update/rollout controls remain applicable. CI fixture checks only the read-only route contract and never mints cross-Ability install rights.",
+      "review_rationale": "The current source declares the original read-only route Ability directly with a closed schema, existing WordPress Policy can_read and admin checks. Exact PHP 7.4/8.5 fixture executes registration and denies guests and unprivileged users."
+    },
+    {
+      "id": "ability:mad4b/control-plane-update-status",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-router-source-hermetic.php"
+      ],
+      "owner_role": "MAD4B read-only Control Plane route source reviewer — CI-only, not updater Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing native MCP/Provider/Execution or update/rollout controls remain applicable. CI fixture checks only the read-only route contract and never mints cross-Ability install rights.",
+      "review_rationale": "This exact source only references a separately governed native Ability as a plan/readback navigation instruction, not an independent registration or execution permission. Current PHP fixture exercises original reducer with unsigned source, Staging/Production, mismatch, permission-reuse denial and separate Owner approval. Actual referenced Ability implementation remains independently governed."
+    },
+    {
+      "id": "ability:mad4b/skill-runtime-certification",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-router-source-hermetic.php"
+      ],
+      "owner_role": "MAD4B read-only Control Plane route source reviewer — CI-only, not updater Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing native MCP/Provider/Execution or update/rollout controls remain applicable. CI fixture checks only the read-only route contract and never mints cross-Ability install rights.",
+      "review_rationale": "This exact source only references a separately governed native Ability as a plan/readback navigation instruction, not an independent registration or execution permission. Current PHP fixture exercises original reducer with unsigned source, Staging/Production, mismatch, permission-reuse denial and separate Owner approval. Actual referenced Ability implementation remains independently governed."
+    },
+    {
+      "id": "ability:mad4b/wordpress-native-candidate-opt-in-plan",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-router-source-hermetic.php"
+      ],
+      "owner_role": "MAD4B read-only Control Plane route source reviewer — CI-only, not updater Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing native MCP/Provider/Execution or update/rollout controls remain applicable. CI fixture checks only the read-only route contract and never mints cross-Ability install rights.",
+      "review_rationale": "This exact source only references a separately governed native Ability as a plan/readback navigation instruction, not an independent registration or execution permission. Current PHP fixture exercises original reducer with unsigned source, Staging/Production, mismatch, permission-reuse denial and separate Owner approval. Actual referenced Ability implementation remains independently governed."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-control-plane-test-router.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-router-source-hermetic.php"
+      ],
+      "owner_role": "MAD4B read-only Control Plane route source reviewer — CI-only, not updater Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing native MCP/Provider/Execution or update/rollout controls remain applicable. CI fixture checks only the read-only route contract and never mints cross-Ability install rights.",
+      "review_rationale": "Original first-party Control Plane test router read-only service is exercised with WordPress-admin authorization, native read policy, signed-release matching, refusal of untrusted source, 2 plan/apply routing options and explicit no-auto-apply, no-promotion flags. No actual install, grant, Owner approval or signed host receipt is inferred."
     }
   ],
   "lifecycle": [],
@@ -13280,6 +13443,25 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing governance, platform and security controls apply to the exact source change; original per-Ability privilege gates are unchanged by this review.",
       "review_rationale": "Inspected the exact source diff: 24 new Staging-only allowlist entries, comprising 23 first-party mappings and one conditionally bound central VPS enqueue. Original gate still enforces existing Agent identity, authenticated OAuth, current environment, current enrolled user and exact delegate admission. Hermetic original PHP checks Staging, Production, local, development and missing scope. This source review does not certify or execute the per-Ability handlers or owner releases."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-control-plane-test-router.php",
+      "source_blob_sha": "a9f34d8f1c075d04dac4ff449d403e3cdf0a99dc",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-router-source-hermetic.php"
+      ],
+      "owner_role": "MAD4B certified update navigation source reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance/platform/security controls protect source behavior with original Ability registration and native permission checks.",
+      "review_rationale": "Exact new first-party router source was inspected. Its reducer emits read-only plan advice and explicitly retains unsigned/foreign SHA rejection, separate exact plan, separate enrolled Owner step-up, no automatic mutations or Production permission. Original PHP fixture directly calls register_ability and exercises read admission and all plan/readback referenced identities under PHP 7.4 and 8.5. Does not certify underlying native/selected-head apply implementations."
     }
   ],
   "code_change_rules": {

@@ -5,11 +5,55 @@
  */
 define('ABSPATH',__DIR__.'/');
 require dirname(__DIR__).'/includes/class-mad4b-scp-control-plane-test-router.php';
+$GLOBALS['router_registered']=array();
+$GLOBALS['router_admin']=false;
+function wp_register_ability($name,$config) {
+    $GLOBALS['router_registered'][$name]=$config;
+}
+function wp_has_ability($name) {
+    return isset($GLOBALS['router_registered'][$name]);
+}
+function current_user_can($name) {
+    return $name==='manage_options' && $GLOBALS['router_admin'];
+}
+class MAD4B_SCP_Policy {
+    public static $read_allowed=false;
+    public static function can_read(){return self::$read_allowed;}
+}
+class WP_Error {
+    private $code;
+    public function __construct($code,$description=''){$this->code=$code;}
+    public function get_error_code(){return $this->code;}
+}
 $c='MAD4B_SCP_Control_Plane_Test_Router';
 function verify_route($ok,$reason) {
     if(!$ok)throw new RuntimeException('FAIL TEST ROUTE: '.$reason);
 }
+$c::register_ability();
+verify_route(array_keys($GLOBALS['router_registered'])===array($c::ABILITY),
+    'Original router must register exactly one read-only Ability');
+$ability=$GLOBALS['router_registered'][$c::ABILITY];
+verify_route(($ability['execute_callback']??null)===array($c,'inspect')
+    && ($ability['permission_callback']??null)===array($c,'can_read')
+    && ($ability['meta']['mcp']['surface']??'')==='read'
+    && ($ability['meta']['annotations']['readonly']??null)===true
+    && empty($ability['meta']['mcp']['public'])
+    && ($ability['input_schema']['additionalProperties']??null)===false,
+    'Read-only route registered with extra permissions or unexpected handler');
+verify_route(!$c::can_read(), 'Anonymous router access must be denied');
+$GLOBALS['router_admin']=true;
+verify_route(!$c::can_read(), 'Admin without native policy read must be denied');
+MAD4B_SCP_Policy::$read_allowed=true;
+verify_route($c::can_read(), 'Exact native authorized admin read required');
+$GLOBALS['router_admin']=false;
+verify_route($c::inspect() instanceof WP_Error,
+    'Unauthorized inspect must not invoke source update plan');
+$GLOBALS['router_admin']=true;
+
 $production=$c::reduce(array(),array(),'production');
+verify_route(($production['next_read_ability']??'')==='mad4b/site-profile-status'
+    && ($production['readback_complete']??null)===false,
+    'Production must direct site identity review, not apply');
 verify_route(($production['state']??'')==='environment_blocked'
     && ($production['production_allowed']??null)===false
     && ($production['automatic_mutation_allowed']??null)===false,
@@ -61,4 +105,20 @@ verify_route(array_key_exists('selected_route_id',$drift)
     && $drift['selected_route_id']===null
     && ($drift['state']??'')==='preflight_blocked',
     'Unmatched selected source commit remains blocked');
+verify_route(($review['routes'][0]['apply_ability']??'')==='mad4b/control-plane-selected-head-apply'
+    && ($review['routes'][1]['plan_ability']??'')==='mad4b/control-plane-native-plan'
+    && ($review['routes'][1]['apply_ability']??'')==='mad4b/control-plane-native-apply'
+    && ($review['next_read_ability']??'')==='mad4b/control-plane-selected-head-plan',
+    'Routing instructions may not substitute a different plan or apply source');
+verify_route(($blocked['next_read_ability']??'')==='mad4b/wordpress-native-candidate-opt-in-plan'
+    && ($unsigned['next_read_ability']??'')==='mad4b/control-plane-update-status',
+    'Blocked or unsigned source retains original defensive read direction');
+$expected_reads=array('mad4b/control-plane-update-status','mad4b/build-provenance-status',
+    'mad4b/session-safe-diagnostics','mad4b/skill-runtime-certification',
+    'mad4b/staging-certification-status');
+verify_route(($review['acceptance_readback_abilities']??null)===$expected_reads
+    && ($review['read_only']??null)===true
+    && ($review['independent_owner_approval_required']??null)===true,
+    'Native readback references cannot promote to execution authorization');
+
 echo "CONTROL_PLANE_SELECTED_HEAD_ROUTE_HERMETIC: PASS\n";
