@@ -32,7 +32,17 @@
     "wayfatours_live_820_spanish_after_tbt_ms": 1533,
     "source_live_820_spanish_after_tbt_ms": 1149,
     "not_certified": true,
-    "attribution": "1.2 MB first-party LiteSpeed JS bundle includes Elementor frontend and frontend listeners; CPU/JS execution after ~8s dominates; admin-ajax preference-state is asynchronous, not equivalent to TBT"
+    "attribution": "1.2 MB first-party LiteSpeed JS bundle includes Elementor frontend and frontend listeners; CPU/JS execution after ~8s dominates; admin-ajax preference-state is asynchronous, not equivalent to TBT",
+    "litespeed_official_unoptimized_diagnostic": {
+      "path": "/?LSCWP_CTRL=before_optm",
+      "read_only_probe": true,
+      "cache": "BYPASS",
+      "FCP_ms": 7140,
+      "LCP_ms": 7424,
+      "TBT_ms": 1030,
+      "CLS": 0.00014,
+      "qualification": "Disables CSS and JS optimization together, so it cannot isolate the cost of JS combining or demonstrate a safe production change. No optimizer setting was modified."
+    }
   },
   "cls": {
     "wayfa_en_820_before": 0.07758,
