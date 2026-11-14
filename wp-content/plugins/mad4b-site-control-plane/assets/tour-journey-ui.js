@@ -129,7 +129,7 @@
       cards.forEach(c=>{
         c.classList.remove('jd-active-highlight');
         c.removeAttribute('aria-current');
-        c.setAttribute('aria-pressed','false');
+        c.querySelector('.jd-highlight-activate')?.setAttribute('aria-pressed','false');
       });
       clearFilter();
       status.textContent=L.more;
@@ -138,7 +138,7 @@
       clearSelection();
       card.classList.add('jd-active-highlight');
       card.setAttribute('aria-current','step');
-      card.setAttribute('aria-pressed','true');
+      card.querySelector('.jd-highlight-activate')?.setAttribute('aria-pressed','true');
       const list=activeMap.get(card)||[];
       status.textContent=list.length ? statusText(card) : L.noMatch;
       const target=place||list[0]||null;
@@ -212,20 +212,27 @@
       });
       activeMap.set(card,found);
       if(found.length)card.classList.add('jd-has-place');
-      // Every highlight is a valid selection, including purely editorial
-      // moments without a place. The right panel must then show its neutral
-      // empty state, never the prior/highlight's geographic evidence.
-      card.tabIndex=0;
-      card.setAttribute('role','button');
-      card.setAttribute('aria-pressed','false');
+      // A native button is a SIBLING of the place links, never their parent.
+      // The LI stays a list item (not role=button with nested anchors).
+      // Its transparent surface preserves mouse/touch card selection while
+      // native button semantics provide Enter, Space and focus feedback.
+      const activate=document.createElement('button');
+      activate.type='button';
+      activate.className='jd-highlight-activate';
+      const readable=card.querySelector('.tour-hl-ui__title')?.textContent?.trim()
+        ||card.querySelector('.tour-hl-ui__description')?.textContent?.trim()
+        ||String(i+1);
+      activate.setAttribute('aria-label',L.show+': '+readable.slice(0,110));
+      activate.setAttribute('aria-pressed','false');
+      activate.addEventListener('click',e=>{e.stopPropagation();selectHighlight(card);});
+      card.prepend(activate);
+      card.removeAttribute('role');
+      card.removeAttribute('tabindex');
+      card.removeAttribute('aria-pressed');
+      // Keep legacy click area for touch if custom themes override positioning.
       card.addEventListener('click',e=>{
         if(e.target.closest('a,button,select,input'))return;
         selectHighlight(card);
-      });
-      card.addEventListener('keydown',e=>{
-        if((e.key==='Enter'||e.key===' ')&&e.target===card){
-          e.preventDefault();selectHighlight(card);
-        }
       });
     });
     setActiveTab(groups[0].kind);
