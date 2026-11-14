@@ -3797,6 +3797,91 @@
   "change_impact_notes": "For each newly introduced registry item, registered MAD4B Ability, PHP service or Admin asset, add a reviewed_capabilities entry with exact id, nonempty existing control_ids, a regression test changed in this PR, owner_role, review_rationale, and status 'reviewed_for_ci_only'. CI fails on uncovered introductions; no entry grants Production. Existing runtime/config source additions and modifications require reviewed_changes entries keyed by exact Git blob, impacted control IDs and test changed in the same PR. Every new capability must explicitly decide whether to expand the checklist or reuse existing controls with a rationale. Static REST/AJAX/Cron surface discoveries remain candidates, never runtime certification.",
   "reviewed_changes": [
     {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-drive-scan-continuation.php",
+      "source_blob_sha": "d440f529a5a022a266961872d2de16d97bf17074",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "SECURITY-02",
+        "MCP-01",
+        "PROVIDERS-01",
+        "RECOVERY-01",
+        "EXECUTION-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/drive-scan-continuation-runtime.php"
+      ],
+      "owner_role": "Repository Google Drive scanner runtime compatibility reviewer; source-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Replace PHP 8 str_starts_with with equivalent literal-prefix strpos comparison for Google-native MIME, maintaining binary size gating, original sealed cursor/CAS, normalized-only inventory and no write readiness. Exact PHP 7.4, 8.3 and 8.5 source-only traversal regression tested.",
+      "coverage_reuse_rationale": "Native provider and operational scope/security controls unchanged; no new Provider, source ownership or execution capability.",
+      "execution_note": "Runtime source-only scan QA is not a Production, Original313 or human Owner approval."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-context-builder.php",
+      "source_blob_sha": "bce973b8a6957e5c820253fc3b6ab4d4cf642a78",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-asset-source-binding-hermetic.php"
+      ],
+      "owner_role": "MAD4B Context Authority source integrity reviewer — nonauthorizing source-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Consume Brand Core assets only when existing exact-content review is approved and dynamically enrolled site/source lineage is verified. Foreign explicit text claims are contradiction signals, never a required document title or creator metadata. Cheap review checks precede governed-source lookups.",
+      "coverage_reuse_rationale": "Reuse existing Operational Scope Guard, company Site Profile, Provider source lineage and reviewed hash controls; no new technical step for authors or production write authority.",
+      "execution_note": "PHP 8.3 and PHP 8.5 isolated source tests and current PR exact-head Actions required. This CI review is not a signed Original313/Owner certificate."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php",
+      "source_blob_sha": "3834ca0031f6a11bf0a306184a61628311c07b3a",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-asset-source-binding-hermetic.php"
+      ],
+      "owner_role": "MAD4B Context Authority source integrity reviewer — nonauthorizing source-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Make original enrolled Site Profile and governed source registry the only Brand Core source ownership lineage. Read existing identifiers supplied by the connected provider; deny cross-company, cross-site, task attachments and missing lineage; document title is not an ownership certificate. Preserve exact existing authorized review identity and cryptographic content binding.",
+      "coverage_reuse_rationale": "Reuse existing Operational Scope Guard, company Site Profile, Provider source lineage and reviewed hash controls; no new technical step for authors or production write authority.",
+      "execution_note": "PHP 8.3 and PHP 8.5 isolated source tests and current PR exact-head Actions required. This CI review is not a signed Original313/Owner certificate."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-context-builder.php",
+      "source_blob_sha": "433f145fd44819cbb7368320299d48892be42dcd",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-owner-evidence-hermetic.php"
+      ],
+      "owner_role": "Repository Brand Core safety reviewer; source-only no Provider or release authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Do not accept previously approved brand assets if independent Context Authority is absent or a hermetic loader provides only an incomplete Context Authority class. Fail closed on missing owner proof while retaining the existing owned/foreign source policy.",
+      "coverage_reuse_rationale": "Existing governed Brand Context safety and browser/admin controls remain the authority; the exception guard grants no ownership or publication.",
+      "execution_note": "Run actual source-only PHP 8.3/8.5 hermetic negative tests; no Owner/Original313 certificate or live deployment."
+    },
+    {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
       "source_blob_sha": "5403ea6ecd7962c8cee51dc164bc9da0ecdbed04",
       "control_ids": [

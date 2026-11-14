@@ -24,7 +24,9 @@ class LocalCacheFreeBootstrap(unittest.TestCase):
             "$states=array(); foreach(array('local','development','staging','production') as $env) {"
             "$mad4b_mcp_mu_binding=array('environment'=>$env);\n"
             + selection + "\n$states[$env]=(bool)$mad4b_mcp_mu_native_opcache; }"
-            "echo json_encode(array('opcache_on'=>is_array(opcache_get_status(false)),'states'=>$states));"
+            "echo json_encode(array('opcache_loaded'=>extension_loaded('Zend OPcache'),"
+            "'opcache_on'=>(function_exists('opcache_get_status') && is_array(opcache_get_status(false))),"
+            "'states'=>$states));"
         )
         for flag, disabled_func, expected in (
             ('0', False, {'local': True, 'development': True, 'staging': True, 'production': False}),
@@ -42,7 +44,14 @@ class LocalCacheFreeBootstrap(unittest.TestCase):
                 result = subprocess.run(args+['-r', php_code],
                                         check=True, text=True, capture_output=True, timeout=15)
                 observed = json.loads(result.stdout)
-                self.assertEqual(observed['opcache_on'], flag == '1' and not disabled_func)
+                loaded = observed['opcache_loaded']
+                self.assertEqual(observed['opcache_on'], bool(loaded and flag == '1' and not disabled_func))
+                # PHP can be installed with no OPcache extension at all
+                # (notably the upstream php:7.4-cli test image). In that
+                # case Local is genuinely cache-free even with enable_cli=1.
+                if not loaded:
+                    expected = {'local': True, 'development': True,
+                                'staging': True, 'production': False}
                 self.assertEqual(observed['states'], expected)
                 if disabled_func:
                     self.assertIn("! extension_loaded( 'Zend OPcache' )", selection)

@@ -3080,6 +3080,47 @@ final class MAD4B_SCP_Context_Authority {
 	}
 
     /**
+     * Reuse the original enrolled Site Profile -> governed source -> asset
+     * lineage. No document template, creator-provided certificate or brand
+     * name in the title is required. This is site-bound operational provenance,
+     * not proof of legal copyright ownership.
+     *
+     * source() reuses the existing Operational Scope Guard and excludes
+     * unbound, foreign-brand and task-attachment sources.
+     */
+    public static function brand_asset_binding_evidence( array $asset ) {
+        $site = self::site_binding();
+        $profile = self::profile();
+        if ( is_wp_error($site) || !is_array($profile) || empty($profile) ) {
+            return array('status'=>'unverified','evidence'=>'site_profile_unavailable');
+        }
+        $source_id = strtolower(trim((string)($asset['source_id']??'')));
+        if ( '' === $source_id ) return array('status'=>'unverified','evidence'=>'source_id_missing');
+        $source = self::source($source_id);
+        if ( empty($source) ) return array('status'=>'unverified','evidence'=>'governed_source_unavailable');
+        $site_id = strtolower(trim((string)($site['site_uuid']??'')));
+        $brand_id = strtolower(trim((string)($profile['brand_id']??'')));
+        $asset_site = strtolower(trim((string)($asset['site_uuid']??'')));
+        $asset_brand = strtolower(trim((string)($asset['brand_id']??'')));
+        $source_site = strtolower(trim((string)($source['site_uuid']??'')));
+        $source_brand = strtolower(trim((string)($source['brand_id']??'')));
+        if ( '' === $site_id || '' === $brand_id || '' === $asset_site || '' === $asset_brand
+            || '' === $source_site || '' === $source_brand ) {
+            return array('status'=>'unverified','evidence'=>'record_binding_missing');
+        }
+        if ( !hash_equals($site_id,$asset_site) || !hash_equals($site_id,$source_site)
+            || !hash_equals($brand_id,$asset_brand) || !hash_equals($brand_id,$source_brand) ) {
+            return array('status'=>'foreign','evidence'=>'site_or_brand_binding_mismatch');
+        }
+        if ( 'governed' !== (string)($source['mode']??'')
+            || 'governed' !== (string)($asset['source_mode']??'')
+            || '' === trim((string)($asset['file_id']??'')) ) {
+            return array('status'=>'unverified','evidence'=>'non_governed_or_incomplete_source');
+        }
+        return array('status'=>'bound','evidence'=>'enrolled_site_and_source_registry');
+    }
+
+    /**
      * Detect only an explicit Brand Core ownership assertion in an asset title
      * or opening document header. Mere references to another company do not
      * establish ownership. No registry mutation or inferred reassignment.
@@ -3266,6 +3307,14 @@ final class MAD4B_SCP_Context_Authority {
 			$decision = sanitize_key( isset( $input['decision'] ) ? (string) $input['decision'] : 'approve' );
 			if ( ! in_array( $decision, array( 'approve', 'needs_changes', 'reject' ), true ) ) return new WP_Error( 'mad4b_context_review_decision_invalid', 'Context review decision must be approve, needs_changes, or reject.' );
             if ('approve'===$decision && 'brand_authority'===$authority) {
+                // Approval consumes the already enrolled source and site
+                // lineage. Document authors never supply this metadata.
+                $binding=self::brand_asset_binding_evidence($asset);
+                if('bound'!==($binding['status']??''))return new WP_Error(
+                    'mad4b_context_brand_source_binding_unverified',
+                    'Brand Authority requires a verified site-bound governed source. Repair the source registration, not the document.',
+                    array('asset_id'=>$asset_id,'evidence'=>$binding['evidence']??'unavailable')
+                );
                 $owner_proof=self::brand_owner_evidence($asset);
                 if('foreign'===($owner_proof['status']??''))return new WP_Error(
                     'mad4b_context_brand_owner_mismatch',
