@@ -5286,6 +5286,96 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing ability/domain controls are retained; original aggregate registration, immutable job state and separate governor gates remain source-owned.",
       "review_rationale": "Original ContentJob PHP service was executed hermetically on PHP 7.4/8.5, using only dependency stubs. Exact Ability mad4b/content-workflow-modes was registered with correct closed schema, native permission callback, read vs write annotations and no public MCP surface. High-risk group apply requires a source snapshot and max 8 target IDs; typed write applies require an exact source digest. Invalid structural job identities are denied. Does not attest the independent underlying CWA, Elementor or WPML executor, Owner OAuth or Production host receipt."
+    },
+    {
+      "id": "rest:mad4b/v1/admin/company-team",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/company-master-native-rest-gates-hermetic.php"
+      ],
+      "owner_role": "MAD4B company-tenant REST and native role-migration technical reviewer, CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing mapped admin/browser/security controls cover the same native WordPress company permission callback; permission does not confer global administrator role.",
+      "review_rationale": "Original Company Master Admin class was loaded in hermetic PHP 7.4 and 8.5. Direct native registration confirmed 4 exact REST endpoints, GET vs POST separation, a common custom company capability permission callback, anonymous denial and no unprivileged staff/translation/task mutation. Production migration and Staging ownerless migration are rejected. Does not exercise real account creation, real WPML/FluentBoards updates or browser authorization."
+    },
+    {
+      "id": "rest:mad4b/v1/admin/company-team/assign-task",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/company-master-native-rest-gates-hermetic.php"
+      ],
+      "owner_role": "MAD4B company-tenant REST and native role-migration technical reviewer, CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing mapped admin/browser/security controls cover the same native WordPress company permission callback; permission does not confer global administrator role.",
+      "review_rationale": "Original Company Master Admin class was loaded in hermetic PHP 7.4 and 8.5. Direct native registration confirmed 4 exact REST endpoints, GET vs POST separation, a common custom company capability permission callback, anonymous denial and no unprivileged staff/translation/task mutation. Production migration and Staging ownerless migration are rejected. Does not exercise real account creation, real WPML/FluentBoards updates or browser authorization."
+    },
+    {
+      "id": "rest:mad4b/v1/admin/company-team/create",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/company-master-native-rest-gates-hermetic.php"
+      ],
+      "owner_role": "MAD4B company-tenant REST and native role-migration technical reviewer, CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing mapped admin/browser/security controls cover the same native WordPress company permission callback; permission does not confer global administrator role.",
+      "review_rationale": "Original Company Master Admin class was loaded in hermetic PHP 7.4 and 8.5. Direct native registration confirmed 4 exact REST endpoints, GET vs POST separation, a common custom company capability permission callback, anonymous denial and no unprivileged staff/translation/task mutation. Production migration and Staging ownerless migration are rejected. Does not exercise real account creation, real WPML/FluentBoards updates or browser authorization."
+    },
+    {
+      "id": "rest:mad4b/v1/admin/company-team/translation-manager",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/company-master-native-rest-gates-hermetic.php"
+      ],
+      "owner_role": "MAD4B company-tenant REST and native role-migration technical reviewer, CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing mapped admin/browser/security controls cover the same native WordPress company permission callback; permission does not confer global administrator role.",
+      "review_rationale": "Original Company Master Admin class was loaded in hermetic PHP 7.4 and 8.5. Direct native registration confirmed 4 exact REST endpoints, GET vs POST separation, a common custom company capability permission callback, anonymous denial and no unprivileged staff/translation/task mutation. Production migration and Staging ownerless migration are rejected. Does not exercise real account creation, real WPML/FluentBoards updates or browser authorization."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-master-admin.php",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/company-master-native-rest-gates-hermetic.php"
+      ],
+      "owner_role": "MAD4B company-tenant REST and native role-migration technical reviewer, CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing mapped admin/browser/security controls cover the same native WordPress company permission callback; permission does not confer global administrator role.",
+      "review_rationale": "Original Company Master Admin class was loaded in hermetic PHP 7.4 and 8.5. Direct native registration confirmed 4 exact REST endpoints, GET vs POST separation, a common custom company capability permission callback, anonymous denial and no unprivileged staff/translation/task mutation. Production migration and Staging ownerless migration are rejected. Does not exercise real account creation, real WPML/FluentBoards updates or browser authorization."
     }
   ],
   "lifecycle": [],
@@ -14042,6 +14132,25 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing governance/platform/security controls apply to the current immutable ContentJob source and a same-PR original-class regression.",
       "review_rationale": "Inspected exact ContentJob source: 18 WordPress abilities including 11 new guarded interfaces; original source contains no direct wp_insert_post/wp_update_post or external network calls, and durable lifecycle requires transactional storage, revision checks, terminal state finality and append-only events. Same-PR PHP 7.4/8.5 fixture proves permissions, constrained schemas and invalid identity denial; existing source-level ContentJob domain contract checks transaction and forbidden side effects. Separate delegated CWA/Provider operations still require distinct execution acceptance and live readback."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-master-admin.php",
+      "source_blob_sha": "546fd5e6a4f81ce7dfc5e67fcde294b338ddef40",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/company-master-native-rest-gates-hermetic.php"
+      ],
+      "owner_role": "MAD4B tenant-bound original company-team WordPress source reviewer (CI-only)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing admin/browser/security source controls remain mapped; local CI review is not an account mutation grant.",
+      "review_rationale": "Original class source keeps tenant-only manage_company_operations authority, no automatic Production role migration, explicit Staging owner browser cookie/nonce admission, approved staff roles and no broad WordPress admin capability grant. Hermetic source test exercises its four REST declarations, denies guest writes and rejects Production and ownerless Staging migrations. Does not authorize real employee management or remote company-tenant operations."
     }
   ],
   "code_change_rules": {
