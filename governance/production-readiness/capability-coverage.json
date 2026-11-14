@@ -53,6 +53,19 @@
       ]
     },
     {
+      "id": "tenant_identity",
+      "pattern": "(?:^|[\\s/_-])(?:users?|staff|teams?|roles?|privileges?|permissions?|credentials?|capabilities?)(?:$|[\\s/_-])",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "SECURITY-01",
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ]
+    },
+    {
       "id": "admin",
       "pattern": "admin|popup|ui|workspace|page|browser",
       "risk": "P1",

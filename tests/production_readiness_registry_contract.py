@@ -37,6 +37,20 @@ assert reg.classify(provider_path, provider_path, policy)["id"] == "mcp"
 content_path = reg.PLUGIN + "includes/class-mad4b-scp-content-create.php"
 assert reg.classify(content_path, content_path, policy)["id"] == "content"
 
+# Sensitive tenant identities and WP users must never inherit a soft P1 admin
+# review merely because the source is a REST route or an admin UI. This rule
+# classifies the resource family, not a fixed list of WordPress operations.
+tenant_user = reg.PLUGIN + "includes/class-mad4b-scp-company-user-lifecycle.php"
+identity = reg.classify(tenant_user, "rest:mad4b/v1/admin/company-team/users", policy)
+assert identity["id"] == "tenant_identity" and identity["risk"] == "P0"
+assert {"ADMIN-01", "SECURITY-01"} <= set(identity["controls"])
+tenant_team = reg.PLUGIN + "includes/class-mad4b-scp-company-master-admin.php"
+assert reg.classify(tenant_team, "rest:mad4b/v1/admin/company-team/create", policy)["risk"] == "P0"
+assert reg.classify(reg.PLUGIN + "includes/class-mad4b-scp-admin-options.php",
+    "rest:mad4b/v1/admin/settings-status", policy)["id"] == "admin"
+assert not policy.get("production_promotion_from_ci") and policy["authorizing"] is False
+
+
 def initial_baseline(_commit, path):
     if path == reg.CONTROLS:
         return copy.deepcopy(controls)
