@@ -1,0 +1,36 @@
+{
+  "contract": "mad4b.stale-scheduler-runtime-hold.v1",
+  "at_utc": "2026-11-14T23:26:21.234369+00:00",
+  "cron_before_sha256": "80b0f676d35ba00ac0944d3a5ab8179ebec681032b0251a996acee3b4c697de5",
+  "cron_after_sha256": "61bbe4afdb6c46f7638bc3d9e8905be019d1a8a794e0ecff2c51ab608fd3d5a0",
+  "backup_path": "/opt/mad4b-company-provisioning/backups/toursdev-stale-cron-hold-20261115/root-crontab-before-80b0f676d35ba00a.txt",
+  "held_schedule_lines": 7,
+  "job_classes": {
+    "ai_only_missing": 1,
+    "content_trigger_missing": 1,
+    "mcp_reconciler_wrong_container": 1,
+    "legacy_css_cycle": 2,
+    "legacy_js_cycle": 2
+  },
+  "kept_active": [
+    "MAD4B_WAYFA_UAEL_CANDIDATE_LIFECYCLE_V1",
+    "MAD4B_STALE_PLAYWRIGHT_QA_JANITOR_V1"
+  ],
+  "scope": "Only root cron entries which provably referenced missing host paths or nonexistent Docker alias; no WP content/price/cache settings changed",
+  "resume_policy": "Re-certify source target by current company/site registry, then restore only selected original lines after exact cron CAS. Never relink old alias or launch unreviewed CSS auto-deploy.",
+  "verification_at_utc": "2026-11-14T23:30:10.678040+00:00",
+  "source_TTFB_still_unresolved": true,
+  "source_public_cache_admission": "MISS/private,no-store; currency/WCML context not partitioned in edge cache key, critical CSS v2 proof stale; never bypass guards",
+  "source_http_sample": {
+    "en_mobile_ttfb_s": 3.940362,
+    "es_mobile_ttfb_s": 5.105584
+  },
+  "wayfa_http_sample": {
+    "en_mobile_ttfb_s": 0.020212,
+    "es_mobile_ttfb_s": 0.019443
+  },
+  "source_and_wayfa_live_php_unchanged": true,
+  "remaining_active_schedule_count": 2,
+  "fresh_critical_css_requalification_required": true,
+  "signoff_original313": false
+}
