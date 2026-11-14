@@ -5846,6 +5846,43 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing automation/performance controls remain responsible for native Skill seeder scheduling, not background host grant issuance.",
       "review_rationale": "Native PHP 7.4/8.5 source test verifies skill seeder startup: a disabled registry cannot enqueue, profile-saved schedule deduplicates the exact Cron hook, and worker with missing enrollment or same-origin mismatch denies before any Skill-file updates. This is a Cron-only review; full 605-line Skill file reconciliation and provider-managed changes remain separately unreviewed and do not inherit automation authority."
+    },
+    {
+      "id": "operation:company.code-reconciliation.plan",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/operation-registry-native-policy-boundary-hermetic.php"
+      ],
+      "owner_role": "MAD4B immutable first-party operation catalog source reviewer — CI only, not Production signer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance/platform/security and OAuth/ticket controls govern first-party operation identity, with all runtime authorization remaining in original executor.",
+      "review_rationale": "Original signed two-page company code comparison requires read-only stages, no mutation, no host filesystem access, signed Core inventory and Production observe/propose only. Exact original PHP 7.4/8.5 operation catalog parser and policy resolver run against original checked-in JSON copied to isolated /tmp. Eleven mutations of the copied catalog test boundary rejection for read-only to write escalation, mutation dispatch, unsigned source, unsafe stages, owner-bypass, Production policy and duplicate operation. No actual Owner approval, host access or Operator grant is issued."
+    },
+    {
+      "id": "operation:wordpress.developer.operator-grants.converge",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/operation-registry-native-policy-boundary-hermetic.php"
+      ],
+      "owner_role": "MAD4B immutable first-party operation catalog source reviewer — CI only, not Production signer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance/platform/security and OAuth/ticket controls govern first-party operation identity, with all runtime authorization remaining in original executor.",
+      "review_rationale": "Original governed Operator Developer grants require exact registered plan/apply, site identity, no generic mutation dispatch, independent owner step-up, current runtime policy and an exceptional security review. Exact original PHP 7.4/8.5 operation catalog parser and policy resolver run against original checked-in JSON copied to isolated /tmp. Eleven mutations of the copied catalog test boundary rejection for read-only to write escalation, mutation dispatch, unsigned source, unsafe stages, owner-bypass, Production policy and duplicate operation. No actual Owner approval, host access or Operator grant is issued."
     }
   ],
   "lifecycle": [],
@@ -14793,6 +14830,25 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing AI/localization/provider controls remain intact; the same original-class PHP fixture now checks exact matching brand evidence, source scope and fail-closed issue resolution.",
       "review_rationale": "Original PHP source inspected for brand strategy/tone/editorial source hashes, unreviewed media advisories, URL-linked source mismatch and Readiness issue closure. Hermetic PHP tests approved vs stale three-category Brand Context, source SHA changes and the exact Content Readiness rule predicate for two Brand Integrity issue classes including incomplete, foreign site and absent post-type evidence. Tests do not invoke a live scanner, patch content, create ContentJobs or certify independent image authenticity."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/operation-registry.json",
+      "source_blob_sha": "998654ffc0a226f20e4bef5d093c6f3b13e0efb6",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/operation-registry-native-policy-boundary-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party governed operation registry reviewer, nonauthorizing",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing catalog/platform/security controls and original PHP registry validator govern the exact unchanged first-party JSON source.",
+      "review_rationale": "Inspected exact source diff: two catalog additions (signed read-only company comparison and bounded owner-confirmed developer grant convergence), one read-only pipeline and catalog projection. Executed original Registry::operation, registered_write_policy, pipeline_profile and stage_binding against the JSON and eleven fail-closed perturbations. Signed company read, Developer scope and actual Original313 host release remain separate requirements."
     }
   ],
   "code_change_rules": {
