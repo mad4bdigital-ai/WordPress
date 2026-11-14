@@ -48,8 +48,11 @@ jobs:
       - name: Verify immutable Original Code Release catalog source closure
         run: python3 ops/company-code-release-v1/site-owner-sources/verify_catalog_sources.py
       - name: Verify Original Code Release constraints and signed-plan tests
+        # These hermetic tests exercise the host executor's root-only private
+        # receipt directory; run as root only on the throwaway CI runner.
+        # Never relax RECEIPTS_MUST_BE_ROOT_PRIVATE in production code.
         run: |
-          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
+          sudo -E env PYTHONDONTWRITEBYTECODE=1 "$(command -v python3)" -m unittest discover \
             -s ops/company-code-release-v1/tests -p 'test_release.py' -v
       - name: Lint site-owner and Original catalog PHP sources
         run: |
