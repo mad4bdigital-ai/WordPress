@@ -177,10 +177,10 @@ final class MAD4B_SCP_Brand_Integrity {
         // separate asset integrity controls and browser-rendered QA.
         if(preg_match('/(?:^|[._])(?:custom_css|custom_js|javascript|stylesheet|script_code)(?:$|[._])/i',$path))
             return;
-        // Only scan customer-visible textual Elementor settings. Selectors,
-        // placeholders, filters and serialized option choices are not brands.
-        if (str_contains($path,'meta._elementor_data.') &&
-            !preg_match('/\.(?:editor|item_editor_content|html|text_content|text|title|subtitle|heading|description|content|item_title|item_text)$/D',$path)) return;
+        // Elementor and third-party widgets may register arbitrary dynamic
+        // textual setting names. Scan every eligible source leaf rather than
+        // maintaining a fixed widget-property allowlist; styling/script fields
+        // were excluded above by their source type.
         $text = self::clean($value);
         if ($text !== '' && mb_strlen($text) >= 12 && !preg_match('~^(?:https?://|//)\S+$~i',$text)) {
             if (mb_strlen($text)>self::MAX_SCANNED_TEXT_CHARS)

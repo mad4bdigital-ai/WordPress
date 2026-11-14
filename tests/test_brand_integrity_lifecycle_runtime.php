@@ -31,6 +31,16 @@ $cases['promotional_external_link']=$engine::payload_preflight(array(
     'meta'=>array('tour_internal_linking_exploration_content'=>
         '<a href="https://unrelated.example.org/tours/">Explore our tours</a>')
 ));
+$cases['unregistered_elementor_text_setting']=$engine::payload_preflight(array(
+    'meta'=>array('_elementor_data'=>array('widget-1'=>array(
+        'settings'=>array('cta_microcopy'=>'Why travelers choose Meridian Path for Cairo travel.')
+    )))
+));
+$cases['css_source_not_editorial_copy']=$engine::payload_preflight(array(
+    'meta'=>array('_elementor_page_settings'=>array(
+        'custom_css'=>'/* Why travelers choose Meridian Path */ .box { color: #fff; }'
+    ))
+));
 $cases['ordinary_german_grammar']=$engine::payload_preflight(array(
     'meta'=>array('accomodation'=>'Bitte wählen Sie Ihre Präferenzen für die Reise aus.')
 ));
@@ -73,6 +83,8 @@ $expect=array(
     'editorial_source_link'=>null,
     'promotional_external_link'=>'mad4b_brand_integrity_publication_blocked',
     'ordinary_german_grammar'=>null,
+    'unregistered_elementor_text_setting'=>'mad4b_brand_integrity_publication_blocked',
+    'css_source_not_editorial_copy'=>null,
     'oversized_payload'=>'mad4b_brand_integrity_payload_incomplete',
     'too_many_fields'=>'mad4b_brand_integrity_payload_incomplete',
     'unchanged_high_count'=>0,
