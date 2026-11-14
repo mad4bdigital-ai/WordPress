@@ -1,0 +1,78 @@
+{
+  "contract": "mad4b.vps-cpu-qa-leak-remediation.v1",
+  "checked_at_utc": "2026-11-14T23:12:51.027988+00:00",
+  "site_scope": [
+    "wayfatours.com",
+    "tours.dev.mad4b.com"
+  ],
+  "host_cpu_count": 8,
+  "baseline": {
+    "at_utc": "2026-11-14T23:00:47Z",
+    "load_1m": 8.51,
+    "load_5m": 10.59,
+    "used_ram_approx_gib": 25,
+    "available_ram_approx_gib": 5.8,
+    "swap_used_approx_gib": 8.0,
+    "playwright_image_running": 62,
+    "managed_service_processes": 491
+  },
+  "cleanup": {
+    "abandoned_ephemeral_test_containers_stopped": 61,
+    "ephemeral_containers_not_stopped": [
+      "new capture less than 10 minutes old",
+      "production Playwright API"
+    ],
+    "abandoned_managed_service_docker_exec_root_scripts": 5,
+    "managed_service_orphan_descendants_terminated": 35,
+    "managed_service_health_after": "healthy",
+    "managed_service_processes_after": 67,
+    "managed_service_mem_mib_before": 669.6,
+    "managed_service_mem_mib_after": 77.7,
+    "managed_service_cpu_sample_before_pct": 27.35,
+    "managed_service_cpu_sample_after_pct": 0.0,
+    "no_docker_rm_or_prune": true,
+    "no_php_fpm_or_database_restarts": true
+  },
+  "post_cleanup": {
+    "at_utc": "2026-11-14T23:11:26Z",
+    "load_1m": 4.66,
+    "load_5m": 7.86,
+    "ram_used_approx_gib": 11,
+    "ram_available_approx_gib": 20,
+    "swap_used_approx_gib": 5.6,
+    "swap_in_out_samples": "mostly zero during stable measurement; no global swapoff",
+    "wayfatours_home_http": 200,
+    "wayfatours_home_ttfb_sec_sample": 0.017191,
+    "toursdev_home_http": 200,
+    "toursdev_home_ttfb_sec_sample": 3.666489,
+    "staging_cold_php_workload_unresolved": true
+  },
+  "prevention": {
+    "source": "ops/company-code-release-v1/tools/stale-playwright-qa-janitor-v1.py",
+    "source_sha256": "3f5575f3584a1377e89b11bff927948c10f7bea0c7140273336cc722152006e1",
+    "cron": "6,16,26,36,46,56 * * * *",
+    "legacy_ephemeral_test_age_minutes": 45,
+    "managed_service_exec_test_age_minutes": 90,
+    "guards": [
+      "only native MAD4B Playwright QA image tags",
+      "only one-shot QA commands and no port/restart/service labels",
+      "Coolify-managed API dynamically discovered by semantic labels and never stopped",
+      "only orphan QA process trees whose parent is containerd shim; never API descendants",
+      "PID startup fingerprint before SIGTERM; escalate stale QA only after grace",
+      "lock and bounded max 20 standalone containers/5 managed exec QA roots per tick",
+      "dry-run support; no Docker prune",
+      "WP/PHP/MariaDB/Stripe/commerce unmodified"
+    ],
+    "test_source": "ops/company-code-release-v1/tests/test_stale_playwright_qa_janitor_v1.py",
+    "hermetic_tests": "17/17 pass",
+    "rollback_crontab_backup": "/opt/mad4b-company-provisioning/backups/vps-cpu-qa-janitor-20261115/root-crontab-before-qa-janitor.txt",
+    "operator_receipt": "/opt/mad4b-company-provisioning/reports/vps-cpu-remediation-20261115/janitor-last.json"
+  },
+  "limitations": [
+    "Current CPU load is not a formal p95 SLA; other scheduled WP-CLI and cache-miss render work remains.",
+    "The root issue includes orphaned test processes caused by detached Docker/Chromium test execution; prevention is an age-bounded cleanup, not a substitute for correct test lifecycle cleanup.",
+    "Tours.dev public HTML remains uncached (~3.7s TTFB in sampled request); handle trusted locale/currency CSS cache admission in separate release.",
+    "Do not indiscriminately clear 5.6GiB swap or stop production Playwright API to make a dashboard green."
+  ],
+  "status": "DIRECT_RUNTIME_REPAIR_AND_JANITOR_ACTIVE__NOT_SIGNED_ORIGINAL313"
+}
