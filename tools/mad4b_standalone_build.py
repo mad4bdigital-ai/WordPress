@@ -72,26 +72,45 @@ def source_identity(root: Path, expected: str) -> None:
 
 
 def certified_adapter(root: Path, archive: Path) -> tuple[str, str]:
+    """Identify the certified Adapter from exact bytes, never a version floor.
+
+    The caller supplies archive bytes, not a trusted version. Match them to
+    exactly one certified Provider profile. No profile means refusal; identical
+    identities registered under two versions are ambiguous and also refused.
+    This is source-build validation only, not release/promotion authority.
+    """
     policy = json.loads((root / POLICY).read_text(encoding="utf-8"))
-    profiles = json.loads((root / PROFILES).read_text(encoding="utf-8"))
+    catalog = json.loads((root / PROFILES).read_text(encoding="utf-8"))
     require(policy.get("contract") == "mad4b.runtime-release-policy.v1",
             "release_policy_contract_invalid")
-    version = str(policy.get("target_adapter_version", ""))
-    profile = ((profiles.get("providers") or {}).get("mcp_adapter") or {}).get(version) or {}
-    require(bool(version) and profile.get("version") == version, "certified_adapter_profile_missing")
-    require(archive.is_file() and not archive.is_symlink(), "certified_adapter_archive_missing")
-    expected_size = int(profile.get("archive_bytes") or 0)
-    expected_sha = str(profile.get("archive_sha256") or "")
-    require(expected_size > 0 and archive.stat().st_size == expected_size,
-            "certified_adapter_archive_size_mismatch")
-    require(len(expected_sha) == 64 and sha(archive) == expected_sha,
-            "certified_adapter_archive_sha_mismatch")
+    require(policy.get("adapter_release_target_source") ==
+            "certified_runtime_release_set.mcp_adapter",
+            "certified_adapter_source_contract_mismatch")
+    require("target_adapter_version" not in policy,
+            "retired_adapter_version_floor_reintroduced")
+    require(archive.is_file() and not archive.is_symlink(),
+            "certified_adapter_archive_missing")
+    observed_size = archive.stat().st_size
+    observed_sha = sha(archive)
+    profiles = ((catalog.get("providers") or {}).get("mcp_adapter") or {})
+    require(isinstance(profiles, dict), "certified_adapter_catalog_invalid")
+    matches = []
+    for version, profile in profiles.items():
+        if not isinstance(profile, dict) or profile.get("version") != version:
+            continue
+        expected_size = profile.get("archive_bytes")
+        expected_sha = profile.get("archive_sha256")
+        if (type(expected_size) is int and expected_size == observed_size
+                and isinstance(expected_sha, str) and len(expected_sha) == 64
+                and expected_sha.lower() == observed_sha):
+            matches.append(version)
+    require(len(matches) == 1, "certified_adapter_archive_identity_unmatched_or_ambiguous")
     try:
         with zipfile.ZipFile(archive) as z:
             require(z.testzip() is None, "certified_adapter_archive_corrupt")
     except (OSError, zipfile.BadZipFile) as exc:
         raise BuildBlocked("certified_adapter_not_zip") from exc
-    return version, expected_sha
+    return matches[0], observed_sha
 
 
 def verify_zip(archive: Path, receipt: dict, source: str) -> None:
