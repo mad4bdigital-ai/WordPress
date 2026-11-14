@@ -381,6 +381,16 @@ jobs:
           cat >/tmp/mad4b-wp-router.php <<'PHP'
           <?php
           $path = parse_url( $_SERVER['REQUEST_URI'], PHP_URL_PATH );
+          // Check the *actual cli-server process*, not a separate php -r
+          // invocation. Only this loopback-only disposable CI router owns
+          // the diagnostic path; the WordPress runtime is untouched.
+          if ( '/__mad4b_ci_cache_free' === $path ) {
+              $cache_free = ! extension_loaded( 'Zend OPcache' )
+                  || ( function_exists( 'opcache_get_status' )
+                      && false === opcache_get_status( false ) );
+              http_response_code( $cache_free ? 204 : 503 );
+              return true;
+          }
           $file = rtrim( $_SERVER['DOCUMENT_ROOT'], '/' ) . $path;
           if ( '/' !== $path && is_file( $file ) ) return false;
 
@@ -409,7 +419,9 @@ jobs:
           }
           echo "LOCAL_OAUTH_BROWSER_CACHE_FREE: PASS\n";
           '
-          php -d opcache.enable_cli=0 -S 127.0.0.1:8088 -t "$WP_PATH" /tmp/mad4b-wp-router.php >/tmp/mad4b-browser-server.log 2>&1 &
+          # cli-server has a separate SAPI: opcache.enable_cli=0 alone is
+          # insufficient to prove it cannot execute stale opcodes.
+          php -d opcache.enable=0 -d opcache.enable_cli=0 -S 127.0.0.1:8088 -t "$WP_PATH" /tmp/mad4b-wp-router.php >/tmp/mad4b-browser-server.log 2>&1 &
           SERVER_PID=$!
           trap 'kill "$SERVER_PID" 2>/dev/null || true; cat /tmp/mad4b-browser-server.log || true' EXIT
           for i in $(seq 1 40); do
@@ -417,6 +429,8 @@ jobs:
             sleep 0.25
           done
           curl -fsS "$MAD4B_BROWSER_BASE_URL/wp-login.php" >/dev/null
+          curl -fsS --max-time 5 "$MAD4B_BROWSER_BASE_URL/__mad4b_ci_cache_free" >/dev/null
+          echo "LOCAL_OAUTH_BROWSER_SAME_SAPI_CACHE_FREE: PASS"
 
           # Bound the complete OAuth/MCP discovery chain used by external clients.
           # These are full HTTP requests and therefore include WordPress/plugin boot.

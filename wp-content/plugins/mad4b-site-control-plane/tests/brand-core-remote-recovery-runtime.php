@@ -21,12 +21,14 @@ class MAD4B_SCP_Site_Profile {
     public static $environment = 'staging';
     public static $bound = false;
     public static function status() {
-        return array( 'environment' => self::$environment, 'origin_match' => true,
+        return array( 'environment' => self::$environment,
+            'configured_environment' => self::$environment,
+            'origin_match' => true,
             'configured' => true, 'authority_ready' => true,
             'deployment_binding_configured' => self::$bound,
             'deployment_binding_bound' => self::$bound,
             'deployment_binding_match' => true,
-            'environment_match' => true, 'site_uuid' => 'site-a',
+            'environment_match' => true, 'site_uuid' => '11111111-2222-4333-8444-555555555555',
             'revision' => 3, 'profile_digest' => str_repeat( 'a', 64 ) );
     }
 }
@@ -89,6 +91,12 @@ class MAD4B_SCP_Context_Authority {
 }
 class MAD4B_SCP_Google_Drive_Context {
     public static $write = false;
+    public static $folder_verified = true;
+    public static function admin_folder_preview( $folder ) {
+        return self::$folder_verified && 'original-drive-folder' === $folder
+            ? array( 'id' => $folder, 'mimeType' => 'application/vnd.google-apps.folder' )
+            : new WP_Error( 'test_folder_access_denied' );
+    }
     public static function connection_status() {
         return array( 'connected' => true, 'read_available' => true,
             'write_available' => self::$write, 'revocation_pending' => false,
@@ -189,6 +197,17 @@ brand_remote_assert( 'GOOGLE_WRITE_CONSENT_REQUIRED' === $write_pending['state']
     && !$write_pending['new_source_write_eligible'],
     'Managed library requires current provider consent in addition to policy selection' );
 MAD4B_SCP_Google_Drive_Context::$write = true;
+// Folder selection is not owner/access proof. Even when Google consent and
+// exact Site Profile are present, missing provider readback cannot register it.
+MAD4B_SCP_Google_Drive_Context::$folder_verified = false;
+$unverified_folder = MAD4B_SCP_Brand_Core_Remote_Recovery::source_onboarding_preflight( $folder_intent );
+brand_remote_assert( ! is_wp_error( $unverified_folder )
+    && 'GOOGLE_FOLDER_ACCESS_REQUIRED' === $unverified_folder['state']
+    && empty( $unverified_folder['new_source_write_eligible'] )
+    && empty( $unverified_folder['new_source_authorized'] )
+    && empty( $unverified_folder['source_registry_modified'] ),
+    'An unverified Drive folder was treated as an existing governed source' );
+MAD4B_SCP_Google_Drive_Context::$folder_verified = true;
 $ready_source = MAD4B_SCP_Brand_Core_Remote_Recovery::source_onboarding_preflight( $folder_intent );
 brand_remote_assert( 'READY_FOR_GOVERNED_SOURCE_PLAN' === $ready_source['state']
     && $ready_source['new_source_write_eligible']

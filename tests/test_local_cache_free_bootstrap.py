@@ -9,6 +9,14 @@ BOOT = ROOT / 'wp-content/plugins/mad4b-site-control-plane/bootstrap/mad4b-mcp-a
 
 
 class LocalCacheFreeBootstrap(unittest.TestCase):
+    def test_browser_cache_free_proof_is_from_the_server_sapi(self):
+        workflow = (ROOT / '.github/workflows/mad4b-local-oauth-standalone.yml').read_text()
+        self.assertIn("php -d opcache.enable=0 -d opcache.enable_cli=0 -S 127.0.0.1:8088", workflow)
+        self.assertIn("'/__mad4b_ci_cache_free' === $path", workflow)
+        self.assertIn("http_response_code( $cache_free ? 204 : 503 )", workflow)
+        self.assertIn('curl -fsS --max-time 5 "$MAD4B_BROWSER_BASE_URL/__mad4b_ci_cache_free"', workflow)
+        self.assertNotIn("if ( ! $cache_free ) $cache_free = true;", workflow)
+
     def test_real_php_opcache_disabled_and_enabled(self):
         source = BOOT.read_text()
         start = source.index('\t$mad4b_mcp_mu_effective_environment =')
