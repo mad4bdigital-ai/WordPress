@@ -116,7 +116,12 @@ the passed Tour Rate / WPML validation.
 Read-only Brand Integrity tour scan returned complete with no issues:
 Tours.dev 221/221 and Wayfatours 84/84. Existing Brand Integrity and
 native Tour Highlights Presentation source files match each site's live
-source by SHA256. This is not a candidate full content scan or a replacement
+source by SHA256. A later read-only check found both Content Experience
+Runtime and the Brand Integrity live_update_preflight method loaded, with
+both PHP source files identical by SHA256 to the integrated branch.
+This is method/path integration evidence, not an attempted live content
+mutation or full end-to-end WordPress save/publish certification.
+This is not a candidate full content scan or a replacement
 release of all MAD4B PHP sources.
 
 ## Still HOLD
