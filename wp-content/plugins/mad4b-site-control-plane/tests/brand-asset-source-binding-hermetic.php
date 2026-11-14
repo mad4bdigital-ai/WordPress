@@ -80,6 +80,9 @@ $asset = array(
 );
 $owner = static function( $record ) { return MAD4B_SCP_Context_Authority::brand_asset_binding_evidence( $record ); };
 $approved = new ReflectionMethod( 'MAD4B_SCP_Brand_Context_Builder', 'approved_brand_asset' );
+// PHP 7.4 needs explicit private-method reflection access; PHP 8.1+
+// makes that call unnecessary and PHP 8.5 deprecates it.
+if ( PHP_VERSION_ID < 80100 ) $approved->setAccessible( true );
 
 assert_contract( 'bound' === $owner( $asset )['status'], 'registered site+source should establish lineage' );
 assert_contract( 'unknown' === MAD4B_SCP_Context_Authority::brand_owner_evidence( $asset )['status'],

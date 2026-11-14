@@ -6,6 +6,8 @@ if ( ! in_array( '--without-class', $argv, true ) ) {
 }
 require dirname(__DIR__).'/includes/class-mad4b-scp-brand-context-builder.php';
 $reflection=new ReflectionMethod('MAD4B_SCP_Brand_Context_Builder','approved_brand_asset');
+// PHP 7.4 requires private reflection access; PHP 8.1+ ignores it.
+if ( PHP_VERSION_ID < 80100 ) $reflection->setAccessible( true );
 $asset=array(
  'status'=>'ready','authority_class'=>'brand_authority',
  'review_status'=>'approved',

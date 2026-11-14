@@ -39,6 +39,14 @@ final class MAD4B_SCP_Operational_Integrity {
       ? true : new WP_Error('brand_lineage_test_scope_changed');
   }
 }
+// This isolated --skip-plugins fixture still requires a real WordPress
+// administrator. It cannot emulate an authorized actor with an unconditional
+// true Policy stub, nor create ContentJobs as anonymous WP-CLI.
+final class MAD4B_SCP_Policy {
+  public static function can_mutate() {
+    return get_current_user_id() > 0 && current_user_can('manage_options');
+  }
+}
 require_once $root . '/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php';
 require_once $root . '/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-artifacts.php';
 
@@ -54,6 +62,21 @@ if (empty($storage['ready']) || empty($storage['read_your_writes'])) {
   )) . "\\n");
   exit(1);
 }
+// Prove anonymous CLI remains blocked, even in this test fixture.
+$original_admin = get_current_user_id();
+if ($original_admin < 1 || ! current_user_can('manage_options')) {
+  $fail('fixture must be invoked with the enrolled test Administrator');
+}
+wp_set_current_user(0);
+$unauthorized = MAD4B_SCP_Content_Jobs::create_job(array(
+    'brand_id'=>'brand-lineage', 'subject'=>'Anonymous must not create ContentJobs',
+    'language'=>'en', 'country'=>'eg', 'content_type'=>'brand_context_generation',
+    'automation_level'=>'review_gated'
+));
+if (! is_wp_error($unauthorized)
+    || 'mad4b_content_job_authorized_actor_required' !== $unauthorized->get_error_code())
+  $fail('anonymous CLI was admitted to guarded ContentJobs');
+wp_set_current_user($original_admin);
 $jobs = array();
 for ($i=0; $i<2; ++$i) {
   $j = MAD4B_SCP_Content_Jobs::create_job(array(
@@ -104,4 +127,4 @@ echo "mad4b.brand-context-builder.cross-job-lineage.v2: PASS\n";
 PHP
 
 export MAD4B_REPO_ROOT="$ROOT"
-wp --path="$ROOT" --allow-root --skip-plugins --skip-themes eval-file "$TMP/lineage.php"
+wp --path="$ROOT" --allow-root --user=admin --skip-plugins --skip-themes eval-file "$TMP/lineage.php"
