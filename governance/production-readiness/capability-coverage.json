@@ -5448,6 +5448,78 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing Admin/Browser/Security and Governance/Platform controls remain binding to the original tenant permission, not global WordPress admin authority.",
       "review_rationale": "Original company staff lifecycle class is executed in isolated PHP 7.4/8.5. Three REST routes, four HTTP methods, and native company-capability permission callbacks are exercised; anonymous denial, administrator/current-owner deletion refusal, username confirmation, suspended REST authentication and WP login refusal are asserted. No real account is mutated, and no new role or global admin authority is introduced by this source-only review."
+    },
+    {
+      "id": "ability:mad4b/company-code-inventory-page",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/company-code-cryptographic-pages-hermetic.php"
+      ],
+      "owner_role": "MAD4B original signed company code evidence source reviewer — CI-only, no Host release",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing ability/security/provider controls apply to exact original page-only immutable evidence and never supply owner approval or file mutation.",
+      "review_rationale": "Executed exact new Company Code Reconciliation PHP class on PHP 7.4/8.5. Two original private read Abilities are registered with closed schemas, native read permissions and no destructive flag. A deliberately stubbed original receipt verifier covers valid and invalid source/target receipt, manifest SHA binding, same-company/different-site scope, path traversal denial and protected-file no-overwrite. Inventory-page reference is evidence-only, not an extra registered privilege. Does not claim the stub is a real crypto signature or permit file transfer."
+    },
+    {
+      "id": "ability:mad4b/company-code-reconciliation-compare",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/company-code-cryptographic-pages-hermetic.php"
+      ],
+      "owner_role": "MAD4B original signed company code evidence source reviewer — CI-only, no Host release",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing ability/security/provider controls apply to exact original page-only immutable evidence and never supply owner approval or file mutation.",
+      "review_rationale": "Executed exact new Company Code Reconciliation PHP class on PHP 7.4/8.5. Two original private read Abilities are registered with closed schemas, native read permissions and no destructive flag. A deliberately stubbed original receipt verifier covers valid and invalid source/target receipt, manifest SHA binding, same-company/different-site scope, path traversal denial and protected-file no-overwrite. Inventory-page reference is evidence-only, not an extra registered privilege. Does not claim the stub is a real crypto signature or permit file transfer."
+    },
+    {
+      "id": "ability:mad4b/company-code-reconciliation-plan",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/company-code-cryptographic-pages-hermetic.php"
+      ],
+      "owner_role": "MAD4B original signed company code evidence source reviewer — CI-only, no Host release",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing ability/security/provider controls apply to exact original page-only immutable evidence and never supply owner approval or file mutation.",
+      "review_rationale": "Executed exact new Company Code Reconciliation PHP class on PHP 7.4/8.5. Two original private read Abilities are registered with closed schemas, native read permissions and no destructive flag. A deliberately stubbed original receipt verifier covers valid and invalid source/target receipt, manifest SHA binding, same-company/different-site scope, path traversal denial and protected-file no-overwrite. Inventory-page reference is evidence-only, not an extra registered privilege. Does not claim the stub is a real crypto signature or permit file transfer."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-code-reconciliation.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/company-code-cryptographic-pages-hermetic.php"
+      ],
+      "owner_role": "MAD4B original signed company code evidence source reviewer — CI-only, no Host release",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing ability/security/provider controls apply to exact original page-only immutable evidence and never supply owner approval or file mutation.",
+      "review_rationale": "Executed exact new Company Code Reconciliation PHP class on PHP 7.4/8.5. Two original private read Abilities are registered with closed schemas, native read permissions and no destructive flag. A deliberately stubbed original receipt verifier covers valid and invalid source/target receipt, manifest SHA binding, same-company/different-site scope, path traversal denial and protected-file no-overwrite. Inventory-page reference is evidence-only, not an extra registered privilege. Does not claim the stub is a real crypto signature or permit file transfer."
     }
   ],
   "lifecycle": [],
@@ -14242,6 +14314,25 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing governance/platform/security controls remain mapped to exact original user-lifecycle source and updated hermetic negative tests.",
       "review_rationale": "Exact native company user lifecycle source inspected for tenant-only permission, protected current user/administrators, suspension-first deletion, exact username confirmation, completeness of task and content dependencies, audit and WordPress login / REST suspension blocks. Original methods were exercised only on bounded denial paths with PHP 7.4/8.5. Destructive live account deletion remains untested and is NOT approved or released by this review."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-code-reconciliation.php",
+      "source_blob_sha": "a334e992dfc44aa30691a814a93684a541af8d07",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/company-code-cryptographic-pages-hermetic.php"
+      ],
+      "owner_role": "MAD4B nonauthorizing company source compare reviewer, CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance/platform/security source controls keep exact source owner and signature-bound evidence fail-closed.",
+      "review_rationale": "This exact source contains only signed-page bounded planning/comparison, no filesystem, shell, WordPress content writes, grant creation or allow-to-apply output. The original PHP class is executed on PHP 7.4/8.5 with synthetic receipt validation; it enforces company/site/fingerprint, path, sha and protected-source preservation. Actual Original Core cryptographic verification, full inventory, Host authority and Site Owner remain separate live checks."
     }
   ],
   "code_change_rules": {
