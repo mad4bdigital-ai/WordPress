@@ -4781,6 +4781,313 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing native MCP/Provider/Execution or update/rollout controls remain applicable. CI fixture checks only the read-only route contract and never mints cross-Ability install rights.",
       "review_rationale": "Original first-party Control Plane test router read-only service is exercised with WordPress-admin authorization, native read policy, signed-release matching, refusal of untrusted source, 2 plan/apply routing options and explicit no-auto-apply, no-promotion flags. No actual install, grant, Owner approval or signed host receipt is inferred."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-booking-readiness",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/chatbotx-native-adapter-surface-hermetic.php"
+      ],
+      "owner_role": "MAD4B optional native ChatbotX provider source reviewer — CI-only, not provider owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing mapped provider, security, MCP execution or platform controls apply to a source-only adapter registration and fail-closed write contract; they do not certify external endpoints or owner consent.",
+      "review_rationale": "Exact ChatbotX provider Ability mad4b/chatbotx-booking-readiness is exercised through the original source Adapter registration, not an invented tool. PHP 7.4/8.5 fixtures assert the 11 native read and 3 administrator-only mutating declarations, plugin activation and all native bridge classes, closed input schema, idempotency key on writes, no discovery when inactive, fail-closed preflight and no mutation when central gate is disabled."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-business-context",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/chatbotx-native-adapter-surface-hermetic.php"
+      ],
+      "owner_role": "MAD4B optional native ChatbotX provider source reviewer — CI-only, not provider owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing mapped provider, security, MCP execution or platform controls apply to a source-only adapter registration and fail-closed write contract; they do not certify external endpoints or owner consent.",
+      "review_rationale": "Exact ChatbotX provider Ability mad4b/chatbotx-business-context is exercised through the original source Adapter registration, not an invented tool. PHP 7.4/8.5 fixtures assert the 11 native read and 3 administrator-only mutating declarations, plugin activation and all native bridge classes, closed input schema, idempotency key on writes, no discovery when inactive, fail-closed preflight and no mutation when central gate is disabled."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-channels-read",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/chatbotx-native-adapter-surface-hermetic.php"
+      ],
+      "owner_role": "MAD4B optional native ChatbotX provider source reviewer — CI-only, not provider owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing mapped provider, security, MCP execution or platform controls apply to a source-only adapter registration and fail-closed write contract; they do not certify external endpoints or owner consent.",
+      "review_rationale": "Exact ChatbotX provider Ability mad4b/chatbotx-channels-read is exercised through the original source Adapter registration, not an invented tool. PHP 7.4/8.5 fixtures assert the 11 native read and 3 administrator-only mutating declarations, plugin activation and all native bridge classes, closed input schema, idempotency key on writes, no discovery when inactive, fail-closed preflight and no mutation when central gate is disabled."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-commerce-route-plan",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/chatbotx-native-adapter-surface-hermetic.php"
+      ],
+      "owner_role": "MAD4B optional native ChatbotX provider source reviewer — CI-only, not provider owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing mapped provider, security, MCP execution or platform controls apply to a source-only adapter registration and fail-closed write contract; they do not certify external endpoints or owner consent.",
+      "review_rationale": "Exact ChatbotX provider Ability mad4b/chatbotx-commerce-route-plan is exercised through the original source Adapter registration, not an invented tool. PHP 7.4/8.5 fixtures assert the 11 native read and 3 administrator-only mutating declarations, plugin activation and all native bridge classes, closed input schema, idempotency key on writes, no discovery when inactive, fail-closed preflight and no mutation when central gate is disabled."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-cpt-create-draft",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/chatbotx-native-adapter-surface-hermetic.php"
+      ],
+      "owner_role": "MAD4B optional native ChatbotX provider source reviewer — CI-only, not provider owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing mapped provider, security, MCP execution or platform controls apply to a source-only adapter registration and fail-closed write contract; they do not certify external endpoints or owner consent.",
+      "review_rationale": "Exact ChatbotX provider Ability mad4b/chatbotx-cpt-create-draft is exercised through the original source Adapter registration, not an invented tool. PHP 7.4/8.5 fixtures assert the 11 native read and 3 administrator-only mutating declarations, plugin activation and all native bridge classes, closed input schema, idempotency key on writes, no discovery when inactive, fail-closed preflight and no mutation when central gate is disabled."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-cpt-product-source",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/chatbotx-native-adapter-surface-hermetic.php"
+      ],
+      "owner_role": "MAD4B optional native ChatbotX provider source reviewer — CI-only, not provider owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing mapped provider, security, MCP execution or platform controls apply to a source-only adapter registration and fail-closed write contract; they do not certify external endpoints or owner consent.",
+      "review_rationale": "Exact ChatbotX provider Ability mad4b/chatbotx-cpt-product-source is exercised through the original source Adapter registration, not an invented tool. PHP 7.4/8.5 fixtures assert the 11 native read and 3 administrator-only mutating declarations, plugin activation and all native bridge classes, closed input schema, idempotency key on writes, no discovery when inactive, fail-closed preflight and no mutation when central gate is disabled."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-integration-inventory",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/chatbotx-native-adapter-surface-hermetic.php"
+      ],
+      "owner_role": "MAD4B optional native ChatbotX provider source reviewer — CI-only, not provider owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing mapped provider, security, MCP execution or platform controls apply to a source-only adapter registration and fail-closed write contract; they do not certify external endpoints or owner consent.",
+      "review_rationale": "Exact ChatbotX provider Ability mad4b/chatbotx-integration-inventory is exercised through the original source Adapter registration, not an invented tool. PHP 7.4/8.5 fixtures assert the 11 native read and 3 administrator-only mutating declarations, plugin activation and all native bridge classes, closed input schema, idempotency key on writes, no discovery when inactive, fail-closed preflight and no mutation when central gate is disabled."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-presentation-context",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/chatbotx-native-adapter-surface-hermetic.php"
+      ],
+      "owner_role": "MAD4B optional native ChatbotX provider source reviewer — CI-only, not provider owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing mapped provider, security, MCP execution or platform controls apply to a source-only adapter registration and fail-closed write contract; they do not certify external endpoints or owner consent.",
+      "review_rationale": "Exact ChatbotX provider Ability mad4b/chatbotx-presentation-context is exercised through the original source Adapter registration, not an invented tool. PHP 7.4/8.5 fixtures assert the 11 native read and 3 administrator-only mutating declarations, plugin activation and all native bridge classes, closed input schema, idempotency key on writes, no discovery when inactive, fail-closed preflight and no mutation when central gate is disabled."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-pricing-preview",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/chatbotx-native-adapter-surface-hermetic.php"
+      ],
+      "owner_role": "MAD4B optional native ChatbotX provider source reviewer — CI-only, not provider owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing mapped provider, security, MCP execution or platform controls apply to a source-only adapter registration and fail-closed write contract; they do not certify external endpoints or owner consent.",
+      "review_rationale": "Exact ChatbotX provider Ability mad4b/chatbotx-pricing-preview is exercised through the original source Adapter registration, not an invented tool. PHP 7.4/8.5 fixtures assert the 11 native read and 3 administrator-only mutating declarations, plugin activation and all native bridge classes, closed input schema, idempotency key on writes, no discovery when inactive, fail-closed preflight and no mutation when central gate is disabled."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-provider-snapshot",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/chatbotx-native-adapter-surface-hermetic.php"
+      ],
+      "owner_role": "MAD4B optional native ChatbotX provider source reviewer — CI-only, not provider owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing mapped provider, security, MCP execution or platform controls apply to a source-only adapter registration and fail-closed write contract; they do not certify external endpoints or owner consent.",
+      "review_rationale": "Exact ChatbotX provider Ability mad4b/chatbotx-provider-snapshot is exercised through the original source Adapter registration, not an invented tool. PHP 7.4/8.5 fixtures assert the 11 native read and 3 administrator-only mutating declarations, plugin activation and all native bridge classes, closed input schema, idempotency key on writes, no discovery when inactive, fail-closed preflight and no mutation when central gate is disabled."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-remote-health",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/chatbotx-native-adapter-surface-hermetic.php"
+      ],
+      "owner_role": "MAD4B optional native ChatbotX provider source reviewer — CI-only, not provider owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing mapped provider, security, MCP execution or platform controls apply to a source-only adapter registration and fail-closed write contract; they do not certify external endpoints or owner consent.",
+      "review_rationale": "Exact ChatbotX provider Ability mad4b/chatbotx-remote-health is exercised through the original source Adapter registration, not an invented tool. PHP 7.4/8.5 fixtures assert the 11 native read and 3 administrator-only mutating declarations, plugin activation and all native bridge classes, closed input schema, idempotency key on writes, no discovery when inactive, fail-closed preflight and no mutation when central gate is disabled."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-support-add-note",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/chatbotx-native-adapter-surface-hermetic.php"
+      ],
+      "owner_role": "MAD4B optional native ChatbotX provider source reviewer — CI-only, not provider owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing mapped provider, security, MCP execution or platform controls apply to a source-only adapter registration and fail-closed write contract; they do not certify external endpoints or owner consent.",
+      "review_rationale": "Exact ChatbotX provider Ability mad4b/chatbotx-support-add-note is exercised through the original source Adapter registration, not an invented tool. PHP 7.4/8.5 fixtures assert the 11 native read and 3 administrator-only mutating declarations, plugin activation and all native bridge classes, closed input schema, idempotency key on writes, no discovery when inactive, fail-closed preflight and no mutation when central gate is disabled."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-support-create-ticket",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/chatbotx-native-adapter-surface-hermetic.php"
+      ],
+      "owner_role": "MAD4B optional native ChatbotX provider source reviewer — CI-only, not provider owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing mapped provider, security, MCP execution or platform controls apply to a source-only adapter registration and fail-closed write contract; they do not certify external endpoints or owner consent.",
+      "review_rationale": "Exact ChatbotX provider Ability mad4b/chatbotx-support-create-ticket is exercised through the original source Adapter registration, not an invented tool. PHP 7.4/8.5 fixtures assert the 11 native read and 3 administrator-only mutating declarations, plugin activation and all native bridge classes, closed input schema, idempotency key on writes, no discovery when inactive, fail-closed preflight and no mutation when central gate is disabled."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-write-preflight",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/chatbotx-native-adapter-surface-hermetic.php"
+      ],
+      "owner_role": "MAD4B optional native ChatbotX provider source reviewer — CI-only, not provider owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing mapped provider, security, MCP execution or platform controls apply to a source-only adapter registration and fail-closed write contract; they do not certify external endpoints or owner consent.",
+      "review_rationale": "Exact ChatbotX provider Ability mad4b/chatbotx-write-preflight is exercised through the original source Adapter registration, not an invented tool. PHP 7.4/8.5 fixtures assert the 11 native read and 3 administrator-only mutating declarations, plugin activation and all native bridge classes, closed input schema, idempotency key on writes, no discovery when inactive, fail-closed preflight and no mutation when central gate is disabled."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-governed-writes.php",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/chatbotx-native-adapter-surface-hermetic.php"
+      ],
+      "owner_role": "MAD4B optional native ChatbotX provider source reviewer — CI-only, not provider owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing mapped provider, security, MCP execution or platform controls apply to a source-only adapter registration and fail-closed write contract; they do not certify external endpoints or owner consent.",
+      "review_rationale": "The original ChatbotX provider service wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-governed-writes.php participates in a bounded native first-party adapter contract. PHP fixtures execute the exact original class methods, require vendor plugin activation, reject unapproved provider writes and unknown Ability preflight, and do not perform external network, send email or create content."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-provider-adapter.php",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/chatbotx-native-adapter-surface-hermetic.php"
+      ],
+      "owner_role": "MAD4B optional native ChatbotX provider source reviewer — CI-only, not provider owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing mapped provider, security, MCP execution or platform controls apply to a source-only adapter registration and fail-closed write contract; they do not certify external endpoints or owner consent.",
+      "review_rationale": "The original ChatbotX provider service wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-provider-adapter.php participates in a bounded native first-party adapter contract. PHP fixtures execute the exact original class methods, require vendor plugin activation, reject unapproved provider writes and unknown Ability preflight, and do not perform external network, send email or create content."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-write-preflight.php",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/chatbotx-native-adapter-surface-hermetic.php"
+      ],
+      "owner_role": "MAD4B optional native ChatbotX provider source reviewer — CI-only, not provider owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing mapped provider, security, MCP execution or platform controls apply to a source-only adapter registration and fail-closed write contract; they do not certify external endpoints or owner consent.",
+      "review_rationale": "The original ChatbotX provider service wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-write-preflight.php participates in a bounded native first-party adapter contract. PHP fixtures execute the exact original class methods, require vendor plugin activation, reject unapproved provider writes and unknown Ability preflight, and do not perform external network, send email or create content."
     }
   ],
   "lifecycle": [],
@@ -13462,6 +13769,63 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing governance/platform/security controls protect source behavior with original Ability registration and native permission checks.",
       "review_rationale": "Exact new first-party router source was inspected. Its reducer emits read-only plan advice and explicitly retains unsigned/foreign SHA rejection, separate exact plan, separate enrolled Owner step-up, no automatic mutations or Production permission. Original PHP fixture directly calls register_ability and exercises read admission and all plan/readback referenced identities under PHP 7.4 and 8.5. Does not certify underlying native/selected-head apply implementations."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-provider-adapter.php",
+      "source_blob_sha": "2bedb1739c3952c004ace0e9b37373b04220c764",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/chatbotx-native-adapter-surface-hermetic.php"
+      ],
+      "owner_role": "MAD4B bundled optional provider source reviewer, no external runtime authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original platform governance/security code-change control IDs apply to exact bundled source and this newly executed native PHP regression.",
+      "review_rationale": "Reviewed native ChatbotX adapter, deny-first write preflight, and governed write callbacks. The original adapter registers only on installed and active native bridge, enumerates 11 read and 3 write tools, constrains schema and idempotency; the delegated write functions keep central mutation guard before any side effect. PHP 7.4/8.5 hermetic fixture proves negative paths, not a live provider write, OAuth consent, certification, email delivery or Production publication."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-governed-writes.php",
+      "source_blob_sha": "953850829b7cd20df115451be44b868510fabf1a",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/chatbotx-native-adapter-surface-hermetic.php"
+      ],
+      "owner_role": "MAD4B bundled optional provider source reviewer, no external runtime authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original platform governance/security code-change control IDs apply to exact bundled source and this newly executed native PHP regression.",
+      "review_rationale": "Reviewed native ChatbotX adapter, deny-first write preflight, and governed write callbacks. The original adapter registers only on installed and active native bridge, enumerates 11 read and 3 write tools, constrains schema and idempotency; the delegated write functions keep central mutation guard before any side effect. PHP 7.4/8.5 hermetic fixture proves negative paths, not a live provider write, OAuth consent, certification, email delivery or Production publication."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-write-preflight.php",
+      "source_blob_sha": "f878ee584ab1fef1e4de2b6214621355f098b0a8",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/chatbotx-native-adapter-surface-hermetic.php"
+      ],
+      "owner_role": "MAD4B bundled optional provider source reviewer, no external runtime authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original platform governance/security code-change control IDs apply to exact bundled source and this newly executed native PHP regression.",
+      "review_rationale": "Reviewed native ChatbotX adapter, deny-first write preflight, and governed write callbacks. The original adapter registers only on installed and active native bridge, enumerates 11 read and 3 write tools, constrains schema and idempotency; the delegated write functions keep central mutation guard before any side effect. PHP 7.4/8.5 hermetic fixture proves negative paths, not a live provider write, OAuth consent, certification, email delivery or Production publication."
     }
   ],
   "code_change_rules": {
