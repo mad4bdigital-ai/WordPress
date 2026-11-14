@@ -49,6 +49,15 @@ jobs:
           python3 -m unittest discover -s tests -p 'test_tour_highlights_source_delta.py' -v
           python3 -m unittest discover -s tests -p 'test_pr813_destination_additive_reconcile.py' -v
           python3 -m unittest discover -s tests -p 'test_tour_highlights_site_neutral_scope.py' -v
+          # Lock newer local and native source semantics into normal CI.
+          # No historical manifest repinning, owner approval or Production
+          # authority is inferred by any of these source-only tests.
+          python3 -m unittest discover -s tests -p 'test_journey_successor_no_regression.py' -v
+          python3 -m unittest discover -s tests -p 'test_brand_integrity_lifecycle_contract.py' -v
+          python3 -m unittest discover -s tests -p 'test_readiness_supervisor.py' -v
+          python3 -m unittest discover -s tests -p 'test_certified_mcp_adapter_profile.py' -v
+          python3 -m unittest discover -s tests -p 'test_ci_legacy_contract_convergence.py' -v
+          python3 -m unittest discover -s tools -p 'test_mad4b_standalone_build.py' -v
           python3 -m unittest discover -s ops/company-code-release-v1/tests -p 'test_dynamic_capability*.py' -q
           # The actual Registry requires a root-owned, non-writable enrolled
           # directory; the test creates an EPHEMERAL candidate under /tmp.
