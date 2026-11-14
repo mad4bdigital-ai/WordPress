@@ -4122,6 +4122,42 @@
       "review_rationale": "Core Web Vitals retains the single native provider for private admin REST, read-only WordPress diagnostics and bounded WordPress Cron. This service is not an alternate source of capabilities and never grants external PageSpeed credentials or publication rights. The source-only contract checks registered routes, hooks, and permission callbacks.",
       "coverage_reuse_rationale": "The existing mapped WordPress platform, admin security, MCP read or automation controls apply as indicated. Exact hermetic PHP and source inventories exercise only the scoped registration change; Owner attestation, Original313 and live readback remain independent.",
       "execution_note": "Source and hermetic fixture only; no live route acceptance, signed host provenance, new ability permissions or production mutation authorized."
+    },
+    {
+      "id": "cron:mad4b_authority_auto_reconciliation_inspect",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-native-cron-ownership-hermetic.php"
+      ],
+      "owner_role": "MAD4B scheduled diagnostic source reviewer — Cron-only CI, not owner or host release authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Only the non-production authority-inspection scheduled hook is reviewed here. Original hermetic PHP fixture confirms scheduling is suppressed outside the scoped Staging environment, and incomplete profile cannot issue grants, publish content or emit mutation actions on the scheduled path. Privileged host-CLI reconcile_safe() is intentionally NOT certified by this Cron-only review.",
+      "coverage_reuse_rationale": "The existing Automation and Performance controls are sufficient for scheduled observation of current source, not for other privileged methods on the same service. Negative hermetic source tests are newly changed in this PR.",
+      "execution_note": "The service and native PHP behavior source reviews remain separately open P0; Cron review grants no executable authority, new job, credential or Production mutation."
+    },
+    {
+      "id": "cron:mad4b_firecrawl_crawl_poll_v1",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-native-cron-ownership-hermetic.php"
+      ],
+      "owner_role": "MAD4B scheduled diagnostic source reviewer — Cron-only CI, not owner or host release authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Only the original Firecrawl status poll hook is reviewed. Source hermetic PHP checks that unbound, write-disabled, foreign-origin and unreviewed runs never invoke the provider; valid existing review-only crawl statuses are bounded to three per tick with no new crawl or publication. This review does not approve crawl initiation, external credentials or full Firecrawl service updates.",
+      "coverage_reuse_rationale": "The existing Automation and Performance controls are sufficient for scheduled observation of current source, not for other privileged methods on the same service. Negative hermetic source tests are newly changed in this PR.",
+      "execution_note": "The service and native PHP behavior source reviews remain separately open P0; Cron review grants no executable authority, new job, credential or Production mutation."
     }
   ],
   "lifecycle": [],
