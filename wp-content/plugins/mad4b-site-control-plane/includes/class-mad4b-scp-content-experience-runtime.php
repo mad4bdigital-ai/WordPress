@@ -406,6 +406,27 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 			$before = self::capture_reversible_state( $slug, $operation, $input );
 			if ( is_wp_error( $before ) ) return $before;
 			$mutated = false;
+			$protected_create = 'create' === $operation && in_array(
+				(string)$normalized['post_status'],array('publish','private','future'),true);
+			$stage_live_create = $protected_create && 'publish' === (string)$normalized['post_status'];
+			$is_live_update = 'update' === $operation && in_array(
+				(string)get_post_status($post_id),array('publish','future','private'),true);
+			$brand_update_baseline = null;
+			if($protected_create || $is_live_update) {
+				if(!class_exists('MAD4B_SCP_Brand_Integrity',false))
+					return new WP_Error('mad4b_brand_integrity_guard_missing',
+						'Required Brand Integrity preflight provider is not loaded.');
+				// Inspect proposed copy BEFORE any public mutation.
+				$payload_guard=MAD4B_SCP_Brand_Integrity::payload_preflight($normalized);
+				if(is_wp_error($payload_guard))return $payload_guard;
+				if($is_live_update){
+					$brand_update_baseline=MAD4B_SCP_Brand_Integrity::scan_post_report($post_id,null,true);
+					if(empty($brand_update_baseline['complete']))
+						return new WP_Error('mad4b_brand_integrity_baseline_incomplete',
+							'Brand Integrity baseline coverage is incomplete for this live document.',
+							array('post_id'=>$post_id,'gaps'=>$brand_update_baseline['gap_samples']));
+				}
+			}
 
 			// Creation profiles may themselves permit a live initial state.
 			// Recheck immediately before insertion; snapshot drift invalidates
@@ -425,7 +446,7 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 					'post_type' => $profile['post_type'], 'post_title' => (string) $normalized['post_title'],
 					'post_content' => null === $normalized['post_content'] ? '' : (string) $normalized['post_content'],
 					'post_excerpt' => null === $normalized['post_excerpt'] ? '' : (string) $normalized['post_excerpt'],
-					'post_status' => (string) $normalized['post_status'], 'post_name' => null === $normalized['post_name'] ? '' : (string) $normalized['post_name'],
+					'post_status' => $stage_live_create ? 'draft' : (string) $normalized['post_status'], 'post_name' => null === $normalized['post_name'] ? '' : (string) $normalized['post_name'],
 					'post_parent' => null === $normalized['post_parent'] ? 0 : (int) $normalized['post_parent'], 'menu_order' => null === $normalized['menu_order'] ? 0 : (int) $normalized['menu_order'],
 				);
 				$post_id = wp_insert_post( wp_slash( $postarr ), true );
@@ -491,11 +512,54 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 					return self::compensated_error( new WP_Error( 'mad4b_publication_brand_core_drift', 'Brand Core authority changed after the exact publication plan.' ), $before );
 				}
 
+                // Site-scoped Brand Integrity uses the existing rollback and
+                // publication transition; no global post-save interception.
+                if (!class_exists('MAD4B_SCP_Brand_Integrity',false))
+                    return self::compensated_error(new WP_Error(
+                        'mad4b_brand_integrity_guard_missing',
+                        'Mandatory brand integrity publisher guard unavailable.'),$before);
+                $brand_integrity=MAD4B_SCP_Brand_Integrity::publication_preflight($post_id);
+                if (is_wp_error($brand_integrity))
+                    return self::compensated_error($brand_integrity,$before);
+
 				update_post_meta( $post_id, self::MARKER_META, (string) $profile['slug'] );
 				update_post_meta( $post_id, self::REVISION_META, (int) $profile['revision'] );
 				update_post_meta( $post_id, self::AUTHORITY_META, (string) $profile['authority_sha256'] );
 				$result = wp_update_post( array( 'ID' => $post_id, 'post_status' => $normalized['post_status'] ), true );
 				if ( is_wp_error( $result ) ) return self::compensated_error( $result, $before );
+			}
+			// Direct create + Published status must not be guest-visible
+			// before helpers/meta/media and both original guard layers finish.
+			if($protected_create){
+				$brand_now = MAD4B_SCP_Brand_Core_Control_Loop::publication_preflight(
+					array('operation'=>'create','post_type'=>(string)$profile['post_type']));
+				if(is_wp_error($brand_now))return self::compensated_error($brand_now,$before);
+				if(!is_array($plan['publication_brand_core']) ||
+					!hash_equals((string)($plan['publication_brand_core']['reviewed_asset_fingerprint']??''),
+								 (string)($brand_now['reviewed_asset_fingerprint']??'')) ||
+					!hash_equals((string)($plan['publication_brand_core']['context_fingerprint']??''),
+								 (string)($brand_now['context_fingerprint']??'')) ||
+					!hash_equals((string)($plan['publication_brand_core']['authority_manifest_fingerprint']??''),
+								 (string)($brand_now['authority_manifest_fingerprint']??'')) ||
+					(int)($plan['publication_brand_core']['registry_revision']??-1)!==(int)($brand_now['registry_revision']??-2))
+					return self::compensated_error(new WP_Error(
+						'mad4b_publication_brand_core_drift',
+						'Brand Core authority changed before staged create became public.'),$before);
+				$publish_guard=MAD4B_SCP_Brand_Integrity::publication_preflight($post_id);
+				if(is_wp_error($publish_guard))return self::compensated_error($publish_guard,$before);
+				if($stage_live_create){
+					$published=wp_update_post(array('ID'=>$post_id,'post_status'=>'publish'),true);
+					if(is_wp_error($published))return self::compensated_error($published,$before);
+				}
+			}
+			// A governed update can mutate a publicly visible post without
+			// another publish event. New or altered high-confidence issues
+			// trigger the existing compensating rollback.
+			if($is_live_update){
+				$brand_update_guard=MAD4B_SCP_Brand_Integrity::live_update_preflight(
+					$post_id,$brand_update_baseline);
+				if(is_wp_error($brand_update_guard))
+					return self::compensated_error($brand_update_guard,$before);
 			}
 			// Recheck after helper, media and taxonomy writes. A live update
 			// must not finish verified against revoked Brand Core authority.
