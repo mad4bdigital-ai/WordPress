@@ -170,7 +170,7 @@ final class MAD4B_Tour_Highlights_Presentation_V1 {
         // reference a specific attraction/city but not a broad country.
         return array_values(array_filter(
             MAD4B_Tour_Highlights_V1::related_places($post),
-            static fn($item)=>in_array($item['kind'],['place_attraction','city','zone_area'],true)
+            static fn($item)=>in_array($item['kind'],['place_attraction','city','zone_area','state_governorate','country'],true)
         ));
     }
 
@@ -265,13 +265,122 @@ final class MAD4B_Tour_Highlights_Presentation_V1 {
         return '';
     }
 
-    private static function related_links(array $card,array $places):string {
+    /**
+     * Optional native JetEngine Tour Page Options repeater. No extra taxonomy,
+     * no new database table or generated linked-place list.
+     * Rules are keyed by the visible 1-based Highlight number.
+     *
+     * auto: only verified text matches; explicit: one or several manually
+     * chosen, still tour-linked and company-eligible terms; none: hide links.
+     */
+    private static function place_binding(int $tour,int $step):array {
+        if($tour<=0||$step<=0||$step>80)return ['policy'=>'auto','ids'=>[]];
+        static $registry=[];
+        if(!array_key_exists($tour,$registry)){
+            $registry[$tour]=[];
+            $rows=get_post_meta($tour,'mad4b_journey_place_bindings_v1',true);
+            if(is_array($rows)){
+                foreach(array_slice($rows,0,80) as $row){
+                    if(!is_array($row))continue;
+                    $index=(int)($row['item_number']??0);
+                    if($index<=0||$index>80||isset($registry[$tour][$index]))continue;
+                    $policy=(string)($row['link_policy']??'auto');
+                    if(!in_array($policy,['auto','explicit','none'],true))$policy='auto';
+                    $ids=$row['destination_term_ids']??[];
+                    if(is_string($ids))$ids=preg_split('/[\s,|]+/',$ids,-1,PREG_SPLIT_NO_EMPTY);
+                    if(!is_array($ids))$ids=[];
+                    $ids=array_values(array_unique(array_filter(array_map('absint',array_slice($ids,0,40)))));
+                    $registry[$tour][$index]=['policy'=>$policy,'ids'=>$ids];
+                }
+            }
+        }
+        return $registry[$tour][$step]??['policy'=>'auto','ids'=>[]];
+    }
+
+    /**
+     * Co-stop evidence, never simple shared-parent inference:
+     * - Highlight must already name >=2 verified attractions;
+     * - candidate and at least one mentioned attraction must BOTH be named
+     *   in the SAME original authored itinerary step;
+     * - candidate must be an approved Tour term with the same direct parent.
+     * Thus "Khafre" in a Pyramids headline alone can never suggest the
+     * Valley Temple. This is scoped to the existing Tour itinerary meta, is
+     * read-only and does not alter the canonical Term relationships.
+     */
+    private static function itinerary_companions(int $tour,array $places,array $directIds):array {
+        if($tour<=0 || count($directIds)<2)return [];
+        $byId=[];
+        foreach($places as $place){
+            if(($place['kind']??'')!=='place_attraction')continue;
+            $id=(int)($place['id']??0);
+            if($id>0)$byId[$id]=$place;
+        }
+        $direct=array_intersect_key($byId,array_fill_keys($directIds,true));
+        if(count($direct)<2)return [];
+        $steps=get_post_meta($tour,'itinerary_item',true);
+        if(!is_array($steps)||!$steps||count($steps)>80)return [];
+        $found=[];
+        foreach($steps as $step){
+            if(!is_array($step))continue;
+            $title=(string)($step['title']??'');
+            $description=(string)($step['description']??'');
+            if(strlen($title)+strlen($description)>36000)continue;
+            $text=html_entity_decode(wp_strip_all_tags($title.' '.$description),ENT_QUOTES|ENT_HTML5,'UTF-8');
+            $text=trim((string)preg_replace('/\s+/u',' ',$text));
+            if($text==='')continue;
+            $mentioned=[];
+            foreach($byId as $id=>$place){
+                $name=(string)($place['label']??'');
+                if(mb_strlen($name,'UTF-8')<5)continue;
+                if(self::text_mention($text,$name))$mentioned[$id]=$place;
+            }
+            if(!$mentioned)continue;
+            $anchorIds=array_intersect_key($mentioned,$direct);
+            if(!$anchorIds)continue;
+            foreach($mentioned as $id=>$candidate){
+                if(isset($direct[$id]))continue;
+                $parent=(int)($candidate['parent']??0);
+                if(!$parent)continue;
+                foreach($anchorIds as $anchor){
+                    if((int)($anchor['parent']??0)!==$parent)continue;
+                    $found[$id]=$candidate;
+                    break;
+                }
+            }
+        }
+        return array_values($found);
+    }
+
+    private static function related_links(array $card,array $places,int $step,int $tour):string {
         if(!$places)return '';
+        $rule=self::place_binding($tour,$step);
+        if($rule['policy']==='none')return '';
+        $explicit=$rule['policy']==='explicit';
+        // WPML translations may keep the source repeater IDs while the
+        // localized Tour is assigned translated destination terms.
+        // Always verify the final ID against $places before rendering.
+        if($explicit){
+            $lang=self::lang();
+            foreach($rule['ids'] as $sourceId){
+                $translated=(int)apply_filters('wpml_object_id',$sourceId,'destinations',false,$lang);
+                if($translated>0)$rule['ids'][]=$translated;
+            }
+            $rule['ids']=array_values(array_unique($rule['ids']));
+        }
         $content=html_entity_decode(wp_strip_all_tags(($card['title']??'').' '.($card['body']??'')),ENT_QUOTES|ENT_HTML5,'UTF-8');
         $links=[];
+        $geographicContextLinks=[];
+        $directIds=[];
         foreach($places as $place) {
             $name=trim((string)$place['label']);
             if(mb_strlen($name,'UTF-8')<4)continue;
+            $id=(int)($place['id']??0);
+            // Broad country-level terms are never guessed as visit links.
+            // An editor can explicitly assign a country as geographic context.
+            if(!$explicit&&($place['kind']??'')==='country')continue;
+            // Explicit mappings cannot bypass the already-verified and
+            // company-eligible Tour destination list.
+            if($explicit && !in_array($id,$rule['ids'],true))continue;
             // Verifiable text match: only label a place if it is actually mentioned.
             // A term title may carry a geographic qualifier that is not repeated
             // in editorial text (e.g. 'Gran Esfinge de Giza' vs 'Gran Esfinge').
@@ -285,13 +394,41 @@ final class MAD4B_Tour_Highlights_Presentation_V1 {
                 ?self::curated_alias_mentioned($content,$place,$places):'';
             $hasParentHead=!$hasExact&&!$hasAlias&&$curated===''
                 &&self::parent_head_mentioned($content,$place,$places);
-            if(!$hasExact&&!$hasAlias&&$curated===''&&!$hasParentHead)continue;
-            $match=$hasExact?'exact':($hasAlias?'qualified':($curated!==''?'curated-alias':'parent-head'));
-            $display=$curated!==''?$curated:$name;
-            $links[]='<a class="tour-hl-ui__place" data-tour-evidence="mentioned" data-tour-match="'.esc_attr($match).'" data-tour-term-id="'.esc_attr((string)$place['id']).'" href="'.esc_url($place['url']).'">'
+            if(!$explicit&&!$hasExact&&!$hasAlias&&$curated===''&&!$hasParentHead)continue;
+            // A one-word governorate is useful only on a genuine exact
+            // mention. The generic country 'Egypt' remains excluded.
+            if(!$explicit&&($place['kind']??'')==='state_governorate'&&!$hasExact)continue;
+            $match=$explicit?'explicit':($hasExact?'exact':($hasAlias?'qualified':($curated!==''?'curated-alias':'parent-head')));
+            $display=($explicit||$curated==='')?$name:$curated;
+            // A linked geographic area or manual editorial selection is
+            // context, not evidence that a specific visit is included.
+            $evidence=($match==='explicit')?'editorial-context':
+                ((($place['kind']??'')==='place_attraction'
+                  &&($place['evidence']??'assigned')==='assigned')
+                  ?'mentioned':'geographic-context');
+            $link='<a class="tour-hl-ui__place" data-tour-evidence="'.esc_attr($evidence).'" data-tour-match="'.esc_attr($match).'" data-tour-term-id="'.esc_attr((string)$place['id']).'" href="'.esc_url($place['url']).'">'
                 .'<span aria-hidden="true">⌖</span> '.esc_html($display).'</a>';
+            // Do not turn "Cairo tour" service promises into a destination
+            // attachment. A geographic context link accompanies at least
+            // one genuinely mentioned attraction in the SAME highlight;
+            // otherwise the place remains available only in Explorer.
+            if($evidence==='geographic-context')$geographicContextLinks[]=$link;
+            else $links[]=$link;
+            $directIds[]=$id;
+        }
+        // In Auto mode only: an extra attraction is eligible when the
+        // source itinerary actually lists it alongside a directly mentioned
+        // attraction in the same stop. Never add unrelated sibling cards.
+        if(!$explicit && count($directIds)>=2){
+            foreach(self::itinerary_companions($tour,$places,$directIds) as $place){
+                $links[]='<a class="tour-hl-ui__place" data-tour-evidence="itinerary"'
+                    .' data-tour-match="itinerary-same-stop" data-tour-term-id="'.esc_attr((string)$place['id']).'"'
+                    .' href="'.esc_url($place['url']).'" title="'.esc_attr__('Listed together in the tour itinerary','mad4b-site-control-plane').'">'
+                    .'<span aria-hidden="true">⌖</span> '.esc_html((string)$place['label']).'</a>';
+            }
         }
         if(!$links)return '';
+        $links=array_merge($links,$geographicContextLinks);
         return '<div class="tour-hl-ui__related">'.implode('',$links).'</div>';
     }
 
@@ -313,7 +450,7 @@ final class MAD4B_Tour_Highlights_Presentation_V1 {
             $output.='<li class="tour-hl-ui__card"><span class="tour-hl-ui__number" aria-hidden="true">'.$number.'</span><div class="tour-hl-ui__copy">';
             if($card['title']!=='')$output.='<h3 class="tour-hl-ui__title">'.esc_html($card['title']).'</h3>';
             if(trim(wp_strip_all_tags($card['body']))!=='')$output.='<div class="tour-hl-ui__description">'.wp_kses_post($card['body']).'</div>';
-            $output.=self::related_links($card,$places);
+            $output.=self::related_links($card,$places,$index+1,MAD4B_Tour_Highlights_V1::get_tour_id());
             $output.='</div></li>';
         }
         $output.='</ol></div>';
