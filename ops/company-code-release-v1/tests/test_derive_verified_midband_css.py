@@ -5,6 +5,8 @@ import hashlib
 import importlib.util
 import json
 import tempfile
+import subprocess
+import sys
 
 SCRIPT = Path(__file__).resolve().parents[1] / 'tools/derive_verified_midband_css.py'
 spec=importlib.util.spec_from_file_location('mad4b_midband_generator',SCRIPT)
@@ -56,4 +58,32 @@ with tempfile.TemporaryDirectory(prefix='mad4b-midband-') as temp:
     probe.write_text(json.dumps(data))
     checks+=1
     assert build()[1]['additional_rules']==1
+    # Exact-hash cumulative admission: old base + previous verified band +
+    # newly-derived upper band. Must reject wrong previous SHA without writes.
+    data['width']=1024
+    probe.write_text(json.dumps(data))
+    prev=root/'admitted.css';candidate=root/'composed.css'
+    prev.write_bytes(old.read_bytes()+b'\n@media (min-width:768px) and (max-width:991px){.c{display:block}}\n')
+    cmd=[sys.executable,str(SCRIPT),'--source',str(src),'--source-sha',source_sha,
+         '--critical',str(old),'--critical-sha',critical_sha,
+         '--cssom',str(probe),'--min-width','992','--max-width','1024',
+         '--append-to',str(prev),'--append-to-sha',sha(prev.read_bytes()),
+         '--output',str(candidate)]
+    result=subprocess.run(cmd,capture_output=True,text=True)
+    checks+=1
+    assert result.returncode==0,result.stderr
+    proof=json.loads(result.stdout)
+    assert candidate.read_bytes().startswith(prev.read_bytes())
+    assert proof['candidate_sha256']==sha(candidate.read_bytes())
+    assert proof['composed_from_sha256']==sha(prev.read_bytes())
+    invalid_cmd=cmd.copy()
+    invalid_cmd[invalid_cmd.index('--append-to-sha')+1]='0'*64
+    bad=subprocess.run(invalid_cmd,capture_output=True,text=True)
+    checks+=1
+    assert bad.returncode!=0 and candidate.read_bytes().startswith(prev.read_bytes())
+    # Another output cannot be generated from an unapproved earlier file.
+    stale=prev.read_bytes()+b'.unexpected{}';prev.write_bytes(stale)
+    refused=subprocess.run(cmd,capture_output=True,text=True)
+    checks+=1
+    assert refused.returncode!=0
 print(f'PASS {checks}/{checks} hermetic midband CSS build and drift tests')
