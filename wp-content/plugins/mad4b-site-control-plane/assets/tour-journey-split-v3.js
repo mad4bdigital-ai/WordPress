@@ -15,22 +15,22 @@
     ar:{country:'الدول',state_governorate:'المحافظات',city:'المدن',zone_area:'المناطق',place_attraction:'المعالم'}
   };
   const strings={
-    en:{heading:'Explore this highlight',context:'Tour destination context',levels:'Destination levels',
+    en:{heading:'Explore this highlight',itinerary:'Listed in itinerary',context:'Tour destination context',levels:'Destination levels',
       path:'Geographic hierarchy',direct:'Mentioned in this highlight',associated:'Related to the tour',
       note:'Related places are not necessarily included visits.',open:'Explore linked places',places:'places'},
-    es:{heading:'Explora esta experiencia',context:'Contexto del viaje',levels:'Niveles de destinos',
+    es:{heading:'Explora esta experiencia',itinerary:'En el itinerario',context:'Contexto del viaje',levels:'Niveles de destinos',
       path:'Jerarquía geográfica',direct:'Mencionado en el destacado',associated:'Relacionado con el viaje',
       note:'Los destinos relacionados no siempre están incluidos.',open:'Explorar lugares vinculados',places:'lugares'},
-    fr:{heading:'Explorez cette étape',context:'Géographie du voyage',levels:'Niveaux des destinations',
+    fr:{heading:'Explorez cette étape',itinerary:'Dans l’itinéraire',context:'Géographie du voyage',levels:'Niveaux des destinations',
       path:'Hiérarchie géographique',direct:'Mentionné dans ce temps fort',associated:'Associé au voyage',
       note:'Les lieux associés ne sont pas toujours inclus.',open:'Explorer les lieux',places:'lieux'},
-    de:{heading:'Dieses Highlight erkunden',context:'Reisekontext',levels:'Zielkategorien',
+    de:{heading:'Dieses Highlight erkunden',itinerary:'Im Reiseverlauf',context:'Reisekontext',levels:'Zielkategorien',
       path:'Geografische Ebenen',direct:'Im Highlight erwähnt',associated:'Mit der Reise verbunden',
       note:'Verbundene Orte sind nicht automatisch enthalten.',open:'Orte entdecken',places:'Orte'},
-    it:{heading:'Esplora questa tappa',context:'Contesto del viaggio',levels:'Livelli delle destinazioni',
+    it:{heading:'Esplora questa tappa',itinerary:'Nell’itinerario',context:'Contesto del viaggio',levels:'Livelli delle destinazioni',
       path:'Gerarchia geografica',direct:'Citato nel momento',associated:'Collegato al viaggio',
       note:'I luoghi collegati non sono sempre inclusi.',open:'Esplora i luoghi',places:'luoghi'},
-    ar:{heading:'استكشف هذه المحطة',context:'الوجهات المرتبطة بالرحلة',levels:'مستويات الوجهات',
+    ar:{heading:'استكشف هذه المحطة',itinerary:'في برنامج الرحلة',context:'الوجهات المرتبطة بالرحلة',levels:'مستويات الوجهات',
       path:'التدرج الجغرافي',direct:'مذكور في الهايلايت',associated:'مرتبط بالرحلة',
       note:'ليس بالضرورة أن تكون كل الوجهات المرتبطة ضمن الزيارات المشمولة.',open:'استكشف الأماكن',places:'أماكن'}
   };
@@ -39,7 +39,8 @@
       story:'Places behind this highlight',storyContext:'Tour destination context',
       linked:'Mentioned in highlight',associated:'Other tour-related places',
       storyButton:'Explore linked places',contextButton:'Browse tour places',
-      tourContext:'Tour-level context, not a confirmed visit',all:'All connected destinations'},
+      tourContext:'Tour-level context, not a confirmed visit',all:'All connected destinations',
+      empty:'No destination is linked to this highlight.'},
     es:{browse:'Explorar todos los destinos',levels:'Explorar por tipo de destino',
       story:'Lugares de este momento',storyContext:'Contexto del viaje',
       linked:'Mencionados en el destacado',associated:'Otros lugares relacionados',
@@ -144,18 +145,16 @@
         else if(evidence==='mentioned')related.get(key).evidence='mentioned';
       }
       const referenced=entries.filter(e=>direct.has(Number(e.term.id)));
-      if(!referenced.length){
-        // Every Highlight can explore the Tour's geo-context.
-        // Never mislabel these as places asserted by its text.
-        entries.forEach(e=>add(e,'associated'));
-      }else{
-        referenced.forEach(e=>add(e,direct.get(Number(e.term.id))));
-        const parents=new Set(referenced.filter(e=>e.term.kind==='place_attraction')
-          .map(e=>Number(e.term.parent)).filter(Boolean));
-        entries.filter(e=>e.term.kind==='place_attraction'&&parents.has(Number(e.term.parent)))
-          .forEach(e=>add(e,direct.has(Number(e.term.id))?'mentioned':'associated'));
-        [...related.values()].forEach(e=>anc(e.term).forEach(t=>add(byId.get(Number(t.id)),'associated')));
-      }
+      // Never substitute the full Tour destination list when this highlight
+      // has no approved place links. A purely editorial item stays unlinked.
+      // For explicit multi-term bindings, keep ONLY those specific matches
+      // plus verified hierarchical parents for breadcrumbs; not siblings.
+      referenced.forEach(e=>add(e,direct.get(Number(e.term.id))));
+      [...related.values()].forEach(e=>anc(e.term).forEach(t=>{
+        if(t.kind==='place_attraction')return;
+        const parent=byId.get(Number(t.id));
+        if(parent)add(parent,'associated');
+      }));
       return {
         related:[...related.values()].sort((a,b)=>order.indexOf(a.term.kind)-order.indexOf(b.term.kind)),
         sourced:referenced.length>0
@@ -165,7 +164,9 @@
     cards.forEach(card=>card.querySelectorAll('.jd-place-tile__details[href]').forEach(link=>{
       const href=normalized(link.href);
       const entry=entries.find(e=>e.href===href);
-      if(entry)mentionedAcrossTour.add(Number(entry.term.id));
+      const evidence=link.closest('.jd-place-tile')?.dataset.tourEvidence||'mentioned';
+      if(entry&&(evidence==='mentioned'||evidence==='itinerary'))
+        mentionedAcrossTour.add(Number(entry.term.id));
     }));
     function exploreModel(){
       return {sourced:mentionedAcrossTour.size>0,related:entries.map(entry=>({
@@ -217,7 +218,7 @@
       cards.forEach(card=>{
         const pointer=storyPointers.get(card);
         const data=mapped(card);
-        const direct=data.related.filter(e=>e.evidence==='mentioned').length;
+        const direct=data.related.filter(e=>e.evidence==='mentioned'||e.evidence==='itinerary').length;
         const meta=pointer.querySelector('.jd-modes-v3__story-meta');
         const action=pointer.querySelector('button');
         // Never label broad tour geography as a visit asserted by a Highlight.
@@ -227,7 +228,7 @@
         action.textContent=direct?M.storyButton:M.contextButton;
         pointer.classList.toggle('is-current',card===active);
         pointer.classList.toggle('is-context-only',direct===0);
-        pointer.hidden=section.dataset.tourJourneyMode!=='story';
+        pointer.hidden=section.dataset.tourJourneyMode!=='story'||direct===0;
       });
     }
     function activeOriginal(group){
@@ -252,13 +253,16 @@
         const visible=e.group===group&&allowed.has(e.item);
         e.item.hidden=!visible;
         e.item.classList.toggle('jd-split-v3__mentioned',visible&&related.some(x=>x.item===e.item&&x.evidence==='mentioned'));
-        e.item.classList.toggle('jd-split-v3__associated',visible&&related.some(x=>x.item===e.item&&x.evidence!=='mentioned'));
+        e.item.classList.toggle('jd-split-v3__itinerary',visible&&related.some(x=>x.item===e.item&&x.evidence==='itinerary'));
+        e.item.classList.toggle('jd-split-v3__associated',visible&&related.some(x=>x.item===e.item&&x.evidence==='associated'));
       });
       levels.querySelectorAll('button').forEach(b=>{
         const on=b.dataset.kind===kind;b.classList.toggle('is-current',on);
         b.setAttribute('aria-pressed',String(on));
       });
       const direct=related.filter(e=>e.evidence==='mentioned').length;
+      const inItinerary=related.filter(e=>e.evidence==='itinerary').length;
+      const other=related.length-direct-inItinerary;
       // Breadcrumb reflects the active taxonomy level, not a single arbitrary
       // attraction when multiple sibling attractions belong to one highlight.
       path.replaceChildren();
@@ -292,9 +296,13 @@
       path.hidden=!path.children.length;
       const mode=section.dataset.tourJourneyMode;
       const matchedNames=related.filter(e=>e.evidence==='mentioned').map(e=>e.term.name);
+      const evidenceSummary=[
+        direct?String(direct)+' '+(mode==='split'?L.direct:M.linked):'',
+        inItinerary?String(inItinerary)+' '+L.itinerary:'',
+        other?String(other)+' '+(mode==='split'?L.associated:M.associated):''
+      ].filter(Boolean).join(' · ');
       summary.textContent=String(related.length)+' '+(TL[kind]||L.places)
-        +' · '+direct+' '+(mode==='split'?L.direct:M.linked)
-        +' · '+String(related.length-direct)+' '+(mode==='split'?L.associated:M.associated)
+        +(evidenceSummary?' · '+evidenceSummary:'')
         +(mode==='split'&&matchedNames.length?' · '+matchedNames.join(', '):'');
       panel.dataset.jdContextMode=mode;
       section.dataset.jdActiveDestinationLevel=kind;
@@ -302,8 +310,24 @@
     }
     function display(card,preferred=null,mode='split'){
       selected=card;
-      model=mode==='explorer'?exploreModel():mapped(card);
-      if(!model.related.length){panel.hidden=true;return;}
+      model=mapped(card);
+      if(!model.related.length){
+        currentKind=null;
+        panel.hidden=false;
+        kicker.textContent=L.heading;
+        h.textContent=card.querySelector('.tour-hl-ui__title')?.textContent?.trim()||L.context;
+        levels.replaceChildren();path.replaceChildren();
+        path.hidden=true;
+        summary.textContent=M.empty||L.note;
+        note.hidden=true;
+        entries.forEach(e=>{e.item.hidden=true;
+          e.item.classList.remove('jd-split-v3__mentioned','jd-split-v3__itinerary','jd-split-v3__associated');});
+        [...presentGroups.values()].forEach(g=>{g.hidden=true;g.dataset.tourActive='false';});
+        cards.forEach(c=>c.querySelector('.jd-split-v3__inline')?.remove());
+        if(mode==='story')updateStoryPointers(card);
+        return;
+      }
+      note.hidden=false;
       panel.hidden=false;
       kicker.textContent=mode==='explorer'?M.levels:
         mode==='story'?(model.sourced?M.story:M.storyContext):(model.sourced?L.heading:L.context);
@@ -340,7 +364,12 @@
         });
         inline.append(count,go);card.append(inline);
       }
-      inline.querySelector('.jd-split-v3__inline-count').textContent=String(model.related.length)+' '+L.places;
+      // The inline card count refers to source-linked destinations only.
+      // Geographic breadcrumbs (country/governorate) are useful context but
+      // are not extra places visited or linked by the Highlight.
+      const directlyLinked=model.related.filter(e=>
+        e.evidence==='mentioned'||e.evidence==='itinerary').length;
+      inline.querySelector('.jd-split-v3__inline-count').textContent=String(directlyLinked)+' '+L.places;
       cards.forEach(c=>{if(c!==card)c.querySelector('.jd-split-v3__inline')?.remove();});
       }
       if(mode==='story')updateStoryPointers(card);
@@ -350,14 +379,15 @@
       cards.forEach(c=>c.querySelector('.jd-split-v3__inline')?.remove());
       entries.forEach(e=>{
         e.item.hidden=false;
-        e.item.classList.remove('jd-split-v3__mentioned','jd-split-v3__associated');
+        e.item.classList.remove('jd-split-v3__mentioned','jd-split-v3__itinerary','jd-split-v3__associated');
       });
       storyPointers.forEach(p=>{p.hidden=true;});
     }
     function refresh(){
       const mode=section.dataset.tourJourneyMode;
       if(!['split','explorer','story'].includes(mode)){cleanup();return;}
-      const card=section.querySelector('.tour-hl-ui__card.jd-active-highlight')||cards[0];
+      const active=section.querySelector('.tour-hl-ui__card.jd-active-highlight');
+      const card=active || cards.find(c=>mapped(c).sourced) || cards[0];
       if(!card){cleanup();return;}
       const old=currentKind;
       if(mode!=='split'){
