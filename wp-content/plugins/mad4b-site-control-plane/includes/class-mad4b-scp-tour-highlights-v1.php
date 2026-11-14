@@ -458,10 +458,17 @@ final class MAD4B_Tour_Highlights_V1 {
         foreach($updated as &$row){
             if(!is_array($row))continue;
             $old=trim((string)($row['item_key']??''));
-            if($old!=='')continue; // no silent re-bind on edit/reorder
+            // A separate one-shot editor control is needed if text changed.
+            // Never silently reuse an item's numeric position after reorder.
+            $rebind=in_array((string)($row['rebind_on_save']??''),['1','true','on','yes'],true);
+            if($old!==''&&!$rebind)continue;
             $number=(int)($row['item_number']??0);
-            if($number<=0||$number>count($keys))continue;
+            if($number<=0||$number>count($keys)){
+                if($rebind){$row['rebind_on_save']=false;$changed=true;}
+                continue; // invalid position cannot change an existing key
+            }
             $row['item_key']=$keys[$number-1];
+            if($rebind)$row['rebind_on_save']=false; // explicit, one-shot rebind
             $changed=true;
         }
         unset($row);
