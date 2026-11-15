@@ -20347,6 +20347,60 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operational-integrity.php",
+      "source_blob_sha": "0da8658664768f5f073373ee4607869e3e728657",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/operational-integrity-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party PHP source behavioral reviewer — non-authorizing CI",
+      "review_rationale": "Original first-party operational integrity is a non-authorizing, revision-bound Site/Brand/WordPress actor CAS checkpoint before a provider mutation. The source-backed PHP7.4/8.5 hermetic suite proves 34 cases: exact original typed Site/Brand UUID and IDs, stable positive revisions, same blog/network and signed WordPress principal, denial of WP_Error or coerced booleans/partial numeric identity, stale actor rejection, original policy revocation, and no Host/Production grant. Pre-fix an error-shaped Scope identity or resolver revision caused a PHP fatal or could be cast to a matching ID. The patch validates original resolver types and still allows WordPress user 0 for non-interactive Cron with no implied write authority. Existing operational-integrity-local runtime fixture also passes. No live WordPress write or release proof is asserted. Exact current Git source blob is pinned. Independent operational acceptance, signed Host identity and live release remain unverified.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dynamic-provider-contract.php",
+      "source_blob_sha": "dcaa4591fc1c79102b94606ed8b67e493b9a14bb",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/dynamic-provider-manifest-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party PHP source behavioral reviewer — non-authorizing CI",
+      "review_rationale": "Original first-party dynamic Provider manifest remains capability-discovered from existing provider registry and never creates a new executor. Twenty original PHP7.4/8.5 hermetic cases reproduce pre-fix fatal error when a provider contributed WP_Error/malformed capability or implementation data. The patch validates exact existing identity strings and bounded side-effect metadata, rejects non-scalar/unknown registry references and only accepts literal true for enforceable native deadlines. The original Elementor CSS provider preview/readback uses existing owner, remains non-authorizing and does not call update or rebuild; current dynamic-hardening original fixture passes. No external provider/production certification is asserted. Exact current Git source blob is pinned. Independent operational acceptance, signed Host identity and live release remain unverified.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-transaction.php",
+      "source_blob_sha": "30fbf47a363aefc209a66643a930e73c73771a4e",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/plugin-transaction-plan-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party PHP source behavioral reviewer — non-authorizing CI",
+      "review_rationale": "Original first-party plugin lifecycle planner can select only the existing named WordPress ability planner and executor, not a generic installer or mutation dispatcher. Nineteen PHP7.4/8.5 hermetic tests show pre-fix error-shaped native eligible could appear true, that malformed original plugin fields must not reach a planner, and that unverified Abilities, source planner throws, invalid blocker items or mismatched operations do not produce an executable plan. Source now accepts exact native eligible=true only with no blockers, preserves plan SHA and keeps mutation_performed=false and authority_created=false. No plugin installed, activated, updated or removed by these tests. Exact current Git source blob is pinned. Independent operational acceptance, signed Host identity and live release remain unverified.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "code_change_rules": {

@@ -157,6 +157,11 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "tests/operator-runner-profile-original-hermetic.php",
     "tests/capability-dependency-planner-original-hermetic.php",
     "tests/switcher-sources-original-hermetic.php",
+    # Exact original read-only source/CAS/transaction regression fixtures.
+    "tests/operational-integrity-original-hermetic.php",
+    "tests/dynamic-provider-manifest-original-hermetic.php",
+    "tests/plugin-transaction-plan-original-hermetic.php",
+
 
 
 
