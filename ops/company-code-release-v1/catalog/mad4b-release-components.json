@@ -33,6 +33,12 @@
         "wp-content/mu-plugins/mad4b-need-help-native-visibility.php",
         "wp-content/mu-plugins/mad4b-single-reviews-native-visibility.php"
       ]
+    },
+    {
+      "id": "mad4b-elementor-wpml-native-taxonomy-prefetch",
+      "files": [
+        "wp-content/mu-plugins/mad4b-elementor-wpml-schema-guard.php"
+      ]
     }
   ]
 }
