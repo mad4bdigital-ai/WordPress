@@ -31,6 +31,7 @@ def test_catalog_files_have_one_tracked_source():
     assert len(seen)>0
     assert 'wp-content/mu-plugins/mad4b-unified-media-apply.php' in seen
     assert 'wp-content/mu-plugins/mad4b-media-composite-integrity.php' in seen
+    assert seen['wp-content/mu-plugins/mad4b-media-rights-extraction-intake.php']=='mad4b-media-rights-intake'
 
 
 if __name__=='__main__':
