@@ -6770,6 +6770,86 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing WordPress Admin and Browser/Accessibility controls own the original page-local diagnostic tabs, keyboard navigation and CSS isolation; no new WordPress permission, REST route or CSS global ownership is introduced.",
       "review_rationale": "Reviewed the original 62-line page-root scoped WordPress diagnostics stylesheet including @media responsive rules and accessible selected/focus states. Same-PR Node source test checks the actual CSS is brace-balanced, never uses @import, URL or expression, preserves reduced-motion and hides panels only after JS enhancement. No browser screenshot or Production acceptance is claimed."
+    },
+    {
+      "id": "admin_asset:wp-content/plugins/mad4b-site-control-plane/assets/tour-highlights-v1.css",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/journey-asset-bootstrap-runtime.js",
+        "tests/test_journey_successor_no_regression.py",
+        "tests/test_tour_highlights_source_delta.py"
+      ],
+      "owner_role": "MAD4B first-party Journey Elementor/JetEngine presentation reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original Elementor/JetEngine Journey presentation shares existing WordPress Admin, Browser and security controls; no independent write service, ability or bypass is added.",
+      "review_rationale": "Exact original asset blob is independently bound to pr814-journey-source-successors-20261115.json and to historical PR813/814 source integrity tests. The same-PR Node runtime initializes both Journey controllers on an absent-widget page without network or DOM writes and checks the Elementor/JetEngine event hooks, while original source contracts assert the live-preserved enqueue dependency chain and Split layout card selectors. No user edit, new permission, taxonomy relation, publication, pricing or web media change is introduced. Visual responsive/browser and production WPML confirmation remain unverified."
+    },
+    {
+      "id": "admin_asset:wp-content/plugins/mad4b-site-control-plane/assets/tour-journey-split-v3.css",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/journey-asset-bootstrap-runtime.js",
+        "tests/test_journey_successor_no_regression.py",
+        "tests/test_tour_highlights_source_delta.py"
+      ],
+      "owner_role": "MAD4B first-party Journey Elementor/JetEngine presentation reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original Elementor/JetEngine Journey presentation shares existing WordPress Admin, Browser and security controls; no independent write service, ability or bypass is added.",
+      "review_rationale": "Exact original asset blob is independently bound to pr814-journey-source-successors-20261115.json and to historical PR813/814 source integrity tests. The same-PR Node runtime initializes both Journey controllers on an absent-widget page without network or DOM writes and checks the Elementor/JetEngine event hooks, while original source contracts assert the live-preserved enqueue dependency chain and Split layout card selectors. No user edit, new permission, taxonomy relation, publication, pricing or web media change is introduced. Visual responsive/browser and production WPML confirmation remain unverified."
+    },
+    {
+      "id": "admin_asset:wp-content/plugins/mad4b-site-control-plane/assets/tour-journey-split-v3.js",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/journey-asset-bootstrap-runtime.js",
+        "tests/test_journey_successor_no_regression.py",
+        "tests/test_tour_highlights_source_delta.py"
+      ],
+      "owner_role": "MAD4B first-party Journey Elementor/JetEngine presentation reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original Elementor/JetEngine Journey presentation shares existing WordPress Admin, Browser and security controls; no independent write service, ability or bypass is added.",
+      "review_rationale": "Exact original asset blob is independently bound to pr814-journey-source-successors-20261115.json and to historical PR813/814 source integrity tests. The same-PR Node runtime initializes both Journey controllers on an absent-widget page without network or DOM writes and checks the Elementor/JetEngine event hooks, while original source contracts assert the live-preserved enqueue dependency chain and Split layout card selectors. No user edit, new permission, taxonomy relation, publication, pricing or web media change is introduced. Visual responsive/browser and production WPML confirmation remain unverified."
+    },
+    {
+      "id": "admin_asset:wp-content/plugins/mad4b-site-control-plane/assets/tour-journey-ui.js",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/journey-asset-bootstrap-runtime.js",
+        "tests/test_journey_successor_no_regression.py",
+        "tests/test_tour_highlights_source_delta.py"
+      ],
+      "owner_role": "MAD4B first-party Journey Elementor/JetEngine presentation reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original Elementor/JetEngine Journey presentation shares existing WordPress Admin, Browser and security controls; no independent write service, ability or bypass is added.",
+      "review_rationale": "Exact original asset blob is independently bound to pr814-journey-source-successors-20261115.json and to historical PR813/814 source integrity tests. The same-PR Node runtime initializes both Journey controllers on an absent-widget page without network or DOM writes and checks the Elementor/JetEngine event hooks, while original source contracts assert the live-preserved enqueue dependency chain and Split layout card selectors. No user edit, new permission, taxonomy relation, publication, pricing or web media change is introduced. Visual responsive/browser and production WPML confirmation remain unverified."
     }
   ],
   "lifecycle": [],
@@ -16175,6 +16255,90 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "The existing Admin diagnostics template and its page-specific scripts/styles own the UI. No separate rendering engine or write service.",
       "review_rationale": "Reviewed the original 62-line page-root scoped WordPress diagnostics stylesheet including @media responsive rules and accessible selected/focus states. Same-PR Node source test checks the actual CSS is brace-balanced, never uses @import, URL or expression, preserves reduced-motion and hides panels only after JS enhancement. No browser screenshot or Production acceptance is claimed."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/assets/tour-highlights-v1.css",
+      "source_blob_sha": "f25325cf43a7b724d6642df00d332c572f3ebe86",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/journey-asset-bootstrap-runtime.js",
+        "tests/test_journey_successor_no_regression.py",
+        "tests/test_tour_highlights_source_delta.py"
+      ],
+      "owner_role": "MAD4B first-party Journey Elementor/JetEngine presentation reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original Elementor/JetEngine Journey presentation shares existing WordPress Admin, Browser and security controls; no independent write service, ability or bypass is added.",
+      "review_rationale": "Exact original asset blob is independently bound to pr814-journey-source-successors-20261115.json and to historical PR813/814 source integrity tests. The same-PR Node runtime initializes both Journey controllers on an absent-widget page without network or DOM writes and checks the Elementor/JetEngine event hooks, while original source contracts assert the live-preserved enqueue dependency chain and Split layout card selectors. No user edit, new permission, taxonomy relation, publication, pricing or web media change is introduced. Visual responsive/browser and production WPML confirmation remain unverified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/assets/tour-journey-split-v3.css",
+      "source_blob_sha": "aaf5854c219409c8bea7dc4d2e5e4d613465919e",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/journey-asset-bootstrap-runtime.js",
+        "tests/test_journey_successor_no_regression.py",
+        "tests/test_tour_highlights_source_delta.py"
+      ],
+      "owner_role": "MAD4B first-party Journey Elementor/JetEngine presentation reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original Elementor/JetEngine Journey presentation shares existing WordPress Admin, Browser and security controls; no independent write service, ability or bypass is added.",
+      "review_rationale": "Exact original asset blob is independently bound to pr814-journey-source-successors-20261115.json and to historical PR813/814 source integrity tests. The same-PR Node runtime initializes both Journey controllers on an absent-widget page without network or DOM writes and checks the Elementor/JetEngine event hooks, while original source contracts assert the live-preserved enqueue dependency chain and Split layout card selectors. No user edit, new permission, taxonomy relation, publication, pricing or web media change is introduced. Visual responsive/browser and production WPML confirmation remain unverified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/assets/tour-journey-split-v3.js",
+      "source_blob_sha": "24035cb215d1647e7f9e5212f20f60013cf6b446",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/journey-asset-bootstrap-runtime.js",
+        "tests/test_journey_successor_no_regression.py",
+        "tests/test_tour_highlights_source_delta.py"
+      ],
+      "owner_role": "MAD4B first-party Journey Elementor/JetEngine presentation reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original Elementor/JetEngine Journey presentation shares existing WordPress Admin, Browser and security controls; no independent write service, ability or bypass is added.",
+      "review_rationale": "Exact original asset blob is independently bound to pr814-journey-source-successors-20261115.json and to historical PR813/814 source integrity tests. The same-PR Node runtime initializes both Journey controllers on an absent-widget page without network or DOM writes and checks the Elementor/JetEngine event hooks, while original source contracts assert the live-preserved enqueue dependency chain and Split layout card selectors. No user edit, new permission, taxonomy relation, publication, pricing or web media change is introduced. Visual responsive/browser and production WPML confirmation remain unverified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/assets/tour-journey-ui.js",
+      "source_blob_sha": "f6a15dcab3d270d2aa004e7270b425d668f01e90",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/journey-asset-bootstrap-runtime.js",
+        "tests/test_journey_successor_no_regression.py",
+        "tests/test_tour_highlights_source_delta.py"
+      ],
+      "owner_role": "MAD4B first-party Journey Elementor/JetEngine presentation reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original Elementor/JetEngine Journey presentation shares existing WordPress Admin, Browser and security controls; no independent write service, ability or bypass is added.",
+      "review_rationale": "Exact original asset blob is independently bound to pr814-journey-source-successors-20261115.json and to historical PR813/814 source integrity tests. The same-PR Node runtime initializes both Journey controllers on an absent-widget page without network or DOM writes and checks the Elementor/JetEngine event hooks, while original source contracts assert the live-preserved enqueue dependency chain and Split layout card selectors. No user edit, new permission, taxonomy relation, publication, pricing or web media change is introduced. Visual responsive/browser and production WPML confirmation remain unverified."
     }
   ],
   "code_change_rules": {
