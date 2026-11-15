@@ -34,12 +34,34 @@ final class MAD4B_SCP_Company_Task_Handoff {
                 'pending'=>is_array($v['pending']??null)?$v['pending']:null,
                 'history'=>is_array($v['history']??null)?array_values($v['history']):[]];
     }
-    private static function save($task,array &$state,string $event,array $details=[]):void {
+    /** Fail closed if Fluent Boards does not durably acknowledge the revision.
+     * A successful REST response must never be inferred from an in-memory state.
+     */
+    private static function save($task,array &$state,string $event,array $details=[]):bool {
+        $before=$state;
         $state['revision']++;
         $state['history'][]=array_merge(['event'=>$event,'at'=>current_time('mysql',true),
             'actor_id'=>get_current_user_id(),'revision'=>$state['revision']],$details);
         $state['history']=array_slice($state['history'],-80);
-        $task->updateMeta(self::META,$state);
+        try {
+            $saved=$task->updateMeta(self::META,$state);
+            if($saved===false) return false;
+            // Reopen the native record rather than trusting the mutation's
+            // return value or the caller's in-memory revision.
+            $fresh=\FluentBoards\App\Models\Task::find((int)$task->id);
+            if(!$fresh)return false;
+            $readback=$fresh->getMeta(self::META,[]);
+            if(!is_array($readback) ||
+                absint($readback['revision']??-1)!==$state['revision'] ||
+                ($readback['pending']??null)!==$state['pending'] ||
+                !is_array($readback['history']??null) ||
+                count($readback['history'])!==count($state['history']) ||
+                end($readback['history'])!==end($state['history'])) return false;
+            return true;
+        }catch(Throwable $error){
+            $state=$before;
+            return false;
+        }
     }
     private static function snapshot($task,array $state):array {
         return ['contract'=>'mad4b.company.task-handoff.v1','task_id'=>(int)$task->id,
@@ -94,7 +116,14 @@ final class MAD4B_SCP_Company_Task_Handoff {
                 if(in_array($target,$ids,true))return self::err('handoff_already_assigned','Recipient is already an assignee.');
                 $state['pending']=['id'=>hash('sha256',$nonce.'|'.$id),'from'=>$from,'to'=>$target,
                     'initiator'=>$actor,'created_at'=>current_time('mysql',true),'reason'=>sanitize_text_field((string)$r->get_param('reason'))];
-                self::save($task,$state,'offered',['request_id'=>$nonce,'signature'=>$signature,'from'=>$from,'to'=>$target]);
+                if(!self::save($task,$state,'offered',['request_id'=>$nonce,'signature'=>$signature,'from'=>$from,'to'=>$target])) {
+                    $persisted=self::load($task);
+                    if($persisted['revision']!==(int)$expected || $persisted['pending']!==null)
+                        return self::err('handoff_reconciliation_required',
+                            'Offer persistence uncertain; independently reconcile current task.',503);
+                    return self::err('handoff_persistence_unconfirmed',
+                        'Offer revision was not saved; no handoff was created.',503);
+                }
             }else{
                 $pending=$state['pending'];
                 if(!$pending)return self::err('handoff_offer_missing','No active offer.');
@@ -151,7 +180,35 @@ final class MAD4B_SCP_Company_Task_Handoff {
                     $event='cancelled';
                 }else{return self::err('handoff_action_invalid','Unknown transition.',422);}
                 $state['pending']=null;
-                self::save($task,$state,$event,['request_id'=>$nonce,'signature'=>$signature,'from'=>$from,'to'=>$target]);
+                if(!self::save($task,$state,$event,['request_id'=>$nonce,'signature'=>$signature,'from'=>$from,'to'=>$target])) {
+                    // Acceptance moves the native assignment before recording
+                    // the receipt. On receipt failure restore the old owner
+                    // and remove ONLY the recipient this transfer introduced.
+                    if($action==='accept') {
+                        try {
+                            $task->refresh();$task->load('assignees');
+                            if(!in_array($from,self::members($task),true))
+                                $service->updateAssignee($from,$task);
+                            $task->refresh();$task->load('assignees');
+                            if($receiverAdded && in_array($target,self::members($task),true))
+                                $service->updateAssignee($target,$task);
+                            $task->refresh();$task->load('assignees');
+                            $ids=self::members($task);
+                            if(!in_array($from,$ids,true) || in_array($target,$ids,true))
+                                return self::err('handoff_reconciliation_required',
+                                    'Transfer receipt failed and native assignment compensation is incomplete.',503);
+                        }catch(Throwable $rollbackError){
+                            return self::err('handoff_reconciliation_required',
+                                'Transfer receipt failed and native assignments require reconciliation.',503);
+                        }
+                    }
+                    $persisted=self::load($task);
+                    if($persisted['revision']!==(int)$expected || $persisted['pending']!==$pending)
+                        return self::err('handoff_reconciliation_required',
+                            'Task event persistence uncertain; reconcile the native ledger.',503);
+                    return self::err('handoff_persistence_unconfirmed',
+                        'Handoff state was not confirmed; native assignment compensated.',503);
+                }
             }
             return rest_ensure_response(array_merge(self::snapshot($task,$state),['replay'=>false]));
         });

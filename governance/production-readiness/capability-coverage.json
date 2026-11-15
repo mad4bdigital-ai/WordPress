@@ -6105,6 +6105,78 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing MCP/Provider/Execution controls retain all actual provider readiness and write admission; read-only source fields cannot certify OAuth, protocol handshake or privileged apply.",
       "review_rationale": "Original MCP Provider Readiness PHP class executed in PHP 7.4/8.5 using source provider/ability/peer fixtures. Exactly two private read-only abilities are registered. Discovered provider metadata and local wp_get_abilities do not attest authenticated initialize, tools/list, client binding, tool schema or mutation. Hostile policy JSON cannot disable these inherited gates. Found and fixed an actual identity bug: original matrix/preflight previously sanitized malformed provider IDs into another ID; now noncanonical values, unexpected separators, uppercase aliases and non-strings fail closed before lookup. No live OAuth or server initialization occurs."
+    },
+    {
+      "id": "rest:mad4b/v1/company-tasks/(?P<id>\\\\d+)/handoff",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/company-task-handoff-native-cas-hermetic.php"
+      ],
+      "owner_role": "MAD4B tenant-bound Fluent Boards handoff source/recovery reviewer — CI only, not staff actor",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original tenant task-board ownership and company staff admission stay under immutable platform/governance/security controls, not global WordPress administrator rights.",
+      "review_rationale": "Original Company Task Handoff WordPress class is executed in PHP 7.4/8.5 with an isolated native Fluent Boards model/service double. Six REST paths are guest denied. Fake vendor assignments exercise board isolation, authorized offer, stale revision CAS, idempotent request replay, assigned owner/current recipient access, recipient-only accept/reject, correct owner transfer and provider failure compensation. Found and corrected a material bug: metadata write failure previously returned success with unsaved revision; the source now requires native reload/readback before success, compensates transferred assignees when receipt fails and preserves pending offer for reconciliation. No real Fluent Boards or Production accounts were modified."
+    },
+    {
+      "id": "rest:mad4b/v1/company-tasks/(?P<id>\\\\d+)/handoff/",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/company-task-handoff-native-cas-hermetic.php"
+      ],
+      "owner_role": "MAD4B tenant-bound Fluent Boards handoff source/recovery reviewer — CI only, not staff actor",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original tenant task-board ownership and company staff admission stay under immutable platform/governance/security controls, not global WordPress administrator rights.",
+      "review_rationale": "Original Company Task Handoff WordPress class is executed in PHP 7.4/8.5 with an isolated native Fluent Boards model/service double. Six REST paths are guest denied. Fake vendor assignments exercise board isolation, authorized offer, stale revision CAS, idempotent request replay, assigned owner/current recipient access, recipient-only accept/reject, correct owner transfer and provider failure compensation. Found and corrected a material bug: metadata write failure previously returned success with unsaved revision; the source now requires native reload/readback before success, compensates transferred assignees when receipt fails and preserves pending offer for reconciliation. No real Fluent Boards or Production accounts were modified."
+    },
+    {
+      "id": "rest:mad4b/v1/company-tasks/handoffs",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/company-task-handoff-native-cas-hermetic.php"
+      ],
+      "owner_role": "MAD4B tenant-bound Fluent Boards handoff source/recovery reviewer — CI only, not staff actor",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original tenant task-board ownership and company staff admission stay under immutable platform/governance/security controls, not global WordPress administrator rights.",
+      "review_rationale": "Original Company Task Handoff WordPress class is executed in PHP 7.4/8.5 with an isolated native Fluent Boards model/service double. Six REST paths are guest denied. Fake vendor assignments exercise board isolation, authorized offer, stale revision CAS, idempotent request replay, assigned owner/current recipient access, recipient-only accept/reject, correct owner transfer and provider failure compensation. Found and corrected a material bug: metadata write failure previously returned success with unsaved revision; the source now requires native reload/readback before success, compensates transferred assignees when receipt fails and preserves pending offer for reconciliation. No real Fluent Boards or Production accounts were modified."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-task-handoff.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/company-task-handoff-native-cas-hermetic.php"
+      ],
+      "owner_role": "MAD4B tenant-bound Fluent Boards handoff source/recovery reviewer — CI only, not staff actor",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original tenant task-board ownership and company staff admission stay under immutable platform/governance/security controls, not global WordPress administrator rights.",
+      "review_rationale": "Original Company Task Handoff WordPress class is executed in PHP 7.4/8.5 with an isolated native Fluent Boards model/service double. Six REST paths are guest denied. Fake vendor assignments exercise board isolation, authorized offer, stale revision CAS, idempotent request replay, assigned owner/current recipient access, recipient-only accept/reject, correct owner transfer and provider failure compensation. Found and corrected a material bug: metadata write failure previously returned success with unsaved revision; the source now requires native reload/readback before success, compensates transferred assignees when receipt fails and preserves pending offer for reconciliation. No real Fluent Boards or Production accounts were modified."
     }
   ],
   "lifecycle": [],
@@ -15149,6 +15221,25 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing governance/platform/security controls remain authoritative; exact changed PHP source hash is bound to newly executed original-class identity/handshake and policy-downscoping test.",
       "review_rationale": "Reviewed complete original MCP provider catalog read and optional inheritance policy. Changed matrix/preflight to reject malformed provider_id raw input instead of sanitizing to a different registered identity. Hermetic PHP on 7.4 and 8.5 exercises source registration, local versus actual handshake distinction, missing providers, 7 malformed identities, production default, hostile JSON disabling OAuth and unattended mutations. This is an actual source behavior fix, but production deployment and third-party protocol tests remain separate."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-task-handoff.php",
+      "source_blob_sha": "4ac0bf4523187a2e5594294673544663e5f3f6a9",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/company-task-handoff-native-cas-hermetic.php"
+      ],
+      "owner_role": "MAD4B original company task handoff CAS and compensation source reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing platform/governance/security exact-source-change controls remain enforceable, with new same-PR PHP 7.4/8.5 negative and rollback tests.",
+      "review_rationale": "Exact source reviewed and patched to fail closed on Fluent Boards updateMeta false, thrown error or missing native receipt readback; offer/reject/accept only report success after current revision/history/pending are verified. If acceptance assignment changes precede receipt failure, native TaskService receives inverse operations and readback; uncertain outcomes return reconciliation_required rather than success. Six original REST routes and form participant/board/nonce/CAS rules exercised with hermetic vendor doubles. Full live vendor concurrency and independent Production database readback are still required prior to release."
     }
   ],
   "code_change_rules": {
