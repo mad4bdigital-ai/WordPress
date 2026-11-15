@@ -26,9 +26,17 @@ final class MAD4B_SCP_Native_Settings_Locator {
         $has_key=(bool)$integration->get_option('license_key'); // Never return key or hash.
         $url=admin_url('admin.php?page=wc-settings&tab=integration&section=maxmind_geolocation');
         $scheme=wp_parse_url($url,PHP_URL_SCHEME);
-        $transport=($scheme==='https' && is_ssl())
-            ||(class_exists('MAD4B_SCP_Local_Transport_Policy',false)
-                &&MAD4B_SCP_Local_Transport_Policy::loopback_enabled(rtrim(home_url(),'/')));
+        // The local HTTP opt-in attests ONLY the enrolled same-origin
+        // WordPress admin. It cannot attest an unrelated admin URL just
+        // because the front-end host happens to be a local lab.
+        $home=rtrim((string)home_url(),'/');
+        $local_admin=($scheme==='http')
+            &&hash_equals((string)wp_parse_url($home,PHP_URL_HOST),
+                (string)wp_parse_url($url,PHP_URL_HOST))
+            &&wp_parse_url($home,PHP_URL_PORT)===wp_parse_url($url,PHP_URL_PORT)
+            &&class_exists('MAD4B_SCP_Local_Transport_Policy',false)
+            &&MAD4B_SCP_Local_Transport_Policy::loopback_enabled($home);
+        $transport=($scheme==='https' && is_ssl()) || $local_admin;
         return array(
             'contract'=>self::CONTRACT,'owner'=>'woocommerce',
             'target'=>self::MAXMIND,'native_settings_url'=>$url,

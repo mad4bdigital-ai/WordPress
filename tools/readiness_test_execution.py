@@ -121,6 +121,9 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     # Review-bound original host, MCP registration and runtime guards.
     # No network, site mutation or arbitrary CLI PHP file is accepted.
     "tests/servers-original-native-transport-hermetic.php",
+    # Three first-party native read-only service contracts; hermetic fake
+    # WordPress and temporary isolated plugin filesystem, no site writes.
+    "tests/original-native-service-trust-hermetic.php",
     "tests/server-registration-descriptor-boundary-hermetic.php",
     "tests/staging-write-delegated-identity-native-hermetic.php",
     "tests/staging-write-host-candidate-native-hermetic.php",
@@ -258,6 +261,7 @@ def self_test():
     assert command_for("tests/remote-execution/governed-write-admission-smoke.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/context-preflight-runtime.php")[0] == "php"
     assert command_for("tests/servers-original-native-transport-hermetic.php")[0] == "php"
+    assert command_for("tests/original-native-service-trust-hermetic.php")[0] == "php"
     assert command_for("tests/server-registration-descriptor-boundary-hermetic.php")[0] == "php"
     assert command_for("tests/staging-write-delegated-identity-native-hermetic.php")[0] == "php"
     assert command_for("tests/staging-write-host-candidate-native-hermetic.php")[0] == "php"

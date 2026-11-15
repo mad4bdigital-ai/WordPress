@@ -7374,6 +7374,64 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-transport-policy.php",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/original-native-service-trust-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party native runtime capability reviewer — CI only",
+      "review_rationale": "Original Local Transport Policy rejects untrusted proxy/X-Original-URL headers, public hosts, mismatched ports, cross-origin POST, Production and environment drift. Hermetic test shows successful OS-loopback only with explicit SSH/local opt-in and enrolled local Site Profile, without granting credentials or write permission.",
+      "coverage_reuse_rationale": "Existing GOVERNANCE-02, OAUTH-01, TICKETS-01, SECURITY-01, EXECUTION-01 controls mandate source/target provenance, site identity, independent exact principal permission and readback. The new service exposes only source evidence, transport eligibility or original settings links and cannot create approval or grant site mutation.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-settings-locator.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/original-native-service-trust-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party native runtime capability reviewer — CI only",
+      "review_rationale": "Original native WooCommerce settings locator checks independent original owner and Woo capabilities, real MaxMind integration, and reports only license key presence, never its plaintext. Hermetic test proves external admin URLs cannot inherit Local Lab transport and same-origin native settings remain read-only.",
+      "coverage_reuse_rationale": "Existing GOVERNANCE-01, PLATFORM-01, SECURITY-01, EXECUTION-01 controls mandate source/target provenance, site identity, independent exact principal permission and readback. The new service exposes only source evidence, transport eligibility or original settings links and cannot create approval or grant site mutation.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-installed-artifact.php",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/original-native-service-trust-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party native runtime capability reviewer — CI only",
+      "review_rationale": "Original installed plugin artifact observer requires one active, exact version and SHA-bound WordPress plugin header. Hermetic test denies inactive, ambiguous, traversal, symlink escaping plugin root, version drift, and candidate overflow prior to plugin enumeration; discovery never grants write.",
+      "coverage_reuse_rationale": "Existing MCP-01, PROVIDERS-01, EXECUTION-01, SECURITY-01 controls mandate source/target provenance, site identity, independent exact principal permission and readback. The new service exposes only source evidence, transport eligibility or original settings links and cannot create approval or grant site mutation.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "lifecycle": [],
@@ -18735,6 +18793,61 @@
       ],
       "owner_role": "MAD4B original first-party provenance and behavioral source reviewer — CI only",
       "review_rationale": "The original Skills Adapter projects six additional task/external source Abilities into the same private read-only MCP lane with no content/admin tools or duplicate registration. The native Skill Abilities fixture verifies each callback identity, permission boundary, required fields and no implicit execution grant. Exact original PHP7.4 and PHP8.5 proof is bound to this Git source blob; no live WordPress, grant issuance or Production deployment is certified.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-transport-policy.php",
+      "source_blob_sha": "bc3b9d3b3dc931892191d8c61df29d72249a8ea4",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/original-native-service-trust-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party local transport and native provider source reviewer — CI only",
+      "review_rationale": "Original Local Transport Policy rejects untrusted proxy/X-Original-URL headers, public hosts, mismatched ports, cross-origin POST, Production and environment drift. Hermetic test shows successful OS-loopback only with explicit SSH/local opt-in and enrolled local Site Profile, without granting credentials or write permission. Verified on original PHP7.4 and PHP8.5 in no-network, readonly mounts with temporary fixture files only. No Production authorization.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-settings-locator.php",
+      "source_blob_sha": "14d06b5c5cf2d44dfd518e94eecdb4ba6c99baa0",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/original-native-service-trust-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party local transport and native provider source reviewer — CI only",
+      "review_rationale": "Original native WooCommerce settings locator checks independent original owner and Woo capabilities, real MaxMind integration, and reports only license key presence, never its plaintext. Hermetic test proves external admin URLs cannot inherit Local Lab transport and same-origin native settings remain read-only. Verified on original PHP7.4 and PHP8.5 in no-network, readonly mounts with temporary fixture files only. No Production authorization.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-installed-artifact.php",
+      "source_blob_sha": "2d6c6282fdb22841992c1d4348613f49f38e4eea",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/original-native-service-trust-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party local transport and native provider source reviewer — CI only",
+      "review_rationale": "Original installed plugin artifact observer requires one active, exact version and SHA-bound WordPress plugin header. Hermetic test denies inactive, ambiguous, traversal, symlink escaping plugin root, version drift, and candidate overflow prior to plugin enumeration; discovery never grants write. Verified on original PHP7.4 and PHP8.5 in no-network, readonly mounts with temporary fixture files only. No Production authorization.",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
