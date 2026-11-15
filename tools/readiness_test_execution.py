@@ -98,6 +98,13 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     # Original nonmutating Developer/diagnostic gate and NHI Undo journal fixtures.
     "tests/developer-authority-access-original-hermetic.php",
     "tests/mcp-request-scope-original-hermetic.php",
+    # Original metadata-only catalog, DB preflight, and zero-touch plugin/skill cases.
+    "tests/artifacts-original-hermetic.php",
+    "tests/research-intelligence-original-hermetic.php",
+    "tests/remote-operation-catalog-original-hermetic.php",
+    "tests/plugin-bootstrap-original-hermetic.php",
+    "tests/skill-provider-source-original-hermetic.php",
+
     "wp-content/plugins/mad4b-site-control-plane/tests/undo-intent-fault-injection.php",
 
 

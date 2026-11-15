@@ -20924,6 +20924,90 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/remote-operation-catalog.php",
+      "source_blob_sha": "0e1bd3f67f5eac3bbb369eff5d45782fc882f9ae",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-seven-original-p0-source-review.py"
+      ],
+      "owner_role": "MAD4B source-backed CI-only reviewer",
+      "review_rationale": "First-party original 129-case operation descriptor catalog fixture confirms stable operation IDs, provider and registered Ability declarations, bounded tags, explicit authority surface, human decision booleans and exact static policy declarations deny/read_only/governed_source_policy. This review does not treat those declarations as runtime Production grants. Reproduced on PHP 7.4/8.5 with exact Git SHA. This is CI-only; no signed independent Production acceptance or live-site authorization.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-artifacts.php",
+      "source_blob_sha": "7dcbcff762053e27ab858bd2554c277fb6f39d44",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-seven-original-p0-source-review.py"
+      ],
+      "owner_role": "MAD4B source-backed CI-only reviewer",
+      "review_rationale": "Original 18-case Artifact Registry no-DB fixture checks six private WordPress Ability registrations, distinct read/write annotations and permission callbacks, exact critical Schema ready, typed Site UUID and invalid ContentJob denial before any DB transaction. The full MariaDB lifecycle/readback fixture remains a separate live/staging evidence requirement. Reproduced on PHP 7.4/8.5 with exact Git SHA. This is CI-only; no signed independent Production acceptance or live-site authorization.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin.php",
+      "source_blob_sha": "35f46789233a39d303b719e510f71689d6643e82",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-seven-original-p0-source-review.py"
+      ],
+      "owner_role": "MAD4B source-backed CI-only reviewer",
+      "review_rationale": "Original 16-case plugin lifecycle fixture proves correct WordPress update.php/plugins.php file-name detection, native plugin actions, passive admin zero-reconciliation and rejection of error-shaped query values. No WordPress plugin update/activation or bootstrap write was executed. Reproduced on PHP 7.4/8.5 with exact Git SHA. This is CI-only; no signed independent Production acceptance or live-site authorization.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-research-intelligence.php",
+      "source_blob_sha": "68725816145f91d3d21399fd5f1770821be142c7",
+      "control_ids": [
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-seven-original-p0-source-review.py"
+      ],
+      "owner_role": "MAD4B source-backed CI-only reviewer",
+      "review_rationale": "Original 18-case source preflight fixture enforces typed ContentJob, provider, request SHA and artifact IDs, stops malformed sources before independent data governance and retains explicit governance rejection. Full MariaDB research lineage and provider readback require separate independently reviewed integration tests. Reproduced on PHP 7.4/8.5 with exact Git SHA. This is CI-only; no signed independent Production acceptance or live-site authorization.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-provider-discovery.php",
+      "source_blob_sha": "42bc4e68d42c93b03cccfb9b669242db246ad2ab",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-seven-original-p0-source-review.py"
+      ],
+      "owner_role": "MAD4B source-backed CI-only reviewer",
+      "review_rationale": "Original eight-case Skill Provider fixture confirms a persisted ready record is not current runtime proof and requires exact Site Profile enrollment and Skill Catalog opt-in before any plugin/Skill reconciliation or managed file creation. Reproduced on PHP 7.4/8.5 with exact Git SHA. This is CI-only; no signed independent Production acceptance or live-site authorization.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "code_change_rules": {

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CI-only first-party source reviews. Read nineteen original PHP sources and run
+"""CI-only first-party source reviews. Read twenty-four original PHP sources and run
 their already-established behavior suites; never create a grant, issue a ticket,
 call WordPress live, or authorize Production. Exact blob pin prevents silent
 reuse of stale tests after any source change.
@@ -60,6 +60,26 @@ CASES = (
      '4e9914592d8ccf224fccbb35ede4d96b0fb96d14',
      'wp-content/plugins/mad4b-site-control-plane/tests/undo-intent-fault-injection.php',
      'PASS undo intent original CAS'),
+    ('config/remote-operation-catalog.php',
+     '0e1bd3f67f5eac3bbb369eff5d45782fc882f9ae',
+     'tests/remote-operation-catalog-original-hermetic.php',
+     'PASS: REMOTE_OPERATION_CATALOG_ORIGINAL 129'),
+    ('includes/class-mad4b-scp-artifacts.php',
+     '7dcbcff762053e27ab858bd2554c277fb6f39d44',
+     'tests/artifacts-original-hermetic.php',
+     'PASS: ARTIFACTS_ORIGINAL 18'),
+    ('includes/class-mad4b-scp-plugin.php',
+     '35f46789233a39d303b719e510f71689d6643e82',
+     'tests/plugin-bootstrap-original-hermetic.php',
+     'PASS: PLUGIN_BOOTSTRAP_ORIGINAL 16'),
+    ('includes/class-mad4b-scp-research-intelligence.php',
+     '68725816145f91d3d21399fd5f1770821be142c7',
+     'tests/research-intelligence-original-hermetic.php',
+     'PASS: RESEARCH_INTELLIGENCE_ORIGINAL 18'),
+    ('includes/class-mad4b-scp-skill-provider-discovery.php',
+     '42bc4e68d42c93b03cccfb9b669242db246ad2ab',
+     'tests/skill-provider-source-original-hermetic.php',
+     'PASS: SKILL_PROVIDER_SOURCE_ORIGINAL 8'),
     ("includes/class-mad4b-scp-adaptive-interaction-broker.php",
      "531cbaa5a3632213c6daa4c106ca921095d2266a",
      PLUGIN + "tests/adaptive-interaction-broker/contract-test.php",
@@ -89,7 +109,7 @@ CASES = (
      "tests/staging-write-planning-guard-original-hermetic.php",
      "PASS: STAGING_WRITE_PLANNING_GUARD_ORIGINAL 64"),
 )
-assert len(CASES) == 19
+assert len(CASES) == 24
 for source, git_blob, fixture, marker in CASES:
     source_path = ROOT / PLUGIN / source
     fixture_path = ROOT / fixture
@@ -113,4 +133,4 @@ for source, git_blob, fixture, marker in CASES:
     assert not re.search(r"(?m)^(?:FAIL(?::|\s)|Fatal error:|Parse error:)", output), (
         source, "fatal or negative test evidence")
     print("PASS: ORIGINAL_P0_SOURCE_EVIDENCE", source, git_blob[:12])
-print("PASS: ORIGINAL_P0_SOURCE_REVIEW_MATRIX 19 exact-source source-backed cases")
+print("PASS: ORIGINAL_P0_SOURCE_REVIEW_MATRIX 24 exact-source source-backed cases")
