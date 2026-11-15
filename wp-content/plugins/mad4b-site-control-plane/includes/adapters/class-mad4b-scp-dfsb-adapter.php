@@ -77,10 +77,19 @@ final class MAD4B_SCP_DFSB_Adapter extends MAD4B_SCP_Adapter_Base {
 		if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) ) return array();
 		$available = array();
 		foreach ( $candidates as $ability_name ) {
-			if ( ! wp_has_ability( $ability_name ) ) continue;
-			$ability = wp_get_ability( $ability_name );
-			if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) || ! method_exists( $ability, 'execute' ) ) continue;
-			$meta = $ability->get_meta();
+			// WP_Error, unexpected Ability implementations or a throwing
+			// metadata provider are not positive evidence of a safe native read.
+			try {
+				if ( true !== wp_has_ability( $ability_name ) ) continue;
+				$ability = wp_get_ability( $ability_name );
+				if ( ! is_object( $ability ) || is_wp_error( $ability )
+					|| ! method_exists( $ability, 'get_meta' )
+					|| ! method_exists( $ability, 'execute' ) ) continue;
+				$meta = $ability->get_meta();
+			} catch ( \Throwable $error ) {
+				continue;
+			}
+			if ( ! is_array( $meta ) ) continue;
 			$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
 			if ( ! array_key_exists( 'readonly', $annotations ) || true !== $annotations['readonly'] ) continue;
 			if ( ! array_key_exists( 'destructive', $annotations ) || false !== $annotations['destructive'] ) continue;
@@ -323,7 +332,7 @@ final class MAD4B_SCP_DFSB_Adapter extends MAD4B_SCP_Adapter_Base {
 				'profile_id' => $id, 'revision' => $config->revision(),
 				'snapshot_fingerprint' => (string) ( $snapshot['snapshot_fingerprint'] ?? '' ),
 				'state' => $changes ? 'review_required' : 'aligned',
-				'structural_plan_eligible' => ! empty( $proposal['safe_to_apply'] ),
+				'structural_plan_eligible' => ( $proposal['safe_to_apply'] ?? null ) === true,
 				'blocking_reasons' => array_values( (array) ( $proposal['blocking_reasons'] ?? array() ) ),
 				'changes' => $changes, 'authorizing' => false,
 				'read_only' => true, 'apply_authorized' => false,

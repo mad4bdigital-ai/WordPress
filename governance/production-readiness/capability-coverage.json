@@ -8107,6 +8107,44 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-local-brand-draft-adapter.php",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/local-brand-draft-adapter-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B original first-party Adapter capability reviewer — CI only",
+      "review_rationale": "The actual original WordPress local Brand Draft writer preserves a separate central approved ticket, Staging-only native authority, exact Brand plan/evidence SHA, bounded user content, draft preflight, durable attempt reservation, typed Artifact/ContentJob postconditions and irreversible reconciliation. Pre-fix a WP_Error can_mutate/readiness/quality gate could pass PHP truthiness; a partially successful Builder exception could bypass retry-journal finish and a malformed lease could start an original nonreversible write. 42 native PHP7.4/8.5 source-backed acceptance/negative cases now require exact true proofs, original persisted reservation contract, verified job readback and exact durable finish. Any Builder/readback exception is reconciled as uncertain with blind_retry_allowed=false. No real tenant write, grant, publisher or provider certification was performed.",
+      "coverage_reuse_rationale": "Original MCP-01, PROVIDERS-01, EXECUTION-01, SECURITY-01 bind source-owned Adapter implementation, signed candidate and site profile, immutable evidence and independent provider output readback. The original test proves no new grants, no administrative bypass and no route to live publication, not an environment/Production certificate.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-dfsb-adapter.php",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/dfsb-read-adapter-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B original first-party Adapter capability reviewer — CI only",
+      "review_rationale": "Original provider-neutral DFSB read-only compatibility class, not approved in current native Adapter Registration Policy, consumes only already-mounted first-party DFSB services. 35 PHP7.4/8.5 original source acceptance/negative checks verify read-only service identity, native EvidenceProvider annotations exact readonly=true destructive=false, error-shaped or throwing metadata denial, explicit structural safe_to_apply boolean, bounded profile and slot planning, and no SEO/Elementor side-channel writes. The original ETG Adapter remains the approved class; the neutral compatibility class has no separate runtime approval or implicit grant.",
+      "coverage_reuse_rationale": "Original MCP-01, PROVIDERS-01, EXECUTION-01, SECURITY-01 bind source-owned Adapter implementation, signed candidate and site profile, immutable evidence and independent provider output readback. The original test proves no new grants, no administrative bypass and no route to live publication, not an environment/Production certificate.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "lifecycle": [],
@@ -20199,6 +20237,59 @@
       ],
       "owner_role": "MAD4B native original Hub consumer source reviewer — CI only",
       "review_rationale": "Original Hub JetEngine REST-to-native-consumer adapter validates company/source Site UUID, exactly allowlisted GET endpoint, native Listing/Query IDs, field schemas, no parallel taxonomy/database/brand or historical checkout effects and exact market selection. The 33 direct PHP7.4/8.5 source-backed cases reproduce pre-fix path-only HTTP admission that allowed HTTP downgrade, alternate port, userinfo, query/fragment and nonexact path. It now confines only the already approved original Central GET HTTPS URL; unrelated WordPress requests remain unaffected. Unexpected dynamic registry/discovery WP_Error used to crash status; now report runtime_registry_unverified, never invent zero companies or admit a read without the typed registry. Four independently verified first-party source, native binding, market and content-release hooks are tested as exact true; a WP_Error from any is denied. No real HTTP call, remote company association, write, publication, WC checkout substitution or signed Production grant is executed. Immutable Git source blob reviewed, original independent release evidence still required.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-local-brand-draft-adapter.php",
+      "source_blob_sha": "79df5c728b20d48c59bb4bf1177978ee9624d833",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/local-brand-draft-adapter-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B original first-party Adapter source reviewer — CI only",
+      "review_rationale": "The actual original WordPress local Brand Draft writer preserves a separate central approved ticket, Staging-only native authority, exact Brand plan/evidence SHA, bounded user content, draft preflight, durable attempt reservation, typed Artifact/ContentJob postconditions and irreversible reconciliation. Pre-fix a WP_Error can_mutate/readiness/quality gate could pass PHP truthiness; a partially successful Builder exception could bypass retry-journal finish and a malformed lease could start an original nonreversible write. 42 native PHP7.4/8.5 source-backed acceptance/negative cases now require exact true proofs, original persisted reservation contract, verified job readback and exact durable finish. Any Builder/readback exception is reconciled as uncertain with blind_retry_allowed=false. No real tenant write, grant, publisher or provider certification was performed. SHA-1 Git source blob pinned; live original actor proof, site release and Production approval require independent evidence.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-dfsb-adapter.php",
+      "source_blob_sha": "7f50ad445765751effd2d46224d18248afbc230f",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/dfsb-read-adapter-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B original first-party Adapter source reviewer — CI only",
+      "review_rationale": "Original provider-neutral DFSB read-only compatibility class, not approved in current native Adapter Registration Policy, consumes only already-mounted first-party DFSB services. 35 PHP7.4/8.5 original source acceptance/negative checks verify read-only service identity, native EvidenceProvider annotations exact readonly=true destructive=false, error-shaped or throwing metadata denial, explicit structural safe_to_apply boolean, bounded profile and slot planning, and no SEO/Elementor side-channel writes. The original ETG Adapter remains the approved class; the neutral compatibility class has no separate runtime approval or implicit grant. SHA-1 Git source blob pinned; live original actor proof, site release and Production approval require independent evidence.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-etg-dfsb-adapter.php",
+      "source_blob_sha": "e76fdad20383eac93990afb46447645839d7f3e0",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/dfsb-read-adapter-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B original first-party Adapter source reviewer — CI only",
+      "review_rationale": "Approved existing original ETG Dynamic Filter SEO read-only Adapter was loaded before the provider-neutral compatibility class. A newly expanded 35-case native PHP7.4/8.5 source-backed test reproduces the original WP_Error Ability metadata PHP fatal and checks the patched exact readonly/destructive annotation, provider version, Profile safe_to_apply flag and no mutation/SEO publication. The original legacy contract and separate governed staging writer tests pass. First-party ETG class remains the only source-approved adapter; no new provider mount, permission, or Production trust is granted. SHA-1 Git source blob pinned; live original actor proof, site release and Production approval require independent evidence.",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
