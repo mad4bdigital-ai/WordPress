@@ -8,6 +8,7 @@ class WP_Error {
 }
 function is_wp_error( $value ) { return $value instanceof WP_Error; }
 function add_filter() {}
+function add_action() {}
 function apply_filters( $hook, $value ) { return $value; }
 function sanitize_key( $value ) { return strtolower( preg_replace( '/[^a-z0-9_-]/i', '', $value ) ); }
 function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $flags ); }
@@ -29,21 +30,24 @@ class Mount_Ability {
     public function get_input_schema() { return array( 'type' => 'object' ); }
     public function get_output_schema() { return array( 'type' => 'object' ); }
 }
-class Mount_Adapter {
+// Keep the original Adapter Base and Server Write Catalog on one runtime
+// path. The fake provider supplies only availability; it cannot override the
+// source-owned default mutation mount guard.
+require dirname( __DIR__ ) . '/includes/adapters/class-mad4b-scp-adapter-base.php';
+class Mount_Adapter extends MAD4B_SCP_Adapter_Base {
     public $eligible = false;
     public $status_calls = 0;
     public $eligibility_calls = 0;
     public function id() { return 'guarded-fixture'; }
+    public function label() { return 'Original Base Mount Fixture'; }
+    public function is_available() { ++$this->eligibility_calls; return $this->eligible; }
+    public function register_abilities() {}
     public function provider_key() { return 'core'; }
     public function status() { ++$this->status_calls; return array( 'mutation_requires_certification' => false ); }
     public function ability_names() { return array(
         'read' => array( 'example/read' ), 'content' => array( 'example/content' ),
         'admin' => array( 'example/admin', 'mad4b/wp-native-self-approve-install' ), 'write' => array( 'example/write-only' ),
     ); }
-    public function mutation_ability_runtime_eligibility( $name ) {
-        ++$this->eligibility_calls;
-        return $this->eligible ? true : new WP_Error( 'fixture_prerequisite_missing' );
-    }
 }
 class MAD4B_SCP_Adapter_Registry {
     public static $adapter;
@@ -100,7 +104,7 @@ foreach ( array( false, true, false ) as $eligible ) {
             'Original surface must not bypass Write eligibility: ' . $ability );
         if ( null === $filter ) {
             $filter = new ReflectionMethod( 'MAD4B_SCP_Servers', 'original_mutation_mount_tools' );
-            $filter->setAccessible( true );
+            if ( PHP_VERSION_ID < 80100 ) $filter->setAccessible( true );
         }
         $materialized = $filter->invoke( null, $server, array( $ability, 'example/read' ) );
         mount_check( in_array( $ability, $materialized, true ) === $eligible,
