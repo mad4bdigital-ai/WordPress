@@ -91,6 +91,11 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "tests/agent-grant-plan-original-hermetic.php",
     # Original native pending-ticket gate, no creation of a real approval ticket.
     "tests/staging-write-planning-guard-original-hermetic.php",
+    # Original MCP runtime, REST capability and native write preflight; no real grants.
+    "tests/mcp-protocol-scope-original-hermetic.php",
+    "tests/unified-gateway-permission-original-hermetic.php",
+    "tests/authorization-preflight-original-hermetic.php",
+
     # Hermetic native provider/add-on source fixture.
     "wp-content/plugins/mad4b-site-control-plane/tests/wordpress-addon-execution-guard-contract.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/runtime-obstacle-resolution-runtime.php",

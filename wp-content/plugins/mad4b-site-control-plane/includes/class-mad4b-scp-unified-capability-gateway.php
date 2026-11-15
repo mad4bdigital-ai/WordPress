@@ -107,12 +107,18 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 	public static function can_read_rest( $request = null ) {
 		if ( ! self::runtime_blog_matches() ) return new WP_Error( 'mad4b_capability_gateway_blog_switch_denied', 'Use a fresh request to the target site.', array( 'status' => 409 ) );
 		if ( is_object( $request ) && method_exists( $request, 'get_header' ) ) {
-			return MAD4B_SCP_Ability_Catalog_Transport::rest_permission( $request );
+			$decision = MAD4B_SCP_Ability_Catalog_Transport::rest_permission( $request );
+			if ( is_wp_error( $decision ) ) return $decision;
+			return true === $decision ? true : new WP_Error(
+				'mad4b_capability_gateway_transport_unverified',
+				'Original REST catalog transport has not authorized read discovery.',
+				array( 'status' => 403 )
+			);
 		}
 		if ( ! class_exists( 'MAD4B_SCP_Policy' ) ) return new WP_Error( 'mad4b_capability_gateway_policy_unavailable', 'Capability gateway policy is unavailable.', array( 'status' => 503 ) );
 		$allowed = MAD4B_SCP_Policy::can_read();
 		if ( is_wp_error( $allowed ) ) return $allowed;
-		return $allowed ? true : new WP_Error( 'mad4b_capability_gateway_forbidden', 'Read authority is required for capability discovery.', array( 'status' => 403 ) );
+		return true === $allowed ? true : new WP_Error( 'mad4b_capability_gateway_forbidden', 'Read authority is required for capability discovery.', array( 'status' => 403 ) );
 	}
 
 	public static function rest_callback( $request ) {
@@ -134,6 +140,14 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 		if ( class_exists( 'MAD4B_SCP_Request_Generation' ) ) {
 			$request_scope = MAD4B_SCP_Request_Generation::admit( 'capability_gateway' );
 			if ( is_wp_error( $request_scope ) ) return $request_scope;
+			if ( ! is_array( $request_scope )
+				|| ( $request_scope['contract'] ?? null ) !== MAD4B_SCP_Request_Generation::CONTRACT
+				|| ! is_int( $request_scope['generation'] ?? null )
+				|| $request_scope['generation'] < 1
+				|| ( $request_scope['authorizing'] ?? null ) !== false
+				|| ( $request_scope['mutation_performed'] ?? null ) !== false )
+				return new WP_Error( 'mad4b_capability_gateway_scope_unverified',
+					'Original WordPress request generation proof is unavailable.' );
 		}
 		$valid = self::validate_input( $input );
 		if ( is_wp_error( $valid ) ) return $valid;
