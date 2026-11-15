@@ -6930,6 +6930,26 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "The original MCP/Provider/Execution/Security controls require provider loaded, dynamic write mount eligibility, exact local Authorization and site owner permission before mutation.",
       "review_rationale": "Reviewed the complete original 45-line Firecrawl Research Adapter and its inherited first-party Adapter Base permission flow. Native WordPress registration remains non-idempotent Write, administrator plus can_mutate required; the base checks central mutation Authorization even though external plugin certification is intentionally not the native Artifact provider admission gate. is_available and capture now both require the EXACT loaded native Bridge and Provider, without optional autoload side effects. Same-PR hermetic PHP7.4/8.5 tests execute actual source, reproduce auto-loader side effects before repair, assert missing-provider and permission denial, unmounted dormant Write and failure to borrow another Ability ID. An existing isolated WordPress runtime fixture tests the original Server catalog. No Firecrawl network capture, external provider receipt or Production owner attestation is claimed."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-firecrawl-provider.php",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01",
+        "AUDIT-01"
+      ],
+      "regression_tests": [
+        "tests/firecrawl-provider-php74-crawl-and-host-scope-hermetic.php"
+      ],
+      "owner_role": "MAD4B original Firecrawl Provider and Source Loop owner reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original MCP and Provider routing controls own bounded external research. Execution/Security/Audit controls enforce Site Profile, exact content owner and append-only evidence. No new publisher or autonomous approval.",
+      "review_rationale": "Reviewed original Firecrawl Provider 620-line source and PHP7.4 compatibility correction. Credential save and test are WordPress admin-post nonce/capability gated; AES-GCM secrets never displayed; saved test fingerprints are profile-bound. All owned/crawl/status/capture entrypoints require enrolled site or exact admitted ContentJob/Native Origin, while Source Loop rejects private and unapproved hostnames, disallows credential URL inputs and requires HTTPS. Real provider traffic is routed through the existing request service with bounded result size/timeout, no global WordPress HTTP hook, and provenance is evidence only rather than authorization to publish. Same-PR actual-source PHP7.4/8.5 hermetic tests verify crawl scope, endpoint rejection, all unenrolled access denials, admin UI isolation, absent credentials, no WordPress mutation and no request to an external host. Cloud credentials, live scrape artifacts, provider receipts and exact WP site ownership remain subject to independent Production acceptance."
     }
   ],
   "lifecycle": [],
@@ -16470,6 +16490,27 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "The original MCP Adapter Registry, provider routing, execution and administrator/subject security controls apply. No parallel executor, vendor certification bypass or automatic grant is introduced.",
       "review_rationale": "Reviewed the complete original 45-line Firecrawl Research Adapter and its inherited first-party Adapter Base permission flow. Native WordPress registration remains non-idempotent Write, administrator plus can_mutate required; the base checks central mutation Authorization even though external plugin certification is intentionally not the native Artifact provider admission gate. is_available and capture now both require the EXACT loaded native Bridge and Provider, without optional autoload side effects. Same-PR hermetic PHP7.4/8.5 tests execute actual source, reproduce auto-loader side effects before repair, assert missing-provider and permission denial, unmounted dormant Write and failure to borrow another Ability ID. An existing isolated WordPress runtime fixture tests the original Server catalog. No Firecrawl network capture, external provider receipt or Production owner attestation is claimed."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-firecrawl-provider.php",
+      "source_blob_sha": "645e7ee26aa69966c2aecab7565d6fb9594a9fa9",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01",
+        "AUDIT-01"
+      ],
+      "regression_tests": [
+        "tests/firecrawl-provider-php74-crawl-and-host-scope-hermetic.php"
+      ],
+      "owner_role": "MAD4B original Firecrawl Provider and Source Loop owner reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original MCP and Provider routing controls own bounded external research. Execution/Security/Audit controls enforce Site Profile, exact content owner and append-only evidence. No new publisher or autonomous approval.",
+      "review_rationale": "Reviewed original Firecrawl Provider 620-line source and PHP7.4 compatibility correction. Credential save and test are WordPress admin-post nonce/capability gated; AES-GCM secrets never displayed; saved test fingerprints are profile-bound. All owned/crawl/status/capture entrypoints require enrolled site or exact admitted ContentJob/Native Origin, while Source Loop rejects private and unapproved hostnames, disallows credential URL inputs and requires HTTPS. Real provider traffic is routed through the existing request service with bounded result size/timeout, no global WordPress HTTP hook, and provenance is evidence only rather than authorization to publish. Same-PR actual-source PHP7.4/8.5 hermetic tests verify crawl scope, endpoint rejection, all unenrolled access denials, admin UI isolation, absent credentials, no WordPress mutation and no request to an external host. Cloud credentials, live scrape artifacts, provider receipts and exact WP site ownership remain subject to independent Production acceptance."
     }
   ],
   "code_change_rules": {

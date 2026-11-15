@@ -99,4 +99,48 @@ check_firecrawl($GLOBALS['firecrawl_network_calls']===0 && $GLOBALS['firecrawl_w
 $timeout=$c::timeout_plan($good,'research');
 check_firecrawl(is_array($timeout) && $timeout['timeout']>=45 && $timeout['timeout']<=115,
  'Existing timeouts remain bounded without global HTTP override');
-echo "FIRECRAWL_NATIVE_PHP74: PASS source host/crawl limits, no network or writes\n";
+// No implicit execution on an unenrolled site, even when running WP-CLI
+// as an administrator with a globally permissive mutation-policy stub.
+$owned=$c::start_owned_crawl($good,'section_crawl');
+check_firecrawl(is_wp_error($owned)
+ && $owned->get_error_code()==='mad4b_firecrawl_crawl_admin_required',
+ 'Owned crawl is not permissioned without canonical enrolled Site Profile');
+$content=$c::start_content_crawl($good,'section_crawl',
+ '11111111-1111-4111-8111-111111111111');
+check_firecrawl(is_wp_error($content)
+ && $content->get_error_code()==='mad4b_firecrawl_content_crawl_not_authorized',
+ 'No ContentJob crawl can start without site, owner and exact job admission');
+$owned_status=$c::owned_crawl_status('not-registered');
+check_firecrawl(is_wp_error($owned_status)
+ && $owned_status->get_error_code()==='mad4b_firecrawl_crawl_admin_required',
+ 'Unregistered host never polls or persists an owned crawl');
+$smoke=$c::scrape_owned_source('https://tours.example.invalid/');
+check_firecrawl(is_wp_error($smoke)
+ && $smoke->get_error_code()==='mad4b_firecrawl_stage_admin_required',
+ 'Public homepage scrape cannot execute without enrolled site');
+$native=$c::scrape_native_origin_tour(77);
+check_firecrawl(is_wp_error($native)
+ && $native->get_error_code()==='mad4b_firecrawl_native_origin_grant_required',
+ 'Native published tour source requires separate original signed intake');
+$research=$c::scrape_research_url('fixture',77,$good);
+check_firecrawl(is_wp_error($research)
+ && $research->get_error_code()==='mad4b_firecrawl_research_adapter_unavailable',
+ 'ContentJob research cannot start without loaded original Bridge');
+$robots=$c::owned_robots_readiness('https://other.example.invalid/');
+check_firecrawl($robots['state']==='NOT_OWNED'
+ && $robots['robots_verified']===false,
+ 'Foreign robots are not probed or assumed to permit Firecrawl');
+$probe=$c::probe();
+check_firecrawl($probe['ready']===false
+ && $probe['reason']==='configuration_missing',
+ 'An absent credential profile is not silently presented as a healthy provider');
+$last=$c::test_status();
+check_firecrawl($last['tested']===false,
+ 'No saved credential/network proof can be invented');
+$GLOBALS['firecrawl_admin']=false;
+ob_start();$c::render();$html=ob_get_clean();
+check_firecrawl($html==='',
+ 'Provider credential UI must remain hidden from non-admin users');
+check_firecrawl($GLOBALS['firecrawl_network_calls']===0 && $GLOBALS['firecrawl_write_calls']===0,
+ 'All absent-site/provider calls remain network-free and mutation-free');
+echo "FIRECRAWL_NATIVE_PHP74: PASS crawl host, source/job/owner admission, credentials and no writes\n";
