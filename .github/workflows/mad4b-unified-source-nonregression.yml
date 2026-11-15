@@ -137,6 +137,8 @@ jobs:
           php wp-content/plugins/mad4b-site-control-plane/tests/brand-asset-source-binding-hermetic.php
           php wp-content/plugins/mad4b-site-control-plane/tests/context-registry-atomicity-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/context-ai-agent-review-runtime.php
+          node --check wp-content/plugins/mad4b-site-control-plane/assets/operational-remediation-ui.js
+          node tests/operational-remediation-tabs-runtime.js
           node --check wp-content/plugins/mad4b-site-control-plane/assets/tour-journey-ui.js
           node --check wp-content/plugins/mad4b-site-control-plane/assets/tour-journey-split-v3.js
           php -l scripts/migrations/tour-journey-wpml-fr-de-20261113.php

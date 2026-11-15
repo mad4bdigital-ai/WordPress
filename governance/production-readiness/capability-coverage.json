@@ -6734,6 +6734,42 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing governance/security/WordPress Core AI hooks continue controlling grant and read permission; no provider credentials, prompt logging, monetary pricing source or production AI authority created.",
       "review_rationale": "Original Core AI PHP executed on PHP 7.4/8.5 with synthetic WordPress options and model event metadata. Enforced no-admin AI request is denied, previously denied remains denied, admin or explicitly delegated original filter can permit, admin-only usage REST stays private; only token counts/provider/model/channel are retained, and cost is omitted unless sourced from a versioned HTTPS pricebook. A reproduced bug where failed WordPress option write returned true was corrected; source now reports false for unpersisted aggregates. No AI request, token, prompt or real WordPress user was sent."
+    },
+    {
+      "id": "admin_asset:wp-content/plugins/mad4b-site-control-plane/assets/operational-remediation-ui.js",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/operational-remediation-tabs-runtime.js"
+      ],
+      "owner_role": "MAD4B first-party operational diagnostic admin UI reviewer — non-authorizing source CI",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing WordPress Admin and Browser/Accessibility controls own the original page-local diagnostic tabs, keyboard navigation and CSS isolation; no new WordPress permission, REST route or CSS global ownership is introduced.",
+      "review_rationale": "Reviewed complete original 98-line progressive WordPress admin enhancement and the narrowly scoped default-tab fix. Actual isolated Node DOM executed overview absent, stale fragment, existing fragment, keyboard arrow navigation and single selected panel with independent CSS progressive-enhancement coverage. No fetch, eval, remote asset or content write; next live visual/ARIA proof remains unverified."
+    },
+    {
+      "id": "admin_asset:wp-content/plugins/mad4b-site-control-plane/assets/operational-remediation-ui.css",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/operational-remediation-tabs-runtime.js"
+      ],
+      "owner_role": "MAD4B first-party operational diagnostic admin UI reviewer — non-authorizing source CI",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing WordPress Admin and Browser/Accessibility controls own the original page-local diagnostic tabs, keyboard navigation and CSS isolation; no new WordPress permission, REST route or CSS global ownership is introduced.",
+      "review_rationale": "Reviewed the original 62-line page-root scoped WordPress diagnostics stylesheet including @media responsive rules and accessible selected/focus states. Same-PR Node source test checks the actual CSS is brace-balanced, never uses @import, URL or expression, preserves reduced-motion and hides panels only after JS enhancement. No browser screenshot or Production acceptance is claimed."
     }
   ],
   "lifecycle": [],
@@ -16101,6 +16137,44 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing Core AI, Security, Governance and Platform controls remain unchanged. Minimal native update_option result propagation is protected by new current-PR PHP tests.",
       "review_rationale": "Reviewed 114-line original Core AI file, WordPress hook registration, default deny-on-enforcement without owner, explicit filter delegation, admin-private usage and no prompt/token logging, no invented prices without externally sourced versioned cost book. Original record() returned true despite failed update_option; new source returns strict true only upon WordPress persist acknowledgment. Negative pre-fix test reproduced error, subsequent PHP7.4/8.5 tests pass. Real provider SDK bypass and storage races remain independent operational concerns."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/assets/operational-remediation-ui.js",
+      "source_blob_sha": "3b7513bf52198175731fb5fee1b5a9ecae97dda4",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/operational-remediation-tabs-runtime.js"
+      ],
+      "owner_role": "MAD4B first-party operational diagnostics UI source reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The existing Admin diagnostics template and its page-specific scripts/styles own the UI. No separate rendering engine or write service.",
+      "review_rationale": "Reviewed complete original 98-line progressive WordPress admin enhancement and the narrowly scoped default-tab fix. Actual isolated Node DOM executed overview absent, stale fragment, existing fragment, keyboard arrow navigation and single selected panel with independent CSS progressive-enhancement coverage. No fetch, eval, remote asset or content write; next live visual/ARIA proof remains unverified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/assets/operational-remediation-ui.css",
+      "source_blob_sha": "6df9809591b0b43cd70134ddd8990b124d61b89f",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/operational-remediation-tabs-runtime.js"
+      ],
+      "owner_role": "MAD4B first-party operational diagnostics UI source reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The existing Admin diagnostics template and its page-specific scripts/styles own the UI. No separate rendering engine or write service.",
+      "review_rationale": "Reviewed the original 62-line page-root scoped WordPress diagnostics stylesheet including @media responsive rules and accessible selected/focus states. Same-PR Node source test checks the actual CSS is brace-balanced, never uses @import, URL or expression, preserves reduced-motion and hides panels only after JS enhancement. No browser screenshot or Production acceptance is claimed."
     }
   ],
   "code_change_rules": {

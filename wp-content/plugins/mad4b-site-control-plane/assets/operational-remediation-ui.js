@@ -44,7 +44,14 @@
         activate(tabs[i].dataset.tab, true, true);
       });
     });
-    activate(tabForHash() || "overview", false, false);
+    var initial = tabForHash();
+    if (!tabs.some(function (tab) { return tab.dataset.tab === initial; })) {
+      initial = tabs.some(function (tab) { return tab.dataset.tab === "overview"; })
+        ? "overview" : tabs[0].dataset.tab;
+    }
+    // Only enhance after selecting a REAL registered panel. Company profiles
+    // can omit overview or a URL can contain a stale/foreign panel hash.
+    activate(initial, false, false);
     root.classList.add("is-enhanced");
     window.addEventListener("hashchange", function () {
       var match = tabForHash();
