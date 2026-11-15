@@ -8031,6 +8031,63 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-elementor-native-mcp-awareness.php",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/elementor-native-mcp-awareness-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party read-only provider capability reviewer — CI only",
+      "review_rationale": "Original first-party Elementor MCP awareness is read-only; actual authenticated native MCP initialize/tools-list/schema and an original Elementor edit receipt remain mandatory. 16 native PHP7.4/8.5 cases prove exact native is_active/site exposure booleans, WordPress editor and unfiltered_html capability, real adapter class, no fabricated handshake, no raw Elementor CSS/SQL write, and Site Profile / module error-shaped or thrown facts cannot cause a fatal or positive provider transport claim. No site write, client connection or editor save was made.",
+      "coverage_reuse_rationale": "Existing MCP-01, PROVIDERS-01, EXECUTION-01, SECURITY-01 controls require original site identity, source-owned record provenance and independently authorized provider operations. These services only project discovery/comparison, never mint a new signed grant, editor write, legal approval or host release.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-geo-quality.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/geo-quality-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party read-only provider capability reviewer — CI only",
+      "review_rationale": "Original geographic/transport quality discovery uses bounded source-owned WordPress CPTs/taxonomy and never geocodes or edits pricing. Twelve PHP7.4/8.5 native cases reproduce pre-fix WP_Error post inventory fatal / partial lookup false missing quote, then prove incomplete DB, >3000 post scan, transport rates and linked property inventories stop with complete=false and no fabricated issues. Existing internal station Zone and source-owned City are honored, invalid coordinates reviewed without auto-fixing, and low-priced quote opportunity remains nonblocking. No reservations, geocoding or writes.",
+      "coverage_reuse_rationale": "Existing GOVERNANCE-01, PLATFORM-01, SECURITY-01, EXECUTION-01 controls require original site identity, source-owned record provenance and independently authorized provider operations. These services only project discovery/comparison, never mint a new signed grant, editor write, legal approval or host release.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-migration-decision-catalog.php",
+      "control_ids": [
+        "DATABASE-01",
+        "PERFORMANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/migration-decision-catalog-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party read-only provider capability reviewer — CI only",
+      "review_rationale": "Original migration catalog is tenant-local comparison and selection only. Eleven native PHP7.4/8.5 assertions test original 14 dynamic asset categories, legal/privacy page detection, About Us and other special pages, source page ID and Elementor data immutability, stable original content SHA, wrong post-type and unregistered ID refusal, no credentials in plugin/version comparison, explicit manual choices and certification NOT_VERIFIED_FOR_THIS_COMPANY. No DB mutation, external site migration, legal approval, or user rights are created.",
+      "coverage_reuse_rationale": "Existing DATABASE-01, PERFORMANCE-01, SECURITY-01, EXECUTION-01 controls require original site identity, source-owned record provenance and independently authorized provider operations. These services only project discovery/comparison, never mint a new signed grant, editor write, legal approval or host release.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "lifecycle": [],
@@ -20051,6 +20108,60 @@
       ],
       "owner_role": "MAD4B original first-party source/code reviewer — non-authorizing CI evidence",
       "review_rationale": "The original ContentJob relationship provider is read-only and reuses native WordPress/WPML/Media and Elementor owners for writes. 16 first-party PHP7.4/8.5 assertions exercise scoped term source/target parity, >200 bounded incomplete readback, SQL error holds, local extra taxonomy preservation, translated link-missing denial, typed meta/no ID guessing, full composite inspect, exact graph SHA and mismatched target post types. It never replaces original authoring, media rights or source terms; actual writes remain separately governed. Source blob pinned exactly to current Git; CI review is not a Production certificate.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-elementor-native-mcp-awareness.php",
+      "source_blob_sha": "26468aa40a4cccc001996fd80a60c8bcbee55efe",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/elementor-native-mcp-awareness-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B original first-party read-only source reviewer — CI only",
+      "review_rationale": "Original first-party Elementor MCP awareness is read-only; actual authenticated native MCP initialize/tools-list/schema and an original Elementor edit receipt remain mandatory. 16 native PHP7.4/8.5 cases prove exact native is_active/site exposure booleans, WordPress editor and unfiltered_html capability, real adapter class, no fabricated handshake, no raw Elementor CSS/SQL write, and Site Profile / module error-shaped or thrown facts cannot cause a fatal or positive provider transport claim. No site write, client connection or editor save was made. Exact current source blob reviewed; original Production release approval and live evidence remain absent.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-geo-quality.php",
+      "source_blob_sha": "394583512c30d6b5a92c3027e4461cd649bfc096",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/geo-quality-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B original first-party read-only source reviewer — CI only",
+      "review_rationale": "Original geographic/transport quality discovery uses bounded source-owned WordPress CPTs/taxonomy and never geocodes or edits pricing. Twelve PHP7.4/8.5 native cases reproduce pre-fix WP_Error post inventory fatal / partial lookup false missing quote, then prove incomplete DB, >3000 post scan, transport rates and linked property inventories stop with complete=false and no fabricated issues. Existing internal station Zone and source-owned City are honored, invalid coordinates reviewed without auto-fixing, and low-priced quote opportunity remains nonblocking. No reservations, geocoding or writes. Exact current source blob reviewed; original Production release approval and live evidence remain absent.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-migration-decision-catalog.php",
+      "source_blob_sha": "eb9dbfccba66da757c4c2d29984b3c20b80a1cfa",
+      "control_ids": [
+        "DATABASE-01",
+        "PERFORMANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/migration-decision-catalog-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B original first-party read-only source reviewer — CI only",
+      "review_rationale": "Original migration catalog is tenant-local comparison and selection only. Eleven native PHP7.4/8.5 assertions test original 14 dynamic asset categories, legal/privacy page detection, About Us and other special pages, source page ID and Elementor data immutability, stable original content SHA, wrong post-type and unregistered ID refusal, no credentials in plugin/version comparison, explicit manual choices and certification NOT_VERIFIED_FOR_THIS_COMPANY. No DB mutation, external site migration, legal approval, or user rights are created. Exact current source blob reviewed; original Production release approval and live evidence remain absent.",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true

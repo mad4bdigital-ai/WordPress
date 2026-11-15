@@ -146,6 +146,11 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "tests/ai-task-routing-original-hermetic.php",
     "tests/delegation-owner-original-hermetic.php",
     "tests/content-relationship-terms-original-hermetic.php",
+    # Newly reviewed first-party read-only Elementor, geo and migration fixtures.
+    "tests/elementor-native-mcp-awareness-original-hermetic.php",
+    "tests/geo-quality-original-hermetic.php",
+    "tests/migration-decision-catalog-original-hermetic.php",
+
 
 
 
