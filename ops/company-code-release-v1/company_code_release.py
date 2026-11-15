@@ -1590,6 +1590,9 @@ def release_admission_doctor(
         "git_plan_verified": False,
         "original_runtime_binding_verified": False,
         "host_policy_installed_and_pinned": False,
+        "dynamic_provider_manifest_registered": False,
+        "dynamic_scope_plan_matched": False,
+        "central_313_operational_ready": False,
         "broker_dispatch_registration": "not_independently_verified",
         "broker_signed_grant_verified": False,
         "original_313_receipt_verified": False,
@@ -1644,6 +1647,12 @@ def release_admission_doctor(
             row.get("original_313_code_release_handler_registered") is True)
         state["dynamic_registry_enrolled"] = (
             row.get("dynamic_registry_enrolled") is True)
+        state["dynamic_provider_manifest_registered"] = (
+            row.get("dynamic_provider_manifest_registered") is True)
+        state["dynamic_scope_plan_matched"] = (
+            row.get("dynamic_scope_plan_matched") is True)
+        state["central_313_operational_ready"] = (
+            row.get("central_313_operational_ready") is True)
         state["dynamic_306_digest_registered"] = (
             row.get("dynamic_306_digest_registered") is True)
         state["dynamic_313_independent_verifier_registered"] = (
@@ -1661,7 +1670,10 @@ def release_admission_doctor(
                 state["git_plan_verified"] and
                 state["original_runtime_binding_verified"]):
             state["state"] = (
-                "HOLD_DYNAMIC_ORIGINAL_313_FINALIZER"
+                "HOLD_EXACT_DYNAMIC_PLAN_ENROLLMENT"
+                if (state["dynamic_provider_manifest_registered"] and
+                    not state["dynamic_scope_plan_matched"])
+                else "HOLD_DYNAMIC_ORIGINAL_313_FINALIZER"
                 if (state.get("dynamic_306_digest_registered") is True and
                     state.get("dynamic_313_finalizer_connected") is not True)
                 else ("AWAIT_INDEPENDENT_SIGNED_JOB_AND_313_RECEIPT"

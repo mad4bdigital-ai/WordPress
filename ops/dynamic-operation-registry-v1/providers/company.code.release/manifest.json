@@ -35,11 +35,11 @@
     },
     {
       "path": "company-code-release-v1/company_code_release.py",
-      "sha256": "d922204de29a9a4380249094086d40cc0e7fbc5df947601103da7366112e7600"
+      "sha256": "2d0559ae47e5dc49e3cd4dd88883b08d18ec1a9adf19a9f68326aadb395b9ada"
     },
     {
       "path": "company-code-release-v1/company_lifecycle_broker.py",
-      "sha256": "93903d41e7669ca6904c23d496cdef9d67095456036ce0e4aff0e45c034a99e6"
+      "sha256": "2e40adf503f5a02e9895063005c2caf76fdd709ee48d40dfab56077c7e0e2b61"
     },
     {
       "path": "company-code-release-v1/original_313_code_release_contract.py",
