@@ -5994,6 +5994,63 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Original governance/Authority and security control owners remain responsible for any host code release, separate Operator dispatch, or protected Staging writes. Source-only read admission is not a new grant.",
       "review_rationale": "Original FAORE Staging canary PHP source was executed in PHP 7.4/8.5. It registers two private read-only plan/verify Abilities and rejects Production, invalid correlation/key shapes and a missing Site Profile. It reports option presence including existing empty/false values with a fingerprint, but never registers mutation, creates grants, writes options or asserts rollback."
+    },
+    {
+      "id": "ability:mad4b/catalog-intent-plan",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/catalog-intent-source-relevance-hermetic.php"
+      ],
+      "owner_role": "MAD4B source-only catalog intent and governed ContentJob handoff reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing provider/content/security and MCP controls remain authoritative for any actual content writes. Catalog source is a read-only planner and the referenced orchestration ability belongs to a separately governed owner.",
+      "review_rationale": "Executed original Catalog Intent class on PHP 7.4/8.5. Exact read-only WordPress Ability registration and can_read permission, closed/bounded link evidence, canonical HTTPS and functional query preservation, no localhost/userinfo paths, direct listing-card primary over duplicate footer, separate complementary/filter/review lanes and explicit relationships were tested. It never fetches pages, creates ContentJobs or publishes."
+    },
+    {
+      "id": "ability:mad4b/content-orchestration-plan",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/catalog-intent-source-relevance-hermetic.php"
+      ],
+      "owner_role": "MAD4B source-only catalog intent and governed ContentJob handoff reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing provider/content/security and MCP controls remain authoritative for any actual content writes. Catalog source is a read-only planner and the referenced orchestration ability belongs to a separately governed owner.",
+      "review_rationale": "Original Catalog Intent plan only outputs the existing separately governed Content Orchestration Ability as a navigation reference. Original PHP 7.4/8.5 fixture proves it cannot create or publish content, and this source does not call wp_register_ability for content-orchestration-plan. Its actual registration and production authority remain with the independent dynamic-content adapter."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-catalog-intent-policy.php",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/catalog-intent-source-relevance-hermetic.php"
+      ],
+      "owner_role": "MAD4B source-only catalog intent and governed ContentJob handoff reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing provider/content/security and MCP controls remain authoritative for any actual content writes. Catalog source is a read-only planner and the referenced orchestration ability belongs to a separately governed owner.",
+      "review_rationale": "Executed original Catalog Intent class on PHP 7.4/8.5. Exact read-only WordPress Ability registration and can_read permission, closed/bounded link evidence, canonical HTTPS and functional query preservation, no localhost/userinfo paths, direct listing-card primary over duplicate footer, separate complementary/filter/review lanes and explicit relationships were tested. It never fetches pages, creates ContentJobs or publishes."
     }
   ],
   "lifecycle": [],
@@ -14999,6 +15056,26 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing governance/platform/security source controls remain authoritative; hermetic original-class test binds source metadata and guards to exact current Git blobs.",
       "review_rationale": "Inspected original file and executed its public source methods on PHP 7.4/8.5, ensuring read-only registrations, no automatic Host release, original receipt, signature, grant or mutation, and fail-closed environment/site/source checks. The direct dispatcher is not implemented or authorized by read-only Readiness; real production worker, browser Owner and Host proof still have separate reviews."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-catalog-intent-policy.php",
+      "source_blob_sha": "5dd85c058236b580efe0e990467655e877a3585a",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/catalog-intent-source-relevance-hermetic.php"
+      ],
+      "owner_role": "MAD4B source-owned catalog intent strategy reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance/platform/security or provider source controls remain in place; first-party source is executed in isolated PHP without external writes.",
+      "review_rationale": "Original Catalog Intent source directly tested for bounded link input, functional filtering/pagination preservation, HTTPS URL shape, same-URL and entity-key de-duplication, explicit primary-to-complementary relationship mapping, no crawling, no copy, no real pricing verification, and no WordPress mutation. This source review does not certify the separate Content Orchestration executor or publisher."
     }
   ],
   "code_change_rules": {
