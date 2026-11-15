@@ -20,8 +20,8 @@ class MAD4B_SCP_Canonicalization {
 }
 class MAD4B_SCP_Site_Profile {
     public static function status(){return array('authority_ready'=>empty($GLOBALS['no_authority']),
-        'site_uuid'=>'a3a7cc36-db7e-4a14-8456-b41857def05c');}
-    public static function site_uuid(){return 'a3a7cc36-db7e-4a14-8456-b41857def05c';}
+        'site_uuid'=>$GLOBALS['test_site_uuid']??'a3a7cc36-db7e-4a14-8456-b41857def05c');}
+    public static function site_uuid(){return $GLOBALS['test_site_uuid']??'a3a7cc36-db7e-4a14-8456-b41857def05c';}
     public static function revision(){return 5;}
     public static function profile_digest(){return str_repeat('b',64);}
     public static function origin_enrolled(){return empty($GLOBALS['origin_revoked']);}
@@ -35,10 +35,11 @@ class MAD4B_SCP_Governed_Runtime_Gates {
 }
 class MAD4B_SCP_Policy_Resolution {
     public static function environment_allowed($env){return !empty($GLOBALS['allowed_environments'][$env]);}
-    public static function current_operating_mode(){return 'SINGLE_OWNER_HARDENED';}
-    public static function config_digest(){return str_repeat('c',64);}
+    public static function current_operating_mode(){return $GLOBALS['test_mode']??'SINGLE_OWNER_HARDENED';}
+    public static function config_digest(){return $GLOBALS['test_governance_digest']??str_repeat('c',64);}
     public static function resolve($facts){
         if (!empty($GLOBALS['deny_policy'])) return array('decision'=>'DENY','reason_code'=>'configured_deny');
+        if (!empty($GLOBALS['test_missing_policy_receipt'])) return array('decision'=>'ALLOW');
         if (empty($facts['authority_allowed']) || empty($facts['feature_enabled']) || empty($facts['environment_allowed']))
             return array('decision'=>'DENY','reason_code'=>'required_fact_missing');
         return array('decision'=>'ALLOW','decision_sha256'=>hash('sha256',json_encode($facts)));
@@ -73,12 +74,25 @@ $GLOBALS['write_disabled']=true;check('Write policy off','mad4b_registered_write
 $GLOBALS['runtime_disabled']=true;check('managed runtime off','mad4b_registered_write_site_unverified');unset($GLOBALS['runtime_disabled']);
 $GLOBALS['no_authority']=true;check('site authority revoked','mad4b_registered_write_site_unverified');unset($GLOBALS['no_authority']);
 $GLOBALS['deny_policy']=true;check('governance denies explicitly','mad4b_registered_write_governance_denied');unset($GLOBALS['deny_policy']);
+$GLOBALS['test_site_uuid']='a3a7cc36db7e4a148456b41857def05c----';
+check('malformed site UUID cannot pass review','mad4b_registered_write_site_unverified');
+unset($GLOBALS['test_site_uuid']);
+$GLOBALS['test_governance_digest']='missing';
+check('unknown governance source digest denied','mad4b_registered_write_governance_source_unverified');
+unset($GLOBALS['test_governance_digest']);
+$GLOBALS['test_mode']='';
+check('no effective policy mode denied','mad4b_registered_write_governance_source_unverified');
+unset($GLOBALS['test_mode']);
+$GLOBALS['test_missing_policy_receipt']=true;
+check('allow decision missing source receipt denied','mad4b_registered_write_decision_unverified');
+unset($GLOBALS['test_missing_policy_receipt']);
 $unknown=MAD4B_SCP_Operation_Registry::registered_write_policy('mad4b/unknown-owner-grant');
 if (!is_wp_error($unknown)||$unknown->get_error_code()!=='mad4b_registered_operation_policy_missing') exit(5);
 echo 'PASS missing operation policy fails closed'.PHP_EOL;
 // A compromised or incorrectly merged catalog must never make an
 // ambiguous/unknown descriptor look eligible. Change request-local cache only.
 $reflection=new ReflectionProperty('MAD4B_SCP_Operation_Registry','catalog');
+if ( PHP_VERSION_ID < 80100 ) $reflection->setAccessible(true); // Older PHP requires this; 8.5 deprecates it.
 $original=$reflection->getValue();
 $duplicate=$original;
 foreach($duplicate['operations'] as $row){

@@ -7104,6 +7104,25 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing canonical GOVERNANCE-01, PLATFORM-01, SECURITY-01 and EXECUTION-01 controls cover these existing transport and read-only governance paths. The review does not mint owner identities, create grants or permit Production deployment."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-registered-write-admission.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/remote-execution/governed-write-admission-smoke.php"
+      ],
+      "owner_role": "MAD4B registered write policy and source fingerprint reviewer — CI only",
+      "review_rationale": "Reviewed the first-party registered write policy, exact Site Profile origin and UUID, valid operation and governance digests, effective runtime environment policy without static environment allowlist, current Production gate and signed policy decision fingerprint. The original PHP smoke exercises positive Staging/Production eligibility only, plus negative revocation, policy denial, tampered operation, ambiguous registry, malformed site IDs and missing decision receipts on PHP 7.4 and 8.5; no grant or write is authorized.",
+      "coverage_reuse_rationale": "The existing GOVERNANCE-01, PLATFORM-01, SECURITY-01 and EXECUTION-01 controls already require exact owner-site identity, explicit runtime policy, certified operation and a separate write execution boundary. No new approval or authority is introduced.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false
     }
   ],
   "lifecycle": [],
@@ -17137,6 +17156,24 @@
       ],
       "owner_role": "MAD4B exact source/PR-head resolver reviewer — CI only",
       "review_rationale": "Current PHP token stream is exactly equivalent to historical reviewed blob 528943e1b569598b58261716e1cd0852594d2b80 after excluding comments/whitespace, verified with PHP tokenizer and a mutated-code negative control. The original 37-scenario runtime test passes PHP 7.4 and 8.5 for pinned immutable commit, PR branch, GitHub response budgets, unauthorized source denial, network failure and absent redirects. CI test revalidates semantic equivalence.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-registered-write-admission.php",
+      "source_blob_sha": "717e53f441d5f9ce81de6dba13bc27c99e00dc65",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/remote-execution/governed-write-admission-smoke.php"
+      ],
+      "owner_role": "MAD4B original registered write source and admission reviewer — CI only",
+      "review_rationale": "Reviewed the first-party registered write policy, exact Site Profile origin and UUID, valid operation and governance digests, effective runtime environment policy without static environment allowlist, current Production gate and signed policy decision fingerprint. The original PHP smoke exercises positive Staging/Production eligibility only, plus negative revocation, policy denial, tampered operation, ambiguous registry, malformed site IDs and missing decision receipts on PHP 7.4 and 8.5; no grant or write is authorized.",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
