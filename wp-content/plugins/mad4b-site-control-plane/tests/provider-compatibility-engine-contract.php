@@ -281,4 +281,4 @@ MAD4B_SCP_Provider_Compatibility_Certification::clear_request_cache();
 $restored=MAD4B_SCP_Provider_Compatibility_Certification::assess_provider('jetengine',$adapter);
 expect_same(true,$restored['capabilities']['post_meta.bounded-write']['write_eligible'],
  'verified original exact runtime should retain existing bounded write compatibility');
-echo "MAD4B provider compatibility engine contract passed.\n";
+echo "PASS: MAD4B provider compatibility engine original assertions\n";
