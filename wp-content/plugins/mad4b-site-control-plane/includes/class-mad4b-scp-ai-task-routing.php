@@ -70,10 +70,12 @@ final class MAD4B_SCP_AI_Task_Routing {
         if(!$profile['enabled'])$reason[]='task_disabled';
         $secret='none';
         if($provider==='openai_direct') {
-            $secret=MAD4B_SCP_AI_Model_Router::openai_api_key()!==''?'wordpress_core_openai':'none';
+            $credential=MAD4B_SCP_AI_Model_Router::openai_api_key();
+            $secret=is_string($credential) && $credential!==''?'wordpress_core_openai':'none';
             if($secret==='none')$reason[]='openai_api_key_missing';
         } elseif($provider==='google_dedicated') {
-            $secret=MAD4B_SCP_AI_Model_Router::gemini_api_key()!==''?'wordpress_core_google':'none';
+            $credential=MAD4B_SCP_AI_Model_Router::gemini_api_key();
+            $secret=is_string($credential) && $credential!==''?'wordpress_core_google':'none';
             if($secret==='none')$reason[]='gemini_api_key_missing';
         } elseif($provider==='codex_cli') {
             // A WP Core API credential does not prove Codex CLI login or a native stage grant.
@@ -93,7 +95,7 @@ final class MAD4B_SCP_AI_Task_Routing {
     public static function save() {
         if(!current_user_can('manage_options')
           || !class_exists('MAD4B_SCP_Site_Profile')
-          || !MAD4B_SCP_Site_Profile::user_is_enrolled(get_current_user_id()))
+          || true !== MAD4B_SCP_Site_Profile::user_is_enrolled(get_current_user_id()))
             wp_die('Enrolled site administrator required.', 'Forbidden', array('response'=>403));
         check_admin_referer('mad4b_ai_task_routes_save');
         $raw=isset($_POST['mad4b_ai_tasks'])&&is_array($_POST['mad4b_ai_tasks'])
