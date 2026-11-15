@@ -6389,6 +6389,118 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing MCP/Provider/Execution and source REST controls apply to provider-neutral original Search Runtime, and independently verified provider rights and budgets remain required for paid Search.",
       "review_rationale": "Original dynamic Search Provider PHP class is executed under PHP 7.4/8.5 with synthetic adapter, WordPress Abilities and account fixtures. It registers three actual native Abilities (inventory read, reconcile, reconcile-all guarded writes) and one private GET REST path. Guest and unprivileged actors denied. A VERIFIED account lacking independent adapter certification, account-budget authorization, mapped commercial market and source profile must remain capture_ready=false and commercial_evidence_ready=false; protected reconcile/bulk/event/Cron cannot mutate without native policy. No commercial API request, spend, WordPress profile creation or vendor account is used."
+    },
+    {
+      "id": "rest:mad4b/v1/central-release/(?P<release_sha256>[a-f0-9]{64})",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "tests/central-company-release-signed-readonly-hermetic.php"
+      ],
+      "owner_role": "MAD4B signed Central Staging release and target-company compatibility source reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original production release Owner, Platform and signed immutable Source controls remain authoritative. Read-only Staging observations and compatibility assessment cannot grant deployment or overcome Site Profile disagreement.",
+      "review_rationale": "Original Central Release Registry is a transport only. Its exact original verify_envelope uses RS256 signature over canonical receipt, pinned 2048+ bit public-key safety, immutable Central origin, Staging contract, source SHA, file manifest and fresh signed install/smoke/rollback checks. Isolated ephemeral RSA test confirms correct signed origin, rejects altered source, foreign origin, signed stale receipt and strips issuer-provided registry_readback_verified. Public GET route is source/Staging-gated, no record is issued or signed by WordPress."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-release-registry.php",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "tests/central-company-release-signed-readonly-hermetic.php"
+      ],
+      "owner_role": "MAD4B signed Central Staging release and target-company compatibility source reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original production release Owner, Platform and signed immutable Source controls remain authoritative. Read-only Staging observations and compatibility assessment cannot grant deployment or overcome Site Profile disagreement.",
+      "review_rationale": "Original Central Release Registry is a transport only. Its exact original verify_envelope uses RS256 signature over canonical receipt, pinned 2048+ bit public-key safety, immutable Central origin, Staging contract, source SHA, file manifest and fresh signed install/smoke/rollback checks. Isolated ephemeral RSA test confirms correct signed origin, rejects altered source, foreign origin, signed stale receipt and strips issuer-provided registry_readback_verified. Public GET route is source/Staging-gated, no record is issued or signed by WordPress."
+    },
+    {
+      "id": "ability:mad4b/central-company-rollout-plan",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/central-company-release-signed-readonly-hermetic.php"
+      ],
+      "owner_role": "MAD4B signed Central Staging release and target-company compatibility source reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original production release Owner, Platform and signed immutable Source controls remain authoritative. Read-only Staging observations and compatibility assessment cannot grant deployment or overcome Site Profile disagreement.",
+      "review_rationale": "Original Central Company Rollout plan only reads signed Release Registry evidence and locally enrolled Company Production compatibility. Source PHP 7.4/8.5 proves read-only schema, absence of user supplied release data, no signed-readback fallback, held Staging-only promotion, exact Production Site UUID, plugin dependency/version and downgrade protection, schema rollback gate. Even a compatible simulated signed release requires independent Owner authorization; production_mutation_authorized=false, mutation_performed=false and executor remains empty."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-company-rollout.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/central-company-release-signed-readonly-hermetic.php"
+      ],
+      "owner_role": "MAD4B signed Central Staging release and target-company compatibility source reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original production release Owner, Platform and signed immutable Source controls remain authoritative. Read-only Staging observations and compatibility assessment cannot grant deployment or overcome Site Profile disagreement.",
+      "review_rationale": "Original Central Company Rollout plan only reads signed Release Registry evidence and locally enrolled Company Production compatibility. Source PHP 7.4/8.5 proves read-only schema, absence of user supplied release data, no signed-readback fallback, held Staging-only promotion, exact Production Site UUID, plugin dependency/version and downgrade protection, schema rollback gate. Even a compatible simulated signed release requires independent Owner authorization; production_mutation_authorized=false, mutation_performed=false and executor remains empty."
+    },
+    {
+      "id": "rest:mad4b/v1/company-release/status",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "tests/central-company-release-signed-readonly-hermetic.php"
+      ],
+      "owner_role": "MAD4B signed Central Staging release and target-company compatibility source reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original production release Owner, Platform and signed immutable Source controls remain authoritative. Read-only Staging observations and compatibility assessment cannot grant deployment or overcome Site Profile disagreement.",
+      "review_rationale": "Original Company Release Status REST only reports tenant-specific informational settings. Synthetic WordPress runtime calls show master role missing and rollout false with no permission grant, current env and private no-store header. No install, promotion, site profile mutation or fraudulent readiness. Real plugin roles and Enterprise acceptance remain separate."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-release-status.php",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "tests/central-company-release-signed-readonly-hermetic.php"
+      ],
+      "owner_role": "MAD4B signed Central Staging release and target-company compatibility source reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original production release Owner, Platform and signed immutable Source controls remain authoritative. Read-only Staging observations and compatibility assessment cannot grant deployment or overcome Site Profile disagreement.",
+      "review_rationale": "Original Company Release Status REST only reports tenant-specific informational settings. Synthetic WordPress runtime calls show master role missing and rollout false with no permission grant, current env and private no-store header. No install, promotion, site profile mutation or fraudulent readiness. Real plugin roles and Enterprise acceptance remain separate."
     }
   ],
   "lifecycle": [],
@@ -15603,6 +15715,65 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Previous immutable PR813/PR814 Journey historical source manifests and original Platform/Governance/Security controls remain unchanged. New Unicode whitespace guard requires separate exact Git object and live read-only CPT regression.",
       "review_rationale": "Source diff adds only bounded has_visible_text Unicode whitespace/card/render eligibility checks. Prior successor manifest remains unchanged; new distinct SHA-bound successor proves additive source. Actual WordPress sites match exact PHP SHA256 and independently passed read-only WP-CLI with 11 fixtures/site, 17 approved cards and unchanged stable keys across 494 Tours.dev/182 Wayfa source fields. No editorial content update, new runtime rights or Original313 release is created."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-release-registry.php",
+      "source_blob_sha": "3a079fbd7ff987b3ca61c80596e4bcafd024eda1",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "tests/central-company-release-signed-readonly-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party Release source/auth boundary reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing Production governance and signed-source constraints enforce all risky Host and owner promotion. Exact original class is tested, not replaced by separate deployment engine.",
+      "review_rationale": "Original Central Release Registry is a transport only. Its exact original verify_envelope uses RS256 signature over canonical receipt, pinned 2048+ bit public-key safety, immutable Central origin, Staging contract, source SHA, file manifest and fresh signed install/smoke/rollback checks. Isolated ephemeral RSA test confirms correct signed origin, rejects altered source, foreign origin, signed stale receipt and strips issuer-provided registry_readback_verified. Public GET route is source/Staging-gated, no record is issued or signed by WordPress. Tests use an ephemeral RSA key inside disposable PHP process; they neither certify a real Host signer nor replace immutable Original313 Production approval."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-company-rollout.php",
+      "source_blob_sha": "d70f10910e8e53361e233d9cbc7c8cf6ec2f80a0",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/central-company-release-signed-readonly-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party Release source/auth boundary reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing Production governance and signed-source constraints enforce all risky Host and owner promotion. Exact original class is tested, not replaced by separate deployment engine.",
+      "review_rationale": "Original Central Company Rollout plan only reads signed Release Registry evidence and locally enrolled Company Production compatibility. Source PHP 7.4/8.5 proves read-only schema, absence of user supplied release data, no signed-readback fallback, held Staging-only promotion, exact Production Site UUID, plugin dependency/version and downgrade protection, schema rollback gate. Even a compatible simulated signed release requires independent Owner authorization; production_mutation_authorized=false, mutation_performed=false and executor remains empty. Tests use an ephemeral RSA key inside disposable PHP process; they neither certify a real Host signer nor replace immutable Original313 Production approval."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-release-status.php",
+      "source_blob_sha": "17ab0e757577afad2f60a0d00320458d49db6a7c",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "tests/central-company-release-signed-readonly-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party Release source/auth boundary reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing Production governance and signed-source constraints enforce all risky Host and owner promotion. Exact original class is tested, not replaced by separate deployment engine.",
+      "review_rationale": "Original Company Release Status REST only reports tenant-specific informational settings. Synthetic WordPress runtime calls show master role missing and rollout false with no permission grant, current env and private no-store header. No install, promotion, site profile mutation or fraudulent readiness. Real plugin roles and Enterprise acceptance remain separate. Tests use an ephemeral RSA key inside disposable PHP process; they neither certify a real Host signer nor replace immutable Original313 Production approval."
     }
   ],
   "code_change_rules": {
