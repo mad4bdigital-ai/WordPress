@@ -20546,6 +20546,60 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-protocol-profile.php",
+      "source_blob_sha": "2d33190f1401b2432eb0849014b348e6e7787d74",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/mcp-protocol-scope-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party original source reviewer — CI only",
+      "review_rationale": "Original MU request-scope evidence and installed Adapter source integrity were tested with 56 native assertions on PHP 7.4 and 8.5. Nonboolean bootstrap, provider versions or dynamic integrity flags cannot establish protocol compatibility. Exact valid scoped runtime remains nonauthorizing. Exact Git blob review only; independent live evidence and authorized production decision remain required.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-capability-gateway.php",
+      "source_blob_sha": "0fd0b3762d0d01e53c8137e28a1136ffff46ff01",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/unified-gateway-permission-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party original source reviewer — CI only",
+      "review_rationale": "Original REST discovery permission and WordPress request-generation gate were tested with 21 native assertions on PHP 7.4 and 8.5. A denied or error-shaped source never enables capability discovery, while valid request scope retains fixed action validation. Exact Git blob review only; independent live evidence and authorized production decision remain required.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php",
+      "source_blob_sha": "7ef85c97f42cb88ccab1c0bf18a38162d3e76d96",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/authorization-preflight-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party original source reviewer — CI only",
+      "review_rationale": "Original preflight Schema, MCP Peer, Policy, Developer and managed-Agent current write checks were tested with 45 native assertions on PHP 7.4 and 8.5. Unverified evidence cannot reach grants or bypass current-write readiness; no grant, approval ticket or mutation was executed. Exact Git blob review only; independent live evidence and authorized production decision remain required.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "code_change_rules": {
