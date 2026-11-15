@@ -6968,6 +6968,25 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing Platform, Governance, Execution and Security controls govern admission and immutable read-only observations. No dynamic publisher, translation writer, external browser or new mutation authority is introduced.",
       "review_rationale": "Reviewed complete first-party 203-line Locale Experience Alerts source. This provider imports bounded browser observations through administrator and central mutation policy, exact Site Profile UUID, active WPML locale list, same-origin HTTPS URLs, six-hour freshness, complete desktop/mobile screen matrix and digest-verified option readback. It converts evidence into issue candidates only: short localized labels, missing assets, cross-locale links, visible term and filter differences. None of these candidates authorizes a translation, changes pricing or publishes content. Same-PR actual-source PHP 7.4/8.5 tests reproduce legacy string-method failure, reject foreign/stale site evidence, prove tamper invalidation, and confirm all flagged issues explicitly disallow automatic remediation. Runtime browser collection and production locale truth remain unverified."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-frontend-impact-priority.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/frontend-impact-same-origin-budget-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party Frontend Impact Priority live-page evidence reviewer — source CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original Platform, Governance, Security and Execution controls cover read-only page evidence and strictly bounded HTTP. It creates no new WordPress writer, SEO translator, automatic publisher or unrestricted external crawl.",
+      "review_rationale": "Reviewed full original Frontend Impact Priority service source, including read-only admin/REST GET, public same-origin multilingual WPML home/archive/tour sampling, Elementor/JetEngine HTML parser (no form values), bounded page size and HTTP timeout, optional provider scores as candidates only, and one verified WordPress snapshot on adequate language coverage. Reproduced three actual defects: alternate HTTPS ports admitted as same origin, direct wp_remote_get where safe HTTP is required, and a one-language home-only scan rejected by a hard two-page minimum; corrected all three. Also repaired PHP7.4-incompatible string prefix/substring calls with correct operator precedence. Same-PR native source tests run on both PHP7.4 and 8.5: verify exact origin and port; block userinfo/query/admin paths; inspect actual WPML target selection; require HTTPS safe HTTP without redirects; preserve last accepted snapshot on failed crawl; deny unauthorized manual scan without HTTP; accept one-language sample; never authorize a ContentJob, booking, translation or publication. This CI-only review does not certify live browser render or VPS CPU cost: hourly Cron may sample up to 12 languages x 3 pages with bounded per-page timeouts, and its production load/overlap must be verified separately."
     }
   ],
   "lifecycle": [],
@@ -16548,6 +16567,26 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing Platform, Governance, Execution and Security controls govern admission and immutable read-only observations. No dynamic publisher, translation writer, external browser or new mutation authority is introduced.",
       "review_rationale": "Reviewed complete first-party 203-line Locale Experience Alerts source. This provider imports bounded browser observations through administrator and central mutation policy, exact Site Profile UUID, active WPML locale list, same-origin HTTPS URLs, six-hour freshness, complete desktop/mobile screen matrix and digest-verified option readback. It converts evidence into issue candidates only: short localized labels, missing assets, cross-locale links, visible term and filter differences. None of these candidates authorizes a translation, changes pricing or publishes content. Same-PR actual-source PHP 7.4/8.5 tests reproduce legacy string-method failure, reject foreign/stale site evidence, prove tamper invalidation, and confirm all flagged issues explicitly disallow automatic remediation. Runtime browser collection and production locale truth remain unverified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-frontend-impact-priority.php",
+      "source_blob_sha": "c999e9a285835db9976750bf21a6f08ce8cb45d6",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/frontend-impact-same-origin-budget-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party Frontend Impact Priority live-page evidence reviewer — source CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original Platform, Governance, Security and Execution controls cover read-only page evidence and strictly bounded HTTP. It creates no new WordPress writer, SEO translator, automatic publisher or unrestricted external crawl.",
+      "review_rationale": "Reviewed full original Frontend Impact Priority service source, including read-only admin/REST GET, public same-origin multilingual WPML home/archive/tour sampling, Elementor/JetEngine HTML parser (no form values), bounded page size and HTTP timeout, optional provider scores as candidates only, and one verified WordPress snapshot on adequate language coverage. Reproduced three actual defects: alternate HTTPS ports admitted as same origin, direct wp_remote_get where safe HTTP is required, and a one-language home-only scan rejected by a hard two-page minimum; corrected all three. Also repaired PHP7.4-incompatible string prefix/substring calls with correct operator precedence. Same-PR native source tests run on both PHP7.4 and 8.5: verify exact origin and port; block userinfo/query/admin paths; inspect actual WPML target selection; require HTTPS safe HTTP without redirects; preserve last accepted snapshot on failed crawl; deny unauthorized manual scan without HTTP; accept one-language sample; never authorize a ContentJob, booking, translation or publication. This CI-only review does not certify live browser render or VPS CPU cost: hourly Cron may sample up to 12 languages x 3 pages with bounded per-page timeouts, and its production load/overlap must be verified separately."
     }
   ],
   "code_change_rules": {
