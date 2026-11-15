@@ -2,9 +2,10 @@
 /**
  * Plugin Name: MAD4B Universal Media Apply Router
  * Description: Signed, typed media routing for public posts, taxonomies and registered JetEngine media adapters.
- * Version: 1.0.0
+ * Version: 1.1.0
  */
 defined('ABSPATH') || exit;
+require_once __DIR__.'/mad4b-unified-media-apply/licensed-source.php';
 if(!class_exists('MAD4B_Universal_Media_Apply_V1',false)) {
 final class MAD4B_Universal_Media_Apply_V1 {
  const CONTRACT='mad4b.media.apply.v1';
@@ -16,6 +17,21 @@ final class MAD4B_Universal_Media_Apply_V1 {
    'post_registered_image'=>['target_kind'=>'post','types'=>'registered_public','storage'=>'registered_meta','signed_write'=>true],
    'term_registered_image'=>['target_kind'=>'term','types'=>'registered_public','storage'=>'registered_meta','signed_write'=>true],
   ];
+  // Source import is a capability of the existing signed media router,
+  // not a public upload endpoint or standalone executor.
+  if(class_exists('MAD4B_Licensed_Media_Source_V1',false)){
+   $sourceSite=class_exists('MAD4B_SCP_Site_Profile',false)
+     ?MAD4B_SCP_Site_Profile::status():[];
+   $sourcePolicy=class_exists('MAD4B_SCP_Context_Authority',false)
+     ?MAD4B_SCP_Context_Authority::ai_review_policy_status():[];
+   $sourceWriteAllowed=!empty($sourceSite['write_enabled'])
+     &&($sourcePolicy['production_authorized']??null)===true;
+   $builtins['licensed_tour_source_image']=[
+    'target_kind'=>'post','types'=>['tours-and-activities'],
+    'storage'=>'media_library_and_native_credits',
+    'signed_write'=>$sourceWriteAllowed,
+    'effective_policy_admission'=>$sourceWriteAllowed?'eligible':'policy_gate_pending'];
+  }
   // Composite operations are enrolled only if the active Provider exists.
   // An advertised adapter with no runtime executor is a false capability.
   // Installations grow dynamically without site/environment allowlists.
@@ -127,6 +143,20 @@ final class MAD4B_Universal_Media_Apply_V1 {
       ||!is_array($agent)||!hash_equals((string)($policy['ai_agent_public_id']??''),(string)($agent['public_id']??'')))
    return self::err('mad4b_media_ai_reviewer_not_delegated');
   return ['agent_public_id'=>$agent['public_id'],'site_uuid'=>MAD4B_SCP_Host_Agent_Bridge::site()['site_uuid']];
+ }
+ /** Imported sources inherit the same reviewer identity as all native media
+  * writes, plus the effective production/write admission policy. A signed
+  * Host alone must not turn an unavailable publishing gate into permission.
+  */
+ public static function signed_media_source_reviewer():array|WP_Error {
+  $actor=self::signed_ai();if(is_wp_error($actor))return $actor;
+  $site=class_exists('MAD4B_SCP_Site_Profile',false)?MAD4B_SCP_Site_Profile::status():[];
+  $review=class_exists('MAD4B_SCP_Context_Authority',false)
+    ?MAD4B_SCP_Context_Authority::ai_review_policy_status():[];
+  if(empty($site['write_enabled'])||!is_array($review)
+    ||($review['production_authorized']??null)!==true)
+    return self::err('mad4b_media_source_publishing_not_authorized_by_effective_policy');
+  return $actor;
  }
  private static function review_term(array $payload,array $target):array|WP_Error {
   $keys=array_keys($payload);sort($keys);$expected=['asset','review'];sort($expected);
@@ -425,6 +455,11 @@ final class MAD4B_Universal_Media_Apply_V1 {
   }
   if(in_array($adapter,['post_featured_image','post_registered_image','term_registered_image'],true))
    return self::reviewed_local($payload,$check['target'],$adapter,$action);
+  if($adapter==='licensed_tour_source_image') {
+   if(!class_exists('MAD4B_Licensed_Media_Source_V1',false))
+    return self::err('mad4b_licensed_source_adapter_missing');
+   return MAD4B_Licensed_Media_Source_V1::run($payload,$check['target'],$action);
+  }
   if($adapter==='tour_association') {
    if(!class_exists('MAD4B_Tour_Media_Association_V1',false))return self::err('mad4b_unified_media_tour_adapter_not_installed');
    if($action==='preflight')return ['status'=>'supported','write_executed'=>false,'target'=>$check['target'],'adapter'=>$adapter];
