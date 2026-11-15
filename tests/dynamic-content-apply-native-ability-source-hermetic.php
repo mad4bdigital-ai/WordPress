@@ -12,6 +12,7 @@ function add_action(...$args){}
 function add_filter(...$args){}
 function apply_filters($name,$default){return $default;}
 function sanitize_key($name){return strtolower((string)$name);}
+function absint($v){return abs((int)$v);}
 function wp_json_encode($value,$flags=0){return json_encode($value,$flags);}
 function wp_has_ability($name){return isset($GLOBALS['native_registered'][$name]);}
 function wp_register_ability($name,$cfg){
@@ -30,9 +31,10 @@ function get_post_types(){return ['tours-and-activities'=>'tours-and-activities'
 function wp_insert_post($post){++$GLOBALS['native_mutations'];throw new RuntimeException('Content write forbidden');}
 function wp_set_object_terms(){++$GLOBALS['native_mutations'];throw new RuntimeException('Taxonomy write forbidden');}
 class WP_Error{
- private $code;
- public function __construct($code,$message='',$data=[]){$this->code=$code;}
+ private $code,$data;
+ public function __construct($code,$message='',$data=[]){$this->code=$code;$this->data=$data;}
  public function get_error_code(){return $this->code;}
+ public function get_error_data($code=''){return $this->data;}
 }
 class MAD4B_SCP_Policy{
  public static function can_read(){return true;}
@@ -85,4 +87,31 @@ $next=call_user_func($b['permission_callback'],$bad);
 ncheck(is_wp_error($next),
  'Invalid pipeline, user capability or missing source grants must fail closed');
 ncheck($GLOBALS['native_mutations']===0,'Original class source registration cannot write posts');
-echo "DYNAMIC_CONTENT_APPLY_NATIVE: PASS core Ability identity, exact digests, no publish, denied mutation\n";
+// The real source must not report an ordinary retryable error if content
+// changed successfully but the final Operation Journal commit failed.
+ncheck(method_exists($a,'completion_journal_uncertain'),
+ 'Original adapter must classify post-write completion-journal loss as recovery required');
+$failure=new WP_Error('mad4b_operation_journal_commit_uncertain','',[
+ 'reconciliation_required'=>true,'cause_code'=>'db_commit_unverified']);
+$operation=['operation_id'=>str_repeat('a',64),
+ 'operation_key'=>'fixture-draft-2026',
+ 'operation_binding_sha256'=>str_repeat('b',64)];
+$completion=new ReflectionMethod($a,'completion_journal_uncertain');
+if(PHP_VERSION_ID<80100)$completion->setAccessible(true);
+$report=$completion->invoke($a,$failure,$operation,['post_id'=>88]);
+ncheck(is_wp_error($report)
+ && $report->get_error_code()==='mad4b_dynamic_completion_journal_unverified',
+ 'Unexpected success/failure marker for lost post-write journal');
+$data=$report->get_error_data();
+ncheck(is_array($data)
+ && ($data['blind_retry_allowed']??null)===false
+ && ($data['recovery_required']??null)===true
+ && ($data['reconciliation_required']??null)===true
+ && ($data['post_id']??null)===88
+ && ($data['operation_id']??null)===$operation['operation_id']
+ && ($data['operation_binding_sha256']??null)===$operation['operation_binding_sha256']
+ && ($data['content_mutation_may_have_completed']??null)===true
+ && ($data['publication_authorized']??null)===false
+ && $GLOBALS['native_mutations']===0,
+ 'A lost completion receipt cannot permit blind retry or falsely claim rollback');
+echo "DYNAMIC_CONTENT_APPLY_NATIVE: PASS registration, strict denied mutation and uncertain completion receipt\n";
