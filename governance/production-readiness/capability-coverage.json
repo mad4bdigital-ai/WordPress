@@ -16727,6 +16727,214 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Original Governance, Platform, Execution, Providers and Security controls enforce the signed native ContentJob origin and bounded research evidence; no autonomous provider publication or grant path is created.",
       "review_rationale": "Reviewed full 67-line first-party Native Origin External Research orchestrator and its original Research Groups and ContentJobs dependencies, without bypassing signed Native Origin or exact Site UUID. It requires an open linked origin issue, matching source/canonical published posts, existing empty origin address, source taxonomy SHA256, FACT_QA waiting-review ContentJob owned by the signed original actor and a matching origin-gap-ref in the subject. A same-PR hermetic actual-source PHP 7.4/8.5 test reproduces and repairs str_contains failure; verifies no provider call before Native admission, rejects foreign-site source, changed taxonomy fingerprint and wrong ContentJob stage, checks only one original Firecrawl record gets added and a repeated request returns ALREADY_CAPTURED. The resulting public-tour scrape explicitly marks independent source, exact pickup, map and writeback as unverified; this review does not certify actual Firecrawl traffic, other-company content changes or Production approval. The canonical Research Groups owner is source inspected for a bounded 100-row metadata-only list, 65,536-byte encoded record limit and compound group/provider/locale/evidence uniqueness; the same-PR test checks these exact original invariants. DATABASE-01 and PERFORMANCE-01 here are non-authorizing code impact mappings only: actual Production SQL schema, privileges and three live latency samples remain unverified and must not be considered approved."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/adapter-registration-policy.json",
+      "source_blob_sha": "f28880ecc326a8022f87428b090cb3be4e0ed350",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "tests/critical-runtime-policy-catalog-contracts.py"
+      ],
+      "owner_role": "MAD4B policy source reviewer — nonauthorizing CI",
+      "review_rationale": "Reviewed source-approved adapter registration and denied unknown plugin mutations. Mutation tests reject runtime self-enrollment and implicit write.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/central-staging-source.json",
+      "source_blob_sha": "3b8a2a31833d14d0ea1bfe772c34d65ceadbff12",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/critical-runtime-policy-catalog-contracts.py"
+      ],
+      "owner_role": "MAD4B policy source reviewer — nonauthorizing CI",
+      "review_rationale": "Reviewed signed RS256 server readback and separate Production owner approval. Mutation tests reject unsigned evidence and self-promotion.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/cross-plugin-sources.json",
+      "source_blob_sha": "1c54725345930c95a5325a8d082d01379f07204f",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "tests/critical-runtime-policy-catalog-contracts.py"
+      ],
+      "owner_role": "MAD4B policy source reviewer — nonauthorizing CI",
+      "review_rationale": "Reviewed exact artifact certification before cross-plugin execution and manifest-only registration. Mutation tests deny unknown sources.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/deployment-mode-dependencies.json",
+      "source_blob_sha": "895285a426de06530dc94cc24a69bc03b26845c7",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "tests/critical-runtime-policy-catalog-contracts.py"
+      ],
+      "owner_role": "MAD4B policy source reviewer — nonauthorizing CI",
+      "review_rationale": "Reviewed tenant isolation, exact identity, separate Production grants, rejected unbound and ambiguous sources, and mandatory fail-closed provider behavior.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/egress-policy.json",
+      "source_blob_sha": "13be13f8064b08f8170049622b93ae5454baeba1",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "tests/critical-runtime-policy-catalog-contracts.py"
+      ],
+      "owner_role": "MAD4B policy source reviewer — nonauthorizing CI",
+      "review_rationale": "Reviewed deny-by-default egress, explicit proxy trust, DNS rebinding defense and TLS fail-closed transport; tested each weakened option.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/mcp-protocol-profiles.json",
+      "source_blob_sha": "a0157a4b4481850c6740e5677bbad8141ad5de9b",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "tests/critical-runtime-policy-catalog-contracts.py"
+      ],
+      "owner_role": "MAD4B policy source reviewer — nonauthorizing CI",
+      "review_rationale": "Reviewed certified MCP package pinning and rejection of uncertified automatic successor adoption; verified dual protocol test requirement.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/mcp-provider-handshake-inheritance.json",
+      "source_blob_sha": "3b6353bc550a9cd8c83dfa8f0939b6f204179fb2",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "tests/critical-runtime-policy-catalog-contracts.py"
+      ],
+      "owner_role": "MAD4B policy source reviewer — nonauthorizing CI",
+      "review_rationale": "Reviewed exact authenticated initialize, tools list, source site and freshness; tests reject shared OAuth inheritance and local write assumptions.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/runtime-release-policy.json",
+      "source_blob_sha": "22c4823ee56f1bc95fc226486fec9904f7c8cbe0",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "tests/critical-runtime-policy-catalog-contracts.py"
+      ],
+      "owner_role": "MAD4B policy source reviewer — nonauthorizing CI",
+      "review_rationale": "Reviewed exact adapter/provider pairing, provenance, transport validation, rollback readback and no automatic Production deployment.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/semantic-content-field-contracts.json",
+      "source_blob_sha": "9a458a21cca4799b212b22133b7057756791ad4c",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "tests/critical-runtime-policy-catalog-contracts.py"
+      ],
+      "owner_role": "MAD4B policy source reviewer — nonauthorizing CI",
+      "review_rationale": "Reviewed explicit unknown field review and rejection of authorization via fallback semantic evidence.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/staging-deployment-handoff.json",
+      "source_blob_sha": "4720bde411e197ed09d02c495fafd9a5527a7ff3",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "tests/critical-runtime-policy-catalog-contracts.py"
+      ],
+      "owner_role": "MAD4B policy source reviewer — nonauthorizing CI",
+      "review_rationale": "Reviewed exact deployment target and envelope, dry-run, human approval, protected artifact, rollback, readback and denied user-supplied credentials.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/wordpress-addon-catalog.json",
+      "source_blob_sha": "096a8811878d0ce23d59c050268e0a54e3872603",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/critical-runtime-policy-catalog-contracts.py"
+      ],
+      "owner_role": "MAD4B policy source reviewer — nonauthorizing CI",
+      "review_rationale": "Reviewed fail-closed unknown versions, missing extension denial, update invalidation, exact pair certification and non-authorizing defaults.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "code_change_rules": {
