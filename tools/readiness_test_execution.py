@@ -130,6 +130,11 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "tests/global-runtime-lifecycle-original-hermetic.php",
     "tests/mutation-principal-first-party-hermetic.php",
     "tests/developer-policy-v2-original-hermetic.php",
+    "tests/core-connector-vault-original-hermetic.php",
+    "tests/dfsb-environment-policy-original-hermetic.php",
+    "tests/mcp-adapter-dynamic-integrity-original-hermetic.php",
+    "tests/adaptive-asset-bridge-original-hermetic.php",
+
     "tests/staging-grant-agent-proof-native.php",
     "tests/server-registration-descriptor-boundary-hermetic.php",
     "tests/staging-write-delegated-identity-native-hermetic.php",

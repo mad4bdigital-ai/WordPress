@@ -14,9 +14,17 @@ final class MAD4B_SCP_Core_Connector_Vault {
  }
  public static function discover(){
   if(!function_exists('wp_get_connectors'))return;
-  foreach(wp_get_connectors() as $c){
-   if(($c['authentication']['method']??'')!=='api_key')continue;
-   self::register((string)($c['authentication']['setting_name']??''));
+  try {
+   $items=wp_get_connectors();
+  } catch(\Throwable $error) {
+   return; // Unknown discovery is never a key registration or option write.
+  }
+  if(!is_array($items) && !($items instanceof \Traversable))return;
+  foreach($items as $c){
+   if(!is_array($c) || !is_array($c['authentication']??null)
+      ||($c['authentication']['method']??null)!=='api_key')continue;
+   $name=$c['authentication']['setting_name']??null;
+   if(is_string($name))self::register($name);
   }
  }
  private static function valid_name($name){return is_string($name)&&strlen($name)<=110

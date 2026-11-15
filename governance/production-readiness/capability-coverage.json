@@ -7585,6 +7585,83 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-connector-vault.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/core-connector-vault-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party native capability reviewer — CI only",
+      "review_rationale": "Original first-party Connector Vault validates dynamic WordPress connector option registration without arbitrary names or duplicate handlers, blocks plaintext persistence when the site key is unavailable, rejects masked admin echo rotation, and proves actual libsodium XChaCha20-Poly1305 roundtrip plus authenticated option-name/blog AAD and ciphertext tampering. Source now refuses malformed/exceptional connector discovery; 29 native PHP 7.4/8.5 cases, with temporary keys only and zero site writes. No assertion that the live host key is enrolled or secure.",
+      "coverage_reuse_rationale": "Existing GOVERNANCE-01, PLATFORM-01, SECURITY-01, EXECUTION-01 enforce original source/tenant provenance, explicit Policy and verified owner readback. This service is discovery, policy observation, or cryptographic handling only; it cannot issue mutation Grants, certify an upstream release from a local Option, or bypass Site Profile gates.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dfsb-environment-policy.php",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/dfsb-environment-policy-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party native capability reviewer — CI only",
+      "review_rationale": "Original Site Profile-backed Dynamic Filter SEO environment Policy failed before patch on WP_Error effective environment. Twenty-three native PHP 7.4/8.5 assertions now verify unknown/throwing/nonstring environment is denied without a PHP fatal; exact per-environment boolean flags, source Git SHA identity and no inheritance from Staging to Production. Read-only and no publication authorization.",
+      "coverage_reuse_rationale": "Existing GOVERNANCE-02, OAUTH-01, TICKETS-01, SECURITY-01, EXECUTION-01 enforce original source/tenant provenance, explicit Policy and verified owner readback. This service is discovery, policy observation, or cryptographic handling only; it cannot issue mutation Grants, certify an upstream release from a local Option, or bypass Site Profile gates.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-adapter-dynamic-integrity.php",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/mcp-adapter-dynamic-integrity-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party native capability reviewer — CI only",
+      "review_rationale": "Original official MCP Adapter release inspector accepted arbitrary wp_options cached file hashes as proof of verified WordPress.org origin before patch. Seventeen native PHP7.4/8.5 cases now prove local cached manifest match is only read-only consistency, not an upstream certificate; invalid SemVer, path traversal, plugin header drift and missing real runtime files fail. Actual upstream certification requires separate HTTPS distribution verification; these tests never contact WordPress.org or issue a write grant.",
+      "coverage_reuse_rationale": "Existing MCP-01, PROVIDERS-01, EXECUTION-01, SECURITY-01 enforce original source/tenant provenance, explicit Policy and verified owner readback. This service is discovery, policy observation, or cryptographic handling only; it cannot issue mutation Grants, certify an upstream release from a local Option, or bypass Site Profile gates.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-asset-intelligence.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/adaptive-asset-bridge-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party native capability reviewer — CI only",
+      "review_rationale": "Original first-party Adaptive Asset compatibility shim failed a native symlink-boundary regression: an active plugin entry could include executable PHP outside the canonical plugin root. Source now realpath-binds canonical class to its installed WordPress owner and forbids directory/file symlink escape, inactive plugin loading and duplicate owner implementation. Four source-backed PHP7.4/8.5 checks, no production site execution.",
+      "coverage_reuse_rationale": "Existing GOVERNANCE-01, PLATFORM-01, SECURITY-01, EXECUTION-01 enforce original source/tenant provenance, explicit Policy and verified owner readback. This service is discovery, policy observation, or cryptographic handling only; it cannot issue mutation Grants, certify an upstream release from a local Option, or bypass Site Profile gates.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "lifecycle": [],
@@ -19258,6 +19335,79 @@
       ],
       "owner_role": "MAD4B first-party governed-write OAuth plan owner reviewer — CI only",
       "review_rationale": "Original current_agent() failed pre-fix on WP_Error returned by delegated owner verification, incorrectly treating it as an affirmative OAuth Agent match. Thirteen positive/negative native PHP 7.4/8.5 cases now verify exact canonical Agent, logged-in enrolled owner, independent delegated boolean true, WordPress owner ID, disabled Agent, effective environment and verified OAuth bearer. No grant, action, ticket or site write was created; live Production release proof remains mandatory.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-connector-vault.php",
+      "source_blob_sha": "611a5f943bde86981f70b063bec313446819d3ff",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/core-connector-vault-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party source/risk reviewer for exact original runtime — CI only",
+      "review_rationale": "Original first-party Connector Vault validates dynamic WordPress connector option registration without arbitrary names or duplicate handlers, blocks plaintext persistence when the site key is unavailable, rejects masked admin echo rotation, and proves actual libsodium XChaCha20-Poly1305 roundtrip plus authenticated option-name/blog AAD and ciphertext tampering. Source now refuses malformed/exceptional connector discovery; 29 native PHP 7.4/8.5 cases, with temporary keys only and zero site writes. No assertion that the live host key is enrolled or secure. Source Git blob bound and independently rerun on current HEAD; live evidence still required.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dfsb-environment-policy.php",
+      "source_blob_sha": "deca45f9b18a1218829f2d5fcedd3f7d71e0f1c7",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/dfsb-environment-policy-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party source/risk reviewer for exact original runtime — CI only",
+      "review_rationale": "Original Site Profile-backed Dynamic Filter SEO environment Policy failed before patch on WP_Error effective environment. Twenty-three native PHP 7.4/8.5 assertions now verify unknown/throwing/nonstring environment is denied without a PHP fatal; exact per-environment boolean flags, source Git SHA identity and no inheritance from Staging to Production. Read-only and no publication authorization. Source Git blob bound and independently rerun on current HEAD; live evidence still required.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-adapter-dynamic-integrity.php",
+      "source_blob_sha": "379efe2145fd75d1f66239957778135ec7b9c624",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/mcp-adapter-dynamic-integrity-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party source/risk reviewer for exact original runtime — CI only",
+      "review_rationale": "Original official MCP Adapter release inspector accepted arbitrary wp_options cached file hashes as proof of verified WordPress.org origin before patch. Seventeen native PHP7.4/8.5 cases now prove local cached manifest match is only read-only consistency, not an upstream certificate; invalid SemVer, path traversal, plugin header drift and missing real runtime files fail. Actual upstream certification requires separate HTTPS distribution verification; these tests never contact WordPress.org or issue a write grant. Source Git blob bound and independently rerun on current HEAD; live evidence still required.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-asset-intelligence.php",
+      "source_blob_sha": "1201db35fd6fba261c2263b006902c1d1e58f526",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/adaptive-asset-bridge-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party source/risk reviewer for exact original runtime — CI only",
+      "review_rationale": "Original first-party Adaptive Asset compatibility shim failed a native symlink-boundary regression: an active plugin entry could include executable PHP outside the canonical plugin root. Source now realpath-binds canonical class to its installed WordPress owner and forbids directory/file symlink escape, inactive plugin loading and duplicate owner implementation. Four source-backed PHP7.4/8.5 checks, no production site execution. Source Git blob bound and independently rerun on current HEAD; live evidence still required.",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true

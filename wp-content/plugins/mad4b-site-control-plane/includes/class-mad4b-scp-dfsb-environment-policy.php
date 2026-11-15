@@ -14,7 +14,16 @@ final class MAD4B_SCP_DFSB_Environment_Policy {
 
     public static function environment() {
         if ( ! class_exists( 'MAD4B_SCP_Environment' ) ) return '';
-        $environment = sanitize_key( (string) MAD4B_SCP_Environment::effective() );
+        // The Site Profile is the sole source of authority. A WP_Error,
+        // exception or non-string effective environment is never an
+        // affirmative local/production mode (nor a render-time fatal).
+        try {
+            $original = MAD4B_SCP_Environment::effective();
+        } catch ( \Throwable $error ) {
+            return '';
+        }
+        if ( ! is_string( $original ) ) return '';
+        $environment = sanitize_key( $original );
         return in_array( $environment, array( 'local', 'development', 'staging', 'production' ), true )
             ? $environment : '';
     }
