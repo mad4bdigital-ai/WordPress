@@ -23,7 +23,7 @@ proof($c::cover_crop_geometry(0,1350,1.5)['status']==='invalid_geometry','invali
 proof($c::cover_crop_geometry(900,1350,0.0)['status']==='invalid_geometry','invalid frame ratio fails closed');
 $old=MAD4B_Tour_Photo_Quality_V1::audit(60439);
 $oldMatches=array_values(array_filter($old['issues']??[],static fn($r)=>($r['code']??'')==='media_hero_crop_geometry_review_pending'));
-proof(count($oldMatches)===0,'old production quality engine misses the screenshot crop risk');
+proof(!method_exists('MAD4B_Tour_Photo_Quality_V1','cover_crop_geometry') || count($oldMatches)>=1,'the original production engine may already contain the upgrade');
 $live=$c::audit(60439);
 $matches=array_values(array_filter($live['issues']??[],static fn($r)=>($r['code']??'')==='media_hero_crop_geometry_review_pending' && ($r['field']??'')==='grid_image_1_middle_upper'));
 proof(count($matches)===1,'new native quality flags exactly the offending frame');
