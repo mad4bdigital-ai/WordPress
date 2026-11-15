@@ -7066,6 +7066,44 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "coverage_reuse_rationale": "Original GOVERNANCE-01, SECURITY-01, PLATFORM-01 and EXECUTION-01 controls cover host identity, change admission and durable recovery. This review creates no Production grant, owner identity or automated promotion."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-authority.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/execution-authority-identity-native-hermetic.php"
+      ],
+      "owner_role": "MAD4B canonical Execution Authority transport and identity source reviewer — CI only",
+      "review_rationale": "Verified real Execution Authority service under PHP 7.4 and PHP 8.5 with 15 host/OAuth positive and negative cases: enrolled Site Profile, no WP-CLI impersonation, verified read versus apply, no implicit NHI binding or write authorization, multiple-owner binding pin, exact origin/site scope, Breakglass rejection and proper WP_Error object handling before array access.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing canonical GOVERNANCE-01, PLATFORM-01, SECURITY-01 and EXECUTION-01 controls cover these existing transport and read-only governance paths. The review does not mint owner identities, create grants or permit Production deployment."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-reviews-bridge.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/authority-review-inbox-native-hermetic.php"
+      ],
+      "owner_role": "MAD4B original Authority Review Inbox source reviewer — CI only",
+      "review_rationale": "Reviewed actual authority review inbox with 12 hermetic outcomes on PHP 7.4/8.5: exact site-bound intake, invalid/foreign plan rejection, deterministic review IDs, retained resolved history, reopening, sealed baseline not auto-grant, CLI read identity and denied selectors, admin capability and no grant writes.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing canonical GOVERNANCE-01, PLATFORM-01, SECURITY-01 and EXECUTION-01 controls cover these existing transport and read-only governance paths. The review does not mint owner identities, create grants or permit Production deployment."
     }
   ],
   "lifecycle": [],
@@ -16988,6 +17026,42 @@
       ],
       "owner_role": "MAD4B first-party Host Authority lifecycle source and recovery reviewer",
       "review_rationale": "Reviewed original Host CLI authority reconciler across denied Production and impersonation, read-only vs apply context, origin drift, audit readiness, foreign bindings, full candidate preflight, exact conditional revocation, partial failure reconciliation, CLI readback receipt and Cron read-only contract on PHP 7.4/8.5.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-authority.php",
+      "source_blob_sha": "f72138e4ed93e32374a8a6fb3f9c825a47996940",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/execution-authority-identity-native-hermetic.php"
+      ],
+      "owner_role": "MAD4B canonical Execution Authority transport and identity source reviewer — CI only",
+      "review_rationale": "Verified real Execution Authority service under PHP 7.4 and PHP 8.5 with 15 host/OAuth positive and negative cases: enrolled Site Profile, no WP-CLI impersonation, verified read versus apply, no implicit NHI binding or write authorization, multiple-owner binding pin, exact origin/site scope, Breakglass rejection and proper WP_Error object handling before array access.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-reviews-bridge.php",
+      "source_blob_sha": "bd0914207936c7bfc20a73e1f000a90b91bd9a15",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/authority-review-inbox-native-hermetic.php"
+      ],
+      "owner_role": "MAD4B original Authority Review Inbox source reviewer — CI only",
+      "review_rationale": "Reviewed actual authority review inbox with 12 hermetic outcomes on PHP 7.4/8.5: exact site-bound intake, invalid/foreign plan rejection, deterministic review IDs, retained resolved history, reopening, sealed baseline not auto-grant, CLI read identity and denied selectors, admin capability and no grant writes.",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true

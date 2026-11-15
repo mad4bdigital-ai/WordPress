@@ -110,6 +110,9 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     # host-CAS fixtures: never permit arbitrary PHP CLI execution via wildcard.
     "tests/authority-auto-reconcile-host-hermetic.php",
     "tests/agent-registry-exact-revoke-cas-hermetic.php",
+    # Original host actor and owner review inbox, no runtime site writes.
+    "tests/execution-authority-identity-native-hermetic.php",
+    "tests/authority-review-inbox-native-hermetic.php",
 ))
 
 

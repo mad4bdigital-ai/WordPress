@@ -47,11 +47,16 @@ final class MAD4B_SCP_Execution_Authority {
         if ( ! class_exists('MAD4B_SCP_CLI_Execution_Context') )
             return new WP_Error('mad4b_actor_host_binding_unavailable', 'Registered host context is unavailable.');
         $facts = MAD4B_SCP_CLI_Execution_Context::resolve('authority.'.$operation, 'apply' === $operation);
+        // The native context resolver may fail with WP_Error. Never index an
+        // object as an array before proving its type, including on PHP 7.4.
+        if ( ! is_array($facts) )
+            return new WP_Error('mad4b_actor_host_binding_unverified', 'Host executor has no verified exact site and operation binding.',
+                array('blockers'=>is_wp_error($facts)?array($facts->get_error_code()):array()));
         $ready = 'apply' === $operation ? !empty($facts['local_operation_authorized']) : !empty($facts['read_context_verified']);
-        if ( ! is_array($facts) || !$ready || empty($facts['host_site_binding_verified'])
+        if ( !$ready || empty($facts['host_site_binding_verified'])
             || !empty($facts['blockers']) )
             return new WP_Error('mad4b_actor_host_binding_unverified', 'Host executor has no verified exact site and operation binding.',
-                array('blockers'=>is_array($facts)?(array)($facts['blockers']??array()):array()));
+                array('blockers'=>(array)($facts['blockers']??array())));
         $users = MAD4B_SCP_Site_Profile::oauth_user_ids();
         // An enrolled site may have several owner administrators. The verified
         // host subject's PRE-EXISTING, enabled NHI binding selects exactly one
