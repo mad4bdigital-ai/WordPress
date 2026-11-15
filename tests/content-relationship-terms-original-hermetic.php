@@ -7,6 +7,13 @@ class WP_Error {
  function get_error_code(){return $this->code;}
 }
 function is_wp_error($x){return $x instanceof WP_Error;}
+function get_post($id){return $GLOBALS['post_fixtures'][$id]??null;}
+function get_post_type($id){$post=get_post($id);return $post?$post->post_type:null;}
+function wp_attachment_is_image($id){return false;}
+function taxonomy_exists($name){return $name==='destinations';}
+function is_object_in_taxonomy($type,$tax){return $type==='tour'&&$tax==='destinations';}
+function apply_filters($hook,$defaults,$job){return $GLOBALS['typed_descriptors']??[];}
+function wp_json_encode($value,$flags=0){return json_encode($value,$flags);}
 function term_assert($yes,$label){
  if(!$yes){fwrite(STDERR,"FAIL: ".$label.PHP_EOL);exit(1);}
  $GLOBALS['checks']=($GLOBALS['checks']??0)+1;
@@ -18,6 +25,7 @@ class FakeWpDb {
  private $reading_id;
  function prepare($sql,...$args){$this->reading_id=(int)$args[0];return (string)$sql;}
  function get_col($sql){return array_key_exists($this->reading_id,$GLOBALS['term_data'])?$GLOBALS['term_data'][$this->reading_id]:[];}
+ function get_var($sql){return $GLOBALS['post_meta'][$this->reading_id]??'';}
 }
 $wpdb=new FakeWpDb();
 class MAD4B_SCP_Content_Relationship_Graph {
@@ -75,5 +83,40 @@ term_assert($unavailable['status']==='HOLD_TERM_READBACK_UNAVAILABLE',
 $unavailable=$terms([1],null);
 term_assert($unavailable['status']==='HOLD_TERM_READBACK_UNAVAILABLE',
  'Missing DB term readback cannot masquerade as no target taxonomy');
+$GLOBALS['post_fixtures']=[
+ 10=>(object)['ID'=>10,'post_type'=>'tour','post_parent'=>0],
+ 20=>(object)['ID'=>20,'post_type'=>'tour','post_parent'=>0],
+ 40=>(object)['ID'=>40,'post_type'=>'post','post_parent'=>0]
+];
+$GLOBALS['term_data']=[10=>[11,12],20=>[11,12,13]];
+$GLOBALS['post_meta']=[10=>'',20=>''];
+$job=['job_id'=>'fixture-job','job_revision'=>3];
+$family=['target_id'=>20,'target_locale'=>'es',
+ 'identity_sha256'=>str_repeat('e',64)];
+$source=['id'=>10,'kind'=>'post'];
+$composite=$c::inspect($job,$family,$source);
+term_assert($composite['state']==='INSPECTED'
+ &&$composite['relationships']['taxonomy_destinations']['status']==='LOCAL_OVERRIDE_PRESERVED'
+ &&$composite['relationships']['featured_image']['status']==='NOT_APPLICABLE'
+ &&$composite['relationships']['elementor_template_refs']['status']==='PROVIDER_NOT_ACTIVE'
+ &&$composite['relationships']['typed_meta']['status']==='NO_REGISTERED_MAPPABLE_FIELDS'
+ &&$composite['provider_write_required']===true
+ &&$composite['mutation_performed']===false
+ &&$composite['automatic_overwrite_existing_authoring']===false,
+ 'Complete first-party ContentJob read-only inspect preserves target taxonomy and templates');
+term_assert(preg_match('/^[a-f0-9]{64}$/',$composite['graph_sha256'])===1
+ &&$c::inspect($job,$family,$source)['graph_sha256']===$composite['graph_sha256'],
+ 'Read-only ContentJob graph identity is stable over the same observed source');
+$invalid=$c::inspect($job,['target_id'=>40,'target_locale'=>'es'],$source);
+term_assert($invalid['state']==='HOLD' &&$invalid['write_performed']===false,
+ 'Source target post-type mismatch is never a mapped relationship');
+$invalid=$c::inspect($job,['target_id'=>10,'target_locale'=>'es'],$source);
+term_assert($invalid['state']==='HOLD','Same source and target record is not a translation pair');
+$invalid=$c::inspect($job,['target_id'=>999,'target_locale'=>'es'],$source);
+term_assert($invalid['state']==='NO_POST_PAIR','Missing target post is not a writable relation');
+$GLOBALS['typed_descriptors']=['bad_type'=>'unknown','otherField'=>'page'];
+$meta=$c::inspect($job,$family,$source);
+term_assert($meta['relationships']['typed_meta']['status']==='NO_REGISTERED_MAPPABLE_FIELDS',
+ 'Unknown and empty meta type descriptors cannot trigger numeric-ID guessing');
 echo 'PASS: CONTENT_RELATIONSHIP_TERMS '.($GLOBALS['checks']??0).
  ' original source-target exactness and bounded scan cases'.PHP_EOL;

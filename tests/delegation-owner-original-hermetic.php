@@ -36,10 +36,17 @@ class MAD4B_SCP_Schema {
  static function is_ready(){return true;}
 }
 class MAD4B_SCP_Agent_Registry {
- static $lookups=0;
- static function subject_binding($type,$fp){self::$lookups++;return false;}
+ static $lookups=0,$created=0;
+ static $binding=false,$actor=null,$grant_rows=[];
+ static function subject_binding($type,$fp){self::$lookups++;return self::$binding;}
+ static function get_agent_by_slug($slug){return self::$actor;}
+ static function create_agent($args){self::$created++;return new WP_Error('fixture_no_create');}
+ static function grants_for_agent($id,$server){return self::$grant_rows;}
 }
-function wp_get_environment_type(){return 'production';}
+class MAD4B_SCP_Servers {
+ static function provider_for_ability($server,$ability){return 'core';}
+}
+function wp_get_environment_type(){return $GLOBALS['mock_environment']??'production';}
 class MAD4B_SCP_OAuth_Resource_Bridge {
  static $active=true;
  static $scope=true;
@@ -139,6 +146,21 @@ MAD4B_SCP_Agent_Registry::$lookups=0;
 $disabled=$c::ensure_content_actor($oauth);
 owner_check(is_wp_error($disabled) &&MAD4B_SCP_Agent_Registry::$lookups===1,
  'Explicit write scope still observes production environment deny before any actor provisioning');
+$GLOBALS['mock_environment']='staging';
+foreach(['unreadable',1,new stdClass(),new WP_Error('db_error')] as $unknown_binding){
+ MAD4B_SCP_Agent_Registry::$binding=$unknown_binding;
+ MAD4B_SCP_Agent_Registry::$created=0;
+ $result=$c::ensure_content_actor($oauth);
+ owner_check(is_wp_error($result) && MAD4B_SCP_Agent_Registry::$created===0,
+  'Uncertain original registered subject binding cannot launch a new delegated agent');
+}
+MAD4B_SCP_Agent_Registry::$binding=null;
+MAD4B_SCP_Agent_Registry::$created=0;
+$new_approval=$c::ensure_content_actor($oauth);
+owner_check(is_wp_error($new_approval)
+ &&MAD4B_SCP_Agent_Registry::$created===1,
+ 'Only exact null unbound subject can reach original Agent Registry create method');
+$GLOBALS['mock_environment']='production';
 $GLOBALS['mode']='independent_nhi';
 owner_check($c::verified_wordpress_user([])===null
  &&$c::authenticated_user($oauth)===null,

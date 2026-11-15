@@ -241,6 +241,12 @@ final class MAD4B_SCP_Delegation_Mode {
 
         $existing_subject = MAD4B_SCP_Agent_Registry::subject_binding( $type, $fingerprint );
         if ( is_wp_error( $existing_subject ) ) return $existing_subject;
+        // The original Agent Registry reports null for an unbound subject.
+        // An unexpected result (false, scalar, object) is not evidence that
+        // a previously revoked or foreign subject may be re-enrolled.
+        if ( null !== $existing_subject && ! is_array( $existing_subject ) )
+            return new WP_Error( 'mad4b_delegation_subject_binding_unverified',
+                'Original subject binding readback is unavailable; no automatic Agent enrollment.' );
         if ( is_array( $existing_subject ) ) {
             if ( 'enabled' !== (string) ( $existing_subject['status'] ?? '' ) )
                 return new WP_Error( 'mad4b_delegation_subject_revoked', 'A revoked subject cannot be automatically re-enabled.' );

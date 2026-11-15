@@ -7936,6 +7936,101 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-domain-cloudflare.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/company-cloudflare-admission-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B original first-party runtime capability reviewer — non-authorizing CI evidence",
+      "review_rationale": "The original Cloudflare company-domain source uses a real WordPress owner cookie plus verified REST nonce and authorized company hostname, not an inferred site/global administrator. Native PHP7.4/8.5 tests execute the source and reproduce a pre-fix acceptance of WP_Error nonce evidence; 32 cases now verify only exact Core 1/2 nonce, typed current user, allowlisted company/zone/hostname, no private origin, and no real DNS calls. Original provider plan, signed intent and authoritative Cloudflare readback remain separate live-release requirements.",
+      "coverage_reuse_rationale": "Existing GOVERNANCE-01, PLATFORM-01, SECURITY-01, EXECUTION-01 require original Company/Site Profile, explicit provider identity, per-object rights, source provenance and independent release admission. This test only establishes source-backed CI behavior and does not enable live execution, actor provision or bypass provider grants.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-email-routing.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/company-email-routing-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B original first-party runtime capability reviewer — non-authorizing CI evidence",
+      "review_rationale": "The original company email source is a site/receipt/feed-bound route planner, not an SMTP dispatcher. Native PHP7.4/8.5 tests reproduce pre-fix acceptance of WP_Error canSend and SMTP proof; 12 cases now check exact boolean policy, company Site UUID, original notification binding and current Fluent Forms feed SHA, wrong event, foreign recipient and no SMTP messages. Original verified sender ownership and live provider behavior remain unproven here.",
+      "coverage_reuse_rationale": "Existing GOVERNANCE-01, PLATFORM-01, SECURITY-01, EXECUTION-01 require original Company/Site Profile, explicit provider identity, per-object rights, source provenance and independent release admission. This test only establishes source-backed CI behavior and does not enable live execution, actor provision or bypass provider grants.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-task-routing.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/ai-task-routing-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B original first-party runtime capability reviewer — non-authorizing CI evidence",
+      "review_rationale": "The original task router is nonexecuting planning of named WordPress AI provider options. 20 source-backed PHP7.4/8.5 checks reproduce and fix error-shaped API key/false-positive User enrollment; reject unsupported task/provider/model, untrusted enable flags and non-admin option writes. All returned plans stay can_execute=false and execution_authorized=false, with separate native approvals for actual model calls. No live inference or privilege grant occurs.",
+      "coverage_reuse_rationale": "Existing GOVERNANCE-01, PLATFORM-01, SECURITY-01, EXECUTION-01 require original Company/Site Profile, explicit provider identity, per-object rights, source provenance and independent release admission. This test only establishes source-backed CI behavior and does not enable live execution, actor provision or bypass provider grants.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-delegation-mode.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/delegation-owner-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B original first-party runtime capability reviewer — non-authorizing CI evidence",
+      "review_rationale": "The original WordPress delegation mode is an upper bound on independently verified OAuth/App Password and Core cookie identity, not a new Host NHI. Native PHP7.4/8.5 acceptance and negative tests prove 52 cases for exact authenticated/mapped subject and active read/write scope, WordPress user ID, nonce 1/2, explicit Policy and Site Profile mutation gate, non-reuse of Production NHI and false-positive subject registry readback. Pre-fix an unknown scalar/boolean subject_binding could reach a create_agent attempt; now only exact original null means unbound and malformed/revoked data fail closed. No live agent, key, grant or admission was issued.",
+      "coverage_reuse_rationale": "Existing GOVERNANCE-01, PLATFORM-01, SECURITY-01, EXECUTION-01 require original Company/Site Profile, explicit provider identity, per-object rights, source provenance and independent release admission. This test only establishes source-backed CI behavior and does not enable live execution, actor provision or bypass provider grants.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-relationship-providers.php",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/content-relationship-terms-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B original first-party runtime capability reviewer — non-authorizing CI evidence",
+      "review_rationale": "The original ContentJob relationship provider is read-only and reuses native WordPress/WPML/Media and Elementor owners for writes. 16 first-party PHP7.4/8.5 assertions exercise scoped term source/target parity, >200 bounded incomplete readback, SQL error holds, local extra taxonomy preservation, translated link-missing denial, typed meta/no ID guessing, full composite inspect, exact graph SHA and mismatched target post types. It never replaces original authoring, media rights or source terms; actual writes remain separately governed.",
+      "coverage_reuse_rationale": "Existing MCP-01, PROVIDERS-01, EXECUTION-01, SECURITY-01 require original Company/Site Profile, explicit provider identity, per-object rights, source provenance and independent release admission. This test only establishes source-backed CI behavior and does not enable live execution, actor provision or bypass provider grants.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "lifecycle": [],
@@ -19866,6 +19961,96 @@
       ],
       "owner_role": "MAD4B first-party work scope and event-journal source reviewer — CI only",
       "review_rationale": "Native original Readiness Integrations PHP7.4/8.5 regression exercises registered WordPress REST route scopes and original source change journal. On first install, it creates only local baseline without replay or outbound. One discovered event is appended once and signaled to the first-party local outbox hook; duplicate same issue/revision event is not repeated. The old per-issue dispatch remains explicitly unavailable and requires a separately governed work-batch digest. No emails or external flows run. Independent company live behavior and Production release still require separate evidence.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-domain-cloudflare.php",
+      "source_blob_sha": "d5278789039907320dd71f9f19f9f0e63d04e597",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/company-cloudflare-admission-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B original first-party source/code reviewer — non-authorizing CI evidence",
+      "review_rationale": "The original Cloudflare company-domain source uses a real WordPress owner cookie plus verified REST nonce and authorized company hostname, not an inferred site/global administrator. Native PHP7.4/8.5 tests execute the source and reproduce a pre-fix acceptance of WP_Error nonce evidence; 32 cases now verify only exact Core 1/2 nonce, typed current user, allowlisted company/zone/hostname, no private origin, and no real DNS calls. Original provider plan, signed intent and authoritative Cloudflare readback remain separate live-release requirements. Source blob pinned exactly to current Git; CI review is not a Production certificate.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-email-routing.php",
+      "source_blob_sha": "65a3e14d0738e66bf86d9268fa6ba941523ce669",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/company-email-routing-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B original first-party source/code reviewer — non-authorizing CI evidence",
+      "review_rationale": "The original company email source is a site/receipt/feed-bound route planner, not an SMTP dispatcher. Native PHP7.4/8.5 tests reproduce pre-fix acceptance of WP_Error canSend and SMTP proof; 12 cases now check exact boolean policy, company Site UUID, original notification binding and current Fluent Forms feed SHA, wrong event, foreign recipient and no SMTP messages. Original verified sender ownership and live provider behavior remain unproven here. Source blob pinned exactly to current Git; CI review is not a Production certificate.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-task-routing.php",
+      "source_blob_sha": "43770d1d0d158f9c508366cd88f0c6362b449a0f",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/ai-task-routing-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B original first-party source/code reviewer — non-authorizing CI evidence",
+      "review_rationale": "The original task router is nonexecuting planning of named WordPress AI provider options. 20 source-backed PHP7.4/8.5 checks reproduce and fix error-shaped API key/false-positive User enrollment; reject unsupported task/provider/model, untrusted enable flags and non-admin option writes. All returned plans stay can_execute=false and execution_authorized=false, with separate native approvals for actual model calls. No live inference or privilege grant occurs. Source blob pinned exactly to current Git; CI review is not a Production certificate.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-delegation-mode.php",
+      "source_blob_sha": "29347349d99cd5adc3db5c4df41dfee55ddb86d6",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/delegation-owner-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B original first-party source/code reviewer — non-authorizing CI evidence",
+      "review_rationale": "The original WordPress delegation mode is an upper bound on independently verified OAuth/App Password and Core cookie identity, not a new Host NHI. Native PHP7.4/8.5 acceptance and negative tests prove 52 cases for exact authenticated/mapped subject and active read/write scope, WordPress user ID, nonce 1/2, explicit Policy and Site Profile mutation gate, non-reuse of Production NHI and false-positive subject registry readback. Pre-fix an unknown scalar/boolean subject_binding could reach a create_agent attempt; now only exact original null means unbound and malformed/revoked data fail closed. No live agent, key, grant or admission was issued. Source blob pinned exactly to current Git; CI review is not a Production certificate.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-relationship-providers.php",
+      "source_blob_sha": "e354a561d561b7c42e0c13b44fb5f34680b9cfaf",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/content-relationship-terms-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B original first-party source/code reviewer — non-authorizing CI evidence",
+      "review_rationale": "The original ContentJob relationship provider is read-only and reuses native WordPress/WPML/Media and Elementor owners for writes. 16 first-party PHP7.4/8.5 assertions exercise scoped term source/target parity, >200 bounded incomplete readback, SQL error holds, local extra taxonomy preservation, translated link-missing denial, typed meta/no ID guessing, full composite inspect, exact graph SHA and mismatched target post types. It never replaces original authoring, media rights or source terms; actual writes remain separately governed. Source blob pinned exactly to current Git; CI review is not a Production certificate.",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
