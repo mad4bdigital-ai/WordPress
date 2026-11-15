@@ -20873,6 +20873,57 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-developer-authority.php",
+      "source_blob_sha": "e8234971d831c79d176b966f59de1d4cf8aa0670",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-seven-original-p0-source-review.py"
+      ],
+      "owner_role": "MAD4B original first-party source CI-only reviewer",
+      "review_rationale": "Original Developer Authority can_access() is tested on both PHP 7.4 and 8.5 with 25 negative and positive actor/host profiles: exact nonauthorizing authenticated Host NHI preserves wp_user_id=0, while error-shaped Site Profile flags, invalid transports and malformed actor records are denied. No Developer Agent or Grant was created. The exact blob review remains nonauthorizing; independently signed live acceptance and original Production approval remain required.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-request-scope.php",
+      "source_blob_sha": "f6c1444a11872a951b61984da1c0ee4c0395c7b1",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-seven-original-p0-source-review.py"
+      ],
+      "owner_role": "MAD4B original first-party source CI-only reviewer",
+      "review_rationale": "Original MCP endpoint diagnostic passive classification and source gate are tested on PHP7.4/8.5 with 19 cases, requiring exact MU Bootstrap proof, explicit operator capability and exact diagnostic policy booleans before any MCP runtime arming. No endpoint was materialized. The exact blob review remains nonauthorizing; independently signed live acceptance and original Production approval remain required.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-reversible-adapter-mutations.php",
+      "source_blob_sha": "4e9914592d8ccf224fccbb35ede4d96b0fb96d14",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-seven-original-p0-source-review.py"
+      ],
+      "owner_role": "MAD4B original first-party source CI-only reviewer",
+      "review_rationale": "The original Undo CAS fault-injection fixture now supplies a valid pre-existing authenticated enabled NHI Agent matching the original Mutation Principal contract; it passes PHP7.4/8.5 and verifies child journal before restore, bounded readback, durable claim and blind-retry fencing under injected DB/provider failures, without touching any real tenant. The exact blob review remains nonauthorizing; independently signed live acceptance and original Production approval remain required.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "code_change_rules": {

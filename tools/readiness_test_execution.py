@@ -95,6 +95,11 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "tests/mcp-protocol-scope-original-hermetic.php",
     "tests/unified-gateway-permission-original-hermetic.php",
     "tests/authorization-preflight-original-hermetic.php",
+    # Original nonmutating Developer/diagnostic gate and NHI Undo journal fixtures.
+    "tests/developer-authority-access-original-hermetic.php",
+    "tests/mcp-request-scope-original-hermetic.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/undo-intent-fault-injection.php",
+
 
     # Hermetic native provider/add-on source fixture.
     "wp-content/plugins/mad4b-site-control-plane/tests/wordpress-addon-execution-guard-contract.php",

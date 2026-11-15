@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CI-only first-party source reviews. Read sixteen original PHP sources and run
+"""CI-only first-party source reviews. Read nineteen original PHP sources and run
 their already-established behavior suites; never create a grant, issue a ticket,
 call WordPress live, or authorize Production. Exact blob pin prevents silent
 reuse of stale tests after any source change.
@@ -48,6 +48,18 @@ CASES = (
      '071b9bcb7f306c42477fc1aa04a324d318facd24',
      'wp-content/plugins/mad4b-site-control-plane/tests/unified-agent-connection-runtime.php',
      'UNIFIED_CONNECTION_RUNTIME: PASS'),
+    ('includes/class-mad4b-scp-developer-authority.php',
+     'e8234971d831c79d176b966f59de1d4cf8aa0670',
+     'tests/developer-authority-access-original-hermetic.php',
+     'PASS: DEVELOPER_AUTHORITY_ACCESS_ORIGINAL 25'),
+    ('includes/class-mad4b-scp-mcp-request-scope.php',
+     'f6c1444a11872a951b61984da1c0ee4c0395c7b1',
+     'tests/mcp-request-scope-original-hermetic.php',
+     'PASS: MCP_REQUEST_SCOPE_ORIGINAL 19'),
+    ('includes/class-mad4b-scp-reversible-adapter-mutations.php',
+     '4e9914592d8ccf224fccbb35ede4d96b0fb96d14',
+     'wp-content/plugins/mad4b-site-control-plane/tests/undo-intent-fault-injection.php',
+     'PASS undo intent original CAS'),
     ("includes/class-mad4b-scp-adaptive-interaction-broker.php",
      "531cbaa5a3632213c6daa4c106ca921095d2266a",
      PLUGIN + "tests/adaptive-interaction-broker/contract-test.php",
@@ -77,7 +89,7 @@ CASES = (
      "tests/staging-write-planning-guard-original-hermetic.php",
      "PASS: STAGING_WRITE_PLANNING_GUARD_ORIGINAL 64"),
 )
-assert len(CASES) == 16
+assert len(CASES) == 19
 for source, git_blob, fixture, marker in CASES:
     source_path = ROOT / PLUGIN / source
     fixture_path = ROOT / fixture
@@ -101,4 +113,4 @@ for source, git_blob, fixture, marker in CASES:
     assert not re.search(r"(?m)^(?:FAIL(?::|\s)|Fatal error:|Parse error:)", output), (
         source, "fatal or negative test evidence")
     print("PASS: ORIGINAL_P0_SOURCE_EVIDENCE", source, git_blob[:12])
-print("PASS: ORIGINAL_P0_SOURCE_REVIEW_MATRIX 16 exact-source source-backed cases")
+print("PASS: ORIGINAL_P0_SOURCE_REVIEW_MATRIX 19 exact-source source-backed cases")
