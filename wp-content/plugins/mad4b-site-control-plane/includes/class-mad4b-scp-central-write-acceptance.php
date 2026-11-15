@@ -119,20 +119,42 @@ final class MAD4B_SCP_Central_Write_Acceptance {
     }
     /** Current source-of-truth site binding. Never trusts transport hints. */
     public static function site_scope():array {
-        $s=class_exists('MAD4B_SCP_Site_Profile',false)?
-            MAD4B_SCP_Site_Profile::status():[];
-        if(!is_array($s)||empty($s['site_uuid'])||empty($s['origin_match'])||
-           empty($s['deployment_binding_match'])||empty($s['authority_ready']))
+        try {
+            $s=class_exists('MAD4B_SCP_Site_Profile',false)?
+                MAD4B_SCP_Site_Profile::status():[];
+        } catch(Throwable $error) {
             return [];
+        }
+        if(!is_array($s)||empty($s['site_uuid'])||empty($s['origin_match'])
+           ||empty($s['configured'])||empty($s['authority_ready'])
+           ||empty($s['deployment_binding_match'])
+           ||empty($s['same_origin_clone_protection'])
+           ||empty($s['environment_match'])
+           ||!empty($s['mutation_pending_audit'])
+           ||!is_string($s['environment']??null)
+           ||''===$s['environment']
+           ||!hash_equals((string)($s['configured_environment']??''),
+               (string)$s['environment']))
+            return [];
+        // Site Profile effective environment is the authority. WordPress may
+        // expose its *implicit* Production default while a verified Staging
+        // Profile is the actual effective environment for this site.
+        // A drifted or explicitly conflicted profile is rejected above.
         return ['site_uuid'=>(string)$s['site_uuid'],
-          'environment'=>(string)wp_get_environment_type(),
+          'environment'=>$s['environment'],
           'max_evidence_age_seconds'=>self::DEFAULT_TTL];
     }
     public static function permitted():bool {
-        return class_exists('MAD4B_SCP_Policy',false) &&
-            MAD4B_SCP_Policy::can_mutate()===true &&
-            current_user_can('manage_options') &&
-            !empty(self::site_scope());
+        if(!class_exists('MAD4B_SCP_Policy',false))return false;
+        try {
+            return MAD4B_SCP_Policy::can_mutate()===true
+                && current_user_can('manage_options')
+                && !empty(self::site_scope());
+        } catch(Throwable $error) {
+            // A broken policy / identity / Site Profile is never a grant.
+            // No durable write-attempt receipt has been created yet.
+            return false;
+        }
     }
     /**
      * Read-only acceptance of original write route and current operation

@@ -8,7 +8,7 @@ class WP_Error {
  function get_error_code(){return $this->code;}
 }
 function is_wp_error($x){return $x instanceof WP_Error;}
-function source_test($ok,$label){if(!$ok){fwrite(STDERR,"FAIL: ".$label."\n");exit(1);}}
+function source_test($ok,$label){if(!$ok){fwrite(STDERR,"FAIL: ".$label."\n");exit(1);}$GLOBALS["original_source_passed_assertions"]=($GLOBALS["original_source_passed_assertions"]??0)+1;}
 final class WP_REST_Request {
  private $method,$route,$headers;
  function __construct($method='POST',$route='/mad4b/v1/enrich',$headers=array()){
@@ -19,7 +19,10 @@ final class WP_REST_Request {
  function get_header($x){return $this->headers[strtolower($x)]??'';}
 }
 final class MAD4B_Test_REST_Server {
- function get_routes(){return $GLOBALS['routes'];}
+ function get_routes(){
+   if($GLOBALS['route_server_throw'])throw new RuntimeException('unavailable REST route registry');
+   return $GLOBALS['routes'];
+ }
 }
 function rest_get_server(){return new MAD4B_Test_REST_Server();}
 function get_current_user_id(){return $GLOBALS['current_user'];}
@@ -35,18 +38,34 @@ function update_option($option,$value,$autoload=false){
 function wp_json_encode($x,$flags=0){return json_encode($x,$flags);}
 function wp_get_environment_type(){return $GLOBALS['environment'];}
 final class MAD4B_SCP_Policy {
- public static function can_read(){return $GLOBALS['allow_read'];}
- public static function can_mutate(){return $GLOBALS['allow_write'];}
+ public static function can_read(){
+   if($GLOBALS['allow_read']==='throw')throw new RuntimeException('read-policy-unknown');
+   return $GLOBALS['allow_read'];
+ }
+ public static function can_mutate(){
+   if($GLOBALS['allow_write']==='throw')throw new RuntimeException('write-policy-unknown');
+   return $GLOBALS['allow_write'];
+ }
  public static function can_connect_user($id){return $id===17;}
 }
 final class MAD4B_SCP_Site_Profile {
- public static function status(){return $GLOBALS['profile'];}
+ public static function status(){
+   if($GLOBALS['profile_throw'])throw new RuntimeException('profile not available');
+   return $GLOBALS['profile'];
+ }
 }
 final class MAD4B_SCP_Identity_Context {
- public static function current(){return $GLOBALS['identity'];}
+ public static function current(){
+   if($GLOBALS['identity_throw'])throw new RuntimeException('identity not available');
+   return $GLOBALS['identity'];
+ }
 }
 final class MAD4B_SCP_OAuth_Resource_Bridge {
- public static function verified_bearer_active(){return $GLOBALS['bearer_verified'];}
+ public static function verified_bearer_active(){
+   if($GLOBALS['bearer_verified']==='throw')
+     throw new DomainException('OAuth verifier unknown');
+   return $GLOBALS['bearer_verified'];
+ }
 }
 require dirname(__DIR__).'/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-transport-routing.php';
 require dirname(__DIR__).'/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-write-acceptance.php';
@@ -58,9 +77,15 @@ function source_reset(){
  $GLOBALS['allow_read']=true;
  $GLOBALS['allow_write']=true;
  $GLOBALS['bearer_verified']=false;
+ $GLOBALS['profile_throw']=false;
+ $GLOBALS['identity_throw']=false;
+ $GLOBALS['route_server_throw']=false;
  $GLOBALS['environment']='staging';
  $GLOBALS['profile']=array('site_uuid'=>'11111111-1111-4111-8111-111111111111',
-   'origin_match'=>true,'deployment_binding_match'=>true,'authority_ready'=>true);
+   'configured'=>true,'origin_match'=>true,'deployment_binding_match'=>true,
+   'same_origin_clone_protection'=>true,'environment_match'=>true,
+   'configured_environment'=>'staging','environment'=>'staging',
+   'authority_ready'=>true,'mutation_pending_audit'=>false);
  $GLOBALS['identity']=array('authenticated'=>true,'wp_user_id'=>17,
     'auth_method'=>'wp_rest_nonce','subject_type'=>'wp_user');
  $GLOBALS['options']=array();
@@ -69,6 +94,8 @@ function source_reset(){
  $_SERVER['REQUEST_METHOD']='POST';
 }
 function source_route_permission($request){
+ if($GLOBALS['route_permission']==='throw')
+   throw new DomainException('route callback unavailable');
  return $GLOBALS['route_permission'];
 }
 $rt='MAD4B_SCP_Capability_Transport_Routing';
@@ -136,6 +163,10 @@ $bad_rest=array(
  'policy_denied'=>static function(){ $GLOBALS['allow_write']=false;},
  'route_permission_denied'=>static function(){ $GLOBALS['route_permission']=false;},
  'route_permission_wp_error'=>static function(){ $GLOBALS['route_permission']=new WP_Error('blocked');},
+ 'route_registry_throw'=>static function(){ $GLOBALS['route_server_throw']=true;},
+ 'site_profile_exception'=>static function(){ $GLOBALS['profile_throw']=true;},
+ 'identity_exception'=>static function(){ $GLOBALS['identity_throw']=true;},
+ 'route_permission_exception'=>static function(){ $GLOBALS['route_permission']='throw';},
  'duplicate_route'=>static function(){ $GLOBALS['routes']['/mad4b/v1/enrich'][]=
     array('methods'=>['POST'=>true],'permission_callback'=>'source_route_permission');},
 
@@ -153,6 +184,29 @@ source_reset();$GLOBALS['route_permission']=true;
 source_test($rt::rest_write_evidence(new WP_REST_Request('POST',
  '/mad4b/v1/enrich',['authorization'=>'Bearer fake']))['rest_exact_write_verified']===false,
  'Cannot forge OAuth bearer from text Authorization header');
+source_reset();$GLOBALS['route_permission']=true;
+$GLOBALS['identity']=['authenticated'=>true,'wp_user_id'=>17,
+ 'auth_method'=>'oauth2_bearer','subject_type'=>'oauth'];
+$bearer_request=new WP_REST_Request('POST','/mad4b/v1/enrich',
+ ['authorization'=>'Bearer verified-context']);
+$GLOBALS['bearer_verified']=true;
+source_test($rt::rest_write_evidence($bearer_request)['rest_exact_write_verified']===true,
+ 'Verified original OAuth bearer is admissible only with exact user and route');
+foreach(array(null,1,new WP_Error('oauth_unknown'),'throw') as $unverified){
+  $GLOBALS['bearer_verified']=$unverified;
+  source_test($rt::rest_write_evidence($bearer_request)['rest_exact_write_verified']===false,
+    'Unknown or throwing OAuth resource verification cannot grant REST write');
+}
+source_reset();$GLOBALS['route_permission']=true;
+$GLOBALS['identity']=['authenticated'=>true,'wp_user_id'=>17,
+ 'auth_method'=>'wp_application_password','subject_type'=>'wp_app_password'];
+source_test($rt::rest_write_evidence(new WP_REST_Request('POST',
+ '/mad4b/v1/enrich',['authorization'=>'Basic verified-by-wordpress']))['rest_exact_write_verified']===true,
+ 'Existing WordPress-verified Basic authentication remains valid');
+source_test($rt::rest_write_evidence(new WP_REST_Request('POST',
+ '/mad4b/v1/enrich'))['rest_exact_write_verified']===true,
+ 'Proxy-stripped verified WP application password remains valid');
+
 source_test($rt::rest_write_evidence(new WP_REST_Request('PATCH','/mad4b/v1/enrich',
  ['x-wp-nonce'=>'good_nonce']))['rest_exact_write_verified']===false,
  'REST request method mismatch rejected independently');
@@ -200,6 +254,72 @@ $bad_source['rights_pass']=false;
 source_test($cwa::verify($claim,$bad_source,$scope,$now+25)['eligible']===false,
  'Server-known media rights must be verified separately from client claim');
 source_test($cwa::permitted()===true,'Scoped original WP owner may pass preflight only');
+source_reset();
+$GLOBALS['profile_throw']=true;
+source_test($rt::mode_for_transport($rt::VPS)==='read_only',
+ 'Unavailable enrolled Site Profile denies selection rather than fatal PHP');
+source_test($cwa::site_scope()===array()
+   && $cwa::permitted()===false,
+ 'Unavailable Site Profile cannot be used for central writes');
+source_reset();
+$GLOBALS['allow_write']='throw';
+$permitted=$cwa::permitted();
+source_test($permitted===false,
+ 'Throwing original policy denies Central Write before mutation');
+source_reset();
+source_test($cwa::site_scope()['environment']==='staging',
+ 'Current enrolled Site Profile owns the effective write environment');
+foreach(array('configured','environment_match','same_origin_clone_protection',
+    'authority_ready','deployment_binding_match','origin_match') as $required){
+  source_reset();
+  $GLOBALS['profile'][$required]=false;
+  source_test($cwa::site_scope()===array() && $cwa::permitted()===false,
+    'Original central write scope refuses missing site fact: '.$required);
+}
+source_reset();
+$GLOBALS['profile']['environment']='production';
+source_test($cwa::site_scope()===array() && $cwa::permitted()===false,
+ 'Central write refuses explicit source Site Profile environment drift');
+source_reset();
+$GLOBALS['profile']['mutation_pending_audit']=true;
+source_test($cwa::site_scope()===array() && $cwa::permitted()===false,
+ 'No central write while Site Profile binding has pending audit');
+source_reset();
+$GLOBALS['environment']='production';
+source_test($cwa::site_scope()['environment']==='staging',
+ 'Implicit native WordPress Production default cannot override effective Site Profile');
+source_reset();$GLOBALS['route_permission']=true;
+foreach(array(null,1,new WP_Error('unknown_policy'),'throw') as $value){
+ source_reset();$GLOBALS['route_permission']=true;
+ $GLOBALS['allow_write']=$value;
+ $e=$rt::rest_write_evidence($request);
+ source_test($e['rest_exact_write_verified']===false &&
+   $e['rest_operation_permission_verified']===false,
+   'Unverified original mutation policy cannot authorize REST route');
+}
+foreach(array(null,1,new WP_Error('unknown_policy'),'throw') as $value){
+ source_reset();$GLOBALS['route_permission']=true;
+ $GLOBALS['allow_read']=$value;
+ source_test($rt::rest_write_evidence($request)['rest_exact_write_verified']===false,
+   'Unverified original read policy cannot authorize REST route');
+}
+source_reset();
+$GLOBALS['profile']['authority_ready']=false;
+source_test($rt::mode_for_transport($rt::VPS)==='read_only',
+ 'Unready Site Profile cannot retain a write execution mode');
+source_reset();
+$GLOBALS['profile']['same_origin_clone_protection']=false;
+source_test($rt::mode_for_transport($rt::VPS)==='read_only',
+ 'Missing independent Host identity cannot retain registered operator mode');
+source_reset();
+$GLOBALS['profile']['environment_match']=false;
+source_test($rt::mode_for_transport($rt::VPS)==='read_only',
+ 'Site environment mismatch cannot retain registered operator mode');
+source_reset();$GLOBALS['route_permission']=true;
+$GLOBALS['profile']['authority_ready']=false;
+source_test($rt::rest_write_evidence($request)['rest_exact_write_verified']===false,
+ 'REST site authority explicitly denied by Profile readiness');
+source_reset();
 $GLOBALS['allow_write']=false;
 source_test($cwa::permitted()===false,'Revoked original mutation policy denies preflight');
-echo "PASS: CENTRAL_TRANSPORT_WRITE_ORIGINAL 36 original-code positive/negative routing and proof checks\n";
+echo "PASS: CENTRAL_TRANSPORT_WRITE_ORIGINAL ".($GLOBALS["original_source_passed_assertions"]??0)." original-code positive/negative routing and proof checks\n";
