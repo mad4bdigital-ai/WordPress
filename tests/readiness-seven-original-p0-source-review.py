@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CI-only first-party source reviews. Read seven original PHP sources and run
+"""CI-only first-party source reviews. Read sixteen original PHP sources and run
 their already-established behavior suites; never create a grant, issue a ticket,
 call WordPress live, or authorize Production. Exact blob pin prevents silent
 reuse of stale tests after any source change.
@@ -12,6 +12,42 @@ import subprocess
 ROOT = Path(__file__).resolve().parents[1]
 PLUGIN = "wp-content/plugins/mad4b-site-control-plane/"
 CASES = (
+    ('includes/adapters/class-mad4b-scp-context-adapter.php',
+     '565b7c19c4cdc34b8699adc35b200dc6942a0672',
+     'wp-content/plugins/mad4b-site-control-plane/tests/context-write-mount-runtime.php',
+     'mad4b.site-control-plane.context-write-mount.runtime.v6: PASS'),
+    ('includes/class-mad4b-scp-developer-runtime.php',
+     'd5c7ac20176958a7567d0d0689da0c286fba622d',
+     'tests/remote-execution/operator-grant-rollout-smoke.php',
+     'PASS Developer tool inventory operator rollout='),
+    ('includes/class-mad4b-scp-full-staging-authority.php',
+     'a12b57782106d059c5071a6a25e841da650f696d',
+     'wp-content/plugins/mad4b-site-control-plane/tests/write-only-owner-handoff-runtime.php',
+     'WRITE_ONLY_OWNER_HANDOFF_RUNTIME_PASS'),
+    ('includes/class-mad4b-scp-governance-abilities.php',
+     '1ac482b9d70aaefbe21d5486e43904cbd534fa60',
+     'wp-content/plugins/mad4b-site-control-plane/tests/provider-mcp-write-compiler-contract.php',
+     'MAD4B per-ability MCP write compiler and approval runtime contract passed.'),
+    ('includes/class-mad4b-scp-live-truth.php',
+     '0b9725cb5e55e910475e763ea190bb80eb5f3055',
+     'wp-content/plugins/mad4b-site-control-plane/tests/wp-native-self-approval-runtime.php',
+     'PASS: self-approval, single execution claim, local evidence, terminal audit'),
+    ('includes/class-mad4b-scp-operational-remediation.php',
+     '4277e0a5af4e26818858b3e6a8c0bb14b221774e',
+     'wp-content/plugins/mad4b-site-control-plane/tests/operational-remediation-control-runtime.php',
+     'OPERATIONAL_REMEDIATION_RUNTIME: PASS 35'),
+    ('includes/class-mad4b-scp-reconnect-hardening.php',
+     '72b51cf7a2d6246026fa0e835fd699989457d930',
+     'wp-content/plugins/mad4b-site-control-plane/tests/reconnect-hardening-runtime.php',
+     'mad4b.reconnect-hardening.runtime.v1: PASS'),
+    ('includes/class-mad4b-scp-rest-compatibility.php',
+     'eb0d11285d0fcf2d2278d98b36c36c0fc59f1d69',
+     'wp-content/plugins/mad4b-site-control-plane/tests/provider-diagnostic-zero-touch-runtime.php',
+     'mad4b.provider-diagnostic-zero-touch.runtime.v1: PASS'),
+    ('includes/class-mad4b-scp-unified-agent-connection.php',
+     '071b9bcb7f306c42477fc1aa04a324d318facd24',
+     'wp-content/plugins/mad4b-site-control-plane/tests/unified-agent-connection-runtime.php',
+     'UNIFIED_CONNECTION_RUNTIME: PASS'),
     ("includes/class-mad4b-scp-adaptive-interaction-broker.php",
      "531cbaa5a3632213c6daa4c106ca921095d2266a",
      PLUGIN + "tests/adaptive-interaction-broker/contract-test.php",
@@ -41,7 +77,7 @@ CASES = (
      "tests/staging-write-planning-guard-original-hermetic.php",
      "PASS: STAGING_WRITE_PLANNING_GUARD_ORIGINAL 64"),
 )
-assert len(CASES) == 7
+assert len(CASES) == 16
 for source, git_blob, fixture, marker in CASES:
     source_path = ROOT / PLUGIN / source
     fixture_path = ROOT / fixture
@@ -52,8 +88,8 @@ for source, git_blob, fixture, marker in CASES:
     fixture_text = fixture_path.read_text(encoding="utf-8")
     assert Path(source).name in fixture_text, (
         source, "original fixture no longer loads this first-party source")
-    assert "PASS" in fixture_text and (
-        "check" in fixture_text or "assert" in fixture_text or "insist(" in fixture_text
+    assert ("PASS" in fixture_text or "passed." in fixture_text) and (
+        "check" in fixture_text or "assert" in fixture_text or "insist(" in fixture_text or (("FAIL:" in fixture_text or "FAIL " in fixture_text) and "exit(" in fixture_text)
     ), (fixture, "positive result without assertions")
     response = subprocess.run(
         ["php", str(fixture_path)], cwd=ROOT, capture_output=True,
@@ -65,4 +101,4 @@ for source, git_blob, fixture, marker in CASES:
     assert not re.search(r"(?m)^(?:FAIL(?::|\s)|Fatal error:|Parse error:)", output), (
         source, "fatal or negative test evidence")
     print("PASS: ORIGINAL_P0_SOURCE_EVIDENCE", source, git_blob[:12])
-print("PASS: ORIGINAL_P0_SOURCE_REVIEW_MATRIX 7 exact-source source-backed cases")
+print("PASS: ORIGINAL_P0_SOURCE_REVIEW_MATRIX 16 exact-source source-backed cases")

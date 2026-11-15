@@ -20720,6 +20720,159 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-context-adapter.php",
+      "source_blob_sha": "565b7c19c4cdc34b8699adc35b200dc6942a0672",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-seven-original-p0-source-review.py"
+      ],
+      "owner_role": "MAD4B nonauthorizing first-party source CI assessment",
+      "review_rationale": "Original Context Adapter write-mount fixture proves first-party template and contextual source binding, inherited rate context, exact WP registration and no unapproved write mount; the legacy mount v6 contract remains stable. Source and original fixture bound by exact Git blob, reproduced under PHP 7.4 and PHP 8.5. Human/independent live evidence and Production authorization are still required.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-developer-runtime.php",
+      "source_blob_sha": "d5c7ac20176958a7567d0d0689da0c286fba622d",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-seven-original-p0-source-review.py"
+      ],
+      "owner_role": "MAD4B nonauthorizing first-party source CI assessment",
+      "review_rationale": "Original Developer Runtime fixture proves the legacy four-tool set remains intact, operator rollout is opt-in and bounded, and Breakglass inventory has exactly two entries. No capability is executed or granted. Source and original fixture bound by exact Git blob, reproduced under PHP 7.4 and PHP 8.5. Human/independent live evidence and Production authorization are still required.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-full-staging-authority.php",
+      "source_blob_sha": "a12b57782106d059c5071a6a25e841da650f696d",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-seven-original-p0-source-review.py"
+      ],
+      "owner_role": "MAD4B nonauthorizing first-party source CI assessment",
+      "review_rationale": "Original full Staging Authority source and Owner Handoff fixture verifies the write-only owner handoff conditions with source-bound exact evidence; no new credential or live approval is created. Source and original fixture bound by exact Git blob, reproduced under PHP 7.4 and PHP 8.5. Human/independent live evidence and Production authorization are still required.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-governance-abilities.php",
+      "source_blob_sha": "1ac482b9d70aaefbe21d5486e43904cbd534fa60",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-seven-original-p0-source-review.py"
+      ],
+      "owner_role": "MAD4B nonauthorizing first-party source CI assessment",
+      "review_rationale": "Original MCP per-Ability write compiler and approval contract exercises the governed Ability source and exact approval/write configuration; the test preserves nonauthorizing preparations. Source and original fixture bound by exact Git blob, reproduced under PHP 7.4 and PHP 8.5. Human/independent live evidence and Production authorization are still required.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-truth.php",
+      "source_blob_sha": "0b9725cb5e55e910475e763ea190bb80eb5f3055",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-seven-original-p0-source-review.py"
+      ],
+      "owner_role": "MAD4B nonauthorizing first-party source CI assessment",
+      "review_rationale": "Original Native Self-Approval fixture checks deny-by-default production/self approval, exact claim execution, local evidence, terminal audit and OAuth source identity without promoting any CI receipt to a live authorization. Source and original fixture bound by exact Git blob, reproduced under PHP 7.4 and PHP 8.5. Human/independent live evidence and Production authorization are still required.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operational-remediation.php",
+      "source_blob_sha": "4277e0a5af4e26818858b3e6a8c0bb14b221774e",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-seven-original-p0-source-review.py"
+      ],
+      "owner_role": "MAD4B nonauthorizing first-party source CI assessment",
+      "review_rationale": "Original Operational Remediation fixture passes 35 mocked WordPress ability and safe reducer assertions: read-only registration, bounded plan, no autonomous repair, no ticket issuance and independently governed executor handoff. Source and original fixture bound by exact Git blob, reproduced under PHP 7.4 and PHP 8.5. Human/independent live evidence and Production authorization are still required.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-reconnect-hardening.php",
+      "source_blob_sha": "72b51cf7a2d6246026fa0e835fd699989457d930",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-seven-original-p0-source-review.py"
+      ],
+      "owner_role": "MAD4B nonauthorizing first-party source CI assessment",
+      "review_rationale": "Original Reconnect Hardening fixture confirms request identity and transport reconnect controls with independent source assertions, rejecting stale or improperly rebound actor context. Source and original fixture bound by exact Git blob, reproduced under PHP 7.4 and PHP 8.5. Human/independent live evidence and Production authorization are still required.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-rest-compatibility.php",
+      "source_blob_sha": "eb0d11285d0fcf2d2278d98b36c36c0fc59f1d69",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-seven-original-p0-source-review.py"
+      ],
+      "owner_role": "MAD4B nonauthorizing first-party source CI assessment",
+      "review_rationale": "Original Provider Diagnostic zero-touch fixture verifies REST compatibility and source validation without session mutation, implicit token elevation or a live provider write. Source and original fixture bound by exact Git blob, reproduced under PHP 7.4 and PHP 8.5. Human/independent live evidence and Production authorization are still required.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-agent-connection.php",
+      "source_blob_sha": "071b9bcb7f306c42477fc1aa04a324d318facd24",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-seven-original-p0-source-review.py"
+      ],
+      "owner_role": "MAD4B nonauthorizing first-party source CI assessment",
+      "review_rationale": "Original Unified Agent Connection fixture verifies native connection/agent identity integration and rejects unauthorized source transitions; no grant or new user enrollment occurs. Source and original fixture bound by exact Git blob, reproduced under PHP 7.4 and PHP 8.5. Human/independent live evidence and Production authorization are still required.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "code_change_rules": {
