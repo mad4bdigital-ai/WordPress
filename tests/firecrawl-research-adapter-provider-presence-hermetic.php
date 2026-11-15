@@ -69,6 +69,10 @@ adapter_check(call_user_func($ability['permission'],[]),
  'Existing user+policy permission is tested independently of NHI in the base');
 adapter_check($a->is_available()===false,
  'Bridge alone cannot satisfy the Adapter readiness predicate');
+$preMount=$a->mutation_ability_runtime_eligibility('mad4b/firecrawl-research-capture');
+adapter_check(is_wp_error($preMount)
+ && $preMount->get_error_code()==='mad4b_firecrawl_adapter_runtime_unavailable',
+ 'Native server write projection must deny an unready Bridge/Provider pair');
 $unready=$a->capture(['job_id'=>'fixture','source_url'=>'https://example.invalid']);
 adapter_check(is_wp_error($unready)
  && $unready->get_error_code()==='mad4b_firecrawl_provider_unavailable'
@@ -77,6 +81,10 @@ adapter_check(is_wp_error($unready)
 class_alias('MockFirecrawlProvider','MAD4B_SCP_Firecrawl_Provider');
 adapter_check($a->is_available()===true,
  'Both original expected runtime classes make adapter available');
+adapter_check($a->mutation_ability_runtime_eligibility('mad4b/firecrawl-research-capture')===true,
+ 'Ready provider may become a mutation catalog candidate, not a grant');
+adapter_check(is_wp_error($a->mutation_ability_runtime_eligibility('mad4b/other-ability')),
+ 'Unknown ability may not inherit provider mount eligibility');
 $yes=$a->capture(['job_id'=>'fixture','draft_post_id'=>10,'source_url'=>'https://example.invalid']);
 adapter_check(is_array($yes)&&$GLOBALS['bridge_captures']===1,
  'Normal adapter dispatch remains delegated to the original bridge only when both present');

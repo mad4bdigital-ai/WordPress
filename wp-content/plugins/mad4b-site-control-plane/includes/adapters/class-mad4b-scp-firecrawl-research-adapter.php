@@ -26,6 +26,17 @@ final class MAD4B_SCP_Firecrawl_Research_Adapter extends MAD4B_SCP_Adapter_Base 
     ],['job_id','draft_post_id','source_url']), 'write',false,false,false);
   }
  }
+ // The original Server Write Catalog supports per-ability runtime
+ // eligibility. Never mount a write merely because an Ability was registered
+ // while its separately loaded provider/bridge has since disappeared.
+ public function mutation_ability_runtime_eligibility($ability_name){
+  $writes=$this->ability_names()['write'];
+  if(!in_array((string)$ability_name,$writes,true))
+   return new WP_Error('mad4b_firecrawl_adapter_ability_not_declared');
+  if(!$this->is_available())
+   return new WP_Error('mad4b_firecrawl_adapter_runtime_unavailable');
+  return true;
+ }
  public function capture($input=[]){
   if(!class_exists('MAD4B_Firecrawl_Research_Bridge_V1',false))
    return new WP_Error('mad4b_firecrawl_bridge_unavailable');

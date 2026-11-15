@@ -223,6 +223,14 @@ jobs:
             "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-component-adapter-smoke.php" \
             --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
 
+      - name: Deny dormant Firecrawl capture on native WP Write mount
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file \
+            "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-firecrawl-unready-write-mount.php" \
+            --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+
       - name: Prove reversible Media adapter envelope and drift-safe undo
         shell: bash
         run: |
