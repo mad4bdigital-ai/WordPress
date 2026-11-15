@@ -20438,6 +20438,42 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-transport-context.php",
+      "source_blob_sha": "f91006b56df76eaa9928a28b4fda26d1e2bdcbe3",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/transport-context-permission-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party MCP route/source reviewer — CI-only nonauthorizing evidence",
+      "review_rationale": "Original MCP Transport Context binds an exact WordPress REST route to an expected server, permits only an exact boolean true from the original permission policy and committed MU Bootstrap transaction, and clears a request-local server binding on denial. 71 native PHP7.4/8.5 original source tests reproduced a pre-fix retained MCP identity after a Policy WP_Error/false and acceptance of truthy unknown MU/Write evidence. The patch handles WP_Error policy without converting it into approval, requires exact Site Profile, Write Authority, bootstrap, server catalog and mounted Ability proofs for a dedicated mad4b-write lane, rejects a declared Write lane that is not in the original candidate catalog, and prevents nested write-execute on an unverified native WordPress Ability. A validated read and a single SHA-bound governed write callback still preserve normal behavior; no real callback, grant, HTTP client or live mutation is performed. Existing original transport permission containment and native servers admission suites pass both PHP versions. Exact Git blob pinned for source regression only; Production release admission, real client identity and provider approval are separate.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-mcp-path-review.php",
+      "source_blob_sha": "c86ce3ed68ca9323f3e5b2015ca0b8db89a805ff",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/provider-mcp-path-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party MCP route/source reviewer — CI-only nonauthorizing evidence",
+      "review_rationale": "Original first-party Provider MCP Path Review inspects only WordPress-registered Abilities, not external vendor MCP handshakes or authorization. 16 native PHP7.4/8.5 negative and positive cases reproduce pre-fix fatal from WP_Error native category/origin, and verify exact WordPress administrator gate, bounded unknown/foreign namespaces, unknown/throwing Ability registry handling, error-shaped Elementor and provider-readiness matrix readback, and continued distinction between MAD4B Adapter visibility and independently verified native provider transport. Failed original discovery now returns a nonauthorizing WP_Error rather than claiming verified no Abilities; no remote connection, credential, provider write, transport grant or editor save is performed. Exact Git blob pinned for source regression only; Production release admission, real client identity and provider approval are separate.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "code_change_rules": {

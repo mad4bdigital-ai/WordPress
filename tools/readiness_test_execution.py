@@ -147,6 +147,10 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "tests/company-email-routing-original-hermetic.php",
     "tests/ai-task-routing-original-hermetic.php",
     "tests/delegation-owner-original-hermetic.php",
+    # Exact original MCP transport and provider discovery read-only assertions.
+    "tests/transport-context-permission-original-hermetic.php",
+    "tests/provider-mcp-path-original-hermetic.php",
+
     "tests/content-relationship-terms-original-hermetic.php",
     # Newly reviewed first-party read-only Elementor, geo and migration fixtures.
     "tests/elementor-native-mcp-awareness-original-hermetic.php",

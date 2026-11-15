@@ -62,9 +62,10 @@ final class MAD4B_SCP_Provider_MCP_Path_Review {
         foreach ( array_merge( $spec['read'], $spec['write'] ) as $name ) {
             if ( ! isset( $observed[ $name ] ) || ! is_array( $observed[ $name ] ) ) continue;
             $row = $observed[ $name ];
-            if ( 'mad4b-adapter' === (string) ( $row['origin'] ?? '' ) ) {
+            $origin = is_string( $row['origin'] ?? null ) ? $row['origin'] : '';
+            if ( 'mad4b-adapter' === $origin ) {
                 $registered_adapter[] = $name;
-            } elseif ( 'provider-native-wordpress-ability' === (string) ( $row['origin'] ?? '' ) ) {
+            } elseif ( 'provider-native-wordpress-ability' === $origin ) {
                 $registered_provider_native[] = $name;
             } else {
                 $origin_unverified[] = $name;
@@ -94,7 +95,7 @@ final class MAD4B_SCP_Provider_MCP_Path_Review {
     }
 
     public static function observe_local() {
-        if ( ! function_exists( 'current_user_can' ) || ! current_user_can( 'manage_options' ) )
+        if ( ! function_exists( 'current_user_can' ) || true !== current_user_can( 'manage_options' ) )
             return new WP_Error( 'mad4b_mcp_path_admin_denied', 'Administrator required.' );
         $observed = array();
         $other_namespaces = array();
@@ -103,9 +104,19 @@ final class MAD4B_SCP_Provider_MCP_Path_Review {
             $known[ $name ] = true;
         // This call observes registered WordPress Abilities; it is NOT a
         // tools/list exchange with each independent provider MCP server.
-        if ( function_exists( 'wp_get_abilities' ) ) {
+        if ( ! function_exists( 'wp_get_abilities' ) )
+            return new WP_Error( 'mad4b_mcp_path_registry_unavailable',
+                'Original WordPress Abilities registry is unavailable; no provider transport can be inferred.' );
+        try {
             $registry = wp_get_abilities();
-            if ( is_array( $registry ) ) foreach ( $registry as $name => $ability ) {
+        } catch ( \Throwable $error ) {
+            return new WP_Error( 'mad4b_mcp_path_registry_unavailable',
+                'Original WordPress Abilities registry failed; no provider transport can be inferred.' );
+        }
+        if ( ! is_array( $registry ) )
+            return new WP_Error( 'mad4b_mcp_path_registry_unverified',
+                'Original WordPress Abilities inventory is not an exact array.' );
+        foreach ( $registry as $name => $ability ) {
                 if ( ! is_object( $ability ) ) continue;
                 if ( ! isset( $known[ $name ] ) ) {
                     if ( preg_match( '/^([a-z][a-z0-9_-]{1,48})\\/[a-z0-9_-]{1,120}$/D', (string) $name, $parts ) ) {
@@ -119,8 +130,14 @@ final class MAD4B_SCP_Provider_MCP_Path_Review {
                     }
                     continue;
                 }
-                $category = method_exists( $ability, 'get_category' )
-                    ? (string) $ability->get_category() : '';
+                $category = '';
+                try {
+                    $observed_category = method_exists( $ability, 'get_category' )
+                        ? $ability->get_category() : null;
+                    if ( is_string( $observed_category ) ) $category = $observed_category;
+                } catch ( \Throwable $error ) {
+                    // Unknown native Ability metadata is not proof of owner.
+                }
                 $origin = 0 === strpos( $category, 'mad4b-' )
                     ? 'mad4b-adapter' : 'origin-unverified';
                 // A non-MAD4B category alone does not authenticate a provider
@@ -128,14 +145,23 @@ final class MAD4B_SCP_Provider_MCP_Path_Review {
                 // upgrade this origin classification in a later review.
                 $observed[ $name ] = array( 'origin' => $origin );
             }
-        }
         $rows = array();
         foreach ( array_keys( self::families() ) as $family )
             $rows[] = self::classify( $family, $observed );
+        try {
+            $elementor = MAD4B_SCP_Elementor_Native_MCP_Awareness::inspect();
+            $matrix = MAD4B_SCP_MCP_Provider_Readiness_Matrix::matrix();
+        } catch ( \Throwable $error ) {
+            return new WP_Error( 'mad4b_mcp_path_readback_unavailable',
+                'Original native provider readiness evidence is unavailable.' );
+        }
+        if ( ! is_array( $elementor ) || ! is_array( $matrix ) )
+            return new WP_Error( 'mad4b_mcp_path_readback_unverified',
+                'Original provider readiness evidence cannot be verified.' );
         return array(
             'contract' => self::CONTRACT, 'scope' => 'local_wordpress_abilities_only',
-            'native_elementor_mcp' => MAD4B_SCP_Elementor_Native_MCP_Awareness::inspect(),
-            'provider_neutral_mcp_readiness' => MAD4B_SCP_MCP_Provider_Readiness_Matrix::matrix(),
+            'native_elementor_mcp' => $elementor,
+            'provider_neutral_mcp_readiness' => $matrix,
             'external_native_mcp_discovery_performed' => false,
             'registered_abilities_examined' => count( $observed ),
             'providers' => $rows,
