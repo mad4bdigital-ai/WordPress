@@ -129,6 +129,6 @@ namespace {
   file_put_contents($GLOBALS['dir'].'/photo.jpg','tampered-source-bytes');
   $GLOBALS['case']=['source_sha'=>$sourceSha,'published'=>true];
   must(callProcess($class,70016)['status']==='no_external_provenance','changed original bytes fail closed');
-  must(MAD4B_SCP_Distributed_Lock::$released===$GLOBALS['calls']+2,'native lock released including original and sibling queue-probes');
+  must(MAD4B_SCP_Distributed_Lock::$released===$GLOBALS['calls'],'review queue takes no locks or invokes process');
  }finally{foreach(['photo.jpg','photo-scaled.jpg','other-scaled.jpg'] as $name)@unlink($GLOBALS['dir'].'/'.$name);@rmdir($GLOBALS['dir']);}
 }

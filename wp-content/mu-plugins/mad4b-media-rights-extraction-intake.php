@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Media Rights Extraction Intake
  * Description: Bounded, idempotent JetEngine CCT discovery of new local image attachments; never auto-licenses or publishes.
- * Version: 1.7.1
+ * Version: 1.7.2
  */
 defined('ABSPATH') || exit;
 if (!class_exists('MAD4B_Media_Rights_Extraction_Intake_V1', false)) {
@@ -42,18 +42,40 @@ final class MAD4B_Media_Rights_Extraction_Intake_V1 {
    if(get_post_type($id)!=='attachment'||!str_starts_with((string)get_post_mime_type($id),'image/'))continue;
    $file=get_attached_file($id);
    if(!$file||!is_file($file)||!hash_equals($sourceSha,(string)hash_file('sha256',$file)))continue;
-   // process() has an early no-write return for a licensed image. Only use
-   // the result with exact owner/served SHA/published credit identity.
-   $match=self::process($id);
-   if(($match['status']??'')!=='already_licensed_wordpress_scaled_derivative'
-       ||(int)($match['licensed_attachment_id']??0)!==$id
-       ||($match['verified_wpml_sibling']??true)!==false
-       ||!hash_equals($sourceSha,(string)($match['served_sha256']??''))
-       ||(int)($match['published_credit_id']??0)<1)continue;
+   // Strictly read-only. Never call process() from a report: if an origin
+   // or credit disappears mid-scan that method might legitimately update a
+   // pending draft's source URL. The queue must not mutate CCT in any branch.
+   $upload=wp_get_upload_dir();
+   $base=realpath((string)($upload['basedir']??''));$real=realpath($file);
+   if(!$base||!$real||!str_starts_with($real,$base.DIRECTORY_SEPARATOR))continue;
+   $meta=wp_get_attachment_metadata($id);
+   $originalName=is_array($meta)?($meta['original_image']??null):null;
+   if(!is_string($originalName)||$originalName===''||$originalName!==wp_basename($originalName)
+      ||str_contains($originalName,'/')||str_contains($originalName,'\\')
+      ||!preg_match('/^[A-Za-z0-9][A-Za-z0-9._-]{3,190}$/D',$originalName))continue;
+   $original=realpath(dirname($real).DIRECTORY_SEPARATOR.$originalName);
+   if(!$original||!is_file($original)||dirname($original)!==dirname($real)
+      ||filesize($original)<1||filesize($original)>self::MAX_BYTES)continue;
+   $originalSha=(string)hash_file('sha256',$original);
+   $claim=(string)get_post_meta($id,'_mad4b_verified_source_sha256',true);
+   if(!preg_match('/^[a-f0-9]{64}$/D',$claim)||!hash_equals($claim,$originalSha))continue;
+   $published=$wpdb->get_results($wpdb->prepare(
+     "SELECT _ID,attachment_id,source_sha256,source_url,author,license_url,license_label FROM {$table} WHERE source_sha256=%s AND cct_status=%s AND attachment_id=%d LIMIT 2",
+     $originalSha,'publish',$id),ARRAY_A);
+   if(!is_array($published)||$wpdb->last_error!==''||count($published)!==1)continue;
+   $credit=$published[0];
+   $author=(string)get_post_meta($id,'_mad4b_creator',true);
+   $source=(string)get_post_meta($id,'_mad4b_license_source_url',true);
+   $license=(string)get_post_meta($id,'_mad4b_license',true);
+   if($author===''||$source===''||$license===''||
+      !hash_equals($author,(string)($credit['author']??''))||
+      !hash_equals($source,(string)($credit['source_url']??''))||
+      !hash_equals($license,(string)($credit['license_label']??''))||
+      wp_parse_url((string)($credit['license_url']??''),PHP_URL_SCHEME)!=='https')continue;
    $historic[]=['draft_id'=>(int)$r['_ID'],'attachment_id'=>$id,
-     'published_credit_id'=>(int)$match['published_credit_id'],
+     'published_credit_id'=>(int)$credit['_ID'],
      'served_derivative_sha256'=>$sourceSha,
-     'licensed_original_sha256'=>$match['licensed_original_sha256'],
+     'licensed_original_sha256'=>$originalSha,
      'reason'=>'exact_published_original_credit_supersedes_unreviewed_scaled_duplicate',
      'cct_row_preserved'=>true];
   }
