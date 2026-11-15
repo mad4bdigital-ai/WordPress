@@ -59,6 +59,12 @@ final class MAD4B_Tour_Photo_Quality_V1 {
         $f=get_attached_file($root);
         if(!$f||!is_file($f)||filesize($f)>12000000)return self::$hashes[$root]=null;
         $dims=@getimagesize($f);if(!$dims||$dims[0]*$dims[1]>16000000)return self::$hashes[$root]=null;
+        // Share expensive perceptual hashing between hourly passes. A changed
+        // original file or lineage digest creates a different cache key.
+        $key='dhash_'.hash('sha256',$root.'|'.(string)($o['origin_sha256']??'').'|'.filesize($f).'|'.filemtime($f));
+        $cached=wp_cache_get($key,'mad4b_tour_photo_quality');
+        if(is_string($cached)&&preg_match('/^[01]{64}$/D',$cached))
+            return self::$hashes[$root]=$cached;
         $bytes=@file_get_contents($f);$im=$bytes!==false?@imagecreatefromstring($bytes):false;
         if(!$im)return self::$hashes[$root]=null;
         $thumb=imagecreatetruecolor(9,8);imagecopyresampled($thumb,$im,0,0,0,0,9,8,imagesx($im),imagesy($im));imagedestroy($im);
@@ -69,7 +75,9 @@ final class MAD4B_Tour_Photo_Quality_V1 {
             $g2=((($q>>16)&255)*299+(($q>>8)&255)*587+($q&255)*114);
             $bits.=($g1>$g2)?'1':'0';
         }
-        imagedestroy($thumb);return self::$hashes[$root]=$bits;
+        imagedestroy($thumb);
+        wp_cache_set($key,$bits,'mad4b_tour_photo_quality',DAY_IN_SECONDS);
+        return self::$hashes[$root]=$bits;
     }
     private static function distance(string $a,string $b):int{$d=0;for($i=0;$i<64;$i++)if($a[$i]!==$b[$i])$d++;return $d;}
     private static function image_ids(string $csv,int $post_id):array {
@@ -411,7 +419,7 @@ final class MAD4B_Tour_Photo_Quality_V1 {
             'pending'=>'visual subject accuracy, licensing and source provenance editorial review'];
     }
     public static function state_sha(int $tour):string{
-        $keys=array_merge(['gallery'],self::hero_fields($tour),['_thumbnail_id','_mad4b_media_focal_points_v1','_mad4b_media_subject_evidence_v1']);
+        $keys=array_merge(['gallery'],self::hero_fields($tour),['_thumbnail_id','_mad4b_media_focal_points_v1','_mad4b_media_subject_evidence_v1','_mad4b_tour_media_association_v1']);
         $parts=[];foreach($keys as $key){
             $v=get_post_meta($tour,$key,true);
             $parts[$key]=is_scalar($v)?(string)$v:wp_json_encode($v,JSON_UNESCAPED_SLASHES);
@@ -494,15 +502,46 @@ final class MAD4B_Tour_Photo_Quality_V1 {
             'alerts_persisted'=>true,'status'=>'scanned'];
     }
     public static function scheduled_one(int $id):void {self::scan_one($id);}
-    public static function scheduled():void{
-        // Target a full published-Tour cycle within roughly a day for
-        // ordinary catalogs, while bounding CPU and DB work to 50 per run.
-        // Company Policy may lower the ceiling without forking the engine.
+    /** Workload-based schedule, with company-controlled CPU ceiling and freshness target.
+     * A larger catalog changes cadence and batch size; no fixed tour list.
+     */
+    public static function scan_policy():array {
         $count=(int)(wp_count_posts('tours-and-activities')->publish??0);
-        $default=max(12,min(50,(int)ceil($count/24)));
-        $requested=apply_filters('mad4b/tour_photo_quality/scan_batch_limit',$default,$count);
-        $limit=is_numeric($requested)?(int)$requested:$default;
-        self::scan_batch(max(1,min(50,$limit)));
+        $hours=apply_filters('mad4b/tour_photo_quality/target_full_scan_hours',24,$count);
+        $hours=is_numeric($hours)?max(6,min(168,(int)$hours)):24;
+        $cap=apply_filters('mad4b/tour_photo_quality/max_scan_batch',50,$count);
+        $cap=is_numeric($cap)?max(1,min(50,(int)$cap)):50;
+        $window=$hours*HOUR_IN_SECONDS;
+        $interval=300;
+        foreach([3600,900,300] as $candidate){
+            if((int)ceil($count*$candidate/max(1,$window))<=$cap){$interval=$candidate;break;}
+        }
+        $runs=max(1,(int)floor($window/$interval));
+        $required=max(1,(int)ceil($count/$runs));
+        $batch=min($cap,max(1,$required));
+        $batch=max(1,min($cap,max(min(12,$cap),$batch)));
+        $capacity=$batch*$runs;
+        $schedule=match($interval){3600=>'mad4b_photo_quality_hourly',900=>'mad4b_photo_quality_quarter_hour',default=>'mad4b_photo_quality_five_minutes'};
+        return ['contract'=>self::CONTRACT,'published_tours'=>$count,'target_full_scan_hours'=>$hours,
+            'cron_schedule'=>$schedule,'cron_interval_seconds'=>$interval,'batch_limit'=>$batch,
+            'capacity_per_target_window'=>$capacity,'capacity_sufficient'=>$capacity>=$count,
+            'estimated_full_scan_hours'=>$count?round(ceil($count/$batch)*$interval/3600,2):0,
+            'company_policy_filters_supported'=>true];
+    }
+    public static function ensure_scan_schedule():void {
+        $policy=self::scan_policy();$hook='mad4b_tour_photo_quality_scan';
+        $existing=wp_get_schedule($hook);
+        if($existing===$policy['cron_schedule'])return;
+        if($existing)wp_clear_scheduled_hook($hook);
+        wp_schedule_event(time()+180,$policy['cron_schedule'],$hook);
+    }
+    public static function scheduled():void {
+        $policy=self::scan_policy();
+        $requested=apply_filters('mad4b/tour_photo_quality/scan_batch_limit',
+            $policy['batch_limit'],$policy['published_tours']);
+        $limit=is_numeric($requested)?(int)$requested:$policy['batch_limit'];
+        $limit=max(1,min(50,$policy['batch_limit'],$limit));
+        self::scan_batch($limit);
     }
     public static function cli($args,$assoc):void{
         $mode=(string)($args[0]??'audit');$id=absint($args[1]??0);
@@ -511,6 +550,7 @@ final class MAD4B_Tour_Photo_Quality_V1 {
             case 'plan':$r=self::selection_loop($id);break;
             case 'scan':$r=self::scan_batch(absint($assoc['limit']??12));break;
             case 'scan-one':$r=self::scan_one($id);break;
+            case 'policy':$r=self::scan_policy();break;
             default:WP_CLI::error('Usage: wp mad4b tour-photo-quality audit|plan <post-id> OR scan [--limit=12]');
         }
         WP_CLI::line(wp_json_encode($r,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES));
@@ -519,15 +559,40 @@ final class MAD4B_Tour_Photo_Quality_V1 {
 add_filter('mad4b/content_readiness/external_issues',[MAD4B_Tour_Photo_Quality_V1::class,'issues'],26,2);
 add_action('mad4b_tour_photo_quality_scan',[MAD4B_Tour_Photo_Quality_V1::class,'scheduled']);
 add_action('mad4b_tour_photo_quality_scan_one',[MAD4B_Tour_Photo_Quality_V1::class,'scheduled_one']);
-add_action('updated_post_meta',static function($meta_id,$post_id,$key,$value){
+$mad4b_photo_quality_meta_changed=static function($meta_id,$post_id,$key,$value){
     if(!in_array((string)$key,['gallery','image_vertical','_thumbnail_id',
-        '_mad4b_media_focal_points_v1','_mad4b_media_subject_evidence_v1'],true)
+        '_mad4b_media_focal_points_v1','_mad4b_media_subject_evidence_v1',
+        '_mad4b_tour_media_association_v1'],true)
         && !preg_match('/^grid_image_[a-zA-Z0-9_]{1,80}$/D',(string)$key))return;
     if(get_post_type((int)$post_id)!=='tours-and-activities')return;
     if(!wp_next_scheduled('mad4b_tour_photo_quality_scan_one',[(int)$post_id]))
         wp_schedule_single_event(time()+20,'mad4b_tour_photo_quality_scan_one',[(int)$post_id]);
-},30,4);
-add_action('admin_init',static function(){
-    if(!wp_next_scheduled('mad4b_tour_photo_quality_scan'))wp_schedule_event(time()+180,'hourly','mad4b_tour_photo_quality_scan');
+};
+foreach(['added_post_meta','updated_post_meta','deleted_post_meta'] as $meta_hook)
+    add_action($meta_hook,$mad4b_photo_quality_meta_changed,30,4);
+add_filter('cron_schedules',static function($schedules){
+    $schedules['mad4b_photo_quality_hourly']=['interval'=>3600,'display'=>'MAD4B Photo Quality hourly'];
+    $schedules['mad4b_photo_quality_quarter_hour']=['interval'=>900,'display'=>'MAD4B Photo Quality 15 min'];
+    $schedules['mad4b_photo_quality_five_minutes']=['interval'=>300,'display'=>'MAD4B Photo Quality 5 min'];
+    return $schedules;
 });
+add_action('admin_init',[MAD4B_Tour_Photo_Quality_V1::class,'ensure_scan_schedule']);
+add_action('transition_post_status',static function($new,$old,$post){
+    if(!$post instanceof WP_Post || $post->post_type!=='tours-and-activities'
+        || $new===$old || ($old!=='publish'&&$new!=='publish'))return;
+    MAD4B_Tour_Photo_Quality_V1::ensure_scan_schedule();
+    if($new==='publish'){
+        if(!wp_next_scheduled('mad4b_tour_photo_quality_scan_one',[(int)$post->ID]))
+            wp_schedule_single_event(time()+20,'mad4b_tour_photo_quality_scan_one',[(int)$post->ID]);
+    }else{
+        // Remove retired tours from the live alert index, without deleting
+        // their media or editorial evidence.
+        $state=get_option(MAD4B_Tour_Photo_Quality_V1::OPTION,[]);
+        if(is_array($state)&&isset($state['tours'][$post->ID])){
+            unset($state['tours'][$post->ID]);
+            update_option(MAD4B_Tour_Photo_Quality_V1::OPTION,$state,false);
+        }
+    }
+},30,3);
+
 if(defined('WP_CLI')&&WP_CLI)WP_CLI::add_command('mad4b tour-photo-quality',[MAD4B_Tour_Photo_Quality_V1::class,'cli']);
