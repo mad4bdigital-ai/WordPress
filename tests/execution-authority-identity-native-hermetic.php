@@ -167,4 +167,4 @@ qe_denial($c::require_access('apply'),'mad4b_actor_breakglass_conflict');
 qe_reset();
 $GLOBALS['qe_breakglass']=true;
 qe_denial($c::require_access('apply'),'mad4b_actor_breakglass_conflict');
-echo "EXECUTION_AUTHORITY_IDENTITY_NATIVE: PASS 15 original-code authorization scenarios\n";
+echo "PASS: EXECUTION_AUTHORITY_IDENTITY_NATIVE 15 authorization scenarios\n";

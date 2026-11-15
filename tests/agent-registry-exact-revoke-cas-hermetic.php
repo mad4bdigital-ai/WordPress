@@ -117,4 +117,4 @@ qa_reset();
 qa_assert($c::revoke_allow_grant_by_id('test-owner-agent',999,'mad4b-write')===true
     && count($wpdb->rows)===1,
     'legacy zero-row idempotent behavior must remain compatible');
-echo "AGENT_REGISTRY_EXACT_REVOKE_CAS: PASS 11 original-database-method scenarios\n";
+echo "PASS: AGENT_REGISTRY_EXACT_REVOKE_CAS 11 conditional deletion scenarios\n";

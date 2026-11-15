@@ -252,4 +252,4 @@ qa_reset();
 $c::scheduled_inspect();
 qa_check($GLOBALS['qa_revoke_count']===0 && $GLOBALS['qa_bind_count']===0,
     'Cron inspection must not mutate grants or host subjects');
-echo "AUTHORITY_AUTO_RECONCILE_HOST: PASS 11 original-code host and error-path scenarios\n";
+echo "PASS: AUTHORITY_AUTO_RECONCILE_HOST 15 host and error path scenarios\n";

@@ -126,4 +126,4 @@ qr_assert(strpos($html,'MAD4B Authority Reviews')!==false,
   'Admin read-only issue table did not render');
 qr_assert($GLOBALS['qr_grants']===0 && $GLOBALS['qr_events'],
   'Review intake must never issue native grants');
-echo "AUTHORITY_REVIEW_INBOX_NATIVE: PASS 12 original-code review-only scenarios\n";
+echo "PASS: AUTHORITY_REVIEW_INBOX_NATIVE 12 review only scenarios\n";
