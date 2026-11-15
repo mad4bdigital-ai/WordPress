@@ -883,7 +883,7 @@ final class MAD4B_Tour_Photo_Quality_V1 {
             'posts_per_page'=>1001,'fields'=>'ids','orderby'=>'ID','order'=>'ASC']);
         if(!is_array($ids)||count($ids)>1000)return ['status'=>'bounded_catalog_overflow',
             'complete'=>false,'pages_seen'=>is_array($ids)?count($ids):0];
-        $originals=[];$properties=[];$unmapped=0;$usageCount=0;$affected=[];
+        $originals=[];$properties=[];$frameCrop=[];$unmapped=0;$usageCount=0;$affected=[];
         foreach($ids as $rawId){
             $tour=(int)$rawId;$audit=self::audit($tour);
             $slots=self::hero_fields($tour);$slotRank=array_flip($slots);
@@ -923,6 +923,65 @@ final class MAD4B_Tour_Photo_Quality_V1 {
                        &&count($originals[$sha]['affected_tour_ids'])<60)
                         $originals[$sha]['affected_tour_ids'][]=$tour;
                     $usageCount++;$affected[$tour]=true;
+                }elseif($code==='media_hero_crop_geometry_review_pending'){
+                    $field=(string)($issue['field']??'');
+                    if(!isset($slotRank[$field]))continue;
+                    $current=(int)($issue['attachment_id']??0);
+                    $o=$current?self::origin($current):[];
+                    $root=(int)($o['origin_attachment_id']??0);
+                    $sha=(string)($o['origin_sha256']??'');
+                    if(empty($o['verified'])||!preg_match('/^[a-f0-9]{64}$/D',$sha))continue;
+                    $m=wp_get_attachment_metadata($root);
+                    $rootWidth=(int)($m['width']??0);$rootHeight=(int)($m['height']??0);
+                    $rootRatio=$rootHeight>0?$rootWidth/$rootHeight:0.0;
+                    // The original source was already reviewed for this tour:
+                    // do not mistake an unrelated attachment with a matching
+                    // subject label for a reviewed original. WPML translations
+                    // derive authority from the original canonical family.
+                    $default=(string)apply_filters('wpml_default_language','en');
+                    $canonical=(int)apply_filters('wpml_object_id',$tour,
+                        'tours-and-activities',false,$default);
+                    $signed=$canonical>0?get_post_meta($canonical,
+                        '_mad4b_tour_media_association_v1',true):null;
+                    $signedRoot=false;
+                    if(is_array($signed)
+                       &&($signed['contract']??'')==='mad4b.tour-media-association.v1'
+                       &&(int)($signed['canonical_post_id']??0)===$canonical
+                       &&in_array($tour,array_map('intval',(array)($signed['wpml_family']??[])),true)){
+                        foreach(array_slice((array)($signed['items']??[]),0,100) as $source){
+                            if((int)($source['attachment_id']??0)===$root
+                               &&hash_equals($sha,(string)($source['sha256']??''))){
+                                $signedRoot=true;break;
+                            }
+                        }
+                    }
+                    $rootUrl=wp_get_attachment_url($root);
+                    $imageFile=get_attached_file($root);
+                    $exactFile=$signedRoot && is_string($imageFile)&&is_file($imageFile)
+                        &&hash_equals($sha,(string)hash_file('sha256',$imageFile));
+                    $eligible=$exactFile && $rootRatio>=.98 && $rootWidth>=1000
+                        &&$rootHeight>=800 && is_string($rootUrl)
+                        &&$rootUrl!==get_post_meta($tour,$field,true)
+                        &&attachment_url_to_postid($rootUrl)===$root;
+                    $frameCrop[]=[
+                        'post_id'=>$tour,'canonical_post_id'=>$canonical,
+                        'slot'=>$field,'current_attachment_id'=>$current,
+                        'root_attachment_id'=>$root,'origin_sha256'=>$sha,
+                        'minimum_crop_fraction'=>$issue['minimum_estimated_crop_fraction']??null,
+                        'reference_frame_aspect_ratio'=>$issue['reference_frame_aspect_ratio']??null,
+                        'reference_frame_basis'=>$issue['frame_ratio_basis']??'unknown',
+                        'root_dimensions'=>[$rootWidth,$rootHeight],
+                        'current_focal_meta_exists'=>(bool)($issue['current_focal_meta_exists']??false),
+                        'source_is_in_signed_tour_review'=>$signedRoot,
+                        'original_hash_matches_disk'=>(bool)$exactFile,
+                        'safe_same_original_reframe_candidate'=>$eligible,
+                        'review_state'=>$eligible?'review_same_original_reframe':
+                            'needs_editorially_reviewed_landscape_source',
+                        'next_step'=>$eligible?'preview_current_and_original_in_actual_frame':
+                            'obtain_subject_accurate_rights_verified_landscape_image',
+                        'copyright_or_photography_authenticity_auto_approved'=>false,
+                        'auto_media_write_authorized'=>false,
+                    ];
                 }elseif($code==='media_rate_property_photo_coverage_gap'){
                     if($rateLinks===null){$rateLinks=function_exists('shared_product_assignment_legacy_links')
                         ?shared_product_assignment_legacy_links($tour):[];
@@ -963,6 +1022,12 @@ final class MAD4B_Tour_Photo_Quality_V1 {
             'tour_pages_affected'=>count($affected),'unmapped_hero_uses'=>$unmapped,
             'properties_requiring_supplier_photos'=>count($propertyRows),
             'original_source_review'=>$sourceRows,'tour_rate_property_photo_review'=>$propertyRows,
+            'frame_crop_review'=>$frameCrop,
+            'frame_crop_review_count'=>count($frameCrop),
+            'frame_crop_requires_new_landscape_source_count'=>count(array_filter($frameCrop,
+                static fn($v)=>!$v['safe_same_original_reframe_candidate'])),
+            'frame_crop_same_original_candidates_count'=>count(array_filter($frameCrop,
+                static fn($v)=>$v['safe_same_original_reframe_candidate'])),
             'cross_tour_image_reuse_not_a_violation'=>true,
             'dynamic_hero_field_priority'=>true,'dynamic_tour_rate_relations'=>true,
             'executed_writes'=>false,'auto_authenticity_or_rights_grants'=>false];
