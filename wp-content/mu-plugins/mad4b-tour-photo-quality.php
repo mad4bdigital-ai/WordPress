@@ -1,0 +1,533 @@
+<?php
+/**
+ * Plugin Name: MAD4B Tour Photo Selection Quality
+ * Description: Per-tour photo originality, provenance and visual overlap gates, ranked criteria passes and bounded Content Readiness notifications. Distinct tours may share images.
+ * Version: 1.0.0
+ */
+defined('ABSPATH')||exit;
+final class MAD4B_Tour_Photo_Quality_V1 {
+    const CONTRACT='mad4b.tour-photo-quality.v1';
+    const OPTION='mad4b_tour_photo_quality_alerts_v1';
+    const CURSOR='mad4b_tour_photo_quality_scan_cursor_v1';
+    private static array $hashes=[];
+    private static array $origins=[];
+    private static function fail(string $code):array{return ['ok'=>false,'reason'=>$code];}
+    private static function origin(int $id):array{
+        if(array_key_exists($id,self::$origins))return self::$origins[$id];
+        if(!class_exists('MAD4B_Media_Visual_Lineage_V1',false))return self::$origins[$id]=['verified'=>false,'reason'=>'lineage_module_missing'];
+        return self::$origins[$id]=MAD4B_Media_Visual_Lineage_V1::origin($id);
+    }
+    /** Only explicit positive origin evidence proves synthetic media. Missing labels are UNKNOWN, never "real" or "AI". */
+    public static function provenance(int $id):array{
+        $o=self::origin($id);
+        if(empty($o['verified']))return ['status'=>'unresolved','reason'=>$o['reason']??'origin_missing'];
+        $root=(int)$o['origin_attachment_id'];
+        $ids=array_unique([$root,$id]);
+        $binary=['_mad4b_ai_generated','_ai_generated','_mad4b_is_ai_generated','_generated_by_ai','_mad4b_synthetic_image'];
+        $textual=['_mad4b_media_origin_type','_mad4b_image_origin','_mad4b_media_generation_type','_mad4b_content_origin','_mad4b_source_type'];
+        $known=['ai_generated','generated_ai','synthetic','generative_ai','midjourney','stable_diffusion','dall-e','dalle','flux_generated','comfyui'];
+        foreach($ids as $aid){
+            // Explicit generator-export filename survives image conversion and
+            // is strong, reviewable positive evidence. Never treat generic
+            // terms such as 'AI' or a random "v0" suffix as proof.
+            $file=basename((string)get_attached_file($aid));
+            if(preg_match('/^(?:ChatGPT[-_ ]Image[-_ ]|DALL[-_ ]?E[-_ ]|Midjourney[-_ ]|Stable[-_ ]Diffusion[-_ ])/i',$file))
+                return ['status'=>'synthetic_confirmed','evidence'=>'explicit_generator_export_filename',
+                    'attachment_id'=>$aid,'filename'=>$file];
+            foreach($binary as $key){$v=get_post_meta($aid,$key,true);
+                if($v===true||$v===1||in_array(strtolower(trim((string)$v)),['1','true','yes','ai','synthetic'],true))
+                    return ['status'=>'synthetic_confirmed','evidence'=>'metadata_flag','attachment_id'=>$aid,'meta_key'=>$key];
+            }
+            foreach($textual as $key){$v=strtolower(trim((string)get_post_meta($aid,$key,true)));
+                if(in_array($v,$known,true))return ['status'=>'synthetic_confirmed','evidence'=>'declared_media_origin','attachment_id'=>$aid,'meta_key'=>$key];
+            }
+            $m=wp_get_attachment_metadata($aid);
+            $software=strtolower((string)($m['image_meta']['software']??''));
+            if($software!==''&&preg_match('/midjourney|stable diffusion|comfyui|automatic1111|dall.?e|leonardo\.ai|openai image generator/i',$software))
+                return ['status'=>'synthetic_confirmed','evidence'=>'image_software_generator_tag','attachment_id'=>$aid];
+        }
+        $verified=(string)get_post_meta($root,'_mad4b_photo_authenticity_verified',true);
+        return $verified==='verified_photographic_origin'
+            ?['status'=>'photography_editorially_verified','evidence'=>'editorial_provenance_attestation','origin_attachment_id'=>$root]
+            :['status'=>'origin_unverified','evidence'=>'no_conclusive_provenance_metadata','origin_attachment_id'=>$root];
+    }
+    private static function dhash(int $id):?string {
+        $o=self::origin($id);$root=(int)($o['origin_attachment_id']??0);
+        if(!$root)return null;
+        if(array_key_exists($root,self::$hashes))return self::$hashes[$root];
+        if(!function_exists('imagecreatefromstring'))return self::$hashes[$root]=null;
+        $f=get_attached_file($root);
+        if(!$f||!is_file($f)||filesize($f)>12000000)return self::$hashes[$root]=null;
+        $dims=@getimagesize($f);if(!$dims||$dims[0]*$dims[1]>16000000)return self::$hashes[$root]=null;
+        $bytes=@file_get_contents($f);$im=$bytes!==false?@imagecreatefromstring($bytes):false;
+        if(!$im)return self::$hashes[$root]=null;
+        $thumb=imagecreatetruecolor(9,8);imagecopyresampled($thumb,$im,0,0,0,0,9,8,imagesx($im),imagesy($im));imagedestroy($im);
+        $bits='';
+        for($y=0;$y<8;$y++)for($x=0;$x<8;$x++){
+            $p=imagecolorat($thumb,$x,$y);$q=imagecolorat($thumb,$x+1,$y);
+            $g1=((($p>>16)&255)*299+(($p>>8)&255)*587+($p&255)*114);
+            $g2=((($q>>16)&255)*299+(($q>>8)&255)*587+($q&255)*114);
+            $bits.=($g1>$g2)?'1':'0';
+        }
+        imagedestroy($thumb);return self::$hashes[$root]=$bits;
+    }
+    private static function distance(string $a,string $b):int{$d=0;for($i=0;$i<64;$i++)if($a[$i]!==$b[$i])$d++;return $d;}
+    private static function image_ids(string $csv,int $post_id):array {
+        $parts=array_values(array_filter(array_map('trim',explode(',',$csv)),'strlen'));
+        if(!$parts||count($parts)>500)return ['ids'=>[],'unresolved'=>count($parts)];
+        $r=MAD4B_Gallery_Resolution_Engine_V1::inspect(implode(',',$parts),$post_id);
+        if(empty($r['valid_source']))return ['ids'=>[],'unresolved'=>count($parts)];
+        return ['ids'=>array_map('intval',explode(',',(string)$r['render_value'])),'unresolved'=>(int)$r['unresolved']];
+    }
+    /** Hard-stop: synthetic originals, repeated photographic origins in hero OR newly selected gallery. */
+    public static function preflight(int $tour,array $gallery,array $grid,int $vertical):array {
+        if(get_post_type($tour)!=='tours-and-activities')return self::fail('tour_missing');
+        $hero=array_merge($vertical>0?[$vertical]:[],$grid);
+        $seen=[];$hero_origins=[];$gallery_origins=[];
+        foreach($hero as $id){
+            if(!is_int($id)||$id<=0)return self::fail('invalid_hero_attachment');
+            $o=self::origin($id);if(empty($o['verified']))return self::fail('hero_origin_unverified');
+            $sha=$o['origin_sha256'];if(isset($seen[$sha]))return self::fail('hero_original_repeated');
+            if(self::provenance($id)['status']==='synthetic_confirmed')return self::fail('hero_ai_generated_prohibited');
+            $seen[$sha]=true;$hero_origins[]=$sha;
+        }
+        $seen=[];
+        foreach($gallery as $id){
+            if(!is_int($id)||$id<=0)return self::fail('invalid_gallery_attachment');
+            $o=self::origin($id);if(empty($o['verified']))return self::fail('gallery_origin_unverified');
+            $sha=$o['origin_sha256'];if(isset($seen[$sha]))return self::fail('gallery_original_repeated');
+            if(self::provenance($id)['status']==='synthetic_confirmed')return self::fail('gallery_ai_generated_prohibited');
+            $seen[$sha]=true;$gallery_origins[]=$sha;
+        }
+        return ['ok'=>true,'hero_origins'=>count($hero_origins),'gallery_origins'=>count($gallery_origins),
+            'cross_tour_reuse_allowed'=>true,'semantic_and_rights_review_still_required'=>true];
+    }
+    /** Unreviewed bulk-import evidence; never mutates gallery or blocks individual shared photos. */
+    public static function bulk_reuse_evidence(int $tour,string $raw):array {
+        static $memo=[];
+        $items=array_values(array_filter(array_map('trim',explode(',',$raw)),'strlen'));
+        if(count($items)<30)return ['untrusted'=>false,'reason'=>'not_bulk'];
+        $src=(string)wp_parse_url($items[0],PHP_URL_HOST);
+        $home=(string)wp_parse_url(home_url('/'),PHP_URL_HOST);
+        if(!$src || $src===$home)return ['untrusted'=>false,'reason'=>'local_gallery'];
+        $sha=hash('sha256',$raw);
+        if(!array_key_exists($sha,$memo)){
+            global $wpdb;
+            $count=$wpdb->get_var($wpdb->prepare(
+                "SELECT COUNT(DISTINCT p.ID) FROM {$wpdb->posts} p
+                  JOIN {$wpdb->postmeta} m ON m.post_id=p.ID
+                 WHERE p.post_type=%s AND p.post_status=%s AND m.meta_key=%s
+                   AND SHA2(m.meta_value,256)=%s",
+                'tours-and-activities','publish','gallery',$sha
+            ));
+            $memo[$sha]=($count===null || $wpdb->last_error)?null:(int)$count;
+        }
+        return ['untrusted'=>$memo[$sha]===null || $memo[$sha]>=12,
+            'reason'=>$memo[$sha]===null?'catalog_unavailable':'exact_bulk_foreign_gallery_reuse',
+            'same_gallery_published_posts'=>$memo[$sha],
+            'gallery_items'=>count($items),'gallery_sha256'=>$sha];
+    }
+    /** Enumerate current native Tour image slots instead of fixed widget IDs.
+     * Future JetEngine grid fields become eligible with no code deployment.
+     */
+    private static function hero_fields(int $tour):array {
+        $fields=['image_vertical'];
+        foreach(array_keys((array)get_post_meta($tour)) as $field){
+            if(is_string($field)&&preg_match('/^grid_image_[a-zA-Z0-9_]{1,80}$/D',$field))
+                $fields[]=$field;
+        }
+        $fields=array_values(array_unique($fields));
+        $head=array_shift($fields);
+        sort($fields,SORT_NATURAL);
+        $fields=array_merge([$head],$fields);
+        $registered=apply_filters('mad4b/tour_photo_quality/hero_fields',$fields,$tour);
+        if(!is_array($registered))return $fields;
+        $allowed=array_fill_keys(array_keys((array)get_post_meta($tour)),true);
+        $result=[];
+        foreach(array_slice($registered,0,80) as $name)
+            if(is_string($name)&&isset($allowed[$name])
+                &&preg_match('/^[a-zA-Z_][a-zA-Z0-9_]{1,90}$/D',$name))
+                $result[$name]=true;
+        return $result?array_keys($result):$fields;
+    }
+    private static function focal_points(int $tour):array {
+        $raw=get_post_meta($tour,'_mad4b_media_focal_points_v1',true);
+        if(!is_array($raw))return [];
+        $out=[];
+        foreach(array_slice($raw,0,80,true) as $key=>$point){
+            if(!is_string($key)||!is_array($point)||array_keys($point)!==['x','y'])continue;
+            if((!is_int($point['x'])&&!is_float($point['x']))
+                ||(!is_int($point['y'])&&!is_float($point['y']))
+                ||$point['x']<0||$point['x']>100||$point['y']<0||$point['y']>100)continue;
+            $out[$key]=$point;
+        }
+        return $out;
+    }
+    public static function audit(int $tour):array {
+        if(get_post_type($tour)!=='tours-and-activities')return self::fail('tour_missing');
+        $fields=self::hero_fields($tour);
+        $focal=self::focal_points($tour);
+        $media_policy=class_exists('MAD4B_Media_Review_Hierarchy_V1',false)
+            ?MAD4B_Media_Review_Hierarchy_V1::effective():[];
+        // Company policy may add reviews, never make synthetic/duplicate
+        // originals acceptable or create a publishing authorization.
+        $review_rules=apply_filters('mad4b/tour_photo_quality/review_rules',[
+            'cropping'=>true,'per_image_subject'=>true],$tour,$media_policy);
+        if(!is_array($review_rules))$review_rules=[];
+        $review_crop=($review_rules['cropping']??true)!==false;
+        $review_subject=($review_rules['per_image_subject']??true)!==false;
+        $issues=[];$hero=[];$seen=[];
+        foreach($fields as $field){
+            $url=(string)get_post_meta($tour,$field,true);
+            if($url===''){ $issues[]=['code'=>'media_hero_slot_empty','severity'=>'high','field'=>$field];continue;}
+            $ids=self::image_ids($url,$tour);$id=(int)($ids['ids'][0]??0);$o=self::origin($id);
+            if(empty($o['verified'])){$issues[]=['code'=>'media_hero_source_unresolved','severity'=>'high','field'=>$field];continue;}
+            $sha=$o['origin_sha256'];
+            if(isset($seen[$sha]))$issues[]=['code'=>'media_hero_original_duplicate','severity'=>'high','field'=>$field,'duplicate_of'=>$seen[$sha]];
+            else $seen[$sha]=$field;
+            $p=self::provenance($id);
+            if($p['status']==='synthetic_confirmed')$issues[]=['code'=>'media_synthetic_source_prohibited','severity'=>'high','field'=>$field,'evidence'=>$p['evidence']];
+            if($p['status']==='origin_unverified')$issues[]=['code'=>'media_origin_provenance_unverified','severity'=>'low','field'=>$field];
+            // A portrait in a landscape hero cell can hide the actual subject.
+            // A focal point is evidence of editorial framing, NOT evidence of
+            // geographic accuracy, photographic provenance or license rights.
+            $size=wp_get_attachment_metadata($id);
+            if($review_crop && str_starts_with($field,'grid_image_')
+               && (int)($size['width']??0)>0 && (int)($size['height']??0)>0
+               && $size['width']/$size['height']<0.9 && !isset($focal[$field]))
+                $issues[]=['code'=>'media_hero_focal_review_pending',
+                    'severity'=>'medium','field'=>$field,
+                    'width'=>(int)$size['width'],'height'=>(int)$size['height'],
+                    'visual_subject_not_verified_by_dimensions'=>true];
+            $hero[]=['field'=>$field,'id'=>$id,'sha'=>$sha,'dhash'=>self::dhash($id)];
+        }
+        // The original Tour association can prove which files were reviewed
+        // together, but its generic contact-sheet note is not per-image proof.
+        $association=get_post_meta($tour,'_mad4b_tour_media_association_v1',true);
+        if(!is_array($association)||($association['contract']??'')!=='mad4b.tour-media-association.v1'){
+            if($review_subject)$issues[]=['code'=>'media_hero_subject_review_pending',
+                'severity'=>'medium','reason'=>'original_tour_association_unavailable',
+                'never_assume_subject_from_file_name'=>true];
+        }elseif($review_subject){
+            $approved_origins=[];
+            foreach((array)($association['items']??[]) as $item)
+                if(preg_match('/^[a-f0-9]{64}$/D',(string)($item['sha256']??'')))
+                    $approved_origins[(string)$item['sha256']]=true;
+            foreach($hero as $photo)
+                if(!isset($approved_origins[$photo['sha']]))
+                    $issues[]=['code'=>'media_hero_subject_review_pending',
+                        'severity'=>'medium','field'=>$photo['field'],
+                        'reason'=>'photo_not_in_original_review_association'];
+            $subject=get_post_meta($tour,'_mad4b_media_subject_evidence_v1',true);
+            $site=class_exists('MAD4B_SCP_Site_Profile',false)
+                ?(string)MAD4B_SCP_Site_Profile::site_uuid():'';
+            $bound=is_array($subject)
+                &&($subject['contract']??'')==='mad4b.media-subject-evidence.v1'
+                &&$site!==''&&($subject['site_uuid']??'')===$site
+                &&is_array($subject['slots']??null);
+            if(!$bound){
+                $issues[]=['code'=>'media_hero_subject_review_pending',
+                    'severity'=>'medium','reason'=>'per_photo_subject_evidence_absent_or_unbound',
+                    'generic_tour_review_is_not_per_image_subject_proof'=>true];
+            }else{
+                // An editable contract name alone cannot certify a photo.
+                // Bind each editorial subject note to the exact original
+                // image SHA and the independent visual review evidence.
+                foreach($hero as $photo){
+                    $slot=$subject['slots'][$photo['field']]??null;
+                    $valid=is_array($slot)
+                        &&($slot['origin_sha256']??'')===$photo['sha']
+                        &&is_string($slot['subject']??null)
+                        &&mb_strlen(trim($slot['subject']))>=8
+                        &&in_array($slot['review_type']??'', ['human_editor','ai_editorial_review'],true)
+                        &&preg_match('/^[a-f0-9]{64}$/D',(string)($slot['visual_review_sha256']??''))
+                        &&preg_match('/^20[0-9]{2}-[01][0-9]-[0-3][0-9]T/',(string)($slot['reviewed_at']??''));
+                    if(!$valid)$issues[]=['code'=>'media_hero_subject_review_pending',
+                        'severity'=>'medium','field'=>$photo['field'],
+                        'reason'=>'missing_or_stale_origin_bound_subject_review'];
+                }
+            }
+        }
+        $featured=(int)get_post_thumbnail_id($tour);
+        if($featured>0){
+            $featured_origin=self::origin($featured);
+            if(empty($featured_origin['verified']))
+                $issues[]=['code'=>'media_featured_original_unresolved','severity'=>'high'];
+            $featured_provenance=self::provenance($featured);
+            if($featured_provenance['status']==='synthetic_confirmed')
+                $issues[]=['code'=>'media_synthetic_source_prohibited','severity'=>'high','scope'=>'featured',
+                    'evidence'=>$featured_provenance['evidence']];
+        }
+        $gallery_raw=(string)get_post_meta($tour,'gallery',true);
+        $bulk=self::bulk_reuse_evidence($tour,$gallery_raw);
+        if($bulk['untrusted'])$issues[]=['code'=>'media_gallery_mass_reuse_requires_reselection',
+            'severity'=>'high','same_gallery_published_posts'=>$bulk['same_gallery_published_posts'],
+            'gallery_items'=>$bulk['gallery_items'],'reason'=>$bulk['reason'],
+            'editorial_relevance_unverified'=>true,'original_gallery_preserved'=>true];
+        $gallery=self::image_ids($gallery_raw,$tour);
+        if(count($gallery['ids'])===0)$issues[]=['code'=>'media_gallery_missing','severity'=>'medium'];
+        if($gallery['unresolved'])$issues[]=['code'=>'media_gallery_unresolved','severity'=>'high','count'=>$gallery['unresolved']];
+        $gseen=[];$grows=[];
+        foreach($gallery['ids'] as $n=>$id){
+            $o=self::origin((int)$id);
+            if(empty($o['verified'])){$issues[]=['code'=>'media_gallery_original_unverified','severity'=>'high','index'=>$n];continue;}
+            $sha=$o['origin_sha256'];
+            if(isset($gseen[$sha]))$issues[]=['code'=>'media_gallery_original_duplicate','severity'=>'high','index'=>$n,'duplicate_of'=>$gseen[$sha]];
+            else $gseen[$sha]=$n;
+            $p=self::provenance((int)$id);
+            if($p['status']==='synthetic_confirmed')$issues[]=['code'=>'media_synthetic_source_prohibited','severity'=>'high','gallery_index'=>$n,'evidence'=>$p['evidence']];
+            $grows[]=['index'=>$n,'sha'=>$sha,'dhash'=>self::dhash((int)$id)];
+        }
+        // Similar composition is a REVIEW signal, never automatic evidence of duplication or AI.
+        foreach([['hero',$hero],['gallery',$grows]] as [$scope,$rows]){
+            $alerts=0;
+            for($a=0;$a<count($rows);$a++){
+                if($alerts>=5)break;
+                for($b=$a+1;$b<count($rows);$b++){
+                    if($rows[$a]['sha']===$rows[$b]['sha'])continue;
+                    if($rows[$a]['dhash']===null||$rows[$b]['dhash']===null)continue;
+                    $dist=self::distance($rows[$a]['dhash'],$rows[$b]['dhash']);
+                    if($dist<=3){$issues[]=['code'=>'media_near_duplicate_review','severity'=>'medium','scope'=>$scope,
+                        'item_a'=>$rows[$a]['field']??$rows[$a]['index'],'item_b'=>$rows[$b]['field']??$rows[$b]['index'],
+                        'dhash_distance'=>$dist,'not_automatic_proof'=>true];$alerts++;break;}
+                }
+            }
+        }
+        // Coverage is evaluated from actual itinerary days, highlights and
+        // destination media (not a fixed gallery image-count threshold).
+        if(class_exists('MAD4B_Tour_Story_Gallery_V1',false)){
+            $story=MAD4B_Tour_Story_Gallery_V1::build($tour);
+            foreach((array)($story['geography_review']??[]) as $conflict){
+                $issues[]=['code'=>'media_itinerary_geography_conflict','severity'=>'high',
+                  'primary_destination'=>$conflict['primary_destination']??'',
+                  'conflicting_excursion'=>$conflict['conflicting_optional_excursion']??'',
+                  'needs_supplier_confirmation'=>true];
+            }
+            foreach((array)($story['coverage_gaps']??[]) as $gap){
+                $issues[]=['code'=>'media_story_coverage_gap','severity'=>'medium',
+                    'destination'=>sanitize_text_field((string)($gap['section']??'')),
+                    'missing_photo_count'=>absint($gap['missing']??0),
+                    'itinerary_days'=>array_slice(array_map('intval',(array)($gap['days']??[])),0,30),
+                    'has_destination_context'=>true];
+            }
+        }
+        return ['contract'=>self::CONTRACT,'post_id'=>$tour,'hero_slots'=>count($hero),'gallery_items'=>count($gallery['ids']),
+            'issues'=>$issues,'issue_count'=>count($issues),'source_image_identity_verified'=>true,
+            'cross_tour_image_reuse_allowed'=>true,'ai_detection_complete'=>false,
+            'ai_limitations'=>'Positive generator tags are conclusive for blocking; absence of metadata does not prove photographic origin'];
+    }
+    /** Iterative, non-mutating candidate selection with progressively wider source evidence. */
+    public static function selection_loop(int $tour):array {
+        if(!class_exists('MAD4B_Tour_Media_Reconcile_V1',false))return self::fail('media_reconcile_missing');
+        $plan=MAD4B_Tour_Media_Reconcile_V1::plan($tour,['limit'=>24]);
+        if(is_wp_error($plan))return self::fail($plan->get_error_code());
+        $items=$plan['candidate_catalog']['items']??[];
+        // Approved-source catalogs can extend a shortlist when five distinct
+        // images are not present. These are only editorial PROPOSALS.
+        $catalog=get_post_meta($tour,'_mad4b_gallery_source_catalog_v1',true);
+        if(is_array($catalog)&&($catalog['contract']??'')==='mad4b.tour-gallery-source.v1'){
+            foreach(array_slice($catalog['items']??[],0,150) as $item){
+                $id=(int)($item['attachment_id']??0);
+                if(!$id||get_post_type($id)!=='attachment')continue;
+                $file=get_attached_file($id);$dimension=$file?@getimagesize($file):false;
+                if(!$dimension)continue;
+                $items[]=['canonical_attachment_id'=>$id,
+                    'source_evidence'=>'staged_source_gallery_review_only',
+                    'aspect_ratio'=>$dimension[1]?($dimension[0]/$dimension[1]):3,
+                    'role_scores'=>['vertical'=>($dimension[1]>=$dimension[0]?60:0),
+                        'grid'=>65,'gallery'=>65]];
+            }
+        }
+        $selected=[];$origins=[];$passes=[];
+        $roles=['vertical','grid','grid','grid','grid'];
+        foreach(['signed_tour_media_association','wordpress_parent_post','exact_tour_title_prefix',
+                 'staged_source_gallery_review_only','existing_verified_tour_candidate'] as $pass){
+            $added=[];
+            foreach($roles as $slot=>$role){
+                if(isset($selected[$slot]))continue;
+                $best=null;$best_score=-INF;
+                foreach($items as $entry){
+                    $id=(int)($entry['canonical_attachment_id']??0);if(!$id||!empty($entry['is_ai_generated']))continue;
+                    $evidence=(string)($entry['source_evidence']??'');
+                    if($pass!=='existing_verified_tour_candidate'&&$evidence!==$pass)continue;
+                    $o=self::origin($id);if(empty($o['verified'])||isset($origins[$o['origin_sha256']]))continue;
+                    if(self::provenance($id)['status']==='synthetic_confirmed')continue;
+                    if($role==='vertical'&&(float)($entry['aspect_ratio']??2)>1.0)continue;
+                    $score=(float)($entry['role_scores'][$role]??0);
+                    if($score>$best_score){$best=['id'=>$id,'sha'=>$o['origin_sha256'],'evidence'=>$evidence,
+                        'provenance'=>self::provenance($id)['status']];$best_score=$score;}
+                }
+                if($best){$selected[$slot]=$best;$origins[$best['sha']]=true;$added[]=$slot;}
+            }
+            $passes[]=['criterion_pass'=>$pass,'selected_hero_slots'=>$added,'remaining_slots'=>5-count($selected)];
+            if(count($selected)===5)break;
+        }
+        ksort($selected);
+        // Gallery loop: first keep every existing non-synthetic origin; then
+        // extend from the exact tour association, metadata and staged source
+        // catalog without changing or truncating actual WordPress meta.
+        $gallery_raw=(string)get_post_meta($tour,'gallery',true);
+        $bulk=self::bulk_reuse_evidence($tour,$gallery_raw);
+        $existing=self::image_ids($gallery_raw,$tour);
+        $gallery_proposal=[];$gallery_sha=[];$gallery_dhash=[];$rejected=['synthetic'=>0,'exact_duplicate'=>0,'near_duplicate'=>0,'unverified'=>0];
+        foreach(($bulk['untrusted']?[]:$existing['ids']) as $id){
+            $o=self::origin((int)$id);
+            if(empty($o['verified'])){$rejected['unverified']++;continue;}
+            if(self::provenance((int)$id)['status']==='synthetic_confirmed'){$rejected['synthetic']++;continue;}
+            if(isset($gallery_sha[$o['origin_sha256']])){$rejected['exact_duplicate']++;continue;}
+            $gallery_sha[$o['origin_sha256']]=true;
+            $gallery_proposal[]=['id'=>(int)$id,'source'=>'existing_gallery_preserved'];
+            $gallery_dhash[]=self::dhash((int)$id);
+        }
+        $gallery_passes=[];
+        foreach(['signed_tour_media_association','wordpress_parent_post','exact_tour_title_prefix',
+                 'staged_source_gallery_review_only'] as $pass){
+            $accepted=0;
+            foreach($items as $entry){
+                if(count($gallery_proposal)>=max(24,count($existing['ids'])))break;
+                if(($entry['source_evidence']??'')!==$pass)continue;
+                $id=(int)($entry['canonical_attachment_id']??0);
+                $o=self::origin($id);
+                if(empty($o['verified'])){$rejected['unverified']++;continue;}
+                if(self::provenance($id)['status']==='synthetic_confirmed'){$rejected['synthetic']++;continue;}
+                if(isset($gallery_sha[$o['origin_sha256']])){$rejected['exact_duplicate']++;continue;}
+                $dh=self::dhash($id);$too_similar=false;
+                if($dh!==null)foreach($gallery_dhash as $prev)if($prev!==null && self::distance($dh,$prev)<=3){$too_similar=true;break;}
+                if($too_similar){$rejected['near_duplicate']++;continue;}
+                $gallery_sha[$o['origin_sha256']]=true;$gallery_dhash[]=$dh;
+                $gallery_proposal[]=['id'=>$id,'source'=>$pass,'needs_editorial_review'=>true];$accepted++;
+            }
+            $gallery_passes[]=['criterion_pass'=>$pass,'new_candidates'=>$accepted,'total_proposed'=>count($gallery_proposal)];
+        }
+        return ['contract'=>self::CONTRACT,'post_id'=>$tour,'mode'=>'proposal_only_no_automatic_writes',
+            'hero_ready'=>count($selected)===5,'distinct_photo_origins'=>count($origins),'passes'=>$passes,
+            'proposed_hero_slots'=>$selected,'proposed_gallery_count'=>count($gallery_proposal),
+            'proposed_gallery_items'=>$gallery_proposal,'gallery_passes'=>$gallery_passes,
+            'gallery_rejected'=>$rejected,'gallery_existing_images_not_deleted'=>true,
+            'current_bulk_gallery_held_for_review'=>$bulk['untrusted'],
+            'bulk_gallery_evidence'=>$bulk,
+            'gallery_proposal_excludes_unreviewed_shared_set'=>$bulk['untrusted'],
+            'gallery_policy'=>'Same original photo may appear in several tours when their itineraries overlap; inside one tour, unique originals and no confirmed synthetic media',
+            'pending'=>'visual subject accuracy, licensing and source provenance editorial review'];
+    }
+    public static function state_sha(int $tour):string{
+        $keys=array_merge(['gallery'],self::hero_fields($tour),['_thumbnail_id','_mad4b_media_focal_points_v1','_mad4b_media_subject_evidence_v1']);
+        $parts=[];foreach($keys as $key){
+            $v=get_post_meta($tour,$key,true);
+            $parts[$key]=is_scalar($v)?(string)$v:wp_json_encode($v,JSON_UNESCAPED_SLASHES);
+        }
+        return hash('sha256',wp_json_encode($parts,JSON_UNESCAPED_SLASHES));
+    }
+    public static function issues($issues,$policy){
+        if(!is_array($issues))return $issues;
+        $state=get_option(self::OPTION,[]);
+        $allowed=['media_gallery_mass_reuse_requires_reselection'=>'high',
+                  'media_synthetic_source_prohibited'=>'high',
+            'media_hero_original_duplicate'=>'high','media_gallery_original_duplicate'=>'high',
+            'media_hero_slot_empty'=>'high','media_hero_source_unresolved'=>'high',
+            'media_gallery_unresolved'=>'high','media_featured_original_unresolved'=>'high',
+            'media_gallery_original_unverified'=>'high',
+            'media_gallery_missing'=>'medium','media_near_duplicate_review'=>'medium',
+            'media_hero_focal_review_pending'=>'medium',
+            'media_hero_subject_review_pending'=>'medium',
+            'media_story_coverage_gap'=>'medium',
+            'media_itinerary_geography_conflict'=>'high',
+            'media_origin_provenance_unverified'=>'low'];
+        foreach(($state['tours']??[]) as $tour=>$rows){
+            $tour=(int)$tour;
+            if(!$tour||get_post_type($tour)!=='tours-and-activities'||get_post_status($tour)!=='publish')continue;
+            $codes=[];
+            foreach($rows as $row){
+                $code=(string)($row['code']??'');
+                if(!isset($allowed[$code]))continue;
+                if(!isset($codes[$code]))$codes[$code]=0;
+                $codes[$code]++;
+            }
+            foreach($codes as $code=>$events){
+                if(in_array($code,['media_itinerary_geography_conflict','media_story_coverage_gap','media_gallery_mass_reuse_requires_reselection'],true)){
+                    $default=(string)apply_filters('wpml_default_language','en');
+                    $canonical=(int)apply_filters('wpml_object_id',$tour,'tours-and-activities',false,$default);
+                    if($canonical>0&&$canonical!==$tour)continue;
+                }
+                $severity=$allowed[$code];
+                $gaps=[];
+                if($code==='media_story_coverage_gap')foreach($rows as $r){
+                    if(($r['code']??'')===$code)$gaps[]=sanitize_text_field((string)($r['destination']??''));
+                }
+                $label=$gaps?'Tour photo coverage missing for '.implode(', ',array_slice($gaps,0,6)):
+                    'Tour media: '.str_replace('_',' ',$code).' ('.(int)$events.' occurrence(s))';
+                $issues[]=['source'=>'mad4b-tour-photo-quality','code'=>$code,
+                    'id'=>hash('sha256',get_current_blog_id().'|tours-and-activities|'.$tour.'|'.$code),
+                    'object_id'=>$tour,'post_type'=>'tours-and-activities','severity'=>$severity,
+                    'label'=>mb_substr($label,0,230),
+                    'source_evidence'=>['contract'=>self::CONTRACT,'post_id'=>$tour,
+                        'site_uuid'=>class_exists('MAD4B_SCP_Site_Profile',false)
+                            ?(string)MAD4B_SCP_Site_Profile::site_uuid():'',
+                        'state_sha256'=>self::state_sha($tour),'events_count'=>(int)$events]];
+            }
+        }
+        return $issues;
+    }
+    public static function scan_batch(int $limit=12):array {
+        global $wpdb;
+        $cursor=(int)get_option(self::CURSOR,0);
+        $limit=max(1,min(50,$limit));
+        $ids=$wpdb->get_col($wpdb->prepare("SELECT ID FROM {$wpdb->posts} WHERE post_type=%s AND post_status=%s AND ID>%d ORDER BY ID LIMIT %d",
+            'tours-and-activities','publish',$cursor,$limit));
+        $state=get_option(self::OPTION,['tours'=>[]]);$state['tours']=$state['tours']??[];
+        $run=[];
+        foreach($ids as $id){$id=(int)$id;$r=self::audit($id);$state['tours'][$id]=$r['issues']??[];
+            $run[]=['id'=>$id,'issues'=>count($state['tours'][$id])];}
+        $next=$ids?(int)end($ids):0;
+        update_option(self::CURSOR,$next,false);
+        if(!$ids){$state['last_full_scan_utc']=gmdate('c');}
+        $state['last_batch_utc']=gmdate('c');update_option(self::OPTION,$state,false);
+        return ['contract'=>self::CONTRACT,'scanned'=>count($run),'cursor'=>$next,'cycle_complete'=>!$ids,'tours'=>$run];
+    }
+    public static function scan_one(int $id):array {
+        if(get_post_type($id)!=='tours-and-activities')return self::fail('tour_missing');
+        $r=self::audit($id);
+        $state=get_option(self::OPTION,['tours'=>[]]);$state['tours']=$state['tours']??[];
+        $state['tours'][$id]=$r['issues']??[];
+        $state['last_single_utc']=gmdate('c');update_option(self::OPTION,$state,false);
+        return ['contract'=>self::CONTRACT,'post_id'=>$id,'issues'=>count($state['tours'][$id]),
+            'alerts_persisted'=>true,'status'=>'scanned'];
+    }
+    public static function scheduled_one(int $id):void {self::scan_one($id);}
+    public static function scheduled():void{
+        // Target a full published-Tour cycle within roughly a day for
+        // ordinary catalogs, while bounding CPU and DB work to 50 per run.
+        // Company Policy may lower the ceiling without forking the engine.
+        $count=(int)(wp_count_posts('tours-and-activities')->publish??0);
+        $default=max(12,min(50,(int)ceil($count/24)));
+        $requested=apply_filters('mad4b/tour_photo_quality/scan_batch_limit',$default,$count);
+        $limit=is_numeric($requested)?(int)$requested:$default;
+        self::scan_batch(max(1,min(50,$limit)));
+    }
+    public static function cli($args,$assoc):void{
+        $mode=(string)($args[0]??'audit');$id=absint($args[1]??0);
+        switch($mode){
+            case 'audit':$r=self::audit($id);break;
+            case 'plan':$r=self::selection_loop($id);break;
+            case 'scan':$r=self::scan_batch(absint($assoc['limit']??12));break;
+            case 'scan-one':$r=self::scan_one($id);break;
+            default:WP_CLI::error('Usage: wp mad4b tour-photo-quality audit|plan <post-id> OR scan [--limit=12]');
+        }
+        WP_CLI::line(wp_json_encode($r,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES));
+    }
+}
+add_filter('mad4b/content_readiness/external_issues',[MAD4B_Tour_Photo_Quality_V1::class,'issues'],26,2);
+add_action('mad4b_tour_photo_quality_scan',[MAD4B_Tour_Photo_Quality_V1::class,'scheduled']);
+add_action('mad4b_tour_photo_quality_scan_one',[MAD4B_Tour_Photo_Quality_V1::class,'scheduled_one']);
+add_action('updated_post_meta',static function($meta_id,$post_id,$key,$value){
+    if(!in_array((string)$key,['gallery','image_vertical','_thumbnail_id',
+        '_mad4b_media_focal_points_v1','_mad4b_media_subject_evidence_v1'],true)
+        && !preg_match('/^grid_image_[a-zA-Z0-9_]{1,80}$/D',(string)$key))return;
+    if(get_post_type((int)$post_id)!=='tours-and-activities')return;
+    if(!wp_next_scheduled('mad4b_tour_photo_quality_scan_one',[(int)$post_id]))
+        wp_schedule_single_event(time()+20,'mad4b_tour_photo_quality_scan_one',[(int)$post_id]);
+},30,4);
+add_action('admin_init',static function(){
+    if(!wp_next_scheduled('mad4b_tour_photo_quality_scan'))wp_schedule_event(time()+180,'hourly','mad4b_tour_photo_quality_scan');
+});
+if(defined('WP_CLI')&&WP_CLI)WP_CLI::add_command('mad4b tour-photo-quality',[MAD4B_Tour_Photo_Quality_V1::class,'cli']);

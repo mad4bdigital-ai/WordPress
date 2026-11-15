@@ -59,6 +59,17 @@
     if (frames.length < 2) return;
     var label = (button.innerText || button.textContent || '').trim() || 'View all photos';
     frames.forEach(function (frame, index) {
+      var map = window.MAD4B_TOUR_FRAME_FOCAL_V1;
+      if (map && typeof map === 'object') {
+        var bg = window.getComputedStyle(frame).backgroundImage || '';
+        var match = /^url\(["']?(.*?)["']?\)$/.exec(bg);
+        var key = match ? match[1] : '';
+        var point = key && Object.prototype.hasOwnProperty.call(map, key) ? map[key] : null;
+        if (point && typeof point.x === 'number' && typeof point.y === 'number' &&
+            point.x >= 0 && point.x <= 100 && point.y >= 0 && point.y <= 100) {
+          frame.style.backgroundPosition = point.x + '% ' + point.y + '%';
+        }
+      }
       if (frame.dataset.mad4bGalleryFrameOpen === '1') return;
       frame.dataset.mad4bGalleryFrameOpen = '1';
       frame.classList.add(ACTIVE_CLASS);
