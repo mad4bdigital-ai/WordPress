@@ -71,9 +71,20 @@ final class MAD4B_Tour_Highlights_Presentation_V1 {
         return $strings[self::lang()]??$strings['en'];
     }
 
+    /**
+     * Ignore editorial formatting-only fragments, including non-breaking
+     * spaces and Unicode format separators. Never modify stored HTML or
+     * collapse meaningful text; this is a presentation-only eligibility test.
+     */
+    private static function has_visible_text(string $html):bool {
+        $plain=html_entity_decode(wp_strip_all_tags($html),ENT_QUOTES|ENT_HTML5,'UTF-8');
+        $plain=preg_replace('/[\\p{Z}\\p{C}]+/u','',$plain);
+        return is_string($plain) && $plain!=='';
+    }
+
     private static function segment(string $text):array {
         $raw=trim($text);
-        if($raw==='')return [];
+        if(!self::has_visible_text($raw))return [];
         $title='';$body=$raw;
         if(preg_match('~^\s*(?:<span\b[^>]*>\s*)?<strong\b[^>]*>(.*?)</strong>\s*(?:</span>\s*)?[:：\-–]?\s*~isu',$raw,$match)){
             $title=trim(wp_strip_all_tags($match[1]));
@@ -96,7 +107,7 @@ final class MAD4B_Tour_Highlights_Presentation_V1 {
           && !preg_match('/[.!?؟،;,]$/u',$raw)){
             $title=wp_strip_all_tags($raw);$body='';
         }
-        if(trim(wp_strip_all_tags($body))==='' && $title==='')return [];
+        if(!self::has_visible_text($title.' '.$body))return [];
         return ['title'=>$title,'body'=>wp_kses_post(trim($body))];
     }
 
@@ -107,7 +118,7 @@ final class MAD4B_Tour_Highlights_Presentation_V1 {
     }
 
     public static function cards(string $html):array {
-        if(trim(wp_strip_all_tags($html))==='')return [];
+        if(!self::has_visible_text($html))return [];
         if(preg_match('~<(table|iframe|blockquote|video|audio|figure)\b~i',$html)){
             return [['title'=>'','body'=>wp_kses_post($html)]];
         }
@@ -121,7 +132,7 @@ final class MAD4B_Tour_Highlights_Presentation_V1 {
             $plain=html_entity_decode(preg_replace('~<br\s*/?>~i',"\n",$html),ENT_QUOTES|ENT_HTML5,'UTF-8');
             $lines=preg_split('/\R+/u',$plain,-1,PREG_SPLIT_NO_EMPTY);
             $parts=[];
-            foreach($lines as $line)if(trim($line)!=='')$parts[]=esc_html(trim($line));
+            foreach($lines as $line)if(self::has_visible_text($line))$parts[]=esc_html(trim($line));
         } else{
         $parts=[];
         if(class_exists('DOMDocument')){
@@ -140,7 +151,7 @@ final class MAD4B_Tour_Highlights_Presentation_V1 {
                         foreach($node->childNodes as $child){
                             if($child->nodeType===XML_TEXT_NODE){
                                 $text=trim((string)$child->textContent);
-                                if($text!=='')$parts[]=esc_html($text);
+                                if(self::has_visible_text($text))$parts[]=esc_html($text);
                                 continue;
                             }
                             if($child->nodeType!==XML_ELEMENT_NODE)continue;
@@ -156,11 +167,11 @@ final class MAD4B_Tour_Highlights_Presentation_V1 {
                                 $inside=self::inner_html($child);
                                 if(preg_match('~<br\s*/?>~i',$inside)){
                                     foreach(preg_split('~<br\s*/?>~i',$inside) as $part)
-                                        if(trim(wp_strip_all_tags($part))!=='')$parts[]=$part;
-                                } elseif(trim(wp_strip_all_tags($inside))!=='')$parts[]=$inside;
+                                        if(self::has_visible_text($part))$parts[]=$part;
+                                } elseif(self::has_visible_text($inside))$parts[]=$inside;
                             } elseif(in_array($tag,['div','section','article','main','ul','ol'],true)){
                                 $walk($child);
-                            } elseif($tag!=='br' && trim((string)$child->textContent)!==''){
+                            } elseif($tag!=='br' && self::has_visible_text((string)$child->textContent)){
                                 $parts[]=self::inner_html($child);
                             }
                         }
@@ -180,7 +191,8 @@ final class MAD4B_Tour_Highlights_Presentation_V1 {
             $parsed=self::segment($part);
             if($parsed)$items[]=$parsed;
         }
-        if(!$items)return [['title'=>'','body'=>wp_kses_post($html)]];
+        if(!$items)return self::has_visible_text($html)
+            ?[['title'=>'','body'=>wp_kses_post($html)]]:[];
         $normalize=static function(string $str):string{
             return trim(preg_replace('/\s+/u',' ',html_entity_decode(wp_strip_all_tags($str),ENT_QUOTES|ENT_HTML5,'UTF-8')));
         };
@@ -573,7 +585,7 @@ final class MAD4B_Tour_Highlights_Presentation_V1 {
     }
 
     public static function render($html):string {
-        if(!is_string($html)||trim(wp_strip_all_tags($html))==='')return '';
+        if(!is_string($html)||!self::has_visible_text($html))return '';
         $cards=self::cards($html);
         if(!$cards)return wp_kses_post($html);
         $places=self::verified_places();
