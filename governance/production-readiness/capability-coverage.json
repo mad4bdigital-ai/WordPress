@@ -7838,6 +7838,66 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-preactivation.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-draft-only-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party original Content Readiness capability reviewer — CI only",
+      "review_rationale": "Original PreActivation first-party module preserves immutable provider preview modes, owner approval, first quarantined digest and the automatic delivery lock. A 30-case native PHP 7.4/8.5 source fixture verifies provider/task/template parameter normalization, exact option CAS revision readback, task and Bitflows digest previews, active report flags/zero effects, original REST capability handlers and inability to mint any notification or Board task.",
+      "coverage_reuse_rationale": "Existing GOVERNANCE-01, PLATFORM-01, SECURITY-01, EXECUTION-01 independently guard original source, site identity, managed company users, schema creation and provider write admission. The reviewed service is a draft/inspection owner with no new rights to send email, mutate accounts or execute provider flows.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-team-preparation.php",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "SECURITY-01",
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-draft-only-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party original Content Readiness capability reviewer — CI only",
+      "review_rationale": "Original Team Preparation first-party source validates all nine dynamic original Workflow Groups as proposed users/roles only; its 30-case shared native PHP fixture verifies foreign staff is ineligible, roles must be managed company staff, read-only blueprint previews, exact per-company CAS option update, no user/task creation, independent staff permission and no external provider execution.",
+      "coverage_reuse_rationale": "Existing GOVERNANCE-02, OAUTH-01, SECURITY-01, ADMIN-01, BROWSER-01, SECURITY-02, EXECUTION-01 independently guard original source, site identity, managed company users, schema creation and provider write admission. The reviewed service is a draft/inspection owner with no new rights to send email, mutate accounts or execute provider flows.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-event-automation.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-draft-only-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party original Content Readiness capability reviewer — CI only",
+      "review_rationale": "Original readiness Outbox schema_prepare failed pre-patch when Site Profile::status returned WP_Error, resulting in fatal PHP instead of denial. Source now requires exact typed Site Profile authority and company admin. The 30-case PHP7.4/8.5 shared native regression confirms no schema mutation on unverified site, installed-table read-only detection, draft-only email revisions, no real sender, locked REST dispatch and no external event/flow activation.",
+      "coverage_reuse_rationale": "Existing GOVERNANCE-01, PLATFORM-01, SECURITY-01, EXECUTION-01 independently guard original source, site identity, managed company users, schema creation and provider write admission. The reviewed service is a draft/inspection owner with no new rights to send email, mutate accounts or execute provider flows.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "lifecycle": [],
@@ -19675,6 +19735,63 @@
       ],
       "owner_role": "MAD4B original first-party isolated staging fixture source reviewer — CI only",
       "review_rationale": "Original dedicated Staging TEST draft source has native private CPT and immutable site/brand/test metadata hooks. Twenty-six PHP7.4/8.5 cases validate no REST/public queries or publish, no retyping test drafts into public WordPress posts, blocked classification edits, explicit CLI-only QA admission, six isolated draft positive readbacks, complete in-memory rollback on failed metadata persistence, idempotent second run and zero mail or governed Context updates. No real WordPress post or DB mutation occurs. No independent live Production evidence or authorizing right is claimed.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-preactivation.php",
+      "source_blob_sha": "856766f24b49ec949bd51f48f4fae95719c19764",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-draft-only-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party original Content Readiness reviewer — CI only",
+      "review_rationale": "Original PreActivation first-party module preserves immutable provider preview modes, owner approval, first quarantined digest and the automatic delivery lock. A 30-case native PHP 7.4/8.5 source fixture verifies provider/task/template parameter normalization, exact option CAS revision readback, task and Bitflows digest previews, active report flags/zero effects, original REST capability handlers and inability to mint any notification or Board task. Hermetic WordPress stub functions never touch live site data; no Production release is granted.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-team-preparation.php",
+      "source_blob_sha": "9b6d9faffcd9e6a5a6bbb828686966613f81f625",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "SECURITY-01",
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-draft-only-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party original Content Readiness reviewer — CI only",
+      "review_rationale": "Original Team Preparation first-party source validates all nine dynamic original Workflow Groups as proposed users/roles only; its 30-case shared native PHP fixture verifies foreign staff is ineligible, roles must be managed company staff, read-only blueprint previews, exact per-company CAS option update, no user/task creation, independent staff permission and no external provider execution. Hermetic WordPress stub functions never touch live site data; no Production release is granted.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-event-automation.php",
+      "source_blob_sha": "5d6547301ee3917e7b1033c364c9b67e2df142b3",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-draft-only-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party original Content Readiness reviewer — CI only",
+      "review_rationale": "Original readiness Outbox schema_prepare failed pre-patch when Site Profile::status returned WP_Error, resulting in fatal PHP instead of denial. Source now requires exact typed Site Profile authority and company admin. The 30-case PHP7.4/8.5 shared native regression confirms no schema mutation on unverified site, installed-table read-only detection, draft-only email revisions, no real sender, locked REST dispatch and no external event/flow activation. Hermetic WordPress stub functions never touch live site data; no Production release is granted.",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
