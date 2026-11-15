@@ -326,7 +326,7 @@ def registered_ability_owner(ref, ability):
         if not separator or not path.endswith(".php"):
             continue
         src = git_text(ref, path)
-        if not src or not re.search(r"wp_register_ability\s*\(", src):
+        if not src:
             continue
         if re.search(r"wp_register_ability\s*\(\s*['\"]" +
                      re.escape(identifier_value) + r"['\"]", src):
@@ -336,6 +336,15 @@ def registered_ability_owner(ref, ability):
                 re.escape(identifier_value) + r"['\"]\s*;", src):
             if re.search(r"wp_register_ability\s*\(\s*(?:self|static)::" +
                          re.escape(const_name) + r"\b", src):
+                return path
+            # The first-party Adapter Base delegates literal/constant
+            # registrations through $this->add_ability(...), ultimately
+            # calling wp_register_ability($name). Only recognize a constant
+            # passed as the FIRST argument in an actual register_abilities()
+            # owner, never a catalog, metadata pointer or generic mention.
+            if (re.search(r"\bfunction\s+register_abilities\s*\(", src)
+                    and re.search(r"\$this->add_ability\s*\(\s*(?:self|static)::" +
+                                  re.escape(const_name) + r"\b", src)):
                 return path
     return None
 
@@ -363,7 +372,7 @@ def current_blob_sha(commit, path):
     return sha
 
 
-def new_source_ids(base, head, changed):
+def new_source_ids(base, head, changed, preserve_reviewed=frozenset()):
     old = catalog_snapshot(base)
     new = catalog_snapshot(head)
     added = {k: new[k] for k in new.keys() - old.keys()}
@@ -406,7 +415,12 @@ def new_source_ids(base, head, changed):
                 registered_ability_owner(head, cap)):
             removed.pop(cap)
     for cap in list(added):
-        if cap.startswith("ability:") and registered_ability_owner(base, cap):
+        # Preserve same-PR CI-only source reviews that already carry explicit
+        # tests and controls. An older registered owner can explain why a
+        # reference is NOT new, but cannot silently erase a reviewed
+        # capability entry or its independent test obligation.
+        if (cap.startswith("ability:") and cap not in preserve_reviewed
+                and registered_ability_owner(base, cap)):
             added.pop(cap)
     return old, new, added, removed
 
@@ -754,7 +768,12 @@ def evaluate(base, head):
     changed = changed_paths(base, head)
     controls = json.loads((ROOT / CONTROLS).read_text(encoding="utf-8"))
     coverage = json.loads((ROOT / COVERAGE).read_text(encoding="utf-8"))
-    old, current, added, removed = new_source_ids(base, head, changed)
+    reviewed_ids = frozenset(
+        row["id"] for row in coverage.get("reviewed_capabilities", [])
+        if isinstance(row, dict) and isinstance(row.get("id"), str)
+    )
+    old, current, added, removed = new_source_ids(
+        base, head, changed, preserve_reviewed=reviewed_ids)
     failures, reviewed, behavior = validate_coverage(
         coverage, controls, base, head, changed, added, removed)
     impact = impact_rows(changed, coverage, added, removed)

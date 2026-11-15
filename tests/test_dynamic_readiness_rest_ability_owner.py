@@ -108,6 +108,47 @@ class ReadinessSurfaceConvergence(unittest.TestCase):
         self.assertEqual(reg.cron_event_candidates(fixture),
                          {"cron:mad4b_real_cron", "cron:mad4b_oneshot"})
 
+    def test_original_dynamic_content_ability_has_base_and_head_owner(self):
+        # Dynamic Content calls inherited add_ability(self::APPLY), which
+        # actually registers through Adapter_Base::add_ability. A mere
+        # special-case in Adapter_Base is not itself a new Ability.
+        target = reg.PLUGIN + "includes/adapters/class-mad4b-scp-dynamic-content-adapter.php"
+        key = "ability:mad4b/content-apply-bundle"
+        self.assertEqual(reg.registered_ability_owner(BASE, key), target)
+        self.assertEqual(reg.registered_ability_owner("5498d89bfea0c4162aac1aa0b454fd9a251ccaab", key), target)
+        source = reg.git_text(BASE, target)
+        self.assertIn("const APPLY='mad4b/content-apply-bundle'", source)
+        self.assertRegex(source, r"\$this->add_ability\(\s*self::APPLY")
+
+    def test_adapter_constant_mention_without_registration_is_not_owner(self):
+        marker = reg.PLUGIN + "includes/adapters/fixture.php"
+        mocked = SimpleNamespace(returncode=0, stdout=(BASE + ":" + marker).encode() + b"\n")
+        fixture = "<?php class Fixture { const APPLY='mad4b/content-apply-bundle'; function register_abilities() { $help=self::APPLY; } }"
+        with mock.patch.object(reg, "git", return_value=mocked), mock.patch.object(reg, "git_text", return_value=fixture):
+            self.assertIsNone(reg.registered_ability_owner(BASE, "ability:mad4b/content-apply-bundle"))
+
+    def test_prior_reviewed_coverage_cannot_be_dropped_by_owner_discovery(self):
+        source = reg.PLUGIN + "includes/adapters/fixture.php"
+        ability = "ability:mad4b/retained-reviewed-ability"
+        with mock.patch.object(reg, "catalog_snapshot", return_value={}), \
+             mock.patch.object(reg, "php_capabilities", side_effect=[set(), {ability}]), \
+             mock.patch.object(reg, "registered_surfaces", return_value=set()), \
+             mock.patch.object(reg, "registered_ability_owner", return_value=source):
+            _, _, added, _ = reg.new_source_ids(
+                BASE, HEAD, [("M", source)], preserve_reviewed={ability})
+        self.assertIn(ability, added)
+
+    def test_unreviewed_reference_to_preexisting_owner_is_not_new_ability(self):
+        source = reg.PLUGIN + "includes/adapters/fixture.php"
+        ability = "ability:mad4b/existing-owner-reference"
+        with mock.patch.object(reg, "catalog_snapshot", return_value={}), \
+             mock.patch.object(reg, "php_capabilities", side_effect=[set(), {ability}]), \
+             mock.patch.object(reg, "registered_surfaces", return_value=set()), \
+             mock.patch.object(reg, "registered_ability_owner", return_value=source):
+            _, _, added, _ = reg.new_source_ids(
+                BASE, HEAD, [("M", source)], preserve_reviewed=set())
+        self.assertNotIn(ability, added)
+
     def test_mention_is_never_registered_owner(self):
         marker = "wp-content/plugins/mad4b-site-control-plane/includes/example.php"
         mocked = SimpleNamespace(
