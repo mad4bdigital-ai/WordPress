@@ -99,6 +99,51 @@ class DynamicManifestDiagnostics(unittest.TestCase):
         self.assertFalse(result["code_release_execution_allowed"])
         self.assertFalse(result["original_signed_job_grant_verified"])
 
+    def test_registered_legacy_plan_schema_remains_a_hold(self):
+        old={**self.dynamic,
+             "dynamic_scope_plan_matched":True,
+             "dynamic_scope_legacy_plan_schema":True,
+             "dynamic_306_digest_registered":True,
+             "dynamic_313_independent_verifier_registered":True,
+             "dynamic_313_finalizer_connected":True}
+        report=self.check(old)
+        self.assertEqual(report["state"],"HOLD_REGISTERED_LEGACY_PLAN_SCHEMA")
+        self.assertTrue(report["dynamic_scope_plan_matched"])
+        self.assertTrue(report["dynamic_306_digest_registered"])
+        self.assertTrue(report["dynamic_scope_legacy_plan_schema"])
+        self.assertTrue(report["central_313_operational_ready"])
+        self.assertIn("REGISTERED_DYNAMIC_PLAN_MISSING_REQUIRED_SNAPSHOTS",
+                      report["blockers"])
+        self.assertFalse(report["original_signed_job_grant_verified"])
+        self.assertFalse(report["original_313_release_receipt_verified"])
+        self.assertFalse(report["code_release_execution_allowed"])
+        self.assertFalse(report["production_mutated"])
+
+    def test_doctor_exposes_legacy_schema_without_reopening_execution(self):
+        row=self.check({**self.dynamic,
+            "dynamic_scope_plan_matched":True,
+            "dynamic_scope_legacy_plan_schema":True,
+            "dynamic_306_digest_registered":True,
+            "dynamic_313_independent_verifier_registered":True,
+            "dynamic_313_finalizer_connected":True})
+        fake={
+            "company":"wayfatours","environment":"production",
+            "site_uuid":self.enroll["site_uuid"],"git_commit":"a"*40,
+            "plan_sha256":"b"*64,"target_root":"/private/test",
+        }
+        with tempfile.TemporaryDirectory() as temp:
+            with patch.object(release,"confirm_plan"):
+                result=release.release_admission_doctor(
+                    fake,{},fixed_policy_path=Path(temp)/"absent",
+                    runtime_check=lambda a,b:None,
+                    original_broker_status=row
+                )
+        self.assertEqual(result["state"],"HOLD_REGISTERED_LEGACY_PLAN_SCHEMA")
+        self.assertTrue(result["git_plan_verified"])
+        self.assertTrue(result["dynamic_scope_legacy_plan_schema"])
+        self.assertFalse(result["production_execution_authorized"])
+        self.assertFalse(result["production_mutated"])
+
     def test_doctor_surfaces_new_status_without_authorizing(self):
         row=self.check(self.dynamic)
         with tempfile.TemporaryDirectory() as temp:

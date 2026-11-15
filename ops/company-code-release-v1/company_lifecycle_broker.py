@@ -145,6 +145,7 @@ def dynamic_status(company: str, environment: str,
         "dynamic_313_independent_verifier_registered": False,
         "dynamic_313_finalizer_connected": False,
         "dynamic_scope_plan_matched": False,
+        "dynamic_scope_legacy_plan_schema": False,
         "dynamic_provider_manifest_registered": False,
         "central_313_independent_verifier_registered": False,
         "central_313_finalizer_configured": False,
@@ -188,6 +189,19 @@ def dynamic_status(company: str, environment: str,
                    entry["plan"]["plan_sha256"] == plan_sha256)}
         result["dynamic_registry_enrolled"] = True
         result["dynamic_scope_plan_matched"] = bool(scoped)
+        # A verified Registry/306 digest proves enrollment, not current
+        # capability ownership. Older immutable plans can be missing the
+        # owner/dependency/tenant/acceptance snapshots now required by
+        # Original Code Release. Never re-sign or backfill these snapshots.
+        required_snapshots = (
+            "owner_reconciliation", "dependency_snapshot",
+            "tenant_plugin_profiles", "capability_acceptance"
+        )
+        result["dynamic_scope_legacy_plan_schema"] = bool(scoped) and any(
+            not all(isinstance(entry["plan"].get(key), dict)
+                    for key in required_snapshots)
+            for entry in scoped.values()
+        )
         if scoped:
             spec = importlib.util.spec_from_file_location(
                 "_mad4b_live_original_306_worker",
@@ -291,11 +305,16 @@ def reconcile(
         dynamic.get("dynamic_provider_manifest_registered") is True)
     scoped_plan_registered = (
         dynamic.get("dynamic_scope_plan_matched") is True)
+    legacy_plan_schema = (
+        scoped_plan_registered and
+        dynamic.get("dynamic_scope_legacy_plan_schema") is True)
     # The dynamic provider is enrolled through the Original worker registry,
     # not the legacy Original 313 static --operation choices or site WP ability.
     dynamic_route_ready = dynamic_306 and dynamic_313_proof and dynamic_313_finish
     release_route_ready = (supported and dispatch_ready) or dynamic_route_ready
     blockers = []
+    if legacy_plan_schema:
+        blockers.append("REGISTERED_DYNAMIC_PLAN_MISSING_REQUIRED_SNAPSHOTS")
     if not valid305:
         blockers.append("ORIGINAL_305_COMPANY_SCOPE_NOT_VERIFIED")
     if not valid312:
@@ -335,6 +354,7 @@ def reconcile(
             bool(dynamic.get("dynamic_registry_enrolled") is True),
         "dynamic_provider_manifest_registered": bool(provider_registered),
         "dynamic_scope_plan_matched": bool(scoped_plan_registered),
+        "dynamic_scope_legacy_plan_schema": bool(legacy_plan_schema),
         "dynamic_306_digest_registered": bool(dynamic_306),
         "dynamic_313_independent_verifier_registered": bool(dynamic_313_proof),
         "dynamic_313_finalizer_connected": bool(dynamic_313_finish),
@@ -353,6 +373,7 @@ def reconcile(
         "production_mutated": False,
         "state": (
             "HOLD_ORIGINAL_305_OR_312" if not (valid305 and valid312)
+            else "HOLD_REGISTERED_LEGACY_PLAN_SCHEMA" if legacy_plan_schema
             else "HOLD_DYNAMIC_ORIGINAL_313_VERIFIER"
             if dynamic_306 and not dynamic_313_proof
             else "HOLD_DYNAMIC_ORIGINAL_313_FINALIZER"

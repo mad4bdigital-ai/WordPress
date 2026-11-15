@@ -1592,6 +1592,7 @@ def release_admission_doctor(
         "host_policy_installed_and_pinned": False,
         "dynamic_provider_manifest_registered": False,
         "dynamic_scope_plan_matched": False,
+        "dynamic_scope_legacy_plan_schema": False,
         "central_313_operational_ready": False,
         "broker_dispatch_registration": "not_independently_verified",
         "broker_signed_grant_verified": False,
@@ -1651,6 +1652,8 @@ def release_admission_doctor(
             row.get("dynamic_provider_manifest_registered") is True)
         state["dynamic_scope_plan_matched"] = (
             row.get("dynamic_scope_plan_matched") is True)
+        state["dynamic_scope_legacy_plan_schema"] = (
+            row.get("dynamic_scope_legacy_plan_schema") is True)
         state["central_313_operational_ready"] = (
             row.get("central_313_operational_ready") is True)
         state["dynamic_306_digest_registered"] = (
@@ -1670,7 +1673,9 @@ def release_admission_doctor(
                 state["git_plan_verified"] and
                 state["original_runtime_binding_verified"]):
             state["state"] = (
-                "HOLD_EXACT_DYNAMIC_PLAN_ENROLLMENT"
+                "HOLD_REGISTERED_LEGACY_PLAN_SCHEMA"
+                if state["dynamic_scope_legacy_plan_schema"]
+                else "HOLD_EXACT_DYNAMIC_PLAN_ENROLLMENT"
                 if (state["dynamic_provider_manifest_registered"] and
                     not state["dynamic_scope_plan_matched"])
                 else "HOLD_DYNAMIC_ORIGINAL_313_FINALIZER"
