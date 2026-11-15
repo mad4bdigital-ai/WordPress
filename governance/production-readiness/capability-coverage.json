@@ -7565,6 +7565,26 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-developer-authority-policy-v2.php",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/developer-policy-v2-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B original Developer Authority first-party capability reviewer — CI only",
+      "review_rationale": "Original Developer Authority V2 projection is only a compatibility view of the exact V1 signed plan. 21 source-backed PHP7.4/8.5 cases verify immutable historical production_allowed=false, canonical SHA, Site UUID and Profile digest/revision, environment, exact registered ability and independent current Policy digest. Forged admissions, authorization issuance, missing operation and changed V1 plan are denied. A successful view still creates no grant, approval, mutation or Production release.",
+      "coverage_reuse_rationale": "Existing GOVERNANCE-02, OAUTH-01, TICKETS-01, SECURITY-01, EXECUTION-01 controls bind exact signed V1 provenance, company identity and current operation Policy; read-only projections cannot mint a Grant or authorize a release.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "lifecycle": [],
