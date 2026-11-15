@@ -50,9 +50,12 @@ final class MAD4B_Licensed_Media_Source_V1 {
     ||!preg_match('~^https://commons\.wikimedia\.org/wiki/File:[^?#]{4,220}$~D',(string)$asset['source_url'])
     ||wp_parse_url((string)$asset['license_url'],PHP_URL_HOST)!=='creativecommons.org')
    return self::err('licensed_source_publisher_invalid');
-  if(!preg_match('~^https://creativecommons\.org/licenses/by/(3\.0|4\.0)/$~D',(string)$asset['license_url']))
+  // Wikimedia may return license URLs with or without a trailing slash.
+  // Both spellings represent the same canonical CC BY legal code.
+  $licenseUrl=rtrim((string)$asset['license_url'],'/').'/';
+  if(!preg_match('~^https://creativecommons\.org/licenses/by/(3\.0|4\.0)/$~D',$licenseUrl))
    return self::err('license_scheme_not_reviewed');
-  $license='CC BY '.(str_contains($asset['license_url'],'/3.0/')?'3.0':'4.0');
+  $license='CC BY '.(str_contains($licenseUrl,'/3.0/')?'3.0':'4.0');
   if(($asset['license_label']??'')!==$license
     ||!is_string($asset['author'])||mb_strlen(trim($asset['author']))<5
     ||mb_strlen($asset['author'])>160

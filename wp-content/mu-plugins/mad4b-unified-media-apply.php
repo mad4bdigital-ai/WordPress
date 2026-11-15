@@ -25,7 +25,14 @@ final class MAD4B_Universal_Media_Apply_V1 {
    $sourcePolicy=class_exists('MAD4B_SCP_Context_Authority',false)
      ?MAD4B_SCP_Context_Authority::ai_review_policy_status():[];
    $sourceWriteAllowed=!empty($sourceSite['write_enabled'])
-     &&($sourcePolicy['production_authorized']??null)===true;
+     &&!empty($sourceSite['authority_ready'])
+     &&!empty($sourceSite['origin_match'])
+     &&!empty($sourceSite['environment_match'])
+     &&!empty($sourceSite['deployment_binding_match'])
+     &&!empty($sourcePolicy['ready'])
+     &&($sourcePolicy['mode']??'')==='ai_only'
+     &&class_exists('MAD4B_SCP_Host_Agent_Bridge',false)
+     &&MAD4B_SCP_Host_Agent_Bridge::binding_ready();
    $builtins['licensed_tour_source_image']=[
     'target_kind'=>'post','types'=>['tours-and-activities'],
     'storage'=>'media_library_and_native_credits',
@@ -151,10 +158,13 @@ final class MAD4B_Universal_Media_Apply_V1 {
  public static function signed_media_source_reviewer():array|WP_Error {
   $actor=self::signed_ai();if(is_wp_error($actor))return $actor;
   $site=class_exists('MAD4B_SCP_Site_Profile',false)?MAD4B_SCP_Site_Profile::status():[];
-  $review=class_exists('MAD4B_SCP_Context_Authority',false)
-    ?MAD4B_SCP_Context_Authority::ai_review_policy_status():[];
-  if(empty($site['write_enabled'])||!is_array($review)
-    ||($review['production_authorized']??null)!==true)
+  // ai_review_policy_status.production_authorized is intentionally a
+  // *non-authorizing* diagnostic (always false). Publication authority
+  // comes from the exact Site Profile governed-write confirmation; the
+  // signed Agent and original grant are independently checked by signed_ai.
+  if(empty($site['write_enabled'])||empty($site['authority_ready'])
+     ||empty($site['origin_match'])||empty($site['environment_match'])
+     ||empty($site['deployment_binding_match']))
     return self::err('mad4b_media_source_publishing_not_authorized_by_effective_policy');
   return $actor;
  }

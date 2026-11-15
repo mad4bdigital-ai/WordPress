@@ -12,7 +12,10 @@ def test_exact_original_router_reuse():
     assert "private static function signed_ai()" in ROUTER
     assert "self::signed_ai()" in ROUTER
     assert "empty($site['write_enabled'])" in ROUTER
-    assert "($review['production_authorized']??null)!==true" in ROUTER
+    assert "($review['production_authorized']??null)!==true" not in ROUTER
+    assert "!empty($sourceSite['authority_ready'])" in ROUTER
+    assert "!empty($sourcePolicy['ready'])" in ROUTER
+    assert "MAD4B_SCP_Host_Agent_Bridge::binding_ready()" in ROUTER
     assert "signed_media_source_reviewer" in ROUTER
 
 def test_bounded_immutable_source_cas():
@@ -55,6 +58,7 @@ def test_source_license_and_no_fake_ship_assignment():
     assert "wp_parse_url((string)$asset['source_url'],PHP_URL_HOST)!=='commons.wikimedia.org'" in SOURCE
     assert "wp_parse_url((string)$asset['license_url'],PHP_URL_HOST)!=='creativecommons.org'" in SOURCE
     assert "illustrative_nile_cruise_vessel_not_guaranteed" in SOURCE
+    assert "rtrim((string)$asset['license_url'],'/').'/'" in SOURCE
     assert "no_guaranteed_vessel" not in SOURCE or "illustrative_nile_cruise" in SOURCE
     assert "image_imported'=>false" in SOURCE
     assert "public static function run(array $payload,array $target,string $action)" in SOURCE
