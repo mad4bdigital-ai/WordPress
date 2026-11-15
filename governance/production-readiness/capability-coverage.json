@@ -6626,6 +6626,78 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Original Provider/MCP/Execution governance and ContentJob provider authorization remain the only Firecrawl write and remote transport admission; this read-only status does not issue a grant.",
       "review_rationale": "Original PHP 7.4/8.5 provider routing registration and public/private transport methods executed with synthetic WordPress HTTP adapters. Source denies arbitrary cloud URL, altered origin, invalid mode, invalid crawl ID, incomplete authenticated requests, userinfo-bearing cross-site provider cursor, URL fragments and redirects. It selects safe fixed HTTPS and never authorizes execution or fallback; no actual provider call or credentials emitted. A real compatibility defect (PHP 8-only str_starts_with) was reproduced on PHP 7.4 and eliminated."
+    },
+    {
+      "id": "ability:mad4b/guided-continuation-run",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/guided-continuation-write-surface-denial-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party guided provider read loop and original runtime Ability source reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing READ/Provider/MCP/Execution and Platform controls own actual referenced runtime certifications and all write lanes. This guided source only performs narrow bounded read chaining.",
+      "review_rationale": "Original Guided Continuation class executed in PHP7.4 and PHP8.5 using fake native WP abilities, with no actual execution. Source registers a single read-only WordPress Ability and requires Policy.can_read, exact bounded original digest and max 3 steps, respects original SAFE_READS and no-input identity; it cannot replay write, grant or leak raw provider results. Found a mismatch where a whitelisted Ability claiming mcp.surface=write and annotations.readonly=true was auto-executed: changed code to fail closed on explicit write or destructive Surface, retaining current first-party legacy status Abilities that omit mcp.surface."
+    },
+    {
+      "id": "ability:mad4b/runtime-convergence-status",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/guided-continuation-write-surface-denial-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party guided provider read loop and original runtime Ability source reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing READ/Provider/MCP/Execution and Platform controls own actual referenced runtime certifications and all write lanes. This guided source only performs narrow bounded read chaining.",
+      "review_rationale": "Source references the original separately registered mad4b/runtime-convergence-status Ability as a SAFE_READS next step, but does not register, grant or re-certify that Ability. Source-only read chain explicitly blocks abilities marking a write surface even when readonly annotation is falsely true; original governance and owner of the real Ability remain separate."
+    },
+    {
+      "id": "ability:mad4b/skills-runtime-certification",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/guided-continuation-write-surface-denial-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party guided provider read loop and original runtime Ability source reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing READ/Provider/MCP/Execution and Platform controls own actual referenced runtime certifications and all write lanes. This guided source only performs narrow bounded read chaining.",
+      "review_rationale": "Source references the original separately registered mad4b/skills-runtime-certification Ability as a SAFE_READS next step, but does not register, grant or re-certify that Ability. Source-only read chain explicitly blocks abilities marking a write surface even when readonly annotation is falsely true; original governance and owner of the real Ability remain separate."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-guided-continuation.php",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/guided-continuation-write-surface-denial-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party guided provider read loop and original runtime Ability source reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing READ/Provider/MCP/Execution and Platform controls own actual referenced runtime certifications and all write lanes. This guided source only performs narrow bounded read chaining.",
+      "review_rationale": "Original Guided Continuation class executed in PHP7.4 and PHP8.5 using fake native WP abilities, with no actual execution. Source registers a single read-only WordPress Ability and requires Policy.can_read, exact bounded original digest and max 3 steps, respects original SAFE_READS and no-input identity; it cannot replay write, grant or leak raw provider results. Found a mismatch where a whitelisted Ability claiming mcp.surface=write and annotations.readonly=true was auto-executed: changed code to fail closed on explicit write or destructive Surface, retaining current first-party legacy status Abilities that omit mcp.surface."
     }
   ],
   "lifecycle": [],
@@ -15955,6 +16027,25 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing Platform/Governance and source-bound Provider/MCP contracts remain authoritative; same native original source tested, not a new provider executor.",
       "review_rationale": "Source compared with base and directly exercised: exact Firecrawl cloud HTTPS endpoint, no after-dispatch fallback, authenticated nonredirected scrape, bounded crawl IDs, complete rejection of malicious/foreign next URLs. Replaced PHP8-only string prefix calls with byte-exact strpos for PHP7.4 support, and denied userinfo in provider-returned continuation URLs. Original pre-fix class crashed on PHP7.4; fixed version passes on both PHP7.4 and 8.5. Real network/private topology and original granted provider execution still need independent evidence."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-guided-continuation.php",
+      "source_blob_sha": "d1c9872cc9cb01a2f2eeda2f9e18f2f2679d9bd2",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/guided-continuation-write-surface-denial-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party Guided Continuation source and no-mutation callback reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing original platform/MCP/READ controls and static strongly-bounded safe read identities remain. Source class is amended only with strict effect metadata check.",
+      "review_rationale": "Source original guided run was executed in PHP7.4/8.5 before and after fix. Before fix a whitelisted native Ability with explicit mcp.surface=write but stale readonly=true actually executed; the exact verified current source blocks that mismatch and destructive annotations before execute, preserves a genuine read and the live legacy read Ability without Surface (confirmed on both sites), denies missing authority, foreign next ability, wrong input digest, required params and loops. No registry approvals, external effects, or Production ownership changes."
     }
   ],
   "code_change_rules": {
