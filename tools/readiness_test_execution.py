@@ -87,6 +87,8 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     # Exact original WordPress evidence-only source regression suites.
     "tests/external-media-ingest-original-hermetic.php",
     "tests/cli-readiness-original-hermetic.php",
+    # Native source grant PLAN only: no REST owner promotion or grant mutation.
+    "tests/agent-grant-plan-original-hermetic.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/runtime-obstacle-resolution-runtime.php",
 
     "wp-content/plugins/mad4b-site-control-plane/tests/provider-compatibility-engine-contract.php",
