@@ -76,6 +76,41 @@ def test_related_media_never_bypasses_license():
     assert "wp_insert_post" not in p and "update_post_meta" not in p
 
 
+
+
+def test_rate_options_are_resolved_from_native_tour_rate_contract():
+    p = PROVIDER.read_text()
+    assert "shared_product_assignment_legacy_links($tour)" in p
+    assert "shared_product_assignment_tour_siblings($tour)" in p
+    assert "get_post_meta($rate,'related_tour_id'" in p
+    assert "get_post_meta($rate,'has_properties'" in p
+    assert "get_post_meta($rate,'related_package_term_id'" in p
+    assert "'source_rate_ids'=>array_keys($rates)" in p
+    assert "'rate_options'=>$rateOptions" in p
+    assert "'stop_sale'=>" in p
+    assert "'multi_stage'=>" in p
+    assert "'property_role'=>$propertyRole" in p
+    assert "if($pt==='tours-and-activities'||$pt==='properties')continue" in p
+    assert "available_accommodation_option_not_guaranteed_vessel" in p
+
+
+def test_unreviewed_rate_images_and_held_origins_fail_closed():
+    p = PROVIDER.read_text()
+    e = ENGINE.read_text()
+    assert "coverage_property_subject_hint($id,(int)$aid)" in p
+    assert "property_media_subject_unverified" in p
+    assert "'options_missing_media'" in p
+    assert "mad4b/tour_photo_quality/property_photo_match" in p
+    assert "mad4b_media_editorial_holds_v1" in e
+    assert "origin_sha256" in e and "contact_sheet_sha256" in e
+    assert "hero_original_editorial_hold" in e
+    assert "gallery_original_editorial_hold" in e
+    assert "media_visual_editorial_hold" in e
+    assert "media_rate_property_photo_coverage_gap" in e
+    assert "not_a_synthetic_or_rights_determination" in e
+    assert "update_post_meta" not in p
+
+
 if __name__ == "__main__":
     for name, function in sorted(globals().copy().items()):
         if name.startswith('test_') and callable(function):

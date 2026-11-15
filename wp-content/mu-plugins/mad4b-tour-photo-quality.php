@@ -19,6 +19,25 @@ final class MAD4B_Tour_Photo_Quality_V1 {
         if(!class_exists('MAD4B_Media_Visual_Lineage_V1',false))return self::$origins[$id]=['verified'=>false,'reason'=>'lineage_module_missing'];
         return self::$origins[$id]=MAD4B_Media_Visual_Lineage_V1::origin($id);
     }
+    /** Image-identity review holds are not claims of AI generation or rights.
+     * A photo may be reconsidered only through a new evidence-bound review.
+     */
+    public static function editorial_hold(int $id):array {
+        $o=self::origin($id);
+        $sha=(string)($o['origin_sha256']??'');
+        if(empty($o['verified'])||!preg_match('/^[a-f0-9]{64}$/D',$sha))
+            return ['held'=>false,'reason'=>'original_identity_unverified'];
+        $stored=get_option('mad4b_media_editorial_holds_v1',[]);
+        $row=is_array($stored)?($stored[$sha]??null):null;
+        $valid=is_array($row)&&($row['contract']??'')==='mad4b.media-editorial-hold.v1'
+            &&($row['origin_sha256']??'')===$sha
+            &&($row['status']??'')==='hold_for_visual_review'
+            &&preg_match('/^[a-f0-9]{64}$/D',(string)($row['contact_sheet_sha256']??''))
+            &&is_string($row['reason']??null)&&mb_strlen($row['reason'])>=20;
+        return ['held'=>$valid,'origin_sha256'=>$sha,
+            'reason'=>$valid?$row['reason']:'not_held',
+            'not_a_synthetic_or_rights_determination'=>true];
+    }
     /** Only explicit positive origin evidence proves synthetic media. Missing labels are UNKNOWN, never "real" or "AI". */
     public static function provenance(int $id):array{
         $o=self::origin($id);
@@ -99,6 +118,7 @@ final class MAD4B_Tour_Photo_Quality_V1 {
             $o=self::origin($id);if(empty($o['verified']))return self::fail('hero_origin_unverified');
             $sha=$o['origin_sha256'];if(isset($seen[$sha]))return self::fail('hero_original_repeated');
             if(self::provenance($id)['status']==='synthetic_confirmed')return self::fail('hero_ai_generated_prohibited');
+            if(self::editorial_hold($id)['held'])return self::fail('hero_original_editorial_hold');
             $seen[$sha]=true;$hero_origins[]=$sha;
         }
         $seen=[];
@@ -107,6 +127,7 @@ final class MAD4B_Tour_Photo_Quality_V1 {
             $o=self::origin($id);if(empty($o['verified']))return self::fail('gallery_origin_unverified');
             $sha=$o['origin_sha256'];if(isset($seen[$sha]))return self::fail('gallery_original_repeated');
             if(self::provenance($id)['status']==='synthetic_confirmed')return self::fail('gallery_ai_generated_prohibited');
+            if(self::editorial_hold($id)['held'])return self::fail('gallery_original_editorial_hold');
             $seen[$sha]=true;$gallery_origins[]=$sha;
         }
         return ['ok'=>true,'hero_origins'=>count($hero_origins),'gallery_origins'=>count($gallery_origins),
@@ -228,6 +249,10 @@ final class MAD4B_Tour_Photo_Quality_V1 {
                     'severity'=>'medium','field'=>$field,
                     'width'=>(int)$size['width'],'height'=>(int)$size['height'],
                     'visual_subject_not_verified_by_dimensions'=>true];
+            if(self::editorial_hold($id)['held'])
+                $issues[]=['code'=>'media_visual_editorial_hold','severity'=>'medium',
+                    'field'=>$field,'attachment_id'=>$id,
+                    'reason'=>'source_bound_review_requires_a_new_editorial_decision'];
             $hero[]=['field'=>$field,'id'=>$id,'sha'=>$sha,'dhash'=>self::dhash($id)];
         }
         // Title focus is a separate quality dimension from shared destinations.
@@ -244,6 +269,20 @@ final class MAD4B_Tour_Photo_Quality_V1 {
                     'focus_slots'=>$focused,'minimum_focus_slots'=>$headline['min_hero'],
                     'minimum_early_focus'=>1,
                     'filename_cue_is_not_visual_or_rights_certification'=>true];
+        }
+        // Accommodation photography must follow published Tour Rates, not
+        // an independently guessed Tour -> Property relation.
+        if(($headline['profile']??'none')!=='none'){
+            $rateContext=self::coverage_context($tour);
+            $stay=self::coverage_rate_property_sources($tour,$rateContext);
+            $receipt=$stay['report']??[];
+            $missing=(array)($receipt['options_missing_media']??[]);
+            if($missing)$issues[]=['code'=>'media_rate_property_photo_coverage_gap',
+                'severity'=>'medium','rate_property_options'=>(int)($receipt['rate_property_options']??0),
+                'properties_without_subject_supported_images'=>count($missing),
+                'property_ids'=>array_slice(array_map('intval',array_column($missing,'property_id')),0,20),
+                'source'=>'native_tour_rate_accommodation_assignment',
+                'property_is_option_not_guaranteed_vessel'=>true];
         }
         // The original Tour association can prove which files were reviewed
         // together, but its generic contact-sheet note is not per-image proof.
@@ -328,6 +367,10 @@ final class MAD4B_Tour_Photo_Quality_V1 {
             else $gseen[$sha]=$n;
             $p=self::provenance((int)$id);
             if($p['status']==='synthetic_confirmed')$issues[]=['code'=>'media_synthetic_source_prohibited','severity'=>'high','gallery_index'=>$n,'evidence'=>$p['evidence']];
+            if(self::editorial_hold((int)$id)['held'])
+                $issues[]=['code'=>'media_visual_editorial_hold','severity'=>'medium',
+                    'gallery_index'=>$n,'attachment_id'=>(int)$id,
+                    'reason'=>'source_bound_review_requires_a_new_editorial_decision'];
             $grows[]=['index'=>$n,'sha'=>$sha,'dhash'=>self::dhash((int)$id)];
         }
         // Similar composition is a REVIEW signal, never automatic evidence of duplication or AI.
@@ -540,6 +583,7 @@ final class MAD4B_Tour_Photo_Quality_V1 {
                     if($pass!=='existing_verified_tour_candidate'&&$evidence!==$pass)continue;
                     $o=self::origin($id);if(empty($o['verified'])||isset($origins[$o['origin_sha256']]))continue;
                     if(self::provenance($id)['status']==='synthetic_confirmed')continue;
+                    if(self::editorial_hold($id)['held'])continue;
                     if($role==='vertical'&&(float)($entry['aspect_ratio']??2)>1.0)continue;
                     $focus=self::headline_photo_hint($id,$headline);
                     if($pass==='company_local_shared_subject_pool_review_only'&&!$focus)continue;
@@ -577,6 +621,9 @@ final class MAD4B_Tour_Photo_Quality_V1 {
         $existing=self::image_ids($gallery_raw,$tour);
         $gallery_proposal=[];$gallery_sha=[];$gallery_dhash=[];$rejected=['synthetic'=>0,'exact_duplicate'=>0,'near_duplicate'=>0,'unverified'=>0,'subject_unsubstantiated'=>0];
         foreach(($bulk['untrusted']?[]:$existing['ids']) as $id){
+            if(self::editorial_hold((int)$id)['held']){
+                $rejected['editorial_hold']=($rejected['editorial_hold']??0)+1;continue;
+            }
             $o=self::origin((int)$id);
             if(empty($o['verified'])){$rejected['unverified']++;continue;}
             if(self::provenance((int)$id)['status']==='synthetic_confirmed'){$rejected['synthetic']++;continue;}
@@ -611,6 +658,7 @@ final class MAD4B_Tour_Photo_Quality_V1 {
                 $o=self::origin($id);
                 if(empty($o['verified'])){$rejected['unverified']++;continue;}
                 if(self::provenance($id)['status']==='synthetic_confirmed'){$rejected['synthetic']++;continue;}
+                if(self::editorial_hold($id)['held']){$rejected['editorial_hold']=($rejected['editorial_hold']??0)+1;continue;}
                 if(isset($gallery_sha[$o['origin_sha256']])){$rejected['exact_duplicate']++;continue;}
                 $dh=self::dhash($id);$too_similar=false;
                 if($dh!==null)foreach($gallery_dhash as $prev)if($prev!==null && self::distance($dh,$prev)<=3){$too_similar=true;break;}
@@ -664,6 +712,8 @@ final class MAD4B_Tour_Photo_Quality_V1 {
             'media_gallery_missing'=>'medium','media_near_duplicate_review'=>'medium',
             'media_hero_focal_review_pending'=>'medium',
             'media_hero_subject_review_pending'=>'medium',
+            'media_visual_editorial_hold'=>'medium',
+            'media_rate_property_photo_coverage_gap'=>'medium',
             'media_story_coverage_gap'=>'medium',
             'media_itinerary_geography_conflict'=>'high',
             'media_origin_provenance_unverified'=>'low'];
