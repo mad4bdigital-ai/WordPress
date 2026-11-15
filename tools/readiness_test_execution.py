@@ -91,6 +91,8 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "tests/agent-grant-plan-original-hermetic.php",
     # Original native pending-ticket gate, no creation of a real approval ticket.
     "tests/staging-write-planning-guard-original-hermetic.php",
+    # Hermetic native provider/add-on source fixture.
+    "wp-content/plugins/mad4b-site-control-plane/tests/wordpress-addon-execution-guard-contract.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/runtime-obstacle-resolution-runtime.php",
 
     "wp-content/plugins/mad4b-site-control-plane/tests/provider-compatibility-engine-contract.php",
