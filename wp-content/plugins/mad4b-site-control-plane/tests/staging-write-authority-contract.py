@@ -747,7 +747,11 @@ if scope_body.find("if ( 'mad4b/write-execute' === (string) $ability_name )") > 
 # compatible with both its declared admin registration and resolved write grant.
 transport_resolver = transport.split("public static function resolve_server_for_ability", 1)[1].split("public static function current_server_id", 1)[0]
 for marker in [
-    "'mad4b-chatgpt' === $current && MAD4B_SCP_Servers::is_external_write_candidate( $ability_name )",
+    # The source now first validates the original candidate registry response
+    # is a *boolean*, then requires exact true before selecting the write lane.
+    "$external_write_candidate = MAD4B_SCP_Servers::is_external_write_candidate( $ability_name );",
+    "if ( ! is_bool( $external_write_candidate ) )",
+    "'mad4b-chatgpt' === $current && true === $external_write_candidate",
     "return 'mad4b-write';",
 ]:
     if marker not in transport_resolver:

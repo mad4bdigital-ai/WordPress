@@ -23,7 +23,11 @@ required_transport = [
     "MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $ability_name )",
     "hash_equals( hash( 'sha256', $encoded_schema ), $expected_schema_sha256 )",
     "$nested_dispatch = self::write_dispatch_target_matches( $ability_name );",
-    "! $nested_dispatch && ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', $ability_name )",
+    # The stricter original mount gate rejects WP_Error and truthy values,
+    # rather than trusting boolean coercion from the provider registry.
+    "! $nested_dispatch && true !== MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', $ability_name )",
+    "if ( ! is_bool( $external_write_candidate ) )",
+    "'mad4b-chatgpt' === $current && true === $external_write_candidate",
     "} finally {",
     "'write_dispatch_target_bound' => '' !== self::$write_dispatch_target",
 ]
