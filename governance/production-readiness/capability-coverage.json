@@ -5883,6 +5883,117 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing governance/platform/security and OAuth/ticket controls govern first-party operation identity, with all runtime authorization remaining in original executor.",
       "review_rationale": "Original governed Operator Developer grants require exact registered plan/apply, site identity, no generic mutation dispatch, independent owner step-up, current runtime policy and an exceptional security review. Exact original PHP 7.4/8.5 operation catalog parser and policy resolver run against original checked-in JSON copied to isolated /tmp. Eleven mutations of the copied catalog test boundary rejection for read-only to write escalation, mutation dispatch, unsigned source, unsafe stages, owner-bypass, Production policy and duplicate operation. No actual Owner approval, host access or Operator grant is issued."
+    },
+    {
+      "id": "ability:mad4b/company-code-release-dispatch",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "tests/native-release-and-staging-canary-denial-hermetic.php"
+      ],
+      "owner_role": "MAD4B native release-readiness or Staging canary non-authorizing source reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original governance/Authority and security control owners remain responsible for any host code release, separate Operator dispatch, or protected Staging writes. Source-only read admission is not a new grant.",
+      "review_rationale": "Exact mad4b/company-code-release-dispatch is a reference in a read-only Readiness status, NOT an Ability registered by this file and not present in either live WordPress installation. Original source PHP 7.4/8.5 fixture demonstrates that merely toggling simulated dispatch registration never sets host/source/Original313 proof or production_release_admitted. Coverage here only certifies that missing dispatcher is correctly reported and does not authorize deployment; a real dispatch must receive separate source/test/release evidence."
+    },
+    {
+      "id": "ability:mad4b/company-code-release-readiness",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "tests/native-release-and-staging-canary-denial-hermetic.php"
+      ],
+      "owner_role": "MAD4B native release-readiness or Staging canary non-authorizing source reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original governance/Authority and security control owners remain responsible for any host code release, separate Operator dispatch, or protected Staging writes. Source-only read admission is not a new grant.",
+      "review_rationale": "Original first-party release Readiness file was executed in PHP 7.4/8.5. It registers exactly one private read-only Ability with closed empty input and a default deny on host binding, broker grant, Original313 and Production release admission, even if a dispatcher exists. Neither tool name nor presence creates a Host CLI permission or signed release."
+    },
+    {
+      "id": "ability:mad4b/faore-staging-canary-plan",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/native-release-and-staging-canary-denial-hermetic.php"
+      ],
+      "owner_role": "MAD4B native release-readiness or Staging canary non-authorizing source reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original governance/Authority and security control owners remain responsible for any host code release, separate Operator dispatch, or protected Staging writes. Source-only read admission is not a new grant.",
+      "review_rationale": "Original FAORE Staging canary PHP source was executed in PHP 7.4/8.5. It registers two private read-only plan/verify Abilities and rejects Production, invalid correlation/key shapes and a missing Site Profile. It reports option presence including existing empty/false values with a fingerprint, but never registers mutation, creates grants, writes options or asserts rollback."
+    },
+    {
+      "id": "ability:mad4b/faore-staging-canary-verify",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/native-release-and-staging-canary-denial-hermetic.php"
+      ],
+      "owner_role": "MAD4B native release-readiness or Staging canary non-authorizing source reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original governance/Authority and security control owners remain responsible for any host code release, separate Operator dispatch, or protected Staging writes. Source-only read admission is not a new grant.",
+      "review_rationale": "Original FAORE Staging canary PHP source was executed in PHP 7.4/8.5. It registers two private read-only plan/verify Abilities and rejects Production, invalid correlation/key shapes and a missing Site Profile. It reports option presence including existing empty/false values with a fingerprint, but never registers mutation, creates grants, writes options or asserts rollback."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-code-release-readiness.php",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "tests/native-release-and-staging-canary-denial-hermetic.php"
+      ],
+      "owner_role": "MAD4B native release-readiness or Staging canary non-authorizing source reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original governance/Authority and security control owners remain responsible for any host code release, separate Operator dispatch, or protected Staging writes. Source-only read admission is not a new grant.",
+      "review_rationale": "Original first-party release Readiness file was executed in PHP 7.4/8.5. It registers exactly one private read-only Ability with closed empty input and a default deny on host binding, broker grant, Original313 and Production release admission, even if a dispatcher exists. Neither tool name nor presence creates a Host CLI permission or signed release."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-faore-staging-canary-inspection.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/native-release-and-staging-canary-denial-hermetic.php"
+      ],
+      "owner_role": "MAD4B native release-readiness or Staging canary non-authorizing source reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original governance/Authority and security control owners remain responsible for any host code release, separate Operator dispatch, or protected Staging writes. Source-only read admission is not a new grant.",
+      "review_rationale": "Original FAORE Staging canary PHP source was executed in PHP 7.4/8.5. It registers two private read-only plan/verify Abilities and rejects Production, invalid correlation/key shapes and a missing Site Profile. It reports option presence including existing empty/false values with a fingerprint, but never registers mutation, creates grants, writes options or asserts rollback."
     }
   ],
   "lifecycle": [],
@@ -14849,6 +14960,45 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing catalog/platform/security controls and original PHP registry validator govern the exact unchanged first-party JSON source.",
       "review_rationale": "Inspected exact source diff: two catalog additions (signed read-only company comparison and bounded owner-confirmed developer grant convergence), one read-only pipeline and catalog projection. Executed original Registry::operation, registered_write_policy, pipeline_profile and stage_binding against the JSON and eleven fail-closed perturbations. Signed company read, Developer scope and actual Original313 host release remain separate requirements."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-code-release-readiness.php",
+      "source_blob_sha": "d552413c02a63c395eaa2bec795c1218a4e09019",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "tests/native-release-and-staging-canary-denial-hermetic.php"
+      ],
+      "owner_role": "MAD4B exact PHP source deny-before-Host and no-option-mutation reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance/platform/security source controls remain authoritative; hermetic original-class test binds source metadata and guards to exact current Git blobs.",
+      "review_rationale": "Inspected original file and executed its public source methods on PHP 7.4/8.5, ensuring read-only registrations, no automatic Host release, original receipt, signature, grant or mutation, and fail-closed environment/site/source checks. The direct dispatcher is not implemented or authorized by read-only Readiness; real production worker, browser Owner and Host proof still have separate reviews."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-faore-staging-canary-inspection.php",
+      "source_blob_sha": "4f74c57af06d1579edc7827417cec43088898477",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/native-release-and-staging-canary-denial-hermetic.php"
+      ],
+      "owner_role": "MAD4B exact PHP source deny-before-Host and no-option-mutation reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance/platform/security source controls remain authoritative; hermetic original-class test binds source metadata and guards to exact current Git blobs.",
+      "review_rationale": "Inspected original file and executed its public source methods on PHP 7.4/8.5, ensuring read-only registrations, no automatic Host release, original receipt, signature, grant or mutation, and fail-closed environment/site/source checks. The direct dispatcher is not implemented or authorized by read-only Readiness; real production worker, browser Owner and Host proof still have separate reviews."
     }
   ],
   "code_change_rules": {
