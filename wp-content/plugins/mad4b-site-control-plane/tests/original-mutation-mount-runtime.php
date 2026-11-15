@@ -63,7 +63,9 @@ MAD4B_SCP_Adapter_Registry::$adapter = new Mount_Adapter();
 $GLOBALS['mount_abilities'] = array(
     'example/admin' => new Mount_Ability( false, 'admin' ),
     'example/content' => new Mount_Ability( false, 'content' ),
-    'example/write-only' => new Mount_Ability( false, 'write' ),
+    // A misclassified mutation still declares readonly=false, but is
+    // EXPLICITLY a read surface. This conflict must never mount as Write.
+    'example/write-only' => new Mount_Ability( false, 'read' ),
     'mad4b/wp-native-self-approve-install' => new Mount_Ability( false, 'admin' ),
     'example/read' => new Mount_Ability( true ),
 );
@@ -112,6 +114,10 @@ foreach ( array( false, true, false ) as $eligible ) {
         mount_check( in_array( 'example/read', $materialized, true ), 'Readonly metadata must remain available.' );
     }
     mount_check( MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-read', 'example/read' ), 'Readonly provider must remain mounted.' );
+    mount_check( ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', 'example/write-only' ),
+        'Explicit read surface conflicting with readonly=false must never become a Write mutation.' );
+    mount_check( ! in_array( 'example/write-only', MAD4B_SCP_Servers::write_tools(), true ),
+        'Misclassified read-surface candidate cannot enter original executable Write catalog.' );
     mount_check( $adapter->status_calls > 0 && $adapter->eligibility_calls > 0,
         'Runtime mount resolution skipped current provider eligibility.' );
 }

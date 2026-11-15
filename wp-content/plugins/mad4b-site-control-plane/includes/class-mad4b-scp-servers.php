@@ -302,6 +302,11 @@ final class MAD4B_SCP_Servers {
 		$meta = $ability->get_meta();
 		$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
 		if ( ! array_key_exists( 'readonly', $annotations ) || false !== $annotations['readonly'] ) return false;
+		// Keep the existing first-party legacy Abilities that omit mcp.surface,
+		// but an EXPLICIT read/nonmutation surface cannot claim an executable
+		// Write mount merely by mislabeling annotations.readonly=false.
+		if ( isset( $meta['mcp']['surface'] )
+			&& ! in_array( $meta['mcp']['surface'], array( 'content', 'admin', 'write' ), true ) ) return false;
 		return true;
 	}
 
