@@ -111,6 +111,7 @@ jobs:
           php tests/native-cli-context-and-company-inventory-hermetic.php
           php tests/host-node-inventory-signed-readback-hermetic.php
           php tests/company-migration-decisions-transaction-hermetic.php
+          php tests/company-reconcile-skill-set-no-executor-hermetic.php
           python3 wp-content/plugins/mad4b-site-control-plane/tests/content-job-domain-contract.py
           php wp-content/plugins/mad4b-site-control-plane/tests/live-write-provider-snapshot-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/mcp-preflight-registration-failure-runtime.php

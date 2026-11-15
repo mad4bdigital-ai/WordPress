@@ -6300,6 +6300,59 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Original Database and Performance controls remain the only store transaction and lock owners, with browser Owner and Site Profile authority still enforced by original code. No independent migration provider is created.",
       "review_rationale": "Original PHP source class executed under PHP 7.4 and 8.5 with a bounded in-memory WordPress decisions table and fake transactional database, not a live database. It verifies native GET/POST REST method/permission, anonymous denial, enrolled-site proof, exact proposed source and target SHA and policy revision CAS, proposer cannot approve own request even with owner session, separate browser Owner approval, exact apply/revert confirmation, no provider mutation, append-only Audit rollback on failure and lock release. Real MariaDB transaction isolation and browser REST nonce remain separate live acceptance."
+    },
+    {
+      "id": "ability:mad4b/content-job-reconcile-skill-acceptance",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/company-reconcile-skill-set-no-executor-hermetic.php"
+      ],
+      "owner_role": "MAD4B native Company reconcile Skill Registry source reviewer — CI-only, not plugin executor",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing provider, security and automation policy remains owner of a source-checked Skill selection plan, not actual ContentJob/Elementor WPML execution or browser acceptance.",
+      "review_rationale": "Original native Company Reconcile Skill Set PHP class executed in PHP 7.4/8.5 against the original checked-in dynamic family policy and a synthetic active Skill Registry. Exact native WordPress read-only plan/acceptance abilities, mandatory source plugin/dimension union, site/company/environment binding, invalid family rejection, missing Skill failure, external GitHub recommendation no-autoinstall, stale Skill SHA denial and acceptance that returns UNTESTED_NATIVE_PROVIDER_RECEIPTS_REQUIRED (not publish, browser or locale proof) were verified. No actual provider actions or mutable WordPress records were touched."
+    },
+    {
+      "id": "ability:mad4b/content-job-reconcile-skill-plan",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/company-reconcile-skill-set-no-executor-hermetic.php"
+      ],
+      "owner_role": "MAD4B native Company reconcile Skill Registry source reviewer — CI-only, not plugin executor",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing provider, security and automation policy remains owner of a source-checked Skill selection plan, not actual ContentJob/Elementor WPML execution or browser acceptance.",
+      "review_rationale": "Original native Company Reconcile Skill Set PHP class executed in PHP 7.4/8.5 against the original checked-in dynamic family policy and a synthetic active Skill Registry. Exact native WordPress read-only plan/acceptance abilities, mandatory source plugin/dimension union, site/company/environment binding, invalid family rejection, missing Skill failure, external GitHub recommendation no-autoinstall, stale Skill SHA denial and acceptance that returns UNTESTED_NATIVE_PROVIDER_RECEIPTS_REQUIRED (not publish, browser or locale proof) were verified. No actual provider actions or mutable WordPress records were touched."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-reconcile-skill-set.php",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/company-reconcile-skill-set-no-executor-hermetic.php"
+      ],
+      "owner_role": "MAD4B native Company reconcile Skill Registry source reviewer — CI-only, not plugin executor",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing provider, security and automation policy remains owner of a source-checked Skill selection plan, not actual ContentJob/Elementor WPML execution or browser acceptance.",
+      "review_rationale": "Original native Company Reconcile Skill Set PHP class executed in PHP 7.4/8.5 against the original checked-in dynamic family policy and a synthetic active Skill Registry. Exact native WordPress read-only plan/acceptance abilities, mandatory source plugin/dimension union, site/company/environment binding, invalid family rejection, missing Skill failure, external GitHub recommendation no-autoinstall, stale Skill SHA denial and acceptance that returns UNTESTED_NATIVE_PROVIDER_RECEIPTS_REQUIRED (not publish, browser or locale proof) were verified. No actual provider actions or mutable WordPress records were touched."
     }
   ],
   "lifecycle": [],
@@ -15457,6 +15510,24 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing Database/Performance and audit controls remain bound to the exact Source SHA and new current-PR original-class negative testing.",
       "review_rationale": "Reviewed native first-party Company Migration Decisions PHP service: all changes are stored as tenant-scoped decision rows with source/target SHA, two-person review, site and per-asset SQL lock, transactional audit and rollback, separate exact Owner apply and revert. Source performs no content copy, license exposure, provider installation or Host release. Original methods run in simulated durable SQL transaction with explicit fault injection. Production external writes require separately certified original executor and are not attested by this test."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-reconcile-skill-set.php",
+      "source_blob_sha": "61e54546bbd5119b027374bc9fd3f3dd30a7fd6c",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/company-reconcile-skill-set-no-executor-hermetic.php"
+      ],
+      "owner_role": "MAD4B native Company Skill selection and provider handoff source reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original same-company source class is bound to exact current source SHA, with existing AI, localization, provider and platform controls intact.",
+      "review_rationale": "Source reviewed: company/target exact Site Profile and installed source plugins determine family Skill union, not caller-defined replacements; no remote instruction installation, no ContentJob mutation and no claim that a locally present Skill is a valid target receipt. Hermetic original PHP against real policy JSON proves plan, stale/unknown denials and untested live provider acceptance. Runtime browser interaction, paid external sources and original company execution require separate signed evidence."
     }
   ],
   "code_change_rules": {
