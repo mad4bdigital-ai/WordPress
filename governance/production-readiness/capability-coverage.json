@@ -6888,6 +6888,48 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing MCP, provider, execution and security checks require the original WordPress administrator permission plus bound Site Profile before any field name discovery; does not authorize writes.",
       "review_rationale": "Full original first-party Provider Field Intelligence source reviewed: immutable GET-only admin permission route, exact Site Profile, limited registered post/taxonomy enumeration, no private meta value query, canonical WordPress/JetEngine types preserved above third-party extension hints, secret-key name filters, WPML modes observed not applied, media galleries limited to declared JetEngine fields, and locale SEO/media readbacks never grant translation write, publish or asset reuse. Same-PR hermetic PHP 7.4 and 8.5 source test directly invokes actual REST route, unbound-site and unknown-input denials, bounded enumeration, missing-alt locale evidence, and all no-write flags. Live website acceptance and provider-specific custom hooks remain unverified."
+    },
+    {
+      "id": "ability:mad4b/firecrawl-research-capture",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "tests/firecrawl-research-adapter-provider-presence-hermetic.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-firecrawl-unready-write-mount.php"
+      ],
+      "owner_role": "MAD4B first-party no-autoload Firecrawl Adapter capability reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original MCP/Provider/Execution/Security controls require provider loaded, dynamic write mount eligibility, exact local Authorization and site owner permission before mutation.",
+      "review_rationale": "Reviewed the complete original 45-line Firecrawl Research Adapter and its inherited first-party Adapter Base permission flow. Native WordPress registration remains non-idempotent Write, administrator plus can_mutate required; the base checks central mutation Authorization even though external plugin certification is intentionally not the native Artifact provider admission gate. is_available and capture now both require the EXACT loaded native Bridge and Provider, without optional autoload side effects. Same-PR hermetic PHP7.4/8.5 tests execute actual source, reproduce auto-loader side effects before repair, assert missing-provider and permission denial, unmounted dormant Write and failure to borrow another Ability ID. An existing isolated WordPress runtime fixture tests the original Server catalog. No Firecrawl network capture, external provider receipt or Production owner attestation is claimed."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-firecrawl-research-adapter.php",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "tests/firecrawl-research-adapter-provider-presence-hermetic.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-firecrawl-unready-write-mount.php"
+      ],
+      "owner_role": "MAD4B first-party no-autoload Firecrawl Adapter capability reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original MCP/Provider/Execution/Security controls require provider loaded, dynamic write mount eligibility, exact local Authorization and site owner permission before mutation.",
+      "review_rationale": "Reviewed the complete original 45-line Firecrawl Research Adapter and its inherited first-party Adapter Base permission flow. Native WordPress registration remains non-idempotent Write, administrator plus can_mutate required; the base checks central mutation Authorization even though external plugin certification is intentionally not the native Artifact provider admission gate. is_available and capture now both require the EXACT loaded native Bridge and Provider, without optional autoload side effects. Same-PR hermetic PHP7.4/8.5 tests execute actual source, reproduce auto-loader side effects before repair, assert missing-provider and permission denial, unmounted dormant Write and failure to borrow another Ability ID. An existing isolated WordPress runtime fixture tests the original Server catalog. No Firecrawl network capture, external provider receipt or Production owner attestation is claimed."
     }
   ],
   "lifecycle": [],
@@ -16406,6 +16448,28 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing MCP read-only provider, original Execution and Security/site-scope controls own the service. No new write, provider permission or database schema is created.",
       "review_rationale": "Full original first-party Provider Field Intelligence source reviewed: immutable GET-only admin permission route, exact Site Profile, limited registered post/taxonomy enumeration, no private meta value query, canonical WordPress/JetEngine types preserved above third-party extension hints, secret-key name filters, WPML modes observed not applied, media galleries limited to declared JetEngine fields, and locale SEO/media readbacks never grant translation write, publish or asset reuse. Same-PR hermetic PHP 7.4 and 8.5 source test directly invokes actual REST route, unbound-site and unknown-input denials, bounded enumeration, missing-alt locale evidence, and all no-write flags. Live website acceptance and provider-specific custom hooks remain unverified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-firecrawl-research-adapter.php",
+      "source_blob_sha": "4e6f1aec7cb947e1542ef81bb781d6155a253d37",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "tests/firecrawl-research-adapter-provider-presence-hermetic.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-firecrawl-unready-write-mount.php"
+      ],
+      "owner_role": "MAD4B first-party Firecrawl exact Adapter and inherited Write boundary reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original MCP Adapter Registry, provider routing, execution and administrator/subject security controls apply. No parallel executor, vendor certification bypass or automatic grant is introduced.",
+      "review_rationale": "Reviewed the complete original 45-line Firecrawl Research Adapter and its inherited first-party Adapter Base permission flow. Native WordPress registration remains non-idempotent Write, administrator plus can_mutate required; the base checks central mutation Authorization even though external plugin certification is intentionally not the native Artifact provider admission gate. is_available and capture now both require the EXACT loaded native Bridge and Provider, without optional autoload side effects. Same-PR hermetic PHP7.4/8.5 tests execute actual source, reproduce auto-loader side effects before repair, assert missing-provider and permission denial, unmounted dormant Write and failure to borrow another Ability ID. An existing isolated WordPress runtime fixture tests the original Server catalog. No Firecrawl network capture, external provider receipt or Production owner attestation is claimed."
     }
   ],
   "code_change_rules": {

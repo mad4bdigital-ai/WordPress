@@ -61,6 +61,16 @@ adapter_check(is_wp_error($unauthorized)
  'Original Adapter Base must deny missing provider before requesting any central mutation grant');
 adapter_check($a->is_available()===false,
  'Bridge alone cannot satisfy the Adapter readiness predicate');
+$GLOBALS['firecrawl_adapter_autoload_calls']=0;
+$fixture_autoload=function($name){
+ if($name==='MAD4B_SCP_Firecrawl_Provider')
+  ++$GLOBALS['firecrawl_adapter_autoload_calls'];
+};
+spl_autoload_register($fixture_autoload);
+adapter_check($a->is_available()===false
+ && $GLOBALS['firecrawl_adapter_autoload_calls']===0,
+ 'Availability must inspect LOADED runtime providers without autoloading one');
+spl_autoload_unregister($fixture_autoload);
 $preMount=$a->mutation_ability_runtime_eligibility('mad4b/firecrawl-research-capture');
 adapter_check(is_wp_error($preMount)
  && $preMount->get_error_code()==='mad4b_adapter_unavailable',
