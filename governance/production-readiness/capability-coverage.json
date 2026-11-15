@@ -6231,6 +6231,24 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Original Governance/Platform/Security or Automation controls remain owner of registered local WP-CLI operations; no unrelated Host Shell/SQL/Code Release authority is implied by these bounded CLI tests.",
       "review_rationale": "Original scheduled Content Readiness CLI plan and run were executed in isolated PHP 7.4/8.5. Exact source policy, immutable Site Profile, plan SHA, explicit confirmation, scheduled runner-only invocation and intent/result Audit were checked. Stale plan or failing intent audit prevents scanning, and no OAuth, MCP write or external tasks are enabled. Full MariaDB and live independent Host Original313 receipts are outside this source-only test."
+    },
+    {
+      "id": "ability:mad4b/host-node-inventory-verification",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/host-node-inventory-signed-readback-hermetic.php"
+      ],
+      "owner_role": "MAD4B signed local Host node evidence source reviewer — CI only, not Host operator",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governed Host and security controls own the original signed readback path; the local node inspection never creates a grant, authorizes full fleet topology or allows arbitrary Host commands.",
+      "review_rationale": "Original Host Bridge PHP class was exercised on PHP7.4/8.5 with a disposable synthetic Ed25519 pair and original method node_inventory_verification. Exact Host site/config/fingerprint, signed result SHA, registered job, runner source fingerprint, receipt freshness and independent detached signature were validated. A correctly signed local node reports no cluster/company topology or Host write authority; mutated payload, old re-signed receipt, foreign signed site and arbitrary caller input are denied. This is a source-only synthetic signer test, not actual enrolled VPS public-key or Original313 live proof."
     }
   ],
   "lifecycle": [],
@@ -15351,6 +15369,25 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Same original first-party Core/CLI class is used for both policy and execution; exact source SHA is bound to new PHP source negative checks and no alternate transport.",
       "review_rationale": "Original scheduled Content Readiness CLI plan and run were executed in isolated PHP 7.4/8.5. Exact source policy, immutable Site Profile, plan SHA, explicit confirmation, scheduled runner-only invocation and intent/result Audit were checked. Stale plan or failing intent audit prevents scanning, and no OAuth, MCP write or external tasks are enabled. Full MariaDB and live independent Host Original313 receipts are outside this source-only test. The test does not certify Host Bridge dispatch, unrestricted operator shell, arbitrary WP CLI eval, grant reconciliation, raw SQL, GitHub release authorization or real Production readback."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-bridge.php",
+      "source_blob_sha": "ccdf14105ccc394467740021bee9c2f56ce9240d",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/host-node-inventory-signed-readback-hermetic.php"
+      ],
+      "owner_role": "MAD4B original Host Bridge exact read-only node-signature code reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance/platform/security source controls and first-party HostBridge registration/test fixture remain enforced; exact 112-line additive read operation is tied to new-current-PR cryptographic and negative regression.",
+      "review_rationale": "Inspected source diff against base SHA: original Host Bridge changes only add the read-only host-node-inventory-verification Ability and its detached Ed25519 signature check; legacy apply/spool/rollback methods are unchanged. Existing 583-line original Host Bridge tests still execute, extended with positive and negative local node proof cases under a temporary synthetic key. The signed node cannot issue Host rights or certify cluster. Live installed Host identity, runner signing key, Original313 and owner releases remain separately unverified."
     }
   ],
   "code_change_rules": {
