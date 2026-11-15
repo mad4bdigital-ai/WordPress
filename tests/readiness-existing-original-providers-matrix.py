@@ -14,6 +14,17 @@ ROOT=Path(__file__).resolve().parents[1]
 P='wp-content/plugins/mad4b-site-control-plane/'
 # PHP fixture basename, included source basenames, expected actual pass marker.
 CASES=(
+ # Provider mutation, retry recovery, and dynamic provider-setup direct
+ # original source tests. CI-only, never grants a Production release.
+ ("provider-transport-eligibility-runtime.php",
+  ("class-mad4b-scp-provider-transport-eligibility.php",),
+  "mad4b.provider-transport-eligibility.runtime.v1: PASS"),
+ ("market-growth-competitor-dmc-runtime.php",
+  ("class-mad4b-scp-recovery-attempt-budget.php",),
+  "PASS general competitor market rules, site-neutral engine, pricing and bounded durable retry circuit"),
+ ("provider-setup-coverage-runtime.php",
+  ("class-mad4b-scp-provider-setup-coverage.php",),
+  "SUMMARY pass=32 fail=0"),
  ("central-transport-write-source-hermetic.php",
   ("class-mad4b-scp-capability-transport-routing.php",
    "class-mad4b-scp-central-write-acceptance.php"),

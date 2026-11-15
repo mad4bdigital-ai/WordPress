@@ -136,7 +136,14 @@ final class MAD4B_SCP_Recovery_Attempt_Budget {
         $status = self::status( $lane, $input );
         if ( is_wp_error( $status ) ) return $status;
         if ( 'pending' === $status['last_outcome'] )
-            return self::error( 'mad4b_retry_reset_in_flight', 'Do not reset while the remote write outcome is unknown; complete independent reconciliation first.' );
+            return self::error( 'mad4b_retry_reset_in_flight', 'Do not reset while the original write is in flight.' );
+        // A confirmed admin click or journal checksum is not proof of the
+        // original provider postcondition. An uncertain or successful effect
+        // must be reconciled by the native durable owner before a fresh write;
+        // this retry-budget module cannot verify or manufacture that proof.
+        if ( ! in_array( $status['last_outcome'], array( 'none', 'failed' ), true ) )
+            return self::error( 'mad4b_retry_reset_independent_reconciliation_required',
+                'Unknown or successful original write cannot be reset without independently verified postcondition.' );
         if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', (string) $expected_journal_sha256 ) ||
             ! hash_equals( $status['journal_sha256'], (string) $expected_journal_sha256 ) )
             return self::error( 'mad4b_retry_reset_stale', 'Retry journal changed; refresh exact state before reset.' );

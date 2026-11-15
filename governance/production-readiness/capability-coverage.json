@@ -19148,6 +19148,62 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-transport-eligibility.php",
+      "source_blob_sha": "53ff7d4830b6307b51cdb12b1ca4fce1396469d0",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-existing-original-providers-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party original provider/recovery source reviewer — CI only",
+      "review_rationale": "Original native provider-transport precedence test failed before the patch when can_mutate returned WP_Error or a truthy nonboolean. New source blocks malformed target_context, unknown certification source, invalid mutation_gate_status, and only accepts boolean true for Policy and breaker transport facts; it preserves release-ring and fail-closed kill/quarantine precedence. No dispatch or release is performed. Tests execute original source in network-isolated PHP 7.4/8.5, no real WordPress or Host grants. Original independently signed Production evidence remains mandatory.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-recovery-attempt-budget.php",
+      "source_blob_sha": "d913587fb34f25faf9a575058161698817ceb593",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-existing-original-providers-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party original provider/recovery source reviewer — CI only",
+      "review_rationale": "Original PHP Context recovery test failed before fix because administrator confirmation plus a journal hash reset an uncertain remote write. The source now keeps pending, uncertain and succeeded outcomes protected; only no-attempt/failed terminal retry journal can be manually reset with exact CAS, no automatic replay. 3-attempt persistent circuit, no-blind-retry, and source-scoped reset tested. Tests execute original source in network-isolated PHP 7.4/8.5, no real WordPress or Host grants. Original independently signed Production evidence remains mandatory.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-setup-coverage.php",
+      "source_blob_sha": "c4768e51cb54b9ae924bd2321778d08c5d96d733",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-existing-original-providers-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party original provider/recovery source reviewer — CI only",
+      "review_rationale": "Original first-party Provider Setup test failed with a native PHP Error when the Firecrawl config returned WP_Error. Real source now projects Cloud and self-hosted setup fields with separate read-only connection metadata, never exposes encrypted secrets, and treats config/profile/test failures as unverified/not certified. Original dynamic G5 adapter growth and non-admin denial remain covered. Tests execute original source in network-isolated PHP 7.4/8.5, no real WordPress or Host grants. Original independently signed Production evidence remains mandatory.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "code_change_rules": {

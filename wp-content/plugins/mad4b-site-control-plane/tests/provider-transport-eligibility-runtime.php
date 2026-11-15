@@ -59,9 +59,12 @@ class MAD4B_SCP_Site_Profile {
     public static function current_environment(){ return self::$environment; }
 }
 class MAD4B_SCP_Provider_Circuit_Breaker {
+    public static $override = null;
     public static $applicable = true;
     public static function target_context($surface,$target){
-        return array('applicable'=>self::$applicable,'provider_id'=>'google_drive_context');
+        return self::$override === null
+            ? array('applicable'=>self::$applicable,'provider_id'=>'google_drive_context')
+            : self::$override;
     }
 }
 class MAD4B_SCP_Provider_Compatibility_Certification {
@@ -144,4 +147,28 @@ foreach ( array( 'kill_switch','authority','quarantine','certification','release
  $check( false === strpos($result->get_error_message(),'SECRET-MUST-NOT-LEAK'), 'provider context leaked into visible error' );
 }
 
+// Independent Policy / original target context / breaker outcomes must be
+// exact first-party typed facts; WP_Error is not a positive transport proof.
+MAD4B_SCP_Policy::$kill=false;
+MAD4B_SCP_Policy::$allowed=true;
+MAD4B_SCP_Provider_Compatibility_Certification::$status=$good_status;
+foreach(array(new WP_Error('policy_unknown'), null, 1) as $policy) {
+ MAD4B_SCP_Policy::$allowed=$policy;
+ $result=MAD4B_SCP_Provider_Transport_Eligibility::preflight_mutation('write','fixture/scan');
+ $check(is_wp_error($result), 'Uncertain original policy was used as transport authorization');
+}
+MAD4B_SCP_Policy::$allowed=true;
+foreach(array(new WP_Error('context_unknown'),false,[],['applicable'=>new WP_Error('applicable_unknown')]) as $context) {
+ MAD4B_SCP_Provider_Circuit_Breaker::$override=$context;
+ $result=MAD4B_SCP_Provider_Transport_Eligibility::preflight_mutation('write','fixture/scan');
+ $check(is_wp_error($result), 'Malformed original context was silently labeled not-applicable and allowed');
+}
+MAD4B_SCP_Provider_Circuit_Breaker::$override=null;
+$ready=MAD4B_SCP_Provider_Transport_Eligibility::preflight_mutation('write','fixture/scan');
+$check(is_array($ready) && $ready['transport_eligible']===true, 'Original eligible preflight did not pass');
+foreach(array(new WP_Error('breaker_unknown'),['transport_eligible'=>new WP_Error('breaker_unknown')],['transport_eligible'=>1],[]) as $breaker) {
+ if(!is_array($breaker))$breaker=['transport_eligible'=>$breaker];
+ $finished=MAD4B_SCP_Provider_Transport_Eligibility::finalize_breaker($ready,$breaker);
+ $check(is_wp_error($finished), 'Unknown original breaker result must never finalize positive transport');
+}
 echo "mad4b.provider-transport-eligibility.runtime.v1: PASS\n";
