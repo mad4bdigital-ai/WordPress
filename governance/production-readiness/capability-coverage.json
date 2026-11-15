@@ -18147,6 +18147,268 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-core-remote-recovery.php",
+      "source_blob_sha": "81487bf48d3e6270fb9b6f4b6adbfe7a4d54a336",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party original source behavioral reviewer — CI only",
+      "review_rationale": "Exact source-pinned review for class-mad4b-scp-brand-core-remote-recovery.php; first-party original PHP fixture wp-content/plugins/mad4b-site-control-plane/tests/brand-core-remote-recovery-runtime.php executed successfully under PHP7.4 and PHP8.5 with actual source include and positive marker mad4b.site-control-plane.brand-core-remote-recovery.runtime.v1: PASS. Brand Core exact source successor, revocation and immutability rules with owner read-only recovery and no bypass of archived status. Review is CI-only and preserves separate one-time Production admission, exact grants, audit and real WordPress/browser acceptance requirements.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-journeys.php",
+      "source_blob_sha": "310632c8740337d6f9e65ea25ba33fd95f67c14f",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party original source behavioral reviewer — CI only",
+      "review_rationale": "Exact source-pinned review for class-mad4b-scp-operator-journeys.php; first-party original PHP fixture wp-content/plugins/mad4b-site-control-plane/tests/brand-core-remote-recovery-runtime.php executed successfully under PHP7.4 and PHP8.5 with actual source include and positive marker mad4b.site-control-plane.brand-core-remote-recovery.runtime.v1: PASS. Brand Core exact source successor, revocation and immutability rules with owner read-only recovery and no bypass of archived status. Review is CI-only and preserves separate one-time Production admission, exact grants, audit and real WordPress/browser acceptance requirements.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-source-inventory.php",
+      "source_blob_sha": "aee346c993ae5d908e6e083e1efbf1a13c0a3882",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party original source behavioral reviewer — CI only",
+      "review_rationale": "Exact source-pinned review for class-mad4b-scp-capability-source-inventory.php; first-party original PHP fixture wp-content/plugins/mad4b-site-control-plane/tests/unified-capability-sources-runtime.php executed successfully under PHP7.4 and PHP8.5 with actual source include and positive marker PASS unified source inventory. Source inventory lazy enumeration and strict unknown/rejected/partial coverage classification without executing an unreviewed adapter. Review is CI-only and preserves separate one-time Production admission, exact grants, audit and real WordPress/browser acceptance requirements.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dependency-manager.php",
+      "source_blob_sha": "4819d6623577a393eb6e5a85c0885caec89c56c3",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party original source behavioral reviewer — CI only",
+      "review_rationale": "Exact source-pinned review for class-mad4b-scp-dependency-manager.php; first-party original PHP fixture wp-content/plugins/mad4b-site-control-plane/tests/capability-first-mcp-adapter-gate-runtime.php executed successfully under PHP7.4 and PHP8.5 with actual source include and positive marker PASS explicit_release_set_binds_to_unique_manifest_digest. Original dependency/manifest planning, 19 negative/positive cases, hash-bound release selection and no automatic grant mutation or release apply. Review is CI-only and preserves separate one-time Production admission, exact grants, audit and real WordPress/browser acceptance requirements.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-release-set.php",
+      "source_blob_sha": "2901e5ac68542935b0952a035586333da7289862",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party original source behavioral reviewer — CI only",
+      "review_rationale": "Exact source-pinned review for class-mad4b-scp-runtime-release-set.php; first-party original PHP fixture wp-content/plugins/mad4b-site-control-plane/tests/capability-first-mcp-adapter-gate-runtime.php executed successfully under PHP7.4 and PHP8.5 with actual source include and positive marker PASS explicit_release_set_binds_to_unique_manifest_digest. Original dependency/manifest planning, 19 negative/positive cases, hash-bound release selection and no automatic grant mutation or release apply. Review is CI-only and preserves separate one-time Production admission, exact grants, audit and real WordPress/browser acceptance requirements.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-developer-authority-policy-v2.php",
+      "source_blob_sha": "2fda385b6117f308862f3c8c37523097adeb45a9",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party original source behavioral reviewer — CI only",
+      "review_rationale": "Exact source-pinned review for class-mad4b-scp-developer-authority-policy-v2.php; first-party original PHP fixture tests/remote-execution/operator-grants-convergence-smoke.php executed successfully under PHP7.4 and PHP8.5 with actual source include and positive marker PASS no grant mutations or Production effects. Operator grant difference reconciliation under governed original policy, Production denial, idempotent readback and no grant mutation. Review is CI-only and preserves separate one-time Production admission, exact grants, audit and real WordPress/browser acceptance requirements.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-grant-convergence.php",
+      "source_blob_sha": "582421ba6781e74851d10b327708f17dba42267b",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party original source behavioral reviewer — CI only",
+      "review_rationale": "Exact source-pinned review for class-mad4b-scp-operator-grant-convergence.php; first-party original PHP fixture tests/remote-execution/operator-grants-convergence-smoke.php executed successfully under PHP7.4 and PHP8.5 with actual source include and positive marker PASS no grant mutations or Production effects. Operator grant difference reconciliation under governed original policy, Production denial, idempotent readback and no grant mutation. Review is CI-only and preserves separate one-time Production admission, exact grants, audit and real WordPress/browser acceptance requirements.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-drive-scan-admin.php",
+      "source_blob_sha": "4d6ce5e7c9a91d4952249991a142e753fa2a7122",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party original source behavioral reviewer — CI only",
+      "review_rationale": "Exact source-pinned review for class-mad4b-scp-drive-scan-admin.php; first-party original PHP fixture wp-content/plugins/mad4b-site-control-plane/tests/drive-scan-continuation-runtime.php executed successfully under PHP7.4 and PHP8.5 with actual source include and positive marker DRIVE_SCAN_PLAN_APPLY_PARITY: PASS. Drive scanner continuation with 25-file fixture, exact registered plan/input, resumed sealed journal and independent native confirmation. Review is CI-only and preserves separate one-time Production admission, exact grants, audit and real WordPress/browser acceptance requirements.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-enrollment-dispatch.php",
+      "source_blob_sha": "020b8b411ca4c52aec4efdbe08f11e5f3350e4eb",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party original source behavioral reviewer — CI only",
+      "review_rationale": "Exact source-pinned review for class-mad4b-scp-enrollment-dispatch.php; first-party original PHP fixture tests/remote-execution/governed-enrollment-dispatch-smoke.php executed successfully under PHP7.4 and PHP8.5 with actual source include and positive marker PASS first-party callback provenance is independently verified. First-party callback provenance, governed enrollment dispatch and census with forged Production metadata denied and no automatic callback execution. Review is CI-only and preserves separate one-time Production admission, exact grants, audit and real WordPress/browser acceptance requirements.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-governed-ability-census.php",
+      "source_blob_sha": "2000305f0d20b794a2385be07d9205e50b08a9ad",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party original source behavioral reviewer — CI only",
+      "review_rationale": "Exact source-pinned review for class-mad4b-scp-governed-ability-census.php; first-party original PHP fixture tests/remote-execution/governed-enrollment-dispatch-smoke.php executed successfully under PHP7.4 and PHP8.5 with actual source include and positive marker PASS first-party callback provenance is independently verified. First-party callback provenance, governed enrollment dispatch and census with forged Production metadata denied and no automatic callback execution. Review is CI-only and preserves separate one-time Production admission, exact grants, audit and real WordPress/browser acceptance requirements.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-class-provenance.php",
+      "source_blob_sha": "70dce21ef634a37118969b66ceb731241b77b344",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party original source behavioral reviewer — CI only",
+      "review_rationale": "Exact source-pinned review for class-mad4b-scp-mcp-class-provenance.php; first-party original PHP fixture wp-content/plugins/mad4b-site-control-plane/tests/mcp-class-provenance-runtime.php executed successfully under PHP7.4 and PHP8.5 with actual source include and positive marker mad4b.mcp-class-provenance.v1: PASS. Real MCP class namespace and file provenance under reflection, exact adapter symbols and rejected untrusted class collisions. Review is CI-only and preserves separate one-time Production admission, exact grants, audit and real WordPress/browser acceptance requirements.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-peer-governance.php",
+      "source_blob_sha": "a34f1e99977aa1145dc9ca5b99d8917bf78ac020",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party original source behavioral reviewer — CI only",
+      "review_rationale": "Exact source-pinned review for class-mad4b-scp-mcp-peer-governance.php; first-party original PHP fixture wp-content/plugins/mad4b-site-control-plane/tests/qa30-native-general-settings-rest-lifecycle.php executed successfully under PHP7.4 and PHP8.5 with actual source include and positive marker QA30_SOURCE_CONTRACT_REGRESSION_PASS. Native General Settings original WordPress REST lifecycle, non-admin deny and no unauthorized site state changes. Review is CI-only and preserves separate one-time Production admission, exact grants, audit and real WordPress/browser acceptance requirements.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php",
+      "source_blob_sha": "bfc842bf90cda2ec07937337e6488b70a31d091d",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party original source behavioral reviewer — CI only",
+      "review_rationale": "Exact source-pinned review for class-mad4b-scp-self-update.php; first-party original PHP fixture wp-content/plugins/mad4b-site-control-plane/tests/qa27-candidate-upload-plan-rc118-runtime.php executed successfully under PHP7.4 and PHP8.5 with actual source include and positive marker QA27_RC118_GITHUB_SOURCE_UPLOAD_PLAN_PASS. Self-update original Git source candidate upload plan under simulated source selectors, real version matching, no network, and denied unapproved update; PHP7.4 compatibility of fixture verified. Review is CI-only and preserves separate one-time Production admission, exact grants, audit and real WordPress/browser acceptance requirements.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-upgrade-continuity.php",
+      "source_blob_sha": "4658218bf1099e7fecc18c685d4b1193791e4770",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party original source behavioral reviewer — CI only",
+      "review_rationale": "Exact source-pinned review for class-mad4b-scp-upgrade-continuity.php; first-party original PHP fixture wp-content/plugins/mad4b-site-control-plane/tests/upgrade-continuity-runtime.php executed successfully under PHP7.4 and PHP8.5 with actual source include and positive marker mad4b.upgrade-continuity.runtime.v1: PASS. Canonical upgrade continuity, site profile and runtime version identities with protected release and rollback checkpoints in original PHP fixtures. Review is CI-only and preserves separate one-time Production admission, exact grants, audit and real WordPress/browser acceptance requirements.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "code_change_rules": {
