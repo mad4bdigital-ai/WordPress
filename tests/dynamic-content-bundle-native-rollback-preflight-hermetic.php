@@ -33,6 +33,23 @@ function current_user_can($cap,...$other){
  return true;
 }
 function get_post($id){return isset($GLOBALS['fixture_posts'][$id])?clone $GLOBALS['fixture_posts'][$id]:null;}
+function get_posts($args){
+ $found=[];
+ foreach($GLOBALS['fixture_posts'] as $id=>$post){
+  if($post->post_type!==($args['post_type']??''))continue;
+  $values=$GLOBALS['fixture_meta'][$id][$args['meta_key']]??[];
+  if(!isset($values[0]) || $values[0]!==($args['meta_value']??''))continue;
+  $found[]=$id;
+ }
+ sort($found,SORT_NUMERIC);return array_slice($found,0,(int)($args['posts_per_page']??2));
+}
+function wp_delete_post($id,$force=false){
+ if(!isset($GLOBALS['fixture_posts'][$id]))return false;
+ ++$GLOBALS['fixture_writes'];
+ unset($GLOBALS['fixture_posts'][$id],$GLOBALS['fixture_meta'][$id],
+  $GLOBALS['fixture_tax'][$id],$GLOBALS['fixture_media'][$id]);
+ return true;
+}
 function get_post_type_object($post_type){
  return (object)['cap'=>(object)['publish_posts'=>'publish_posts',
   'edit_others_posts'=>'edit_others_posts','edit_posts'=>'edit_posts']];
@@ -123,6 +140,18 @@ fixture_check(is_wp_error($denied)&&$denied->get_error_code()==='mad4b_dynamic_m
  && $pre===$snapshot->invoke($a,77,$input),
  'Denied metadata access must stop restore before ANY post/meta/term/media mutation');
 $GLOBALS['fixture_meta_denied']='';
+// Original public Undo entrypoint, not only the private restore helper.
+$mutate();
+$GLOBALS['fixture_meta_denied']='tour_price';
+$denied_public=$a->restore_reversible_state(
+ MAD4B_SCP_Dynamic_Content_Adapter::APPLY,
+ ['mode'=>'update','post_id'=>77,'scope'=>$original['scope']],$original,[]);
+fixture_check(is_wp_error($denied_public)
+ && $denied_public->get_error_code()==='mad4b_dynamic_meta_restore_denied'
+ && $GLOBALS['fixture_writes']===0
+ && $GLOBALS['fixture_posts'][77]->post_title==='Newer drafted title',
+ 'Public reversible Undo must not change content before a predictable meta permission denial');
+$GLOBALS['fixture_meta_denied']='';
 
 // An otherwise valid snapshot is not portable across post IDs or content
 // types, even when the caller can edit both resources.
@@ -168,4 +197,36 @@ fixture_check(is_array($restored)&&$restored['restored']===true
  && $original===$snapshot->invoke($a,77,$input)
  && !metadata_exists('post',77,'_mad4b_dynamic_content_acceptance_v1'),
  'Successful original reversible update must restore full owned post/meta/tax/media scope and invalidate stale acceptance');
-echo "DYNAMIC_CONTENT_ROLLBACK_PREFLIGHT: PASS original native provider, no partial denied restore, exact round-trip\n";
+// Exact Create Undo must use the original operation-key binding, not an
+// unrelated nearby draft, and must never delete an originally existing post.
+$key='test-creation-2026';
+$binding=hash('sha256',MAD4B_SCP_Dynamic_Content_Adapter::CONTRACT.
+ '|tours-and-activities|'.$key);
+$GLOBALS['fixture_posts'][88]=(object)[
+ 'ID'=>88,'post_type'=>'tours-and-activities','post_title'=>'Created fixture draft',
+ 'post_content'=>'','post_excerpt'=>'','post_status'=>'draft','post_parent'=>0,'post_author'=>7
+];
+$GLOBALS['fixture_meta'][88]=[MAD4B_SCP_Dynamic_Content_Adapter::BINDING=>[$binding]];
+$other=$a->restore_reversible_state(
+ MAD4B_SCP_Dynamic_Content_Adapter::APPLY,
+ ['mode'=>'create','post_type'=>'tours-and-activities','binding'=>str_repeat('f',64)],
+ ['exists'=>false,'post_id'=>0],[]);
+fixture_check(is_array($other)&&$other['post_deleted']===false
+ && isset($GLOBALS['fixture_posts'][88]),
+ 'Wrong operation binding must never delete another post');
+$exists=$a->restore_reversible_state(
+ MAD4B_SCP_Dynamic_Content_Adapter::APPLY,
+ ['mode'=>'create','post_type'=>'tours-and-activities','binding'=>$binding],
+ ['exists'=>true,'post_id'=>88],[]);
+fixture_check(is_wp_error($exists)&&isset($GLOBALS['fixture_posts'][88]),
+ 'Existing-before-create snapshot cannot authorize deletion');
+$undo=$a->restore_reversible_state(
+ MAD4B_SCP_Dynamic_Content_Adapter::APPLY,
+ ['mode'=>'create','post_type'=>'tours-and-activities','binding'=>$binding],
+ ['exists'=>false,'post_id'=>0],[]);
+fixture_check(is_array($undo)&&$undo['restored']===true
+ && $undo['post_deleted']===true && !isset($GLOBALS['fixture_posts'][88])
+ && isset($GLOBALS['fixture_posts'][77])
+ && $original===$snapshot->invoke($a,77,$input),
+ 'Create Undo must delete only the exact bound draft, preserving the other post');
+echo "DYNAMIC_CONTENT_ROLLBACK_PREFLIGHT: PASS original Update and Create Undo, preflight, no partial writes\n";
