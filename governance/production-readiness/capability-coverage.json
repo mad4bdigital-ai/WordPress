@@ -7432,6 +7432,63 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-fcp-queue-readback.php",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/original-queue-and-review-modes-native.php"
+      ],
+      "owner_role": "MAD4B first-party non-authorizing service reviewer — CI only",
+      "review_rationale": "Original FCP queue provider registers exact GET endpoint with permission_callback, private no-store REST cache and read-only assistant operation allowlist. 26-case original runtime fixture proves forged job ID, non-read operation, unenrolled Site Profile, uncertain execution and mismatched source binding cannot silently claim completion or authorize retry.",
+      "coverage_reuse_rationale": "Existing AUTOMATION-01, PERFORMANCE-01, SECURITY-01, EXECUTION-01 controls cover registered source provenance, site-scoped read-only operation, independent QA, no side effects, no blind retries and site publication gating. A new grant or release authority is not created.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-workflow-modes.php",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/original-queue-and-review-modes-native.php"
+      ],
+      "owner_role": "MAD4B first-party non-authorizing service reviewer — CI only",
+      "review_rationale": "Original Content Workflow Modes defines autonomous/assisted/strict review independent of publication. 26-case original runtime fixture verifies strict legacy blank fallback, rejection of unknown modes, hard QA blockers, independent review requirements and that even qualified autonomous self-review can only stage in Hub, never publish.",
+      "coverage_reuse_rationale": "Existing AUTOMATION-01, PERFORMANCE-01, SECURITY-01, EXECUTION-01 controls cover registered source provenance, site-scoped read-only operation, independent QA, no side effects, no blind retries and site publication gating. A new grant or release authority is not created.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "id": "rest:mad4b/v1/fcp/local-queue/(?P<job_id>[a-f0-9-]{36})",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/original-queue-and-review-modes-native.php"
+      ],
+      "owner_role": "MAD4B WordPress REST GET queue native reviewer — CI only",
+      "review_rationale": "The original first-party FCP queue GET route is registered under the existing company operations permission. Native PHP fixture verifies exact route callback, private no-store response, validated UUID, accepted read-only operation types, site registration, owned queue identity, state uncertainty and failed-binding reconciliation.",
+      "coverage_reuse_rationale": "Existing AUTOMATION-01, PERFORMANCE-01, SECURITY-01, EXECUTION-01 controls already enforce private REST permission, immutable queue job identity, site isolation and no-write discovery. No new public mutation or Production authority is introduced.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "lifecycle": [],
@@ -18848,6 +18905,42 @@
       ],
       "owner_role": "MAD4B first-party local transport and native provider source reviewer — CI only",
       "review_rationale": "Original installed plugin artifact observer requires one active, exact version and SHA-bound WordPress plugin header. Hermetic test denies inactive, ambiguous, traversal, symlink escaping plugin root, version drift, and candidate overflow prior to plugin enumeration; discovery never grants write. Verified on original PHP7.4 and PHP8.5 in no-network, readonly mounts with temporary fixture files only. No Production authorization.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-fcp-queue-readback.php",
+      "source_blob_sha": "96cfa604c9d9b5ce9638a1ec63d4c7fd2b02ad1b",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/original-queue-and-review-modes-native.php"
+      ],
+      "owner_role": "MAD4B first-party readback and QA source reviewer — CI only",
+      "review_rationale": "Original FCP queue provider registers exact GET endpoint with permission_callback, private no-store REST cache and read-only assistant operation allowlist. 26-case original runtime fixture proves forged job ID, non-read operation, unenrolled Site Profile, uncertain execution and mismatched source binding cannot silently claim completion or authorize retry. Exact native PHP 7.4 and 8.5 tests execute original source without network or WordPress writes; not a release certification.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-workflow-modes.php",
+      "source_blob_sha": "ae9467b8b0f66f9041385b1a9022c7f2d042786b",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/original-queue-and-review-modes-native.php"
+      ],
+      "owner_role": "MAD4B first-party readback and QA source reviewer — CI only",
+      "review_rationale": "Original Content Workflow Modes defines autonomous/assisted/strict review independent of publication. 26-case original runtime fixture verifies strict legacy blank fallback, rejection of unknown modes, hard QA blockers, independent review requirements and that even qualified autonomous self-review can only stage in Hub, never publish. Exact native PHP 7.4 and 8.5 tests execute original source without network or WordPress writes; not a release certification.",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true

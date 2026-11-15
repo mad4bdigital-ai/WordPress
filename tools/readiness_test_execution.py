@@ -124,6 +124,8 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     # Three first-party native read-only service contracts; hermetic fake
     # WordPress and temporary isolated plugin filesystem, no site writes.
     "tests/original-native-service-trust-hermetic.php",
+    # Explicit original remote readback and content QA review tests.
+    "tests/original-queue-and-review-modes-native.php",
     "tests/server-registration-descriptor-boundary-hermetic.php",
     "tests/staging-write-delegated-identity-native-hermetic.php",
     "tests/staging-write-host-candidate-native-hermetic.php",
