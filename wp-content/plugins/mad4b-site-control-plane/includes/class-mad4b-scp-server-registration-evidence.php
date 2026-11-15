@@ -40,6 +40,32 @@ final class MAD4B_SCP_Server_Registration_Evidence {
 		);
 	}
 
+	/** Validate the first-party descriptor, not just absence of WP_Error. */
+	private static function descriptor_binding_verified( $binding, $ability_name ) {
+		if ( ! is_array( $binding )
+			|| MAD4B_SCP_Capability_Descriptor_Registry::CONSUMER_BINDING_CONTRACT !== ( $binding['contract'] ?? null )
+			|| MAD4B_SCP_Capability_Descriptor_Registry::CONTRACT !== ( $binding['descriptor_contract'] ?? null )
+			|| MAD4B_SCP_Capability_Descriptor_Registry::GENERATION_CONTRACT !== ( $binding['generation_contract'] ?? null )
+			|| 'servers' !== ( $binding['consumer'] ?? null )
+			|| $ability_name !== ( $binding['ability_name'] ?? null )
+			|| false !== ( $binding['authorizing'] ?? null )
+			|| false !== ( $binding['authority_snapshot_is_grant'] ?? null )
+			|| true !== ( $binding['authority_revalidation_required'] ?? null )
+			|| ! in_array( $binding['execution_lane'] ?? null, array( 'read', 'write' ), true ) )
+			return false;
+		foreach ( array( 'input_schema_sha256', 'classification_sha256', 'descriptor_sha256' ) as $field ) {
+			if ( ! is_string( $binding[ $field ] ?? null )
+				|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', $binding[ $field ] ) ) return false;
+		}
+		$roots = $binding['generation_roots'] ?? null;
+		if ( ! is_array( $roots ) ) return false;
+		foreach ( array( 'contract_root', 'site_root' ) as $field ) {
+			if ( ! is_string( $roots[ $field ] ?? null )
+				|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', $roots[ $field ] ) ) return false;
+		}
+		return true;
+	}
+
 	public static function capability_descriptor_evidence( $server_id, array $tools ) {
 		$bindings = array();
 		$blockers = array();
@@ -50,6 +76,13 @@ final class MAD4B_SCP_Server_Registration_Evidence {
 				$binding = MAD4B_SCP_Capability_Descriptor_Registry::binding( $ability_name, 'servers' );
 				if ( is_wp_error( $binding ) ) {
 					$blockers[] = $ability_name . ':' . $binding->get_error_code();
+					continue;
+				}
+				// A null or malformed non-WP_Error is never a successful descriptor
+				// binding. Only the exact canonical consumer/name/roots contract
+				// may reach the MCP Server registration tool projection.
+				if ( ! self::descriptor_binding_verified( $binding, $ability_name ) ) {
+					$blockers[] = $ability_name . ':descriptor_binding_unverified';
 					continue;
 				}
 				$bindings[ $ability_name ] = $binding;

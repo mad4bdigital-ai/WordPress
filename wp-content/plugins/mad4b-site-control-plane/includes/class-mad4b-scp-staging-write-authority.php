@@ -2369,7 +2369,9 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			&& (int) ( $other['wp_user_id'] ?? 0 ) === $user_id
 			&& self::current_environment() === (string) ( $other['environment'] ?? '' )
 			&& class_exists( 'MAD4B_SCP_Policy' )
-			&& MAD4B_SCP_Policy::can_connect_user( $user_id );
+			// WP_Error and other truthy policy results must never be accepted
+			// as an explicit delegated-user connection decision.
+			&& true === MAD4B_SCP_Policy::can_connect_user( $user_id );
 	}
 
 	private static function subject_fingerprint( $issuer, $user_id ) {

@@ -118,6 +118,14 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     # Native signed Brand Draft Context receipt and quality preflight test;
     # no WordPress, network, or Production write in this exact fixture.
     "wp-content/plugins/mad4b-site-control-plane/tests/context-preflight-runtime.php",
+    # Review-bound original host, MCP registration and runtime guards.
+    # No network, site mutation or arbitrary CLI PHP file is accepted.
+    "tests/servers-original-native-transport-hermetic.php",
+    "tests/server-registration-descriptor-boundary-hermetic.php",
+    "tests/staging-write-delegated-identity-native-hermetic.php",
+    "tests/staging-write-host-candidate-native-hermetic.php",
+    "tests/runtime-convergence-owner-gate-native-hermetic.php",
+
 ))
 
 
@@ -245,6 +253,11 @@ def self_test():
     assert command_for("tests/remote-execution/operator-grants-convergence-smoke.php")[0] == "php"
     assert command_for("tests/remote-execution/governed-write-admission-smoke.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/context-preflight-runtime.php")[0] == "php"
+    assert command_for("tests/servers-original-native-transport-hermetic.php")[0] == "php"
+    assert command_for("tests/server-registration-descriptor-boundary-hermetic.php")[0] == "php"
+    assert command_for("tests/staging-write-delegated-identity-native-hermetic.php")[0] == "php"
+    assert command_for("tests/staging-write-host-candidate-native-hermetic.php")[0] == "php"
+    assert command_for("tests/runtime-convergence-owner-gate-native-hermetic.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/generation-snapshot-exception-runtime.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/no-input-read-ability-schema-runtime.php")[0] == "php"

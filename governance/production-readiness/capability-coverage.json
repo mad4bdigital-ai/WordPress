@@ -17214,6 +17214,82 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-convergence.php",
+      "source_blob_sha": "fb9f325409f439251403dcd8b3766dfee0605589",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/runtime-convergence-owner-gate-native-hermetic.php",
+        "tests/authority-servers-original-review-suite.py"
+      ],
+      "owner_role": "MAD4B Original first-party source owner and independent CI-only evidence reviewer",
+      "review_rationale": "Original Runtime Convergence source tests 26 exact owner-gate, historical checkpoint, policy tri-state, catalog freshness, managed-Skills read-only and native manifest scenarios plus multiple original full phase/restart-grace fixtures. A non-boolean WP_Error/null mutation policy is never equivalent to a verified false, and stale graph checkpoint target identity never relaxes the original independently verified owner gate. Only historical read/status interpretation changes; no write authorization or checkpoint replay.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php",
+      "source_blob_sha": "0a98367b760e68ebe17a1d65e09796b82e2bf23e",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/staging-write-host-candidate-native-hermetic.php",
+        "tests/authority-servers-original-review-suite.py"
+      ],
+      "owner_role": "MAD4B Original first-party source owner and independent CI-only evidence reviewer",
+      "review_rationale": "Original governed write authority now accepts only explicit boolean true from the delegated OAuth user policy, rejecting WP_Error/unknown truthy results. Original Host candidate audit context exercises native root/WP-CLI, exact registry-bound subject, original Site Profile user attribution, complete package target hashes, zero-drift grants, authorization contract and confirmation under positive and fourteen negative hermetic cases. Existing write dispatch and grant-order tests preserve authority constraints. New source tests do not grant a user, enable Production, create a ticket, install code or modify a database.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
+      "source_blob_sha": "199b3b198efa886192bbf80389fbed0c443651db",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/servers-original-native-transport-hermetic.php",
+        "tests/authority-servers-original-review-suite.py"
+      ],
+      "owner_role": "MAD4B Original first-party source owner and independent CI-only evidence reviewer",
+      "review_rationale": "Reviewed original MCP Servers facade directly on PHP 7.4/8.5, including local-only WP-CLI target parsing, bounded four VPS operations, no enqueue on read/ChatGPT/enrollment/write surfaces, scoped Host actor and site/environment policy, non-enrolled subject denial and separate builder descriptor verification. Existing canonical descriptor integration also confirms generation root binding. This is a first-party non-authorizing source review only; actual WordPress registration/Host admission and Production operator approval remain separate.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-registration-evidence.php",
+      "source_blob_sha": "9cfe031caf92159d40563dd8cd42e518b22d36af",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/server-registration-descriptor-boundary-hermetic.php",
+        "tests/authority-servers-original-review-suite.py"
+      ],
+      "owner_role": "MAD4B Original first-party source owner and independent CI-only evidence reviewer",
+      "review_rationale": "The first-party Server Registration Evidence now rejects null, false, strings and incomplete or cross-ability descriptor-binding results, not only WP_Error; validates canonical contract, exact consumer, requested Ability name, three SHA256 digests, two root digests, execution lane and explicit non-authorizing revalidation. Native source tests cover eighteen good/bad results and existing canonical-generation consumer integration. An invalid descriptor is excluded from tools, not interpreted as permission. No execution authority is introduced.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "code_change_rules": {
