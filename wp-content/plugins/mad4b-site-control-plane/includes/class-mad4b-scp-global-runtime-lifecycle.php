@@ -57,16 +57,18 @@ final class MAD4B_SCP_Global_Runtime_Lifecycle {
             }
             $proof = isset($evidence[$id]) && is_array($evidence[$id]) ? $evidence[$id] : array();
             $observed = (string) ($proof['status'] ?? '');
-            $authoritative = !empty($proof['native_source_confirmed']);
+            $authoritative = ($proof['native_source_confirmed']??null)===true;
             $state = 'READY'; $reason = 'eligible_for_provider_owned_stage';
             $ability = $node['ability_registered'] ?? null;
             // A source receipt must be bound to the exact stage and target.
             $verified = $authoritative && 'verified' === $observed
-                && !empty($proof['readback_confirmed'])
-                && !empty($proof['exact_target_bound'])
-                && !empty($proof['receipt_digest']);
-            if ($authoritative && $observed === 'not_applicable' && !empty($proof['exact_target_bound'])
-                && !empty($proof['not_applicable_proven'])) {
+                && ($proof['readback_confirmed']??null)===true
+                && ($proof['exact_target_bound']??null)===true
+                && is_string($proof['receipt_digest']??null)
+                && preg_match('/^[a-f0-9]{64}$/D',$proof['receipt_digest'])===1;
+            if ($authoritative && $observed === 'not_applicable'
+                && ($proof['exact_target_bound']??null)===true
+                && ($proof['not_applicable_proven']??null)===true) {
                 $state = 'SKIPPED_NOT_APPLICABLE'; $reason = 'native_scope_not_applicable';
             } elseif ($verified) {
                 $state = 'VERIFIED'; $reason = 'exact_native_readback_verified';
