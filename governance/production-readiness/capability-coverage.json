@@ -7489,6 +7489,44 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-research-task-bridge.php",
+      "control_ids": [
+        "DATABASE-01",
+        "PERFORMANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/original-research-tour-workflow-native.php"
+      ],
+      "owner_role": "MAD4B original Research/Tour runtime capability reviewer — CI only",
+      "review_rationale": "Original Research Task Bridge verifies exact enrolled Profile authority, administrator and edit_post scopes, real tour draft, provider-sourced research group UID, immutable existing group binding and authoritative post-meta readback. Original PHP 7.4/8.5 fixture checks unknown WP_Error Profile fails closed, missing tables/records, foreign group and no published tour mutation; preflight is non-authorizing.",
+      "coverage_reuse_rationale": "Existing DATABASE-01, PERFORMANCE-01, SECURITY-01, EXECUTION-01 controls enforce company Site Profile/WordPress owner proof, immutable task-source binding, verified journal and restore checkpoint, native QA, and a separate publication grant. No new authority or cross-site publishing operation is added.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tour-workflow-runtime.php",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/original-research-tour-workflow-native.php"
+      ],
+      "owner_role": "MAD4B original Research/Tour runtime capability reviewer — CI only",
+      "review_rationale": "Original twelve-stage Tour Workflow tests site-scoped Staging-only administrator read, existing Research Task preflight, disabled Restore Epoch, stage dependency SHA, bounded checkpoint receipt, first-party post-meta readback, exact idempotent stage reuse, invalid stage name and Production deny. The native test proves workflow evaluation does not authorize publication or provider writes.",
+      "coverage_reuse_rationale": "Existing AUTOMATION-01, PERFORMANCE-01, SECURITY-01, EXECUTION-01 controls enforce company Site Profile/WordPress owner proof, immutable task-source binding, verified journal and restore checkpoint, native QA, and a separate publication grant. No new authority or cross-site publishing operation is added.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "lifecycle": [],
@@ -18941,6 +18979,42 @@
       ],
       "owner_role": "MAD4B first-party readback and QA source reviewer — CI only",
       "review_rationale": "Original Content Workflow Modes defines autonomous/assisted/strict review independent of publication. 26-case original runtime fixture verifies strict legacy blank fallback, rejection of unknown modes, hard QA blockers, independent review requirements and that even qualified autonomous self-review can only stage in Hub, never publish. Exact native PHP 7.4 and 8.5 tests execute original source without network or WordPress writes; not a release certification.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-research-task-bridge.php",
+      "source_blob_sha": "cce62649cc16d28fbf3f742d79d47afab39d5c9d",
+      "control_ids": [
+        "DATABASE-01",
+        "PERFORMANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/original-research-tour-workflow-native.php"
+      ],
+      "owner_role": "MAD4B original first-party Research and Tour source reviewer — CI only",
+      "review_rationale": "Original Research Task Bridge verifies exact enrolled Profile authority, administrator and edit_post scopes, real tour draft, provider-sourced research group UID, immutable existing group binding and authoritative post-meta readback. Original PHP 7.4/8.5 fixture checks unknown WP_Error Profile fails closed, missing tables/records, foreign group and no published tour mutation; preflight is non-authorizing. Native no-network WordPress fixtures have no real DB or company site writes. Independent Production admission still required.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tour-workflow-runtime.php",
+      "source_blob_sha": "73ad0d8ceb913cc1c7a9ec1944683ff51a0e1557",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/original-research-tour-workflow-native.php"
+      ],
+      "owner_role": "MAD4B original first-party Research and Tour source reviewer — CI only",
+      "review_rationale": "Original twelve-stage Tour Workflow tests site-scoped Staging-only administrator read, existing Research Task preflight, disabled Restore Epoch, stage dependency SHA, bounded checkpoint receipt, first-party post-meta readback, exact idempotent stage reuse, invalid stage name and Production deny. The native test proves workflow evaluation does not authorize publication or provider writes. Native no-network WordPress fixtures have no real DB or company site writes. Independent Production admission still required.",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
