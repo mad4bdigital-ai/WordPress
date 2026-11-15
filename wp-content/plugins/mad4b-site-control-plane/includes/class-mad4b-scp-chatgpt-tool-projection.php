@@ -491,7 +491,6 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 	private static function desired_names( array $input ) {
 		$requested = isset( $input['ability_names'] ) && is_array( $input['ability_names'] ) ? array_values( array_unique( array_map( 'strval', $input['ability_names'] ) ) ) : array();
 		if ( count( $requested ) > self::MAX_CHANGE_BATCH ) return new WP_Error( 'mad4b_chatgpt_projection_change_batch_too_large', 'Use multiple bounded add/remove operations to update the projection registry.' );
-		if ( count( $requested ) > self::MAX_CHANGE_BATCH ) return new WP_Error( 'mad4b_chatgpt_projection_change_batch_too_large', 'Use multiple bounded add/remove operations to update an unlimited projection registry.' );
 		sort( $requested, SORT_STRING );
 		$mode = isset( $input['mode'] ) ? sanitize_key( (string) $input['mode'] ) : 'replace';
 		if ( ! in_array( $mode, array( 'replace', 'add', 'remove' ), true ) ) $mode = 'replace';

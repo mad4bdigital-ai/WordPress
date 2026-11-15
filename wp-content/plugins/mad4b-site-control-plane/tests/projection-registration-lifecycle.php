@@ -132,4 +132,26 @@ if ( empty( $deep['catalog_preflight_performed'] )
     || empty( $deep['read_only'] ) || ! empty( $deep['mutation_performed'] ) ) {
     throw new RuntimeException( 'Explicit deep storage/catalog failure did not degrade safely' );
 }
+// Existing site-global projections can grow; each change request remains
+// limited to 64. The original method plans only and invokes no Ability.
+$original_projection=$GLOBALS['options'][MAD4B_SCP_ChatGPT_Tool_Projection::OPTION];
+$large=array();
+for($i=0;$i<130;$i++)$large['test/projected-'.$i]=array('id'=>$i);
+$GLOBALS['options'][MAD4B_SCP_ChatGPT_Tool_Projection::OPTION]['abilities']=$large;
+$desired_method=new ReflectionMethod('MAD4B_SCP_ChatGPT_Tool_Projection','desired_names');
+if(PHP_VERSION_ID<80100)$desired_method->setAccessible(true);
+$expanded=$desired_method->invoke(null,array('mode'=>'add',
+ 'ability_names'=>array('test/projected-130')));
+if(!is_array($expanded)||count($expanded)!==131
+ ||!in_array('test/projected-130',$expanded,true))
+ throw new RuntimeException('Existing projection incorrectly capped at 64');
+$too_many=array();
+for($i=0;$i<65;$i++)$too_many[]='test/new-'.$i;
+$blocked=$desired_method->invoke(null,array('mode'=>'replace','ability_names'=>$too_many));
+if(!is_wp_error($blocked)
+ ||$blocked->get_error_code()!=='mad4b_chatgpt_projection_change_batch_too_large')
+ throw new RuntimeException('Per-request projection batch bypassed 64 tools');
+$GLOBALS['options'][MAD4B_SCP_ChatGPT_Tool_Projection::OPTION]=$original_projection;
+echo "PASS dynamic projection is unbounded in stored count with bounded batches
+";
 echo "PASS projection summary remains bounded and deep dependencies fail soft\\n";
