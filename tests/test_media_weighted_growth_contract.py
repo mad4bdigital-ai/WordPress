@@ -112,6 +112,18 @@ def test_unreviewed_rate_images_and_held_origins_fail_closed():
     assert "update_post_meta" not in p
 
 
+
+
+def test_wpml_canonical_subject_evidence_requires_native_signature():
+    e = ENGINE.read_text()
+    assert "MAD4B_Tour_Media_Association_V1::verified_ids($primary,$family)" in e
+    assert "($candidate['canonical_post_id']??0)===$primary" in e
+    assert "($candidate['wpml_family']??[])===$family" in e
+    assert "$subject=get_post_meta($associationPost,'_mad4b_media_subject_evidence_v1',true);" in e
+    assert "($slot['origin_sha256']??'')===$photo['sha']" in e
+    assert "generic_tour_review_is_not_per_image_subject_proof" in e
+    assert "($association['contract']??'')!=='mad4b.tour-media-association.v1'" in e
+
 if __name__ == "__main__":
     for name, function in sorted(globals().copy().items()):
         if name.startswith('test_') and callable(function):

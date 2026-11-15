@@ -287,6 +287,40 @@ final class MAD4B_Tour_Photo_Quality_V1 {
         // The original Tour association can prove which files were reviewed
         // together, but its generic contact-sheet note is not per-image proof.
         $association=get_post_meta($tour,'_mad4b_tour_media_association_v1',true);
+        $associationPost=$tour;
+        // The signed association belongs to the default-language canonical
+        // tour and explicitly binds its WPML family. Spanish does not need an
+        // independently forged duplicate. Reuse ONLY after native provider
+        // verifies all attachments, language members and file SHA identities.
+        if($review_subject
+           &&(!is_array($association)||($association['contract']??'')!=='mad4b.tour-media-association.v1')
+           &&class_exists('MAD4B_Tour_Media_Association_V1',false)){
+            $primary=(int)apply_filters('wpml_object_id',$tour,'tours-and-activities',false,
+                (string)apply_filters('wpml_default_language','en'));
+            if($primary>0&&$primary!==$tour&&get_post_status($primary)==='publish'){
+                $trid=apply_filters('wpml_element_trid',null,$primary,'post_tours-and-activities');
+                $translations=$trid?apply_filters('wpml_get_element_translations',[],
+                    $trid,'post_tours-and-activities'):[];
+                $family=[];
+                foreach(array_slice((array)$translations,0,12,true) as $language=>$translation){
+                    $pid=(int)($translation->element_id??0);
+                    if($pid>0&&get_post_type($pid)==='tours-and-activities'
+                       &&get_post_status($pid)==='publish')$family[(string)$language]=$pid;
+                }
+                ksort($family);
+                if(($family['en']??0)===$primary && in_array($tour,$family,true)
+                   &&count(MAD4B_Tour_Media_Association_V1::verified_ids($primary,$family))>=4){
+                    $candidate=get_post_meta($primary,'_mad4b_tour_media_association_v1',true);
+                    if(is_array($candidate)
+                       &&($candidate['contract']??'')==='mad4b.tour-media-association.v1'
+                       &&($candidate['canonical_post_id']??0)===$primary
+                       &&($candidate['wpml_family']??[])===$family){
+                        $association=$candidate;
+                        $associationPost=$primary;
+                    }
+                }
+            }
+        }
         if(!is_array($association)||($association['contract']??'')!=='mad4b.tour-media-association.v1'){
             if($review_subject)$issues[]=['code'=>'media_hero_subject_review_pending',
                 'severity'=>'medium','reason'=>'original_tour_association_unavailable',
@@ -301,7 +335,7 @@ final class MAD4B_Tour_Photo_Quality_V1 {
                     $issues[]=['code'=>'media_hero_subject_review_pending',
                         'severity'=>'medium','field'=>$photo['field'],
                         'reason'=>'photo_not_in_original_review_association'];
-            $subject=get_post_meta($tour,'_mad4b_media_subject_evidence_v1',true);
+            $subject=get_post_meta($associationPost,'_mad4b_media_subject_evidence_v1',true);
             $site=class_exists('MAD4B_SCP_Site_Profile',false)
                 ?(string)MAD4B_SCP_Site_Profile::site_uuid():'';
             $bound=is_array($subject)
