@@ -8145,6 +8145,41 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-drive-scan-cron.php",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/drive-scan-cron-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B original first-party capability CI reviewer",
+      "review_rationale": "Original 31-case Drive Scan cron source test verifies pre-scan Site Profile and enrolled operator admission, strict typed Google read and revocation/reconnect transport source conditions, exact source identity and disabled scheduler status without any external Drive call, durable API write or scheduled scan. The actual native Drive connection_status() contract declares the exact boolean fields. No real cron run or site mutation is authorized. Proof is a synthetic original-source test, not an independent live release or authorization of execution.",
+      "coverage_reuse_rationale": "The established controls AUTOMATION-01, PERFORMANCE-01 already cover native authenticated origin, isolated WordPress capability/actor gates and nonauthorizing scheduled service/readback. The fixture introduces no new transport, grant, service or Production permission.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-review-routing.php",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "tests/brand-review-routing-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B original first-party capability CI reviewer",
+      "review_rationale": "Original 22-case Brand Review route test proves dynamic review policy inheritance does not confer publication authority, grants or approval. Only exact source policy ready, catalog eligibility and existing Agent grant booleans admit AI review; unknown WP_Error statuses from the independent local worker remain not ready. No model call or review approval occurs. Proof is a synthetic original-source test, not an independent live release or authorization of execution.",
+      "coverage_reuse_rationale": "The established controls AI-01, LOCALIZATION-01, PROVIDERS-02 already cover native authenticated origin, isolated WordPress capability/actor gates and nonauthorizing scheduled service/readback. The fixture introduces no new transport, grant, service or Production permission.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "lifecycle": [],
@@ -21005,6 +21040,39 @@
       ],
       "owner_role": "MAD4B source-backed CI-only reviewer",
       "review_rationale": "Original eight-case Skill Provider fixture confirms a persisted ready record is not current runtime proof and requires exact Site Profile enrollment and Skill Catalog opt-in before any plugin/Skill reconciliation or managed file creation. Reproduced on PHP 7.4/8.5 with exact Git SHA. This is CI-only; no signed independent Production acceptance or live-site authorization.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-drive-scan-cron.php",
+      "source_blob_sha": "c09b859e7562a0eccc26fcf140e00f5eb6361bd7",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/drive-scan-cron-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party nonauthorizing P1 source reviewer",
+      "review_rationale": "Original 31-case Drive Scan cron source test verifies pre-scan Site Profile and enrolled operator admission, strict typed Google read and revocation/reconnect transport source conditions, exact source identity and disabled scheduler status without any external Drive call, durable API write or scheduled scan. The actual native Drive connection_status() contract declares the exact boolean fields. No real cron run or site mutation is authorized. Exact Git blob and original-source tests pass PHP 7.4/8.5; signed live evidence, owner approval and deployment certification remain absent.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-review-routing.php",
+      "source_blob_sha": "ad582bbdfe20f02166050558d0cf80fda3fc5b65",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "tests/brand-review-routing-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party nonauthorizing P1 source reviewer",
+      "review_rationale": "Original 22-case Brand Review route test proves dynamic review policy inheritance does not confer publication authority, grants or approval. Only exact source policy ready, catalog eligibility and existing Agent grant booleans admit AI review; unknown WP_Error statuses from the independent local worker remain not ready. No model call or review approval occurs. Exact Git blob and original-source tests pass PHP 7.4/8.5; signed live evidence, owner approval and deployment certification remain absent.",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true

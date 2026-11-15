@@ -104,6 +104,10 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "tests/remote-operation-catalog-original-hermetic.php",
     "tests/plugin-bootstrap-original-hermetic.php",
     "tests/skill-provider-source-original-hermetic.php",
+    # Native P1 scheduler and review routing admission (no live Google or agent approval).
+    "tests/drive-scan-cron-original-hermetic.php",
+    "tests/brand-review-routing-original-hermetic.php",
+
 
     "wp-content/plugins/mad4b-site-control-plane/tests/undo-intent-fault-injection.php",
 
