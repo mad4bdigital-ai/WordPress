@@ -23,3 +23,15 @@ Test using:
 
 Deploy only on a matching preimage of the installed runtime and never
 treat this local source commit as an Original313 signed company release.
+
+## Chromium and HTTP CSS content negotiation
+
+The CSS capture script resides at ops/mobile-critical-css-v1/capture.js in
+the same local Git tree. The installed source is in MAD4B provisioning ops.
+Both tools use the chromium-mobile-webp-v1 HTML Accept profile.
+LiteSpeed rewrites certain image URLs in combined CSS to .jpg.webp for
+WebP-capable clients, changing the SHA without Elementor document changes.
+Matching the browser negotiation profile enables exact capture-to-monitor
+comparison but never treats JPEG-only CSS as WebP certified.
+A site with private_market_veto stays private/BYPASS; browser Accept is
+not a trusted cache or market identity.

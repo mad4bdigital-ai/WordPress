@@ -41,6 +41,26 @@ class HttpAuditNative(unittest.TestCase):
  def policy(self, cache='private_market_veto'):
   return {'contract':'mad4b.performance-http-policy.v2','enabled':True,
    'company':'source','origin':origin,'routes':[{'path':'/','locale':'en','expect_cache':cache}]}
+ def test_mobile_browser_webp_accept_matches_css_capture(self):
+  resp=Resp(headers={'X-MAD4B-Mobile-CSS-Ready':'0',
+                     'X-MAD4B-Mobile-CSS-Native-Complete':'1',
+                     'X-MAD4B-Preset-Cache':'BYPASS',
+                     'Cache-Control':'private'})
+  with patch.object(m.urllib.request,'urlopen',return_value=resp) as request:
+   outcome=m.audit(self.policy(),rounds=1)
+  sent=request.call_args.args[0]
+  self.assertEqual(sent.get_header('Accept'),m.HTML_ACCEPT)
+  self.assertIn('image/webp',sent.get_header('Accept'))
+  self.assertEqual(outcome['observations'][0]['css_negotiation_profile'],
+                   'chromium-mobile-webp-v1')
+  self.assertTrue(outcome['observations'][0]['passed'])
+
+ def test_native_capture_profile_matches_http_monitor_source(self):
+  capture=(root.parent/'mobile-critical-css-v1/capture.js').read_text()
+  self.assertIn("const HTML_ACCEPT = '"+m.HTML_ACCEPT+"';",capture)
+  self.assertIn("const CSS_NEGOTIATION_PROFILE = '"+m.CSS_NEGOTIATION_PROFILE+"';",capture)
+  self.assertIn("extraHTTPHeaders:{'Accept':HTML_ACCEPT",capture)
+  self.assertIn('origin_cache_bypassed:DIAG_BYPASS',capture)
  def test_native_complete_safe_private(self):
   resp=Resp(headers={'X-MAD4B-Mobile-CSS-Ready':'0','X-MAD4B-Mobile-CSS-Native-Complete':'1',
                      'X-MAD4B-Preset-Cache':'BYPASS','Cache-Control':'private, no-store'})

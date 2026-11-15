@@ -18,6 +18,13 @@ from urllib.parse import urlsplit
 CONTRACT="mad4b.performance-mobile-http-readback.v2"
 MAX_BYTES=8*1024*1024
 UA="Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Mobile Safari/537.36"
+# Match the Chromium mobile browser used by the native Critical CSS capture.
+# Browser Accept controls LiteSpeed's WebP URL rewriting inside CSS. The
+# previous generic Accept silently observed the JPEG-only bundle and caused
+# false OBSERVATION_TO_CAPTURE_DRIFT for a valid WebP-capable browser.
+# This is ONLY a monitoring input, not a market/cache partition authority.
+HTML_ACCEPT="text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8"
+CSS_NEGOTIATION_PROFILE="chromium-mobile-webp-v1"
 
 def _read_complete_response(request, expected_origin: str, path: str):
     """Bounded safe-GET retry for truncated/transport-broken 0.9MB HTML.
@@ -89,7 +96,7 @@ def audit(policy, rounds=2):
             raise ValueError("unknown_cache_mode")
         for run in range(1,rounds+1):
             request=urllib.request.Request(origin+path,headers={
-                "User-Agent":UA,"Accept":"text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "User-Agent":UA,"Accept":HTML_ACCEPT,
                 "Accept-Encoding":"identity"})
             start=time.monotonic()
             code,headers,body,retries=_read_complete_response(request,origin,path)
@@ -119,6 +126,7 @@ def audit(policy, rounds=2):
                 "critical_css_gzip_bytes":len(gzip.compress((m.group(1) if m else "").encode("utf-8"))),
                 "html_bytes":len(body),
                 "transport_attempts":retries+1,
+                "css_negotiation_profile":CSS_NEGOTIATION_PROFILE,
                 "has_hero": "home-mix-mad4b-1600.webp" in text if policy.get("hero_marker") else None,
                 "css_bundle":(re.search(r'/litespeed/css/([a-f0-9]{32}\.css)',text).group(1)
                              if re.search(r'/litespeed/css/([a-f0-9]{32}\.css)',text) else None),
