@@ -16,7 +16,7 @@ final class MAD4B_SCP_Staging_Context_Fixtures {
         $brand=MAD4B_SCP_Context_Authority::profile();
         $site=MAD4B_SCP_Site_Profile::status();
         $archive=get_option(MAD4B_SCP_Context_Authority::STAGING_TRIAL_ARCHIVE,false);
-        if(!is_array($brand)||($brand['status']??'')!=='test_only'||
+        if(!is_array($site)||!is_array($brand)||($brand['status']??'')!=='test_only'||
            !is_array($archive)||($archive['trial_id']??'')!==($brand['brand_id']??'')||
            !isset($site['site_uuid'],$brand['site_uuid']) ||
            !hash_equals(strtolower((string)$site['site_uuid']),strtolower((string)$brand['site_uuid'])) ||
@@ -32,7 +32,8 @@ final class MAD4B_SCP_Staging_Context_Fixtures {
         $raw=@file_get_contents($path);
         $fixture=is_string($raw)?json_decode($raw,true):null;
         if(!is_array($fixture)||($fixture['contract']??'')!=='mad4b.staging-brand-fixture-catalog.v1'||
-            count($fixture['sources']??[])!==2||count($fixture['assets']??[])!==4)
+            !is_array($fixture['sources']??null)||!is_array($fixture['assets']??null)||
+            count($fixture['sources'])!==2||count($fixture['assets'])!==4)
             return new WP_Error('mad4b_test_fixture_catalog_invalid','Test catalog does not match expected contract',['status'=>503]);
         $sources=[];
         foreach($fixture['sources'] as$r){
@@ -86,7 +87,12 @@ final class MAD4B_SCP_Staging_Context_Fixtures {
         $mail=MAD4B_SCP_Company_Communication::brandIdentity();
         $canSend=MAD4B_SCP_Company_Communication::canSend();
         $governedSources=MAD4B_SCP_Context_Authority::sources();
+        if(is_wp_error($governedSources))return $governedSources;
         $governedAssets=MAD4B_SCP_Context_Authority::assets();
+        if(is_wp_error($governedAssets))return $governedAssets;
+        if(!is_array($governedSources)||!is_array($governedAssets))
+            return new WP_Error('mad4b_test_fixtures_governed_inventory_invalid',
+                'Original governed Context inventory cannot be verified.',['status'=>503]);
         $blocked=$canSend===false && $data['brand_status']==='test_only';
         return ['contract'=>'mad4b.staging-context-consumer-tests.v1',
             'scope'=>['site_uuid'=>$data['site_uuid'],'brand_id'=>$data['brand_id'],'test_only'=>true],

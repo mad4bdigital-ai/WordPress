@@ -65,17 +65,26 @@ final class MAD4B_SCP_Staging_Brand_Trial {
     public static function status($request){
         $current=MAD4B_SCP_Context_Authority::profile();
         $archive=get_option(MAD4B_SCP_Context_Authority::STAGING_TRIAL_ARCHIVE,false);
-        $active=is_array($archive) && is_array($current) &&
-            ($current['status']??'')==='test_only' &&
-            ($current['brand_id']??'')===($archive['trial_id']??'');
+        $site=class_exists('MAD4B_SCP_Site_Profile')?MAD4B_SCP_Site_Profile::status():null;
+        $active=is_array($archive) && is_array($current) && is_array($site)
+            && ($current['status']??null)==='test_only'
+            && ($current['brand_id']??null)===($archive['trial_id']??null)
+            && isset($site['site_uuid'],$current['site_uuid'])
+            && hash_equals((string)$site['site_uuid'],(string)$current['site_uuid'])
+            && ($site['environment']??null)==='staging'
+            && ($site['configured']??null)===true
+            && ($site['origin_match']??null)===true
+            && ($site['environment_match']??null)===true;
         $r=rest_ensure_response(array('contract'=>'mad4b.staging-brand-trial-status.v1',
             'test_active'=>$active,'trial_id'=>$active?$current['brand_id']:null,
             'test_brand_name'=>$active?$current['brand_name']:null,
             'test_revision'=>$active?(int)($current['revision']??0):null,
             'profile_sha256'=>$active?hash('sha256',wp_json_encode($current)):null,
             'legacy_archive_exists'=>is_array($archive),
-            'email_send_allowed'=>class_exists('MAD4B_SCP_Company_Communication')?
-                MAD4B_SCP_Company_Communication::canSend():false));
+            // A TEST Brand never inherits generic mail capability; a
+            // WP_Error or uncertain provider readiness is not permission.
+            'email_send_allowed'=>!$active && class_exists('MAD4B_SCP_Company_Communication')
+                && true===MAD4B_SCP_Company_Communication::canSend()));
         $r->header('Cache-Control','private, no-store');return $r;
     }
     public static function boot():void {
