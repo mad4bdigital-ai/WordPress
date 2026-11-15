@@ -85,11 +85,18 @@ final class MAD4B_SCP_CLI {
 	public static function diagnostics_write( $args = array(), $assoc_args = array() ) {
 		unset( $args, $assoc_args );
 		$runtime = class_exists( 'MAD4B_SCP_Staging_Write_Authority' );
-		$checkpoint = $runtime ? MAD4B_SCP_Staging_Write_Authority::persisted_status() : array();
-		$current = $runtime ? MAD4B_SCP_Staging_Write_Authority::current_execution_readiness() : array();
-		$plan = $runtime ? MAD4B_SCP_Staging_Write_Authority::reconciliation_plan() : array();
+		try {
+			$checkpoint = $runtime ? MAD4B_SCP_Staging_Write_Authority::persisted_status() : array();
+			$current = $runtime ? MAD4B_SCP_Staging_Write_Authority::current_execution_readiness() : array();
+			$plan = $runtime ? MAD4B_SCP_Staging_Write_Authority::reconciliation_plan() : array();
+		} catch ( \Throwable $error ) {
+			$checkpoint = $current = $plan = array();
+		}
+		if ( ! is_array( $checkpoint ) ) $checkpoint = array();
+		if ( ! is_array( $current ) ) $current = array();
+		if ( ! is_array( $plan ) ) $plan = array();
 		$stale = array();
-		foreach ( (array) ( $plan['stale_allow_grants'] ?? array() ) as $row ) {
+		foreach ( is_array( $plan['stale_allow_grants'] ?? null ) ? $plan['stale_allow_grants'] : array() as $row ) {
 			if ( is_array( $row ) && isset( $row['ability'] ) && is_string( $row['ability'] ) ) {
 				$stale[] = $row['ability'];
 			}
@@ -99,15 +106,15 @@ final class MAD4B_SCP_CLI {
 		self::emit( array(
 			'contract' => 'mad4b.cli-write-diagnostic.v1',
 			'environment' => function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : '',
-			'checkpoint_ready' => ! empty( $checkpoint['ready'] ),
-			'current_execution_ready' => ! empty( $current['ready'] ),
+			'checkpoint_ready' => ( $checkpoint['ready'] ?? null ) === true,
+			'current_execution_ready' => ( $current['ready'] ?? null ) === true,
 			'current_readiness_blockers' => array_values( (array) ( $current['blockers'] ?? array( 'write_authority_unavailable' ) ) ),
-			'write_inventory_count' => isset( $plan['write_tool_count'] ) ? (int) $plan['write_tool_count'] : 0,
-			'exact_grants_missing_count' => isset( $plan['exact_grants_missing_count'] ) ? (int) $plan['exact_grants_missing_count'] : 0,
-			'stale_allow_grants_count' => isset( $plan['stale_allow_grants_count'] ) ? (int) $plan['stale_allow_grants_count'] : 0,
+			'write_inventory_count' => ( is_int( $plan['write_tool_count'] ?? null ) && $plan['write_tool_count'] >= 0 ? $plan['write_tool_count'] : 0 ),
+			'exact_grants_missing_count' => ( is_int( $plan['exact_grants_missing_count'] ?? null ) && $plan['exact_grants_missing_count'] >= 0 ? $plan['exact_grants_missing_count'] : 0 ),
+			'stale_allow_grants_count' => ( is_int( $plan['stale_allow_grants_count'] ?? null ) && $plan['stale_allow_grants_count'] >= 0 ? $plan['stale_allow_grants_count'] : 0 ),
 			'stale_ability_names' => $stale,
-			'candidate_binding_match' => ! empty( $current['candidate_binding_match'] ),
-			'next_reconciliation' => isset( $current['next_reconciliation'] ) ? (string) $current['next_reconciliation'] : 'review_current_authority',
+			'candidate_binding_match' => ( $current['candidate_binding_match'] ?? null ) === true,
+			'next_reconciliation' => is_string( $current['next_reconciliation'] ?? null ) ? $current['next_reconciliation'] : 'review_current_authority',
 			'read_only' => true,
 			'production_authorized' => false,
 		) );
@@ -116,11 +123,11 @@ final class MAD4B_SCP_CLI {
 	public static function package_verify( $args = array(), $assoc_args = array() ) {
 		unset( $args, $assoc_args );
 		$runtime = self::runtime_provenance();
-		$verified = ! empty( $runtime['manifest_present'] )
-			&& ! empty( $runtime['manifest_valid'] )
-			&& ! empty( $runtime['runtime_manifest_match'] )
-			&& empty( $runtime['stale'] )
-			&& empty( $runtime['provenance_mismatch'] );
+		$verified = ( $runtime['manifest_present'] ?? null ) === true
+			&& ( $runtime['manifest_valid'] ?? null ) === true
+			&& ( $runtime['runtime_manifest_match'] ?? null ) === true
+			&& ( $runtime['stale'] ?? null ) === false
+			&& ( $runtime['provenance_mismatch'] ?? null ) === false;
 		self::emit( array(
 			'contract' => 'mad4b.cli-package-verify.v1',
 			'verified' => (bool) $verified,
@@ -186,7 +193,11 @@ final class MAD4B_SCP_CLI {
 				'reason' => 'runtime_provenance_service_unavailable',
 			);
 		}
-		$value = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
+		try {
+			$value = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
+		} catch ( \Throwable $error ) {
+			$value = null;
+		}
 		return is_array( $value ) ? $value : array(
 			'available' => false,
 			'reason' => 'runtime_provenance_invalid',
