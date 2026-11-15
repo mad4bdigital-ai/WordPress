@@ -73,6 +73,37 @@ add_action('wp_enqueue_scripts', static function (): void {
         (string)filemtime($path),
         true
     );
+    // Per-object focal metadata is presentation-only. It never replaces an
+    // image, changes ownership, or implies photographic/license approval.
+    // Other registered media providers may contribute their own field names
+    // through the same policy filter; nothing is tied to Elementor IDs.
+    $post_id=(int)get_queried_object_id();
+    $requested=get_post_meta($post_id,'_mad4b_media_focal_points_v1',true);
+    if(!is_array($requested))$requested=[];
+    $requested=apply_filters('mad4b/media/frame_focal_policy',$requested,$post_id,'tours-and-activities');
+    if(!is_array($requested))$requested=[];
+    $by_url=[];
+    foreach(array_slice($requested,0,30,true) as $key=>$point){
+        if(!is_string($key)||!preg_match('/^[a-zA-Z_][a-zA-Z_0-9]{1,90}$/D',$key)
+            ||!is_array($point)||array_keys($point)!==['x','y'])continue;
+        $x=$point['x'];$y=$point['y'];
+        if((!is_int($x)&&!is_float($x)) ||(!is_int($y)&&!is_float($y))
+            ||$x<0||$x>100||$y<0||$y>100)continue;
+        $url=get_post_meta($post_id,$key,true);
+        if(!is_string($url)||strlen($url)>2048||!str_starts_with($url,'https://'))continue;
+        $parts=wp_parse_url($url);
+        $host=strtolower((string)($parts['host']??''));
+        $allowed_hosts=[strtolower((string)wp_parse_url(home_url('/'),PHP_URL_HOST)),
+            strtolower((string)wp_parse_url(wp_get_upload_dir()['baseurl'],PHP_URL_HOST))];
+        if(!in_array($host,$allowed_hosts,true)||!str_contains((string)($parts['path']??''),'/wp-content/uploads/'))continue;
+        $by_url[$url]=['x'=>$x,'y'=>$y];
+    }
+    if($by_url){
+        wp_add_inline_script('mad4b-tour-gallery-frame-opener',
+            'window.MAD4B_TOUR_FRAME_FOCAL_V1='.
+            wp_json_encode($by_url,JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_UNESCAPED_SLASHES).';',
+            'before');
+    }
     wp_add_inline_style('mad4b-tour-gallery-popup-layout',
         'body.single-tours-and-activities .mad4b-gallery-frame-opener {'.
         'cursor:pointer;}'.
