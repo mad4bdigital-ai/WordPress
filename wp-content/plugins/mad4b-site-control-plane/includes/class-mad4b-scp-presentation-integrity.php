@@ -48,14 +48,14 @@ final class MAD4B_SCP_Presentation_Integrity_V1 {
                         $label = $ref->getName();
                     } else continue;
                     $file = (string)$ref->getFileName();
-                    if (!$file || !str_contains($file, WP_CONTENT_DIR.'/') ||
-                        !str_contains(strtolower($file), 'mad4b')) continue;
+                    if (!$file || false===strpos($file, WP_CONTENT_DIR.'/') ||
+                        false===strpos(strtolower($file), 'mad4b')) continue;
                     $lines = @file($file, FILE_IGNORE_NEW_LINES);
                     if (!is_array($lines)) continue;
                     $length = min(350, $ref->getEndLine() - $ref->getStartLine() + 1);
                     $source = implode("\n", array_slice($lines, $ref->getStartLine() - 1, $length));
-                    if (!str_contains($source, '!important') ||
-                        !str_contains($source, 'elementor-element') ||
+                    if (false===strpos($source, '!important') ||
+                        false===strpos($source, 'elementor-element') ||
                         !preg_match('/(?:background-color|border-radius|padding|font-size|color)\\s*:/i', $source)) continue;
                     // This is a competing style owner candidate, not proof of a
                     // browser regression; the frontend DOM/CSS must still be tested.
@@ -88,7 +88,7 @@ final class MAD4B_SCP_Presentation_Integrity_V1 {
                         $issues[] = self::issue($post_type, $post_id, $code, 'high',
                             'JetEngine Dynamic Field '.$widget.' has query_var with no variable and Hide if Empty ON; fallback is unreachable.',
                             ['widget_id'=>$widget, 'field_source'=>'query_var',
-                             'fallback_kind'=>str_contains($fallback,'jet-query-count')?'jet-query-count':($fallback!==''?'other':'none'),
+                             'fallback_kind'=>false!==strpos($fallback,'jet-query-count')?'jet-query-count':($fallback!==''?'other':'none'),
                              'dom_optimization_related'=>'not_required_for_failure']);
                     } elseif ($fallback !== '') {
                         // A fallback-only display is valid for many legacy widgets.

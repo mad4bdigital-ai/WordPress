@@ -6987,6 +6987,25 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Original Platform, Governance, Security and Execution controls cover read-only page evidence and strictly bounded HTTP. It creates no new WordPress writer, SEO translator, automatic publisher or unrestricted external crawl.",
       "review_rationale": "Reviewed full original Frontend Impact Priority service source, including read-only admin/REST GET, public same-origin multilingual WPML home/archive/tour sampling, Elementor/JetEngine HTML parser (no form values), bounded page size and HTTP timeout, optional provider scores as candidates only, and one verified WordPress snapshot on adequate language coverage. Reproduced three actual defects: alternate HTTPS ports admitted as same origin, direct wp_remote_get where safe HTTP is required, and a one-language home-only scan rejected by a hard two-page minimum; corrected all three. Also repaired PHP7.4-incompatible string prefix/substring calls with correct operator precedence. Same-PR native source tests run on both PHP7.4 and 8.5: verify exact origin and port; block userinfo/query/admin paths; inspect actual WPML target selection; require HTTPS safe HTTP without redirects; preserve last accepted snapshot on failed crawl; deny unauthorized manual scan without HTTP; accept one-language sample; never authorize a ContentJob, booking, translation or publication. This CI-only review does not certify live browser render or VPS CPU cost: hourly Cron may sample up to 12 languages x 3 pages with bounded per-page timeouts, and its production load/overlap must be verified separately."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-presentation-integrity.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "BROWSER-01"
+      ],
+      "regression_tests": [
+        "tests/presentation-integrity-jetengine-source-hermetic.php"
+      ],
+      "owner_role": "MAD4B native Elementor and JetEngine presentation audit reviewer — nonauthorizing source CI",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original Platform, Governance, Security and Browser evidence contracts own this read-only Elementor/JetEngine diagnostic; scanning cannot grant write rights or automatically change authored native templates.",
+      "review_rationale": "Reviewed complete original native Elementor/JetEngine Presentation Integrity class. Its opt-in WordPress template SQL inventory has explicit 700-template and 240-issue limits, detects missing query_var and unavailable fallback, respects published-vs-draft Elementor templates and avoids importing unverified browser reports as CSS fixes. Actual original source failed on PHP7.4 when str_contains processed JetEngine fallback, repaired to strpos without changing classification. Same-PR hermetic PHP7.4/8.5 tests invoke discover and CLI with synthetic native Elementor data, prove draft issue isolation, malformed JSON and DB outage fail closed, browser coverage absent, and option persistence happens only with explicit WP-CLI persist argument. No CSS override, translation, booking or template mutation is performed; real browser evidence and live site acceptance remain unverified."
     }
   ],
   "lifecycle": [],
@@ -16606,6 +16625,26 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Original WordPress options.php owns updates; MAD4B only removes direct admin_email and constant-protected URLs from the native options allowlist. Existing governance, site security and platform controls apply.",
       "review_rationale": "Reviewed complete 42-line original native General Settings contract. Its final allowed_options hook applies only to admin POST options.php for general settings and removes direct admin_email writes while leaving new_admin_email to core confirmation. Constants WP_HOME and WP_SITEURL guard immutable URLs, other option pages, GET and AJAX remain unchanged. The existing actual-source QA30 PHP lifecycle fixture was extended to verify the native email confirmation route and made compatible with PHP 7.4 Reflection while testing non-initialization of REST on General Settings POST. No password, owner, Site Profile, WP OAuth or production authority is altered. Source-only PHP evidence, not a live admin form approval."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-presentation-integrity.php",
+      "source_blob_sha": "4872944441ebd60c128854d8badb80c2c9cf6b1e",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "BROWSER-01"
+      ],
+      "regression_tests": [
+        "tests/presentation-integrity-jetengine-source-hermetic.php"
+      ],
+      "owner_role": "MAD4B native Elementor and JetEngine presentation audit reviewer — nonauthorizing source CI",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original Platform, Governance, Security and Browser evidence contracts own this read-only Elementor/JetEngine diagnostic; scanning cannot grant write rights or automatically change authored native templates.",
+      "review_rationale": "Reviewed complete original native Elementor/JetEngine Presentation Integrity class. Its opt-in WordPress template SQL inventory has explicit 700-template and 240-issue limits, detects missing query_var and unavailable fallback, respects published-vs-draft Elementor templates and avoids importing unverified browser reports as CSS fixes. Actual original source failed on PHP7.4 when str_contains processed JetEngine fallback, repaired to strpos without changing classification. Same-PR hermetic PHP7.4/8.5 tests invoke discover and CLI with synthetic native Elementor data, prove draft issue isolation, malformed JSON and DB outage fail closed, browser coverage absent, and option persistence happens only with explicit WP-CLI persist argument. No CSS override, translation, booking or template mutation is performed; real browser evidence and live site acceptance remain unverified."
     }
   ],
   "code_change_rules": {
