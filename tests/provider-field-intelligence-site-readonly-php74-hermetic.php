@@ -26,6 +26,17 @@ function wp_json_encode($data,$flags=0){return json_encode($data,$flags);}
 function absint($v){return abs((int)$v);}
 function sanitize_key($v){return preg_replace('/[^a-z0-9_-]/','',strtolower((string)$v));}
 function post_type_exists($type){return $type==='tours-and-activities';}
+function get_post($id){
+ return (int)$id===77?(object)['ID'=>77,'post_type'=>'tours-and-activities']:null;
+}
+function get_post_thumbnail_id($id){return (int)$id===77?12:0;}
+function get_post_meta($id,$key,$single=true){
+ if((int)$id===12 && $key==='_wp_attachment_image_alt')return '';
+ if($key==='rank_math_title')return 'Localized Nile Review';
+ if($key==='rank_math_description')return 'Editorial itinerary summary';
+ return '';
+}
+function get_attached_file($id){return '/__mad4b_nonexistent_ci_media__/image.jpg';}
 function taxonomy_exists($name){return $name==='destinations';}
 function get_registered_meta_keys($type,$name){return [
  'rank_math_title'=>['type'=>'string','show_in_rest'=>false],
@@ -103,6 +114,10 @@ $route=$GLOBALS['field_routes']['mad4b/v1/provider-fields']??null;
 ff_assert(is_array($route)&&$route['methods']==='GET'
  && call_user_func($route['permission_callback'])===false,
  'Provider field inventory REST is admin-only, not publicly callable');
+$GLOBALS['field_admin']=true;
+ff_assert(call_user_func($route['permission_callback'])===true,
+ 'An authorized WordPress administrator may inspect registered field names');
+$GLOBALS['field_admin']=false;
 $bad=$c::discover(['object'=>'post','subtype'=>'foreign','limit'=>300]);
 ff_assert($bad instanceof WP_Error && $bad->get_error_code()==='mad4b_provider_fields_unknown_object',
  'Only registered WordPress content types may be discovered');
@@ -152,4 +167,23 @@ ff_assert($limited['counts']['returned']===2
  'Partial pagination must not falsely certify full field enumeration');
 ff_assert($GLOBALS['field_values_read']===0,
  'Read-only inventory must never load private metadata values');
-echo "PROVIDER_FIELDS_SITE_PHP74: PASS exact admin REST, JetEngine/WPML, secret-denial, no write\n";
+$locale=$c::locale_media_audit(77);
+ff_assert($locale['complete']===true
+ && $locale['languages_with_posts']===1
+ && $locale['featured_alt_missing']===1
+ && $locale['locales'][0]['featured_alt_length']===0
+ && $locale['locales'][0]['featured_asset_exists']===false
+ && $locale['photo_subject_verified']===false
+ && $locale['alt_text_generated']===false
+ && $locale['translation_data_written']===false
+ && $locale['media_binary_duplicated']===false,
+ 'Locale audit must report missing alt without inventing images, captions or WPML approval');
+$GLOBALS['field_site_ready']=false;
+$other_site=$c::locale_media_audit(77);
+ff_assert($other_site['complete']===false
+ && $other_site['error']==='site_identity_unverified',
+ 'Read-only locale audit cannot inspect unbound company site data');
+$GLOBALS['field_site_ready']=true;
+ff_assert($GLOBALS['field_values_read']===0,
+ 'No private meta values were enumerated during locale field discovery');
+echo "PROVIDER_FIELDS_SITE_PHP74: PASS original REST, field rights, locale audit and no write\n";

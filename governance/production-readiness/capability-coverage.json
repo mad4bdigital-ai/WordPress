@@ -6850,6 +6850,44 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "The original Elementor/JetEngine Journey presentation shares existing WordPress Admin, Browser and security controls; no independent write service, ability or bypass is added.",
       "review_rationale": "Exact original asset blob is independently bound to pr814-journey-source-successors-20261115.json and to historical PR813/814 source integrity tests. The same-PR Node runtime initializes both Journey controllers on an absent-widget page without network or DOM writes and checks the Elementor/JetEngine event hooks, while original source contracts assert the live-preserved enqueue dependency chain and Split layout card selectors. No user edit, new permission, taxonomy relation, publication, pricing or web media change is introduced. Visual responsive/browser and production WPML confirmation remain unverified."
+    },
+    {
+      "id": "rest:mad4b/v1/provider-fields",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/provider-field-intelligence-site-readonly-php74-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party bounded read-only Provider Field REST reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP, provider, execution and security checks require the original WordPress administrator permission plus bound Site Profile before any field name discovery; does not authorize writes.",
+      "review_rationale": "Full original first-party Provider Field Intelligence source reviewed: immutable GET-only admin permission route, exact Site Profile, limited registered post/taxonomy enumeration, no private meta value query, canonical WordPress/JetEngine types preserved above third-party extension hints, secret-key name filters, WPML modes observed not applied, media galleries limited to declared JetEngine fields, and locale SEO/media readbacks never grant translation write, publish or asset reuse. Same-PR hermetic PHP 7.4 and 8.5 source test directly invokes actual REST route, unbound-site and unknown-input denials, bounded enumeration, missing-alt locale evidence, and all no-write flags. Live website acceptance and provider-specific custom hooks remain unverified."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-field-intelligence.php",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/provider-field-intelligence-site-readonly-php74-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party bounded read-only Provider Field REST reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP, provider, execution and security checks require the original WordPress administrator permission plus bound Site Profile before any field name discovery; does not authorize writes.",
+      "review_rationale": "Full original first-party Provider Field Intelligence source reviewed: immutable GET-only admin permission route, exact Site Profile, limited registered post/taxonomy enumeration, no private meta value query, canonical WordPress/JetEngine types preserved above third-party extension hints, secret-key name filters, WPML modes observed not applied, media galleries limited to declared JetEngine fields, and locale SEO/media readbacks never grant translation write, publish or asset reuse. Same-PR hermetic PHP 7.4 and 8.5 source test directly invokes actual REST route, unbound-site and unknown-input denials, bounded enumeration, missing-alt locale evidence, and all no-write flags. Live website acceptance and provider-specific custom hooks remain unverified."
     }
   ],
   "lifecycle": [],
@@ -16348,6 +16386,26 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "The original Elementor/JetEngine Journey presentation shares existing WordPress Admin, Browser and security controls; no independent write service, ability or bypass is added.",
       "review_rationale": "Exact original asset blob is independently bound to pr814-journey-source-successors-20261115.json and to historical PR813/814 source integrity tests. The same-PR Node runtime initializes both Journey controllers on an absent-widget page without network or DOM writes and checks the Elementor/JetEngine event hooks, while original source contracts assert the live-preserved enqueue dependency chain and Split layout card selectors. No user edit, new permission, taxonomy relation, publication, pricing or web media change is introduced. Visual responsive/browser and production WPML confirmation remain unverified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-field-intelligence.php",
+      "source_blob_sha": "1831ceb9d5dd9765945c6feb09c43a95eae38aee",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/provider-field-intelligence-site-readonly-php74-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party Provider Field Intelligence read-only source reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP read-only provider, original Execution and Security/site-scope controls own the service. No new write, provider permission or database schema is created.",
+      "review_rationale": "Full original first-party Provider Field Intelligence source reviewed: immutable GET-only admin permission route, exact Site Profile, limited registered post/taxonomy enumeration, no private meta value query, canonical WordPress/JetEngine types preserved above third-party extension hints, secret-key name filters, WPML modes observed not applied, media galleries limited to declared JetEngine fields, and locale SEO/media readbacks never grant translation write, publish or asset reuse. Same-PR hermetic PHP 7.4 and 8.5 source test directly invokes actual REST route, unbound-site and unknown-input denials, bounded enumeration, missing-alt locale evidence, and all no-write flags. Live website acceptance and provider-specific custom hooks remain unverified."
     }
   ],
   "code_change_rules": {
