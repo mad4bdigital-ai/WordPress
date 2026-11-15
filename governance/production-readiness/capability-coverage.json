@@ -6249,6 +6249,57 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing governed Host and security controls own the original signed readback path; the local node inspection never creates a grant, authorizes full fleet topology or allows arbitrary Host commands.",
       "review_rationale": "Original Host Bridge PHP class was exercised on PHP7.4/8.5 with a disposable synthetic Ed25519 pair and original method node_inventory_verification. Exact Host site/config/fingerprint, signed result SHA, registered job, runner source fingerprint, receipt freshness and independent detached signature were validated. A correctly signed local node reports no cluster/company topology or Host write authority; mutated payload, old re-signed receipt, foreign signed site and arbitrary caller input are denied. This is a source-only synthetic signer test, not actual enrolled VPS public-key or Original313 live proof."
+    },
+    {
+      "id": "rest:mad4b/v1/company-migration-decisions/action",
+      "control_ids": [
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/company-migration-decisions-transaction-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party tenant migration two-person approval and database source reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original Database and Performance controls remain the only store transaction and lock owners, with browser Owner and Site Profile authority still enforced by original code. No independent migration provider is created.",
+      "review_rationale": "Original PHP source class executed under PHP 7.4 and 8.5 with a bounded in-memory WordPress decisions table and fake transactional database, not a live database. It verifies native GET/POST REST method/permission, anonymous denial, enrolled-site proof, exact proposed source and target SHA and policy revision CAS, proposer cannot approve own request even with owner session, separate browser Owner approval, exact apply/revert confirmation, no provider mutation, append-only Audit rollback on failure and lock release. Real MariaDB transaction isolation and browser REST nonce remain separate live acceptance."
+    },
+    {
+      "id": "rest:mad4b/v1/company-migration-decisions/plan",
+      "control_ids": [
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/company-migration-decisions-transaction-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party tenant migration two-person approval and database source reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original Database and Performance controls remain the only store transaction and lock owners, with browser Owner and Site Profile authority still enforced by original code. No independent migration provider is created.",
+      "review_rationale": "Original PHP source class executed under PHP 7.4 and 8.5 with a bounded in-memory WordPress decisions table and fake transactional database, not a live database. It verifies native GET/POST REST method/permission, anonymous denial, enrolled-site proof, exact proposed source and target SHA and policy revision CAS, proposer cannot approve own request even with owner session, separate browser Owner approval, exact apply/revert confirmation, no provider mutation, append-only Audit rollback on failure and lock release. Real MariaDB transaction isolation and browser REST nonce remain separate live acceptance."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-migration-decisions.php",
+      "control_ids": [
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/company-migration-decisions-transaction-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party tenant migration two-person approval and database source reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original Database and Performance controls remain the only store transaction and lock owners, with browser Owner and Site Profile authority still enforced by original code. No independent migration provider is created.",
+      "review_rationale": "Original PHP source class executed under PHP 7.4 and 8.5 with a bounded in-memory WordPress decisions table and fake transactional database, not a live database. It verifies native GET/POST REST method/permission, anonymous denial, enrolled-site proof, exact proposed source and target SHA and policy revision CAS, proposer cannot approve own request even with owner session, separate browser Owner approval, exact apply/revert confirmation, no provider mutation, append-only Audit rollback on failure and lock release. Real MariaDB transaction isolation and browser REST nonce remain separate live acceptance."
     }
   ],
   "lifecycle": [],
@@ -15388,6 +15439,24 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing governance/platform/security source controls and first-party HostBridge registration/test fixture remain enforced; exact 112-line additive read operation is tied to new-current-PR cryptographic and negative regression.",
       "review_rationale": "Inspected source diff against base SHA: original Host Bridge changes only add the read-only host-node-inventory-verification Ability and its detached Ed25519 signature check; legacy apply/spool/rollback methods are unchanged. Existing 583-line original Host Bridge tests still execute, extended with positive and negative local node proof cases under a temporary synthetic key. The signed node cannot issue Host rights or certify cluster. Live installed Host identity, runner signing key, Original313 and owner releases remain separately unverified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-migration-decisions.php",
+      "source_blob_sha": "8f3422ed846eb38ea125e783ed47f470dd3ee274",
+      "control_ids": [
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/company-migration-decisions-transaction-hermetic.php"
+      ],
+      "owner_role": "MAD4B immutable migration decision registry source reviewer — nonauthorizing",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing Database/Performance and audit controls remain bound to the exact Source SHA and new current-PR original-class negative testing.",
+      "review_rationale": "Reviewed native first-party Company Migration Decisions PHP service: all changes are stored as tenant-scoped decision rows with source/target SHA, two-person review, site and per-asset SQL lock, transactional audit and rollback, separate exact Owner apply and revert. Source performs no content copy, license exposure, provider installation or Host release. Original methods run in simulated durable SQL transaction with explicit fault injection. Production external writes require separately certified original executor and are not attested by this test."
     }
   ],
   "code_change_rules": {
