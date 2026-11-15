@@ -13,9 +13,13 @@ final class MAD4B_SCP_Source_Lifecycle {
         add_action('admin_post_mad4b_context_restore_source',array(__CLASS__,'handle_restore'));
     }
     private static function allowed(){
-        return current_user_can('manage_options') && class_exists('MAD4B_SCP_Policy')
-            && MAD4B_SCP_Policy::can_connect_user(get_current_user_id())
-            && class_exists('MAD4B_SCP_Context_Authority');
+        if(!current_user_can('manage_options')||!class_exists('MAD4B_SCP_Policy')
+           ||!class_exists('MAD4B_SCP_Context_Authority'))return false;
+        try {
+            return true===MAD4B_SCP_Policy::can_connect_user(get_current_user_id());
+        } catch(\Throwable $error) {
+            return false;
+        }
     }
     private static function raw(){
         $stored=get_option(self::OPTION,array());
@@ -31,14 +35,15 @@ final class MAD4B_SCP_Source_Lifecycle {
         $profile=MAD4B_SCP_Context_Authority::profile();
         $list=array();
         foreach(self::raw() as $id=>$row) {
+            if(!is_array($row))continue;
             if(!is_array($profile) || !hash_equals((string)($profile['site_uuid']??''),(string)($row['site_uuid']??''))
                || !hash_equals((string)($profile['brand_id']??''),(string)($row['brand_id']??'')))continue;
-            if(!is_array($row)||!preg_match('/^[a-f0-9-]{36}$/D',(string)$id))continue;
+            if(!preg_match('/^[a-f0-9-]{36}$/D',(string)$id))continue;
             $list[$id]=array(
                 'archive_id'=>$id,'source_id'=>(string)($row['source_id']??''),
                 'label'=>(string)($row['source']['label']??''),
                 'state'=>(string)($row['state']??''),
-                'asset_count'=>count($row['assets']??array()),
+                'asset_count'=>is_array($row['assets']??null)?count($row['assets']):0,
                 'archived_at'=>(string)($row['archived_at']??''),
             );
         }
@@ -47,9 +52,18 @@ final class MAD4B_SCP_Source_Lifecycle {
     public static function archive_plan($source_id){
         if(!self::allowed())return new WP_Error('mad4b_source_archive_denied','An authorized source administrator is required.');
         $source=MAD4B_SCP_Context_Authority::source((string)$source_id);
-        if(!$source)return new WP_Error('mad4b_source_archive_not_found','Source not in the active site.');
+        if(is_wp_error($source))return $source;
+        if(!is_array($source)||empty($source['source_id']))
+            return new WP_Error('mad4b_source_archive_not_found','Source not in the active site.');
+        $active_assets=MAD4B_SCP_Context_Authority::assets();
+        if(!is_array($active_assets))return new WP_Error(
+            'mad4b_source_archive_inventory_unavailable',
+            'Original source asset inventory is unavailable; refuse archive.');
         $assets=array();
-        foreach(MAD4B_SCP_Context_Authority::assets() as $id=>$asset){
+        foreach($active_assets as $id=>$asset){
+            if(!is_array($asset))
+                return new WP_Error('mad4b_source_archive_inventory_invalid',
+                    'Malformed original asset cannot be archived safely.');
             if((string)($asset['source_id']??'')!==(string)$source['source_id'])continue;
             foreach(array('site_uuid','brand_id') as $key){
                 if(!hash_equals((string)($source[$key]??''),(string)($asset[$key]??'')))

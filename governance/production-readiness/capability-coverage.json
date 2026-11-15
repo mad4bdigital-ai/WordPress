@@ -7662,6 +7662,44 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-source-lifecycle.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/source-lifecycle-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party original site/source lifecycle capability reviewer — CI only",
+      "review_rationale": "Original Source Lifecycle first-party source/brand archive and restore pre-fix accepted a truthy WP_Error as site user connection permission. It now requires explicit boolean true, propagates original lookup errors, rejects malformed source asset inventories and unreadable archive metadata before mutation. Sixteen PHP7.4/8.5 native test cases prove no cross-site/brand asset archival, exact source digest and CAS, snapshot drift denial, read-only rescan-required restoration, non-replay and quarantined malicious stored rows. WordPress operations occur only in hermetic in-memory fixtures.",
+      "coverage_reuse_rationale": "Existing GOVERNANCE-01, PLATFORM-01, SECURITY-01, EXECUTION-01 require exact company Site Profile, owner identity and source provenance, authenticated browser POST, append-only audit and separate host release. This native evidence proves no new grants or independent execution authority are introduced.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-lifecycle-rest.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/site-lifecycle-rest-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party original site/source lifecycle capability reviewer — CI only",
+      "review_rationale": "Original Site Lifecycle WordPress REST had truthy WP_Error as nonce authorization and a hardcoded ETG Commerce Staging display name in multi-company Staging re-enrollment. Source now admits only WordPress authenticated numeric owner ID plus nonce outcome 1/2 with exact native session, and preserves company site display name from original enrolled Site Profile. Twenty-three PHP7.4/8.5 native cases cover six protected REST GET routes, one guarded POST, explicit Staging gate, user/cookie/nonce denies, exact plan body and digest binding, no OAuth/Skills/write state inheritance, and post-save reconciliation rather than success. No real site identity changed.",
+      "coverage_reuse_rationale": "Existing GOVERNANCE-01, PLATFORM-01, SECURITY-01, EXECUTION-01 require exact company Site Profile, owner identity and source provenance, authenticated browser POST, append-only audit and separate host release. This native evidence proves no new grants or independent execution authority are introduced.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "lifecycle": [],
@@ -19408,6 +19446,42 @@
       ],
       "owner_role": "MAD4B first-party source/risk reviewer for exact original runtime — CI only",
       "review_rationale": "Original first-party Adaptive Asset compatibility shim failed a native symlink-boundary regression: an active plugin entry could include executable PHP outside the canonical plugin root. Source now realpath-binds canonical class to its installed WordPress owner and forbids directory/file symlink escape, inactive plugin loading and duplicate owner implementation. Four source-backed PHP7.4/8.5 checks, no production site execution. Source Git blob bound and independently rerun on current HEAD; live evidence still required.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-source-lifecycle.php",
+      "source_blob_sha": "719e6dd726dd50dd8494736f0eaf506617f17e8b",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/source-lifecycle-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party original site/source authority reviewer — CI only",
+      "review_rationale": "Original Source Lifecycle first-party source/brand archive and restore pre-fix accepted a truthy WP_Error as site user connection permission. It now requires explicit boolean true, propagates original lookup errors, rejects malformed source asset inventories and unreadable archive metadata before mutation. Sixteen PHP7.4/8.5 native test cases prove no cross-site/brand asset archival, exact source digest and CAS, snapshot drift denial, read-only rescan-required restoration, non-replay and quarantined malicious stored rows. WordPress operations occur only in hermetic in-memory fixtures. Source hash pinned; live deployment authority not inferred.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-lifecycle-rest.php",
+      "source_blob_sha": "386337dae09b88345c755c8edec1d13200b95a97",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/site-lifecycle-rest-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party original site/source authority reviewer — CI only",
+      "review_rationale": "Original Site Lifecycle WordPress REST had truthy WP_Error as nonce authorization and a hardcoded ETG Commerce Staging display name in multi-company Staging re-enrollment. Source now admits only WordPress authenticated numeric owner ID plus nonce outcome 1/2 with exact native session, and preserves company site display name from original enrolled Site Profile. Twenty-three PHP7.4/8.5 native cases cover six protected REST GET routes, one guarded POST, explicit Staging gate, user/cookie/nonce denies, exact plan body and digest binding, no OAuth/Skills/write state inheritance, and post-save reconciliation rather than success. No real site identity changed. Source hash pinned; live deployment authority not inferred.",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true

@@ -128,9 +128,13 @@ final class MAD4B_SCP_Site_Lifecycle_REST {
         $cookie_user = $cookie !== '' ? wp_validate_auth_cookie($cookie,'logged_in') : false;
         $session = function_exists('wp_get_session_token') ? (string)wp_get_session_token() : '';
         $nonce = isset($_SERVER['HTTP_X_WP_NONCE']) ? (string)$_SERVER['HTTP_X_WP_NONCE'] : '';
-        if (!$cookie_user || (int)$cookie_user !== get_current_user_id() ||
-            $session === '' || $nonce === '' ||
-            !wp_verify_nonce($nonce, 'wp_rest'))
+        // Core WordPress returns a positive numeric user ID and nonce result
+        // 1 or 2. Unknown objects, WP_Error and truthy strings are not a
+        // verified browser owner/session, even if PHP would cast them.
+        $nonce_verified = $nonce !== '' ? wp_verify_nonce($nonce, 'wp_rest') : false;
+        if (!is_int($cookie_user) || $cookie_user < 1
+            || $cookie_user !== get_current_user_id() ||
+            $session === '' || !in_array($nonce_verified,array(1,2),true))
             return new WP_Error('mad4b_lifecycle_browser_session_required',
                 'A valid WordPress administrator session and X-WP-Nonce are required; bearer credentials cannot re-enroll.',array('status'=>403));
         return true;
@@ -380,10 +384,16 @@ final class MAD4B_SCP_Site_Lifecycle_REST {
             return new WP_Error('mad4b_lifecycle_origin_changed','Site origin changed during enrollment.',array('status'=>409));
         // Deliberate narrow, safe re-enrollment; no write or remote feature
         // copied from cloned source. Subject must opt in separately later.
+        $original_profile=MAD4B_SCP_Site_Profile::profile();
+        $original_name=is_array($original_profile) && is_string($original_profile['display_name']??null)
+            ? trim($original_profile['display_name']) : '';
+        $site_name=$original_name!=='' ? $original_name
+            : (function_exists('get_bloginfo') ? trim((string)get_bloginfo('name')) : '');
+        if($site_name==='')$site_name='Staging Site';
         $input=array(
             'environment'=>'staging',
             'environment_sync_mode'=>MAD4B_SCP_Site_Profile::ENV_SYNC_PROFILE_ONLY,
-            'display_name'=>'ETG Commerce Staging',
+            'display_name'=>$site_name,
             'chatgpt_app_id'=>'',
             'oauth_user_ids'=>(string)get_current_user_id(),
             'staging_origin'=>$origin,
