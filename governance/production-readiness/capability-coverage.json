@@ -20510,6 +20510,42 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-provider-gateway.php",
+      "source_blob_sha": "040bd15d389e72ce6c449b6103a50f6babd7702d",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/context-provider-gateway-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B original first-party Provider and Brand Context runtime source reviewer — CI-only",
+      "review_rationale": "Actual original Context Provider Gateway routes only provider-bound Context Authority source requests. A source-backed hermetic test establishes 70 positive/negative PHP7.4 and PHP8.5 cases: prior code accepted truthy scan_complete and coerced candidate counts when certifying one existing asset or two independent zero-effect observations, and crashed on WP_Error from original provider/source or immutable reconciliation receipt fields. The patch checks exact integer candidate count and boolean scan completion, validates original Brand materialization identity, original source/provider IDs and SHA-bound receipt fields, and rejects unverified durable observation timestamps and generations. Existing valid read/reconciliation SHA is preserved, and no real Google Drive create/delete, network access, new writer or idempotency release was performed. Exact Git source blob pinned; production_authorized=false and independently signed live evidence is still required.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-compatibility-certification.php",
+      "source_blob_sha": "e8daa359da02c985e30bd9736a7b1aee8f59d339",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-compatibility-engine-contract.php"
+      ],
+      "owner_role": "MAD4B original first-party Provider and Brand Context runtime source reviewer — CI-only",
+      "review_rationale": "Actual original Provider Compatibility Certification evaluates per-ability source-owned adapter read/write and package/behavioral receipts; package identity does not grant the high-risk write lane. Source-backed original PHP7.4 and PHP8.5 test now checks error-shaped, numeric/string and missing native Adapter::is_available and Provider_Contracts::runtime_contract_ok: pre-fix truthy values could claim exact artifact certification and set ordinary bounded_write write_eligible. Now only exact true from each independently verified original source is accepted, Runtime provider failure is nonauthorizing, and first-party Google Drive requires exact true ready and first_party, bound SHA-256 fingerprint, seven original source files and rollback contract while remaining not behaviorally/rollback certified. Existing positive bounded-write behavior and high-risk canary shadow were verified without runtime grants or real mutation. Exact Git source blob pinned; production_authorized=false and independently signed live evidence is still required.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "code_change_rules": {
