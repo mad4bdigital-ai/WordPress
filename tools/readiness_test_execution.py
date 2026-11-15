@@ -140,6 +140,12 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "tests/staging-fixture-drafts-original-hermetic.php",
     "tests/readiness-draft-only-original-hermetic.php",
     "tests/readiness-scopes-events-original-hermetic.php",
+    # Exact non-authorizing first-party provider/owner fixtures, no live WordPress.
+    "tests/company-cloudflare-admission-original-hermetic.php",
+    "tests/company-email-routing-original-hermetic.php",
+    "tests/ai-task-routing-original-hermetic.php",
+    "tests/delegation-owner-original-hermetic.php",
+
 
 
     "tests/adaptive-asset-bridge-original-hermetic.php",

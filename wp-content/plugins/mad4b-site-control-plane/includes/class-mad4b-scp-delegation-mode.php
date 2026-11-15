@@ -47,23 +47,23 @@ final class MAD4B_SCP_Delegation_Mode {
      */
     public static function authenticated_user( $identity ) {
         if ( self::DELEGATED !== self::mode_for_identity( $identity )
-            || empty( $identity['authenticated'] ) ) return null;
+            || ( $identity['authenticated'] ?? null ) !== true ) return null;
         $id = isset( $identity['wp_user_id'] ) ? absint( $identity['wp_user_id'] ) : 0;
         if ( $id < 1 || $id !== get_current_user_id()
             || ! class_exists( 'MAD4B_SCP_Policy' )
-            || ! MAD4B_SCP_Policy::can_connect_user( $id ) ) return null;
+            || true !== MAD4B_SCP_Policy::can_connect_user( $id ) ) return null;
 
         $is_oauth = 'oauth' === ( $identity['subject_type'] ?? '' )
             && 'oauth2_bearer' === ( $identity['auth_method'] ?? '' )
             && 'mcp' === ( $identity['origin'] ?? '' );
         if ( $is_oauth ) {
             if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' )
-                || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()
-                || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( 'mad4b:read' )
+                || true !== MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()
+                || true !== MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( 'mad4b:read' )
                 || ! class_exists( 'MAD4B_SCP_OAuth_Subject_User_Bridge' ) ) return null;
             $mapped = MAD4B_SCP_OAuth_Subject_User_Bridge::mapped_context();
             if ( ! is_array( $mapped )
-                || empty( $mapped['authenticated'] )
+                || ( $mapped['authenticated'] ?? null ) !== true
                 || $id !== (int) ( $mapped['wp_user_id'] ?? 0 )
                 || ! hash_equals( (string) ( $mapped['subject_fingerprint'] ?? '' ),
                     (string) ( $identity['subject_fingerprint'] ?? '' ) ) ) return null;
@@ -101,7 +101,7 @@ final class MAD4B_SCP_Delegation_Mode {
     public static function verified_wordpress_user( $identity = null ) {
         if ( self::INDEPENDENT === self::selected_mode() ) return null;
         if ( ! class_exists( 'MAD4B_SCP_Site_Profile' )
-            || ! MAD4B_SCP_Site_Profile::origin_enrolled() ) return null;
+            || true !== MAD4B_SCP_Site_Profile::origin_enrolled() ) return null;
         if ( null === $identity && class_exists( 'MAD4B_SCP_Identity_Context' ) )
             $identity = MAD4B_SCP_Identity_Context::current();
         if ( ! is_array( $identity ) ) return null;
@@ -129,13 +129,17 @@ final class MAD4B_SCP_Delegation_Mode {
 
         // WordPress itself validates the signed auth cookie and session.
         // Setting wp_set_current_user() is not authentication.
-        if ( ! function_exists( 'wp_validate_auth_cookie' )
-            || (int) wp_validate_auth_cookie( '', 'logged_in' ) !== (int) $id ) return null;
+        // A WP_Error or numeric string from a cookie verifier is not a
+        // WordPress authenticated principal. Core returns an integer ID.
+        $cookie_user = function_exists( 'wp_validate_auth_cookie' )
+            ? wp_validate_auth_cookie( '', 'logged_in' ) : false;
+        if ( ! is_int( $cookie_user ) || $cookie_user !== $id ) return null;
         if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
             $nonce = isset( $_SERVER['HTTP_X_WP_NONCE'] ) && is_string( $_SERVER['HTTP_X_WP_NONCE'] )
                 ? $_SERVER['HTTP_X_WP_NONCE'] : '';
-            if ( ! function_exists( 'wp_verify_nonce' ) || ! wp_verify_nonce( $nonce, 'wp_rest' ) )
-                return null;
+            $verified_nonce = function_exists( 'wp_verify_nonce' )
+                ? wp_verify_nonce( $nonce, 'wp_rest' ) : false;
+            if ( ! in_array( $verified_nonce, array( 1, 2 ), true ) ) return null;
         }
         return $user;
     }
@@ -204,11 +208,11 @@ final class MAD4B_SCP_Delegation_Mode {
             return new WP_Error( 'mad4b_delegation_content_cap_denied', 'Delegating user cannot create content.' );
         if ( ! class_exists( 'MAD4B_SCP_Agent_Registry' )
             || ! class_exists( 'MAD4B_SCP_Schema' )
-            || ! MAD4B_SCP_Schema::is_ready() )
+            || true !== MAD4B_SCP_Schema::is_ready() )
             return new WP_Error( 'mad4b_delegation_registry_unavailable', 'Delegation registry is unavailable.' );
         $gate = class_exists( 'MAD4B_SCP_Policy' )
             ? MAD4B_SCP_Policy::mutation_gate_status() : array();
-        if ( ! is_array( $gate ) || empty( $gate['effective'] ) )
+        if ( ! is_array( $gate ) || ( $gate['effective'] ?? null ) !== true )
             return new WP_Error( 'mad4b_delegation_site_write_disabled', 'Site governance has not enabled write authority.' );
 
         $type = (string) ( $identity['subject_type'] ?? '' );
@@ -219,10 +223,10 @@ final class MAD4B_SCP_Delegation_Mode {
 
         // Explicit bearer write authorization; read-only OAuth sessions must
         // never be promoted into managed principals simply by calling a tool.
-        if ( 'oauth' === $type && ! $validated_prepared_dispatch ) {
-            if ( ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( 'mad4b:write' )
-                && ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( 'server:mad4b-write' )
-                && ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( 'ability:mad4b/content-apply-bundle' ) )
+        if ( 'oauth' === $type && true !== $validated_prepared_dispatch ) {
+            if ( true !== MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( 'mad4b:write' )
+                && true !== MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( 'server:mad4b-write' )
+                && true !== MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( 'ability:mad4b/content-apply-bundle' ) )
                 return new WP_Error( 'mad4b_delegation_write_scope_required', 'Direct delegation requires an explicitly verified write scope.' );
         }
         // ChatGPT's existing mad4b:read bearer can access ONLY the
@@ -231,8 +235,8 @@ final class MAD4B_SCP_Delegation_Mode {
         // draft target and one-time approval ticket before setting this flag.
         // Its target is still governed by the existing scope and approval
         // checks in central authorization; this flag grants no write itself.
-        if ( $validated_prepared_dispatch && 'oauth' === $type
-            && ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( 'mad4b:read' ) )
+        if ( true === $validated_prepared_dispatch && 'oauth' === $type
+            && true !== MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( 'mad4b:read' ) )
             return new WP_Error( 'mad4b_delegation_dispatch_scope_denied', 'Signed prepared dispatch requires an authenticated read-scoped bearer.' );
 
         $existing_subject = MAD4B_SCP_Agent_Registry::subject_binding( $type, $fingerprint );
