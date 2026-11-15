@@ -84,6 +84,11 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "tests/litespeed-adapter-original-hermetic.php",
     # Original first-party Brand/Provider source receipts: no live mutation.
     "tests/context-provider-gateway-original-hermetic.php",
+    # Exact original WordPress evidence-only source regression suites.
+    "tests/external-media-ingest-original-hermetic.php",
+    "tests/cli-readiness-original-hermetic.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/runtime-obstacle-resolution-runtime.php",
+
     "wp-content/plugins/mad4b-site-control-plane/tests/provider-compatibility-engine-contract.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/provider-first-party-context-artifact-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/context-ai-agent-review-runtime.php",
