@@ -47,7 +47,9 @@ class MAD4B_SCP_Execution_Authority {
         'authenticated'=>true,'registry_bound'=>true,'transport'=>'host_cli',
         'subject_type'=>'host_operator','environment'=>'staging',
         'subject_fingerprint'=>'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
-        'site_uuid'=>'11111111-1111-4111-8111-111111111111','wp_user_id'=>128
+        'site_uuid'=>'11111111-1111-4111-8111-111111111111','wp_user_id'=>0,
+        'registered_host_agent_id'=>7,
+        'registered_host_agent_public_id'=>'11111111-1111-4111-8111-111111111111'
     );
     public static function resolve($purpose){return self::$actor;}
 }
@@ -83,6 +85,7 @@ if($root) {
     $context=MAD4B_SCP_Servers::vps_local_identity_context(array('authenticated'=>false));
     server_assert(!empty($context['authenticated'])
         && $context['subject_type']==='host_operator'
+        && $context['wp_user_id']===0
         && $context['origin']==='vps_local_stdio'
         && $context['token_scopes']===array(),
         'Existing Host actor is reused without creating an OAuth bearer');
@@ -91,6 +94,14 @@ if($root) {
        'Non-root CLI never inherits Host transport');
 }
 $original=MAD4B_SCP_Execution_Authority::$actor;
+MAD4B_SCP_Execution_Authority::$actor['wp_user_id']=128;
+server_assert(MAD4B_SCP_Servers::can_vps_local_write_transport()===false,
+    'Host cannot authenticate as a WordPress user');
+MAD4B_SCP_Execution_Authority::$actor=$original;
+unset(MAD4B_SCP_Execution_Authority::$actor['registered_host_agent_id']);
+server_assert(MAD4B_SCP_Servers::can_vps_local_write_transport()===false,
+    'Missing original registered NHI agent identifier denies Host write');
+MAD4B_SCP_Execution_Authority::$actor=$original;
 MAD4B_SCP_Execution_Authority::$actor['subject_fingerprint']='bad';
 server_assert(MAD4B_SCP_Servers::can_vps_local_write_transport()===false,
    'Malformed registry subject is denied');

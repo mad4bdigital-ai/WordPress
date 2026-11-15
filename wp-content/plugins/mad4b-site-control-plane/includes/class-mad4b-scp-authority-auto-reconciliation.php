@@ -184,14 +184,17 @@ final class MAD4B_SCP_Authority_Auto_Reconciliation {
             ||empty($facts['canonical_origin'])||empty($apply_facts['canonical_origin'])
             ||!hash_equals((string)$facts['canonical_origin'],(string)$apply_facts['canonical_origin']))
             return new WP_Error('mad4b_auto_reconcile_apply_denied','Verified exact host write operation required before host binding.');
-        $users=MAD4B_SCP_Site_Profile::oauth_user_ids();
-        if(1!==count($users))return new WP_Error('mad4b_auto_reconcile_owner_ambiguous','Single enrolled owner required.');
+        // The Host NHI is NOT a WordPress user. Bind only to the exact
+        // already-enrolled canonical Write Agent from the immutable plan;
+        // its historic wp_user_id is human attribution, not Host identity.
         $agent=MAD4B_SCP_Agent_Registry::get_agent_by_public_id($before['agent_public_id']);
-        if(!is_array($agent)||'chatgpt-governed-write'!==($agent['slug']??'')
+        if(!is_array($agent)||(int)($agent['id']??0)<1
+            ||!hash_equals((string)$before['agent_public_id'],(string)($agent['public_id']??''))
+            ||'chatgpt-governed-write'!==($agent['slug']??'')
             ||'enabled'!==($agent['status']??'')
-            ||'staging'!==($agent['environment']??'')
-            ||(int)$agent['wp_user_id']!==(int)$users[0])
-            return new WP_Error('mad4b_auto_reconcile_agent_denied','Exact existing canonical owner Agent required.');
+            ||'staging'!==($agent['environment']??''))
+            return new WP_Error('mad4b_auto_reconcile_agent_denied',
+                'Exact existing canonical governed Write Agent required.');
         $audit=class_exists('MAD4B_SCP_Audit')?MAD4B_SCP_Audit::storage_status():array();
         if(empty($audit['ready']) || 'append_only_no_automatic_deletion' !== ($audit['retention_mode'] ?? ''))
             return new WP_Error('mad4b_auto_reconcile_audit_denied','Append-only audit required.');
@@ -222,7 +225,10 @@ final class MAD4B_SCP_Authority_Auto_Reconciliation {
         if(is_wp_error($actor))return $binding_changed
             ?self::uncertain_result($actor,$before,$retired,true):$actor;
         if('host_cli'!==($actor['transport']??'') || empty($actor['registry_bound'])
-            ||(int)$actor['wp_user_id']!==(int)$users[0]){
+            || 0 !== (int)($actor['wp_user_id']??-1)
+            || (int)($actor['registered_host_agent_id']??0)!==(int)$agent['id']
+            || !hash_equals($identity['subject_fingerprint'],
+                (string)($actor['subject_fingerprint']??''))){
             $denied=new WP_Error('mad4b_auto_reconcile_actor_denied','Exact bound host actor required for narrowing.');
             return $binding_changed?self::uncertain_result($denied,$before,$retired,true):$denied;
         }

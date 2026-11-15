@@ -116,7 +116,10 @@ class MAD4B_SCP_Agent_Registry {
 class MAD4B_SCP_Execution_Authority {
     public static function resolve($operation){
         if(!$GLOBALS['qa_actor'])return new WP_Error('qa_actor_denied');
-        return array('transport'=>'host_cli','registry_bound'=>true,'wp_user_id'=>22);
+        return array('transport'=>'host_cli','registry_bound'=>true,
+            'wp_user_id'=>0,'registered_host_agent_id'=>7,
+            'subject_fingerprint'=>hash('sha256',"mad4b.host-operator.v1\0".
+                '11111111-1111-4111-8111-111111111111'."\0staging\0https://tours.example.invalid"));
     }
 }
 class MAD4B_SCP_Audit {
@@ -170,6 +173,16 @@ function qa_recovery($res,$expected_ids) {
 require dirname(__DIR__).'/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-auto-reconciliation.php';
 $c='MAD4B_SCP_Authority_Auto_Reconciliation';
 qa_check(isset(WP_CLI::$commands['mad4b authority reconcile-safe']),'CLI owner was not registered');
+// Even absent human OAuth enrollment, only the existing first-party
+// registered Host NHI and fully reviewed canonical target agent matter.
+qa_reset();
+$GLOBALS['qa_owners']=array();
+$host_independent=$c::reconcile_safe();
+qa_check(is_array($host_independent),'Host should not impersonate a WordPress owner to reconcile existing scoped grants');
+qa_reset();
+$GLOBALS['qa_owners']=array(22,24);
+$host_multi=$c::reconcile_safe();
+qa_check(is_array($host_multi),'Multiple site OAuth owners do not change registered Host NHI authority');
 qa_reset();
 $GLOBALS['qa_env']='production';
 qa_error($c::reconcile_safe(),'mad4b_auto_reconcile_site_denied');

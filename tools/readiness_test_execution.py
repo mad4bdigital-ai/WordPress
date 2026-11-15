@@ -125,6 +125,10 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "tests/staging-write-delegated-identity-native-hermetic.php",
     "tests/staging-write-host-candidate-native-hermetic.php",
     "tests/runtime-convergence-owner-gate-native-hermetic.php",
+    "tests/staging-host-candidate-gate-native-hermetic.php",
+    "tests/native-capability-registry-adapter-first-party.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-native-runtime.php",
+
 
 ))
 
@@ -258,6 +262,9 @@ def self_test():
     assert command_for("tests/staging-write-delegated-identity-native-hermetic.php")[0] == "php"
     assert command_for("tests/staging-write-host-candidate-native-hermetic.php")[0] == "php"
     assert command_for("tests/runtime-convergence-owner-gate-native-hermetic.php")[0] == "php"
+    assert command_for("tests/staging-host-candidate-gate-native-hermetic.php")[0] == "php"
+    assert command_for("tests/native-capability-registry-adapter-first-party.php")[0] == "php"
+    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-native-runtime.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/generation-snapshot-exception-runtime.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/no-input-read-ability-schema-runtime.php")[0] == "php"

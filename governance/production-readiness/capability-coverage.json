@@ -7123,6 +7123,48 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "needs_new_control": false
+    },
+    {
+      "id": "ability:mad4b/native-capability-registry",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/native-capability-registry-adapter-first-party.php",
+        "tests/authority-servers-original-review-suite.py"
+      ],
+      "owner_role": "MAD4B first-party exact WordPress capability reviewer — CI only",
+      "review_rationale": "Read-only owner-pinned native WordPress Ability inventory registered by the original Adapter Registry. The test executes the actual registration callback and native trust catalog, including missing source manifest, unapproved read and write candidates, bounded pagination, private non-destructive registration, no output grants and no callback execution. Source trust and runtime production authority are separate.",
+      "coverage_reuse_rationale": "Original GOVERNANCE, PLATFORM, SECURITY and EXECUTION controls require exact source provenance and read/write separation; the newly exposed catalog is discovery-only and retains administrator permission checks.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "id": "ability:mad4b/deployment-binding-environment-status",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-native-runtime.php",
+        "tests/authority-servers-original-review-suite.py"
+      ],
+      "owner_role": "MAD4B first-party exact WordPress capability reviewer — CI only",
+      "review_rationale": "Registered production/staging Host binding environment-status Ability is an additional private read-only wrapper of the original production_status method, not a new Host writer. The original PHP runtime test checks registration, callback/permission identity, exact Site Profile and environment, independent digest, negative drift, no Production writes, no secret exposure and the one-time approved separate binding flow.",
+      "coverage_reuse_rationale": "Existing UPDATES, CROSSPLUGIN, RECOVERY and ROLLOUT controls govern registered site identity, independent Host binding readback and approval; additional SECURITY and EXECUTION controls enforce non-authorizing diagnostic scope.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "lifecycle": [],
@@ -17305,6 +17347,141 @@
       ],
       "owner_role": "MAD4B first-party MCP inventory/read-only budget reviewer — CI only",
       "review_rationale": "Reviewed original adaptive MCP Catalog Budget after removal of historical 36/64 tool-count hard truncation. Six native scenarios default, healthy, slow, unmeasured, site drift, invalid configuration on PHP 7.4 and 8.5 exercise request cache, per-site telemetry, bounded wire bytes, 110 dynamic requested tools and no silent optional Ability exclusion. Exact source tests assert every discovered inventory entry remains a display candidate while individual descriptor validation and permission callbacks remain mandatory. A catalog estimate never certifies a provider, creates a grant or authorizes Production.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-authority.php",
+      "source_blob_sha": "46a974fd23d939b2a7f1fe88e72063d00d047e5b",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/execution-authority-identity-native-hermetic.php",
+        "tests/authority-servers-original-review-suite.py"
+      ],
+      "owner_role": "MAD4B original first-party independent runtime reviewer — CI only",
+      "review_rationale": "First-party Host Execution Authority now resolves the exact registered Host Operator NHI rather than selecting a WordPress user. The native PHP fixture demonstrates distinct immutable registry bound agent identity, complete site/env/origin evidence, denied revoked or unbound registry agent, multiple or missing human owners, no CLI user impersonation, and retained OAuth principal and breakglass safeguards. No grant or write is authorized merely from the host subject.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
+      "source_blob_sha": "22df6d93643b6791fe5f0ebea162324e0a332fc9",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/servers-original-native-transport-hermetic.php",
+        "tests/authority-servers-original-review-suite.py"
+      ],
+      "owner_role": "MAD4B original first-party independent runtime reviewer — CI only",
+      "review_rationale": "Original Server facade enforces the registered Host Agent ID and public UUID with WordPress user zero on local root scoped MCP transport. Native fixture denies forged WordPress user, missing NHI, foreign site/environment and unscoped transport while checking no local write ability is mounted on public remote servers. The dispatcher still requires exact grants and independently approved execution.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php",
+      "source_blob_sha": "036c1750d90a7e8ce60c34e4091390f8eb4add31",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/staging-write-host-candidate-native-hermetic.php",
+        "tests/authority-servers-original-review-suite.py"
+      ],
+      "owner_role": "MAD4B original first-party independent runtime reviewer — CI only",
+      "review_rationale": "First-party candidate binding normalization verifies Host NHI agent public ID, positive registry ID, stable subject fingerprint, root site-scoped CLI facts, exact package target hashes, zero-drift grant snapshot and exact confirmation without treating a human WordPress user as the Host actor. Staging target and OAuth human routes retain separate explicit checks. A forged host user or changed registry subject fails closed.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-candidate-binding.php",
+      "source_blob_sha": "be4e58f00dd7741715eddc1571bb3fd88986555b",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/staging-host-candidate-gate-native-hermetic.php",
+        "tests/authority-servers-original-review-suite.py"
+      ],
+      "owner_role": "MAD4B original first-party independent runtime reviewer — CI only",
+      "review_rationale": "Original Candidate Binding Host gate now authenticates the original independent Agent Registry NHI and keeps it separate from the existing canonical target governed Write Agent. Source fixture exercises positive root Host with no OAuth owner, negative changed Host principal, site, environment, runtime admission and disabled target agent, while original candidate binding PHP fixture validates clean plan, exact one-time confirmation, current package, fingerprint and persistence behavior. OAuth-backed human candidate bind still requires enrolled WordPress user.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-auto-reconciliation.php",
+      "source_blob_sha": "ab1f5e20b55da464386f47afc7c59d55749ef7a4",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/authority-auto-reconcile-host-hermetic.php",
+        "tests/authority-servers-original-review-suite.py"
+      ],
+      "owner_role": "MAD4B original first-party independent runtime reviewer — CI only",
+      "review_rationale": "Original Host auto-reconciliation tests allow zero or multiple human OAuth owners without using a WordPress user as the bound Host NHI. The existing canonical target Write Agent remains pinned by public ID, enabled status and environment. Root-only exact CLI apply evidence, original append-only audit, existing NHI subject ownership and grant compare-and-swap are retained. Exhaustive native denial/recovery cases show no new Agent, new grant, Production mutation or blind retry.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php",
+      "source_blob_sha": "c15d093f58a54e1a812a59eee63c45a373280b36",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/native-capability-registry-adapter-first-party.php",
+        "tests/authority-servers-original-review-suite.py"
+      ],
+      "owner_role": "MAD4B original first-party independent runtime reviewer — CI only",
+      "review_rationale": "Original Adapter Registry registers the private native-capability-registry read-only WordPress Ability and delegates discovery to original Native Ability Trust. Native fixture proves absent independently pinned owner manifest leaves every discovered read/write Ability unapproved, the original permission_callback remains WordPress admin read only, and malicious input/pagination cannot create a grant or write permission. No runtime native callbacks are invoked.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-deployment-binding-native.php",
+      "source_blob_sha": "c48b892e02bd9031dc5bb5336fad900345ae53e5",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-native-runtime.php",
+        "tests/authority-servers-original-review-suite.py"
+      ],
+      "owner_role": "MAD4B original first-party independent runtime reviewer — CI only",
+      "review_rationale": "Corrected and executed original native Deployment Binding runtime test verifies seven registered Abilities including environment-status read callback with exact WordPress read permission and no Production mutation. Both environments require registered Site Profile, matching independent binding digest and stable origin; wrong digest or nonadmin reads fail closed. The hermetic native test also verifies separate one-time write approval and readback, with no Production writes.",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true

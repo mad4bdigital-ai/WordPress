@@ -14,6 +14,20 @@ ROOT = Path(__file__).resolve().parents[1]
 
 # (review-bound test path, real first-party source, success marker)
 FIXTURES = (
+    ("tests/execution-authority-identity-native-hermetic.php",
+     "class-mad4b-scp-execution-authority.php", "PASS: EXECUTION_AUTHORITY_IDENTITY_NATIVE"),
+    ("tests/authority-auto-reconcile-host-hermetic.php",
+     "class-mad4b-scp-authority-auto-reconciliation.php", "PASS: AUTHORITY_AUTO_RECONCILE_HOST"),
+    ("tests/staging-host-candidate-gate-native-hermetic.php",
+     "class-mad4b-scp-staging-write-candidate-binding.php", "PASS: HOST_CANDIDATE_NHI_GATE"),
+    ("wp-content/plugins/mad4b-site-control-plane/tests/staging-write-candidate-binding-runtime.php",
+     "class-mad4b-scp-staging-write-candidate-binding.php",
+     "mad4b.staging-write-candidate-binding.runtime.v2: PASS"),
+    ("tests/native-capability-registry-adapter-first-party.php",
+     "class-mad4b-scp-adapter-registry.php", "PASS: NATIVE_CAPABILITY_ADAPTER_REGISTRY"),
+    ("wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-native-runtime.php",
+     "class-mad4b-scp-deployment-binding-native.php",
+     "mad4b.site-control-plane.deployment-binding-native.runtime.v1: PASS"),
     ("tests/servers-original-native-transport-hermetic.php",
      "class-mad4b-scp-servers.php", "PASS: SERVERS_NATIVE_TRANSPORT"),
     ("tests/server-registration-descriptor-boundary-hermetic.php",

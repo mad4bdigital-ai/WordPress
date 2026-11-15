@@ -53,68 +53,67 @@ final class MAD4B_SCP_Execution_Authority {
             return new WP_Error('mad4b_actor_host_binding_unverified', 'Host executor has no verified exact site and operation binding.',
                 array('blockers'=>is_wp_error($facts)?array($facts->get_error_code()):array()));
         $ready = 'apply' === $operation ? !empty($facts['local_operation_authorized']) : !empty($facts['read_context_verified']);
+        // Host identity is the pinned site/environment/origin and the
+        // pre-existing Agent Registry NHI subject. A WordPress owner ID
+        // must not become a substitute authentication credential.
+        $profile_origin = rtrim( (string) MAD4B_SCP_Site_Profile::site_origin(), '/' );
         if ( !$ready || empty($facts['host_site_binding_verified'])
-            || !empty($facts['blockers']) )
+            || !empty($facts['blockers'])
+            || ( 'apply' === $operation && !empty($facts['production_mutation_authorized'])
+                && 'production' !== $environment )
+            || $site !== (string)($facts['site_uuid'] ?? '')
+            || $environment !== (string)($facts['environment'] ?? '')
+            || '' === $profile_origin
+            || !hash_equals($profile_origin, rtrim((string)($facts['canonical_origin']??''),'/')) )
             return new WP_Error('mad4b_actor_host_binding_unverified', 'Host executor has no verified exact site and operation binding.',
                 array('blockers'=>(array)($facts['blockers']??array())));
-        $users = MAD4B_SCP_Site_Profile::oauth_user_ids();
-        // An enrolled site may have several owner administrators. The verified
-        // host subject's PRE-EXISTING, enabled NHI binding selects exactly one
-        // canonical owner; never choose the first administrator or mint a binding.
-        // The site, environment and origin fingerprint remain mandatory.
-        if ( count($users) !== 1 ) {
-            $candidate_fingerprint = hash('sha256', "mad4b.host-operator.v1\0"
-                .$site."\0".$environment."\0".(string)($facts['canonical_origin']??''));
-            $binding = class_exists('MAD4B_SCP_Agent_Registry')
-                ? MAD4B_SCP_Agent_Registry::subject_binding('host_operator', $candidate_fingerprint)
-                : null;
-            $bound_agent = is_array($binding) && ($binding['status']??'')==='enabled'
-                ? MAD4B_SCP_Agent_Registry::get_agent_by_id((int)$binding['agent_id']) : null;
-            $selected = is_array($bound_agent) ? (int)($bound_agent['wp_user_id']??0) : 0;
-            if ($selected < 1 || !is_array($bound_agent) ||
-                ($bound_agent['status']??'')!=='enabled' ||
-                ($bound_agent['environment']??'')!==$environment ||
-                !in_array($selected, array_map('intval',$users),true) ||
-                !MAD4B_SCP_Site_Profile::user_is_enrolled($selected))
-                return new WP_Error('mad4b_actor_principal_ambiguous',
-                    'No unique enrolled owner is proven by the original authenticated host subject.');
-            $users = array($selected);
-        }
-        if ( count($users) !== 1 || !MAD4B_SCP_Site_Profile::user_is_enrolled($users[0]) )
-            return new WP_Error('mad4b_actor_principal_ambiguous', 'One exact enrolled owner user is required to map local execution.');
-        $uid = (int)$users[0];
-        $user = get_userdata($uid);
-        if ( !$user || !user_can($user,'manage_options') )
-            return new WP_Error('mad4b_actor_owner_ineligible','Enrolled owner must be an administrator.');
-        $fingerprint = hash('sha256', "mad4b.host-operator.v1\0".$site."\0".$environment."\0".(string)($facts['canonical_origin']??''));
-        $identity = array('authenticated'=>true,'subject_type'=>'host_operator','subject_fingerprint'=>$fingerprint);
-        // An already registered host subject must resolve to the same canonical
-        // user; this resolver never creates an agent or a grant.
-        $agent = class_exists('MAD4B_SCP_Agent_Registry')
-            ? MAD4B_SCP_Agent_Registry::resolve_agent($identity) : null;
-        if ( is_array($agent) ) {
-            if ((int)($agent['wp_user_id']??0) !== $uid
-                || (string)($agent['environment']??'') !== $environment)
-                return new WP_Error('mad4b_actor_registry_binding_conflict','Host subject belongs to a different principal.');
-            $actor=self::actor($site,$uid,$environment,'host_cli',$identity);
-            $actor['registry_bound']=true;
+        $fingerprint = hash('sha256', "mad4b.host-operator.v1\0"
+            .$site."\0".$environment."\0".$profile_origin);
+        $identity = array('authenticated'=>true,
+            'subject_type'=>'host_operator',
+            'subject_fingerprint'=>$fingerprint);
+        if (!class_exists('MAD4B_SCP_Agent_Registry'))
+            return new WP_Error('mad4b_actor_registry_unavailable',
+                'Original Agent Registry is required to prove the Host NHI.');
+        $agent = MAD4B_SCP_Agent_Registry::resolve_agent($identity);
+        if (is_wp_error($agent)) {
+            // Verified host diagnostics may inspect the missing NHI binding.
+            // They never claim that the absent subject can perform a write.
+            if ('apply' === $operation)
+                return 'mad4b_nhi_subject_unbound' === $agent->get_error_code()
+                    ? new WP_Error('mad4b_actor_registry_binding_required',
+                        'Host execution requires the original registered NHI subject.')
+                    : $agent;
+            if ('mad4b_nhi_subject_unbound' !== $agent->get_error_code())
+                return $agent;
+            $actor = self::actor($site,0,$environment,'host_cli',$identity);
+            $actor['registry_bound']=false;
             return $actor;
         }
-        // A verified local host may inspect and plan missing bindings, but
-        // MUST NOT use an unbound subject to execute or obtain a grant.
-        if ('apply' === $operation)
-            return new WP_Error('mad4b_actor_registry_binding_required','Host execution requires the original Agent Registry binding.');
-        if (!is_wp_error($agent) || 'mad4b_nhi_subject_unbound'!==$agent->get_error_code())
-            return new WP_Error('mad4b_actor_registry_unavailable','Canonical Agent Registry did not confirm an unbound host subject.');
-        $actor=self::actor($site,$uid,$environment,'host_cli',$identity);
-        $actor['registry_bound']=false;
+        // Existing host NHI binding is exact and independently revocable.
+        // Registry row's wp_user_id may exist for historic attribution,
+        // but it is never used for Host authentication or capability checks.
+        if (!is_array($agent)
+            || (int)($agent['id']??0) < 1
+            || 'enabled' !== (string)($agent['status']??'')
+            || $environment !== (string)($agent['environment']??'')
+            || !preg_match('/^[a-f0-9-]{36}$/D',(string)($agent['public_id']??'')))
+            return new WP_Error('mad4b_actor_registry_binding_conflict',
+                'Registered Host NHI is disabled, incomplete or has environment drift.');
+        $actor = self::actor($site,0,$environment,'host_cli',$identity);
+        $actor['registry_bound']=true;
+        $actor['registered_host_agent_id']=(int)$agent['id'];
+        $actor['registered_host_agent_public_id']=(string)$agent['public_id'];
         return $actor;
     }
 
     private static function actor($site,$uid,$environment,$transport,$identity) {
         return array(
             'contract'=>self::CONTRACT,
-            'canonical_principal'=>hash('sha256',"mad4b.canonical-principal.v1\0".$site."\0".$uid),
+            'canonical_principal'=> 'host_cli' === $transport
+                ? hash('sha256',"mad4b.host-principal.v1\0".$site."\0".$environment
+                    ."\0".(string)$identity['subject_fingerprint'])
+                : hash('sha256',"mad4b.canonical-principal.v1\0".$site."\0".$uid),
             'site_uuid'=>$site,
             'wp_user_id'=>(int)$uid,
             'environment'=>$environment,

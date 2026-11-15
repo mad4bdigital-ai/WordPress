@@ -542,7 +542,6 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			$principal = class_exists('MAD4B_SCP_Execution_Authority')
 				? MAD4B_SCP_Execution_Authority::resolve('apply')
 				: new WP_Error('mad4b_candidate_host_actor_missing','Host actor unavailable.');
-			$owners=MAD4B_SCP_Site_Profile::oauth_user_ids();
 			if ( ! defined('WP_CLI') || true !== WP_CLI || 'cli' !== PHP_SAPI
 				|| ! function_exists('posix_geteuid') || 0 !== posix_geteuid()
 				|| 0 !== get_current_user_id()
@@ -553,9 +552,13 @@ final class MAD4B_SCP_Staging_Write_Authority {
 				|| 'host_cli' !== (string)($principal['transport']??'')
 				|| 'host_operator' !== (string)($principal['subject_type']??'')
 				|| 'staging' !== (string)($principal['environment']??'')
-				|| ! is_array($owners)
-				|| ! in_array((int)($principal['wp_user_id']??0),array_map('intval',$owners),true)
-				|| (int)($actor['wp_user_id']??0) !== (int)$principal['wp_user_id']
+				|| 0 !== (int)($principal['wp_user_id']??-1)
+				|| 0 !== (int)($actor['wp_user_id']??-1)
+				|| (int)($principal['registered_host_agent_id']??0) < 1
+				|| (int)($actor['registered_host_agent_id']??0)
+					!== (int)$principal['registered_host_agent_id']
+				|| ! hash_equals((string)($principal['registered_host_agent_public_id']??''),
+					(string)($actor['registered_host_agent_public_id']??''))
 				|| 'registered_host_wpcli' !== (string)($actor['identity_method']??'')
 				|| 'host_operator' !== (string)($actor['actor_type']??'')
 				|| (string)($actor['transport_server_id']??'') !== 'local_root_ssh_host_operator'

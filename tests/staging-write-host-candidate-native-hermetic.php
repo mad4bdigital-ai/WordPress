@@ -38,7 +38,8 @@ MAD4B_SCP_Execution_Authority::$principal=array(
     'authenticated'=>true,'registry_bound'=>true,
     'transport'=>'host_cli','subject_type'=>'host_operator',
     'environment'=>'staging','subject_fingerprint'=>$subject,
-    'wp_user_id'=>128
+    'wp_user_id'=>0, 'registered_host_agent_id'=>7,
+    'registered_host_agent_public_id'=>'11111111-1111-4111-8111-111111111111'
 );
 $clean=array(
     'write_tool_count'=>1,
@@ -55,7 +56,9 @@ $context=array(
     'operation_id'=>'11111111-1111-4111-8111-111111111111',
     'correlation_id'=>'host-candidate-fixture',
     'actor'=>array(
-        'wp_user_id'=>128,'identity_method'=>'registered_host_wpcli',
+        'wp_user_id'=>0,'identity_method'=>'registered_host_wpcli',
+        'registered_host_agent_id'=>7,
+        'registered_host_agent_public_id'=>'11111111-1111-4111-8111-111111111111',
         'actor_type'=>'host_operator',
         'transport_server_id'=>'local_root_ssh_host_operator',
         'subject_fingerprint'=>$subject,
@@ -83,13 +86,23 @@ if($root_execution){
     host_assert(is_wp_error($run($context)),
        'Non-root runtime cannot use original Host authority candidate path.');
 }
+// The host registry identity has no dependence on the enrolled OAuth user list.
+MAD4B_SCP_Site_Profile::$ids=array();
+if($root_execution)host_assert(is_array($run($context)),
+    'Verified Host NHI remains eligible even without a WordPress owner');
+MAD4B_SCP_Site_Profile::$ids=array(128);
 $changes=array(
  'not_registry_bound'=>array('principal'=>array('registry_bound'=>false)),
+ 'host_wp_user_impersonation'=>array('principal'=>array('wp_user_id'=>128)),
+ 'actor_wp_user_impersonation'=>array('context'=>array('actor'=>array_replace(
+     $context['actor'],array('wp_user_id'=>128)))),
+ 'host_agent_drift'=>array('principal'=>array('registered_host_agent_id'=>8)),
+ 'host_agent_public_id_drift'=>array('principal'=>array(
+     'registered_host_agent_public_id'=>'22222222-2222-4222-8222-222222222222')),
  'wrong_transport'=>array('principal'=>array('transport'=>'oauth')),
  'wrong_environment'=>array('principal'=>array('environment'=>'production')),
  'wrong_subject'=>array('principal'=>array('subject_fingerprint'=>str_repeat('a',64))),
  'wrong_authorized_user'=>array('principal'=>array('wp_user_id'=>129)),
- 'missing_owner_membership'=>array('ids'=>array(1,2)),
  'bad_local_evidence'=>array('facts'=>array('local_operation_authorized'=>false,'host_site_binding_verified'=>true,'blockers'=>array())),
  'unverified_site'=>array('facts'=>array('local_operation_authorized'=>true,'host_site_binding_verified'=>false,'blockers'=>array())),
  'blocking_host_facts'=>array('facts'=>array('local_operation_authorized'=>true,'host_site_binding_verified'=>true,'blockers'=>array('not_verified'))),
