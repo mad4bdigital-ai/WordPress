@@ -43,9 +43,9 @@ final class MAD4B_SCP_Operator_Runner_Profile {
     }
     public static function current_id() {
         if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) ||
-            ! MAD4B_SCP_Site_Profile::configured() ||
-            ! MAD4B_SCP_Site_Profile::origin_enrolled() ||
-            ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ||
+            true !== MAD4B_SCP_Site_Profile::configured() ||
+            true !== MAD4B_SCP_Site_Profile::origin_enrolled() ||
+            true !== MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ||
             'staging' !== MAD4B_SCP_Site_Profile::current_environment() ) {
             return new WP_Error( 'mad4b_operator_profile_unenrolled',
                 'A matching enrolled Staging Site Profile is required.' );
@@ -66,12 +66,20 @@ final class MAD4B_SCP_Operator_Runner_Profile {
                 $site = MAD4B_SCP_Site_Profile::site_uuid();
                 $env = MAD4B_SCP_Site_Profile::current_environment();
                 $origin = untrailingslashit( home_url( '/' ) );
-                $registry = MAD4B_Company_Host_Topology_Registry_V1::verified_local_registry(
-                    $site, $env, $origin
-                );
-                $fingerprint = MAD4B_SCP_Host_Bridge::target_fingerprint_readonly();
-                $resolved = self::from_verified_inventory( $registry, $fingerprint );
-                if ( ! is_wp_error( $resolved ) ) $id = $resolved;
+                // Neither a WP_Error nor a throwing source can be converted
+                // into an enrolled Host NHI profile by PHP type coercion.
+                try {
+                    $registry = MAD4B_Company_Host_Topology_Registry_V1::verified_local_registry(
+                        $site, $env, $origin
+                    );
+                    $fingerprint = MAD4B_SCP_Host_Bridge::target_fingerprint_readonly();
+                    if ( is_array( $registry ) && is_string( $fingerprint ) ) {
+                        $resolved = self::from_verified_inventory( $registry, $fingerprint );
+                        if ( ! is_wp_error( $resolved ) ) $id = $resolved;
+                    }
+                } catch ( \Throwable $error ) {
+                    $id = '';
+                }
             }
             if ( $id === '' ) {
                 return new WP_Error( 'mad4b_operator_runner_profile_unconfigured',

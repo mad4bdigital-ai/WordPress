@@ -154,6 +154,10 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     # Native first-party source tests for vetted and dormant adapters only.
     "tests/local-brand-draft-adapter-original-hermetic.php",
     "tests/dfsb-read-adapter-original-hermetic.php",
+    "tests/operator-runner-profile-original-hermetic.php",
+    "tests/capability-dependency-planner-original-hermetic.php",
+    "tests/switcher-sources-original-hermetic.php",
+
 
 
 

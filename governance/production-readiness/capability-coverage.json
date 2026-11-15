@@ -20293,6 +20293,60 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-runner-profile.php",
+      "source_blob_sha": "113a9db78274366327745a9a3ded1f5429138977",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/operator-runner-profile-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B original first-party runtime identity and site UI source reviewer — CI only",
+      "review_rationale": "Original Host Operator Runner identity is selected from an explicitly enrolled private runner profile or an independently reverified signed Host Registry inventory matching current Site UUID, origin, environment and target SHA-256 fingerprint. 27 native PHP7.4/8.5 original source assertions reproduce pre-fix WP_Error/truthy Site Profile configured/origin/URL proof that allowed a Host runner to be selected; current original gate requires exact true for every source, denies foreign, duplicate or malformed binding, and treats throwing or error-shaped Host inventory/fingerprint as unenrolled. It does NOT adopt a WordPress user as Host NHI or grant Host credentials, and Production environment remains separately gated. No live Host/agent registry, VPS deployment or login was modified. Review is bound to exact Git blob; external release and Production eligibility still require original independent evidence.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-dependency-planner.php",
+      "source_blob_sha": "8e50a6c2eb0e3303b8457bb7f5eca15b26b2bd03",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/capability-dependency-planner-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B original first-party runtime identity and site UI source reviewer — CI only",
+      "review_rationale": "Original Operation Registry dependency graph is read-only and non-authorizing, preserving native pipeline stages and execution fences. Twenty native PHP7.4/8.5 cases reproduce pre-fix acceptance of truthy WP_Error from Policy::can_read and native wp_has_ability; current source requires boolean true and marks unavailable required Abilities missing rather than ready, rejects malformed stage bindings, unregistered operation IDs, >64 stages, duplicate stages and retains unresolved conditional/executor policy gates. No grant, capability implementation, execution or mutation was introduced. Review is bound to exact Git blob; external release and Production eligibility still require original independent evidence.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-switcher-sources.php",
+      "source_blob_sha": "97c4f30b1eb03b8428994bbf9fcf519077ba43f8",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/switcher-sources-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B original first-party runtime identity and site UI source reviewer — CI only",
+      "review_rationale": "Original UI Passport/footer data continues to derive solely from authoritative WooCommerce country list, WPML active language list, WCML currency options and Company Market Profiles; no static replacements are bundled. Nine original native PHP7.4/8.5 cases reproduce pre-fix WCML WP_Error option PHP fatal and verify source failure yields empty non-authorizing options, exact country and currency codes, safe market language readback, no accepting WP_Error market approval and no private fallback identity or external writes. Review is bound to exact Git blob; external release and Production eligibility still require original independent evidence.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "code_change_rules": {
