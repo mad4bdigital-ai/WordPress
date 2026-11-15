@@ -87,13 +87,13 @@ final class MAD4B_SCP_Native_Search_Console {
     public static function property_matches_site($property) {
         if(!is_string($property)||$property===''||strlen($property)>350)return false;
         $origin=self::origin();if(!$origin)return false;
-        if(str_starts_with($property,'sc-domain:')) {
+        if(0===strpos($property,'sc-domain:')) {
             $domain=substr($property,10);
-            if(!preg_match('/^[a-z0-9.-]{3,240}$/D',$domain)||str_contains($domain,'..'))return false;
+            if(!preg_match('/^[a-z0-9.-]{3,240}$/D',$domain)||false!==strpos($domain,'..'))return false;
             $host=(string)wp_parse_url($origin,PHP_URL_HOST);
-            return $host===$domain || str_ends_with($host,'.'.$domain);
+            return $host===$domain || substr($host,-strlen('.'.$domain))==='.'. $domain;
         }
-        if(!str_ends_with($property,'/'))return false;
+        if(substr($property,-1)!=='/')return false;
         $parts=wp_parse_url($property);
         if(!is_array($parts)||!isset($parts['scheme'],$parts['host'])||(isset($parts['user'])||isset($parts['pass'])))return false;
         // Accept only the exact Staging origin as a URL-prefix property.
@@ -231,7 +231,7 @@ final class MAD4B_SCP_Native_Search_Console {
             if(self::property_matches_site($property)&&in_array($permission,
                 array('siteOwner','siteFullUser','siteRestrictedUser'),true))
                 $options[$property]=array('property'=>$property,'permission'=>$permission,
-                    'domain_property'=>str_starts_with($property,'sc-domain:'));
+                    'domain_property'=>0===strpos($property,'sc-domain:'));
         }
         return $options;
     }

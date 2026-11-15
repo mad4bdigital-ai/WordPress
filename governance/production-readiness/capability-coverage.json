@@ -6501,6 +6501,59 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Original production release Owner, Platform and signed immutable Source controls remain authoritative. Read-only Staging observations and compatibility assessment cannot grant deployment or overcome Site Profile disagreement.",
       "review_rationale": "Original Company Release Status REST only reports tenant-specific informational settings. Synthetic WordPress runtime calls show master role missing and rollout false with no permission grant, current env and private no-store header. No install, promotion, site profile mutation or fraudulent readiness. Real plugin roles and Enterprise acceptance remain separate."
+    },
+    {
+      "id": "ability:mad4b/search-console-observations",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/native-search-console-site-scope-php74-hermetic.php"
+      ],
+      "owner_role": "MAD4B original Google Search Console site-bound OAuth evidence reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original MCP/OAuth/Provider controls continue owning token consent and external Google access. This read-only Search Console adapter cannot grant other Google scopes or write WordPress/ContentJobs.",
+      "review_rationale": "Original Search Console source loaded in native PHP 7.4 and 8.5 with site profile and Google Workspace grant stubs; the two named WordPress abilities are admin-only, private, and read-only. Tests verify exact HTTPS origin or sc-domain parent, reject foreign/suffix-spoof/userinfo/port or HTTP mismatches; GSC row numbers must be finite and within selected same-site property, stored SHA/session/consent gates invalidate modified snapshots or revoked grants. Missing OAuth broker scope prevents all remote requests or WordPress mutations."
+    },
+    {
+      "id": "ability:mad4b/search-console-status",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/native-search-console-site-scope-php74-hermetic.php"
+      ],
+      "owner_role": "MAD4B original Google Search Console site-bound OAuth evidence reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original MCP/OAuth/Provider controls continue owning token consent and external Google access. This read-only Search Console adapter cannot grant other Google scopes or write WordPress/ContentJobs.",
+      "review_rationale": "Original Search Console source loaded in native PHP 7.4 and 8.5 with site profile and Google Workspace grant stubs; the two named WordPress abilities are admin-only, private, and read-only. Tests verify exact HTTPS origin or sc-domain parent, reject foreign/suffix-spoof/userinfo/port or HTTP mismatches; GSC row numbers must be finite and within selected same-site property, stored SHA/session/consent gates invalidate modified snapshots or revoked grants. Missing OAuth broker scope prevents all remote requests or WordPress mutations."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-search-console.php",
+      "control_ids": [
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/native-search-console-site-scope-php74-hermetic.php"
+      ],
+      "owner_role": "MAD4B original Google Search Console site-bound OAuth evidence reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original MCP/OAuth/Provider controls continue owning token consent and external Google access. This read-only Search Console adapter cannot grant other Google scopes or write WordPress/ContentJobs.",
+      "review_rationale": "Original Search Console source loaded in native PHP 7.4 and 8.5 with site profile and Google Workspace grant stubs; the two named WordPress abilities are admin-only, private, and read-only. Tests verify exact HTTPS origin or sc-domain parent, reject foreign/suffix-spoof/userinfo/port or HTTP mismatches; GSC row numbers must be finite and within selected same-site property, stored SHA/session/consent gates invalidate modified snapshots or revoked grants. Missing OAuth broker scope prevents all remote requests or WordPress mutations."
     }
   ],
   "lifecycle": [],
@@ -15774,6 +15827,24 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing Production governance and signed-source constraints enforce all risky Host and owner promotion. Exact original class is tested, not replaced by separate deployment engine.",
       "review_rationale": "Original Company Release Status REST only reports tenant-specific informational settings. Synthetic WordPress runtime calls show master role missing and rollout false with no permission grant, current env and private no-store header. No install, promotion, site profile mutation or fraudulent readiness. Real plugin roles and Enterprise acceptance remain separate. Tests use an ephemeral RSA key inside disposable PHP process; they neither certify a real Host signer nor replace immutable Original313 Production approval."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-search-console.php",
+      "source_blob_sha": "bf8ba3c673041489ded19f994fb7dd479cce1947",
+      "control_ids": [
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/native-search-console-site-scope-php74-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party site-neutral GSC PHP 7.4 compatibility and OAuth scope source reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Current source originally introduced a standalone read-only GSC adapter with existing Google Workspace/MCP rights. This revision replaces five PHP 8-only string operations without changing external OAuth, admin or authorization contracts.",
+      "review_rationale": "Original GSC property scope function provably crashed on PHP7.4 because of str_starts_with. Replaced str_starts_with/str_ends_with/str_contains with strict positional strpos/substr equivalents at exactly five existing call sites. Source PHP test previously failed with undefined function before fix and now passes on PHP 7.4/8.5 with exact tenant property/foreign host, OAuth denial, URL row filter and tamper-resistant retained observations. Real Google API and host auth remain separately unverified."
     }
   ],
   "code_change_rules": {
