@@ -20600,6 +20600,126 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-interaction-broker.php",
+      "source_blob_sha": "531cbaa5a3632213c6daa4c106ca921095d2266a",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-seven-original-p0-source-review.py"
+      ],
+      "owner_role": "MAD4B nonauthorizing source-backed CI assessment",
+      "review_rationale": "Original checkpoint plan and resume assertions include exact Site Profile/actor read permission, native validation boolean, bounded transient quota/persistence, malformed persisted checkpoints, and safe owner-provider handoff. The 101-case PHP fixture proves unverified source values remain WAITING_HUMAN_OR_AUTH, never a write-resume grant. Exact source/blob and original test mapping verified on PHP 7.4 and PHP 8.5. This CI-only review is not independent Production evidence, signed release approval, or a live site audit.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-addon-registry.php",
+      "source_blob_sha": "69e220a8c11a494da3216a1f98ce2cff770142ce",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-seven-original-p0-source-review.py"
+      ],
+      "owner_role": "MAD4B nonauthorizing source-backed CI assessment",
+      "review_rationale": "The original WordPress Addon Registry fixture checks installed plugin identity, provider runtime status, exact registered adapter/addon version pair, main-file SHA-256, nonboolean certification flags, recovery policy, and rejects WP_Error-shaped observed source statuses. No plugin activation or execution was performed. Exact source/blob and original test mapping verified on PHP 7.4 and PHP 8.5. This CI-only review is not independent Production evidence, signed release approval, or a live site audit.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-agent-grant-lifecycle.php",
+      "source_blob_sha": "6b8accd1d767a3c5e3eb26e9062cf389d35731b7",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-seven-original-p0-source-review.py"
+      ],
+      "owner_role": "MAD4B nonauthorizing source-backed CI assessment",
+      "review_rationale": "The original native Agent Grant plan fixture verifies 82 source and negative cases including Site UUID, Revision and Digest, enrolled Agent and subject hashes, existing grant inventory, exact WPDB decimal IDs, and rejection of error-shaped admission. It does not create a Grant or Approval Ticket. Exact source/blob and original test mapping verified on PHP 7.4 and PHP 8.5. This CI-only review is not independent Production evidence, signed release approval, or a live site audit.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli.php",
+      "source_blob_sha": "5fbf1f17377975d71e59e51b7b81cd036fb023ae",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-seven-original-p0-source-review.py"
+      ],
+      "owner_role": "MAD4B nonauthorizing source-backed CI assessment",
+      "review_rationale": "The original native CLI source fixture verifies 43 exact immutable package, execution readiness, host and selected tenant proof cases, and denies error-shaped source identities without any privileged CLI mutation. Exact source/blob and original test mapping verified on PHP 7.4 and PHP 8.5. This CI-only review is not independent Production evidence, signed release approval, or a live site audit.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-external-media-ingest.php",
+      "source_blob_sha": "e5be10462db5cd269214a5478c406a4cbf7bf34a",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-seven-original-p0-source-review.py"
+      ],
+      "owner_role": "MAD4B nonauthorizing source-backed CI assessment",
+      "review_rationale": "The original External Media Ingest fixture verifies 51 exact source URL, bounded request, WordPress permission, owner/operator attestation and no-import admission cases. Failure of source verification cannot import an image. Exact source/blob and original test mapping verified on PHP 7.4 and PHP 8.5. This CI-only review is not independent Production evidence, signed release approval, or a live site audit.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-obstacle-resolution.php",
+      "source_blob_sha": "241a8cad8b0252a16d1a45e9282ccbd683128243",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-seven-original-p0-source-review.py"
+      ],
+      "owner_role": "MAD4B nonauthorizing source-backed CI assessment",
+      "review_rationale": "The original read-only Runtime Obstacle Resolution fixture covers selected folder scope, Drive OAuth pending state, exact site identity and mid-scan drift, bounded route discovery and no permission escalation; every source observation is independent of live write authority. Exact source/blob and original test mapping verified on PHP 7.4 and PHP 8.5. This CI-only review is not independent Production evidence, signed release approval, or a live site audit.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-planning-guard.php",
+      "source_blob_sha": "89f531451a78bcc26d103ca018761e8a6c962ef6",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-seven-original-p0-source-review.py"
+      ],
+      "owner_role": "MAD4B nonauthorizing source-backed CI assessment",
+      "review_rationale": "The original 64-case Approval Planning gate fixture checks exact REST and native WordPress permissions, Policy, runtime readiness, prior Authorization, delegated OAuth Agent and existing allow Grant before pending-ticket admission. It creates no ticket or Grant. Exact source/blob and original test mapping verified on PHP 7.4 and PHP 8.5. This CI-only review is not independent Production evidence, signed release approval, or a live site audit.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "code_change_rules": {
