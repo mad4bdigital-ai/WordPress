@@ -120,4 +120,13 @@ $repeat=$c::process_one('issue-fixture',$issue,$scope);
 origin_check(is_array($repeat)&&$repeat['state']==='ALREADY_CAPTURED'
  && $GLOBALS['origin_call_count']===1 && $GLOBALS['origin_add_count']===1,
  'A prior Firecrawl research record blocks silent re-capture or duplicate writes');
+// Exact canonical DB owner must retain bounded reads and limited evidence
+// payloads. These are source contracts, not fabricated Production DB metrics.
+$nativeOwner=file_get_contents(dirname(__DIR__).
+ '/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-research-groups.php');
+origin_check(is_string($nativeOwner)
+ && strpos($nativeOwner,'ORDER BY id ASC LIMIT 100')!==false
+ && strpos($nativeOwner,'strlen(wp_json_encode($data))>65536')!==false
+ && strpos($nativeOwner,'UNIQUE KEY group_evidence (group_id,source_sha256,locale,provider_id)')!==false,
+ 'Canonical Research Groups SQL owner must retain bounded evidence and dedup indexes');
 echo "NATIVE_ORIGIN_EXTERNAL_RESEARCH: PASS site, source hash, job lifecycle, evidence, no duplicate\n";

@@ -7032,7 +7032,9 @@
         "PLATFORM-01",
         "SECURITY-01",
         "EXECUTION-01",
-        "PROVIDERS-01"
+        "PROVIDERS-01",
+        "DATABASE-01",
+        "PERFORMANCE-01"
       ],
       "regression_tests": [
         "tests/origin-external-research-source-bound-hermetic.php"
@@ -7043,7 +7045,7 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "coverage_reuse_rationale": "Original Governance, Platform, Execution, Providers and Security controls enforce the signed native ContentJob origin and bounded research evidence; no autonomous provider publication or grant path is created.",
-      "review_rationale": "Reviewed full 67-line first-party Native Origin External Research orchestrator and its original Research Groups and ContentJobs dependencies, without bypassing signed Native Origin or exact Site UUID. It requires an open linked origin issue, matching source/canonical published posts, existing empty origin address, source taxonomy SHA256, FACT_QA waiting-review ContentJob owned by the signed original actor and a matching origin-gap-ref in the subject. A same-PR hermetic actual-source PHP 7.4/8.5 test reproduces and repairs str_contains failure; verifies no provider call before Native admission, rejects foreign-site source, changed taxonomy fingerprint and wrong ContentJob stage, checks only one original Firecrawl record gets added and a repeated request returns ALREADY_CAPTURED. The resulting public-tour scrape explicitly marks independent source, exact pickup, map and writeback as unverified; this review does not certify actual Firecrawl traffic, other-company content changes or Production approval."
+      "review_rationale": "Reviewed full 67-line first-party Native Origin External Research orchestrator and its original Research Groups and ContentJobs dependencies, without bypassing signed Native Origin or exact Site UUID. It requires an open linked origin issue, matching source/canonical published posts, existing empty origin address, source taxonomy SHA256, FACT_QA waiting-review ContentJob owned by the signed original actor and a matching origin-gap-ref in the subject. A same-PR hermetic actual-source PHP 7.4/8.5 test reproduces and repairs str_contains failure; verifies no provider call before Native admission, rejects foreign-site source, changed taxonomy fingerprint and wrong ContentJob stage, checks only one original Firecrawl record gets added and a repeated request returns ALREADY_CAPTURED. The resulting public-tour scrape explicitly marks independent source, exact pickup, map and writeback as unverified; this review does not certify actual Firecrawl traffic, other-company content changes or Production approval. The canonical Research Groups owner is source inspected for a bounded 100-row metadata-only list, 65,536-byte encoded record limit and compound group/provider/locale/evidence uniqueness; the same-PR test checks these exact original invariants. DATABASE-01 and PERFORMANCE-01 here are non-authorizing code impact mappings only: actual Production SQL schema, privileges and three live latency samples remain unverified and must not be considered approved."
     }
   ],
   "lifecycle": [],
@@ -16711,7 +16713,9 @@
         "PLATFORM-01",
         "SECURITY-01",
         "EXECUTION-01",
-        "PROVIDERS-01"
+        "PROVIDERS-01",
+        "DATABASE-01",
+        "PERFORMANCE-01"
       ],
       "regression_tests": [
         "tests/origin-external-research-source-bound-hermetic.php"
@@ -16722,7 +16726,7 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "coverage_reuse_rationale": "Original Governance, Platform, Execution, Providers and Security controls enforce the signed native ContentJob origin and bounded research evidence; no autonomous provider publication or grant path is created.",
-      "review_rationale": "Reviewed full 67-line first-party Native Origin External Research orchestrator and its original Research Groups and ContentJobs dependencies, without bypassing signed Native Origin or exact Site UUID. It requires an open linked origin issue, matching source/canonical published posts, existing empty origin address, source taxonomy SHA256, FACT_QA waiting-review ContentJob owned by the signed original actor and a matching origin-gap-ref in the subject. A same-PR hermetic actual-source PHP 7.4/8.5 test reproduces and repairs str_contains failure; verifies no provider call before Native admission, rejects foreign-site source, changed taxonomy fingerprint and wrong ContentJob stage, checks only one original Firecrawl record gets added and a repeated request returns ALREADY_CAPTURED. The resulting public-tour scrape explicitly marks independent source, exact pickup, map and writeback as unverified; this review does not certify actual Firecrawl traffic, other-company content changes or Production approval."
+      "review_rationale": "Reviewed full 67-line first-party Native Origin External Research orchestrator and its original Research Groups and ContentJobs dependencies, without bypassing signed Native Origin or exact Site UUID. It requires an open linked origin issue, matching source/canonical published posts, existing empty origin address, source taxonomy SHA256, FACT_QA waiting-review ContentJob owned by the signed original actor and a matching origin-gap-ref in the subject. A same-PR hermetic actual-source PHP 7.4/8.5 test reproduces and repairs str_contains failure; verifies no provider call before Native admission, rejects foreign-site source, changed taxonomy fingerprint and wrong ContentJob stage, checks only one original Firecrawl record gets added and a repeated request returns ALREADY_CAPTURED. The resulting public-tour scrape explicitly marks independent source, exact pickup, map and writeback as unverified; this review does not certify actual Firecrawl traffic, other-company content changes or Production approval. The canonical Research Groups owner is source inspected for a bounded 100-row metadata-only list, 65,536-byte encoded record limit and compound group/provider/locale/evidence uniqueness; the same-PR test checks these exact original invariants. DATABASE-01 and PERFORMANCE-01 here are non-authorizing code impact mappings only: actual Production SQL schema, privileges and three live latency samples remain unverified and must not be considered approved."
     }
   ],
   "code_change_rules": {
