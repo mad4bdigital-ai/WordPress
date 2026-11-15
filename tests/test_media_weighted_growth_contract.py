@@ -106,6 +106,7 @@ def test_unreviewed_rate_images_and_held_origins_fail_closed():
     assert "hero_original_editorial_hold" in e
     assert "gallery_original_editorial_hold" in e
     assert "media_visual_editorial_hold" in e
+    assert "featured_original_requires_subject_and_geography_review" in e
     assert "media_rate_property_photo_coverage_gap" in e
     assert "not_a_synthetic_or_rights_determination" in e
     assert "update_post_meta" not in p

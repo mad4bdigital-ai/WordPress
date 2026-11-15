@@ -337,6 +337,10 @@ final class MAD4B_Tour_Photo_Quality_V1 {
             if(empty($featured_origin['verified']))
                 $issues[]=['code'=>'media_featured_original_unresolved','severity'=>'high'];
             $featured_provenance=self::provenance($featured);
+            if(self::editorial_hold($featured)['held'])
+                $issues[]=['code'=>'media_visual_editorial_hold','severity'=>'medium',
+                    'scope'=>'featured','attachment_id'=>$featured,
+                    'reason'=>'featured_original_requires_subject_and_geography_review'];
             if($featured_provenance['status']==='synthetic_confirmed')
                 $issues[]=['code'=>'media_synthetic_source_prohibited','severity'=>'high','scope'=>'featured',
                     'evidence'=>$featured_provenance['evidence']];
