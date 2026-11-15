@@ -145,6 +145,7 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "tests/company-email-routing-original-hermetic.php",
     "tests/ai-task-routing-original-hermetic.php",
     "tests/delegation-owner-original-hermetic.php",
+    "tests/content-relationship-terms-original-hermetic.php",
 
 
 
