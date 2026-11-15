@@ -18612,6 +18612,132 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-activity-import-review.php",
+      "source_blob_sha": "6c149395f07ce088b08f33bbec195d6441c135cb",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-existing-original-providers-matrix.py"
+      ],
+      "owner_role": "MAD4B original first-party provenance and behavioral source reviewer — CI only",
+      "review_rationale": "The original signed import REST intake fixture proves that an unready Site Profile prevents staging or persisted source mutations; HMAC matching, different source key/mode, replay and missing WPML/commercial data are denied. Existing successful path stages only a redacted, review-only record, never an import execution. Exact original PHP7.4 and PHP8.5 proof is bound to this Git source blob; no live WordPress, grant issuance or Production deployment is certified.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-activity-import-snapshot.php",
+      "source_blob_sha": "3140d5b639f95303f006957e6aa29ed628d84d89",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-existing-original-providers-matrix.py"
+      ],
+      "owner_role": "MAD4B original first-party provenance and behavioral source reviewer — CI only",
+      "review_rationale": "The original encrypted import snapshot fixture tests unready site denial before lock/write, signed input scoped by profile, tamper detection on AES-GCM ciphertext, manual approval of exact source+policy digest and blocked unsafe commercial rows. Exact original PHP7.4 and PHP8.5 proof is bound to this Git source blob; no live WordPress, grant issuance or Production deployment is certified.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-review-worker.php",
+      "source_blob_sha": "c1417b60d9b867ca87efc23ebc5ba2be1ee200c9",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-existing-original-providers-matrix.py"
+      ],
+      "owner_role": "MAD4B original first-party provenance and behavioral source reviewer — CI only",
+      "review_rationale": "The real AI Review Worker fixture now independently varies original review policy readiness, exact grant readiness, catalog eligibility, credential and authenticated AI identity: each absence denies. Positive original preflight permits scoped review but never authorizes publication; 29 source-only assertions pass. Exact original PHP7.4 and PHP8.5 proof is bound to this Git source blob; no live WordPress, grant issuance or Production deployment is certified.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-application-password-agent-bridge.php",
+      "source_blob_sha": "1ff0cff6d79144ad45d1dfde84517011642369f2",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-existing-original-providers-matrix.py"
+      ],
+      "owner_role": "MAD4B original first-party provenance and behavioral source reviewer — CI only",
+      "review_rationale": "The real WordPress Application Password callback test verifies exact authenticated WordPress user, original UUID, site enrollment, credential-bound scoped agent grant, non-app-password denial, revoked grant, foreign route/Production denial; new verified_context returns only already-verified identity, not Basic password. 18 cases. Exact original PHP7.4 and PHP8.5 proof is bound to this Git source blob; no live WordPress, grant issuance or Production deployment is certified.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-market-profiles.php",
+      "source_blob_sha": "e65ba3014b80db38b52574e00283ddc2c69123d0",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-existing-original-providers-matrix.py"
+      ],
+      "owner_role": "MAD4B original first-party provenance and behavioral source reviewer — CI only",
+      "review_rationale": "The original Market Profiles 33-case PHP runtime tests bound source/calendar writes to registered Site Profile, verify owner read/write eligibility, local/production environment denial, persisted revision/CAS and protected rate/season identity. The current fixture explicitly models unavailable Profile authority and tests its fail-closed readback. Exact original PHP7.4 and PHP8.5 proof is bound to this Git source blob; no live WordPress, grant issuance or Production deployment is certified.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-abilities.php",
+      "source_blob_sha": "e2fcd06a87017f40706c9a31da083ad81ee80264",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-existing-original-providers-matrix.py"
+      ],
+      "owner_role": "MAD4B original first-party provenance and behavioral source reviewer — CI only",
+      "review_rationale": "The original Skill Abilities fixture tests exact WordPress registration of two task planning and four external source-read abilities. All six are private, read-only, bounded input, with Policy can_read denial/approval; the current test verifies 137 dynamic Skill records are not truncated while pages remain bounded to 100, no execution grant. Exact original PHP7.4 and PHP8.5 proof is bound to this Git source blob; no live WordPress, grant issuance or Production deployment is certified.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-skills-adapter.php",
+      "source_blob_sha": "4625a932d1c9b8339ddf3a4349bc804e9ee02fc3",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-existing-original-providers-matrix.py"
+      ],
+      "owner_role": "MAD4B original first-party provenance and behavioral source reviewer — CI only",
+      "review_rationale": "The original Skills Adapter projects six additional task/external source Abilities into the same private read-only MCP lane with no content/admin tools or duplicate registration. The native Skill Abilities fixture verifies each callback identity, permission boundary, required fields and no implicit execution grant. Exact original PHP7.4 and PHP8.5 proof is bound to this Git source blob; no live WordPress, grant issuance or Production deployment is certified.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "code_change_rules": {

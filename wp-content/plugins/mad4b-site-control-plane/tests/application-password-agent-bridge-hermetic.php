@@ -58,8 +58,14 @@ check('basic_header_is_not_identity',!$bridge::verified_for_mcp_request($req));
 check('anonymous_context_not_overwritten',$bridge::context(['authenticated'=>false])===['authenticated'=>false]);
 $bridge::authenticated(new WP_User(17),[]);
 check('missing_original_uuid_denied',!$bridge::verified_for_mcp_request($req));
+check('app_password_subject_unverified_when_uuid_missing',
+    $bridge::verified_context()===array());
 $bridge::authenticated(new WP_User(17),['uuid'=>'wp-original-verified-callback']);
 check('authenticated_context_bind',($bridge::context(['authenticated'=>false])['auth_method']??'')==='wp_application_password');
+check('verified_app_password_subject_exposes_only_derived_identity',
+    is_array($bridge::verified_context())
+    && ($bridge::verified_context()['auth_method']??'')==='wp_application_password'
+    && strpos(json_encode($bridge::verified_context()), 'Basic ')===false);
 check('different_user_denied',!$bridge::verified_for_mcp_request($req));
 $GLOBALS['subject']=17;
 check('foreign_route_denied',!$bridge::verified_for_mcp_request(new RequestFixture('/wp/v2/users/me')));
