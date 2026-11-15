@@ -37,7 +37,26 @@ final class MAD4B_SCP_Hub_JetEngine_Consumer_Governance {
         // have separate admission contracts. Never label a staged research
         // candidate as a distributable item.
         $dynamic = class_exists('MAD4B_Hub_JetEngine_Consumer_Runtime');
-        $consumers = $dynamic ? MAD4B_Hub_JetEngine_Consumer_Runtime::registry() : array();
+        $consumers = array();
+        $companies = array();
+        $registry_verified = false;
+        $companies_verified = false;
+        if ($dynamic) {
+            try {
+                $original = MAD4B_Hub_JetEngine_Consumer_Runtime::registry();
+                if (is_array($original)) {
+                    $consumers = $original;
+                    $registry_verified = true;
+                }
+            } catch (\Throwable $error) { /* Unknown registry is not zero providers. */ }
+            try {
+                $original = MAD4B_Hub_JetEngine_Consumer_Runtime::discovered_companies();
+                if (is_array($original)) {
+                    $companies = $original;
+                    $companies_verified = true;
+                }
+            } catch (\Throwable $error) { /* Refuse to invent remote companies. */ }
+        }
         $local_active = 0;
         $remote_active = 0;
         foreach($consumers as $consumer) {
@@ -51,15 +70,18 @@ final class MAD4B_SCP_Hub_JetEngine_Consumer_Governance {
             class_exists('Jet_Engine_Module_Rest_Api_Listings');
         return array(
             'contract'=>self::CONTRACT,
-            'status'=>$local_active>0?'active_local':($remote_active>0?'active_remote':'planning_only'),
+            'status'=>$dynamic && !$registry_verified
+                ? 'runtime_registry_unverified'
+                : ($local_active>0?'active_local':($remote_active>0?'active_remote':'planning_only')),
             'legacy_nile_consumer_mode'=>'planning_only',
             'dynamic_consumer_contract'=>'mad4b.hub.jetengine-consumer-runtime.v2',
             'dynamic_consumer_loaded'=>$dynamic,
+            'dynamic_registry_readback_verified'=>$registry_verified,
+            'remote_company_discovery_readback_verified'=>$companies_verified,
             'configured_company_consumers'=>count($consumers),
             'active_local_consumers'=>$local_active,
             'active_remote_consumers'=>$remote_active,
-            'remote_company_connections_discovered'=>$dynamic
-                ? count(MAD4B_Hub_JetEngine_Consumer_Runtime::discovered_companies()) : 0,
+            'remote_company_connections_discovered'=>count($companies),
             'distribution_requires_canonical_release'=>true,
             'provider'=>'jet-engine',
             'native_rest_api_listings_enabled'=>$enabled,
@@ -263,6 +285,10 @@ final class MAD4B_SCP_Hub_JetEngine_Consumer_Governance {
         $result = self::validate_plan($plan);
         if (is_wp_error($result)) return $result;
         $module = self::status();
+        if ($module['dynamic_consumer_loaded'] &&
+            (!$module['dynamic_registry_readback_verified'] ||
+             !$module['remote_company_discovery_readback_verified']))
+            return self::denial('runtime_registry_unverified');
         if (!$module['native_rest_api_listings_enabled']) {
             return self::denial('jetengine_module_missing');
         }
@@ -320,15 +346,24 @@ final class MAD4B_SCP_Hub_JetEngine_Consumer_Governance {
     public static function fence_hub_http($preempt, $args, $url) {
         if ($preempt !== false || !is_string($url)) return $preempt;
         $parts = wp_parse_url($url);
-        if (!is_array($parts) ||
-            strtolower((string)($parts['host'] ?? '')) !== self::CENTRAL_HOST) {
-            return $preempt;
-        }
+        if (!is_array($parts)) return $preempt;
+        $host = strtolower((string)($parts['host'] ?? ''));
+        // Preserve normal WordPress HTTP outside our exact Central host;
+        // recognize a trailing-dot DNS equivalent but never authorize it.
+        if (rtrim($host, '.') !== self::CENTRAL_HOST) return $preempt;
         $path = (string)($parts['path'] ?? '');
-        if (strpos($path, '/wp-json/mad4b-central/v1/hub-distribution/') !== 0) {
+        if (strpos($path, '/wp-json/mad4b-central/v1/hub-distribution/') !== 0)
             return $preempt;
-        }
-        if (!isset(self::$admitted_request_paths[$path]) ||
+        // A previously approved path is not approval to downgrade HTTPS,
+        // append unreviewed query scope, redirect through user-info, or use
+        // an alternate port. Match the complete signed-feed URL boundary.
+        if ($host !== self::CENTRAL_HOST ||
+            ($parts['scheme'] ?? '') !== 'https' ||
+            isset($parts['port']) || isset($parts['user']) ||
+            isset($parts['pass']) || isset($parts['query']) ||
+            isset($parts['fragment']) ||
+            !isset(self::$admitted_request_paths[$path]) ||
+            !is_array($args) ||
             strtoupper((string)($args['method'] ?? 'GET')) !== 'GET') {
             return self::denial('unapproved_remote_fetch');
         }

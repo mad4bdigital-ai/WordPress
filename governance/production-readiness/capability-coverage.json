@@ -8088,6 +8088,25 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-hub-jetengine-consumer-governance.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/hub-jetengine-consumer-fence-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B original Hub consumer runtime capability reviewer — CI only",
+      "review_rationale": "Original Hub JetEngine REST-to-native-consumer adapter validates company/source Site UUID, exactly allowlisted GET endpoint, native Listing/Query IDs, field schemas, no parallel taxonomy/database/brand or historical checkout effects and exact market selection. The 33 direct PHP7.4/8.5 source-backed cases reproduce pre-fix path-only HTTP admission that allowed HTTP downgrade, alternate port, userinfo, query/fragment and nonexact path. It now confines only the already approved original Central GET HTTPS URL; unrelated WordPress requests remain unaffected. Unexpected dynamic registry/discovery WP_Error used to crash status; now report runtime_registry_unverified, never invent zero companies or admit a read without the typed registry. Four independently verified first-party source, native binding, market and content-release hooks are tested as exact true; a WP_Error from any is denied. No real HTTP call, remote company association, write, publication, WC checkout substitution or signed Production grant is executed.",
+      "coverage_reuse_rationale": "Existing GOVERNANCE-01, PLATFORM-01, SECURITY-01, EXECUTION-01 require original signed source, consumer company identity, verified WPML terms, native JetEngine REST binding, scoped market release and separately admitted HTTP transport. A CI-only plan/HTTP fence never creates an extra permission or publication route.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "lifecycle": [],
@@ -20162,6 +20181,24 @@
       ],
       "owner_role": "MAD4B original first-party read-only source reviewer — CI only",
       "review_rationale": "Original migration catalog is tenant-local comparison and selection only. Eleven native PHP7.4/8.5 assertions test original 14 dynamic asset categories, legal/privacy page detection, About Us and other special pages, source page ID and Elementor data immutability, stable original content SHA, wrong post-type and unregistered ID refusal, no credentials in plugin/version comparison, explicit manual choices and certification NOT_VERIFIED_FOR_THIS_COMPANY. No DB mutation, external site migration, legal approval, or user rights are created. Exact current source blob reviewed; original Production release approval and live evidence remain absent.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-hub-jetengine-consumer-governance.php",
+      "source_blob_sha": "816bb085c7b5d04dac66257538cf56592b9d3064",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/hub-jetengine-consumer-fence-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B native original Hub consumer source reviewer — CI only",
+      "review_rationale": "Original Hub JetEngine REST-to-native-consumer adapter validates company/source Site UUID, exactly allowlisted GET endpoint, native Listing/Query IDs, field schemas, no parallel taxonomy/database/brand or historical checkout effects and exact market selection. The 33 direct PHP7.4/8.5 source-backed cases reproduce pre-fix path-only HTTP admission that allowed HTTP downgrade, alternate port, userinfo, query/fragment and nonexact path. It now confines only the already approved original Central GET HTTPS URL; unrelated WordPress requests remain unaffected. Unexpected dynamic registry/discovery WP_Error used to crash status; now report runtime_registry_unverified, never invent zero companies or admit a read without the typed registry. Four independently verified first-party source, native binding, market and content-release hooks are tested as exact true; a WP_Error from any is denied. No real HTTP call, remote company association, write, publication, WC checkout substitution or signed Production grant is executed. Immutable Git source blob reviewed, original independent release evidence still required.",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true

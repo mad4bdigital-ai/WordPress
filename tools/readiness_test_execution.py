@@ -150,6 +150,7 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "tests/elementor-native-mcp-awareness-original-hermetic.php",
     "tests/geo-quality-original-hermetic.php",
     "tests/migration-decision-catalog-original-hermetic.php",
+    "tests/hub-jetengine-consumer-fence-original-hermetic.php",
 
 
 
