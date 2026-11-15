@@ -218,6 +218,12 @@ final class MAD4B_Tour_Photo_Quality_V1 {
      * smaller ratio of its image/frame aspect ratios. CSS focal coordinates
      * cannot recover the cropped area; a manual focus is not visual approval.
      */
+    /** Pure size admission rule, testable independently of WP metadata.
+     * A portrait cannot be silently reassigned to a wide Elementor grid.
+     */
+    public static function same_original_grid_reframe_geometry(int $width,int $height):bool {
+        return $width>=1000 && $height>=800 && $height>0 && $width/$height>=0.98;
+    }
     public static function cover_crop_geometry(int $width,int $height,float $frameRatio):array {
         if($width<1||$height<1||!is_finite($frameRatio)||$frameRatio<0.25||$frameRatio>5)
             return ['status'=>'invalid_geometry'];
@@ -959,8 +965,8 @@ final class MAD4B_Tour_Photo_Quality_V1 {
                     $imageFile=get_attached_file($root);
                     $exactFile=$signedRoot && is_string($imageFile)&&is_file($imageFile)
                         &&hash_equals($sha,(string)hash_file('sha256',$imageFile));
-                    $eligible=$exactFile && $rootRatio>=.98 && $rootWidth>=1000
-                        &&$rootHeight>=800 && is_string($rootUrl)
+                    $eligible=$exactFile && self::same_original_grid_reframe_geometry($rootWidth,$rootHeight)
+                        &&is_string($rootUrl)
                         &&$rootUrl!==get_post_meta($tour,$field,true)
                         &&attachment_url_to_postid($rootUrl)===$root;
                     $frameCrop[]=[
