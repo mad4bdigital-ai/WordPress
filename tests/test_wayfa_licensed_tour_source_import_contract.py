@@ -3,10 +3,11 @@ from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]/'wp-content/mu-plugins'
 ROUTER=(ROOT/'mad4b-unified-media-apply.php').read_text()
-SOURCE=(ROOT/'mad4b-unified-media-apply/licensed-source.php').read_text()
+SOURCE=ROUTER
 
 def test_exact_original_router_reuse():
-    assert "require_once __DIR__.'/mad4b-unified-media-apply/licensed-source.php'" in ROUTER
+    assert "require_once __DIR__.'/mad4b-unified-media-apply/licensed-source.php'" not in ROUTER
+    assert ROUTER.count("final class MAD4B_Licensed_Media_Source_V1") == 1
     assert "'licensed_tour_source_image'" in ROUTER
     assert "MAD4B_Licensed_Media_Source_V1::run($payload,$check['target'],$action)" in ROUTER
     assert "private static function signed_ai()" in ROUTER
