@@ -28,6 +28,7 @@ final class MAD4B_SCP_Policy {
 function native_assert($condition,$msg){if(!$condition){fwrite(STDERR,"FAIL: $msg\n");exit(1);}}
 $base=dirname(__DIR__).'/wp-content/plugins/mad4b-site-control-plane/includes';
 require $base.'/adapters/class-mad4b-scp-adapter-base.php';
+require_once $base.'/class-mad4b-scp-native-ability-trust.php';
 require $base.'/class-mad4b-scp-adapter-registry.php';
 $GLOBALS['native_wp_abilities']=array(
   'mad4b/native-read-a'=>new NativeProbeAbility(true),

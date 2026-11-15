@@ -7279,6 +7279,44 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-background-agent-admission.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party background worker runtime reviewer — CI only",
+      "review_rationale": "The original Background Agent admission fixture failed before source fix on PHP 7.4/8.5 when the first-party dynamic Gate Plan returned WP_Error. Now 34 original positive/negative first-party checks verify exact dynamic plan fingerprint, Policy true only, matching readiness SHA, every mandatory prerequisite gate, the required content.execution token, exact UUID ContentJob ownership, queued/running state and optimistic job revision. Missing/malformed Gate and policy exceptions fail closed rather than fatal or silent bypass.",
+      "coverage_reuse_rationale": "Existing GOVERNANCE-01, PLATFORM-01, SECURITY-01, EXECUTION-01 controls govern exact policy, registered worker site/job, durable lease fencing and replay prevention. Original first-party PHP fixtures demonstrate these denial boundaries. Discovery cannot grant Production execution or create approval.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-background-agent-dispatch.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party background worker runtime reviewer — CI only",
+      "review_rationale": "The original Background Agent Dispatch validates the current immutable first-party Durable Execution lease receipt contract, exact content-job work ID, worker ID, revision, fencing epoch and active status before returning claim, heartbeat or verify_commit. Malformed receipts after a possible Durable lease mutation return recovery_required and reconciliation_required, with blind_retry_allowed=false. The 34 hermetic native cases cover positive and negative admission/lease/fence, without issuing a production grant, provider execution or publication.",
+      "coverage_reuse_rationale": "Existing GOVERNANCE-01, PLATFORM-01, SECURITY-01, EXECUTION-01 controls govern exact policy, registered worker site/job, durable lease fencing and replay prevention. Original first-party PHP fixtures demonstrate these denial boundaries. Discovery cannot grant Production execution or create approval.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "lifecycle": [],
@@ -18406,6 +18444,42 @@
       ],
       "owner_role": "MAD4B first-party original source behavioral reviewer — CI only",
       "review_rationale": "Exact source-pinned review for class-mad4b-scp-upgrade-continuity.php; first-party original PHP fixture wp-content/plugins/mad4b-site-control-plane/tests/upgrade-continuity-runtime.php executed successfully under PHP7.4 and PHP8.5 with actual source include and positive marker mad4b.upgrade-continuity.runtime.v1: PASS. Canonical upgrade continuity, site profile and runtime version identities with protected release and rollback checkpoints in original PHP fixtures. Review is CI-only and preserves separate one-time Production admission, exact grants, audit and real WordPress/browser acceptance requirements.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-background-agent-admission.php",
+      "source_blob_sha": "cef6a9ed176c62cc272486f4cc712a8f0e47e266",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B original background worker source reviewer — CI only",
+      "review_rationale": "The original Background Agent admission fixture failed before source fix on PHP 7.4/8.5 when the first-party dynamic Gate Plan returned WP_Error. Now 34 original positive/negative first-party checks verify exact dynamic plan fingerprint, Policy true only, matching readiness SHA, every mandatory prerequisite gate, the required content.execution token, exact UUID ContentJob ownership, queued/running state and optimistic job revision. Missing/malformed Gate and policy exceptions fail closed rather than fatal or silent bypass.  Original PHP7.4/8.5 same-PR tests were executed under no-network readonly mounts; live acceptance remains separately required.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-background-agent-dispatch.php",
+      "source_blob_sha": "2170a82900519ea80e51e5a7c6c4922f46c372c0",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B original background worker source reviewer — CI only",
+      "review_rationale": "The original Background Agent Dispatch validates the current immutable first-party Durable Execution lease receipt contract, exact content-job work ID, worker ID, revision, fencing epoch and active status before returning claim, heartbeat or verify_commit. Malformed receipts after a possible Durable lease mutation return recovery_required and reconciliation_required, with blind_retry_allowed=false. The 34 hermetic native cases cover positive and negative admission/lease/fence, without issuing a production grant, provider execution or publication.  Original PHP7.4/8.5 same-PR tests were executed under no-network readonly mounts; live acceptance remains separately required.",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true

@@ -16,6 +16,10 @@ SOURCE = PREFIX + "includes/"
 # Only source files with an original same-PR hermetic behavioral fixture.
 # No arbitrary fixture names, shell, site operation or automatic authorization.
 CASES = (
+    ("tests/background-agent-original-authority-hermetic.php",
+     ("class-mad4b-scp-background-agent-admission.php",
+      "class-mad4b-scp-background-agent-dispatch.php"),
+     "PASS: BACKGROUND_AGENT_ORIGINAL_AUTHORITY"),
     ("tests/native-capability-registry-adapter-first-party.php",
      ("class-mad4b-scp-native-ability-trust.php",),
      "PASS: NATIVE_CAPABILITY_ADAPTER_REGISTRY"),
