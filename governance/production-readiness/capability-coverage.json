@@ -7024,6 +7024,26 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "The original Browser evidence importer uses WordPress local CLI and existing Admin/Security controls for site-bound, review-only observations. No autonomous CSS mutation or browser execution permission is added.",
       "review_rationale": "Reviewed complete first-party Presentation Browser Evidence source and its bounded local CLI importer, not merely a Cron or source-only signature. It admits fresh, complete same-origin and exact-language browser audit reports from the original private WP_CONTENT_DIR directory, bounds link examples, sampled contrast and page counts, records findings as review-only without creating native CSS overrides. Same-PR actual-source PHP7.4/8.5 hermetic fixture imports a valid local JSON, verifies read-only summary and high-severity link/contrast candidates, rejects foreign host, stale and incomplete locale reports and proves the last accepted option remains. It reproduced PHP7.4 str_starts_with incompatibility and PHP8.5 symlink-to-valid-file admission caused by checking is_link after realpath; repaired by examining original supplied path before resolving it, while preserving resolved-directory confinement. No browser capture, WordPress design modification, translation or production authorization is asserted."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-origin-external-research.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PROVIDERS-01"
+      ],
+      "regression_tests": [
+        "tests/origin-external-research-source-bound-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party Native Origin research lifecycle and source-binding reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original Governance, Platform, Execution, Providers and Security controls enforce the signed native ContentJob origin and bounded research evidence; no autonomous provider publication or grant path is created.",
+      "review_rationale": "Reviewed full 67-line first-party Native Origin External Research orchestrator and its original Research Groups and ContentJobs dependencies, without bypassing signed Native Origin or exact Site UUID. It requires an open linked origin issue, matching source/canonical published posts, existing empty origin address, source taxonomy SHA256, FACT_QA waiting-review ContentJob owned by the signed original actor and a matching origin-gap-ref in the subject. A same-PR hermetic actual-source PHP 7.4/8.5 test reproduces and repairs str_contains failure; verifies no provider call before Native admission, rejects foreign-site source, changed taxonomy fingerprint and wrong ContentJob stage, checks only one original Firecrawl record gets added and a repeated request returns ALREADY_CAPTURED. The resulting public-tour scrape explicitly marks independent source, exact pickup, map and writeback as unverified; this review does not certify actual Firecrawl traffic, other-company content changes or Production approval."
     }
   ],
   "lifecycle": [],
@@ -16682,6 +16702,27 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "The original Browser evidence importer uses WordPress local CLI and existing Admin/Security controls for site-bound, review-only observations. No autonomous CSS mutation or browser execution permission is added.",
       "review_rationale": "Reviewed complete first-party Presentation Browser Evidence source and its bounded local CLI importer, not merely a Cron or source-only signature. It admits fresh, complete same-origin and exact-language browser audit reports from the original private WP_CONTENT_DIR directory, bounds link examples, sampled contrast and page counts, records findings as review-only without creating native CSS overrides. Same-PR actual-source PHP7.4/8.5 hermetic fixture imports a valid local JSON, verifies read-only summary and high-severity link/contrast candidates, rejects foreign host, stale and incomplete locale reports and proves the last accepted option remains. It reproduced PHP7.4 str_starts_with incompatibility and PHP8.5 symlink-to-valid-file admission caused by checking is_link after realpath; repaired by examining original supplied path before resolving it, while preserving resolved-directory confinement. No browser capture, WordPress design modification, translation or production authorization is asserted."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-origin-external-research.php",
+      "source_blob_sha": "133578c6adaf27e1b0baf71d75e6fb6a1f341480",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PROVIDERS-01"
+      ],
+      "regression_tests": [
+        "tests/origin-external-research-source-bound-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party Native Origin research lifecycle and source-binding reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original Governance, Platform, Execution, Providers and Security controls enforce the signed native ContentJob origin and bounded research evidence; no autonomous provider publication or grant path is created.",
+      "review_rationale": "Reviewed full 67-line first-party Native Origin External Research orchestrator and its original Research Groups and ContentJobs dependencies, without bypassing signed Native Origin or exact Site UUID. It requires an open linked origin issue, matching source/canonical published posts, existing empty origin address, source taxonomy SHA256, FACT_QA waiting-review ContentJob owned by the signed original actor and a matching origin-gap-ref in the subject. A same-PR hermetic actual-source PHP 7.4/8.5 test reproduces and repairs str_contains failure; verifies no provider call before Native admission, rejects foreign-site source, changed taxonomy fingerprint and wrong ContentJob stage, checks only one original Firecrawl record gets added and a repeated request returns ALREADY_CAPTURED. The resulting public-tour scrape explicitly marks independent source, exact pickup, map and writeback as unverified; this review does not certify actual Firecrawl traffic, other-company content changes or Production approval."
     }
   ],
   "code_change_rules": {
