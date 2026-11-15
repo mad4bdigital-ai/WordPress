@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Tour Gallery Popup Layout
  * Description: Responsive, scroll-safe Elementor/UAEL tour gallery dialog; does not alter gallery data or other popups.
- * Version: 1.3.0
+ * Version: 1.4.0
  */
 defined('ABSPATH') || exit;
 add_action('wp_enqueue_scripts', static function (): void {
@@ -170,10 +170,17 @@ final class MAD4B_JetEngine_Elementor_Frame_Focus_V2 {
             if($validOld&&!empty($row['rebind_on_save']))$old='';
             $sha=$old?:$sha;
             $seen[$slot]=true;
-            $clean[]=['slot'=>$slot,'focus_x'=>min(100,max(0,(float)$x)),
+            $aspect=$row['frame_aspect_ratio']??null;
+            // Optional width/height ratio is descriptive and MUST NOT be
+            // coerced from empty text to zero. It cannot override crop policy.
+            $aspect=is_numeric($aspect) && $aspect>=0.25 && $aspect<=5
+                ?round((float)$aspect,3):null;
+            $entry=['slot'=>$slot,'focus_x'=>min(100,max(0,(float)$x)),
                 'focus_y'=>min(100,max(0,(float)$y)),
                 'fit'=>in_array(($row['fit']??''),['cover','contain'],true)?$row['fit']:'cover',
                 'source_sha256'=>$sha];
+            if($aspect!==null)$entry['frame_aspect_ratio']=$aspect;
+            $clean[]=$entry;
         }
         if($clean===$value)return;
         $updating=true;

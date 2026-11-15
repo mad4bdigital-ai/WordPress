@@ -213,6 +213,41 @@ final class MAD4B_Tour_Photo_Quality_V1 {
         }
         return $out;
     }
+    /** Conservative frame-cover crop budget. Pure geometry, no photo claims.
+     * For a cover image, the visible fraction of source pixels equals the
+     * smaller ratio of its image/frame aspect ratios. CSS focal coordinates
+     * cannot recover the cropped area; a manual focus is not visual approval.
+     */
+    public static function cover_crop_geometry(int $width,int $height,float $frameRatio):array {
+        if($width<1||$height<1||!is_finite($frameRatio)||$frameRatio<0.25||$frameRatio>5)
+            return ['status'=>'invalid_geometry'];
+        $imageRatio=$width/$height;
+        $visible=min(1.0,$imageRatio/$frameRatio,$frameRatio/$imageRatio);
+        return ['status'=>'ok','source_aspect_ratio'=>round($imageRatio,4),
+            'frame_aspect_ratio'=>round($frameRatio,4),
+            'visible_source_fraction'=>round($visible,4),
+            'estimated_cropped_fraction'=>round(1-$visible,4),
+            'cropped_axis'=>$imageRatio<$frameRatio?'vertical':($imageRatio>$frameRatio?'horizontal':'none')];
+    }
+    private static function native_frame_crop_config(int $tour,string $slot,string $sourceSha):array {
+        $rows=get_post_meta($tour,'mad4b_media_frame_focus_v2',true);
+        if(!is_array($rows)||!$rows){
+            $default=(string)apply_filters('wpml_default_language','');
+            $canonical=$default!==''?(int)apply_filters('wpml_object_id',$tour,'tours-and-activities',false,$default):0;
+            if($canonical>0&&$canonical!==$tour&&get_post_type($canonical)==='tours-and-activities')
+                $rows=get_post_meta($canonical,'mad4b_media_frame_focus_v2',true);
+        }
+        foreach(array_slice((array)$rows,0,80) as $row){
+            if(!is_array($row)||($row['slot']??'')!==$slot)continue;
+            if(!preg_match('/^[a-f0-9]{64}$/D',(string)($row['source_sha256']??''))
+               ||!hash_equals($sourceSha,(string)$row['source_sha256']))continue;
+            $aspect=$row['frame_aspect_ratio']??null;
+            return ['fit'=>($row['fit']??'')==='contain'?'contain':'cover',
+                'frame_aspect_ratio'=>is_numeric($aspect)&&$aspect>=0.25&&$aspect<=5?(float)$aspect:null,
+                'source_sha256'=>$sourceSha,'focus_is_current'=>true];
+        }
+        return ['fit'=>'cover','frame_aspect_ratio'=>null,'focus_is_current'=>false];
+    }
     public static function audit(int $tour):array {
         if(get_post_type($tour)!=='tours-and-activities')return self::fail('tour_missing');
         $fields=self::hero_fields($tour);
@@ -242,13 +277,42 @@ final class MAD4B_Tour_Photo_Quality_V1 {
             // A focal point is evidence of editorial framing, NOT evidence of
             // geographic accuracy, photographic provenance or license rights.
             $size=wp_get_attachment_metadata($id);
-            if($review_crop && str_starts_with($field,'grid_image_')
-               && (int)($size['width']??0)>0 && (int)($size['height']??0)>0
-               && $size['width']/$size['height']<0.9 && !isset($focal[$field]))
-                $issues[]=['code'=>'media_hero_focal_review_pending',
-                    'severity'=>'medium','field'=>$field,
-                    'width'=>(int)$size['width'],'height'=>(int)$size['height'],
-                    'visual_subject_not_verified_by_dimensions'=>true];
+            if($review_crop && (int)($size['width']??0)>0 && (int)($size['height']??0)>0){
+                $frame=self::native_frame_crop_config($tour,$field,(string)$sha);
+                $isLandscapeSlot=str_starts_with($field,'grid_image_');
+                $nativeAspect=$frame['frame_aspect_ratio'];
+                $ratio=$nativeAspect??($isLandscapeSlot?1.0:null);
+                if($frame['fit']==='cover'&&$ratio!==null){
+                    $geometry=self::cover_crop_geometry((int)$size['width'],(int)$size['height'],(float)$ratio);
+                    // With no measured Elementor ratio, 1:1 is only a
+                    // conservative lower bound for a grid landscape frame.
+                    // Risk detected at that lower bound remains real for the
+                    // wider actual Elementor container, without inventing
+                    // a claimed viewport measurement.
+                    if(($geometry['status']??'')==='ok'
+                       && $geometry['visible_source_fraction']<0.70
+                       && ($nativeAspect!==null || $geometry['cropped_axis']==='vertical')){
+                        $issues[]=['code'=>'media_hero_crop_geometry_review_pending',
+                            'severity'=>'medium','field'=>$field,
+                            'attachment_id'=>$id,'origin_sha256'=>$sha,
+                            'width'=>(int)$size['width'],'height'=>(int)$size['height'],
+                            'source_aspect_ratio'=>$geometry['source_aspect_ratio'],
+                            'frame_ratio_basis'=>$nativeAspect!==null?'jetengine_explicit_frame_ratio':'landscape_grid_lower_bound_1_to_1',
+                            'reference_frame_aspect_ratio'=>$ratio,
+                            'minimum_estimated_crop_fraction'=>$geometry['estimated_cropped_fraction'],
+                            'crop_axis'=>$geometry['cropped_axis'],
+                            'current_focal_meta_exists'=>isset($focal[$field]),
+                            'focal_cannot_restore_pixels_lost_to_cover'=>true,
+                            'recommended_action'=>'review_landscape_source_or_approved_native_contain_layout',
+                            'photographic_source_or_rights_not_auto_verified'=>true];
+                    }
+                }
+                if($isLandscapeSlot && $size['width']/$size['height']<0.9 && !isset($focal[$field]))
+                    $issues[]=['code'=>'media_hero_focal_review_pending',
+                        'severity'=>'medium','field'=>$field,
+                        'width'=>(int)$size['width'],'height'=>(int)$size['height'],
+                        'visual_subject_not_verified_by_dimensions'=>true];
+            }
             if(self::editorial_hold($id)['held'])
                 $issues[]=['code'=>'media_visual_editorial_hold','severity'=>'medium',
                     'field'=>$field,'attachment_id'=>$id,
@@ -603,7 +667,7 @@ final class MAD4B_Tour_Photo_Quality_V1 {
                         'grid'=>65,'gallery'=>65]];
             }
         }
-        $selected=[];$origins=[];$passes=[];$held_subject=[];
+        $selected=[];$origins=[];$passes=[];$held_subject=[];$held_crop=[];
         $slot_fields=self::hero_fields($tour);
         $roles=array_map(static fn($field)=>$field==='image_vertical'?'vertical':'grid',$slot_fields);
         $slot_total=count($roles);
@@ -623,6 +687,20 @@ final class MAD4B_Tour_Photo_Quality_V1 {
                     if(self::provenance($id)['status']==='synthetic_confirmed')continue;
                     if(self::editorial_hold($id)['held'])continue;
                     if($role==='vertical'&&(float)($entry['aspect_ratio']??2)>1.0)continue;
+                    // Selection and rendering share one crop budget. For Grid
+                    // cover, no focused X/Y can restore large portions of
+                    // a portrait source lost to a landscape frame.
+                    // Without a real Elementor frame aspect we use the 1:1
+                    // lower bound, not a fabricated 3:2 measurement.
+                    $entryRatio=(float)($entry['aspect_ratio']??0);
+                    if($role==='grid' && $entryRatio>0 && $entryRatio<0.70){
+                        $held_crop[$id]=['id'=>$id,'origin_sha256'=>$o['origin_sha256'],
+                            'source_aspect_ratio'=>round($entryRatio,4),
+                            'minimum_cropped_fraction'=>round(1-$entryRatio,4),
+                            'reason'=>'portrait_cover_crop_excess_for_grid',
+                            'no_automatic_rights_or_visual_approval'=>true];
+                        continue;
+                    }
                     $focus=self::headline_photo_hint($id,$headline);
                     if($pass==='company_local_shared_subject_pool_review_only'&&!$focus)continue;
                     if($pass==='weighted_registered_context_review_only'
@@ -718,6 +796,9 @@ final class MAD4B_Tour_Photo_Quality_V1 {
             'visual_and_rights_review_required'=>true,'ready_to_auto_apply'=>false,
             'withheld_subject_candidates'=>count($held_subject),
             'withheld_subject_candidate_examples'=>array_slice(array_values($held_subject),0,10),
+            'withheld_severe_grid_crop_candidates'=>count($held_crop),
+            'withheld_severe_grid_crop_examples'=>array_slice(array_values($held_crop),0,10),
+            'grid_crop_budget_uses_conservative_landscape_lower_bound'=>true,
             'distinct_photo_origins'=>count($origins),'passes'=>$passes,
             'proposed_hero_slots'=>$selected,'proposed_hero_by_field'=>$proposed_by_field,'proposed_gallery_count'=>count($gallery_proposal),
             'proposed_gallery_items'=>$gallery_proposal,'gallery_passes'=>$gallery_passes,
@@ -749,6 +830,7 @@ final class MAD4B_Tour_Photo_Quality_V1 {
             'media_gallery_original_unverified'=>'high',
             'media_gallery_missing'=>'medium','media_near_duplicate_review'=>'medium',
             'media_hero_focal_review_pending'=>'medium',
+            'media_hero_crop_geometry_review_pending'=>'medium',
             'media_hero_subject_review_pending'=>'medium',
             'media_visual_editorial_hold'=>'medium',
             'media_rate_property_photo_coverage_gap'=>'medium',

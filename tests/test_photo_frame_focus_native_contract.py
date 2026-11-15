@@ -33,6 +33,9 @@ def test_existing_jetengine_tour_page_options_owns_extensible_per_photo_fields()
     for field in ("focus_x", "focus_y", "fit", "source_sha256", "rebind_on_save"):
         assert f"'{field}'" in source_text
     assert "existing_repeater_extended" in source_text
+    assert "'frame_aspect_ratio'" in source_text
+    assert "foreach(self::frame_focus_field()['repeater-fields'] as $new)" in source_text
+    assert "'new_fields'=>$added,'new_field'=>$added[0]" in source_text
 
 
 def test_photo_identity_binding_fail_closed_and_cache_wpml_contract():
@@ -47,6 +50,11 @@ def test_photo_identity_binding_fail_closed_and_cache_wpml_contract():
     assert "hash_equals($old,(string)($o['origin_sha256']??''))" in quality
     assert "60439" not in gallery
     assert "60439" not in quality
+    assert "cover_crop_geometry" in quality
+    assert "media_hero_crop_geometry_review_pending" in quality
+    assert "focal_cannot_restore_pixels_lost_to_cover" in quality
+    assert "withheld_severe_grid_crop_candidates" in quality
+    assert "minimum_estimated_crop_fraction" in quality
 
 if __name__ == "__main__":
     for name, fn in sorted(globals().copy().items()):

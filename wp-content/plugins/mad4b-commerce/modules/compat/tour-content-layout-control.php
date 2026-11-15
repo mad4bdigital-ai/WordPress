@@ -103,6 +103,7 @@ final class MAD4B_Tour_Layout_Control_V1 {
     $field('slot','Photo slot (discovered from Elementor)','select',['options'=>$options]),
     $field('focus_x','Horizontal focus X (0–100%)','number',['min_value'=>0,'max_value'=>100,'step_value'=>1,'default_val'=>50]),
     $field('focus_y','Vertical focus Y (0–100%)','number',['min_value'=>0,'max_value'=>100,'step_value'=>1,'default_val'=>50]),
+    $field('frame_aspect_ratio','Frame width ÷ height (optional, e.g. 1.5 for wide image)','number',['min_value'=>0.25,'max_value'=>5,'step_value'=>0.01,'default_val'=>'','description'=>'Use the actual visible frame ratio at the key desktop breakpoint when known. Empty uses a conservative landscape-only estimate for crop review; this does not alter Elementor layout.']),
     $field('fit','Image fit inside frame','select',['options'=>[['key'=>'cover','value'=>'Cover (fill frame)'],['key'=>'contain','value'=>'Contain (show complete image)']],'default_val'=>'cover']),
     $field('source_sha256','Image source binding (automatic)','hidden',['description'=>'Generated from the verified photo origin on save; stale values cannot apply to a different photo.']),
     $field('rebind_on_save','Rebind to replaced image · one-time approval','switcher',['default_val'=>false,'description'=>'OFF by default. Enable only after inspecting the changed photograph; automatically resets after saving.']),
@@ -117,15 +118,20 @@ final class MAD4B_Tour_Layout_Control_V1 {
    if(($f['name']??'')!=='mad4b_media_frame_focus_v2')continue;
    $sub=$f['repeater-fields']??[];
    if(!is_array($sub))return ['status'=>'existing_repeater_incompatible'];
-   $names=array_column($sub,'name');
-   if(in_array('rebind_on_save',$names,true))return ['status'=>'already_registered'];
-   $fresh=self::frame_focus_field();
-   foreach($fresh['repeater-fields'] as $new)
-    if(($new['name']??'')==='rebind_on_save')$sub[]=$new;
+   $names=array_fill_keys(array_column($sub,'name'),true);
+   $added=[];
+   // Migrate existing JetEngine boxes by diffing actual fields, not by one
+   // historical sentinel. Keep company-owned fields and existing values.
+   foreach(self::frame_focus_field()['repeater-fields'] as $new){
+    $key=(string)($new['name']??'');
+    if($key===''||isset($names[$key]))continue;
+    $sub[]=$new;$names[$key]=true;$added[]=$key;
+   }
+   if(!$added)return ['status'=>'already_registered'];
    $all[self::BOX]['meta_fields'][$i]['repeater-fields']=$sub;
    if(!update_option('jet_engine_meta_boxes',$all,false)||get_option('jet_engine_meta_boxes',[])!==$all)
     return ['status'=>'write_or_readback_failed'];
-   return ['status'=>'existing_repeater_extended','new_field'=>'rebind_on_save'];
+   return ['status'=>'existing_repeater_extended','new_fields'=>$added,'new_field'=>$added[0]];
   }
   $before=$all;
   $all[self::BOX]['meta_fields'][]=self::frame_focus_field();
