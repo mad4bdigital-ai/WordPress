@@ -17177,6 +17177,24 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-preflight.php",
+      "source_blob_sha": "31debb73947d236719058f5936bd34af2fdd7565",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-preflight-runtime.php"
+      ],
+      "owner_role": "MAD4B original signed Context preflight and Brand Draft source reviewer — CI only",
+      "review_rationale": "Reviewed exact changed original Context Preflight Brand Draft branch, including current enrolled Site Profile, approved Brand Strategy-only Builder Skill, signed fresh source-ability-bound Context Receipt, no cross-ability receipt reuse, exact provider quality content hash, denied non-text inputs and fail-closed provider errors. The original 500-plus-line hermetic receipt integration fixture now traverses the newly changed branch and exercises signed positive and 11 negative cases plus existing Site/Brand/Skill drift, crypto revocation and nested approval boundary tests under PHP 7.4 and 8.5. No grant or publish authority is created.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "code_change_rules": {

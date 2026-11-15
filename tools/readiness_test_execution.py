@@ -115,6 +115,9 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "tests/authority-review-inbox-native-hermetic.php",
     # Original source-bound registry write preflight, PHP 7.4/8.5 tested.
     "tests/remote-execution/governed-write-admission-smoke.php",
+    # Native signed Brand Draft Context receipt and quality preflight test;
+    # no WordPress, network, or Production write in this exact fixture.
+    "wp-content/plugins/mad4b-site-control-plane/tests/context-preflight-runtime.php",
 ))
 
 
@@ -241,6 +244,7 @@ def self_test():
     assert command_for("tests/production_readiness_registry_contract.py")[0] == sys.executable
     assert command_for("tests/remote-execution/operator-grants-convergence-smoke.php")[0] == "php"
     assert command_for("tests/remote-execution/governed-write-admission-smoke.php")[0] == "php"
+    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/context-preflight-runtime.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/generation-snapshot-exception-runtime.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/no-input-read-ability-schema-runtime.php")[0] == "php"

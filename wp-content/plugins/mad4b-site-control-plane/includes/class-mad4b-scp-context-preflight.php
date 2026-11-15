@@ -613,12 +613,21 @@ final class MAD4B_SCP_Context_Preflight {
 				return new WP_Error( 'mad4b_brand_draft_bootstrap_receipt_scope_invalid', 'Brand Core bootstrap requires the exact Brand Strategy-only Context Receipt bound to draft creation.' );
 			$validated = self::validate_receipt_binding( $receipt );
 			if ( is_wp_error( $validated ) ) return $validated;
+			// Never pass non-text or oversized content to the native draft
+			// quality service. Casting arrays to strings is both ambiguous and
+			// produces a PHP warning before the provider has checked policy.
+			if ( ! isset( $input['content'] ) || ! is_string( $input['content'] ) )
+				return new WP_Error( 'mad4b_brand_draft_bootstrap_content_invalid',
+					'Brand draft bootstrap requires an explicit text value.' );
+			$content = trim( $input['content'] );
+			if ( '' === $content )
+				return new WP_Error( 'mad4b_brand_draft_bootstrap_quality_required',
+					'Brand draft requires nonempty approved content.' );
 			$draft_preflight = MAD4B_SCP_Brand_Context_Builder::draft_preflight( $input );
 			if ( is_wp_error( $draft_preflight ) ) return $draft_preflight;
-			$content = isset( $input['content'] ) ? trim( (string) $input['content'] ) : '';
-			if ( empty( $draft_preflight['quality_gate_pass'] ) || '' === $content
-				|| ! isset( $draft_preflight['content_sha256'] )
-				|| ! hash_equals( (string) $draft_preflight['content_sha256'], hash( 'sha256', $content ) ) )
+			if ( ! is_array( $draft_preflight ) || empty( $draft_preflight['quality_gate_pass'] )
+				|| ! is_string( $draft_preflight['content_sha256'] ?? null )
+				|| ! hash_equals( $draft_preflight['content_sha256'], hash( 'sha256', $content ) ) )
 				return new WP_Error( 'mad4b_brand_draft_bootstrap_quality_required', 'The exact proposed Brand draft must pass current evidence-bound quality preflight.' );
 			return true;
 		}
