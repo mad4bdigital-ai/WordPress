@@ -59,7 +59,7 @@ CASES=(
   "PASS protected reflection:"),
  ("context-pipeline-admission-hermetic.php",
   ("class-mad4b-scp-context-source-pipeline.php",),
-  "PASS: 27 source pipeline admission"),
+  "PASS: 29 source pipeline admission"),
  ("dynamic-hardening-pure-runtime.php",
   ("class-mad4b-scp-dynamic-provider-contract.php",),
   "mad4b.dynamic-hardening-pure-runtime.v1: PASS"),
