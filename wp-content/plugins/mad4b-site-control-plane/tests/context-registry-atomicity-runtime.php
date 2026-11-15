@@ -375,6 +375,57 @@ mad4b_atomic_assert($archive_status['integrity_verified']===true
  && $archive_status['owner_reassignment_authorized']===false,
  'Archive readback is immutable company metadata, never ownership reassignment');
 
+// Strict vault bound: 32 independent historical snapshots are the maximum.
+// A 33rd new exact plan must be denied with no cleanup, audit or external
+// mutation; a malformed already-overfull vault must also fail readback.
+$original_vault=$GLOBALS['mad4b_context_options'][MAD4B_SCP_Context_Authority::RECYCLE_ARCHIVE_OPTION];
+$existing_batch=reset($original_vault['batches']);
+$full_vault=$original_vault;
+for ($i=1;$i<32;++$i) {
+    $digest=hash('sha256','archived-snapshot-'.$i);
+    $old=$existing_batch;
+    $old['snapshot_sha256']=$digest;
+    $full_vault['batches'][$digest]=$old;
+}
+mad4b_atomic_assert(count($full_vault['batches'])===32,
+    'Exact archive capacity fixture must contain thirty-two distinct snapshots.');
+$GLOBALS['mad4b_context_options'][MAD4B_SCP_Context_Authority::RECYCLE_ARCHIVE_OPTION]=$full_vault;
+$full_status=MAD4B_SCP_Context_Authority::foreign_recycle_archive_status();
+mad4b_atomic_assert(!empty($full_status['integrity_verified'])
+    && $full_status['batches']===32,
+    'Thirty-two valid exact archive batches must remain readable.');
+$GLOBALS['mad4b_context_options'][MAD4B_SCP_Context_Authority::SOURCES_OPTION][$foreign_source_id]=$foreign_source;
+$GLOBALS['mad4b_context_options'][MAD4B_SCP_Context_Authority::ASSETS_OPTION][$foreign_asset_id]=$foreign_asset;
+$full_sources=$GLOBALS['mad4b_context_options'][MAD4B_SCP_Context_Authority::SOURCES_OPTION];
+$full_assets=$GLOBALS['mad4b_context_options'][MAD4B_SCP_Context_Authority::ASSETS_OPTION];
+$full_revision=MAD4B_SCP_Context_Authority::registry_revision();
+$full_plan=MAD4B_SCP_Context_Authority::foreign_recycle_plan();
+mad4b_atomic_assert(is_array($full_plan)&&$full_plan['foreign_sources']===1,
+    'New foreign batch plan must still detect the exact registered foreign source.');
+$no_space=MAD4B_SCP_Context_Authority::foreign_recycle_apply(array(
+    'expected_registry_revision'=>$full_plan['expected_registry_revision'],
+    'expected_inventory_sha256'=>$full_plan['expected_inventory_sha256']));
+mad4b_atomic_assert(is_wp_error($no_space)
+    && $no_space->get_error_code()==='mad4b_recycle_vault_capacity'
+    && $full_vault===$GLOBALS['mad4b_context_options'][MAD4B_SCP_Context_Authority::RECYCLE_ARCHIVE_OPTION]
+    && $full_sources===$GLOBALS['mad4b_context_options'][MAD4B_SCP_Context_Authority::SOURCES_OPTION]
+    && $full_assets===$GLOBALS['mad4b_context_options'][MAD4B_SCP_Context_Authority::ASSETS_OPTION]
+    && $full_revision===MAD4B_SCP_Context_Authority::registry_revision(),
+    'Full archive must deny a thirty-third batch without changing existing site records.');
+$overfull=$full_vault;
+$digest=hash('sha256','archive-too-many');
+$old=$existing_batch;$old['snapshot_sha256']=$digest;
+$overfull['batches'][$digest]=$old;
+$GLOBALS['mad4b_context_options'][MAD4B_SCP_Context_Authority::RECYCLE_ARCHIVE_OPTION]=$overfull;
+$overfull_status=MAD4B_SCP_Context_Authority::foreign_recycle_archive_status();
+mad4b_atomic_assert($overfull_status['integrity_verified']===false,
+    'Overfull imported vault must never report verified archive integrity.');
+// Restore the previous exact archived state and active registry fixture.
+$GLOBALS['mad4b_context_options'][MAD4B_SCP_Context_Authority::RECYCLE_ARCHIVE_OPTION]=$original_vault;
+unset($GLOBALS['mad4b_context_options'][MAD4B_SCP_Context_Authority::SOURCES_OPTION][$foreign_source_id]);
+unset($GLOBALS['mad4b_context_options'][MAD4B_SCP_Context_Authority::ASSETS_OPTION][$foreign_asset_id]);
+echo "PASS: CONTEXT_RECYCLE_VAULT_CAPACITY 3 bounded archive cases\n";
+
 // Editing an existing enrolled Google folder must preserve identity and
 // invalidate previous complete scan evidence when recursion changes.
 $folder_before=$GLOBALS['mad4b_context_options'][MAD4B_SCP_Context_Authority::SOURCES_OPTION][$source_id];

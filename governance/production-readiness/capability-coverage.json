@@ -17195,6 +17195,25 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php",
+      "source_blob_sha": "43e71753bfb1e43e0cb48f22690ab3522c44d695",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "DATA-01",
+        "RECOVERY-01"
+      ],
+      "regression_tests": [
+        "tests/context-authority-original-review-suite.py"
+      ],
+      "owner_role": "MAD4B first-party Context Authority registry, privacy and transaction reviewer — nonauthorizing CI",
+      "review_rationale": "Original 4700-line Context Authority source reviewed against upstream master for new site-bound foreign references archive, existing Google folder settings, source and brand binding, AI review scope and MIME scan integrity. Seven first-party source-loading PHP fixtures (including the exact added vault bound tests and rollback, identity scope, scan completeness, policy escalation and brand ownership) run on PHP 7.4/8.5. Reject a 33rd new batch before writes; previous signed 32 batches readable; overfull vault reports integrity failure. Negative mutation replacing >=32 with >32 fails at exact original 33rd-batch test. No external files are deleted, no owner assignment or grants are issued, and live review remains mandatory.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "code_change_rules": {

@@ -1322,7 +1322,15 @@ final class MAD4B_SCP_Context_Authority {
                     || ($old['sources_sha256']??'')!==$batch['sources_sha256']
                     || ($old['assets_sha256']??'')!==$batch['assets_sha256'] )
                     return new WP_Error('mad4b_recycle_existing_batch_conflict','Previous archived snapshot differs.');
-            } else $vault['batches'][$key]=$batch;
+            } else {
+                // Keep the exact bounded archive at 32 entries; permitting a
+                // 33rd batch after testing >32 creates unbounded revisions.
+                // Re-reading an existing exact batch remains idempotent.
+                if ( count($vault['batches']) >= 32 )
+                    return new WP_Error('mad4b_recycle_vault_capacity',
+                        'A new batch requires capacity in the original archive.');
+                $vault['batches'][$key]=$batch;
+            }
             $encoded=serialize($vault);
             if ( strlen($encoded)>8*1024*1024 )
                 return new WP_Error('mad4b_recycle_vault_capacity','Archive exceeds bounded capacity.');
@@ -1369,7 +1377,8 @@ final class MAD4B_SCP_Context_Authority {
             'archived_assets'=>0,'integrity_verified'=>true);
         if ( !is_array($vault)
             || ($vault['contract']??'')!=='mad4b.context-recycle-vault.v1'
-            || !is_array($vault['batches']??null) )
+            || !is_array($vault['batches']??null)
+            || count($vault['batches'])>32 )
             return array('state'=>'ARCHIVE_INTEGRITY_FAILURE','integrity_verified'=>false);
         $sources=0; $assets=0;
         foreach ($vault['batches'] as $digest=>$batch) {
