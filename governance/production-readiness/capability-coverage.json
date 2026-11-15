@@ -16587,6 +16587,25 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Original Platform, Governance, Security and Execution controls cover read-only page evidence and strictly bounded HTTP. It creates no new WordPress writer, SEO translator, automatic publisher or unrestricted external crawl.",
       "review_rationale": "Reviewed full original Frontend Impact Priority service source, including read-only admin/REST GET, public same-origin multilingual WPML home/archive/tour sampling, Elementor/JetEngine HTML parser (no form values), bounded page size and HTTP timeout, optional provider scores as candidates only, and one verified WordPress snapshot on adequate language coverage. Reproduced three actual defects: alternate HTTPS ports admitted as same origin, direct wp_remote_get where safe HTTP is required, and a one-language home-only scan rejected by a hard two-page minimum; corrected all three. Also repaired PHP7.4-incompatible string prefix/substring calls with correct operator precedence. Same-PR native source tests run on both PHP7.4 and 8.5: verify exact origin and port; block userinfo/query/admin paths; inspect actual WPML target selection; require HTTPS safe HTTP without redirects; preserve last accepted snapshot on failed crawl; deny unauthorized manual scan without HTTP; accept one-language sample; never authorize a ContentJob, booking, translation or publication. This CI-only review does not certify live browser render or VPS CPU cost: hourly Cron may sample up to 12 languages x 3 pages with bounded per-page timeouts, and its production load/overlap must be verified separately."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-general-settings-contract.php",
+      "source_blob_sha": "e3b8b65c54d1416409fed3c6bb433d44498e82aa",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa30-native-general-settings-rest-lifecycle.php"
+      ],
+      "owner_role": "MAD4B native WordPress general settings and REST lifecycle exact-source reviewer — nonauthorizing CI",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original WordPress options.php owns updates; MAD4B only removes direct admin_email and constant-protected URLs from the native options allowlist. Existing governance, site security and platform controls apply.",
+      "review_rationale": "Reviewed complete 42-line original native General Settings contract. Its final allowed_options hook applies only to admin POST options.php for general settings and removes direct admin_email writes while leaving new_admin_email to core confirmation. Constants WP_HOME and WP_SITEURL guard immutable URLs, other option pages, GET and AJAX remain unchanged. The existing actual-source QA30 PHP lifecycle fixture was extended to verify the native email confirmation route and made compatible with PHP 7.4 Reflection while testing non-initialization of REST on General Settings POST. No password, owner, Site Profile, WP OAuth or production authority is altered. Source-only PHP evidence, not a live admin form approval."
     }
   ],
   "code_change_rules": {
