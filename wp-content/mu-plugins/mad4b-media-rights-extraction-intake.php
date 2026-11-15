@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Media Rights Extraction Intake
  * Description: Bounded, idempotent JetEngine CCT discovery of new local image attachments; never auto-licenses or publishes.
- * Version: 1.6.0
+ * Version: 1.7.0
  */
 defined('ABSPATH') || exit;
 if (!class_exists('MAD4B_Media_Rights_Extraction_Intake_V1', false)) {
@@ -88,6 +88,87 @@ final class MAD4B_Media_Rights_Extraction_Intake_V1 {
   global $wpdb;$table=$factory->db->table();
   $published=(int)$wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$table} WHERE source_sha256=%s AND cct_status=%s",$sha,'publish'));
   if ($published>0) return ['status'=>'already_licensed','attachment_id'=>$attachment_id];
+  // A web-scaled WordPress image is a derivative of the preserved
+  // original_image, NOT an independently licensed image. Accept this alias
+  // only when the actual unmodified original bytes, importer metadata and
+  // a published, exact-attachment rights CCT record independently agree.
+  // Filename similarity, uploader claims, and draft rows never suffice.
+  $wpMeta=wp_get_attachment_metadata($attachment_id);
+  $originalName=is_array($wpMeta)?($wpMeta['original_image']??null):null;
+  if(is_string($originalName) && $originalName!==''
+     &&!str_contains($originalName,'/')&&!str_contains($originalName,'\\')
+     &&$originalName===wp_basename($originalName)
+     &&preg_match('/^[A-Za-z0-9][A-Za-z0-9._-]{3,190}$/D',$originalName)){
+   $rawOriginal=realpath(dirname($real).DIRECTORY_SEPARATOR.$originalName);
+   if($rawOriginal && is_file($rawOriginal)
+      &&dirname($rawOriginal)===dirname($real)
+      &&filesize($rawOriginal)>0&&filesize($rawOriginal)<=self::MAX_BYTES){
+    $originalSha=(string)hash_file('sha256',$rawOriginal);
+    $licenseOwner=$attachment_id;
+    $sourceSha=(string)get_post_meta($attachment_id,'_mad4b_verified_source_sha256',true);
+    $wpmlAlias=false;
+    // WPML translation attachments may deliberately omit importer metadata.
+    // The original-language attachment owns the published license. Trust it
+    // ONLY with a reciprocal native WPML family and byte-exact photo match.
+    // An explicitly mismatching local source claim must never be overridden.
+    if($sourceSha==='' && class_exists('MAD4B_WPML_Attachment_Family_Readback_V1',false)){
+     $family=MAD4B_WPML_Attachment_Family_Readback_V1::translations($attachment_id);
+     $default=(string)apply_filters('wpml_default_language','en');
+     $candidate=(int)($family[$default]->element_id??0);
+     if($candidate>0&&$candidate!==$attachment_id
+        &&get_post_type($candidate)==='attachment'){
+      $reciprocal=MAD4B_WPML_Attachment_Family_Readback_V1::translations($candidate);
+      $roundtrip=false;
+      foreach((array)$reciprocal as $row)
+       if((int)($row->element_id??0)===$attachment_id){$roundtrip=true;break;}
+      $candidateFile=get_attached_file($candidate);
+      $candidateReal=$candidateFile?realpath($candidateFile):false;
+      $candidateMeta=wp_get_attachment_metadata($candidate);
+      $candidateName=is_array($candidateMeta)?($candidateMeta['original_image']??null):null;
+      $candidateSource=(string)get_post_meta($candidate,'_mad4b_verified_source_sha256',true);
+      $sameOriginal=$candidateName===$originalName;
+      $sameServed=$candidateReal&&is_file($candidateReal)
+       &&hash_equals($sha,(string)hash_file('sha256',$candidateReal));
+      if($roundtrip&&$sameOriginal&&$sameServed
+         &&preg_match('/^[a-f0-9]{64}$/D',$candidateSource)
+         &&hash_equals($candidateSource,$originalSha)){
+       $licenseOwner=$candidate;$sourceSha=$candidateSource;$wpmlAlias=true;
+      }
+     }
+    }
+    if(preg_match('/^[a-f0-9]{64}$/D',$sourceSha)
+       &&hash_equals($sourceSha,$originalSha)){
+     $pub=$wpdb->get_results($wpdb->prepare(
+       "SELECT _ID,attachment_id,source_sha256,source_url,author,license_url,license_label FROM {$table} WHERE source_sha256=%s AND cct_status=%s AND attachment_id=%d LIMIT 2",
+       $sourceSha,'publish',$licenseOwner),ARRAY_A);
+     if(is_array($pub)&&$wpdb->last_error===''&&count($pub)===1){
+      $credit=$pub[0];
+      $source=(string)get_post_meta($licenseOwner,'_mad4b_license_source_url',true);
+      $label=(string)get_post_meta($licenseOwner,'_mad4b_license',true);
+      $creator=(string)get_post_meta($licenseOwner,'_mad4b_creator',true);
+      $aliasMetaAligned=true;
+      if($wpmlAlias){
+       foreach(['_mad4b_license_source_url','_mad4b_license','_mad4b_creator'] as $key){
+        $local=(string)get_post_meta($attachment_id,$key,true);
+        $owner=(string)get_post_meta($licenseOwner,$key,true);
+        if($local!==''&&!hash_equals($local,$owner)){$aliasMetaAligned=false;break;}
+       }
+      }
+      if($aliasMetaAligned&&$source!==''&&$label!==''&&$creator!==''
+         &&hash_equals($source,(string)($credit['source_url']??''))
+         &&hash_equals($label,(string)($credit['license_label']??''))
+         &&hash_equals($creator,(string)($credit['author']??''))
+         &&wp_parse_url((string)($credit['license_url']??''),PHP_URL_SCHEME)==='https')
+       return ['status'=>'already_licensed_wordpress_scaled_derivative',
+         'attachment_id'=>$attachment_id,'licensed_attachment_id'=>$licenseOwner,
+         'verified_wpml_sibling'=>$wpmlAlias,
+         'served_sha256'=>$sha,'licensed_original_sha256'=>$sourceSha,
+         'published_credit_id'=>(int)$credit['_ID'],
+         'rights_granted_by_intake'=>false,'new_draft_created'=>false];
+     }
+    }
+   }
+  }
   // The registry is needed for externally sourced media, not every internal
   // upload, generated image, resized crop or unsourced company photograph.
   // Import provenance arrives asynchronously; its meta hook will retry.
