@@ -1814,6 +1814,28 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		}
 		$desired_parent=isset($state['post']['post_parent'])?absint($state['post']['post_parent']):0;
 		if($desired_parent>0&&!current_user_can('edit_post',$desired_parent)) return new WP_Error('mad4b_dynamic_restore_parent_denied','Current user cannot restore the recorded parent relationship.');
+		// A stored rollback snapshot must still refer to the same post and post
+		// type. Never restore a stale/foreign record to a different live target.
+		if ( (int) ( $state['post']['ID'] ?? 0 ) !== (int) $id
+			|| (string) ( $state['post']['post_type'] ?? '' ) !== (string) $current->post_type )
+			return new WP_Error('mad4b_dynamic_restore_identity_mismatch','Recorded content does not match the rollback target.');
+		// WordPress post/meta/terms are not one SQL transaction. Validate every
+		// known permission and dependent resource BEFORE the first write so a
+		// predictable denial cannot strand half-restored content. Keep the
+		// per-write guards below for policy changes during an operation.
+		foreach ( isset( $state['meta'] ) && is_array( $state['meta'] ) ? $state['meta'] : array() as $key => $_meta_state ) {
+			if ( ! current_user_can('edit_post_meta',$id,(string)$key) )
+				return new WP_Error('mad4b_dynamic_meta_restore_denied','Current user cannot restore a recorded meta key.',array('meta_key'=>(string)$key));
+		}
+		foreach ( isset( $state['taxonomies'] ) && is_array( $state['taxonomies'] ) ? $state['taxonomies'] : array() as $tax => $_ids ) {
+			$taxonomy=sanitize_key((string)$tax);$tax_obj=get_taxonomy($taxonomy);
+			if(!$tax_obj) return new WP_Error('mad4b_dynamic_taxonomy_restore_invalid','Recorded taxonomy is no longer registered.',array('taxonomy'=>$taxonomy));
+			$assign_cap=isset($tax_obj->cap->assign_terms)?(string)$tax_obj->cap->assign_terms:'edit_posts';
+			if(!current_user_can($assign_cap)) return new WP_Error('mad4b_dynamic_taxonomy_restore_denied','Current user cannot restore recorded taxonomy assignments.',array('taxonomy'=>$taxonomy));
+		}
+		$desired_media=isset($state['featured_media_id'])?absint($state['featured_media_id']):0;
+		if($desired_media>0 && 'attachment'!==get_post_type($desired_media))
+			return new WP_Error('mad4b_dynamic_featured_media_restore_invalid','Recorded featured media is no longer an attachment.');
 		$arr=$state['post'];
 		$arr['ID']=$id;
 		unset($arr['post_type']);
