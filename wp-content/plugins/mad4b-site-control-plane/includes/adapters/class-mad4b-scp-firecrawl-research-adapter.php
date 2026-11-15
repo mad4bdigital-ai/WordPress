@@ -29,6 +29,10 @@ final class MAD4B_SCP_Firecrawl_Research_Adapter extends MAD4B_SCP_Adapter_Base 
  public function capture($input=[]){
   if(!class_exists('MAD4B_Firecrawl_Research_Bridge_V1',false))
    return new WP_Error('mad4b_firecrawl_bridge_unavailable');
+  // Readiness is checked AGAIN at execution. A bridge surviving a plugin
+  // reload must not dispatch research when the provider contract is absent.
+  if(!class_exists('MAD4B_SCP_Firecrawl_Provider',false))
+   return new WP_Error('mad4b_firecrawl_provider_unavailable');
   return MAD4B_Firecrawl_Research_Bridge_V1::execute($input);
  }
 }

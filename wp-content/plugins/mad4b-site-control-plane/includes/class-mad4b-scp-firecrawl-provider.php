@@ -24,7 +24,7 @@ final class MAD4B_SCP_Firecrawl_Provider {
   $mode=sanitize_key((string)$mode);
   if(!in_array($mode,['single_page','section_crawl','full_site_crawl'],true))
    return new WP_Error('mad4b_firecrawl_crawl_mode_invalid');
-  if(!str_starts_with($url,'https://')||!wp_http_validate_url($url))
+  if(0!==strpos($url,'https://')||!wp_http_validate_url($url))
    return new WP_Error('mad4b_firecrawl_crawl_url_invalid');
   $host=strtolower((string)wp_parse_url($url,PHP_URL_HOST));
   $path=(string)wp_parse_url($url,PHP_URL_PATH);
@@ -246,7 +246,7 @@ final class MAD4B_SCP_Firecrawl_Provider {
   $was=(float)($old['ewma_seconds']??0);
   $fail=is_wp_error($result);
   $timeout_fail=$fail && ($elapsed>=0.8*$plan['timeout'] ||
-    str_contains(strtolower($result->get_error_message()),'timed out'));
+    false!==strpos(strtolower($result->get_error_message()),'timed out'));
   // Never let errors for protected sites inflate success latency metrics.
   $all[$plan['bucket']]=[
    'kind'=>$kind,'host'=>strtolower((string)wp_parse_url((string)$source,PHP_URL_HOST)),
@@ -304,7 +304,7 @@ final class MAD4B_SCP_Firecrawl_Provider {
   if(is_wp_error($sealed))wp_die(esc_html($sealed->get_error_message()),500);
   if($mode==='self_hosted') {
    $endpoint=isset($_POST['firecrawl_endpoint'])?esc_url_raw(wp_unslash($_POST['firecrawl_endpoint'])):'';
-   if(!str_starts_with($endpoint,'https://')||!wp_http_validate_url($endpoint))wp_die('Valid HTTPS gateway URL required',400);
+   if(0!==strpos($endpoint,'https://')||!wp_http_validate_url($endpoint))wp_die('Valid HTTPS gateway URL required',400);
    $username=isset($_POST['firecrawl_username'])?sanitize_user(wp_unslash($_POST['firecrawl_username']),true):'';
    if(!preg_match('/^[A-Za-z0-9._-]{3,64}$/',$username))wp_die('Valid gateway service username required',400);
   } else {
@@ -497,8 +497,8 @@ final class MAD4B_SCP_Firecrawl_Provider {
      strlen($url)>1500 || wp_parse_url($url,PHP_URL_USER) || wp_parse_url($url,PHP_URL_PASS))
      return new WP_Error('mad4b_source_loop_url_rejected');
   $host=strtolower((string)wp_parse_url($url,PHP_URL_HOST));
-  if(!$host || filter_var($host,FILTER_VALIDATE_IP) || str_ends_with($host,'.local') ||
-     str_ends_with($host,'.internal'))return new WP_Error('mad4b_source_loop_private_host_rejected');
+  if(!$host || filter_var($host,FILTER_VALIDATE_IP) || substr($host,-strlen('.local'))==='.local' ||
+     substr($host,-strlen('.internal'))==='.internal')return new WP_Error('mad4b_source_loop_private_host_rejected');
   $allowed=get_option('mad4b_source_loop_allowed_hosts_v1',[]);
   if(!is_array($allowed)||!in_array($host,$allowed,true))
      return new WP_Error('mad4b_source_loop_host_not_enrolled');

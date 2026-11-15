@@ -120,6 +120,8 @@ jobs:
           php tests/guided-continuation-write-surface-denial-hermetic.php
           php tests/core-ai-governance-usage-and-admission-hermetic.php
           php tests/provider-field-intelligence-site-readonly-php74-hermetic.php
+          php tests/firecrawl-provider-php74-crawl-and-host-scope-hermetic.php
+          php tests/firecrawl-research-adapter-provider-presence-hermetic.php
           python3 wp-content/plugins/mad4b-site-control-plane/tests/content-job-domain-contract.py
           php wp-content/plugins/mad4b-site-control-plane/tests/live-write-provider-snapshot-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/mcp-preflight-registration-failure-runtime.php
