@@ -7546,6 +7546,25 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mutation-principal.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/mutation-principal-first-party-hermetic.php"
+      ],
+      "owner_role": "MAD4B typed NHI/WordPress mutation principal capability reviewer — CI only",
+      "review_rationale": "The actual original typed mutation Principal failed pre-fix on invalid nullable Agent Registry rows and truthy nonboolean WordPress write policy. 32 native PHP7.4/8.5 source-backed cases now enforce exact boolean can_mutate, typed enrolled WordPress user, six explicitly reversible native abilities, original nullable journal schema, immutable company fingerprint and independent per-object permission. Independent Host NHI must be previously authenticated, have SHA256 subject fingerprint and enabled positive original Agent Registry ID. Owner-for-undo denies unrelated NHI agent, forged WordPress user and missing Policy. The PHP fixture does not execute a site write, grant or undo.",
+      "coverage_reuse_rationale": "Existing GOVERNANCE-01, PLATFORM-01, SECURITY-01, EXECUTION-01 controls cover owner and site identity, original Agent Registry authentication, exact native/WordPress scope, independently authorized journal and per-object undo. No new ability or Production right is added.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "lifecycle": [],
@@ -19088,6 +19107,24 @@
       ],
       "owner_role": "MAD4B original global workflow runtime reviewer — CI only",
       "review_rationale": "Original Global Runtime Lifecycle state projection is strictly non-authorizing. The source-backed 37-case PHP7.4/8.5 regression failed before the source patch on malformed native receipt digest. Now only exact 64-character SHA-256 native readback with explicit boolean true source, target and readback facts may mark a stage VERIFIED. The fixture covers 128-stage dynamic growth, missing/cyclic graph, conditional and skipped stages, uncertain write reconciliation, registered queue/recovery/provider lanes, deny on malformed/unknown source and no grant/side effect. CI-only test does not confer any Production admission or live WordPress behavior proof.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mutation-principal.php",
+      "source_blob_sha": "02bc7efe73fb6860ac6541bd45ad3b58126e588c",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/mutation-principal-first-party-hermetic.php"
+      ],
+      "owner_role": "MAD4B original first-party typed mutation identity source reviewer — CI only",
+      "review_rationale": "The actual original typed mutation Principal failed pre-fix on invalid nullable Agent Registry rows and truthy nonboolean WordPress write policy. 32 native PHP7.4/8.5 source-backed cases now enforce exact boolean can_mutate, typed enrolled WordPress user, six explicitly reversible native abilities, original nullable journal schema, immutable company fingerprint and independent per-object permission. Independent Host NHI must be previously authenticated, have SHA256 subject fingerprint and enabled positive original Agent Registry ID. Owner-for-undo denies unrelated NHI agent, forged WordPress user and missing Policy. The PHP fixture does not execute a site write, grant or undo. Production requires separate live verification.",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
