@@ -40,6 +40,7 @@ $GLOBALS['native_preflight_calls'] = 0;
 $GLOBALS['job_state'] = 'NOT_RUN'; $GLOBALS['job_head'] = '';
 $head = str_repeat( 'a', 40 );
 $assert = static function ( $condition, $why ) { if ( ! $condition ) throw new RuntimeException( $why ); };
+require __DIR__ . '/../includes/class-mad4b-scp-global-runtime-lifecycle.php';
 require __DIR__ . '/../includes/class-mad4b-scp-recovery-route-resolver.php';
 $result = MAD4B_SCP_Recovery_Route_Resolver::inspect( array(
     'goal' => 'staging_install', 'expected_head' => $head,
@@ -69,6 +70,11 @@ $assert( !$result['automatic_mutation_allowed'] &&
     !$result['permission_reuse_allowed'] &&
     !$result['mutation_performed'] &&
     !$result['client_tool_visibility_verified'], 'Planning silently granted execution.' );
+$assert( is_array($result['global_runtime_recovery'])
+    &&$result['global_runtime_recovery']['state']==='RECOVERING'
+    &&$result['global_runtime_recovery']['mutation_performed']===false
+    &&$result['global_runtime_recovery']['alternate_mutation_authorized']===false,
+    'Native Lifecycle readback must preserve alternative plan as non-authorizing.' );
 $assert( 1 === $GLOBALS['native_preflight_calls'], 'Native availability not consulted exactly once.' );
 $GLOBALS['job_state'] = 'BUILT_UNVERIFIED'; $GLOBALS['job_head'] = $head;
 $completed = MAD4B_SCP_Recovery_Route_Resolver::inspect( array(
@@ -97,6 +103,10 @@ $assert( 'AUTHORITY_REVIEW_REQUIRED' === $authority['state'] &&
     null === $authority['recommended_route_id'] &&
     count( $authority['authority_blockers'] ) === 1,
     'Denied authority silently switched to an unapproved install.' );
+$assert( is_array($authority['global_runtime_recovery'])
+    &&$authority['global_runtime_recovery']['state']==='BLOCKED_AUTHORITY'
+    &&$authority['global_runtime_recovery']['blind_write_retry_allowed']===false,
+    'Authority denial must propagate into original Lifecycle recovery without alternate write.' );
 $GLOBALS['native_eligible'] = false;
 $blocked_native = MAD4B_SCP_Recovery_Route_Resolver::inspect( array(
     'goal' => 'source_build', 'expected_head' => $head,
