@@ -141,11 +141,133 @@ trait MAD4B_Tour_Photo_Weighted_Coverage_Trait {
     /** Discover actual connected CPT/Taxonomy image sources via native registries.
      * Bounded candidate scan; independent of site-specific IDs and post types.
      */
+    /** Resolve stay options from the existing Rate assignment service, not a
+     * synthetic Tour->Property link. A rate option is never a guaranteed ship.
+     */
+    private static function coverage_property_subject_hint(int $property,int $image):bool {
+        $skip=array_fill_keys(['hotel','cruise','nile','egypt','cairo','luxor',
+          'aswan','resort','boat','ship','pyramids','golf','luxury'],true);
+        $tokens=array_values(array_filter(self::coverage_words(get_the_title($property)),
+            static fn($w)=>!isset($skip[$w])));
+        if(!$tokens)return false;
+        $origin=self::origin($image);
+        if(empty($origin['verified']))return false;
+        $id=(int)($origin['origin_attachment_id']??$image);
+        $path=(string)get_post_meta($id,'_wp_attached_file',true);
+        $label=pathinfo(wp_basename($path),PATHINFO_FILENAME).' '.get_the_title($id);
+        $words=array_fill_keys(self::coverage_words($label),true);
+        $matches=0;
+        foreach($tokens as $token)if(isset($words[$token]))$matches++;
+        return (bool)apply_filters('mad4b/tour_photo_quality/property_photo_match',
+            $matches>=min(2,count($tokens)),$property,$image,$origin);
+    }
+    private static function coverage_rate_property_sources(int $tour,array &$context):array {
+        $report=['contract'=>'mad4b.rate-property-photo-coverage.v1',
+            'resolver'=>'shared_product_assignment_legacy_links',
+            'rate_property_options'=>0,'options_with_media'=>0,
+            'options_missing_media'=>[],'rate_ids'=>[],
+            'media_candidates'=>0,'state'=>'not_checked'];
+        $sources=[];
+        if(!function_exists('shared_product_assignment_legacy_links')){
+            $report['state']='native_assignment_provider_unavailable';
+            return ['sources'=>$sources,'report'=>$report];
+        }
+        $links=shared_product_assignment_legacy_links($tour);
+        if(is_wp_error($links)){
+            $report['state']='native_assignment_'.$links->get_error_code();
+            return ['sources'=>$sources,'report'=>$report];
+        }
+        if(!is_array($links)){
+            $report['state']='native_assignment_invalid';
+            return ['sources'=>$sources,'report'=>$report];
+        }
+        $cap=min(40,(int)($context['policy']['budget']['related_objects']??30));
+        $limit=(int)($context['policy']['budget']['media_per_object']??12);
+        $rateIds=[];$seen=0;
+        foreach($links as $rawId=>$row){
+            if($seen>=$cap){$report['state']='partial_bounded_property_options';break;}
+            $id=absint($rawId);
+            if(!$id||get_post_type($id)!=='properties'||get_post_status($id)!=='publish')continue;
+            if(get_post_field('post_password',$id)!==''||
+                get_post_meta($id,'_booking_experience_qa_pricing_fixture',true)!=='')continue;
+            if(!is_array($row))continue;
+            $rates=[];$tiers=[];
+            foreach(array_slice((array)($row['source_rate_ids']??[]),0,80) as $raw){
+                $rate=absint($raw);
+                if(!$rate||get_post_type($rate)!=='tour-rates'||get_post_status($rate)!=='publish')continue;
+                if((string)get_post_meta($rate,'has_properties',true)!=='1')continue;
+                $rateTour=absint(get_post_meta($rate,'related_tour_id',true));
+                if($rateTour!==$tour&&
+                   (!function_exists('shared_product_assignment_tour_siblings')||
+                    !in_array($rateTour,shared_product_assignment_tour_siblings($tour),true)))continue;
+                $rates[$rate]=true;
+                $tier=absint(get_post_meta($rate,'related_package_term_id',true));
+                if($tier&&get_term($tier,'package_levels') instanceof WP_Term)$tiers[$tier]=true;
+            }
+            if(!$rates)continue;
+            $seen++;
+            $report['rate_property_options']++;
+            foreach(array_keys($rates) as $rid)$rateIds[$rid]=true;
+            $metadata=self::coverage_media_fields('post',$id,$tour,$limit);
+            $thumb=(int)get_post_thumbnail_id($id);
+            if($thumb>0&&get_post_type($thumb)==='attachment'&&count($metadata)<$limit)
+                $metadata[$thumb]=['field'=>'_thumbnail_id','owner_type'=>'post','owner_id'=>$id];
+            $title=get_the_title($id);
+            $types=wp_get_object_terms($id,'property-types',['fields'=>'slugs']);
+            $propertyTypes=is_wp_error($types)?[]:array_values((array)$types);
+            $propertyRole=array_intersect($propertyTypes,['nile-cruise','dahabiya-nile-cruise'])
+                ?'nile_vessel':'accommodation_property';
+            $rateOptions=[];
+            foreach(array_keys($rates) as $rid)$rateOptions[]=[
+                'rate_id'=>$rid,'package_term_id'=>absint(get_post_meta($rid,'related_package_term_id',true)),
+                'assignment_mode'=>(string)get_post_meta($rid,'accommodation_assignment_mode',true),
+                'multi_stage'=>(string)get_post_meta($rid,'has_multiple_accommodation_stages',true)==='1',
+                'stop_sale'=>(string)get_post_meta($rid,'stop_sale',true)==='1',
+                'published_is_not_booking_availability'=>true];
+            $unverified=count($metadata);
+            $matched=[];
+            foreach($metadata as $aid=>$info)
+                if(self::coverage_property_subject_hint($id,(int)$aid))$matched[$aid]=$info;
+            $metadata=$matched;
+            if(!$metadata){
+                $report['options_missing_media'][]=['property_id'=>$id,
+                    'title'=>$title,'source_rate_ids'=>array_keys($rates),
+                    'rate_options'=>$rateOptions,'property_role'=>$propertyRole,
+                    'unverified_media_count'=>$unverified,
+                    'reason'=>$unverified?'property_media_subject_unverified':'property_no_media',
+                    'package_term_ids'=>array_keys($tiers),
+                    'next_action'=>'populate_exact_property_media_with_reviewed_source_photos'];
+                continue;
+            }
+            $report['options_with_media']++;
+            $context['tokens']['related_cpt']=array_values(array_unique(array_merge(
+                $context['tokens']['related_cpt']??[],self::coverage_words($title))));
+            $key='rate_property:'.$id;
+            foreach($metadata as $aid=>$media){
+                $sources[$key][$aid]=[
+                    'bucket'=>'related_cpt','owner'=>$key,'owner_title'=>$title,
+                    'field'=>$media['field'],'source_evidence'=>'native_tour_rate_property_media_review_only',
+                    'rate_property_id'=>$id,'source_rate_ids'=>array_keys($rates),
+                    'package_term_ids'=>array_keys($tiers),
+                    'rate_options'=>$rateOptions,'property_role'=>$propertyRole,
+                    'photo_label_matches_property_name_only'=>true,
+                    'available_accommodation_option_not_guaranteed_vessel'=>true];
+                $report['media_candidates']++;
+            }
+        }
+        $report['rate_ids']=array_keys($rateIds);
+        if($report['state']==='not_checked')$report['state']=$report['rate_property_options']
+            ?($report['options_missing_media']?'rate_properties_need_media':'rate_properties_have_media')
+            :'no_published_rate_property_options';
+        return ['sources'=>$sources,'report'=>$report];
+    }
     private static function coverage_registered_sources(int $tour,array &$context,int $page=0):array {
         $budget=$context['policy']['budget'];$maxObjects=$budget['related_objects'];
         $maxTerms=$budget['term_objects'];$maxPer=$budget['media_per_object'];
-        $sources=[];$keys=[];$partial=[];$nextPage=false;
-        $sourceCounts=['taxonomy'=>0,'cpt'=>0,'itinerary'=>0];
+        $rate=self::coverage_rate_property_sources($tour,$context);
+        $sources=$rate['sources'];$partial=[];$nextPage=false;
+        $sourceCounts=['taxonomy'=>0,'cpt'=>0,'itinerary'=>0,
+            'rate_property'=>count($sources)];
         $page=max(0,min(1000,$page));
         $tax=(array)($context['terms']??[]);
         $termStart=$page*$maxTerms;
@@ -175,7 +297,7 @@ trait MAD4B_Tour_Photo_Weighted_Coverage_Trait {
             $parent=(string)($args['parent_object']??'');
             if(!str_starts_with($parent,'posts::'))continue;
             $pt=substr($parent,7);
-            if($pt==='tours-and-activities')continue;
+            if($pt==='tours-and-activities'||$pt==='properties')continue;
             $object=get_post_type_object($pt);
             if(!$object||empty($object->public))continue;
             $relEligible++;
@@ -215,14 +337,15 @@ trait MAD4B_Tour_Photo_Weighted_Coverage_Trait {
         }
         return ['sources'=>$sources,'source_counts'=>$sourceCounts,'partial_reasons'=>array_values(array_unique($partial)),
             'relation_types_examined'=>$examined,'related_objects_examined'=>$linked,
-            'page'=>$page,'next_page'=>$nextPage?$page+1:null];
+            'page'=>$page,'next_page'=>$nextPage?$page+1:null,
+            'rate_property_coverage'=>$rate['report']];
     }
     private static function coverage_candidates(int $tour,int $page=0):array {
         $policy=self::coverage_policy($tour);
         $page=max(0,min(1000,$page));
         $changed=function_exists('wp_cache_get_last_changed')
             ?wp_cache_get_last_changed('posts').'|'.wp_cache_get_last_changed('terms'):'';
-        $cacheKey='coverage_'.hash('sha256',$tour.'|'.$page.'|'.self::state_sha($tour).'|'.
+        $cacheKey='rate-property-v2-coverage_'.hash('sha256',$tour.'|'.$page.'|'.self::state_sha($tour).'|'.
             (string)get_post_field('post_modified_gmt',$tour).'|'.
             wp_json_encode($policy).'|'.$changed);
         $cached=wp_cache_get($cacheKey,'mad4b_tour_photo_quality');
@@ -249,7 +372,15 @@ trait MAD4B_Tour_Photo_Weighted_Coverage_Trait {
                     'hero_title_anchor'=>$heroRank['hero_title_anchor'],
                     'score_evidence'=>$rank['signals'],'source'=>$source['source_evidence'],
                     'coverage_owner'=>$group,'coverage_title'=>$source['owner_title'],
-                    'source_field'=>$source['field'],'needs_editorial_review'=>true,
+                    'source_field'=>$source['field'],
+                    'source_rate_ids'=>$source['source_rate_ids']??[],
+                    'rate_property_id'=>$source['rate_property_id']??null,
+                    'package_term_ids'=>$source['package_term_ids']??[],
+                    'rate_options'=>$source['rate_options']??[],
+                    'property_role'=>$source['property_role']??'',
+                    'available_accommodation_option_not_guaranteed_vessel'=>
+                        $source['available_accommodation_option_not_guaranteed_vessel']??false,
+                    'needs_editorial_review'=>true,
                     'rights_verified'=>false,'visual_verified'=>false,
                     'auto_apply_authorized'=>false];
                 $groups[$group][$original]=$item;
@@ -281,6 +412,7 @@ trait MAD4B_Tour_Photo_Weighted_Coverage_Trait {
             'coverage_source_counts'=>$registered['source_counts'],
             'partial_reasons'=>$registered['partial_reasons'],'relation_types_examined'=>$registered['relation_types_examined'],
             'related_objects_examined'=>$registered['related_objects_examined'],
+            'rate_property_coverage'=>$registered['rate_property_coverage'],
             'max_media_candidates'=>$cap,'limit_reached'=>count($ordered)>=$cap,
             'schema_driven'=>true,'cross_tour_media_reuse_allowed'=>true,
             'rights_and_visual_review_required'=>true];
