@@ -195,6 +195,7 @@ final class MAD4B_SCP_Context_Authority {
 		$blockers = array();
 		$agent = array();
 		$grant = null;
+		$exact_grant_ready = false;
 		if ( ! in_array( (string) $policy['mode'], array( 'human_and_ai', 'ai_only' ), true ) ) $blockers[] = 'ai_review_mode_disabled';
 		if ( empty( $policy['ai_agent_public_id'] ) ) $blockers[] = 'ai_review_agent_unconfigured';
 		if ( ! self::ai_review_environment_allowed() ) $blockers[] = 'ai_review_site_scope_required';
@@ -209,7 +210,13 @@ final class MAD4B_SCP_Context_Authority {
 				$profile_agent_slug = self::site_profile_agent_slug();
 				if ( '' === $profile_agent_slug || $profile_agent_slug !== sanitize_key( isset( $agent['slug'] ) ? (string) $agent['slug'] : '' ) ) $blockers[] = 'ai_review_agent_not_profile_owned';
 				$grant = MAD4B_SCP_Agent_Registry::exact_grant( (int) $agent['id'], 'mad4b-write', self::AI_REVIEW_ABILITY, 'core' );
-				if ( ! is_array( $grant ) || 'allow' !== ( isset( $grant['effect'] ) ? (string) $grant['effect'] : '' ) || ! in_array( (string) ( $grant['environment'] ?? '' ), array( self::site_profile_environment(), 'all' ), true ) ) $blockers[] = 'ai_review_exact_grant_missing';
+				// Report the same exact environment-bound grant decision used by
+				// the blocker and real review executor. An allow for Staging is
+				// not an executable grant for Production.
+				$exact_grant_ready = is_array( $grant )
+					&& 'allow' === ( isset( $grant['effect'] ) ? (string) $grant['effect'] : '' )
+					&& in_array( (string) ( $grant['environment'] ?? '' ), array( self::site_profile_environment(), 'all' ), true );
+				if ( ! $exact_grant_ready ) $blockers[] = 'ai_review_exact_grant_missing';
 			}
 		}
 		$blockers = array_values( array_unique( $blockers ) );
@@ -221,7 +228,7 @@ final class MAD4B_SCP_Context_Authority {
 			'ai_only_final_review' => 'ai_only' === (string) $policy['mode'],
 			'ai_agent_public_id' => (string) $policy['ai_agent_public_id'],
 			'catalog_eligible' => self::ai_review_catalog_eligible(),
-			'exact_grant_ready' => is_array( $grant ) && 'allow' === ( isset( $grant['effect'] ) ? (string) $grant['effect'] : '' ),
+			'exact_grant_ready' => $exact_grant_ready,
 			'ready' => empty( $blockers ),
 			'blockers' => $blockers,
 			'grant_reconciliation_automatic' => false,
@@ -4393,7 +4400,7 @@ final class MAD4B_SCP_Context_Authority {
 		}
 		$lock = self::acquire_registry_lock( $operation );
 		if ( is_wp_error( $lock ) ) return $lock;
-		$snapshot = self::registry_option_snapshot();
+		$snapshot = self::registry_option_snapshot( $operation );
 		try {
 			$result = call_user_func( $callback );
 			if ( is_wp_error( $result ) ) return self::compensate_registry_error( $snapshot, $operation, $result, 'callback' );
@@ -4482,7 +4489,9 @@ final class MAD4B_SCP_Context_Authority {
 
 	private static function registry_snapshot_changed( array $snapshot ) {
 		$sentinel = isset( $snapshot['_sentinel'] ) ? (string) $snapshot['_sentinel'] : '__mad4b_context_snapshot_compare_missing__';
-		foreach ( array( self::PROFILE_OPTION, self::SOURCES_OPTION, self::ASSETS_OPTION, self::REGISTRY_REVISION_OPTION ) as $name ) {
+		$names = array( self::PROFILE_OPTION, self::SOURCES_OPTION, self::ASSETS_OPTION, self::REGISTRY_REVISION_OPTION );
+		if ( array_key_exists( self::RECYCLE_ARCHIVE_OPTION, $snapshot ) ) $names[] = self::RECYCLE_ARCHIVE_OPTION;
+		foreach ( $names as $name ) {
 			if ( ! isset( $snapshot[ $name ] ) || ! is_array( $snapshot[ $name ] ) ) return true;
 			$current = get_option( $name, $sentinel );
 			$expected = $snapshot[ $name ];
@@ -4558,10 +4567,15 @@ final class MAD4B_SCP_Context_Authority {
 		return $next;
 	}
 
-	private static function registry_option_snapshot() {
+	private static function registry_option_snapshot( $operation = '' ) {
 		$sentinel = '__mad4b_context_snapshot_missing__' . hash( 'sha256', microtime( true ) . '|' . self::registry_revision() );
 		$snapshot = array( '_sentinel' => $sentinel );
-		foreach ( array( self::PROFILE_OPTION, self::SOURCES_OPTION, self::ASSETS_OPTION, self::REGISTRY_REVISION_OPTION ) as $name ) {
+		$names = array( self::PROFILE_OPTION, self::SOURCES_OPTION, self::ASSETS_OPTION, self::REGISTRY_REVISION_OPTION );
+		// Only foreign recycle touches the separately stored archive. Include it
+		// in the SAME compensation transaction without loading large archives
+		// during unrelated Context writes.
+		if ( 'recycle_foreign_context' === (string) $operation ) $names[] = self::RECYCLE_ARCHIVE_OPTION;
+		foreach ( $names as $name ) {
 			$value = get_option( $name, $sentinel );
 			$snapshot[ $name ] = array(
 				'existed' => $sentinel !== $value,
@@ -4573,7 +4587,9 @@ final class MAD4B_SCP_Context_Authority {
 
 	private static function restore_registry_option_snapshot( array $snapshot ) {
 		$failures = array();
-		foreach ( array( self::PROFILE_OPTION, self::SOURCES_OPTION, self::ASSETS_OPTION, self::REGISTRY_REVISION_OPTION ) as $name ) {
+		$names = array( self::PROFILE_OPTION, self::SOURCES_OPTION, self::ASSETS_OPTION, self::REGISTRY_REVISION_OPTION );
+		if ( array_key_exists( self::RECYCLE_ARCHIVE_OPTION, $snapshot ) ) $names[] = self::RECYCLE_ARCHIVE_OPTION;
+		foreach ( $names as $name ) {
 			if ( ! isset( $snapshot[ $name ] ) || ! is_array( $snapshot[ $name ] ) ) {
 				$failures[] = $name . ':snapshot_missing';
 				continue;
