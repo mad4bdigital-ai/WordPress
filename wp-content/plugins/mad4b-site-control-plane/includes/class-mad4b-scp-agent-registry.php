@@ -203,16 +203,40 @@ final class MAD4B_SCP_Agent_Registry {
 		return is_array( $rows ) ? $rows : array();
 	}
 
-	public static function revoke_allow_grant_by_id( $agent_public_id, $grant_id, $server_id = '' ) {
+	/**
+	 * Narrow an exact allow grant. Existing three-argument call sites retain
+	 * their original behavior; reconciliation can additionally pin the source
+	 * ability/provider/environment so a changed row is never deleted by ID
+	 * alone. The conditional DELETE is the final optimistic concurrency check.
+	 */
+	public static function revoke_allow_grant_by_id( $agent_public_id, $grant_id, $server_id = '', array $expected = array() ) {
 		global $wpdb; $t = MAD4B_SCP_Schema::tables();
 		$agent = self::get_agent_by_public_id( $agent_public_id ); if ( ! $agent ) return new WP_Error( 'mad4b_agent_missing', 'Agent not found.' );
 		$grant_id = absint( $grant_id ); $server_id = sanitize_key( (string) $server_id ); if ( $grant_id < 1 ) return new WP_Error( 'mad4b_grant_invalid', 'Exact grant id is required.' );
 		$where = array( 'id' => $grant_id, 'agent_id' => (int) $agent['id'], 'effect' => 'allow' ); $formats = array( '%d','%d','%s' );
 		if ( '' !== $server_id ) { $where['server_id'] = $server_id; $formats[] = '%s'; }
+		if ( $expected ) {
+			$keys = array( 'ability_name', 'provider', 'environment' );
+			if ( '' === $server_id || count( $expected ) !== count( $keys )
+				|| array_diff( array_keys( $expected ), $keys )
+				|| array_diff( $keys, array_keys( $expected ) ) ) {
+				return new WP_Error( 'mad4b_grant_compare_invalid', 'Exact grant comparison fields and server are required.' );
+			}
+			foreach ( $keys as $key ) {
+				if ( ! is_string( $expected[ $key ] ) || '' === $expected[ $key ] ) {
+					return new WP_Error( 'mad4b_grant_compare_invalid', 'Invalid exact grant comparison field.' );
+				}
+				$where[ $key ] = $expected[ $key ];
+				$formats[] = '%s';
+			}
+		}
 		$deleted = $wpdb->delete( $t['grants'], $where, $formats ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		if ( false === $deleted ) return new WP_Error( 'mad4b_grant_revoke_failed', 'Managed allow grant could not be revoked.', array( 'db_error' => $wpdb->last_error ) );
-        if ( $deleted > 0 ) do_action( 'mad4b_provider_authority_changed', array( 'action' => 'grant_revoked', 'agent_id' => (int) $agent['id'], 'grant_id' => $grant_id ) );
-        return true;
+		if ( $expected && 0 === (int) $deleted ) {
+			return new WP_Error( 'mad4b_grant_changed_before_revoke', 'Exact allow grant changed before conditional deletion.' );
+		}
+		if ( $deleted > 0 ) do_action( 'mad4b_provider_authority_changed', array( 'action' => 'grant_revoked', 'agent_id' => (int) $agent['id'], 'grant_id' => $grant_id ) );
+		return true;
 	}
 
 	public static function resolve_agent( array $identity ) {

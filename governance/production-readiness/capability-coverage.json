@@ -7046,6 +7046,26 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Original Governance, Platform, Execution, Providers and Security controls enforce the signed native ContentJob origin and bounded research evidence; no autonomous provider publication or grant path is created.",
       "review_rationale": "Reviewed full 67-line first-party Native Origin External Research orchestrator and its original Research Groups and ContentJobs dependencies, without bypassing signed Native Origin or exact Site UUID. It requires an open linked origin issue, matching source/canonical published posts, existing empty origin address, source taxonomy SHA256, FACT_QA waiting-review ContentJob owned by the signed original actor and a matching origin-gap-ref in the subject. A same-PR hermetic actual-source PHP 7.4/8.5 test reproduces and repairs str_contains failure; verifies no provider call before Native admission, rejects foreign-site source, changed taxonomy fingerprint and wrong ContentJob stage, checks only one original Firecrawl record gets added and a repeated request returns ALREADY_CAPTURED. The resulting public-tour scrape explicitly marks independent source, exact pickup, map and writeback as unverified; this review does not certify actual Firecrawl traffic, other-company content changes or Production approval. The canonical Research Groups owner is source inspected for a bounded 100-row metadata-only list, 65,536-byte encoded record limit and compound group/provider/locale/evidence uniqueness; the same-PR test checks these exact original invariants. DATABASE-01 and PERFORMANCE-01 here are non-authorizing code impact mappings only: actual Production SQL schema, privileges and three live latency samples remain unverified and must not be considered approved."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-auto-reconciliation.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/authority-auto-reconcile-host-hermetic.php",
+        "tests/agent-registry-exact-revoke-cas-hermetic.php"
+      ],
+      "owner_role": "MAD4B canonical Host Authority reconciler reviewer — nonauthorizing CI",
+      "review_rationale": "Reviewed actual original host CLI reconciler, identity and grant mutation path rather than relying on cron: privileged original Site Profile, exact signed installed build, verified per-operation host context, existing NHI agent, append-only intent, no new grant, CAS-bound revocations, recovery-required receipt after uncertain partial changes and forbidden blind retry. PHP 7.4 and 8.5 hermetic negative cases passed; authentic site approval remains separate.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original GOVERNANCE-01, SECURITY-01, PLATFORM-01 and EXECUTION-01 controls cover host identity, change admission and durable recovery. This review creates no Production grant, owner identity or automated promotion."
     }
   ],
   "lifecycle": [],
@@ -16932,6 +16952,42 @@
       ],
       "owner_role": "MAD4B policy source reviewer — nonauthorizing CI",
       "review_rationale": "Reviewed fail-closed unknown versions, missing extension denial, update invalidation, exact pair certification and non-authorizing defaults.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-agent-registry.php",
+      "source_blob_sha": "2da0dd7c68ce80837244a424f569da098c14375d",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/agent-registry-exact-revoke-cas-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party registered Agent Registry conditional-grant reviewer",
+      "review_rationale": "Reviewed original Agent Registry optimistic grant DELETE with exact caller-owned server, grant ID, agent ID, allow effect, ability, provider and environment. Fake database tests conditional deletion, zero-row CAS conflict, invalid expected fields and unchanged legacy call signatures on PHP 7.4/8.5.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-auto-reconciliation.php",
+      "source_blob_sha": "ee92934f09c58ba984debf6aef8680c3fd95cb35",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/authority-auto-reconcile-host-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party Host Authority lifecycle source and recovery reviewer",
+      "review_rationale": "Reviewed original Host CLI authority reconciler across denied Production and impersonation, read-only vs apply context, origin drift, audit readiness, foreign bindings, full candidate preflight, exact conditional revocation, partial failure reconciliation, CLI readback receipt and Cron read-only contract on PHP 7.4/8.5.",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true

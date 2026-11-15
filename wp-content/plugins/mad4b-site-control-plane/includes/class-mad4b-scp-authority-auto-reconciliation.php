@@ -122,8 +122,43 @@ final class MAD4B_SCP_Authority_Auto_Reconciliation {
     public static function cli_reconcile($args,$assoc_args) {
         if($args||$assoc_args)WP_CLI::error('No caller-selected site, grants or identity.');
         $r=self::reconcile_safe();
-        if(is_wp_error($r))WP_CLI::error($r->get_error_code());
+        if(is_wp_error($r)){
+            $data=$r->get_error_data();
+            if(is_array($data)&&!empty($data['recovery_required'])){
+                // Explicit non-secret machine-readable recovery receipt before
+                // the nonzero CLI exit. Never report a completed mutation as
+                // a simple retryable failure.
+                WP_CLI::line(wp_json_encode(array_merge(
+                    array('state'=>'RECONCILIATION_REQUIRED',
+                          'error_code'=>$r->get_error_code()),$data
+                ),JSON_UNESCAPED_SLASHES));
+            }
+            WP_CLI::error($r->get_error_code());
+        }
         WP_CLI::line(wp_json_encode($r,JSON_UNESCAPED_SLASHES));
+    }
+
+    /**
+     * A host write/binding may already have completed before a later grant
+     * fails. Return an explicit reconciliation-only error, never a retryable
+     * general failure. No new grant or permission is inferred by this marker.
+     */
+    private static function uncertain_result($error, array $before, array $retired, $binding_changed) {
+        return new WP_Error(
+            is_wp_error($error) ? $error->get_error_code() : 'mad4b_auto_reconcile_uncertain',
+            is_wp_error($error) ? $error->get_error_message() : 'Authority reconciliation needs an exact readback.',
+            array(
+                'contract'=>self::CONTRACT, 'site_uuid'=>$before['site_uuid'],
+                'source_commit_sha'=>$before['source_commit_sha'],
+                'plan_sha256'=>$before['plan_sha256'],
+                'host_binding_changed'=>(bool)$binding_changed,
+                'retired_stale_grant_ids'=>$retired,
+                'recovery_required'=>true, 'reconciliation_required'=>true,
+                'blind_retry_allowed'=>false,
+                'production_mutation'=>false,
+                'next_action'=>'independent_agent_grant_and_host_binding_readback',
+            )
+        );
     }
 
     public static function reconcile_safe() {
@@ -140,6 +175,15 @@ final class MAD4B_SCP_Authority_Auto_Reconciliation {
             ||!function_exists('posix_geteuid')||0!==posix_geteuid()
             ||0!==get_current_user_id())
             return new WP_Error('mad4b_auto_reconcile_host_denied','Privileged verified non-impersonating host CLI required.');
+        // A read-only host attestation cannot authorize mutation. Check the
+        // original operation-bound executor before creating a host binding.
+        $apply_facts=MAD4B_SCP_CLI_Execution_Context::resolve('authority.apply',true);
+        if(!is_array($apply_facts)||empty($apply_facts['local_operation_authorized'])
+            ||empty($apply_facts['host_site_binding_verified'])
+            ||!empty($apply_facts['blockers'])
+            ||empty($facts['canonical_origin'])||empty($apply_facts['canonical_origin'])
+            ||!hash_equals((string)$facts['canonical_origin'],(string)$apply_facts['canonical_origin']))
+            return new WP_Error('mad4b_auto_reconcile_apply_denied','Verified exact host write operation required before host binding.');
         $users=MAD4B_SCP_Site_Profile::oauth_user_ids();
         if(1!==count($users))return new WP_Error('mad4b_auto_reconcile_owner_ambiguous','Single enrolled owner required.');
         $agent=MAD4B_SCP_Agent_Registry::get_agent_by_public_id($before['agent_public_id']);
@@ -162,6 +206,8 @@ final class MAD4B_SCP_Authority_Auto_Reconciliation {
         if(is_wp_error($binding))return $binding;
         if(is_array($binding) && (int)$binding['agent_id']!==(int)$agent['id'])
             return new WP_Error('mad4b_auto_reconcile_host_conflict','Host subject already belongs to another Agent.');
+        $binding_changed=false;
+        $retired=array();
         if(!is_array($binding)||'enabled'!==($binding['status']??'')){
             $intent=MAD4B_SCP_Audit::record('mad4b/host-operator-bind-intent',
                 array('contract'=>self::CONTRACT,'site_uuid'=>$before['site_uuid'],
@@ -169,41 +215,65 @@ final class MAD4B_SCP_Authority_Auto_Reconciliation {
             if(is_wp_error($intent))return $intent;
             $bound=MAD4B_SCP_Agent_Registry::bind_subject($agent['public_id'],'host_operator',
                 $identity['subject_fingerprint'],'Registered MAD4B Staging host executor');
-            if(is_wp_error($bound))return $bound;
+            if(is_wp_error($bound))return self::uncertain_result($bound,$before,$retired,true);
+            $binding_changed=true;
         }
         $actor=MAD4B_SCP_Execution_Authority::resolve('apply');
-        if(is_wp_error($actor))return $actor;
+        if(is_wp_error($actor))return $binding_changed
+            ?self::uncertain_result($actor,$before,$retired,true):$actor;
         if('host_cli'!==($actor['transport']??'') || empty($actor['registry_bound'])
-            ||(int)$actor['wp_user_id']!==(int)$users[0])
-            return new WP_Error('mad4b_auto_reconcile_actor_denied','Exact bound host actor required for narrowing.');
+            ||(int)$actor['wp_user_id']!==(int)$users[0]){
+            $denied=new WP_Error('mad4b_auto_reconcile_actor_denied','Exact bound host actor required for narrowing.');
+            return $binding_changed?self::uncertain_result($denied,$before,$retired,true):$denied;
+        }
         // One source snapshot; never act on a changed grant universe.
         $current=self::plan();
-        if(is_wp_error($current))return $current;
-        if(!hash_equals($before['plan_sha256'],$current['plan_sha256']))
-            return new WP_Error('mad4b_auto_reconcile_drift','Write grants or build changed during reconciliation.');
+        if(is_wp_error($current))return $binding_changed
+            ?self::uncertain_result($current,$before,$retired,true):$current;
+        if(!hash_equals($before['plan_sha256'],$current['plan_sha256'])){
+            $drift=new WP_Error('mad4b_auto_reconcile_drift','Write grants or build changed during reconciliation.');
+            return $binding_changed?self::uncertain_result($drift,$before,$retired,true):$drift;
+        }
         $grants=MAD4B_SCP_Agent_Registry::grants_for_agent((int)$agent['id'],'mad4b-write');
         $by_id=array();
         foreach($grants as $g)$by_id[(int)$g['id']]=$g;
-        $retired=array();
+        // Preflight ALL candidates before the first revocation. A late row
+        // mismatch cannot cause an avoidable half-completed retirement.
+        $seen=array();
         foreach($current['safe_stale_retirement'] as $row) {
             $id=(int)$row['id'];$g=$by_id[$id]??null;
-            if(!is_array($g) || $g['effect']!=='allow'
+            if(isset($seen[$id])||!is_array($g) || $g['effect']!=='allow'
+                ||($g['server_id']??'mad4b-write')!=='mad4b-write'
                 ||$g['ability_name']!==$row['ability']
                 ||$g['provider']!==$row['provider']
-                ||$g['environment']!==$row['environment'])
-                return new WP_Error('mad4b_auto_reconcile_grant_changed','Exact stale grant changed.');
+                ||$g['environment']!==$row['environment']){
+                $changed=new WP_Error('mad4b_auto_reconcile_grant_changed','Exact stale grant changed.');
+                return $binding_changed?self::uncertain_result($changed,$before,$retired,true):$changed;
+            }
+            $seen[$id]=true;
+        }
+        foreach($current['safe_stale_retirement'] as $row) {
+            $id=(int)$row['id'];
             $intent=MAD4B_SCP_Audit::record('mad4b/retire-obsolete-grant-intent',
                 array('contract'=>self::CONTRACT,'plan_sha256'=>$current['plan_sha256'],
                 'agent_public_id'=>$agent['public_id'],'grant_id'=>$id,
                 'ability'=>$row['ability'],'provider'=>$row['provider'],
                 'environment'=>$row['environment'],'source_commit_sha'=>$current['source_commit_sha']), 'ok');
-            if(is_wp_error($intent))return $intent;
-            $done=MAD4B_SCP_Agent_Registry::revoke_allow_grant_by_id($agent['public_id'],$id,'mad4b-write');
-            if(is_wp_error($done))return $done;
+            if(is_wp_error($intent))return ($binding_changed||$retired)
+                ?self::uncertain_result($intent,$before,$retired,$binding_changed):$intent;
+            $done=MAD4B_SCP_Agent_Registry::revoke_allow_grant_by_id(
+                $agent['public_id'],$id,'mad4b-write',array(
+                    'ability_name'=>$row['ability'],
+                    'provider'=>$row['provider'],
+                    'environment'=>$row['environment'],
+                ));
+            // A failed/zero-row conditional DELETE after an audited intent
+            // requires independent readback even if no prior grant was retired.
+            if(is_wp_error($done))return self::uncertain_result($done,$before,$retired,$binding_changed);
             $retired[]=$id;
         }
         $after=self::plan();
-        if(is_wp_error($after))return $after;
+        if(is_wp_error($after))return self::uncertain_result($after,$before,$retired,$binding_changed);
         return array(
             'contract'=>self::CONTRACT,'state'=>'NARROWED_AND_REPLANNED',
             'host_agent_bound'=>true,'retired_stale_grant_ids'=>$retired,
@@ -213,7 +283,7 @@ final class MAD4B_SCP_Authority_Auto_Reconciliation {
             'candidate_binding_match'=>$after['candidate_binding_match'],
             'full_write_ready'=>$after['write_ready'],
             'next_action'=>'native_exact_grant_reconciliation_or_owner_review',
-            'mutation_performed'=>!empty($retired), 'production_mutation'=>false,
+            'mutation_performed'=>($binding_changed||!empty($retired)), 'production_mutation'=>false,
         );
     }
 }

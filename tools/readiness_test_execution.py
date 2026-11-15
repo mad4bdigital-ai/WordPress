@@ -106,6 +106,10 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "wp-content/plugins/mad4b-site-control-plane/tests/self-update-selected-head-release-trust-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/staging-source-selector-runtime.php",
     "tests/remote-execution/unified-operator-session-policy-smoke.php",
+    # Original authority lifecycle code, fake PHP memory only. Exact reviewed
+    # host-CAS fixtures: never permit arbitrary PHP CLI execution via wildcard.
+    "tests/authority-auto-reconcile-host-hermetic.php",
+    "tests/agent-registry-exact-revoke-cas-hermetic.php",
 ))
 
 
