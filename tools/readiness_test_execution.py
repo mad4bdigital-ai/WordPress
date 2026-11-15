@@ -80,6 +80,8 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-media-evidence-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-history-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/provider-connections-admin-read-hermetic.php",
+    # First-party native LiteSpeed read / cache purge source evidence.
+    "tests/litespeed-adapter-original-hermetic.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/context-ai-agent-review-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/generation-snapshot-exception-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/no-input-read-ability-schema-runtime.php",

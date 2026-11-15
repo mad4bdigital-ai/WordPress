@@ -20474,6 +20474,42 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-connections-admin-ui.php",
+      "source_blob_sha": "722eb41776f7fd8ced445bd141e74e50a5caf473",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connections-admin-read-hermetic.php"
+      ],
+      "owner_role": "MAD4B original first-party provider/UI source reviewer — CI evidence only",
+      "review_rationale": "Original read-only Provider Connections wp-admin UI preserves the native Firecrawl account configuration form with capability-bound POST and WordPress nonce, separate from the list-only provider discovery. The first-party original source fixture had not booted native add_action/add_filter and falsely expected no POST form. It is corrected and extended: 26 direct PHP7.4/8.5 checks prove administrator exact true, no read discovery on denial, safe rendering/escaping, deterministic valid provider row schema, malformed WP_Error row and handoff rejection, native source inventory exceptions and per-provider planning exceptions never crash or fabricate a refresh/reauthorization, no new account write, external provider authorization or network call. No real Firecrawl credential, provider write or account ownership change is performed. Exact original Git blob pinned to source tests; separate Production release and live owner/provider evidence remain required.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-litespeed-adapter.php",
+      "source_blob_sha": "630d6a3298b347b944cbd386638e1475da2689e9",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/litespeed-adapter-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B original first-party provider/UI source reviewer — CI evidence only",
+      "review_rationale": "Original first-party LiteSpeed Adapter remains native-vendor read/filter-first: 31 original PHP7.4/8.5 checks reproduce an unverified truthy has_filter result masquerading as official settings observation; the patch requires exact true, traps vendor filter exceptions and denies error-shaped settings. Original purge-url now requires a bounded exact WordPress site origin including scheme, host and port with no userinfo or fragment, and rejects nonstring URLs before emitting a vendor action. Original purge-all trusts only the Safe Public HTML Purge controller exact queue status and rejects WP_Error or exception without logging a false queued success. Browser optimization, Redis/FastCGI host receipts and direct setting writes remain unverified/unperformed. No actual purge, cache change, network call, or account mutation occurred in the hermetic tests. Exact original Git blob pinned to source tests; separate Production release and live owner/provider evidence remain required.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "code_change_rules": {
