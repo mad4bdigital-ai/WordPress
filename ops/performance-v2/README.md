@@ -35,3 +35,13 @@ Matching the browser negotiation profile enables exact capture-to-monitor
 comparison but never treats JPEG-only CSS as WebP certified.
 A site with private_market_veto stays private/BYPASS; browser Accept is
 not a trusted cache or market identity.
+
+## Bounded gzip transport
+
+Source Tour pages can exceed 900KB uncompressed. The original read-only
+HTTP integrity monitor requests gzip and inflates at most 8MiB, validates
+the gzip trailer/CRC, rejects incomplete HTML and non-comment content after
+the document close, and retries incomplete transport no more than 3 times.
+LiteSpeed's short post-HTML diagnostic comments are allowed. This change
+reduces network load in monitoring; it does not compress the visitor response
+at WordPress level, change origin cache policy, or certify Critical CSS.

@@ -4,7 +4,9 @@ Do not infer PSI or LCP from FastCGI HIT; these are separate measurements.
 """
 import argparse
 import gzip
+import io
 import hashlib
+import zlib
 import http.client
 import urllib.error
 import json
@@ -34,7 +36,7 @@ def _read_complete_response(request, expected_origin: str, path: str):
     """
     errors=(http.client.IncompleteRead, http.client.RemoteDisconnected,
             urllib.error.URLError, ConnectionResetError, ConnectionAbortedError,
-            TimeoutError)
+            TimeoutError, EOFError, gzip.BadGzipFile, zlib.error)
     for attempt in range(3):
         try:
             with urllib.request.urlopen(request,timeout=27) as response:
@@ -43,11 +45,32 @@ def _read_complete_response(request, expected_origin: str, path: str):
                     raise ValueError("unexpected_redirect")
                 code=response.getcode()
                 headers=response.headers
-                body=response.read(MAX_BYTES+1)
-            if len(body)>MAX_BYTES:
-                raise ValueError("oversized_html")
+                wire=response.read(MAX_BYTES+1)
+            if len(wire)>MAX_BYTES:
+                raise ValueError("oversized_wire_response")
             if code!=200:
                 raise ValueError("unexpected_http_status")
+            encoding=str(headers.get("Content-Encoding","")).lower().strip()
+            if encoding=="gzip":
+                # Python urllib does NOT decompress gzip automatically.
+                # Bound inflated HTML and force EOF to validate gzip CRC
+                # and prevent a truncated response from ever passing.
+                with gzip.GzipFile(fileobj=io.BytesIO(wire),mode="rb") as gz:
+                    body=gz.read(MAX_BYTES+1)
+                    if len(body)>MAX_BYTES or gz.read(1):
+                        raise ValueError("oversized_html")
+            elif encoding in ("","identity"):
+                body=wire
+            else:
+                raise ValueError("unsupported_content_encoding")
+            # LiteSpeed legitimately appends short optimization comments
+            # after </html>. Require the closing document plus only
+            # bounded comments/whitespace, never scripts or extra markup.
+            close=body.lower().rfind(b"</html>")
+            trailer=body[close+7:] if close>=0 else b""
+            if (close<0 or len(trailer)>2048 or
+                re.fullmatch(rb"(?:\s*<!--[^<>]{0,1024}-->\s*)*",trailer) is None):
+                raise EOFError("incomplete_html_document")
             return code, headers, body, attempt
         except errors:
             if attempt==2:
@@ -97,7 +120,9 @@ def audit(policy, rounds=2):
         for run in range(1,rounds+1):
             request=urllib.request.Request(origin+path,headers={
                 "User-Agent":UA,"Accept":HTML_ACCEPT,
-                "Accept-Encoding":"identity"})
+                # Server-side gzip reduces 0.9MB HTML transport on cold
+                # uncached source requests. This does not admit HTML caching.
+                "Accept-Encoding":"gzip"})
             start=time.monotonic()
             code,headers,body,retries=_read_complete_response(request,origin,path)
             text=body.decode("utf-8","replace")
@@ -126,6 +151,7 @@ def audit(policy, rounds=2):
                 "critical_css_gzip_bytes":len(gzip.compress((m.group(1) if m else "").encode("utf-8"))),
                 "html_bytes":len(body),
                 "transport_attempts":retries+1,
+                "html_transport_encoding":str(headers.get("Content-Encoding","identity")).lower().strip() or "identity",
                 "css_negotiation_profile":CSS_NEGOTIATION_PROFILE,
                 "has_hero": "home-mix-mad4b-1600.webp" in text if policy.get("hero_marker") else None,
                 "css_bundle":(re.search(r'/litespeed/css/([a-f0-9]{32}\.css)',text).group(1)
