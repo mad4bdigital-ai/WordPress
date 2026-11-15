@@ -7006,6 +7006,24 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Original Platform, Governance, Security and Browser evidence contracts own this read-only Elementor/JetEngine diagnostic; scanning cannot grant write rights or automatically change authored native templates.",
       "review_rationale": "Reviewed complete original native Elementor/JetEngine Presentation Integrity class. Its opt-in WordPress template SQL inventory has explicit 700-template and 240-issue limits, detects missing query_var and unavailable fallback, respects published-vs-draft Elementor templates and avoids importing unverified browser reports as CSS fixes. Actual original source failed on PHP7.4 when str_contains processed JetEngine fallback, repaired to strpos without changing classification. Same-PR hermetic PHP7.4/8.5 tests invoke discover and CLI with synthetic native Elementor data, prove draft issue isolation, malformed JSON and DB outage fail closed, browser coverage absent, and option persistence happens only with explicit WP-CLI persist argument. No CSS override, translation, booking or template mutation is performed; real browser evidence and live site acceptance remain unverified."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-presentation-browser-evidence.php",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/presentation-browser-evidence-local-import-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party native Presentation Browser Evidence and CLI import reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original Browser evidence importer uses WordPress local CLI and existing Admin/Security controls for site-bound, review-only observations. No autonomous CSS mutation or browser execution permission is added.",
+      "review_rationale": "Reviewed complete first-party Presentation Browser Evidence source and its bounded local CLI importer, not merely a Cron or source-only signature. It admits fresh, complete same-origin and exact-language browser audit reports from the original private WP_CONTENT_DIR directory, bounds link examples, sampled contrast and page counts, records findings as review-only without creating native CSS overrides. Same-PR actual-source PHP7.4/8.5 hermetic fixture imports a valid local JSON, verifies read-only summary and high-severity link/contrast candidates, rejects foreign host, stale and incomplete locale reports and proves the last accepted option remains. It reproduced PHP7.4 str_starts_with incompatibility and PHP8.5 symlink-to-valid-file admission caused by checking is_link after realpath; repaired by examining original supplied path before resolving it, while preserving resolved-directory confinement. No browser capture, WordPress design modification, translation or production authorization is asserted."
     }
   ],
   "lifecycle": [],
@@ -16645,6 +16663,25 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Original Platform, Governance, Security and Browser evidence contracts own this read-only Elementor/JetEngine diagnostic; scanning cannot grant write rights or automatically change authored native templates.",
       "review_rationale": "Reviewed complete original native Elementor/JetEngine Presentation Integrity class. Its opt-in WordPress template SQL inventory has explicit 700-template and 240-issue limits, detects missing query_var and unavailable fallback, respects published-vs-draft Elementor templates and avoids importing unverified browser reports as CSS fixes. Actual original source failed on PHP7.4 when str_contains processed JetEngine fallback, repaired to strpos without changing classification. Same-PR hermetic PHP7.4/8.5 tests invoke discover and CLI with synthetic native Elementor data, prove draft issue isolation, malformed JSON and DB outage fail closed, browser coverage absent, and option persistence happens only with explicit WP-CLI persist argument. No CSS override, translation, booking or template mutation is performed; real browser evidence and live site acceptance remain unverified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-presentation-browser-evidence.php",
+      "source_blob_sha": "a2e7f70c02b7d8293558c88723799d1f0668523c",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/presentation-browser-evidence-local-import-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party native Presentation Browser Evidence and CLI import reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original Browser evidence importer uses WordPress local CLI and existing Admin/Security controls for site-bound, review-only observations. No autonomous CSS mutation or browser execution permission is added.",
+      "review_rationale": "Reviewed complete first-party Presentation Browser Evidence source and its bounded local CLI importer, not merely a Cron or source-only signature. It admits fresh, complete same-origin and exact-language browser audit reports from the original private WP_CONTENT_DIR directory, bounds link examples, sampled contrast and page counts, records findings as review-only without creating native CSS overrides. Same-PR actual-source PHP7.4/8.5 hermetic fixture imports a valid local JSON, verifies read-only summary and high-severity link/contrast candidates, rejects foreign host, stale and incomplete locale reports and proves the last accepted option remains. It reproduced PHP7.4 str_starts_with incompatibility and PHP8.5 symlink-to-valid-file admission caused by checking is_link after realpath; repaired by examining original supplied path before resolving it, while preserving resolved-directory confinement. No browser capture, WordPress design modification, translation or production authorization is asserted."
     }
   ],
   "code_change_rules": {

@@ -132,9 +132,14 @@ final class MAD4B_SCP_Presentation_Browser_Evidence_V1 {
     public static function cli_import(array $args=[],array $assoc=[]):void {
         $base=WP_CONTENT_DIR.'/mad4b-private/presentation-audits';
         $baseReal=realpath($base);
-        $file=isset($args[0])?realpath((string)$args[0]):false;
-        if(!$baseReal||!$file||!str_starts_with($file,$baseReal.DIRECTORY_SEPARATOR)||
-            is_link($file)||!is_file($file)||filesize($file)>256000||filesize($file)<100)
+        $requested=isset($args[0])&&is_string($args[0])?(string)$args[0]:'';
+        $file=$requested!==''?realpath($requested):false;
+        // Check the original supplied path before realpath() removes link
+        // identity. Realpath still confines the resolved target to the
+        // dedicated first-party browser audit directory.
+        if(!$baseReal||!$file||0!==strpos($file,$baseReal.DIRECTORY_SEPARATOR)||
+            is_link($requested)||is_link($file)||!is_file($file)||
+            filesize($file)>256000||filesize($file)<100)
             WP_CLI::error('Invalid local presentation evidence path or file size');
         $raw=file_get_contents($file);$data=json_decode((string)$raw,true);
         if(!is_array($data)||!self::valid($data))WP_CLI::error('Presentation evidence contract/site/coverage/freshness invalid');
