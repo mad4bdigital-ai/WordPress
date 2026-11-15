@@ -15583,6 +15583,26 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Original Search Provider and MCP controls remain owned by exact source and source-level native Ability registration tests; the plugin is unchanged and no independent provider or authorization is added.",
       "review_rationale": "Inspected dynamic first-party Search Provider AutoProvision source. Dynamic ability-name expression produces 3 full WordPress identities at registration; static scanner falsely counted the concatenated literal prefix as a fourth Ability. New parser regression masks only PHP string fragments proven immediately concatenated, preserving static registrations. Source PHP test exercises real registration, guest/Owner permission, VERIFIED account with missing provider rights/budget, and write-denial on direct, bulk, verified-event and Cron entrypoints. Positive paid Search activation needs separate vendor/budget/live proof; no automatic grant can be inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tour-highlights-presentation-v1.php",
+      "source_blob_sha": "1d776e1760612397ba79fb55202d6dfad92dc359",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/test_tour_highlights_source_delta.py",
+        "tests/test_journey_successor_no_regression.py"
+      ],
+      "owner_role": "MAD4B live Tour Highlights additive successor reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Previous immutable PR813/PR814 Journey historical source manifests and original Platform/Governance/Security controls remain unchanged. New Unicode whitespace guard requires separate exact Git object and live read-only CPT regression.",
+      "review_rationale": "Source diff adds only bounded has_visible_text Unicode whitespace/card/render eligibility checks. Prior successor manifest remains unchanged; new distinct SHA-bound successor proves additive source. Actual WordPress sites match exact PHP SHA256 and independently passed read-only WP-CLI with 11 fixtures/site, 17 approved cards and unchanged stable keys across 494 Tours.dev/182 Wayfa source fields. No editorial content update, new runtime rights or Original313 release is created."
     }
   ],
   "code_change_rules": {

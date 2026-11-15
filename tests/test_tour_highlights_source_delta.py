@@ -37,10 +37,42 @@ class TourHighlightsReviewedSource(unittest.TestCase):
         self.assertEqual(len(matches),1,path)
         row=matches[0]
         self.assertEqual(row['review_status'],'reviewed_for_ci_only')
-        self.assertEqual((len(actual),hashlib.sha256(actual).hexdigest()),
-                         (row['bytes'],row['sha256']))
         blob=hashlib.sha1(b'blob '+str(len(actual)).encode('ascii')+b'\0'+actual).hexdigest()
-        self.assertEqual(blob,row['git_blob_sha'])
+        observed_sha=hashlib.sha256(actual).hexdigest()
+        expected=(row['bytes'],row['sha256'],row['git_blob_sha'])
+        if blob!=row['git_blob_sha']:
+            # The frozen PR813/814 successor manifest remains immutable.
+            # Only the exact newer Unicode-whitespace presenter receives an
+            # additive second certificate, with independent source/QA proof.
+            self.assertTrue(path.endswith(
+                '/class-mad4b-scp-tour-highlights-presentation-v1.php'))
+            proof=json.loads((ROOT/'docs/release-coverage/'
+                'pr814-tour-highlights-visible-text-successor-20261115.json').read_text())
+            historical=(ROOT/'docs/release-coverage/'
+                'pr814-journey-source-successors-20261115.json').read_bytes()
+            self.assertEqual(proof['contract'],
+                'mad4b.journey-visible-text-successor-exact-source-review.v1')
+            self.assertEqual(proof['source_path'],path)
+            self.assertEqual(proof['historical_source_blob_sha'],row['git_blob_sha'])
+            self.assertEqual(proof['historical_manifest_sha256'],
+                hashlib.sha256(historical).hexdigest())
+            self.assertEqual(proof['successor_source_commit'],
+                '424b0c9c1377eb62dad8ccdb04e5ed85fd82dd59')
+            self.assertEqual(actual,self.git_source(proof['successor_source_commit'],path))
+            for key,value in (('authorizing',False),('production_authorized',False),
+                              ('original313_signed_receipts_issued',False),
+                              ('live_evidence_required',True),
+                              ('no_editorial_source_mutation',True)):
+                self.assertIs(proof[key],value)
+            self.assertIn('scripts/qa/tour-highlights-visible-text-contract.php',
+                proof['regression_tests'])
+            self.assertEqual(
+                [(x['site'],x['approved_tour_card_count'],x['blank_cards'])
+                 for x in proof['live_readback']['sites']],
+                [('tours.dev.mad4b.com',17,0),('wayfatours.com',17,0)])
+            expected=(proof['current_bytes'],proof['current_sha256'],
+                      proof['current_blob_sha'])
+        self.assertEqual((len(actual),observed_sha,blob),expected)
         self.assertIn('tests/test_journey_successor_no_regression.py',row['regression_tests'])
         # New executable PHP source must additionally have the independent
         # exact-blob review, not only the non-authorizing manifest.
