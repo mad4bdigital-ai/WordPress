@@ -25,6 +25,11 @@ COVERAGE = GOV + "/capability-coverage.json"
 CONTROLS = GOV + "/controls.json"
 SHA = re.compile(r"^[a-f0-9]{40}$")
 CAP = re.compile(r"['\"](mad4b/[a-z0-9][a-z0-9._/-]{1,120})['\"]")
+# Literal PHP prefixes concatenated to a runtime Ability name are not
+# complete registered WordPress Abilities. Keep all other static names.
+PHP_ABILITY_PREFIX = re.compile(
+    r"""(?P<q>['"])(?P<id>mad4b/[a-z0-9][a-z0-9._/-]{1,120})(?P=q)\s*\."""
+)
 PHP_DECLARATION = re.compile(
     r"wp_register_ability\s*\(|(?:self|static)::register\s*\(|"
     r"\$this->add\s*\(|register_abilities\s*\(|ability_definitions\s*\(", re.I
@@ -253,6 +258,12 @@ def php_capabilities(ref, path):
     # Ability literals which may still appear elsewhere in this source.
     ability_source = HOOK_FIRST_ARG.sub(
         lambda match: match.group(0).replace(match.group("hook"), "__event_hook__", 1),
+        ability_source,
+    )
+    # The literal fragment in "prefix" . suffix cannot be approved as an
+    # independently registered Ability. Preserve real static names nearby.
+    ability_source = PHP_ABILITY_PREFIX.sub(
+        lambda m: m.group(0).replace(m.group("id"), "__dynamic_ability_prefix__", 1),
         ability_source,
     )
     _, aliases = rest_variable_surfaces(src)

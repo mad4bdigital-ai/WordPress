@@ -50,6 +50,28 @@ assert reg.classify(reg.PLUGIN + "includes/class-mad4b-scp-admin-options.php",
     "rest:mad4b/v1/admin/settings-status", policy)["id"] == "admin"
 assert not policy.get("production_promotion_from_ci") and policy["authorizing"] is False
 
+# A concatenated Ability fragment cannot be certified as a full identity.
+# The original runtime registration (not this heuristic) is separately tested.
+dynamic_ability_source = """
+final class Provider {
+ public static function abilities(){
+  wp_register_ability('mad4b/direct-read', array());
+  foreach(array('inventory'=>false,'reconcile'=>true) as $name=>$write){
+    $ability='mad4b/search-provider-autoprovision-'.str_replace('_','-',$name);
+    wp_register_ability($ability, array());
+  }
+ }
+}
+"""
+with mock.patch.object(reg, "git_text", return_value=dynamic_ability_source):
+    dynamic_caps = reg.php_capabilities(head,
+       reg.PLUGIN + "includes/search/class-mad4b-scp-search-provider-autoprovision.php")
+    assert dynamic_caps == {"ability:mad4b/direct-read"}, dynamic_caps
+assert reg.PHP_ABILITY_PREFIX.search(
+    "$ability='mad4b/search-provider-autoprovision-'.str_replace('_','-',$name);")
+assert not reg.PHP_ABILITY_PREFIX.search(
+    "wp_register_ability('mad4b/static-ability', array());")
+
 
 def initial_baseline(_commit, path):
     if path == reg.CONTROLS:
