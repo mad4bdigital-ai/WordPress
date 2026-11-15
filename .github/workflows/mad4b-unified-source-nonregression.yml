@@ -118,6 +118,7 @@ jobs:
           php tests/fcp-local-observability-site-bound-hermetic.php
           php tests/unified-provider-routing-native-safety-hermetic.php
           php tests/guided-continuation-write-surface-denial-hermetic.php
+          php tests/core-ai-governance-usage-and-admission-hermetic.php
           python3 wp-content/plugins/mad4b-site-control-plane/tests/content-job-domain-contract.py
           php wp-content/plugins/mad4b-site-control-plane/tests/live-write-provider-snapshot-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/mcp-preflight-registration-failure-runtime.php

@@ -90,8 +90,10 @@ final class MAD4B_SCP_Core_AI_Governance {
   $cutoff=gmdate('Y-m-d',time()-30*86400);
   foreach($all as $bucket=>$unused)if(substr((string)$bucket,0,10)<$cutoff)unset($all[$bucket]);
   krsort($all,SORT_STRING);$all=array_slice($all,0,50,true);
-  update_option(self::OPTION,$all,false);
-  return true;
+  // A database/cache write failure is not a persisted usage receipt.
+  // The counter changes on every valid call, so update_option(false)
+  // signals that this observation was not durably acknowledged.
+  return true === update_option(self::OPTION,$all,false);
  }
  public static function usage(){
   if(!current_user_can('manage_options'))return new WP_Error('mad4b_core_ai_usage_denied','Owner authorization required.',array('status'=>403));

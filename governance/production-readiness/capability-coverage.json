@@ -6698,6 +6698,42 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing READ/Provider/MCP/Execution and Platform controls own actual referenced runtime certifications and all write lanes. This guided source only performs narrow bounded read chaining.",
       "review_rationale": "Original Guided Continuation class executed in PHP7.4 and PHP8.5 using fake native WP abilities, with no actual execution. Source registers a single read-only WordPress Ability and requires Policy.can_read, exact bounded original digest and max 3 steps, respects original SAFE_READS and no-input identity; it cannot replay write, grant or leak raw provider results. Found a mismatch where a whitelisted Ability claiming mcp.surface=write and annotations.readonly=true was auto-executed: changed code to fail closed on explicit write or destructive Surface, retaining current first-party legacy status Abilities that omit mcp.surface."
+    },
+    {
+      "id": "rest:mad4b/v1/core-ai/usage",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/core-ai-governance-usage-and-admission-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party WordPress Core AI aggregate telemetry and Owner-gate source reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance/security/WordPress Core AI hooks continue controlling grant and read permission; no provider credentials, prompt logging, monetary pricing source or production AI authority created.",
+      "review_rationale": "Original Core AI PHP executed on PHP 7.4/8.5 with synthetic WordPress options and model event metadata. Enforced no-admin AI request is denied, previously denied remains denied, admin or explicitly delegated original filter can permit, admin-only usage REST stays private; only token counts/provider/model/channel are retained, and cost is omitted unless sourced from a versioned HTTPS pricebook. A reproduced bug where failed WordPress option write returned true was corrected; source now reports false for unpersisted aggregates. No AI request, token, prompt or real WordPress user was sent."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-ai-governance.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/core-ai-governance-usage-and-admission-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party WordPress Core AI aggregate telemetry and Owner-gate source reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance/security/WordPress Core AI hooks continue controlling grant and read permission; no provider credentials, prompt logging, monetary pricing source or production AI authority created.",
+      "review_rationale": "Original Core AI PHP executed on PHP 7.4/8.5 with synthetic WordPress options and model event metadata. Enforced no-admin AI request is denied, previously denied remains denied, admin or explicitly delegated original filter can permit, admin-only usage REST stays private; only token counts/provider/model/channel are retained, and cost is omitted unless sourced from a versioned HTTPS pricebook. A reproduced bug where failed WordPress option write returned true was corrected; source now reports false for unpersisted aggregates. No AI request, token, prompt or real WordPress user was sent."
     }
   ],
   "lifecycle": [],
@@ -16046,6 +16082,25 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing original platform/MCP/READ controls and static strongly-bounded safe read identities remain. Source class is amended only with strict effect metadata check.",
       "review_rationale": "Source original guided run was executed in PHP7.4/8.5 before and after fix. Before fix a whitelisted native Ability with explicit mcp.surface=write but stale readonly=true actually executed; the exact verified current source blocks that mismatch and destructive annotations before execute, preserves a genuine read and the live legacy read Ability without Surface (confirmed on both sites), denies missing authority, foreign next ability, wrong input digest, required params and loops. No registry approvals, external effects, or Production ownership changes."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-ai-governance.php",
+      "source_blob_sha": "1274bb7926db4efca3061141957ee76401c5b3b8",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/core-ai-governance-usage-and-admission-hermetic.php"
+      ],
+      "owner_role": "MAD4B exact Core AI admission and metrics durability source reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing Core AI, Security, Governance and Platform controls remain unchanged. Minimal native update_option result propagation is protected by new current-PR PHP tests.",
+      "review_rationale": "Reviewed 114-line original Core AI file, WordPress hook registration, default deny-on-enforcement without owner, explicit filter delegation, admin-private usage and no prompt/token logging, no invented prices without externally sourced versioned cost book. Original record() returned true despite failed update_option; new source returns strict true only upon WordPress persist acknowledgment. Negative pre-fix test reproduced error, subsequent PHP7.4/8.5 tests pass. Real provider SDK bypass and storage races remain independent operational concerns."
     }
   ],
   "code_change_rules": {
