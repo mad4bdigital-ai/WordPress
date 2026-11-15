@@ -12,6 +12,9 @@ $check( class_exists( 'MAD4B_SCP_Adapter_Registry' )
  && class_exists( 'MAD4B_SCP_Servers' ), 'Original adapter and server owners not loaded.' );
 $adapter = MAD4B_SCP_Adapter_Registry::instance()->get( 'firecrawl-research' );
 $check( is_object( $adapter ), 'Original Firecrawl research adapter missing.' );
+$guard_origin = new ReflectionMethod( $adapter, 'mutation_ability_runtime_eligibility' );
+$check( 'MAD4B_SCP_Adapter_Base' === $guard_origin->getDeclaringClass()->getName(),
+ 'Firecrawl must inherit the central Adapter Base write-mount guard, not fork it.' );
 $ability = 'mad4b/firecrawl-research-capture';
 $registered = function_exists( 'wp_get_ability' ) ? wp_get_ability( $ability ) : null;
 $check( is_object( $registered ), 'Original WordPress write Ability not registered.' );
@@ -22,7 +25,7 @@ $check( 'write' === (string)( $metadata['mcp']['surface'] ?? '' )
 $available = $adapter->is_available();
 if ( ! $available ) {
  $guard = $adapter->mutation_ability_runtime_eligibility( $ability );
- $check( is_wp_error( $guard ) && 'mad4b_firecrawl_adapter_runtime_unavailable' === $guard->get_error_code(),
+ $check( is_wp_error( $guard ) && 'mad4b_adapter_unavailable' === $guard->get_error_code(),
   'Unready Firecrawl adapter must return an exact native mount blocker.' );
  $check( ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $ability )
   && ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-read', $ability ),

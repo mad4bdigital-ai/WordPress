@@ -118,6 +118,28 @@ abstract class MAD4B_SCP_Adapter_Base {
 		return '';
 	}
 
+	/**
+	 * Default native write-mount gate, shared by every reviewed Adapter.
+	 *
+	 * The original Server Write Catalog asks adapters for live eligibility
+	 * BEFORE adding content/admin/write operations to MCP. A new Adapter
+	 * without a custom guard must not inherit an executable write mount
+	 * merely because a WordPress Ability was registered. This is not a
+	 * permission or grant: certification and original authorization still run.
+	 * More restrictive provider-specific overrides take precedence.
+	 */
+	public function mutation_ability_runtime_eligibility( $ability_name ) {
+		$names = $this->ability_names();
+		foreach ( array( 'content', 'admin', 'write' ) as $surface ) {
+			if ( isset( $names[ $surface ] ) && is_array( $names[ $surface ] )
+				&& in_array( (string) $ability_name, $names[ $surface ], true ) ) {
+				return $this->is_available() ? true : $this->unavailable_error();
+			}
+		}
+		return new WP_Error( 'mad4b_adapter_mutation_not_declared',
+			'The requested native mutation is not declared by this adapter.' );
+	}
+
 	private function mutation_permission_callback( $permission, $readonly, $ability_name, $surface ) {
 		if ( $readonly ) return $permission;
 		return function ( $input = null ) use ( $permission, $ability_name, $surface ) {
