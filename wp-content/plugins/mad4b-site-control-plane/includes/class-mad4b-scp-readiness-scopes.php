@@ -120,7 +120,12 @@ final class MAD4B_SCP_Readiness_Scopes {
             }
             $bucket['partition']=$prefix;
             $bucket['scope_id']=hash('sha256',$source['scope_id'].'|'.$prefix);
-            if(count($subset)>self::MAX_ITEMS_PER_WORK_PACKET && $depth<4)
+            // Valid issue IDs are full unique SHA-256 fingerprints. A fixed
+            // four-character split is only probabilistic: correlated source
+            // issues can share that prefix and exceed the 50-item contract.
+            // Continue deterministic partitioning to the full identity
+            // rather than silently producing an oversized provider task.
+            if(count($subset)>self::MAX_ITEMS_PER_WORK_PACKET && $depth<64)
                 self::partition($bucket,$depth+1,$dest);
             else $dest[$bucket['scope_id']]=$bucket;
         }
@@ -190,7 +195,10 @@ final class MAD4B_SCP_Readiness_Scopes {
         $flows=MAD4B_SCP_Readiness_Integrations::bitflows_flow_status(self::BITFLOWS_HOOK);
         return rest_ensure_response(array('contract'=>'mad4b.readiness.batch-digest.v1',
             'dry_run'=>true,'hook_invoked'=>false,
-            'ready_for_external_delivery'=>!empty($cfg['bitflows_notifications'])&&$flows['configured']&&
+            'ready_for_external_delivery'=>
+                !(class_exists('MAD4B_SCP_Readiness_PreActivation')
+                  && MAD4B_SCP_Readiness_PreActivation::execution_locked())
+                && !empty($cfg['bitflows_notifications'])&&$flows['configured']&&
                 $batch['synced_packet_count']===$batch['work_packet_count'],
             'payload'=>array('batch_id'=>$id,'site_id'=>get_current_blog_id(),
                 'group'=>$batch['group'],'language'=>$batch['language'],

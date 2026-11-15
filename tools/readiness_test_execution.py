@@ -139,6 +139,7 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "tests/staging-brand-trial-original-hermetic.php",
     "tests/staging-fixture-drafts-original-hermetic.php",
     "tests/readiness-draft-only-original-hermetic.php",
+    "tests/readiness-scopes-events-original-hermetic.php",
 
 
     "tests/adaptive-asset-bridge-original-hermetic.php",
