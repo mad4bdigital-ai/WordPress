@@ -32,6 +32,11 @@ class MAD4B_SCP_AI_Model_Router {
 class MAD4B_SCP_Local_Client { public static function bound() { return $GLOBALS['bound']; } }
 class MAD4B_SCP_Context_Authority {
     public static function review_policy() { return array('mode' => $GLOBALS['ai_policy']); }
+    public static function ai_review_policy_status() {
+        // Simulate exact, already-registered independent review grant only.
+        return array('mode'=>$GLOBALS['ai_policy'],'ready'=>true,
+            'exact_grant_ready'=>true,'catalog_eligible'=>true);
+    }
 }
 class MAD4B_SCP_AI_Only_Local_Activation {
     public static function status() { return array('identity_ready' => $GLOBALS['identity']); }

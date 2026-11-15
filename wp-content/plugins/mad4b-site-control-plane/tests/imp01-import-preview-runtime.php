@@ -96,6 +96,12 @@ class MAD4B_SCP_Site_Profile {
     static function site_urls_match_enrollment() { return true; }
     static function site_uuid() { return '10000000-2000-4000-8000-000000000000'; }
     static function environment_allowed( $environments, $feature = '' ) { return in_array( 'staging', $environments, true ); }
+    static function status() {
+        return array('authority_ready'=>true,
+            'origin_match'=>true,'deployment_binding_match'=>true,
+            'site_uuid'=>self::site_uuid(),
+            'environment'=>'staging');
+    }
 }
 class MAD4B_SCP_Content_Experience_Profiles {
     static function profile( $slug ) {
