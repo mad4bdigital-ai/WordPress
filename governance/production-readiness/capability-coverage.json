@@ -7165,6 +7165,120 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-ability-trust.php",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party runtime service reviewer — CI only",
+      "review_rationale": "Original registered first-party service class-mad4b-scp-native-ability-trust.php has direct PHP behavior checks in tests/native-capability-registry-adapter-first-party.php under a no-network, no-write, PHP 7.4 and 8.5 regression suite. Original Native Ability Trust tests registered private read-only adapter, absent owner-pinned manifest and unapproved native read/write Abilities, bounded page inputs and no callbacks or grants. Service discovery and source review do not issue grants or allow Production mutation.",
+      "coverage_reuse_rationale": "Existing controls MCP-01, PROVIDERS-01, EXECUTION-01, SECURITY-01 require exact source binding, site ownership and independent runtime authorization. The service adds no new authorization or cross-tenant write mode; source-bound behavior and denial tests reuse those controls.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-local-document-normalizer.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party runtime service reviewer — CI only",
+      "review_rationale": "Original registered first-party service class-mad4b-scp-context-local-document-normalizer.php has direct PHP behavior checks in wp-content/plugins/mad4b-site-control-plane/tests/context-media-normalization-runtime.php under a no-network, no-write, PHP 7.4 and 8.5 regression suite. Original WordPress/context media normalization positive and rejection cases check unsupported MIME, missing providers, stable file/document mapping and bounded content parsing. Service discovery and source review do not issue grants or allow Production mutation.",
+      "coverage_reuse_rationale": "Existing controls GOVERNANCE-01, PLATFORM-01, SECURITY-01, EXECUTION-01 require exact source binding, site ownership and independent runtime authorization. The service adds no new authorization or cross-tenant write mode; source-bound behavior and denial tests reuse those controls.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-research-groups.php",
+      "control_ids": [
+        "DATABASE-01",
+        "PERFORMANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party runtime service reviewer — CI only",
+      "review_rationale": "Original registered first-party service class-mad4b-scp-research-groups.php has direct PHP behavior checks in tests/origin-external-research-source-bound-hermetic.php under a no-network, no-write, PHP 7.4 and 8.5 regression suite. Original source-bound external research test checks site isolation, source fingerprint, bounded job transitions, duplicate prevention and evidence verification. Service discovery and source review do not issue grants or allow Production mutation.",
+      "coverage_reuse_rationale": "Existing controls DATABASE-01, PERFORMANCE-01, SECURITY-01, EXECUTION-01 require exact source binding, site ownership and independent runtime authorization. The service adds no new authorization or cross-tenant write mode; source-bound behavior and denial tests reuse those controls.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-ai-governance.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party runtime service reviewer — CI only",
+      "review_rationale": "Original registered first-party service class-mad4b-scp-local-ai-governance.php has direct PHP behavior checks in wp-content/plugins/mad4b-site-control-plane/tests/qa31-w1-ollama-local-permission-runtime.php under a no-network, no-write, PHP 7.4 and 8.5 regression suite. Original local Ollama AI governance test verifies local-only permission boundary, Staging/profile isolation, negative impersonation and absence of remote automatic AI grants. Service discovery and source review do not issue grants or allow Production mutation.",
+      "coverage_reuse_rationale": "Existing controls GOVERNANCE-01, PLATFORM-01, SECURITY-01, EXECUTION-01 require exact source binding, site ownership and independent runtime authorization. The service adds no new authorization or cross-tenant write mode; source-bound behavior and denial tests reuse those controls.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-ollama-ability.php",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party runtime service reviewer — CI only",
+      "review_rationale": "Original registered first-party service class-mad4b-scp-local-ollama-ability.php has direct PHP behavior checks in wp-content/plugins/mad4b-site-control-plane/tests/qa31-w1-ollama-local-permission-runtime.php under a no-network, no-write, PHP 7.4 and 8.5 regression suite. Original local Ollama AI governance test verifies local-only permission boundary, Staging/profile isolation, negative impersonation and absence of remote automatic AI grants. Service discovery and source review do not issue grants or allow Production mutation.",
+      "coverage_reuse_rationale": "Existing controls MCP-01, PROVIDERS-01, EXECUTION-01, SECURITY-01 require exact source binding, site ownership and independent runtime authorization. The service adds no new authorization or cross-tenant write mode; source-bound behavior and denial tests reuse those controls.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-firecrawl-crawl-integration-v1.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party runtime service reviewer — CI only",
+      "review_rationale": "Original registered first-party service class-mad4b-scp-firecrawl-crawl-integration-v1.php has direct PHP behavior checks in tests/readiness-native-cron-ownership-hermetic.php under a no-network, no-write, PHP 7.4 and 8.5 regression suite. Original first-party Firecrawl cron test verifies owned scheduler records, exact job identity, positive/negative lifecycle and denies independent untrusted cron mutations. Service discovery and source review do not issue grants or allow Production mutation.",
+      "coverage_reuse_rationale": "Existing controls GOVERNANCE-01, PLATFORM-01, SECURITY-01, EXECUTION-01 require exact source binding, site ownership and independent runtime authorization. The service adds no new authorization or cross-tenant write mode; source-bound behavior and denial tests reuse those controls.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "lifecycle": [],
@@ -17482,6 +17596,554 @@
       ],
       "owner_role": "MAD4B original first-party independent runtime reviewer — CI only",
       "review_rationale": "Corrected and executed original native Deployment Binding runtime test verifies seven registered Abilities including environment-status read callback with exact WordPress read permission and no Production mutation. Both environments require registered Site Profile, matching independent binding digest and stable origin; wrong digest or nonadmin reads fail closed. The hermetic native test also verifies separate one-time write approval and readback, with no Production writes.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-ability-trust.php",
+      "source_blob_sha": "54f0d30d3807fa4545114d2dddf00509296e3000",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party source behavioral reviewer — CI only",
+      "review_rationale": "Source-bounded original first-party behavior review of class-mad4b-scp-native-ability-trust.php with verified fixture native-capability-registry-adapter-first-party.php and exact successful marker PASS: NATIVE_CAPABILITY_ADAPTER_REGISTRY; executed on PHP 7.4 and PHP 8.5 in hermetic read-only no-network containers. Original Native Ability Trust tests registered private read-only adapter, absent owner-pinned manifest and unapproved native read/write Abilities, bounded page inputs and no callbacks or grants. CI-only; this does not produce browser/real WordPress live evidence, a Production authorization or a site write.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-adapter-base.php",
+      "source_blob_sha": "6d878d810b822f9e1210c10ffc784d39f07af343",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party source behavioral reviewer — CI only",
+      "review_rationale": "Source-bounded original first-party behavior review of class-mad4b-scp-adapter-base.php with verified fixture adapter-base-default-write-eligibility-hermetic.php and exact successful marker ADAPTER_BASE_DEFAULT_WRITE: PASS; executed on PHP 7.4 and PHP 8.5 in hermetic read-only no-network containers. Original adapter base fail-closed write eligibility, exact WP permission revalidation and override cases prevent installation/status discovery from becoming mutation authority. CI-only; this does not produce browser/real WordPress live evidence, a Production authorization or a site write.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-dynamic-content-adapter.php",
+      "source_blob_sha": "91e38315175a619955a7802d74530f1dcbfaab83",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party source behavioral reviewer — CI only",
+      "review_rationale": "Source-bounded original first-party behavior review of class-mad4b-scp-dynamic-content-adapter.php with verified fixture dynamic-content-apply-native-ability-source-hermetic.php and exact successful marker DYNAMIC_CONTENT_APPLY_NATIVE: PASS; executed on PHP 7.4 and PHP 8.5 in hermetic read-only no-network containers. Original dynamic content Ability registration, strict denied mutation and uncertain completion receipt preserve no-blind-retry and independent grant/permission boundaries. CI-only; this does not produce browser/real WordPress live evidence, a Production authorization or a site write.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php",
+      "source_blob_sha": "191c28e542d6ee8fbb1fe47637e94d9775154150",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party source behavioral reviewer — CI only",
+      "review_rationale": "Source-bounded original first-party behavior review of class-mad4b-scp-abilities.php with verified fixture governed-parent-enrollment-smoke.php and exact successful marker PASS zero grants and zero callback execution; executed on PHP 7.4 and PHP 8.5 in hermetic read-only no-network containers. Original governed parent enrollment and remote operation parity positive/negative cases prevent metadata alias from inheriting Production authority and assert zero grants and callback execution. CI-only; this does not produce browser/real WordPress live evidence, a Production authorization or a site write.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-local-document-normalizer.php",
+      "source_blob_sha": "2c196292a4d1c41ebbcd21d4cc175424ceb85687",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party source behavioral reviewer — CI only",
+      "review_rationale": "Source-bounded original first-party behavior review of class-mad4b-scp-context-local-document-normalizer.php with verified fixture context-media-normalization-runtime.php and exact successful marker SUMMARY pass=10 fail=0; executed on PHP 7.4 and PHP 8.5 in hermetic read-only no-network containers. Original WordPress/context media normalization positive and rejection cases check unsupported MIME, missing providers, stable file/document mapping and bounded content parsing. CI-only; this does not produce browser/real WordPress live evidence, a Production authorization or a site write.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php",
+      "source_blob_sha": "2768e78e8ca214145aea083440ff9634adc2304b",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party source behavioral reviewer — CI only",
+      "review_rationale": "Source-bounded original first-party behavior review of class-mad4b-scp-google-drive-context.php with verified fixture context-media-normalization-runtime.php and exact successful marker SUMMARY pass=10 fail=0; executed on PHP 7.4 and PHP 8.5 in hermetic read-only no-network containers. Original WordPress/context media normalization positive and rejection cases check unsupported MIME, missing providers, stable file/document mapping and bounded content parsing. CI-only; this does not produce browser/real WordPress live evidence, a Production authorization or a site write.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-wordpress-media-context.php",
+      "source_blob_sha": "6c4318c9949007197f0b9ba13db88a9ab553dbec",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party source behavioral reviewer — CI only",
+      "review_rationale": "Source-bounded original first-party behavior review of class-mad4b-scp-wordpress-media-context.php with verified fixture context-media-normalization-runtime.php and exact successful marker SUMMARY pass=10 fail=0; executed on PHP 7.4 and PHP 8.5 in hermetic read-only no-network containers. Original WordPress/context media normalization positive and rejection cases check unsupported MIME, missing providers, stable file/document mapping and bounded content parsing. CI-only; this does not produce browser/real WordPress live evidence, a Production authorization or a site write.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema.php",
+      "source_blob_sha": "b312ff3d2c4c2482da3236e66e57b7c66295fda1",
+      "control_ids": [
+        "DATABASE-01",
+        "PERFORMANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party source behavioral reviewer — CI only",
+      "review_rationale": "Source-bounded original first-party behavior review of class-mad4b-scp-schema.php with verified fixture schema-migration-runtime-contract.php and exact successful marker PASS; executed on PHP 7.4 and PHP 8.5 in hermetic read-only no-network containers. Original Schema migration runtime asserts safe upgrade, exact source version, migration state and negative rollback/snapshot cases using hermetic WordPress structures. CI-only; this does not produce browser/real WordPress live evidence, a Production authorization or a site write.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-commit-guard.php",
+      "source_blob_sha": "31467e9d45d4002a91160a8bbf031255935da339",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party source behavioral reviewer — CI only",
+      "review_rationale": "Source-bounded original first-party behavior review of class-mad4b-scp-execution-commit-guard.php with verified fixture production-native-principal-parity-runtime.php and exact successful marker PASS test_did_not_issue_grants_or_write_options; executed on PHP 7.4 and PHP 8.5 in hermetic read-only no-network containers. Original native WordPress user/independent NHI Production parity fixture checks 18 positive/negative scenarios without issuing grants or altering options. CI-only; this does not produce browser/real WordPress live evidence, a Production authorization or a site write.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-policy.php",
+      "source_blob_sha": "d340dba1a492dd2dbd0383e8e6d80603bd541f3d",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party source behavioral reviewer — CI only",
+      "review_rationale": "Source-bounded original first-party behavior review of class-mad4b-scp-policy.php with verified fixture production-native-principal-parity-runtime.php and exact successful marker PASS test_did_not_issue_grants_or_write_options; executed on PHP 7.4 and PHP 8.5 in hermetic read-only no-network containers. Original native WordPress user/independent NHI Production parity fixture checks 18 positive/negative scenarios without issuing grants or altering options. CI-only; this does not produce browser/real WordPress live evidence, a Production authorization or a site write.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile-enrollment.php",
+      "source_blob_sha": "e30eb37b53144a063557f282bb9b6e32070f6f4d",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party source behavioral reviewer — CI only",
+      "review_rationale": "Source-bounded original first-party behavior review of class-mad4b-scp-site-profile-enrollment.php with verified fixture site-profile-feature-reenrollment-runtime.php and exact successful marker mad4b.site-profile-feature-reenrollment.runtime.v1: PASS; executed on PHP 7.4 and PHP 8.5 in hermetic read-only no-network containers. Original Site Profile/feature reenrollment validates exact identity, revision, OAuth and write state across real-class transitions, with negative mismatched profile cases. CI-only; this does not produce browser/real WordPress live evidence, a Production authorization or a site write.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php",
+      "source_blob_sha": "e08a72572fe7d29156c8616a786c908341f14438",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party source behavioral reviewer — CI only",
+      "review_rationale": "Source-bounded original first-party behavior review of class-mad4b-scp-site-profile.php with verified fixture site-profile-feature-reenrollment-runtime.php and exact successful marker mad4b.site-profile-feature-reenrollment.runtime.v1: PASS; executed on PHP 7.4 and PHP 8.5 in hermetic read-only no-network containers. Original Site Profile/feature reenrollment validates exact identity, revision, OAuth and write state across real-class transitions, with negative mismatched profile cases. CI-only; this does not produce browser/real WordPress live evidence, a Production authorization or a site write.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-mu-bootstrap-refresh.php",
+      "source_blob_sha": "62b1618aeb582d8c152ae1d922c9fa849929b897",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party source behavioral reviewer — CI only",
+      "review_rationale": "Source-bounded original first-party behavior review of class-mad4b-scp-mcp-mu-bootstrap-refresh.php with verified fixture mcp-runtime-recovery-runtime.php and exact successful marker mad4b.mcp-runtime-recovery.v1: 39/39 PASS; executed on PHP 7.4 and PHP 8.5 in hermetic read-only no-network containers. Original MCP runtime recovery 39/39 positive and negative checks cover plugin/mu boot re-entry, drift, fail-closed WordPress callback isolation and crash-safe read-only recovery. CI-only; this does not produce browser/real WordPress live evidence, a Production authorization or a site write.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-runtime-conflict-guard.php",
+      "source_blob_sha": "62065e4f7a7b5fd8aac83f29aacfedd1ad28b619",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party source behavioral reviewer — CI only",
+      "review_rationale": "Source-bounded original first-party behavior review of class-mad4b-scp-mcp-runtime-conflict-guard.php with verified fixture mcp-runtime-recovery-runtime.php and exact successful marker mad4b.mcp-runtime-recovery.v1: 39/39 PASS; executed on PHP 7.4 and PHP 8.5 in hermetic read-only no-network containers. Original MCP runtime recovery 39/39 positive and negative checks cover plugin/mu boot re-entry, drift, fail-closed WordPress callback isolation and crash-safe read-only recovery. CI-only; this does not produce browser/real WordPress live evidence, a Production authorization or a site write.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-runtime-recovery.php",
+      "source_blob_sha": "4f3d78b53c93be1b7d3d4a7a80e5d0d1d4084c86",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party source behavioral reviewer — CI only",
+      "review_rationale": "Source-bounded original first-party behavior review of class-mad4b-scp-mcp-runtime-recovery.php with verified fixture mcp-runtime-recovery-runtime.php and exact successful marker mad4b.mcp-runtime-recovery.v1: 39/39 PASS; executed on PHP 7.4 and PHP 8.5 in hermetic read-only no-network containers. Original MCP runtime recovery 39/39 positive and negative checks cover plugin/mu boot re-entry, drift, fail-closed WordPress callback isolation and crash-safe read-only recovery. CI-only; this does not produce browser/real WordPress live evidence, a Production authorization or a site write.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operation-registry.php",
+      "source_blob_sha": "27f1e86e4360772773bf0e1f50148602353a6ed2",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party source behavioral reviewer — CI only",
+      "review_rationale": "Source-bounded original first-party behavior review of class-mad4b-scp-operation-registry.php with verified fixture operation-registry-native-policy-boundary-hermetic.php and exact successful marker NATIVE_OPERATION_REGISTRY_BOUNDARY: PASS; executed on PHP 7.4 and PHP 8.5 in hermetic read-only no-network containers. Original native Operation Registry checks two distinct registered operations and eleven failure modes for exact dynamic governance policies and no implicit execution grant. CI-only; this does not produce browser/real WordPress live evidence, a Production authorization or a site write.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-media-rights.php",
+      "source_blob_sha": "397c32f9fdedae79268bffc1e6d8d1e9bfe5c7d5",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party source behavioral reviewer — CI only",
+      "review_rationale": "Source-bounded original first-party behavior review of class-mad4b-scp-remote-media-rights.php with verified fixture remote-media-rights-environment-runtime.php and exact successful marker REMOTE_MEDIA_RIGHTS_ENVIRONMENT: PASS; executed on PHP 7.4 and PHP 8.5 in hermetic read-only no-network containers. Original media rights and environment runtime tests approved/advisory policy, expired license, unsafe provenance and no automatic publication under missing proof. CI-only; this does not produce browser/real WordPress live evidence, a Production authorization or a site write.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-research-groups.php",
+      "source_blob_sha": "26d2cc27db01f6fda0042fcc14ce818b819f1e93",
+      "control_ids": [
+        "DATABASE-01",
+        "PERFORMANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party source behavioral reviewer — CI only",
+      "review_rationale": "Source-bounded original first-party behavior review of class-mad4b-scp-research-groups.php with verified fixture origin-external-research-source-bound-hermetic.php and exact successful marker NATIVE_ORIGIN_EXTERNAL_RESEARCH: PASS; executed on PHP 7.4 and PHP 8.5 in hermetic read-only no-network containers. Original source-bound external research test checks site isolation, source fingerprint, bounded job transitions, duplicate prevention and evidence verification. CI-only; this does not produce browser/real WordPress live evidence, a Production authorization or a site write.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-owner-activation.php",
+      "source_blob_sha": "2363894c3414c27cdf3adcfb4c599fde63d20fcf",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party source behavioral reviewer — CI only",
+      "review_rationale": "Source-bounded original first-party behavior review of class-mad4b-scp-company-owner-activation.php with verified fixture qa31-w1-authority-owner-boundary-runtime.php and exact successful marker QA31_W1_OWNER_BROWSER_GATE: PASS; executed on PHP 7.4 and PHP 8.5 in hermetic read-only no-network containers. Original Company Owner browser boundary fixture tests WordPress capability and missing/invalid session cookies, read scope, denial and no automatic owner grants. CI-only; this does not produce browser/real WordPress live evidence, a Production authorization or a site write.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-owner-intent.php",
+      "source_blob_sha": "32bd775902a9b458ad065af69b6579c00318de11",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party source behavioral reviewer — CI only",
+      "review_rationale": "Source-bounded original first-party behavior review of class-mad4b-scp-staging-write-owner-intent.php with verified fixture staging-write-owner-intent-runtime.php and exact successful marker STAGING_WRITE_OWNER_INTENT: PASS; executed on PHP 7.4 and PHP 8.5 in hermetic read-only no-network containers. Original Staging owner intent requires independently captured exact human authorization, safe package scope and cannot mint new grants or bypass write admission. CI-only; this does not produce browser/real WordPress live evidence, a Production authorization or a site write.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-grant-mode.php",
+      "source_blob_sha": "ac22bf3c154a14384cd1012bc6f976f2ddf44a54",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party source behavioral reviewer — CI only",
+      "review_rationale": "Source-bounded original first-party behavior review of class-mad4b-scp-ai-grant-mode.php with verified fixture ai-grant-mode-runtime.php and exact successful marker PASS: AI_ONLY_GRANT_MODE_EXACT_OWNER_CONSENT; executed on PHP 7.4 and PHP 8.5 in hermetic read-only no-network containers. Original AI grant mode fixture proves exact owner consent, AI-only limits, disabled and mismatched subjects, and 24 positive/negative cases with no privilege escalation. CI-only; this does not produce browser/real WordPress live evidence, a Production authorization or a site write.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-core-control-loop.php",
+      "source_blob_sha": "dd7a72567765e00d980a49eeed12f2ec7ae7077c",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party source behavioral reviewer — CI only",
+      "review_rationale": "Source-bounded original first-party behavior review of class-mad4b-scp-brand-core-control-loop.php with verified fixture brand-core-control-loop-runtime.php and exact successful marker PASS: Brand Core one-source lifecycle; executed on PHP 7.4 and PHP 8.5 in hermetic read-only no-network containers. Original Brand Core control-loop tests deterministic source lifecycle, immutable state transitions, fail-closed recovery and no unreviewed migration of brand provenance. CI-only; this does not produce browser/real WordPress live evidence, a Production authorization or a site write.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-runtime-diagnostics.php",
+      "source_blob_sha": "3b37c6fc8b262166160fb57a0c6d8e8cda3b08d6",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party source behavioral reviewer — CI only",
+      "review_rationale": "Source-bounded original first-party behavior review of class-mad4b-scp-native-runtime-diagnostics.php with verified fixture native-recovery-status-runtime.php and exact successful marker PASS native WordPress Recovery:; executed on PHP 7.4 and PHP 8.5 in hermetic read-only no-network containers. Original native WordPress Recovery service tests read-only MCP registration, Site Health and admin nonce projection, denied permissions and no auto remediation. CI-only; this does not produce browser/real WordPress live evidence, a Production authorization or a site write.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-components-admin-ui.php",
+      "source_blob_sha": "0e0b1e5d06bcfc3e59a3fc66be43538916d5a382",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party source behavioral reviewer — CI only",
+      "review_rationale": "Source-bounded original first-party behavior review of class-mad4b-scp-runtime-components-admin-ui.php with verified fixture native-recovery-status-runtime.php and exact successful marker PASS native WordPress Recovery:; executed on PHP 7.4 and PHP 8.5 in hermetic read-only no-network containers. Original native WordPress Recovery service tests read-only MCP registration, Site Health and admin nonce projection, denied permissions and no auto remediation. CI-only; this does not produce browser/real WordPress live evidence, a Production authorization or a site write.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-read-consistency.php",
+      "source_blob_sha": "586186f2b618b85e6b5e26f64a709b8f5eb6dc6e",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party source behavioral reviewer — CI only",
+      "review_rationale": "Source-bounded original first-party behavior review of class-mad4b-scp-read-consistency.php with verified fixture connector-resilience-runtime.php and exact successful marker mad4b.connector-resilience.runtime; executed on PHP 7.4 and PHP 8.5 in hermetic read-only no-network containers. Original request-local consistency test validates connector resilience and isolated failures under existing authorization state without treating transport recovery as owner approval. CI-only; this does not produce browser/real WordPress live evidence, a Production authorization or a site write.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-settings-persistence.php",
+      "source_blob_sha": "2db19ed29a71c1f526ad14a18f59d80c2040ec7c",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party source behavioral reviewer — CI only",
+      "review_rationale": "Source-bounded original first-party behavior review of class-mad4b-scp-admin-settings-persistence.php with verified fixture context-admin-recovery-runtime.php and exact successful marker Context admin recovery render/handler runtime: PASS; executed on PHP 7.4 and PHP 8.5 in hermetic read-only no-network containers. Original Context admin UI and settings persistence test exercises safe admin rendering and handler recovery, read-only state, request protection and no unapproved writes. CI-only; this does not produce browser/real WordPress live evidence, a Production authorization or a site write.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-admin-ui.php",
+      "source_blob_sha": "2c7e9655dc3e41c1f28ba291ab6f4a8d48c1dd2b",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party source behavioral reviewer — CI only",
+      "review_rationale": "Source-bounded original first-party behavior review of class-mad4b-scp-context-admin-ui.php with verified fixture context-admin-recovery-runtime.php and exact successful marker Context admin recovery render/handler runtime: PASS; executed on PHP 7.4 and PHP 8.5 in hermetic read-only no-network containers. Original Context admin UI and settings persistence test exercises safe admin rendering and handler recovery, read-only state, request protection and no unapproved writes. CI-only; this does not produce browser/real WordPress live evidence, a Production authorization or a site write.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-ai-governance.php",
+      "source_blob_sha": "1cbd181206f08e301b04bab91e83ee19d33cf611",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party source behavioral reviewer — CI only",
+      "review_rationale": "Source-bounded original first-party behavior review of class-mad4b-scp-local-ai-governance.php with verified fixture qa31-w1-ollama-local-permission-runtime.php and exact successful marker QA31_W1_LOCAL_OLLAMA_GATE: PASS; executed on PHP 7.4 and PHP 8.5 in hermetic read-only no-network containers. Original local Ollama AI governance test verifies local-only permission boundary, Staging/profile isolation, negative impersonation and absence of remote automatic AI grants. CI-only; this does not produce browser/real WordPress live evidence, a Production authorization or a site write.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-ollama-ability.php",
+      "source_blob_sha": "2dad5ffaf463fe65575e80e5184961e2e024253a",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party source behavioral reviewer — CI only",
+      "review_rationale": "Source-bounded original first-party behavior review of class-mad4b-scp-local-ollama-ability.php with verified fixture qa31-w1-ollama-local-permission-runtime.php and exact successful marker QA31_W1_LOCAL_OLLAMA_GATE: PASS; executed on PHP 7.4 and PHP 8.5 in hermetic read-only no-network containers. Original local Ollama AI governance test verifies local-only permission boundary, Staging/profile isolation, negative impersonation and absence of remote automatic AI grants. CI-only; this does not produce browser/real WordPress live evidence, a Production authorization or a site write.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-firecrawl-crawl-integration-v1.php",
+      "source_blob_sha": "7503ef6f6995f85f1a6616b47618d63dd22a4653",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-original-source-behavior-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party source behavioral reviewer — CI only",
+      "review_rationale": "Source-bounded original first-party behavior review of class-mad4b-scp-firecrawl-crawl-integration-v1.php with verified fixture readiness-native-cron-ownership-hermetic.php and exact successful marker PASS; executed on PHP 7.4 and PHP 8.5 in hermetic read-only no-network containers. Original first-party Firecrawl cron test verifies owned scheduler records, exact job identity, positive/negative lifecycle and denies independent untrusted cron mutations. CI-only; this does not produce browser/real WordPress live evidence, a Production authorization or a site write.",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
