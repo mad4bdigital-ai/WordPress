@@ -7317,6 +7317,63 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-transport-routing.php",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-existing-original-providers-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party dynamic service capability reviewer — CI only",
+      "review_rationale": "Original REST/transport provider test exercises 80 positive and negative native PHP assertions: exact boolean Policy grants; error, missing/exception cases; signed broker and manual modes; site/host identity; OAuth bearer; REST route permission; no write retries after uncertain result.",
+      "coverage_reuse_rationale": "Original MCP-01, PROVIDERS-01, EXECUTION-01, SECURITY-01 controls already require exact native source, scoped company site and environment, non-authorizing registry discovery, independent permission checks, approval before mutation and auditable no-blind-retry behavior. No new authority is introduced.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-write-acceptance.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-existing-original-providers-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party dynamic service capability reviewer — CI only",
+      "review_rationale": "Original central write test directly loads runtime and verifies native source evidence, rights, SHA, Source Profile effective environment, user/admin permission, independent REST route operation, TTL, CAS input and fail-closed Policy/Profile errors; never executes mutation.",
+      "coverage_reuse_rationale": "Original GOVERNANCE-01, PLATFORM-01, SECURITY-01, EXECUTION-01 controls already require exact native source, scoped company site and environment, non-authorizing registry discovery, independent permission checks, approval before mutation and auditable no-blind-retry behavior. No new authority is introduced.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-gate-funnel.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-existing-original-providers-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party dynamic service capability reviewer — CI only",
+      "review_rationale": "Original Unified Gate test verifies dynamic dependency graph, topological ordering, required stage growth, source-hash changes, unknown dependencies, malformed registry entries, circular graphs and no caller elevation of content.execution.",
+      "coverage_reuse_rationale": "Original GOVERNANCE-01, PLATFORM-01, SECURITY-01, EXECUTION-01 controls already require exact native source, scoped company site and environment, non-authorizing registry discovery, independent permission checks, approval before mutation and auditable no-blind-retry behavior. No new authority is introduced.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "lifecycle": [],
@@ -18480,6 +18537,78 @@
       ],
       "owner_role": "MAD4B original background worker source reviewer — CI only",
       "review_rationale": "The original Background Agent Dispatch validates the current immutable first-party Durable Execution lease receipt contract, exact content-job work ID, worker ID, revision, fencing epoch and active status before returning claim, heartbeat or verify_commit. Malformed receipts after a possible Durable lease mutation return recovery_required and reconciliation_required, with blind_retry_allowed=false. The 34 hermetic native cases cover positive and negative admission/lease/fence, without issuing a production grant, provider execution or publication.  Original PHP7.4/8.5 same-PR tests were executed under no-network readonly mounts; live acceptance remains separately required.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
+      "source_blob_sha": "bf247e6715c851458acd7c069d9aaa4bf98e155c",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/authority-servers-original-review-suite.py"
+      ],
+      "owner_role": "MAD4B first-party original native runtime source reviewer — CI only",
+      "review_rationale": "Original native Servers transport tests check explicitly enrolled site, immutable Host NHI, root-only scoped STDIO, exact Profile environment binding, Staging Host cannot become Production writer, no remote enqueue, and no WP user impersonation. Exact Git blob and original native PHP 7.4/8.5 assertions reviewed, no site or remote execution. Live evidence remains mandatory.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-transport-routing.php",
+      "source_blob_sha": "7130a660b9f6dc10156ed53b9e4abaa4f4f2dc8a",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-existing-original-providers-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party original native runtime source reviewer — CI only",
+      "review_rationale": "Original REST/transport provider test exercises 80 positive and negative native PHP assertions: exact boolean Policy grants; error, missing/exception cases; signed broker and manual modes; site/host identity; OAuth bearer; REST route permission; no write retries after uncertain result. Exact Git blob and original native PHP 7.4/8.5 assertions reviewed, no site or remote execution. Live evidence remains mandatory.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-write-acceptance.php",
+      "source_blob_sha": "c5be204ca3a13f6a0b17d287d79d795e1bbced2b",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-existing-original-providers-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party original native runtime source reviewer — CI only",
+      "review_rationale": "Original central write test directly loads runtime and verifies native source evidence, rights, SHA, Source Profile effective environment, user/admin permission, independent REST route operation, TTL, CAS input and fail-closed Policy/Profile errors; never executes mutation. Exact Git blob and original native PHP 7.4/8.5 assertions reviewed, no site or remote execution. Live evidence remains mandatory.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-gate-funnel.php",
+      "source_blob_sha": "e423f1564ccfa9a9bc2c71342ea241c86b7f96c3",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-existing-original-providers-matrix.py"
+      ],
+      "owner_role": "MAD4B first-party original native runtime source reviewer — CI only",
+      "review_rationale": "Original Unified Gate test verifies dynamic dependency graph, topological ordering, required stage growth, source-hash changes, unknown dependencies, malformed registry entries, circular graphs and no caller elevation of content.execution. Exact Git blob and original native PHP 7.4/8.5 assertions reviewed, no site or remote execution. Live evidence remains mandatory.",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
