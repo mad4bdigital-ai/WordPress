@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Media Rights Extraction Intake
  * Description: Bounded, idempotent JetEngine CCT discovery of new local image attachments; never auto-licenses or publishes.
- * Version: 1.7.0
+ * Version: 1.7.1
  */
 defined('ABSPATH') || exit;
 if (!class_exists('MAD4B_Media_Rights_Extraction_Intake_V1', false)) {
@@ -12,6 +12,58 @@ final class MAD4B_Media_Rights_Extraction_Intake_V1 {
  const RIGHTS_ORIGIN_INDEX = 'mad4b_media_rights_origin_sha';
  const PREFIX = 'discovered_attachment_';
  const MAX_BYTES = 15728640;
+ /** Read-only review queue triage without inventing extra CCT statuses.
+  * JetEngine supports only draft/publish. A safely superseded web-scaled
+  * derivative stays in its historic draft row; active review counters exclude
+  * it only when native process() currently proves the exact published origin.
+  * Any future file/metadata/rights drift immediately puts it back in queue.
+  */
+ public static function review_queue_status(): array {
+  if(!class_exists('Jet_Engine\\Modules\\Custom_Content_Types\\Module',false))
+   return ['status'=>'cct_unavailable'];
+  $f=\Jet_Engine\Modules\Custom_Content_Types\Module::instance()->manager->get_content_types('media_rights');
+  if(!$f||!$f->db->is_table_exists())return ['status'=>'cct_unavailable'];
+  global $wpdb;$table=$f->db->table();
+  $rows=$wpdb->get_results($wpdb->prepare(
+   "SELECT _ID,cct_status,credit_key,subject,author,source_url,license_url,license_label,source_sha256,attachment_id FROM {$table} WHERE cct_status=%s ORDER BY _ID ASC LIMIT 1001",
+   'draft'),ARRAY_A);
+  if(!is_array($rows)||$wpdb->last_error!=='')return ['status'=>'read_failed'];
+  if(count($rows)>1000)return ['status'=>'queue_overflow_requires_paging','count_at_least'=>count($rows),'complete'=>false];
+  $historic=[];
+  foreach($rows as $r){
+   $id=(int)($r['attachment_id']??0);
+   if(!$id || (string)($r['credit_key']??'')!==self::PREFIX.$id)continue;
+   $blank=true;
+   foreach(['author','source_url','license_url','license_label'] as $field)
+    if(trim((string)($r[$field]??''))!==''){$blank=false;break;}
+   if(!$blank)continue;
+   $sourceSha=(string)($r['source_sha256']??'');
+   if(!preg_match('/^[a-f0-9]{64}$/D',$sourceSha))continue;
+   if(get_post_type($id)!=='attachment'||!str_starts_with((string)get_post_mime_type($id),'image/'))continue;
+   $file=get_attached_file($id);
+   if(!$file||!is_file($file)||!hash_equals($sourceSha,(string)hash_file('sha256',$file)))continue;
+   // process() has an early no-write return for a licensed image. Only use
+   // the result with exact owner/served SHA/published credit identity.
+   $match=self::process($id);
+   if(($match['status']??'')!=='already_licensed_wordpress_scaled_derivative'
+       ||(int)($match['licensed_attachment_id']??0)!==$id
+       ||($match['verified_wpml_sibling']??true)!==false
+       ||!hash_equals($sourceSha,(string)($match['served_sha256']??''))
+       ||(int)($match['published_credit_id']??0)<1)continue;
+   $historic[]=['draft_id'=>(int)$r['_ID'],'attachment_id'=>$id,
+     'published_credit_id'=>(int)$match['published_credit_id'],
+     'served_derivative_sha256'=>$sourceSha,
+     'licensed_original_sha256'=>$match['licensed_original_sha256'],
+     'reason'=>'exact_published_original_credit_supersedes_unreviewed_scaled_duplicate',
+     'cct_row_preserved'=>true];
+  }
+  return ['contract'=>'mad4b.media-rights-review-queue.v1','status'=>'complete',
+    'total_native_draft_rows'=>count($rows),
+    'active_rights_review_drafts'=>count($rows)-count($historic),
+    'historical_superseded_derivative_drafts'=>$historic,
+    'historical_count'=>count($historic),
+    'native_cct_statuses_unchanged'=>true,'licenses_granted'=>false,'writes_performed'=>false];
+ }
  public static function schedule(int $attachment_id): bool {
   if ($attachment_id < 1 || get_post_type($attachment_id) !== 'attachment' || !str_starts_with((string)get_post_mime_type($attachment_id),'image/')) return false;
   if (!wp_next_scheduled(self::HOOK,[$attachment_id])) {

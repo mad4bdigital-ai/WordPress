@@ -12,11 +12,12 @@ namespace {
  final class TestRightsFactory {public $db;function __construct(){$this->db=new TestRightsCctDb();}}
  final class TestRightsManager {function get_content_types($name){return $name==='media_rights'?new TestRightsFactory():null;}}
  final class TestRightsWpdb {
-  public $last_error=''; public $postmeta='test_postmeta'; public $queries=[]; public $lastArgs=[];
+  public $last_error=''; public $postmeta='test_postmeta'; public $queries=[]; public $lastArgs=[]; public $draft_rows=[];
   function prepare($sql,...$args){$this->queries[]=['sql'=>$sql,'args'=>$args];$this->lastArgs=$args;return $sql;}
   function get_var($sql){return 0;}
   function get_results($sql,$mode=null){
    $case=$GLOBALS['case'];
+   if(str_contains($sql,'WHERE cct_status=%s ORDER BY _ID ASC LIMIT 1001'))return $this->draft_rows;
    if(empty($case['published']))return [];
    if(count($this->lastArgs)===3 && ($case['credit_attachment']??70016)!==(int)$this->lastArgs[2])return [];
    return [[' _unused'=>1,'_ID'=>222,'attachment_id'=>$case['credit_attachment']??70016,
@@ -86,6 +87,18 @@ namespace {
   $sibling=callProcess($class,70017);
   must($sibling['status']==='already_licensed_wordpress_scaled_derivative','reciprocal WPML ES sibling shares original license');
   must($sibling['verified_wpml_sibling']===true&&$sibling['licensed_attachment_id']===70016,'WPML alias resolves to verified original-language credit');
+  $GLOBALS['wpdb']->draft_rows=[
+   ['_ID'=>224,'cct_status'=>'draft','credit_key'=>'discovered_attachment_70016','attachment_id'=>70016,'source_sha256'=>$renderedSha,'author'=>'','source_url'=>'','license_url'=>'','license_label'=>''],
+   ['_ID'=>225,'cct_status'=>'draft','credit_key'=>'discovered_attachment_70017','attachment_id'=>70017,'source_sha256'=>$renderedSha,'author'=>'','source_url'=>'','license_url'=>'','license_label'=>''],
+   ['_ID'=>226,'cct_status'=>'draft','credit_key'=>'discovered_attachment_70016','attachment_id'=>70016,'source_sha256'=>$renderedSha,'author'=>'','source_url'=>'https://example.test/unverified','license_url'=>'','license_label'=>''],
+   ['_ID'=>227,'cct_status'=>'draft','credit_key'=>'discovered_attachment_70016','attachment_id'=>70016,'source_sha256'=>str_repeat('f',64),'author'=>'','source_url'=>'','license_url'=>'','license_label'=>''],
+  ];
+  $triage=$class::review_queue_status();
+  must($triage['status']==='complete'&&$triage['total_native_draft_rows']===4,'native CCT draft review queue read-only');
+  must($triage['active_rights_review_drafts']===3&&$triage['historical_count']===1,'exact scaled duplicate excluded without changing CCT status');
+  must($triage['historical_superseded_derivative_drafts'][0]['draft_id']===224&&$triage['historical_superseded_derivative_drafts'][0]['published_credit_id']===222,'exact published credit linked');
+  must($triage['native_cct_statuses_unchanged']===true&&$triage['writes_performed']===false&&$triage['licenses_granted']===false,'no extra rights / no native CCT edits');
+
   $siblingCases=[
    'unregistered WPML family'=>['wpml_invalid'=>true],
    'nonreciprocal WPML family'=>['wpml_not_reciprocal'=>true],
@@ -116,6 +129,6 @@ namespace {
   file_put_contents($GLOBALS['dir'].'/photo.jpg','tampered-source-bytes');
   $GLOBALS['case']=['source_sha'=>$sourceSha,'published'=>true];
   must(callProcess($class,70016)['status']==='no_external_provenance','changed original bytes fail closed');
-  must(MAD4B_SCP_Distributed_Lock::$released===$GLOBALS['calls'],'native lock released in all branches');
+  must(MAD4B_SCP_Distributed_Lock::$released===$GLOBALS['calls']+2,'native lock released including original and sibling queue-probes');
  }finally{foreach(['photo.jpg','photo-scaled.jpg','other-scaled.jpg'] as $name)@unlink($GLOBALS['dir'].'/'.$name);@rmdir($GLOBALS['dir']);}
 }
