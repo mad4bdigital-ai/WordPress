@@ -474,4 +474,77 @@ with tempfile.TemporaryDirectory(prefix='mad4b-readiness-gaps-') as temp:
     assert artifact['decision'] == 'FAIL_UNCOVERED_CHANGES'
     assert 'reviewed_coverage_missing' in (Path(temp) / 'capability-impact.md').read_text()
 
+
+# Source-proofed original Ability maps and non-authorizing event names.
+# Never demand a newly introduced WordPress Ability review for an Audit
+# event or a pointer to an already-existing registered Ability. Still review
+# changed source behavior and genuinely added registrations.
+definition_map = """<?php
+final class Original {
+ const SOURCE_PREFLIGHT_ABILITY='mad4b/context-source-onboarding-preflight';
+ function register_abilities(){
+   $definitions=array(
+     self::SOURCE_PREFLIGHT_ABILITY => array('callback'=>'plan')
+   );
+   foreach ($definitions as $ability => $definition) {
+     if(wp_has_ability($ability))continue;
+     wp_register_ability($ability, array('category'=>'mad4b-read'));
+   }
+ }
+}"""
+assert reg.registered_constant_map_owner(definition_map, "SOURCE_PREFLIGHT_ABILITY")
+for negative in (
+    definition_map.replace("wp_register_ability($ability, array('category'=>'mad4b-read'));",
+                           "audit_record($ability);"),
+    definition_map.replace("foreach ($definitions as $ability => $definition)",
+                           "foreach ($foreign as $ability => $definition)"),
+    definition_map.replace("self::SOURCE_PREFLIGHT_ABILITY =>", "self::SOME_OTHER_ABILITY =>"),
+):
+    assert not reg.registered_constant_map_owner(negative, "SOURCE_PREFLIGHT_ABILITY")
+
+# This genuine ability is registered in a previously existing source tree.
+# The current Context Authority only references its name as a next-step link.
+owner_id="ability:mad4b/context-source-onboarding-preflight"
+owner=reg.registered_ability_owner(reg.git("rev-parse","HEAD").stdout.decode().strip(),owner_id)
+assert owner and owner.endswith("/class-mad4b-scp-brand-core-remote-recovery.php")
+sample = """<?php
+class Owner {
+ function register_abilities(){
+  wp_register_ability('mad4b/real-ability',array());
+  self::audited_registry_result(
+    array('nested'=>array(1,2), 'row'=>array('id'=>3)),
+    'mad4b/context-existing-folder-settings',
+    array('source_id'=>'x')
+  );
+  MAD4B_SCP_Audit::record('mad4b/context-foreign-recycle-archive-cleanup',
+    array('resource'=>array(1,2)));
+ }
+}"""
+masked=reg.mask_audit_event_literals(sample)
+assert "'mad4b/real-ability'" in masked
+assert "'mad4b/context-existing-folder-settings'" not in masked
+assert "'mad4b/context-foreign-recycle-archive-cleanup'" not in masked
+with mock.patch.object(reg, "git_text", return_value=sample):
+    ids=reg.php_capabilities(head,reg.PLUGIN+"includes/class-mad4b-scp-context-authority.php")
+    assert ids == {"ability:mad4b/real-ability"}, ids
+for not_a_registration in (
+    "<?php function register_abilities() { self::audited_registry_result(array(),"
+    "'mad4b/not-a-registration', array()); }",
+    "<?php function register_abilities() { MAD4B_SCP_Audit::record("
+    "'mad4b/another-non-ability', array()); }",
+):
+    with mock.patch.object(reg, "git_text", return_value=not_a_registration):
+        ids=reg.php_capabilities(head,reg.PLUGIN+"includes/class-mad4b-scp-foreign-recovery.php")
+        assert not ids, ids
+
+# Same literal outside the audited argument must remain in the inventory.
+actual_registration=sample.replace(
+    "self::audited_registry_result(", "wp_register_ability('mad4b/new-actual-ability',array());"
+    "self::audited_registry_result("
+)
+with mock.patch.object(reg,"git_text",return_value=actual_registration):
+    ids=reg.php_capabilities(head,reg.PLUGIN+"includes/class-mad4b-scp-context-authority.php")
+    assert "ability:mad4b/new-actual-ability" in ids
+print("PASS: READINESS_SOURCE_EVENT_VS_ABILITY 10 proof and denial cases")
+
 print("DYNAMIC_READINESS_NEGATIVE_REGRESSIONS: PASS")

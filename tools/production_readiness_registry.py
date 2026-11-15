@@ -177,16 +177,16 @@ def rest_variable_surfaces(src):
 
 
 
-def split_php_call_arguments(src, start):
-    """Split one PHP call's top-level arguments, respecting nested functions.
+def split_php_call_argument_spans(src, start):
+    """Parse top-level PHP arguments and their exact source ranges.
 
-    Static source analysis only. Incomplete/malformed source remains unknown;
-    do not invent an event hook or confuse a recurrence like "daily" with one.
+    This shared parser treats nested function/array arguments as opaque.
+    Incomplete syntax has no provable arguments.
     """
-    args, part, depth, quote, escaped = [], [], 0, None, False
-    for char in src[start:]:
+    spans, segment, depth, quote, escaped = [], start, 0, None, False
+    for pos in range(start, len(src)):
+        char = src[pos]
         if quote is not None:
-            part.append(char)
             if escaped:
                 escaped = False
             elif char == "\\":
@@ -196,24 +196,50 @@ def split_php_call_arguments(src, start):
             continue
         if char in ("'", '"'):
             quote = char
-            part.append(char)
-        elif char == "(" or char == "[":
+        elif char in "([":
             depth += 1
-            part.append(char)
-        elif char == ")" or char == "]":
+        elif char in ")]":
             if depth == 0:
                 if char != ")":
                     return []
-                args.append("".join(part).strip())
-                return args
+                spans.append((src[segment:pos].strip(), segment, pos))
+                return spans
             depth -= 1
-            part.append(char)
         elif char == "," and depth == 0:
-            args.append("".join(part).strip())
-            part = []
-        else:
-            part.append(char)
+            spans.append((src[segment:pos].strip(), segment, pos))
+            segment = pos + 1
     return []
+
+
+def split_php_call_arguments(src, start):
+    """Retain original Cron scanner API using shared source boundaries."""
+    return [value for value, _, _ in split_php_call_argument_spans(src, start)]
+
+
+AUDIT_EVENT_CALL = re.compile(
+    r"(?:\b(?:self|static)::audited_registry_result|"
+    r"\bMAD4B_SCP_Audit::record)\s*\(", re.I
+)
+
+
+def mask_audit_event_literals(src):
+    """Only mask the proven event arg of a known audit writer.
+
+    WordPress Ability registration anywhere else in the same PHP source
+    stays visible. Ambiguous nested calls or dynamic strings remain unmasked.
+    """
+    masks = []
+    for call in AUDIT_EVENT_CALL.finditer(src):
+        spans = split_php_call_argument_spans(src, call.end())
+        index = 1 if "audited_registry_result" in call.group(0) else 0
+        if len(spans) <= index:
+            continue
+        literal, start, end = spans[index]
+        if re.fullmatch(r"""['"]mad4b/[a-z0-9][a-z0-9._/-]{1,120}['"]""", literal):
+            masks.append((start,end))
+    for start, end in reversed(masks):
+        src = src[:start] + "'__audit_event_only__'" + src[end:]
+    return src
 
 
 def cron_event_candidates(src):
@@ -252,7 +278,8 @@ def php_capabilities(ref, path):
         whole = match.group(0)
         return whole[:start] + "__rest_namespace__" + whole[end:]
 
-    ability_source = REST_ROUTE.sub(mask_rest_namespace, src)
+    ability_source = REST_ROUTE.sub(mask_rest_namespace,
+                                    mask_audit_event_literals(src))
     # WordPress event/filter hooks are not wp_register_ability registrations.
     # Mask only the first argument in add_action/add_filter, not same-named
     # Ability literals which may still appear elsewhere in this source.
@@ -305,6 +332,24 @@ def registered_surfaces(ref, path):
     return rows
 
 
+def registered_constant_map_owner(src, const_name):
+    """Recognize an existing literal-keyed Ability map, not a catalog ref.
+
+    This matches the first-party definitions -> foreach -> WordPress
+    registration contract with no operation-name hardcoding.
+    """
+    if not re.search(r"\bfunction\s+register_abilities\s*\(", src):
+        return False
+    if len(re.findall(r"\$definitions\s*=\s*(?:array\s*\(|\[)", src)) != 1:
+        return False
+    return all((
+        re.search(r"(?:self|static)::" + re.escape(const_name) + r"\s*=>", src),
+        re.search(r"foreach\s*\(\s*\$definitions\s+as\s+"
+                  r"\$ability\s*=>\s*\$definition\s*\)", src),
+        re.search(r"wp_register_ability\s*\(\s*\$ability\s*,", src),
+    ))
+
+
 def registered_ability_owner(ref, ability):
     """Prove a distinct registered Ability still exists elsewhere in Git.
 
@@ -345,6 +390,8 @@ def registered_ability_owner(ref, ability):
             if (re.search(r"\bfunction\s+register_abilities\s*\(", src)
                     and re.search(r"\$this->add_ability\s*\(\s*(?:self|static)::" +
                                   re.escape(const_name) + r"\b", src)):
+                return path
+            if registered_constant_map_owner(src, const_name):
                 return path
     return None
 
