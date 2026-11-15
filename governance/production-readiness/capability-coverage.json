@@ -20401,6 +20401,43 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-subject-user-bridge.php",
+      "source_blob_sha": "a1f0d40d02af858d31a837a96fd9a94adf90349d",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/oauth-multi-user-tenant-runtime.php"
+      ],
+      "owner_role": "MAD4B original first-party OAuth/runtime source code reviewer — CI only",
+      "review_rationale": "Original OAuth Subject bridge maps only the bearer previously verified by OAuth Resource Bridge to its exact independently enrolled WordPress user on four named MCP routes, never to the compatibility administrator or to a Host NHI. The original multi-user PHP7.4/8.5 runtime fixture verifies real source code including cryptographic-verification-status fake, local Site UUID mismatch, revoked actual WP capabilities, developer-resource mapping and negative error-shaped evidence for bearer active, Site Profile origin and OAuth enrollment, issuer/subject policy, user enrollment, connection capability and WP user readback. Pre-fix a WP_Error or truthy scalar from bearer/provider policy could map an unverified subject into another WordPress user. Current source requires exact boolean true and user object with exact integer WordPress ID; failed checks never mutate the current WordPress principal. The fixture deliberately mocks token verification and grants no real OAuth access; independent signed-token, site profile, Host and Production authority are still required. Exact current Git source blob pinned; operational live readback and independent Production decision are not established.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-backend-registry.php",
+      "source_blob_sha": "bd6d4d1b14c43ee49dc873c6e98f8c8919acf28d",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-backend-registry-contract.php"
+      ],
+      "owner_role": "MAD4B original first-party OAuth/runtime source code reviewer — CI only",
+      "review_rationale": "Original dynamic Runtime Backend Registry is discovery and nonauthorizing ranking only; execution remains with separately signed original providers. First-party native PHP7.4/8.5 contract checks positive Docker and negative SSH examples, safe non-write fallbacks only, explicit preset owner, and negative error-shaped credentials/metadata. Pre-fix the public ready() treated WP_Error, string and numeric flags as certified, and malformed backend operation arrays or Host snapshot returned PHP fatal; updated registry requires exact boolean true for discovery/configured/reachable/certified/authorized/identity/isolation, validates operation and readback time shape without stringifying WP_Error, denies nonboolean administrator preset changes, and returns nonauthorizing unknown on a failed Site Profile/Host/STDIO observation. It does not issue keys, grants, SSH or Docker execution, Production eligibility or any automatic fallbacks for writes. Exact current Git source blob pinned; operational live readback and independent Production decision are not established.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "code_change_rules": {

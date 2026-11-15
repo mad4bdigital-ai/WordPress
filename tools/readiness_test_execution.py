@@ -89,6 +89,8 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "wp-content/plugins/mad4b-site-control-plane/tests/developer-external-backend-discovery-contract.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/developer-runner-lifecycle-fetch-contract.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/runtime-backend-registry-contract.php",
+    # Original OAuth subject remapping regression with fake site/client, no token validation or live grant.
+    "wp-content/plugins/mad4b-site-control-plane/tests/oauth-multi-user-tenant-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/runtime-backend-deactivation-contract.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/runtime-runner-bridge-contract.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/performance-differential-diagnostic-contract.php",
