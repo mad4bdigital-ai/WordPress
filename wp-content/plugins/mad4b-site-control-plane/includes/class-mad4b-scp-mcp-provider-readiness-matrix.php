@@ -148,8 +148,12 @@ final class MAD4B_SCP_MCP_Provider_Readiness_Matrix {
 
     public static function matrix($input=array()) {
         $input=is_array($input)?$input:array();
-        $scope=sanitize_key((string)($input['provider_id']??''));
-        if($scope!==''&&!preg_match('/^[a-z][a-z0-9_-]{0,63}$/D',$scope))
+        // Provider IDs are security identities, not editable display names:
+        // silently sanitize_key()'ing caller input could address a DIFFERENT
+        // provider (e.g. "a/b" -> "ab"). Reject non-canonical identities.
+        $scope=$input['provider_id']??'';
+        if(!is_string($scope) || ($scope!=='' &&
+            !preg_match('/^[a-z][a-z0-9_-]{0,63}$/D',$scope)))
             return new WP_Error('mad4b_mcp_readiness_provider_invalid','Provider identifier invalid.');
         $policy=self::policy();$providers=array();
         $descriptors=class_exists('MAD4B_SCP_Provider_Transport_Registry',false)
@@ -257,8 +261,16 @@ final class MAD4B_SCP_MCP_Provider_Readiness_Matrix {
 
     public static function preflight($input=array()) {
         $input=is_array($input)?$input:array();
-        $provider=sanitize_key((string)($input['provider_id']??''));
-        if($provider==='')return new WP_Error('mad4b_mcp_provider_required','Choose a provider from the live registry.');
+        $provider=$input['provider_id']??'';
+        if(!is_string($provider))
+            return new WP_Error('mad4b_mcp_readiness_provider_invalid',
+                'Provider identity must be a canonical registry key.');
+        if($provider==='')
+            return new WP_Error('mad4b_mcp_provider_required',
+                'Choose a provider from the live registry.');
+        if(!preg_match('/^[a-z][a-z0-9_-]{0,63}$/D',$provider))
+            return new WP_Error('mad4b_mcp_readiness_provider_invalid',
+                'Provider identity must be the exact canonical registry key.');
         $report=self::matrix(array('provider_id'=>$provider));
         if(is_wp_error($report))return $report;
         return array(

@@ -6051,6 +6051,60 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing provider/content/security and MCP controls remain authoritative for any actual content writes. Catalog source is a read-only planner and the referenced orchestration ability belongs to a separately governed owner.",
       "review_rationale": "Executed original Catalog Intent class on PHP 7.4/8.5. Exact read-only WordPress Ability registration and can_read permission, closed/bounded link evidence, canonical HTTPS and functional query preservation, no localhost/userinfo paths, direct listing-card primary over duplicate footer, separate complementary/filter/review lanes and explicit relationships were tested. It never fetches pages, creates ContentJobs or publishes."
+    },
+    {
+      "id": "ability:mad4b/mcp-provider-readiness-matrix",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/mcp-provider-matrix-readonly-inheritance-hermetic.php"
+      ],
+      "owner_role": "MAD4B provider-neutral native MCP evidence source reviewer, CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP/Provider/Execution controls retain all actual provider readiness and write admission; read-only source fields cannot certify OAuth, protocol handshake or privileged apply.",
+      "review_rationale": "Original MCP Provider Readiness PHP class executed in PHP 7.4/8.5 using source provider/ability/peer fixtures. Exactly two private read-only abilities are registered. Discovered provider metadata and local wp_get_abilities do not attest authenticated initialize, tools/list, client binding, tool schema or mutation. Hostile policy JSON cannot disable these inherited gates. Found and fixed an actual identity bug: original matrix/preflight previously sanitized malformed provider IDs into another ID; now noncanonical values, unexpected separators, uppercase aliases and non-strings fail closed before lookup. No live OAuth or server initialization occurs."
+    },
+    {
+      "id": "ability:mad4b/mcp-provider-readiness-preflight",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/mcp-provider-matrix-readonly-inheritance-hermetic.php"
+      ],
+      "owner_role": "MAD4B provider-neutral native MCP evidence source reviewer, CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP/Provider/Execution controls retain all actual provider readiness and write admission; read-only source fields cannot certify OAuth, protocol handshake or privileged apply.",
+      "review_rationale": "Original MCP Provider Readiness PHP class executed in PHP 7.4/8.5 using source provider/ability/peer fixtures. Exactly two private read-only abilities are registered. Discovered provider metadata and local wp_get_abilities do not attest authenticated initialize, tools/list, client binding, tool schema or mutation. Hostile policy JSON cannot disable these inherited gates. Found and fixed an actual identity bug: original matrix/preflight previously sanitized malformed provider IDs into another ID; now noncanonical values, unexpected separators, uppercase aliases and non-strings fail closed before lookup. No live OAuth or server initialization occurs."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-provider-readiness-matrix.php",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/mcp-provider-matrix-readonly-inheritance-hermetic.php"
+      ],
+      "owner_role": "MAD4B provider-neutral native MCP evidence source reviewer, CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP/Provider/Execution controls retain all actual provider readiness and write admission; read-only source fields cannot certify OAuth, protocol handshake or privileged apply.",
+      "review_rationale": "Original MCP Provider Readiness PHP class executed in PHP 7.4/8.5 using source provider/ability/peer fixtures. Exactly two private read-only abilities are registered. Discovered provider metadata and local wp_get_abilities do not attest authenticated initialize, tools/list, client binding, tool schema or mutation. Hostile policy JSON cannot disable these inherited gates. Found and fixed an actual identity bug: original matrix/preflight previously sanitized malformed provider IDs into another ID; now noncanonical values, unexpected separators, uppercase aliases and non-strings fail closed before lookup. No live OAuth or server initialization occurs."
     }
   ],
   "lifecycle": [],
@@ -15076,6 +15130,25 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing governance/platform/security or provider source controls remain in place; first-party source is executed in isolated PHP without external writes.",
       "review_rationale": "Original Catalog Intent source directly tested for bounded link input, functional filtering/pagination preservation, HTTPS URL shape, same-URL and entity-key de-duplication, explicit primary-to-complementary relationship mapping, no crawling, no copy, no real pricing verification, and no WordPress mutation. This source review does not certify the separate Content Orchestration executor or publisher."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-provider-readiness-matrix.php",
+      "source_blob_sha": "86104f53ec5652621f3c42e5a4fd9709eae1d207",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/mcp-provider-matrix-readonly-inheritance-hermetic.php"
+      ],
+      "owner_role": "MAD4B original MCP provider-scoping security source reviewer, nonauthorizing",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance/platform/security controls remain authoritative; exact changed PHP source hash is bound to newly executed original-class identity/handshake and policy-downscoping test.",
+      "review_rationale": "Reviewed complete original MCP provider catalog read and optional inheritance policy. Changed matrix/preflight to reject malformed provider_id raw input instead of sanitizing to a different registered identity. Hermetic PHP on 7.4 and 8.5 exercises source registration, local versus actual handshake distinction, missing providers, 7 malformed identities, production default, hostile JSON disabling OAuth and unattended mutations. This is an actual source behavior fix, but production deployment and third-party protocol tests remain separate."
     }
   ],
   "code_change_rules": {
