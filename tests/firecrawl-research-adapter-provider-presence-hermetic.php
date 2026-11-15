@@ -57,8 +57,8 @@ adapter_check(!call_user_func($ability['permission_callback'],[]),
 $GLOBALS['adapter_write']=true;
 $unauthorized=call_user_func($ability['permission_callback'],[]);
 adapter_check(is_wp_error($unauthorized)
- && $unauthorized->get_error_code()==='mad4b_authorization_unavailable',
- 'Original Adapter Base must refuse capture without independent central mutation authorization');
+ && $unauthorized->get_error_code()==='mad4b_adapter_unavailable',
+ 'Original Adapter Base must deny missing provider before requesting any central mutation grant');
 adapter_check($a->is_available()===false,
  'Bridge alone cannot satisfy the Adapter readiness predicate');
 $preMount=$a->mutation_ability_runtime_eligibility('mad4b/firecrawl-research-capture');
@@ -75,6 +75,10 @@ adapter_check($a->is_available()===true,
  'Both original expected runtime classes make adapter available');
 adapter_check($a->mutation_ability_runtime_eligibility('mad4b/firecrawl-research-capture')===true,
  'Ready provider may become a mutation catalog candidate, not a grant');
+$no_grant=call_user_func($ability['permission_callback'],[]);
+adapter_check(is_wp_error($no_grant)
+ && $no_grant->get_error_code()==='mad4b_authorization_unavailable',
+ 'Available provider still requires an independent central mutation grant');
 adapter_check(is_wp_error($a->mutation_ability_runtime_eligibility('mad4b/other-ability')),
  'Unknown ability may not inherit provider mount eligibility');
 $yes=$a->capture(['job_id'=>'fixture','draft_post_id'=>10,'source_url'=>'https://example.invalid']);

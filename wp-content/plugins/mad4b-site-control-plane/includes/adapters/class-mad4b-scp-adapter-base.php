@@ -152,6 +152,16 @@ abstract class MAD4B_SCP_Adapter_Base {
 				&& MAD4B_SCP_Policy::can_native_content_draft( $input );
 			$granted = call_user_func( $permission, $input );
 			if ( is_wp_error( $granted ) || ( ! $granted && ! $native_draft ) ) return $granted;
+			// The Write catalog is request-local and can cache a previously
+			// ready adapter. A provider that disappears after mounting must not
+			// retain permission via the already-registered WordPress Ability.
+			// Reuse the SAME provider-specific runtime gate as the mount resolver;
+			// never infer write authority from a cached descriptor or annotation.
+			$runtime_eligibility = $this->mutation_ability_runtime_eligibility( $ability_name );
+			if ( true !== $runtime_eligibility ) return is_wp_error( $runtime_eligibility )
+				? $runtime_eligibility
+				: new WP_Error( 'mad4b_adapter_runtime_eligibility_unverified',
+					'Adapter mutation is not runtime eligible.' );
 			// Direct, explicitly write-scoped OAuth content draft requests can
 			// enroll a user-owned execution actor. The existing compact ChatGPT
 			// read-scope path must instead use the signed prepared dispatcher.
