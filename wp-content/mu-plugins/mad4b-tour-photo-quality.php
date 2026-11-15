@@ -159,6 +159,25 @@ final class MAD4B_Tour_Photo_Quality_V1 {
         return $result?array_keys($result):$fields;
     }
     private static function focal_points(int $tour):array {
+        // Only a focus bound to the current verified ORIGINAL photo counts.
+        $v2=get_post_meta($tour,'mad4b_media_frame_focus_v2',true);
+        if(is_array($v2)&&$v2){
+            $out=[];
+            foreach(array_slice($v2,0,80) as $row){
+                if(!is_array($row))continue;
+                $slot=(string)($row['slot']??'');
+                $old=(string)($row['source_sha256']??'');
+                $x=$row['focus_x']??null;$y=$row['focus_y']??null;
+                if(!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]{2,90}$/D',$slot)
+                    ||!preg_match('/^[a-f0-9]{64}$/D',$old)
+                    ||!is_numeric($x)||!is_numeric($y)||$x<0||$x>100||$y<0||$y>100)continue;
+                $ids=self::image_ids((string)get_post_meta($tour,$slot,true),$tour);
+                $o=self::origin((int)($ids['ids'][0]??0));
+                if(empty($o['verified'])||!hash_equals($old,(string)($o['origin_sha256']??'')))continue;
+                $out[$slot]=['x'=>(float)$x,'y'=>(float)$y];
+            }
+            return $out;
+        }
         $raw=get_post_meta($tour,'_mad4b_media_focal_points_v1',true);
         if(!is_array($raw))return [];
         $out=[];
@@ -324,6 +343,26 @@ final class MAD4B_Tour_Photo_Quality_V1 {
             'cross_tour_image_reuse_allowed'=>true,'ai_detection_complete'=>false,
             'ai_limitations'=>'Positive generator tags are conclusive for blocking; absence of metadata does not prove photographic origin'];
     }
+    /** A parent attachment link is not subject proof: only positive subject
+     * signals can enter the shortlist, and none authorizes publication.
+     * A verified original already used as the vertical is retained for review.
+     */
+    private static function candidate_subject_signal(int $tour,array $entry,string $role,int $id):array {
+        if(!empty($entry['editorial_visual_verified']))
+            return ['eligible'=>true,'basis'=>'explicit_editorial_visual_review','still_needs_rights_review'=>true];
+        $matches=(array)($entry['activity_stem_matches_in_label']??[]);
+        if(count($matches)>0)
+            return ['eligible'=>true,'basis'=>'activity_terms_in_attachment_label_only','still_needs_visual_and_rights_review'=>true];
+        if($role==='vertical'){
+            $current=self::image_ids((string)get_post_meta($tour,'image_vertical',true),$tour);
+            $old=(int)($current['ids'][0]??0);
+            $before=self::origin($old);$proposed=self::origin($id);
+            if(!empty($before['verified'])&&!empty($proposed['verified'])
+                &&hash_equals((string)$before['origin_sha256'],(string)$proposed['origin_sha256']))
+                return ['eligible'=>true,'basis'=>'existing_vertical_original_retained','still_needs_visual_and_rights_review'=>true];
+        }
+        return ['eligible'=>false,'basis'=>'no_positive_tour_subject_signal'];
+    }
     /** Iterative, non-mutating candidate selection with progressively wider source evidence. */
     public static function selection_loop(int $tour):array {
         if(!class_exists('MAD4B_Tour_Media_Reconcile_V1',false))return self::fail('media_reconcile_missing');
@@ -346,8 +385,10 @@ final class MAD4B_Tour_Photo_Quality_V1 {
                         'grid'=>65,'gallery'=>65]];
             }
         }
-        $selected=[];$origins=[];$passes=[];
-        $roles=['vertical','grid','grid','grid','grid'];
+        $selected=[];$origins=[];$passes=[];$held_subject=[];
+        $slot_fields=self::hero_fields($tour);
+        $roles=array_map(static fn($field)=>$field==='image_vertical'?'vertical':'grid',$slot_fields);
+        $slot_total=count($roles);
         foreach(['signed_tour_media_association','wordpress_parent_post','exact_tour_title_prefix',
                  'staged_source_gallery_review_only','existing_verified_tour_candidate'] as $pass){
             $added=[];
@@ -361,14 +402,20 @@ final class MAD4B_Tour_Photo_Quality_V1 {
                     $o=self::origin($id);if(empty($o['verified'])||isset($origins[$o['origin_sha256']]))continue;
                     if(self::provenance($id)['status']==='synthetic_confirmed')continue;
                     if($role==='vertical'&&(float)($entry['aspect_ratio']??2)>1.0)continue;
+                    $subject=self::candidate_subject_signal($tour,$entry,$role,$id);
+                    if(empty($subject['eligible'])){
+                        $held_subject[$id]=['id'=>$id,'reason'=>$subject['basis']];
+                        continue;
+                    }
                     $score=(float)($entry['role_scores'][$role]??0);
                     if($score>$best_score){$best=['id'=>$id,'sha'=>$o['origin_sha256'],'evidence'=>$evidence,
-                        'provenance'=>self::provenance($id)['status']];$best_score=$score;}
+                        'provenance'=>self::provenance($id)['status'],
+                        'subject_signal'=>$subject['basis'],'needs_visual_and_rights_review'=>true];$best_score=$score;}
                 }
                 if($best){$selected[$slot]=$best;$origins[$best['sha']]=true;$added[]=$slot;}
             }
-            $passes[]=['criterion_pass'=>$pass,'selected_hero_slots'=>$added,'remaining_slots'=>5-count($selected)];
-            if(count($selected)===5)break;
+            $passes[]=['criterion_pass'=>$pass,'selected_hero_slots'=>$added,'remaining_slots'=>$slot_total-count($selected)];
+            if(count($selected)===$slot_total)break;
         }
         ksort($selected);
         // Gallery loop: first keep every existing non-synthetic origin; then
@@ -377,7 +424,7 @@ final class MAD4B_Tour_Photo_Quality_V1 {
         $gallery_raw=(string)get_post_meta($tour,'gallery',true);
         $bulk=self::bulk_reuse_evidence($tour,$gallery_raw);
         $existing=self::image_ids($gallery_raw,$tour);
-        $gallery_proposal=[];$gallery_sha=[];$gallery_dhash=[];$rejected=['synthetic'=>0,'exact_duplicate'=>0,'near_duplicate'=>0,'unverified'=>0];
+        $gallery_proposal=[];$gallery_sha=[];$gallery_dhash=[];$rejected=['synthetic'=>0,'exact_duplicate'=>0,'near_duplicate'=>0,'unverified'=>0,'subject_unsubstantiated'=>0];
         foreach(($bulk['untrusted']?[]:$existing['ids']) as $id){
             $o=self::origin((int)$id);
             if(empty($o['verified'])){$rejected['unverified']++;continue;}
@@ -395,6 +442,9 @@ final class MAD4B_Tour_Photo_Quality_V1 {
                 if(count($gallery_proposal)>=max(24,count($existing['ids'])))break;
                 if(($entry['source_evidence']??'')!==$pass)continue;
                 $id=(int)($entry['canonical_attachment_id']??0);
+                if(empty(self::candidate_subject_signal($tour,$entry,'gallery',$id)['eligible'])){
+                    $rejected['subject_unsubstantiated']++;continue;
+                }
                 $o=self::origin($id);
                 if(empty($o['verified'])){$rejected['unverified']++;continue;}
                 if(self::provenance($id)['status']==='synthetic_confirmed'){$rejected['synthetic']++;continue;}
@@ -407,9 +457,15 @@ final class MAD4B_Tour_Photo_Quality_V1 {
             }
             $gallery_passes[]=['criterion_pass'=>$pass,'new_candidates'=>$accepted,'total_proposed'=>count($gallery_proposal)];
         }
+        $proposed_by_field=[];
+        foreach($selected as $index=>$candidate)if(isset($slot_fields[$index]))$proposed_by_field[$slot_fields[$index]]=$candidate;
         return ['contract'=>self::CONTRACT,'post_id'=>$tour,'mode'=>'proposal_only_no_automatic_writes',
-            'hero_ready'=>count($selected)===5,'distinct_photo_origins'=>count($origins),'passes'=>$passes,
-            'proposed_hero_slots'=>$selected,'proposed_gallery_count'=>count($gallery_proposal),
+            'hero_ready'=>count($selected)===$slot_total,'hero_target_slots'=>$slot_fields,
+            'visual_and_rights_review_required'=>true,'ready_to_auto_apply'=>false,
+            'withheld_subject_candidates'=>count($held_subject),
+            'withheld_subject_candidate_examples'=>array_slice(array_values($held_subject),0,10),
+            'distinct_photo_origins'=>count($origins),'passes'=>$passes,
+            'proposed_hero_slots'=>$selected,'proposed_hero_by_field'=>$proposed_by_field,'proposed_gallery_count'=>count($gallery_proposal),
             'proposed_gallery_items'=>$gallery_proposal,'gallery_passes'=>$gallery_passes,
             'gallery_rejected'=>$rejected,'gallery_existing_images_not_deleted'=>true,
             'current_bulk_gallery_held_for_review'=>$bulk['untrusted'],
@@ -419,7 +475,7 @@ final class MAD4B_Tour_Photo_Quality_V1 {
             'pending'=>'visual subject accuracy, licensing and source provenance editorial review'];
     }
     public static function state_sha(int $tour):string{
-        $keys=array_merge(['gallery'],self::hero_fields($tour),['_thumbnail_id','_mad4b_media_focal_points_v1','_mad4b_media_subject_evidence_v1','_mad4b_tour_media_association_v1']);
+        $keys=array_merge(['gallery'],self::hero_fields($tour),['_thumbnail_id','_mad4b_media_focal_points_v1','mad4b_media_frame_focus_v2','_mad4b_media_subject_evidence_v1','_mad4b_tour_media_association_v1']);
         $parts=[];foreach($keys as $key){
             $v=get_post_meta($tour,$key,true);
             $parts[$key]=is_scalar($v)?(string)$v:wp_json_encode($v,JSON_UNESCAPED_SLASHES);
@@ -561,7 +617,7 @@ add_action('mad4b_tour_photo_quality_scan',[MAD4B_Tour_Photo_Quality_V1::class,'
 add_action('mad4b_tour_photo_quality_scan_one',[MAD4B_Tour_Photo_Quality_V1::class,'scheduled_one']);
 $mad4b_photo_quality_meta_changed=static function($meta_id,$post_id,$key,$value){
     if(!in_array((string)$key,['gallery','image_vertical','_thumbnail_id',
-        '_mad4b_media_focal_points_v1','_mad4b_media_subject_evidence_v1',
+        '_mad4b_media_focal_points_v1','mad4b_media_frame_focus_v2','_mad4b_media_subject_evidence_v1',
         '_mad4b_tour_media_association_v1'],true)
         && !preg_match('/^grid_image_[a-zA-Z0-9_]{1,80}$/D',(string)$key))return;
     if(get_post_type((int)$post_id)!=='tours-and-activities')return;
