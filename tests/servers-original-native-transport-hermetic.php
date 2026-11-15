@@ -38,6 +38,21 @@ class MAD4B_SCP_CLI_Execution_Context {
     public static function resolve($operation,$write=false){return self::$facts;}
 }
 class MAD4B_SCP_Site_Profile {
+    public static $profile_environment='staging';
+    public static $clone_binding=true;
+    public static $same_environment=true;
+    public static function status(){
+        return array('configured'=>true,'authority_ready'=>true,
+            'site_uuid'=>self::site_uuid(),
+            'same_origin_clone_protection'=>self::$clone_binding,
+            'deployment_binding_match'=>self::$clone_binding,
+            'origin_match'=>true,
+            'environment_match'=>self::$same_environment,
+            'configured_environment'=>self::$profile_environment,
+            'environment'=>self::$profile_environment,
+            'canonical_origin'=>'https://tours.dev.mad4b.com',
+            'mutation_pending_audit'=>false);
+    }
     public static function site_uuid(){return '11111111-1111-4111-8111-111111111111';}
     public static function origin_enrolled(){return true;}
     public static function site_urls_match_enrollment(){return true;}
@@ -92,6 +107,30 @@ if($root) {
 } else {
     server_assert(is_wp_error(MAD4B_SCP_Servers::can_vps_local_transport()),
        'Non-root CLI never inherits Host transport');
+}
+// Verified Host read is site/environment-derived, not Staging-only; write
+// remains separately bound to an exact active registered Staging Host NHI.
+if($root){
+    MAD4B_SCP_Site_Profile::$profile_environment='production';
+    MAD4B_SCP_CLI_Execution_Context::$facts['environment']='production';
+    server_assert(MAD4B_SCP_Servers::can_vps_local_transport()===true,
+       'Fully enrolled Production CLI may inspect original read-only tools');
+    server_assert(MAD4B_SCP_Servers::can_vps_local_write_transport()===false,
+       'Production read proof never promotes this Staging-only local writer');
+    MAD4B_SCP_Site_Profile::$same_environment=false;
+    server_assert(is_wp_error(MAD4B_SCP_Servers::can_vps_local_transport()),
+       'Foreign WordPress/Profile environment drift rejects Production CLI read');
+    MAD4B_SCP_Site_Profile::$same_environment=true;
+    MAD4B_SCP_CLI_Execution_Context::$facts['environment']='staging';
+    server_assert(is_wp_error(MAD4B_SCP_Servers::can_vps_local_transport()),
+       'Staging CLI assertion cannot inspect Production enrolled site');
+    MAD4B_SCP_CLI_Execution_Context::$facts['environment']='production';
+    MAD4B_SCP_Site_Profile::$clone_binding=false;
+    server_assert(is_wp_error(MAD4B_SCP_Servers::can_vps_local_transport()),
+       'Missing Production host binding denies local read');
+    MAD4B_SCP_Site_Profile::$clone_binding=true;
+    MAD4B_SCP_Site_Profile::$profile_environment='staging';
+    MAD4B_SCP_CLI_Execution_Context::$facts['environment']='staging';
 }
 $original=MAD4B_SCP_Execution_Authority::$actor;
 MAD4B_SCP_Execution_Authority::$actor['wp_user_id']=128;

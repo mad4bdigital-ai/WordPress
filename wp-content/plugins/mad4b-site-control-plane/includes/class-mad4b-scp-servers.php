@@ -840,15 +840,34 @@ final class MAD4B_SCP_Servers {
                     MAD4B_SCP_Capability_Transport_Routing::VPS )
             || ! MAD4B_Hub_Universal_VPS_V1::scoped() ) return false;
         $facts = MAD4B_SCP_CLI_Execution_Context::resolve('authority.read',false);
-        return is_array($facts)
-            && ! empty($facts['read_context_verified'])
-            && ! empty($facts['host_site_binding_verified'])
+        $profile = MAD4B_SCP_Site_Profile::status();
+        // The original enrolled Site Profile owns environment identity, not
+        // an inherited fixed 'staging' assumption. A production CLI can read
+        // only after its *independent* site/host proof is verified; the
+        // separate registered Host apply/write gate is not relaxed here.
+        return is_array($facts) && is_array($profile)
+            && !empty($facts['read_context_verified'])
+            && !empty($facts['host_site_binding_verified'])
             && empty($facts['blockers'])
-            && ($facts['environment']??'') === 'staging'
+            && !empty($profile['configured'])
+            && !empty($profile['authority_ready'])
+            && !empty($profile['same_origin_clone_protection'])
+            && !empty($profile['deployment_binding_match'])
+            && !empty($profile['environment_match'])
+            && !empty($profile['origin_match'])
+            && empty($profile['mutation_pending_audit'])
+            && is_string($facts['environment']??null)
+            && '' !== $facts['environment']
+            && hash_equals((string)$profile['configured_environment'],
+                $facts['environment'])
+            && hash_equals((string)$profile['environment'],
+                $facts['environment'])
             && hash_equals((string)MAD4B_SCP_Site_Profile::site_uuid(),
                 (string)($facts['site_uuid']??''))
-            && ($facts['canonical_origin']??'') ===
-                untrailingslashit(home_url('/'));
+            && hash_equals((string)$profile['canonical_origin'],
+                (string)($facts['canonical_origin']??''))
+            && hash_equals((string)$profile['canonical_origin'],
+                untrailingslashit(home_url('/')));
     }
 
     /** Host access requires the existing, registry-bound non-impersonating actor. */
@@ -871,11 +890,26 @@ final class MAD4B_SCP_Servers {
 				MAD4B_SCP_Capability_Transport_Routing::VPS ) ) return false;
 		if ( ! MAD4B_Hub_Universal_VPS_V1::scoped() ) return false;
 		$actor = MAD4B_SCP_Execution_Authority::resolve( 'apply' );
+		$profile = MAD4B_SCP_Site_Profile::status();
+		// An otherwise trusted Staging Host NHI must not be carried over
+		// to an enrolled Production site by a stale CLI/registry assertion.
+		// Real Host write admission requires exact current Site Profile proof.
+		if ( ! is_array($profile)
+			|| empty($profile['configured'])
+			|| empty($profile['authority_ready'])
+			|| empty($profile['same_origin_clone_protection'])
+			|| empty($profile['deployment_binding_match'])
+			|| empty($profile['environment_match'])
+			|| empty($profile['origin_match'])
+			|| !empty($profile['mutation_pending_audit']) ) return false;
 		if ( ! is_array( $actor ) || empty( $actor['authenticated'] )
 			|| empty( $actor['registry_bound'] )
 			|| ( $actor['transport'] ?? '' ) !== 'host_cli'
 			|| ( $actor['subject_type'] ?? '' ) !== 'host_operator'
 			|| ( $actor['environment'] ?? '' ) !== 'staging'
+			|| (string)($profile['configured_environment']??'') !== (string)$actor['environment']
+			|| (string)($profile['environment']??'') !== (string)$actor['environment']
+			|| (string)($profile['site_uuid']??'') !== (string)($actor['site_uuid']??'')
 			|| ! is_string( $actor['subject_fingerprint'] ?? null )
 			|| ! preg_match( '/^[a-f0-9]{64}$/D', $actor['subject_fingerprint'] )
 			|| ! MAD4B_SCP_Site_Profile::origin_enrolled()
