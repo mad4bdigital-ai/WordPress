@@ -790,6 +790,101 @@ final class MAD4B_Tour_Photo_Quality_V1 {
         }
         return $issues;
     }
+    /** Live, demand-driven review backlog. One verified ORIGINAL per unit of work,
+     * regardless of how many tours reuse it. The hero weight is derived from
+     * dynamically discovered Elementor/JetEngine fields, not a static slot map.
+     * TourRate property options remain options, never guaranteed vessels.
+     * This does not classify, publish, download or authorize any image.
+     */
+    public static function review_queue():array {
+        $ids=get_posts(['post_type'=>'tours-and-activities','post_status'=>'publish',
+            'posts_per_page'=>1001,'fields'=>'ids','orderby'=>'ID','order'=>'ASC']);
+        if(!is_array($ids)||count($ids)>1000)return ['status'=>'bounded_catalog_overflow',
+            'complete'=>false,'pages_seen'=>is_array($ids)?count($ids):0];
+        $originals=[];$properties=[];$unmapped=0;$usageCount=0;$affected=[];
+        foreach($ids as $rawId){
+            $tour=(int)$rawId;$audit=self::audit($tour);
+            $slots=self::hero_fields($tour);$slotRank=array_flip($slots);
+            $rateLinks=null;
+            foreach((array)($audit['issues']??[]) as $issue){
+                $code=(string)($issue['code']??'');
+                if($code==='media_origin_provenance_unverified'){
+                    $field=(string)($issue['field']??'');
+                    if(!isset($slotRank[$field])){$unmapped++;continue;}
+                    $source=MAD4B_Gallery_Resolution_Engine_V1::inspect(
+                        (string)get_post_meta($tour,$field,true),$tour);
+                    $id=(int)($source['render_value']??0);
+                    $origin=$id?self::origin($id):[];
+                    $root=(int)($origin['origin_attachment_id']??0);
+                    $sha=(string)($origin['origin_sha256']??'');
+                    if(empty($origin['verified'])||!preg_match('/^[a-f0-9]{64}$/D',$sha)){
+                        $unmapped++;continue;
+                    }
+                    if(!isset($originals[$sha])){
+                        $m=wp_get_attachment_metadata($root);
+                        $originals[$sha]=['origin_sha256'=>$sha,
+                          'root_attachment_id'=>$root,'root_attachment_title'=>sanitize_text_field((string)get_the_title($root)),
+                          'representative_attachment_id'=>$id,
+                          'photo_uses'=>0,'affected_tour_ids'=>[],'source_count'=>1,
+                          'slot_priority_score'=>0,
+                          'exif_camera_claim_present'=>!empty($m['image_meta']['camera']),
+                          'verified_import_source_declared'=>
+                            get_post_meta($root,'_mad4b_verified_source_sha256',true)!=='',
+                          'photographic_origin_status'=>'origin_unverified',
+                          'decision'=>'needs_original_photographic_authenticity_evidence',
+                          'neither_ai_nor_photo_assumed'=>true,
+                          'media_rights_not_automatically_granted'=>true];
+                    }
+                    $originals[$sha]['photo_uses']++;
+                    $originals[$sha]['slot_priority_score']+=max(1,count($slots)-(int)$slotRank[$field]);
+                    if(!in_array($tour,$originals[$sha]['affected_tour_ids'],true)
+                       &&count($originals[$sha]['affected_tour_ids'])<60)
+                        $originals[$sha]['affected_tour_ids'][]=$tour;
+                    $usageCount++;$affected[$tour]=true;
+                }elseif($code==='media_rate_property_photo_coverage_gap'){
+                    if($rateLinks===null){$rateLinks=function_exists('shared_product_assignment_legacy_links')
+                        ?shared_product_assignment_legacy_links($tour):[];
+                        if(is_wp_error($rateLinks)||!is_array($rateLinks))$rateLinks=[];}
+                    foreach(array_slice(array_map('intval',(array)($issue['property_ids']??[])),0,80) as $pid){
+                        if($pid<1||get_post_type($pid)!=='properties'||get_post_status($pid)!=='publish')continue;
+                        if(!isset($properties[$pid]))$properties[$pid]=[
+                          'property_id'=>$pid,'property_title'=>get_the_title($pid),
+                          'affected_tour_ids'=>[],'source_tour_rate_ids'=>[],
+                          'source_contract'=>'native_tour_rate_property_assignment',
+                          'missing_supplier_specific_photos'=>true,
+                          'photo_assignment_not_guaranteed_stay'=>true,
+                          'no_unreviewed_generic_photo_substitution'=>true];
+                        if(!in_array($tour,$properties[$pid]['affected_tour_ids'],true))
+                            $properties[$pid]['affected_tour_ids'][]=$tour;
+                        foreach(array_slice((array)($rateLinks[$pid]['source_rate_ids']??[]),0,80) as $r){
+                            $rid=(int)$r;
+                            if($rid>0&&!in_array($rid,$properties[$pid]['source_tour_rate_ids'],true))
+                                $properties[$pid]['source_tour_rate_ids'][]=$rid;
+                        }
+                    }
+                }
+            }
+        }
+        $sourceRows=array_values($originals);usort($sourceRows,static function($a,$b){
+            $x=$a['photo_uses']*100+$a['slot_priority_score'];
+            $y=$b['photo_uses']*100+$b['slot_priority_score'];
+            return $y<=>$x ?: $a['root_attachment_id']<=>$b['root_attachment_id'];
+        });
+        $propertyRows=array_values($properties);usort($propertyRows,static function($a,$b){
+            $c=count($b['affected_tour_ids'])<=>count($a['affected_tour_ids']);
+            return $c ?: ($a['property_id']<=>$b['property_id']);
+        });
+        return ['contract'=>'mad4b.tour-photo-quality-dynamic-review-queue.v1',
+            'status'=>'complete','site'=>home_url(),'created_utc'=>gmdate('c'),
+            'published_tours_scanned'=>count($ids),'unverified_photo_use_count'=>$usageCount,
+            'unique_original_photos_requiring_evidence'=>count($sourceRows),
+            'tour_pages_affected'=>count($affected),'unmapped_hero_uses'=>$unmapped,
+            'properties_requiring_supplier_photos'=>count($propertyRows),
+            'original_source_review'=>$sourceRows,'tour_rate_property_photo_review'=>$propertyRows,
+            'cross_tour_image_reuse_not_a_violation'=>true,
+            'dynamic_hero_field_priority'=>true,'dynamic_tour_rate_relations'=>true,
+            'executed_writes'=>false,'auto_authenticity_or_rights_grants'=>false];
+    }
     public static function scan_batch(int $limit=12):array {
         global $wpdb;
         $cursor=(int)get_option(self::CURSOR,0);
@@ -866,6 +961,7 @@ final class MAD4B_Tour_Photo_Quality_V1 {
             case 'scan-one':$r=self::scan_one($id);break;
             case 'policy':$r=self::scan_policy();break;
             case 'coverage-page':$r=self::coverage_page($id,absint($assoc['page']??0));break;
+            case 'review-queue':$r=self::review_queue();break;
             default:WP_CLI::error('Usage: wp mad4b tour-photo-quality audit|plan <post-id> OR scan [--limit=12]');
         }
         WP_CLI::line(wp_json_encode($r,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES));
