@@ -120,6 +120,7 @@ jobs:
           php tests/guided-continuation-write-surface-denial-hermetic.php
           php tests/core-ai-governance-usage-and-admission-hermetic.php
           php tests/provider-field-intelligence-site-readonly-php74-hermetic.php
+          php tests/locale-experience-alerts-owned-observations-hermetic.php
           php tests/firecrawl-provider-php74-crawl-and-host-scope-hermetic.php
           php tests/firecrawl-research-adapter-provider-presence-hermetic.php
           php tests/adapter-base-default-write-eligibility-hermetic.php

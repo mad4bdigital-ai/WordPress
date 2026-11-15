@@ -29,7 +29,7 @@ final class MAD4B_SCP_Locale_Experience_Alerts {
         return array_keys($result);
     }
     private static function local_url($url) {
-        if(!is_string($url)||strlen($url)>1200||!str_starts_with($url,'https://'))return false;
+        if(!is_string($url)||strlen($url)>1200||0!==strpos($url,'https://'))return false;
         $site=wp_parse_url(home_url('/'));
         $candidate=wp_parse_url($url);
         return is_array($site)&&is_array($candidate)&&

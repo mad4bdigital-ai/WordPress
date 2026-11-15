@@ -6949,6 +6949,25 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "The original MCP and Provider routing controls own bounded external research. Execution and Security controls enforce Site Profile, exact content owner and append-only evidence. No new publisher or autonomous approval.",
       "review_rationale": "Reviewed original Firecrawl Provider 620-line source and PHP7.4 compatibility correction. Credential save and test are WordPress admin-post nonce/capability gated; AES-GCM secrets never displayed; saved test fingerprints are profile-bound. All owned/crawl/status/capture entrypoints require enrolled site or exact admitted ContentJob/Native Origin, while Source Loop rejects private and unapproved hostnames, disallows credential URL inputs and requires HTTPS. Real provider traffic is routed through the existing request service with bounded result size/timeout, no global WordPress HTTP hook, and provenance is evidence only rather than authorization to publish. Same-PR actual-source PHP7.4/8.5 hermetic tests verify crawl scope, endpoint rejection, all unenrolled access denials, admin UI isolation, absent credentials, no WordPress mutation and no request to an external host. Cloud credentials, live scrape artifacts, provider receipts and exact WP site ownership remain subject to independent Production acceptance."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-locale-experience-alerts.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/locale-experience-alerts-owned-observations-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party site-bound WPML Browser Observation reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing Platform, Governance, Execution and Security controls govern admission and immutable read-only observations. No dynamic publisher, translation writer, external browser or new mutation authority is introduced.",
+      "review_rationale": "Reviewed complete first-party 203-line Locale Experience Alerts source. This provider imports bounded browser observations through administrator and central mutation policy, exact Site Profile UUID, active WPML locale list, same-origin HTTPS URLs, six-hour freshness, complete desktop/mobile screen matrix and digest-verified option readback. It converts evidence into issue candidates only: short localized labels, missing assets, cross-locale links, visible term and filter differences. None of these candidates authorizes a translation, changes pricing or publishes content. Same-PR actual-source PHP 7.4/8.5 tests reproduce legacy string-method failure, reject foreign/stale site evidence, prove tamper invalidation, and confirm all flagged issues explicitly disallow automatic remediation. Runtime browser collection and production locale truth remain unverified."
     }
   ],
   "lifecycle": [],
@@ -16509,6 +16528,26 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "The original MCP and Provider routing controls own bounded external research. Execution and Security controls enforce Site Profile, exact content owner and append-only evidence. No new publisher or autonomous approval.",
       "review_rationale": "Reviewed original Firecrawl Provider 620-line source and PHP7.4 compatibility correction. Credential save and test are WordPress admin-post nonce/capability gated; AES-GCM secrets never displayed; saved test fingerprints are profile-bound. All owned/crawl/status/capture entrypoints require enrolled site or exact admitted ContentJob/Native Origin, while Source Loop rejects private and unapproved hostnames, disallows credential URL inputs and requires HTTPS. Real provider traffic is routed through the existing request service with bounded result size/timeout, no global WordPress HTTP hook, and provenance is evidence only rather than authorization to publish. Same-PR actual-source PHP7.4/8.5 hermetic tests verify crawl scope, endpoint rejection, all unenrolled access denials, admin UI isolation, absent credentials, no WordPress mutation and no request to an external host. Cloud credentials, live scrape artifacts, provider receipts and exact WP site ownership remain subject to independent Production acceptance."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-locale-experience-alerts.php",
+      "source_blob_sha": "a23878f53d5a54de26eb9314a663c651743fb3a4",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/locale-experience-alerts-owned-observations-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party site-bound WPML Browser Observation reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing Platform, Governance, Execution and Security controls govern admission and immutable read-only observations. No dynamic publisher, translation writer, external browser or new mutation authority is introduced.",
+      "review_rationale": "Reviewed complete first-party 203-line Locale Experience Alerts source. This provider imports bounded browser observations through administrator and central mutation policy, exact Site Profile UUID, active WPML locale list, same-origin HTTPS URLs, six-hour freshness, complete desktop/mobile screen matrix and digest-verified option readback. It converts evidence into issue candidates only: short localized labels, missing assets, cross-locale links, visible term and filter differences. None of these candidates authorizes a translation, changes pricing or publishes content. Same-PR actual-source PHP 7.4/8.5 tests reproduce legacy string-method failure, reject foreign/stale site evidence, prove tamper invalidation, and confirm all flagged issues explicitly disallow automatic remediation. Runtime browser collection and production locale truth remain unverified."
     }
   ],
   "code_change_rules": {
