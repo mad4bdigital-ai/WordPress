@@ -22276,6 +22276,46 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Preexisting governance, platform and security control IDs apply to identical moved CWV code and private REST owner.",
       "review_rationale": "Seven existing Core Web Vitals setting, encrypted key and validated monitored URL functions relocated byte-identically from historical facade SHA a70bfc23212bb9289d3ab218dc08a530f46c5ad1; require/use binding and negative tamper tests retain source and executable checks. No credential change, URL allowlist bypass, new permission, mutation, or release authorization. Same-PR exact-source behavior review is bound only to the changed executable parity test; historical runtime fixture remains in the independent capability/source regression suite."
+    },
+    {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php",
+        "source_blob_sha": "0f6bfcb6e73f0441e7f6b7068a87a076f6ba7d0a",
+        "control_ids": [
+            "MCP-01",
+            "SECURITY-01",
+            "GOVERNANCE-01",
+            "EXECUTION-01"
+        ],
+        "regression_tests": [
+            "tests/server-descriptor-canonical-multilane-hermetic.php"
+        ],
+        "owner_role": "Repository source/CI review; not Site Owner or Release Owner",
+        "status": "reviewed_for_ci_only",
+        "production_authorized": false,
+        "live_evidence_required": true,
+        "needs_new_control": false,
+        "coverage_reuse_rationale": "Existing MCP, Security, Governance and Execution controls govern all original readonly discovery permissions and forbid mutation/approval elevation.",
+        "review_rationale": "Exact source-only readonly marker for four previously registered Developer/Enrollment discover/info methods. Original dispatch surface, callbacks, WordPress permissions and all execution grants remain unchanged. The same-PR executable regression checks accepted original metadata plus malformed category/readonly and untrusted execute failures. CI-only: not a Site Owner or Production certification."
+    },
+    {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ability-contract-inspector.php",
+        "source_blob_sha": "b57b1806a683283001ed9b1087127b1939751912",
+        "control_ids": [
+            "MCP-01",
+            "SECURITY-01",
+            "GOVERNANCE-01",
+            "EXECUTION-01"
+        ],
+        "regression_tests": [
+            "tests/server-descriptor-canonical-multilane-hermetic.php"
+        ],
+        "owner_role": "Repository source/CI review; not Site Owner or Release Owner",
+        "status": "reviewed_for_ci_only",
+        "production_authorized": false,
+        "live_evidence_required": true,
+        "needs_new_control": false,
+        "coverage_reuse_rationale": "Existing exact descriptor, execution lane, MCP allowlist, Schema SHA, authorization and site-specific governance controls are retained.",
+        "review_rationale": "Exact code binds only four source-marked original readonly discover/info abilities to canonical read descriptor while preserving their original transport metadata. Mutation, missing marker, foreign ability name, wrong category and false readonly all fail closed; runtime grants, approvals, execution boundaries and Original lanes are not altered. Same-PR hermetic source test covers positive and negative cases. This review is CI only."
     }
   ],
   "code_change_rules": {
