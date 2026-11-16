@@ -9,19 +9,21 @@ class WP_Error {
 function is_wp_error($v){return $v instanceof WP_Error;}
 function wp_json_encode($v,$flags=0){return json_encode($v,$flags);}
 function sanitize_key($v){return preg_replace('/[^a-z0-9_-]/','',strtolower((string)$v));}
-function wp_has_ability($name){return $name==='mad4b/operator-grants-converge';}
+function wp_has_ability($name){return $name===($GLOBALS['fixture_ability_name']??'mad4b/operator-grants-converge');}
 function wp_get_ability($name){return new Demo_Ability();}
 function apply_filters($filter,$value,...$args){return $value;}
 class Demo_Ability {
  function get_meta(){
-  return array('annotations'=>array('readonly'=>$GLOBALS['read_only']),
-   'mcp'=>array('surface'=>$GLOBALS['lane'],
-    'mad4b_execution_boundary'=>'test-only-governed'));
+  $mcp=array('surface'=>$GLOBALS['lane'],
+    'mad4b_execution_boundary'=>'test-only-governed');
+  if(!empty($GLOBALS['descriptor_read_marker']))
+    $mcp['mad4b_descriptor_read_lane']='read';
+  return array('annotations'=>array('readonly'=>$GLOBALS['read_only']),'mcp'=>$mcp);
  }
  function execute(){}
  function get_input_schema(){return array('type'=>'object','additionalProperties'=>false);}
  function get_output_schema(){return array('type'=>'object');}
- function get_category(){return 'mad4b-developer-governance';}
+ function get_category(){return $GLOBALS['fixture_category']??'mad4b-developer-governance';}
  function get_label(){return 'Fixture';}
  function get_description(){return 'Original WordPress Ability typed projection fixture';}
 }
@@ -76,4 +78,60 @@ foreach(array('boundary_verified','provider_present') as $property){
  $GLOBALS[$property]=true;
  ++$checks;
 }
+// Exact original source-marked read-only dispatchers may be projected on
+// ChatGPT, but no other name/category/annotation/surface may borrow the marker.
+foreach(array(
+ array('mad4b/developer-discover','developer-dispatch'),
+ array('mad4b/developer-info','developer-dispatch'),
+ array('mad4b/enrollment-discover','enrollment'),
+ array('mad4b/enrollment-info','enrollment')
+) as $case){
+ $GLOBALS['fixture_ability_name']=$case[0];
+ $GLOBALS['fixture_category']='mad4b-read';
+ $GLOBALS['lane']=$case[1];
+ $GLOBALS['read_only']=true;
+ $GLOBALS['descriptor_read_marker']=true;
+ $r=MAD4B_SCP_Server_Registration_Evidence::capability_descriptor_evidence(
+   'mad4b-chatgpt',array($case[0]));
+ verified($r['ready']===true && isset($r['bindings'][$case[0]])
+   && $r['bindings'][$case[0]]['execution_lane']==='read'
+   && $r['bindings'][$case[0]]['authority_revalidation_required']===true
+   && $r['bindings'][$case[0]]['authorizing']===false,
+   'Original read-only dispatcher descriptor was lost: '.$case[0]);
+ ++$checks;
+ $GLOBALS['descriptor_read_marker']=false;
+ $r=MAD4B_SCP_Server_Registration_Evidence::capability_descriptor_evidence(
+   'mad4b-chatgpt',array($case[0]));
+ verified(!$r['ready'] && $r['bindings']===array(),
+   'Missing original descriptor declaration was admitted: '.$case[0]);
+ ++$checks;
+ $GLOBALS['descriptor_read_marker']=true;
+ $GLOBALS['fixture_category']='mad4b-admin';
+ $r=MAD4B_SCP_Server_Registration_Evidence::capability_descriptor_evidence(
+   'mad4b-chatgpt',array($case[0]));
+ verified(!$r['ready'] && $r['bindings']===array(),
+   'Foreign category acquired read classification: '.$case[0]);
+ ++$checks;
+ $GLOBALS['fixture_category']='mad4b-read';
+ $GLOBALS['read_only']=false;
+ $r=MAD4B_SCP_Server_Registration_Evidence::capability_descriptor_evidence(
+   'mad4b-chatgpt',array($case[0]));
+ verified(!$r['ready'] && $r['bindings']===array(),
+   'Mutation annotation acquired read classification: '.$case[0]);
+ ++$checks;
+}
+foreach(array('mad4b/developer-execute','mad4b/enrollment-execute','demo/foreign') as $foreign){
+ $GLOBALS['fixture_ability_name']=$foreign;
+ $GLOBALS['fixture_category']='mad4b-read';
+ $GLOBALS['read_only']=true;
+ $GLOBALS['descriptor_read_marker']=true;
+ $GLOBALS['lane']='developer-dispatch';
+ $r=MAD4B_SCP_Server_Registration_Evidence::capability_descriptor_evidence(
+   'mad4b-chatgpt',array($foreign));
+ verified(!$r['ready'] && $r['bindings']===array(),
+   'Untrusted dispatcher acquired read classification: '.$foreign);
+ ++$checks;
+}
+unset($GLOBALS['fixture_ability_name'],$GLOBALS['fixture_category'],
+      $GLOBALS['descriptor_read_marker']);
 echo "PASS: CANONICAL_MULTILANE_DESCRIPTOR ".$checks." real registry + inspector cases; non-authorizing".PHP_EOL;
