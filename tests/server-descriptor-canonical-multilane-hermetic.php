@@ -173,6 +173,70 @@ foreach(array('mad4b/developer-execute','mad4b/enrollment-execute','demo/foreign
    'Untrusted dispatcher acquired read classification: '.$foreign);
  ++$checks;
 }
+// Real first-party original Operator grant callback ancestry. No callback
+// is invoked and no grant or WordPress site exists in this hermetic fixture.
+function add_action($hook,$callback,$priority=10){}
+require dirname(__DIR__).'/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-grant-convergence.php';
+require dirname(__DIR__).'/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-governed-ability-census.php';
+class WP_Ability {
+ private $execute_callback;
+ private $permission_callback;
+ private $meta;
+ function __construct($execute,$permission,$meta){
+  $this->execute_callback=$execute; $this->permission_callback=$permission; $this->meta=$meta;
+ }
+ function get_name(){return 'mad4b/operator-grants-converge';}
+ function get_meta(){return $this->meta;}
+ function get_input_schema(){return array('type'=>'object','properties'=>array('action'=>array('type'=>'string')));}
+ function get_output_schema(){return array('type'=>'object');}
+ function get_category(){return 'mad4b-developer-governance';}
+ function get_label(){return 'Operator Grants';}
+ function get_description(){return 'First party Operator Grants registered operation';}
+ function execute(){}
+}
+class WP_Abilities_Registry {
+ static function get_instance(){return new self();}
+ function get_all_registered(){return array('mad4b/operator-grants-converge'=>$GLOBALS['operator_ability']);}
+}
+class MAD4B_SCP_Operation_Registry {
+ static function registered_write_policy($name){return $name==='mad4b/operator-grants-converge'&&
+  !empty($GLOBALS['operator_policy_present']) ? array('contract'=>'first-party-test') :
+  new WP_Error('unregistered');}
+}
+$GLOBALS['operator_policy_present']=true;
+$GLOBALS['operator_ability']=new WP_Ability(
+ array('MAD4B_SCP_Operator_Grant_Convergence','execute'),
+ array('MAD4B_SCP_Operator_Grant_Convergence','can_access'),
+ array('mcp'=>array('surface'=>'enrollment','chatgpt_direct_step_up'=>true,
+  'exact_chatgpt_client_required'=>true,'generic_remote_admin'=>false,
+  'governed_enrollment_broker'=>true,'broker_dispatch_policy'=>'registered_operation_policy_v1',
+  'owner_intent_only'=>true,'production_mutation_allowed'=>'policy_governed',
+  'production_allowed'=>'policy_governed','governed_operation_policy'=>'registered_write_policy_v1'),
+  'annotations'=>array('readonly'=>false)));
+verified(MAD4B_SCP_Governed_Ability_Census::operator_grant_original_boundary_verified(
+ $GLOBALS['operator_ability']), 'Exact original Operator callback proof missing');
+++$checks;
+$GLOBALS['operator_ability']=new WP_Ability(
+ array('MAD4B_SCP_Operator_Grant_Convergence','can_access'),
+ array('MAD4B_SCP_Operator_Grant_Convergence','execute'),
+ $GLOBALS['operator_ability']->get_meta());
+verified(!MAD4B_SCP_Governed_Ability_Census::operator_grant_original_boundary_verified(
+ $GLOBALS['operator_ability']), 'Swapped Operator callbacks were accepted');
+++$checks;
+$GLOBALS['operator_ability']=new WP_Ability(
+ array('MAD4B_SCP_Operator_Grant_Convergence','execute'),
+ array('MAD4B_SCP_Operator_Grant_Convergence','can_access'),
+ array('mcp'=>array('surface'=>'enrollment','chatgpt_direct_step_up'=>true,
+  'exact_chatgpt_client_required'=>true,'generic_remote_admin'=>false,
+  'governed_enrollment_broker'=>true,'broker_dispatch_policy'=>'registered_operation_policy_v1',
+  'owner_intent_only'=>true,'production_mutation_allowed'=>'policy_governed',
+  'production_allowed'=>'policy_governed','governed_operation_policy'=>'registered_write_policy_v1'),
+  'annotations'=>array('readonly'=>false)));
+$GLOBALS['operator_policy_present']=false;
+verified(!MAD4B_SCP_Governed_Ability_Census::operator_grant_original_boundary_verified(
+ $GLOBALS['operator_ability']), 'Unregistered Operator policy admitted');
+++$checks;
+unset($GLOBALS['operator_ability'],$GLOBALS['operator_policy_present']);
 unset($GLOBALS['fixture_ability_name'],$GLOBALS['fixture_category'],
       $GLOBALS['descriptor_read_marker']);
 echo "PASS: CANONICAL_MULTILANE_DESCRIPTOR ".$checks." real registry + inspector cases; non-authorizing".PHP_EOL;
