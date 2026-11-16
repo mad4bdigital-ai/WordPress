@@ -20,6 +20,7 @@ import json
 import re
 import zipfile
 from pathlib import Path
+from urllib.parse import urlsplit
 
 CONTRACT = "mad4b.mcp-runtime-surface.v1"
 
@@ -79,6 +80,38 @@ def declared_symbols(raw: bytes, rel: str, namespace_prefixes: list[str]) -> lis
     return rows
 
 
+
+def reviewed_source_identity(profile: dict, version: str) -> str:
+    """Derive release identity only from the exact official archive distribution.
+
+    WordPress.org plugin ZIPs and WordPress GitHub Release assets have
+    different canonical authorities. Never infer identity from a mutable
+    display value in runtime_surface or treat the two as interchangeable.
+    Archive digest, size, critical files and runtime symbol tree remain
+    independently verified by the caller/CI.
+    """
+    if re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version) is None:
+        raise SystemExit("invalid MCP release version")
+    raw = profile.get("package_url")
+    authority = profile.get("certification_authority")
+    if not isinstance(raw, str) or not isinstance(authority, str):
+        raise SystemExit("MCP release archive authority missing")
+    location = urlsplit(raw)
+    if (location.scheme != "https" or location.username or location.password
+            or location.port is not None or location.query or location.fragment):
+        raise SystemExit("untrusted MCP release archive URL")
+    host = (location.hostname or "").lower()
+    if (host == "github.com"
+            and location.path == f"/WordPress/mcp-adapter/releases/download/v{version}/mcp-adapter.zip"
+            and authority == f"github.com/WordPress/mcp-adapter/releases/tag/v{version}"):
+        return f"WordPress/mcp-adapter@v{version}"
+    if (host == "downloads.wordpress.org"
+            and location.path == f"/plugin/mcp-adapter.{version}.zip"
+            and authority == f"https://wordpress.org/plugins/mcp-adapter/ (official {version} distribution)"):
+        return f"WordPress.org/mcp-adapter@{version}"
+    raise SystemExit("MCP release source identity not in reviewed official archive authorities")
+
+
 def generated_surface(zf: zipfile.ZipFile, profile: dict, version: str) -> tuple[dict, list[dict[str, str]]]:
     surface = profile.get("runtime_surface") or {}
     if surface.get("contract") != CONTRACT:
@@ -113,7 +146,7 @@ def generated_surface(zf: zipfile.ZipFile, profile: dict, version: str) -> tuple
         seen[row["symbol"]] = row["file"]
 
     generated = dict(surface)
-    generated["source_identity"] = f"WordPress/mcp-adapter@v{version}"
+    generated["source_identity"] = reviewed_source_identity(profile, version)
     generated["file_count"] = len(files)
     generated["symbol_count"] = len(symbols)
     generated["tree_sha256"] = tree_sha256
