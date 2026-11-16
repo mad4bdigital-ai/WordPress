@@ -22181,8 +22181,7 @@
         "PROVIDERS-02"
       ],
       "regression_tests": [
-        "tests/test_content_readiness_trait_parity.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/content-completeness-runtime.php"
+        "tests/test_content_readiness_trait_parity.py"
       ],
       "owner_role": "MAD4B first-party source correctness reviewer, CI-only not the Site/Release Owner",
       "status": "reviewed_for_ci_only",
@@ -22190,7 +22189,7 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing content readiness, governance, platform and security controls still own identical methods; mechanical source move adds no new authority.",
-      "review_rationale": "Exactly identical original source method bodies extracted from the 1,844-line Content Readiness facade (original blob b06b328391319b18ace8e4118ee2e0e5b619eff6) and loaded through two named first-party traits; executable negative predecessor comparison guards prove no policy, writes, publishing, scheduling, filtering, auditing or REST permission change. Non-authorizing source review only; no live-site or Release Owner evidence."
+      "review_rationale": "Exactly identical original source method bodies extracted from the 1,844-line Content Readiness facade (original blob b06b328391319b18ace8e4118ee2e0e5b619eff6) and loaded through two named first-party traits; executable negative predecessor comparison guards prove no policy, writes, publishing, scheduling, filtering, auditing or REST permission change. Non-authorizing source review only; no live-site or Release Owner evidence. Same-PR exact-source behavior review is bound only to the changed executable parity test; historical runtime fixture remains in the independent capability/source regression suite."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/trait-mad4b-scp-content-readiness-scanning.php",
@@ -22205,8 +22204,7 @@
         "PROVIDERS-02"
       ],
       "regression_tests": [
-        "tests/test_content_readiness_trait_parity.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/content-completeness-runtime.php"
+        "tests/test_content_readiness_trait_parity.py"
       ],
       "owner_role": "MAD4B first-party source correctness reviewer, CI-only not the Site/Release Owner",
       "status": "reviewed_for_ci_only",
@@ -22214,7 +22212,7 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing content readiness, governance, platform and security controls still own identical methods; mechanical source move adds no new authority.",
-      "review_rationale": "Exactly identical original source method bodies extracted from the 1,844-line Content Readiness facade (original blob b06b328391319b18ace8e4118ee2e0e5b619eff6) and loaded through two named first-party traits; executable negative predecessor comparison guards prove no policy, writes, publishing, scheduling, filtering, auditing or REST permission change. Non-authorizing source review only; no live-site or Release Owner evidence."
+      "review_rationale": "Exactly identical original source method bodies extracted from the 1,844-line Content Readiness facade (original blob b06b328391319b18ace8e4118ee2e0e5b619eff6) and loaded through two named first-party traits; executable negative predecessor comparison guards prove no policy, writes, publishing, scheduling, filtering, auditing or REST permission change. Non-authorizing source review only; no live-site or Release Owner evidence. Same-PR exact-source behavior review is bound only to the changed executable parity test; historical runtime fixture remains in the independent capability/source regression suite."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/trait-mad4b-scp-content-readiness-reconciliation.php",
@@ -22229,8 +22227,7 @@
         "PROVIDERS-02"
       ],
       "regression_tests": [
-        "tests/test_content_readiness_trait_parity.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/content-completeness-runtime.php"
+        "tests/test_content_readiness_trait_parity.py"
       ],
       "owner_role": "MAD4B first-party source correctness reviewer, CI-only not the Site/Release Owner",
       "status": "reviewed_for_ci_only",
@@ -22238,7 +22235,7 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing content readiness, governance, platform and security controls still own identical methods; mechanical source move adds no new authority.",
-      "review_rationale": "Exactly identical original source method bodies extracted from the 1,844-line Content Readiness facade (original blob b06b328391319b18ace8e4118ee2e0e5b619eff6) and loaded through two named first-party traits; executable negative predecessor comparison guards prove no policy, writes, publishing, scheduling, filtering, auditing or REST permission change. Non-authorizing source review only; no live-site or Release Owner evidence."
+      "review_rationale": "Exactly identical original source method bodies extracted from the 1,844-line Content Readiness facade (original blob b06b328391319b18ace8e4118ee2e0e5b619eff6) and loaded through two named first-party traits; executable negative predecessor comparison guards prove no policy, writes, publishing, scheduling, filtering, auditing or REST permission change. Non-authorizing source review only; no live-site or Release Owner evidence. Same-PR exact-source behavior review is bound only to the changed executable parity test; historical runtime fixture remains in the independent capability/source regression suite."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-web-vitals.php",
@@ -22249,8 +22246,7 @@
         "SECURITY-01"
       ],
       "regression_tests": [
-        "tests/test_core_web_vitals_configuration_trait_parity.py",
-        "tests/readiness-core-web-vitals-rest-cron-hermetic.php"
+        "tests/test_core_web_vitals_configuration_trait_parity.py"
       ],
       "owner_role": "MAD4B repository source reviewer, CI-only (not the Site Owner/Release Owner)",
       "status": "reviewed_for_ci_only",
@@ -22258,7 +22254,7 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "coverage_reuse_rationale": "Preexisting governance, platform and security control IDs apply to identical moved CWV code and private REST owner.",
-      "review_rationale": "Seven existing Core Web Vitals setting, encrypted key and validated monitored URL functions relocated byte-identically from historical facade SHA a70bfc23212bb9289d3ab218dc08a530f46c5ad1; require/use binding and negative tamper tests retain source and executable checks. No credential change, URL allowlist bypass, new permission, mutation, or release authorization."
+      "review_rationale": "Seven existing Core Web Vitals setting, encrypted key and validated monitored URL functions relocated byte-identically from historical facade SHA a70bfc23212bb9289d3ab218dc08a530f46c5ad1; require/use binding and negative tamper tests retain source and executable checks. No credential change, URL allowlist bypass, new permission, mutation, or release authorization. Same-PR exact-source behavior review is bound only to the changed executable parity test; historical runtime fixture remains in the independent capability/source regression suite."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/trait-mad4b-scp-core-web-vitals-configuration.php",
@@ -22269,8 +22265,7 @@
         "SECURITY-01"
       ],
       "regression_tests": [
-        "tests/test_core_web_vitals_configuration_trait_parity.py",
-        "tests/readiness-core-web-vitals-rest-cron-hermetic.php"
+        "tests/test_core_web_vitals_configuration_trait_parity.py"
       ],
       "owner_role": "MAD4B repository source reviewer, CI-only (not the Site Owner/Release Owner)",
       "status": "reviewed_for_ci_only",
@@ -22278,7 +22273,7 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "coverage_reuse_rationale": "Preexisting governance, platform and security control IDs apply to identical moved CWV code and private REST owner.",
-      "review_rationale": "Seven existing Core Web Vitals setting, encrypted key and validated monitored URL functions relocated byte-identically from historical facade SHA a70bfc23212bb9289d3ab218dc08a530f46c5ad1; require/use binding and negative tamper tests retain source and executable checks. No credential change, URL allowlist bypass, new permission, mutation, or release authorization."
+      "review_rationale": "Seven existing Core Web Vitals setting, encrypted key and validated monitored URL functions relocated byte-identically from historical facade SHA a70bfc23212bb9289d3ab218dc08a530f46c5ad1; require/use binding and negative tamper tests retain source and executable checks. No credential change, URL allowlist bypass, new permission, mutation, or release authorization. Same-PR exact-source behavior review is bound only to the changed executable parity test; historical runtime fixture remains in the independent capability/source regression suite."
     }
   ],
   "code_change_rules": {
