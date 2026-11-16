@@ -120,6 +120,44 @@ class ReadinessSurfaceConvergence(unittest.TestCase):
         self.assertIn("const APPLY='mad4b/content-apply-bundle'", source)
         self.assertRegex(source, r"\$this->add_ability\(\s*self::APPLY")
 
+    def test_canonical_first_party_registration_retained_across_trait_extraction(self):
+        prior = "8845efdc700e3aac4688346312676f9a638d56e6"
+        subsequent = "d1e1cefc6e997aef6b723a957c9d4bf6b290d9f8"
+        facade = reg.PLUGIN + "includes/class-mad4b-scp-abilities.php"
+        trait = reg.PLUGIN + "includes/trait-mad4b-scp-abilities-registration.php"
+        for name in (
+            "mad4b/site-info", "mad4b/content-get-post",
+            "mad4b/write-execute", "mad4b/database-raw-query",
+            "mad4b/runtime-authority-status", "mad4b/abilities-inventory",
+        ):
+            with self.subTest(name=name):
+                self.assertEqual(reg.registered_ability_owner(prior, "ability:" + name), facade)
+                self.assertEqual(reg.registered_ability_owner(subsequent, "ability:" + name), trait)
+        self.assertIsNone(reg.registered_ability_owner(subsequent, "ability:mad4b/missing-ability"))
+
+    def test_orphan_or_unloaded_trait_not_a_registered_ability(self):
+        ref = "d1e1cefc6e997aef6b723a957c9d4bf6b290d9f8"
+        facade_path = reg.PLUGIN + "includes/class-mad4b-scp-abilities.php"
+        trait_path = reg.PLUGIN + "includes/trait-mad4b-scp-abilities-registration.php"
+        facade = reg.git_text(ref, facade_path)
+        trait = reg.git_text(ref, trait_path)
+        ability = "mad4b/content-get-post"
+        self.assertTrue(reg.registered_first_party_add_owner(ref, trait_path, trait, ability))
+        for forbidden_facade in (
+            facade.replace("use MAD4B_SCP_Abilities_Registration_Trait;", ""),
+            facade.replace("$this->register_source_abilities();", ""),
+            facade.replace("wp_register_ability( $name, $args );", ""),
+        ):
+            with mock.patch.object(reg, "git_text", return_value=forbidden_facade):
+                self.assertFalse(reg.registered_first_party_add_owner(
+                    ref, trait_path, trait, ability))
+        self.assertFalse(reg.registered_first_party_add_owner(
+            ref, trait_path, trait.replace(
+                "$this->add( 'mad4b/content-get-post',",
+                "$this->add( 'mad4b/unrelated-post',"), ability))
+        self.assertFalse(reg.registered_first_party_add_owner(
+            ref, facade_path, "<?php $note='mad4b/content-get-post';", ability))
+
     def test_adapter_constant_mention_without_registration_is_not_owner(self):
         marker = reg.PLUGIN + "includes/adapters/fixture.php"
         mocked = SimpleNamespace(returncode=0, stdout=(BASE + ":" + marker).encode() + b"\n")

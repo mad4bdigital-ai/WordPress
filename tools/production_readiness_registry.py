@@ -350,6 +350,42 @@ def registered_constant_map_owner(src, const_name):
     ))
 
 
+def registered_first_party_add_owner(ref, path, src, ability_name):
+    """Prove that an exact first-party $this->add() is a real WP Ability.
+
+    Neither a catalog string nor an orphan trait is sufficient: the canonical
+    facade must contain the WordPress registration sink and bind the method.
+    This is structural source evidence, never execution/grant authority.
+    """
+    facade_path = PLUGIN + "includes/class-mad4b-scp-abilities.php"
+    trait_path = PLUGIN + "includes/trait-mad4b-scp-abilities-registration.php"
+    if path not in (facade_path, trait_path):
+        return False
+    facade = src if path == facade_path else git_text(ref, facade_path)
+    if (not facade or "final class MAD4B_SCP_Abilities {" not in facade
+            or "private function add( $name, $label, $category" not in facade
+            or not re.search(r"wp_register_ability\s*\(\s*\$name\s*,\s*\$args\s*\)", facade)):
+        return False
+    if path == facade_path:
+        # Before extraction: registration and the add() sink share this class.
+        start, end = "\tpublic function register_abilities() {", "\n\tprivate function add("
+        if start not in facade or end not in facade:
+            return False
+        body = facade.split(start, 1)[1].split(end, 1)[0]
+    else:
+        # After extraction: require exact facade loader, trait use and wrapper.
+        if ("require_once __DIR__ . '/trait-mad4b-scp-abilities-registration.php';" not in facade
+                or "use MAD4B_SCP_Abilities_Registration_Trait;" not in facade
+                or not re.search(r"public function register_abilities\s*\(\s*\)\s*\{\s*\$this->register_source_abilities\s*\(\s*\)\s*;", facade)
+                or "trait MAD4B_SCP_Abilities_Registration_Trait {" not in src
+                or "private function register_source_abilities() {" not in src
+                or "do_action( 'mad4b_scp_abilities_registered', $this );" not in src):
+            return False
+        body = src.split("private function register_source_abilities() {", 1)[1]
+    return bool(re.search(r"\$this->add\s*\(\s*['\"]" +
+                          re.escape(ability_name) + r"['\"]\s*,", body))
+
+
 def registered_ability_owner(ref, ability):
     """Prove a distinct registered Ability still exists elsewhere in Git.
 
@@ -373,6 +409,8 @@ def registered_ability_owner(ref, ability):
         src = git_text(ref, path)
         if not src:
             continue
+        if registered_first_party_add_owner(ref, path, src, identifier_value):
+            return path
         if re.search(r"wp_register_ability\s*\(\s*['\"]" +
                      re.escape(identifier_value) + r"['\"]", src):
             return path
