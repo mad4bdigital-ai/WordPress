@@ -21604,6 +21604,159 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/assets/admin-settings-persistence.js",
+      "source_blob_sha": "93332505e987a31d245e0c0bb6a35bbc3bc5cba4",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/admin-settings-js-original-same-pr.py"
+      ],
+      "owner_role": "MAD4B nonauthorizing native source CI-only reviewer",
+      "review_rationale": "Exact source-pinned first-party browser settings contract runs Node syntax, original settings readback invariants, WordPress admin-AJAX fallback sentinel and immutable persisted authority checks. This is static/browser-source CI, not a live browser acceptance receipt. Source is reviewed at exact Git blob on this branch, not as a signed operational certificate. Production approval and independent browser/site acceptance remain separate.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-navigation-manifest.php",
+      "source_blob_sha": "3d79c5ca65934bd715fbf96b877925f5f89c7c98",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/admin-navigation-manifest-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B nonauthorizing native source CI-only reviewer",
+      "review_rationale": "29-case original WordPress admin navigation fixture verifies all registered pages use manage_options and non-admin WP_Error / truthy permissions do not reorder tenant/admin menus; unrelated third-party menus remain unaltered. Source is reviewed at exact Git blob on this branch, not as a signed operational certificate. Production approval and independent browser/site acceptance remain separate.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-query-performance-ui.php",
+      "source_blob_sha": "269b27c18eb0c3191604be070c520d4c2c54322d",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/admin-surfaces-authorization-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B nonauthorizing native source CI-only reviewer",
+      "review_rationale": "30-case original first-party WordPress admin surfaces fixture verifies Performance read status cannot render for WP_Error or non-exact manage_options. Existing index/maintenance executor policy remains unchanged. Source is reviewed at exact Git blob on this branch, not as a signed operational certificate. Production approval and independent browser/site acceptance remain separate.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-connection-admin-ui.php",
+      "source_blob_sha": "d9dd7d289c269044fa714f1cf4ff6a2db0d25e75",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/admin-surfaces-authorization-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B nonauthorizing native source CI-only reviewer",
+      "review_rationale": "Original 30-case native admin admission fixture verifies ChatGPT connector status/render are not available when WordPress manage_options is uncertain. Prior deferred-admin-report and authenticated OAuth display regressions passed on PHP7.4 and PHP8.5. No token, permission or external connector was created. Source is reviewed at exact Git blob on this branch, not as a signed operational certificate. Production approval and independent browser/site acceptance remain separate.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-media-rights.php",
+      "source_blob_sha": "ea2c72dc61d404536b211878c273c7bbb504d9f0",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "tests/content-media-rights-guard-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B nonauthorizing native source CI-only reviewer",
+      "review_rationale": "Original 10-case publish-planning rights fixture confirms unknown evaluation date and policy fail closed, expired licenses block publishing even under advisory mode, and missing local media license metadata stays advisory without falsely asserting legal reuse permission. No WordPress upload/media write or copyright license is implied. Source is reviewed at exact Git blob on this branch, not as a signed operational certificate. Production approval and independent browser/site acceptance remain separate.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-intelligence-pipeline.php",
+      "source_blob_sha": "bcbaae8c19659cafa66ef6e57f43f6b96c1b06bb",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-intelligence-pipeline-contract.php"
+      ],
+      "owner_role": "MAD4B nonauthorizing native source CI-only reviewer",
+      "review_rationale": "Updated existing original Content Intelligence Pipeline contract to distinguish QA_BLOCKED (hard blocker exists) from NEEDS_INDEPENDENT_REVIEW (all QA passed but independent review still required), while preventing caller-forged independent approval or publication. The original test now passes both supported PHP versions; no approval/certification is minted. Source is reviewed at exact Git blob on this branch, not as a signed operational certificate. Production approval and independent browser/site acceptance remain separate.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-developer-workspace.php",
+      "source_blob_sha": "5be5f31dcc87585b55bc42b355d76f853a062b7b",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/developer-workspace-admission-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B nonauthorizing native source CI-only reviewer",
+      "review_rationale": "Original Developer Workspace 30-case native source test rejects error-shaped managed Site Profile, developer direct-mode, kill switch and inaccurate source SHA before any provider executor. This is nonauthorizing only; no shell execution or live host capabilities tested. Source is reviewed at exact Git blob on this branch, not as a signed operational certificate. Production approval and independent browser/site acceptance remain separate.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-market-content-exchange.php",
+      "source_blob_sha": "5d36607ed992c326d35178a2422097cf1244f16f",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "tests/market-exchange-original-same-pr.py"
+      ],
+      "owner_role": "MAD4B nonauthorizing native source CI-only reviewer",
+      "review_rationale": "Exact source-bound dynamic competitor/market existing original PHP fixture validates bounded research, source URLs, neutral and supplier-specific lanes, source/copyright policy and no unauthorized content export. Runs PHP7.4 and PHP8.5, without remote research. Source is reviewed at exact Git blob on this branch, not as a signed operational certificate. Production approval and independent browser/site acceptance remain separate.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skills-admin-ui.php",
+      "source_blob_sha": "6db5aced6e2e50179ac5415ae9e74735756e539d",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/admin-surfaces-authorization-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B nonauthorizing native source CI-only reviewer",
+      "review_rationale": "Native admin surface regression validates the first-party Skills Management export and reconciliation are unreachable for WP_Error or uncertain manage_options. Skill Registry enrollment test independently blocks unknown Site Profiles. No Skill scripts run or zip export occurs. Source is reviewed at exact Git blob on this branch, not as a signed operational certificate. Production approval and independent browser/site acceptance remain separate.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "code_change_rules": {

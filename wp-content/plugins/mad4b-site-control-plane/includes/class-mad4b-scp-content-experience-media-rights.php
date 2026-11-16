@@ -12,7 +12,8 @@ final class MAD4B_SCP_Content_Experience_Media_Rights {
 	const CONTRACT = 'mad4b.content-experience-media-publish-rights.v1';
 
 	private static function evaluation_date( $today = '' ) {
-		$today = trim( (string) $today );
+		if ( ! is_string( $today ) ) return new WP_Error( 'mad4b_content_experience_media_rights_date_invalid', 'A trusted media evaluation date must be a string.' );
+		$today = trim( $today );
 		if ( '' === $today ) $today = wp_date( 'Y-m-d' );
 		if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $today ) ) {
 			return new WP_Error( 'mad4b_content_experience_media_rights_date_invalid', 'Publish rights evaluation date must use YYYY-MM-DD.' );
@@ -31,7 +32,8 @@ final class MAD4B_SCP_Content_Experience_Media_Rights {
 		// Site-neutral publication policy, shared with remote media rights.
 		// Absence of licence metadata is advisory by default, not a claim of
 		// legal reuse permission. Identity and provenance checks remain active.
-		$mode = sanitize_key( (string) apply_filters( 'mad4b_remote_media_rights_mode', get_option( 'mad4b_remote_media_rights_mode', 'advisory' ) ) );
+		$mode_source = apply_filters( 'mad4b_remote_media_rights_mode', get_option( 'mad4b_remote_media_rights_mode', 'advisory' ) );
+		$mode = is_string( $mode_source ) ? sanitize_key( $mode_source ) : '';
 		if ( ! in_array( $mode, array( 'advisory', 'enforced' ), true ) ) return new WP_Error( 'mad4b_media_rights_policy_invalid', 'Media rights policy must be advisory or enforced.' );
 		if ( 'advisory' === $mode ) {
 			$fields = 0;

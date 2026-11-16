@@ -213,8 +213,15 @@ final class MAD4B_SCP_Developer_Workspace {
 
 	private static function mutation_gate( array $input, $promotion = false ) {
 		$environment = self::environment();
-		if ( ! class_exists( 'MAD4B_SCP_Site_Profile', false ) || empty( MAD4B_SCP_Site_Profile::status()['authority_ready'] ) || ! MAD4B_SCP_Site_Profile::managed_runtime_enabled() || ! MAD4B_SCP_Site_Profile::write_enabled() ) return new WP_Error( 'mad4b_developer_workspace_site_authority_required', 'Enrolled, managed, write-enabled site required.' );
-		if ( ! class_exists( 'MAD4B_SCP_Developer_Runtime' ) || ! MAD4B_SCP_Developer_Runtime::developer_flag_enabled() || ! MAD4B_SCP_Developer_Runtime::direct_execution_enabled() || MAD4B_SCP_Developer_Runtime::kill_switch_enabled() ) {
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile', false ) ||
+            ! is_array( $site = MAD4B_SCP_Site_Profile::status() ) ||
+            ( $site['authority_ready'] ?? null ) !== true ||
+            true !== MAD4B_SCP_Site_Profile::managed_runtime_enabled() ||
+            true !== MAD4B_SCP_Site_Profile::write_enabled() ) return new WP_Error( 'mad4b_developer_workspace_site_authority_required', 'Enrolled, managed, write-enabled site required.' );
+		if ( ! class_exists( 'MAD4B_SCP_Developer_Runtime' ) ||
+            true !== MAD4B_SCP_Developer_Runtime::developer_flag_enabled() ||
+            true !== MAD4B_SCP_Developer_Runtime::direct_execution_enabled() ||
+            false !== MAD4B_SCP_Developer_Runtime::kill_switch_enabled() ) {
 			return new WP_Error( 'mad4b_developer_workspace_runtime_not_ready', 'Developer runtime is not ready.' );
 		}
 		$expected_sha = isset( $input['expected_source_commit_sha'] ) ? strtolower( trim( (string) $input['expected_source_commit_sha'] ) ) : '';
