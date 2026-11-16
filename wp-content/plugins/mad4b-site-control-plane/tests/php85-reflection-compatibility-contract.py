@@ -19,7 +19,7 @@ for path in (root / "includes").rglob("*.php"):
             f"unguarded PHP 8.5 deprecated reflection access: {path}:{contents.count(chr(10), 0, match.start()) + 1}"
         )
         hits.append(str(path.relative_to(root)))
-assert len(hits) == 9, f"expected nine guarded ReflectionProperty accesses; got {len(hits)}"
+# The original Operator source-owned callback pair adds one reviewed guarded\n# reflection access in the governed Ability census; every access above is\n# independently tested for its PHP < 8.1 guard, not merely counted.\nassert len(hits) == 10, f"expected ten guarded ReflectionProperty accesses; got {len(hits)}"
 probe = r"""
 <?php
 class PrivateCallback { private $execute_callback = 'trusted'; }
