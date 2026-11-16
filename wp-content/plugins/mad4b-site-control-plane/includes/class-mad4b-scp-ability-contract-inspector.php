@@ -98,8 +98,19 @@ final class MAD4B_SCP_Ability_Contract_Inspector {
 				( 'developer-dispatch' === $surface && in_array( $ability_name, array( 'mad4b/developer-discover', 'mad4b/developer-info' ), true ) )
 				|| ( 'enrollment' === $surface && in_array( $ability_name, array( 'mad4b/enrollment-discover', 'mad4b/enrollment-info' ), true ) )
 			);
-		$lane = $source_read_dispatch ? 'read' : 'unclassified';
-		if ( in_array( $surface, $mutation_lanes, true ) || in_array( $surface, array( 'admin', 'content' ), true ) ) {
+		// Four named discover/info abilities are *either* the exact declared
+		// readonly source identity or unclassified. Never let an enrollment
+		// transport label override their read lane or confer a write lane.
+		$native_discovery_name = in_array( $ability_name, array(
+			'mad4b/developer-discover', 'mad4b/developer-info',
+			'mad4b/enrollment-discover', 'mad4b/enrollment-info',
+		), true );
+		$lane = 'unclassified';
+		if ( $source_read_dispatch ) {
+			$lane = 'read';
+		} elseif ( $native_discovery_name ) {
+			$lane = 'unclassified';
+		} elseif ( in_array( $surface, $mutation_lanes, true ) || in_array( $surface, array( 'admin', 'content' ), true ) ) {
 			$lane = $surface;
 		} elseif ( $readonly_declared && true === $annotations['readonly'] && in_array( $surface, array( '', 'read' ), true ) ) {
 			$lane = 'read';
