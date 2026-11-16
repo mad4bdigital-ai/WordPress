@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Media Rights Extraction Intake
  * Description: Bounded, idempotent JetEngine CCT discovery of new local image attachments; never auto-licenses or publishes.
- * Version: 1.8.0
+ * Version: 1.9.0
  */
 defined('ABSPATH') || exit;
 if (!class_exists('MAD4B_Media_Rights_Extraction_Intake_V1', false)) {
@@ -91,6 +91,51 @@ final class MAD4B_Media_Rights_Extraction_Intake_V1 {
   * original, creator, exact license, and one published CCT record agree.
   * Derived crops inherit the owner's rights, never create a new license.
   */
+ /** A pre-existing WordPress Library attachment can be assigned to a new
+  * page even when source/creator/license metadata is still pending.
+  * This is a publishing/workflow decision, never a grant of usage rights.
+  * Exact file identity, in-site uploads containment, and explicit revocations
+  * remain mandatory. External NEW imports follow their separate source gate.
+  */
+ public static function existing_library_publication_policy(int $attachment_id): array {
+  $base=['contract'=>'mad4b.media.existing-library-metadata-policy.v1',
+   'attachment_id'=>$attachment_id,'rights_verified'=>false,
+   'rights_metadata_required_for_publication'=>false,
+   'source_license_not_inferred'=>true,'new_external_import'=>false];
+  $deny=static fn(string $reason):array=>$base+['can_publish'=>false,'status'=>$reason];
+  if($attachment_id<1||get_post_type($attachment_id)!=='attachment'
+    ||!str_starts_with((string)get_post_mime_type($attachment_id),'image/'))
+   return $deny('not_an_existing_image_attachment');
+  $status=get_post_status($attachment_id);
+  if(!in_array($status,['inherit','publish','private'],true))
+   return $deny('existing_attachment_not_active');
+  $uploads=wp_get_upload_dir();$root=realpath((string)($uploads['basedir']??''));
+  $name=get_attached_file($attachment_id);$path=is_string($name)?realpath($name):false;
+  if(!$root||!$path||!str_starts_with($path,$root.DIRECTORY_SEPARATOR)
+    ||!is_file($path)||!is_readable($path))
+   return $deny('attachment_file_outside_verified_library');
+  $sha=hash_file('sha256',$path);
+  if(!is_string($sha)||!preg_match('/^[a-f0-9]{64}$/D',$sha))
+   return $deny('library_file_hash_unavailable');
+  // Explicit prohibition is different from missing license metadata. Never
+  // silently override a company/rights owner decision not to publish.
+  foreach(['_mad4b_media_use_restriction_v1','_mad4b_rights_use_restriction'] as $key){
+   $v=strtolower(trim((string)get_post_meta($attachment_id,$key,true)));
+   if(in_array($v,['blocked','revoked','prohibited','do_not_publish'],true))
+    return $deny('explicit_media_usage_restriction');
+  }
+  $credit=self::published_clearance($attachment_id);
+  $cleared=($credit['cleared']??false)===true;
+  return array_merge($base,[
+   'can_publish'=>true,
+   'status'=>$cleared?'published_credit_verified':'metadata_pending_nonblocking',
+   'attachment_sha256'=>$sha,
+   'review_queue_required'=>!$cleared,
+   'rights_verified'=>$cleared,
+   'credit_id'=>$cleared?(int)($credit['published_credit_id']??0):null,
+   'publication_does_not_change_rights_table'=>true,
+   'manual_visual_review_still_required'=>true]);
+ }
  public static function published_clearance(int $attachment_id): array {
   $deny=static fn($reason)=>['cleared'=>false,'reason'=>$reason,'attachment_id'=>$attachment_id,'cct_mutations'=>false];
   if($attachment_id<1||!class_exists('MAD4B_Media_Visual_Lineage_V1',false))

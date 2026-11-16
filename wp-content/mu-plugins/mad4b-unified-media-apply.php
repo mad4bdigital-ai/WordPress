@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Universal Media Apply Router
  * Description: Signed, typed media routing for public posts, taxonomies and registered JetEngine media adapters.
- * Version: 1.1.0
+ * Version: 1.1.1
  */
 defined('ABSPATH') || exit;
 if (!class_exists('MAD4B_Licensed_Media_Source_V1', false)) {
@@ -569,6 +569,24 @@ final class MAD4B_Universal_Media_Apply_V1 {
   if(!in_array($mapped,['id','url'],true))return self::err('mad4b_media_image_slot_format_invalid');
   return ['format'=>$mapped,'field'=>$field];
  }
+ /** Pure visual review decision. Existing library uploads with missing
+  * rights metadata do not require a reviewer to fabricate license evidence.
+  */
+ public static function existing_library_visual_review_valid(array $review,string $attachmentSha):bool {
+  $required=['decision','reviewed_sha256','visual_match_verified','subject_description'];
+  $allowed=array_merge($required,['rights_verified','rights_evidence']);
+  $keys=array_keys($review);
+  $rightsClaim=$review['rights_verified']??false;
+  $rightsNote=$review['rights_evidence']??'';
+  return !array_diff($required,$keys) && !array_diff($keys,$allowed)
+   &&($review['decision']??'')==='approve'
+   &&($review['visual_match_verified']??false)===true
+   &&is_bool($rightsClaim)
+   &&preg_match('/^[a-f0-9]{64}$/D',$attachmentSha)
+   &&hash_equals($attachmentSha,(string)($review['reviewed_sha256']??''))
+   &&is_string($review['subject_description']) &&mb_strlen($review['subject_description'])>=35
+   &&is_string($rightsNote) &&mb_strlen($rightsNote)<=1000;
+ }
  private static function reviewed_local(array $payload,array $target,string $adapter,string $action):array|WP_Error {
   $asset=$action==='review'?($payload['asset']??null):$payload;
   if(!is_array($asset))return self::err('mad4b_media_attachment_review_asset_invalid');
@@ -585,20 +603,24 @@ final class MAD4B_Universal_Media_Apply_V1 {
   finally{if($adapter==='post_featured_image')remove_filter('mad4b/media/apply/fields',$add,10);}
   if(is_wp_error($preflight))return $preflight;
   if($action==='preflight')return $preflight;
+  // Existing library image permissions are separate from license metadata.
+  // Never treat a missing copyright field as a reason to block assignment.
+  if(!class_exists('MAD4B_Media_Rights_Extraction_Intake_V1',false)
+    ||!method_exists('MAD4B_Media_Rights_Extraction_Intake_V1','existing_library_publication_policy'))
+   return self::err('mad4b_media_library_policy_provider_unavailable');
+  $rights=MAD4B_Media_Rights_Extraction_Intake_V1::existing_library_publication_policy((int)$asset['attachment_id']);
+  if(empty($rights['can_publish']))
+   return self::err('mad4b_media_library_use_restricted');
   $actor=self::signed_ai();if(is_wp_error($actor))return $actor;
   $key=self::local_review_key($target,$adapter,$asset);
   if($action==='review'){
    $expected=['asset','review'];$keys=array_keys($payload);sort($expected);sort($keys);
    if($keys!==$expected||!is_array($payload['review']))return self::err('mad4b_media_attachment_review_schema_invalid');
    $review=$payload['review'];
-   $expected=['decision','reviewed_sha256','visual_match_verified','rights_verified','subject_description','rights_evidence'];
-   $keys=array_keys($review);sort($keys);sort($expected);
-   if($keys!==$expected||($review['decision']??'')!=='approve'
-     ||($review['visual_match_verified']??false)!==true||($review['rights_verified']??false)!==true
-     ||!hash_equals((string)$preflight['attachment_sha256'],(string)($review['reviewed_sha256']??''))
-     ||!is_string($review['subject_description'])||mb_strlen($review['subject_description'])<35
-     ||!is_string($review['rights_evidence'])||mb_strlen($review['rights_evidence'])<35)
+   if(!self::existing_library_visual_review_valid($review,(string)$preflight['attachment_sha256']))
     return self::err('mad4b_media_attachment_review_evidence_missing');
+   $rightsClaim=$review['rights_verified']??false;
+   $rightsNote=$review['rights_evidence']??'';
    $existing=get_option($key,[]);
    if(is_array($existing)&&($existing['status']??'')==='applied')return self::err('mad4b_media_attachment_review_already_consumed');
    if(is_array($existing)&&($existing['status']??'')==='approved'&&($existing['expires_at']??0)>time())
@@ -609,11 +631,18 @@ final class MAD4B_Universal_Media_Apply_V1 {
     'attachment_sha256'=>$preflight['attachment_sha256'],
     'original_value_sha256'=>$preflight['old_value_sha256'],
     'visual_evidence_sha256'=>hash('sha256',$review['subject_description']),
-    'rights_evidence_sha256'=>hash('sha256',$review['rights_evidence']),
+    'rights_evidence_sha256'=>$rightsNote!==''
+      ?hash('sha256',$rightsNote):null,
+    'rights_metadata_state'=>$rights['status'],
+    'rights_verified_by_published_credit'=>(bool)$rights['rights_verified'],
+    'rights_claim_was_submitted'=>$rightsClaim,
+    'library_file_sha256'=>$rights['attachment_sha256'],
     'reviewed_at'=>gmdate('c'),'expires_at'=>time()+86400];
    $approved['approval_sha256']=hash('sha256',wp_json_encode($approved,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
    $audit=MAD4B_SCP_Audit::record('mad4b/media-local-image-review',[
     'site_uuid'=>$actor['site_uuid'],'agent_public_id'=>$actor['agent_public_id'],
+    'rights_metadata_state'=>$rights['status'],
+    'rights_verified_by_published_credit'=>(bool)$rights['rights_verified'],
     'kind'=>$target['kind'],'type'=>$target['type'],'id'=>$target['id'],
     'adapter'=>$adapter,'field'=>$field,'sha256'=>$preflight['attachment_sha256'],
     'approval_sha256'=>$approved['approval_sha256']]);
@@ -628,7 +657,9 @@ final class MAD4B_Universal_Media_Apply_V1 {
    ||!hash_equals((string)($approved['site_uuid']??''),(string)$actor['site_uuid'])
    ||!hash_equals((string)($approved['agent_public_id']??''),(string)$actor['agent_public_id'])
    ||!hash_equals((string)($approved['attachment_sha256']??''),(string)$preflight['attachment_sha256'])
-   ||!hash_equals((string)($approved['original_value_sha256']??''),(string)$preflight['old_value_sha256']))
+     ||!hash_equals((string)($approved['original_value_sha256']??''),(string)$preflight['old_value_sha256'])
+     ||(isset($approved['library_file_sha256'])
+       &&!hash_equals((string)$approved['library_file_sha256'],(string)$rights['attachment_sha256'])))
    return self::err('mad4b_media_attachment_approved_review_missing');
   $id=$target['id'];$kind=$target['kind'];$type=$target['type'];$aid=$asset['attachment_id'];
   $getter=$kind==='post'?'get_post_meta':'get_term_meta';
@@ -655,6 +686,9 @@ final class MAD4B_Universal_Media_Apply_V1 {
     'site_uuid'=>$actor['site_uuid'],'target'=>$target,'field'=>$field,'format'=>$slot['format'],
     'attachment_id'=>$aid,'attachment_sha256'=>$preflight['attachment_sha256'],
     'approval_sha256'=>$approved['approval_sha256'],'previous_value'=>$old,
+    'rights_metadata_status'=>$rights['status'],
+    'rights_verified'=>(bool)$rights['rights_verified'],
+    'missing_rights_metadata_not_a_publication_block'=>true,
     'new_value'=>$new,'changed'=>$changed,'write_executed'=>true,'rollback_supported'=>true];
    $audit=MAD4B_SCP_Audit::record('mad4b/signed-media-apply',[
      'site_uuid'=>$actor['site_uuid'],'kind'=>$kind,'type'=>$type,'id'=>$id,
