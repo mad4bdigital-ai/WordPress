@@ -1,7 +1,8 @@
 <?php
 /** Native contract: no WordPress bootstrap, safe and repeatable. */
 error_reporting(E_ALL);
-define('ABSPATH','/tmp/');
+// Exact isolated queue fixture, never a live WordPress DB.
+define('ABSPATH','/mock/');
 define('WP_CONTENT_DIR','/tmp/wp-content');
 define('WP_CLI',true);
 $GLOBALS['opts']=['mad4b_scp_brand_context_profile_v1'=>['site_uuid'=>'e5e64bca-ed62-48d2-b2b3-dff693cd702a','brand_id'=>'4f422f41f1564dc2a687326ac7c21634']];
@@ -25,16 +26,32 @@ check(get_option($c::EPOCH,1)===2,'invalidation epoch increments once');
 $b=$c::mark_dirty('elementor_document_saved','/tours-and-activities/');
 check(!empty($b['deduplicated'])&&get_option($c::EPOCH,1)===2,'dedup repeated authoring event');
 check(count($c::notification_feed())===1,'first notification stored');
-$ack=$c::acknowledge_worker('/tours-and-activities/','hold','high CLS');
-check(!empty($ack['ok'])&&count($c::queue())===0,'worker acknowledgment clears the exact job');
+$source_token=$c::queue()[0]['source_token'];
+$ack=$c::acknowledge_worker('/tours-and-activities/','hold','high CLS',$source_token);
+check(!empty($ack['ok']) && !empty($ack['retry_scheduled'])
+ && count($c::queue())===1 && $c::queue()[0]['state']==='hold',
+ 'HOLD retains the same revision for a bounded retry');
 check(count($GLOBALS['events'])===2,'both operational notifications dispatched to the shared event hook');
 check(($GLOBALS['events'][1][0]??'')==='mad4b/notifications/recorded'
  && ($GLOBALS['events'][1][1]['external_delivery']??null)===false,'shared notification contract, no unsolicited external sends');
 check(count($c::notification_feed())===2,'notification inbox persists hold');
 $c::acknowledge_worker('/tours-and-activities/','hold','high CLS');
 check(count($c::notification_feed())===2,'duplicate state deduped');
+check(count($c::queue())===1 && ($c::queue()[0]['attempts']??0)===2,
+ 'Repeated HOLD never silently certifies or drops work');
 $bad=$c::acknowledge_worker('/wp-admin/','certified','unsafe');
 check(empty($bad['ok']),'unsafe route rejected');
+$refreshed=$c::mark_dirty('elementor_document_saved','/tours-and-activities/');
+$new_token=$c::queue()[0]['source_token'];
+check(!empty($refreshed['deduplicated']) && $new_token!==$source_token
+ && $c::queue()[0]['state']==='pending' && $c::queue()[0]['attempts']===0,
+ 'A new revision rotates source token and resets retry state');
+$stale=$c::acknowledge_worker('/tours-and-activities/','certified','stale browser proof',$source_token);
+check(($stale['error']??'')==='source_revision_changed' && count($c::queue())===1,
+ 'A stale result cannot certify or retire the new revision');
+$resolved=$c::acknowledge_worker('/tours-and-activities/','native','current approved fallback',$new_token);
+check(!empty($resolved['ok']) && count($c::queue())===0,
+ 'Only current original native resolution retires the queued revision');
 $source_uuid=$c::uuid();
 $GLOBALS['env']='production';
 check($c::scope(),'production works for the exact registered installed company');
