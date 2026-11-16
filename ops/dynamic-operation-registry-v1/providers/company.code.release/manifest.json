@@ -2,7 +2,7 @@
   "contract": "mad4b.dynamic-operation-provider.v1",
   "operation_id": "company.code.release",
   "provider": "mad4b-company-release",
-  "version": 4,
+  "version": 5,
   "plan_contract": "mad4b.company-code-release.plan.v1",
   "handler": {
     "path": "company-code-release-v1/original_313_host_handler.py",
@@ -35,11 +35,11 @@
     },
     {
       "path": "company-code-release-v1/company_code_release.py",
-      "sha256": "d922204de29a9a4380249094086d40cc0e7fbc5df947601103da7366112e7600"
+      "sha256": "70fe40a2de958d8deff9f325159ebf7319cdd3fca87192f96a712df09d0dac77"
     },
     {
       "path": "company-code-release-v1/company_lifecycle_broker.py",
-      "sha256": "93903d41e7669ca6904c23d496cdef9d67095456036ce0e4aff0e45c034a99e6"
+      "sha256": "1fb09ba2e8b9ecdd74124087bdb0f14a98d00684e3ccf54e851f12d7f8821ecf"
     },
     {
       "path": "company-code-release-v1/original_313_code_release_contract.py",
