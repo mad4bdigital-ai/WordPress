@@ -299,10 +299,10 @@
     },
     {
       "relative_path": "mu-plugins/mad4b-media-rights-extraction-intake.php",
-      "sha256": "5577cd85c9edc969ecb6e85edfab09d553e7757e3748ddd5a78878ddf63dbc57",
-      "bytes": 39176,
+      "sha256": "584d76d845c239df82cf3333d6c8a2cdbda2c2f6f4c4b6b2ed24a9c6daa0137e",
+      "bytes": 41794,
       "kind": "php",
-      "shared_git_source_sha256": "5577cd85c9edc969ecb6e85edfab09d553e7757e3748ddd5a78878ddf63dbc57",
+      "shared_git_source_sha256": "584d76d845c239df82cf3333d6c8a2cdbda2c2f6f4c4b6b2ed24a9c6daa0137e",
       "source_site_sha256": "e2a2e2b0fcb78aba845ad118e0c672701bdb4c8a3f76e051d511f4d36eda9c99",
       "shared_source_status": "same",
       "no_implicit_activation": true
@@ -449,10 +449,10 @@
     },
     {
       "relative_path": "mu-plugins/mad4b-unified-media-apply.php",
-      "sha256": "2bc6b81fe40120ae6e4d319abd91ea83a7ee7c9cc3d680f80d6eed15ad787814",
-      "bytes": 33205,
+      "sha256": "cae14ff1f3cb25e29bad0188282384a571d9fbc5762c67f57b557971d69c113f",
+      "bytes": 35088,
       "kind": "php",
-      "shared_git_source_sha256": "e2197a6118323d3f419bbc16b101403be431f360319a2981dca7d8b7bcd6f35a",
+      "shared_git_source_sha256": "611efff631b853b2e2a5f118b01d9eb141e960b9e483bbb44b28a544fc3c9490",
       "source_site_sha256": "2bc6b81fe40120ae6e4d319abd91ea83a7ee7c9cc3d680f80d6eed15ad787814",
       "shared_source_status": "diverged",
       "no_implicit_activation": true
@@ -508,5 +508,6 @@
       "no_implicit_activation": true
     }
   ],
-  "updated_after_verified_manual_release_utc": "2026-11-16T00:27:00+00:00"
+  "updated_after_verified_manual_release_utc": "2026-11-16T00:27:00+00:00",
+  "updated_after_rights_nonblocking_manual_release_utc": "2026-11-16T01:09:50.754945+00:00"
 }
