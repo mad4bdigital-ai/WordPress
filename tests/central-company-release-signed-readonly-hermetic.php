@@ -202,4 +202,4 @@ rcheck($preflight instanceof FixtureReply
 rcheck($GLOBALS['release_mutations']===0,
  'No original release source method may modify WordPress or issue execution');
 unlink($tmp);
-echo "CENTRAL_RELEASE_RSA_AND_COMPANY_COMPAT: PASS source signature, company downgrade, no promotion grant\n";
+echo "PASS: CENTRAL_RELEASE_RSA_AND_COMPANY_COMPAT source signature, company downgrade, no promotion grant\n";

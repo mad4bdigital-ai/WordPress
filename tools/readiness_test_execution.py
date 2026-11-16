@@ -35,6 +35,9 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     # WordPress abilities and invalid URLs. No crawl, content creation, write,
     # network, or signed owner admission; unknown PHP paths remain blocked.
     "tests/catalog-intent-source-relevance-hermetic.php",
+    # Isolated signed Central source+Company rollout fixture uses an ephemeral
+    # RSA key and an .invalid origin; executes assertions with zero live grants.
+    "tests/central-company-release-signed-readonly-hermetic.php",
     # Canonical Inspector + Server evidence on synthetic WordPress Ability;
     # owner scopes and grant checks are not mocked as approved live writes.
     "tests/server-descriptor-canonical-multilane-hermetic.php",
@@ -400,6 +403,8 @@ def self_test():
         "php", str((ROOT / "tests/media-rights/media-rights-source-convergence-hermetic.php").resolve())]
     assert command_for("tests/catalog-intent-source-relevance-hermetic.php") == [
         "php", str((ROOT / "tests/catalog-intent-source-relevance-hermetic.php").resolve())]
+    assert command_for("tests/central-company-release-signed-readonly-hermetic.php") == [
+        "php", str((ROOT / "tests/central-company-release-signed-readonly-hermetic.php").resolve())]
     assert command_for("tests/server-descriptor-canonical-multilane-hermetic.php") == [
         "php", str((ROOT / "tests/server-descriptor-canonical-multilane-hermetic.php").resolve())]
     assert has_assertion_pass("PASS: brand quality exact context revision and same-site issue closure\n")

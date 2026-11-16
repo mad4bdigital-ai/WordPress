@@ -117,7 +117,7 @@ jobs:
           # Host312 and transaction cases use only isolated synthetic keys,
           # never the live enrolled Original306/312 or Master/Broker receipts.
           python3 -m unittest discover -s ops/native-source-publisher-v1 -p 'test_native_host_source_transaction.py' -q
-          python3 -m unittest discover -s ops/dynamic-operation-registry-v1/tests -p 'test_host312_original_issuer.py' -q
+          sudo -n -E "$(command -v python3)" -m unittest discover -s ops/dynamic-operation-registry-v1/tests -p 'test_host312_original_issuer.py' -q
           python3 -m unittest discover -s tests -p 'test_unified_branch_census_contract.py' -q
           python3 -m unittest discover -s tests -p 'test_unified_recent_branch_no_regression.py' -q
           # Native Critical CSS monitoring and private Woo/cart cache safety.
