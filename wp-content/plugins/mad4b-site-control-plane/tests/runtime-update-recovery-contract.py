@@ -37,7 +37,12 @@ assert "$public['verification_guidance'] = self::connection_verification_guidanc
 read_consistency = (includes / 'class-mad4b-scp-read-consistency.php').read_text()
 assert "'wp_register_ability_args', array( 'MAD4B_SCP_Connector_Resilience', 'wrap_read_registration' ), 180, 2" in read_consistency
 abilities = (includes / 'class-mad4b-scp-abilities.php').read_text()
-assert "'prepare_execution' => array( 'type' => 'boolean', 'default' => true )" in abilities
+registration = (includes / 'trait-mad4b-scp-abilities-registration.php').read_text()
+assert "require_once __DIR__ . '/trait-mad4b-scp-abilities-registration.php';" in abilities
+assert "use MAD4B_SCP_Abilities_Registration_Trait;" in abilities
+assert "$this->register_source_abilities();" in abilities
+assert "trait MAD4B_SCP_Abilities_Registration_Trait" in registration
+assert "'prepare_execution' => array( 'type' => 'boolean', 'default' => true )" in registration
 assert "array_key_exists( 'prepare_execution', $input ) && false === $input['prepare_execution']" in abilities
 
 provider = (includes / 'class-mad4b-scp-context-provider-gateway.php').read_text()
