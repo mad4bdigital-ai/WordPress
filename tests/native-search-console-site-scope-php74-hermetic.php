@@ -143,3 +143,5 @@ verify_gsc($blocked instanceof WP_Error
  && $GLOBALS['gsc_http_calls']===0 && $GLOBALS['gsc_writes']===0,
  'Missing scoped OAuth grant cannot trigger HTTP or content update');
 echo "NATIVE_GSC_PHP74_SCOPE: PASS native property, OAuth/tenant boundary, retained-only observations\n";
+// Only after all assertions: canonical terminal marker for audited CI.
+echo "NATIVE_GSC_PHP74_SCOPE: PASS\n";

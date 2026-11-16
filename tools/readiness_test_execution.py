@@ -63,6 +63,9 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     # synthetic WordPress stubs reject grant, deployment, options and broker
     # mutations. Exact source test only; no live Original313 authority.
     "tests/native-release-and-staging-canary-denial-hermetic.php",
+    # Reviewed native Search Console site-only OAuth/retained-observation
+    # fixture: in-memory provider/WP stubs; no HTTP, real grants or writes.
+    "tests/native-search-console-site-scope-php74-hermetic.php",
     "tests/native-cli-context-and-company-inventory-hermetic.php",
     # Exact hermetic source-only Company/ContentJob/Media Rights regressions:
     # fake FluentBoards, in-memory WP users/roles/CAS and role transactions,
@@ -578,6 +581,7 @@ def self_test():
     assert command_for("tests/runtime-convergence-owner-gate-native-hermetic.php")[0] == "php"
     assert command_for("tests/staging-host-candidate-gate-native-hermetic.php")[0] == "php"
     assert command_for("tests/native-release-and-staging-canary-denial-hermetic.php")[0] == "php"
+    assert command_for("tests/native-search-console-site-scope-php74-hermetic.php")[0] == "php"
     assert command_for("tests/native-capability-registry-adapter-first-party.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-native-runtime.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/generation-snapshot-exception-runtime.php")[0] == "php"
