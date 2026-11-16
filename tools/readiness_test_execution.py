@@ -69,6 +69,10 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     # Source-only Skills Cron dedupe, in-memory WP scheduler and denied
     # nonenrolled/mismatched origin before any Skill filesystem or DB writes.
     "tests/native-skills-seeder-enrollment-cron-hermetic.php",
+    # Tour Highlights Elementor/JetEngine/WPML source behavior uses only
+    # in-memory WP metadata/terms and .invalid URLs; denied publishing and
+    # cross-locale writes are asserted. No site/database mutations.
+    "tests/native-tour-highlights/acceptance.php",
     "tests/native-cli-context-and-company-inventory-hermetic.php",
     # Exact hermetic source-only Company/ContentJob/Media Rights regressions:
     # fake FluentBoards, in-memory WP users/roles/CAS and role transactions,
@@ -434,6 +438,23 @@ def run_tests(impact, head, timeout):
     tests = impact.get("required_regression_tests")
     ensure(isinstance(tests, list) and len(tests) == len(set(tests)),
            "Missing or duplicate execution plan")
+    # Preflight every exact mapped runner before starting ANY test. This is
+    # discovery only, not executable allowlisting: unknown PHP remains blocked.
+    # Reporting all admission gaps together avoids repeated 85-job CI cycles.
+    admission_gaps = []
+    for name in tests:
+        try:
+            ensure(isinstance(name, str), "Regression path must be string")
+            command_for(name)
+        except (ValueError, OSError, TypeError) as error:
+            admission_gaps.append((str(name), str(error)))
+    if admission_gaps:
+        detail = "; ".join(f"{name}: {reason}" for name, reason in admission_gaps[:40])
+        raise ValueError(
+            "Untrusted mapped regression runners ("
+            + str(len(admission_gaps)) + "): " + detail
+            + ("; additional admissions withheld" if len(admission_gaps) > 40 else "")
+        )
     results = []
     for name in tests:
         ensure(isinstance(name, str), "Regression path must be string")
@@ -586,6 +607,7 @@ def self_test():
     assert command_for("tests/native-release-and-staging-canary-denial-hermetic.php")[0] == "php"
     assert command_for("tests/native-search-console-site-scope-php74-hermetic.php")[0] == "php"
     assert command_for("tests/native-skills-seeder-enrollment-cron-hermetic.php")[0] == "php"
+    assert command_for("tests/native-tour-highlights/acceptance.php")[0] == "php"
     assert command_for("tests/native-capability-registry-adapter-first-party.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-native-runtime.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/generation-snapshot-exception-runtime.php")[0] == "php"
