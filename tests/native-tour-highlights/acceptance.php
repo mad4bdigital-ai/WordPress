@@ -9,6 +9,9 @@ $GLOBALS['hooks']=array();
 $GLOBALS['meta_write_count']=0;
 function add_action($name,$callback,$priority=10,$args=1){$GLOBALS['hooks'][]=$name;}
 function add_filter($name,$callback,$priority=10,$args=1){$GLOBALS['hooks'][]=$name;}
+// The no-WPML hermetic scenario still needs the core WordPress hook
+// API. A nonexistent filter must fail closed rather than fake a locale.
+function has_filter($name){return false;}
 function get_post_type($id){return in_array($id,[7,8],true)?'tours-and-activities':(in_array($id,[910,920],true)?'jet-engine':'unknown');}
 function get_post_status($id){return in_array($id,[7,8,910],true)?'publish':'draft';}
 function get_post_meta($id,$key,$single=false){return $GLOBALS['meta'][$id][$key]??'';}
