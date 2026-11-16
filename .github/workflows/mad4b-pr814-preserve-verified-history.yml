@@ -1,0 +1,87 @@
+name: MAD4B PR814 Verified Original Git Ancestry Handoff
+on:
+  push:
+    branches:
+      - integration/pr814-history-bridge-20261116
+permissions:
+  contents: write
+concurrency:
+  group: mad4b-pr814-original-ancestry-handoff
+  cancel-in-progress: false
+jobs:
+  stage-original-ancestry:
+    if: github.repository == 'mad4bdigital-ai/WordPress' && github.ref == 'refs/heads/integration/pr814-history-bridge-20261116'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout exact history-bridge source and all prerequisites
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Verify bundle, recover exact original commit and push review branch only
+        shell: bash
+        run: |
+          set -euo pipefail
+          TARGET=integration/mad4b-unified-source-20261113
+          OUTPUT=integration/pr814-preserved-history-ready-20261116
+          BUNDLE=ops/git-transport/pr814-source-convergence-a83ba81f6b.bundle
+          OLD_HEAD=8787b047964c598bdd1696cb66966dd0b78a5032
+          SNAPSHOT=2d13854cdd84fa568f1d33bc2f1ee64cfe0bf889
+          SOURCE=a83ba81f6b8bf5578f2bab6f9a632f92e6b4b3b8
+          TREE=59fa83da5b0e8b02f0b46c7a594c05d76911f3f7
+          BUNDLE_BLOB=96795013b67ba814b8be9595d6715aa0c61f09be
+          BUNDLE_DIGEST=e4e6e89c8268f25b4a9a2c2ca4d9084f03a80f1d5e0f476ddb3ec01c1eb29d95
+
+          test "$GITHUB_REPOSITORY" = mad4bdigital-ai/WordPress
+          test "$(git rev-parse "HEAD:$BUNDLE")" = "$BUNDLE_BLOB"
+          printf '%s  %s\n' "$BUNDLE_DIGEST" "$BUNDLE" | sha256sum --check --status
+          test "$(git show -s --format=%T "$SNAPSHOT")" = "$TREE"
+
+          git fetch --no-tags origin "refs/heads/$TARGET:refs/remotes/origin/$TARGET"
+          test "$(git rev-parse "refs/remotes/origin/$TARGET")" = "$SNAPSHOT"
+          for prerequisite in \
+            4e008e851cbd93e40d321cfa7c4af9d3b951f78b \
+            633d704864409aa28454ee3f2b4e775f7e1e4781 \
+            5e26d8c505bd5b5a4f8c2d18585eb55262eeef5f \
+            481d8091d787419a4300212ac635dec213bc2913 \
+            c2214ebb92bf9f007b9b2c82bff67c8dfdb5fa5f \
+            8787b047964c598bdd1696cb66966dd0b78a5032 \
+            e6b6c48a604f27b5e44e83141370b4635b93edd3
+          do
+            if ! git cat-file -e "$prerequisite^{commit}" 2>/dev/null; then
+              git fetch --no-tags origin "$prerequisite"
+            fi
+            git cat-file -e "$prerequisite^{commit}"
+          done
+
+          git bundle verify "$BUNDLE"
+          git fetch "$BUNDLE" "refs/heads/integration/pr814-821-source-converged-20261115:refs/heads/mad4b-pr814-original-preserved"
+          test "$(git rev-parse refs/heads/mad4b-pr814-original-preserved)" = "$SOURCE"
+          test "$(git show -s --format=%T "$SOURCE")" = "$TREE"
+          git merge-base --is-ancestor "$OLD_HEAD" "$SOURCE"
+
+          # Commit the two real proven histories together. Source bytes do not
+          # change: the first parent is the GitHub snapshot and the second
+          # parent is the exact local commit recovered from the bundle.
+          git checkout --detach "$SNAPSHOT"
+          git -c user.name='MAD4B Original Source Restoration' \
+            -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            merge --no-ff --no-edit --strategy=ort "$SOURCE"
+          test "$(git show -s --format=%T HEAD)" = "$TREE"
+          test "$(git show -s --format=%P HEAD)" = "$SNAPSHOT $SOURCE"
+          git diff --quiet HEAD "$SOURCE"
+          git merge-base --is-ancestor "$SNAPSHOT" HEAD
+          git merge-base --is-ancestor "$SOURCE" HEAD
+
+          # The only remote mutation is a NEW, non-privileged review branch.
+          # Never move PR814, master, or production refs from GITHUB_TOKEN.
+          if git ls-remote --exit-code origin "refs/heads/$OUTPUT"; then
+            echo 'HISTORY_REVIEW_BRANCH_ALREADY_EXISTS__FAIL_CLOSED' >&2
+            exit 42
+          fi
+          test "$(git ls-remote origin "refs/heads/$TARGET" | cut -f1)" = "$SNAPSHOT"
+          git push origin "HEAD:refs/heads/$OUTPUT"
+          echo "PRESERVED_GIT_ANCESTRY_READY_SHA=$(git rev-parse HEAD)"
+          echo "PRESERVED_SOURCE_TREE=$TREE"
+          echo 'PR_BRANCH_UNCHANGED_BY_THIS_WORKFLOW'
