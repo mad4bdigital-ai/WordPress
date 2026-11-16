@@ -120,4 +120,4 @@ check_skill($c::plan($input)['state']==='HOLD',
 check_skill($GLOBALS['skills_mutations']===0,
  'Skill plan and acceptance must never run providers or mutate WordPress');
 unlink($dst);rmdir($dir);
-echo "COMPANY_RECONCILE_SKILL_SET: PASS dynamic union, stale SHA, no provider/browser grant\n";
+echo "PASS: COMPANY_RECONCILE_SKILL_SET dynamic union, stale SHA, no provider/browser grant\n";

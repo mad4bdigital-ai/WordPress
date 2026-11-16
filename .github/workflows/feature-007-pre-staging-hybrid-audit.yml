@@ -146,6 +146,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # No-network negative verification of both exact official MCP Adapter
+          # distributions and pre-request redirect host boundaries.
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/test_materialize_certified_mcp_adapter_source.py
           php wp-content/plugins/mad4b-site-control-plane/tests/solution-discovery-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/assistant-solution-router-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/staging-source-selector-runtime.php

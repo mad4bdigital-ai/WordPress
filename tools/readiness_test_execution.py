@@ -53,6 +53,10 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     # Exact fake-DB tenant policy-only CAS, independent-owner reviewer and
     # transaction rollback fixture. External site/provider writes stay zero.
     "tests/company-migration-decisions-transaction-hermetic.php",
+    # Exact original company Skill Set fixture; real policy JSON loaded into
+    # a temporary local Skill Registry. No network/provider execution or
+    # authority mutation; acceptance remains explicitly untested.
+    "tests/company-reconcile-skill-set-no-executor-hermetic.php",
     # Canonical Inspector + Server evidence on synthetic WordPress Ability;
     # owner scopes and grant checks are not mocked as approved live writes.
     "tests/server-descriptor-canonical-multilane-hermetic.php",
@@ -442,6 +446,8 @@ def self_test():
         "php", str((ROOT / "tests/company-master-native-rest-gates-hermetic.php").resolve())]
     assert command_for("tests/company-migration-decisions-transaction-hermetic.php") == [
         "php", str((ROOT / "tests/company-migration-decisions-transaction-hermetic.php").resolve())]
+    assert command_for("tests/company-reconcile-skill-set-no-executor-hermetic.php") == [
+        "php", str((ROOT / "tests/company-reconcile-skill-set-no-executor-hermetic.php").resolve())]
     for js in STANDALONE_JS_REGRESSIONS:
         assert command_for(js) == ["node", str((ROOT / js).resolve())]
     assert command_for("tests/server-descriptor-canonical-multilane-hermetic.php") == [
