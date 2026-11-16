@@ -66,3 +66,5 @@ qa30_assert(MAD4B_SCP_Native_General_Settings_Contract::allowed_options($base) =
 $GLOBALS['qa30_admin'] = false;
 qa30_assert(MAD4B_SCP_Native_General_Settings_Contract::allowed_options($base) === $base, 'non_admin_context_untouched');
 echo "QA30_SOURCE_CONTRACT_REGRESSION_PASS\n";
+
+echo "QA30_SOURCE_CONTRACT: PASS\n";

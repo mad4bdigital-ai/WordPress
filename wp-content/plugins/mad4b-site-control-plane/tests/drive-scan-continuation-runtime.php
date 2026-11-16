@@ -148,3 +148,5 @@ $applied=MAD4B_SCP_Drive_Scan_Admin::step($input);
 assert_scan(!is_wp_error($applied)&&25===$applied['count']&&1===MAD4B_SCP_Context_Authority::$writes,'exact finalized inventory did not reach original Apply');
 assert_scan(is_wp_error(MAD4B_SCP_Brand_Context_Builder::source_scan_apply($input))&&1===MAD4B_SCP_Context_Authority::$writes,'post-commit registry change did not invalidate checkpoint replay');
 echo "DRIVE_SCAN_PLAN_APPLY_PARITY: PASS; exact plan/registry and native confirmation\n";
+
+echo "DRIVE_SCAN_PLAN_APPLY_PARITY: PASS\n";

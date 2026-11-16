@@ -30,6 +30,13 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "tests/operation-registry-native-policy-boundary-hermetic.php",
     "tests/presentation-browser-evidence-local-import-hermetic.php",
     "tests/presentation-integrity-jetengine-source-hermetic.php",
+    # Reviewed isolated fixtures: fake Site Profile lineage, fake-DB Drive
+    # continuation, provider TTL with stub OAuth, and in-memory QA30 Admin.
+    # No real site, provider HTTP, credentials, mutation or release authority.
+    "wp-content/plugins/mad4b-site-control-plane/tests/brand-asset-source-binding-hermetic.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/drive-scan-continuation-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/provider-session-ttl-partial-context.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/qa30-native-general-settings-rest-lifecycle.php",
     # Exact no-WordPress Brand Quality/issue-ledger closure fixture. It uses
     # synthetic WP functions and a positive fail-on-assertion PASS marker;
     # no DB, publish, email or authorization. Unknown PHP stays denied.

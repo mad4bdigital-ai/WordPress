@@ -134,3 +134,5 @@ assert_contract( 'unverified' === $owner( $asset )['status'] && ! $approved->inv
     'changing the active Site Profile must not make old source transferable' );
 
 echo "BRAND_ASSET_SOURCE_BINDING: PASS (auto provenance, creator-neutral, exact review, foreign-deny)\n";
+
+echo "BRAND_ASSET_SOURCE_BINDING: PASS\n";
