@@ -120,6 +120,66 @@ def verify_company_overlay(live: Path, overlay: Path) -> dict:
             'never_auto_deploy_or_grant_from_mirror': True}
 
 
+
+def verify_company_ownership(report: dict, contract_file: Path) -> dict:
+    """Admit a scoped *source identity* only; never a deployment grant.
+
+    Unlisted divergence is a hard HOLD, even when the company overlay is
+    valid. A newer common module remains a version-pinned candidate until
+    its semantics are explicitly accepted for the site.
+    """
+    problems=[]
+    if report.get('company_overlay', {}).get('status') != 'exact_live_source_mirror':
+        problems.append('exact_company_runtime_mirror_required')
+    try:
+        contract = json.loads(contract_file.read_text())
+    except (OSError, ValueError):
+        contract = None
+    if not isinstance(contract, dict) or contract.get('contract') != 'mad4b.media.company-scoped-runtime-ownership.v1':
+        problems.append('company_ownership_contract_invalid')
+        contract = {}
+    if contract.get('site') != 'https://wayfatours.com':
+        problems.append('company_site_not_exactly_bound')
+    declared=contract.get('exceptions',[])
+    if not isinstance(declared,list):
+        declared=[];problems.append('exceptions_not_array')
+    keyed={}
+    for row in declared:
+        key=row.get('path') if isinstance(row,dict) else None
+        if not isinstance(key,str) or key in keyed:
+            problems.append('duplicate_or_invalid_exception_path')
+        else:keyed[key]=row
+    discrepancies={x['path']:x for x in report['files'] if x['status']!='tracked_same'}
+    if set(discrepancies)!=set(keyed):
+        problems.append('unlisted_or_stale_runtime_differences')
+    covered=0
+    for path,record in keyed.items():
+        current=discrepancies.get(path)
+        if current is None:continue
+        if record.get('owner_scope')!='wayfatours_only' or record.get('site_overlay_immutable_source') is not True:
+            problems.append(path+':scope_not_bound');continue
+        if record.get('live_sha256') != current['live_sha256'] or record.get('common_candidate_sha256') != current['git_sha256'] or record.get('source_site_expected_sha256') != current['source_sha256']:
+            problems.append(path+':source_digest_changed');continue
+        decision=record.get('decision')
+        if decision=='company_only':
+            if current['status']!='unmapped_git_owner' or current['source_status']!='not_in_source':
+                problems.append(path+':not_company_unique');continue
+        elif decision=='company_runtime_version_pin':
+            if current['status']!='unreconciled_git_runtime' or current['source_status']!='source_matches_live':
+                problems.append(path+':unreviewed_common_release_candidate');continue
+        else:
+            problems.append(path+':unrecognized_ownership_decision');continue
+        covered+=1
+    return {'contract':'mad4b.media.company-source-ownership-preflight.v1',
+            'status':'exact_company_source_ownership_reconciled' if not problems else 'hold_for_ownership_reassessment',
+            'declared_exceptions':len(keyed),'verified_exceptions':covered,
+            'unlisted_runtime_differences':len(set(discrepancies)-set(keyed)),
+            'reasons':problems,
+            'original313_release_grant_issued':False,
+            'copyright_clearance_issued':False,
+            'unreviewed_common_code_auto_promoted':False}
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--live-wp-content', type=Path, required=True)
@@ -127,6 +187,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument('--source-wp-content', type=Path)
     parser.add_argument('--require-parity', action='store_true', help='exit 4 on unresolved source ownership')
     parser.add_argument('--company-overlay', type=Path, help='verify exact company-owned source mirror')
+    parser.add_argument('--company-ownership', type=Path, help='verify approved company-scoped source-version pins')
+    parser.add_argument('--require-company-source', action='store_true', help='exit 6 if company-scope source mapping is not exact')
     parser.add_argument('--require-overlay-match', action='store_true', help='exit 5 if saved company files drift from live')
     args = parser.parse_args(argv)
     if not args.live_wp_content.is_dir() or not args.git_wp_content.is_dir():
@@ -134,7 +196,11 @@ def main(argv: list[str] | None = None) -> int:
     report = audit(args.live_wp_content, args.git_wp_content, args.source_wp_content)
     if args.company_overlay:
         report['company_overlay'] = verify_company_overlay(args.live_wp_content, args.company_overlay)
+    if args.company_ownership:
+        report['company_source_ownership'] = verify_company_ownership(report, args.company_ownership)
     print(json.dumps(report, indent=2, ensure_ascii=False))
+    if args.require_company_source and (not args.company_ownership or report['company_source_ownership']['status']!='exact_company_source_ownership_reconciled'):
+        return 6
     if args.require_overlay_match and (not args.company_overlay or report['company_overlay']['status'] != 'exact_live_source_mirror'):
         return 5
     if args.require_parity and report['status'] != 'exact_git_runtime_parity':
