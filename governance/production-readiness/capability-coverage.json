@@ -22316,6 +22316,26 @@
         "needs_new_control": false,
         "coverage_reuse_rationale": "Existing exact descriptor, execution lane, MCP allowlist, Schema SHA, authorization and site-specific governance controls are retained.",
         "review_rationale": "Exact code binds only four source-marked original readonly discover/info abilities to canonical read descriptor while preserving their original transport metadata. Mutation, missing marker, foreign ability name, wrong category and false readonly all fail closed; runtime grants, approvals, execution boundaries and Original lanes are not altered. Same-PR hermetic source test covers positive and negative cases. This review is CI only."
+    },
+    {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ability-contract-inspector.php",
+        "source_blob_sha": "73518a54533d1b041512cc06dbaf9a0060798354",
+        "control_ids": [
+            "MCP-01",
+            "SECURITY-01",
+            "GOVERNANCE-01",
+            "EXECUTION-01"
+        ],
+        "regression_tests": [
+            "tests/server-descriptor-canonical-multilane-hermetic.php"
+        ],
+        "owner_role": "Repository source/CI reviewer; not production or site Owner",
+        "status": "reviewed_for_ci_only",
+        "production_authorized": false,
+        "live_evidence_required": true,
+        "needs_new_control": false,
+        "coverage_reuse_rationale": "Same approved MCP canonical descriptor, exact source identity, safety and execution-lane controls remain in force; no new grants or Production authority are introduced.",
+        "review_rationale": "Original four read-only Developer/Enrollment discover/info abilities must take the exact source-authored readonly descriptor branch before transport classification; if their marker/category/annotation differs they must remain unclassified. This repairs the hermetic negative test while retaining original execution and permission callbacks, authorization, grant requirements and source-lane denial for mutations."
     }
   ],
   "code_change_rules": {
