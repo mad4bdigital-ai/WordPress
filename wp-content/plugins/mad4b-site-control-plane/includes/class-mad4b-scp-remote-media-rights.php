@@ -134,7 +134,7 @@ final class MAD4B_SCP_Remote_Media_Rights {
 			// still validated by state_evidence() before this loop. An explicit
 			// restriction (rather than an unknown field) remains blocking.
 			$library_image = get_post_type( $id ) === 'attachment'
-				&& str_starts_with( (string) get_post_mime_type( $id ), 'image/' );
+				&& 0 === strpos( (string) get_post_mime_type( $id ), 'image/' );
 			if ( ! $known ) {
 				if ( ! in_array( $basis, array( '', 'unknown' ), true ) || ( ! $advisory && ! $library_image ) )
 					return new WP_Error( 'mad4b_remote_media_publish_rights_unproven', 'Remote media rights basis is not verified or is explicitly restricted.', array( 'attachment_id' => $id ) );

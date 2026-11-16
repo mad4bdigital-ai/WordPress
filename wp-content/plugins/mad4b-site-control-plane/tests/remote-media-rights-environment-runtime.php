@@ -18,6 +18,10 @@ function apply_filters( $hook, $value ) {
 }
 
 function absint( $n ) { return abs( (int) $n ); }
+// The legacy remote-only fixture has no enrolled local WordPress image.
+// Keep its enforced missing-evidence cases distinct from the newer local-library exception.
+function get_post_type( $id ) { return false; }
+function get_post_mime_type( $id ) { return false; }
 function sanitize_key( $text ) { return strtolower( preg_replace( '/[^a-z0-9_\-]/i', '', (string) $text ) ); }
 function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $flags ); }
 function get_post_meta( $id, $key, $single = false ) {

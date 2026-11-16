@@ -97,7 +97,7 @@ final class MAD4B_SCP_Content_Experience_Media_Rights {
 		$is_library_image = static function ( $attachment_id ) {
 			$id = absint( $attachment_id );
 			if ( $id <= 0 || get_post_type( $id ) !== 'attachment'
-				|| ! str_starts_with( (string) get_post_mime_type( $id ), 'image/' ) ) return false;
+				|| 0 !== strpos( (string) get_post_mime_type( $id ), 'image/' ) ) return false;
 			$file = get_attached_file( $id );
 			return is_string( $file ) && is_file( $file );
 		};
