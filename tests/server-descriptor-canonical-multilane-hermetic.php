@@ -120,6 +120,47 @@ foreach(array(
    'Mutation annotation acquired read classification: '.$case[0]);
  ++$checks;
 }
+// Direct profile's original registered reads are discoverable without
+// treating its direct transport as a blanket write-enrollment authority.
+foreach(array('mad4b/direct-connection-status','mad4b/direct-list-posts','mad4b/direct-get-post') as $name){
+ $GLOBALS['fixture_ability_name']=$name;
+ $GLOBALS['fixture_category']='mad4b-read';
+ $GLOBALS['lane']='direct';
+ $GLOBALS['read_only']=true;
+ $GLOBALS['descriptor_read_marker']=true;
+ $r=MAD4B_SCP_Server_Registration_Evidence::capability_descriptor_evidence(
+   'mad4b-chatgpt',array($name));
+ verified($r['ready']===true && $r['bindings'][$name]['execution_lane']==='read'
+   && $r['bindings'][$name]['authorizing']===false
+   && $r['bindings'][$name]['authority_revalidation_required']===true,
+   'Source-declared Direct readonly descriptor missing: '.$name);
+ ++$checks;
+ $GLOBALS['descriptor_read_marker']=false;
+ $r=MAD4B_SCP_Server_Registration_Evidence::capability_descriptor_evidence(
+   'mad4b-chatgpt',array($name));
+ verified(!$r['ready'] && empty($r['bindings']),
+   'Missing Direct read declaration admitted: '.$name);
+ ++$checks;
+ $GLOBALS['descriptor_read_marker']=true;
+ $GLOBALS['read_only']=false;
+ $r=MAD4B_SCP_Server_Registration_Evidence::capability_descriptor_evidence(
+   'mad4b-chatgpt',array($name));
+ verified(!$r['ready'] && empty($r['bindings']),
+   'Direct tool with mutating annotation admitted as read: '.$name);
+ ++$checks;
+}
+foreach(array('mad4b/direct-create-post','mad4b/direct-update-post') as $name){
+ $GLOBALS['fixture_ability_name']=$name;
+ $GLOBALS['fixture_category']='mad4b-content';
+ $GLOBALS['lane']='direct';
+ $GLOBALS['read_only']=false;
+ $GLOBALS['descriptor_read_marker']=false;
+ $r=MAD4B_SCP_Server_Registration_Evidence::capability_descriptor_evidence(
+   'mad4b-chatgpt',array($name));
+ verified(!$r['ready'] && empty($r['bindings']),
+   'Direct write tool bypassed its unverified original lane: '.$name);
+ ++$checks;
+}
 foreach(array('mad4b/developer-execute','mad4b/enrollment-execute','demo/foreign') as $foreign){
  $GLOBALS['fixture_ability_name']=$foreign;
  $GLOBALS['fixture_category']='mad4b-read';
