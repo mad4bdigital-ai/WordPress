@@ -15,7 +15,20 @@ class BrandIntegrityLifecycleContracts(unittest.TestCase):
         cls.brand = (INC / "class-mad4b-scp-brand-integrity.php").read_text()
         cls.runtime = (INC / "class-mad4b-scp-content-experience-runtime.php").read_text()
         cls.quality = (INC / "class-mad4b-scp-brand-experience-quality.php").read_text()
-        cls.readiness = (INC / "class-mad4b-scp-content-readiness-alerts.php").read_text()
+        cls.readiness_facade = (INC / "class-mad4b-scp-content-readiness-alerts.php").read_text()
+        cls.readiness_scan = (INC / "trait-mad4b-scp-content-readiness-scanning.php").read_text()
+        cls.readiness_reconcile = (INC / "trait-mad4b-scp-content-readiness-reconciliation.php").read_text()
+        # Require both actual loader/use bindings. Mere text in orphan traits is not proof.
+        for name, marker in (
+            ("scanning", "MAD4B_SCP_Content_Readiness_Scanning_Trait"),
+            ("reconciliation", "MAD4B_SCP_Content_Readiness_Reconciliation_Trait"),
+        ):
+            cls_name = f"trait-mad4b-scp-content-readiness-{name}.php"
+            assert f"require_once __DIR__.'/{cls_name}';" in cls.readiness_facade
+            assert f"use {marker};" in cls.readiness_facade
+        assert "trait MAD4B_SCP_Content_Readiness_Scanning_Trait" in cls.readiness_scan
+        assert "trait MAD4B_SCP_Content_Readiness_Reconciliation_Trait" in cls.readiness_reconcile
+        cls.readiness = cls.readiness_facade + cls.readiness_scan + cls.readiness_reconcile
         cls.story = (ROOT / "wp-content/mu-plugins/mad4b-story-observability.php").read_text()
 
     def test_no_alternate_global_wordpress_writer(self):

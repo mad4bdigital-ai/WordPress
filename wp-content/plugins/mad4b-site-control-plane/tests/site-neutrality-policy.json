@@ -318,12 +318,6 @@
       ],
       "rationale": "Reviewed tourism-domain module or optional provider adapter, not a global site-type default. A user still needs the enrolled Site Profile and the exact WordPress/Ability operation permissions."
     },
-    "includes/class-mad4b-scp-content-readiness-alerts.php": {
-      "models": [
-        "tours-and-activities"
-      ],
-      "rationale": "Reviewed tourism-domain module or optional provider adapter, not a global site-type default. A user still needs the enrolled Site Profile and the exact WordPress/Ability operation permissions."
-    },
     "includes/class-mad4b-scp-firecrawl-provider.php": {
       "models": [
         "tours-and-activities"
@@ -352,13 +346,13 @@
       "models": [
         "tours-and-activities"
       ],
-      "rationale": "Reviewed optional tourism-domain JetEngine/Elementor Tour Highlights consumer, not a global CPT default. The exact Tour post type only confines existing editor-time postmeta proposals and front-end rendering; it grants no new write authority and does not weaken Site Profile, Company Term Eligibility, WPML, signed release or CAS checks. Cross-company custom Tour post types require a separate governed service catalog contract before runtime broadening."
+      "rationale": "This is the existing first-party Tour Highlights and Elementor/JetEngine Journey presentation only: it reads the enrolled site's native tours-and-activities CPT, company-scoped Destination eligibility and WPML terms. The literal identifies the intentionally bounded tourism component, not a generic plugin-wide business model or authority. No new write permission, tenant URL, host, or execution grant is introduced."
     },
     "includes/class-mad4b-scp-tour-highlights-v1.php": {
       "models": [
         "tours-and-activities"
       ],
-      "rationale": "Reviewed optional tourism-domain JetEngine/Elementor Tour Highlights consumer, not a global CPT default. The exact Tour post type only confines existing editor-time postmeta proposals and front-end rendering; it grants no new write authority and does not weaken Site Profile, Company Term Eligibility, WPML, signed release or CAS checks. Cross-company custom Tour post types require a separate governed service catalog contract before runtime broadening."
+      "rationale": "This is the existing first-party Tour Highlights and Elementor/JetEngine Journey presentation only: it reads the enrolled site's native tours-and-activities CPT, company-scoped Destination eligibility and WPML terms. The literal identifies the intentionally bounded tourism component, not a generic plugin-wide business model or authority. No new write permission, tenant URL, host, or execution grant is introduced."
     },
     "includes/class-mad4b-scp-tour-workflow-runtime.php": {
       "models": [
@@ -366,17 +360,17 @@
       ],
       "rationale": "Reviewed tourism-domain module or optional provider adapter, not a global site-type default. A user still needs the enrolled Site Profile and the exact WordPress/Ability operation permissions."
     },
-    "includes/class-mad4b-scp-tour-highlights-v1.php": {
+    "includes/trait-mad4b-scp-content-readiness-scanning.php": {
       "models": [
         "tours-and-activities"
       ],
-      "rationale": "This is the existing first-party Tour Highlights and Elementor/JetEngine Journey presentation only: it reads the enrolled site's native tours-and-activities CPT, company-scoped Destination eligibility and WPML terms. The literal identifies the intentionally bounded tourism component, not a generic plugin-wide business model or authority. No new write permission, tenant URL, host, or execution grant is introduced."
+      "rationale": "Reviewed byte-identical relocation from content-readiness-alerts.php (baseline source blob b06b328391319b18ace8e4118ee2e0e5b619eff6). Source parity test tests/test_content_readiness_trait_parity.py requires the unchanged original methods and bound facade. Explicit domain-specific tour alerts only; never a globally selected company CPT, tenant URL, permission or new authority."
     },
-    "includes/class-mad4b-scp-tour-highlights-presentation-v1.php": {
+    "includes/trait-mad4b-scp-content-readiness-reconciliation.php": {
       "models": [
         "tours-and-activities"
       ],
-      "rationale": "This is the existing first-party Tour Highlights and Elementor/JetEngine Journey presentation only: it reads the enrolled site's native tours-and-activities CPT, company-scoped Destination eligibility and WPML terms. The literal identifies the intentionally bounded tourism component, not a generic plugin-wide business model or authority. No new write permission, tenant URL, host, or execution grant is introduced."
+      "rationale": "Reviewed byte-identical relocation from content-readiness-alerts.php (baseline source blob b06b328391319b18ace8e4118ee2e0e5b619eff6). Source parity test tests/test_content_readiness_trait_parity.py requires the unchanged original methods and bound facade. Explicit domain-specific tour alerts only; never a globally selected company CPT, tenant URL, permission or new authority."
     }
   }
 }
