@@ -107,6 +107,13 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     # Native P1 scheduler and review routing admission (no live Google or agent approval).
     "tests/drive-scan-cron-original-hermetic.php",
     "tests/brand-review-routing-original-hermetic.php",
+    # Original first-party P1 content/read-only storage and owner admission.
+    "tests/firecrawl-page-store-original-hermetic.php",
+    "tests/readiness-workflow-options-original-hermetic.php",
+    "tests/content-job-structural-qa-admission-original-hermetic.php",
+    "tests/content-job-groups-admission-original-hermetic.php",
+    "tests/content-relationship-owner-cert-original-hermetic.php",
+
 
 
     "wp-content/plugins/mad4b-site-control-plane/tests/undo-intent-fault-injection.php",

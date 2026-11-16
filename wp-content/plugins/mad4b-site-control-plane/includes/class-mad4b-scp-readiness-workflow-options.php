@@ -36,7 +36,8 @@ final class MAD4B_SCP_Readiness_Workflow_Options {
         return 'general';
     }
     public static function settings() {
-        $stored=(array)get_option(self::OPTION,array());
+        $raw=get_option(self::OPTION,array());
+        $stored=is_array($raw)?$raw:array();
         $owners=array();$roles=array();
         foreach(self::GROUPS as $group=>$label){
             $owners[$group]=absint($stored['owners'][$group]??0);
@@ -59,13 +60,13 @@ final class MAD4B_SCP_Readiness_Workflow_Options {
         $id=absint($settings['owners'][self::group_for_issue($issue)]??0);
         if($id){
             $user=get_user_by('id',$id);
-            return $user && user_can($user,'edit_others_posts')?$id:0;
+            return $user && true===user_can($user,'edit_others_posts')?$id:0;
         }
         $role=$settings['owner_roles'][self::group_for_issue($issue)]??'';
         if(!$role)return 0;
         $candidates=get_users(array('role'=>$role,'number'=>2));
-        if(count($candidates)!==1)return 0;
-        return user_can($candidates[0],'edit_others_posts')?(int)$candidates[0]->ID:0;
+        if(!is_array($candidates)||count($candidates)!==1)return 0;
+        return is_object($candidates[0]) && true===user_can($candidates[0],'edit_others_posts')?(int)$candidates[0]->ID:0;
     }
     public static function validate_board_stage($board,$stage) {
         global $wpdb;
@@ -81,7 +82,7 @@ final class MAD4B_SCP_Readiness_Workflow_Options {
             'Content Follow-up','manage_options',self::PAGE,array(__CLASS__,'render'));
     }
     public static function save() {
-        if(!current_user_can('manage_options'))wp_die('Forbidden',403);
+        if(true!==current_user_can('manage_options'))wp_die('Forbidden',403);
         check_admin_referer('mad4b_readiness_workflow_save');
         $in=wp_unslash($_POST);
         $board=absint($in['board_id']??0);
@@ -95,7 +96,7 @@ final class MAD4B_SCP_Readiness_Workflow_Options {
             $roles[$group]=in_array($role,$registered_roles,true)?$role:'';
             $id=absint($in['owners'][$group]??0);
             $user=$id?get_user_by('id',$id):null;
-            $users[$group]=$user&&user_can($user,'edit_others_posts')?$id:0;
+            $users[$group]=$user&&true===user_can($user,'edit_others_posts')?$id:0;
         }
         $channels=array(
             'dashboard_alerts'=>!empty($in['dashboard_alerts']),
@@ -125,10 +126,10 @@ final class MAD4B_SCP_Readiness_Workflow_Options {
         echo '</select>';
     }
     public static function render() {
-        if(!current_user_can('manage_options'))wp_die('Forbidden',403);
+        if(true!==current_user_can('manage_options'))wp_die('Forbidden',403);
         $s=self::settings();
         $gate=class_exists('MAD4B_SCP_Policy')?MAD4B_SCP_Policy::mutation_gate_status():array();
-        $authorized=class_exists('MAD4B_SCP_Policy')&&MAD4B_SCP_Policy::can_mutate();
+        $authorized=class_exists('MAD4B_SCP_Policy')&&true===MAD4B_SCP_Policy::can_mutate();
         $boards=array(0=>'— Select board —');$stages=array(0=>'— Select stage —');
         if(class_exists(\FluentBoards\App\Models\Board::class)) {
             foreach(\FluentBoards\App\Models\Board::whereNull('archived_at')->get() as $board) {
@@ -139,13 +140,13 @@ final class MAD4B_SCP_Readiness_Workflow_Options {
         }
         $users=array(0=>'— Unassigned —');
         foreach(get_users(array('number'=>300)) as $user)
-            if(user_can($user,'edit_others_posts'))
+            if(true===user_can($user,'edit_others_posts'))
                 $users[(int)$user->ID]=$user->display_name.' (#'.$user->ID.')';
         echo '<div class="wrap"><h1>Content Follow-up &amp; Notifications</h1>';
         echo '<p>Company-local configuration. Source scans and dashboard alerts are independent of external task creation and outbound notifications.</p>';
         if(isset($_GET['saved']))echo '<div class="notice notice-success"><p>Settings saved and verified.</p></div>';
         echo '<p><strong>Current site:</strong> '.esc_html(home_url()).' | <strong>Governed task write:</strong> '.($authorized?'Ready':'Blocked').'</p>';
-        $localBound=class_exists('MAD4B_SCP_Local_Client')&&MAD4B_SCP_Local_Client::bound();
+        $localBound=class_exists('MAD4B_SCP_Local_Client')&&true===MAD4B_SCP_Local_Client::bound();
         echo '<p><strong>VPS Local Client:</strong> '.($localBound?'Origin-bound':'Not bound').' | <a href="'.
             esc_url(admin_url('tools.php?page=mad4b-local-client')).'">Manage local client credential</a></p>';
         echo '<p class="description">Verified local-agent task writes use POST /wp-json/mad4b-content-readiness/v1/sync-one or /sync-batch with approved WordPress Application Password; a WordPress admin cookie alone does not grant Agent authority.</p>';

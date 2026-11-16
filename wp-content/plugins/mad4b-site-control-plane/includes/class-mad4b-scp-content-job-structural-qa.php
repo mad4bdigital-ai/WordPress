@@ -76,14 +76,15 @@ final class MAD4B_SCP_Content_Job_Structural_QA {
   * certificate or permission to skip translation QA.
   */
  public static function attest(string $jobId):array {
-  if(!class_exists('MAD4B_SCP_Site_Profile',false)||empty(MAD4B_SCP_Site_Profile::status()['authority_ready'])||
-     !MAD4B_SCP_Central_Write_Acceptance::permitted())
+  if(!class_exists('MAD4B_SCP_Site_Profile',false)||
+     !is_array($site=MAD4B_SCP_Site_Profile::status())||($site['authority_ready']??null)!==true||
+     true!==MAD4B_SCP_Central_Write_Acceptance::permitted())
    return self::hold('enrolled_original_actor_required');
   $current=self::inspect($jobId);
   if(($current['state']??'')!=='STRUCTURAL_DOCUMENT_VERIFIED')
    return self::hold('original_structural_qa_hold');
-  if(!current_user_can('edit_post',$current['source_post_id'])||
-     !current_user_can('edit_post',$current['target_post_id']))
+  if(true!==current_user_can('edit_post',$current['source_post_id'])||
+     true!==current_user_can('edit_post',$current['target_post_id']))
    return self::hold('original_object_edit_permission_denied');
   $checkpoint=MAD4B_SCP_Operational_Integrity::capture();
   if(is_wp_error($checkpoint)||

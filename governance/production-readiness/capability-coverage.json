@@ -8180,6 +8180,93 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-firecrawl-page-store.php",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/firecrawl-page-store-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B source-backed capability CI reviewer",
+      "review_rationale": "Original Firecrawl Page Store 49-case source fixture verifies site enrollment flags, WordPress manage_options, owned crawl admission, and all three read APIs cannot reach schema creation when the table is absent. Pre-fix a WP_Error on permission could read crawl options or begin database schema. Original DDL creation remains a separately governed explicit writer; no live crawl or DB write occurred. Reproduced against exact Git source on PHP 7.4 and 8.5; this is CI-only, never an independent signed Production certificate or live evidence.",
+      "coverage_reuse_rationale": "Existing original ADMIN-01, BROWSER-01, SECURITY-02 govern exact native source, identity, owner readback and separately authorized mutation. These fixtures introduce no new grant, transport, publication or environment override.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-workflow-options.php",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-workflow-options-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B source-backed capability CI reviewer",
+      "review_rationale": "Original Readiness Workflow Options 18-case fixture verifies only an exact WordPress owner capability can be assigned and a unique eligible role is resolved; error-shaped get_users and user_can responses return unassigned. Admin configuration save/render deny WP_Error or nonboolean manage_options before nonce or mutation, and display does not infer write authority from error-shaped native gate. No Board, Email, app or tenant write occurred. Reproduced against exact Git source on PHP 7.4 and 8.5; this is CI-only, never an independent signed Production certificate or live evidence.",
+      "coverage_reuse_rationale": "Existing original AUTOMATION-01, PERFORMANCE-01 govern exact native source, identity, owner readback and separately authorized mutation. These fixtures introduce no new grant, transport, publication or environment override.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-job-structural-qa.php",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/content-job-structural-qa-admission-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B source-backed capability CI reviewer",
+      "review_rationale": "Original ContentJob Structural QA 10-case fixture rejects unverified Site Profile authority and Central Write Acceptance before inspecting Elementor documents or issuing even a source-bound attestation. Original edit_post capabilities require exact true, preserving WordPress user authority. This cannot certify browser rendering or skip human translation review. Reproduced against exact Git source on PHP 7.4 and 8.5; this is CI-only, never an independent signed Production certificate or live evidence.",
+      "coverage_reuse_rationale": "Existing original AUTOMATION-01, PERFORMANCE-01 govern exact native source, identity, owner readback and separately authorized mutation. These fixtures introduce no new grant, transport, publication or environment override.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-job-groups.php",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/content-job-groups-admission-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B source-backed capability CI reviewer",
+      "review_rationale": "Original ContentJob Group 10-case source fixture proves permission gate only admits exact true from Central Write Acceptance, rejects malformed/unknown site scopes before resolving WPML, and does not automatically opt in to applying child writes. Pre-fix a WP_Error from original authority could reach opt-in; no child Job was created or executed by the test. Reproduced against exact Git source on PHP 7.4 and 8.5; this is CI-only, never an independent signed Production certificate or live evidence.",
+      "coverage_reuse_rationale": "Existing original AUTOMATION-01, PERFORMANCE-01 govern exact native source, identity, owner readback and separately authorized mutation. These fixtures introduce no new grant, transport, publication or environment override.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-relationship-writeback-owner.php",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "tests/content-relationship-owner-cert-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B source-backed capability CI reviewer",
+      "review_rationale": "Original ContentJob Owner Writeback 35-case certificate test checks exact locally built source strings, stable original Post IDs, nonce-free read-only verifier, evidence digest, independent quality/rights and short TTL. Pre-fix a WP_Error from a trusted-source reader caused PHP fatal during hash_equals; now malformed sources fail closed without converting into certified owner. No mutation run. Reproduced against exact Git source on PHP 7.4 and 8.5; this is CI-only, never an independent signed Production certificate or live evidence.",
+      "coverage_reuse_rationale": "Existing original AI-01, LOCALIZATION-01, PROVIDERS-02 govern exact native source, identity, owner readback and separately authorized mutation. These fixtures introduce no new grant, transport, publication or environment override.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "lifecycle": [],
@@ -21073,6 +21160,88 @@
       ],
       "owner_role": "MAD4B first-party nonauthorizing P1 source reviewer",
       "review_rationale": "Original 22-case Brand Review route test proves dynamic review policy inheritance does not confer publication authority, grants or approval. Only exact source policy ready, catalog eligibility and existing Agent grant booleans admit AI review; unknown WP_Error statuses from the independent local worker remain not ready. No model call or review approval occurs. Exact Git blob and original-source tests pass PHP 7.4/8.5; signed live evidence, owner approval and deployment certification remain absent.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-firecrawl-page-store.php",
+      "source_blob_sha": "258b4141ae6a086f9fe605f5c73edcf30db69327",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/firecrawl-page-store-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B nonauthorizing original-source CI reviewer",
+      "review_rationale": "Original Firecrawl Page Store 49-case source fixture verifies site enrollment flags, WordPress manage_options, owned crawl admission, and all three read APIs cannot reach schema creation when the table is absent. Pre-fix a WP_Error on permission could read crawl options or begin database schema. Original DDL creation remains a separately governed explicit writer; no live crawl or DB write occurred. Reproduced against exact Git source on PHP 7.4 and 8.5; this is CI-only, never an independent signed Production certificate or live evidence.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-workflow-options.php",
+      "source_blob_sha": "b790da33c16496013ea408d5a142299ec5fd8724",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-workflow-options-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B nonauthorizing original-source CI reviewer",
+      "review_rationale": "Original Readiness Workflow Options 18-case fixture verifies only an exact WordPress owner capability can be assigned and a unique eligible role is resolved; error-shaped get_users and user_can responses return unassigned. Admin configuration save/render deny WP_Error or nonboolean manage_options before nonce or mutation, and display does not infer write authority from error-shaped native gate. No Board, Email, app or tenant write occurred. Reproduced against exact Git source on PHP 7.4 and 8.5; this is CI-only, never an independent signed Production certificate or live evidence.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-job-structural-qa.php",
+      "source_blob_sha": "91d77543f3bbe99ab598d0706def887b6dbbda4e",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/content-job-structural-qa-admission-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B nonauthorizing original-source CI reviewer",
+      "review_rationale": "Original ContentJob Structural QA 10-case fixture rejects unverified Site Profile authority and Central Write Acceptance before inspecting Elementor documents or issuing even a source-bound attestation. Original edit_post capabilities require exact true, preserving WordPress user authority. This cannot certify browser rendering or skip human translation review. Reproduced against exact Git source on PHP 7.4 and 8.5; this is CI-only, never an independent signed Production certificate or live evidence.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-job-groups.php",
+      "source_blob_sha": "99f18bb78e73b13f39f70c462826e7fe13277071",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/content-job-groups-admission-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B nonauthorizing original-source CI reviewer",
+      "review_rationale": "Original ContentJob Group 10-case source fixture proves permission gate only admits exact true from Central Write Acceptance, rejects malformed/unknown site scopes before resolving WPML, and does not automatically opt in to applying child writes. Pre-fix a WP_Error from original authority could reach opt-in; no child Job was created or executed by the test. Reproduced against exact Git source on PHP 7.4 and 8.5; this is CI-only, never an independent signed Production certificate or live evidence.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-relationship-writeback-owner.php",
+      "source_blob_sha": "d28d160ea8a2b48a691e080ebf3ecd48e1a941bd",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "tests/content-relationship-owner-cert-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B nonauthorizing original-source CI reviewer",
+      "review_rationale": "Original ContentJob Owner Writeback 35-case certificate test checks exact locally built source strings, stable original Post IDs, nonce-free read-only verifier, evidence digest, independent quality/rights and short TTL. Pre-fix a WP_Error from a trusted-source reader caused PHP fatal during hash_equals; now malformed sources fail closed without converting into certified owner. No mutation run. Reproduced against exact Git source on PHP 7.4 and 8.5; this is CI-only, never an independent signed Production certificate or live evidence.",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true

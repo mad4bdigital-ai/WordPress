@@ -18,7 +18,9 @@ final class MAD4B_SCP_Content_Job_Group_Orchestrator {
      !class_exists('MAD4B_WPML_ContentJob_Adapter',false))
    return self::hold('original_wpml_group_owner_unavailable');
   $scope=MAD4B_SCP_Central_Write_Acceptance::site_scope();
-  if(empty($scope['site_uuid'])||get_post_type($source)!=='elementor_library')
+  if(!is_array($scope)||!is_string($scope['site_uuid']??null)||
+     !preg_match('/^[a-f0-9-]{36}$/D',$scope['site_uuid'])||
+     get_post_type($source)!=='elementor_library')
    return self::hold('group_site_or_source_invalid');
   $preview=MAD4B_WPML_Design_Reconciliation_V1::reconcile($source,false);
   if(is_wp_error($preview)||!is_array($preview))
@@ -135,7 +137,7 @@ final class MAD4B_SCP_Content_Job_Group_Orchestrator {
  }
  public static function apply($input=[]):array {
   $input=(array)$input;
-  if(!MAD4B_SCP_Central_Write_Acceptance::permitted()||
+  if(true!==MAD4B_SCP_Central_Write_Acceptance::permitted()||
       get_option('mad4b_contentjob_group_apply_enabled','no')!=='yes')
    return self::hold('group_write_requires_original_site_authority_and_opt_in');
   $source=absint($input['source_post_id']??0);

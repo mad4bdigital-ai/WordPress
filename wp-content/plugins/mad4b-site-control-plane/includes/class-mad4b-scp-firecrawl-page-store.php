@@ -16,6 +16,14 @@ final class MAD4B_SCP_Firecrawl_Page_Store {
   global $wpdb;
   return $wpdb->prefix.'mad4b_firecrawl_crawl_pages_v1';
  }
+ // Read paths never install tables. Schema creation is reserved for
+ // an authorized writer through ensure_schema(), not a dashboard GET.
+ private static function schema_exists():bool {
+  if(!self::enrolled_write_site())return false;
+  global $wpdb;
+  $table=self::table();
+  return $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s',$table))===$table;
+ }
  public static function ensure_schema(){
   if(!self::enrolled_write_site())return false;
   global $wpdb;
@@ -45,7 +53,7 @@ final class MAD4B_SCP_Firecrawl_Page_Store {
  public static function save_pages($crawl_id,$seed_url,$pages,$internal=false){
   $poll_authorized=$internal===true && doing_action('mad4b_firecrawl_crawl_poll_v1');
   if(!self::enrolled_write_site()||
-    (!current_user_can('manage_options') && !$poll_authorized))
+    (true!==current_user_can('manage_options') && !$poll_authorized))
    return new WP_Error('mad4b_crawl_pages_admin_required');
   $runs=get_option('mad4b_firecrawl_owned_crawl_runs_v1',[]);
   if(!is_array($runs)||!isset($runs[$crawl_id])||
@@ -109,7 +117,7 @@ final class MAD4B_SCP_Firecrawl_Page_Store {
    'source_host'=>$seedhost,'content_job_artifacts_modified'=>false];
  }
  public static function list_by_job($job_id,$offset=0,$page_size=100){
-  if(!current_user_can('manage_options')||!wp_is_uuid($job_id)||!self::ensure_schema())
+  if(true!==current_user_can('manage_options')||!wp_is_uuid($job_id)||!self::schema_exists())
    return new WP_Error('mad4b_crawl_contenthub_inventory_denied');
   $job=MAD4B_SCP_Content_Jobs::get_job(['job_id'=>$job_id]);
   if(is_wp_error($job))return $job;
@@ -129,8 +137,8 @@ final class MAD4B_SCP_Firecrawl_Page_Store {
    'review_only'=>true,'published'=>false,'markdown_exposed'=>false];
  }
  public static function read_by_job($job_id,$page_id){
-  if(!current_user_can('manage_options')||!wp_is_uuid($job_id)||
-   (int)$page_id<1||!self::ensure_schema())
+  if(true!==current_user_can('manage_options')||!wp_is_uuid($job_id)||
+   (int)$page_id<1||!self::schema_exists())
    return new WP_Error('mad4b_crawl_page_read_denied');
   $job=MAD4B_SCP_Content_Jobs::get_job(['job_id'=>$job_id]);
   if(is_wp_error($job))return $job;
@@ -148,7 +156,7 @@ final class MAD4B_SCP_Firecrawl_Page_Store {
  }
  public static function summary($crawl_id,$internal=false){
   $poll_authorized=$internal===true && doing_action('mad4b_firecrawl_crawl_poll_v1');
-  if((!current_user_can('manage_options') && !$poll_authorized)||!self::ensure_schema())
+  if((true!==current_user_can('manage_options') && !$poll_authorized)||!self::schema_exists())
    return new WP_Error('mad4b_crawl_page_store_unavailable');
   $runs=get_option('mad4b_firecrawl_owned_crawl_runs_v1',[]);
   if(!is_array($runs)||!isset($runs[$crawl_id]))
