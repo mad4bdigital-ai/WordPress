@@ -3,11 +3,16 @@ on:
   push:
     branches:
       - 'integration/mad4b-unified-source-*'
+      - 'integration/pr814-821-source-converged-*'
   pull_request:
     paths:
       - '.github/workflows/mad4b-unified-source-nonregression.yml'
       - 'wp-content/plugins/mad4b-site-control-plane/**'
       - 'ops/company-code-release-v1/**'
+      - 'ops/native-source-publisher-v1/**'
+      - 'ops/dynamic-operation-registry-v1/**'
+      - 'tests/test_native_source*.py'
+      - 'tests/native_source_manifest_history_contract.py'
       - 'plugins/mad4b-wordpress/skills/**'
       - 'packages/mad4b-shared-product-core/**'
       - 'tests/test_unified_mad4b_behavior_invariants.py'
@@ -73,6 +78,8 @@ jobs:
           # Production Readiness/Release Verdict, not synthesized here.
           python3 -m unittest discover -s tests -p 'test_ci_portable_native_source_partition.py' -q
           python3 ops/native-source-publisher-v1/ci_portable_native_tests.py
+          # Includes SHA-bound V8 root manifest parity and V9 successor candidate.
+          # These tests certify only local sources, never the enrolled root index.
           # The 238-file historical contract is independently gated: its
           # unreachable commits must not suppress portable source coverage.
           python3 -m unittest discover -s tests -p 'test_control_plane*contract.py' -v
