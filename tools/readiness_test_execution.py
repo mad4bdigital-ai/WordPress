@@ -439,6 +439,9 @@ def command_for(test):
     if path.suffix == ".py":
         return [sys.executable, str(path)]
     if path.suffix == ".php":
+        if test == "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-enrollment-runtime.php":
+            ensure(not path.is_symlink(), "Adaptive Search isolated test symlink denied")
+            return ["php", str(path), "--readiness-pass"]
         if test == "wp-content/plugins/mad4b-site-control-plane/tests/mcp-official-required-preflight-runtime.php":
             ensure(not path.is_symlink(), "Official MCP test symlink denied")
             return ["php", str(path), "/tmp/mad4b-readiness-certified-mcp-adapter/mcp-adapter"]

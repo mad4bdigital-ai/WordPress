@@ -212,5 +212,5 @@ enrollment_case( 'local_authorization_nonce_and_strict_post_admission', static f
 } );
 $failed = array_filter( $results, static function ( $r ) { return 'FAIL' === $r['status']; } );
 echo json_encode( array( 'contract' => 'mad4b.search-provider-enrollment-fixtures.v1', 'evidence_class' => 'hermetic_local_admin_account_enrollment', 'fixtures' => $results, 'fixture_count' => count( $results ), 'assertions' => $assertions, 'status' => $failed ? 'FAIL' : 'PASS', 'authorizing' => false ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) . "\n";
-if ( ! $failed && $assertions > 0 ) echo "ADAPTIVE_SEARCH_PROVIDER_ENROLLMENT: PASS\n";
+if ( ! $failed && $assertions > 0 && in_array( '--readiness-pass', $argv, true ) ) echo "ADAPTIVE_SEARCH_PROVIDER_ENROLLMENT: PASS\n";
 exit( $failed ? 1 : 0 );
