@@ -192,6 +192,17 @@
       ],
       "source_ownership": "active_fleet_shared_media_module",
       "no_new_deployment_performed": true
+    },
+    {
+      "path": "mu-plugins/mad4b-tour-media-reconcile.php",
+      "sha256": "3de6aaef468a11e6e8fab0ba21e738d391caf21b5aef4b1cdf0884bf3cc62b73",
+      "installed_and_byte_identical_on": [
+        "wayfatours.com"
+      ],
+      "source_ownership": "fleet_shared_semantically_equivalent_php_with_eof_whitespace_only",
+      "source_site_php_equivalence": "exact_after_trailing_newlines_removed",
+      "source_site_sha256": "edd8b777a9550586d4b1dd1fe48e8508aa8d74c7efbeea9c790e93d8481f463a",
+      "no_new_deployment_performed": true
     }
   ],
   "active_fleet_sites_verified": [
@@ -200,5 +211,6 @@
   ],
   "not_automatic_new_site_mu_activation": true,
   "no_rights_approval_created": true,
-  "git_source_root": "wp-content"
+  "git_source_root": "wp-content",
+  "source_site_eof_whitespace_equivalence_documented": true
 }
