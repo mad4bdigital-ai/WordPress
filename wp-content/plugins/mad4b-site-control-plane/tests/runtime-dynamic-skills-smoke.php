@@ -315,7 +315,36 @@ $wpml_receipt = MAD4B_SCP_WPML_Response_Contract::receipt_status();
 if ( ! empty( $wpml_receipt['observed'] ) ) $fail( 'Internal rest_do_request incorrectly minted external WPML evidence.' );
 
 $write_reconciliation = MAD4B_SCP_Staging_Write_Authority::reconcile();
-if ( empty( $write_reconciliation['ready'] ) || 'ready' !== $write_reconciliation['state'] ) $fail( 'Governed write authority is not ready: ' . wp_json_encode( $write_reconciliation ) );
+if ( empty( $write_reconciliation['ready'] ) || 'ready' !== $write_reconciliation['state'] ) {
+    // Read-only CI diagnostic. Do not change the closed grant policy to make
+    // runtime reconciliation succeed; list the exact missing policy pairs.
+    $policy_diffs = array();
+    if ( ( $write_reconciliation['blocker'] ?? '' ) === 'write_grant_source_policy_preflight_blocked' ) {
+        $plan = MAD4B_SCP_Staging_Write_Authority::reconciliation_plan();
+        $policy = MAD4B_SCP_Staging_Write_Grant_Reconciliation::allowed_ability_providers();
+        foreach ( (array) ( $plan['exact_grants_missing'] ?? array() ) as $row ) {
+            $ability = isset( $row['ability'] ) ? (string) $row['ability'] : '';
+            $provider = isset( $row['provider'] ) ? sanitize_key( (string) $row['provider'] ) : '';
+            $reason = isset( $row['reason'] ) ? (string) $row['reason'] : '';
+            if ( '' !== $ability && ( 'missing_exact_grant' !== $reason ||
+                ! isset( $policy[$ability] ) || sanitize_key( (string) $policy[$ability] ) !== $provider ) ) {
+                $policy_diffs[] = array( 'ability' => $ability,
+                    'provider' => $provider,
+                    'expected_provider' => (string) ( $policy[$ability] ?? '' ),
+                    'reason' => $reason );
+            }
+        }
+        usort( $policy_diffs, static function ( $a, $b ) {
+            return strcmp( $a['ability'], $b['ability'] );
+        } );
+    }
+    $fail( 'Governed write authority is not ready: ' . wp_json_encode( array(
+        'blocker' => (string) ( $write_reconciliation['blocker'] ?? '' ),
+        'unapproved_missing_count' => (int) ( $write_reconciliation['source_policy_unapproved_missing_count'] ?? 0 ),
+        'source_policy_differences' => array_slice( $policy_diffs, 0, 50 ),
+        'no_mutation' => empty( $write_reconciliation['mutation_performed'] ),
+    ) ) );
+}
 
 $write_authority = MAD4B_SCP_Staging_Write_Authority::status();
 if ( empty( $write_authority['mutation_gate_configured'] ) ) $fail( 'Governed mutation gate was not configured.' );
