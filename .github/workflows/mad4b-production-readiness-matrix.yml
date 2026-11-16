@@ -166,6 +166,35 @@ jobs:
           cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/"
           php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
           php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
+          # Isolated OAuth-only Site Profile; leave all Write/production grants off.
+          php /tmp/wp-cli.phar eval '
+          $result = MAD4B_SCP_Site_Profile::save_current_site( array(
+            "expected_revision" => 0,
+            "display_name" => "MAD4B Readiness CI",
+            "chatgpt_app_id" => "",
+            "oauth_user_ids" => array( get_current_user_id() ),
+            "oauth_enabled" => true,
+            "skills_enabled" => false,
+            "write_enabled" => false,
+            "production_write_confirmed" => false,
+            "provider_isolation_enabled" => false,
+            "managed_runtime_enabled" => false,
+            "acceptance_enabled" => false
+          ) );
+          if ( is_wp_error( $result ) || empty( $result["configured"] )
+            || empty( $result["origin_match"] ) || empty( $result["environment_match"] ) )
+            throw new RuntimeException("Disposable OAuth Site Profile binding failed");
+          if ( MAD4B_SCP_Staging_Write_Authority::eligible() )
+            throw new RuntimeException("OAuth-only CI unexpectedly gained Write authority");
+          ' --path="$WP_PATH" --user=mad4b-ci-admin
+          php /tmp/wp-cli.phar eval '
+          $status = MAD4B_SCP_Staging_OAuth_Autoconfig::bootstrap();
+          if ( empty( $status["configured"] ) || ! empty( $status["blocker"] )
+            || (int) ( $status["wp_user_id"] ?? 0 ) !== 1 )
+            throw new RuntimeException("Disposable OAuth bootstrap denied: ".wp_json_encode($status));
+          if ( MAD4B_SCP_Staging_Write_Authority::eligible() )
+            throw new RuntimeException("OAuth bootstrap must not grant Write");
+          ' --path="$WP_PATH" --user=mad4b-ci-admin
           # Only this disposable CI site gets a synthetic tour post-type/record.
           # The tested Brand Integrity engine remains the real original plugin.
           mkdir -p "$WP_PATH/wp-content/mu-plugins"

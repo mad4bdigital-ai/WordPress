@@ -435,6 +435,7 @@ WORDPRESS_RUNTIME_REGRESSIONS = frozenset((
     "tests/test_brand_integrity_lifecycle_runtime.php",
     "tests/test_brand_integrity_runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/runtime-firecrawl-unready-write-mount.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-chatgpt-http-smoke.php",
 ))
 WP_CLI_PHAR = "/tmp/wp-cli.phar"
 WP_SANDBOX = "/tmp/mad4b-readiness-wordpress"
@@ -458,6 +459,26 @@ def trusted_wordpress_readback(test, stdout):
                 and isinstance(payload.get("total"), int) and payload["total"] >= 20
                 and payload.get("passed") == payload["total"]
                 and payload.get("failures") == [])
+    if test == "wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-chatgpt-http-smoke.php":
+        prefix = "mad4b.site-control-plane.runtime-local-oauth-chatgpt-http.v7: PASS "
+        if not isinstance(stdout, str) or not stdout.startswith(prefix):
+            return False
+        try:
+            result = json.loads(stdout[len(prefix):].strip())
+        except (ValueError, TypeError):
+            return False
+        expected = (
+            "session_established", "bearer_identity_verified", "prior_site_uuid_aliases_denied",
+            "registration_bearer_invariant", "preauth_internal_primitives_hidden",
+            "read_bearer_step_up_hidden", "read_bearer_step_up_denied",
+            "step_up_bearer_scope_verified", "step_up_bearer_projection_visible",
+            "foreign_step_up_client_hidden", "foreign_step_up_client_denied",
+            "false_exact_identity_fail_closed", "browser_read_dispatch_verified",
+        )
+        return (isinstance(result, dict) and all(result.get(k) is True for k in expected)
+                and isinstance(result.get("tool_count"), int) and result["tool_count"] > 0
+                and result.get("http_filter_calls") == 0
+                and result.get("unpreempted_http_calls") == 0)
     if test == "wp-content/plugins/mad4b-site-control-plane/tests/runtime-firecrawl-unready-write-mount.php":
         available = payload.get("adapter_available")
         mounted = payload.get("write_mounted")
@@ -558,8 +579,12 @@ def run_tests(impact, head, timeout):
         ensure(isinstance(name, str), "Regression path must be string")
         cmd = command_for(name)
         try:
+            child_env = os.environ.copy()
+            if name == "wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-chatgpt-http-smoke.php":
+                # Materialize real OAuth/MCP tools only in this isolated process.
+                child_env["MAD4B_SCP_MCP_CLI_REQUEST"] = "1"
             result = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
-                                    timeout=timeout, check=False)
+                                    timeout=timeout, check=False, env=child_env)
             ok = result.returncode == 0
             if name in WORDPRESS_RUNTIME_REGRESSIONS:
                 ok = ok and trusted_wordpress_readback(name, result.stdout)
