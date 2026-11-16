@@ -10,7 +10,7 @@ function is_wp_error($v){return $v instanceof WP_Error;}
 function wp_json_encode($v,$flags=0){return json_encode($v,$flags);}
 function sanitize_key($v){return preg_replace('/[^a-z0-9_-]/','',strtolower((string)$v));}
 function wp_has_ability($name){return $name===($GLOBALS['fixture_ability_name']??'mad4b/operator-grants-converge');}
-function wp_get_ability($name){return new Demo_Ability();}
+function wp_get_ability($name){return $name==='mad4b/operator-grants-converge' && isset($GLOBALS['operator_ability']) ? $GLOBALS['operator_ability'] : new Demo_Ability();}
 function apply_filters($filter,$value,...$args){return $value;}
 class Demo_Ability {
  function get_meta(){
