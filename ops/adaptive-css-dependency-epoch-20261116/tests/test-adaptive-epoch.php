@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
-define('ABSPATH','/mock');define('WP_CONTENT_DIR','/tmp');
+// Exact isolated runtime expects /mock/ (with slash), never a live WP install.
+define('ABSPATH','/mock/');define('WP_CONTENT_DIR','/tmp');
 $GLOBALS['options']=[
  'home'=>'https://tours.dev.mad4b.com',
  'mad4b_scp_brand_context_profile_v1'=>['site_uuid'=>'00000000-0000-4000-8000-000000000001','brand_id'=>str_repeat('a',32)],

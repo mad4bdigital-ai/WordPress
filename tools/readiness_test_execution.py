@@ -38,6 +38,9 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     # Isolated signed Central source+Company rollout fixture uses an ephemeral
     # RSA key and an .invalid origin; executes assertions with zero live grants.
     "tests/central-company-release-signed-readonly-hermetic.php",
+    # Original ChatbotX 11-read/3-write source registration and negative
+    # mutation checks, using only in-memory fake WordPress / no network.
+    "tests/chatbotx-native-adapter-surface-hermetic.php",
     # Canonical Inspector + Server evidence on synthetic WordPress Ability;
     # owner scopes and grant checks are not mocked as approved live writes.
     "tests/server-descriptor-canonical-multilane-hermetic.php",
@@ -405,6 +408,8 @@ def self_test():
         "php", str((ROOT / "tests/catalog-intent-source-relevance-hermetic.php").resolve())]
     assert command_for("tests/central-company-release-signed-readonly-hermetic.php") == [
         "php", str((ROOT / "tests/central-company-release-signed-readonly-hermetic.php").resolve())]
+    assert command_for("tests/chatbotx-native-adapter-surface-hermetic.php") == [
+        "php", str((ROOT / "tests/chatbotx-native-adapter-surface-hermetic.php").resolve())]
     assert command_for("tests/server-descriptor-canonical-multilane-hermetic.php") == [
         "php", str((ROOT / "tests/server-descriptor-canonical-multilane-hermetic.php").resolve())]
     assert has_assertion_pass("PASS: brand quality exact context revision and same-site issue closure\n")
