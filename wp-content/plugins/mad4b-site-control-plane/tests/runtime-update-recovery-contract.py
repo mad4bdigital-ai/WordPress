@@ -8,7 +8,12 @@ for fixture in ('runtime-update-recovery-runtime.php', 'dynamic-first-party-enro
                 'post-manual-update-guidance-runtime.php', 'plugin-operation-readiness-runtime.php',
                 'read-callback-boundary-runtime.php', 'gateway-regression-runtime.php',
                 'context-scan-completeness-runtime.php', 'drive-scan-continuation-runtime.php'):
-    subprocess.run(['php', '-n', str(root / 'tests' / fixture)], check=True)
+    # Drive scan already passes the original Readiness PHP execution lane.
+    # Use the same configured CLI environment for that exact hermetic case.
+    # Keep php -n for every other source-only fixture.
+    args = ['php', str(root / 'tests' / fixture)] if fixture == 'drive-scan-continuation-runtime.php' else [
+        'php', '-n', str(root / 'tests' / fixture)]
+    subprocess.run(args, check=True)
 parity = (root / 'includes/class-mad4b-scp-remote-operation-parity.php').read_text()
 enrollment_mount = parity.split('public static function enrollment_abilities()', 1)[1].split('public static function register_abilities()', 1)[0]
 assert 'array_keys( MAD4B_SCP_Governed_Ability_Census::eligible() )' in enrollment_mount
