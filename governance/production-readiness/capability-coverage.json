@@ -22376,6 +22376,48 @@
         "needs_new_control": false,
         "coverage_reuse_rationale": "Original exact Ability name, readonly annotation, source marker, category and MCP structural lane controls retained; no mutation execution, OAuth, Host or Owner gates relaxed.",
         "review_rationale": "Extends bounded canonical Inspector classification to exactly three preexisting readonly Direct Profile names, requiring source-declared marker, read category and matching direct surface. Invalid marker, mutating readonly annotation and direct-create/direct-update are denied by the original fail-closed Descriptor path. Same-PR hermetic negative tests exercise actual Inspector and Descriptor."
+    },
+    {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-governed-ability-census.php",
+        "source_blob_sha": "07dd38df0606a81ee29f7abe2f91e68157ce7644",
+        "control_ids": [
+            "MCP-01",
+            "GOVERNANCE-01",
+            "EXECUTION-01",
+            "SECURITY-01",
+            "OAUTH-01"
+        ],
+        "regression_tests": [
+            "tests/server-descriptor-canonical-multilane-hermetic.php"
+        ],
+        "owner_role": "Repository security/source CI reviewer; no site owner or release authorization",
+        "status": "reviewed_for_ci_only",
+        "production_authorized": false,
+        "live_evidence_required": true,
+        "needs_new_control": false,
+        "coverage_reuse_rationale": "Original governed enrolment policy, exact first-party callback provenance, OAuth, MCP and immutable execution admission remain independently checked at use time; no grant is created by the census.",
+        "review_rationale": "The structural census now verifies one exact WordPress core Ability and original Operator convergence execute/can_access callback ancestry from its installed first-party source, plus the existing registered policy and exact callback digest. It does not execute either callback and returns no authority. A same-PR executable PHP regression tests the real original callbacks and denies swapped callbacks or missing registered policy."
+    },
+    {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ability-contract-inspector.php",
+        "source_blob_sha": "bbd59376b0482705d6dd1aaae247c3458a4f0be8",
+        "control_ids": [
+            "MCP-01",
+            "GOVERNANCE-01",
+            "EXECUTION-01",
+            "SECURITY-01",
+            "OAUTH-01"
+        ],
+        "regression_tests": [
+            "tests/server-descriptor-canonical-multilane-hermetic.php"
+        ],
+        "owner_role": "Repository security/source CI reviewer; no site owner or release authorization",
+        "status": "reviewed_for_ci_only",
+        "production_authorized": false,
+        "live_evidence_required": true,
+        "needs_new_control": false,
+        "coverage_reuse_rationale": "Only exact original source-owned Operator grants callback/policy proof can bind the existing ChatGPT direct step-up transport; canonical descriptor does not issue consent, site grants or Runtime/Host authority.",
+        "review_rationale": "Canonical Inspector emits nonauthorizing enrollment descriptor only when exact original Operator first-party callback and registered write-policy proof are present; structural provider resolves through the actually mounted ChatGPT server rather than unrelated generic enrollment discovery. Original source permission_callback, executed call authorization and five-grant canonical plan/apply checks are unchanged. Executable PHP test denies swapped callbacks and missing policy and proves positive binding."
     }
   ],
   "code_change_rules": {
