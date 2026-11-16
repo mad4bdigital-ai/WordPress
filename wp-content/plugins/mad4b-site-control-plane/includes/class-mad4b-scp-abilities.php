@@ -58,12 +58,22 @@ final class MAD4B_SCP_Abilities {
 		}
 		if ( in_array( (string) $name, array( 'mad4b/developer-discover', 'mad4b/developer-info', 'mad4b/developer-execute' ), true ) ) {
 			$mcp_meta['surface'] = 'developer-dispatch';
+			// The two native discovery methods are read-only even though they
+			// describe the governed Developer dispatcher. Preserve the original
+			// transport surface; expose a non-authorizing descriptor read marker
+			// only for the original, explicitly readonly registration.
+			if ( $readonly && in_array( (string) $name, array( 'mad4b/developer-discover', 'mad4b/developer-info' ), true ) )
+				$mcp_meta['mad4b_descriptor_read_lane'] = 'read';
 			$mcp_meta['generic_remote_admin'] = false;
 			$mcp_meta['production_mutation_allowed'] = false;
 			$mcp_meta['breakglass_allowed'] = false;
 		}
 		if ( in_array( (string) $name, array( 'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute' ), true ) ) {
 			$mcp_meta['surface'] = 'enrollment';
+			// Enrollment discovery/info are reads, not enrollment mutations.
+			// This is descriptor evidence only and creates no approval or grant.
+			if ( $readonly && in_array( (string) $name, array( 'mad4b/enrollment-discover', 'mad4b/enrollment-info' ), true ) )
+				$mcp_meta['mad4b_descriptor_read_lane'] = 'read';
 			$mcp_meta['generic_remote_admin'] = false;
             // Discovery/info never mutate. Execution is per-child policy
             // governed, not unconditional Production authority.
