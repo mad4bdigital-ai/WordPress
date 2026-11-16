@@ -9,7 +9,7 @@ class WP_Error {
 function is_wp_error($v){return $v instanceof WP_Error;}
 function wp_json_encode($v,$flags=0){return json_encode($v,$flags);}
 function sanitize_key($v){return preg_replace('/[^a-z0-9_-]/','',strtolower((string)$v));}
-function wp_has_ability($name){return $name===($GLOBALS['fixture_ability_name']??'mad4b/operator-grants-converge');}
+function wp_has_ability($name){return ($name==='mad4b/operator-grants-converge'&&isset($GLOBALS['operator_ability'])) || $name===($GLOBALS['fixture_ability_name']??'mad4b/operator-grants-converge');}
 function wp_get_ability($name){return $name==='mad4b/operator-grants-converge' && isset($GLOBALS['operator_ability']) ? $GLOBALS['operator_ability'] : new Demo_Ability();}
 function apply_filters($filter,$value,...$args){return $value;}
 class Demo_Ability {
@@ -213,8 +213,15 @@ $GLOBALS['operator_ability']=new WP_Ability(
   'owner_intent_only'=>true,'production_mutation_allowed'=>'policy_governed',
   'production_allowed'=>'policy_governed','governed_operation_policy'=>'registered_write_policy_v1'),
   'annotations'=>array('readonly'=>false)));
+$GLOBALS['boundary_verified']=false;
 verified(MAD4B_SCP_Governed_Ability_Census::operator_grant_original_boundary_verified(
  $GLOBALS['operator_ability']), 'Exact original Operator callback proof missing');
+$bound=MAD4B_SCP_Server_Registration_Evidence::capability_descriptor_evidence(
+ 'mad4b-chatgpt',array('mad4b/operator-grants-converge'));
+verified($bound['ready']===true
+  && $bound['bindings']['mad4b/operator-grants-converge']['execution_lane']==='enrollment'
+  && $bound['bindings']['mad4b/operator-grants-converge']['authorizing']===false,
+  'Exact registered Operator descriptor did not bind');
 ++$checks;
 $GLOBALS['operator_ability']=new WP_Ability(
  array('MAD4B_SCP_Operator_Grant_Convergence','can_access'),
@@ -222,6 +229,10 @@ $GLOBALS['operator_ability']=new WP_Ability(
  $GLOBALS['operator_ability']->get_meta());
 verified(!MAD4B_SCP_Governed_Ability_Census::operator_grant_original_boundary_verified(
  $GLOBALS['operator_ability']), 'Swapped Operator callbacks were accepted');
+$bad=MAD4B_SCP_Server_Registration_Evidence::capability_descriptor_evidence(
+ 'mad4b-chatgpt',array('mad4b/operator-grants-converge'));
+verified(!$bad['ready'] && empty($bad['bindings']),
+ 'Swapped Operator callbacks became visible through MCP');
 ++$checks;
 $GLOBALS['operator_ability']=new WP_Ability(
  array('MAD4B_SCP_Operator_Grant_Convergence','execute'),
@@ -235,6 +246,10 @@ $GLOBALS['operator_ability']=new WP_Ability(
 $GLOBALS['operator_policy_present']=false;
 verified(!MAD4B_SCP_Governed_Ability_Census::operator_grant_original_boundary_verified(
  $GLOBALS['operator_ability']), 'Unregistered Operator policy admitted');
+$bad=MAD4B_SCP_Server_Registration_Evidence::capability_descriptor_evidence(
+ 'mad4b-chatgpt',array('mad4b/operator-grants-converge'));
+verified(!$bad['ready'] && empty($bad['bindings']),
+ 'Unregistered Operator policy became visible through MCP');
 ++$checks;
 unset($GLOBALS['operator_ability'],$GLOBALS['operator_policy_present']);
 unset($GLOBALS['fixture_ability_name'],$GLOBALS['fixture_category'],
