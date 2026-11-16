@@ -8456,6 +8456,27 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "execution_note": "Source-only review; no live VPS identity, Host312, Original305/313 or signed release claim."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/trait-mad4b-scp-authorization-recovery-state.php",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "MCP-01",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "tests/test_authorization_recovery_trait_nonregression.py"
+      ],
+      "owner_role": "MAD4B CI source reviewer for exact Authorization recovery extraction; not Site Owner or Release Owner",
+      "review_rationale": "Exact byte-equal recovery and execution-boundary helper relocation from original Authorization facade, with executable original Git ancestor parity, negative removed loader/use/body drift tests. No additional capability, mounted MCP tool, OAuth grant, ticket, write or release permission.",
+      "coverage_reuse_rationale": "Existing governance, MCP, security, execution and platform controls own these four preexisting methods. This review covers only source relocation and PHP parser compatibility, not a new execution authorization.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "execution_note": "CI source parity only. Runtime acceptance and Original305/313 signed authority remain independent."
     }
   ],
   "lifecycle": [],
@@ -22036,6 +22057,48 @@
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/trait-mad4b-scp-servers-vps-local-identity.php",
       "source_blob_sha": "72e597b1415da4443f005bd8796098e52a72b7bd",
       "review_rationale": "Six exact original VPS-local Host identity methods extracted to a first-party PHP trait with unchanged source byte order, protected Staging write and independent read proof, registered NHI actor verification, non-impersonating WordPress actor, restore/grant isolation. Extracted body Git SHA is 03cbb71ffd2587da6db54a730507a93edad8be01. This is nonauthorizing source parity, never a grant or release approval."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php",
+      "source_blob_sha": "4f6c83ce401008c3ae5335895d776511a4cc64fd",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "MCP-01",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "tests/test_authorization_recovery_trait_nonregression.py"
+      ],
+      "owner_role": "MAD4B first-party source correctness reviewer (CI only; not authorized Release Owner)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Byte-identical relocation of existing Recovery/Execution functions; original governance and execution protection controls unchanged. Not an approval or live-site receipt.",
+      "review_rationale": "Existing Authorization class now requires and uses the first-party recovery-state trait. All remaining facade bytes exactly equal source SHA 7ef85c97f42cb88ccab1c0bf18a38162d3e76d96 after removing only four source functions, plus the loader/use; no policy/permission change. Executable exact predecessor non-regression required."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/trait-mad4b-scp-authorization-recovery-state.php",
+      "source_blob_sha": "a0e5e3864337542b409ebcdb98e0356e6bc61e0b",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "MCP-01",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "tests/test_authorization_recovery_trait_nonregression.py"
+      ],
+      "owner_role": "MAD4B first-party source correctness reviewer (CI only; not authorized Release Owner)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Byte-identical relocation of existing Recovery/Execution functions; original governance and execution protection controls unchanged. Not an approval or live-site receipt.",
+      "review_rationale": "Four previously reviewed Authorization execution attempt/state, boundary verification and local planner methods moved byte-for-byte, with original SHA 7ef85c97f42cb88ccab1c0bf18a38162d3e76d96 as immutable comparison baseline. Self-contained PHP trait loaded only through the original facade; negative tests deny any byte drift or removed loader."
     }
   ],
   "code_change_rules": {
