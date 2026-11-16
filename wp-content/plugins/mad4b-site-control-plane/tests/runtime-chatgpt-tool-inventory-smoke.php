@@ -109,6 +109,21 @@ if ( $actual_names !== $expected_names ) {
 			'actual_count' => count( $actual_names ),
 			'descriptor_blockers' => array_slice( (array) ( $descriptor['blockers'] ?? array() ), 0, 30 ),
 			'quarantined_abilities' => array_slice( (array) ( $descriptor['quarantined_abilities'] ?? array() ), 0, 30 ),
+			// Bounded structural diagnosis only. This never registers tools or
+			// treats an unverified descriptor as authorization.
+			'descriptor_classification' => array_map( static function ( $ability_name ) {
+				$row = MAD4B_SCP_Ability_Contract_Inspector::inspect( $ability_name );
+				if ( is_wp_error( $row ) ) return array( 'ability' => $ability_name, 'code' => $row->get_error_code() );
+				return array(
+					'ability' => $ability_name,
+					'classification' => (string) ( $row['classification'] ?? '' ),
+					'readonly' => (bool) ( $row['readonly'] ?? false ),
+					'boundary_verified' => (bool) ( $row['execution_boundary_verified'] ?? false ),
+					'provider' => (string) ( $row['execution_provider'] ?? '' ),
+					'blocker' => (string) ( $row['execution_blocker'] ?? '' ),
+					'execution_lane' => (string) ( $row['execution_lane'] ?? '' ),
+				);
+			}, array_slice( (array) ( $descriptor['quarantined_abilities'] ?? array() ), 0, 25 ) ),
 			'missing' => array_values( array_diff( $expected_names, $actual_names ) ),
 			'extra' => array_values( array_diff( $actual_names, $expected_names ) ),
 			'preflight_failures' => array_map( static function ( $row ) {

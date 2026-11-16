@@ -205,10 +205,23 @@ def main() -> int:
         return 0
 
     actual_surface = profile.get("runtime_surface") or {}
+    # Public archive symbols only: bounded, non-authorizing source diagnostics.
+    # A drift never self-updates this certified profile or permits release.
+    prior_symbols = normalized_symbols(profile.get("runtime_symbols"))
+    current_symbols = normalized_symbols(symbols)
+    old_map = {row["symbol"]: row for row in prior_symbols}
+    new_map = {row["symbol"]: row for row in current_symbols}
+    surface_delta = {
+        "added_symbols": [new_map[k] for k in sorted(new_map.keys() - old_map.keys())[:12]],
+        "removed_symbols": [old_map[k] for k in sorted(old_map.keys() - new_map.keys())[:12]],
+        "changed_symbols": [new_map[k] for k in sorted(old_map.keys() & new_map.keys()) if old_map[k] != new_map[k]][:24],
+        "generated_generator": surface.get("generator"),
+        "profile_generator": actual_surface.get("generator"),
+    }
     for key in ("source_identity", "file_count", "symbol_count", "tree_sha256", "generator", "fail_closed_on_unprofiled_symbol"):
         if actual_surface.get(key) != surface.get(key):
             raise SystemExit(
-                f"runtime_surface drift {key}: profile={actual_surface.get(key)!r} generated={surface.get(key)!r}"
+                f"runtime_surface drift {key}: profile={actual_surface.get(key)!r} generated={surface.get(key)!r}; "+json.dumps(surface_delta,sort_keys=True)
             )
 
     actual_symbols = normalized_symbols(profile.get("runtime_symbols"))

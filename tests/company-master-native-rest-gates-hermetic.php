@@ -76,4 +76,4 @@ catch(RuntimeException $error){
   'Staging setup requires original browser owner approval');
 }
 verify_company($GLOBALS['company_mutations']===0,'No WordPress user created in source-only test');
-echo "COMPANY_MASTER_REST_NATIVE_GATES: PASS four tenant-owned endpoints and owner-only migration\n";
+echo "PASS: COMPANY_MASTER_REST_NATIVE_GATES four tenant-owned endpoints and owner-only migration\n";

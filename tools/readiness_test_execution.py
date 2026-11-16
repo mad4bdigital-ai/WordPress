@@ -47,6 +47,9 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     # Exact no-network company settings REST permission fixture with
     # bounded positive and denial assertions; unknown PHP remains blocked.
     "tests/company-communication-policy-rest-hermetic.php",
+    # Exact original Company Master Admin actor/tenant REST contract fixture.
+    # No user creation or role migration; production/staging denial asserted.
+    "tests/company-master-native-rest-gates-hermetic.php",
     # Canonical Inspector + Server evidence on synthetic WordPress Ability;
     # owner scopes and grant checks are not mocked as approved live writes.
     "tests/server-descriptor-canonical-multilane-hermetic.php",
@@ -420,6 +423,8 @@ def self_test():
         "php", str((ROOT / "tests/company-code-cryptographic-pages-hermetic.php").resolve())]
     assert command_for("tests/company-communication-policy-rest-hermetic.php") == [
         "php", str((ROOT / "tests/company-communication-policy-rest-hermetic.php").resolve())]
+    assert command_for("tests/company-master-native-rest-gates-hermetic.php") == [
+        "php", str((ROOT / "tests/company-master-native-rest-gates-hermetic.php").resolve())]
     assert command_for("tests/server-descriptor-canonical-multilane-hermetic.php") == [
         "php", str((ROOT / "tests/server-descriptor-canonical-multilane-hermetic.php").resolve())]
     assert has_assertion_pass("PASS: brand quality exact context revision and same-site issue closure\n")
