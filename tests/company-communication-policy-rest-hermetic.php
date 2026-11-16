@@ -77,4 +77,4 @@ $policy=MAD4B_SCP_Company_Operations_Policy::get();
 check_company_rest(($policy['hard_delete_policy']??'')==='disabled',
  'Hard deletion must be disabled by default without an approved tenant policy');
 check_company_rest($GLOBALS['tenant_writes']===0,'Registration must never send email or change company settings');
-echo "COMPANY_SETTINGS_COMMUNICATION_REST: PASS 7 endpoints and 9 scoped HTTP methods\n";
+echo "PASS: COMPANY_SETTINGS_COMMUNICATION_REST 7 endpoints and 9 scoped HTTP methods\n";

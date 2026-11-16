@@ -1,0 +1,15 @@
+{
+  "contract": "mad4b.secondary-lazy-source-forward-port.v1",
+  "historical_manifest": "ops/site-company-overlays/wayfatours/performance-runtime/secondary-native-lazy-parity-manifest-20261116.json",
+  "historical_tours_dev_sha256": "6eb39cfb618a4583eb3ab5796a714de1f54a055d9b4b4b226c51cdf4c37bb3a4",
+  "candidate_relative_path": "wp-content/mu-plugins/mad4b-secondary-listing-lazy.php",
+  "candidate_sha256": "cc35c5d045f302f2bd69a1169ec9a6d93fb48c73fad5d6dc5b82c74ad12f5411",
+  "candidate_git_blob_sha1": "7fa4b51d909c2dc66aa849705bb1108547923564",
+  "source_generation_api": "mad4b_render_query_generation_for_id",
+  "production_authorized": false,
+  "live_source_reverified_after_delta": false,
+  "auto_promote_to_wayfatours": false,
+  "target_company_release_authorized": false,
+  "source_review_only": true,
+  "notes": "Historical live observation preserved. Source candidate requires new live capture, independent Wayfatours reconciliation and company release before publishing."
+}

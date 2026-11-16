@@ -16,12 +16,26 @@ class NativeLazyOwner(unittest.TestCase):
   self.assertTrue(m['public_lazy_missing_ajax_proof_defaults_to_full_ssr'])
   for value in m['sites'].values():
    self.assertTrue(value['matched_live_source'])
-   self.assertEqual(hashlib.sha256((ROOT/value['relative_path']).read_bytes()).hexdigest(),value['sha256'])
-  self.assertNotEqual(m['sites']['tours_dev']['sha256'],m['sites']['wayfatours']['sha256'])
+  # Preserve historical live observations: subsequent source revisions must
+  # have an independent candidate record, never silently replace a receipt.
+  newer=json.loads((META.parent/'secondary-native-lazy-source-forward-port-20261116.json').read_text())
+  self.assertEqual(newer['contract'],'mad4b.secondary-lazy-source-forward-port.v1')
+  self.assertEqual(newer['historical_tours_dev_sha256'],m['sites']['tours_dev']['sha256'])
+  for guard in ('production_authorized','live_source_reverified_after_delta','auto_promote_to_wayfatours','target_company_release_authorized'):
+   self.assertFalse(newer[guard])
+  self.assertEqual(newer['candidate_relative_path'],m['sites']['tours_dev']['relative_path'])
+  self.assertEqual(hashlib.sha256((ROOT/newer['candidate_relative_path']).read_bytes()).hexdigest(),newer['candidate_sha256'])
+  self.assertNotEqual(newer['candidate_sha256'],m['sites']['tours_dev']['sha256'])
+  company=m['sites']['wayfatours']
+  self.assertEqual(hashlib.sha256((ROOT/company['relative_path']).read_bytes()).hexdigest(),company['sha256'])
+  self.assertNotEqual(newer['candidate_sha256'],company['sha256'])
 
  def test_current_source_fail_closed_on_content_css_and_market_drift(self):
   m=json.loads(META.read_text())
-  source=(ROOT/m['sites']['tours_dev']['relative_path']).read_text()
+  newer=json.loads((META.parent/'secondary-native-lazy-source-forward-port-20261116.json').read_text())
+  self.assertFalse(newer['production_authorized'])
+  self.assertFalse(newer['live_source_reverified_after_delta'])
+  source=(ROOT/newer['candidate_relative_path']).read_text()
   for marker in (
     'function mad4b_secondary_grid_lazy_ajax_parity_proven(',
     'signed_ajax_verified',
@@ -30,7 +44,7 @@ class NativeLazyOwner(unittest.TestCase):
     "'ajax_items'",
     'max_cls',
     'ajax_parity_by_market',
-    "mad4b_render_query_data_generation",
+    'mad4b_render_query_generation_for_id',
     'document_sha256',
     'tested_widths',
     'elementor',
