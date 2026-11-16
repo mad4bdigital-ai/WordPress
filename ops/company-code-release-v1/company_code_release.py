@@ -147,6 +147,18 @@ def git_bytes(repo: Path, commit: str, relative: str) -> bytes:
     return data
 
 
+def native_mad4b_mu_root_loader(name: str) -> bool:
+    """WordPress loads root MU PHP filenames, including numbered MAD4B owners.
+
+    Keep numbered + canonical single-file owners inside the exact reviewed
+    catalog AND the independent per-tenant allowlist. A prefix alone never
+    creates a release grant. This excludes nested PHP and arbitrary filenames.
+    """
+    return isinstance(name,str) and re.fullmatch(
+        r"(?:[0-9]{3}-)?mad4b-[a-z0-9][a-z0-9-]{2,100}\.php",name
+    ) is not None
+
+
 def registered_component_files(component: dict) -> list[str]:
     """Validate one reviewed MU-plugin component, including owned JS/CSS.
 
@@ -170,14 +182,15 @@ def registered_component_files(component: dict) -> list[str]:
         for x in files
         if len(PurePosixPath(x).parts) == 3 and
         PurePosixPath(x).parts[:2] == ("wp-content", "mu-plugins") and
-        PurePosixPath(x).name.startswith("mad4b-") and x.endswith(".php")
+        native_mad4b_mu_root_loader(PurePosixPath(x).name)
     }
     fail_if(not loaders, "RELEASE_COMPONENT_NO_ROOT_PHP_LOADER")
     for target in files:
         parts = PurePosixPath(target).parts
         fail_if(not permitted_target(target) or
                 parts[:2] != ("wp-content", "mu-plugins") or
-                not parts[2].startswith("mad4b-"),
+                not (native_mad4b_mu_root_loader(parts[2])
+                     if len(parts)==3 else parts[2].startswith("mad4b-")),
                 "RELEASE_COMPONENT_SCOPE_INVALID")
         if len(parts) == 3 and target.endswith(".php"):
             continue
@@ -250,7 +263,8 @@ def registered_release_targets(policy: dict, entry: dict, commit: str) -> set[st
                 # exact root PHP loader by registered_component_files().
                 # Mixed Plugin/MU components retain their historical stricter
                 # root PHP-only MU boundary; no fallback grants new paths.
-                fail_if(not target.startswith("wp-content/mu-plugins/mad4b-") or
+                fail_if(not (native_mad4b_mu_root_loader(parts[2])
+                             if len(parts)==3 else parts[2].startswith("mad4b-")) or
                         (not mu_only and
                          (len(parts) != 3 or not target.endswith(".php"))),
                         "RELEASE_COMPONENT_MU_SCOPE_INVALID")
