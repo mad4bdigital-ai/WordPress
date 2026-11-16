@@ -143,4 +143,4 @@ check_firecrawl($html==='',
  'Provider credential UI must remain hidden from non-admin users');
 check_firecrawl($GLOBALS['firecrawl_network_calls']===0 && $GLOBALS['firecrawl_write_calls']===0,
  'All absent-site/provider calls remain network-free and mutation-free');
-echo "FIRECRAWL_NATIVE_PHP74: PASS crawl host, source/job/owner admission, credentials and no writes\n";
+echo "PASS: FIRECRAWL_NATIVE_PHP74 crawl host, source/job/owner admission, credentials and no writes\n";

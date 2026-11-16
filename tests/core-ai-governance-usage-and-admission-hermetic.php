@@ -139,4 +139,4 @@ $persisted=$GLOBALS['ai_opts'][$c::OPTION];
 $result=$c::record('safe-provider','test-model.v1',10,10);
 ai_assert($result===false && $GLOBALS['ai_opts'][$c::OPTION]===$persisted,
  'A failed WordPress option write must not be reported as durable metrics');
-echo "CORE_AI_GOVERNANCE_NATIVE: PASS owner gate, delegated grants, aggregate only, pricebook provenance\n";
+echo "PASS: CORE_AI_GOVERNANCE_NATIVE owner gate, delegated grants, aggregate only, pricebook provenance\n";

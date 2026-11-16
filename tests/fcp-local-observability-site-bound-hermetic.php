@@ -100,4 +100,4 @@ fcp_check($reply instanceof FakeFCPReply
  && $reply->data['site_uuid']===$GLOBALS['fcp_uuid']
  && $GLOBALS['fcp_writes']===0,
  'Retained site capability evidence must be private, site-owned and nonmutating');
-echo "FCP_LOCAL_SITE_NEUTRAL: PASS enrolled scope, private GET, WPML observational only\n";
+echo "PASS: FCP_LOCAL_SITE_NEUTRAL enrolled scope, private GET, WPML observational only\n";

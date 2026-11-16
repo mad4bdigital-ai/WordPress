@@ -94,4 +94,4 @@ adapter_check(is_wp_error($a->mutation_ability_runtime_eligibility('mad4b/other-
 $yes=$a->capture(['job_id'=>'fixture','draft_post_id'=>10,'source_url'=>'https://example.invalid']);
 adapter_check(is_array($yes)&&$GLOBALS['bridge_captures']===1,
  'Normal adapter dispatch remains delegated to the original bridge only when both present');
-echo "FIRECRAWL_ADAPTER_PROVIDER: PASS capability metadata and runtime provider-absence denial\n";
+echo "PASS: FIRECRAWL_ADAPTER_PROVIDER capability metadata and runtime provider-absence denial\n";

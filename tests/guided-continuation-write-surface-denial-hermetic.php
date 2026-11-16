@@ -100,4 +100,4 @@ continuation_assert(is_array($legacy)&&$legacy['step_count']===1,
 $bad=$c::run(['next_ability'=>$first,'max_steps'=>4]);
 continuation_assert($bad instanceof WP_Error && $bad->get_error_code()==='mad4b_guided_continuation_identity_invalid',
  'Do not permit unbounded read loops');
-echo "GUIDED_READ_SURFACE: PASS native bounded continuation and explicit write-surface denial\n";
+echo "PASS: GUIDED_READ_SURFACE native bounded continuation and explicit write-surface denial\n";

@@ -142,4 +142,4 @@ impact_check(is_array($single)&&$single['status']==='SCANNED'
  && $single['pages']===1 && $single['languages']===1
  && $GLOBALS['frontend_writes']===2,
  'A single home-only locale must not be incorrectly rejected for missing a second page');
-echo "FRONTEND_IMPACT_NATIVE: PASS exact HTTPS origin/port, bounded WPML scans and preserved snapshots\n";
+echo "PASS: FRONTEND_IMPACT_NATIVE exact HTTPS origin/port, bounded WPML scans and preserved snapshots\n";

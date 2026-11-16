@@ -313,9 +313,18 @@ for marker in (
     "certified-provider-profiles.json",
     "archive_sha256",
     "archive_bytes",
-    "ALLOWED_INITIAL_PREFIX",
+    "certification_authority",
+    "reviewed_source(profile, version)",
+    "OFFICIAL_GITHUB_REDIRECT_HOSTS",
+    "OFFICIAL_WP_ORG_REDIRECT_HOSTS",
+    "CertifiedRedirectPolicy",
+    "trusted_url_parts",
+    "actual_sha != expected_sha",
+    "len(payload) != expected_bytes",
 ):
     require(marker in certified_materializer, "certified Adapter materializer invariant missing: " + marker)
+require("test_materialize_certified_mcp_adapter_source.py" in pre_staging_workflow,
+        "Pre-Staging must test invalid domains, redirects, credentials and forged package profiles")
 runtime_surface = p070.get("runtime_surface") or {}
 runtime_symbols = p070.get("runtime_symbols") or []
 require(runtime_surface.get("contract") == "mad4b.mcp-runtime-surface.v1", "MCP Adapter 0.7.0 runtime surface contract missing")

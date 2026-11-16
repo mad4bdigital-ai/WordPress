@@ -58,4 +58,4 @@ qa_grant(!isset($stage['mad4b/database-raw-query'])
     && !isset($stage['mad4b/undefined-proposed-ability'])
     && !isset($stage['malicious/apply']),
     'Uncertified/wildcard grant unexpectedly became eligible');
-echo "PR814_GRANT_ELIGIBILITY_BOUNDARY: PASS 23 exact Staging pairs + 1 scoped VPS pair\n";
+echo "PASS: PR814_GRANT_ELIGIBILITY_BOUNDARY 23 exact Staging pairs + 1 scoped VPS pair\n";

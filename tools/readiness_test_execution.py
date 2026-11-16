@@ -71,6 +71,31 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "tests/content-job-structural-qa-admission-original-hermetic.php",
     "tests/content-media-local-missing-rights-original-hermetic.php",
     "tests/content-media-rights-guard-original-hermetic.php",
+    # Twenty exact reviewed, standalone source-owned denial fixtures for
+    # identity, granted scopes, tenant vault, Developer/DFSB, Site Profile,
+    # native Elementor, Firecrawl provider and frontend sampling boundaries.
+    # All source tests use fake WP providers/HTTP, no real network/DB/site
+    # execution, persistent grant, publish or protected environment mutation.
+    "tests/converged-grant-eligibility-hermetic.php",
+    "tests/core-ai-governance-usage-and-admission-hermetic.php",
+    "tests/core-connector-vault-original-hermetic.php",
+    "tests/delegation-owner-original-hermetic.php",
+    "tests/developer-policy-v2-original-hermetic.php",
+    "tests/developer-workspace-admission-original-hermetic.php",
+    "tests/dfsb-environment-policy-original-hermetic.php",
+    "tests/dfsb-read-adapter-original-hermetic.php",
+    "tests/drive-scan-cron-original-hermetic.php",
+    "tests/dynamic-provider-manifest-original-hermetic.php",
+    "tests/elementor-native-mcp-awareness-original-hermetic.php",
+    "tests/execution-authority-identity-native-hermetic.php",
+    "tests/fcp-local-observability-site-bound-hermetic.php",
+    "tests/firecrawl-page-store-original-hermetic.php",
+    "tests/firecrawl-provider-php74-crawl-and-host-scope-hermetic.php",
+    "tests/firecrawl-research-adapter-provider-presence-hermetic.php",
+    "tests/frontend-impact-same-origin-budget-hermetic.php",
+    "tests/geo-quality-original-hermetic.php",
+    "tests/global-runtime-lifecycle-original-hermetic.php",
+    "tests/guided-continuation-write-surface-denial-hermetic.php",
     # Canonical Inspector + Server evidence on synthetic WordPress Ability;
     # owner scopes and grant checks are not mocked as approved live writes.
     "tests/server-descriptor-canonical-multilane-hermetic.php",
@@ -462,6 +487,29 @@ def self_test():
         "php", str((ROOT / "tests/company-migration-decisions-transaction-hermetic.php").resolve())]
     assert command_for("tests/company-reconcile-skill-set-no-executor-hermetic.php") == [
         "php", str((ROOT / "tests/company-reconcile-skill-set-no-executor-hermetic.php").resolve())]
+    for reviewed_source in (
+        "tests/converged-grant-eligibility-hermetic.php",
+        "tests/core-ai-governance-usage-and-admission-hermetic.php",
+        "tests/core-connector-vault-original-hermetic.php",
+        "tests/delegation-owner-original-hermetic.php",
+        "tests/developer-policy-v2-original-hermetic.php",
+        "tests/developer-workspace-admission-original-hermetic.php",
+        "tests/dfsb-environment-policy-original-hermetic.php",
+        "tests/dfsb-read-adapter-original-hermetic.php",
+        "tests/drive-scan-cron-original-hermetic.php",
+        "tests/dynamic-provider-manifest-original-hermetic.php",
+        "tests/elementor-native-mcp-awareness-original-hermetic.php",
+        "tests/execution-authority-identity-native-hermetic.php",
+        "tests/fcp-local-observability-site-bound-hermetic.php",
+        "tests/firecrawl-page-store-original-hermetic.php",
+        "tests/firecrawl-provider-php74-crawl-and-host-scope-hermetic.php",
+        "tests/firecrawl-research-adapter-provider-presence-hermetic.php",
+        "tests/frontend-impact-same-origin-budget-hermetic.php",
+        "tests/geo-quality-original-hermetic.php",
+        "tests/global-runtime-lifecycle-original-hermetic.php",
+        "tests/guided-continuation-write-surface-denial-hermetic.php",
+    ):
+        assert command_for(reviewed_source) == ["php", str((ROOT / reviewed_source).resolve())]
     for reviewed in (
         "tests/company-task-handoff-native-cas-hermetic.php",
         "tests/company-tenant-migration-rollback-hermetic.php",
