@@ -21757,6 +21757,23 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-media.php",
+      "source_blob_sha": "2e5a0545bc56b6da3b10cee81c96b01bfce8576b",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "tests/content-media-local-missing-rights-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B first-party nonauthorizing original-source CI reviewer",
+      "review_rationale": "Original native Content Experience Media 10-case source fixture reproduced a false denial of missing rights for a real locally stored WordPress image, repaired advisory missing-usage binding only for genuine local files, rejected missing files, unknown licenses and partial gallery mappings, and preserved exact dotted license names such as cc-by-4.0 without manufacturing legal reuse rights. Both PHP7.4 and PHP8.5 passed. This is CI-only source review at the exact Git blob; external imports still require rights, original Content Jobs and a separately verified live publication authority.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "code_change_rules": {
