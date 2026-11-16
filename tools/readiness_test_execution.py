@@ -125,6 +125,8 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "tests/adaptive-interaction-ui-original-hermetic.php",
     "tests/content-relationship-media-owner-original-hermetic.php",
     "tests/contentjob-structural-cwa-original-hermetic.php",
+    # First-party Content Readiness isolated Ledger, exact original PHP runtime.
+    "wp-content/plugins/mad4b-site-control-plane/tests/content-readiness/isolated-contract.php",
     # Exact first-party no-write admin, source rights and QA evidence fixtures.
     "tests/admin-navigation-manifest-original-hermetic.php",
     "tests/admin-surfaces-authorization-original-hermetic.php",

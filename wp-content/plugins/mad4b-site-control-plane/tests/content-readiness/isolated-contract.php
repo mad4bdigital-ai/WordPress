@@ -1,6 +1,28 @@
 <?php
 define('ABSPATH','/isolated/');
 define('ICL_SITEPRESS_VERSION','mock');
+if(!function_exists('str_contains')) {
+ function str_contains($haystack,$needle){return $needle==='' || strpos($haystack,$needle)!==false;}
+}
+
+if(!function_exists('str_starts_with')) {
+ function str_starts_with($haystack,$needle){return substr($haystack,0,strlen($needle))===$needle;}
+}
+
+// Independent Brand/Elementor inventory is absent from this Content Readiness
+// ledger fixture. Provide empty read-only WPDB inventories; no SQL writes.
+define('ARRAY_A','ARRAY_A');
+class Readiness_Isolated_DB {
+ public $posts='wp_posts';public $postmeta='wp_postmeta';
+ public $term_taxonomy='wp_term_taxonomy';public $prefix='wp_';
+ public $last_error='';
+ function prepare($sql,...$args){return $sql;}
+ function get_col($sql){return [];}
+ function get_results($sql,$type=null){return [];}
+ function get_var($sql){return strpos($sql,'GET_LOCK(')!==false?1:(strpos($sql,'RELEASE_LOCK(')!==false?1:null);}
+ function get_row($sql,$type=null){return null;}
+}
+$GLOBALS['wpdb']=new Readiness_Isolated_DB();
 class WP_Term {public $name='Africa';public $description='';}
 class WP_Error {
     private $code;
@@ -22,12 +44,33 @@ function update_option($key,$v,$autoload=false){$GLOBALS['options'][$key]=$v;ret
 function add_option($key,$v,$deprecated='', $autoload='yes') {if(isset($GLOBALS['options'][$key]))return false;$GLOBALS['options'][$key]=$v;return true;}
 function get_post_types($args,$format){return ['tours-and-activities'=>'tours-and-activities'];}
 function post_type_exists($type){return $type==='tours-and-activities';}
+function get_post_type_object($type){
+ return post_type_exists($type)?(object)[
+  'name'=>$type,'public'=>true,'publicly_queryable'=>true,'exclude_from_search'=>false]:null;
+}
+// This isolated readiness-ledger fixture supplies a reviewed, source-scoped
+// brand context; Brand and Elementor independent inventories remain empty.
+// This does not certify any real company Brand assets or traveler-facing image.
+class MAD4B_SCP_Context_Authority {
+ static function profile(){return ['site_uuid'=>'11111111-1111-4111-8111-111111111111',
+  'brand_id'=>'fixture-only','brand_name'=>'Fixture Brand','status'=>'active','revision'=>1];}
+ static function assets(){
+  $out=[];
+  foreach(['brand_strategy','tone_of_voice','editorial_guidelines'] as $category){
+   $out[]=['category'=>$category,'status'=>'ready','review_status'=>'approved',
+    'content_complete'=>true,'content_hash'=>str_repeat('a',64),
+    'reviewed_content_hash'=>str_repeat('a',64),'content_excerpt'=>'Fixture only'];
+  }
+  return $out;
+ }
+}
 function get_posts($args){return [111,112];}
 function get_post_meta($id,$key,$one=true){return $GLOBALS['post_meta'][$id][$key]??'';}
 function has_post_thumbnail($id){return false;}
 function has_filter($key){return $key==='mad4b/content_readiness/external_issues' && array_key_exists('external_source', $GLOBALS);}
 function get_post($id){return (object)['ID'=>$id,'post_title'=>$GLOBALS['titles'][$id]??'Real Test Page'];}
 function get_post_type($id){return 'tours-and-activities';}
+function get_post_status($id){return in_array($id,[111,112],true)?'publish':false;}
 function get_post_field($key,$id){return $GLOBALS['content_fields'][$id][$key]??'';}
 function get_the_title($id){return $GLOBALS['titles'][$id]??'Real Test Page';}
 function wp_strip_all_tags($v){return strip_tags((string)$v);}
