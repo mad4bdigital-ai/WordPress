@@ -140,6 +140,7 @@ jobs:
           root='wp-content/plugins/mad4b-site-control-plane'
           policy="$root/includes/class-mad4b-scp-policy.php"
           abilities="$root/includes/class-mad4b-scp-abilities.php"
+          abilities_registration="$root/includes/trait-mad4b-scp-abilities-registration.php"
           lifecycle_executor="$root/includes/class-mad4b-scp-plugin-ability-service.php"
           filesystem_executor="$root/includes/class-mad4b-scp-filesystem-mutation-service.php"
           audit="$root/includes/class-mad4b-scp-audit.php"
@@ -225,7 +226,15 @@ jobs:
           fi
           grep -Fq "LOAD_FILE" "$abilities"
           grep -Fq "CREATE\\s+(?:USER|ROLE)" "$abilities"
-          grep -Fq "expected_modified_gmt" "$abilities"
+          # The schema was moved into the first-party registration trait.
+          # Check the canonical loader/use and the actual source before accepting it.
+          test -f "$abilities_registration"
+          grep -Fq "require_once __DIR__ . '/trait-mad4b-scp-abilities-registration.php'" "$abilities"
+          grep -Fq "use MAD4B_SCP_Abilities_Registration_Trait;" "$abilities"
+          grep -Fq "\$this->register_source_abilities();" "$abilities"
+          grep -Fq "trait MAD4B_SCP_Abilities_Registration_Trait" "$abilities_registration"
+          grep -Fq "private function register_source_abilities()" "$abilities_registration"
+          grep -Fq "expected_modified_gmt" "$abilities_registration"
           grep -Fq "max_affected" "$abilities"
           grep -Fq "can_structured_database_read" "$abilities"
           grep -Fq "can_structured_database_write" "$abilities"
