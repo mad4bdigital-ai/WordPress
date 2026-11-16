@@ -66,6 +66,9 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     # Reviewed native Search Console site-only OAuth/retained-observation
     # fixture: in-memory provider/WP stubs; no HTTP, real grants or writes.
     "tests/native-search-console-site-scope-php74-hermetic.php",
+    # Source-only Skills Cron dedupe, in-memory WP scheduler and denied
+    # nonenrolled/mismatched origin before any Skill filesystem or DB writes.
+    "tests/native-skills-seeder-enrollment-cron-hermetic.php",
     "tests/native-cli-context-and-company-inventory-hermetic.php",
     # Exact hermetic source-only Company/ContentJob/Media Rights regressions:
     # fake FluentBoards, in-memory WP users/roles/CAS and role transactions,
@@ -582,6 +585,7 @@ def self_test():
     assert command_for("tests/staging-host-candidate-gate-native-hermetic.php")[0] == "php"
     assert command_for("tests/native-release-and-staging-canary-denial-hermetic.php")[0] == "php"
     assert command_for("tests/native-search-console-site-scope-php74-hermetic.php")[0] == "php"
+    assert command_for("tests/native-skills-seeder-enrollment-cron-hermetic.php")[0] == "php"
     assert command_for("tests/native-capability-registry-adapter-first-party.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-native-runtime.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/generation-snapshot-exception-runtime.php")[0] == "php"

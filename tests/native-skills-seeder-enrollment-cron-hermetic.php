@@ -52,3 +52,5 @@ skill_assert(is_array($wrong)
 skill_assert($GLOBALS['skill_seed_file_writes']===0,
  'No write allowed before verified same-origin Site Profile');
 echo "NATIVE_SKILL_SEED_WORKER_GUARD: PASS deduplicated Cron, exact enrollment gate\n";
+// Exact terminal assertion marker after every negative enrollment check.
+echo "NATIVE_SKILL_SEED_WORKER_GUARD: PASS\n";
