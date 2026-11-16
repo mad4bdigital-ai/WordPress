@@ -2,6 +2,8 @@
 import importlib.util
 from pathlib import Path
 import tempfile
+import hashlib
+import json
 
 MODULE=Path(__file__).resolve().parents[1]/'tools/mad4b_media_source_parity.py'
 spec=importlib.util.spec_from_file_location('mad4b_media_source_parity',MODULE)
@@ -30,4 +32,17 @@ with tempfile.TemporaryDirectory() as tmp:
     assert src['source_parity']['source_differs_from_live']==1
     assert src['source_copy_and_grants_issued'] is False
     assert m.main(['--live-wp-content',str(live),'--git-wp-content',str(tracked),'--require-parity'])==0
+    overlay=base/'site-overlay';mirror=overlay/'wp-content'/rel;mirror.parent.mkdir(parents=True)
+    mirror.write_bytes((live/rel).read_bytes())
+    data={'contract':'mad4b.wayfatours.production-media-runtime-source-mirror.v1','total_files':1,
+          'source_files':[{'relative_path':rel,'sha256':hashlib.sha256(mirror.read_bytes()).hexdigest()}]}
+    (overlay/'manifest.json').write_text(json.dumps(data))
+    assert m.verify_company_overlay(live,overlay)['status']=='exact_live_source_mirror'
+    assert m.main(['--live-wp-content',str(live),'--git-wp-content',str(tracked),
+                   '--company-overlay',str(overlay),'--require-overlay-match'])==0
+    mirror.write_bytes(b'changed')
+    assert m.verify_company_overlay(live,overlay)['status']=='mirror_drift'
+    assert m.main(['--live-wp-content',str(live),'--git-wp-content',str(tracked),
+                   '--company-overlay',str(overlay),'--require-overlay-match'])==5
+
 print('PASS media release parity refuses missing and diverged Git without touching live')

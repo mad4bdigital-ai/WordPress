@@ -7,3 +7,19 @@ This directory is an exact, **non-installable**, versioned copy of the media-spe
 **Release status:** `HOLD` until explicit owner-aware merge and the original governed release admission are independently verified. Saving a file here is not a deploy grant or a rights license.
 
 The three manually updated original engine files are recorded from the currently deployed runtime. Backups and rollback receipts remain on the VPS outside Git under `/opt/mad4b-media-backups/wayfa-media-engine-hardening-20261116/manual-release-20261116/`.
+
+## Reproducible read-only verification
+
+From the repository worktree, run:
+
+```bash
+python3 tools/mad4b_media_source_parity.py \
+  --live-wp-content /opt/wayfa-rebuild-20261102/site-copy/wp-content \
+  --git-wp-content wp-content \
+  --company-overlay ops/site-company-overlays/wayfatours/media-runtime \
+  --require-overlay-match
+```
+
+An `exact_live_source_mirror` result confirms that all saved media files still
+match Wayfatours. It **does not** clear `hold_for_owner_aware_reconciliation`
+for the shared release source; these are deliberately distinct checks.
