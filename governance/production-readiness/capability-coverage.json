@@ -21549,7 +21549,7 @@
         "PERFORMANCE-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/scheduler-admission-contract.php"
+        "tests/scheduler-queue-original-same-pr-matrix.py"
       ],
       "owner_role": "MAD4B original nonauthorizing first-party CI source assessment",
       "review_rationale": "Native Scheduler Admission fixture validates normal admission, quotas, rate-limit, signed central service state and rejects stale authority. The original PHP test includes a negative scan for mutating scheduler/SQL/shell primitives. No work was queued. Reproduced on PHP7.4/8.5 against exact first-party source. This is a CI-only review, not an independent authorized Production release, live scheduler test, or new permission.",
@@ -21565,7 +21565,7 @@
         "PERFORMANCE-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/scheduler-backlog-contract.php"
+        "tests/scheduler-queue-original-same-pr-matrix.py"
       ],
       "owner_role": "MAD4B original nonauthorizing first-party CI source assessment",
       "review_rationale": "Native Scheduler Backlog fixture tests original source queue retention, deterministic fair ranking, stale authority denial and exact completed state without dispatching scheduled/remote work. Negative source scan verifies no HTTP/process execution. Reproduced on PHP7.4/8.5 against exact first-party source. This is a CI-only review, not an independent authorized Production release, live scheduler test, or new permission.",
@@ -21581,7 +21581,7 @@
         "PERFORMANCE-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/remote-work-queue-cancellation-runtime.php"
+        "tests/scheduler-queue-original-same-pr-matrix.py"
       ],
       "owner_role": "MAD4B original nonauthorizing first-party CI source assessment",
       "review_rationale": "Native Remote Work Queue cancellation runtime fixture covers durable intent, lease token, after-provider-entry cancellation, checkpoint, postcondition proof and no false zero-effect terminal acknowledgment. The original test executes in a synthetic WordPress option/DB context only. Reproduced on PHP7.4/8.5 against exact first-party source. This is a CI-only review, not an independent authorized Production release, live scheduler test, or new permission.",
