@@ -8267,6 +8267,41 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-origin-evidence-workflow.php",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/origin-evidence-workflow-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B original first-party capability CI reviewer",
+      "review_rationale": "Original 21-case Origin Evidence Intake preflight checks require an exact admitted source-native actor and 36-character source-bound Site/ContentJob UUID, original 64-hex deduplication/source SHA, and refuses error-shaped input before reading tour or destination terms. A WordPress taxonomy provider WP_Error is returned as HOLD, not silently bypassed. Source evidence never creates a publication approval or automatic tour origin. Original PHP7.4/8.5 source tests confirm CI-only behavior. Signed independent live evidence and release approval remain required.",
+      "coverage_reuse_rationale": "Original AUTOMATION-01, PERFORMANCE-01 already require exact Site/ContentJob source ownership, independently verified identity, no implicit taxonomy/media rights or publication authority, and source readback. These fixtures add no new privileges.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-relationship-writeback.php",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "tests/content-relationship-writeback-admission-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B original first-party capability CI reviewer",
+      "review_rationale": "Original 23-case ContentJob Relationship Writeback fixture validates all three recognized first-party typed adapter selections, source Job IDs, exact original SHA and registered ContentJob event origin without any unbounded client-supplied metadata. Invalid WP_Error identifier, relationship type, key, source digest and event are rejected before provider inspection or mutation. Original PHP7.4/8.5 source tests confirm CI-only behavior. Signed independent live evidence and release approval remain required.",
+      "coverage_reuse_rationale": "Original AI-01, LOCALIZATION-01, PROVIDERS-02 already require exact Site/ContentJob source ownership, independently verified identity, no implicit taxonomy/media rights or publication authority, and source readback. These fixtures add no new privileges.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "lifecycle": [],
@@ -21242,6 +21277,58 @@
       ],
       "owner_role": "MAD4B nonauthorizing original-source CI reviewer",
       "review_rationale": "Original ContentJob Owner Writeback 35-case certificate test checks exact locally built source strings, stable original Post IDs, nonce-free read-only verifier, evidence digest, independent quality/rights and short TTL. Pre-fix a WP_Error from a trusted-source reader caused PHP fatal during hash_equals; now malformed sources fail closed without converting into certified owner. No mutation run. Reproduced against exact Git source on PHP 7.4 and 8.5; this is CI-only, never an independent signed Production certificate or live evidence.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-origin-evidence-workflow.php",
+      "source_blob_sha": "b5155b2c16181a59b9a4fbb34e6863e7ccd315de",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/origin-evidence-workflow-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B nonauthorizing source CI reviewer",
+      "review_rationale": "Original 21-case Origin Evidence Intake preflight checks require an exact admitted source-native actor and 36-character source-bound Site/ContentJob UUID, original 64-hex deduplication/source SHA, and refuses error-shaped input before reading tour or destination terms. A WordPress taxonomy provider WP_Error is returned as HOLD, not silently bypassed. Source evidence never creates a publication approval or automatic tour origin. Original PHP7.4/8.5 source tests confirm CI-only behavior. Signed independent live evidence and release approval remain required.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-relationship-writeback.php",
+      "source_blob_sha": "6a37b84375256948c6bd80da23e83c8b58333b0d",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "tests/content-relationship-writeback-admission-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B nonauthorizing source CI reviewer",
+      "review_rationale": "Original 23-case ContentJob Relationship Writeback fixture validates all three recognized first-party typed adapter selections, source Job IDs, exact original SHA and registered ContentJob event origin without any unbounded client-supplied metadata. Invalid WP_Error identifier, relationship type, key, source digest and event are rejected before provider inspection or mutation. Original PHP7.4/8.5 source tests confirm CI-only behavior. Signed independent live evidence and release approval remain required.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-write-acceptance.php",
+      "source_blob_sha": "45092268925d6c5ef0be38aed0cb24ac9fe6c8f4",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/central-write-acceptance-permission-original-hermetic.php",
+        "tests/central-transport-write-source-hermetic.php"
+      ],
+      "owner_role": "MAD4B original first-party CWA source CI-only reviewer",
+      "review_rationale": "Original CWA 41-case Site Profile/WordPress User strict admissibility and existing 80-case transport original source regressions pass PHP7.4/8.5. Fixed WP_Error truthiness bypass in manage_options and enrolled Site flags, while preserving exact native Host/REST transport and separately authorized behavior. This is a new nonauthorizing Git blob review, not retroactive alteration of old source review or signed Production approval.",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true

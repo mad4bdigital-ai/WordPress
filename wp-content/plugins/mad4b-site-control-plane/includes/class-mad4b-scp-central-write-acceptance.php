@@ -125,12 +125,15 @@ final class MAD4B_SCP_Central_Write_Acceptance {
         } catch(Throwable $error) {
             return [];
         }
-        if(!is_array($s)||empty($s['site_uuid'])||empty($s['origin_match'])
-           ||empty($s['configured'])||empty($s['authority_ready'])
-           ||empty($s['deployment_binding_match'])
-           ||empty($s['same_origin_clone_protection'])
-           ||empty($s['environment_match'])
-           ||!empty($s['mutation_pending_audit'])
+        if(!is_array($s)||!is_string($s['site_uuid']??null)
+           ||!preg_match('/^[a-f0-9-]{36}$/D',$s['site_uuid'])
+           ||($s['origin_match']??null)!==true
+           ||($s['configured']??null)!==true
+           ||($s['authority_ready']??null)!==true
+           ||($s['deployment_binding_match']??null)!==true
+           ||($s['same_origin_clone_protection']??null)!==true
+           ||($s['environment_match']??null)!==true
+           ||($s['mutation_pending_audit']??null)!==false
            ||!is_string($s['environment']??null)
            ||''===$s['environment']
            ||!hash_equals((string)($s['configured_environment']??''),
@@ -148,7 +151,7 @@ final class MAD4B_SCP_Central_Write_Acceptance {
         if(!class_exists('MAD4B_SCP_Policy',false))return false;
         try {
             return MAD4B_SCP_Policy::can_mutate()===true
-                && current_user_can('manage_options')
+                && current_user_can('manage_options')===true
                 && !empty(self::site_scope());
         } catch(Throwable $error) {
             // A broken policy / identity / Site Profile is never a grant.

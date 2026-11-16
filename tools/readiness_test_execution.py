@@ -113,6 +113,11 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "tests/content-job-structural-qa-admission-original-hermetic.php",
     "tests/content-job-groups-admission-original-hermetic.php",
     "tests/content-relationship-owner-cert-original-hermetic.php",
+    # Native first-party origin/relationship admission and exact central CWA source.
+    "tests/origin-evidence-workflow-original-hermetic.php",
+    "tests/content-relationship-writeback-admission-original-hermetic.php",
+    "tests/central-write-acceptance-permission-original-hermetic.php",
+
 
 
 

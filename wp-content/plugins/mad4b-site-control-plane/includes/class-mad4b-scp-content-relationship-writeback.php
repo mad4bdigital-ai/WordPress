@@ -14,9 +14,10 @@ final class MAD4B_SCP_Content_Relationship_Writeback {
    'reason'=>$why,'mutation_performed'=>false];
  }
  private static function adapter(array $input) {
-  $id=strtolower((string)($input['job_id']??''));
-  $kind=(string)($input['relationship_kind']??'');
-  $key=(string)($input['meta_key']??'');
+  $job=is_string($input['job_id']??null)?$input['job_id']:'';
+  $id=strtolower($job);
+  $kind=is_string($input['relationship_kind']??null)?$input['relationship_kind']:'';
+  $key=is_string($input['meta_key']??null)?$input['meta_key']:'';
   if(!preg_match('/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/D',$id))
    return null;
   if($kind==='featured_image' && $key==='')return new MAD4B_SCP_Relationship_Media_Write_Adapter($id);
@@ -44,7 +45,8 @@ final class MAD4B_SCP_Content_Relationship_Writeback {
    return self::hold('current_actor_or_site_not_authorized');
   $adapter=self::adapter($input);
   if(!$adapter)return self::hold('unsupported_or_unregistered_original_owner');
-  $hash=(string)($input['expected_source_sha256']??'');
+  $hash=is_string($input['expected_source_sha256']??null)
+   ?$input['expected_source_sha256']:'';
   if(!MAD4B_SCP_Central_Write_Acceptance::sha($hash))
    return self::hold('original_source_sha_required');
   $plan=$adapter->plan();
@@ -61,7 +63,8 @@ final class MAD4B_SCP_Content_Relationship_Writeback {
  * trigger. Nothing is queued, and unqualified provider evidence is HOLD.
  */
 add_action('mad4b_scp_content_job_transitioned',static function($event){
- if(!is_array($event)||empty($event['job_id'])||
+ if(!is_array($event)||!is_string($event['job_id']??null)||
+   !preg_match('/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/D',$event['job_id'])||
    !MAD4B_SCP_Central_Write_Acceptance::permitted())return;
  $jobId=(string)$event['job_id'];
  $read=MAD4B_SCP_Content_Jobs::get_job(['job_id'=>$jobId]);
