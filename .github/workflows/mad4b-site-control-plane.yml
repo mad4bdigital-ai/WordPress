@@ -435,7 +435,14 @@ jobs:
           grep -Fq "rank_math_title" "$seo"
           grep -Fq "wc_get_product" "$woo"
           grep -Fq "pll_set_post_language" "$polylang"
-          grep -Fq "Only this WordPress site can be purged" "$root/includes/adapters/class-mad4b-scp-litespeed-adapter.php"
+          # Newer LiteSpeed origin guard rejects HTTPS downgrade, foreign
+          # host/port, embedded credentials, and fragments before any purge.
+          grep -Fq "Only the exact enrolled WordPress site origin can be purged." "$root/includes/adapters/class-mad4b-scp-litespeed-adapter.php"
+          grep -Fq "strtolower( \$target['scheme']" "$root/includes/adapters/class-mad4b-scp-litespeed-adapter.php"
+          grep -Fq "strtolower( \$target['host']" "$root/includes/adapters/class-mad4b-scp-litespeed-adapter.php"
+          grep -Fq "isset( \$target['user'] )" "$root/includes/adapters/class-mad4b-scp-litespeed-adapter.php"
+          grep -Fq "isset( \$target['fragment'] )" "$root/includes/adapters/class-mad4b-scp-litespeed-adapter.php"
+          python3 tests/test_litespeed_exact_site_origin_contract.py
 
       - name: Deny arbitrary command and PHP execution primitives
         shell: bash
