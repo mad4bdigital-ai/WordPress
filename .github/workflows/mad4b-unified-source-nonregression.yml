@@ -21,6 +21,10 @@ on:
       - 'ops/site-company-overlays/wayfatours/live-source-mirror-20261116.json'
       - 'ops/site-company-overlays/wayfatours/media-review/**'
       - 'ops/site-company-overlays/wayfatours/media-runtime/**'
+      - 'tests/test_secondary_lazy_site_owner_and_ajax_gate.py'
+      - 'ops/site-company-overlays/wayfatours/performance-runtime/**'
+      - 'wp-content/mu-plugins/mad4b-secondary-listing-lazy.php'
+      - 'ops/secondary-native-lazy-parity-20261116/**'
       - 'tests/test_adaptive_asset_canonical_source_parity.py'
       - 'tests/test_origin_gate_wayfa_notice_source_parity.py'
       - 'tests/wayfa-provider-verified-notice-regression.php'
@@ -137,6 +141,10 @@ jobs:
           python3 -m unittest discover -s tests -p 'test_original305_and_company_source_parity.py' -q
           php tests/wayfa-fluent-smtp-transport-recovery-contract.php
           php tests/wayfa-universal-media-deferred-queue-contract.php
+          # Never auto-convert conditional JetEngine grids without current
+          # two-band/market/source CSS and signed Ajax SSR parity evidence.
+          python3 -m unittest discover -s tests -p 'test_secondary_lazy_site_owner_and_ajax_gate.py' -q
+          php ops/secondary-native-lazy-parity-20261116/tests/test-native-lazy-ajax-parity.php wp-content/mu-plugins/mad4b-secondary-listing-lazy.php
           node --check ops/mobile-critical-css-v1/verify.js
           # Includes SHA-bound V8 root manifest parity and V9 successor candidate.
           # These tests certify only local sources, never the enrolled root index.

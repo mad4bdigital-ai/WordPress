@@ -1,0 +1,10 @@
+{
+  "contract": "mad4b.native-listing.ajax-canary-verdict.v1",
+  "site": "tours.dev.mad4b.com",
+  "qa_date": "2026-11-16",
+  "width_px": 390,
+  "authorizing": false,
+  "combined_canary": {"decision": "hold", "cls_after_scroll": 0.79205, "reason": "attraction_term_content_parity_and_layout"},
+  "isolated_featured_tours": {"decision": "hold", "original_nested_items": 20, "ajax_nested_items": 20, "cls_after_scroll": 0.45498, "reason": "placeholder_geometry"},
+  "production_rollout": false
+}
