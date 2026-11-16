@@ -133,6 +133,8 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "tests/content-media-rights-guard-original-hermetic.php",
     # First-party CCT public-credit postcommit only: no external WordPress state.
     "tests/media-rights-cct-after-commit-original-hermetic.php",
+    # Original local WordPress image rights remain unknown, not fabricated.
+    "tests/content-media-local-missing-rights-original-hermetic.php",
     "tests/developer-workspace-admission-original-hermetic.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/content-intelligence-pipeline-contract.php",
 
