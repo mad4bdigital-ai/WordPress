@@ -41,7 +41,7 @@ final class MAD4B_SCP_Server_Registration_Evidence {
 	}
 
 	/** Validate the first-party descriptor, not just absence of WP_Error. */
-	private static function descriptor_binding_verified( $binding, $ability_name ) {
+	private static function descriptor_binding_verified( $binding, $ability_name, $server_id ) {
 		if ( ! is_array( $binding )
 			|| MAD4B_SCP_Capability_Descriptor_Registry::CONSUMER_BINDING_CONTRACT !== ( $binding['contract'] ?? null )
 			|| MAD4B_SCP_Capability_Descriptor_Registry::CONTRACT !== ( $binding['descriptor_contract'] ?? null )
@@ -51,7 +51,14 @@ final class MAD4B_SCP_Server_Registration_Evidence {
 			|| false !== ( $binding['authorizing'] ?? null )
 			|| false !== ( $binding['authority_snapshot_is_grant'] ?? null )
 			|| true !== ( $binding['authority_revalidation_required'] ?? null )
-			|| ! in_array( $binding['execution_lane'] ?? null, array( 'read', 'write' ), true ) )
+			// The inspector emits the *original* WordPress Ability surface, not
+			// a collapsed read/write class. Only explicitly classified, mounted
+			// and independently governed non-breakglass lanes can be projected.
+			|| ! in_array( $binding['execution_lane'] ?? null,
+				array( 'read', 'write', 'content', 'admin', 'enrollment', 'developer' ), true )
+			// A mutation classified as read is never admissible on the public
+			// read-only server; execution authorization remains independently due.
+			|| ( 'mad4b-read' === $server_id && 'read' !== ( $binding['execution_lane'] ?? null ) ) )
 			return false;
 		foreach ( array( 'input_schema_sha256', 'classification_sha256', 'descriptor_sha256' ) as $field ) {
 			if ( ! is_string( $binding[ $field ] ?? null )
@@ -81,7 +88,7 @@ final class MAD4B_SCP_Server_Registration_Evidence {
 				// A null or malformed non-WP_Error is never a successful descriptor
 				// binding. Only the exact canonical consumer/name/roots contract
 				// may reach the MCP Server registration tool projection.
-				if ( ! self::descriptor_binding_verified( $binding, $ability_name ) ) {
+				if ( ! self::descriptor_binding_verified( $binding, $ability_name, $server_id ) ) {
 					$blockers[] = $ability_name . ':descriptor_binding_unverified';
 					continue;
 				}

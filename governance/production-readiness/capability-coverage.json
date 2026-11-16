@@ -21860,6 +21860,24 @@
       "regression_tests": [
         "tests/test_ci_whitespace_only_media_source_20261116.py"
       ]
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-registration-evidence.php",
+      "source_blob_sha": "65b897918f9b0131e6e6d358ea1d75bf7a99e286",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "MAD4B non-authorizing source contract CI reviewer; not an authenticated release owner",
+      "review_rationale": "Canonical WordPress Inspector already classifies governed execution lanes enrollment, content, admin and developer. The Server Registration consumer previously rejected all of them as descriptor_binding_unverified because it admitted only read/write. Updated only the structural non-authorizing exact-registry lane verification to require an explicit six-lane known allowlist, preserved strict SHA/consumer/ability/roots and authority-revalidation checks, rejected internal, none, unknown and Breakglass, and kept mad4b-read exclusively read. Test suite covers real Inspector/provider missing, boundary missing, lane isolation and malformed records. Independent execution authorization, signed owner grant and Production release remain required.",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/server-registration-descriptor-boundary-hermetic.php",
+        "tests/server-descriptor-canonical-multilane-hermetic.php"
+      ]
     }
   ],
   "code_change_rules": {

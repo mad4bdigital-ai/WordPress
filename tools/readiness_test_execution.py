@@ -31,6 +31,13 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     # It cannot grant a license, publish, perform network access, or write a
     # live site; unknown PHP files still require the trusted PHPUnit runner.
     "tests/media-rights/media-rights-source-convergence-hermetic.php",
+    # Original Catalog Intent read-only source planner, deterministic fake
+    # WordPress abilities and invalid URLs. No crawl, content creation, write,
+    # network, or signed owner admission; unknown PHP paths remain blocked.
+    "tests/catalog-intent-source-relevance-hermetic.php",
+    # Canonical Inspector + Server evidence on synthetic WordPress Ability;
+    # owner scopes and grant checks are not mocked as approved live writes.
+    "tests/server-descriptor-canonical-multilane-hermetic.php",
     "tests/remote-execution/chatgpt-optional-catalog-smoke.php",
     "tests/remote-execution/developer-preparation-bridge-smoke.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/mcp-catalog-adaptive-budget.php",
@@ -391,6 +398,10 @@ def self_test():
         "php", str((ROOT / "tests/brand-quality-readiness-coverage-hermetic.php").resolve())]
     assert command_for("tests/media-rights/media-rights-source-convergence-hermetic.php") == [
         "php", str((ROOT / "tests/media-rights/media-rights-source-convergence-hermetic.php").resolve())]
+    assert command_for("tests/catalog-intent-source-relevance-hermetic.php") == [
+        "php", str((ROOT / "tests/catalog-intent-source-relevance-hermetic.php").resolve())]
+    assert command_for("tests/server-descriptor-canonical-multilane-hermetic.php") == [
+        "php", str((ROOT / "tests/server-descriptor-canonical-multilane-hermetic.php").resolve())]
     assert has_assertion_pass("PASS: brand quality exact context revision and same-site issue closure\n")
     # No wildcard admission: unknown PHP still requires a trusted PHPUnit runner.
     try:

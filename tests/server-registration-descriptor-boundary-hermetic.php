@@ -15,9 +15,9 @@ class MAD4B_SCP_Capability_Descriptor_Registry {
     public static function binding($name,$consumer){return self::$record;}
 }
 require dirname(__DIR__).'/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-registration-evidence.php';
-function validate_case($allowed,$label) {
+function validate_case($allowed,$label,$server_id='mad4b-chatgpt') {
     $result=MAD4B_SCP_Server_Registration_Evidence::capability_descriptor_evidence(
-        'mad4b-chatgpt',array('mad4b/read-execute','mad4b/read-execute')
+        $server_id,array('mad4b/read-execute','mad4b/read-execute')
     );
     if((!empty($result['ready']))!==$allowed
        || ($allowed && count($result['bindings'])!==1)
@@ -43,6 +43,17 @@ $valid=array(
 );
 MAD4B_SCP_Capability_Descriptor_Registry::$record=$valid;
 validate_case(true,'exact original descriptor');
+foreach (array('read','write','content','admin','enrollment','developer') as $lane) {
+    MAD4B_SCP_Capability_Descriptor_Registry::$record=array_merge($valid,array('execution_lane'=>$lane));
+    validate_case(true,'registered canonical lane: '.$lane);
+    if ('read' !== $lane) validate_case(false,'never expose mutation on read server: '.$lane,'mad4b-read');
+}
+foreach (array('none','internal','breakglass','developer-breakglass','unclassified','direct_only','') as $lane) {
+    MAD4B_SCP_Capability_Descriptor_Registry::$record=array_merge($valid,array('execution_lane'=>$lane));
+    validate_case(false,'non-governed or dedicated breakglass lane: '.$lane);
+}
+MAD4B_SCP_Capability_Descriptor_Registry::$record=$valid;
+validate_case(true,'only read on read server','mad4b-read');
 foreach(array(
     'wp_error'=>new WP_Error('descriptor_not_ready'),
     'null'=>null,
@@ -65,4 +76,4 @@ foreach(array(
     MAD4B_SCP_Capability_Descriptor_Registry::$record=$record;
     validate_case(false,$name);
 }
-echo "PASS: SERVER_DESCRIPTOR_EXACT_BINDING 18 native negative and positive cases\n";
+echo "PASS: SERVER_DESCRIPTOR_EXACT_BINDING 37 strict source-backed positive/negative cases\n";

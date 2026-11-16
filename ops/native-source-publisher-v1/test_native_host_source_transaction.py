@@ -29,6 +29,60 @@ class IsolatedHostTransactionTests(unittest.TestCase):
         (self.targetroot/'first.py').write_text('print("first old")\n')
         (self.targetroot/'second.py').write_text('print("second old")\n')
         self.receipts=self.root/'receipts';self.receipts.mkdir(mode=0o700)
+
+        # Only the isolated receipt fixture is impersonated as root-owned.
+        # Keep original Path.stat/os.fstat, file mode/nlink, O_NOFOLLOW, CAS,
+        # signing, all live first-party authority gates and SHA checks intact.
+        self.receipts_owner_uid=0
+        self.receipts_owner_gid=0
+        self.target_owner_uid=0
+        self.target_owner_gid=0
+        original_stat=Path.stat
+        original_fstat=os.fstat
+        def owner_stat(meta,uid,gid):
+            data=list(meta)
+            data[4]=uid
+            data[5]=gid
+            return os.stat_result(data)
+        def fixture_stat(path,*args,**kwargs):
+            real=original_stat(path,*args,**kwargs)
+            if path==self.receipts or self.receipts in path.parents:
+                return owner_stat(real,self.receipts_owner_uid,self.receipts_owner_gid)
+            if self.targetroot in path.parents:
+                return owner_stat(real,self.target_owner_uid,self.target_owner_gid)
+            return real
+        def fixture_fstat(fd):
+            real=original_fstat(fd)
+            try:
+                fd_path=Path(os.readlink('/proc/self/fd/'+str(fd)))
+                if fd_path==self.receipts or self.receipts in fd_path.parents:
+                    return owner_stat(real,self.receipts_owner_uid,self.receipts_owner_gid)
+            except (OSError,ValueError):
+                pass
+            return real
+        for name,callback in (('stat',fixture_stat),):
+            patch=mock.patch.object(Path,name,callback)
+            patch.start();self.addCleanup(patch.stop)
+        patch=mock.patch.object(os,'fstat',side_effect=fixture_fstat)
+        patch.start();self.addCleanup(patch.stop)
+        # CI runners are unprivileged. Preserve the real atomic file writer,
+        # byte/readback CAS, fsync, O_NOFOLLOW and per-file chmod; only the
+        # fchown(0,0) request on a temporary file INSIDE our isolated fixture
+        # root is simulated. Outside this isolated directory, use OS fchown.
+        original_fchown=os.fchown
+        self.fixture_fchown_count=0
+        def fixture_fchown(fd,uid,gid):
+            try:
+                location=Path(os.readlink('/proc/self/fd/'+str(fd)))
+            except (OSError,ValueError):
+                return original_fchown(fd,uid,gid)
+            if (os.geteuid()!=0 and self.root in location.parents
+                    and uid==0 and gid==0):
+                self.fixture_fchown_count+=1
+                return None
+            return original_fchown(fd,uid,gid)
+        patch=mock.patch.object(os,'fchown',side_effect=fixture_fchown)
+        patch.start();self.addCleanup(patch.stop)
         self.locks=self.root/'locks';self.locks.mkdir()
         subprocess.run(['git','-C',str(self.repo),'init','--quiet'],check=True)
         subprocess.run(['git','-C',str(self.repo),'add','.'],check=True)
@@ -287,6 +341,41 @@ class IsolatedHostTransactionTests(unittest.TestCase):
         with self.assertRaises(SyntaxError):
             self.execute(plan=plan)
         self.assertFalse(t.journal_path(self.receipts,plan).exists())
+        self.assertEqual(self.old_first,(self.targetroot/'first.py').read_bytes())
+
+    def test_unprivileged_fixture_never_claims_root_ownership_outside_sandbox(self):
+        # The only permitted fchown simulation is a temp fd under our root.
+        self.assertEqual(self.fixture_fchown_count,0)
+        if os.geteuid()!=0:
+            fd=os.open('/dev/null',os.O_RDONLY)
+            try:
+                with self.assertRaises(PermissionError):
+                    os.fchown(fd,0,0)
+            finally:
+                os.close(fd)
+        self.assertFalse(t.journal_path(self.receipts,self.plan).exists())
+
+    def test_target_with_foreign_owner_denied_without_writing_original_files(self):
+        self.target_owner_uid=1001
+        result=self.execute()
+        self.assertEqual(result['state'],'ROLLED_BACK_RECONCILIATION_REQUIRED')
+        self.assertEqual(result['changed_files'],[])
+        self.assertIn('HOST_EXPECTED_ROOT_FILE_OWNER_CHANGED',result['failure'])
+        self.assertEqual(self.old_first,(self.targetroot/'first.py').read_bytes())
+        self.assertEqual(self.old_second,(self.targetroot/'second.py').read_bytes())
+
+    def test_receipts_with_foreign_owner_are_denied_before_any_signed_admission(self):
+        self.receipts_owner_uid=1001
+        with self.assertRaisesRegex(t.HostTransactionDenied,'HOST_RECEIPTS_NOT_ROOT_PRIVATE'):
+            self.execute()
+        self.assertFalse(t.journal_path(self.receipts,self.plan).exists())
+        self.assertEqual(self.old_first,(self.targetroot/'first.py').read_bytes())
+
+    def test_receipts_with_foreign_group_are_denied_before_any_signed_admission(self):
+        self.receipts_owner_gid=1001
+        with self.assertRaisesRegex(t.HostTransactionDenied,'HOST_RECEIPTS_NOT_ROOT_PRIVATE'):
+            self.execute()
+        self.assertFalse(t.journal_path(self.receipts,self.plan).exists())
         self.assertEqual(self.old_first,(self.targetroot/'first.py').read_bytes())
 
     def test_receipt_dir_with_world_writable_mode_denied(self):
