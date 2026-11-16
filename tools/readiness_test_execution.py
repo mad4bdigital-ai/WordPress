@@ -57,6 +57,9 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     # a temporary local Skill Registry. No network/provider execution or
     # authority mutation; acceptance remains explicitly untested.
     "tests/company-reconcile-skill-set-no-executor-hermetic.php",
+    # Exact, in-memory WP-CLI read/inventory with scheduled intent/commit
+    # audit and negative Host/no-SQL execution; no real WordPress mutation.
+    "tests/native-cli-context-and-company-inventory-hermetic.php",
     # Exact hermetic source-only Company/ContentJob/Media Rights regressions:
     # fake FluentBoards, in-memory WP users/roles/CAS and role transactions,
     # synthetic provider callbacks and local image/path stubs. No network,
@@ -498,6 +501,8 @@ def self_test():
         "php", str((ROOT / "tests/company-migration-decisions-transaction-hermetic.php").resolve())]
     assert command_for("tests/company-reconcile-skill-set-no-executor-hermetic.php") == [
         "php", str((ROOT / "tests/company-reconcile-skill-set-no-executor-hermetic.php").resolve())]
+    assert command_for("tests/native-cli-context-and-company-inventory-hermetic.php") == [
+        "php", str((ROOT / "tests/native-cli-context-and-company-inventory-hermetic.php").resolve())]
     for reviewed_source in (
         "tests/converged-grant-eligibility-hermetic.php",
         "tests/core-ai-governance-usage-and-admission-hermetic.php",

@@ -245,4 +245,4 @@ try{
 }
 cli_assert($GLOBALS['cli_scans']===1,
  'Failed source audit cannot run the WordPress scheduled scanner');
-echo "COMPANY_LOCAL_CLI_BOUNDARY: PASS read inventory, exact scheduled CAS/audit, no Host bridge\n";
+echo "PASS: COMPANY_LOCAL_CLI_BOUNDARY read inventory, exact scheduled CAS/audit, no Host bridge\n";
