@@ -1,0 +1,20 @@
+{
+  "contract": "mad4b.wayfatours.configuration-notice-provider-proof.v1",
+  "site": "https://wayfatours.com",
+  "scope": "company_owned",
+  "no_implicit_shared_source_activation": true,
+  "scan_hook": "mad4b_configuration_jobs_scan",
+  "scan_action_priority": 90,
+  "notice_lifecycle": "exact_provider_evidence_only",
+  "never_modify_stripe_settings": true,
+  "never_modify_rights_registry": true,
+  "manual_deployment_without_original313_signature": true,
+  "original305_hold_preserved": true,
+  "source_file": {
+    "relative_path": "wp-content/mu-plugins/mad4b-configuration-notice-revalidation.php",
+    "sha256": "13d8d4d3716d1ad5a1664d6d16c7aec189f9060f275a96eef1e15402eac46aff",
+    "bytes": 5423
+  },
+  "regression": "tests/wayfa-provider-verified-notice-regression.php",
+  "regression_passes": 10
+}

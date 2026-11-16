@@ -16,6 +16,10 @@ on:
       - 'wp-content/plugins/mad4b-cache-lifecycle/**'
       - 'ops/site-company-overlays/wayfatours/adaptive-runtime/**'
       - 'tests/test_adaptive_asset_canonical_source_parity.py'
+      - 'tests/test_origin_gate_wayfa_notice_source_parity.py'
+      - 'tests/wayfa-provider-verified-notice-regression.php'
+      - 'ops/site-company-overlays/wayfatours/configuration-runtime/**'
+      - 'wp-content/mu-plugins/mad4b-general-public-page-origin-cache.php'
       - 'tests/composite-media-integrity-gallery-contract.php'
       - 'ops/adaptive-css-dependency-epoch-20261116/**'
       - 'wp-content/plugins/mad4b-adaptive-asset-intelligence/**'
@@ -114,6 +118,12 @@ jobs:
           php ops/adaptive-css-dependency-epoch-20261116/tests/test-adaptive-epoch.php wp-content/plugins/mad4b-adaptive-asset-intelligence/includes/class-mad4b-scp-adaptive-asset-intelligence.php
           php wp-content/plugins/mad4b-adaptive-asset-intelligence/tests/contract.php
           php tests/composite-media-integrity-gallery-contract.php
+          # Site-native origin cache admission, candidate-only Nginx
+          # segmentation and Wayfatours provider evidence remain isolated.
+          python3 ops/adaptive-css-dependency-epoch-20261116/test-nginx-accept-family.py
+          python3 -m unittest discover -s tests -p 'test_origin_gate_wayfa_notice_source_parity.py' -q
+          php ops/adaptive-css-dependency-epoch-20261116/test-origin-gate-dynamic.php wp-content/mu-plugins/mad4b-general-public-page-origin-cache.php
+          php tests/wayfa-provider-verified-notice-regression.php
           node --check ops/mobile-critical-css-v1/verify.js
           # Includes SHA-bound V8 root manifest parity and V9 successor candidate.
           # These tests certify only local sources, never the enrolled root index.
