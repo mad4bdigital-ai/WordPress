@@ -8485,7 +8485,9 @@
         "SECURITY-01",
         "AUTOMATION-01",
         "PLATFORM-01",
-        "CONTENT-01"
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
       ],
       "regression_tests": [
         "tests/test_content_readiness_trait_parity.py",
@@ -8507,7 +8509,9 @@
         "SECURITY-01",
         "AUTOMATION-01",
         "PLATFORM-01",
-        "CONTENT-01"
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
       ],
       "regression_tests": [
         "tests/test_content_readiness_trait_parity.py",
@@ -22152,7 +22156,9 @@
         "SECURITY-01",
         "AUTOMATION-01",
         "PLATFORM-01",
-        "CONTENT-01"
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
       ],
       "regression_tests": [
         "tests/test_content_readiness_trait_parity.py",
@@ -22174,7 +22180,9 @@
         "SECURITY-01",
         "AUTOMATION-01",
         "PLATFORM-01",
-        "CONTENT-01"
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
       ],
       "regression_tests": [
         "tests/test_content_readiness_trait_parity.py",
@@ -22196,7 +22204,9 @@
         "SECURITY-01",
         "AUTOMATION-01",
         "PLATFORM-01",
-        "CONTENT-01"
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
       ],
       "regression_tests": [
         "tests/test_content_readiness_trait_parity.py",
