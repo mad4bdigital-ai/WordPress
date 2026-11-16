@@ -8434,6 +8434,28 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing MCP, providers, execution, governance, security and platform controls cover this mechanical source relocation; live Owner/Original305/313 checks remain independent.",
       "execution_note": "Source-only review with two PR-owned regression tests; no Production, staging or live site changes."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/trait-mad4b-scp-servers-vps-local-identity.php",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "tests/test_server_vps_local_identity_trait_parity.py"
+      ],
+      "owner_role": "MAD4B repository CI source reviewer for VPS local identity extraction — not a release Owner",
+      "review_rationale": "The VPS-local identity and transport admission methods were moved byte-for-byte to a trait with unchanged public callbacks and a strict require/use binding in the server facade. Original method-body Git blob 03cbb71ffd2587da6db54a730507a93edad8be01. The regression checks exact method set, bound trait, site UUID isolation, distinct WP user identity, execution authority resolution, absence of grant/update mutation, and server facade size below 1050 lines. No relaxation of local actor or production policy.",
+      "coverage_reuse_rationale": "Existing provider, MCP, execution, governance, security and platform controls retain their original scope; this is a source-owner relocation, not a new privileged transport.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "execution_note": "Source-only review; no live VPS identity, Host312, Original305/313 or signed release claim."
     }
   ],
   "lifecycle": [],
