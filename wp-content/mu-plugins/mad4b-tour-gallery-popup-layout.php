@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Tour Gallery Popup Layout
  * Description: Responsive, scroll-safe Elementor/UAEL tour gallery dialog; does not alter gallery data or other popups.
- * Version: 1.4.0
+ * Version: 1.4.1
  */
 defined('ABSPATH') || exit;
 add_action('wp_enqueue_scripts', static function (): void {
@@ -215,12 +215,21 @@ final class MAD4B_JetEngine_Elementor_Frame_Focus_V2 {
         $element->add_control('mad4b_photo_focus_position',[
             'label'=>'Native image position · dynamic JetEngine','type'=>\Elementor\Controls_Manager::TEXT,
             'default'=>'','dynamic'=>['active'=>true],
-            'selectors'=>['{{WRAPPER}}'=>'background-position: {{VALUE}};'],
+            // Elementor's native Background selector includes :not(...),
+            // which is one specificity level above a plain {{WRAPPER}} tag.
+            // Match its exact cascade instead of runtime CSS overrides.
+            'selectors'=>[
+                '{{WRAPPER}}:not(.elementor-motion-effects-element-type-background)'=>'background-position: {{VALUE}};',
+                '{{WRAPPER}} > .elementor-motion-effects-container > .elementor-motion-effects-layer'=>'background-position: {{VALUE}};',
+            ],
             'description'=>'Bind MAD4B Photo Frame Focus dynamic tag to this image Container. No runtime CSS/JS override.']);
         $element->add_control('mad4b_photo_focus_fit',[
             'label'=>'Native image fit · dynamic JetEngine','type'=>\Elementor\Controls_Manager::TEXT,
             'default'=>'','dynamic'=>['active'=>true],
-            'selectors'=>['{{WRAPPER}}'=>'background-size: {{VALUE}};'],
+            'selectors'=>[
+                '{{WRAPPER}}:not(.elementor-motion-effects-element-type-background)'=>'background-size: {{VALUE}};',
+                '{{WRAPPER}} > .elementor-motion-effects-container > .elementor-motion-effects-layer'=>'background-size: {{VALUE}};',
+            ],
             'description'=>'Optional cover / contain per image and tour.']);
         $element->end_controls_section();
     }
