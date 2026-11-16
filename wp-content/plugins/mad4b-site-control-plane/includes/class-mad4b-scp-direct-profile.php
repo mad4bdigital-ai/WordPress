@@ -171,7 +171,8 @@ final class MAD4B_SCP_Direct_Profile {
                 'input_schema'=>$def[2],
                 'output_schema'=>array( 'type'=>'object', 'additionalProperties'=>true ),
                 'meta'=>array( 'public'=>false, 'show_in_rest'=>false,
-                    'mcp'=>array( 'public'=>false, 'type'=>'tool', 'surface'=>'direct' ),
+                    'mcp'=>array( 'public'=>false, 'type'=>'tool', 'surface'=>'direct' )
+                        + ( $def[3] ? array( 'mad4b_descriptor_read_lane'=>'read' ) : array() ),
                     'annotations'=>array( 'readonly'=>$def[3], 'destructive'=>! $def[3],
                         'idempotent'=>$def[3] ) ),
             ) );
