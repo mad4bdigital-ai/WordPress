@@ -50,6 +50,9 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     # Exact original Company Master Admin actor/tenant REST contract fixture.
     # No user creation or role migration; production/staging denial asserted.
     "tests/company-master-native-rest-gates-hermetic.php",
+    # Exact fake-DB tenant policy-only CAS, independent-owner reviewer and
+    # transaction rollback fixture. External site/provider writes stay zero.
+    "tests/company-migration-decisions-transaction-hermetic.php",
     # Canonical Inspector + Server evidence on synthetic WordPress Ability;
     # owner scopes and grant checks are not mocked as approved live writes.
     "tests/server-descriptor-canonical-multilane-hermetic.php",
@@ -303,6 +306,14 @@ def ensure(ok, message):
         raise ValueError(message)
 
 
+# Only these two reviewed, self-contained Node vm/DOM source fixtures may
+# execute as JS. No arbitrary scripts, browser network or WordPress admin.
+STANDALONE_JS_REGRESSIONS = frozenset((
+    "tests/journey-asset-bootstrap-runtime.js",
+    "tests/operational-remediation-tabs-runtime.js",
+))
+
+
 def command_for(test):
     path = (ROOT / test).resolve()
     ensure(path.is_relative_to(ROOT), "Test escapes checkout")
@@ -322,6 +333,10 @@ def command_for(test):
             runner = ROOT / "wp-content/plugins/mad4b-site-control-plane/vendor/bin/phpunit"
         ensure(runner.is_file(), "No trusted PHPUnit runner for " + test)
         return ["php", str(runner), str(path)]
+    if path.suffix == ".js":
+        ensure(test in STANDALONE_JS_REGRESSIONS and not path.is_symlink(),
+               "Unreviewed JS regression-test path " + test)
+        return ["node", str(path)]
     raise ValueError("No supported behavioral test executor for " + test)
 
 
@@ -360,7 +375,7 @@ def run_tests(impact, head, timeout):
             result = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
                                     timeout=timeout, check=False)
             ok = result.returncode == 0
-            if name in STANDALONE_PHP_REGRESSIONS:
+            if name in STANDALONE_PHP_REGRESSIONS or name in STANDALONE_JS_REGRESSIONS:
                 # Require positive assertions, never accept exit(0) or lint-only
                 # output. Existing original contracts also print N test cases
                 # in an anchored success-only terminal summary.
@@ -425,6 +440,10 @@ def self_test():
         "php", str((ROOT / "tests/company-communication-policy-rest-hermetic.php").resolve())]
     assert command_for("tests/company-master-native-rest-gates-hermetic.php") == [
         "php", str((ROOT / "tests/company-master-native-rest-gates-hermetic.php").resolve())]
+    assert command_for("tests/company-migration-decisions-transaction-hermetic.php") == [
+        "php", str((ROOT / "tests/company-migration-decisions-transaction-hermetic.php").resolve())]
+    for js in STANDALONE_JS_REGRESSIONS:
+        assert command_for(js) == ["node", str((ROOT / js).resolve())]
     assert command_for("tests/server-descriptor-canonical-multilane-hermetic.php") == [
         "php", str((ROOT / "tests/server-descriptor-canonical-multilane-hermetic.php").resolve())]
     assert has_assertion_pass("PASS: brand quality exact context revision and same-site issue closure\n")

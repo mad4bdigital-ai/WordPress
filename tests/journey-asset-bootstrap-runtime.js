@@ -34,4 +34,4 @@ assert(styles.includes('@media(prefers-reduced-motion:reduce)'));
 assert(styles.includes('.jd-modes-v3') && styles.includes('.tour-journey-discovery'));
 const highlight=fs.readFileSync(path.resolve(root,'tour-highlights-v1.css'),'utf8');
 assert(highlight.includes('.elementor-element-d90c3d1') && highlight.includes('.tour-hl-ui'));
-console.log('JOURNEY_ASSET_BOOTSTRAP: PASS no-widget safety, Elementor lifecycle and source-scoped CSS');
+console.log('PASS: JOURNEY_ASSET_BOOTSTRAP no-widget safety, Elementor lifecycle and source-scoped CSS');

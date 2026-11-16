@@ -217,4 +217,4 @@ check_decision($unready instanceof WP_Error
 check_decision($GLOBALS['wpdb']->locks===$GLOBALS['wpdb']->unlocks
  && $GLOBALS['decision_external_writes']===0,
  'Every SQL lock must be released and unrelated company data preserved');
-echo "COMPANY_MIGRATION_DECISIONS: PASS tenant-only CAS, two-person approval, audit rollback\n";
+echo "PASS: COMPANY_MIGRATION_DECISIONS tenant-only CAS, two-person approval, audit rollback\n";

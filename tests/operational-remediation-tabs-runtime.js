@@ -65,4 +65,4 @@ for(const line of css.split(/\r?\n/).map(x=>x.trim()).filter(Boolean)){
    'Responsive rules must also remain scoped to the original admin page');
  }
 }
-console.log('OPERATIONAL_REMEDIATION_TABS: PASS default/hash/keyboard tabs and scoped CSS');
+console.log('PASS: OPERATIONAL_REMEDIATION_TABS default/hash/keyboard tabs and scoped CSS');
