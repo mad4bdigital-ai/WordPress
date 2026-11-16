@@ -129,4 +129,5 @@ origin_check(is_string($nativeOwner)
  && strpos($nativeOwner,'strlen(wp_json_encode($data))>65536')!==false
  && strpos($nativeOwner,'UNIQUE KEY group_evidence (group_id,source_sha256,locale,provider_id)')!==false,
  'Canonical Research Groups SQL owner must retain bounded evidence and dedup indexes');
-echo "NATIVE_ORIGIN_EXTERNAL_RESEARCH: PASS site, source hash, job lifecycle, evidence, no duplicate\n";
+echo "NATIVE_ORIGIN_EXTERNAL_RESEARCH: PASS site, source hash, job lifecycle, evidence, no duplicate\n";// Success-only audited completion marker after all denial assertions.
+echo "NATIVE_ORIGIN_EXTERNAL_RESEARCH: PASS\n";

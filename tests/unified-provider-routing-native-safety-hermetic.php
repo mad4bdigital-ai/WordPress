@@ -118,4 +118,5 @@ $badId=$c::request_crawl('cloud','https://api.firecrawl.dev','status','../bad',$
 provider_assert(is_wp_error($badId)
  && $badId->get_error_code()==='mad4b_firecrawl_crawl_id_invalid',
  'Untrusted crawl path traversal must be denied');
-echo "PROVIDER_ROUTING_NATIVE: PASS PHP7.4, no SSRF/redirect, exact safe Firecrawl scope\n";
+echo "PROVIDER_ROUTING_NATIVE: PASS PHP7.4, no SSRF/redirect, exact safe Firecrawl scope\n";// Success-only audited completion marker after all denial assertions.
+echo "PROVIDER_ROUTING_NATIVE: PASS\n";

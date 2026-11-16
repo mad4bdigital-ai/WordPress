@@ -66,6 +66,13 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     # Reviewed native Search Console site-only OAuth/retained-observation
     # fixture: in-memory provider/WP stubs; no HTTP, real grants or writes.
     "tests/native-search-console-site-scope-php74-hermetic.php",
+    # Exact independently inspected offline WordPress source fixtures: native
+    # Server catalog isolation, Origin research evidence-only stubs, and
+    # Firecrawl route/SSRF denials. No live provider HTTP, site writes, grants
+    # or credential lookup. Each asserts denials before canonical terminal PASS.
+    "tests/servers-native-core-catalog-hermetic.php",
+    "tests/origin-external-research-source-bound-hermetic.php",
+    "tests/unified-provider-routing-native-safety-hermetic.php",
     # Source-only Skills Cron dedupe, in-memory WP scheduler and denied
     # nonenrolled/mismatched origin before any Skill filesystem or DB writes.
     "tests/native-skills-seeder-enrollment-cron-hermetic.php",

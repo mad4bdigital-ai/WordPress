@@ -29,4 +29,5 @@ core_assert(!in_array('mad4b/hub-universal-vps-enqueue',$enrollment,true),
     'VPS enqueue incorrectly published onto enrollment');
 core_assert(MAD4B_Core_Catalog_Harness::tools('mad4b-vps-local')===array(),
     'Exact native host-only catalog must be composed in guarded Server facade');
-echo "MAD4B single native core catalog: PASS read/ChatGPT/enrollment isolation\n";
+echo "MAD4B single native core catalog: PASS read/ChatGPT/enrollment isolation\n";// Success-only audited completion marker after all denial assertions.
+echo "NATIVE_SERVER_CORE_CATALOG: PASS\n";
