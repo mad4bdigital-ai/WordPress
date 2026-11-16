@@ -28,7 +28,15 @@ servers = (wp / 'includes' / 'class-mad4b-scp-servers.php').read_text(encoding='
 bootstrap_catalog = (wp / 'includes' / 'class-mad4b-scp-chatgpt-approval-bootstrap.php').read_text(encoding='utf-8')
 servers += (wp / 'includes' / 'class-mad4b-scp-server-core-catalog.php').read_text(encoding='utf-8')
 transport = (wp / 'includes' / 'class-mad4b-scp-transport-context.php').read_text(encoding='utf-8')
-auth = (wp / 'includes' / 'class-mad4b-scp-authorization.php').read_text(encoding='utf-8') + (Path(__file__).resolve().parents[1] / 'includes/class-mad4b-scp-authority-health-projection.php').read_text(encoding='utf-8')
+auth_facade = (wp / 'includes' / 'class-mad4b-scp-authorization.php').read_text(encoding='utf-8')
+auth_recovery = (wp / 'includes' / 'trait-mad4b-scp-authorization-recovery-state.php').read_text(encoding='utf-8')
+# Do not treat orphaned trait text as an execution guard. Require its real loader/use.
+if ("require_once __DIR__ . '/trait-mad4b-scp-authorization-recovery-state.php';" not in auth_facade
+        or "use MAD4B_SCP_Authorization_Recovery_State_Trait;" not in auth_facade
+        or "trait MAD4B_SCP_Authorization_Recovery_State_Trait" not in auth_recovery
+        or "public static function execution_attempt_state" not in auth_recovery):
+    raise SystemExit("original Authorization recovery trait is unbound or incomplete")
+auth = auth_facade + auth_recovery + (wp / 'includes' / 'class-mad4b-scp-authority-health-projection.php').read_text(encoding='utf-8')
 plugin = (wp / 'includes' / 'class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
 main = (wp / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 exporter = (wp / 'includes' / 'class-mad4b-scp-skill-exporter.php').read_text(encoding='utf-8')
