@@ -82,6 +82,7 @@ $all_requested = MAD4B_SCP_Servers::chatgpt_tools();
 $optional = MAD4B_SCP_Servers::chatgpt_materialization_optional_tools( $all_requested );
 $budget = MAD4B_SCP_MCP_Catalog_Diagnostics::budget_projection( $all_requested, $optional );
 if ( empty( $budget['ready'] ) ) $fail( 'Reviewed direct-step-up catalog budget itself is invalid.', $budget );
+$unbound_reviewed_step_up = array();
 foreach ( $reviewed_step_up_abilities as $ability_name ) {
     if ( ! in_array( $ability_name, $budget['selected'], true )
         || ! empty( $budget['excluded_optional'] ) )
@@ -116,7 +117,7 @@ foreach ( $reviewed_step_up_abilities as $ability_name ) {
             $descriptor_codes[] = sanitize_key( substr( (string) $blocked, strlen( $prefix ) ) );
             if ( count( $descriptor_codes ) >= 2 ) break;
         }
-        $fail( 'Reviewed direct step-up ability has no bound MCP tool.', array(
+        $unbound_reviewed_step_up[] = array(
             'ability' => $ability_name,
             'registered' => function_exists( 'wp_has_ability' ) && wp_has_ability( $ability_name ),
             'base_candidate' => in_array( $ability_name, MAD4B_SCP_Servers::chatgpt_base_tools(), true ),
@@ -128,8 +129,14 @@ foreach ( $reviewed_step_up_abilities as $ability_name ) {
             'preflight_error_codes' => $preflight_codes,
             'preflight_blocker' => sanitize_key( (string) ( $preflight['blocker'] ?? '' ) ),
             'registered_tools_count' => count( $preauth_names ),
-        ) );
+        );
     }
+}
+// Enumerate every missing original descriptor in one CI result, without
+// skipping the fail-closed pre-auth gate or attempting any privileged call.
+// Names and denial codes are bounded and contain no OAuth/token/plan payload.
+if ( $unbound_reviewed_step_up ) {
+    $fail( 'Reviewed direct step-up abilities have no bound MCP tools.', array_slice( $unbound_reviewed_step_up, 0, 64 ) );
 }
 $reviewed_step_up_names = array_values( array_unique( $reviewed_step_up_names ) );
 sort( $reviewed_step_up_names );
