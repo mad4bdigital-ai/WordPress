@@ -125,3 +125,5 @@ assert_readonly($false['option_present']===true
 assert_readonly($GLOBALS['canary_mutations']===0,
  'Read-only canary must never mutate options');
 echo "RELEASE_AND_FAORE_NATIVE_READONLY: PASS original 3 abilities and denied write/mismatch paths\n";
+// The audited execution gate requires an anchored success-only terminal marker.
+echo "RELEASE_AND_FAORE_NATIVE_READONLY: PASS\n";
