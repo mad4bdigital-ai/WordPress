@@ -528,6 +528,17 @@ def classify(path, cap, coverage):
     return next(r for r in rules if r["id"] == "platform")
 
 
+def same_pr_regression_coverage(tests, changed_set):
+    """Keep historical tests; require one changed, real regression in this PR."""
+    if not isinstance(tests, list) or not tests:
+        return False
+    if not all(isinstance(test, str)
+               and (test.startswith(PLUGIN + "tests/") or test.startswith("tests/"))
+               and (ROOT / test).is_file() for test in tests):
+        return False
+    return any(test in changed_set for test in tests)
+
+
 def validate_coverage(coverage, controls, base, head, changed, added, removed):
     ensure(coverage.get("contract") == "mad4b.readiness-capability-coverage.v1",
            "Invalid coverage contract")
@@ -726,11 +737,13 @@ def validate_coverage(coverage, controls, base, head, changed, added, removed):
                        "Reused checklist coverage requires rationale: " + capability)
             ensure(isinstance(tests, list) and tests,
                    "A newly introduced capability must provide regression tests")
-            for test in tests:
-                if not (isinstance(test, str)
-                        and (test.startswith(PLUGIN + "tests/") or test.startswith("tests/"))
-                        and test in changed_set and (ROOT / test).is_file()):
-                    missing.append("same_pr_capability_regression_missing")
+            # Persistent capability reviews retain their original tests. A
+            # current-PR source change needs at least one NEW executable
+            # regression, not the impossible demand that every historical
+            # reviewed test was also edited in this PR. All retained paths
+            # must still resolve to real repository-owned regression files.
+            if not same_pr_regression_coverage(tests, changed_set):
+                missing.append("same_pr_capability_regression_missing")
             if not missing:
                 accepted.append(capability)
         if missing:

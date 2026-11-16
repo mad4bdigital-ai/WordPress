@@ -158,6 +158,19 @@ class ReadinessSurfaceConvergence(unittest.TestCase):
         self.assertFalse(reg.registered_first_party_add_owner(
             ref, facade_path, "<?php $note='mad4b/content-get-post';", ability))
 
+    def test_persistent_review_keeps_old_regressions_with_new_pr_evidence(self):
+        historical = "wp-content/plugins/mad4b-site-control-plane/tests/integration-ticket-brand-runtime-regressions.py"
+        current = "tests/test_dynamic_readiness_rest_ability_owner.py"
+        self.assertTrue(reg.same_pr_regression_coverage(
+            [historical, current], {current}))
+        self.assertFalse(reg.same_pr_regression_coverage(
+            [historical, current], set()))
+        self.assertFalse(reg.same_pr_regression_coverage(
+            [historical], {current}))
+        self.assertFalse(reg.same_pr_regression_coverage(
+            [current, "tests/does-not-exist-source-review.py"], {current}))
+        self.assertFalse(reg.same_pr_regression_coverage([], {current}))
+
     def test_adapter_constant_mention_without_registration_is_not_owner(self):
         marker = reg.PLUGIN + "includes/adapters/fixture.php"
         mocked = SimpleNamespace(returncode=0, stdout=(BASE + ":" + marker).encode() + b"\n")
