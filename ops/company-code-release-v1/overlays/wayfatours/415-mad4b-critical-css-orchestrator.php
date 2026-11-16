@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: MAD4B Verified Critical CSS
- * Version: 0.3.26
+ * Version: 0.3.27
  * Description: Serve measured first-paint CSS only for exact live LiteSpeed CSS content hashes. Fail open on any mismatch.
  */
 defined('ABSPATH') || exit;
@@ -58,6 +58,29 @@ final class MAD4B_Verified_Critical_CSS_V1 {
         return self::$manifest[$key] = $decoded;
     }
 
+    /**
+     * Elementor owns the actual viewport breakpoints. Never infer a breakpoint
+     * from User-Agent, locale, a client header, or a hard-coded company table.
+     * If Elementor changes the responsive settings, the old certificate
+     * automatically falls back to the original render-blocking stylesheet.
+     */
+    private static function native_mobile_breakpoint(): ?int {
+        if (!class_exists('\Elementor\Plugin',false)) return null;
+        $instance=\Elementor\Plugin::$instance ?? null;
+        $manager=is_object($instance)?($instance->breakpoints??null):null;
+        if (!is_object($manager) || !method_exists($manager,'get_breakpoints'))
+            return null;
+        $all=$manager->get_breakpoints();
+        if (!is_array($all)) return null;
+        $mobile=$all['mobile']??null;
+        if (!is_object($mobile) || !method_exists($mobile,'get_value'))
+            return null;
+        $raw=$mobile->get_value();
+        if ((!is_int($raw) && !(is_string($raw) && ctype_digit($raw)))
+            || (int)$raw<480 || (int)$raw>1100) return null;
+        return (int)$raw;
+    }
+
     private static function verified_variant(array $manifest, array $meta,
         string $filename, string $buffer, string $locale): ?array {
         if ((int)($manifest['version']??0)===1) {
@@ -84,6 +107,23 @@ final class MAD4B_Verified_Critical_CSS_V1 {
             || (int)($variant['css_epoch']??-1)!==(int)get_option('mad4b_css_ai_epoch_v1',0)
             || !is_string($variant['elementor_doc_fingerprint']??null)
             || !preg_match('/^[a-f0-9]{64}$/D',$variant['elementor_doc_fingerprint'])) return null;
+        // The v2 manifest is immutable per actual CSS SHA, route and locale.
+        // An adaptive-width certificate cannot be upgraded to full-width CSS.
+        // A separately enrolled native runtime is mandatory for publication;
+        // this read-only verifier never creates that enrollment.
+        if (array_key_exists('css_critical_mobile_breakpoint',$variant)) {
+            $px=$variant['css_critical_mobile_breakpoint'];
+            $cert=(array)($variant['evidence']??[]);
+            $native=self::native_mobile_breakpoint();
+            if (!is_int($px) || $px<480 || $px>1100
+                || $native===null || $native!==$px
+                || ($cert['adaptive_mobile_breakpoint_px']??null)!==$px
+                || ($cert['decision']??'')!=='passed_evidence'
+                || !in_array($px,(array)($cert['viewports']??[]),true)
+                || !in_array($px+1,(array)($cert['viewports']??[]),true)
+                || str_contains($buffer,'data-mad4b-first-city='))
+                return null;
+        }
         $evidence=(array)($variant['evidence']??[]);
         if (!empty($evidence['requires_mobile_hero_priority'])) {
             $posterPath=(string)($evidence['required_hero_path']??'');
@@ -156,13 +196,16 @@ final class MAD4B_Verified_Critical_CSS_V1 {
         $priority=(string)($meta['css_fetch_priority']??'low');
         if (!in_array($priority,['low','auto','high'],true)) $priority='low';
         $safeUrl = esc_url($url);
-        $markup = '<style id="mad4b-critical-css-v1">' . $critical . '</style>';
+        $adaptive=(int)($meta['css_critical_mobile_breakpoint']??0);
+        $criticalMedia=$adaptive>0?' media="(max-width:'.$adaptive.'px)"':'';
+        $fullMedia=$adaptive>0?'(min-width:'.($adaptive+1).'px)':'print';
+        $markup = '<style id="mad4b-critical-css-v1"'.$criticalMedia.'>' . $critical . '</style>';
         if (($meta['css_full_preload']??false)===true) {
             $markup .= '<link rel="preload" as="style" fetchpriority="high" href="' . $safeUrl . '" />';
         }
         // Complete CSS must not steal LCP poster priority. Exact SHA-matched
         // bundle loads natively as print then becomes all on load.
-        $markup .= '<link id="mad4b-css-rest-v1" rel="stylesheet" href="' . $safeUrl . '" media="print" fetchpriority="' . $priority . '" onload="this.onload=null;this.media=&#39;all&#39;" />';
+        $markup .= '<link id="mad4b-css-rest-v1" rel="stylesheet" href="' . $safeUrl . '" media="' . $fullMedia . '" fetchpriority="' . $priority . '" onload="this.onload=null;this.media=&#39;all&#39;" />';
         $markup .= '<noscript>' . $tag . '</noscript>';
         // If a CSP/loader suppresses the link onload, restore after load.
         $inlineLoader = class_exists('MAD4B_Mobile_CSS_Inline_Contract_V1', false)
@@ -189,9 +232,17 @@ final class MAD4B_Verified_Critical_CSS_V1 {
             || substr_count($html,'id="mad4b-critical-css-v1"')!==1
             || substr_count($html,'id="mad4b-css-rest-v1"')!==1
             || substr_count($html,'data-mad4b-css-async-lib="inline-v1"')!==1) return false;
-        $start=strpos($html,'<style id="mad4b-critical-css-v1">');
-        if ($start===false) return false;
-        $start+=strlen('<style id="mad4b-critical-css-v1">');
+        if (!preg_match('~<style id="mad4b-critical-css-v1"(?: media="\\(max-width:([0-9]{3,4})px\\)")?>~',
+            $html,$match,PREG_OFFSET_CAPTURE)) return false;
+        $start=$match[0][1]+strlen($match[0][0]);
+        $adaptive=isset($match[1][0])?(int)$match[1][0]:0;
+        if ($adaptive>0) {
+            if ($adaptive<480 || $adaptive>1100
+                || self::native_mobile_breakpoint()!==$adaptive
+                || !str_contains($html,'id="mad4b-css-rest-v1"')
+                || !str_contains($html,'media="(min-width:'.($adaptive+1).'px)"')
+                || str_contains($html,'data-mad4b-first-city=')) return false;
+        }
         $end=strpos($html,'</style>',$start);
         return $end!==false && ($end-$start)>=16000 && ($end-$start)<=1048576
             && str_contains($html,'/wp-content/litespeed/css/');
