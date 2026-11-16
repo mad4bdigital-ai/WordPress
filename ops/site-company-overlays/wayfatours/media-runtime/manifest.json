@@ -8,9 +8,9 @@
   "linked_asset_files": 12,
   "total_files": 49,
   "source_parity": {
-    "diverged": 2,
+    "diverged": 1,
     "missing": 34,
-    "same": 13
+    "same": 14
   },
   "independent_company_source_mirror_only": true,
   "not_an_installable_mu_plugins_directory": true,
@@ -439,12 +439,12 @@
     },
     {
       "relative_path": "mu-plugins/mad4b-uael-tour-gallery-addon.php",
-      "sha256": "00e1ba3f45d897b71410d7f1be60e0c31b79446c82ccd6ed5933fa51faaa5206",
+      "sha256": "7abc3c91c7528f591256e4a0b233df9839d18d8d33a8aeba2c5a758af422abf5",
       "bytes": 27818,
       "kind": "php",
       "shared_git_source_sha256": "7abc3c91c7528f591256e4a0b233df9839d18d8d33a8aeba2c5a758af422abf5",
       "source_site_sha256": "00e1ba3f45d897b71410d7f1be60e0c31b79446c82ccd6ed5933fa51faaa5206",
-      "shared_source_status": "diverged",
+      "shared_source_status": "same",
       "no_implicit_activation": true
     },
     {
@@ -507,5 +507,6 @@
       "shared_source_status": "same",
       "no_implicit_activation": true
     }
-  ]
+  ],
+  "updated_after_verified_manual_release_utc": "2026-11-16T00:27:00+00:00"
 }

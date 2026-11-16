@@ -379,6 +379,42 @@ final class MAD4B_UAEL_Tour_Gallery_Addon_V1 {
       'total_verified_photos'=>(int)($story['image_count']??0),
       'media_revision'=>(string)get_option('mad4b_story_gallery_media_revision_v1','1')];
  }
+ /**
+  * Native UAEL category label. Stage numbers are itinerary row indexes, NOT
+  * multi-day travel days; only label a verified stop when it exists in the
+  * canonical/translated stage timeline. Keep native UAEL category slugs,
+  * membership, photos, order and Fancybox entirely unchanged.
+  */
+ public static function category_label(array $section,array $locale,array $timeline,
+                                      bool $is_stage,bool $show_timeline):string {
+    $title=($section['id']??'')==='tour'?(string)($locale['tour']??'Tour Photos'):
+       (string)($section['title']??'');
+    if(!$show_timeline)return $title;
+    $indices=array_values(array_unique(array_filter(array_map('intval',
+       (array)($section['days']??[])),static fn($n)=>$n>0)));
+    if(!$indices)return $title;
+    if($is_stage){
+       $verified=[];
+       foreach((array)($timeline['days']??[]) as $stage){
+          if(!is_array($stage))continue;
+          $number=(int)($stage['day']??0);
+          if($number>0)$verified[$number]=true;
+       }
+       $indices=array_values(array_filter($indices,
+         static fn($n)=>isset($verified[$n])));
+       // No confirmed stage index = no Stops or Days prefix. Do not
+       // reinterpret old destination day indexes as a real visit schedule.
+       if(!$indices)return $title;
+       $unit=count($indices)>1?(string)($timeline['days_plural']??''):
+         (string)($timeline['day_label']??'');
+       if($unit==='')return $title;
+       $unit=mb_convert_case($unit,MB_CASE_TITLE,'UTF-8');
+    }else{
+       $unit=count($indices)>1?(string)($locale['days']??'Days'):
+         (string)($locale['day']??'Day');
+    }
+    return $unit.' '.implode(', ',$indices).' · '.$title;
+ }
  public static function before($widget):void {
     if(!self::is_target($widget))return;
     if((string)$widget->get_settings('mad4b_uael_story_enable')!=='yes')return;
@@ -390,15 +426,19 @@ final class MAD4B_UAEL_Tour_Gallery_Addon_V1 {
     if(count($sections)<1 ||(int)($story['image_count']??0)<3)return;
     $pictures=[];$ids=[];$per_id=[];$labels=[];
     $locale=self::captions($tour);
+    // The existing timeline is authoritative for distinguishing verified
+    // visit stops from multi-day itinerary days. Build it once for both
+    // category labels and the deferred UAEL timeline JSON.
+    $timeline_plan=self::timeline_manifest($tour,$story,$locale);
+    $canonical=(int)($story['canonical_post_id']??$tour);
+    $is_stage=class_exists('MAD4B_Gallery_Stage_Policy_V1',false)
+      &&MAD4B_Gallery_Stage_Policy_V1::enabled($canonical);
+    $show_timeline=(string)$widget->get_settings('mad4b_uael_timeline')==='yes';
     foreach($sections as $order=>$section){
       $sid=is_numeric($section['id']??null)?(int)$section['id']:0;
       $slug='mad4b-s'.($sid?:'tour').'-o'.$order;
-      $days=array_map('intval',(array)($section['days']??[]));
-      $show_timeline=(string)$widget->get_settings('mad4b_uael_timeline')==='yes';
-      $day_name=count($days)>1?$locale['days']:$locale['day'];
-      $day_line=($show_timeline&&$days)?($day_name.' '.implode(', ',$days).' · '):'';
-      $section_title=($section['id']??'')==='tour'?$locale['tour']:(string)($section['title']??'');
-      $labels[$slug]=$day_line.$section_title;
+      $labels[$slug]=self::category_label(
+         $section,$locale,$timeline_plan,$is_stage,$show_timeline);
       foreach((array)($section['images']??[])as $photo){
         $id=absint($photo['id']??0);
         if(!$id || get_post_type($id)!=='attachment'
@@ -439,7 +479,7 @@ final class MAD4B_UAEL_Tour_Gallery_Addon_V1 {
        'sections'=>count($sections),'ratio'=>$aspect,
        'defer'=>($settings['mad4b_uael_defer']??'yes')==='yes',
        'timeline'=>($settings['mad4b_uael_timeline']??'yes')==='yes',
-       'timeline_plan'=>self::timeline_manifest($tour,$story,$locale),
+       'timeline_plan'=>$timeline_plan,
     ];
  }
  public static function category_meta($value,$post_id,$key,$single,$meta_type){
