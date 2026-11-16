@@ -16,11 +16,31 @@ from cryptography.hazmat.primitives.serialization import Encoding,PublicFormat
 
 ROOT=Path(__file__).resolve().parents[1]
 DIR=ROOT/'ops/native-source-publisher-v1'
+# The installed Host312 owner is a first-party peer, not an import from the
+# caller or an arbitrary workspace path. Keep exactly the source-owned module.
+sys.path.insert(0,str(DIR))
 spec=importlib.util.spec_from_file_location('mad4b_dynamic_source_test', DIR/'native_source_publisher.py')
 lib=importlib.util.module_from_spec(spec)
 sys.modules[spec.name]=lib
 spec.loader.exec_module(lib)
 DEFINITION=json.loads((DIR/'catalog/generated/source.code.release.manifest.json').read_text())
+# Offline fixture emulates the *full* pinned dependency closure introduced in
+# the enrolled Host V8 verifier. Legacy source.code.release manifest in Git is
+# historical and must not be silently rewritten or represented as enrolled.
+for dependency in (
+    'native-source-publisher-v1/native_host_source_ownership.py',
+    'native-source-publisher-v1/native_host_source_transaction.py',
+    'native-source-publisher-v1/native_host_source_readback.py',
+    'native-source-publisher-v1/native_host_source_final_receipt.py',
+    'native-source-publisher-v1/host_source_activation_doctor.py',
+):
+    import hashlib
+    source=ROOT/'ops'/dependency
+    assert source.is_file() and not source.is_symlink()
+    DEFINITION['dependencies'].append({'path': dependency,
+        'sha256': hashlib.sha256(source.read_bytes()).hexdigest()})
+assert len({item['path'] for item in DEFINITION['dependencies']})==len(DEFINITION['dependencies'])
+
 JS1='wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.4.3.js'
 JS2='wp-content/plugins/mad4b-integration/partner.js'
 SITE1='tours-central:staging'
@@ -36,6 +56,13 @@ class FakeRegistry:
   return self.manifests[op]
 
 class SourcePublisher(unittest.TestCase):
+ def test_host_dependency_omission_cannot_be_admitted(self):
+  bad=deepcopy(DEFINITION)
+  bad['dependencies']=[d for d in bad['dependencies']
+                       if d['path']!='native-source-publisher-v1/native_host_source_final_receipt.py']
+  with self.assertRaises(lib.Denied):lib.validate_manifest(bad)
+
+
  def setUp(self):
   self.temp=tempfile.TemporaryDirectory(prefix='mad4b-native-dynamic-')
   self.addCleanup(self.temp.cleanup)
@@ -245,12 +272,17 @@ class SourcePublisher(unittest.TestCase):
 
  def test_actual_cli_does_not_expose_apply_or_sign(self):
   code=(DIR/'native_source_publisher.py').read_text()
-  self.assertIn('choices=("status","plan","verify")',code)
+  self.assertIn('choices=("status","plan","verify",',code)
+  self.assertIn('"host-plan","host-verify","host-doctor"',code)
+  self.assertNotIn('"host-apply"',code)
+  self.assertNotIn('"sign"',code)
   self.assertNotIn('private_key',code.lower())
   self.assertNotIn('TARGET_PATH =',code)
   self.assertNotIn('EXPECTED_ORIGIN =',code)
   self.assertNotIn('OPERATION = "source.code.release"',code)
-  self.assertFalse(lib.POLICY_PATH.exists())
+  # Production hosts can legitimately have the first-party policy mounted.
+  # Its presence grants nothing: the CLI still exposes only read/plan/verify.
+  self.assertEqual(lib.POLICY_PATH,Path('/etc/mad4b/native-source-publisher-policy.v2.json'))
   with self.assertRaises(lib.Denied):
    lib.enrolled_original_provider('source.code.release')
 

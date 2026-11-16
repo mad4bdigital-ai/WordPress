@@ -4,8 +4,8 @@
   "root_provider_manifest_version": 8,
   "source_manifest_sha256": "be9457e6ea2a93f7b6ccc1083e9c68aa2cc9cd29832a7754ea23503570c248bc",
   "expected_total_unique_pins": 27,
-  "pinned_source_files_verified": 25,
-  "fingerprint_drift_unresolved": 2,
+  "pinned_source_files_verified": 26,
+  "fingerprint_drift_unresolved": 1,
   "exact_source_components": [
     {
       "path": "dynamic-operation-registry-v1/host312_original_issuer.py",
@@ -131,6 +131,11 @@
       "path": "native-source-publisher-v1/original_broker_host_readiness_refresh_v8.py",
       "provider_pinned_sha256": "cf7489f3611aebe56c46717ee90cde3ff023e864cf0129c50f0d87f0f2c1166c",
       "current_sha256": "cf7489f3611aebe56c46717ee90cde3ff023e864cf0129c50f0d87f0f2c1166c"
+    },
+    {
+      "path": "native-source-publisher-v1/native_source_publisher.py",
+      "provider_pinned_sha256": "32656d20a0729fd0c165a65b6b7d2ad51014a87e69c636fa568c5bfff51b7eae",
+      "current_sha256": "32656d20a0729fd0c165a65b6b7d2ad51014a87e69c636fa568c5bfff51b7eae"
     }
   ],
   "canonical_source_divergence": [
@@ -138,11 +143,6 @@
       "path": "company-code-release-v1/company_code_release.py",
       "provider_pinned_sha256": "d922204de29a9a4380249094086d40cc0e7fbc5df947601103da7366112e7600",
       "current_sha256": "70fe40a2de958d8deff9f325159ebf7319cdd3fca87192f96a712df09d0dac77"
-    },
-    {
-      "path": "native-source-publisher-v1/native_source_publisher.py",
-      "provider_pinned_sha256": "32656d20a0729fd0c165a65b6b7d2ad51014a87e69c636fa568c5bfff51b7eae",
-      "current_sha256": "f2fefd9c8ff7298b1c943140168e3f8abf63e4e45434233408d31697d4a13195"
     }
   ],
   "source_only": true,
@@ -151,6 +151,6 @@
   "new_master_admin_approval": false,
   "new_original313_receipt": false,
   "production_authorized": false,
-  "verdict": "SOURCE_PINNED_FILES_RESTORED__TWO_CANONICAL_DRIFTS_HOLD",
-  "resolution_policy": "Do not replace either canonical source or mutate signed V8 manifest; run semantic reconciliation, source/hash review and new original release admission first."
+  "verdict": "SOURCE_PINNED_FILES_RESTORED__ONE_NEWER_CANONICAL_CODE_RELEASE_HOLD",
+  "resolution_policy": "Preserve upgraded company_code_release.py (numbered first-party MU/root loader and dynamic scope diagnostics); it cannot be treated as matching enrolled V8 until a separately authorized signed provider release. The Host publisher source is now exact pinned V8; no trusted installed provider changed."
 }

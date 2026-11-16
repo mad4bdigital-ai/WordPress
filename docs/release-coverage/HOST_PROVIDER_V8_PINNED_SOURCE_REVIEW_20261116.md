@@ -7,20 +7,27 @@ and additional handler/verifier/finalizer/evidence references).
 The source-only candidate in this Git branch is byte-identical to that
 manifest (SHA-256 be9457e6ea2a93f7b6ccc1083e9c68aa2cc9cd29832a7754ea23503570c248bc).
 
-We restored **25 missing pinned source components**, unchanged, from local
+We initially restored **25 missing pinned source components**, unchanged, from local
 `integration/market-cache-css-cron-20261115`. No Production files, WordPress
 site data, runtime registry or broker state were modified. We deliberately
 did not import active `host.source.release/manifest.json` or activate
 the provider through the source preview.
 
-Two paths are intentionally NOT overwritten:
+After a subsequent exact-version reconciliation, the canonical
+`ops/native-source-publisher-v1/native_source_publisher.py` is now identical
+to the existing enrolled V8 version, restoring the first-party Host312,
+Master Admin and Broker proof checks. The native publisher offline fixture
+was updated to include the actual pinned first-party dependency closure,
+and the read-only CLI surface is tested without assuming the policy file
+must be absent on an enrolled host. All 14 publisher and 3 V8 pin tests pass.
 
-1. `ops/native-source-publisher-v1/native_source_publisher.py`
-2. `ops/company-code-release-v1/company_code_release.py`
-
-Both have a different canonical source SHA-256 than the V8 manifest. Neither
-old source nor current source may be declared equivalent without a semantic
-diff, regression tests and a newly reviewed/signature-admitted host release.
+One newer canonical source remains intentionally different:
+`ops/company-code-release-v1/company_code_release.py`. It contains reviewed
+support for numbered first-party MAD4B MU loaders and stricter dynamic plan
+readiness diagnostics. Replacing it with the old V8 pinned version would
+regress those improvements. It requires a separately approved successor
+manifest and independently signed release before the enrolled V8 pin can
+change; this source review does not grant that authority.
 The attached JSON records the exact old-pinned and current source identities;
 the CI regression requires these disparities to remain explicit.
 

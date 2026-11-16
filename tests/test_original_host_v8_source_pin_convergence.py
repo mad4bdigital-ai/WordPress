@@ -29,7 +29,7 @@ class ProviderV8PinnedSource(unittest.TestCase):
         self.assertEqual(self.manifest["version"], 8)
         self.assertEqual(self.report["source_manifest_sha256"], sha(MANIFEST))
 
-    def test_all_27_pins_are_examined_and_only_two_drifts_are_held(self):
+    def test_all_27_pins_are_examined_and_only_one_newer_release_is_held(self):
         pins = {r["path"]: r["sha256"] for r in self.manifest["dependencies"]}
         for kind in ("handler", "verifier", "finalizer", "evidence"):
             item = self.manifest[kind]
@@ -39,11 +39,9 @@ class ProviderV8PinnedSource(unittest.TestCase):
         self.assertEqual(len(pins), 27)
         exact = self.report["exact_source_components"]
         drift = self.report["canonical_source_divergence"]
-        self.assertEqual(len(exact), 25)
-        self.assertEqual(len(drift), 2)
-        self.assertEqual({r["path"] for r in drift}, {
-            "native-source-publisher-v1/native_source_publisher.py",
-            "company-code-release-v1/company_code_release.py"})
+        self.assertEqual(len(exact), 26)
+        self.assertEqual(len(drift), 1)
+        self.assertEqual({r["path"] for r in drift}, {"company-code-release-v1/company_code_release.py"})
         self.assertEqual({r["path"] for r in exact + drift}, set(pins))
         for item in exact + drift:
             with self.subTest(path=item["path"]):
@@ -72,7 +70,7 @@ class ProviderV8PinnedSource(unittest.TestCase):
                      "new_master_admin_approval", "new_original313_receipt",
                      "production_authorized"):
             self.assertIs(self.report[name], False)
-        self.assertEqual(self.report["verdict"], "SOURCE_PINNED_FILES_RESTORED__TWO_CANONICAL_DRIFTS_HOLD")
+        self.assertEqual(self.report["verdict"], "SOURCE_PINNED_FILES_RESTORED__ONE_NEWER_CANONICAL_CODE_RELEASE_HOLD")
 
 
 if __name__ == "__main__":
