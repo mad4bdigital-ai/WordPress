@@ -80,9 +80,33 @@ final class MAD4B_SCP_Authorization {
 
 require dirname(__DIR__) . '/includes/class-mad4b-scp-host-bridge.php';
 
-$fail = static function($m) use ($tmp){
+// Synthetic local Host fixture cleanup never invokes a shell. Resolve the
+// exact generated /tmp root and refuse traversal or unbounded cleanup.
+$cleanup = static function () use ( $tmp ) {
+    $tmp_root = realpath( sys_get_temp_dir() );
+    $fixture_root = realpath( $tmp );
+    if ( ! is_string( $tmp_root ) || ! is_string( $fixture_root )
+        || ! preg_match( '/^mad4b-host-bridge-[a-f0-9]{8}$/D', basename( $fixture_root ) )
+        || dirname( $fixture_root ) !== $tmp_root ) {
+        throw new RuntimeException( 'Host fixture cleanup outside exact temporary source denied.' );
+    }
+    $items = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator( $fixture_root, FilesystemIterator::SKIP_DOTS ),
+        RecursiveIteratorIterator::CHILD_FIRST
+    );
+    foreach ( $items as $item ) {
+        $path = $item->getPathname();
+        $ok = $item->isDir() && ! $item->isLink() ? rmdir( $path ) : unlink( $path );
+        if ( ! $ok ) throw new RuntimeException( 'Host fixture cleanup could not remove temporary entry.' );
+    }
+    if ( ! rmdir( $fixture_root ) ) {
+        throw new RuntimeException( 'Host fixture cleanup could not remove bounded root.' );
+    }
+};
+
+$fail = static function($m) use ($cleanup){
 	fwrite(STDERR, "FAIL host-bridge-contract: $m\n");
-	exec('rm -rf ' . escapeshellarg($tmp));
+	$cleanup();
 	exit(1);
 };
 $check = static function($c,$m) use ($fail){ if(!$c)$fail($m); };
@@ -691,5 +715,5 @@ $check(is_wp_error($foreign)
  'A signed but cross-company node was treated as enrolled');
 unlink($node_file);
 
-exec('rm -rf ' . escapeshellarg($tmp));
+$cleanup();
 echo "mad4b.host-bridge.v1: PASS\n";

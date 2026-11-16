@@ -8,7 +8,7 @@
   "reviews": [
     {
       "path": ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
-      "source_blob_sha": "cf4fd1e1e2cc410bab045eb03f3e2e2b5d56728a",
+      "source_blob_sha": "8092e7912073845b1aa1b03eb7874a98343549c7",
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/integration-pr415-pr416-pr420-pr421-contract.py"
       ],
@@ -17,7 +17,8 @@
       "live_evidence_required": true,
       "root_policy_authorized": false,
       "owner_role": "MAD4B repository CI source reviewer (not owner authorization)",
-      "review_rationale": "Non-authorizing exact-source review of Feature 007 CI addition for SHA256-paginated dependency evidence verification. Historical delivery manifest hashes remain immutable. Release-critical root changes require separate governance-only PR and exact owner attestation."
+      "review_rationale": "Non-authorizing exact-source review of Feature 007 CI addition for SHA256-paginated dependency evidence verification. Historical delivery manifest hashes remain immutable. Release-critical root changes require separate governance-only PR and exact owner attestation. Exact later workflow successor adds one no-network negative Python test for the official GitHub/WordPress.org MCP Adapter installer origin, redirect and certificate authority policy; this does not alter deployment jobs, owner release approvals, role grants or source manifests. Retain preceding reviewed SHA explicitly; fail closed on any other workflow changes.",
+      "prior_source_blob_sha": "cf4fd1e1e2cc410bab045eb03f3e2e2b5d56728a"
     }
   ]
 }

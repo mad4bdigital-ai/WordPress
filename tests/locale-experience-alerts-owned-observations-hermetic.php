@@ -109,4 +109,4 @@ la_check($c::current()===null && $c::discover()['fresh']===false,
  'Tampered option must never be treated as current signed-like evidence');
 la_check($GLOBALS['local_fixture_writes']===1,
  'No issue classification or readback may modify WordPress options');
-echo "LOCALE_EXPERIENCE_ALERTS_NATIVE: PASS site, owner, freshness, hash, WPML candidates, no auto-fix\n";
+echo "PASS: LOCALE_EXPERIENCE_ALERTS_NATIVE site, owner, freshness, hash, WPML candidates, no auto-fix\n";

@@ -38,7 +38,7 @@ def trusted_url_parts(value: str):
 def reviewed_source(profile: dict, version: str) -> frozenset[str]:
     # Match the independent archive-generator identity policy. Version, host,
     # official distribution authority and exact URL path must all agree.
-    if not re.fullmatch(r"[0-9]+\\.[0-9]+\\.[0-9]+", version):
+    if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version):
         fail("invalid exact MCP Adapter version")
     location = trusted_url_parts(str(profile.get("package_url") or ""))
     authority = str(profile.get("certification_authority") or "")

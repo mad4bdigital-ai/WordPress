@@ -96,6 +96,17 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "tests/geo-quality-original-hermetic.php",
     "tests/global-runtime-lifecycle-original-hermetic.php",
     "tests/guided-continuation-write-surface-denial-hermetic.php",
+    # Exact source-only Host Bridge Ed25519 readback, JetEngine, LiteSpeed,
+    # local brand, locale and MCP scope tests. Host Bridge cleanup uses native
+    # bounded temporary directory recursion, never any shell executor.
+    "tests/host-node-inventory-signed-readback-hermetic.php",
+    "tests/hub-jetengine-consumer-fence-original-hermetic.php",
+    "tests/litespeed-adapter-original-hermetic.php",
+    "tests/local-brand-draft-adapter-original-hermetic.php",
+    "tests/locale-experience-alerts-owned-observations-hermetic.php",
+    "tests/mcp-adapter-dynamic-integrity-original-hermetic.php",
+    "tests/mcp-protocol-scope-original-hermetic.php",
+    "tests/mcp-provider-matrix-readonly-inheritance-hermetic.php",
     # Canonical Inspector + Server evidence on synthetic WordPress Ability;
     # owner scopes and grant checks are not mocked as approved live writes.
     "tests/server-descriptor-canonical-multilane-hermetic.php",
@@ -510,6 +521,17 @@ def self_test():
         "tests/guided-continuation-write-surface-denial-hermetic.php",
     ):
         assert command_for(reviewed_source) == ["php", str((ROOT / reviewed_source).resolve())]
+    for exact_host_and_provider in (
+        "tests/host-node-inventory-signed-readback-hermetic.php",
+        "tests/hub-jetengine-consumer-fence-original-hermetic.php",
+        "tests/litespeed-adapter-original-hermetic.php",
+        "tests/local-brand-draft-adapter-original-hermetic.php",
+        "tests/locale-experience-alerts-owned-observations-hermetic.php",
+        "tests/mcp-adapter-dynamic-integrity-original-hermetic.php",
+        "tests/mcp-protocol-scope-original-hermetic.php",
+        "tests/mcp-provider-matrix-readonly-inheritance-hermetic.php",
+    ):
+        assert command_for(exact_host_and_provider) == ["php", str((ROOT / exact_host_and_provider).resolve())]
     for reviewed in (
         "tests/company-task-handoff-native-cas-hermetic.php",
         "tests/company-tenant-migration-rollback-hermetic.php",

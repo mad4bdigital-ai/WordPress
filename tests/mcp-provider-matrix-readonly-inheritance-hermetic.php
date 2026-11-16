@@ -127,4 +127,4 @@ assert_mcp($against['provider']['inherited_policy']['require_real_initialize']==
  'Untrusted provider JSON must never weaken inherited protocol and OAuth requirements');
 assert_mcp($GLOBALS['mcp_writes']===0,'Readiness must not touch WordPress configuration');
 unlink($policyPath);rmdir($tmp.'/config');rmdir($tmp);
-echo "MCP_PROVIDER_MATRIX_SOURCE: PASS discovery without handshake and hostile policy overrides\n";
+echo "PASS: MCP_PROVIDER_MATRIX_SOURCE discovery without handshake and hostile policy overrides\n";
