@@ -167,6 +167,11 @@ def verify_company_ownership(report: dict, contract_file: Path) -> dict:
         elif decision=='company_runtime_version_pin':
             if current['status']!='unreconciled_git_runtime' or current['source_status']!='source_matches_live':
                 problems.append(path+':unreviewed_common_release_candidate');continue
+        elif decision=='company_runtime_version_pin_source_diverged':
+            # A company-native module may be newer than the central source.
+            # Record all three exact SHAs, never silently copy either runtime.
+            if current['status']!='unreconciled_git_runtime' or current['source_status']!='source_differs_from_live':
+                problems.append(path+':unreviewed_cross_site_release_candidate');continue
         else:
             problems.append(path+':unrecognized_ownership_decision');continue
         covered+=1

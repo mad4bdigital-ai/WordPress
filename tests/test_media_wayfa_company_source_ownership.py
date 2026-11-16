@@ -35,6 +35,14 @@ changed=copy.deepcopy(base);changed['company_overlay']['status']='mirror_drift'
 assert check(changed,rows)['status']=='hold_for_ownership_reassessment'
 changed=copy.deepcopy(base);changed['files'][1]['source_status']='source_matches_live'
 assert check(changed,rows)['status']=='hold_for_ownership_reassessment'
+cross=copy.deepcopy(base)
+cross['files'][2]['source_status']='source_differs_from_live'
+cross['files'][2]['source_sha256']='Z'*64
+cross_rows=copy.deepcopy(rows)
+cross_rows[1]['source_site_expected_sha256']='Z'*64
+cross_rows[1]['decision']='company_runtime_version_pin_source_diverged'
+assert check(cross,cross_rows)['status']=='exact_company_source_ownership_reconciled'
+assert check(base,cross_rows)['status']=='hold_for_ownership_reassessment'
 assert check(base,rows[:-1])['status']=='hold_for_ownership_reassessment'
 assert check(base,[rows[0],rows[0]])['status']=='hold_for_ownership_reassessment'
 

@@ -18,7 +18,7 @@
       "decision": "company_runtime_version_pin",
       "owner_scope": "wayfatours_only",
       "live_sha256": "2bc6b81fe40120ae6e4d319abd91ea83a7ee7c9cc3d680f80d6eed15ad787814",
-      "common_candidate_sha256": "e2197a6118323d3f419bbc16b101403be431f360319a2981dca7d8b7bcd6f35a",
+      "common_candidate_sha256": "611efff631b853b2e2a5f118b01d9eb141e960b9e483bbb44b28a544fc3c9490",
       "source_site_expected_sha256": "2bc6b81fe40120ae6e4d319abd91ea83a7ee7c9cc3d680f80d6eed15ad787814",
       "site_overlay_immutable_source": true,
       "reason": "Wayfatours and Tours.dev both actively use v1.0; Git v1.1 adds a separately gated unproven photo import capability, not admitted to this production runtime"
@@ -42,6 +42,16 @@
       "source_site_expected_sha256": null,
       "site_overlay_immutable_source": true,
       "reason": "Company navigation lazy-image behavior; absent from Tours.dev runtime"
+    },
+    {
+      "path": "mu-plugins/mad4b-media-rights-extraction-intake.php",
+      "decision": "company_runtime_version_pin_source_diverged",
+      "owner_scope": "wayfatours_only",
+      "live_sha256": "5577cd85c9edc969ecb6e85edfab09d553e7757e3748ddd5a78878ddf63dbc57",
+      "common_candidate_sha256": "584d76d845c239df82cf3333d6c8a2cdbda2c2f6f4c4b6b2ed24a9c6daa0137e",
+      "source_site_expected_sha256": "e2a2e2b0fcb78aba845ad118e0c672701bdb4c8a3f76e051d511f4d36eda9c99",
+      "site_overlay_immutable_source": true,
+      "reason": "Wayfatours v1.8 rights intake and Tours.dev v1.2 have different history. v1.9 is tested in Git but not deployed; do not overwrite either site or claim readiness"
     }
   ],
   "source_basis": "actual exact SHA-256 on Wayfatours, shared Git, and Tours.dev",
@@ -49,5 +59,6 @@
   "common_candidate_changes_not_auto_deployed": true,
   "signed_original313_authorization_not_claimed": true,
   "copyright_clearance_not_claimed": true,
-  "no_wp_files_modified": true
+  "no_wp_files_modified": true,
+  "pending_library_rights_release_manifest": "ops/site-company-overlays/wayfatours/media-release-candidates/library-rights-release-plan-20261116.json"
 }
