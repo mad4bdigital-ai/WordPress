@@ -10,6 +10,16 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/**'
       - 'ops/company-code-release-v1/**'
       - 'ops/native-source-publisher-v1/**'
+      - 'ops/performance-v2/**'
+      - 'ops/mobile-critical-css-v1/**'
+      - 'ops/cache-lifecycle-rate-404-20261116/**'
+      - 'wp-content/plugins/mad4b-cache-lifecycle/**'
+      - 'tests/cache-lifecycle-forward-source-v22.php'
+      - 'tests/test_cache_lifecycle_forward_source_v22.py'
+      - 'tests/test_native_original305_incident_*.py'
+      - 'tools/unified_branch_census.py'
+      - 'tests/test_unified_branch_census_contract.py'
+      - 'tests/test_unified_recent_branch_no_regression.py'
       - 'ops/dynamic-operation-registry-v1/**'
       - 'tests/test_native_source*.py'
       - 'tests/native_source_manifest_history_contract.py'
@@ -78,6 +88,22 @@ jobs:
           # Production Readiness/Release Verdict, not synthesized here.
           python3 -m unittest discover -s tests -p 'test_ci_portable_native_source_partition.py' -q
           python3 ops/native-source-publisher-v1/ci_portable_native_tests.py
+          # Source-only V7 incident reviewer: test signature scope and CAS
+          # without executing any live incident closure or signing helper.
+          python3 -m unittest discover -s ops/native-source-publisher-v1 -p 'test_original305*.py' -q
+          python3 -m unittest discover -s tests -p 'test_native_original305_incident_*.py' -q
+          # Host312 and transaction cases use only isolated synthetic keys,
+          # never the live enrolled Original306/312 or Master/Broker receipts.
+          python3 -m unittest discover -s ops/native-source-publisher-v1 -p 'test_native_host_source_transaction.py' -q
+          python3 -m unittest discover -s ops/dynamic-operation-registry-v1/tests -p 'test_host312_original_issuer.py' -q
+          python3 -m unittest discover -s tests -p 'test_unified_branch_census_contract.py' -q
+          python3 -m unittest discover -s tests -p 'test_unified_recent_branch_no_regression.py' -q
+          # Native Critical CSS monitoring and private Woo/cart cache safety.
+          python3 -m unittest discover -s ops/performance-v2/tests -p 'test_critical_css_integrity.py' -q
+          python3 -m unittest discover -s tests -p 'test_cache_lifecycle_forward_source_v22.py' -q
+          php ops/cache-lifecycle-rate-404-20261116/tests/test-rate-routing.php wp-content/plugins/mad4b-cache-lifecycle/includes/runtime.php
+          php tests/cache-lifecycle-forward-source-v22.php
+          node --check ops/mobile-critical-css-v1/verify.js
           # Includes SHA-bound V8 root manifest parity and V9 successor candidate.
           # These tests certify only local sources, never the enrolled root index.
           # The 238-file historical contract is independently gated: its
