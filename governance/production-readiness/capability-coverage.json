@@ -21540,6 +21540,70 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-scheduler-admission.php",
+      "source_blob_sha": "592f6c26c91fa12b7e75ddd9a5c508c0841e64df",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/scheduler-admission-contract.php"
+      ],
+      "owner_role": "MAD4B original nonauthorizing first-party CI source assessment",
+      "review_rationale": "Native Scheduler Admission fixture validates normal admission, quotas, rate-limit, signed central service state and rejects stale authority. The original PHP test includes a negative scan for mutating scheduler/SQL/shell primitives. No work was queued. Reproduced on PHP7.4/8.5 against exact first-party source. This is a CI-only review, not an independent authorized Production release, live scheduler test, or new permission.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-scheduler-backlog.php",
+      "source_blob_sha": "7731508c4110b161090af056b5a36fadf994aa0b",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/scheduler-backlog-contract.php"
+      ],
+      "owner_role": "MAD4B original nonauthorizing first-party CI source assessment",
+      "review_rationale": "Native Scheduler Backlog fixture tests original source queue retention, deterministic fair ranking, stale authority denial and exact completed state without dispatching scheduled/remote work. Negative source scan verifies no HTTP/process execution. Reproduced on PHP7.4/8.5 against exact first-party source. This is a CI-only review, not an independent authorized Production release, live scheduler test, or new permission.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-work-queue.php",
+      "source_blob_sha": "7e0fa13944e7351173fe11f39623b564e1c779f4",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/remote-work-queue-cancellation-runtime.php"
+      ],
+      "owner_role": "MAD4B original nonauthorizing first-party CI source assessment",
+      "review_rationale": "Native Remote Work Queue cancellation runtime fixture covers durable intent, lease token, after-provider-entry cancellation, checkpoint, postcondition proof and no false zero-effect terminal acknowledgment. The original test executes in a synthetic WordPress option/DB context only. Reproduced on PHP7.4/8.5 against exact first-party source. This is a CI-only review, not an independent authorized Production release, live scheduler test, or new permission.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-registry.php",
+      "source_blob_sha": "a9ce930e87c276dd05d6e429667c469533a0cd56",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/skill-registry-enrollment-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B original nonauthorizing first-party CI source assessment",
+      "review_rationale": "Native Skill Registry 13-case original source regression proves only strictly true Site Profile origin enrollment and Site URL matches admit the company Skill catalog. Editor and scripts remain disabled without explicit configuration. No Skill file, grant, or provider was modified. Reproduced on PHP7.4/8.5 against exact first-party source. This is a CI-only review, not an independent authorized Production release, live scheduler test, or new permission.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "code_change_rules": {

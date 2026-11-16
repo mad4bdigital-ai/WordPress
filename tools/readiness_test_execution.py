@@ -125,6 +125,12 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "tests/adaptive-interaction-ui-original-hermetic.php",
     "tests/content-relationship-media-owner-original-hermetic.php",
     "tests/contentjob-structural-cwa-original-hermetic.php",
+    # Original Scheduler and Queue behavior plus Skill Registry exact enrollment.
+    "wp-content/plugins/mad4b-site-control-plane/tests/scheduler-admission-contract.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/scheduler-backlog-contract.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/remote-work-queue-cancellation-runtime.php",
+    "tests/skill-registry-enrollment-original-hermetic.php",
+
 
 
 

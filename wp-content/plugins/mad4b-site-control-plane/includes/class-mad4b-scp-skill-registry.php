@@ -33,8 +33,8 @@ final class MAD4B_SCP_Skill_Registry {
 	 */
 	public static function catalog_enabled() {
 		return class_exists( 'MAD4B_SCP_Site_Profile', false )
-			&& MAD4B_SCP_Site_Profile::origin_enrolled()
-			&& MAD4B_SCP_Site_Profile::site_urls_match_enrollment();
+			&& true === MAD4B_SCP_Site_Profile::origin_enrolled()
+			&& true === MAD4B_SCP_Site_Profile::site_urls_match_enrollment();
 	}
 
 	public static function storage_root() {
