@@ -371,6 +371,12 @@
         "tours-and-activities"
       ],
       "rationale": "Reviewed byte-identical relocation from content-readiness-alerts.php (baseline source blob b06b328391319b18ace8e4118ee2e0e5b619eff6). Source parity test tests/test_content_readiness_trait_parity.py requires the unchanged original methods and bound facade. Explicit domain-specific tour alerts only; never a globally selected company CPT, tenant URL, permission or new authority."
+    },
+    "includes/class-mad4b-scp-content-readiness-alerts.php": {
+      "models": [
+        "tours-and-activities"
+      ],
+      "rationale": "The original Content Readiness facade retains explicit reviewed tour-board UI/REST references after byte-preserved scan/reconciliation extraction. The existing tourism-domain integration is unchanged; Site Profile, original permissions and provider authority still govern execution. Not a global company model or tenant default."
     }
   }
 }
