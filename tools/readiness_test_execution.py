@@ -18,6 +18,17 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 SHA = re.compile(r"^[a-f0-9]{40}$")
 
+# These exact tests exercise the real POSIX euid==0 branch of original
+# Host CLI authority. CI's normal runner is unprivileged, so launch ONLY
+# reviewed, offline fixtures with a passwordless root process. This is not
+# evidence of a production Host NHI, grant, operator approval, or signed lane.
+# sudo's default environment reset prevents inherited user/token identity.
+HOST_ROOT_HERMETIC_REGRESSIONS = frozenset((
+    "tests/execution-authority-identity-native-hermetic.php",
+    "tests/authority-auto-reconcile-host-hermetic.php",
+    "tests/authority-servers-original-review-suite.py",
+))
+
 # Review-bound CLI PHP scripts, not a blanket PHP execution policy.
 # Each path contains exit-on-failure assertions and a positive PASS marker.
 # Other PHP files continue to require PHPUnit; unknown paths fail closed.
@@ -501,6 +512,16 @@ def command_for(test):
             test.startswith("wp-content/plugins/mad4b-site-control-plane/tests/")) and
            ".." not in Path(test).parts and path.is_file(),
            "Untrusted or absent regression-test path " + test)
+    if test in HOST_ROOT_HERMETIC_REGRESSIONS:
+        ensure(not path.is_symlink(), "Privileged hermetic test symlink denied")
+        if path.suffix == ".php":
+            ensure(test in STANDALONE_PHP_REGRESSIONS,
+                   "Unreviewed privileged PHP fixture denied")
+            return ["/usr/bin/sudo", "-n", "--", "php", str(path)]
+        ensure(test == "tests/authority-servers-original-review-suite.py"
+               and path.suffix == ".py",
+               "Unreviewed privileged Python suite denied")
+        return ["/usr/bin/sudo", "-n", "--", sys.executable, str(path)]
     if path.suffix == ".py":
         return [sys.executable, str(path)]
     if path.suffix == ".php":
@@ -703,7 +724,11 @@ def self_test():
         "tests/global-runtime-lifecycle-original-hermetic.php",
         "tests/guided-continuation-write-surface-denial-hermetic.php",
     ):
-        assert command_for(reviewed_source) == ["php", str((ROOT / reviewed_source).resolve())]
+        expected = (["/usr/bin/sudo", "-n", "--", "php"]
+                    if reviewed_source in HOST_ROOT_HERMETIC_REGRESSIONS
+                    else ["php"])
+        assert command_for(reviewed_source) == expected + [
+            str((ROOT / reviewed_source).resolve())]
     for exact_host_and_provider in (
         "tests/host-node-inventory-signed-readback-hermetic.php",
         "tests/hub-jetengine-consumer-fence-original-hermetic.php",
@@ -729,6 +754,12 @@ def self_test():
         assert command_for(reviewed) == ["php", str((ROOT / reviewed).resolve())]
     for js in STANDALONE_JS_REGRESSIONS:
         assert command_for(js) == ["node", str((ROOT / js).resolve())]
+    for exact_root in sorted(HOST_ROOT_HERMETIC_REGRESSIONS):
+        root_cmd = command_for(exact_root)
+        assert root_cmd[:3] == ["/usr/bin/sudo", "-n", "--"]
+        assert root_cmd[-1] == str((ROOT / exact_root).resolve())
+        assert root_cmd[3] == (sys.executable if exact_root.endswith(".py") else "php")
+    assert len(HOST_ROOT_HERMETIC_REGRESSIONS) == 3
     assert command_for("tests/server-descriptor-canonical-multilane-hermetic.php") == [
         "php", str((ROOT / "tests/server-descriptor-canonical-multilane-hermetic.php").resolve())]
     assert has_assertion_pass("PASS: brand quality exact context revision and same-site issue closure\n")
