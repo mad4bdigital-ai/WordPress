@@ -64,5 +64,16 @@
     "conflicting_api_metadata_retained": true,
     "credit_page_auto_publication_only_after_license_approval_and_CCT_publish": true,
     "rights_approval_or_photo_import_executed": false
+  },
+  "latest_site_resolution": {
+    "status": "superseded_by_verified_existing_wordpress_library_photo",
+    "external_commons_image_imported": false,
+    "commons_license_conflict_retained": true,
+    "local_photo_en_attachment_id": 55107,
+    "local_photo_es_attachment_id": 56582,
+    "local_photo_original_sha256": "da3ed39c619be71d041689134f1507f0a5613e1b6b612595e9f1e9ff7ecbd777",
+    "crop_reviews_after_reframe": 0,
+    "new_rights_credit_published": false,
+    "details": "gem-local-library-reframe-applied-20261116.json"
   }
 }
