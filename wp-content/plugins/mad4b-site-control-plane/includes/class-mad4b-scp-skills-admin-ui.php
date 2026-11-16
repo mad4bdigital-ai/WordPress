@@ -34,7 +34,7 @@ final class MAD4B_SCP_Skills_Admin_UI {
 	 * with a bounded error code so the administrator never gets a silent no-op.
 	 */
 	public static function intercept_export() {
-		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) return;
+		if ( ! is_admin() || true !== current_user_can( 'manage_options' ) ) return;
 		if ( empty( $_POST['mad4b_skill_action'] ) || 'export' !== sanitize_key( MAD4B_SCP_Admin_Experience::request_string( $_POST, 'mad4b_skill_action' ) ) ) return; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- verified below.
 		$page = isset( $_GET['page'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'page' ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing only.
 		if ( self::PAGE_SLUG !== $page ) return;
@@ -78,7 +78,7 @@ final class MAD4B_SCP_Skills_Admin_UI {
 	}
 
 	public static function render_page() {
-		if ( ! current_user_can( 'manage_options' ) ) wp_die( esc_html__( 'You do not have permission to manage MAD4B Skills.', 'mad4b-site-control-plane' ) );
+		if ( true !== current_user_can( 'manage_options' ) ) wp_die( esc_html__( 'You do not have permission to manage MAD4B Skills.', 'mad4b-site-control-plane' ) );
 
 		$message = null;
 		if ( isset( $_POST['mad4b_skill_action'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing -- verified in handler.
@@ -305,7 +305,7 @@ final class MAD4B_SCP_Skills_Admin_UI {
 
 	private static function handle_reconcile_managed() {
 		check_admin_referer( 'mad4b_skill_reconcile_managed', 'mad4b_skill_reconcile_nonce' );
-		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_skill_reconcile_forbidden', 'Administrator permission is required to reconcile managed Skills.' );
+		if ( true !== current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_skill_reconcile_forbidden', 'Administrator permission is required to reconcile managed Skills.' );
 		if ( ! class_exists( 'MAD4B_SCP_Skill_Seeder' ) || ! class_exists( 'MAD4B_SCP_Skill_Provider_Discovery' ) ) return new WP_Error( 'mad4b_skill_reconcile_unavailable', 'Managed Skill reconciliation services are unavailable.' );
 
 		$seed = MAD4B_SCP_Skill_Seeder::reconcile();

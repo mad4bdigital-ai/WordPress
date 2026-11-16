@@ -8,7 +8,18 @@ final class MAD4B_SCP_Research_Task_Bridge {
  const CONTRACT='mad4b.research-task-bridge.v1';
  const BINDING_META='_mad4b_research_group_uid';
  const TASK_META='_mad4b_research_task_key';
- private static function allowed(){return class_exists('MAD4B_SCP_Site_Profile',false) && !empty(MAD4B_SCP_Site_Profile::status()['authority_ready']) && current_user_can('manage_options');}
+ private static function allowed(){
+  if(!class_exists('MAD4B_SCP_Site_Profile',false))return false;
+  try {
+   $site=MAD4B_SCP_Site_Profile::status();
+   return is_array($site)
+    && ($site['authority_ready']??null)===true
+    && ($site['origin_match']??null)===true
+    && current_user_can('manage_options')===true;
+  } catch(Throwable $error) {
+   return false;
+  }
+ }
  private static function error($code,$message){return new WP_Error($code,$message);}
  public static function bind($task_key,$site_uuid,$post_id,$locale='en'){
   if(!self::allowed())return self::error('mad4b_research_bind_denied','Enrolled site operator required.');

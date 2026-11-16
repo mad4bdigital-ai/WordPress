@@ -65,6 +65,73 @@ class RegistryTests(unittest.TestCase):
             "providers":[{"manifest":"provider.json","sha256":r.sha(path.read_bytes())}]
         })+"\n")
 
+    def _host_manifest(self):
+        self.manifest.update({
+            "operation_id":"host.source.release",
+            "provider":"mad4b-host-source",
+            "source_family":"mad4b.native-host-source-release.v1",
+            "resource_kind":"host_root_file",
+            "target_scope":"host",
+            "job_type":"signed_vps_host_source",
+        })
+        self.manifest["command"].update({
+            "format":"host.source.ref.v1",
+            "bound_operation_id":"host.source.release",
+        })
+        self.write_manifest()
+
+    def _set_host312_key(self, key):
+        row=json.loads((self.root/"index.json").read_text())
+        row["host_resource_312_public_key_b64"]=key
+        (self.root/"index.json").write_text(json.dumps(row))
+
+    def test_host312_distinct_original_signer_is_readonly_enrollment(self):
+        self._host_manifest()
+        other=Ed25519PrivateKey.generate().public_key().public_bytes(
+            serialization.Encoding.Raw,serialization.PublicFormat.Raw)
+        self._set_host312_key(base64.b64encode(other).decode())
+        registry=r.Registry(self.root)
+        self.assertEqual(registry.resolve("host.source.release")["command"]["format"],
+                         "host.source.ref.v1")
+        self.assertEqual(registry.host_resource_312_public_key,other)
+        self.assertNotEqual(registry.host_resource_312_public_key,
+                            registry.independent_verifier_public_key)
+        self.assertFalse(registry.summary()["grant_issued"])
+        self.assertFalse(registry.summary()["execution_performed"])
+
+    def test_host312_provider_without_root_pin_denied(self):
+        self._host_manifest()
+        with self.assertRaisesRegex(r.RegistryDenied,"HOST312_ROOT_SIGNER_NOT_ENROLLED"):
+            r.Registry(self.root)
+
+    def test_host312_signer_must_not_reuse_original313_key(self):
+        self._host_manifest()
+        self._set_host312_key(self.verifier_pub)
+        with self.assertRaisesRegex(r.RegistryDenied,"HOST312_SIGNER_MUST_BE_INDEPENDENT"):
+            r.Registry(self.root)
+
+    def test_host312_malformed_root_key_denied_before_manifest(self):
+        self._host_manifest()
+        self._set_host312_key("not-base64@@")
+        with self.assertRaisesRegex(r.RegistryDenied,"HOST312_ROOT_PIN_INVALID"):
+            r.Registry(self.root)
+
+    def test_spoofed_wordpress_provider_as_host_denied(self):
+        self.manifest["resource_kind"]="host_root_file"
+        self.write_manifest()
+        with self.assertRaisesRegex(r.RegistryDenied,"PROVIDER_COMMAND_RESOURCE_MISMATCH"):
+            r.Registry(self.root)
+
+    def test_host312_wrong_resource_scope_denied(self):
+        self._host_manifest()
+        self.manifest["target_scope"]="wordpress"
+        self.write_manifest()
+        other=Ed25519PrivateKey.generate().public_key().public_bytes(
+            serialization.Encoding.Raw,serialization.PublicFormat.Raw)
+        self._set_host312_key(base64.b64encode(other).decode())
+        with self.assertRaisesRegex(r.RegistryDenied,"HOST_PROVIDER_RESOURCE_CONTRACT_INVALID"):
+            r.Registry(self.root)
+
     def test_dynamic_operation_without_worker_code_change(self):
         registry=r.Registry(self.root)
         self.assertEqual(registry.summary()["enrolled_operations"],["company.code.release"])

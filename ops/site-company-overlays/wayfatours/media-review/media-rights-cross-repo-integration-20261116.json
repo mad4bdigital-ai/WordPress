@@ -1,0 +1,86 @@
+{
+  "contract": "mad4b.wayfatours.media-rights-cross-repo-integration.v1",
+  "observed_utc": "2026-11-16T01:48:20.136541+00:00",
+  "site": "https://wayfatours.com",
+  "integration_baseline": "57746e6270",
+  "previous_manual_live_attestation": "1527fb491b5a850e7ffbc7629a5bdb97f9106f2f",
+  "control_plane_source_baseline": "ea67197",
+  "code_scope": {
+    "merged_guards": [
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-media-rights.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-media-rights.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-remote-media-adapter.php"
+    ],
+    "kept_newer_native_normalizer": true,
+    "kept_dotted_license_tokens": true,
+    "kept_native_CCT_after_commit_hook": true,
+    "kept_existing_company_overlay": true
+  },
+  "proof": {
+    "original_hermetic_php": {
+      "rights_guard": 15,
+      "native_local_media": 10,
+      "cct_after_commit": 10
+    },
+    "staging_wordpress_readonly_contract": {
+      "passed": 29,
+      "total": 29,
+      "includes_dotted_license_normalizer": true
+    },
+    "wayfatours_wordpress_readonly_contract": {
+      "passed": 13,
+      "total": 13
+    },
+    "company_overlay": {
+      "verified": 49,
+      "declared": 49,
+      "drift": 0
+    },
+    "company_runtime_exception_pins": {
+      "verified": 5,
+      "declared": 5,
+      "unlisted": 0
+    }
+  },
+  "live_content": {
+    "gem_tour_ids": [
+      60629,
+      60655
+    ],
+    "media_ids": [
+      55107,
+      56582
+    ],
+    "gallery_count_each_after": 9,
+    "metadata_changes": 6,
+    "rollback_token": "1a619364-5584-4bac-9866-5fca29656ebe",
+    "media_license_mint_performed": false
+  },
+  "credits": {
+    "published": 4,
+    "draft": 181,
+    "active_review_drafts": 179,
+    "dynamic_jetengine_shortcode": true,
+    "production_CCT_postcommit_change_pending_exact_release": true
+  },
+  "publication": {
+    "manual_mu_release_verified": true,
+    "original313_signed_release_verified": false,
+    "this_merge_installed_on_wayfatours": false,
+    "this_merge_installed_on_tours_dev": false,
+    "staging_guard_qa_candidate_tested": true
+  },
+  "safety": {
+    "no_new_copyright_evidence_fabricated": true,
+    "no_license_inferred_from_existing_library": true,
+    "explicit_restrictions_and_expired_rights_blocked": true,
+    "remote_CC_BY4_must_not_be_public_domain": true,
+    "production_global_mutation_gate_not_changed": true
+  },
+  "remaining": [
+    "Original313 signature for manually deployed company MU and pending Control Plane release not verified",
+    "Wayfatours production CCT attribution registry remains older than Staging post-commit source (temporary version pin)",
+    "Future platform or company release requires exact preimage CAS, company ownership reconciliation and independent signed acceptance",
+    "Remaining photo provenance, property-image coverage, and other editorial review alerts remain independent"
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "contract": "mad4b.pr808-historical-code-fingerprint-successor.source-only.v1",
+  "historical_git_commit": "d1876d4e2cc0439d5cb77d46cc45d08bb22c8df4",
+  "immutable_historical_reviews_modified": false,
+  "current_source_promoted_to_live": false,
+  "owner_signed_approval_issued": false,
+  "original313_release_receipt_issued": false,
+  "source_successors": {
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-developer-authority.php": {
+      "historical_source_sha256": "f98848537d910d509ea05edc4fd555fa2db1d00517efe9ad9f233820bd3dd5a4",
+      "current_source_sha256": "11529af498df4ff148f49c32078e93cbc3f4414563dbd27bd16337c1fbf875dd",
+      "fail_closed_code_witnesses": [
+        "strict_grant_inventory(",
+        "MAD4B_SCP_Agent_Registry::grant_ability(",
+        "rollback_partial(",
+        "MAD4B_SCP_Execution_Authority::CONTRACT",
+        "production_allowed"
+      ],
+      "review_class": "exact_source_regression_only_not_signed_release"
+    },
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-registered-write-admission.php": {
+      "historical_source_sha256": "6c07b0ee37c00c5f0238b2138286ca08b1c449d9bb066d24520ff17a789baba7",
+      "current_source_sha256": "c3dbb9a152b47af7e26f4b3f534bc89e3edf58d0a3c15e6c2812bcf1bdf7b368",
+      "fail_closed_code_witnesses": [
+        "mad4b_registered_write_source_unverified",
+        "mad4b_registered_write_decision_unverified",
+        "operation_sha256",
+        "governance_digest",
+        "'authorization_issued' => false"
+      ],
+      "review_class": "exact_source_regression_only_not_signed_release"
+    }
+  }
+}

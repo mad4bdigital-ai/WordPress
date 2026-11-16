@@ -38,6 +38,36 @@ class CertifiedMCPAdapterCI(unittest.TestCase):
         self.assertIn('tools/resolve-certified-mcp-adapter-profile.py', workflow)
         self.assertIn('[[ "$ADAPTER_PROFILE" == target-* ]]', workflow)
 
+    def test_ci_only_candidate_uses_latest_certified_catalog_not_policy_target(self):
+        catalog = json.loads((CONFIG / 'certified-provider-profiles.json').read_text())
+        versions = list(catalog['providers']['mcp_adapter'])
+        latest = max(versions, key=lambda x: tuple(map(int, x.split('.'))))
+        candidate = resolver.resolve_ci_candidate(CONFIG)
+        self.assertEqual(candidate['TARGET_VERSION'], latest)
+        self.assertEqual(candidate, resolver.resolve(CONFIG, 'target-' + latest))
+
+    def test_ci_candidate_does_not_fallback_when_newest_digest_invalid(self):
+        with tempfile.TemporaryDirectory() as temp:
+            folder = Path(temp)
+            config = json.loads((CONFIG / 'certified-provider-profiles.json').read_text())
+            policy = json.loads((CONFIG / 'runtime-release-policy.json').read_text())
+            newest = max(config['providers']['mcp_adapter'],
+                         key=lambda x: tuple(map(int, x.split('.'))))
+            config['providers']['mcp_adapter'][newest]['archive_sha256'] = 'bad'
+            (folder / 'certified-provider-profiles.json').write_text(json.dumps(config))
+            (folder / 'runtime-release-policy.json').write_text(json.dumps(policy))
+            with self.assertRaises(resolver.ProfileDenied):
+                resolver.resolve_ci_candidate(folder)
+
+    def test_release_workflows_do_not_restore_obsolete_policy_version(self):
+        for name in ('mad4b-control-plane-package.yml', 'mad4b-runtime-release-set.yml'):
+            with self.subTest(workflow=name):
+                source = (ROOT / '.github/workflows' / name).read_text()
+                self.assertNotIn("policy['target_adapter_version']", source)
+                self.assertNotIn("policy.get('target_adapter_version')", source)
+                self.assertIn('--profile auto-ci', source)
+                self.assertIn('tools/resolve-certified-mcp-adapter-profile.py', source)
+
     def test_unrecognized_or_unpinned_profile_fails_closed(self):
         for label in ('', '0.7.0', 'bundled-0.6.1', 'target-none',
                       'target-999.1.0', 'target-0.7.0;evil', 'target-../../tmp'):

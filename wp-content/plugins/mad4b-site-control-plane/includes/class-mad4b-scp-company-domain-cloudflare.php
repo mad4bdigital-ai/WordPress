@@ -51,8 +51,12 @@ final class MAD4B_SCP_Company_Domain_Cloudflare {
         $user = $cookie !== '' ? wp_validate_auth_cookie($cookie,'logged_in') : false;
         $session = function_exists('wp_get_session_token') ? (string)wp_get_session_token() : '';
         $nonce = (string)($_SERVER['HTTP_X_WP_NONCE'] ?? '');
-        if (!$user || (int)$user !== (int)get_current_user_id() ||
-            $session === '' || $nonce === '' || !wp_verify_nonce($nonce,'wp_rest')) {
+        // WordPress' browser cookie verifier returns an integer user ID
+        // and nonce verification returns 1 or 2. Error objects and
+        // truthy non-numeric results are never owner approval.
+        $verified_nonce=$nonce !== '' ? wp_verify_nonce($nonce,'wp_rest') : false;
+        if (!is_int($user) || $user < 1 || $user !== get_current_user_id() ||
+            $session === '' || !in_array($verified_nonce,array(1,2),true)) {
             return new WP_Error('mad4b_domain_browser_approval_required',
                 'Verified owner browser session and WordPress REST nonce required.',array('status'=>403));
         }

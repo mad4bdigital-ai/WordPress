@@ -86,7 +86,7 @@ final class MAD4B_SCP_Local_Brand_Draft_Adapter extends MAD4B_SCP_Adapter_Base {
     private static function can_propose_local_draft( $input, $ability ) {
         if ( ! function_exists( 'wp_get_environment_type' ) || 'staging' !== wp_get_environment_type() )
             return new WP_Error( 'mad4b_local_brand_draft_staging_only', 'Local draft creation is governed Staging only.' );
-        if ( ! class_exists( 'MAD4B_SCP_Policy' ) || ! MAD4B_SCP_Policy::can_mutate() )
+        if ( ! class_exists( 'MAD4B_SCP_Policy' ) || true !== MAD4B_SCP_Policy::can_mutate() )
             return new WP_Error( 'mad4b_local_brand_draft_mutation_disabled', 'Governed write authority is required.' );
         // First-party core classification does not waive the exact candidate,
         // current grant, owner-review or runtime convergence gates.
@@ -94,8 +94,8 @@ final class MAD4B_SCP_Local_Brand_Draft_Adapter extends MAD4B_SCP_Adapter_Base {
             || ! method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'current_execution_readiness' ) )
             return new WP_Error( 'mad4b_local_brand_draft_authority_unavailable', 'Current staging write authority evidence is required.' );
         $readiness = MAD4B_SCP_Staging_Write_Authority::current_execution_readiness( $ability, $input );
-        if ( ! is_array( $readiness ) || empty( $readiness['ready'] )
-            || ! empty( $readiness['candidate_bootstrap_exception'] ) )
+        if ( ! is_array( $readiness ) || ( $readiness['ready'] ?? null ) !== true
+            || ( $readiness['candidate_bootstrap_exception'] ?? false ) !== false )
             return new WP_Error( 'mad4b_local_brand_draft_authority_not_ready', 'The exact current staging build and grant binding must be ready before draft creation.', array( 'blind_retry_allowed' => false ) );
         if ( ! is_array( $input ) )
             return new WP_Error( 'mad4b_local_brand_draft_input_invalid', 'Exact evidence-bound draft input required.' );
@@ -106,8 +106,9 @@ final class MAD4B_SCP_Local_Brand_Draft_Adapter extends MAD4B_SCP_Adapter_Base {
     private static function valid_input( $input ) {
         return is_array( $input )
             && in_array( (string) ( $input['category'] ?? '' ), array( 'tone_of_voice', 'editorial_guidelines' ), true )
-            && ! empty( $input['content'] )
-            && strlen( (string) $input['content'] ) <= MAD4B_SCP_Brand_Context_Builder::MAX_DRAFT_BYTES
+            && is_string( $input['content'] ?? null )
+            && trim( $input['content'] ) !== ''
+            && strlen( $input['content'] ) <= MAD4B_SCP_Brand_Context_Builder::MAX_DRAFT_BYTES
             && 1 === preg_match( '/^[a-f0-9]{64}$/D', (string) ( $input['expected_plan_sha256'] ?? '' ) )
             && 1 === preg_match( '/^[a-f0-9]{64}$/D', (string) ( $input['evidence_digest'] ?? '' ) );
     }
@@ -123,7 +124,7 @@ final class MAD4B_SCP_Local_Brand_Draft_Adapter extends MAD4B_SCP_Adapter_Base {
         // required before a new draft is considered persisted.
         $preflight = MAD4B_SCP_Brand_Context_Builder::draft_preflight( $input );
         if ( is_wp_error( $preflight ) ) return $preflight;
-        if ( empty( $preflight['quality_gate_pass'] ) )
+        if ( ! is_array( $preflight ) || ( $preflight['quality_gate_pass'] ?? null ) !== true )
             return new WP_Error( 'mad4b_local_brand_draft_quality_failed', 'Evidence-bound structural preflight did not pass.' );
         if ( 'brand_draft_append' === $lane && (
             empty( $input['draft_preflight_sha256'] )
@@ -131,8 +132,30 @@ final class MAD4B_SCP_Local_Brand_Draft_Adapter extends MAD4B_SCP_Adapter_Base {
         ) ) return new WP_Error( 'mad4b_local_brand_draft_preflight_stale', 'The exact draft preflight receipt is required.' );
         $reservation = MAD4B_SCP_Recovery_Attempt_Budget::reserve( $lane, $input );
         if ( is_wp_error( $reservation ) ) return $reservation;
-        $result = call_user_func( array( 'MAD4B_SCP_Brand_Context_Builder', $method ), $input );
+        // The original durable budget is a persisted admission receipt, not
+        // an arbitrary value supplied by a replacement provider. Never call
+        // the write method unless the exact reserved attempt is confirmed.
+        if ( ! is_array( $reservation ) || ( $reservation['persisted'] ?? null ) !== true
+            || ( $reservation['authorizes_context_write'] ?? null ) !== false
+            || ! is_int( $reservation['attempt'] ?? null )
+            || $reservation['attempt'] < 1
+            || ! is_string( $reservation['scope_sha256'] ?? null )
+            || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $reservation['scope_sha256'] ) )
+            return new WP_Error( 'mad4b_local_brand_draft_reservation_unverified',
+                'Original persisted retry reservation cannot be verified; reconcile without blind retry.',
+                array( 'blind_retry_allowed' => false ) );
+        // The reservation is already durable at this point. A native Builder
+        // exception may occur after it wrote a partial ContentJob or Artifact.
+        // Never let it escape without recording an uncertain attempt.
+        try {
+            $result = call_user_func( array( 'MAD4B_SCP_Brand_Context_Builder', $method ), $input );
+        } catch ( \Throwable $error ) {
+            $result = new WP_Error( 'mad4b_local_brand_draft_builder_outcome_unknown',
+                'Original draft Builder interrupted after reservation; reconciliation required.',
+                array( 'blind_retry_allowed' => false ) );
+        }
         $verified = false;
+        try {
         if ( is_array( $result ) && isset( $result['artifact'] ) && is_array( $result['artifact'] ) ) {
             $artifact = $result['artifact'];
             $artifact_id = (string) ( $artifact['artifact_id'] ?? '' );
@@ -156,9 +179,17 @@ final class MAD4B_SCP_Local_Brand_Draft_Adapter extends MAD4B_SCP_Adapter_Base {
                     && (string) ( $job['content_type'] ?? '' ) === 'brand_context_generation';
             }
         }
+        } catch ( \Throwable $error ) {
+            // Partial or unreachable native readback is NEVER success.
+            $verified = false;
+        }
         $outcome = $verified ? 'succeeded' : 'uncertain';
-        $finished = MAD4B_SCP_Recovery_Attempt_Budget::finish( $reservation, $outcome );
-        if ( is_wp_error( $finished ) )
+        try {
+            $finished = MAD4B_SCP_Recovery_Attempt_Budget::finish( $reservation, $outcome );
+        } catch ( \Throwable $error ) {
+            $finished = null;
+        }
+        if ( true !== $finished )
             return new WP_Error( 'mad4b_local_brand_draft_outcome_unverified',
                 'Draft outcome could not be journaled; readback and reconciliation are required.', array( 'blind_retry_allowed' => false ) );
         if ( ! $verified ) return new WP_Error( 'mad4b_local_brand_draft_readback_inconsistent',

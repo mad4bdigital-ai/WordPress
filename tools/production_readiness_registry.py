@@ -25,6 +25,11 @@ COVERAGE = GOV + "/capability-coverage.json"
 CONTROLS = GOV + "/controls.json"
 SHA = re.compile(r"^[a-f0-9]{40}$")
 CAP = re.compile(r"['\"](mad4b/[a-z0-9][a-z0-9._/-]{1,120})['\"]")
+# Literal PHP prefixes concatenated to a runtime Ability name are not
+# complete registered WordPress Abilities. Keep all other static names.
+PHP_ABILITY_PREFIX = re.compile(
+    r"""(?P<q>['"])(?P<id>mad4b/[a-z0-9][a-z0-9._/-]{1,120})(?P=q)\s*\."""
+)
 PHP_DECLARATION = re.compile(
     r"wp_register_ability\s*\(|(?:self|static)::register\s*\(|"
     r"\$this->add\s*\(|register_abilities\s*\(|ability_definitions\s*\(", re.I
@@ -43,8 +48,28 @@ REQUIRED_EXTENSIONS = frozenset((".php", ".js", ".css", ".json"))
 REQUIRED_SUBTREES = frozenset(("includes/", "assets/", "config/"))
 ALLOWED_EXCLUSIONS = frozenset(("tests/", "docs/", "languages/"))
 REST_ROUTE = re.compile(r"""register_rest_route\s*\(\s*['"]([a-z0-9._/-]+)['"]\s*,\s*['"]([^'"]+)['"]""", re.I)
+# A REST namespace may be declared in a local PHP variable before use.
+# It is not a WordPress Ability simply because the same class also registers
+# an unrelated Ability. Resolve only exact single literal assignments; do not
+# evaluate PHP expressions, constants or dynamic provider-generated routes.
+REST_LITERAL_ASSIGNMENT = re.compile(
+    r"""(?<![\w$])\$(?P<var>[a-zA-Z_]\w*)[ \t]*=[ \t]*(?P<q>['"])(?P<value>[^'"]+)(?P=q)[ \t]*;"""
+)
+REST_VARIABLE_ROUTE = re.compile(
+    r"""register_rest_route\s*\(\s*\$(?P<namespace>[a-zA-Z_]\w*)\s*,\s*"""
+    r"""\$(?P<base>[a-zA-Z_]\w*)\s*(?:\.\s*(?P<q>['"])(?P<suffix>/[a-z0-9_/-]+)(?P=q))?\s*,""",
+    re.I,
+)
+HOOK_FIRST_ARG = re.compile(
+    r"""add_(?:action|filter)\s*\(\s*(?P<q>['"])(?P<hook>mad4b/[a-z0-9._/-]+)(?P=q)""",
+    re.I,
+)
 AJAX_ROUTE = re.compile(r"""add_action\s*\(\s*['"](wp_ajax_(?:nopriv_)?[a-z0-9_-]+)['"]""", re.I)
-CRON_SCHEDULE = re.compile(r"""wp_schedule_(?:single_)?event\s*\(\s*[^,]+,\s*(?:[^,]+,\s*)?['"]([a-z0-9_-]+)['"]""", re.I)
+CRON_CALL = re.compile(r"wp_schedule_(?P<single>single_)?event\s*\(", re.I)
+CRON_CONST = re.compile(
+    r"""\bconst\s+(?P<name>[A-Z][A-Z0-9_]*)\s*=\s*(?P<q>['"])(?P<value>[a-z0-9_-]+)(?P=q)\s*;""",
+    re.I,
+)
 
 
 def git(*args, checked=True):
@@ -123,38 +148,252 @@ def changed_paths(base, head):
     return rows
 
 
+def rest_variable_surfaces(src):
+    """Prove local REST declarations from unambiguous literal PHP bindings.
+
+    Only a literal variable namespace and literal path/suffix can be safely
+    mapped. Unknown expressions must never silently be treated as known URLs.
+    This read-only inventory grants no REST permission.
+    """
+    assignments = {}
+    for row in REST_LITERAL_ASSIGNMENT.finditer(src):
+        assignments.setdefault(row.group("var"), []).append((row.group("value"),
+                                                               row.start("value"), row.end("value")))
+    # If the variable was reassigned, its runtime value is uncertain.
+    singular = {name: values[0] for name, values in assignments.items()
+                if len(values) == 1}
+    detected, aliases = set(), set()
+    for row in REST_VARIABLE_ROUTE.finditer(src):
+        namespace, base = row.group("namespace"), row.group("base")
+        if namespace not in singular or base not in singular:
+            continue
+        ns, start, end = singular[namespace]
+        path = singular[base][0] + (row.group("suffix") or "")
+        if (re.fullmatch(r"[a-z0-9._/-]+", ns, re.I) and
+                re.fullmatch(r"/[a-z0-9._/-]+", path, re.I)):
+            detected.add(identifier("rest", ns + "/" + path.lstrip("/")))
+            aliases.add((namespace, start, end))
+    return detected, aliases
+
+
+
+def split_php_call_argument_spans(src, start):
+    """Parse top-level PHP arguments and their exact source ranges.
+
+    This shared parser treats nested function/array arguments as opaque.
+    Incomplete syntax has no provable arguments.
+    """
+    spans, segment, depth, quote, escaped = [], start, 0, None, False
+    for pos in range(start, len(src)):
+        char = src[pos]
+        if quote is not None:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == quote:
+                quote = None
+            continue
+        if char in ("'", '"'):
+            quote = char
+        elif char in "([":
+            depth += 1
+        elif char in ")]":
+            if depth == 0:
+                if char != ")":
+                    return []
+                spans.append((src[segment:pos].strip(), segment, pos))
+                return spans
+            depth -= 1
+        elif char == "," and depth == 0:
+            spans.append((src[segment:pos].strip(), segment, pos))
+            segment = pos + 1
+    return []
+
+
+def split_php_call_arguments(src, start):
+    """Retain original Cron scanner API using shared source boundaries."""
+    return [value for value, _, _ in split_php_call_argument_spans(src, start)]
+
+
+AUDIT_EVENT_CALL = re.compile(
+    r"(?:\b(?:self|static)::audited_registry_result|"
+    r"\bMAD4B_SCP_Audit::record)\s*\(", re.I
+)
+
+
+def mask_audit_event_literals(src):
+    """Only mask the proven event arg of a known audit writer.
+
+    WordPress Ability registration anywhere else in the same PHP source
+    stays visible. Ambiguous nested calls or dynamic strings remain unmasked.
+    """
+    masks = []
+    for call in AUDIT_EVENT_CALL.finditer(src):
+        spans = split_php_call_argument_spans(src, call.end())
+        index = 1 if "audited_registry_result" in call.group(0) else 0
+        if len(spans) <= index:
+            continue
+        literal, start, end = spans[index]
+        if re.fullmatch(r"""['"]mad4b/[a-z0-9][a-z0-9._/-]{1,120}['"]""", literal):
+            masks.append((start,end))
+    for start, end in reversed(masks):
+        src = src[:start] + "'__audit_event_only__'" + src[end:]
+    return src
+
+
+def cron_event_candidates(src):
+    """Inventory actual hook argument, not recurrence, for WordPress Cron."""
+    constants = {}
+    for entry in CRON_CONST.finditer(src):
+        constants.setdefault(entry.group("name"), set()).add(entry.group("value"))
+    rows = set()
+    for call in CRON_CALL.finditer(src):
+        args = split_php_call_arguments(src, call.end())
+        hook_index = 1 if call.group("single") else 2
+        if len(args) <= hook_index:
+            continue
+        expression = args[hook_index]
+        literal = re.fullmatch(r"""['"]([a-z0-9_-]+)['"]""", expression, re.I)
+        if literal:
+            rows.add(identifier("cron", literal.group(1)))
+            continue
+        const = re.fullmatch(r"(?:self|static)::([A-Z][A-Z0-9_]*)", expression)
+        if const and len(constants.get(const.group(1), set())) == 1:
+            rows.add(identifier("cron", next(iter(constants[const.group(1)]))))
+    return rows
+
+
 def php_capabilities(ref, path):
     src = git_text(ref, path)
-    if not src:
+    if not src or not PHP_DECLARATION.search(src):
         return set()
-    if not PHP_DECLARATION.search(src):
-        return set()
-    # Conservative static surface. This is a candidate extractor, not an
-    # authoritative WordPress Ability census or proof of runtime registration.
-    # REST namespaces are not WordPress Abilities. Mask only the namespace
-    # argument of a static register_rest_route() call, not other literal
-    # ability strings in the same provider source. Actual REST endpoints are
-    # separately inventoried by registered_surfaces().
+    # Conservative static surface, not an authoritative WordPress Ability
+    # census. A REST namespace literal is not an Ability. This covers direct
+    # REST route strings and single-variable local REST declarations, while
+    # preserving genuine Ability literals in the same source file.
     def mask_rest_namespace(match):
         start = match.start(1) - match.start()
         end = match.end(1) - match.start()
         whole = match.group(0)
         return whole[:start] + "__rest_namespace__" + whole[end:]
 
-    ability_source = REST_ROUTE.sub(mask_rest_namespace, src)
+    ability_source = REST_ROUTE.sub(mask_rest_namespace,
+                                    mask_audit_event_literals(src))
+    # WordPress event/filter hooks are not wp_register_ability registrations.
+    # Mask only the first argument in add_action/add_filter, not same-named
+    # Ability literals which may still appear elsewhere in this source.
+    ability_source = HOOK_FIRST_ARG.sub(
+        lambda match: match.group(0).replace(match.group("hook"), "__event_hook__", 1),
+        ability_source,
+    )
+    # The literal fragment in "prefix" . suffix cannot be approved as an
+    # independently registered Ability. Preserve real static names nearby.
+    ability_source = PHP_ABILITY_PREFIX.sub(
+        lambda m: m.group(0).replace(m.group("id"), "__dynamic_ability_prefix__", 1),
+        ability_source,
+    )
+    _, aliases = rest_variable_surfaces(src)
+    for name, start, end in sorted(aliases, key=lambda x: x[1], reverse=True):
+        # Do not suppress if the same PHP variable is directly used as an
+        # Ability registration argument. In that case its role is ambiguous
+        # and must remain a source-review candidate.
+        if re.search(r"wp_register_ability\s*\(\s*\$" + re.escape(name) + r"\b",
+                     src, re.I):
+            continue
+        # Direct REST matching above never alters this assignment's offset
+        # for simple source with no static REST calls ahead of the binding.
+        # Mask the specific assignment using matched text rather than offsets
+        # into a modified string when source contains both declarations.
+        token = src[start:end]
+        assignment = re.compile(
+            r"(?P<pre>\$" + re.escape(name) +
+            r"[ \t]*=[ \t]*['\"])" + re.escape(token) +
+            r"(?P<post>['\"][ \t]*;)"
+        )
+        ability_source = assignment.sub(
+            lambda m: m.group("pre") + "__rest_namespace__" + m.group("post"),
+            ability_source, count=1,
+        )
     return {identifier("ability", m) for m in CAP.findall(ability_source)}
 
 
 def registered_surfaces(ref, path):
-    """Static candidate REST, AJAX and Cron interfaces; never runtime proof."""
+    """Conservative REST, AJAX and Cron candidate surfaces; no runtime proof."""
     src = git_text(ref, path)
     if not src:
         return set()
     rows = {identifier("rest", ns + "/" + route.lstrip("/"))
             for ns, route in REST_ROUTE.findall(src)}
+    variables, _ = rest_variable_surfaces(src)
+    rows.update(variables)
     rows.update(identifier("ajax", x) for x in AJAX_ROUTE.findall(src))
-    rows.update(identifier("cron", x) for x in CRON_SCHEDULE.findall(src))
+    rows.update(cron_event_candidates(src))
     return rows
+
+
+def registered_constant_map_owner(src, const_name):
+    """Recognize an existing literal-keyed Ability map, not a catalog ref.
+
+    This matches the first-party definitions -> foreach -> WordPress
+    registration contract with no operation-name hardcoding.
+    """
+    if not re.search(r"\bfunction\s+register_abilities\s*\(", src):
+        return False
+    if len(re.findall(r"\$definitions\s*=\s*(?:array\s*\(|\[)", src)) != 1:
+        return False
+    return all((
+        re.search(r"(?:self|static)::" + re.escape(const_name) + r"\s*=>", src),
+        re.search(r"foreach\s*\(\s*\$definitions\s+as\s+"
+                  r"\$ability\s*=>\s*\$definition\s*\)", src),
+        re.search(r"wp_register_ability\s*\(\s*\$ability\s*,", src),
+    ))
+
+
+def registered_ability_owner(ref, ability):
+    """Prove a distinct registered Ability still exists elsewhere in Git.
+
+    A string mention or catalog pointer alone is insufficient: require a
+    registration call that uses either the exact literal or a local immutable
+    class constant. This suppresses only *false retirements*, not genuinely
+    removed registrations, changed-source behavior review or permissions.
+    """
+    if not ability.startswith("ability:mad4b/"):
+        return None
+    identifier_value = ability[len("ability:"):]
+    needle = "'" + identifier_value + "'"
+    hits = git("grep", "-l", "-F", "-e", identifier_value,
+               ref, "--", PLUGIN + "includes/", checked=False)
+    if hits.returncode not in (0, 1):
+        raise ValueError("Ambiguous Git ability registration inventory")
+    for entry in hits.stdout.decode().splitlines():
+        _, separator, path = entry.partition(":")
+        if not separator or not path.endswith(".php"):
+            continue
+        src = git_text(ref, path)
+        if not src:
+            continue
+        if re.search(r"wp_register_ability\s*\(\s*['\"]" +
+                     re.escape(identifier_value) + r"['\"]", src):
+            return path
+        for const_name in re.findall(
+                r"\bconst\s+([A-Z][A-Z0-9_]*)\s*=\s*['\"]" +
+                re.escape(identifier_value) + r"['\"]\s*;", src):
+            if re.search(r"wp_register_ability\s*\(\s*(?:self|static)::" +
+                         re.escape(const_name) + r"\b", src):
+                return path
+            # The first-party Adapter Base delegates literal/constant
+            # registrations through $this->add_ability(...), ultimately
+            # calling wp_register_ability($name). Only recognize a constant
+            # passed as the FIRST argument in an actual register_abilities()
+            # owner, never a catalog, metadata pointer or generic mention.
+            if (re.search(r"\bfunction\s+register_abilities\s*\(", src)
+                    and re.search(r"\$this->add_ability\s*\(\s*(?:self|static)::" +
+                                  re.escape(const_name) + r"\b", src)):
+                return path
+            if registered_constant_map_owner(src, const_name):
+                return path
+    return None
 
 
 def is_reviewed_runtime_path(path, coverage):
@@ -180,7 +419,7 @@ def current_blob_sha(commit, path):
     return sha
 
 
-def new_source_ids(base, head, changed):
+def new_source_ids(base, head, changed, preserve_reviewed=frozenset()):
     old = catalog_snapshot(base)
     new = catalog_snapshot(head)
     added = {k: new[k] for k in new.keys() - old.keys()}
@@ -213,6 +452,23 @@ def new_source_ids(base, head, changed):
                 added["admin_asset:" + path] = path
             if status == "D":
                 removed["admin_asset:" + path] = path
+    # A string reference disappearing from one changed file is not
+    # decommissioning if a separate WordPress Ability owner still registers
+    # it in both exact source trees. Retain the recorded source diff for
+    # independent behavior review; do not rewrite historical lifecycle data.
+    for cap in list(removed):
+        if (cap.startswith("ability:") and
+                registered_ability_owner(base, cap) and
+                registered_ability_owner(head, cap)):
+            removed.pop(cap)
+    for cap in list(added):
+        # Preserve same-PR CI-only source reviews that already carry explicit
+        # tests and controls. An older registered owner can explain why a
+        # reference is NOT new, but cannot silently erase a reviewed
+        # capability entry or its independent test obligation.
+        if (cap.startswith("ability:") and cap not in preserve_reviewed
+                and registered_ability_owner(base, cap)):
+            added.pop(cap)
     return old, new, added, removed
 
 
@@ -559,7 +815,12 @@ def evaluate(base, head):
     changed = changed_paths(base, head)
     controls = json.loads((ROOT / CONTROLS).read_text(encoding="utf-8"))
     coverage = json.loads((ROOT / COVERAGE).read_text(encoding="utf-8"))
-    old, current, added, removed = new_source_ids(base, head, changed)
+    reviewed_ids = frozenset(
+        row["id"] for row in coverage.get("reviewed_capabilities", [])
+        if isinstance(row, dict) and isinstance(row.get("id"), str)
+    )
+    old, current, added, removed = new_source_ids(
+        base, head, changed, preserve_reviewed=reviewed_ids)
     failures, reviewed, behavior = validate_coverage(
         coverage, controls, base, head, changed, added, removed)
     impact = impact_rows(changed, coverage, added, removed)

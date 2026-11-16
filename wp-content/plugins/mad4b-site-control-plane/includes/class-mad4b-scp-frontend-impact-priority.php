@@ -66,6 +66,7 @@ final class MAD4B_SCP_Frontend_Impact_Priority {
             ($candidate['scheme']??'')==='https' &&
             ($candidate['scheme']??'')===($base['scheme']??'') &&
             strtolower((string)($candidate['host']??''))===strtolower((string)($base['host']??'')) &&
+            (int)($candidate['port']??443)===(int)($base['port']??443) &&
             empty($candidate['user'])&&empty($candidate['pass'])&&empty($candidate['fragment'])&&
             empty($candidate['query']) &&
             !preg_match('#(?:^|/)(?:wp-admin|wp-json|wp-login\.php)(?:/|$)#i',(string)($candidate['path']??''));
@@ -80,7 +81,7 @@ final class MAD4B_SCP_Frontend_Impact_Priority {
             foreach((array)($prior['pages'][$locale]??[]) as $page) {
                 if(($page['kind']??'')!=='archive')continue;
                 $path=(string)($page['path']??'');
-                if(!str_starts_with($path,'/'.$locale.'/')||strlen($path)>260)continue;
+                if(0!==strpos($path,'/'.$locale.'/')||strlen($path)>260)continue;
                 $candidate=home_url($path);
                 if(!self::same_origin($candidate))continue;
                 $urls[$locale][]=['url'=>$candidate,'kind'=>'archive'];
@@ -100,11 +101,11 @@ final class MAD4B_SCP_Frontend_Impact_Priority {
             // guess paths from taxonomy labels or filtered JSF archive URLs.
             foreach((array)($prior['pages'][$locale]??[]) as $page) {
                 $path=(string)($page['path']??'');
-                if(strlen($path)>300 || !str_contains($path,'/tours-and-activities/')
-                   || str_contains($path,'/jsf/') ||
+                if(strlen($path)>300 || false===strpos($path,'/tours-and-activities/')
+                   || false!==strpos($path,'/jsf/') ||
                    ($page['kind']??'')!=='linked_page')continue;
                 if($locale!==apply_filters('wpml_default_language',null)
-                   && !str_starts_with($path,'/'.$locale.'/'))continue;
+                   && 0!==strpos($path,'/'.$locale.'/'))continue;
                 $candidate=home_url($path);
                 if(!self::same_origin($candidate))continue;
                 $urls[$locale][]=['url'=>$candidate,'kind'=>'tour'];
@@ -202,7 +203,7 @@ final class MAD4B_SCP_Frontend_Impact_Priority {
     }
     private static function explore(string $url,string $kind):array {
         if(!self::same_origin($url))return ['error'=>'foreign_or_unsafe_url'];
-        $res=wp_remote_get($url,[
+        $res=wp_safe_remote_get($url,[
             'timeout'=>12,'redirection'=>0,'sslverify'=>true,
             'limit_response_size'=>self::MAX_HTML,
             'headers'=>['Accept'=>'text/html','Cache-Control'=>'no-cache'],
@@ -298,8 +299,13 @@ final class MAD4B_SCP_Frontend_Impact_Priority {
             if(!array_filter((array)($pages[$lang]??[]),
                 static fn($p)=>($p['kind']??'')==='home'))$home_complete=false;
         }
-        if(!$home_complete || $ok<max(2,(int)ceil(
-            array_sum(array_map('count',$targets))*0.6)))
+        $planned=array_sum(array_map('count',$targets));
+        // A single public homepage is a complete one-language scan; asking
+        // for two successes when only one target exists permanently blocks
+        // valid source-only and non-WPML installations. On multi-page runs
+        // retain the original >=60% coverage and two-page minimum.
+        $required=max(1,min($planned,max(2,(int)ceil($planned*0.6))));
+        if(!$home_complete || $ok<$required)
             return new WP_Error('frontend_impact_coverage_incomplete','Live crawl coverage incomplete; last good evidence preserved');
         $ledger=(array)get_option('mad4b_content_readiness_issues_v1',[]);
         $scores=[];$groups=[];$categories=[];

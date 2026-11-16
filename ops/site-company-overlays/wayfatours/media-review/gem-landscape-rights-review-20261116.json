@@ -1,0 +1,79 @@
+{
+  "contract": "mad4b.media.source-review-candidate.v1",
+  "site": "https://wayfatours.com",
+  "created_utc": "2026-11-16T00:38:15.784956+00:00",
+  "candidate": {
+    "subject": "Grand Egyptian Museum entrance and geometric stone façade, Giza, Egypt",
+    "author_on_commons_page": "Ibrahim.ID",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Grand_Egyptian_Museum_-_EGWUG_Trip_(2).jpg",
+    "attribution_license_shown_on_file_page": "Creative Commons Attribution 4.0 International",
+    "attribution_license_url_shown_on_file_page": "https://creativecommons.org/licenses/by/4.0/",
+    "imageinfo_api_license_short_name": "Public domain",
+    "source_metadata_consistent": false,
+    "metadata_conflict_requires_review": true,
+    "commons_current_file_sha1": "36bbb1eef92fe5b3295558daf973045814000561",
+    "downloaded_file_sha1": "36bbb1eef92fe5b3295558daf973045814000561",
+    "sha256": "406bff561339612d299f6eea96f982800205497df8298fdc6d919319a751594e",
+    "bytes": 482360,
+    "width": 1624,
+    "height": 1080,
+    "photo_subject_visually_reviewed": "exterior museum entrance; no synthetic image identified in visual inspection, authenticity not guaranteed",
+    "source_file_staged_on_vps": "/opt/mad4b-media-backups/wayfa-media-engine-hardening-20261116/gem-source-review-evidence/406bff561339612d299f6eea96f982800205497df8298fdc6d919319a751594e.jpg",
+    "source_not_yet_imported_to_wordpress": true,
+    "website_license_credit_not_yet_published": true
+  },
+  "target_tours": [
+    {
+      "id": 60629,
+      "slot": "grid_image_1_middle_upper",
+      "current_origin_id": 60018,
+      "current_crop_warning": true
+    },
+    {
+      "id": 60655,
+      "slot": "grid_image_1_middle_upper",
+      "current_origin_id": 60018,
+      "current_crop_warning": true
+    }
+  ],
+  "rights_backlog": {
+    "active_drafts": 179,
+    "historical_drafts": 2,
+    "total_drafts": 181,
+    "drafts_missing_author_source_and_license_evidence": 181,
+    "published_credits": 4
+  },
+  "publication_gate": {
+    "source_rights_review_needed": true,
+    "original_signed_media_approval_needed": true,
+    "wpml_pair_cas_and_cache_purge_needed": true,
+    "original313_readiness_not_claimed": true,
+    "photo_imported": false,
+    "tour_meta_changed": false,
+    "rights_record_published": false
+  },
+  "recommended_use": "replace the vertical GEM first grid slot in both languages only after original governed source intake, license evidence review, WPML attachment family and exact source CAS readback",
+  "conservative_attribution_handling": {
+    "case": "file_page_cc_by_4_0_but_api_public_domain_metadata_conflict",
+    "preferred_documented_license_for_review": "CC BY 4.0",
+    "preferred_license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "attribution_author": "Ibrahim.ID",
+    "attribution_source_page": "https://commons.wikimedia.org/wiki/File:Grand_Egyptian_Museum_-_EGWUG_Trip_(2).jpg",
+    "file_identity_sha256": "406bff561339612d299f6eea96f982800205497df8298fdc6d919319a751594e",
+    "license_resolution_basis": "use the more attribution-preserving terms explicitly displayed by the source file page; do not silently label as public domain",
+    "conflicting_api_metadata_retained": true,
+    "credit_page_auto_publication_only_after_license_approval_and_CCT_publish": true,
+    "rights_approval_or_photo_import_executed": false
+  },
+  "latest_site_resolution": {
+    "status": "superseded_by_verified_existing_wordpress_library_photo",
+    "external_commons_image_imported": false,
+    "commons_license_conflict_retained": true,
+    "local_photo_en_attachment_id": 55107,
+    "local_photo_es_attachment_id": 56582,
+    "local_photo_original_sha256": "da3ed39c619be71d041689134f1507f0a5613e1b6b612595e9f1e9ff7ecbd777",
+    "crop_reviews_after_reframe": 0,
+    "new_rights_credit_published": false,
+    "details": "gem-local-library-reframe-applied-20261116.json"
+  }
+}

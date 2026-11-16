@@ -1,0 +1,74 @@
+--- a/class-mad4b-scp-content-readiness-alerts.php
++++ b/class-mad4b-scp-content-readiness-alerts.php
+@@ -495,7 +495,8 @@
+         return array('contract'=>'mad4b.content-readiness.discovery.v1','complete'=>$complete,
+             'post_counts'=>$counts,'scanned'=>$scanned,'issues'=>$issues,
+             'completeness_evaluated'=>absint($completeness['evaluated']??0),
+-            'completeness_skipped_unknown'=>absint($completeness['skipped_unknown']??0));
++            'completeness_skipped_unknown'=>absint($completeness['skipped_unknown']??0),
++            'brand_integrity_coverage'=>(array)($brandQuality['brand_integrity_coverage']??array()));
+     }
+     public static function run_scheduled() {
+         if (!self::trusted_scheduled_cli()) return new WP_Error('mad4b_readiness_scheduler_unauthorized');
+@@ -673,9 +674,10 @@
+         // Only close rules evaluated by this scan; removing a configured rule
+         // must not silently resolve its pre-existing open issues.
+         $rules=self::rules();
++        $brand_coverage=(array)($scan['brand_integrity_coverage']??array());
+         foreach ($new as $key=>$row) {
+             if(isset($seen[$key]) || ($row['status']??'')==='resolved')continue;
+-            if(!self::rule_enabled_for($row,$rules))continue;
++            if(!self::rule_enabled_for($row,$rules,$brand_coverage))continue;
+             $new[$key]['status']='resolved';$new[$key]['resolved_at']=$now;
+         }
+         if (count($new)>self::MAX_ISSUES)
+@@ -684,20 +686,45 @@
+         $verified=(array)get_option(self::STORE,array());
+         if($verified!==$new)
+             return new WP_Error('mad4b_readiness_scan_readback_failed','Issue ledger write was not confirmed.');
+-        self::audit('scan',['scanned'=>$scan['scanned'],'current'=>count($scan['issues'])]);
++        $coverage=(array)($scan['brand_integrity_coverage']??array());
++        self::audit('scan',array(
++            'scanned'=>$scan['scanned'],'current'=>count($scan['issues']),
++            'brand_integrity'=>array(
++                'complete'=>!empty($coverage['complete']),
++                'scanned'=>absint($coverage['scanned']??0),
++                'coverage_gap_count'=>absint($coverage['coverage_gap_count']??0),
++                'issue_count'=>absint($coverage['issue_count']??0),
++                'post_types'=>(array)($coverage['scan_post_types']??array()),
++                'site_uuid'=>(string)($coverage['site_uuid']??''),
++                'contract'=>(string)($coverage['contract']??''),
++            )));
+         // Only newly confirmed source transitions enter the local event journal.
+         // Event automation ingests held outbox rows, never dispatches email here.
+         if(class_exists('MAD4B_SCP_Readiness_Integrations'))
+             MAD4B_SCP_Readiness_Integrations::record_changes($old,$new);
+         return self::summary($new);
+     }
+-    private static function rule_enabled_for($issue,$cfg) {
++    private static function rule_enabled_for($issue,$cfg,array $brand_coverage=array()) {
+         if (($issue['source']??'')==='mad4b-presentation-integrity')
+             return str_starts_with((string)($issue['code']??''),'pres_browser_')
+                 ? MAD4B_SCP_Presentation_Integrity_V1::browser_covered()
+                 : MAD4B_SCP_Presentation_Integrity_V1::covered();
+-        if(($issue['source']??'')==='mad4b-brand-experience')
+-            return class_exists('MAD4B_SCP_Brand_Experience_Quality',false);
++        if(($issue['source']??'')==='mad4b-brand-experience') {
++            if(!class_exists('MAD4B_SCP_Brand_Experience_Quality',false))return false;
++            if(in_array((string)($issue['code']??''),array(
++                'brand_identity_attribution_mismatch',
++                'brand_external_link_attribution_mismatch'),true)) {
++                $site=(string)($brand_coverage['site_uuid']??'');
++                $source_site=(string)($issue['source_evidence']['brand_scope']['site_uuid']??'');
++                return !empty($brand_coverage['complete'])
++                    && !empty($brand_coverage['coverage_complete'])
++                    && $site!=='' && $source_site!==''
++                    && hash_equals($site,$source_site)
++                    && in_array((string)($issue['post_type']??''),
++                        (array)($brand_coverage['scan_post_types']??array()),true);
++            }
++            return true;
++        }
+         if(($issue['source']??'')==='mad4b-google-ttd-pricing' &&
+             ($issue['code']??'')==='gttd_requirements_unverified')
+             return class_exists('MAD4B_GTTD_Readiness_V1') &&

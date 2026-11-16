@@ -198,13 +198,16 @@ final class MAD4B_SCP_Authorization {
 			if ( is_wp_error( $request_scope ) ) return $request_scope;
 		}
 		if ( ! class_exists( 'MAD4B_SCP_Schema' )
-			|| ! MAD4B_SCP_Schema::is_ready()
-			|| ! MAD4B_SCP_Schema::critical_ready() ) {
+			|| true !== MAD4B_SCP_Schema::is_ready()
+			|| true !== MAD4B_SCP_Schema::critical_ready() ) {
 			return self::error( 'mad4b_governance_schema_unavailable', 'Governance schema is unavailable or physically incomplete.' );
 		}
 		if ( ! class_exists( 'MAD4B_SCP_MCP_Peer_Governance' ) ) return self::error( 'mcp_peer_inventory_unavailable', 'MCP peer governance is unavailable.' );
 		$peer_guard = MAD4B_SCP_MCP_Peer_Governance::mutation_guard();
 		if ( is_wp_error( $peer_guard ) ) return $peer_guard;
+		if ( true !== $peer_guard )
+			return self::error( 'mad4b_mcp_peer_governance_unverified',
+				'Original MCP Peer guard has not confirmed safe mutation transport.' );
 
 		$declared_server_id = sanitize_key( (string) $server_id );
 		if ( ! class_exists( 'MAD4B_SCP_Transport_Context' ) ) return self::error( 'mad4b_transport_context_unavailable', 'MCP transport context is unavailable; governed mutation fails closed.' );
@@ -220,10 +223,10 @@ final class MAD4B_SCP_Authorization {
 		if ( is_wp_error( $identity ) ) return $identity;
 		$agent = MAD4B_SCP_Agent_Registry::resolve_agent( $identity );
 		if ( is_wp_error( $agent ) ) return $agent;
-		if ( ! class_exists( 'MAD4B_SCP_Policy' ) || ! MAD4B_SCP_Policy::can_mutate() ) return self::error( 'mad4b_mutation_disabled', 'Mutation capability is disabled by MAD4B policy.' );
-		if ( 'mad4b-breakglass' === $server_id && ! MAD4B_SCP_Policy::can_breakglass() ) return self::error( 'mad4b_breakglass_disabled', 'Breakglass capability is disabled.' );
-		if ( 'mad4b-developer' === $server_id && ! MAD4B_SCP_Policy::can_developer() ) return self::error( 'mad4b_developer_disabled', 'Developer execution capability is disabled or the exact Developer Agent is not bound.' );
-		if ( 'mad4b-developer-breakglass' === $server_id && ! MAD4B_SCP_Policy::can_developer_breakglass() ) return self::error( 'mad4b_developer_breakglass_disabled', 'Developer Breakglass capability is disabled.' );
+		if ( ! class_exists( 'MAD4B_SCP_Policy' ) || true !== MAD4B_SCP_Policy::can_mutate() ) return self::error( 'mad4b_mutation_disabled', 'Mutation capability is disabled by MAD4B policy.' );
+		if ( 'mad4b-breakglass' === $server_id && true !== MAD4B_SCP_Policy::can_breakglass() ) return self::error( 'mad4b_breakglass_disabled', 'Breakglass capability is disabled.' );
+		if ( 'mad4b-developer' === $server_id && true !== MAD4B_SCP_Policy::can_developer() ) return self::error( 'mad4b_developer_disabled', 'Developer execution capability is disabled or the exact Developer Agent is not bound.' );
+		if ( 'mad4b-developer-breakglass' === $server_id && true !== MAD4B_SCP_Policy::can_developer_breakglass() ) return self::error( 'mad4b_developer_breakglass_disabled', 'Developer Breakglass capability is disabled.' );
 
 		$provider = sanitize_key( (string) $provider );
 		if ( '' === $provider ) $provider = 'core';
@@ -238,19 +241,26 @@ final class MAD4B_SCP_Authorization {
 		if ( 'mad4b-write' === $server_id
 			&& class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
 			&& method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'current_execution_readiness' )
-			&& method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'manages_agent' )
-			&& MAD4B_SCP_Staging_Write_Authority::manages_agent( $agent ) ) {
+			&& method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'manages_agent' ) ) {
+			$managed = MAD4B_SCP_Staging_Write_Authority::manages_agent( $agent );
+			if ( ! is_bool( $managed ) )
+				return self::error( 'mad4b_write_managed_agent_unverified',
+					'Original managed-Agent admission has not returned a verified decision.' );
+			if ( true === $managed ) {
 			$current_write = MAD4B_SCP_Staging_Write_Authority::current_execution_readiness( $ability_name, $input );
-			if ( ! is_array( $current_write ) || empty( $current_write['ready'] ) ) {
+			if ( ! is_array( $current_write ) || ( $current_write['ready'] ?? null ) !== true ) {
 				return new WP_Error(
 					'mad4b_write_authority_current_drift',
 					'Governed write authority is not current-ready; reconcile current grants before mutation.',
 					array(
 						'blockers' => is_array( $current_write ) && isset( $current_write['blockers'] ) && is_array( $current_write['blockers'] ) ? $current_write['blockers'] : array( 'write_current_readiness_unavailable' ),
-						'candidate_binding_match' => is_array( $current_write ) && ! empty( $current_write['candidate_binding_match'] ),
-						'current_grant_snapshot_ready' => is_array( $current_write ) && ! empty( $current_write['current_grant_snapshot_ready'] ),
+						'candidate_binding_match' => is_array( $current_write )
+							&& ( $current_write['candidate_binding_match'] ?? null ) === true,
+						'current_grant_snapshot_ready' => is_array( $current_write )
+							&& ( $current_write['current_grant_snapshot_ready'] ?? null ) === true,
 					)
 				);
+			}
 			}
 		}
 

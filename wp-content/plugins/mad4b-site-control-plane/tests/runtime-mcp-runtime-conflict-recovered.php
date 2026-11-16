@@ -29,7 +29,23 @@ $evidence = static function () use ( $guard, $bridge, $mu_runtime ) {
 };
 
 if ( empty( $guard['eligible'] ) ) $fail( 'guard must remain eligible on exact Staging origin' . $evidence() );
-if ( 'canonical_runtime' !== ( isset( $guard['state'] ) ? $guard['state'] : '' ) ) $fail( 'expected canonical runtime ownership after MU recovery' . $evidence() );
+// The guard intentionally observes source ownership in a read-only request.
+// The retired "canonical_runtime" verdict would imply unrequested repair.
+// Verify actual authoritative provenance, complete pinning and no mutation.
+if ( 'runtime_source_observed' !== ( isset( $guard['state'] ) ? $guard['state'] : '' ) )
+    $fail( 'read-only runtime source observation unavailable after MU recovery' . $evidence() );
+if ( empty( $guard['source_provenance_observational'] ) )
+    $fail( 'source ownership must remain observational outside governed recovery' . $evidence() );
+if ( empty( $guard['runtime_from_official_plugin'] ) || empty( $guard['runtime_class_provenance_complete'] )
+    || empty( $guard['runtime_class_provenance_ready'] )
+    || ! empty( $guard['runtime_class_provenance_failure_count'] )
+    || ! empty( $guard['runtime_class_provenance_unobserved_count'] ) )
+    $fail( 'official runtime and complete certified class provenance required' . $evidence() );
+if ( empty( $guard['mu_bootstrap_canonical_symbols_pinned'] )
+    || empty( $guard['mu_bootstrap_critical_class_baseline_ready'] )
+    || empty( $guard['mu_bootstrap_critical_class_set_pinned'] )
+    || (int) ( $guard['mu_bootstrap_critical_class_pin_count'] ?? 0 ) < 1 )
+    $fail( 'managed MU bootstrap did not pin the complete critical class set' . $evidence() );
 if ( empty( $guard['official_loads_before_hostinger'] ) ) $fail( 'active_plugins order must remain canonical' );
 if ( ! empty( $guard['runtime_provenance_mismatch'] ) ) $fail( 'runtime provenance mismatch must be closed' );
 if ( ! empty( $guard['repair_applied'] ) ) $fail( 'recovered request must converge without another repair' );

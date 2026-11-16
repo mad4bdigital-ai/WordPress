@@ -11,15 +11,35 @@ final class MAD4B_SCP_Elementor_Native_MCP_Awareness {
     const CONTRACT = 'mad4b.elementor-native-mcp-authoring-awareness.v1';
     const NATIVE_SERVER = 'elementor-mcp-server';
 
+    private static function native_boolean( $module, $method ) {
+        if ( ! class_exists( $module ) || ! method_exists( $module, $method ) )
+            return false;
+        try {
+            return true === $module::$method();
+        } catch ( \Throwable $error ) {
+            return false;
+        }
+    }
+
     public static function inspect( $post_id = 0 ) {
         $post_id = absint( $post_id );
         $module = 'Elementor\\Modules\\Mcp\\Module';
         $adapter = 'WP\\MCP\\Core\\McpAdapter';
         $loaded = class_exists( $module );
-        $transport_supported = $loaded && method_exists( $module, 'is_active' )
-            && (bool) $module::is_active();
-        $enabled = $loaded && method_exists( $module, 'is_site_mcp_exposure_enabled' )
-            && (bool) $module::is_site_mcp_exposure_enabled();
+        // WordPress/Elementor contracts must return positive booleans:
+        // WP_Error or a truthy scalar is not authenticated MCP transport.
+        $transport_supported = self::native_boolean( $module, 'is_active' );
+        $enabled = self::native_boolean( $module, 'is_site_mcp_exposure_enabled' );
+        $profile = null;
+        if ( class_exists( 'MAD4B_SCP_Site_Profile' ) ) {
+            try {
+                $profile = MAD4B_SCP_Site_Profile::status();
+            } catch ( \Throwable $error ) {
+                $profile = null;
+            }
+        }
+        $site_uuid = is_array( $profile ) && is_string( $profile['site_uuid'] ?? null )
+            ? $profile['site_uuid'] : '';
         $registered = 0;
         $native_names = 0;
         if ( function_exists( 'wp_get_abilities' ) ) {
@@ -44,8 +64,7 @@ final class MAD4B_SCP_Elementor_Native_MCP_Awareness {
         return array(
             'contract' => self::CONTRACT,
             'provider' => 'elementor',
-            'site_uuid' => class_exists( 'MAD4B_SCP_Site_Profile' )
-                ? (string) ( MAD4B_SCP_Site_Profile::status()['site_uuid'] ?? '' ) : '',
+            'site_uuid' => $site_uuid,
             'environment' => wp_get_environment_type(),
             'versions' => array(
                 'core' => defined( 'ELEMENTOR_VERSION' ) ? ELEMENTOR_VERSION : null,

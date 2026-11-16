@@ -71,11 +71,11 @@ class MAD4B_SCP_Adapter_Registry {
 }
 class MAD4B_SCP_Policy {public static function can_mutate(){return true;}}
 class MAD4B_SCP_Identity_Context {
-    public static function current(){return array('subject_type'=>'ci','subject_fingerprint'=>str_repeat('a',64),'request_id'=>'ci-test','approval_ticket_id'=>'ci-ticket');}
+    public static function current(){return array('authenticated'=>true,'subject_type'=>'ci','subject_fingerprint'=>str_repeat('a',64),'request_id'=>'ci-test','approval_ticket_id'=>'ci-ticket');}
     public static function request_id(){return 'ci-test';}
 }
 class MAD4B_SCP_Agent_Registry {
-    public static function resolve_agent($identity){return array('id'=>7);}
+    public static function resolve_agent($identity){return array('id'=>7,'status'=>'enabled');}
 }
 class MAD4B_SCP_Audit {public static function record($type,$payload,$status='success'){}}
 require_once dirname(__DIR__).'/includes/class-mad4b-scp-reversible-adapter-mutations.php';

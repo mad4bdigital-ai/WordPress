@@ -78,12 +78,13 @@ final class MAD4B_SCP_Artifacts {
 
 	private static function schema_ready() {
 		return class_exists( 'MAD4B_SCP_Schema' )
-			&& MAD4B_SCP_Schema::critical_ready()
+			&& true === MAD4B_SCP_Schema::critical_ready()
 			&& MAD4B_SCP_Schema::VERSION >= 10;
 	}
 
 	private static function site_uuid() {
-		$uuid = class_exists( 'MAD4B_SCP_Site_Profile' ) ? strtolower( trim( (string) MAD4B_SCP_Site_Profile::site_uuid() ) ) : '';
+		$source = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::site_uuid() : null;
+		$uuid = is_string( $source ) ? strtolower( trim( $source ) ) : '';
 		return preg_match( '/^[a-f0-9-]{36}$/', $uuid ) ? $uuid : '';
 	}
 

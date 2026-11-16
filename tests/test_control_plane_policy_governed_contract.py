@@ -1,4 +1,5 @@
 from tour_highlights_bootstrap_overlay import original_bootstrap_bytes
+from control_plane_pr808_historical_successor import assert_source_successor
 """Second overlay is a verified source delta, never a signed Owner release."""
 import hashlib
 import json
@@ -39,6 +40,10 @@ class RegisteredGovernanceSourceReview(unittest.TestCase):
                     if name=='wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php':
                         current=original_bootstrap_bytes(current)
                     self.assertEqual(SHA(current),sidecar['source_after_sha256'][name])
+                elif name == 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-registered-write-admission.php':
+                    # Later fail-closed exact policy receipt admission belongs
+                    # to a successor source, not the frozen PR808 source pin.
+                    assert_source_successor(name,expected)
                 else:
                     self.assertEqual(SHA(path.read_bytes()),expected)
 

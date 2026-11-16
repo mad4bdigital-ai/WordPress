@@ -321,29 +321,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          eval "$(python3 - <<'PY'
-          import json, shlex
-          from pathlib import Path
-          root=Path('wp-content/plugins/mad4b-site-control-plane/config')
-          policy=json.loads((root/'runtime-release-policy.json').read_text(encoding='utf-8'))
-          profiles=json.loads((root/'certified-provider-profiles.json').read_text(encoding='utf-8'))
-          if policy.get('contract')!='mad4b.runtime-release-policy.v1':
-              raise SystemExit('runtime release policy contract mismatch')
-          version=str(policy.get('target_adapter_version') or '')
-          profile=((profiles.get('providers') or {}).get('mcp_adapter') or {}).get(version) or {}
-          if profile.get('version')!=version:
-              raise SystemExit('target MCP Adapter profile missing')
-          sha=str(profile.get('archive_sha256') or '').lower()
-          size=int(profile.get('archive_bytes') or 0)
-          url=str(profile.get('package_url') or '')
-          archive=str(profile.get('archive') or f'mcp-adapter-{version}.zip')
-          if len(sha)!=64 or size<1 or not url.startswith('https://github.com/WordPress/mcp-adapter/releases/download/v'):
-              raise SystemExit('target MCP Adapter profile identity invalid')
-          values={'MCP_ADAPTER_VERSION':version,'MCP_ADAPTER_SHA':sha,'MCP_ADAPTER_BYTES':str(size),'MCP_ADAPTER_URL':url,'MCP_ADAPTER_ARCHIVE':archive,'MCP_ADAPTER_STAGE_PATH':'/tmp/mad4b-certified-mcp-adapter.zip'}
-          for key,value in values.items():
-              print(f'{key}={shlex.quote(value)}')
-          PY
-          )"
+          # CI candidate only. The repository runtime policy intentionally
+          # does not pin an Adapter version or authorize installation.
+          # Use the exact certified Provider catalog and the source-owned
+          # resolver. A failed resolution must fail this step before curl.
+          python3 tools/resolve-certified-mcp-adapter-profile.py \
+            --profile auto-ci > /tmp/mad4b-package-adapter-profile.env
+          source /tmp/mad4b-package-adapter-profile.env
+          MCP_ADAPTER_VERSION="$TARGET_VERSION"
+          MCP_ADAPTER_SHA="$TARGET_SHA"
+          MCP_ADAPTER_BYTES="$TARGET_BYTES"
+          MCP_ADAPTER_URL="$TARGET_URL"
+          MCP_ADAPTER_ARCHIVE="mcp-adapter-$TARGET_VERSION.zip"
+          MCP_ADAPTER_STAGE_PATH="/tmp/mad4b-certified-mcp-adapter.zip"
           {
             echo "MCP_ADAPTER_VERSION=$MCP_ADAPTER_VERSION"
             echo "MCP_ADAPTER_SHA=$MCP_ADAPTER_SHA"

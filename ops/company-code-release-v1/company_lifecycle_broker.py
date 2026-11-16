@@ -145,6 +145,8 @@ def dynamic_status(company: str, environment: str,
         "dynamic_313_independent_verifier_registered": False,
         "dynamic_313_finalizer_connected": False,
         "dynamic_scope_plan_matched": False,
+        "dynamic_scope_legacy_plan_schema": False,
+        "dynamic_provider_manifest_registered": False,
         "central_313_independent_verifier_registered": False,
         "central_313_finalizer_configured": False,
         "central_313_operational_ready": False,
@@ -174,6 +176,10 @@ def dynamic_status(company: str, environment: str,
         import registry as registry_module
         import worker_adapter as worker_module
         index = registry_module.Registry(DYNAMIC_ROOT)
+        # This is a first-party hash-verified Provider manifest, not a
+        # registered per-Job 306 digest, Claim, Grant or execution authority.
+        result["dynamic_provider_manifest_registered"] = (
+            RELEASE_OPERATION in index.manifests)
         verified = worker_module.indexed_plans(index, DYNAMIC_PLANS)
         scoped = {sha: entry for sha, entry in verified.items()
                   if entry["operation"] == RELEASE_OPERATION and
@@ -183,6 +189,19 @@ def dynamic_status(company: str, environment: str,
                    entry["plan"]["plan_sha256"] == plan_sha256)}
         result["dynamic_registry_enrolled"] = True
         result["dynamic_scope_plan_matched"] = bool(scoped)
+        # A verified Registry/306 digest proves enrollment, not current
+        # capability ownership. Older immutable plans can be missing the
+        # owner/dependency/tenant/acceptance snapshots now required by
+        # Original Code Release. Never re-sign or backfill these snapshots.
+        required_snapshots = (
+            "owner_reconciliation", "dependency_snapshot",
+            "tenant_plugin_profiles", "capability_acceptance"
+        )
+        result["dynamic_scope_legacy_plan_schema"] = bool(scoped) and any(
+            not all(isinstance(entry["plan"].get(key), dict)
+                    for key in required_snapshots)
+            for entry in scoped.values()
+        )
         if scoped:
             spec = importlib.util.spec_from_file_location(
                 "_mad4b_live_original_306_worker",
@@ -281,22 +300,40 @@ def reconcile(
         dynamic.get("dynamic_313_finalizer_connected") is True
     )
     dispatch_ready = dispatch.get("dispatch_registered") is True
+    provider_registered = (
+        dynamic.get("dynamic_registry_enrolled") is True and
+        dynamic.get("dynamic_provider_manifest_registered") is True)
+    scoped_plan_registered = (
+        dynamic.get("dynamic_scope_plan_matched") is True)
+    legacy_plan_schema = (
+        scoped_plan_registered and
+        dynamic.get("dynamic_scope_legacy_plan_schema") is True)
     # The dynamic provider is enrolled through the Original worker registry,
     # not the legacy Original 313 static --operation choices or site WP ability.
     dynamic_route_ready = dynamic_306 and dynamic_313_proof and dynamic_313_finish
     release_route_ready = (supported and dispatch_ready) or dynamic_route_ready
     blockers = []
+    if legacy_plan_schema:
+        blockers.append("REGISTERED_DYNAMIC_PLAN_MISSING_REQUIRED_SNAPSHOTS")
     if not valid305:
         blockers.append("ORIGINAL_305_COMPANY_SCOPE_NOT_VERIFIED")
     if not valid312:
         blockers.append("ORIGINAL_312_VERIFIER_NOT_VERIFIED")
     if not supported and not dynamic_306:
-        blockers.append("ORIGINAL_313_COMPANY_CODE_RELEASE_HANDLER_NOT_REGISTERED")
+        if provider_registered and not scoped_plan_registered:
+            blockers.append("EXACT_DYNAMIC_CODE_RELEASE_PLAN_NOT_ENROLLED")
+        elif provider_registered:
+            blockers.append("ORIGINAL_306_DYNAMIC_CODE_RELEASE_DIGEST_NOT_VERIFIED")
+        else:
+            blockers.append("ORIGINAL_313_COMPANY_CODE_RELEASE_HANDLER_NOT_REGISTERED")
     if dynamic_306 and not dynamic_313_proof:
         blockers.append("DYNAMIC_313_INDEPENDENT_PROOF_VERIFIER_NOT_REGISTERED")
     if dynamic_306 and not dynamic_313_finish:
         blockers.append("DYNAMIC_313_ORIGINAL_FINALIZER_NOT_CONNECTED")
-    if not dispatch_ready and not dynamic_306:
+    if not dispatch_ready and not dynamic_306 and not provider_registered:
+        # An enrolled dynamic Provider is not required to register the old
+        # per-site WordPress dispatch ability; route readiness still needs
+        # an original signed plan and claimed Job.
         blockers.append("COMPANY_CODE_RELEASE_DISPATCH_ABILITY_NOT_REGISTERED")
     # WP ability presence, 305 standing access and 312 registry status do not
     # prove an individual claimed job or one-time grant.
@@ -315,6 +352,9 @@ def reconcile(
         "release_route_registered": bool(release_route_ready),
         "dynamic_registry_enrolled":
             bool(dynamic.get("dynamic_registry_enrolled") is True),
+        "dynamic_provider_manifest_registered": bool(provider_registered),
+        "dynamic_scope_plan_matched": bool(scoped_plan_registered),
+        "dynamic_scope_legacy_plan_schema": bool(legacy_plan_schema),
         "dynamic_306_digest_registered": bool(dynamic_306),
         "dynamic_313_independent_verifier_registered": bool(dynamic_313_proof),
         "dynamic_313_finalizer_connected": bool(dynamic_313_finish),
@@ -333,12 +373,16 @@ def reconcile(
         "production_mutated": False,
         "state": (
             "HOLD_ORIGINAL_305_OR_312" if not (valid305 and valid312)
+            else "HOLD_REGISTERED_LEGACY_PLAN_SCHEMA" if legacy_plan_schema
             else "HOLD_DYNAMIC_ORIGINAL_313_VERIFIER"
             if dynamic_306 and not dynamic_313_proof
             else "HOLD_DYNAMIC_ORIGINAL_313_FINALIZER"
             if dynamic_306 and not dynamic_313_finish
             else "HOLD_EXACT_SIGNED_JOB_AND_RELEASE_RECEIPT"
-            if release_route_ready else "READY_FOR_ORIGINAL_HANDLER_ENROLLMENT"
+            if release_route_ready else
+            "HOLD_EXACT_DYNAMIC_PLAN_ENROLLMENT"
+            if provider_registered and not scoped_plan_registered
+            else "READY_FOR_ORIGINAL_HANDLER_ENROLLMENT"
         ),
         "blockers": blockers,
     }

@@ -177,8 +177,27 @@ final class MAD4B_SCP_Developer_Authority {
 			return new WP_Error('mad4b_developer_actor_resolver_missing','Unified authority resolver unavailable.');
 		$actor=MAD4B_SCP_Execution_Authority::resolve('plan');
 		if(is_wp_error($actor))return $actor;
-		if(!class_exists('MAD4B_SCP_Site_Profile',false) || empty(MAD4B_SCP_Site_Profile::status()['authority_ready']) ||
-			!MAD4B_SCP_Site_Profile::managed_runtime_enabled())
+		// The native host operator is an independently authenticated NHI and
+		// correctly carries wp_user_id=0. Do not substitute a WordPress user
+		// identity for its signed Host context; require the original actor proof.
+		if(!is_array($actor)
+			|| ($actor['contract']??null)!==MAD4B_SCP_Execution_Authority::CONTRACT
+			|| ($actor['authenticated']??null)!==true
+			|| !in_array($actor['transport']??null,array('host_cli','oauth_mcp'),true)
+			|| !is_int($actor['wp_user_id']??null)
+			|| ('host_cli'===$actor['transport']&&$actor['wp_user_id']!==0)
+			|| ('oauth_mcp'===$actor['transport']&&$actor['wp_user_id']<1)
+			|| !is_string($actor['subject_fingerprint']??null)
+			|| !preg_match('/^[a-f0-9]{64}$/D',$actor['subject_fingerprint'])
+			|| ($actor['execution_authorized']??null)!==false
+			|| ($actor['mutation_performed']??null)!==false)
+			return new WP_Error('mad4b_developer_actor_unverified',
+				'The original Developer actor did not provide an exact nonauthorizing identity proof.');
+		if(!class_exists('MAD4B_SCP_Site_Profile',false))
+			return new WP_Error('mad4b_developer_authority_site_not_ready','Developer provisioning requires an enrolled managed runtime.');
+		$site_status=MAD4B_SCP_Site_Profile::status();
+		if(!is_array($site_status)||($site_status['authority_ready']??null)!==true
+			|| true!==MAD4B_SCP_Site_Profile::managed_runtime_enabled())
 			return new WP_Error('mad4b_developer_authority_site_not_ready','Developer provisioning requires an enrolled managed runtime.');
 		if('oauth_mcp'===$actor['transport']){
 			$identity=MAD4B_SCP_Identity_Context::current();

@@ -22,13 +22,14 @@ final class MAD4B_SCP_Content_Completeness {
         add_action('rest_api_init',array(__CLASS__,'routes'));
     }
     public static function settings() {
-        $stored=(array)get_option(self::OPTION,array());
-        return array('enabled'=>!empty($stored['enabled']),
-            'exclude_qa'=>!empty($stored['exclude_qa']),
+        $raw=get_option(self::OPTION,array());
+        $stored=is_array($raw)?$raw:array();
+        return array('enabled'=>($stored['enabled']??null)===true,
+            'exclude_qa'=>($stored['exclude_qa']??null)===true,
             'rules'=>is_array($stored['rules']??null)?$stored['rules']:array());
     }
-    private static function read_permission() {return current_user_can('edit_others_posts');}
-    public static function admin_permission() {return current_user_can('manage_options');}
+    private static function read_permission() {return true===current_user_can('edit_others_posts');}
+    public static function admin_permission() {return true===current_user_can('manage_options');}
     private static function fail($code,$msg,$status=400) {
         return new WP_Error($code,$msg,array('status'=>$status));
     }
@@ -44,6 +45,15 @@ final class MAD4B_SCP_Content_Completeness {
                 'id','target','post_type','taxonomy','field','meta_key','language',
                 'min_chars','severity','inherit_from_meta','inherit_post_type','conditional_meta','conditional_value','fallback_meta_keys')))
                 return self::fail('ccr_rule_unknown_field','Unknown completeness rule parameter.',422);
+            // Native rule descriptors must be strings before WordPress
+            // sanitization. WP_Error/objects are not meta keys or policy.
+            foreach(array('id','target','post_type','taxonomy','field','meta_key',
+                'language','severity','inherit_from_meta','inherit_post_type',
+                'conditional_meta') as $text_key) {
+                if(array_key_exists($text_key,$rule) && !is_string($rule[$text_key]))
+                    return self::fail('ccr_rule_source_unverified',
+                        'Rule field must be a bounded original string.',422);
+            }
             $id=sanitize_key((string)($rule['id']??''));
             if(!preg_match('/^[a-z][a-z0-9_]{2,39}$/D',$id)||isset($seen[$id]))
                 return self::fail('ccr_rule_identifier','A rule ID must be unique and stable.',422);

@@ -1,4 +1,5 @@
 from tour_highlights_bootstrap_overlay import original_bootstrap_bytes
+from control_plane_pr808_historical_successor import assert_source_successor
 """Review-only, non-authorizing V2 projection and exact portable Skill parity."""
 from pathlib import Path
 import hashlib
@@ -26,7 +27,12 @@ class DeveloperPolicyV2Review(unittest.TestCase):
         self.assertFalse(d['live_deployment_performed'])
         self.assertFalse(d['original312_313_receipts_issued'])
         original=PLUGIN/'includes/class-mad4b-scp-developer-authority.php'
-        self.assertEqual(SHA(original.read_bytes()),d['legacy_v1_developer_source_sha256_unchanged'])
+        # PR808's frozen V1 pin belongs to its original Git ancestor.
+        # Check the immutable old blob and separately reviewed current
+        # guarded successor. Never rewrite the original signed-era record.
+        assert_source_successor(
+            'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-developer-authority.php',
+            d['legacy_v1_developer_source_sha256_unchanged'])
         for name,digest in d['source_after_sha256'].items():
             with self.subTest(name=name):
                 p=ROOT/name

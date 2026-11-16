@@ -6,7 +6,11 @@ final class MAD4B_SCP_Dynamic_Provider_Contract {
 	const MAX_PROVIDERS=64;
 
 	public static function manifests(){
-		$raw=apply_filters('mad4b_scp_dynamic_provider_manifests',array());
+		try {
+			$raw=apply_filters('mad4b_scp_dynamic_provider_manifests',array());
+		} catch (\Throwable $error) {
+			return array(); // Provider discovery never grants execution.
+		}
 		$out=array();
 		foreach(array_slice(is_array($raw)?$raw:array(),0,self::MAX_PROVIDERS) as $manifest){
 			$n=self::normalize($manifest);
@@ -18,12 +22,37 @@ final class MAD4B_SCP_Dynamic_Provider_Contract {
 
 	public static function normalize($manifest){
 		if(!is_array($manifest)) return new WP_Error('mad4b_dynamic_provider_manifest_invalid','Provider manifest must be an array.');
-		$id=isset($manifest['provider_id'])?sanitize_key((string)$manifest['provider_id']):'';
-		$registry=isset($manifest['existing_registry_identity'])?sanitize_key((string)$manifest['existing_registry_identity']):'';
-		if($id===''||$registry==='') return new WP_Error('mad4b_dynamic_provider_identity_missing','Provider manifest requires provider_id and existing_registry_identity.');
+		// Provider identity is an exact existing registry key, not a value to
+		// guess by coercing WP_Error/arrays or removing untrusted characters.
+		$id=$manifest['provider_id']??null;
+		$registry=$manifest['existing_registry_identity']??null;
+		if(!is_string($id)||!preg_match('/^[a-z][a-z0-9_-]{0,63}$/D',$id)
+			||!is_string($registry)||!preg_match('/^[a-z][a-z0-9_-]{0,63}$/D',$registry))
+			return new WP_Error('mad4b_dynamic_provider_identity_missing','Provider manifest requires exact provider and existing registry identities.');
+		if(isset($manifest['implementation_version'])&&!is_string($manifest['implementation_version']))
+			return new WP_Error('mad4b_dynamic_provider_version_invalid','Original provider version is invalid.');
+		if(isset($manifest['supports'])&&!is_array($manifest['supports']))
+			return new WP_Error('mad4b_dynamic_provider_support_invalid','Provider capabilities must be an array.');
+		$supports=array();
+		foreach(array_slice($manifest['supports']??array(),0,100) as $support) {
+			if(!is_string($support)||!preg_match('/^[a-z][a-z0-9_-]{0,63}$/D',$support))
+				return new WP_Error('mad4b_dynamic_provider_support_invalid','Provider capability identity is invalid.');
+			$supports[]=$support;
+		}
+		if(isset($manifest['side_effects'])&&!is_array($manifest['side_effects']))
+			return new WP_Error('mad4b_dynamic_provider_effects_invalid','Provider side effects must be an array.');
+		if(isset($manifest['soft_elapsed_budget_ms'])
+			&& !(is_int($manifest['soft_elapsed_budget_ms'])
+				|| (is_string($manifest['soft_elapsed_budget_ms'])
+					&&preg_match('/^[0-9]{1,8}$/D',$manifest['soft_elapsed_budget_ms']))))
+			return new WP_Error('mad4b_dynamic_provider_budget_invalid','Provider elapsed budget must be numeric.');
 		$effects=array();
-		foreach(isset($manifest['side_effects'])&&is_array($manifest['side_effects'])?array_slice($manifest['side_effects'],0,100):array() as $effect){
-			if(!is_array($effect)) continue;
+		foreach(array_slice($manifest['side_effects']??array(),0,100) as $effect){
+			if(!is_array($effect)) return new WP_Error('mad4b_dynamic_provider_effects_invalid','Invalid provider side effect.');
+			foreach(array('effect_scope','ownership','reversibility','compensation_support','externality') as $field) {
+				if(isset($effect[$field])&&!is_string($effect[$field]))
+					return new WP_Error('mad4b_dynamic_provider_effects_invalid','Provider side effect identity is not a string.');
+			}
 			$effects[]=array(
 				'effect_scope'=>isset($effect['effect_scope'])?sanitize_key((string)$effect['effect_scope']):'unknown',
 				'ownership'=>self::enum($effect,'ownership',array('core','provider','external','shared'),'external'),
@@ -36,11 +65,11 @@ final class MAD4B_SCP_Dynamic_Provider_Contract {
 			'contract'=>self::CONTRACT,
 			'provider_id'=>$id,
 			'existing_registry_identity'=>$registry,
-			'implementation_version'=>isset($manifest['implementation_version'])?substr(sanitize_text_field((string)$manifest['implementation_version']),0,64):'',
-			'supports'=>isset($manifest['supports'])&&is_array($manifest['supports'])?array_values(array_unique(array_map('sanitize_key',array_slice($manifest['supports'],0,100)))):array(),
+			'implementation_version'=>isset($manifest['implementation_version'])?substr(sanitize_text_field($manifest['implementation_version']),0,64):'',
+			'supports'=>array_values(array_unique($supports)),
 			'side_effects'=>$effects,
 			'soft_elapsed_budget_ms'=>isset($manifest['soft_elapsed_budget_ms'])?max(1,min(30000,absint($manifest['soft_elapsed_budget_ms']))):30000,
-			'enforceable_deadline_supported'=>!empty($manifest['enforceable_deadline_supported']),
+			'enforceable_deadline_supported'=>($manifest['enforceable_deadline_supported']??null)===true,
 			'manifest_presence_authorizes'=>false,
 		);
 	}

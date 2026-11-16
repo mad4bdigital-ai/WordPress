@@ -365,6 +365,18 @@
         "tours-and-activities"
       ],
       "rationale": "Reviewed tourism-domain module or optional provider adapter, not a global site-type default. A user still needs the enrolled Site Profile and the exact WordPress/Ability operation permissions."
+    },
+    "includes/class-mad4b-scp-tour-highlights-v1.php": {
+      "models": [
+        "tours-and-activities"
+      ],
+      "rationale": "This is the existing first-party Tour Highlights and Elementor/JetEngine Journey presentation only: it reads the enrolled site's native tours-and-activities CPT, company-scoped Destination eligibility and WPML terms. The literal identifies the intentionally bounded tourism component, not a generic plugin-wide business model or authority. No new write permission, tenant URL, host, or execution grant is introduced."
+    },
+    "includes/class-mad4b-scp-tour-highlights-presentation-v1.php": {
+      "models": [
+        "tours-and-activities"
+      ],
+      "rationale": "This is the existing first-party Tour Highlights and Elementor/JetEngine Journey presentation only: it reads the enrolled site's native tours-and-activities CPT, company-scoped Destination eligibility and WPML terms. The literal identifies the intentionally bounded tourism component, not a generic plugin-wide business model or authority. No new write permission, tenant URL, host, or execution grant is introduced."
     }
   }
 }

@@ -53,7 +53,8 @@ final class MAD4B_SCP_Local_Transport_Policy {
         // and X-Forwarded client routing. The listener must be OS loopback.
         foreach(array('HTTP_FORWARDED','HTTP_X_FORWARDED_FOR',
             'HTTP_X_FORWARDED_HOST','HTTP_X_FORWARDED_PROTO',
-            'HTTP_X_REAL_IP','HTTP_X_ORIGINAL_URL') as $key)
+            'HTTP_X_REAL_IP','HTTP_X_ORIGINAL_URL',
+            'HTTP_ORIGINAL_URL') as $key)
             if(isset($server[$key])&&$server[$key]!=='')return false;
         if($post){
             if(($server['HTTP_ORIGIN']??null)!==$origin

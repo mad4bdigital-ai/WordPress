@@ -118,6 +118,28 @@ abstract class MAD4B_SCP_Adapter_Base {
 		return '';
 	}
 
+	/**
+	 * Default native write-mount gate, shared by every reviewed Adapter.
+	 *
+	 * The original Server Write Catalog asks adapters for live eligibility
+	 * BEFORE adding content/admin/write operations to MCP. A new Adapter
+	 * without a custom guard must not inherit an executable write mount
+	 * merely because a WordPress Ability was registered. This is not a
+	 * permission or grant: certification and original authorization still run.
+	 * More restrictive provider-specific overrides take precedence.
+	 */
+	public function mutation_ability_runtime_eligibility( $ability_name ) {
+		$names = $this->ability_names();
+		foreach ( array( 'content', 'admin', 'write' ) as $surface ) {
+			if ( isset( $names[ $surface ] ) && is_array( $names[ $surface ] )
+				&& in_array( (string) $ability_name, $names[ $surface ], true ) ) {
+				return $this->is_available() ? true : $this->unavailable_error();
+			}
+		}
+		return new WP_Error( 'mad4b_adapter_mutation_not_declared',
+			'The requested native mutation is not declared by this adapter.' );
+	}
+
 	private function mutation_permission_callback( $permission, $readonly, $ability_name, $surface ) {
 		if ( $readonly ) return $permission;
 		return function ( $input = null ) use ( $permission, $ability_name, $surface ) {
@@ -130,6 +152,16 @@ abstract class MAD4B_SCP_Adapter_Base {
 				&& MAD4B_SCP_Policy::can_native_content_draft( $input );
 			$granted = call_user_func( $permission, $input );
 			if ( is_wp_error( $granted ) || ( ! $granted && ! $native_draft ) ) return $granted;
+			// The Write catalog is request-local and can cache a previously
+			// ready adapter. A provider that disappears after mounting must not
+			// retain permission via the already-registered WordPress Ability.
+			// Reuse the SAME provider-specific runtime gate as the mount resolver;
+			// never infer write authority from a cached descriptor or annotation.
+			$runtime_eligibility = $this->mutation_ability_runtime_eligibility( $ability_name );
+			if ( true !== $runtime_eligibility ) return is_wp_error( $runtime_eligibility )
+				? $runtime_eligibility
+				: new WP_Error( 'mad4b_adapter_runtime_eligibility_unverified',
+					'Adapter mutation is not runtime eligible.' );
 			// Direct, explicitly write-scoped OAuth content draft requests can
 			// enroll a user-owned execution actor. The existing compact ChatGPT
 			// read-scope path must instead use the signed prepared dispatcher.

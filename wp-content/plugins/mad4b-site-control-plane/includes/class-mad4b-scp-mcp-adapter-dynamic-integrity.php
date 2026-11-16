@@ -119,16 +119,19 @@ final class MAD4B_SCP_MCP_Adapter_Dynamic_Integrity {
                 $out['mismatches'][] = array( 'reason' => 'installed_files_differ_from_verified_official_release' );
                 return $out;
             }
+            // wp_options is a mutable site-local cache, not an independent
+            // WordPress.org release authority. Its digest and member hashes
+            // can be self-asserted by whoever can update the option. A match
+            // proves only cached local consistency, NEVER upstream origin.
             $out['ready'] = true;
-            $out['source_verified'] = true;
-            $out['official_package_verified'] = true;
-            $out['state'] = 'official_release_files_verified_dynamically';
+            $out['state'] = 'cached_installed_layout_consistent_source_unverified';
+            $out['cached_receipt_present'] = true;
             $out['expected_count'] = count( $expected );
             $out['verified_count'] = count( $actual );
-            $out['upstream_sha256'] = $cached['upstream_sha256'];
-            $out['verified_at'] = (int) $cached['verified_at'];
-            $out['advisories'] = array();
-            return $out;
+            $out['advisories'][] = 'cached_wordpress_option_not_upstream_source_authority';
+            // With explicit authorized verification, continue to a fresh
+            // HTTPS official distribution comparison below.
+
         }
         if ( ! $verify_official_release ) return $out;
 

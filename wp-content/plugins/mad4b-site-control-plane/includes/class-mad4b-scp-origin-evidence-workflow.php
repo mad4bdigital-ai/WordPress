@@ -7,15 +7,20 @@ defined('ABSPATH') || exit;
 final class MAD4B_SCP_Origin_Evidence_Workflow {
     const CONTRACT='mad4b.origin-evidence-workflow.v1';
     public static function process_one(array $issue,array $scope) {
-        $req=(array)($issue['content_job_request']??array());
-        $site=(string)($scope['site_uuid']??'');
-        $token=(string)($req['deduplication_key']??'');
+        $req=is_array($issue['content_job_request']??null)
+            ? $issue['content_job_request'] : array();
+        $site=is_string($scope['site_uuid']??null)?$scope['site_uuid']:'';
+        $token=is_string($req['deduplication_key']??null)?$req['deduplication_key']:'';
         $id=absint($req['source_post_id']??0);
         $canonical=absint($req['canonical_post_id']??0);
-        $job_id=(string)($issue['content_job_id']??'');
+        $job_id=is_string($issue['content_job_id']??null)?$issue['content_job_id']:'';
+        $source_sha=is_string($req['source_sha256']??null)?$req['source_sha256']:'';
         if(!class_exists('MAD4B_Native_Origin_Content_Jobs_V1',false) ||
-            !MAD4B_Native_Origin_Content_Jobs_V1::is_admitted() ||
+            true!==MAD4B_Native_Origin_Content_Jobs_V1::is_admitted() ||
             !class_exists('MAD4B_SCP_Research_Groups') ||
+            !preg_match('/^[a-f0-9-]{36}$/D',$site) ||
+            !preg_match('/^[a-f0-9-]{36}$/D',$job_id) ||
+            !preg_match('/^[a-f0-9]{64}$/D',$source_sha) ||
             ($req['site_uuid']??'')!==$site ||
             !preg_match('/^[a-f0-9]{64}$/D',$token) ||
             !$id || !$canonical || !$job_id ||
@@ -29,7 +34,7 @@ final class MAD4B_SCP_Origin_Evidence_Workflow {
         $sha=hash('sha256',wp_json_encode([
             'canonical_id'=>$canonical,'origin_term'=>get_post_meta($id,'tour_origin_location_term',true),
             'destination_terms'=>$terms],JSON_UNESCAPED_SLASHES));
-        if(!hash_equals((string)($req['source_sha256']??''),$sha))
+        if(!hash_equals($source_sha,$sha))
             return new WP_Error('mad4b_origin_evidence_source_changed');
         $job=MAD4B_SCP_Content_Jobs::get_job(['job_id'=>$job_id]);
         if(is_wp_error($job))return $job;

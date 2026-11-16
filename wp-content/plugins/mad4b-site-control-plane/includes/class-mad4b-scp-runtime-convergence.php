@@ -211,10 +211,26 @@ final class MAD4B_SCP_Runtime_Convergence {
 			|| ! empty( $graph['ready'] )
 			|| true !== ( $graph['phase_graph_valid'] ?? false )
 			|| ! class_exists( 'MAD4B_SCP_Policy', false )
-			|| true === MAD4B_SCP_Policy::can_mutate() ) return false;
+			// An unavailable, WP_Error or ambiguous policy response is NOT
+			// verified write denial. Historical read-only release must fail
+			// closed unless the original Policy explicitly returns false.
+			|| false !== MAD4B_SCP_Policy::can_mutate() ) return false;
 
 		$target = is_array( $checkpoint['target_identity'] ?? null )
 			? self::bounded_identity( $checkpoint['target_identity'] ) : array();
+		// Revalidate the checkpoint embedded in the current phase snapshot.
+		// A stale in-memory target and a newer persisted checkpoint must not
+		// independently satisfy the same historical owner-gate exception.
+		$observed = is_array( $graph['checkpoint'] ?? null )
+			? $graph['checkpoint'] : array();
+		$observed_target = is_array( $observed['target_identity'] ?? null )
+			? self::bounded_identity( $observed['target_identity'] ) : array();
+		if ( 'self_update' !== ( $observed['source'] ?? '' )
+			|| 'pending_manual_resume' !== ( $observed['state'] ?? '' )
+			|| ! self::automatic_identity_safe( $observed_target )
+			|| ! self::identity_matches( $target, $observed_target )
+			|| (string) ( $target['version'] ?? '' ) !== (string) $observed_target['version'] )
+			return false;
 		if ( ! self::automatic_identity_safe( $target )
 			|| ! self::automatic_identity_safe( self::bounded_identity( $current ) )
 			|| ! version_compare( (string) $current['version'], (string) $target['version'], '>' )

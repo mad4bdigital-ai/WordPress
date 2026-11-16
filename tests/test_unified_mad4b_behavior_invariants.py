@@ -102,7 +102,10 @@ class UnifiedSourceNonRegression(unittest.TestCase):
         self.assertIn('source.code.release',candidate)
         manifest=candidate['source.code.release']
         stored=json.loads((ROOT/'ops/native-source-publisher-v1/catalog/generated/source.code.release.manifest.json').read_text())
-        self.assertEqual(manifest,stored,'source-only dynamic manifest was not repinned after merge')
+        # Generated V27 is a historical fixture, not a signed latest provider.
+        # Reconcile current source using reviewed Host V8→V9 manifests.
+        from native_source_manifest_history_contract import check_current_source_and_historical_fixture
+        check_current_source_and_historical_fixture(self, manifest)
         self.assertEqual(manifest['source_family'],'mad4b.native-source-release.v2')
         self.assertEqual(manifest['approval_ability'],'mad4b/native-source-release')
         self.assertEqual(manifest['hooks']['operation_association']['entrypoint'],'exclusive_operation')

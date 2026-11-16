@@ -1,0 +1,60 @@
+{
+  "contract": "mad4b.brand-integrity.local-git-manual-live.v1",
+  "verified_at_utc": "2026-11-14T21:34:29Z",
+  "source_local_git_commit": "5b2b024ed9",
+  "wayfa_overlay_local_git_commit": "a56d61e7ae",
+  "deployment_scope": "four PHP files each site, with live Wayfatours Content Readiness reconciled selectively",
+  "signed_original313_release": false,
+  "sites": {
+    "source": {
+      "url": "https://tours.dev.mad4b.com",
+      "scanned": 1552,
+      "files": {
+        "class-mad4b-scp-brand-integrity.php": {
+          "previous_sha256": "738aba222d5f5a491fe8de9f498f606cab18d2e40d77fc6303c0ed2baaf0c711",
+          "installed_sha256": "969b1ef0033e01bf2bb0919f5b2d29aa84d10732d87dd4ef906a8523c1f3a933"
+        },
+        "class-mad4b-scp-brand-experience-quality.php": {
+          "previous_sha256": "292264ca9cb773e6f74e533b09c59de9bbee182267d1d4bcf9f772227bde630a",
+          "installed_sha256": "0c72426b00ff470e407cd3dca909d6685b78c1de7bd42016fd649fb4b57408ef"
+        },
+        "class-mad4b-scp-content-readiness-alerts.php": {
+          "previous_sha256": "44a34faaaa773d30c9f618f632fe025947f99a93b9c2c1c7947745528863a058",
+          "installed_sha256": "48d22fac76c26a36a462d7a84aeb0e10cf00f39901f6eef5fe87fea16be9bb4b"
+        },
+        "class-mad4b-scp-content-experience-runtime.php": {
+          "previous_sha256": "de6041356324f88b32fa9fa8b4e4e8472818606b3129d3c188b7a6137fc6dd2a",
+          "installed_sha256": "96a9a12f3dbcc6bcf780b3a9cf1f5a4a5f0145214ed8ebba534e758cc210125b"
+        }
+      }
+    },
+    "wayfa": {
+      "url": "https://wayfatours.com",
+      "scanned": 515,
+      "files": {
+        "class-mad4b-scp-brand-integrity.php": {
+          "previous_sha256": "738aba222d5f5a491fe8de9f498f606cab18d2e40d77fc6303c0ed2baaf0c711",
+          "installed_sha256": "969b1ef0033e01bf2bb0919f5b2d29aa84d10732d87dd4ef906a8523c1f3a933"
+        },
+        "class-mad4b-scp-brand-experience-quality.php": {
+          "previous_sha256": "68e141d35750689ddcb971ec2d9f92a67854a00f0adfef61f896699e5e6c4ed4",
+          "installed_sha256": "cdd6e6b46bd6add0495c109c1c3302d7bacf4cdc92963a63c6ee8b04ab5bd272"
+        },
+        "class-mad4b-scp-content-readiness-alerts.php": {
+          "previous_sha256": "bb4aae0bfb96a244c4397d2a073634b4527f311d686d2d8887be8366feabbf37",
+          "installed_sha256": "c7008af5500221e3e39dc942a85f806f90fdded2d1263f2d2210b7c2135ff5ce"
+        },
+        "class-mad4b-scp-content-experience-runtime.php": {
+          "previous_sha256": "de6041356324f88b32fa9fa8b4e4e8472818606b3129d3c188b7a6137fc6dd2a",
+          "installed_sha256": "96a9a12f3dbcc6bcf780b3a9cf1f5a4a5f0145214ed8ebba534e758cc210125b"
+        }
+      }
+    }
+  },
+  "rollback_host_path": "/opt/mad4b-company-provisioning/backups/brand-integrity-live-20261114",
+  "tests_per_site": {
+    "detector_passed": 35,
+    "lifecycle_passed": 22,
+    "ledger_scope_passed": 6
+  }
+}

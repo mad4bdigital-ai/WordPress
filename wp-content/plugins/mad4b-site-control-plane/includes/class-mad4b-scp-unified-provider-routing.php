@@ -40,7 +40,7 @@ final class MAD4B_SCP_Unified_Provider_Routing {
     'dispatch_allowed'=>false,'authorization_checked'=>false,'mutation_performed'=>false,
     'fallback_after_dispatch'=>false];
   if(!in_array($mode,['cloud','self_hosted'],true) ||
-     !str_starts_with($public,'https://') || !wp_http_validate_url($public))
+     0!==strpos($public,'https://') || !wp_http_validate_url($public))
     return $blocked;
   if($mode==='cloud' && $public!=='https://api.firecrawl.dev')return $blocked;
   $plan=array_merge($blocked,[
@@ -81,11 +81,11 @@ final class MAD4B_SCP_Unified_Provider_Routing {
     return false;
   $headers=(array)($args['headers']??[]);
   $basic=(string)($headers['Authorization']??'');
-  return str_starts_with($basic,'Basic ') &&
+  return 0===strpos($basic,'Basic ') &&
     $a['route']==='private_service_gateway' &&
     (string)getenv('MAD4B_FIRECRAWL_PRIVATE_TRANSPORT')==='enabled' &&
     (string)$url===($a['url']??'') &&
-    str_starts_with((string)$url,rtrim((string)getenv('MAD4B_FIRECRAWL_PRIVATE_ENDPOINT'),'/').'/v2/');
+    0===strpos((string)$url,rtrim((string)getenv('MAD4B_FIRECRAWL_PRIVATE_ENDPOINT'),'/').'/v2/');
  }
  public static function post_scrape($mode,$configured_endpoint,array $args){
   $plan=self::firecrawl_plan($mode,$configured_endpoint);
@@ -144,7 +144,7 @@ final class MAD4B_SCP_Unified_Provider_Routing {
    if(!is_array($next)||
       (!$matches($next,$approved) && !$matches($next,$public))||
       ($next['path']??'')!==$path||
-      isset($next['fragment']) ||
+      isset($next['fragment']) || isset($next['user']) || isset($next['pass']) ||
       strlen((string)($next['query']??''))>1000)
     return new WP_Error('mad4b_firecrawl_crawl_cursor_origin_invalid');
    $query=(string)($next['query']??'');

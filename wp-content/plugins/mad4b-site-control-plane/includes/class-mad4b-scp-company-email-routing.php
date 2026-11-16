@@ -45,7 +45,10 @@ final class MAD4B_SCP_Company_Email_Routing {
         $uuid = (string)($profile['site_uuid'] ?? '');
         $environment = wp_get_environment_type();
         $email = strtolower(sanitize_email((string)($config['transactional_from_email'] ?? '')));
-        $valid = $uuid !== '' && !empty(MAD4B_SCP_Site_Profile::site_urls_match_enrollment())
+        // Company hostname proof is positive only on the exact boolean
+        // true contract. WP_Error/unknown must never be usable for mail.
+        $site_match=MAD4B_SCP_Site_Profile::site_urls_match_enrollment();
+        $valid = $uuid !== '' && true === $site_match
             && $email !== '' && is_email($email);
         $source = ['site_uuid' => $uuid, 'environment' => $environment,
             'from_email' => $email, 'reply_to' => (string)($config['traveler_reply_to'] ?? ''),
@@ -69,7 +72,7 @@ final class MAD4B_SCP_Company_Email_Routing {
             'valid' => (bool)$valid,
             'status' => $verified ? 'VERIFIED' : ($valid ? 'PENDING_VERIFICATION' : 'INCOMPLETE'),
             'verified' => (bool)$verified,
-            'smtp_verified' => MAD4B_SCP_Company_Communication::smtpConfigured()];
+            'smtp_verified' => true === MAD4B_SCP_Company_Communication::smtpConfigured()];
     }
     private static function classify(string $mail, string $officialDomain): string {
         if (str_contains($mail, '{') || str_contains($mail, '}')) return 'unresolved_template_reference';
@@ -169,9 +172,9 @@ final class MAD4B_SCP_Company_Email_Routing {
             ? MAD4B_SCP_Company_Communication::recipients($event) : [];
         if (!$recipients && !$reasons) $reasons[] = 'no_eligible_recipients';
         $configured = MAD4B_SCP_Company_Communication::config();
-        $wouldSend = !$reasons && $id['smtp_verified']
-            && $configured['outbound_email_policy'] === 'enabled'
-            && MAD4B_SCP_Company_Communication::canSend();
+        $wouldSend = !$reasons && true === $id['smtp_verified']
+            && ($configured['outbound_email_policy'] ?? null) === 'enabled'
+            && true === MAD4B_SCP_Company_Communication::canSend();
         return ['contract' => self::CONTRACT, 'consumer' => $consumer,
             'event' => $event, 'site_uuid' => $id['site_uuid'],
             'identity_sha256' => $id['identity_sha256'],
@@ -194,7 +197,7 @@ final class MAD4B_SCP_Company_Email_Routing {
         $config = MAD4B_SCP_Company_Communication::config();
         if ($config['fluent_forms_routing_policy'] !== 'enabled') return $address;
         if (!is_object($form) || !is_array($notification)) return '';
-        if (!MAD4B_SCP_Company_Communication::canSend()) return '';
+        if (true !== MAD4B_SCP_Company_Communication::canSend()) return '';
         $type = (string)($notification['sendTo']['type'] ?? '');
         if ($type !== 'email') {
             return $config['notify_traveler'] === 'enabled' ? $address : '';

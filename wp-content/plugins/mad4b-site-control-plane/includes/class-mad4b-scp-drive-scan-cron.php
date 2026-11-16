@@ -57,19 +57,21 @@ final class MAD4B_SCP_Drive_Scan_Cron_V1 {
         }
 
         wp_set_current_user($actor_id);
-        if (!current_user_can('manage_options')) {
+        if (true!==current_user_can('manage_options')) {
             self::report('blocked', ['error_code' => 'scheduler_operator_denied']);
             return;
         }
         $site = MAD4B_SCP_Site_Profile::status();
         $source = MAD4B_SCP_Context_Authority::source($source_id);
-        if (!is_array($site) || empty($site['configured'])
+        if (!is_array($site) || !is_array($source)
+            || ($site['configured']??null)!==true
             || !in_array($site['environment'] ?? '', ['staging', 'production'], true)
             || !hash_equals($expected_site, (string)($site['site_uuid'] ?? ''))
             || !hash_equals($expected_site, (string)($source['site_uuid'] ?? ''))
             || !hash_equals((string)($site['configured_environment'] ?? ''), (string)$site['environment'])
-            || empty($site['origin_match']) || empty($site['authority_ready'])
-            || empty($site['environment_match']) || empty($site['deployment_binding_match'])
+            || ($site['origin_match']??null)!==true || ($site['authority_ready']??null)!==true
+            || ($site['environment_match']??null)!==true
+            || ($site['deployment_binding_match']??null)!==true
             || ($source['provider'] ?? '') !== 'google_drive'
             || ($source['mode'] ?? '') !== 'governed') {
             self::report('blocked', ['error_code' => 'scheduler_site_or_source_drift']);
@@ -78,7 +80,7 @@ final class MAD4B_SCP_Drive_Scan_Cron_V1 {
 
         $policy = get_option(self::POLICY, []);
         if (!is_array($policy)
-            || empty($policy['enabled'])
+            || ($policy['enabled']??null)!==true
             || !hash_equals((string)($policy['site_uuid'] ?? ''), $expected_site)
             || !hash_equals((string)($policy['source_id'] ?? ''), $source_id)) {
             self::report('disabled', ['error_code' => 'scheduler_policy_not_enabled']);
@@ -89,7 +91,7 @@ final class MAD4B_SCP_Drive_Scan_Cron_V1 {
         $progress = get_option(MAD4B_SCP_Drive_Scan_Continuation::progress_option_name($source_id), []);
         if (is_array($progress) && ($progress['contract'] ?? '') === 'mad4b.scan-ui-progress.v1'
             && hash_equals($source_id, (string)($progress['source_id'] ?? ''))
-            && !empty($progress['inventory_complete'])) {
+            && ($progress['inventory_complete']??null)===true) {
             self::report('ready_for_review', [
                 'next_action' => 'review_verified_inventory_then_inherited_review_route',
                 'error_code' => '',
@@ -119,8 +121,10 @@ final class MAD4B_SCP_Drive_Scan_Cron_V1 {
             return;
         }
         $drive = MAD4B_SCP_Google_Drive_Context::connection_status();
-        if (empty($drive['connected']) || empty($drive['read_available'])
-            || !empty($drive['revocation_pending']) || !empty($drive['reconnect_required'])) {
+        if (!is_array($drive) || ($drive['connected']??null)!==true
+            || ($drive['read_available']??null)!==true
+            || ($drive['revocation_pending']??null)!==false
+            || ($drive['reconnect_required']??null)!==false) {
             self::report('needs_attention', ['error_code' => 'google_read_grant_unavailable']);
             return;
         }

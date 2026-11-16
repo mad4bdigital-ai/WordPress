@@ -63,10 +63,22 @@ $check( ! empty( $zero_touch['read_only'] ) && empty( $zero_touch['authority_cre
 $check( 'mad4b.runtime-functional-gap-evidence.v2' === (string) ( $zero_touch['runtime']['contract'] ?? '' ), 'Zero-touch runtime evidence contract drifted.' );
 $check( 'mad4b.functional-gap-promotion-evaluation.v2' === (string) ( $zero_touch['evaluation']['contract'] ?? '' ), 'Zero-touch promotion evaluation contract drifted.' );
 $check( empty( $zero_touch['evaluation']['promotion_authorized'] ), 'Zero-touch evaluator must never authorize promotion by itself.' );
-if ( ! empty( $zero_touch['repository_evidence']['present'] ) ) {
-	$check( ! empty( $zero_touch['repository_evidence']['valid'] ), 'Present build-embedded repository evidence must validate against build provenance.' );
+$has_pinned_build = isset( $zero_touch['build_source_commit_sha'] )
+    && preg_match( '/^[a-f0-9]{40}$/', (string) $zero_touch['build_source_commit_sha'] );
+if ( $has_pinned_build && ! empty( $zero_touch['repository_evidence']['present'] ) ) {
+    $check( ! empty( $zero_touch['repository_evidence']['valid'] ),
+        'Packaged repository evidence must match the exact embedded build provenance.' );
 } else {
-	$check( empty( $zero_touch['evaluation']['ready'] ), 'Source/runtime without build-embedded repository evidence must fail closed.' );
+    // The source checkout can contain generated repository evidence without
+    // a signed build provenance manifest. Its mere presence is NOT trust.
+    $check( empty( $zero_touch['repository_evidence']['valid'] )
+        && empty( $zero_touch['evaluation']['ready'] )
+        && empty( $zero_touch['evaluation']['promotion_authorized'] ),
+        'Unbound source evidence must remain non-authorizing and not ready.' );
+    if ( ! empty( $zero_touch['repository_evidence']['present'] ) ) {
+        $check( ! empty( $zero_touch['repository_evidence']['blockers'] ),
+            'Unbound repository evidence requires explicit integrity blockers.' );
+    }
 }
 $initial_zero_touch_identity = (string) ( $zero_touch['snapshot_identity_sha256'] ?? '' );
 $check( 64 === strlen( $initial_zero_touch_identity ), 'Zero-touch snapshot identity was not exposed.' );

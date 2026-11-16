@@ -1,0 +1,23 @@
+{
+  "contract": "mad4b.wayfa-existing-gallery-url-portability-manual-release.v1",
+  "site": "https://wayfatours.com",
+  "execution_mode": "manual_exact_preimage_cas",
+  "execution_date_utc": "2026-11-16",
+  "records_updated": 26,
+  "properties_updated": 19,
+  "transportations_updated": 7,
+  "foreign_urls_converted_to_existing_local_files": 149,
+  "backup_plan_sha256": "8ba0420e491d34ed4e16b6f26e121e7a27a84b9faabb401a89d27af62d74c854",
+  "backup_path": "/opt/mad4b-company-provisioning/reports/wayfa-alert-closure-20261116/gallery-plan.json",
+  "source_identity_preserved": true,
+  "photo_selection_modified": false,
+  "media_license_created": false,
+  "right_registry_changed": false,
+  "unresolved_foreign_destinations_preserved": [
+    2311,
+    2627
+  ],
+  "same-gallery-across-different-posts_remains_editorial_review": true,
+  "original313_signed_release": false,
+  "original305_hold_changed": false
+}

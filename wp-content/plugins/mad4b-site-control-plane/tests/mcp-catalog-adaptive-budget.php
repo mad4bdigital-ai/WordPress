@@ -53,6 +53,19 @@ check( ! empty( $result['ready'] ) && $result['selected'] === array_merge( $requ
     'dynamic registry retains all requested abilities regardless of adaptive display estimate' );
 check( empty( $result['excluded_optional'] ), 'telemetry does not silently trim optional abilities' );
 check( $budget['authorizing'] === false, 'budget cannot grant authority' );
+// Regression against the old 64-tool hard cap. This is an inventory DISPLAY
+// estimate only: each registered Ability still needs its own real schema,
+// permission callback and execution policy before it can be used.
+$growing = MAD4B_SCP_MCP_Catalog_Budget::limits( 110 );
+check( $growing['max_tools'] === 110 && $growing['configured_max_tools'] === 110,
+    'original dynamic catalog can grow beyond legacy tool-count estimates' );
+check( $growing['max_bytes'] <= MAD4B_SCP_MCP_Catalog_Budget::HARD_BYTE_LIMIT
+    && $growing['configured_max_bytes'] <= MAD4B_SCP_MCP_Catalog_Budget::HARD_BYTE_LIMIT
+    && $growing['authorizing'] === false,
+    'growing inventory must not turn off per-tool wire budget or create authority' );
+$nonpositive = MAD4B_SCP_MCP_Catalog_Budget::limits( -10 );
+check( $nonpositive['max_tools'] === $budget['max_tools'],
+    'negative requested count cannot expand the source display budget' );
 $repeat = MAD4B_SCP_MCP_Catalog_Budget::limits();
 check( $repeat['max_tools'] === $tools && $GLOBALS['test_reads'] === 1, 'request-local transient cache must avoid extra DB reads' );
 if ( 'slow' === $scenario ) {

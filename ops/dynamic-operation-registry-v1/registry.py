@@ -159,6 +159,19 @@ class Registry:
             raise RegistryDenied("INDEPENDENT_SIGNING_KEY_NOT_ENROLLED") from exc
         require(len(self.independent_verifier_public_key) == 32,
                 "INDEPENDENT_SIGNING_KEY_INVALID")
+        # Host312 is an independently enrolled first-party signer. Its
+        # absence leaves Host source release on HOLD, not on a fallback 313
+        # trust path. No job payload may supply or replace this root pin.
+        self.host_resource_312_public_key = None
+        if "host_resource_312_public_key_b64" in index:
+            try:
+                key = base64.b64decode(
+                    index["host_resource_312_public_key_b64"],validate=True)
+            except (TypeError,ValueError) as exc:
+                raise RegistryDenied("HOST312_ROOT_PIN_INVALID") from exc
+            require(len(key)==32 and key!=self.independent_verifier_public_key,
+                    "HOST312_SIGNER_MUST_BE_INDEPENDENT")
+            self.host_resource_312_public_key = key
         # Optional first-party Original306 signed plan-association trust
         # anchor. This is not a grant, signer or operation selector. Only a
         # root-owned enrolled index can supply it. No independent authority
@@ -327,8 +340,25 @@ class Registry:
                     for name, typ in schema["fields"].items()),
                 "EVIDENCE_SCHEMA_INVALID")
         command = m["command"]
+        fmt=command.get("format") if isinstance(command,dict) else None
+        # Host source is a different original resource family, NOT a
+        # WordPress Job with an argv alias or a substitute signer.
+        if fmt == "host.source.ref.v1":
+            require(self.host_resource_312_public_key is not None,
+                    "HOST312_ROOT_SIGNER_NOT_ENROLLED")
+            require(m.get("source_family")=="mad4b.native-host-source-release.v1"
+                    and m.get("resource_kind")=="host_root_file"
+                    and m.get("target_scope")=="host"
+                    and m.get("job_type")=="signed_vps_host_source"
+                    and m.get("operation_id")==command.get("bound_operation_id"),
+                    "HOST_PROVIDER_RESOURCE_CONTRACT_INVALID")
+        else:
+            require(fmt=="wpcli.argv.json.v1" and
+                    m.get("resource_kind","wordpress")=="wordpress"
+                    and m.get("target_scope","wordpress")=="wordpress",
+                    "PROVIDER_COMMAND_RESOURCE_MISMATCH")
         require(isinstance(command, dict) and
-                command.get("format") == "wpcli.argv.json.v1" and
+                fmt in ("wpcli.argv.json.v1","host.source.ref.v1") and
                 command.get("mode") == "plan_sha256" and
                 command.get("bound_operation_id") == m["operation_id"] and
                 isinstance(command.get("prefix"), list) and

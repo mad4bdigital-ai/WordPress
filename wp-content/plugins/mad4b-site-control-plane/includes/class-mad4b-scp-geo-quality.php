@@ -38,7 +38,14 @@ final class MAD4B_SCP_Geo_Quality {
         $ids=get_posts(['post_type'=>$type,'post_status'=>'publish',
             'posts_per_page'=>3001,'fields'=>'ids','no_found_rows'=>true,
             'orderby'=>'ID','order'=>'ASC','suppress_filters'=>true]);
-        return count($ids)>3000?new WP_Error('geo_quality_post_cap'):array_map('intval',$ids);
+        if(is_wp_error($ids))return $ids;
+        if(!is_array($ids))return new WP_Error('geo_quality_post_inventory_unavailable');
+        if(count($ids)>3000)return new WP_Error('geo_quality_post_cap');
+        foreach($ids as $id) {
+            if(!is_scalar($id) || !ctype_digit((string)$id) || (int)$id<1)
+                return new WP_Error('geo_quality_post_inventory_invalid');
+        }
+        return array_map('intval',$ids);
     }
     private static function coordinates_valid($raw) {
         if(is_array($raw)){
@@ -77,7 +84,7 @@ final class MAD4B_SCP_Geo_Quality {
         $used=[];
         if(!post_type_exists('tour-rates'))return $used;
         $rates=self::ids('tour-rates');
-        if(is_wp_error($rates))return $used;
+        if(is_wp_error($rates))return $rates;
         foreach($rates as $rate_id){
             if(self::canonical($rate_id,'tour-rates')!==$rate_id)continue;
             $raw=get_post_meta($rate_id,'related_properties_id',true);
@@ -249,6 +256,9 @@ final class MAD4B_SCP_Geo_Quality {
                         $linked=get_posts(['post_type'=>'transport-rates','post_status'=>'publish',
                             'fields'=>'ids','posts_per_page'=>30,'suppress_filters'=>true,
                             'meta_key'=>'source_post_id','meta_value'=>$id]);
+                        if(is_wp_error($linked)||!is_array($linked))
+                            return ['contract'=>self::CONTRACT,'complete'=>false,
+                                'issues'=>[],'error'=>'transport_rate_readback_unavailable'];
                         foreach($linked as $rate){
                             $end=(string)get_post_meta($rate,'valid_to',true);
                             if($end && preg_match('/^\d{4}-\d{2}-\d{2}$/D',$end)
@@ -267,6 +277,9 @@ final class MAD4B_SCP_Geo_Quality {
         if($include('properties')){
             $ids=self::ids('properties');if(is_wp_error($ids))return ['complete'=>false,'issues'=>[]];
             $linked=self::linked_property_rates();
+            if(is_wp_error($linked))return ['contract'=>self::CONTRACT,
+                'complete'=>false,'issues'=>[],
+                'error'=>'property_tour_rate_readback_unavailable'];
             foreach($ids as $id){
                 if(self::canonical($id,'properties')!==$id)continue;
                 $out['evaluated']['properties']=($out['evaluated']['properties']??0)+1;

@@ -195,8 +195,8 @@ final class MAD4B_SCP_MCP_Protocol_Profile {
      * Staging_Write_Authority and the active identity/ability checks.
      */
     public static function adapter_transport_compatibility( $runtime_version, $certified_version ) {
-        $runtime_version = trim( (string) $runtime_version );
-        $certified_version = trim( (string) $certified_version );
+        $runtime_version = is_string( $runtime_version ) ? trim( $runtime_version ) : '';
+        $certified_version = is_string( $certified_version ) ? trim( $certified_version ) : '';
         $same = '' !== $runtime_version && '' !== $certified_version
             && hash_equals( $certified_version, $runtime_version );
         $known = class_exists( 'MAD4B_SCP_Provider_Contracts' );
@@ -216,8 +216,9 @@ final class MAD4B_SCP_MCP_Protocol_Profile {
         // Only the ACTUALLY INSTALLED Adapter may take this dynamic branch:
         // local core layout + plugin identity + runtime-reported protocol
         // support must all validate. This is neither a certificate nor a grant.
-        $installed = $known
-            ? (string) MAD4B_SCP_Provider_Contracts::installed_version( 'mcp_adapter' ) : '';
+        $installed_source = $known
+            ? MAD4B_SCP_Provider_Contracts::installed_version( 'mcp_adapter' ) : '';
+        $installed = is_string( $installed_source ) ? trim( $installed_source ) : '';
         if ( ! $same && ! $transport && $runtime_version !== ''
             && hash_equals( $installed, $runtime_version )
             && class_exists( 'MAD4B_SCP_MCP_Adapter_Dynamic_Integrity' ) ) {
@@ -228,9 +229,9 @@ final class MAD4B_SCP_MCP_Protocol_Profile {
                 $plugin_file, $runtime_version, false
             );
             $dynamic_ready = is_array( $dynamic_layout )
-                && ! empty( $dynamic_layout['ready'] )
-                && ( ! empty( $dynamic_layout['layout_checked'] )
-                    || ! empty( $dynamic_layout['official_package_verified'] ) );
+                && ( $dynamic_layout['ready'] ?? null ) === true
+                && ( ( $dynamic_layout['layout_checked'] ?? null ) === true
+                    || ( $dynamic_layout['official_package_verified'] ?? null ) === true );
         }
         $ready = $same || $transport || $dynamic_ready;
         return array(
@@ -239,7 +240,7 @@ final class MAD4B_SCP_MCP_Protocol_Profile {
             'registered_transport_contract_match' => $transport,
             'dynamic_installed_layout_verified' => $dynamic_ready,
             'dynamic_official_package_verified' => $dynamic_ready
-                && ! empty( $dynamic_layout['official_package_verified'] ),
+                && ( $dynamic_layout['official_package_verified'] ?? null ) === true,
             'classification' => $same ? 'exact_certified_adapter'
                 : ( $transport ? 'known_transport_compatible_version'
                     : ( $dynamic_ready ? 'future_installed_version_layout_compatible'
@@ -265,22 +266,24 @@ final class MAD4B_SCP_MCP_Protocol_Profile {
         $mu = isset( $GLOBALS['mad4b_scp_mcp_mu_bootstrap'] )
             && is_array( $GLOBALS['mad4b_scp_mcp_mu_bootstrap'] )
                 ? $GLOBALS['mad4b_scp_mcp_mu_bootstrap'] : array();
-        $scoped = ! empty( $mu['request_requires_mcp_runtime'] )
-            && ! empty( $mu['eligible'] )
-            && empty( $mu['request_scope_bypassed'] );
+        // MU Bootstrap is a separate trust boundary: PHP truthiness of a
+        // WP_Error, string or integer is never original runtime attestation.
+        $scoped = ( $mu['request_requires_mcp_runtime'] ?? null ) === true
+            && ( $mu['eligible'] ?? null ) === true
+            && ( $mu['request_scope_bypassed'] ?? null ) === false;
         $canonical = $scoped
-            && ! empty( $mu['canonical_symbols_pinned'] )
-            && ! empty( $mu['critical_class_set_pinned'] )
-            && ! empty( $mu['runtime_from_official_plugin'] )
-            && empty( $mu['runtime_preclaimed'] )
-            && empty( $mu['transaction_pending'] );
+            && ( $mu['canonical_symbols_pinned'] ?? null ) === true
+            && ( $mu['critical_class_set_pinned'] ?? null ) === true
+            && ( $mu['runtime_from_official_plugin'] ?? null ) === true
+            && ( $mu['runtime_preclaimed'] ?? null ) === false
+            && ( $mu['transaction_pending'] ?? null ) === false;
         return array(
             'contract' => 'mad4b.mcp-canonical-request-scope.v1',
             'canonical_mcp_request' => $scoped,
             'canonical_bootstrap_verified' => $canonical,
             'source' => $scoped ? 'early_mu_bootstrap' : 'non_mcp_request',
-            'bootstrap_state' => isset( $mu['state'] )
-                ? sanitize_key( (string) $mu['state'] ) : 'not_observed',
+            'bootstrap_state' => is_string( $mu['state'] ?? null )
+                ? sanitize_key( $mu['state'] ) : 'not_observed',
             'scope_bypassed' => ! $scoped,
             'authorizing' => false,
             'mutation_performed' => false,

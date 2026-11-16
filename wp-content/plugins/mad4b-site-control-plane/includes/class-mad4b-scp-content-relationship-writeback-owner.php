@@ -20,8 +20,8 @@ final class MAD4B_SCP_Relationship_Owner_Write_Adapter implements MAD4B_Central_
   foreach(['site_uuid','job_id','original_ability','native_source_sha256',
      'binding_sha256','provider_id'] as $key){
    if(!isset($trusted[$key],$proof[$key])||
-     !is_string($proof[$key])||
-     !hash_equals((string)$trusted[$key],(string)$proof[$key]))return false;
+     !is_string($trusted[$key])||!is_string($proof[$key])||
+     !hash_equals($trusted[$key],$proof[$key]))return false;
   }
   foreach(['source_post_id','target_post_id'] as $key)
    if(!isset($trusted[$key],$proof[$key]) ||

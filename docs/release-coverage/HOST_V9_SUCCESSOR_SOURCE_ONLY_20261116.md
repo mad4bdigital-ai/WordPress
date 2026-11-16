@@ -1,0 +1,8 @@
+# Host Source Provider V9 — review-only successor candidate
+
+- Active, root-pinned Host Provider V8 stays unchanged and remains the only enrolled source-of-authority record.
+- Exact source parity was restored for 26/27 V8 components. The final difference is intentional newer source in `company-code-release-v1/company_code_release.py` (support for root-level numbered MAD4B MU loaders and additional dynamic plan diagnostics).
+- `manifest.v9.CANDIDATE.json` is a **non-enrolled review proposal**. It changes the version and that single exact SHA-256 dependency only, retaining the other 26 unique pins, provider operation, resource kind, separate Host312 identity and V8 evidence format. Tests confirm every recorded candidate component against real current source bytes.
+- This candidate MUST NOT be used as an authority until an independently admitted and signed successor provider release is issued by Original305/306/312/313 governance. Do not overwrite the V8 manifest, the original Registry index, the Master/Broker signer key pins, or the unresolved Original305 HOLD record.
+- Original305 currently has `AMBIGUOUS_SIGNED_WRITE_HOLD` caused by `ISSUER_SIGNED_RESULT_UNCONFIRMED`. Its timer is intentionally inactive; approval/nonce adjudication remains independent of this source repair.
+- Production Wayfatours media publish policy is manually applied only for the two MU Media Rights/Unified Media handlers. The Control Plane guard and the JetEngine CCT post-commit cache fix remain pending a signed or otherwise authorized production release, with exact CAS of the newer company-owned files.

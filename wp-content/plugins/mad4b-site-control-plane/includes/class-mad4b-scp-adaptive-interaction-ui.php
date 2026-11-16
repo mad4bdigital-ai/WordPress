@@ -14,15 +14,18 @@ final class MAD4B_SCP_Adaptive_Interaction_UI {
         return add_query_arg(array('action'=>self::ACTION,'checkpoint_ref'=>$ref),admin_url('admin-post.php'));
     }
     private static function valid_browser(){
-        return function_exists('is_user_logged_in') && is_user_logged_in()
-            &&function_exists('wp_get_session_token')&&strlen((string)wp_get_session_token())>=20
+        return function_exists('is_user_logged_in') && true===is_user_logged_in()
+            &&function_exists('wp_get_session_token')
+            &&is_string($session=wp_get_session_token()) && strlen($session)>=20
             &&empty($_SERVER['HTTP_AUTHORIZATION'])&&empty($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])
-            &&MAD4B_SCP_Adaptive_Interaction_Broker::permitted();
+            &&true===MAD4B_SCP_Adaptive_Interaction_Broker::permitted();
     }
     private static function allowed_channel(){
-        if(function_exists('is_ssl')&&is_ssl()&&wp_parse_url(home_url(),PHP_URL_SCHEME)==='https')return true;
+        if(function_exists('is_ssl')&&true===is_ssl()
+            &&wp_parse_url(home_url(),PHP_URL_SCHEME)==='https')return true;
         return class_exists('MAD4B_SCP_Local_Transport_Policy',false)
-            &&MAD4B_SCP_Local_Transport_Policy::request_allowed(rtrim(home_url(),'/'),$_SERVER,($_SERVER['REQUEST_METHOD']??'')==='POST');
+            &&true===MAD4B_SCP_Local_Transport_Policy::request_allowed(
+                rtrim(home_url(),'/'),$_SERVER,($_SERVER['REQUEST_METHOD']??'')==='POST');
     }
     private static function headers(){
         nocache_headers();
@@ -62,7 +65,14 @@ final class MAD4B_SCP_Adaptive_Interaction_UI {
     }
     private static function typed_values($form,$raw){
         if(!is_array($form)||!is_array($form['fields']??null)||!is_array($raw)||count($raw)>24)return null;
-        $map=[];foreach($form['fields'] as $field)if(is_array($field)&&isset($field['key']))$map[$field['key']]=$field;
+        $map=[];
+        if(count($form['fields'])>24)return null;
+        foreach($form['fields'] as $field){
+            if(!is_array($field)||!is_string($field['key']??null)||
+                !preg_match('/^[a-zA-Z_][a-zA-Z0-9_-]{0,63}$/D',$field['key'])||
+                isset($map[$field['key']]))return null;
+            $map[$field['key']]=$field;
+        }
         $typed=[];foreach($raw as $key=>$value){
             if(!is_string($key)||!isset($map[$key])||!is_string($value)||strlen($value)>8192)return null;
             $type=$map[$key]['type']??'';

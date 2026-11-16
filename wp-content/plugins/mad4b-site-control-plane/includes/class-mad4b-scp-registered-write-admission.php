@@ -22,6 +22,17 @@ final class MAD4B_SCP_Registered_Write_Admission {
         }
         $registered = MAD4B_SCP_Operation_Registry::registered_write_policy( $ability_name );
         if ( is_wp_error( $registered ) ) return $registered;
+        // A successful registry response is not sufficient if its immutable
+        // operation identity cannot be bound to a source digest.
+        if ( ! is_array( $registered )
+            || empty( $registered['operation_id'] )
+            || ! is_string( $registered['operation_id'] )
+            || ! preg_match( '/^[a-z][a-z0-9.\-]{1,100}$/D', $registered['operation_id'] )
+            || ! is_string( $registered['operation_sha256'] ?? null )
+            || ! preg_match( '/^[a-f0-9]{64}$/D', $registered['operation_sha256'] ) ) {
+            return new WP_Error( 'mad4b_registered_write_source_unverified',
+                'Exact registered operation source fingerprint is required.' );
+        }
         $status = MAD4B_SCP_Site_Profile::status();
         $uuid = (string) ( is_array( $status ) ? ( $status['site_uuid'] ?? '' ) : '' );
         $revision = MAD4B_SCP_Site_Profile::revision();
@@ -33,7 +44,7 @@ final class MAD4B_SCP_Registered_Write_Admission {
             || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment()
             || ! MAD4B_SCP_Site_Profile::managed_runtime_enabled()
             || ! MAD4B_SCP_Site_Profile::write_enabled()
-            || ! preg_match( '/^[a-f0-9-]{36}$/D', strtolower( $uuid ) )
+            || ! preg_match( '/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/D', strtolower( $uuid ) )
             || $revision < 1 || ! preg_match( '/^[a-f0-9]{64}$/D', $profile_digest ) ) {
             return new WP_Error( 'mad4b_registered_write_site_unverified',
                 'Exact enrolled company/site and managed Write profile required.' );
@@ -56,7 +67,14 @@ final class MAD4B_SCP_Registered_Write_Admission {
         }
         $mode = MAD4B_SCP_Policy_Resolution::current_operating_mode();
         if ( is_wp_error( $mode ) ) return $mode;
-        $operation = (string) $registered['operation_id'];
+        $governance_digest = MAD4B_SCP_Policy_Resolution::config_digest();
+        if ( ! is_string( $mode ) || '' === trim( $mode )
+            || ! is_string( $governance_digest )
+            || ! preg_match( '/^[a-f0-9]{64}$/D', $governance_digest ) ) {
+            return new WP_Error( 'mad4b_registered_write_governance_source_unverified',
+                'Exact current governance policy and operating mode are required.' );
+        }
+        $operation = $registered['operation_id'];
         $target = hash( 'sha256', $operation . '|' . $uuid . '|' . $profile_digest );
         // Non-authorizing eligibility only. The canonical write path owns
         // approval-ticket claims, plan CAS, signed provenance and receipt.
@@ -69,8 +87,8 @@ final class MAD4B_SCP_Registered_Write_Admission {
             'environment' => $environment, 'capability' => (string) $ability_name,
             'target_fingerprint' => $target, 'operating_mode' => $mode,
             'policy_versions' => array(
-                'registered_operation' => (string) $registered['operation_sha256'],
-                'governance' => (string) MAD4B_SCP_Policy_Resolution::config_digest(),
+                'registered_operation' => $registered['operation_sha256'],
+                'governance' => $governance_digest,
                 'site_profile_revision' => (string) $revision,
                 'site_profile_digest' => $profile_digest,
             ),
@@ -78,9 +96,13 @@ final class MAD4B_SCP_Registered_Write_Admission {
         );
         $result = MAD4B_SCP_Policy_Resolution::resolve( $facts );
         if ( is_wp_error( $result ) ) return $result;
-        if ( 'ALLOW' !== ( $result['decision'] ?? '' ) ) return new WP_Error(
-            'mad4b_registered_write_governance_denied',
-            'Registered governance policy did not admit this operation.' );
+        if ( ! is_array( $result ) || 'ALLOW' !== ( $result['decision'] ?? '' ) )
+            return new WP_Error( 'mad4b_registered_write_governance_denied',
+                'Registered governance policy did not admit this operation.' );
+        if ( ! is_string( $result['decision_sha256'] ?? null )
+            || ! preg_match( '/^[a-f0-9]{64}$/D', $result['decision_sha256'] ) )
+            return new WP_Error( 'mad4b_registered_write_decision_unverified',
+                'Current policy admission decision has no exact receipt fingerprint.' );
         return array(
             'contract' => self::CONTRACT, 'operation_id' => $operation,
             'ability' => (string) $ability_name, 'environment' => $environment,

@@ -67,8 +67,11 @@ final class MAD4B_SCP_Visual_SEO_Strategy {
            ||!in_array($role,self::ALLOWED_ROLES,true))
             return ['contract'=>self::CONTRACT,'ready'=>false,'reason'=>'source_or_role_invalid'];
         $site=MAD4B_SCP_Site_Profile::status();
-        if(empty($site['site_uuid'])||empty($site['origin_match'])
-            ||empty($site['deployment_binding_match'])||empty($site['environment_match']))
+        if(!is_array($site)||!is_string($site['site_uuid']??null)||
+            !preg_match('/^[a-f0-9-]{36}$/D',$site['site_uuid'])||
+            ($site['origin_match']??null)!==true||
+            ($site['deployment_binding_match']??null)!==true||
+            ($site['environment_match']??null)!==true)
             return ['contract'=>self::CONTRACT,'ready'=>false,'reason'=>'site_profile_unverified'];
         $trid=apply_filters('wpml_element_trid',null,$post_id,'post_'.$post->post_type);
         $set=$trid?apply_filters('wpml_get_element_translations',[],$trid,'post_'.$post->post_type):[];

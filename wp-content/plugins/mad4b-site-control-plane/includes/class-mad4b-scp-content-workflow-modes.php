@@ -28,8 +28,10 @@ final class MAD4B_SCP_Content_Workflow_Modes {
         $result = MAD4B_SCP_Content_Jobs::get_job( array( 'job_id' => $job_id ) );
         if ( is_wp_error( $result ) ) return $result;
         $job = isset( $result['job'] ) && is_array( $result['job'] ) ? $result['job'] : array();
-        // Never assign an autonomous mode to a legacy row whose mode is blank.
-        return self::requested( (string) ( $job['automation_level'] ?? 'review_gated' ) );
+        // Existing or legacy blank values inherit review_gated (strict),
+        // NEVER the autonomous default reserved for *new* ContentJobs.
+        $raw = (string) ( $job['automation_level'] ?? '' );
+        return self::requested( '' === trim( $raw ) ? 'review_gated' : $raw );
     }
 
     public static function for_input( $input ) {

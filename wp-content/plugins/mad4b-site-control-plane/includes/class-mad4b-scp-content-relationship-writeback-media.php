@@ -95,7 +95,7 @@ final class MAD4B_SCP_Relationship_Media_Write_Adapter implements MAD4B_Central_
     is_object($media)&&$media->is_available()&&
     method_exists($media,'can_set_featured') &&
     $media->can_set_featured($args)===true &&
-    current_user_can('edit_post',$args['post_id']) &&
+    current_user_can('edit_post',$args['post_id'])===true &&
     MAD4B_SCP_Policy::can_mutate()===true &&
     is_object($ability) && method_exists($ability,'check_permissions') &&
     $ability->check_permissions($args)===true;
@@ -135,7 +135,12 @@ final class MAD4B_SCP_Relationship_Media_Write_Adapter implements MAD4B_Central_
    'write_performed'=>false];
  }
  public function run(string $expectedSourceSha):array {
-  $source=$this->source([]);
+  try {$source=$this->source([]);}
+  catch(Throwable $e){
+   return ['contract'=>self::CONTRACT,'state'=>'HOLD',
+     'reason'=>'original_media_owner_source_unverified',
+     'mutation_performed'=>false,'write_performed'=>false];
+  }
   if(!hash_equals($source['source_sha256'],$expectedSourceSha))
    return ['contract'=>self::CONTRACT,'state'=>'HOLD',
      'reason'=>'original_plan_source_sha_changed','write_performed'=>false];

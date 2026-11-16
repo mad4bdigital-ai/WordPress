@@ -16,12 +16,14 @@ function is_wp_error( $value ) { return $value instanceof WP_Error; }
 
 final class MAD4B_SCP_Provider_Contracts {
     public static $exact = false;
+    public static $runtime_override = null;
     public static function get( $provider ) {
         if ( 'rank_math' === $provider ) return array();
         $file = 'bit_pi' === $provider ? 'bit-pi/bit-pi.php' : 'jet-engine/jet-engine.php';
         return array( 'plugin_file'=>$file, 'archive_sha256'=>str_repeat('a',64) );
     }
     public static function runtime_status( $provider, $available = null ) {
+        if ( null !== self::$runtime_override ) return self::$runtime_override;
         if ( 'rank_math' === $provider ) return array(
             'provider'=>'rank_math',
             'status'=>'uncertified_provider',
@@ -40,9 +42,10 @@ final class MAD4B_SCP_Provider_Contracts {
 }
 
 final class FakeJetEngineAdapter {
+    public static $available = true;
     public function id(){ return 'jetengine'; }
     public function provider_key(){ return 'jetengine'; }
-    public function is_available(){ return true; }
+    public function is_available(){ return self::$available; }
     public function ability_names(){ return array('read'=>array('jetengine/get-post-meta','jetengine/list-post-meta','jetengine/get-cpt-definition','jetengine/runtime-new-capability'),'content'=>array('jetengine/update-post-meta'),'admin'=>array()); }
     public function reversible_contracts(){ return array('jetengine/update-post-meta'=>'mad4b.rollback.jetengine-post-meta.v1'); }
 }
@@ -252,4 +255,30 @@ expect_true(false!==strpos($adapter_base_source,"per_ability_separate_from_artif
 expect_true(false===strpos($adapter_base_source,"legacy_runtime_contract_ok"),'Adapter Base must not rewrite artifact certification through a legacy capability bridge');
 expect_true(false===strpos($adapter_base_source,"capability_compiled_fail_closed"),'obsolete provider-wide capability bridge must be removed');
 
-echo "MAD4B provider compatibility engine contract passed.\n";
+// Source-backed regression: a false-positive Adapter or Runtime status
+// must not activate the normal governed write mount or a new NHI grant.
+MAD4B_SCP_Provider_Contracts::$exact=true;
+foreach(array(new WP_Error('available_unknown','unverified'),1,'true',null) as $unknown){
+    FakeJetEngineAdapter::$available=$unknown;
+    MAD4B_SCP_Provider_Compatibility_Certification::clear_request_cache();
+    $bad=MAD4B_SCP_Provider_Compatibility_Certification::assess_provider('jetengine',$adapter);
+    expect_same(false,$bad['available'],'unknown original adapter health must be unavailable');
+    expect_same(false,$bad['capabilities']['post_meta.bounded-write']['write_eligible'],
+        'unverified original Adapter health never mounts a write');
+}
+FakeJetEngineAdapter::$available=true;
+$baseline_runtime=MAD4B_SCP_Provider_Contracts::runtime_status('jetengine');
+foreach(array(new WP_Error('runtime_unknown','missing receipt'),1,'true',null) as $unknown){
+    MAD4B_SCP_Provider_Contracts::$runtime_override=array_replace($baseline_runtime,array('runtime_contract_ok'=>$unknown));
+    MAD4B_SCP_Provider_Compatibility_Certification::clear_request_cache();
+    $bad=MAD4B_SCP_Provider_Compatibility_Certification::assess_provider('jetengine',$adapter);
+    expect_same(false,$bad['exact_runtime_certified'],'unverified original runtime certificate never means certified');
+    expect_same(false,$bad['capabilities']['post_meta.bounded-write']['write_eligible'],
+        'unverified original runtime certificate never authorizes normal provider write');
+}
+MAD4B_SCP_Provider_Contracts::$runtime_override=null;
+MAD4B_SCP_Provider_Compatibility_Certification::clear_request_cache();
+$restored=MAD4B_SCP_Provider_Compatibility_Certification::assess_provider('jetengine',$adapter);
+expect_same(true,$restored['capabilities']['post_meta.bounded-write']['write_eligible'],
+ 'verified original exact runtime should retain existing bounded write compatibility');
+echo "PASS: MAD4B provider compatibility engine original assertions\n";

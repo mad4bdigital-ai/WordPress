@@ -55,6 +55,28 @@ def resolve(config: Path, label: str) -> dict[str, str]:
         'TARGET_AUTOLOAD_SHA': autoload_sha,
     }
 
+
+def resolve_ci_candidate(config: Path) -> dict[str, str]:
+    """Pick an exact reviewed *CI candidate*; never choose runtime authority.
+
+    Source selection is the approved catalog, not a retired global version
+    floor. A broken highest catalog entry blocks CI rather than silently
+    falling back to an older release.
+    """
+    config = Path(config)
+    catalog = json.loads((config / 'certified-provider-profiles.json').read_text())
+    profiles = (catalog.get('providers') or {}).get('mcp_adapter') or {}
+    if not isinstance(profiles, dict) or not profiles:
+        raise ProfileDenied('NO_CERTIFIED_ADAPTER_CI_PROFILES')
+    versions = []
+    for version in profiles:
+        if not isinstance(version, str) or not re.fullmatch(r'\d+\.\d+\.\d+', version):
+            raise ProfileDenied('UNRECOGNIZED_CERTIFIED_ADAPTER_VERSION')
+        versions.append(version)
+    newest = max(versions, key=lambda version: tuple(map(int, version.split('.'))))
+    return resolve(config, 'target-' + newest)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument('--profile', required=True)
@@ -62,7 +84,8 @@ def main() -> None:
                         default=Path(__file__).resolve().parents[1] /
                           'wp-content/plugins/mad4b-site-control-plane/config')
     args = parser.parse_args()
-    values = resolve(args.config_dir, args.profile)
+    values = (resolve_ci_candidate(args.config_dir) if args.profile == 'auto-ci'
+              else resolve(args.config_dir, args.profile))
     for key, value in values.items():
         print(f'{key}={shlex.quote(value)}')
 

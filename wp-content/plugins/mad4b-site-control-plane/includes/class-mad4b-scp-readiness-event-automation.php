@@ -33,8 +33,19 @@ final class MAD4B_SCP_Readiness_Event_Automation {
         return $table === $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s',$table));
     }
     public static function schema_prepare() {
-        if(!class_exists('MAD4B_SCP_Site_Profile',false) || empty(MAD4B_SCP_Site_Profile::status()['authority_ready']) || !self::allowed())
-            return new WP_Error('readiness_schema_authority_required','Enrolled company administrator required.',array('status'=>403));
+        // Original site identity is not optional for a table-creating path.
+        // WP_Error and untyped snapshots are never an affirmative grant.
+        if(!class_exists('MAD4B_SCP_Site_Profile',false)||!self::allowed())
+            return new WP_Error('readiness_schema_authority_required',
+                'Enrolled company administrator required.',array('status'=>403));
+        try {
+            $site=MAD4B_SCP_Site_Profile::status();
+        } catch(\Throwable $error) {
+            $site=null;
+        }
+        if(!is_array($site)||($site['authority_ready']??null)!==true)
+            return new WP_Error('readiness_schema_authority_required',
+                'Exact original Site Profile authority required.',array('status'=>403));
         if(self::installed())return array('status'=>'existing','table'=>self::table());
         global $wpdb;
         $table=self::table();

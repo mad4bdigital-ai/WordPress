@@ -6,6 +6,40 @@ final class MAD4B_SCP_Mutation_Principal {
     const WP_USER = 'wordpress_user';
     const NHI = 'independent_nhi';
 
+    /** A WP_Error / nonboolean / exception is not mutation permission. */
+    private static function mutation_policy_verified() {
+        if (!class_exists('MAD4B_SCP_Policy',false)) return false;
+        try {
+            return true === MAD4B_SCP_Policy::can_mutate();
+        } catch (Throwable $error) {
+            return false;
+        }
+    }
+
+    /** Keep NHI identity independent of any WordPress user. */
+    private static function registered_nhi( $identity ) {
+        if (!is_array($identity) || ($identity['authenticated']??null)!==true
+            || !is_string($identity['subject_type'] ?? null)
+            || '' === $identity['subject_type']
+            || !is_string($identity['subject_fingerprint'] ?? null)
+            || !preg_match('/^[a-f0-9]{64}$/D',$identity['subject_fingerprint'])
+            || !class_exists('MAD4B_SCP_Agent_Registry',false))
+            return new WP_Error('mad4b_principal_nhi_unverified',
+                'Original registered non-human identity proof is required.');
+        try {
+            $agent = MAD4B_SCP_Agent_Registry::resolve_agent($identity);
+        } catch (Throwable $error) {
+            return new WP_Error('mad4b_principal_registry_unavailable',
+                'Original Agent Registry failed during identity readback.');
+        }
+        if (is_wp_error($agent)) return $agent;
+        if (!is_array($agent) || (int)($agent['id'] ?? 0) < 1
+            || 'enabled' !== ($agent['status'] ?? null))
+            return new WP_Error('mad4b_principal_registry_binding_invalid',
+                'An enabled existing original NHI Agent is required.');
+        return $agent;
+    }
+
     public static function allowed_native_abilities() {
         return array(
             'mad4b/content-create-post',
@@ -44,7 +78,7 @@ final class MAD4B_SCP_Mutation_Principal {
         if ( $user ) {
             if ( ! in_array( $ability, self::allowed_native_abilities(), true ) )
                 return new WP_Error( 'mad4b_principal_native_ability_unmapped', 'This adapter has no native WordPress principal mapping.' );
-            if ( ! MAD4B_SCP_Policy::can_mutate() )
+            if ( ! self::mutation_policy_verified() )
                 return new WP_Error( 'mad4b_principal_write_denied', 'Site mutation policy denied the WordPress actor.' );
             $cap = MAD4B_SCP_Delegation_Mode::authorize_ability( $identity, $ability, $input );
             if ( is_wp_error( $cap ) || true !== $cap )
@@ -63,7 +97,7 @@ final class MAD4B_SCP_Mutation_Principal {
                 'actor' => array( 'principal_type' => self::WP_USER, 'wp_user_id' => (int) $user->ID ),
             );
         }
-        $agent = MAD4B_SCP_Agent_Registry::resolve_agent( $identity );
+        $agent = self::registered_nhi( $identity );
         if ( is_wp_error( $agent ) ) return $agent;
         return array(
             'principal_type' => self::NHI,
@@ -79,7 +113,7 @@ final class MAD4B_SCP_Mutation_Principal {
         $type = (string) ( $record['principal_type'] ?? self::NHI );
         if ( '' === $type ) $type = self::NHI; // pre-migration rows
         if ( self::NHI === $type ) {
-            $agent = MAD4B_SCP_Agent_Registry::resolve_agent( $identity );
+            $agent = self::registered_nhi( $identity );
             if ( is_wp_error( $agent ) ) return $agent;
             if ( (int) $agent['id'] !== (int) $record['agent_id']
                 && ! apply_filters( 'mad4b_scp_allow_cross_agent_undo', false, $record, $agent ) )
@@ -103,7 +137,7 @@ final class MAD4B_SCP_Mutation_Principal {
         $expected = self::fingerprint( $site_uuid, $user->ID );
         if ( ! $site_uuid || ! hash_equals( $expected, (string) ( $record['subject_fingerprint'] ?? '' ) ) )
             return new WP_Error( 'mad4b_undo_wordpress_site_denied', 'WordPress actor is bound to a different site identity.' );
-        if ( ! MAD4B_SCP_Policy::can_mutate() )
+        if ( ! self::mutation_policy_verified() )
             return new WP_Error( 'mad4b_undo_wordpress_write_denied', 'Site mutation gate denied undo.' );
         if ( 'mad4b/content-create-post' === $ability ) {
             $state = $adapter->read_reversible_state( $ability, $target );

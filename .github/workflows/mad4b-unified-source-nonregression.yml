@@ -3,11 +3,45 @@ on:
   push:
     branches:
       - 'integration/mad4b-unified-source-*'
+      - 'integration/pr814-821-source-converged-*'
   pull_request:
     paths:
       - '.github/workflows/mad4b-unified-source-nonregression.yml'
       - 'wp-content/plugins/mad4b-site-control-plane/**'
       - 'ops/company-code-release-v1/**'
+      - 'ops/native-source-publisher-v1/**'
+      - 'ops/performance-v2/**'
+      - 'ops/mobile-critical-css-v1/**'
+      - 'ops/cache-lifecycle-rate-404-20261116/**'
+      - 'wp-content/plugins/mad4b-cache-lifecycle/**'
+      - 'ops/site-company-overlays/wayfatours/adaptive-runtime/**'
+      - 'tests/wayfa-universal-media-deferred-queue-contract.php'
+      - 'tests/wayfa-fluent-smtp-transport-recovery-contract.php'
+      - 'tests/test_original305_and_company_source_parity.py'
+      - 'ops/site-company-overlays/wayfatours/live-source-mirror-20261116.json'
+      - 'ops/site-company-overlays/wayfatours/media-review/**'
+      - 'ops/site-company-overlays/wayfatours/media-runtime/**'
+      - 'tests/test_secondary_lazy_site_owner_and_ajax_gate.py'
+      - 'ops/site-company-overlays/wayfatours/performance-runtime/**'
+      - 'wp-content/mu-plugins/mad4b-secondary-listing-lazy.php'
+      - 'ops/secondary-native-lazy-parity-20261116/**'
+      - 'tests/test_adaptive_asset_canonical_source_parity.py'
+      - 'tests/test_origin_gate_wayfa_notice_source_parity.py'
+      - 'tests/wayfa-provider-verified-notice-regression.php'
+      - 'ops/site-company-overlays/wayfatours/configuration-runtime/**'
+      - 'wp-content/mu-plugins/mad4b-general-public-page-origin-cache.php'
+      - 'tests/composite-media-integrity-gallery-contract.php'
+      - 'ops/adaptive-css-dependency-epoch-20261116/**'
+      - 'wp-content/plugins/mad4b-adaptive-asset-intelligence/**'
+      - 'tests/cache-lifecycle-forward-source-v22.php'
+      - 'tests/test_cache_lifecycle_forward_source_v22.py'
+      - 'tests/test_native_original305_incident_*.py'
+      - 'tools/unified_branch_census.py'
+      - 'tests/test_unified_branch_census_contract.py'
+      - 'tests/test_unified_recent_branch_no_regression.py'
+      - 'ops/dynamic-operation-registry-v1/**'
+      - 'tests/test_native_source*.py'
+      - 'tests/native_source_manifest_history_contract.py'
       - 'plugins/mad4b-wordpress/skills/**'
       - 'packages/mad4b-shared-product-core/**'
       - 'tests/test_unified_mad4b_behavior_invariants.py'
@@ -49,6 +83,18 @@ jobs:
           python3 -m unittest discover -s tests -p 'test_tour_highlights_source_delta.py' -v
           python3 -m unittest discover -s tests -p 'test_pr813_destination_additive_reconcile.py' -v
           python3 -m unittest discover -s tests -p 'test_tour_highlights_site_neutral_scope.py' -v
+          # Lock newer local and native source semantics into normal CI.
+          # No historical manifest repinning, owner approval or Production
+          # authority is inferred by any of these source-only tests.
+          python3 -m unittest discover -s tests -p 'test_journey_successor_no_regression.py' -v
+          python3 -m unittest discover -s tests -p 'test_brand_integrity_lifecycle_contract.py' -v
+          python3 -m unittest discover -s tests -p 'test_readiness_supervisor.py' -v
+          python3 -m unittest discover -s tests -p 'test_certified_mcp_adapter_profile.py' -v
+          python3 -m unittest discover -s tests -p 'test_ci_legacy_contract_convergence.py' -v
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/qa31-w1-authority-contract.py
+          python3 -m unittest discover -s tests -p 'test_dynamic_readiness_rest_ability_owner.py' -v
+          python3 -m unittest discover -s tests -p 'test_servers_single_owner_convergence.py' -v
+          python3 -m unittest discover -s tools -p 'test_mad4b_standalone_build.py' -v
           python3 -m unittest discover -s ops/company-code-release-v1/tests -p 'test_dynamic_capability*.py' -q
           # The actual Registry requires a root-owned, non-writable enrolled
           # directory; the test creates an EPHEMERAL candidate under /tmp.
@@ -61,6 +107,47 @@ jobs:
           # Production Readiness/Release Verdict, not synthesized here.
           python3 -m unittest discover -s tests -p 'test_ci_portable_native_source_partition.py' -q
           python3 ops/native-source-publisher-v1/ci_portable_native_tests.py
+          # Source-only V7 incident reviewer: test signature scope and CAS
+          # without executing any live incident closure or signing helper.
+          python3 -m unittest discover -s ops/native-source-publisher-v1 -p 'test_original305*.py' -q
+          python3 -m unittest discover -s tests -p 'test_native_original305_incident_*.py' -q
+          # Original305 non-signing observation contract; never issues Master approval.
+          python3 -m unittest discover -s ops/native-source-publisher-v1 -p 'test_original305_runtime_observer_v1.py' -q
+          python3 -m unittest discover -s tests -p 'test_native*original305_observer*.py' -q
+          # Host312 and transaction cases use only isolated synthetic keys,
+          # never the live enrolled Original306/312 or Master/Broker receipts.
+          python3 -m unittest discover -s ops/native-source-publisher-v1 -p 'test_native_host_source_transaction.py' -q
+          python3 -m unittest discover -s ops/dynamic-operation-registry-v1/tests -p 'test_host312_original_issuer.py' -q
+          python3 -m unittest discover -s tests -p 'test_unified_branch_census_contract.py' -q
+          python3 -m unittest discover -s tests -p 'test_unified_recent_branch_no_regression.py' -q
+          # Native Critical CSS monitoring and private Woo/cart cache safety.
+          python3 -m unittest discover -s ops/performance-v2/tests -p 'test_critical_css_integrity.py' -q
+          python3 -m unittest discover -s tests -p 'test_cache_lifecycle_forward_source_v22.py' -q
+          php ops/cache-lifecycle-rate-404-20261116/tests/test-rate-routing.php wp-content/plugins/mad4b-cache-lifecycle/includes/runtime.php
+          php tests/cache-lifecycle-forward-source-v22.php
+          # Tours.dev canonical Adaptive source; Wayfatours remains on
+          # a separately reviewed 2-file release HOLD (no auto-deploy).
+          python3 -m unittest discover -s tests -p 'test_adaptive_asset_canonical_source_parity.py' -q
+          php ops/adaptive-css-dependency-epoch-20261116/tests/test-adaptive-epoch.php wp-content/plugins/mad4b-adaptive-asset-intelligence/includes/class-mad4b-scp-adaptive-asset-intelligence.php
+          php wp-content/plugins/mad4b-adaptive-asset-intelligence/tests/contract.php
+          php tests/composite-media-integrity-gallery-contract.php
+          # Site-native origin cache admission, candidate-only Nginx
+          # segmentation and Wayfatours provider evidence remain isolated.
+          python3 ops/adaptive-css-dependency-epoch-20261116/test-nginx-accept-family.py
+          python3 -m unittest discover -s tests -p 'test_origin_gate_wayfa_notice_source_parity.py' -q
+          php ops/adaptive-css-dependency-epoch-20261116/test-origin-gate-dynamic.php wp-content/mu-plugins/mad4b-general-public-page-origin-cache.php
+          php tests/wayfa-provider-verified-notice-regression.php
+          # Company-owned native SMTP transport and deferred editorial intake.
+          python3 -m unittest discover -s tests -p 'test_original305_and_company_source_parity.py' -q
+          php tests/wayfa-fluent-smtp-transport-recovery-contract.php
+          php tests/wayfa-universal-media-deferred-queue-contract.php
+          # Never auto-convert conditional JetEngine grids without current
+          # two-band/market/source CSS and signed Ajax SSR parity evidence.
+          python3 -m unittest discover -s tests -p 'test_secondary_lazy_site_owner_and_ajax_gate.py' -q
+          php ops/secondary-native-lazy-parity-20261116/tests/test-native-lazy-ajax-parity.php wp-content/mu-plugins/mad4b-secondary-listing-lazy.php
+          node --check ops/mobile-critical-css-v1/verify.js
+          # Includes SHA-bound V8 root manifest parity and V9 successor candidate.
+          # These tests certify only local sources, never the enrolled root index.
           # The 238-file historical contract is independently gated: its
           # unreachable commits must not suppress portable source coverage.
           python3 -m unittest discover -s tests -p 'test_control_plane*contract.py' -v
@@ -78,6 +165,50 @@ jobs:
           php wp-content/plugins/mad4b-site-control-plane/tests/mcp-runtime-recovery-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tour-highlights-v1.php
           php tests/native-tour-highlights/acceptance.php
+          php tests/readiness-core-web-vitals-rest-cron-hermetic.php
+          php tests/servers-native-core-catalog-hermetic.php
+          php tests/readiness-native-cron-ownership-hermetic.php
+          php tests/converged-grant-eligibility-hermetic.php
+          php tests/chatbotx-native-adapter-surface-hermetic.php
+          php tests/content-job-register-native-hermetic.php
+          php tests/company-master-native-rest-gates-hermetic.php
+          php tests/company-user-native-lifecycle-hermetic.php
+          php tests/company-code-cryptographic-pages-hermetic.php
+          php tests/company-tenant-migration-rollback-hermetic.php
+          php tests/company-communication-policy-rest-hermetic.php
+          php tests/brand-quality-readiness-coverage-hermetic.php
+          php tests/native-skills-seeder-enrollment-cron-hermetic.php
+          php tests/operation-registry-native-policy-boundary-hermetic.php
+          php tests/native-release-and-staging-canary-denial-hermetic.php
+          php tests/catalog-intent-source-relevance-hermetic.php
+          php tests/mcp-provider-matrix-readonly-inheritance-hermetic.php
+          php tests/company-task-handoff-native-cas-hermetic.php
+          php tests/native-cli-context-and-company-inventory-hermetic.php
+          php tests/host-node-inventory-signed-readback-hermetic.php
+          php tests/company-migration-decisions-transaction-hermetic.php
+          php tests/company-reconcile-skill-set-no-executor-hermetic.php
+          php tests/search-provider-autoprovision-runtime-denials-hermetic.php
+          php tests/central-company-release-signed-readonly-hermetic.php
+          php tests/native-search-console-site-scope-php74-hermetic.php
+          php tests/fcp-local-observability-site-bound-hermetic.php
+          php tests/unified-provider-routing-native-safety-hermetic.php
+          php tests/guided-continuation-write-surface-denial-hermetic.php
+          php tests/core-ai-governance-usage-and-admission-hermetic.php
+          php tests/provider-field-intelligence-site-readonly-php74-hermetic.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/qa30-native-general-settings-rest-lifecycle.php
+          php tests/presentation-integrity-jetengine-source-hermetic.php
+          php tests/presentation-browser-evidence-local-import-hermetic.php
+          php tests/origin-external-research-source-bound-hermetic.php
+          php tests/locale-experience-alerts-owned-observations-hermetic.php
+          php tests/frontend-impact-same-origin-budget-hermetic.php
+          php tests/firecrawl-provider-php74-crawl-and-host-scope-hermetic.php
+          php tests/firecrawl-research-adapter-provider-presence-hermetic.php
+          php tests/adapter-base-default-write-eligibility-hermetic.php
+          php tests/dynamic-content-apply-native-ability-source-hermetic.php
+          php tests/dynamic-content-bundle-native-rollback-preflight-hermetic.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/content-job-domain-contract.py
+          php wp-content/plugins/mad4b-site-control-plane/tests/live-write-provider-snapshot-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/mcp-preflight-registration-failure-runtime.php
           # An incomplete or missing Context Authority may not validate
           # another company's Brand Core; do not fatal on hermetic shims.
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-context-builder.php
@@ -85,6 +216,11 @@ jobs:
           php wp-content/plugins/mad4b-site-control-plane/tests/brand-context-owner-evidence-hermetic.php --without-class
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php
           php wp-content/plugins/mad4b-site-control-plane/tests/brand-asset-source-binding-hermetic.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/context-registry-atomicity-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/context-ai-agent-review-runtime.php
+          node --check wp-content/plugins/mad4b-site-control-plane/assets/operational-remediation-ui.js
+          node tests/operational-remediation-tabs-runtime.js
+          node tests/journey-asset-bootstrap-runtime.js
           node --check wp-content/plugins/mad4b-site-control-plane/assets/tour-journey-ui.js
           node --check wp-content/plugins/mad4b-site-control-plane/assets/tour-journey-split-v3.js
           php -l scripts/migrations/tour-journey-wpml-fr-de-20261113.php

@@ -75,16 +75,33 @@ final class MAD4B_SCP_Content_Relationship_Providers {
  }
  private static function terms(int $source,int $target,string $tax,string $lang):array {
   global $wpdb;
-  $st=(array)$wpdb->get_col($wpdb->prepare(
+  // Fetch one extra row beyond the bounded evidence budget. Silently
+  // dropping term 201 may falsely mark a partial translation as VERIFIED.
+  $source_rows=$wpdb->get_col($wpdb->prepare(
    "SELECT tt.term_id FROM {$wpdb->term_relationships} r
     JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id=r.term_taxonomy_id
-    WHERE r.object_id=%d AND tt.taxonomy=%s ORDER BY tt.term_id",$source,$tax));
-  $tt=array_map('intval',(array)$wpdb->get_col($wpdb->prepare(
+    WHERE r.object_id=%d AND tt.taxonomy=%s ORDER BY tt.term_id LIMIT 201",$source,$tax));
+  $target_rows=$wpdb->get_col($wpdb->prepare(
    "SELECT tt.term_id FROM {$wpdb->term_relationships} r
     JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id=r.term_taxonomy_id
-    WHERE r.object_id=%d AND tt.taxonomy=%s ORDER BY tt.term_id",$target,$tax)));
+    WHERE r.object_id=%d AND tt.taxonomy=%s ORDER BY tt.term_id LIMIT 201",$target,$tax));
+  if(!is_array($source_rows)||!is_array($target_rows)
+    ||''!==trim((string)($wpdb->last_error??'')))
+   return self::state('taxonomy','HOLD_TERM_READBACK_UNAVAILABLE',[
+     'taxonomy'=>$tax,'owner'=>'wordpress/native-taxonomy+wpml',
+     'automatic_replace_entire_term_set'=>false]);
+  $truncated=count($source_rows)>200||count($target_rows)>200;
+  $st=array_map('intval',array_slice($source_rows,0,200));
+  $tt=array_map('intval',array_slice($target_rows,0,200));
+  if($truncated)
+   return self::state('taxonomy','HOLD_TERM_SCAN_INCOMPLETE',[
+     'taxonomy'=>$tax,'owner'=>'wordpress/native-taxonomy+wpml',
+     'source_count'=>count($source_rows),'target_count'=>count($target_rows),
+     'scanned_source_count'=>count($st),'scanned_target_count'=>count($tt),
+     'scan_truncated'=>true,
+     'automatic_replace_entire_term_set'=>false]);
   $missing=[];$matches=[];$conflict=[];
-  foreach(array_slice($st,0,200) as $tid) {
+  foreach($st as $tid) {
    $r=MAD4B_SCP_Content_Relationship_Graph::resolve('term',(int)$tid,$tax,$lang);
    if(($r['state']??'')!=='RESOLVED'){
     $missing[]=['source_term_id'=>(int)$tid,'reason'=>$r['reason']??'no_local_term'];
@@ -95,12 +112,20 @@ final class MAD4B_SCP_Content_Relationship_Providers {
      'already_assigned'=>in_array($linked,$tt,true)];
   }
   $matching=array_values(array_filter($matches,fn($v)=>!$v['already_assigned']));
+  $translated_ids=array_map(static fn($v)=>(int)$v['localized_term_id'],$matches);
+  $target_extra=array_values(array_diff($tt,$translated_ids));
   if($matching) $conflict[]='editorial_term_set_discrepancy_needs_owner_review';
-  return self::state('taxonomy',!$missing&&!$matching?'VERIFIED':
-    ($missing?'WAITING_TERM_TRANSLATIONS':'REVIEW_DIFF'),[
+  if($target_extra) $conflict[]='target_has_additional_editorial_terms_preserve_local_authorship';
+  $status=$missing?'WAITING_TERM_TRANSLATIONS':
+    ($matching?'REVIEW_DIFF':
+      ($target_extra?'LOCAL_OVERRIDE_PRESERVED':
+        (!$st&&!$tt?'NOT_APPLICABLE':'VERIFIED')));
+  return self::state('taxonomy',$status,[
     'taxonomy'=>$tax,'owner'=>'wordpress/native-taxonomy+wpml',
     'source_count'=>count($st),'target_count'=>count($tt),
     'resolved'=>$matches,'missing'=>$missing,'differences'=>$conflict,
+    'unmatched_target_term_ids'=>$target_extra,
+    'scan_truncated'=>false,
     'automatic_replace_entire_term_set'=>false]);
  }
  private static function walk($node,string $path,int $depth,array &$results,int &$count,string $lang):void {

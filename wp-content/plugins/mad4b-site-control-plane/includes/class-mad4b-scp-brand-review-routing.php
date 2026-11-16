@@ -43,14 +43,16 @@ final class MAD4B_SCP_Brand_Review_Routing_V1 {
                 'blockers'=>['source_site_identity_unverified']]);
         }
         $policy=MAD4B_SCP_Context_Authority::ai_review_policy_status();
-        $mode=(string)($policy['mode']??'human_only');
+        $mode=is_array($policy) && is_string($policy['mode']??null)
+            ? $policy['mode'] : 'human_only';
         if (!in_array($mode,['human_only','human_and_ai','ai_only'],true))
             $mode='human_only';
 
         $can_ai=in_array($mode,['human_and_ai','ai_only'],true)
-            && !empty($policy['ready'])
-            && !empty($policy['exact_grant_ready'])
-            && !empty($policy['catalog_eligible']);
+            && is_array($policy)
+            && ($policy['ready']??null)===true
+            && ($policy['exact_grant_ready']??null)===true
+            && ($policy['catalog_eligible']??null)===true;
         $can_human=$mode!=='ai_only';
         $blockers=$mode==='human_only'?[]:(array)($policy['blockers']??[]);
         // Exact delegated Agent permission and this site's model worker
@@ -60,7 +62,7 @@ final class MAD4B_SCP_Brand_Review_Routing_V1 {
             && class_exists('MAD4B_SCP_AI_Review_Worker',false)) {
             $worker=MAD4B_SCP_AI_Review_Worker::preflight();
             if(is_array($worker)){
-                $worker_ready=!empty($worker['ready']);
+                $worker_ready=($worker['ready']??null)===true;
                 $worker_blockers=array_values(array_map('sanitize_key',
                     (array)($worker['blockers']??[])));
             }

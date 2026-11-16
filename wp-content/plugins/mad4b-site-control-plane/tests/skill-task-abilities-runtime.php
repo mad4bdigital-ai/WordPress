@@ -10,6 +10,9 @@ function wp_register_ability( $name, $args ) {
 }
 class MAD4B_SCP_Skill_Registry {
     public static function levels() { return array( 'site', 'connection', 'provider', 'adapter', 'workflow' ); }
+    public static function list_skills($filters=array()) {
+        return $GLOBALS['skill_original_rows']??array();
+    }
 }
 class MAD4B_SCP_Policy {
     public static function can_read() { return true === $GLOBALS['skill_can_read']; }
@@ -85,4 +88,26 @@ foreach ( array_keys( $source_expected ) as $name ) {
         'Authorized source reader incorrectly denied: ' . $name );
 }
 assert_skill( ! isset( $GLOBALS['skill_ability_registry']['mad4b/skill-execution-dispatch'] ), 'Unexpected execution surface' );
+// Dynamic Skill growth does not introduce arbitrary execution permissions.
+$GLOBALS['skill_original_rows']=array();
+for($n=1;$n<=137;$n++) {
+    $GLOBALS['skill_original_rows'][]=array(
+        'name'=>'Skill '.$n, 'description'=>'Governed original source',
+        'logical_id'=>'skill-'.$n
+    );
+}
+$all=MAD4B_SCP_Skill_Abilities::skills_list();
+assert_skill($all['total_count']===137 && $all['count']===137
+    && !$all['has_more'] && $all['next_offset']===null,
+    'Growing native Skill registry cannot be truncated');
+$page=MAD4B_SCP_Skill_Abilities::skills_list(array('limit'=>250,'offset'=>0));
+assert_skill($page['count']===100 && $page['limit']===100
+    && $page['has_more']===true && $page['next_offset']===100,
+    'Explicit Skill pages have bounded maximum 100');
+$last=MAD4B_SCP_Skill_Abilities::skills_list(array('limit'=>100,'offset'=>100));
+assert_skill($last['count']===37 && $last['total_count']===137
+    && !$last['has_more'] && $last['next_offset']===null,
+    'Next page follows dynamic source inventory without duplicate');
+assert_skill($page['read_only']===true && $last['authority_effect']==='none',
+    'Pagination cannot create execution authority');
 echo "Skill Task Abilities registration fixtures: PASS\n";

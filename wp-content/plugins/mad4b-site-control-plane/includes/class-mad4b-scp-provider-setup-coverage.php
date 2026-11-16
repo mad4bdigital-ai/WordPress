@@ -224,22 +224,48 @@ final class MAD4B_SCP_Provider_Setup_Coverage {
     }
     public static function firecrawl_rows() {
         if ( ! class_exists( 'MAD4B_SCP_Firecrawl_Provider' ) ) return array();
-        $config = MAD4B_SCP_Firecrawl_Provider::config();
-        $mode = ( $config['mode'] ?? '' ) === 'self_hosted' ? 'self_hosted' : 'cloud';
-        $profiles = method_exists( 'MAD4B_SCP_Firecrawl_Provider', 'profiles' ) ? MAD4B_SCP_Firecrawl_Provider::profiles() : array();
-        $active = is_array( $profiles[$mode] ?? null ) ? $profiles[$mode] : array();
-        $credential = !empty( $active['secret_cipher'] ) ? 'encrypted_saved' : 'not_configured';
         $setup = admin_url( 'admin.php?page=mad4b-provider-connections#mad4b-firecrawl-provider' );
-        $last = MAD4B_SCP_Firecrawl_Provider::test_status();
-        $tested = ! empty( $last['tested'] );
-        $result = (string) ( $last['state'] ?? 'network_test_pending' );
+        try {
+            $config = MAD4B_SCP_Firecrawl_Provider::config();
+        } catch ( \Throwable $error ) {
+            $config = null;
+        }
+        if ( ! is_array( $config ) ) {
+            return array( self::row( 'research', 'firecrawl', 'Firecrawl',
+                'native_firecrawl_encrypted_site_option', array(), 'unverified',
+                'original_provider_status_unavailable', 'scrape_not_certified',
+                'inspect_original_firecrawl_provider', $setup ) );
+        }
+        $mode = ( $config['mode'] ?? '' ) === 'self_hosted' ? 'self_hosted' : 'cloud';
+        try {
+            $profiles = method_exists( 'MAD4B_SCP_Firecrawl_Provider', 'profiles' )
+                ? MAD4B_SCP_Firecrawl_Provider::profiles() : array();
+        } catch ( \Throwable $error ) {
+            $profiles = array();
+        }
+        $profiles_valid = is_array( $profiles );
+        $active = $profiles_valid && is_array( $profiles[$mode] ?? null )
+            ? $profiles[$mode] : array();
+        $credential = ! $profiles_valid ? 'unverified'
+            : ( ! empty( $active['secret_cipher'] ) ? 'encrypted_saved' : 'not_configured' );
+        try {
+            $last = MAD4B_SCP_Firecrawl_Provider::test_status();
+        } catch ( \Throwable $error ) {
+            $last = null;
+        }
+        $tested = is_array( $last ) && ( $last['tested'] ?? null ) === true;
+        $result = is_array( $last ) ? (string) ( $last['state'] ?? 'network_test_pending' )
+            : 'original_connection_test_unavailable';
         $fields = $mode === 'self_hosted'
             ? array( 'firecrawl_endpoint', 'firecrawl_username', 'firecrawl_gateway_password' )
             : array( 'firecrawl_cloud_secret' );
         return array( self::row( 'research', 'firecrawl', 'Firecrawl ('.( $mode === 'cloud' ? 'Cloud' : 'Self-hosted' ).')',
             'native_firecrawl_encrypted_site_option', $fields, $credential, $result,
-            $tested && $result === 'reachable' ? 'connection_test_only_not_scrape_certified' : 'scrape_not_certified',
-            $credential === 'not_configured' ? 'configure_firecrawl_credentials' : 'test_firecrawl_connection', $setup ) );
+            $tested && $result === 'reachable' && $profiles_valid
+                ? 'connection_test_only_not_scrape_certified' : 'scrape_not_certified',
+            $credential === 'unverified' ? 'inspect_original_firecrawl_provider'
+                : ( $credential === 'not_configured' ? 'configure_firecrawl_credentials'
+                : 'test_firecrawl_connection' ), $setup ) );
     }
     const CUSTOM_OPTION = 'mad4b_custom_provider_registry_v1';
     public static function custom_rows() {

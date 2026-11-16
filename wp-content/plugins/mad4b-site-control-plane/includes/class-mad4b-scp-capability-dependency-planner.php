@@ -11,7 +11,7 @@ final class MAD4B_SCP_Capability_Dependency_Planner {
     const MAX_STAGES = 64;
 
     public static function inspect( array $input ) {
-        if ( ! class_exists( 'MAD4B_SCP_Policy' ) || ! MAD4B_SCP_Policy::can_read() )
+        if ( ! class_exists( 'MAD4B_SCP_Policy' ) || true !== MAD4B_SCP_Policy::can_read() )
             return new WP_Error( 'mad4b_dependency_read_denied', 'Governed read authority is required.' );
         if ( ! class_exists( 'MAD4B_SCP_Operation_Registry' ) )
             return new WP_Error( 'mad4b_dependency_registry_unavailable', 'Canonical operation registry is unavailable.' );
@@ -43,13 +43,26 @@ final class MAD4B_SCP_Capability_Dependency_Planner {
             $seen[$id] = true;
             $binding = MAD4B_SCP_Operation_Registry::stage_binding( $id, $row );
             if ( is_wp_error( $binding ) ) return $binding;
-            $binding_type = isset( $binding['binding_type'] ) ? (string) $binding['binding_type'] : '';
+            if ( ! is_array( $binding ) || ! is_string( $binding['binding_type'] ?? null )
+                || $binding['binding_type'] === '' )
+                return new WP_Error( 'mad4b_dependency_stage_binding_unverified',
+                    'Original pipeline stage binding is unavailable.' );
+            $binding_type = (string) $binding['binding_type'];
             $ability = isset( $binding['ability'] ) ? (string) $binding['ability'] : '';
             $required = ! isset( $stage['required'] ) || true === $stage['required'];
             $condition = isset( $stage['when'] ) ? (string) $stage['when'] : '';
-            $present = '' !== $ability && function_exists( 'wp_has_ability' )
-                ? (bool) wp_has_ability( $ability ) : null;
-            if ( $required && '' !== $ability && false === $present ) $missing[] = $ability;
+            $present = null;
+            if ( '' !== $ability ) {
+                // A WP_Error, truthy scalar or throwing native Ability
+                // lookup is not registration evidence for a required stage.
+                try {
+                    $present = function_exists( 'wp_has_ability' )
+                        && true === wp_has_ability( $ability );
+                } catch ( \Throwable $error ) {
+                    $present = false;
+                }
+            }
+            if ( $required && '' !== $ability && true !== $present ) $missing[] = $ability;
             if ( '' !== $condition ) $unresolved[] = $id . ':conditional_input_required';
             if ( 'plan_bound_executor' === $binding_type ) $unresolved[] = $id . ':exact_plan_executor_required';
             if ( in_array( $binding_type, array( 'policy_boundary', 'executor_owned_verification' ), true ) )

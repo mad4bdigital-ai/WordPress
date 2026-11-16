@@ -33,6 +33,12 @@ class MAD4B_SCP_Site_Profile {
  public static function user_is_enrolled($id){return $id===1;}
  public static function status(){return ['site_uuid'=>'d745d81f-6fc4-5c6a-99dd-d953c92137bf','deployment_binding_configured'=>true,'same_origin_clone_protection'=>true,'authority_ready'=>self::$authority_ready];}
 }
+// PHP 7.4 fixture compatibility, never alter production plugin behavior.
+if (!function_exists('str_starts_with')) {
+ function str_starts_with($value,$prefix) {
+    return substr((string)$value,0,strlen((string)$prefix))===(string)$prefix;
+ }
+}
 function wp_safe_remote_get($url,$args){
  if(!str_starts_with($url,'https://api.github.com/repos/mad4bdigital-ai/WordPress/git/commits/'))return new WP_Error('foreign_source');
  $ref=substr($url,strrpos($url,'/')+1);

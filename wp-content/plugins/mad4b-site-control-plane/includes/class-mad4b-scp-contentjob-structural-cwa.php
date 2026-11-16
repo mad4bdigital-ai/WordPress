@@ -14,7 +14,7 @@ final class MAD4B_SCP_Structural_Only_CWA_Adapter implements MAD4B_Central_Enric
   // tenant write permission. Bind it to the enrolled site and explicit
   // local company-code, not a hardcoded hostname that a clone could inherit.
   if(!class_exists('MAD4B_SCP_Site_Profile') ||
-     !MAD4B_SCP_Site_Profile::origin_enrolled() ||
+     true!==MAD4B_SCP_Site_Profile::origin_enrolled() ||
      MAD4B_SCP_Site_Profile::current_environment()!=='staging' ||
      MAD4B_SCP_Site_Profile::current_origin()!==MAD4B_SCP_Site_Profile::site_origin() ||
      get_option('mad4b_source_profile_company_code_v1','')!=='tours-central' ||
@@ -61,11 +61,11 @@ final class MAD4B_SCP_Structural_Only_CWA_Adapter implements MAD4B_Central_Enric
     (string)($graph['family']['target_locale']??'')!==$browser['locale']||
     (string)($graph['site_uuid']??'')!==$site)
     throw new RuntimeException('original_wpml_structural_job_or_family_changed');
-  if(!current_user_can('edit_post',$qa['source_post_id'])||
-     !current_user_can('edit_post',$qa['target_post_id'])||
-     !MAD4B_SCP_Policy::can_mutate()||
+  if(true!==current_user_can('edit_post',$qa['source_post_id'])||
+     true!==current_user_can('edit_post',$qa['target_post_id'])||
+     true!==MAD4B_SCP_Policy::can_mutate()||
      !function_exists('mad4b_wpml_auto_sync_allowed_v1')||
-     !mad4b_wpml_auto_sync_allowed_v1($qa['source_post_id'],$qa['target_post_id']))
+     true!==mad4b_wpml_auto_sync_allowed_v1($qa['source_post_id'],$qa['target_post_id']))
     throw new RuntimeException('native_wp_structural_edit_permission_denied');
   $preview=MAD4B_WPML_Design_Reconciliation_V1::reconcile_exact(
     $qa['source_post_id'],$qa['target_post_id'],false,
@@ -110,7 +110,7 @@ final class MAD4B_SCP_Structural_Only_CWA_Adapter implements MAD4B_Central_Enric
   $ability=wp_get_ability('mad4b/content-job-structural-cwa-apply');
   return is_object($ability)&&
     $ability->check_permissions(['job_id'=>$this->job])===true &&
-    MAD4B_SCP_Central_Write_Acceptance::permitted()&&
+    MAD4B_SCP_Central_Write_Acceptance::permitted()===true&&
     $source['job_id']===$this->job;
  }
  public function apply(array $claim,array $source):array {

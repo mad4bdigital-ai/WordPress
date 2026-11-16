@@ -47,7 +47,7 @@ final class MAD4B_SCP_Admin_Navigation_Manifest {
     /** Sort/label only registered full-runtime menus, never create missing callbacks. */
     public static function normalize_submenus() {
         global $submenu;
-        if ( ! current_user_can( 'manage_options' ) || ! isset( $submenu[ self::PARENT ] )
+        if ( true !== current_user_can( 'manage_options' ) || ! isset( $submenu[ self::PARENT ] )
             || ! is_array( $submenu[ self::PARENT ] ) ) return;
         $rows = self::menu_rows();
         $rank = array_flip( array_keys( $rows ) );

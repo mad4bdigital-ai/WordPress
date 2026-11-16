@@ -550,9 +550,26 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 
 		$catalog = self::catalog();
 		$declaration = isset( $catalog['providers'][ $provider ] ) && is_array( $catalog['providers'][ $provider ] ) ? $catalog['providers'][ $provider ] : array();
-		$available = is_object( $adapter ) && method_exists( $adapter, 'is_available' ) ? (bool) $adapter->is_available() : false;
-		$runtime = class_exists( 'MAD4B_SCP_Provider_Contracts' ) ? MAD4B_SCP_Provider_Contracts::runtime_status( $provider, $available ) : array( 'status' => 'certification_authority_unavailable', 'runtime_contract_ok' => false );
-		$exact_certified = ! empty( $runtime['runtime_contract_ok'] );
+		$available = false;
+		if ( is_object( $adapter ) && ! is_wp_error( $adapter )
+			&& method_exists( $adapter, 'is_available' ) ) {
+			try {
+				$available = true === $adapter->is_available();
+			} catch ( \Throwable $error ) {
+				$available = false;
+			}
+		}
+		$runtime = array( 'status' => 'certification_authority_unavailable',
+			'runtime_contract_ok' => false );
+		if ( class_exists( 'MAD4B_SCP_Provider_Contracts' ) ) {
+			try {
+				$observed = MAD4B_SCP_Provider_Contracts::runtime_status( $provider, $available );
+				if ( is_array( $observed ) ) $runtime = $observed;
+			} catch ( \Throwable $error ) {
+				// Unknown runtime contract is never a valid source certificate.
+			}
+		}
+		$exact_certified = ( $runtime['runtime_contract_ok'] ?? null ) === true;
 		$artifact = self::artifact_evidence( $provider, $runtime, $adapter );
 		$artifact_fingerprint = isset( $artifact['runtime_artifact_fingerprint'] ) ? (string) $artifact['runtime_artifact_fingerprint'] : '';
 		$artifact_authority_bound = ! empty( $artifact['artifact_authority_bound'] );
@@ -904,11 +921,19 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 			|| ! defined( 'MAD4B_SCP_DIR' ) ) return $denied;
 		try { $status = $adapter->context_provider_contract_status(); }
 		catch ( Throwable $error ) { return $denied; }
-		if ( ! is_array( $status ) || empty( $status['ready'] ) || empty( $status['first_party'] )
-			|| 'mad4b.google-drive-context-provider.v1' !== (string) ( $status['contract'] ?? '' )
-			|| 'google_drive_context' !== (string) ( $status['provider'] ?? '' ) ) return $denied;
-		$build = strtolower( trim( (string) ( $status['control_plane_build_fingerprint'] ?? '' ) ) );
-		$observed_build = strtolower( trim( (string) MAD4B_SCP_External_Handshake_Evidence::build_fingerprint() ) );
+		if ( ! is_array( $status ) || ( $status['ready'] ?? null ) !== true
+			|| ( $status['first_party'] ?? null ) !== true
+			|| ( $status['contract'] ?? null ) !== 'mad4b.google-drive-context-provider.v1'
+			|| ( $status['provider'] ?? null ) !== 'google_drive_context'
+			|| ! is_string( $status['control_plane_build_fingerprint'] ?? null ) ) return $denied;
+		try {
+			$observed = MAD4B_SCP_External_Handshake_Evidence::build_fingerprint();
+		} catch ( \Throwable $error ) {
+			return $denied;
+		}
+		if ( ! is_string( $observed ) ) return $denied;
+		$build = strtolower( trim( $status['control_plane_build_fingerprint'] ) );
+		$observed_build = strtolower( trim( $observed ) );
 		if ( ! preg_match( '/^[a-f0-9]{64}$/D', $build )
 			|| ! hash_equals( $build, $observed_build ) ) {
 			$denied['state'] = 'first_party_build_identity_drift';
@@ -942,7 +967,8 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 			$denied['state'] = 'first_party_rollback_contract_drift';
 			return $denied;
 		}
-		$fingerprint = (string) ( $status['artifact_fingerprint'] ?? '' );
+		if ( ! is_string( $status['artifact_fingerprint'] ?? null ) ) return $denied;
+		$fingerprint = $status['artifact_fingerprint'];
 		if ( ! preg_match( '/^[a-f0-9]{64}$/D', $fingerprint ) ) return $denied;
 		return array(
 			'bound' => true,

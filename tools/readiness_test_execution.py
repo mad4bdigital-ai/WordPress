@@ -80,6 +80,84 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-media-evidence-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-history-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/provider-connections-admin-read-hermetic.php",
+    # First-party native LiteSpeed read / cache purge source evidence.
+    "tests/litespeed-adapter-original-hermetic.php",
+    # Original first-party Brand/Provider source receipts: no live mutation.
+    "tests/context-provider-gateway-original-hermetic.php",
+    # Exact original WordPress evidence-only source regression suites.
+    "tests/external-media-ingest-original-hermetic.php",
+    "tests/cli-readiness-original-hermetic.php",
+    # Native source grant PLAN only: no REST owner promotion or grant mutation.
+    "tests/agent-grant-plan-original-hermetic.php",
+    # Original native pending-ticket gate, no creation of a real approval ticket.
+    "tests/staging-write-planning-guard-original-hermetic.php",
+    # Original MCP runtime, REST capability and native write preflight; no real grants.
+    "tests/mcp-protocol-scope-original-hermetic.php",
+    "tests/unified-gateway-permission-original-hermetic.php",
+    "tests/authorization-preflight-original-hermetic.php",
+    # Original nonmutating Developer/diagnostic gate and NHI Undo journal fixtures.
+    "tests/developer-authority-access-original-hermetic.php",
+    "tests/mcp-request-scope-original-hermetic.php",
+    # Original metadata-only catalog, DB preflight, and zero-touch plugin/skill cases.
+    "tests/artifacts-original-hermetic.php",
+    "tests/research-intelligence-original-hermetic.php",
+    "tests/remote-operation-catalog-original-hermetic.php",
+    "tests/plugin-bootstrap-original-hermetic.php",
+    "tests/skill-provider-source-original-hermetic.php",
+    # Native P1 scheduler and review routing admission (no live Google or agent approval).
+    "tests/drive-scan-cron-original-hermetic.php",
+    "tests/brand-review-routing-original-hermetic.php",
+    # Original first-party P1 content/read-only storage and owner admission.
+    "tests/firecrawl-page-store-original-hermetic.php",
+    "tests/readiness-workflow-options-original-hermetic.php",
+    "tests/content-job-structural-qa-admission-original-hermetic.php",
+    "tests/content-job-groups-admission-original-hermetic.php",
+    "tests/content-relationship-owner-cert-original-hermetic.php",
+    # Native first-party origin/relationship admission and exact central CWA source.
+    "tests/origin-evidence-workflow-original-hermetic.php",
+    "tests/content-relationship-writeback-admission-original-hermetic.php",
+    "tests/central-write-acceptance-permission-original-hermetic.php",
+    "tests/central-transport-write-source-hermetic.php",
+    # First-party P1 visual/content/interaction original no-write admission suites.
+    "tests/content-completeness-original-hermetic.php",
+    "tests/content-relationship-graph-site-original-hermetic.php",
+    "tests/visual-seo-strategy-original-hermetic.php",
+    "tests/adaptive-interaction-ui-original-hermetic.php",
+    "tests/content-relationship-media-owner-original-hermetic.php",
+    "tests/contentjob-structural-cwa-original-hermetic.php",
+    # First-party Content Readiness isolated Ledger, exact original PHP runtime.
+    "wp-content/plugins/mad4b-site-control-plane/tests/content-readiness/isolated-contract.php",
+    # Exact first-party no-write admin, source rights and QA evidence fixtures.
+    "tests/admin-navigation-manifest-original-hermetic.php",
+    "tests/admin-surfaces-authorization-original-hermetic.php",
+    "tests/content-media-rights-guard-original-hermetic.php",
+    # First-party CCT public-credit postcommit only: no external WordPress state.
+    "tests/media-rights-cct-after-commit-original-hermetic.php",
+    # Original local WordPress image rights remain unknown, not fabricated.
+    "tests/content-media-local-missing-rights-original-hermetic.php",
+    "tests/developer-workspace-admission-original-hermetic.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/content-intelligence-pipeline-contract.php",
+
+    # Original Scheduler and Queue behavior plus Skill Registry exact enrollment.
+    "wp-content/plugins/mad4b-site-control-plane/tests/scheduler-admission-contract.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/scheduler-backlog-contract.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/remote-work-queue-cancellation-runtime.php",
+    "tests/skill-registry-enrollment-original-hermetic.php",
+
+
+
+
+
+
+    "wp-content/plugins/mad4b-site-control-plane/tests/undo-intent-fault-injection.php",
+
+
+    # Hermetic native provider/add-on source fixture.
+    "wp-content/plugins/mad4b-site-control-plane/tests/wordpress-addon-execution-guard-contract.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/runtime-obstacle-resolution-runtime.php",
+
+    "wp-content/plugins/mad4b-site-control-plane/tests/provider-compatibility-engine-contract.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/provider-first-party-context-artifact-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/context-ai-agent-review-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/generation-snapshot-exception-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/no-input-read-ability-schema-runtime.php",
@@ -89,6 +167,8 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "wp-content/plugins/mad4b-site-control-plane/tests/developer-external-backend-discovery-contract.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/developer-runner-lifecycle-fetch-contract.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/runtime-backend-registry-contract.php",
+    # Original OAuth subject remapping regression with fake site/client, no token validation or live grant.
+    "wp-content/plugins/mad4b-site-control-plane/tests/oauth-multi-user-tenant-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/runtime-backend-deactivation-contract.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/runtime-runner-bridge-contract.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/performance-differential-diagnostic-contract.php",
@@ -106,6 +186,83 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "wp-content/plugins/mad4b-site-control-plane/tests/self-update-selected-head-release-trust-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/staging-source-selector-runtime.php",
     "tests/remote-execution/unified-operator-session-policy-smoke.php",
+    # Original authority lifecycle code, fake PHP memory only. Exact reviewed
+    # host-CAS fixtures: never permit arbitrary PHP CLI execution via wildcard.
+    "tests/authority-auto-reconcile-host-hermetic.php",
+    "tests/agent-registry-exact-revoke-cas-hermetic.php",
+    # Original host actor and owner review inbox, no runtime site writes.
+    "tests/execution-authority-identity-native-hermetic.php",
+    "tests/authority-review-inbox-native-hermetic.php",
+    # Original source-bound registry write preflight, PHP 7.4/8.5 tested.
+    "tests/remote-execution/governed-write-admission-smoke.php",
+    # Native signed Brand Draft Context receipt and quality preflight test;
+    # no WordPress, network, or Production write in this exact fixture.
+    "wp-content/plugins/mad4b-site-control-plane/tests/context-preflight-runtime.php",
+    # Review-bound original host, MCP registration and runtime guards.
+    # No network, site mutation or arbitrary CLI PHP file is accepted.
+    "tests/servers-original-native-transport-hermetic.php",
+    # Three first-party native read-only service contracts; hermetic fake
+    # WordPress and temporary isolated plugin filesystem, no site writes.
+    "tests/original-native-service-trust-hermetic.php",
+    # Explicit original remote readback and content QA review tests.
+    "tests/original-queue-and-review-modes-native.php",
+    "tests/original-research-tour-workflow-native.php",
+    "tests/global-runtime-lifecycle-original-hermetic.php",
+    "tests/mutation-principal-first-party-hermetic.php",
+    "tests/developer-policy-v2-original-hermetic.php",
+    "tests/core-connector-vault-original-hermetic.php",
+    "tests/dfsb-environment-policy-original-hermetic.php",
+    "tests/mcp-adapter-dynamic-integrity-original-hermetic.php",
+    "tests/source-lifecycle-original-hermetic.php",
+    "tests/site-lifecycle-rest-original-hermetic.php",
+    "tests/staging-context-fixtures-original-hermetic.php",
+    "tests/staging-brand-trial-original-hermetic.php",
+    "tests/staging-fixture-drafts-original-hermetic.php",
+    "tests/readiness-draft-only-original-hermetic.php",
+    "tests/readiness-scopes-events-original-hermetic.php",
+    # Exact non-authorizing first-party provider/owner fixtures, no live WordPress.
+    "tests/company-cloudflare-admission-original-hermetic.php",
+    "tests/company-email-routing-original-hermetic.php",
+    "tests/ai-task-routing-original-hermetic.php",
+    "tests/delegation-owner-original-hermetic.php",
+    # Exact original MCP transport and provider discovery read-only assertions.
+    "tests/transport-context-permission-original-hermetic.php",
+    "tests/provider-mcp-path-original-hermetic.php",
+
+    "tests/content-relationship-terms-original-hermetic.php",
+    # Newly reviewed first-party read-only Elementor, geo and migration fixtures.
+    "tests/elementor-native-mcp-awareness-original-hermetic.php",
+    "tests/geo-quality-original-hermetic.php",
+    "tests/migration-decision-catalog-original-hermetic.php",
+    "tests/hub-jetengine-consumer-fence-original-hermetic.php",
+    # Native first-party source tests for vetted and dormant adapters only.
+    "tests/local-brand-draft-adapter-original-hermetic.php",
+    "tests/dfsb-read-adapter-original-hermetic.php",
+    "tests/operator-runner-profile-original-hermetic.php",
+    "tests/capability-dependency-planner-original-hermetic.php",
+    "tests/switcher-sources-original-hermetic.php",
+    # Exact original read-only source/CAS/transaction regression fixtures.
+    "tests/operational-integrity-original-hermetic.php",
+    "tests/dynamic-provider-manifest-original-hermetic.php",
+    "tests/plugin-transaction-plan-original-hermetic.php",
+
+
+
+
+
+
+    "tests/adaptive-asset-bridge-original-hermetic.php",
+
+    "tests/staging-grant-agent-proof-native.php",
+    "tests/server-registration-descriptor-boundary-hermetic.php",
+    "tests/staging-write-delegated-identity-native-hermetic.php",
+    "tests/staging-write-host-candidate-native-hermetic.php",
+    "tests/runtime-convergence-owner-gate-native-hermetic.php",
+    "tests/staging-host-candidate-gate-native-hermetic.php",
+    "tests/native-capability-registry-adapter-first-party.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-native-runtime.php",
+
+
 ))
 
 
@@ -231,6 +388,17 @@ def self_test():
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/staging-source-selector-runtime.php")[0] == "php"
     assert command_for("tests/production_readiness_registry_contract.py")[0] == sys.executable
     assert command_for("tests/remote-execution/operator-grants-convergence-smoke.php")[0] == "php"
+    assert command_for("tests/remote-execution/governed-write-admission-smoke.php")[0] == "php"
+    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/context-preflight-runtime.php")[0] == "php"
+    assert command_for("tests/servers-original-native-transport-hermetic.php")[0] == "php"
+    assert command_for("tests/original-native-service-trust-hermetic.php")[0] == "php"
+    assert command_for("tests/server-registration-descriptor-boundary-hermetic.php")[0] == "php"
+    assert command_for("tests/staging-write-delegated-identity-native-hermetic.php")[0] == "php"
+    assert command_for("tests/staging-write-host-candidate-native-hermetic.php")[0] == "php"
+    assert command_for("tests/runtime-convergence-owner-gate-native-hermetic.php")[0] == "php"
+    assert command_for("tests/staging-host-candidate-gate-native-hermetic.php")[0] == "php"
+    assert command_for("tests/native-capability-registry-adapter-first-party.php")[0] == "php"
+    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-native-runtime.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/generation-snapshot-exception-runtime.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/no-input-read-ability-schema-runtime.php")[0] == "php"

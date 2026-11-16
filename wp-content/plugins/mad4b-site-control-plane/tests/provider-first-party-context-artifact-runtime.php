@@ -2,6 +2,8 @@
 /** Fail-closed regression for in-tree Google Drive Context provider binding. */
 if ( ! defined( 'ABSPATH' ) ) define( 'ABSPATH', __DIR__ . '/' );
 function sanitize_key( $key ) { return strtolower( preg_replace( '/[^a-z0-9_-]/', '', (string) $key ) ); }
+class WP_Error { function __construct($code){} }
+function is_wp_error($value){return $value instanceof WP_Error;}
 function add_action( $name, $callback, $priority = 10 ) {}
 function add_filter( $name, $callback, $priority = 10, $args = 1 ) {}
 $root = sys_get_temp_dir() . '/mad4b-firstparty-' . bin2hex( random_bytes( 8 ) ) . '/';
@@ -9,6 +11,7 @@ if ( ! mkdir( $root . 'includes/adapters', 0700, true ) ) throw new RuntimeExcep
 define( 'MAD4B_SCP_DIR', $root );
 $files = array(
     'includes/adapters/class-mad4b-scp-context-adapter.php',
+    'includes/adapters/class-mad4b-scp-context-asset-read-model.php',
     'includes/class-mad4b-scp-brand-context-builder.php',
     'includes/class-mad4b-scp-context-authority.php',
     'includes/class-mad4b-scp-context-preflight.php',
@@ -48,14 +51,14 @@ $adapter->status = array(
 );
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-provider-compatibility-certification.php';
 $m = new ReflectionMethod( 'MAD4B_SCP_Provider_Compatibility_Certification', 'first_party_context_evidence' );
-$m->setAccessible( true );
+if ( PHP_VERSION_ID < 80100 ) $m->setAccessible( true );
 $read = static function () use ( $m, $adapter ) { return $m->invoke( null, 'google_drive_context', $adapter ); };
 $assert = static function ( $pass, $reason ) {
     if ( ! $pass ) { fwrite( STDERR, "FAIL: $reason\n" ); exit( 1 ); }
 };
 try {
     $ok = $read();
-    $assert( ! empty( $ok['bound'] ) && $ok['verified_critical_file_count'] === 6
+    $assert( ! empty( $ok['bound'] ) && $ok['verified_critical_file_count'] === 7
         && ! $ok['mutation_authorized'] && ! $ok['behavioral_certification_granted']
         && ! $ok['rollback_certification_granted'], 'identity only, no write promotion' );
     $adapter->status['control_plane_build_fingerprint'] = str_repeat( 'c', 64 );
@@ -73,6 +76,19 @@ try {
     $adapter->status['ready'] = false;
     $assert( empty( $read()['bound'] ), 'provider runtime health fails closed' );
     $adapter->status['ready'] = true;
+    foreach ( array( new WP_Error( 'unknown_ready' ), 1, 'true', null ) as $invalid ) {
+        $adapter->status['ready'] = $invalid;
+        $assert( empty( $read()['bound'] ), 'original first-party provider ready must be exactly true' );
+    }
+    $adapter->status['ready'] = true;
+    foreach ( array( new WP_Error( 'unknown_first_party' ), 1, 'true', null ) as $invalid ) {
+        $adapter->status['first_party'] = $invalid;
+        $assert( empty( $read()['bound'] ), 'original first-party source proof must be exactly true' );
+    }
+    $adapter->status['first_party'] = true;
+    $adapter->status['artifact_fingerprint'] = new WP_Error( 'artifact_identity_unknown' );
+    $assert( empty( $read()['bound'] ), 'unknown provider fingerprint cannot become a certified first-party artifact' );
+    $adapter->status['artifact_fingerprint'] = str_repeat( 'b', 64 );
     $assert( empty( $m->invoke( null, 'unrelated_provider', $adapter )['bound'] ), 'external providers never inherit first-party exemption' );
     echo "PASS: first-party Google provider identity, file drift, rollback contract and no write promotion\n";
 } finally {

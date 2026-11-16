@@ -1,0 +1,522 @@
+{
+  "contract": "mad4b.wayfatours.production-media-runtime-source-mirror.v1",
+  "source_site": "https://wayfatours.com",
+  "snapshot_utc": "2026-11-16T00:17:11.829257+00:00",
+  "git_source_branch": "integration/pr814-821-source-converged-20261115",
+  "git_head_before_snapshot": "7c190bb6c48424d8118b77d4d79437afb43fac64",
+  "php_modules": 37,
+  "linked_asset_files": 12,
+  "total_files": 49,
+  "source_parity": {
+    "diverged": 1,
+    "missing": 34,
+    "same": 14
+  },
+  "independent_company_source_mirror_only": true,
+  "not_an_installable_mu_plugins_directory": true,
+  "automatic_release_blocked_until_ownership_and_signed_original_gate": true,
+  "do_not_copy_missing_files_to_shared_mu_plugins_without_proof": true,
+  "source_files": [
+    {
+      "relative_path": "mu-plugins/400-wayfa-above-fold-images.php",
+      "sha256": "8b9b5e6e0aead7e7dd59fd581120c6b7c4d7cb0dc0981e2940052c104d355f45",
+      "bytes": 694,
+      "kind": "php",
+      "shared_git_source_sha256": null,
+      "source_site_sha256": null,
+      "shared_source_status": "missing",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/assets/accessibility-archive.js",
+      "sha256": "4bfd468597a77e1e9f0dd35c23c909ef1c82fe7d92c8b3ab97fa0c9a072a0e3e",
+      "bytes": 2859,
+      "kind": "asset",
+      "shared_git_source_sha256": null,
+      "source_site_sha256": "4bfd468597a77e1e9f0dd35c23c909ef1c82fe7d92c8b3ab97fa0c9a072a0e3e",
+      "shared_source_status": "missing",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/assets/accessibility-contract.css",
+      "sha256": "310ac16258dfda974feaa2a3bfd58236c820ccb156bac22cc552cecbcb9562db",
+      "bytes": 6258,
+      "kind": "asset",
+      "shared_git_source_sha256": null,
+      "source_site_sha256": "551ceaf24cf3630f83597f9791fda652e75cdf49dcafa4014dec043bca7e63eb",
+      "shared_source_status": "missing",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/assets/accessibility-gallery.js",
+      "sha256": "0ce47f3f26a9a98916633e53aca14d5371bfab1be98ab7958522acb25aac2a1d",
+      "bytes": 2257,
+      "kind": "asset",
+      "shared_git_source_sha256": null,
+      "source_site_sha256": "0ce47f3f26a9a98916633e53aca14d5371bfab1be98ab7958522acb25aac2a1d",
+      "shared_source_status": "missing",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/assets/accessibility-listing.js",
+      "sha256": "920b0a0820055a955e91045f0745324120c2b3707bbb7cdbaab89e3d48bd83b6",
+      "bytes": 4261,
+      "kind": "asset",
+      "shared_git_source_sha256": null,
+      "source_site_sha256": "920b0a0820055a955e91045f0745324120c2b3707bbb7cdbaab89e3d48bd83b6",
+      "shared_source_status": "missing",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/assets/accessibility-swiper.js",
+      "sha256": "c93d7a704d7e94ae681d3382818f17bd79670685083b91b970f4251bbaab0d5e",
+      "bytes": 3816,
+      "kind": "asset",
+      "shared_git_source_sha256": null,
+      "source_site_sha256": "c93d7a704d7e94ae681d3382818f17bd79670685083b91b970f4251bbaab0d5e",
+      "shared_source_status": "missing",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/assets/mad4b-city-visible-image.js",
+      "sha256": "7b1ca92a675ed27ffc46202759d7b6f5d3ba52bde431932d29a9d872d7aaadca",
+      "bytes": 2536,
+      "kind": "asset",
+      "shared_git_source_sha256": null,
+      "source_site_sha256": "bf78f9e93969b8cf48cb64d9fbfb85ca1c96cfa373af5e8e24f21d2ab83b4e84",
+      "shared_source_status": "missing",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/assets/mad4b-company-media-control.css",
+      "sha256": "dec77b345848c6d85a2317b7f1ac5d815ae09a5ce815b609cc4130c82ecf4ade",
+      "bytes": 7797,
+      "kind": "asset",
+      "shared_git_source_sha256": null,
+      "source_site_sha256": "dec77b345848c6d85a2317b7f1ac5d815ae09a5ce815b609cc4130c82ecf4ade",
+      "shared_source_status": "missing",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/assets/mad4b-company-media-control.js",
+      "sha256": "d913c3e1f068444cdb0e32e2510e6012806247d84ef266d3a2268f9651fbfc7c",
+      "bytes": 1647,
+      "kind": "asset",
+      "shared_git_source_sha256": null,
+      "source_site_sha256": "d913c3e1f068444cdb0e32e2510e6012806247d84ef266d3a2268f9651fbfc7c",
+      "shared_source_status": "missing",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/assets/mad4b-tour-story-gallery.1.2.0-20261111.js",
+      "sha256": "a6b3356dfdf2a0f866341447918b7278c682aa03d9e5b98d4cd34567d42133e2",
+      "bytes": 11724,
+      "kind": "asset",
+      "shared_git_source_sha256": null,
+      "source_site_sha256": "a6b3356dfdf2a0f866341447918b7278c682aa03d9e5b98d4cd34567d42133e2",
+      "shared_source_status": "missing",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/assets/mad4b-tour-story-gallery.css",
+      "sha256": "042ad5643b7df4ded9cec484e44e3681152d7cbd8f39347921cb811ef903f302",
+      "bytes": 4478,
+      "kind": "asset",
+      "shared_git_source_sha256": null,
+      "source_site_sha256": "042ad5643b7df4ded9cec484e44e3681152d7cbd8f39347921cb811ef903f302",
+      "shared_source_status": "missing",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/assets/mad4b-tour-story-gallery.js",
+      "sha256": "802b8328eda5629a616c84ffb57af689b7291b4d3bc1759031be4790db0cd33e",
+      "bytes": 11641,
+      "kind": "asset",
+      "shared_git_source_sha256": null,
+      "source_site_sha256": "802b8328eda5629a616c84ffb57af689b7291b4d3bc1759031be4790db0cd33e",
+      "shared_source_status": "missing",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/mad4b-composite-media-adapter.php",
+      "sha256": "eb4e113d34dec27851410daf959b2ddce2af7717d2b4f7444f4adf4a99faf7f5",
+      "bytes": 18304,
+      "kind": "php",
+      "shared_git_source_sha256": "eb4e113d34dec27851410daf959b2ddce2af7717d2b4f7444f4adf4a99faf7f5",
+      "source_site_sha256": null,
+      "shared_source_status": "same",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/mad4b-composite-media-patch.php",
+      "sha256": "2fd9d564cb86cd8bdf0902fd64473214abd7e3eb58953cba93782c34b25cc14a",
+      "bytes": 4263,
+      "kind": "php",
+      "shared_git_source_sha256": "2fd9d564cb86cd8bdf0902fd64473214abd7e3eb58953cba93782c34b25cc14a",
+      "source_site_sha256": null,
+      "shared_source_status": "same",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/mad4b-elementor-copy-coverage.php",
+      "sha256": "ce1bee796b5002d9cd83d57b10bf0a06f9dbaae81c23889f5741d5b7c3703458",
+      "bytes": 12790,
+      "kind": "php",
+      "shared_git_source_sha256": null,
+      "source_site_sha256": "ce1bee796b5002d9cd83d57b10bf0a06f9dbaae81c23889f5741d5b7c3703458",
+      "shared_source_status": "missing",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/mad4b-gallery-cruise-content-coverage-v1.php",
+      "sha256": "69869578fe9865163ba6db843eafe799e1d3a420beaefc03b9a6f363f4741787",
+      "bytes": 4731,
+      "kind": "php",
+      "shared_git_source_sha256": null,
+      "source_site_sha256": "69869578fe9865163ba6db843eafe799e1d3a420beaefc03b9a6f363f4741787",
+      "shared_source_status": "missing",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/mad4b-gallery-itinerary-policy-v1.php",
+      "sha256": "adb5183ffb225480446e3cc1cb6da5d1b2cd09318a7fd75f9a9f1cbcac02ba5d",
+      "bytes": 8385,
+      "kind": "php",
+      "shared_git_source_sha256": null,
+      "source_site_sha256": "adb5183ffb225480446e3cc1cb6da5d1b2cd09318a7fd75f9a9f1cbcac02ba5d",
+      "shared_source_status": "missing",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/mad4b-gallery-resolution-engine.php",
+      "sha256": "63e76cda504c674c7f3f8d5ec0b57ada35da0b4d3cd670d4056bdb4657735ce3",
+      "bytes": 11898,
+      "kind": "php",
+      "shared_git_source_sha256": "63e76cda504c674c7f3f8d5ec0b57ada35da0b4d3cd670d4056bdb4657735ce3",
+      "source_site_sha256": "a989cddcae1606cdf3ae2da08b357e2ba1c3ec0838e74219c6fd8d84c40fe867",
+      "shared_source_status": "same",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/mad4b-gallery-stage-policy-v1.php",
+      "sha256": "5b5b79ba883c9a80c91312087fd1a42c3f526620673c129c4b8fb9d314909a58",
+      "bytes": 8721,
+      "kind": "php",
+      "shared_git_source_sha256": null,
+      "source_site_sha256": "5b5b79ba883c9a80c91312087fd1a42c3f526620673c129c4b8fb9d314909a58",
+      "shared_source_status": "missing",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/mad4b-licensed-term-media-apply-v1.php",
+      "sha256": "81f9a8bf93a61c44e081ef343748e43d62ff62863eb83629d0c91ce8716e5646",
+      "bytes": 5245,
+      "kind": "php",
+      "shared_git_source_sha256": null,
+      "source_site_sha256": "81f9a8bf93a61c44e081ef343748e43d62ff62863eb83629d0c91ce8716e5646",
+      "shared_source_status": "missing",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/mad4b-media-association-v1.php",
+      "sha256": "706dd7a0204d4111b9dab20246b8abb7ae7e9ddac214495d55f6ce90059b3546",
+      "bytes": 7904,
+      "kind": "php",
+      "shared_git_source_sha256": null,
+      "source_site_sha256": "706dd7a0204d4111b9dab20246b8abb7ae7e9ddac214495d55f6ce90059b3546",
+      "shared_source_status": "missing",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/mad4b-media-attribution-registry.php",
+      "sha256": "48fe73035c4f585ca330821707204219026b5b57b70b8dff7d5bdf00edd1e4db",
+      "bytes": 27093,
+      "kind": "php",
+      "shared_git_source_sha256": "48fe73035c4f585ca330821707204219026b5b57b70b8dff7d5bdf00edd1e4db",
+      "source_site_sha256": "48fe73035c4f585ca330821707204219026b5b57b70b8dff7d5bdf00edd1e4db",
+      "shared_source_status": "same",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/mad4b-media-composite-integrity.php",
+      "sha256": "c5f56f47baf7714884881bdbdd2b7bcd83aaf82b56e1f881dc8b36deffff0b12",
+      "bytes": 12451,
+      "kind": "php",
+      "shared_git_source_sha256": "c5f56f47baf7714884881bdbdd2b7bcd83aaf82b56e1f881dc8b36deffff0b12",
+      "source_site_sha256": "b660ea541fa36f7f1cbd26d94642e06223c297016aef5bcfdb36ecca27d21d6e",
+      "shared_source_status": "same",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/mad4b-media-gallery-identity-v1.php",
+      "sha256": "bf60cd26f71b345e6d7d6d081e823eafa7e9c0767ee3d3e02a236fe875f46476",
+      "bytes": 5000,
+      "kind": "php",
+      "shared_git_source_sha256": null,
+      "source_site_sha256": "bf60cd26f71b345e6d7d6d081e823eafa7e9c0767ee3d3e02a236fe875f46476",
+      "shared_source_status": "missing",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/mad4b-media-library-discovery-v1.php",
+      "sha256": "902a05ecd7844c5d138afcf63ad65655f07f2d3149e97e2441acac95bcda98f7",
+      "bytes": 7806,
+      "kind": "php",
+      "shared_git_source_sha256": null,
+      "source_site_sha256": "902a05ecd7844c5d138afcf63ad65655f07f2d3149e97e2441acac95bcda98f7",
+      "shared_source_status": "missing",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/mad4b-media-origin-integrity.php",
+      "sha256": "e3431227814c2cf57a5ded924c8badbda7f5d24d4e02a0ebc3ec8820ebbf2e50",
+      "bytes": 34964,
+      "kind": "php",
+      "shared_git_source_sha256": null,
+      "source_site_sha256": "e3431227814c2cf57a5ded924c8badbda7f5d24d4e02a0ebc3ec8820ebbf2e50",
+      "shared_source_status": "missing",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/mad4b-media-review-hierarchy.php",
+      "sha256": "84414755c45ec323fbc33f1aa14caca22e45860fbce737f5695992caca382965",
+      "bytes": 52314,
+      "kind": "php",
+      "shared_git_source_sha256": null,
+      "source_site_sha256": "84414755c45ec323fbc33f1aa14caca22e45860fbce737f5695992caca382965",
+      "shared_source_status": "missing",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/mad4b-media-rights-content-job-bridge.php",
+      "sha256": "d310facf44fe313cdfc4375e8c8e8b82e54f130d0c917da6601a25347b7d6b3c",
+      "bytes": 3592,
+      "kind": "php",
+      "shared_git_source_sha256": null,
+      "source_site_sha256": "d310facf44fe313cdfc4375e8c8e8b82e54f130d0c917da6601a25347b7d6b3c",
+      "shared_source_status": "missing",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/mad4b-media-rights-extraction-intake.php",
+      "sha256": "584d76d845c239df82cf3333d6c8a2cdbda2c2f6f4c4b6b2ed24a9c6daa0137e",
+      "bytes": 41794,
+      "kind": "php",
+      "shared_git_source_sha256": "584d76d845c239df82cf3333d6c8a2cdbda2c2f6f4c4b6b2ed24a9c6daa0137e",
+      "source_site_sha256": "e2a2e2b0fcb78aba845ad118e0c672701bdb4c8a3f76e051d511f4d36eda9c99",
+      "shared_source_status": "same",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/mad4b-media-visual-lineage-v1.php",
+      "sha256": "8892b255c96eed107fc6515444611c9bfaa80cdffa639955856c84cb392f09d7",
+      "bytes": 12413,
+      "kind": "php",
+      "shared_git_source_sha256": null,
+      "source_site_sha256": "8892b255c96eed107fc6515444611c9bfaa80cdffa639955856c84cb392f09d7",
+      "shared_source_status": "missing",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/mad4b-page-dependency-cache.php",
+      "sha256": "245ded3122acfdcce62cce2906d3d9ea2bf179634ec8431c3c5fa0ffced459dd",
+      "bytes": 52312,
+      "kind": "php",
+      "shared_git_source_sha256": null,
+      "source_site_sha256": "245ded3122acfdcce62cce2906d3d9ea2bf179634ec8431c3c5fa0ffced459dd",
+      "shared_source_status": "missing",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/mad4b-tour-gallery-popup-layout.php",
+      "sha256": "2be07a1c08a1fc3be3ce8abd4bacf6445d5aa90881d6c284525b94b0d992e7b0",
+      "bytes": 13359,
+      "kind": "php",
+      "shared_git_source_sha256": "2be07a1c08a1fc3be3ce8abd4bacf6445d5aa90881d6c284525b94b0d992e7b0",
+      "source_site_sha256": "53b5c33e6692a0393418448b8a050710f9878a4b7d6daa4b945a1f592623240f",
+      "shared_source_status": "same",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/mad4b-tour-gallery-popup-layout/frame-focus-tag.php",
+      "sha256": "d92c99d4374253bedc1f66b1a8c3cc97bc6d06472338c8f2283156ee4efaadab",
+      "bytes": 1310,
+      "kind": "php",
+      "shared_git_source_sha256": "d92c99d4374253bedc1f66b1a8c3cc97bc6d06472338c8f2283156ee4efaadab",
+      "source_site_sha256": "d92c99d4374253bedc1f66b1a8c3cc97bc6d06472338c8f2283156ee4efaadab",
+      "shared_source_status": "same",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/mad4b-tour-gallery-popup-layout/frames.js",
+      "sha256": "8902675c06f3c4796413a2c52c169bdeabba3cbee3c0df2684cf2eb4fa33e0a1",
+      "bytes": 4007,
+      "kind": "asset",
+      "shared_git_source_sha256": "8902675c06f3c4796413a2c52c169bdeabba3cbee3c0df2684cf2eb4fa33e0a1",
+      "source_site_sha256": "8902675c06f3c4796413a2c52c169bdeabba3cbee3c0df2684cf2eb4fa33e0a1",
+      "shared_source_status": "same",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/mad4b-tour-gallery-presentation.php",
+      "sha256": "8e05b7258ff3bee3f329f581409796493580ec5c8fd264bd42b346aed801826c",
+      "bytes": 8343,
+      "kind": "php",
+      "shared_git_source_sha256": null,
+      "source_site_sha256": "8e05b7258ff3bee3f329f581409796493580ec5c8fd264bd42b346aed801826c",
+      "shared_source_status": "missing",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/mad4b-tour-gallery-source-repair.php",
+      "sha256": "0e27e153e25de01be508ff643396bafa60102150f139216df236ac906db81e55",
+      "bytes": 20037,
+      "kind": "php",
+      "shared_git_source_sha256": null,
+      "source_site_sha256": "0e27e153e25de01be508ff643396bafa60102150f139216df236ac906db81e55",
+      "shared_source_status": "missing",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/mad4b-tour-media-governed-apply.php",
+      "sha256": "26953e9d3e6093017309fe2af983ce87c37043f176fd748d76f15c105e4e3e0a",
+      "bytes": 34427,
+      "kind": "php",
+      "shared_git_source_sha256": null,
+      "source_site_sha256": "26953e9d3e6093017309fe2af983ce87c37043f176fd748d76f15c105e4e3e0a",
+      "shared_source_status": "missing",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/mad4b-tour-media-portrait-derivative.php",
+      "sha256": "54488af9b34e1e7906b2138996f68258d83d9a8107f7b3869aff6e292ca97de8",
+      "bytes": 14620,
+      "kind": "php",
+      "shared_git_source_sha256": null,
+      "source_site_sha256": "54488af9b34e1e7906b2138996f68258d83d9a8107f7b3869aff6e292ca97de8",
+      "shared_source_status": "missing",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/mad4b-tour-media-reconcile.php",
+      "sha256": "3de6aaef468a11e6e8fab0ba21e738d391caf21b5aef4b1cdf0884bf3cc62b73",
+      "bytes": 25609,
+      "kind": "php",
+      "shared_git_source_sha256": null,
+      "source_site_sha256": "edd8b777a9550586d4b1dd1fe48e8508aa8d74c7efbeea9c790e93d8481f463a",
+      "shared_source_status": "missing",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/mad4b-tour-photo-quality.php",
+      "sha256": "66a4c8e6b93f9f2066efd816c86c8640aa9b442189722e7fa5260af2323f784e",
+      "bytes": 77861,
+      "kind": "php",
+      "shared_git_source_sha256": "66a4c8e6b93f9f2066efd816c86c8640aa9b442189722e7fa5260af2323f784e",
+      "source_site_sha256": "619c8bb248f18ebe0c0ddc5510c4becc3b83d05a637470d4384bb3905fe8c891",
+      "shared_source_status": "same",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/mad4b-tour-photo-quality/weighted-coverage.php",
+      "sha256": "81a85b50ad2b6e3f0f69d179ef130714573b516a8d8a200a47a6a4fe0e93b9bb",
+      "bytes": 26234,
+      "kind": "php",
+      "shared_git_source_sha256": "81a85b50ad2b6e3f0f69d179ef130714573b516a8d8a200a47a6a4fe0e93b9bb",
+      "source_site_sha256": "81a85b50ad2b6e3f0f69d179ef130714573b516a8d8a200a47a6a4fe0e93b9bb",
+      "shared_source_status": "same",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/mad4b-tour-story-gallery.php",
+      "sha256": "8b3140ad1749fa7f4a8109eea1de20d4e6f34e72ed2d650f6256a11505e9b5d5",
+      "bytes": 37156,
+      "kind": "php",
+      "shared_git_source_sha256": "8b3140ad1749fa7f4a8109eea1de20d4e6f34e72ed2d650f6256a11505e9b5d5",
+      "source_site_sha256": "af1f040aad715e555557b891d03a9212ff49b4e8141c83c3a3ab67847cbd0109",
+      "shared_source_status": "same",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/mad4b-uael-tour-gallery-addon.php",
+      "sha256": "7abc3c91c7528f591256e4a0b233df9839d18d8d33a8aeba2c5a758af422abf5",
+      "bytes": 27818,
+      "kind": "php",
+      "shared_git_source_sha256": "7abc3c91c7528f591256e4a0b233df9839d18d8d33a8aeba2c5a758af422abf5",
+      "source_site_sha256": "00e1ba3f45d897b71410d7f1be60e0c31b79446c82ccd6ed5933fa51faaa5206",
+      "shared_source_status": "same",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/mad4b-unified-media-apply.php",
+      "sha256": "cae14ff1f3cb25e29bad0188282384a571d9fbc5762c67f57b557971d69c113f",
+      "bytes": 35088,
+      "kind": "php",
+      "shared_git_source_sha256": "611efff631b853b2e2a5f118b01d9eb141e960b9e483bbb44b28a544fc3c9490",
+      "source_site_sha256": "2bc6b81fe40120ae6e4d319abd91ea83a7ee7c9cc3d680f80d6eed15ad787814",
+      "shared_source_status": "diverged",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/mad4b-universal-media-readiness.php",
+      "sha256": "ad673d68ed3948cebde90ff4f0769a83ecd2469c8c8c0229340617d05ab67666",
+      "bytes": 25743,
+      "kind": "php",
+      "shared_git_source_sha256": "ad673d68ed3948cebde90ff4f0769a83ecd2469c8c8c0229340617d05ab67666",
+      "source_site_sha256": "6c9886eba4c26cce45951363bf46e3a78da1db6a6c794a7447d096be72c9b4a5",
+      "shared_source_status": "same",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/mad4b-z-company-media-mcp.php",
+      "sha256": "32f179fe787914a5d56bbba0ec5389359cd3bd9a32f4f929bea4ae171ee2aa50",
+      "bytes": 12799,
+      "kind": "php",
+      "shared_git_source_sha256": null,
+      "source_site_sha256": "32f179fe787914a5d56bbba0ec5389359cd3bd9a32f4f929bea4ae171ee2aa50",
+      "shared_source_status": "missing",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/portable-term-featured-media.php",
+      "sha256": "f4531201b718470215828f92ef01e2295b31c0839c501738e046312725b43349",
+      "bytes": 1822,
+      "kind": "php",
+      "shared_git_source_sha256": null,
+      "source_site_sha256": null,
+      "shared_source_status": "missing",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "mu-plugins/product-navigation-media.php",
+      "sha256": "2cb52f33a258b6aed33d46683cea069aff06feb34cafa83abbba59910e778e02",
+      "bytes": 899,
+      "kind": "php",
+      "shared_git_source_sha256": null,
+      "source_site_sha256": null,
+      "shared_source_status": "missing",
+      "no_implicit_activation": true
+    },
+    {
+      "relative_path": "plugins/mad4b-commerce/modules/compat/tour-content-layout-control.php",
+      "sha256": "3c7318d3812cf6357f99fed80c26d99c304643e1b99f47ac7634c7349f98a743",
+      "bytes": 22094,
+      "kind": "php",
+      "shared_git_source_sha256": "3c7318d3812cf6357f99fed80c26d99c304643e1b99f47ac7634c7349f98a743",
+      "source_site_sha256": "f585ba5365cfe4fe4d810f9a0f4660e37b8f8bd449600d49cfc9673656a38b84",
+      "shared_source_status": "same",
+      "no_implicit_activation": true
+    }
+  ],
+  "updated_after_verified_manual_release_utc": "2026-11-16T00:27:00+00:00",
+  "updated_after_rights_nonblocking_manual_release_utc": "2026-11-16T01:09:50.754945+00:00",
+  "updated_after_manual_cct_postcommit_release_utc": "2026-11-16T02:38:57.166084+00:00",
+  "manual_cct_release_receipt": "/opt/mad4b-media-backups/wayfa-media-engine-hardening-20261116/manual-cct-postcommit-20261116/manual-apply.json",
+  "last_company_live_reconciliation": {
+    "date_utc": "2026-11-16T03:38:51.475412+00:00",
+    "file": "mu-plugins/mad4b-universal-media-readiness.php",
+    "manual_live_deploy_sha256": "ad673d68ed3948cebde90ff4f0769a83ecd2469c8c8c0229340617d05ab67666",
+    "git_commit": "9d5b12ae6a",
+    "rights_or_signed_release_modified": false
+  }
+}

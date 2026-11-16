@@ -197,8 +197,8 @@ final class MAD4B_SCP_MCP_Request_Scope {
 		$mu = isset( $GLOBALS['mad4b_scp_mcp_mu_bootstrap'] ) && is_array( $GLOBALS['mad4b_scp_mcp_mu_bootstrap'] )
 			? $GLOBALS['mad4b_scp_mcp_mu_bootstrap']
 			: array();
-		if ( 'mad4b.mcp-adapter-mu-bootstrap.v6' !== ( isset( $mu['contract'] ) ? (string) $mu['contract'] : '' )
-			|| empty( $mu['diagnostic_mu_proof_valid'] ) ) return '';
+		if ( 'mad4b.mcp-adapter-mu-bootstrap.v6' !== ( $mu['contract'] ?? null )
+			|| ( $mu['diagnostic_mu_proof_valid'] ?? null ) !== true ) return '';
 		$candidate = isset( $mu['diagnostic_server_id'] ) && is_string( $mu['diagnostic_server_id'] )
 			? trim( $mu['diagnostic_server_id'] )
 			: '';
@@ -208,8 +208,10 @@ final class MAD4B_SCP_MCP_Request_Scope {
 
 	/** Arm only the proven official singleton, after the explicit job is authorized. */
 	public static function begin_endpoint_diagnostic( $server_id ) {
-		if ( ! class_exists( 'MAD4B_SCP_Provider_Diagnostic_Policy', false ) || ! MAD4B_SCP_Provider_Diagnostic_Policy::explicit_rest_materialization_allowed()
-			|| ! self::current_request_is_endpoint_diagnostic_job() || ! current_user_can( 'manage_options' )
+		if ( ! class_exists( 'MAD4B_SCP_Provider_Diagnostic_Policy', false )
+			|| true !== MAD4B_SCP_Provider_Diagnostic_Policy::explicit_rest_materialization_allowed()
+			|| ! self::current_request_is_endpoint_diagnostic_job()
+			|| true !== current_user_can( 'manage_options' )
 			|| ! in_array( $server_id, MAD4B_SCP_Servers::expected_server_ids(), true ) ) return new WP_Error( 'mad4b_endpoint_diagnostic_forbidden', 'An authorized endpoint job is required.', array( 'status' => 403 ) );
 		// Existing catalogs cannot prove which single target was materialized.
 		if ( did_action( 'rest_api_init' ) || did_action( 'mcp_adapter_init' ) || class_exists( 'MAD4B_SCP_Provider_Diagnostic_Policy', false ) && is_object( MAD4B_SCP_Provider_Diagnostic_Policy::current_rest_server() ) ) return new WP_Error( 'mad4b_endpoint_diagnostic_runtime_already_materialized', 'REST was initialized before the endpoint job.' );

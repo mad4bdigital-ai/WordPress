@@ -84,6 +84,11 @@ final class MAD4B_SCP_Guided_Continuation {
             $meta = $ability->get_meta();
             if ( ! in_array( (string) $ability->get_category(), array( 'mad4b-read', 'mad4b-context' ), true )
                 || ! is_array( $meta ) || true !== ( $meta['annotations']['readonly'] ?? null )
+                || true === ( $meta['annotations']['destructive'] ?? false )
+                // Old first-party read Abilities can omit a Surface; an
+                // EXPLICIT write surface is never safe to auto-follow, even
+                // if a stale annotation falsely says readonly=true.
+                || ( isset( $meta['mcp']['surface'] ) && 'read' !== $meta['mcp']['surface'] )
                 || ! is_array( $schema ) || ! empty( $schema['required'] ) ) {
                 $stop = 'READ_CONTRACT_NOT_CERTIFIED';
                 break;

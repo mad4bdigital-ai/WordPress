@@ -20,7 +20,7 @@ final class MAD4B_SCP_Admin_Query_Performance_UI {
 	}
 
 	public static function render_page() {
-		if ( ! current_user_can( 'manage_options' ) ) wp_die( esc_html__( 'You do not have permission to manage MAD4B performance maintenance.', 'mad4b-site-control-plane' ) );
+		if ( true !== current_user_can( 'manage_options' ) ) wp_die( esc_html__( 'You do not have permission to manage MAD4B performance maintenance.', 'mad4b-site-control-plane' ) );
 		$status = MAD4B_SCP_Admin_Query_Performance::status();
 
 		echo '<div class="wrap">';

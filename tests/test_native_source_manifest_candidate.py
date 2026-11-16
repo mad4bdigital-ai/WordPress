@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from native_source_manifest_history_contract import check_current_source_and_historical_fixture
 ROOT=Path(__file__).resolve().parents[1]
 BASE=ROOT/'ops/native-source-publisher-v1'
 import importlib.util
@@ -18,7 +19,8 @@ class DynamicSourceManifest(unittest.TestCase):
   # The reviewed source stays a required, independently pinned member.
   manifest=candidates['source.code.release']
   file=BASE/'catalog/generated'/f"{manifest['operation_id']}.manifest.json"
-  self.assertEqual(json.loads(file.read_text()),manifest)
+  self.assertTrue(file.is_file())
+  check_current_source_and_historical_fixture(self, manifest)
   self.assertEqual(manifest['source_family'],'mad4b.native-source-release.v2')
   self.assertEqual(manifest['approval_ability'],'mad4b/native-source-release')
   self.assertEqual(manifest['plan_contract'],'mad4b.company-code-release.plan.v1')

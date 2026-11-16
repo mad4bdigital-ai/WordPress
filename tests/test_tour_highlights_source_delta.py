@@ -3,6 +3,7 @@ from pathlib import Path
 import hashlib
 import json
 import unittest
+import subprocess
 import xml.etree.ElementTree as ET
 from tour_highlights_bootstrap_overlay import (
     MAIN,BASE_SHA256,CANDIDATE_SHA256,ANCHOR,INSERT,
@@ -17,6 +18,72 @@ class TourHighlightsReviewedSource(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.review=json.loads(REVIEW.read_text())
+        cls.successors=json.loads((ROOT/'docs/release-coverage/pr814-journey-source-successors-20261115.json').read_text())
+
+    def git_source(self, source_commit, path):
+        result=subprocess.run(['git','show',source_commit+':'+path],
+                              cwd=ROOT,capture_output=True,check=True)
+        return result.stdout
+
+    def current_successor_proof(self, path, actual):
+        review=self.successors
+        self.assertEqual(review['contract'],'mad4b.journey-source-successors-exact-ci-review.v1')
+        self.assertEqual(review['historical_source_review'],REVIEW.relative_to(ROOT).as_posix())
+        for key,value in (('authorizing',False),('production_authorized',False),
+                          ('original313_signed_receipts_issued',False),
+                          ('live_evidence_required',True)):
+            self.assertIs(review[key],value)
+        matches=[x for x in review['exact_current_files'] if x['path']==path]
+        self.assertEqual(len(matches),1,path)
+        row=matches[0]
+        self.assertEqual(row['review_status'],'reviewed_for_ci_only')
+        blob=hashlib.sha1(b'blob '+str(len(actual)).encode('ascii')+b'\0'+actual).hexdigest()
+        observed_sha=hashlib.sha256(actual).hexdigest()
+        expected=(row['bytes'],row['sha256'],row['git_blob_sha'])
+        if blob!=row['git_blob_sha']:
+            # The frozen PR813/814 successor manifest remains immutable.
+            # Only the exact newer Unicode-whitespace presenter receives an
+            # additive second certificate, with independent source/QA proof.
+            self.assertTrue(path.endswith(
+                '/class-mad4b-scp-tour-highlights-presentation-v1.php'))
+            proof=json.loads((ROOT/'docs/release-coverage/'
+                'pr814-tour-highlights-visible-text-successor-20261115.json').read_text())
+            historical=(ROOT/'docs/release-coverage/'
+                'pr814-journey-source-successors-20261115.json').read_bytes()
+            self.assertEqual(proof['contract'],
+                'mad4b.journey-visible-text-successor-exact-source-review.v1')
+            self.assertEqual(proof['source_path'],path)
+            self.assertEqual(proof['historical_source_blob_sha'],row['git_blob_sha'])
+            self.assertEqual(proof['historical_manifest_sha256'],
+                hashlib.sha256(historical).hexdigest())
+            self.assertEqual(proof['successor_source_commit'],
+                '424b0c9c1377eb62dad8ccdb04e5ed85fd82dd59')
+            self.assertEqual(actual,self.git_source(proof['successor_source_commit'],path))
+            for key,value in (('authorizing',False),('production_authorized',False),
+                              ('original313_signed_receipts_issued',False),
+                              ('live_evidence_required',True),
+                              ('no_editorial_source_mutation',True)):
+                self.assertIs(proof[key],value)
+            self.assertIn('scripts/qa/tour-highlights-visible-text-contract.php',
+                proof['regression_tests'])
+            self.assertEqual(
+                [(x['site'],x['approved_tour_card_count'],x['blank_cards'])
+                 for x in proof['live_readback']['sites']],
+                [('tours.dev.mad4b.com',17,0),('wayfatours.com',17,0)])
+            expected=(proof['current_bytes'],proof['current_sha256'],
+                      proof['current_blob_sha'])
+        self.assertEqual((len(actual),observed_sha,blob),expected)
+        self.assertIn('tests/test_journey_successor_no_regression.py',row['regression_tests'])
+        # New executable PHP source must additionally have the independent
+        # exact-blob review, not only the non-authorizing manifest.
+        if path.endswith('.php'):
+            coverage=json.loads((ROOT/'governance/production-readiness/capability-coverage.json').read_text())
+            matches=[x for x in coverage['reviewed_changes']
+                     if x['path']==path and x['source_blob_sha']==blob]
+            self.assertEqual(len(matches),1,path)
+            self.assertEqual(matches[0]['status'],'reviewed_for_ci_only')
+            self.assertIs(matches[0]['production_authorized'],False)
+            self.assertTrue(matches[0]['live_evidence_required'])
 
     def reviewed_historical_main(self, actual):
         # PR813 added three small *independent* early privacy/reconciliation
@@ -52,7 +119,7 @@ class TourHighlightsReviewedSource(unittest.TestCase):
             with self.assertRaises(SourceOverlayDenied):
                 original_bootstrap_bytes(altered)
 
-    def test_all_reviewed_source_files_have_exact_current_sha(self):
+    def test_all_reviewed_source_files_retain_historical_and_exact_successor_proofs(self):
         self.assertEqual(self.review['contract'],'mad4b.pr814.tour-highlights-native-source-reconcile.v1')
         self.assertTrue(self.review['source_only'])
         for flag in ('installed_verified','migration_performed',
@@ -66,22 +133,50 @@ class TourHighlightsReviewedSource(unittest.TestCase):
         self.assertFalse(self.review['split_v3_browser_acceptance_run_during_this_merge'])
         self.assertFalse(self.review['split_v3_live_installation_verified_during_this_merge'])
         self.assertTrue(self.review['split_v3_source_only'])
+        successor_paths={x['path'] for x in self.successors['exact_current_files']}
+        self.assertEqual(len(successor_paths),8)
+        historical_commit=self.successors['historical_base_commit']
+        historical_split=self.successors['historical_split_commit']
+        historical_successor=self.successors['historical_successor_commit']
+        self.assertEqual(historical_commit,'fc0d6c49d43c6818f3da3e6de465d36e4a55050c')
+        self.assertEqual(historical_split,self.review['pr813_split_v3_head'])
+        self.assertEqual(historical_successor,'c2214ebb92bf9f007b9b2c82bff67c8dfdb5fa5f')
         for row in rows:
-            with self.subTest(file=row['path']):
-                path=ROOT/row['path']
-                self.assertTrue(path.is_file() and not path.is_symlink())
-                actual=path.read_bytes()
-                if row['path']==MAIN:
+            path=row['path']
+            with self.subTest(file=path):
+                source=ROOT/path
+                self.assertTrue(source.is_file() and not source.is_symlink())
+                actual=source.read_bytes()
+                if path==MAIN:
                     historical=self.reviewed_historical_main(actual)
                     self.assertEqual((len(historical),hashlib.sha256(historical).hexdigest()),
                                      (row['bytes'],row['sha256']))
-                elif row['path'].endswith('/class-mad4b-scp-tour-highlights-v1.php'):
-                    self.verify_hook_readiness_successor(row,actual)
-                elif row['path'].endswith('/class-mad4b-scp-tour-highlights-presentation-v1.php'):
-                    self.verify_destination_preview_addition(row,actual)
+                    continue
+                if path not in successor_paths:
+                    # Unchanged documents still match the original immutable
+                    # source hash; no lookup against a later commit is needed.
+                    self.assertEqual((len(actual),hashlib.sha256(actual).hexdigest()),
+                                     (row['bytes'],row['sha256']))
+                    continue
+                # Preserve both frozen historical source manifests and their
+                # source identities. Neither is repinned to the merged HEAD.
+                if path.endswith('/class-mad4b-scp-tour-highlights-v1.php'):
+                    old=self.git_source(historical_successor,path)
+                    self.verify_hook_readiness_successor(row,old)
+                elif path.endswith('/class-mad4b-scp-tour-highlights-presentation-v1.php'):
+                    old=self.git_source(historical_successor,path)
+                    self.verify_destination_preview_addition(row,old)
                 else:
-                    self.assertEqual(len(actual),row['bytes'])
-                    self.assertEqual(hashlib.sha256(actual).hexdigest(),row['sha256'])
+                    anchor=(historical_commit if path=='docs/tour-highlights-native-v1.md'
+                            else historical_split)
+                    old=self.git_source(anchor,path)
+                    self.assertEqual((len(old),hashlib.sha256(old).hexdigest()),
+                                     (row['bytes'],row['sha256']))
+                if path in successor_paths:
+                    self.current_successor_proof(path,actual)
+                else:
+                    self.assertEqual((len(actual),hashlib.sha256(actual).hexdigest()),
+                                     (row['bytes'],row['sha256']))
 
     def verify_destination_preview_addition(self,row,actual):
         review=json.loads((ROOT/'docs/release-coverage/pr814-pr813-destination-preview-additive-20261114.json').read_text())
@@ -219,7 +314,9 @@ class TourHighlightsReviewedSource(unittest.TestCase):
             self.assertIn(lang,split_js)
         self.assertIn('tour-journey-split-v3.css',presentation)
         self.assertIn('tour-journey-split-v3.js',presentation)
-        self.assertIn('wp_add_inline_script',presentation)
+        self.assertIn("wp_enqueue_script('tour-journey-split-v3',$assets.'tour-journey-split-v3.js'",presentation)
+        self.assertIn("['tour-journey-ui'],(string)filemtime($splitJs),true",presentation)
+        self.assertNotIn("wp_add_inline_script('tour-journey-ui'",presentation)
         self.assertIn('data-tour-destinations',engine)
         self.assertIn("'parent'=>(int)$term->parent",engine)
         self.assertIn("'kind'=>(string)$place['kind']",engine)

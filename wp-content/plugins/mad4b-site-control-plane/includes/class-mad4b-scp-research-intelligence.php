@@ -81,9 +81,12 @@ final class MAD4B_SCP_Research_Intelligence {
 		$input = is_array( $input ) ? $input : array();
 		$job_id = self::job_id( $input );
 		if ( is_wp_error( $job_id ) ) return $job_id;
-		$provider_id = isset( $input['provider_id'] ) ? sanitize_key( (string) $input['provider_id'] ) : '';
-		$request_sha = isset( $input['request_sha256'] ) ? strtolower( trim( (string) $input['request_sha256'] ) ) : '';
-		$governance_id = isset( $input['data_governance_artifact_id'] ) ? strtolower( trim( (string) $input['data_governance_artifact_id'] ) ) : '';
+		$provider_id = is_string( $input['provider_id'] ?? null )
+			? sanitize_key( $input['provider_id'] ) : '';
+		$request_sha = is_string( $input['request_sha256'] ?? null )
+			? strtolower( trim( $input['request_sha256'] ) ) : '';
+		$governance_id = is_string( $input['data_governance_artifact_id'] ?? null )
+			? strtolower( trim( $input['data_governance_artifact_id'] ) ) : '';
 		$purpose = isset( $input['purpose'] ) ? sanitize_key( (string) $input['purpose'] ) : 'research';
 		if ( '' === $provider_id || strlen( $provider_id ) > 64 ) return new WP_Error( 'mad4b_research_provider_invalid', 'Research provider identity is required.' );
 		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $request_sha ) ) return new WP_Error( 'mad4b_research_request_digest_invalid', 'Research request fingerprint is required.' );
@@ -396,7 +399,8 @@ final class MAD4B_SCP_Research_Intelligence {
 	}
 
 	private static function job_id( $input ) {
-		$id = isset( $input['job_id'] ) ? strtolower( trim( (string) $input['job_id'] ) ) : '';
+		$id = is_array( $input ) && is_string( $input['job_id'] ?? null )
+			? strtolower( trim( $input['job_id'] ) ) : '';
 		return preg_match( '/^[a-f0-9-]{36}$/', $id ) ? $id : new WP_Error( 'mad4b_research_job_id_invalid', 'ContentJob ID is invalid.' );
 	}
 
@@ -404,7 +408,9 @@ final class MAD4B_SCP_Research_Intelligence {
 		if ( ! is_array( $value ) || count( $value ) > $max ) return new WP_Error( 'mad4b_research_artifact_list_invalid', 'Artifact reference list is invalid.' );
 		$out = array();
 		foreach ( $value as $id ) {
-			$id = strtolower( trim( (string) $id ) );
+			if ( ! is_string( $id ) )
+				return new WP_Error( 'mad4b_research_artifact_id_invalid', 'Artifact ID must be a bounded string.' );
+			$id = strtolower( trim( $id ) );
 			if ( ! preg_match( '/^[a-f0-9-]{36}$/', $id ) ) return new WP_Error( 'mad4b_research_artifact_id_invalid', 'Artifact ID is invalid.' );
 			$out[] = $id;
 		}

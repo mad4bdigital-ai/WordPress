@@ -61,10 +61,23 @@ final class MAD4B_SCP_Capability_Transport_Routing {
 
     private static function enrolled_site_uuid():string {
         if(!class_exists('MAD4B_SCP_Site_Profile',false))return '';
-        $profile=MAD4B_SCP_Site_Profile::status();
-        if(!is_array($profile)||empty($profile['origin_match'])
+        try {
+            $profile=MAD4B_SCP_Site_Profile::status();
+        } catch(Throwable $error) {
+            return '';
+        }
+        if(!is_array($profile) || empty($profile['site_uuid'])
+            ||empty($profile['configured'])
+            ||empty($profile['authority_ready'])
+            ||empty($profile['origin_match'])
             ||empty($profile['deployment_binding_match'])
-            ||empty($profile['site_uuid']))return '';
+            ||empty($profile['same_origin_clone_protection'])
+            ||empty($profile['environment_match'])
+            ||!empty($profile['mutation_pending_audit'])
+            ||!is_string($profile['configured_environment']??null)
+            ||''===$profile['configured_environment']
+            ||!hash_equals($profile['configured_environment'],
+                (string)($profile['environment']??'')))return '';
         return (string)$profile['site_uuid'];
     }
 
@@ -275,19 +288,33 @@ final class MAD4B_SCP_Capability_Transport_Routing {
             || strtoupper((string)($_SERVER['REQUEST_METHOD']??''))!==strtoupper($request->get_method())
             || !class_exists('MAD4B_SCP_Policy',false)
             || !class_exists('MAD4B_SCP_Site_Profile',false)
-            || get_current_user_id()<1
-            || !MAD4B_SCP_Policy::can_read()
-            || !MAD4B_SCP_Policy::can_mutate())
+            || get_current_user_id()<1)
             return $denied;
-        $profile=MAD4B_SCP_Site_Profile::status();
+        // WP_Error, null, 1 and exceptions do not mean a policy has
+        // granted authority. Only the exact boolean true is acceptable.
+        try {
+            if (true!==MAD4B_SCP_Policy::can_read()
+                ||true!==MAD4B_SCP_Policy::can_mutate())return $denied;
+        } catch(Throwable $error) {
+            return $denied;
+        }
+        try {
+            $profile=MAD4B_SCP_Site_Profile::status();
+        } catch(Throwable $error) {
+            return $denied;
+        }
         if(!is_array($profile)||empty($profile['site_uuid'])
             || empty($profile['origin_match'])||empty($profile['authority_ready'])
             || empty($profile['deployment_binding_match']))
             return $denied;
         // A WordPress CLI --user flag cannot pass any of these request
         // authentication methods, even when it has administrator privileges.
-        $identity=class_exists('MAD4B_SCP_Identity_Context',false)
-            ?MAD4B_SCP_Identity_Context::current():null;
+        try {
+            $identity=class_exists('MAD4B_SCP_Identity_Context',false)
+                ?MAD4B_SCP_Identity_Context::current():null;
+        } catch(Throwable $error) {
+            return $denied;
+        }
         if(is_wp_error($identity))return $denied;
         if(!is_array($identity))$identity=[];
         $method=(string)($identity['auth_method']??'');
@@ -297,12 +324,16 @@ final class MAD4B_SCP_Capability_Transport_Routing {
         $isBasic=preg_match('/^Basic\s+/i',$authorization)===1;
         if($authorization!=='' && !$isBearer && !$isBasic)return $denied;
         if($isBearer) {
-            $authenticated=!empty($identity['authenticated'])
-                &&(int)($identity['wp_user_id']??0)===get_current_user_id()
-                &&$method==='oauth2_bearer'
-                &&$type==='oauth'
-                &&class_exists('MAD4B_SCP_OAuth_Resource_Bridge',false)
-                &&MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active();
+            try {
+                $authenticated=!empty($identity['authenticated'])
+                    &&(int)($identity['wp_user_id']??0)===get_current_user_id()
+                    &&$method==='oauth2_bearer'
+                    &&$type==='oauth'
+                    &&class_exists('MAD4B_SCP_OAuth_Resource_Bridge',false)
+                    &&true===MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active();
+            } catch(Throwable $error) {
+                return $denied;
+            }
         } elseif($isBasic || ($authorization==='' &&
                  $method==='wp_application_password' && $type==='wp_app_password')) {
             // Upstream proxies can forward WordPress's authenticated
@@ -322,9 +353,17 @@ final class MAD4B_SCP_Capability_Transport_Routing {
         if(!$authenticated)return $denied;
         // Resolve the permission callback from WordPress' actual registered
         // REST route, never a caller-supplied callback or claimed operation.
-        $route=$request->get_route();
+        // REST route inventory is original WordPress-owned state, not
+        // evidence supplied by the caller. A failed/partial registry read
+        // is an admission denial, never an unhandled PHP exception.
+        try {
+            $route=$request->get_route();
+            $registry=rest_get_server()->get_routes();
+        } catch(Throwable $error) {
+            return $denied;
+        }
+        if(!is_string($route) || !is_array($registry))return $denied;
         $matches=[];
-        $registry=rest_get_server()->get_routes();
         foreach($registry as $pattern=>$handlers){
             if(!is_string($pattern) || !is_array($handlers))continue;
             if(@preg_match('~^'.$pattern.'$~D',$route)!==1)continue;

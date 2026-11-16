@@ -313,16 +313,19 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 			return new WP_Error('mad4b_candidate_host_scope_denied','Exact enrolled Staging Host scope required.');
 		$a=MAD4B_SCP_Execution_Authority::resolve('apply');
 		if ( is_wp_error($a) ) return $a;
-		$owners=MAD4B_SCP_Site_Profile::oauth_user_ids();
 		if ( ! is_array($a) || empty($a['authenticated'])
 			|| 'host_cli' !== (string)($a['transport']??'')
 			|| 'host_operator' !== (string)($a['subject_type']??'')
-			|| empty($a['registry_bound']) || !is_array($owners)
-			|| !in_array((int)($a['wp_user_id']??0),array_map('intval',$owners),true)
-			|| ! MAD4B_SCP_Site_Profile::user_is_enrolled((int)$a['wp_user_id'])
+			|| empty($a['registry_bound'])
+			|| 0 !== (int)($a['wp_user_id']??-1)
+			|| (int)($a['registered_host_agent_id']??0) < 1
+			|| !preg_match('/^[a-f0-9-]{36}$/D',
+				(string)($a['registered_host_agent_public_id']??''))
 			|| (string)($a['site_uuid']??'') !== MAD4B_SCP_Site_Profile::site_uuid()
-			|| ! preg_match('/^[a-f0-9]{64}$/',(string)($a['subject_fingerprint']??'')) )
-			return new WP_Error('mad4b_candidate_host_actor_denied','Exact registered Host and enrolled Owner required.');
+			|| !preg_match('/^[a-f0-9]{64}$/D',
+				(string)($a['subject_fingerprint']??'')) )
+			return new WP_Error('mad4b_candidate_host_actor_denied',
+				'Exact registered non-impersonating Host NHI is required.');
 		return $a;
 	}
 	public static function bind_host( $input ) {
@@ -354,8 +357,15 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 		if ( ! defined( 'MAD4B_MCP_MUTATION_ENABLED' ) || true !== constant( 'MAD4B_MCP_MUTATION_ENABLED' ) ) return new WP_Error( 'mad4b_candidate_bind_mutation_gate_disabled', 'The governed mutation master gate must already be enabled.' );
 		if ( class_exists( 'MAD4B_SCP_Policy' ) && MAD4B_SCP_Policy::can_breakglass() ) return new WP_Error( 'mad4b_candidate_bind_breakglass_enabled', 'Candidate binding is denied while Breakglass authority is enabled.' );
 		if ( 'chatgpt-governed-write' !== sanitize_key( (string) MAD4B_SCP_Site_Profile::agent_slug() ) ) return new WP_Error( 'mad4b_candidate_bind_canonical_agent_required', 'Candidate binding is limited to the canonical profile-owned governed-write agent.' );
-		$user_id = self::$host_binding_active ? (int)(self::$host_actor['wp_user_id']??0) : get_current_user_id();
-		if ( $user_id < 1 || ! MAD4B_SCP_Site_Profile::user_is_enrolled( $user_id ) ) return new WP_Error( 'mad4b_candidate_bind_subject_not_enrolled', 'The authenticated administrator is not enrolled in this Site Profile.' );
+		// Host NHI must not be reinterpreted as a WP admin; its registry
+		// identity and exact site were checked by verified_host_actor().
+		// OAuth human operators still require their existing user enrollment.
+		if ( ! self::$host_binding_active ) {
+			$user_id = get_current_user_id();
+			if ( $user_id < 1 || ! MAD4B_SCP_Site_Profile::user_is_enrolled( $user_id ) )
+				return new WP_Error( 'mad4b_candidate_bind_subject_not_enrolled',
+					'The authenticated administrator is not enrolled in this Site Profile.' );
+		}
 		if ( 'https' !== strtolower( (string) wp_parse_url( MAD4B_SCP_Site_Profile::current_origin(), PHP_URL_SCHEME ) ) ) return new WP_Error( 'mad4b_candidate_bind_https_required', 'Remote candidate binding requires HTTPS.' );
 		return true;
 	}
@@ -365,10 +375,14 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 			$a=self::verified_host_actor();
 			if ( is_wp_error($a) ) return $a;
 			$agent=MAD4B_SCP_Agent_Registry::get_agent_by_slug('chatgpt-governed-write');
-			if ( ! is_array($agent) || 'enabled' !== (string)($agent['status']??'')
-				|| 'staging' !== (string)($agent['environment']??'')
-				|| (int)($agent['wp_user_id']??0)!==(int)($a['wp_user_id']??0) )
-				return new WP_Error('mad4b_candidate_host_agent_invalid','Registered Host target Agent differs from enrolled owner.');
+			// The *target* governed ChatGPT agent is independent of the
+			// registered Host operator performing this exact candidate bind.
+			// Its identity/grants are still verified by clean_plan_or_error().
+			if ( ! is_array($agent) || (int)($agent['id']??0) < 1
+				|| 'enabled' !== (string)($agent['status']??'')
+				|| 'staging' !== (string)($agent['environment']??'') )
+				return new WP_Error('mad4b_candidate_host_agent_invalid',
+					'Exact canonical target Write Agent is missing or disabled.');
 			return $agent;
 		}
 		if ( ! class_exists( 'MAD4B_SCP_Identity_Context' ) || ! class_exists( 'MAD4B_SCP_Agent_Registry' ) ) return new WP_Error( 'mad4b_candidate_bind_identity_unavailable', 'Governance identity components are unavailable.' );
@@ -491,7 +505,9 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 			'operation_id'=>$operation_id,'correlation_id'=>$correlation_id,
 			'actor'=>array(
 				'actor_type'=>'host_operator',
-				'wp_user_id'=>(int)$actor['wp_user_id'],
+				'wp_user_id'=>0,
+				'registered_host_agent_id'=>(int)$actor['registered_host_agent_id'],
+				'registered_host_agent_public_id'=>(string)$actor['registered_host_agent_public_id'],
 				'identity_method'=>'registered_host_wpcli',
 				'subject_fingerprint'=>(string)$actor['subject_fingerprint'],
 				'agent_public_id'=>(string)$plan['agent_public_id'],

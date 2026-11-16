@@ -147,6 +147,18 @@ def git_bytes(repo: Path, commit: str, relative: str) -> bytes:
     return data
 
 
+def native_mad4b_mu_root_loader(name: str) -> bool:
+    """WordPress loads root MU PHP filenames, including numbered MAD4B owners.
+
+    Keep numbered + canonical single-file owners inside the exact reviewed
+    catalog AND the independent per-tenant allowlist. A prefix alone never
+    creates a release grant. This excludes nested PHP and arbitrary filenames.
+    """
+    return isinstance(name,str) and re.fullmatch(
+        r"(?:[0-9]{3}-)?mad4b-[a-z0-9][a-z0-9-]{2,100}\.php",name
+    ) is not None
+
+
 def registered_component_files(component: dict) -> list[str]:
     """Validate one reviewed MU-plugin component, including owned JS/CSS.
 
@@ -170,14 +182,15 @@ def registered_component_files(component: dict) -> list[str]:
         for x in files
         if len(PurePosixPath(x).parts) == 3 and
         PurePosixPath(x).parts[:2] == ("wp-content", "mu-plugins") and
-        PurePosixPath(x).name.startswith("mad4b-") and x.endswith(".php")
+        native_mad4b_mu_root_loader(PurePosixPath(x).name)
     }
     fail_if(not loaders, "RELEASE_COMPONENT_NO_ROOT_PHP_LOADER")
     for target in files:
         parts = PurePosixPath(target).parts
         fail_if(not permitted_target(target) or
                 parts[:2] != ("wp-content", "mu-plugins") or
-                not parts[2].startswith("mad4b-"),
+                not (native_mad4b_mu_root_loader(parts[2])
+                     if len(parts)==3 else parts[2].startswith("mad4b-")),
                 "RELEASE_COMPONENT_SCOPE_INVALID")
         if len(parts) == 3 and target.endswith(".php"):
             continue
@@ -250,7 +263,8 @@ def registered_release_targets(policy: dict, entry: dict, commit: str) -> set[st
                 # exact root PHP loader by registered_component_files().
                 # Mixed Plugin/MU components retain their historical stricter
                 # root PHP-only MU boundary; no fallback grants new paths.
-                fail_if(not target.startswith("wp-content/mu-plugins/mad4b-") or
+                fail_if(not (native_mad4b_mu_root_loader(parts[2])
+                             if len(parts)==3 else parts[2].startswith("mad4b-")) or
                         (not mu_only and
                          (len(parts) != 3 or not target.endswith(".php"))),
                         "RELEASE_COMPONENT_MU_SCOPE_INVALID")
@@ -1590,6 +1604,10 @@ def release_admission_doctor(
         "git_plan_verified": False,
         "original_runtime_binding_verified": False,
         "host_policy_installed_and_pinned": False,
+        "dynamic_provider_manifest_registered": False,
+        "dynamic_scope_plan_matched": False,
+        "dynamic_scope_legacy_plan_schema": False,
+        "central_313_operational_ready": False,
         "broker_dispatch_registration": "not_independently_verified",
         "broker_signed_grant_verified": False,
         "original_313_receipt_verified": False,
@@ -1644,6 +1662,14 @@ def release_admission_doctor(
             row.get("original_313_code_release_handler_registered") is True)
         state["dynamic_registry_enrolled"] = (
             row.get("dynamic_registry_enrolled") is True)
+        state["dynamic_provider_manifest_registered"] = (
+            row.get("dynamic_provider_manifest_registered") is True)
+        state["dynamic_scope_plan_matched"] = (
+            row.get("dynamic_scope_plan_matched") is True)
+        state["dynamic_scope_legacy_plan_schema"] = (
+            row.get("dynamic_scope_legacy_plan_schema") is True)
+        state["central_313_operational_ready"] = (
+            row.get("central_313_operational_ready") is True)
         state["dynamic_306_digest_registered"] = (
             row.get("dynamic_306_digest_registered") is True)
         state["dynamic_313_independent_verifier_registered"] = (
@@ -1661,7 +1687,12 @@ def release_admission_doctor(
                 state["git_plan_verified"] and
                 state["original_runtime_binding_verified"]):
             state["state"] = (
-                "HOLD_DYNAMIC_ORIGINAL_313_FINALIZER"
+                "HOLD_REGISTERED_LEGACY_PLAN_SCHEMA"
+                if state["dynamic_scope_legacy_plan_schema"]
+                else "HOLD_EXACT_DYNAMIC_PLAN_ENROLLMENT"
+                if (state["dynamic_provider_manifest_registered"] and
+                    not state["dynamic_scope_plan_matched"])
+                else "HOLD_DYNAMIC_ORIGINAL_313_FINALIZER"
                 if (state.get("dynamic_306_digest_registered") is True and
                     state.get("dynamic_313_finalizer_connected") is not True)
                 else ("AWAIT_INDEPENDENT_SIGNED_JOB_AND_313_RECEIPT"

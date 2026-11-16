@@ -1,0 +1,103 @@
+{
+  "contract": "mad4b.journey-source-successors-exact-ci-review.v1",
+  "intent": "Reconcile latest PR813 Tour Journey with current unified branch and already deployed render decisions while retaining immutable historical source snapshots.",
+  "historical_source_review": "docs/release-coverage/pr814-pr813-tour-highlights-reconciled-20261113.json",
+  "historical_base_commit": "fc0d6c49d43c6818f3da3e6de465d36e4a55050c",
+  "historical_split_commit": "4e008e851cbd93e40d321cfa7c4af9d3b951f78b",
+  "historical_successor_commit": "c2214ebb92bf9f007b9b2c82bff67c8dfdb5fa5f",
+  "non_authorizing": true,
+  "authorizing": false,
+  "production_authorized": false,
+  "original313_signed_receipts_issued": false,
+  "live_evidence_required": true,
+  "exact_current_files": [
+    {
+      "path": "docs/tour-highlights-native-v1.md",
+      "sha256": "742af297cdd7509147d4a001358347192fa79e15806469f1dd385f0a4a7c2132",
+      "bytes": 49314,
+      "git_blob_sha": "0e3c6ff570c49dce2f7cfcebf922b809ff7f223d",
+      "review_status": "reviewed_for_ci_only",
+      "regression_tests": [
+        "tests/test_journey_successor_no_regression.py",
+        "tests/test_tour_highlights_source_delta.py"
+      ]
+    },
+    {
+      "path": "scripts/qa/tour-journey-split-browser.py",
+      "sha256": "89d59ec1b5377c29866e16658c2fed0feefd821b3e1631a844db3085b34a0637",
+      "bytes": 11407,
+      "git_blob_sha": "f0cdbca49a756a1957d11c10064e4fd7bebb548b",
+      "review_status": "reviewed_for_ci_only",
+      "regression_tests": [
+        "tests/test_journey_successor_no_regression.py",
+        "tests/test_tour_highlights_source_delta.py"
+      ]
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/assets/tour-highlights-v1.css",
+      "sha256": "4b2d5fd2d9d2d3bd80ac75ef067d8e9cb22aabbc0648a09add50764fb59658b8",
+      "bytes": 29686,
+      "git_blob_sha": "f25325cf43a7b724d6642df00d332c572f3ebe86",
+      "review_status": "reviewed_for_ci_only",
+      "regression_tests": [
+        "tests/test_journey_successor_no_regression.py",
+        "tests/test_tour_highlights_source_delta.py"
+      ]
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/assets/tour-journey-split-v3.css",
+      "sha256": "ec85bc99647c95fe3e2d3c915682cb90a6cb1522dc948eabb703f20fac1b5b3f",
+      "bytes": 20688,
+      "git_blob_sha": "aaf5854c219409c8bea7dc4d2e5e4d613465919e",
+      "review_status": "reviewed_for_ci_only",
+      "regression_tests": [
+        "tests/test_journey_successor_no_regression.py",
+        "tests/test_tour_highlights_source_delta.py"
+      ]
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/assets/tour-journey-split-v3.js",
+      "sha256": "f40d58ca2fb7ec3b198db505e9b3bd081f7c8f49845b5676f0a4e2306b86f170",
+      "bytes": 24836,
+      "git_blob_sha": "24035cb215d1647e7f9e5212f20f60013cf6b446",
+      "review_status": "reviewed_for_ci_only",
+      "regression_tests": [
+        "tests/test_journey_successor_no_regression.py",
+        "tests/test_tour_highlights_source_delta.py"
+      ]
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/assets/tour-journey-ui.js",
+      "sha256": "234d06a3496562fe6cab6cccf2e9973045311f12aeb625570be17e369efb6aa1",
+      "bytes": 19880,
+      "git_blob_sha": "f6a15dcab3d270d2aa004e7270b425d668f01e90",
+      "review_status": "reviewed_for_ci_only",
+      "regression_tests": [
+        "tests/test_journey_successor_no_regression.py",
+        "tests/test_tour_highlights_source_delta.py"
+      ]
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tour-highlights-presentation-v1.php",
+      "sha256": "eef2686ef9ceb7f5befcf11bc52111224fdaec79d22e21a60a5a5db742f2f10d",
+      "bytes": 34627,
+      "git_blob_sha": "843f2456ca253a1b92fbfb083921b96597d6bd26",
+      "review_status": "reviewed_for_ci_only",
+      "regression_tests": [
+        "tests/test_journey_successor_no_regression.py",
+        "tests/test_tour_highlights_source_delta.py"
+      ]
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tour-highlights-v1.php",
+      "sha256": "0b926715e25bda30bf5ce5612ee363c724a962c0a872708f1d4d395228c957a3",
+      "bytes": 28251,
+      "git_blob_sha": "37794313c7afc08436dddc7a815629436a9443b0",
+      "review_status": "reviewed_for_ci_only",
+      "regression_tests": [
+        "tests/test_journey_successor_no_regression.py",
+        "tests/test_tour_highlights_source_delta.py"
+      ]
+    }
+  ]
+}

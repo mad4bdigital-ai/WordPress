@@ -34,11 +34,11 @@ final class MAD4B_SCP_Provider_Field_Intelligence {
     }
     private static function classify(array &$r):void {
         $key=$r['key'];
-        if(str_starts_with($key,'rank_math_') && $r['provider']==='wordpress_observed')
+        if(0===strpos($key,'rank_math_') && $r['provider']==='wordpress_observed')
             $r['provider']='rank_math_observed';
-        if(str_starts_with($key,'_elementor_') && $r['provider']==='wordpress_observed')
+        if(0===strpos($key,'_elementor_') && $r['provider']==='wordpress_observed')
             $r['provider']='elementor_observed';
-        $r['is_seo_field']=str_starts_with($key,'rank_math_') ||
+        $r['is_seo_field']=0===strpos($key,'rank_math_') ||
             in_array($key,['_yoast_wpseo_title','_yoast_wpseo_metadesc'],true);
         $r['is_media_field']=in_array($r['field_type'],['media','gallery','image'],true)
             ||(bool)preg_match('/(?:^|_)(?:image|gallery|thumbnail|hero|photo|logo|icon|cover)(?:_|$)/i',$key)

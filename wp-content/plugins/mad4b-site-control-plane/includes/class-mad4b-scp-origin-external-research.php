@@ -27,7 +27,7 @@ final class MAD4B_SCP_Origin_External_Research {
   if(($j['state']??'')!=='WAITING_REVIEW'||($j['stage']??'')!=='FACT_QA'||
      ($j['site_uuid']??'')!==$site||
      ($j['created_by_nhi']??'')!==MAD4B_Native_Origin_Content_Jobs_V1::actor()['id']||
-     !str_contains((string)($j['subject']??''),'origin-gap-ref:'.$token))
+     false===strpos((string)($j['subject']??''),'origin-gap-ref:'.$token))
    return new WP_Error('mad4b_origin_external_job_ineligible');
   $terms=wp_get_object_terms($id,'destinations',['fields'=>'ids']);
   if(is_wp_error($terms))return $terms;
