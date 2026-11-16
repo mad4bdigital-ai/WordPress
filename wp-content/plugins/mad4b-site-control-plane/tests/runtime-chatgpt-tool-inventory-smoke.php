@@ -100,11 +100,15 @@ $expected_names = array_values( array_unique( $expected_names ) );
 sort( $expected_names );
 
 if ( $actual_names !== $expected_names ) {
+	$registration = MAD4B_SCP_Servers::registration_status()['mad4b-chatgpt'] ?? array();
+	$descriptor = is_array( $registration['capability_descriptor_evidence'] ?? null ) ? $registration['capability_descriptor_evidence'] : array();
 	$fail(
 		'mad4b-chatgpt protocol inventory drifted from the governed allowlist.',
 		array(
 			'expected_count' => count( $expected_names ),
 			'actual_count' => count( $actual_names ),
+			'descriptor_blockers' => array_slice( (array) ( $descriptor['blockers'] ?? array() ), 0, 30 ),
+			'quarantined_abilities' => array_slice( (array) ( $descriptor['quarantined_abilities'] ?? array() ), 0, 30 ),
 			'missing' => array_values( array_diff( $expected_names, $actual_names ) ),
 			'extra' => array_values( array_diff( $actual_names, $expected_names ) ),
 			'preflight_failures' => array_map( static function ( $row ) {

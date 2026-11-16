@@ -6,7 +6,7 @@ $GLOBALS['filter_hooks']=[];
 function add_action($name,$callable,$priority=10,$args=1){$GLOBALS['action_hooks'][]=$name;}
 function add_filter($name,$callable,$priority=10,$args=1){$GLOBALS['filter_hooks'][]=$name;}
 function get_post_type($id){return false;}
-require '/work/wp-content/plugins/mad4b-cache-lifecycle/includes/runtime.php';
+require dirname(__DIR__) . '/wp-content/plugins/mad4b-cache-lifecycle/includes/runtime.php';
 $class='MAD4B_Cache_Lifecycle_V1';
 function verify(bool $condition,string $reason):void {
   if(!$condition)throw new RuntimeException('CACHE_LIFECYCLE_V22_FAIL_'.$reason);
