@@ -21897,6 +21897,54 @@
       "regression_tests": [
         "tests/test_mcp_runtime_surface_source_identity.py"
       ]
+    },
+    {
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "MAD4B source regression reviewer — exact byte equivalence, no release-owner attestation",
+      "needs_new_control": false,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "MCP-01",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "tests/test_abilities_registration_trait_parity.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/agent-governance-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/environment-journey-contract.py"
+      ],
+      "coverage_reuse_rationale": "No capabilities, grant/approval rules, schemas or execution callbacks added. Existing first-party governance, MCP, security, execution and repository review controls remain effective.",
+      "execution_note": "Exact source only. Byte-parity regression must execute on this published head; not site owner or Original305/312/313 release authority.",
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php",
+      "source_blob_sha": "adf2d7fc28c1e88cc86033cbbe4b708b80cf9f1b",
+      "review_rationale": "Mechanically replace the original 185-line register_abilities body with a stable public wrapper invoking a first-party trait. Existing 34 WordPress Ability declarations remain byte-identical and in the original order (normalized-method Git blob 5021c2a8fe944ff3a23959557bd0e80ceec244ac); no permission, callback, schema, grant or dispatch change. Facade is 1627 lines, below the existing 1650 cap. Runtime and release remain unverified until CI."
+    },
+    {
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "MAD4B source regression reviewer — exact byte equivalence, no release-owner attestation",
+      "needs_new_control": false,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "MCP-01",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "tests/test_abilities_registration_trait_parity.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/agent-governance-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/environment-journey-contract.py"
+      ],
+      "coverage_reuse_rationale": "No capabilities, grant/approval rules, schemas or execution callbacks added. Existing first-party governance, MCP, security, execution and repository review controls remain effective.",
+      "execution_note": "Exact source only. Byte-parity regression must execute on this published head; not site owner or Original305/312/313 release authority.",
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/trait-mad4b-scp-abilities-registration.php",
+      "source_blob_sha": "44dceee8c103677cd5a87b6dd4ded70d3e86b106",
+      "review_rationale": "Exact extracted private WordPress Ability registration method loaded solely by the existing Abilities facade. Normalizing its method signature reproduces the original method Git blob 5021c2a8fe944ff3a23959557bd0e80ceec244ac, preserving 34 ordered Ability names and callback metadata. Any future change requires new source review and executed regression; no runtime authorization is issued."
     }
   ],
   "code_change_rules": {
