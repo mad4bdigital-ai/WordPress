@@ -8525,6 +8525,26 @@
       "coverage_reuse_rationale": "No additional runtime feature: only byte-preserved original Content Readiness methods with unchanged class callbacks.",
       "review_rationale": "Exactly identical original source method bodies extracted from the 1,844-line Content Readiness facade (original blob b06b328391319b18ace8e4118ee2e0e5b619eff6) and loaded through two named first-party traits; executable negative predecessor comparison guards prove no policy, writes, publishing, scheduling, filtering, auditing or REST permission change. Non-authorizing source review only; no live-site or Release Owner evidence.",
       "execution_note": "Exact method parity/PHP parse source evidence, never a signed deployment, Host312 grant or Original305/313 receipt."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/trait-mad4b-scp-core-web-vitals-configuration.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/test_core_web_vitals_configuration_trait_parity.py",
+        "tests/readiness-core-web-vitals-rest-cron-hermetic.php"
+      ],
+      "owner_role": "MAD4B source parity reviewer, CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Mechanical byte-preserved relocation of already reviewed Core Web Vitals configuration owner.",
+      "review_rationale": "Seven existing Core Web Vitals setting, encrypted key and validated monitored URL functions relocated byte-identically from historical facade SHA a70bfc23212bb9289d3ab218dc08a530f46c5ad1; require/use binding and negative tamper tests retain source and executable checks. No credential change, URL allowlist bypass, new permission, mutation, or release authorization.",
+      "execution_note": "No live-site credential, release Owner, Original305 or Original313 verification inferred."
     }
   ],
   "lifecycle": [],
@@ -22219,6 +22239,46 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing content readiness, governance, platform and security controls still own identical methods; mechanical source move adds no new authority.",
       "review_rationale": "Exactly identical original source method bodies extracted from the 1,844-line Content Readiness facade (original blob b06b328391319b18ace8e4118ee2e0e5b619eff6) and loaded through two named first-party traits; executable negative predecessor comparison guards prove no policy, writes, publishing, scheduling, filtering, auditing or REST permission change. Non-authorizing source review only; no live-site or Release Owner evidence."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-web-vitals.php",
+      "source_blob_sha": "27c97c4ee86bbb5bc260f06ec4c1a0e1795d239e",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/test_core_web_vitals_configuration_trait_parity.py",
+        "tests/readiness-core-web-vitals-rest-cron-hermetic.php"
+      ],
+      "owner_role": "MAD4B repository source reviewer, CI-only (not the Site Owner/Release Owner)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Preexisting governance, platform and security control IDs apply to identical moved CWV code and private REST owner.",
+      "review_rationale": "Seven existing Core Web Vitals setting, encrypted key and validated monitored URL functions relocated byte-identically from historical facade SHA a70bfc23212bb9289d3ab218dc08a530f46c5ad1; require/use binding and negative tamper tests retain source and executable checks. No credential change, URL allowlist bypass, new permission, mutation, or release authorization."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/trait-mad4b-scp-core-web-vitals-configuration.php",
+      "source_blob_sha": "d9454b7aab05576d2e812bba8e9c453d4ba06630",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/test_core_web_vitals_configuration_trait_parity.py",
+        "tests/readiness-core-web-vitals-rest-cron-hermetic.php"
+      ],
+      "owner_role": "MAD4B repository source reviewer, CI-only (not the Site Owner/Release Owner)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Preexisting governance, platform and security control IDs apply to identical moved CWV code and private REST owner.",
+      "review_rationale": "Seven existing Core Web Vitals setting, encrypted key and validated monitored URL functions relocated byte-identically from historical facade SHA a70bfc23212bb9289d3ab218dc08a530f46c5ad1; require/use binding and negative tamper tests retain source and executable checks. No credential change, URL allowlist bypass, new permission, mutation, or release authorization."
     }
   ],
   "code_change_rules": {
