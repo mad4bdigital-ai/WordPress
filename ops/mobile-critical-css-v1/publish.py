@@ -27,6 +27,163 @@ storage = ROOT/'mad4b-critical-css-v1'
 target = storage/'manifest.json'
 old = json.loads(target.read_text()) if target.exists() else {}
 assert old.get('site',host)==host, 'Cross-site manifest forbidden'
+# Native preservation path for installed legacy v1 consumers.
+# Never converts v2/Adaptive QA evidence into a v1 certificate.
+def publish_installed_legacy_v1() -> None:
+    import fcntl, stat
+    def deny(reason):
+        raise SystemExit('LEGACY_V1_PUBLISH_DENIED:'+reason)
+    if not target.is_file() or target.is_symlink() or not storage.is_dir() or storage.is_symlink():
+        deny('MANIFEST_OR_STORAGE_UNAVAILABLE')
+    if old.get('version')!=1 or old.get('site')!=host or not isinstance(old.get('entries'),dict):
+        deny('NOT_AN_ENROLLED_V1_MANIFEST')
+    consumer = ROOT/'mu-plugins/415-mad4b-critical-css-orchestrator.php'
+    expected = os.environ.get('MAD4B_CSS_LEGACY_CONSUMER_SHA256','')
+    if not re.fullmatch(r'[a-f0-9]{64}',expected) or not consumer.is_file() or consumer.is_symlink():
+        deny('EXACT_NATIVE_CONSUMER_REQUIRED')
+    if SHA(consumer)!=expected:
+        deny('NATIVE_CONSUMER_DRIFT')
+    code=consumer.read_text()
+    if ("($decoded['version'] ?? null) !== 1" not in code
+        or 'media="print" fetchpriority="low"' not in code):
+        deny('CONSUMER_NOT_PROVEN_V1_LOW_NO_PRELOAD')
+    if (not isinstance(qa.get('tested'),int) or qa['tested'] < 8
+        or not isinstance(qa.get('results'),list)
+        or any(not isinstance(row,dict) or row.get('pass') is not True
+               for row in qa['results'])):
+        deny('QA_UNCERTIFIED')
+    rows=[]
+    for item in candidates['candidates']:
+        if not isinstance(item,dict):
+            deny('INVALID_CANDIDATE')
+        lang=item.get('lang')
+        route=item.get('route')
+        if not isinstance(lang,str) or not re.fullmatch(r'[a-z]{2}',lang):
+            deny('INVALID_LOCALE')
+        if not isinstance(route,str) or not re.fullmatch(r'/(?:[a-z]{2}/)?',route):
+            deny('NOT_A_LANGUAGE_HOMEPAGE')
+        if route!='/' and route!='/' + lang + '/':
+            deny('ROUTE_LOCALE_MISMATCH')
+        gate=qa.get('gates',{}).get(lang,{})
+        if (not isinstance(gate,dict)
+            or gate.get('decision')!='passed_evidence'
+            or not {320,390,414,768}.issubset(set(gate.get('widths',[])))
+            or gate.get('cssPriority')!='low'
+            or gate.get('fullCssPreload') is not False
+            or gate.get('adaptiveMaxWidth',0) not in (0,None)
+            or gate.get('hero900') is not False
+            or gate.get('deferCity') is not False):
+            deny('LEGACY_V1_QA_STRATEGY_MISMATCH:'+lang)
+        observed=[x for x in qa['results'] if x.get('lang')==lang]
+        if (len(observed) < 4 or
+            not {320,390,414,768}.issubset({x.get('width') for x in observed}) or
+            any(x.get('pass') is not True for x in observed)):
+            deny('LOCALE_EVIDENCE_INCOMPLETE:'+lang)
+        original_css = ROOT/'litespeed/css'/item['css_file']
+        critical_css = OUT/item['critical_file']
+        if (original_css.is_symlink() or not original_css.is_file()
+            or original_css.stat().st_size!=item['source_bytes']
+            or SHA(original_css)!=item['source_sha']):
+            deny('LIVE_CSS_SOURCE_DRIFT:'+lang)
+        if (critical_css.is_symlink() or not critical_css.is_file()
+            or critical_css.stat().st_size!=item['critical_bytes']
+            or not 16000 <= critical_css.stat().st_size <= 1048576
+            or SHA(critical_css)!=item['critical_sha']
+            or b'</style' in critical_css.read_bytes().lower()):
+            deny('CRITICAL_CSS_ASSET_DRIFT:'+lang)
+        if item['source_sha'] in old['entries']:
+            deny('EXISTING_V1_ENTRY_MUST_NOT_BE_OVERWRITTEN:'+lang)
+        rows.append((lang,item,critical_css))
+    if len(rows)!=len(set(lang for lang,*_ in rows)) or len(rows)<1:
+        deny('LOCALE_COLLISION')
+    manifest={**old,'entries':dict(old['entries'])}
+    for lang,item,_ in rows:
+        manifest['entries'][item['source_sha']]={
+            'file':item['critical_file'],
+            'critical_sha':item['critical_sha'],
+            'source_css_bytes':item['source_bytes'],
+            'critical_bytes':item['critical_bytes'],
+            'gate_status':'pass',
+            'languages':[lang],
+            'devices':['mobile'],
+            'coverage':'original-v1-renderer-exact-low-no-preload',
+            'qa_evidence':'mad4b.mobile-critical.qa.v1',
+            'qa_evidence_sha256':SHA(OUT/'verification.json'),
+            'evidence_verified_utc':datetime.now(timezone.utc).isoformat(),
+            'gate_viewports':[320,390,414,768],
+            'original313_signed':False,
+        }
+    data=(json.dumps(manifest,indent=2)+'\n').encode()
+    if len(data)>32768:
+        deny('LEGACY_V1_MANIFEST_EXCEEDS_NATIVE_32KB')
+    original_sha=SHA(target)
+    status={'contract':'mad4b.mobile-critical-promotion.v1','host':host,
+            'format':'v1-native-consumer','epoch':EPOCH,'dry_run':DRY_RUN,
+            'promoted':[{'language':lang,'route':item['route'],
+                         'css_sha':item['source_sha'],'critical_sha':item['critical_sha']}
+                        for lang,item,_ in rows],
+            'holds':[],'manifest_entries':len(manifest['entries']),
+            'native_consumer_sha256':expected,
+            'manifest_before_sha256':original_sha,
+            'original313_grant_issued':False}
+    (OUT/'promotion-readback.json').write_text(json.dumps(status,indent=2)+'\n')
+    if not DRY_RUN:
+        # The native publisher owns this exact content-addressed manifest.
+        # An installed consumer's SHA is a compatibility fence, not a signed
+        # capability enrollment for arbitrary PHP code publication.
+        for lang,item,css in rows:
+            dest=storage/item['critical_file']
+            if dest.is_symlink() or (dest.exists() and SHA(dest)!=item['critical_sha']):
+                deny('ASSET_CONFLICT:'+lang)
+            if not dest.exists():
+                tmp=storage/('.asset-'+item['critical_sha'])
+                fd=os.open(tmp,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o644)
+                try:
+                    with os.fdopen(fd,'wb') as stream:
+                        stream.write(css.read_bytes())
+                        stream.flush()
+                        os.fsync(stream.fileno())
+                    os.replace(tmp,dest)
+                finally:
+                    if tmp.exists():tmp.unlink()
+        backup=OUT/'manifest-before-promotion.json'
+        backup.write_bytes(target.read_bytes())
+        previous=target.stat()
+        next_file=storage/'.manifest-verified-next.json'
+        if next_file.exists() or next_file.is_symlink():
+            deny('STAGING_MANIFEST_ALREADY_PRESENT')
+        fd=os.open(next_file,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+        try:
+            with os.fdopen(fd,'wb') as stream:
+                stream.write(data);stream.flush();os.fsync(stream.fileno())
+            if SHA(target)!=original_sha:
+                deny('CONCURRENT_MANIFEST_CHANGE')
+            os.chmod(next_file,stat.S_IMODE(previous.st_mode))
+            os.chown(next_file,previous.st_uid,previous.st_gid)
+            os.replace(next_file,target)
+        finally:
+            if next_file.exists():next_file.unlink()
+        if SHA(target)!=hashlib.sha256(data).hexdigest():
+            deny('POST_PUBLISH_MANIFEST_CAS_FAILURE')
+    print(json.dumps(status,ensure_ascii=False))
+
+if os.environ.get('MAD4B_CSS_NATIVE_V1_COMPAT','0') == '1':
+    publish_installed_legacy_v1()
+    raise SystemExit(0)
+
+# The published CSS manifest is a runtime data format, not an authorization
+# to upgrade PHP. Refuse v2 until the actual installed consumer implements its
+# route/locale/Elementor/CSS-epoch verifier. This checks compatibility only;
+# independently signed Original313 remains necessary for any PHP code release.
+consumer=ROOT/'mu-plugins/415-mad4b-critical-css-orchestrator.php'
+if not consumer.is_file() or consumer.is_symlink():
+    raise SystemExit('V2_RUNTIME_CONSUMER_MISSING')
+consumer_source=consumer.read_text()
+if ("private static function verified_variant(" not in consumer_source
+    or "mad4b.mobile-critical-css.v2" not in consumer_source
+    or "elementor_doc_fingerprint" not in consumer_source):
+    raise SystemExit('V2_RUNTIME_CONSUMER_NOT_ENROLLED')
+
 manifest = {'version':2, 'contract':'mad4b.mobile-critical-css.v2',
             'site':host, 'updated_utc':datetime.now(timezone.utc).isoformat(),
             'entries':{}}
