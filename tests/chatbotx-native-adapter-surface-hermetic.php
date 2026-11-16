@@ -127,4 +127,4 @@ cmb_assert($instance->support_create_ticket(array()) instanceof WP_Error
     && $instance->support_add_note(array()) instanceof WP_Error
     && $instance->cpt_create_draft(array()) instanceof WP_Error,
     'Disabled native central mutation must not write a ticket, note or CPT');
-echo "CHATBOTX_NATIVE_ADAPTER_GATES: PASS 11 read / 3 separately governed write registrations\n";
+echo "PASS: CHATBOTX_NATIVE_ADAPTER_GATES 11 read / 3 separately governed write registrations\n";

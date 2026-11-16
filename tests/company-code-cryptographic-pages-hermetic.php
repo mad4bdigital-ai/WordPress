@@ -109,4 +109,4 @@ test_code($c::plan($invalid)->get_error_code()==='mad4b_company_code_cross_site_
  'Distinct company site IDs are mandatory for source-to-target comparison');
 test_code($GLOBALS['code_receipt_calls']>=5,
  'Original receipt verifier must be consulted for positive and negative evidence');
-echo "COMPANY_CODE_SIGNED_PAGE_RECONCILE: PASS private plan/compare, no apply\n";
+echo "PASS: COMPANY_CODE_SIGNED_PAGE_RECONCILE private plan/compare, no apply\n";
