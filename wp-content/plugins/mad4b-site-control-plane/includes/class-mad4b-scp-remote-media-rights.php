@@ -52,6 +52,19 @@ final class MAD4B_SCP_Remote_Media_Rights {
 		return hash( 'sha256', wp_json_encode( $identity, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
 	}
 
+	/** Preserve specific Creative Commons attribution; a CC BY / BY-SA page
+	 * does not constitute a public-domain release. Applies to new *and* old
+	 * imported provenance, without making any external rights assertion. */
+	public static function conflicts_with_explicit_cc_license( $basis, $reference, $note = '' ) {
+		if ( 'public_domain' !== sanitize_key( (string) $basis ) ) return false;
+		$parsed = wp_parse_url( (string) $reference );
+		$host = is_array( $parsed ) ? strtolower( (string) ( $parsed['host'] ?? '' ) ) : '';
+		$path = is_array( $parsed ) ? (string) ( $parsed['path'] ?? '' ) : '';
+		$cc = in_array( $host, array( 'creativecommons.org', 'www.creativecommons.org' ), true )
+			&& 1 === preg_match( '#^/licenses/by(?:-[a-z]+)*/[0-9]+(?:\.[0-9]+)?/?$#i', $path );
+		return $cc || 1 === preg_match( '/\bCC[ -]BY(?:-[A-Z]+)*\s+[0-9]+(?:\.[0-9]+)?\b/i', (string) $note );
+	}
+
 	public static function state_evidence( $featured_media_id, array $field_specs, array $effective_meta ) {
 		$ids = self::attachment_ids( $featured_media_id, $field_specs, $effective_meta );
 		$source_meta = class_exists( 'MAD4B_SCP_Remote_Media_Adapter' ) ? MAD4B_SCP_Remote_Media_Adapter::REMOTE_SOURCE_HASH_META : '_mad4b_remote_media_source_sha256';
@@ -81,6 +94,8 @@ final class MAD4B_SCP_Remote_Media_Rights {
 				'source_aliases_sha256' => hash( 'sha256', wp_json_encode( $source_hashes, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) ),
 				'provenance_event_sha256' => self::provenance_event_sha256( $latest ),
 				'rights_basis' => isset( $latest['rights_basis'] ) ? sanitize_key( (string) $latest['rights_basis'] ) : '',
+				'rights_reference' => isset( $latest['rights_reference'] ) ? (string) $latest['rights_reference'] : '',
+				'rights_note' => isset( $latest['rights_note'] ) ? (string) $latest['rights_note'] : '',
 				'rights_evidence_present' => '' !== trim( isset( $latest['rights_note'] ) ? (string) $latest['rights_note'] : '' ) || '' !== trim( isset( $latest['rights_reference'] ) ? (string) $latest['rights_reference'] : '' ),
 				'license_expires_on' => isset( $latest['license_expires_on'] ) ? trim( (string) $latest['license_expires_on'] ) : '',
 			);
@@ -110,13 +125,23 @@ final class MAD4B_SCP_Remote_Media_Rights {
 		foreach ( $state['remote_items'] as $row ) {
 			$id = (int) $row['attachment_id'];
 			$basis = (string) $row['rights_basis'];
+			if ( self::conflicts_with_explicit_cc_license( $basis, $row['rights_reference'] ?? '', $row['rights_note'] ?? '' ) )
+				return new WP_Error( 'mad4b_remote_media_cc_license_not_public_domain',
+					'A source explicitly marked CC BY cannot be published as public domain.', array( 'attachment_id' => $id ) );
 			$known = in_array( $basis, array( 'owned', 'licensed', 'permission', 'public_domain', 'creative_commons' ), true );
+			// Missing copyright metadata on an existing Library image must
+			// not stop publication. Exact source/content/provenance identity is
+			// still validated by state_evidence() before this loop. An explicit
+			// restriction (rather than an unknown field) remains blocking.
+			$library_image = get_post_type( $id ) === 'attachment'
+				&& str_starts_with( (string) get_post_mime_type( $id ), 'image/' );
 			if ( ! $known ) {
-				if ( ! $advisory ) return new WP_Error( 'mad4b_remote_media_publish_rights_unproven', 'Remote media rights basis is not verified.', array( 'attachment_id' => $id ) );
+				if ( ! in_array( $basis, array( '', 'unknown' ), true ) || ( ! $advisory && ! $library_image ) )
+					return new WP_Error( 'mad4b_remote_media_publish_rights_unproven', 'Remote media rights basis is not verified or is explicitly restricted.', array( 'attachment_id' => $id ) );
 				$warnings[] = array( 'attachment_id' => $id, 'code' => 'rights_basis_unverified' );
 			}
 			if ( 'owned' !== $basis && empty( $row['rights_evidence_present'] ) ) {
-				if ( ! $advisory ) return new WP_Error( 'mad4b_remote_media_publish_rights_evidence_missing', 'Remote media reuse evidence is missing.', array( 'attachment_id' => $id ) );
+				if ( ! $advisory && ! $library_image ) return new WP_Error( 'mad4b_remote_media_publish_rights_evidence_missing', 'Remote media reuse evidence is missing.', array( 'attachment_id' => $id ) );
 				$warnings[] = array( 'attachment_id' => $id, 'code' => 'rights_evidence_missing' );
 			}
 			$expiry = (string) $row['license_expires_on'];

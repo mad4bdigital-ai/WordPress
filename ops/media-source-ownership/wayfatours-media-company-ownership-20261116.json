@@ -42,6 +42,16 @@
       "source_site_expected_sha256": null,
       "site_overlay_immutable_source": true,
       "reason": "Company navigation lazy-image behavior; absent from Tours.dev runtime"
+    },
+    {
+      "path": "mu-plugins/mad4b-media-attribution-registry.php",
+      "decision": "company_runtime_version_pin_source_diverged",
+      "owner_scope": "wayfatours_only",
+      "live_sha256": "2f069e26de321edea562ffd422fc9b5d44cd6d043b3b98f4925903ca9f8c4bc0",
+      "common_candidate_sha256": "48fe73035c4f585ca330821707204219026b5b57b70b8dff7d5bdf00edd1e4db",
+      "source_site_expected_sha256": "48fe73035c4f585ca330821707204219026b5b57b70b8dff7d5bdf00edd1e4db",
+      "site_overlay_immutable_source": true,
+      "reason": "Company-pinned production version is older than independent common source and Tours.dev. Source differs from live by a tested JetEngine post-commit published-credit invalidation patch; pending exact owner-approved release. Do not substitute new source without a signed release and live CAS."
     }
   ],
   "source_basis": "actual exact SHA-256 on Wayfatours, shared Git, and Tours.dev",
@@ -51,5 +61,7 @@
   "copyright_clearance_not_claimed": true,
   "no_wp_files_modified": false,
   "pending_library_rights_release_manifest": "ops/site-company-overlays/wayfatours/media-release-candidates/library-rights-release-plan-20261116.json",
-  "last_verified_manual_release_utc": "2026-11-16T01:09:50.754945+00:00"
+  "last_verified_manual_release_utc": "2026-11-16T01:09:50.754945+00:00",
+  "last_owner_audit_utc": "2026-11-16T01:45:26.036915+00:00",
+  "source_integration_note": "Fifth exact temporary company runtime pin for pending rights CCT post-commit fix; not a new license and not permission to deploy."
 }

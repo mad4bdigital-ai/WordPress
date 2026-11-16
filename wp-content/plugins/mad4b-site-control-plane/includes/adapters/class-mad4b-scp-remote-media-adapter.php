@@ -501,6 +501,14 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 		}
 		$rights_basis = isset( $input['rights_basis'] ) ? sanitize_key( (string) $input['rights_basis'] ) : 'unknown';
 		if ( ! in_array( $rights_basis, array( 'unknown', 'owned', 'licensed', 'permission', 'public_domain', 'creative_commons' ), true ) ) return new WP_Error( 'mad4b_remote_media_rights_basis_invalid', 'Unsupported remote media rights basis.' );
+		// A concrete CC BY / BY-SA license is NOT public domain. Preserve
+		// the license identity and original source; do not substitute a more
+		// permissive fallback when external metadata disagrees. This check
+		// does not certify that the external source actually grants the license.
+		$rights_note = sanitize_textarea_field( isset( $input['rights_note'] ) ? (string) $input['rights_note'] : '' );
+		if ( MAD4B_SCP_Remote_Media_Rights::conflicts_with_explicit_cc_license( $rights_basis, $rights_reference, $rights_note ) )
+			return new WP_Error( 'mad4b_remote_media_cc_license_not_public_domain',
+				'Explicit CC BY attribution is not public domain; preserve the specific Creative Commons license.' );
 		$duplicate_policy = isset( $input['duplicate_policy'] ) ? sanitize_key( (string) $input['duplicate_policy'] ) : 'reuse';
 		if ( ! in_array( $duplicate_policy, array( 'reuse', 'fail' ), true ) ) return new WP_Error( 'mad4b_remote_media_duplicate_policy_invalid', 'duplicate_policy must be reuse or fail.' );
 		$license_expires_on = isset( $input['license_expires_on'] ) ? trim( (string) $input['license_expires_on'] ) : '';
@@ -527,7 +535,7 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 			'source_page_sha256' => $source_page_sha256,
 			'rights_basis' => $rights_basis,
 			'capture_only' => ! empty( $input['capture_only'] ),
-			'rights_note' => sanitize_textarea_field( isset( $input['rights_note'] ) ? (string) $input['rights_note'] : '' ),
+			'rights_note' => $rights_note,
 			'rights_reference' => $rights_reference,
 			'license_expires_on' => $license_expires_on,
 			'duplicate_policy' => $duplicate_policy,
