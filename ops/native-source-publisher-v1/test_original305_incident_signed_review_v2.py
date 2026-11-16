@@ -32,6 +32,29 @@ class IncidentMasterReviewTests(unittest.TestCase):
          SUPERVISOR_PIN=hashlib.sha256(self.supervisor.read_bytes()).hexdigest(),
          SERVICE_PIN=hashlib.sha256(self.service.read_bytes()).hexdigest())
         self.patches.start();self.addCleanup(self.patches.stop)
+        # The actual first-party root_read() still uses O_NOFOLLOW, fstat,
+        # mode, nlink, length and SHA checks. Only the root-owner bits of
+        # TEST FIXTURE descriptors are simulated on unprivileged CI runners.
+        # No production file, signing key or real owner evidence is used.
+        originals=m.os.fstat
+        owned_paths={str(p.resolve()) for p in (
+            self.hold,self.index,self.supervisor,self.service )}
+        self.simulated_owner_uid=0
+        self.simulated_owner_gid=0
+        def fixture_fstat(fd):
+            real=originals(fd)
+            try:
+                name=__import__('os').readlink('/proc/self/fd/'+str(fd))
+            except OSError:
+                return real
+            if name not in owned_paths:return real
+            fields=list(real)
+            fields[4]=self.simulated_owner_uid
+            fields[5]=self.simulated_owner_gid
+            return m.os.stat_result(fields)
+        fstat_guard=mock.patch.object(m.os,'fstat',side_effect=fixture_fstat)
+        fstat_guard.start();self.addCleanup(fstat_guard.stop)
+
         root=mock.patch.object(m.os,'geteuid',return_value=0)
         root.start();self.addCleanup(root.stop)
         self.request=m.plan()
@@ -60,6 +83,16 @@ class IncidentMasterReviewTests(unittest.TestCase):
         d['signature']=base64.b64encode(self.private.sign(
             (m.APPROVAL_CONTRACT+'\n').encode()+m.canonical(d))).decode()
         return d
+    def test_untrusted_fixture_owner_is_denied_by_original_root_read(self):
+        self.simulated_owner_uid=1001
+        with self.assertRaisesRegex(m.IncidentReviewDenied,'INCIDENT_ROOT_FILE_UNTRUSTED'):
+            m.plan()
+
+    def test_untrusted_fixture_group_is_denied_by_original_root_read(self):
+        self.simulated_owner_gid=1001
+        with self.assertRaisesRegex(m.IncidentReviewDenied,'INCIDENT_ROOT_FILE_UNTRUSTED'):
+            m.plan()
+
     def test_plan_is_exact_and_readonly(self):
         result=m.plan()
         self.assertEqual(result['request_sha256'],self.request['request_sha256'])

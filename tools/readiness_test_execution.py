@@ -22,6 +22,15 @@ SHA = re.compile(r"^[a-f0-9]{40}$")
 # Each path contains exit-on-failure assertions and a positive PASS marker.
 # Other PHP files continue to require PHPUnit; unknown paths fail closed.
 STANDALONE_PHP_REGRESSIONS = frozenset((
+    # Exact no-WordPress Brand Quality/issue-ledger closure fixture. It uses
+    # synthetic WP functions and a positive fail-on-assertion PASS marker;
+    # no DB, publish, email or authorization. Unknown PHP stays denied.
+    "tests/brand-quality-readiness-coverage-hermetic.php",
+    # The exact first-party media-rights fixture uses a temporary image
+    # placeholder, hermetic WordPress stubs and fail-on-assertion checks.
+    # It cannot grant a license, publish, perform network access, or write a
+    # live site; unknown PHP files still require the trusted PHPUnit runner.
+    "tests/media-rights/media-rights-source-convergence-hermetic.php",
     "tests/remote-execution/chatgpt-optional-catalog-smoke.php",
     "tests/remote-execution/developer-preparation-bridge-smoke.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/mcp-catalog-adaptive-budget.php",
@@ -378,6 +387,11 @@ def self_test():
         "wp-content/plugins/mad4b-site-control-plane/tests/self-update-selected-head-release-trust-runtime.php",
     ):
         assert command_for(path) == ["php", str((ROOT / path).resolve())]
+    assert command_for("tests/brand-quality-readiness-coverage-hermetic.php") == [
+        "php", str((ROOT / "tests/brand-quality-readiness-coverage-hermetic.php").resolve())]
+    assert command_for("tests/media-rights/media-rights-source-convergence-hermetic.php") == [
+        "php", str((ROOT / "tests/media-rights/media-rights-source-convergence-hermetic.php").resolve())]
+    assert has_assertion_pass("PASS: brand quality exact context revision and same-site issue closure\n")
     # No wildcard admission: unknown PHP still requires a trusted PHPUnit runner.
     try:
         command_for("wp-content/plugins/mad4b-site-control-plane/tests/private-operations-foreign-smoke.php")

@@ -90,3 +90,4 @@ brand_assert(!empty($partial['brand_evidence_sha256'])
  && $approved['brand_evidence_sha256']!==$partial['brand_evidence_sha256'],
  'Brand issue revision fingerprint must change when approved source becomes stale');
 echo "BRAND_QUALITY_LEDGER_SOURCE_GUARD: PASS approval revision + scoped closure\n";
+echo "PASS: brand quality exact context revision and same-site issue closure\n";

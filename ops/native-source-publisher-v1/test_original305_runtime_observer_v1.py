@@ -5,6 +5,19 @@ import hashlib,json,subprocess,sys,tempfile,types,unittest
 from unittest import mock
 import original305_runtime_observer_v1 as m
 
+class RootOwnedTriageFixture:
+ """Only tests simulate the root-owned stat; actual file bytes still SHA-pinned."""
+ def __init__(self, actual, owner_uid=0):
+  self.actual=actual
+  self.owner_uid=owner_uid
+ def is_file(self): return self.actual.is_file()
+ def is_symlink(self): return self.actual.is_symlink()
+ def read_bytes(self): return self.actual.read_bytes()
+ def stat(self):
+  real=self.actual.stat()
+  return types.SimpleNamespace(st_uid=self.owner_uid, st_gid=real.st_gid,
+                               st_mode=real.st_mode, st_nlink=real.st_nlink)
+
 class ObserverTests(unittest.TestCase):
  def setUp(self):
   self.tmp=tempfile.TemporaryDirectory(prefix='original305-observer-test-')
@@ -13,7 +26,8 @@ class ObserverTests(unittest.TestCase):
   self.triage=d/'triage.py';self.triage.write_text('test-only-readonly-triage');
   self.reg=d/'index.json';self.reg.write_text('v8-pinned-test');
   self.hold=d/'hold.json';self.hold.write_text('test hold identity');
-  p=mock.patch.multiple(m,TRIAGE=self.triage,HOLD=self.hold,REGISTRY=self.reg,
+  self.root_triage=RootOwnedTriageFixture(self.triage)
+  p=mock.patch.multiple(m,TRIAGE=self.root_triage,HOLD=self.hold,REGISTRY=self.reg,
        TRIAGE_SHA=hashlib.sha256(self.triage.read_bytes()).hexdigest(),
        REGISTRY_SHA=hashlib.sha256(self.reg.read_bytes()).hexdigest())
   p.start();self.addCleanup(p.stop)
@@ -24,6 +38,16 @@ class ObserverTests(unittest.TestCase):
    'renewal_enabled_by_this_check':False,'host_release_authorized':False,
    'legacy_hold_present':True,'original_v8_registry_exact':True,
    'timer_state':'disabled','signed_readiness_admitted':False}
+
+ def test_nonroot_triage_identity_never_bypasses_source_pin(self):
+  self.root_triage.owner_uid=1001
+  with self.assertRaisesRegex(m.ObserverDenied,'READONLY_TRIAGE_SOURCE_PIN_MISMATCH'):
+   m.observe(clock=lambda:123456789,triage_reader=lambda:self.safe)
+
+ def test_corrupt_triage_bytes_never_bypasses_source_pin(self):
+  self.triage.write_text('modified-untrusted-test-only-triage')
+  with self.assertRaisesRegex(m.ObserverDenied,'READONLY_TRIAGE_SOURCE_PIN_MISMATCH'):
+   m.observe(clock=lambda:123456789,triage_reader=lambda:self.safe)
 
  def test_legitimate_hold_yields_telemetry_not_authority(self):
   value=m.observe(clock=lambda:123456789,triage_reader=lambda:self.safe)
