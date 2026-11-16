@@ -66,6 +66,12 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     # Reviewed native Search Console site-only OAuth/retained-observation
     # fixture: in-memory provider/WP stubs; no HTTP, real grants or writes.
     "tests/native-search-console-site-scope-php74-hermetic.php",
+    # Three exact source-audited negative fixtures: admin-only CWV REST,
+    # readonly Provider field/locale metadata and synthetic bounded Cron.
+    # No real WordPress DB, provider HTTP or license/grant mutations.
+    "tests/readiness-core-web-vitals-rest-cron-hermetic.php",
+    "tests/provider-field-intelligence-site-readonly-php74-hermetic.php",
+    "tests/readiness-native-cron-ownership-hermetic.php",
     # Exact independently inspected offline WordPress source fixtures: native
     # Server catalog isolation, Origin research evidence-only stubs, and
     # Firecrawl route/SSRF denials. No live provider HTTP, site writes, grants

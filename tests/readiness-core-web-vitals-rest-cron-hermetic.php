@@ -107,4 +107,5 @@ foreach ( $routes as $route => $expected ) {
     assert_cwv( call_user_func( $options['permission_callback'] ) === true,
         'Admin REST permission unexpectedly denied: ' . $route );
 }
-echo "CWV REST CRON SOURCE HERMITIC: PASS 4 admin routes / 3 original hooks\n";
+echo "CWV REST CRON SOURCE HERMITIC: PASS 4 admin routes / 3 original hooks\n";// Audited positive exit marker; all denial checks must complete first.
+echo "CWV_REST_CRON_SOURCE: PASS\n";

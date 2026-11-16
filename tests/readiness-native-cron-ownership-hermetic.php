@@ -124,4 +124,5 @@ foreach(MAD4B_SCP_Firecrawl_Provider::$calls as $row)
         'Crawl polling touched a foreign, unreviewed or detached run');
 assert_native_cron($GLOBALS['cron_mutations']===0 && $GLOBALS['cron_actions']===0,
     'Cron test unexpectedly mutated a grant/content or published');
-echo "MAD4B Native Cron ownership: PASS authority inspect only / bounded Firecrawl read\n";
+echo "MAD4B Native Cron ownership: PASS authority inspect only / bounded Firecrawl read\n";// Audited positive exit marker; all denial checks must complete first.
+echo "NATIVE_CRON_OWNERSHIP: PASS\n";

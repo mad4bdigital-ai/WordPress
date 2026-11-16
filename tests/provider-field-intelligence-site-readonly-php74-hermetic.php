@@ -186,4 +186,5 @@ ff_assert($other_site['complete']===false
 $GLOBALS['field_site_ready']=true;
 ff_assert($GLOBALS['field_values_read']===0,
  'No private meta values were enumerated during locale field discovery');
-echo "PROVIDER_FIELDS_SITE_PHP74: PASS original REST, field rights, locale audit and no write\n";
+echo "PROVIDER_FIELDS_SITE_PHP74: PASS original REST, field rights, locale audit and no write\n";// Audited positive exit marker; all denial checks must complete first.
+echo "PROVIDER_FIELDS_SITE_PHP74: PASS\n";
