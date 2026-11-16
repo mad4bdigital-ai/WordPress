@@ -229,12 +229,12 @@
     },
     {
       "relative_path": "mu-plugins/mad4b-media-attribution-registry.php",
-      "sha256": "2f069e26de321edea562ffd422fc9b5d44cd6d043b3b98f4925903ca9f8c4bc0",
-      "bytes": 26575,
+      "sha256": "48fe73035c4f585ca330821707204219026b5b57b70b8dff7d5bdf00edd1e4db",
+      "bytes": 27093,
       "kind": "php",
-      "shared_git_source_sha256": null,
-      "source_site_sha256": "2f069e26de321edea562ffd422fc9b5d44cd6d043b3b98f4925903ca9f8c4bc0",
-      "shared_source_status": "missing",
+      "shared_git_source_sha256": "48fe73035c4f585ca330821707204219026b5b57b70b8dff7d5bdf00edd1e4db",
+      "source_site_sha256": "48fe73035c4f585ca330821707204219026b5b57b70b8dff7d5bdf00edd1e4db",
+      "shared_source_status": "same",
       "no_implicit_activation": true
     },
     {
@@ -509,5 +509,7 @@
     }
   ],
   "updated_after_verified_manual_release_utc": "2026-11-16T00:27:00+00:00",
-  "updated_after_rights_nonblocking_manual_release_utc": "2026-11-16T01:09:50.754945+00:00"
+  "updated_after_rights_nonblocking_manual_release_utc": "2026-11-16T01:09:50.754945+00:00",
+  "updated_after_manual_cct_postcommit_release_utc": "2026-11-16T02:38:57.166084+00:00",
+  "manual_cct_release_receipt": "/opt/mad4b-media-backups/wayfa-media-engine-hardening-20261116/manual-cct-postcommit-20261116/manual-apply.json"
 }
