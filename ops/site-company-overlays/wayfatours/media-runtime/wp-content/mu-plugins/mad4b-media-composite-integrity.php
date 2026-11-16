@@ -1,7 +1,7 @@
 <?php
 /** Plugin Name: MAD4B Composite Media Integrity
  * Description: JetEngine gallery and repeater read-only structural inspection for Configuration Jobs.
- * Version: 1.0.0
+ * Version: 1.0.1
  */
 defined('ABSPATH') || exit;
 if (!class_exists('MAD4B_Composite_Media_Integrity_V1',false)) {
@@ -33,7 +33,7 @@ final class MAD4B_Composite_Media_Integrity_V1 {
   $col=$kind==='term'?'term_id':'post_id';
   $raw=$wpdb->get_var($wpdb->prepare("SELECT meta_value FROM {$table} WHERE {$col}=%d AND meta_key=%s ORDER BY meta_id ASC LIMIT 1",$id,$field));
   $hash=hash('sha256',wp_json_encode($value,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
-  $issue=[];$items=[];$format='';$raw_foreign_count=0;$local_missing_count=0;
+  $issue=[];$items=[];$format='';$raw_foreign_count=0;$local_missing_count=0;$external_unresolved_count=0;
   $raw_value=is_string($raw)?maybe_unserialize($raw):$raw;
   if($schema['type']==='gallery' && is_array($raw_value)){
    $home_host=strtolower((string)wp_parse_url(home_url('/'),PHP_URL_HOST));
@@ -46,22 +46,56 @@ final class MAD4B_Composite_Media_Integrity_V1 {
   }
   if($schema['type']==='gallery' && is_string($raw_value) && $raw_value!==''){
    $site_host=strtolower((string)wp_parse_url(home_url('/'),PHP_URL_HOST));
+   $uploads=wp_get_upload_dir();
+   $upload_host=strtolower((string)wp_parse_url((string)($uploads['baseurl']??''),PHP_URL_HOST));
+   $local_hosts=array_values(array_unique(array_filter([$site_host,$upload_host])));
+   $root=realpath((string)($uploads['basedir']??''));
    foreach(explode(',',$raw_value) as $raw_item){
-    $raw_host=strtolower((string)wp_parse_url(trim($raw_item),PHP_URL_HOST));
-    if($raw_host!=='' && $raw_host!==$site_host)$raw_foreign_count++;
+    $ref=trim($raw_item);
+    if($ref==='')continue;
+    // JetEngine accepts comma-separated attachment IDs as gallery storage.
+    // A numeric ID is not a file path. Verify the attachment record and
+    // the actual on-disk image before creating a local-missing alert.
+    if(ctype_digit($ref)){
+     $aid=(int)$ref;
+     $attached=$aid>0&&get_post_type($aid)==='attachment'
+      &&str_starts_with((string)get_post_mime_type($aid),'image/')
+      ?get_attached_file($aid):false;
+     $real=$attached?realpath($attached):false;
+     if(!$root||!$real||!str_starts_with($real,$root.DIRECTORY_SEPARATOR)||!is_file($real))
+      $local_missing_count++;
+     continue;
+    }
+    $scheme=strtolower((string)wp_parse_url($ref,PHP_URL_SCHEME));
+    $host=strtolower((string)wp_parse_url($ref,PHP_URL_HOST));
+    if(!in_array($scheme,['http','https'],true)||$host===''){
+     $issue[]='gallery_invalid_url';continue;
+    }
+    $foreign=!in_array($host,$local_hosts,true);
+    if($foreign)$raw_foreign_count++;
+    $path=(string)wp_parse_url($ref,PHP_URL_PATH);
+    $prefix='/wp-content/uploads/';$pos=strpos($path,$prefix);
+    if($pos===false){
+     $foreign?$external_unresolved_count++:$issue[]='gallery_invalid_url';
+     continue;
+    }
+    $relative=rawurldecode(substr($path,$pos+strlen($prefix)));
+    if($relative===''||str_contains($relative,'..')||str_contains($relative,'\\')
+       ||preg_match('/[\x00-\x1f]/',$relative)){
+     $issue[]='gallery_invalid_url';continue;
+    }
+    $full=$root?realpath($root.'/'.$relative):false;
+    $exists=$root&&$full&&str_starts_with($full,$root.DIRECTORY_SEPARATOR)&&is_file($full);
+    if(!$exists){
+     // A remote URL without a proven local copy is an import dependency,
+     // not evidence that a local WordPress attachment was deleted.
+     if($foreign)$external_unresolved_count++;
+     else $local_missing_count++;
+    }
    }
    if($raw_foreign_count>0)$issue[]='gallery_stored_foreign_host';
-   $uploads=wp_get_upload_dir();$root=realpath((string)$uploads['basedir']);
-   foreach(explode(',',$raw_value) as $raw_item){
-    $p=(string)wp_parse_url(trim($raw_item),PHP_URL_PATH);
-    $needle='/wp-content/uploads/';$pos=strpos($p,$needle);
-    if($pos===false){$local_missing_count++;continue;}
-    $relative=rawurldecode(substr($p,$pos+strlen($needle)));
-    if($relative==='' || str_contains($relative,'..') || str_contains($relative,"\\")){$local_missing_count++;continue;}
-    $f=$root?realpath($root.'/'.$relative):false;
-    if(!$f || !str_starts_with($f,$root.DIRECTORY_SEPARATOR) || !is_file($f))$local_missing_count++;
-   }
    if($local_missing_count>0)$issue[]='gallery_local_file_missing';
+   if($external_unresolved_count>0)$issue[]='gallery_external_source_unresolved';
   }
   if($value===''||$value===null)return ['field'=>$field,'kind'=>$kind,'type'=>$type,'id'=>$id,'schema'=>$schema,
    'stored_format'=>'empty','items'=>[],'issues'=>[],'value_hash'=>$hash];
@@ -113,7 +147,7 @@ final class MAD4B_Composite_Media_Integrity_V1 {
    }
   }
   return ['field'=>$field,'kind'=>$kind,'type'=>$type,'id'=>$id,'schema'=>$schema,'stored_format'=>$format,
-   'items_count'=>count($items),'raw_foreign_count'=>$raw_foreign_count,'local_missing_count'=>$local_missing_count,'runtime_rewritten'=>$raw!==null && $raw!==$value,'issues'=>array_values(array_unique($issue)),'value_hash'=>$hash];
+   'items_count'=>count($items),'raw_foreign_count'=>$raw_foreign_count,'local_missing_count'=>$local_missing_count,'external_unresolved_count'=>$external_unresolved_count,'runtime_rewritten'=>$raw!==null && $raw!==$value,'issues'=>array_values(array_unique($issue)),'value_hash'=>$hash];
  }
  public static function signals(array $rows):array {
   $gallery_groups=[];$batch=[];
@@ -149,7 +183,7 @@ final class MAD4B_Composite_Media_Integrity_V1 {
       }
       $rows[]=['provider'=>'composite-media','source'=>'probe','code'=>$issue,
        'scope'=>$kind.'_'.$type.'_'.$id.'_'.$field,
-       'severity'=>$issue==='gallery_local_file_missing'?'high':'low',
+       'severity'=>$issue==='gallery_local_file_missing'?'high':($issue==='gallery_external_source_unresolved'?'medium':'low'),
        'label'=>'Composite media integrity: '.$type.' #'.$id.' / '.$field,
        'guidance'=>'Inspect the original field and review source rights; do not drop existing gallery or repeater rows. Issue: '.$issue.'.'];
      }

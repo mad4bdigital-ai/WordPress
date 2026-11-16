@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Wayfatours Provider-Verified Notice Revalidation
  * Description: Keeps historical dashboard observations separate from live plugin state; only corrects a notice with independent provider evidence.
- * Version: 1.0.0
+ * Version: 1.1.0
  */
 defined('ABSPATH') || exit;
 if (!class_exists('MAD4B_Wayfa_Configuration_Notice_Revalidation_V1', false)) {
@@ -12,7 +12,7 @@ final class MAD4B_Wayfa_Configuration_Notice_Revalidation_V1 {
     private const STRIPE_NOTICE_PREFIX = 'Test mode active: All transactions are simulated.';
 
     public static function stripe_evidence($evidence, array $row) {
-        if (($row['source'] ?? '') !== 'admin_notice'
+        if (!in_array(($row['source'] ?? ''), ['admin_notice','hook'], true)
             || !preg_match('/^admin_notice_[a-f0-9]{16}$/D', (string)($row['code'] ?? ''))
             || !str_starts_with((string)($row['label'] ?? ''), self::STRIPE_NOTICE_PREFIX)
             || !str_contains((string)($row['label'] ?? ''), 'through Stripe.')) return $evidence;
@@ -29,6 +29,24 @@ final class MAD4B_Wayfa_Configuration_Notice_Revalidation_V1 {
             'verification' => 'independent_live_option_readback'];
     }
 
+    /** Historical wp_mail_failed is closed only by fresh native SMTP recovery,
+     * never by elapsed time or the ability to build a WordPress mail object.
+     */
+    public static function mail_evidence($evidence, array $row) {
+        if (($row['source']??'')!=='hook' || ($row['provider']??'')!=='wordpress-mail'
+            || ($row['code']??'')!=='wp_mail_failed'
+            || !class_exists('MAD4B_Configuration_Provider_Adapters', false))return $evidence;
+        $proof = MAD4B_Configuration_Provider_Adapters::smtp_recovery_proof();
+        if (empty($proof['verified']) || empty($proof['recovered'])
+            || ($proof['contract']??'')!=='mad4b.fluent-smtp-transport-recovery.v1')return $evidence;
+        return ['contract'=>self::CONTRACT,'provider'=>'fluent-smtp',
+            'provider_evidence'=>'native_smtp_log_and_healthy_connection',
+            'last_failed_utc'=>$proof['last_failed_utc'],
+            'last_accepted_utc'=>$proof['last_accepted_utc'],
+            'accepted_after_failure'=>$proof['accepted_after_failure'],
+            'does_not_prove_inbox_delivery'=>true];
+    }
+
     public static function recheck(): array {
         if (strtolower((string)wp_parse_url(home_url('/'), PHP_URL_HOST)) !== 'wayfatours.com')
             return ['contract' => self::CONTRACT, 'status' => 'site_scope_mismatch', 'changed' => 0];
@@ -43,27 +61,43 @@ final class MAD4B_Wayfa_Configuration_Notice_Revalidation_V1 {
             if (!is_array($rows)) return ['contract' => self::CONTRACT, 'status' => 'ledger_invalid', 'changed' => 0];
             $resolved = 0; $reopened = 0; $checked = 0;
             foreach ($rows as &$row) {
-                if (!is_array($row) || ($row['source'] ?? '') !== 'admin_notice') continue;
+                if (!is_array($row) || !in_array(($row['source'] ?? ''), ['admin_notice','hook'], true)) continue;
                 $e = apply_filters('mad4b/configuration_jobs/admin_notice_revalidation_evidence', null, $row);
-                if (!is_array($e) || ($e['contract'] ?? '') !== self::CONTRACT
-                    || ($e['provider'] ?? '') !== 'woocommerce-gateway-stripe'
-                    || ($e['provider_evidence'] ?? '') !== 'woocommerce_stripe_settings.testmode'
-                    || !is_bool($e['test_mode'] ?? null)) continue;
-                $checked++;
-                if ($e['test_mode'] === false && ($row['state'] ?? '') === 'open') {
-                    $row['state'] = 'resolved';
-                    $row['resolved_at'] = gmdate('c');
-                    $row['resolution_contract'] = self::CONTRACT;
-                    $row['resolution_evidence'] = $e['provider_evidence'] . '=no';
-                    $row['provider_verified_at'] = gmdate('c');
+                if (!is_array($e) || ($e['contract'] ?? '') !== self::CONTRACT) continue;
+                if (($e['provider']??'')==='woocommerce-gateway-stripe'
+                    && ($e['provider_evidence']??'')==='woocommerce_stripe_settings.testmode'
+                    && is_bool($e['test_mode']??null)) {
+                    $checked++;
+                    if ($e['test_mode'] === false && ($row['state']??'') === 'open') {
+                        $row['state'] = 'resolved';
+                        $row['resolved_at'] = gmdate('c');
+                        $row['resolution_contract'] = self::CONTRACT;
+                        $row['resolution_evidence'] = $e['provider_evidence'] . '=no';
+                        $row['provider_verified_at'] = gmdate('c');
+                        $resolved++;
+                    } elseif ($e['test_mode'] === true && ($row['state']??'') === 'resolved'
+                              && ($row['resolution_contract']??'') === self::CONTRACT) {
+                        $row['state'] = 'open';
+                        unset($row['resolved_at'], $row['resolution_evidence']);
+                        $row['provider_verified_at'] = gmdate('c');
+                        $row['reopens'] = min(100000, 1 + (int)($row['reopens']??0));
+                        $reopened++;
+                    }
+                } elseif (($e['provider']??'')==='fluent-smtp'
+                          && ($e['provider_evidence']??'')==='native_smtp_log_and_healthy_connection'
+                          && ($e['does_not_prove_inbox_delivery']??null)===true
+                          && ($row['state']??'')==='open') {
+                    $last=isset($e['last_accepted_utc'])?strtotime($e['last_accepted_utc'].' UTC'):false;
+                    $notice=isset($row['last_seen'])?strtotime((string)$row['last_seen']):false;
+                    $failed=isset($e['last_failed_utc'])?strtotime($e['last_failed_utc'].' UTC'):false;
+                    if (!$last || !$notice || !$failed || $last<=$notice || $last<=$failed) continue;
+                    $checked++;
+                    $row['state']='resolved';$row['resolved_at']=gmdate('c');
+                    $row['resolution_contract']=self::CONTRACT;
+                    $row['resolution_evidence']='fluent_smtp_transport_accepted_after_failure';
+                    $row['provider_verified_at']=gmdate('c');
+                    $row['inbox_delivery_proven']=false;
                     $resolved++;
-                } elseif ($e['test_mode'] === true && ($row['state'] ?? '') === 'resolved'
-                          && ($row['resolution_contract'] ?? '') === self::CONTRACT) {
-                    $row['state'] = 'open';
-                    unset($row['resolved_at'], $row['resolution_evidence']);
-                    $row['provider_verified_at'] = gmdate('c');
-                    $row['reopens'] = min(100000, 1 + (int)($row['reopens'] ?? 0));
-                    $reopened++;
                 }
             }
             unset($row);
@@ -81,6 +115,8 @@ final class MAD4B_Wayfa_Configuration_Notice_Revalidation_V1 {
             [self::class, 'stripe_evidence'], 10, 2);
         // Run after MAD4B_Configuration_Jobs::scan() (priority 10). No extra
         // schedule or remote credentials; the existing 30-minute scan owns cadence.
+        add_filter('mad4b/configuration_jobs/admin_notice_revalidation_evidence',
+            [self::class, 'mail_evidence'], 11, 2);
         add_action('mad4b_configuration_jobs_scan', [self::class, 'recheck'], 90);
     }
 }

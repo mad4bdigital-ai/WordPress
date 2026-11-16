@@ -239,10 +239,10 @@
     },
     {
       "relative_path": "mu-plugins/mad4b-media-composite-integrity.php",
-      "sha256": "92b5a7385496290c8ce127ced511ef83554d8dd6b09c1eb40ed297c6638d2a3c",
-      "bytes": 10867,
+      "sha256": "c5f56f47baf7714884881bdbdd2b7bcd83aaf82b56e1f881dc8b36deffff0b12",
+      "bytes": 12451,
       "kind": "php",
-      "shared_git_source_sha256": "92b5a7385496290c8ce127ced511ef83554d8dd6b09c1eb40ed297c6638d2a3c",
+      "shared_git_source_sha256": "c5f56f47baf7714884881bdbdd2b7bcd83aaf82b56e1f881dc8b36deffff0b12",
       "source_site_sha256": "b660ea541fa36f7f1cbd26d94642e06223c297016aef5bcfdb36ecca27d21d6e",
       "shared_source_status": "same",
       "no_implicit_activation": true
@@ -459,10 +459,10 @@
     },
     {
       "relative_path": "mu-plugins/mad4b-universal-media-readiness.php",
-      "sha256": "6c9886eba4c26cce45951363bf46e3a78da1db6a6c794a7447d096be72c9b4a5",
-      "bytes": 23248,
+      "sha256": "ad673d68ed3948cebde90ff4f0769a83ecd2469c8c8c0229340617d05ab67666",
+      "bytes": 25743,
       "kind": "php",
-      "shared_git_source_sha256": "6c9886eba4c26cce45951363bf46e3a78da1db6a6c794a7447d096be72c9b4a5",
+      "shared_git_source_sha256": "ad673d68ed3948cebde90ff4f0769a83ecd2469c8c8c0229340617d05ab67666",
       "source_site_sha256": "6c9886eba4c26cce45951363bf46e3a78da1db6a6c794a7447d096be72c9b4a5",
       "shared_source_status": "same",
       "no_implicit_activation": true
@@ -511,5 +511,12 @@
   "updated_after_verified_manual_release_utc": "2026-11-16T00:27:00+00:00",
   "updated_after_rights_nonblocking_manual_release_utc": "2026-11-16T01:09:50.754945+00:00",
   "updated_after_manual_cct_postcommit_release_utc": "2026-11-16T02:38:57.166084+00:00",
-  "manual_cct_release_receipt": "/opt/mad4b-media-backups/wayfa-media-engine-hardening-20261116/manual-cct-postcommit-20261116/manual-apply.json"
+  "manual_cct_release_receipt": "/opt/mad4b-media-backups/wayfa-media-engine-hardening-20261116/manual-cct-postcommit-20261116/manual-apply.json",
+  "last_company_live_reconciliation": {
+    "date_utc": "2026-11-16T03:38:51.475412+00:00",
+    "file": "mu-plugins/mad4b-universal-media-readiness.php",
+    "manual_live_deploy_sha256": "ad673d68ed3948cebde90ff4f0769a83ecd2469c8c8c0229340617d05ab67666",
+    "git_commit": "9d5b12ae6a",
+    "rights_or_signed_release_modified": false
+  }
 }

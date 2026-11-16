@@ -12,9 +12,20 @@
   "original305_hold_preserved": true,
   "source_file": {
     "relative_path": "wp-content/mu-plugins/mad4b-configuration-notice-revalidation.php",
-    "sha256": "13d8d4d3716d1ad5a1664d6d16c7aec189f9060f275a96eef1e15402eac46aff",
-    "bytes": 5423
+    "sha256": "184d0415fe8141ae7d669a5b3f1f85be5766183a743c82e577054653355193ef",
+    "bytes": 7915
   },
   "regression": "tests/wayfa-provider-verified-notice-regression.php",
-  "regression_passes": 10
+  "regression_passes": 23,
+  "additional_existing_provider_patches": [
+    {
+      "relative_path": "wp-content/mu-plugins/mad4b-configuration-jobs/providers.php",
+      "sha256": "e3da8572c525540d0561285af4a3866d77548c39f5721ebf74d0d86a307ea46a",
+      "bytes": 11614,
+      "existing_original_plugin_component": true,
+      "requires_exact_live_preimage": true
+    }
+  ],
+  "smtp_recovery_contract": "mad4b.fluent-smtp-transport-recovery.v1",
+  "recovery_does_not_assert_inbox_delivery": true
 }

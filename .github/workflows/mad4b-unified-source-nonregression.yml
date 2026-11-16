@@ -15,6 +15,12 @@ on:
       - 'ops/cache-lifecycle-rate-404-20261116/**'
       - 'wp-content/plugins/mad4b-cache-lifecycle/**'
       - 'ops/site-company-overlays/wayfatours/adaptive-runtime/**'
+      - 'tests/wayfa-universal-media-deferred-queue-contract.php'
+      - 'tests/wayfa-fluent-smtp-transport-recovery-contract.php'
+      - 'tests/test_original305_and_company_source_parity.py'
+      - 'ops/site-company-overlays/wayfatours/live-source-mirror-20261116.json'
+      - 'ops/site-company-overlays/wayfatours/media-review/**'
+      - 'ops/site-company-overlays/wayfatours/media-runtime/**'
       - 'tests/test_adaptive_asset_canonical_source_parity.py'
       - 'tests/test_origin_gate_wayfa_notice_source_parity.py'
       - 'tests/wayfa-provider-verified-notice-regression.php'
@@ -101,6 +107,9 @@ jobs:
           # without executing any live incident closure or signing helper.
           python3 -m unittest discover -s ops/native-source-publisher-v1 -p 'test_original305*.py' -q
           python3 -m unittest discover -s tests -p 'test_native_original305_incident_*.py' -q
+          # Original305 non-signing observation contract; never issues Master approval.
+          python3 -m unittest discover -s ops/native-source-publisher-v1 -p 'test_original305_runtime_observer_v1.py' -q
+          python3 -m unittest discover -s tests -p 'test_native*original305_observer*.py' -q
           # Host312 and transaction cases use only isolated synthetic keys,
           # never the live enrolled Original306/312 or Master/Broker receipts.
           python3 -m unittest discover -s ops/native-source-publisher-v1 -p 'test_native_host_source_transaction.py' -q
@@ -124,6 +133,10 @@ jobs:
           python3 -m unittest discover -s tests -p 'test_origin_gate_wayfa_notice_source_parity.py' -q
           php ops/adaptive-css-dependency-epoch-20261116/test-origin-gate-dynamic.php wp-content/mu-plugins/mad4b-general-public-page-origin-cache.php
           php tests/wayfa-provider-verified-notice-regression.php
+          # Company-owned native SMTP transport and deferred editorial intake.
+          python3 -m unittest discover -s tests -p 'test_original305_and_company_source_parity.py' -q
+          php tests/wayfa-fluent-smtp-transport-recovery-contract.php
+          php tests/wayfa-universal-media-deferred-queue-contract.php
           node --check ops/mobile-critical-css-v1/verify.js
           # Includes SHA-bound V8 root manifest parity and V9 successor candidate.
           # These tests certify only local sources, never the enrolled root index.

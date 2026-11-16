@@ -9,7 +9,7 @@ ORIGIN = ROOT / 'wp-content/mu-plugins/mad4b-general-public-page-origin-cache.ph
 WAYFA = ROOT / 'ops/site-company-overlays/wayfatours/configuration-runtime/wp-content/mu-plugins/mad4b-configuration-notice-revalidation.php'
 MANIFEST = ROOT / 'ops/site-company-overlays/wayfatours/configuration-runtime/manifest.json'
 SHA_ORIGIN = '3fa6cffb25dfb315133caef1716f285427c2a2749c3e6c57d2a9c665e7bb73d7'
-SHA_WAYFA = '13d8d4d3716d1ad5a1664d6d16c7aec189f9060f275a96eef1e15402eac46aff'
+SHA_WAYFA = '184d0415fe8141ae7d669a5b3f1f85be5766183a743c82e577054653355193ef'
 
 class SourceLiveParityNoAuthority(unittest.TestCase):
     def test_origin_matches_enrolled_source_and_never_bypasses_privacy(self):
@@ -48,6 +48,17 @@ class SourceLiveParityNoAuthority(unittest.TestCase):
             self.assertIn(witness,s)
         self.assertNotIn("update_option('woocommerce_stripe_settings'",s)
         self.assertNotIn('stripe_secret',s.lower())
+
+
+    def test_historical_wayfa_notice_fingerprint_remains_git_immutable(self):
+        import subprocess
+        historical='13d8d4d3716d1ad5a1664d6d16c7aec189f9060f275a96eef1e15402eac46aff'
+        previous='6b949bc4bf46fa6f3ae29765d57741c662088f53'
+        p='ops/site-company-overlays/wayfatours/configuration-runtime/wp-content/mu-plugins/mad4b-configuration-notice-revalidation.php'
+        stored=subprocess.run(['git','-C',str(ROOT),'show',previous+':'+p],
+                              capture_output=True,check=True,timeout=20).stdout
+        self.assertEqual(hashlib.sha256(stored).hexdigest(),historical)
+        self.assertNotEqual(historical,SHA_WAYFA)
 
 if __name__ == '__main__':
     unittest.main()

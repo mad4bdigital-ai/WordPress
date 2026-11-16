@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Universal Media Readiness
  * Description: Registry-driven media readiness and safe candidate intake for any public WordPress post type or taxonomy term.
- * Version: 1.0.0
+ * Version: 1.1.0
  */
 defined('ABSPATH') || exit;
 if (!class_exists('MAD4B_Universal_Media_Readiness_V1',false)) {
@@ -292,11 +292,47 @@ final class MAD4B_Universal_Media_Readiness_V1 {
   return ['contract'=>self::CONTRACT,'complete'=>!$counts['incomplete'],'counts'=>$counts,
     'items'=>$found,'read_only'=>true,'auto_apply_authorized'=>false];
  }
+ /** Durable, bounded content backlog distinct from operational incidents.
+  * Deferred does not mean approved, licensed, published or resolved editorially.
+  */
+ public static function deferred():array {
+  $r=get_option('mad4b_universal_media_deferred_queue_v1',[]);
+  if(!is_array($r)||($r['contract']??'')!=='mad4b.universal-media-deferred-queue.v1')
+   return ['contract'=>'mad4b.universal-media-deferred-queue.v1','complete'=>false,'items'=>[],'counts'=>[]];
+  return $r;
+ }
+ private static function persist_deferred(array $deferred,bool $complete):void {
+  if(!$complete){$GLOBALS['mad4b_configuration_discovery_incomplete']=true;return;}
+  $deferred=array_slice($deferred,0,2500);
+  usort($deferred,static fn($a,$b)=>strcmp($a['identity'],$b['identity']));
+  $counts=[];
+  foreach($deferred as $row){$key=$row['reason']??'unknown';$counts[$key]=($counts[$key]??0)+1;}
+  $fingerprint=hash('sha256',wp_json_encode([$deferred,$counts],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
+  $old=self::deferred();
+  if(($old['fingerprint']??'')===$fingerprint && !empty($old['complete']))return;
+  $saved=update_option('mad4b_universal_media_deferred_queue_v1',[
+   'contract'=>'mad4b.universal-media-deferred-queue.v1',
+   'complete'=>true,'updated_utc'=>gmdate('c'),'fingerprint'=>$fingerprint,
+   'counts'=>$counts,'items'=>$deferred,
+   'publisher_mutations'=>false,'rights_or_supplier_grants_created'=>false,
+   'automatically_promote_when_commercially_eligible'=>true],false);
+  if(!$saved && (self::deferred()['fingerprint']??'')!==$fingerprint)
+   $GLOBALS['mad4b_configuration_discovery_incomplete']=true;
+ }
  public static function signals(array $rows):array {
   $scan=self::scan();
+  $deferred=[];$deferredComplete=(bool)$scan['complete'];
   if(!$scan['complete'])$GLOBALS['mad4b_configuration_discovery_incomplete']=true;
   foreach($scan['items'] as $item){
    $priority=$item['priority'];
+   if($priority==='P2' && !$item['eligible']){
+    $deferred[]=['identity'=>'term_'.$item['type'].'_'.$item['id'],
+     'kind'=>$item['kind'],'type'=>$item['type'],'object_id'=>$item['id'],
+     'name'=>$item['name'],'priority'=>'P2','reason'=>'noncommercial_media_intake',
+     'eligible'=>false,'rights_verified'=>false,'media_ready'=>false,
+     'requires_visual_and_rights_review_before_publication'=>true];
+    continue;
+   }
    $rows[]=['provider'=>'universal-media','code'=>'media_'.$priority.'_requires_review',
     'scope'=>$item['kind'].'_'.$item['type'].'_'.$item['id'],'source'=>'probe',
     'severity'=>$priority==='P0'?'high':($priority==='P1'?'medium':'low'),
@@ -308,8 +344,9 @@ final class MAD4B_Universal_Media_Readiness_V1 {
   // a generic taxonomy's raw usage count a bookable product.
   foreach(self::public_types('term') as $taxonomy){
    if($taxonomy!=='destinations'||!function_exists('native_destinations_sale_term_index'))continue;
-   $terms=get_terms(['taxonomy'=>$taxonomy,'hide_empty'=>false,'fields'=>'ids','number'=>1000]);
-   if(is_wp_error($terms))continue;
+   $terms=get_terms(['taxonomy'=>$taxonomy,'hide_empty'=>false,'fields'=>'ids','number'=>1001]);
+   if(is_wp_error($terms)||!is_array($terms)){$deferredComplete=false;continue;}
+   if(count($terms)>1000){$deferredComplete=false;$terms=array_slice($terms,0,1000);}
    foreach($terms as $id){
     if(!self::language_is_canonical('term',$taxonomy,(int)$id))continue;
     $term=get_term($id,$taxonomy);
@@ -322,13 +359,17 @@ final class MAD4B_Universal_Media_Readiness_V1 {
     if($type!=='state_governorate')continue;
     $obj=self::object('term',$taxonomy,(int)$id);
     if(!is_wp_error($obj)&&!$obj['eligible']){
-      $rows[]=['provider'=>'universal-media','code'=>'published_offer_missing',
-       'scope'=>'term_destinations_'.$id,'source'=>'probe','severity'=>'low',
-       'label'=>'[P3] Destination without eligible commercial offer: '.$obj['name'],
-       'guidance'=>'Review published eligible tour relations and commercial listing filters. Retain the taxonomy for editorial use.'];
+      $deferred[]=['identity'=>'offer_destinations_'.$id,
+       'kind'=>'term','type'=>'destinations','object_id'=>(int)$id,
+       'name'=>$obj['name'],'priority'=>'P3','reason'=>'no_eligible_commercial_offer',
+       'eligible'=>false,'rights_verified'=>false,'media_ready'=>(bool)$obj['media_ready'],
+       'requires_commercial_offer_review_before_promotion'=>true];
     }
    }
   }
+  // Persist all deferred content needs before the operational scan reconciles
+  // earlier P2/P3 observations. Items are still visible to Content Intake.
+  self::persist_deferred($deferred,$deferredComplete);
   // One site-level transport gap, not a duplicate for every taxonomy term.
   // Resolves only after a separately authorized signed term-media operation
   // is registered, never when an ordinary host script merely exists.
@@ -349,6 +390,7 @@ final class MAD4B_Universal_Media_Readiness_V1 {
  public static function cli($args,$assoc):void {
   $mode=(string)($args[0]??'scan');
   if($mode==='scan')$result=self::scan();
+  elseif($mode==='deferred')$result=self::deferred();
   elseif(in_array($mode,['object','candidates','external'],true)){
    $kind=(string)($args[1]??'');$type=(string)($args[2]??'');$id=(int)($args[3]??0);
    $result=$mode==='object'?self::object($kind,$type,$id):($mode==='external'?self::external_candidates($kind,$type,$id,(int)($assoc['limit']??8)):self::candidate_search($kind,$type,$id,(int)($assoc['limit']??12)));

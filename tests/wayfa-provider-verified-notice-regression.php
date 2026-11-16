@@ -1,21 +1,20 @@
 <?php
 /** Pure fixture regression; never connects to production or changes WP options. */
 define('ABSPATH', __DIR__ . '/');
-// WordPress core supplies these string helpers on PHP 7.4. The networkless
-// test fixture provides only the same baseline API, not payment/authority.
-if (!function_exists('str_starts_with')) {
-    function str_starts_with($haystack, $needle) {
-        return $needle === '' || strpos((string)$haystack, (string)$needle) === 0;
-    }
-}
+// WordPress 5.9+ ships polyfills for these PHP 8 text helpers.
 if (!function_exists('str_contains')) {
-    function str_contains($haystack, $needle) {
-        return $needle === '' || strpos((string)$haystack, (string)$needle) !== false;
-    }
+    function str_contains($h, $n) { return $n === '' || strpos((string)$h,(string)$n) !== false; }
+}
+if (!function_exists('str_starts_with')) {
+    function str_starts_with($h, $n) { return $n === '' || strpos((string)$h,(string)$n) === 0; }
 }
 $GLOBALS['filters'] = [];
 $GLOBALS['opts'] = [];
 $GLOBALS['origin'] = 'https://wayfatours.com/';
+class MAD4B_Configuration_Provider_Adapters {
+ static function smtp_recovery_proof():array{return $GLOBALS['mock_mail_proof']??[];}
+}
+
 function add_filter($hook,$cb,$priority=10,$num=1){$GLOBALS['filters'][$hook][]=$cb;}
 function add_action($hook,$cb,$priority=10,$num=1){}
 function apply_filters($hook,$value,...$args){foreach((array)($GLOBALS['filters'][$hook]??[]) as $f)$value=$f($value,...$args);return $value;}
@@ -57,4 +56,20 @@ $GLOBALS['mad4b_configuration_discovery_incomplete']=true;
 $r=$cl::recheck();ok($r['status']==='scan_incomplete','incomplete scan does not close notice');
 $GLOBALS['mad4b_configuration_discovery_incomplete']=false;
 ok($cl::recheck()['resolved']===1,'legitimate provider signal may resolve again');
-echo json_encode(['contract'=>'mad4b.wayfa-notice-regression.v1','passed'=>$checks,'tests'=>10])."\n";
+$GLOBALS['mock_mail_proof']=['contract'=>'mad4b.fluent-smtp-transport-recovery.v1',
+ 'verified'=>true,'recovered'=>true,'last_failed_utc'=>'2026-11-10 07:01:59',
+ 'last_accepted_utc'=>'2026-11-16 02:25:42','accepted_after_failure'=>8];
+$GLOBALS['opts'][$cl::STORE]['mail']=['source'=>'hook','provider'=>'wordpress-mail',
+ 'code'=>'wp_mail_failed','label'=>'WordPress or SMTP email delivery failed','state'=>'open',
+ 'last_seen'=>'2026-11-10T07:01:59+00:00'];
+$r=$cl::recheck();ok($r['resolved']===1,'mail accepted after last historical failure');
+$rows=$GLOBALS['opts'][$cl::STORE];
+ok($rows['mail']['state']==='resolved'&&$rows['mail']['inbox_delivery_proven']===false,'mail history kept and delivery not invented');
+ok($cl::recheck()['changed']===0,'mail repeat idempotent');
+$GLOBALS['opts'][$cl::STORE]['mail']['state']='open';
+$GLOBALS['opts'][$cl::STORE]['mail']['last_seen']='2026-11-16T04:25:42+00:00';
+ok($cl::recheck()['changed']===0,'newer mail failure never auto resolved');
+$GLOBALS['opts'][$cl::STORE]['mail']['last_seen']='2026-11-10T07:01:59+00:00';
+$GLOBALS['mock_mail_proof']['recovered']=false;
+ok($cl::recheck()['changed']===0,'unrecovered transport not auto closed');
+echo json_encode(['contract'=>'mad4b.wayfa-notice-regression.v2','passed'=>$checks,'tests'=>15])."\n";
