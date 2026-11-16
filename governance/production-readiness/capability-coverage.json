@@ -22336,6 +22336,46 @@
         "needs_new_control": false,
         "coverage_reuse_rationale": "Same approved MCP canonical descriptor, exact source identity, safety and execution-lane controls remain in force; no new grants or Production authority are introduced.",
         "review_rationale": "Original four read-only Developer/Enrollment discover/info abilities must take the exact source-authored readonly descriptor branch before transport classification; if their marker/category/annotation differs they must remain unclassified. This repairs the hermetic negative test while retaining original execution and permission callbacks, authorization, grant requirements and source-lane denial for mutations."
+    },
+    {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-direct-profile.php",
+        "source_blob_sha": "d451f54f75c35b0956c61190a2c0298a9d2ec547",
+        "control_ids": [
+            "MCP-01",
+            "SECURITY-01",
+            "GOVERNANCE-01",
+            "EXECUTION-01"
+        ],
+        "regression_tests": [
+            "tests/server-descriptor-canonical-multilane-hermetic.php"
+        ],
+        "owner_role": "Repository source/CI reviewer; no Owner approval",
+        "status": "reviewed_for_ci_only",
+        "production_authorized": false,
+        "live_evidence_required": true,
+        "needs_new_control": false,
+        "coverage_reuse_rationale": "Reuse original authenticated WordPress read permissions, source Metadata contracts, MCP and execution safety controls; no change in direct write ability behavior or grants.",
+        "review_rationale": "Source declares non-authorizing read Descriptor identity only for three preexisting read-only Direct Profile operations; registered surface stays direct, original permission callbacks and OAuth site checks remain unchanged. Two direct create/update abilities receive no read marker and remain unprojectable without original governed write-lane evidence. Same-PR executable tests assert negative tampered/mutation cases."
+    },
+    {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ability-contract-inspector.php",
+        "source_blob_sha": "ae06f88c95feba440ef9d6719e3c49eb290798e5",
+        "control_ids": [
+            "MCP-01",
+            "SECURITY-01",
+            "GOVERNANCE-01",
+            "EXECUTION-01"
+        ],
+        "regression_tests": [
+            "tests/server-descriptor-canonical-multilane-hermetic.php"
+        ],
+        "owner_role": "Repository source/CI reviewer; no Owner approval",
+        "status": "reviewed_for_ci_only",
+        "production_authorized": false,
+        "live_evidence_required": true,
+        "needs_new_control": false,
+        "coverage_reuse_rationale": "Original exact Ability name, readonly annotation, source marker, category and MCP structural lane controls retained; no mutation execution, OAuth, Host or Owner gates relaxed.",
+        "review_rationale": "Extends bounded canonical Inspector classification to exactly three preexisting readonly Direct Profile names, requiring source-declared marker, read category and matching direct surface. Invalid marker, mutating readonly annotation and direct-create/direct-update are denied by the original fail-closed Descriptor path. Same-PR hermetic negative tests exercise actual Inspector and Descriptor."
     }
   ],
   "code_change_rules": {
