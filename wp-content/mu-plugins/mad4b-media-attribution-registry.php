@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Licensed Image Attribution Registry
  * Description: Company-scoped, accessible license attributions on a dedicated page; never prints a global footer banner.
- * Version: 1.9.0
+ * Version: 1.9.1
  */
 defined('ABSPATH') || exit;
 if (!class_exists('MAD4B_Media_Attribution_Registry_V1', false)) {
@@ -277,11 +277,22 @@ CSS;
   return $out.'</nav>';
  }
 }
-// Native JetEngine admin edits and deletions invalidate only the two rights pages.
-add_action('jet-engine/custom-content-types/update-item/media_rights',
- static function() { MAD4B_Media_Attribution_Registry_V1::invalidate_public_pages(); }, 10, 3);
+// Native JetEngine fires update-item BEFORE persistence. A purge there
+// can race with the database commit and re-cache stale credits. The original
+// CCT's updated-item hook runs AFTER insert/update, including new records.
+// Draft-only reviews never need to purge the public rights page; a
+// publish/unpublish transition and published credit edits do.
+add_action('jet-engine/custom-content-types/updated-item/media_rights',
+ static function($item,$previous) {
+  if(($item['cct_status']??'')==='publish'||($previous['cct_status']??'')==='publish')
+   MAD4B_Media_Attribution_Registry_V1::invalidate_public_pages();
+ }, 10, 3);
+// Deletion is also post-commit in JetEngine. Deleted draft rows remain private.
 add_action('jet-engine/custom-content-types/delete-item/media_rights',
- static function() { MAD4B_Media_Attribution_Registry_V1::invalidate_public_pages(); }, 10, 3);
+ static function($id,$item) {
+  if(($item['cct_status']??'')==='publish')
+   MAD4B_Media_Attribution_Registry_V1::invalidate_public_pages();
+ }, 10, 3);
 // Reuse Elementor's native Legal shortcode on every footer template. The
 // existing shortcode and cookie-preferences links remain untouched.
 add_filter('do_shortcode_tag', static function($output,$tag,$attrs,$match) {

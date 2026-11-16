@@ -131,6 +131,8 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "tests/admin-navigation-manifest-original-hermetic.php",
     "tests/admin-surfaces-authorization-original-hermetic.php",
     "tests/content-media-rights-guard-original-hermetic.php",
+    # First-party CCT public-credit postcommit only: no external WordPress state.
+    "tests/media-rights-cct-after-commit-original-hermetic.php",
     "tests/developer-workspace-admission-original-hermetic.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/content-intelligence-pipeline-contract.php",
 
