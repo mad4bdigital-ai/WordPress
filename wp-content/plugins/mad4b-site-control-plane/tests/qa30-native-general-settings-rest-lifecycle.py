@@ -26,6 +26,8 @@ expected = [
     "PASS source_contract_registered_once",
     "PASS locked_urls_and_direct_admin_mail_excluded",
     "PASS unrelated_settings_unchanged",
+    "PASS native_admin_email_confirmation_workflow_retained",
+    "PASS no_unconfirmed_direct_admin_email_write",
     "PASS mcp_deferred_during_general_save",
     "PASS no_rest_bootstrap_during_general_save",
     "PASS other_settings_group_untouched",
@@ -35,6 +37,7 @@ expected = [
     "PASS other_admin_post_untouched",
     "PASS non_admin_context_untouched",
     "QA30_SOURCE_CONTRACT_REGRESSION_PASS",
+    "QA30_SOURCE_CONTRACT: PASS",
 ]
 if execution.returncode != 0 or execution.stdout.strip().splitlines() != expected:
     if execution.stdout:
@@ -42,4 +45,5 @@ if execution.returncode != 0 or execution.stdout.strip().splitlines() != expecte
     if execution.stderr:
         sys.stderr.write(execution.stderr[-3000:])
     raise SystemExit("QA30_NATIVE_GENERAL_SETTINGS_RUNNER: FAIL PHP behavior assertions")
-print("QA30_NATIVE_GENERAL_SETTINGS_RUNNER: PASS all 11 source assertions executed")
+print("QA30_NATIVE_GENERAL_SETTINGS_RUNNER: PASS all 13 source assertions executed")
+print("QA30_NATIVE_GENERAL_SETTINGS_RUNNER: PASS")
