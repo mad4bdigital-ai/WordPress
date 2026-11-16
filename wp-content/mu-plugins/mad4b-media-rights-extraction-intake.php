@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Media Rights Extraction Intake
  * Description: Bounded, idempotent JetEngine CCT discovery of new local image attachments; never auto-licenses or publishes.
- * Version: 1.7.2
+ * Version: 1.8.0
  */
 defined('ABSPATH') || exit;
 if (!class_exists('MAD4B_Media_Rights_Extraction_Intake_V1', false)) {
@@ -85,6 +85,95 @@ final class MAD4B_Media_Rights_Extraction_Intake_V1 {
     'historical_superseded_derivative_drafts'=>$historic,
     'historical_count'=>count($historic),
     'native_cct_statuses_unchanged'=>true,'licenses_granted'=>false,'writes_performed'=>false];
+ }
+ /** Strictly read-only publication clearance, independent of AI visual
+  * approval. An uploaded or migrated image is UNKNOWN until a verified
+  * original, creator, exact license, and one published CCT record agree.
+  * Derived crops inherit the owner's rights, never create a new license.
+  */
+ public static function published_clearance(int $attachment_id): array {
+  $deny=static fn($reason)=>['cleared'=>false,'reason'=>$reason,'attachment_id'=>$attachment_id,'cct_mutations'=>false];
+  if($attachment_id<1||!class_exists('MAD4B_Media_Visual_Lineage_V1',false))
+   return $deny('lineage_unavailable');
+  $lineage=MAD4B_Media_Visual_Lineage_V1::origin($attachment_id);
+  if(empty($lineage['verified']))return $deny('original_sha_unresolved');
+  $root=(int)$lineage['origin_attachment_id'];
+  if($root<1||get_post_type($root)!=='attachment')return $deny('original_missing');
+  $file=get_attached_file($root);$real=$file?realpath($file):false;
+  $uploads=wp_get_upload_dir();$base=realpath((string)($uploads['basedir']??''));
+  if(!$base||!$real||!is_file($real)||!str_starts_with($real,$base.DIRECTORY_SEPARATOR))
+   return $deny('original_outside_verified_uploads');
+  if(!hash_equals((string)($lineage['origin_sha256']??''),(string)hash_file('sha256',$real)))
+   return $deny('original_lineage_drift');
+  $owner=$root;$claim=(string)get_post_meta($owner,'_mad4b_verified_source_sha256',true);
+  if($claim===''&&class_exists('MAD4B_WPML_Attachment_Family_Readback_V1',false)){
+   $family=MAD4B_WPML_Attachment_Family_Readback_V1::translations($root);
+   $default=(string)apply_filters('wpml_default_language','en');
+   $candidate=(int)($family[$default]->element_id??0);
+   if($candidate>0&&$candidate!==$root&&get_post_type($candidate)==='attachment'){
+    $reply=MAD4B_WPML_Attachment_Family_Readback_V1::translations($candidate);
+    $reciprocal=false;
+    foreach((array)$reply as $record)
+     if((int)($record->element_id??0)===$root){$reciprocal=true;break;}
+    $canonicalFile=get_attached_file($candidate);
+    if($reciprocal&&is_file((string)$canonicalFile)
+       &&hash_equals((string)hash_file('sha256',$real),
+                      (string)hash_file('sha256',$canonicalFile))){
+     $owner=$candidate;$claim=(string)get_post_meta($owner,'_mad4b_verified_source_sha256',true);
+     // A localized credit never overrides a conflicting canonical credit.
+     foreach(['_mad4b_license_source_url','_mad4b_license','_mad4b_creator'] as $key){
+      $local=(string)get_post_meta($root,$key,true);
+      $source=(string)get_post_meta($owner,$key,true);
+      if($local!==''&&!hash_equals($local,$source))return $deny('wpml_credit_conflict');
+     }
+    }
+   }
+  }
+  if(!preg_match('/^[a-f0-9]{64}$/D',$claim))return $deny('source_fingerprint_unproven');
+  $ownerFile=get_attached_file($owner);$ownerReal=$ownerFile?realpath($ownerFile):false;
+  if(!$ownerReal||!is_file($ownerReal)||!str_starts_with($ownerReal,$base.DIRECTORY_SEPARATOR))
+   return $deny('licensed_owner_file_missing');
+  $meta=wp_get_attachment_metadata($owner);
+  $originalName=is_array($meta)?($meta['original_image']??null):null;
+  $licensedFile=$ownerReal;
+  if(is_string($originalName)&&$originalName!==''){
+   if($originalName!==wp_basename($originalName)
+      ||str_contains($originalName,'/')||str_contains($originalName,'\\')
+      ||!preg_match('/^[A-Za-z0-9][A-Za-z0-9._-]{3,190}$/D',$originalName))
+    return $deny('untrusted_original_image_name');
+   $candidate=realpath(dirname($ownerReal).DIRECTORY_SEPARATOR.$originalName);
+   if(!$candidate||!is_file($candidate)||dirname($candidate)!==dirname($ownerReal))
+    return $deny('copyright_original_bytes_missing');
+   $licensedFile=$candidate;
+  }
+  if(!filesize($licensedFile)||filesize($licensedFile)>self::MAX_BYTES
+     ||!hash_equals($claim,(string)hash_file('sha256',$licensedFile)))
+   return $deny('source_fingerprint_mismatch');
+  if(!class_exists('Jet_Engine\\Modules\\Custom_Content_Types\\Module',false))
+   return $deny('rights_registry_not_loaded');
+  $factory=\Jet_Engine\Modules\Custom_Content_Types\Module::instance()->manager->get_content_types('media_rights');
+  if(!$factory||!$factory->db->is_table_exists())return $deny('rights_registry_not_ready');
+  global $wpdb;$table=$factory->db->table();
+  $rows=$wpdb->get_results($wpdb->prepare(
+   "SELECT _ID,attachment_id,source_sha256,author,source_url,license_url,license_label FROM {$table} WHERE attachment_id=%d AND source_sha256=%s AND cct_status=%s LIMIT 2",
+   $owner,$claim,'publish'),ARRAY_A);
+  if(!is_array($rows)||$wpdb->last_error!==''||count($rows)!==1)
+   return $deny('no_unique_published_licensed_original');
+  $credit=$rows[0];$author=(string)get_post_meta($owner,'_mad4b_creator',true);
+  $source=(string)get_post_meta($owner,'_mad4b_license_source_url',true);
+  $license=(string)get_post_meta($owner,'_mad4b_license',true);
+  if($author===''||$source===''||$license===''||
+      !hash_equals($author,(string)($credit['author']??''))||
+      !hash_equals($source,(string)($credit['source_url']??''))||
+      !hash_equals($license,(string)($credit['license_label']??''))||
+      wp_parse_url((string)($credit['license_url']??''),PHP_URL_SCHEME)!=='https'||
+      wp_parse_url($source,PHP_URL_SCHEME)!=='https')
+    return $deny('published_credit_metadata_conflict');
+  return ['cleared'=>true,'attachment_id'=>$attachment_id,
+    'licensed_origin_attachment_id'=>$owner,'published_credit_id'=>(int)$credit['_ID'],
+    'licensed_source_sha256'=>$claim,'verified_original_sha256'=>$lineage['origin_sha256'],
+    'cct_mutations'=>false,'rights_source'=>'exact_published_jetengine_rights_credit',
+    'visual_subject_not_asserted'=>true];
  }
  public static function schedule(int $attachment_id): bool {
   if ($attachment_id < 1 || get_post_type($attachment_id) !== 'attachment' || !str_starts_with((string)get_post_mime_type($attachment_id),'image/')) return false;
