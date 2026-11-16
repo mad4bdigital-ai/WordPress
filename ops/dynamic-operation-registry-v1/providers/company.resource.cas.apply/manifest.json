@@ -1,0 +1,51 @@
+{
+  "cas_scope": {
+    "allowed_meta_keys": [
+      "rate_title"
+    ],
+    "allowed_post_types": [
+      "tour-rates"
+    ],
+    "commercial_pricing_allowed": false,
+    "ownership_scope": "tenant_owned",
+    "resource_type": "wordpress.post"
+  },
+  "command": {
+    "bound_operation_id": "company.resource.cas.apply",
+    "flag": "--plan-sha256=",
+    "format": "wpcli.argv.json.v1",
+    "mode": "plan_sha256",
+    "prefix": [
+      "mad4b",
+      "company-resource-cas",
+      "apply"
+    ]
+  },
+  "contract": "mad4b.dynamic-operation-provider.v1",
+  "dependencies": [],
+  "evidence": {
+    "path": "providers/company.resource.cas.apply/evidence-schema.json",
+    "sha256": "701e57711d1b739a69792604174badbbd1a70bdcc78652f273821340d1891d1f"
+  },
+  "evidence_schema": "resource_cas.v1",
+  "finalizer": {
+    "path": "executor-time-cas-v1/finalizer.py",
+    "sha256": "c0a2d9a4128c37a024c367718e2c2ae3bea07adf9de70cdbacd364264fc82f68"
+  },
+  "handler": {
+    "path": "executor-time-cas-v1/host_handler.py",
+    "sha256": "064ee3e29ebe4e7a67df5a8506f5a73ad1519a2a5e06e24be10b115ea9e5e459"
+  },
+  "operation_id": "company.resource.cas.apply",
+  "plan_contract": "mad4b.company-resource.executor-cas-plan.v1",
+  "preclaim": {
+    "path": "executor-time-cas-v1/preclaim.py",
+    "sha256": "0f1b4f43da32b2d84b190b39953cd2c88019743d908e50019d98942365490c95"
+  },
+  "provider": "mad4b-company-resource-cas",
+  "verifier": {
+    "path": "executor-time-cas-v1/independent_readback.py",
+    "sha256": "201ff3927b93ce74309e5f5e3e4999266444c42405a671742c45fe2d7834a8c0"
+  },
+  "version": 1
+}
