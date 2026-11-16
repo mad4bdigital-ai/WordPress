@@ -22,6 +22,14 @@ SHA = re.compile(r"^[a-f0-9]{40}$")
 # Each path contains exit-on-failure assertions and a positive PASS marker.
 # Other PHP files continue to require PHPUnit; unknown paths fail closed.
 STANDALONE_PHP_REGRESSIONS = frozenset((
+    # Three separately reviewed original source-only fixtures. The Operation
+    # Registry uses a process-scoped /tmp catalog and negative mutation policy;
+    # Presentation Evidence and Integrity use fake WP state, local temporary
+    # files or in-memory DB and deny implicit visual/Elementor mutations.
+    # No real WordPress install, provider network, owner approval or grants.
+    "tests/operation-registry-native-policy-boundary-hermetic.php",
+    "tests/presentation-browser-evidence-local-import-hermetic.php",
+    "tests/presentation-integrity-jetengine-source-hermetic.php",
     # Exact no-WordPress Brand Quality/issue-ledger closure fixture. It uses
     # synthetic WP functions and a positive fail-on-assertion PASS marker;
     # no DB, publish, email or authorization. Unknown PHP stays denied.
@@ -532,6 +540,12 @@ def self_test():
         "wp-content/plugins/mad4b-site-control-plane/tests/self-update-selected-head-release-trust-runtime.php",
     ):
         assert command_for(path) == ["php", str((ROOT / path).resolve())]
+    for reviewed in (
+        "tests/operation-registry-native-policy-boundary-hermetic.php",
+        "tests/presentation-browser-evidence-local-import-hermetic.php",
+        "tests/presentation-integrity-jetengine-source-hermetic.php",
+    ):
+        assert command_for(reviewed) == ["php", str((ROOT / reviewed).resolve())]
     assert command_for("tests/brand-quality-readiness-coverage-hermetic.php") == [
         "php", str((ROOT / "tests/brand-quality-readiness-coverage-hermetic.php").resolve())]
     assert command_for("tests/media-rights/media-rights-source-convergence-hermetic.php") == [
