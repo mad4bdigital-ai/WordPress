@@ -86,7 +86,19 @@ final class MAD4B_SCP_Ability_Contract_Inspector {
 		$mcp = isset( $meta['mcp'] ) && is_array( $meta['mcp'] ) ? $meta['mcp'] : array();
 		$surface = isset( $mcp['surface'] ) ? sanitize_key( (string) $mcp['surface'] ) : '';
 		$mutation_lanes = array( 'write', 'developer', 'enrollment', 'internal', 'breakglass', 'developer-breakglass' );
-		$lane = 'unclassified';
+		// Dispatch transport metadata must not erase the four *original*
+		// readonly discover/info identities. Require exact first-party names,
+		// the original read category and an explicitly authored descriptor marker.
+		// All execute/mutation and foreign declarations remain fail-closed.
+		$source_read_dispatch = $readonly_declared
+			&& true === $annotations['readonly']
+			&& 'mad4b-read' === $category
+			&& 'read' === ( $mcp['mad4b_descriptor_read_lane'] ?? null )
+			&& (
+				( 'developer-dispatch' === $surface && in_array( $ability_name, array( 'mad4b/developer-discover', 'mad4b/developer-info' ), true ) )
+				|| ( 'enrollment' === $surface && in_array( $ability_name, array( 'mad4b/enrollment-discover', 'mad4b/enrollment-info' ), true ) )
+			);
+		$lane = $source_read_dispatch ? 'read' : 'unclassified';
 		if ( in_array( $surface, $mutation_lanes, true ) || in_array( $surface, array( 'admin', 'content' ), true ) ) {
 			$lane = $surface;
 		} elseif ( $readonly_declared && true === $annotations['readonly'] && in_array( $surface, array( '', 'read' ), true ) ) {
