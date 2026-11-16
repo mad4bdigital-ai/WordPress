@@ -1,0 +1,79 @@
+name: MAD4B PR814 Restore Immutable Historical 238 Source Evidence
+on:
+  push:
+    branches:
+      - integration/pr814-historical-238-bridge-20261116
+permissions:
+  contents: write
+concurrency:
+  group: mad4b-pr814-238-historical-objects
+  cancel-in-progress: false
+jobs:
+  publish-reviewed-historical-git-objects:
+    if: github.repository == 'mad4bdigital-ai/WordPress' && github.ref == 'refs/heads/integration/pr814-historical-238-bridge-20261116'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout exact source and Git prerequisites
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Validate reviewed bundle and publish archive ref only
+        shell: bash
+        run: |
+          set -euo pipefail
+          TARGET=integration/mad4b-unified-source-20261113
+          OUTPUT=integration/pr814-historical-source-238-reviewed-20261116
+          PR_EXPECTED=144ba0d5fd590e34be38263393ae2ce8f28284ce
+          SOURCE=31badd1e350c033dcd6f274d031c80d295bbbdf9
+          OLDER=a3164cb61d46d7e8347326dd5e3279de15d794fd
+          BUNDLE_SHA=80e6d8ea9ebfabcbadfeaf170a1d56d103a79bce3acb224d7f57a14f55a7f08c
+          FOLDER=ops/git-transport/historical-238
+          BUNDLE="$RUNNER_TEMP/mad4b-historical-238-source.bundle"
+
+          test "$GITHUB_REPOSITORY" = mad4bdigital-ai/WordPress
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib,json
+          p=Path('ops/git-transport/historical-238')
+          m=json.loads((p/'manifest.json').read_text())
+          assert m['contract']=='mad4b.historical-238-source-git-bundle.transport-parts.v1'
+          assert m['source']=='31badd1e350c033dcd6f274d031c80d295bbbdf9'
+          assert m['historical_ancestor']=='a3164cb61d46d7e8347326dd5e3279de15d794fd'
+          assert len(m['parts'])==7
+          assert [x['name'] for x in m['parts']]==sorted(x['name'] for x in m['parts'])
+          for part in m['parts']:
+              raw=(p/part['name']).read_bytes()
+              assert len(raw)==part['bytes']
+              assert hashlib.sha256(raw).hexdigest()==part['sha256']
+              assert hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()==part['git_sha']
+          print('REVIEWED_PARTS_7_OF_7_EXACT_SHA_PASS')
+          PY
+
+          cat "$FOLDER"/part-*.bin > "$BUNDLE"
+          printf '%s  %s\n' "$BUNDLE_SHA" "$BUNDLE" | sha256sum --check --status
+          test "$(git ls-remote origin "refs/heads/$TARGET" | cut -f1)" = "$PR_EXPECTED"
+          for prerequisite in 5c72e4893e36e992f056c90cfc75908b3a8f7785 71ed971f1713d86a4c53f45d3196c952df34d4d7
+          do
+            if ! git cat-file -e "$prerequisite^{commit}" 2>/dev/null; then
+              git fetch --no-tags origin "$prerequisite"
+            fi
+            git cat-file -e "$prerequisite^{commit}"
+          done
+          git bundle verify "$BUNDLE"
+          git fetch "$BUNDLE" "refs/mad4b-transfer/original-reviewed-238-source-20261116:refs/heads/mad4b-pr814-historical-238"
+          test "$(git rev-parse refs/heads/mad4b-pr814-historical-238)" = "$SOURCE"
+          git cat-file -e "$OLDER^{commit}"
+          git merge-base --is-ancestor "$OLDER" "$SOURCE"
+
+          # Publish an archival historical source ref, NOT a deployment owner,
+          # PR branch, master, or a new release/signature authority.
+          if git ls-remote --exit-code origin "refs/heads/$OUTPUT"; then
+            echo 'REVIEW_ARCHIVE_ALREADY_EXISTS__FAIL_CLOSED' >&2
+            exit 42
+          fi
+          git push origin "refs/heads/mad4b-pr814-historical-238:refs/heads/$OUTPUT"
+          echo "HISTORICAL_238_SOURCE_PUBLISHED=$SOURCE"
+          echo "HISTORICAL_238_ANCESTOR_VERIFIED=$OLDER"
+          echo 'PR_AND_MASTER_BRANCHES_UNCHANGED_BY_THIS_WORKFLOW'
