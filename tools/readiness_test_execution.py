@@ -117,6 +117,7 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "tests/origin-evidence-workflow-original-hermetic.php",
     "tests/content-relationship-writeback-admission-original-hermetic.php",
     "tests/central-write-acceptance-permission-original-hermetic.php",
+    "tests/central-transport-write-source-hermetic.php",
 
 
 
