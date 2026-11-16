@@ -87,7 +87,7 @@ final class MAD4B_SCP_Ability_Contract_Inspector {
 		$surface = isset( $mcp['surface'] ) ? sanitize_key( (string) $mcp['surface'] ) : '';
 		$mutation_lanes = array( 'write', 'developer', 'enrollment', 'internal', 'breakglass', 'developer-breakglass' );
 		// Dispatch transport metadata must not erase the four *original*
-		// readonly discover/info identities. Require exact first-party names,
+		// readonly discover/info and Direct Read identities. Require exact names,
 		// the original read category and an explicitly authored descriptor marker.
 		// All execute/mutation and foreign declarations remain fail-closed.
 		$source_read_dispatch = $readonly_declared
@@ -97,13 +97,15 @@ final class MAD4B_SCP_Ability_Contract_Inspector {
 			&& (
 				( 'developer-dispatch' === $surface && in_array( $ability_name, array( 'mad4b/developer-discover', 'mad4b/developer-info' ), true ) )
 				|| ( 'enrollment' === $surface && in_array( $ability_name, array( 'mad4b/enrollment-discover', 'mad4b/enrollment-info' ), true ) )
+				|| ( 'direct' === $surface && in_array( $ability_name, array( 'mad4b/direct-connection-status', 'mad4b/direct-list-posts', 'mad4b/direct-get-post' ), true ) )
 			);
-		// Four named discover/info abilities are *either* the exact declared
+		// Seven named first-party readonly abilities are *either* the exact declared
 		// readonly source identity or unclassified. Never let an enrollment
 		// transport label override their read lane or confer a write lane.
 		$native_discovery_name = in_array( $ability_name, array(
 			'mad4b/developer-discover', 'mad4b/developer-info',
 			'mad4b/enrollment-discover', 'mad4b/enrollment-info',
+			'mad4b/direct-connection-status', 'mad4b/direct-list-posts', 'mad4b/direct-get-post',
 		), true );
 		$lane = 'unclassified';
 		if ( $source_read_dispatch ) {
