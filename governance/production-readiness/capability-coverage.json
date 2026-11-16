@@ -21878,6 +21878,25 @@
         "tests/server-registration-descriptor-boundary-hermetic.php",
         "tests/server-descriptor-canonical-multilane-hermetic.php"
       ]
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/certified-provider-profiles.json",
+      "source_blob_sha": "ca8d8d258694487dffb1834c77201612007fca9a",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "MAD4B first-party MCP archive profile CI source reviewer — not release approver",
+      "review_rationale": "Independently verified official WordPress.org MCP Adapter v0.7.1 pinned ZIP SHA256 and 39 critical files; the existing 54 runtime PHP symbol names, files and Git blob SHA1s matched exactly. The prior tree_sha256 and generator identity were inherited from an older 0.7.0 layout. Set only the exact 0.7.1 computed tree digest c0f3c05d1a8dbc178441a1fade8270d33dcacafa7096b377b1d79db667158f2d and the actual existing first-party generator path. Never change archive authority/digest, symbol list, execution grant, production authority, or Owner/Original305 requirement. Independent runtime release CI must still pass on the exact head.",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/test_mcp_runtime_surface_source_identity.py"
+      ]
     }
   ],
   "code_change_rules": {
