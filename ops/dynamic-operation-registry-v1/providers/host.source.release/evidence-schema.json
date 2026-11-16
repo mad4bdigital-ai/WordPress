@@ -1,0 +1,16 @@
+{
+  "contract": "mad4b.dynamic-evidence-schema.v1",
+  "schema_id": "host_source_release.v1",
+  "success_state": "HOST_READBACK_VERIFIED_PENDING_ORIGINAL_313",
+  "fields": {
+    "result_status": "string",
+    "file_count": "integer",
+    "output_sha256": "sha256",
+    "plan_sha256": "sha256",
+    "owner_catalog_sha256": "sha256",
+    "original_312_verified": "boolean",
+    "master_approval_verified": "boolean",
+    "broker_grant_verified": "boolean",
+    "original_313_signed_receipt": "boolean"
+  }
+}
