@@ -25,8 +25,16 @@ class MAD4B_Native_Incident_MU {
 }
 require __DIR__.'/../includes/class-mad4b-scp-policy.php';
 require __DIR__.'/../includes/class-mad4b-scp-transport-context.php';
-// Load the unchanged real class body while excluding unrelated file-level WP boot.
+// This eval-only sandbox deliberately skips file-level requires. Load the
+// installed source-owned Host identity trait, and assert its canonical binding
+// before evaluating the real class, without relaxing transport authority.
 $source=file_get_contents(__DIR__.'/../includes/class-mad4b-scp-servers.php');
+if (false===strpos($source,"require_once __DIR__ . '/trait-mad4b-scp-servers-vps-local-identity.php';")
+ || false===strpos($source,'use MAD4B_SCP_Servers_VPS_Local_Identity_Trait;')) {
+ throw new RuntimeException('Canonical VPS-local identity source binding missing');
+}
+require __DIR__.'/../includes/trait-mad4b-scp-servers-vps-local-identity.php';
+// Load the unchanged real class body while excluding unrelated file-level WP boot.
 eval(substr($source,strpos($source,'final class MAD4B_SCP_Servers')));
 function check_transport($ok,$why){if(!$ok)throw new RuntimeException($why);}
 $request=new class {function get_route(){return '/mcp/mad4b-read';}};
