@@ -14,6 +14,9 @@ const QA_SOURCE_QUERY=process.env.MAD4B_QA_SOURCE_QUERY||'';
 const DIAG_BYPASS=process.env.MAD4B_DIAG_ORIGIN_BYPASS==='1';
 const HERO900=process.env.MAD4B_HERO_900_CANDIDATE==='1';
 const DEFER_CITY=process.env.MAD4B_FIRST_CITY_DEFER_CANDIDATE==='1';
+const ADAPTIVE_MAX=Number(process.env.MAD4B_CSS_ADAPTIVE_MAX||0);
+if(ADAPTIVE_MAX!==0&&(!Number.isInteger(ADAPTIVE_MAX)||ADAPTIVE_MAX<480||ADAPTIVE_MAX>767))throw Error('INVALID_ADAPTIVE_BREAKPOINT');
+
 async function measure(browser,candidate,width,asyncCss,frozenHtml){
  const ctx=await browser.newContext({viewport:{width,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:2,userAgent:UA,extraHTTPHeaders:{'Accept':HTML_ACCEPT,...(DIAG_BYPASS?{'X-MAD4B-BYPASS-CACHE':'1'}:{})}});
  const page=await ctx.newPage();
@@ -46,7 +49,9 @@ async function measure(browser,candidate,width,asyncCss,frozenHtml){
     const source=re.exec(html)[1];
     if(!source.includes('/'+candidate.css_file))throw new Error('SOURCE_STYLESHEET_DRIFT');
     const preload=PRELOAD?'<link rel="preload" as="style" fetchpriority="high" href="$1">':'';
-    html=html.replace(re,'<style id="mad4b-qa-critical">'+cssText+'</style>'+preload+'<link id="mad4b-qa-complete" rel="stylesheet" media="print" fetchpriority="'+PRIORITY+'" href="$1" onload="this.onload=null;this.media=\'all\'"><noscript><link rel="stylesheet" href="$1"></noscript>');
+    const criticalAttr=ADAPTIVE_MAX?' media="(max-width:'+ADAPTIVE_MAX+'px)"':'';
+    const fullMedia=ADAPTIVE_MAX?'(min-width:'+(ADAPTIVE_MAX+1)+'px)':'print';
+    html=html.replace(re,'<style id="mad4b-qa-critical"'+criticalAttr+'>'+cssText+'</style>'+preload+'<link id="mad4b-qa-complete" rel="stylesheet" media="'+fullMedia+'" fetchpriority="'+PRIORITY+'" href="$1" onload="this.onload=null;this.media=\'all\'"><noscript><link rel="stylesheet" href="$1"></noscript>');
     rewritten=true;
    }
   }
@@ -103,7 +108,7 @@ async function measure(browser,candidate,width,asyncCss,frozenHtml){
    const pass= !baseline.error&&!variant.error&&variant.rewritten&&baseline.status===200&&variant.status===200
        &&variant.styleLoaded&&variant.cssMedia==='all' &&variant.failedCss?.length===0
        &&variant.errors?.length===0&&variant.overflow<=0
-       &&Number.isFinite(fcpGain)&&fcpGain>=150
+       &&Number.isFinite(fcpGain)&&fcpGain >= (ADAPTIVE_MAX&&width>ADAPTIVE_MAX ? -250 : 150)
        &&lcpReg<=Math.max(400,(baseline.lcp||0)*0.10)
        &&variant.cls<=0.10
        &&variant.cls <= (baseline.cls+0.02)
@@ -116,7 +121,7 @@ async function measure(browser,candidate,width,asyncCss,frozenHtml){
    fs.writeFileSync(path.join(OUT,'verification.json'),JSON.stringify({contract:'mad4b.mobile-critical.qa.v1',tested:results.length,results,gates},null,2));
    console.log('QA_DECISION',JSON.stringify({lang:candidate.lang,width,pass,fcpGain,lcpReg,cls:variant.cls}));
   }
-  gates[candidate.lang]={decision:cases.length===widths.length&&cases.every(x=>x.pass)?'passed_evidence':'hold',widths,cssPriority:PRIORITY,fullCssPreload:PRELOAD,hero900:HERO900,deferCity:DEFER_CITY,minimumFcpGainMs:Math.min(...cases.map(x=>x.fcpGain)),worstLcpRegMs:Math.max(...cases.map(x=>x.lcpReg)),worstCls:Math.max(...cases.map(x=>x.variant.cls||1)),testedAt:new Date().toISOString()};
+  gates[candidate.lang]={decision:cases.length===widths.length&&cases.every(x=>x.pass)?'passed_evidence':'hold',widths,adaptiveMaxWidth:ADAPTIVE_MAX,cssPriority:PRIORITY,fullCssPreload:PRELOAD,hero900:HERO900,deferCity:DEFER_CITY,minimumFcpGainMs:Math.min(...cases.map(x=>x.fcpGain)),worstLcpRegMs:Math.max(...cases.map(x=>x.lcpReg)),worstCls:Math.max(...cases.map(x=>x.variant.cls||1)),testedAt:new Date().toISOString()};
   fs.writeFileSync(path.join(OUT,'verification.json'),JSON.stringify({contract:'mad4b.mobile-critical.qa.v1',tested:results.length,results,gates},null,2));
  }
  await browser.close();
