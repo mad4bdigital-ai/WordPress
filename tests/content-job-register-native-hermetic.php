@@ -76,4 +76,4 @@ job_assert(in_array('COMPLETED',$states,true)
     && in_array('CANCELLED',$states,true)
     && !in_array('PUBLISHED_UNVERIFIED',$states,true),
     'Job state is not a publishing permission');
-echo "CONTENT_JOB_REGISTRATION_GOVERNED: PASS 18 WordPress Abilities, 11 new interfaces\n";
+echo "PASS: CONTENT_JOB_REGISTRATION_GOVERNED 18 WordPress Abilities, 11 new interfaces\n";

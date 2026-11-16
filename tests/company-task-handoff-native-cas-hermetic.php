@@ -218,5 +218,5 @@ verify_handoff($failedAcceptance instanceof WP_Error
  'No success without receipt: compensate assignments when native meta write fails');
 verify_handoff($GLOBALS['handoff_locks']===$GLOBALS['handoff_releases'],
  'Every native handoff CAS lock must release on success and error');
-echo "NATIVE_TASK_HANDOFF_CAS: PASS REST privacy, CAS/replay, recipient consent, provider compensation\n";
+echo "PASS: NATIVE_TASK_HANDOFF_CAS REST privacy, CAS/replay, recipient consent, provider compensation\n";
 }

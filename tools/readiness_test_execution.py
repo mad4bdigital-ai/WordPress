@@ -57,6 +57,20 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     # a temporary local Skill Registry. No network/provider execution or
     # authority mutation; acceptance remains explicitly untested.
     "tests/company-reconcile-skill-set-no-executor-hermetic.php",
+    # Exact hermetic source-only Company/ContentJob/Media Rights regressions:
+    # fake FluentBoards, in-memory WP users/roles/CAS and role transactions,
+    # synthetic provider callbacks and local image/path stubs. No network,
+    # WP/DB/Commerce writes, live tenant operations or release grants.
+    # Real external provider calls are replaced by source-owned denial stubs.
+    "tests/company-task-handoff-native-cas-hermetic.php",
+    "tests/company-tenant-migration-rollback-hermetic.php",
+    "tests/company-user-native-lifecycle-hermetic.php",
+    "tests/content-completeness-original-hermetic.php",
+    "tests/content-job-groups-admission-original-hermetic.php",
+    "tests/content-job-register-native-hermetic.php",
+    "tests/content-job-structural-qa-admission-original-hermetic.php",
+    "tests/content-media-local-missing-rights-original-hermetic.php",
+    "tests/content-media-rights-guard-original-hermetic.php",
     # Canonical Inspector + Server evidence on synthetic WordPress Ability;
     # owner scopes and grant checks are not mocked as approved live writes.
     "tests/server-descriptor-canonical-multilane-hermetic.php",
@@ -448,6 +462,18 @@ def self_test():
         "php", str((ROOT / "tests/company-migration-decisions-transaction-hermetic.php").resolve())]
     assert command_for("tests/company-reconcile-skill-set-no-executor-hermetic.php") == [
         "php", str((ROOT / "tests/company-reconcile-skill-set-no-executor-hermetic.php").resolve())]
+    for reviewed in (
+        "tests/company-task-handoff-native-cas-hermetic.php",
+        "tests/company-tenant-migration-rollback-hermetic.php",
+        "tests/company-user-native-lifecycle-hermetic.php",
+        "tests/content-completeness-original-hermetic.php",
+        "tests/content-job-groups-admission-original-hermetic.php",
+        "tests/content-job-register-native-hermetic.php",
+        "tests/content-job-structural-qa-admission-original-hermetic.php",
+        "tests/content-media-local-missing-rights-original-hermetic.php",
+        "tests/content-media-rights-guard-original-hermetic.php",
+    ):
+        assert command_for(reviewed) == ["php", str((ROOT / reviewed).resolve())]
     for js in STANDALONE_JS_REGRESSIONS:
         assert command_for(js) == ["node", str((ROOT / js).resolve())]
     assert command_for("tests/server-descriptor-canonical-multilane-hermetic.php") == [

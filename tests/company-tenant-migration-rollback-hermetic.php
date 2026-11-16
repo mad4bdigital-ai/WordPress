@@ -220,4 +220,4 @@ check_tenant($failed instanceof WP_Error
  && $GLOBALS['tenant_lock_release_count']===2
  && $GLOBALS['tenant_user_mutations']===0,
  'Audit failure must restore original role and receipt while unlocking site');
-echo "COMPANY_TENANT_ROLE_MIGRATION: PASS native permissions, digest CAS, audit, rollback\n";
+echo "PASS: COMPANY_TENANT_ROLE_MIGRATION native permissions, digest CAS, audit, rollback\n";

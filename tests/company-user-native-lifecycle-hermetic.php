@@ -115,4 +115,4 @@ $login=$c::authenticate(get_userdata(4),'internal_staff','placeholder');
 assert_user($login instanceof WP_Error
  && $login->get_error_code()==='company_user_suspended',
  'Suspended user cannot authenticate through WordPress');
-echo "COMPANY_USER_LIFECYCLE_ORIGINAL: PASS 3 routes / 4 methods, no privileged deletion\n";
+echo "PASS: COMPANY_USER_LIFECYCLE_ORIGINAL 3 routes / 4 methods, no privileged deletion\n";
