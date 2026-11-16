@@ -30,6 +30,10 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "tests/operation-registry-native-policy-boundary-hermetic.php",
     "tests/presentation-browser-evidence-local-import-hermetic.php",
     "tests/presentation-integrity-jetengine-source-hermetic.php",
+    # Real Adaptive Search provider enrollment runs only against first-party
+    # in-memory fixture HTTP/WordPress stores; successful assertions precede
+    # the terminal PASS and unsuccessful cases retain exit(1).
+    "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-enrollment-runtime.php",
     # Reviewed isolated fixtures: fake Site Profile lineage, fake-DB Drive
     # continuation, provider TTL with stub OAuth, and in-memory QA30 Admin.
     # No real site, provider HTTP, credentials, mutation or release authority.
