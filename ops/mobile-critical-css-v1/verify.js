@@ -38,7 +38,9 @@ async function measure(browser,candidate,width,asyncCss,frozenHtml){
   let html=frozenHtml;
   if(!html){const response=await route.fetch({timeout:40000});html=await response.text();}
   if(asyncCss) {
-   if(HERO900){
+   // Native responsive poster is compact only below enrolled mobile breakpoint.
+   // Width 768px and above retain the original large image for valid LCP QA.
+   if(HERO900 && (!ADAPTIVE_MAX || width<=ADAPTIVE_MAX)){
      html=html.replaceAll('home-mix-mad4b-1600.webp','home-mix-mad4b-900.webp');
    }
    if(DEFER_CITY){

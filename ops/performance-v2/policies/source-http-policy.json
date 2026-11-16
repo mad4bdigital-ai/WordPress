@@ -1,0 +1,83 @@
+{
+  "candidate_workflow": {
+    "enabled": true,
+    "lifecycle": "existing_performance_integrity_timer",
+    "mode": "evidence_only",
+    "release_admission": false
+  },
+  "company": "source",
+  "contract": "mad4b.performance-http-policy.v2",
+  "critical_css_integrity_v1": {
+    "breakpoint_px": 767,
+    "consumer_sha256": "9e628e944d9514369c155c11f91bd69d0e562227d3db5546b3dd8ce492862750",
+    "css_epoch": 123,
+    "enabled": true,
+    "format": "adaptive-v2",
+    "locales": {
+      "en": {
+        "critical_file": "8e36d23f4c2a7fb617be171d84f3d769f23320b35accc19db66eb7ef48f86994.css",
+        "critical_sha256": "8e36d23f4c2a7fb617be171d84f3d769f23320b35accc19db66eb7ef48f86994",
+        "css_file": "cb1ce3de06aba01f125efecbd1293a8f.css",
+        "css_sha256": "a441dc6effe665c632730bacb3b13172c8e53e1ae04f86e42d3772007af5624b",
+        "route": "/"
+      },
+      "es": {
+        "critical_file": "e6781e868f7623b90b12e97c1e6ecd3de6a200e50e9a78555e990aec04c3beaf.css",
+        "critical_sha256": "e6781e868f7623b90b12e97c1e6ecd3de6a200e50e9a78555e990aec04c3beaf",
+        "css_file": "00b9a0aff76a93792dd0856ddd1633ab.css",
+        "css_sha256": "6b77b15e4e95b28604cdff8328d0c3791bdb9c72c2c02d689c3e15c2bb085d86",
+        "route": "/es/"
+      }
+    }
+  },
+  "enabled": true,
+  "fragment_integrity_v1": {
+    "enabled": true,
+    "environment": "staging",
+    "require_tour_only": false,
+    "sha256": {
+      "css": "153aadd378959308469bb2c58baf2513aec03f65cc39e6fda96b41c88d168252",
+      "fragment_class": "e507f4867835753c9cef5c254c8388466806f0e1402c3daf59887aeeeac92a6f",
+      "governor": "c880b3c657a81eac98e7392b946b31121d49b1b1170ef054cfcdb662beb6e688",
+      "manifest": "cd6008229d37640d429c33d674c1720f31f0fab12ec7e60cc1a0ca972cebd2ea"
+    }
+  },
+  "hero_marker": "home-mix-mad4b-1600.webp",
+  "local_runtime": {
+    "nginx_config": "/opt/hostinger-migrations/hosting-3/etg-commerce-staging/stack/nginx.conf",
+    "php_container": "php-wkgtkzta35wkkgouwt6ruljc",
+    "site_root": "/opt/hostinger-migrations/hosting-3/etg-commerce-staging/site-copy"
+  },
+  "market_cache_workflow": {
+    "enabled": true,
+    "lifecycle": "existing_performance_integrity_timer",
+    "mode": "evidence_only",
+    "release_admission": false
+  },
+  "origin": "https://tours.dev.mad4b.com",
+  "routes": [
+    {
+      "expect_cache": "private_market_veto",
+      "locale": "en",
+      "path": "/"
+    },
+    {
+      "expect_cache": "private_market_veto",
+      "locale": "es",
+      "path": "/es/"
+    }
+  ],
+  "score_not_inferred_from_cache": true,
+  "wpml_jetengine_prefetch_integrity_v1": {
+    "enabled": true,
+    "local_git_source": {
+      "commit": "edb83fcac1da73a353d285debc0be8f0d953b2d9",
+      "ref": "refs/mad4b/release-candidates/wpml-jetengine-native-prefetch-v1",
+      "repo": "/opt/mad4b-company-transport/worktrees/company-code-release-20261108"
+    },
+    "sha256": {
+      "owner": "b87ee6eb43ea9a61e305d41c247558a2e32e7785251f9df825454333e6d22296",
+      "vendor": "e242bcba4053d418ae4de26bd42d4922280829fc11f3a278db09ed630927d6fe"
+    }
+  }
+}
