@@ -22,7 +22,22 @@ jobs:
   production-matrix-contract:
     name: Production readiness matrix contract
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 15
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: wordpress
+          MYSQL_USER: wordpress
+          MYSQL_PASSWORD: wordpress
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
     steps:
       - uses: actions/checkout@v4
         with:
@@ -129,6 +144,46 @@ jobs:
         with:
           php-version: '8.3'
           coverage: none
+      - name: Provision authentic isolated WordPress for mapped native source tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-readiness-wordpress
+          curl --fail --location --silent --show-error \
+            https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -o /tmp/wp-cli.phar
+          mkdir -p "$WP_PATH"
+          php /tmp/wp-cli.phar core download --path="$WP_PATH" --version=latest
+          php /tmp/wp-cli.phar config create --path="$WP_PATH" --dbname=wordpress \
+            --dbuser=wordpress --dbpass=wordpress --dbhost=127.0.0.1:3306 --skip-check
+          php /tmp/wp-cli.phar core install --path="$WP_PATH" \
+            --url='https://readiness-ci.example.invalid' --title='MAD4B CI Readiness' \
+            --admin_user=mad4b-ci-admin --admin_password='disposable-ci-only' \
+            --admin_email='ci@example.invalid' --skip-email
+          php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE staging --type=constant --path="$WP_PATH"
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/materialize-packaged-plugin.py \
+            --archive wp-content/plugins/mcp-adapter.zip \
+            --plugins-dir "$WP_PATH/wp-content/plugins" --slug mcp-adapter
+          cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/"
+          php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
+          php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
+          # Only this disposable CI site gets a synthetic tour post-type/record.
+          # The tested Brand Integrity engine remains the real original plugin.
+          mkdir -p "$WP_PATH/wp-content/mu-plugins"
+          cat > "$WP_PATH/wp-content/mu-plugins/ci-tour-type.php" <<'PHP_TOUR'
+          <?php
+          add_action('init', static function() {
+              if (!post_type_exists('tours-and-activities')) {
+                  register_post_type('tours-and-activities', array('public'=>true));
+              }
+          }, 1);
+          PHP_TOUR
+          php /tmp/wp-cli.phar post create --path="$WP_PATH" \
+            --post_type=tours-and-activities --post_status=publish \
+            --post_title='Discover Egypt and the Giza Pyramids' --porcelain >/dev/null
+          php /tmp/wp-cli.phar plugin is-active mcp-adapter --path="$WP_PATH"
+          php /tmp/wp-cli.phar plugin is-active mad4b-site-control-plane --path="$WP_PATH"
+          echo 'READINESS_DISPOSABLE_WORDPRESS_PROVISIONED: PASS'
+
       - name: Execute required mapped regression tests, not merely check filenames
         env:
           EXACT_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}

@@ -429,6 +429,50 @@ STANDALONE_JS_REGRESSIONS = frozenset((
 ))
 
 
+# Genuine disposable WordPress tests, not bare PHP or forged PHPUnit results.
+# These exact fixtures read source-registered Abilities and fail if assertions fail.
+WORDPRESS_RUNTIME_REGRESSIONS = frozenset((
+    "tests/test_brand_integrity_lifecycle_runtime.php",
+    "tests/test_brand_integrity_runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/runtime-firecrawl-unready-write-mount.php",
+))
+WP_CLI_PHAR = "/tmp/wp-cli.phar"
+WP_SANDBOX = "/tmp/mad4b-readiness-wordpress"
+
+
+def trusted_wordpress_readback(test, stdout):
+    try:
+        payload = json.loads(stdout.strip())
+    except (ValueError, TypeError):
+        return False
+    if not isinstance(payload, dict):
+        return False
+    if test == "tests/test_brand_integrity_lifecycle_runtime.php":
+        return (payload.get("contract") == "mad4b.brand-integrity.lifecycle-qa.v1"
+                and isinstance(payload.get("tests"), int) and payload["tests"] >= 20
+                and payload.get("passed") == payload["tests"]
+                and payload.get("failures") == [] and isinstance(payload.get("actual_post_id"), int)
+                and payload["actual_post_id"] > 0)
+    if test == "tests/test_brand_integrity_runtime.php":
+        return (payload.get("contract") == "mad4b.brand-integrity.runtime-test.v1"
+                and isinstance(payload.get("total"), int) and payload["total"] >= 20
+                and payload.get("passed") == payload["total"]
+                and payload.get("failures") == [])
+    if test == "wp-content/plugins/mad4b-site-control-plane/tests/runtime-firecrawl-unready-write-mount.php":
+        available = payload.get("adapter_available")
+        mounted = payload.get("write_mounted")
+        return (payload.get("contract") == "mad4b.firecrawl-native-unready-mount-regression.v1"
+                and payload.get("ability_registered") is True
+                and payload.get("authorizing") is False
+                and payload.get("mutation_performed") is False
+                and payload.get("external_provider_called") is False
+                and isinstance(available, bool) and isinstance(mounted, bool)
+                and payload.get("state") == ("ELIGIBILITY_PRESENT_NOT_EXECUTED"
+                                             if available else "DORMANT_WRITE_NOT_MOUNTED")
+                and (available or not mounted))
+    return False
+
+
 def command_for(test):
     path = (ROOT / test).resolve()
     ensure(path.is_relative_to(ROOT), "Test escapes checkout")
@@ -439,6 +483,10 @@ def command_for(test):
     if path.suffix == ".py":
         return [sys.executable, str(path)]
     if path.suffix == ".php":
+        if test in WORDPRESS_RUNTIME_REGRESSIONS:
+            ensure(not path.is_symlink(), "WordPress runtime test symlink denied")
+            return ["php", WP_CLI_PHAR, "eval-file", str(path),
+                    "--path=" + WP_SANDBOX, "--user=mad4b-ci-admin"]
         if test == "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-enrollment-runtime.php":
             ensure(not path.is_symlink(), "Adaptive Search isolated test symlink denied")
             return ["php", str(path), "--readiness-pass"]
@@ -513,6 +561,8 @@ def run_tests(impact, head, timeout):
             result = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
                                     timeout=timeout, check=False)
             ok = result.returncode == 0
+            if name in WORDPRESS_RUNTIME_REGRESSIONS:
+                ok = ok and trusted_wordpress_readback(name, result.stdout)
             if name in STANDALONE_PHP_REGRESSIONS or name in STANDALONE_JS_REGRESSIONS:
                 # Require positive assertions, never accept exit(0) or lint-only
                 # output. Existing original contracts also print N test cases
@@ -545,6 +595,20 @@ def run_tests(impact, head, timeout):
 
 
 def self_test():
+    for test in WORDPRESS_RUNTIME_REGRESSIONS:
+        assert command_for(test) == ["php", WP_CLI_PHAR, "eval-file",
+                                      str((ROOT / test).resolve()),
+                                      "--path=" + WP_SANDBOX, "--user=mad4b-ci-admin"]
+        assert not trusted_wordpress_readback(test, "PASS: just a line")
+        assert not trusted_wordpress_readback(test, "{}")
+    assert trusted_wordpress_readback(
+        "tests/test_brand_integrity_runtime.php",
+        json.dumps({"contract": "mad4b.brand-integrity.runtime-test.v1",
+                    "total": 29, "passed": 29, "failures": []}))
+    assert not trusted_wordpress_readback(
+        "tests/test_brand_integrity_runtime.php",
+        json.dumps({"contract": "mad4b.brand-integrity.runtime-test.v1",
+                    "total": 29, "passed": 28, "failures": [{}]}))
     assert has_assertion_pass("PASS: verified real case\n")
     assert has_assertion_pass("SUMMARY pass=8 fail=0\n")
     assert has_assertion_pass("SUMMARY checks=21 failures=0\n")
