@@ -18,9 +18,17 @@ final class MAD4B_SCP_Content_Relationship_Graph {
  }
  private static function site():array {
   $p=class_exists('MAD4B_SCP_Site_Profile',false)?MAD4B_SCP_Site_Profile::status():[];
-  if(!is_array($p)||empty($p['site_uuid'])||empty($p['origin_match'])||
-    empty($p['authority_ready'])||empty($p['deployment_binding_match']))return [];
-  return ['site_uuid'=>(string)$p['site_uuid'],'environment'=>wp_get_environment_type()];
+  if(!is_array($p)||!is_string($p['site_uuid']??null)||
+    !preg_match('/^[a-f0-9-]{36}$/D',$p['site_uuid'])||
+    ($p['origin_match']??null)!==true||
+    ($p['authority_ready']??null)!==true||
+    ($p['deployment_binding_match']??null)!==true||
+    !is_string($p['environment']??null)||
+    !in_array($p['environment'],array('staging','production','development','local'),true))
+    return [];
+  // A Site Profile may have an explicitly enrolled non-production override;
+  // WordPress's implicit default must never replace the original environment.
+  return ['site_uuid'=>$p['site_uuid'],'environment'=>$p['environment']];
  }
  private static function validLocale(string $loc):bool {
   if(!preg_match('/^[a-z]{2}(?:-[a-z]{2})?$/D',$loc))return false;

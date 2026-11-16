@@ -118,6 +118,14 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "tests/content-relationship-writeback-admission-original-hermetic.php",
     "tests/central-write-acceptance-permission-original-hermetic.php",
     "tests/central-transport-write-source-hermetic.php",
+    # First-party P1 visual/content/interaction original no-write admission suites.
+    "tests/content-completeness-original-hermetic.php",
+    "tests/content-relationship-graph-site-original-hermetic.php",
+    "tests/visual-seo-strategy-original-hermetic.php",
+    "tests/adaptive-interaction-ui-original-hermetic.php",
+    "tests/content-relationship-media-owner-original-hermetic.php",
+    "tests/contentjob-structural-cwa-original-hermetic.php",
+
 
 
 

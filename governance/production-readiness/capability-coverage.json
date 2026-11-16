@@ -8302,6 +8302,113 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-completeness.php",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "tests/content-completeness-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B original first-party CI-only capability reviewer",
+      "review_rationale": "Original Content Completeness 19-case rule and permission fixture rejects WP_Error actor permissions, malformed source descriptors before sanitization and untrusted persisted policy while retaining valid field-level/locale configuration. This only certifies native rule shape and read-only capability, not completed audits or publication rights. Reproduced against this exact Git source on PHP7.4/8.5. Existing Content Readiness isolated-contract and Content Intelligence baseline suites remain independently failing and were not used as CI evidence. Signed live review, Owner Grant and Production approval remain absent.",
+      "coverage_reuse_rationale": "Existing AI-01, LOCALIZATION-01, PROVIDERS-02 require original source-bound WordPress/WPML identity, explicitly governed native providers, independent evidence and a separate authorized write/readback. This source test adds no privilege, model/remote action or Production policy.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-relationship-graph.php",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "tests/content-relationship-graph-site-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B original first-party CI-only capability reviewer",
+      "review_rationale": "Original Content Relationship Graph 26-case native Site Profile source test rejects error-shaped Site UUID/authority/deployment proofs and uses exact Site Profile effective environment rather than the implicit wp_get_environment_type. No WPML taxonomy link or graph write is performed; post/term provider actual integration still needs independent live evidence. Reproduced against this exact Git source on PHP7.4/8.5. Existing Content Readiness isolated-contract and Content Intelligence baseline suites remain independently failing and were not used as CI evidence. Signed live review, Owner Grant and Production approval remain absent.",
+      "coverage_reuse_rationale": "Existing AI-01, LOCALIZATION-01, PROVIDERS-02 require original source-bound WordPress/WPML identity, explicitly governed native providers, independent evidence and a separate authorized write/readback. This source test adds no privilege, model/remote action or Production policy.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-visual-seo-strategy.php",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "tests/visual-seo-strategy-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B original first-party CI-only capability reviewer",
+      "review_rationale": "Original Visual SEO Strategy 21-case published-tour source admission fixture rejects WP_Error Site Profile binding and accepts verified original read-only strategy context. No photo semantic correctness is invented and no media, SEO, alt or metadata mutation occurs. Reproduced against this exact Git source on PHP7.4/8.5. Existing Content Readiness isolated-contract and Content Intelligence baseline suites remain independently failing and were not used as CI evidence. Signed live review, Owner Grant and Production approval remain absent.",
+      "coverage_reuse_rationale": "Existing AI-01, LOCALIZATION-01, PROVIDERS-02 require original source-bound WordPress/WPML identity, explicitly governed native providers, independent evidence and a separate authorized write/readback. This source test adds no privilege, model/remote action or Production policy.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-interaction-ui.php",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/adaptive-interaction-ui-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B original first-party CI-only capability reviewer",
+      "review_rationale": "Original Adaptive Interaction UI 24-case native user/session and transport fixture enforces exact is_user_logged_in and permitted Broker booleans, only verified HTTPS or explicit Local Transport Policy, and bounded schema-typed nonsecret form keys. Malformed browser/login/transport/provider metadata are rejected before native secret handoff; no credentials are displayed or persisted. Reproduced against this exact Git source on PHP7.4/8.5. Existing Content Readiness isolated-contract and Content Intelligence baseline suites remain independently failing and were not used as CI evidence. Signed live review, Owner Grant and Production approval remain absent.",
+      "coverage_reuse_rationale": "Existing ADMIN-01, BROWSER-01, SECURITY-02 require original source-bound WordPress/WPML identity, explicitly governed native providers, independent evidence and a separate authorized write/readback. This source test adds no privilege, model/remote action or Production policy.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-relationship-writeback-media.php",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "tests/content-relationship-media-owner-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B original first-party CI-only capability reviewer",
+      "review_rationale": "Original Media Writeback 4-case source fixture checks denied native ContentJob planning, original media permission, missing target/attachment readback, and an orderly HOLD instead of throwing on unknown ContentJob source. True image rights certification, independent media QA and native mutation remain separately required. Reproduced against this exact Git source on PHP7.4/8.5. Existing Content Readiness isolated-contract and Content Intelligence baseline suites remain independently failing and were not used as CI evidence. Signed live review, Owner Grant and Production approval remain absent.",
+      "coverage_reuse_rationale": "Existing AI-01, LOCALIZATION-01, PROVIDERS-02 require original source-bound WordPress/WPML identity, explicitly governed native providers, independent evidence and a separate authorized write/readback. This source test adds no privilege, model/remote action or Production policy.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-contentjob-structural-cwa.php",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/contentjob-structural-cwa-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B original first-party CI-only capability reviewer",
+      "review_rationale": "Original Structural CWA 6-case nonmutating source fixture requires exact original staging Site Profile enrollment before reading the structural attestation, and retains explicit independent Structural QA. Source/native policy/edit_post and WPML auto-sync gates now require exact true. No Elementor template write, translation approval or browser preview was simulated. Reproduced against this exact Git source on PHP7.4/8.5. Existing Content Readiness isolated-contract and Content Intelligence baseline suites remain independently failing and were not used as CI evidence. Signed live review, Owner Grant and Production approval remain absent.",
+      "coverage_reuse_rationale": "Existing AUTOMATION-01, PERFORMANCE-01 require original source-bound WordPress/WPML identity, explicitly governed native providers, independent evidence and a separate authorized write/readback. This source test adds no privilege, model/remote action or Production policy.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "lifecycle": [],
@@ -21329,6 +21436,107 @@
       ],
       "owner_role": "MAD4B original first-party CWA source CI-only reviewer",
       "review_rationale": "Original CWA 41-case Site Profile/WordPress User strict admissibility and existing 80-case transport original source regressions pass PHP7.4/8.5. Fixed WP_Error truthiness bypass in manage_options and enrolled Site flags, while preserving exact native Host/REST transport and separately authorized behavior. This is a new nonauthorizing Git blob review, not retroactive alteration of old source review or signed Production approval.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-completeness.php",
+      "source_blob_sha": "a9491c00b2d7d28ef1960037a343d659b307b5f2",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "tests/content-completeness-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B original first-party CI-only source reviewer",
+      "review_rationale": "Original Content Completeness 19-case rule and permission fixture rejects WP_Error actor permissions, malformed source descriptors before sanitization and untrusted persisted policy while retaining valid field-level/locale configuration. This only certifies native rule shape and read-only capability, not completed audits or publication rights. Reproduced against this exact Git source on PHP7.4/8.5. Existing Content Readiness isolated-contract and Content Intelligence baseline suites remain independently failing and were not used as CI evidence. Signed live review, Owner Grant and Production approval remain absent.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-relationship-graph.php",
+      "source_blob_sha": "7beafff41021b64fc8a5d2ea1b556147a38fd66c",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "tests/content-relationship-graph-site-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B original first-party CI-only source reviewer",
+      "review_rationale": "Original Content Relationship Graph 26-case native Site Profile source test rejects error-shaped Site UUID/authority/deployment proofs and uses exact Site Profile effective environment rather than the implicit wp_get_environment_type. No WPML taxonomy link or graph write is performed; post/term provider actual integration still needs independent live evidence. Reproduced against this exact Git source on PHP7.4/8.5. Existing Content Readiness isolated-contract and Content Intelligence baseline suites remain independently failing and were not used as CI evidence. Signed live review, Owner Grant and Production approval remain absent.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-visual-seo-strategy.php",
+      "source_blob_sha": "e70201fafd3e6ec50f9b184d0abcea95bd7ad49e",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "tests/visual-seo-strategy-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B original first-party CI-only source reviewer",
+      "review_rationale": "Original Visual SEO Strategy 21-case published-tour source admission fixture rejects WP_Error Site Profile binding and accepts verified original read-only strategy context. No photo semantic correctness is invented and no media, SEO, alt or metadata mutation occurs. Reproduced against this exact Git source on PHP7.4/8.5. Existing Content Readiness isolated-contract and Content Intelligence baseline suites remain independently failing and were not used as CI evidence. Signed live review, Owner Grant and Production approval remain absent.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-interaction-ui.php",
+      "source_blob_sha": "57f277062ce7a46e2b14ee27f8e21ae24d208e43",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/adaptive-interaction-ui-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B original first-party CI-only source reviewer",
+      "review_rationale": "Original Adaptive Interaction UI 24-case native user/session and transport fixture enforces exact is_user_logged_in and permitted Broker booleans, only verified HTTPS or explicit Local Transport Policy, and bounded schema-typed nonsecret form keys. Malformed browser/login/transport/provider metadata are rejected before native secret handoff; no credentials are displayed or persisted. Reproduced against this exact Git source on PHP7.4/8.5. Existing Content Readiness isolated-contract and Content Intelligence baseline suites remain independently failing and were not used as CI evidence. Signed live review, Owner Grant and Production approval remain absent.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-relationship-writeback-media.php",
+      "source_blob_sha": "29b86a09432ca46b58673e1198d1e105b7897e8e",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "tests/content-relationship-media-owner-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B original first-party CI-only source reviewer",
+      "review_rationale": "Original Media Writeback 4-case source fixture checks denied native ContentJob planning, original media permission, missing target/attachment readback, and an orderly HOLD instead of throwing on unknown ContentJob source. True image rights certification, independent media QA and native mutation remain separately required. Reproduced against this exact Git source on PHP7.4/8.5. Existing Content Readiness isolated-contract and Content Intelligence baseline suites remain independently failing and were not used as CI evidence. Signed live review, Owner Grant and Production approval remain absent.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-contentjob-structural-cwa.php",
+      "source_blob_sha": "4e183d48154e17abd02d7319751320d8df8d07b1",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/contentjob-structural-cwa-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B original first-party CI-only source reviewer",
+      "review_rationale": "Original Structural CWA 6-case nonmutating source fixture requires exact original staging Site Profile enrollment before reading the structural attestation, and retains explicit independent Structural QA. Source/native policy/edit_post and WPML auto-sync gates now require exact true. No Elementor template write, translation approval or browser preview was simulated. Reproduced against this exact Git source on PHP7.4/8.5. Existing Content Readiness isolated-contract and Content Intelligence baseline suites remain independently failing and were not used as CI evidence. Signed live review, Owner Grant and Production approval remain absent.",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
