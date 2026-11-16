@@ -66,6 +66,13 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     # Reviewed native Search Console site-only OAuth/retained-observation
     # fixture: in-memory provider/WP stubs; no HTTP, real grants or writes.
     "tests/native-search-console-site-scope-php74-hermetic.php",
+    # Audited no-WordPress source fixtures: deny incomplete Brand owner proof,
+    # ensure Selected HEAD remains non-authorizing, provider OAuth health
+    # plans do not grant refresh, and Search Provider budget/rights denials.
+    "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-owner-evidence-hermetic.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-router-source-hermetic.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-center-runtime.php",
+    "tests/search-provider-autoprovision-runtime-denials-hermetic.php",
     # Three exact source-audited negative fixtures: admin-only CWV REST,
     # readonly Provider field/locale metadata and synthetic bounded Cron.
     # No real WordPress DB, provider HTTP or license/grant mutations.

@@ -115,4 +115,5 @@ $c::tick();
 native_check($GLOBALS['provider_writes']===0
  && $GLOBALS['provider_jobs']===0,
  'Verified events or Cron without write policy cannot launch paid provider work');
-echo "SEARCH_AUTOPROVISION_NATIVE: PASS 3 real abilities, VERIFIED alone never commercial authorization\n";
+echo "SEARCH_AUTOPROVISION_NATIVE: PASS 3 real abilities, VERIFIED alone never commercial authorization\n";// Distinct audit marker only after all negative provider/grant assertions.
+echo "SEARCH_AUTOPROVISION_NATIVE: PASS\n";
