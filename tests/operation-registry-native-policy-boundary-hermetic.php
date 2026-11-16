@@ -128,3 +128,4 @@ assert_op($r::registered_write_policy('mad4b/operator-grants-converge')['operati
 unlink($catalogPath);
 rmdir($tmp.'/config');rmdir($tmp);
 echo "NATIVE_OPERATION_REGISTRY_BOUNDARY: PASS two operations, eleven fault cases\n";
+echo "NATIVE_OPERATION_REGISTRY_BOUNDARY: PASS\n";

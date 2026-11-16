@@ -92,3 +92,4 @@ catalog_assert($existing['tasks']['primary'][0]['existing_local_url_match']===tr
  && $existing['tasks']['primary'][0]['required_next_steps']===array('review_existing_local_entity','assess_update_not_create'),
  'Existing WP content must prefer review/update and not duplicate published tour');
 echo "CATALOG_INTENT_EXACT_SOURCE: PASS intent lanes, duplicate/URL safety, no task creation\n";
+echo "CATALOG_INTENT_EXACT_SOURCE: PASS\n";

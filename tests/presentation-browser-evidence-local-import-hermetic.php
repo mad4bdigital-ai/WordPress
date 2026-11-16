@@ -95,3 +95,4 @@ try {
  if(is_link($folder.'/linked.json'))unlink($folder.'/linked.json');
  rmdir($folder);rmdir(dirname($folder));rmdir(WP_CONTENT_DIR);
 }
+echo "PRESENTATION_BROWSER_EVIDENCE: PASS\n";

@@ -99,3 +99,4 @@ p_check($GLOBALS['presentation_test_writes']===1
 p_check($c::browser_covered()===false,
  'Missing live Browser audit must not be reported as observed visual coverage');
 echo "PRESENTATION_INTEGRITY: PASS JetEngine, drafts, invalid templates, CLI opt-in, no implicit writes\n";
+echo "PRESENTATION_INTEGRITY: PASS\n";
