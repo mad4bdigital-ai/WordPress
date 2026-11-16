@@ -1,6 +1,6 @@
 {
   "contract": "mad4b.wayfatours.media-rights-cross-repo-integration.v1",
-  "observed_utc": "2026-11-16T01:47:10.107686+00:00",
+  "observed_utc": "2026-11-16T01:48:20.136541+00:00",
   "site": "https://wayfatours.com",
   "integration_baseline": "57746e6270",
   "previous_manual_live_attestation": "1527fb491b5a850e7ffbc7629a5bdb97f9106f2f",
@@ -23,8 +23,9 @@
       "cct_after_commit": 10
     },
     "staging_wordpress_readonly_contract": {
-      "passed": 28,
-      "total": 28
+      "passed": 29,
+      "total": 29,
+      "includes_dotted_license_normalizer": true
     },
     "wayfatours_wordpress_readonly_contract": {
       "passed": 13,

@@ -78,6 +78,9 @@ $usageSpec=['kind'=>'image_gallery_usage','storage'=>'ids','max_items'=>4,
   'usage_fields'=>['license'],'licenses'=>['owned','licensed'],'references_field'=>'images'];
 $blank=$norm::normalize_meta_value('image_usage',[['attachment_id'=>$id,'license'=>'']],$usageSpec);
 $assert('local_blank_license_survives_normalization',is_array($blank)&&count($blank)===1&&array_key_exists('license',$blank[0])&&$blank[0]['license']==='');
+$allowDotted=$usageSpec;$allowDotted['licenses']=['cc-by-4.0'];
+$exact=$norm::normalize_meta_value('image_usage',[['attachment_id'=>$id,'license'=>'cc-by-4.0']],$allowDotted);
+$assert('dotted_cc_by4_license_survives_normalization',is_array($exact)&&count($exact)===1&&($exact[0]['license']??null)==='cc-by-4.0');
 $bad=$norm::normalize_meta_value('image_usage',[['attachment_id'=>$id,'license'=>'nonexistent_license']],$usageSpec);
 $assert('unknown_nonempty_license_rejected_upstream',is_wp_error($bad)&&$bad->get_error_code()==='mad4b_content_experience_media_usage_license_denied');
 $fields=['images'=>['kind'=>'image_gallery','storage'=>'ids','max_items'=>4], 'image_usage'=>$usageSpec];
