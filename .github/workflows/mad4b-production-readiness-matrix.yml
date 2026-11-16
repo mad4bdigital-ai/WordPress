@@ -195,6 +195,35 @@ jobs:
           if ( MAD4B_SCP_Staging_Write_Authority::eligible() )
             throw new RuntimeException("OAuth bootstrap must not grant Write");
           ' --path="$WP_PATH" --user=mad4b-ci-admin
+          # Explicit fixture identity for Brand Integrity positive checks on
+          # this ephemeral DB only. No source approvals, assets, or grants.
+          php /tmp/wp-cli.phar eval '
+          $site = MAD4B_SCP_Site_Profile::status();
+          if ( empty($site["configured"]) || empty($site["origin_match"])
+            || empty($site["environment_match"]) || empty($site["site_uuid"])
+            || wp_get_environment_type() !== "staging" )
+            throw new RuntimeException("Unbound CI site cannot construct Brand fixture");
+          if ( get_option(MAD4B_SCP_Context_Authority::PROFILE_OPTION, false) !== false )
+            throw new RuntimeException("Existing Brand identity must never be replaced");
+          $record = array(
+            "contract" => MAD4B_SCP_Context_Authority::PROFILE_CONTRACT,
+            "site_uuid" => $site["site_uuid"],
+            "brand_id" => "readiness-test-brand",
+            "brand_name" => "MAD4B Readiness TEST",
+            "revision" => 1,
+            "status" => "test_only",
+            "context_policy" => "staging_test_only_no_external_authority",
+            "context_fingerprint" => MAD4B_SCP_Context_Authority::context_fingerprint(),
+            "review_policy" => array("mode"=>"human_only"),
+          );
+          if ( ! add_option(MAD4B_SCP_Context_Authority::PROFILE_OPTION, $record, "", false)
+            || MAD4B_SCP_Context_Authority::profile() !== $record )
+            throw new RuntimeException("Disposable Brand identity failed exact readback");
+          if ( MAD4B_SCP_Context_Authority::assets() !== array()
+            || MAD4B_SCP_Staging_Write_Authority::eligible()
+            || get_option("mad4b_scp_context_sources_v1", array()) !== array() )
+            throw new RuntimeException("CI Brand fixture acquired unexpected source or Write authority");
+          ' --path="$WP_PATH" --user=mad4b-ci-admin
           # Only this disposable CI site gets a synthetic tour post-type/record.
           # The tested Brand Integrity engine remains the real original plugin.
           mkdir -p "$WP_PATH/wp-content/mu-plugins"
