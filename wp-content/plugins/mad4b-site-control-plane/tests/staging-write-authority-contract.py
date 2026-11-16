@@ -6,7 +6,16 @@ repo = Path(__file__).resolve().parents[4]
 wp = repo / 'wp-content' / 'plugins' / 'mad4b-site-control-plane'
 
 write = (wp / 'includes' / 'class-mad4b-scp-staging-write-authority.php').read_text(encoding='utf-8')
-abilities = (wp / 'includes' / 'class-mad4b-scp-abilities.php').read_text(encoding='utf-8')
+abilities_facade = (wp / 'includes' / 'class-mad4b-scp-abilities.php').read_text(encoding='utf-8')
+abilities_registration = (wp / 'includes' / 'trait-mad4b-scp-abilities-registration.php').read_text(encoding='utf-8')
+# Source registration was extracted mechanically; do not accept an unbound
+# or duplicate registration trait as equivalent to the governed source.
+if ("require_once __DIR__ . '/trait-mad4b-scp-abilities-registration.php';" not in abilities_facade
+        or "use MAD4B_SCP_Abilities_Registration_Trait;" not in abilities_facade
+        or "trait MAD4B_SCP_Abilities_Registration_Trait" not in abilities_registration
+        or "do_action( 'mad4b_scp_abilities_registered', $this );" not in abilities_registration):
+    raise SystemExit("governed write registration trait is not bound to the canonical Ability facade")
+abilities = abilities_facade + abilities_registration
 grant_reconcile = (wp / 'includes' / 'class-mad4b-scp-staging-write-grant-reconciliation.php').read_text(encoding='utf-8')
 grant_plan = (wp / 'includes' / 'class-mad4b-scp-staging-write-grant-reconciliation-plan.php').read_text(encoding='utf-8')
 planning = (wp / 'includes' / 'class-mad4b-scp-staging-write-planning-guard.php').read_text(encoding='utf-8')
