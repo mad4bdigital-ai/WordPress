@@ -254,6 +254,44 @@ final class MAD4B_SCP_Governed_Ability_Census {
             && false === ( $mcp['normal_write_authority_required'] ?? null );
     }
 
+    /**
+     * Structural evidence for ONE original, independently guarded direct
+     * Enrollment operation. This never approves execution or mints grants.
+     * Require the actual installed WP_Ability and the exact original
+     * execute/permission callback ancestry, even when wrappers are present.
+     */
+    public static function operator_grant_original_boundary_verified( $ability ) {
+        $name = 'mad4b/operator-grants-converge';
+        if ( ! is_object( $ability ) || ! class_exists( 'WP_Ability', false )
+            || get_class( $ability ) !== 'WP_Ability'
+            || ! method_exists( $ability, 'get_name' )
+            || $ability->get_name() !== $name
+            || ! function_exists( 'wp_get_ability' )
+            || wp_get_ability( $name ) !== $ability
+            || ! class_exists( 'MAD4B_SCP_Operator_Grant_Convergence', false )
+            || MAD4B_SCP_Operator_Grant_Convergence::ABILITY !== $name ) return false;
+        $trusted = self::structural_step_up();
+        if ( ! isset( $trusted[ $name ] )
+            || ( $trusted[ $name ]['source'] ?? '' ) !== 'verified_first_party_php_callbacks'
+            || ( $trusted[ $name ]['policy_governed'] ?? false ) !== true
+            || ! preg_match( '/^[a-f0-9]{64}$/D', (string) ( $trusted[ $name ]['callback_pair_digest'] ?? '' ) ) ) return false;
+        foreach ( array(
+            'execute_callback' => 'execute',
+            'permission_callback' => 'can_access',
+        ) as $property_name => $method ) {
+            try {
+                $property = new ReflectionProperty( 'WP_Ability', $property_name );
+                if ( PHP_VERSION_ID < 80100 ) $property->setAccessible( true );
+                $identity = self::callback_identity( $property->getValue( $ability ) );
+                $suffix = 'MAD4B_SCP_Operator_Grant_Convergence::' . $method
+                    . '@class-mad4b-scp-operator-grant-convergence.php';
+                if ( '' === $identity || substr( $identity, -strlen( $suffix ) ) !== $suffix )
+                    return false;
+            } catch ( Throwable $error ) { return false; }
+        }
+        return true;
+    }
+
     public static function structural_step_up() { return self::scan( 'projection' ); }
 
     public static function eligible() {
