@@ -41,6 +41,11 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "wp-content/plugins/mad4b-site-control-plane/tests/drive-scan-continuation-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/provider-session-ttl-partial-context.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/qa30-native-general-settings-rest-lifecycle.php",
+    # Official MCP Adapter DTO test is allowed only with the exact pinned,
+    # SHA256-checked packaged provider extracted into an isolated /tmp tree.
+    # The real registered DTOs and negative schemas execute; no network/OAuth
+    # or WordPress mutation. Unknown PHP remains denied.
+    "wp-content/plugins/mad4b-site-control-plane/tests/mcp-official-required-preflight-runtime.php",
     # Exact no-WordPress Brand Quality/issue-ledger closure fixture. It uses
     # synthetic WP functions and a positive fail-on-assertion PASS marker;
     # no DB, publish, email or authorization. Unknown PHP stays denied.
@@ -434,6 +439,9 @@ def command_for(test):
     if path.suffix == ".py":
         return [sys.executable, str(path)]
     if path.suffix == ".php":
+        if test == "wp-content/plugins/mad4b-site-control-plane/tests/mcp-official-required-preflight-runtime.php":
+            ensure(not path.is_symlink(), "Official MCP test symlink denied")
+            return ["php", str(path), "/tmp/mad4b-readiness-certified-mcp-adapter/mcp-adapter"]
         if test in STANDALONE_PHP_REGRESSIONS:
             ensure(not path.is_symlink(), "Standalone test symlink denied " + test)
             return ["php", str(path)]
@@ -557,6 +565,8 @@ def self_test():
         "tests/presentation-integrity-jetengine-source-hermetic.php",
     ):
         assert command_for(reviewed) == ["php", str((ROOT / reviewed).resolve())]
+    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/mcp-official-required-preflight-runtime.php") == [
+        "php", str((ROOT / "wp-content/plugins/mad4b-site-control-plane/tests/mcp-official-required-preflight-runtime.php").resolve()), "/tmp/mad4b-readiness-certified-mcp-adapter/mcp-adapter"]
     assert command_for("tests/brand-quality-readiness-coverage-hermetic.php") == [
         "php", str((ROOT / "tests/brand-quality-readiness-coverage-hermetic.php").resolve())]
     assert command_for("tests/media-rights/media-rights-source-convergence-hermetic.php") == [

@@ -134,6 +134,26 @@ jobs:
           EXACT_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           set -euo pipefail
+          # Materialize only the certified, already-vendored official Adapter.
+          # Exact archive size + SHA256 are required before offline DTO tests.
+          python3 - <<'PY_MCP_CERT'
+          import hashlib, json
+          from pathlib import Path
+          root=Path("wp-content/plugins/mad4b-site-control-plane")
+          cert=json.loads((root/"config/certified-providers.json").read_text())["providers"]["mcp_adapter"]
+          archive=Path("wp-content/plugins/mcp-adapter.zip")
+          if archive.is_symlink() or not archive.is_file():
+              raise SystemExit("Bundled MCP Adapter archive unavailable or symlinked")
+          if archive.stat().st_size != int(cert["release_asset_bytes"]):
+              raise SystemExit("Bundled MCP Adapter archive byte length differs from certified source")
+          if hashlib.sha256(archive.read_bytes()).hexdigest()!=cert["archive_sha256"]:
+              raise SystemExit("Bundled MCP Adapter SHA256 differs from certified source")
+          print("READINESS_MCP_OFFICIAL_ARCHIVE_PIN: PASS")
+          PY_MCP_CERT
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/materialize-packaged-plugin.py \
+            --archive wp-content/plugins/mcp-adapter.zip \
+            --plugins-dir /tmp/mad4b-readiness-certified-mcp-adapter --slug mcp-adapter
+          test -f /tmp/mad4b-readiness-certified-mcp-adapter/mcp-adapter/vendor/autoload.php
           python3 tools/readiness_test_execution.py self-test
           python3 tools/readiness_test_execution.py evaluate \
             --head-sha "$EXACT_HEAD" \
