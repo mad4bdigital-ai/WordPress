@@ -29,6 +29,18 @@
         "'authorization_issued' => false"
       ],
       "review_class": "exact_source_regression_only_not_signed_release"
+    },
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php": {
+      "historical_source_sha256": "95abcad00a651254d1c672feb30cde56e43befc85383a631494c6f305d698ffb",
+      "current_source_sha256": "c07316aaa3a1d915fb9699a46a2c317e845647adcd501090a95dc8db4a98c285",
+      "fail_closed_code_witnesses": [
+        "require_once __DIR__ . '/trait-mad4b-scp-abilities-registration.php';",
+        "use MAD4B_SCP_Abilities_Registration_Trait;",
+        "public function register_abilities()",
+        "$this->register_source_abilities();",
+        "MAD4B_SCP_Authorization::authorize_mutation("
+      ],
+      "review_class": "exact_source_regression_only_not_signed_release"
     }
   }
 }
