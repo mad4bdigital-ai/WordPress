@@ -179,6 +179,9 @@ jobs:
           set -euo pipefail
           python3 tests/test_authorization_recovery_trait_nonregression.py
           python3 tests/test_content_readiness_trait_parity.py
+          python3 tests/test_core_web_vitals_configuration_trait_parity.py
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-web-vitals.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/trait-mad4b-scp-core-web-vitals-configuration.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/trait-mad4b-scp-content-readiness-scanning.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/trait-mad4b-scp-content-readiness-reconciliation.php
