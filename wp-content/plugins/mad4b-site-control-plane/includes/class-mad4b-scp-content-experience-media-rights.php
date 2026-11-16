@@ -10,7 +10,6 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 final class MAD4B_SCP_Content_Experience_Media_Rights {
 	const CONTRACT = 'mad4b.content-experience-media-publish-rights.v1';
-
 	private static function evaluation_date( $today = '' ) {
 		if ( ! is_string( $today ) ) return new WP_Error( 'mad4b_content_experience_media_rights_date_invalid', 'A trusted media evaluation date must be a string.' );
 		$today = trim( $today );
@@ -24,7 +23,6 @@ final class MAD4B_SCP_Content_Experience_Media_Rights {
 		}
 		return $today;
 	}
-
 	/** Concrete restrictions are blocking, independent of the advisory/enforced
 	 * setting. Missing data is not a restriction, and an invalid date is not
 	 * evidence that a license continues indefinitely. */
@@ -43,11 +41,9 @@ final class MAD4B_SCP_Content_Experience_Media_Rights {
 				array( 'key' => $key, 'attachment_id' => $id, 'expired_on' => $expiry ) );
 		return null;
 	}
-
 	public static function publish_guard( array $field_specs, array $effective_meta, $today = '' ) {
 		$today = self::evaluation_date( $today );
 		if ( is_wp_error( $today ) ) return $today;
-
 		// Site-neutral publication policy, shared with remote media rights.
 		// Absence of licence metadata is advisory by default, not a claim of
 		// legal reuse permission. Identity and provenance checks remain active.
@@ -101,16 +97,13 @@ final class MAD4B_SCP_Content_Experience_Media_Rights {
 			$file = get_attached_file( $id );
 			return is_string( $file ) && is_file( $file );
 		};
-
 		foreach ( $field_specs as $key => $spec ) {
 			if ( false === strpos( isset( $spec['kind'] ) ? (string) $spec['kind'] : '', '_usage' ) ) continue;
 			if ( 'require_valid' !== ( isset( $spec['publish_rights_policy'] ) ? (string) $spec['publish_rights_policy'] : 'none' ) ) continue;
 			++$checked_fields;
-
 			$reference = isset( $spec['references_field'] ) ? (string) $spec['references_field'] : '';
 			$reference_ids = isset( $effective_meta[ $reference ], $field_specs[ $reference ] ) ? MAD4B_SCP_Content_Experience_Media_Storage::reference_ids( $effective_meta[ $reference ], $field_specs[ $reference ] ) : array();
 			$items = isset( $effective_meta[ $key ] ) && is_array( $effective_meta[ $key ] ) ? $effective_meta[ $key ] : array();
-
 			if ( ! empty( $reference_ids ) && empty( $items ) ) {
 				$local_only = true;
 				foreach ( $reference_ids as $reference_id ) {

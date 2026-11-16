@@ -24,6 +24,9 @@ require $fixture . '/plugins/foreign/callback.php';
 class WP_Error { private $code; private $data; function __construct( $code, $message = '', $data = array() ) { $this->code = $code; $this->data = $data; } function get_error_code() { return $this->code; } function get_error_data() { return $this->data; } }
 class WP_Hook { public $callbacks = array(); }
 function is_wp_error( $value ) { return $value instanceof WP_Error; }
+// WordPress core deprecation notice API is present on a real site.
+function _deprecated_function( $function, $version, $replacement = null ) {}
+function esc_html__( $message, $domain = 'default' ) { return (string) $message; }
 function hook_key( $cb ) { return is_array( $cb ) ? ( is_object( $cb[0] ) ? spl_object_hash( $cb[0] ) : $cb[0] ) . ':' . $cb[1] : ( is_object( $cb ) ? spl_object_hash( $cb ) : $cb ); }
 function add_action( $name, $cb, $priority = 10, $args = 1 ) { if ( ! isset( $GLOBALS['wp_filter'][$name] ) ) $GLOBALS['wp_filter'][$name] = new WP_Hook(); $GLOBALS['wp_filter'][$name]->callbacks[$priority][hook_key( $cb )] = array( 'function' => $cb ); }
 function has_action( $name, $cb ) { foreach ( $GLOBALS['wp_filter'][$name]->callbacks ?? array() as $p => $rows ) if ( isset( $rows[hook_key( $cb )] ) ) return $p; return false; }
@@ -58,19 +61,22 @@ class MAD4B_SCP_External_Handshake_Evidence { static function status() { throw n
 class MAD4B_SCP_Capability_Descriptor_Registry {
 	const CONTRACT = 'mad4b.capability-descriptor.v2';
 	const CONSUMER_BINDING_CONTRACT = 'mad4b.capability-descriptor-consumer-binding.v1';
+	const GENERATION_CONTRACT = 'mad4b.capability-generation-roots.v1';
 	public static function binding( $name, $consumer ) {
 		$name = (string) $name;
 		return array(
 			'contract' => self::CONSUMER_BINDING_CONTRACT,
 			'consumer' => (string) $consumer,
 			'descriptor_contract' => self::CONTRACT,
-			'generation_contract' => 'mad4b.capability-generation-roots.v1',
+			'generation_contract' => self::GENERATION_CONTRACT,
 			'ability_name' => $name,
 			'input_schema_sha256' => hash( 'sha256', 'endpoint-schema:' . $name ),
 			'classification_sha256' => hash( 'sha256', 'endpoint-classification:' . $name ),
 			'execution_lane' => 'read',
 			'descriptor_sha256' => hash( 'sha256', 'endpoint-descriptor:' . $name ),
 			'generation_roots' => array( 'contract_root' => str_repeat( 'a', 64 ), 'site_root' => str_repeat( 'b', 64 ) ),
+			'authority_snapshot_is_grant' => false,
+			'authority_revalidation_required' => true,
 			'authorizing' => false,
 		);
 	}
@@ -160,7 +166,7 @@ if ( isset( $expect[$case] ) ) {
 		$failure = array( 'failing_ability' => 'mad4b/example', 'stage' => 'official_schema_validation', 'error_code' => 'mcp_tool_validation_failed', 'error_class' => 'WP_Error', 'validator_reason' => 'input_schema_properties_not_object', 'tool_bytes' => 120, 'raw_payload' => 'PRIVATE_PAYLOAD' );
 		$class_failure = array( 'alias' => 'tool_validator', 'class' => 'WP\\MCP\\Domain\\Tools\\McpToolValidator', 'kind' => 'class', 'expected_source' => 'mcp-adapter/includes/Domain/Tools/McpToolValidator.php', 'observed_source' => 'foreign-plugin/vendor/McpToolValidator.php', 'expected_sha256' => str_repeat( 'c', 64 ), 'actual_sha256' => str_repeat( 'd', 64 ), 'expected_git_blob_sha1' => str_repeat( 'a', 40 ), 'actual_git_blob_sha1' => str_repeat( 'b', 40 ), 'reason' => 'runtime_class_source_mismatch', 'absolute_path' => '/PRIVATE/ABSOLUTE/PATH' );
 		$provenance = array( 'enforced' => true, 'ready' => false, 'state' => 'mixed_runtime', 'blocker' => 'mcp_adapter_class_provenance_mismatch', 'failure_count' => 1, 'failures' => array( $class_failure ) );
-		$reflection = new ReflectionProperty( MAD4B_SCP_Servers::class, 'registrations' ); $reflection->setAccessible( true );
+		$reflection = new ReflectionProperty( MAD4B_SCP_Servers::class, 'registrations' ); if ( PHP_VERSION_ID < 80100 ) $reflection->setAccessible( true );
 		$reflection->setValue( null, array( 'mad4b-chatgpt' => array( 'registered' => true, 'error' => 'mcp_adapter_class_provenance_mismatch', 'registration_failure' => array( 'stage' => 'server_construction', 'reason' => 'runtime_constructor_contract_mismatch', 'fingerprint' => str_repeat( 'e', 64 ) ), 'preflight' => array( 'ready' => false, 'failures' => array_fill( 0, 15, $failure ), 'runtime_class_provenance' => $provenance ) ) ) );
 		$evidence = MAD4B_SCP_Connection_Status::endpoint_diagnostic( 'mad4b-chatgpt' );
 		check( 12 === count( $evidence['preflight_failures'] ) && 15 === $evidence['preflight_failure_count'] && false === strpos( json_encode( $evidence ), 'PRIVATE_PAYLOAD' ), 'Failure evidence unbounded or private' );

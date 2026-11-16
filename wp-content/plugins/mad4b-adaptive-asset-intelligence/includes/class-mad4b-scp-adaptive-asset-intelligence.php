@@ -48,7 +48,10 @@ final class MAD4B_SCP_Adaptive_Asset_Intelligence {
   add_action('rest_api_init',[__CLASS__,'rest']);
   // Only authoring or source changes invalidate. No front-end polling or scanning.
   add_action('elementor/document/after_save',[__CLASS__,'elementor_saved'],10,2);
-  add_action('save_post',[__CLASS__,'post_saved'],20,3);
+  // WP Core fires this after the post, its meta and taxonomy assignments
+  // have been persisted; graph impact is more accurate than early save_post.
+  // Also covers a directly-published new post, not only subsequent updates.
+  add_action('wp_after_insert_post',[__CLASS__,'post_saved'],20,3);
   add_action('upgrader_process_complete',[__CLASS__,'upgraded'],10,2);
   add_action('updated_option',[__CLASS__,'option_changed'],10,3);
   add_action('wp_update_nav_menu',[__CLASS__,'menu_changed']);
@@ -100,21 +103,92 @@ final class MAD4B_SCP_Adaptive_Asset_Intelligence {
    'summary'=>$evt['message'],'recorded_at'=>gmdate('c',$evt['timestamp']),'external_delivery'=>false]);
   return ['stored'=>true,'event_id'=>$evt['id']];
  }
+ private static function job_source_token(array $job): string {
+  $stored=(string)($job['source_token']??'');
+  if(preg_match('/^[a-f0-9]{32}$/D',$stored))return $stored;
+  // Existing queue entries predate source_tokens. Their legacy identifier
+  // and last edit time are stable until an explicit requeue creates a UUID.
+  return substr(hash('sha256',(string)($job['id']??'').'|'
+    .(int)($job['updated']??0).'|'.(string)($job['reason']??'')),0,32);
+ }
+ /**
+  * Queue writes are serialized inside a WordPress options-row transaction;
+  * concurrent authoring and a delayed browser receipt cannot overwrite the
+  * source_token of newer content. This is NOT a new scheduler, broker or table.
+  * Fail closed: a database error never certifies a source or removes its job.
+  */
+ private static function mutate_queue(callable $mutation): array {
+  global $wpdb;
+  if(!is_object($wpdb) || !method_exists($wpdb,'get_var')
+     || !method_exists($wpdb,'prepare') || !method_exists($wpdb,'query')
+     || !method_exists($wpdb,'update')){
+   // Isolated PHP fixtures have no WordPress DB; never use in live runtime.
+   if(defined('ABSPATH') && str_starts_with(ABSPATH,'/mock/')){
+    $jobs=self::queue();$value=$mutation($jobs);
+    update_option(self::QUEUE,array_slice(array_values($jobs),0,50),false);
+    return ['ok'=>true,'value'=>$value];
+   }
+   return ['ok'=>false,'error'=>'db_api_unavailable'];
+  }
+  // Ensure an existing row before row-level locking on a newly enrolled site.
+  $missing=new stdClass();
+  if(get_option(self::QUEUE,$missing)===$missing)
+    add_option(self::QUEUE,[], '',false);
+  $inTransaction=false;
+  try{
+   if($wpdb->query('START TRANSACTION')===false)
+    return ['ok'=>false,'error'=>'db_transaction_unavailable'];
+   $inTransaction=true;
+   $raw=$wpdb->get_var($wpdb->prepare(
+     "SELECT option_value FROM {$wpdb->options} WHERE option_name=%s FOR UPDATE",
+     self::QUEUE));
+   if(!is_string($raw))throw new RuntimeException('queue_row_unavailable');
+   $jobs=maybe_unserialize($raw);
+   if(!is_array($jobs))throw new RuntimeException('queue_source_corrupt');
+   $value=$mutation($jobs);
+   $serialized=maybe_serialize(array_slice(array_values($jobs),0,50));
+   if(!is_string($serialized) || strlen($serialized)>180000)
+    throw new RuntimeException('queue_payload_oversize');
+   if($serialized!==$raw){
+    $updated=$wpdb->update($wpdb->options,
+      ['option_value'=>$serialized],['option_name'=>self::QUEUE]);
+    if($updated!==1)throw new RuntimeException('queue_cas_update_rejected');
+   }
+   if($wpdb->query('COMMIT')===false)throw new RuntimeException('queue_commit_failed');
+   $inTransaction=false;
+   wp_cache_delete(self::QUEUE,'options');
+   wp_cache_delete(self::QUEUE,'notoptions');
+   wp_cache_delete('alloptions','options');
+   return ['ok'=>true,'value'=>$value];
+  }catch(Throwable $err){
+   if($inTransaction)$wpdb->query('ROLLBACK');
+   return ['ok'=>false,'error'=>'queue_atomic_mutation_failed'];
+  }
+ }
  public static function mark_dirty($reason='content_change',$path='/',bool $home_css_dependency=true): array {
   if (!self::scope())return ['queued'=>false];
   $path=self::path($path);if ($path==='')$path='/';
-  $now=time();$queue=self::queue();$id=hash('sha256',self::uuid().'|'.$reason.'|'.$path);
-  $deduplicated=false;
-  foreach($queue as $i=>$job){
-   if (($job['id']??'')===$id){
-    $queue[$i]['updated']=$now;
-    $deduplicated=true;
-    break;
+  $now=time();$id=hash('sha256',self::uuid().'|'.$reason.'|'.$path);
+  $saved=self::mutate_queue(static function(&$queue)use($id,$now,$reason,$path,$home_css_dependency){
+   foreach($queue as $i=>$job){
+    if (($job['id']??'')===$id){
+     $queue[$i]['updated']=$now;
+     $queue[$i]['source_token']=bin2hex(random_bytes(16));
+     $queue[$i]['home_css_dependency']=$home_css_dependency;
+     // New source revision must not inherit stale HOLD, next attempt, or proof.
+     $queue[$i]['state']='pending';
+     $queue[$i]['attempts']=0;
+     unset($queue[$i]['next_attempt_at'],$queue[$i]['last_worker_status']);
+     return true;
+    }
    }
-  }
-  if (!$deduplicated)
-   array_unshift($queue,['id'=>$id,'reason'=>sanitize_key($reason),'path'=>$path,'updated'=>$now,'state'=>'pending']);
-  update_option(self::QUEUE,array_slice($queue,0,50),false);
+   array_unshift($queue,['id'=>$id,'reason'=>sanitize_key($reason),'path'=>$path,
+    'updated'=>$now,'state'=>'pending','attempts'=>0,
+    'source_token'=>bin2hex(random_bytes(16)),
+    'home_css_dependency'=>$home_css_dependency]);
+   return false;
+  });
+  $deduplicated=(bool)($saved['value']??false);
   // Queue every content edit for source/route inspection, but only invalidate
   // the global HOME CSS certificate for a proven/potential HOME dependency.
   // The runtime still requires an exact CSS SHA and Elementor document graph;
@@ -129,28 +203,108 @@ final class MAD4B_SCP_Adaptive_Asset_Intelligence {
    if (class_exists('MAD4B_SCP_Adaptive_Presentation_Discovery',false))
     MAD4B_SCP_Adaptive_Presentation_Discovery::queue_refresh();
   }
-  self::emit('queued','info',$path,'CSS verification queued after '.sanitize_key($reason),
+  self::emit(($saved['ok']??false)?'queued':'hold',
+    ($saved['ok']??false)?'info':'warning',
+    $path,'CSS verification queued after '.sanitize_key($reason),
     ['digest'=>(string)$epoch]);
-  return ['queued'=>true,'deduplicated'=>$deduplicated,'revision'=>$epoch,
+  return ['queued'=>(bool)($saved['ok']??false),'deduplicated'=>$deduplicated,'revision'=>$epoch,
     'home_css_dependency'=>$home_css_dependency];
  }
- public static function acknowledge_worker($path,$status,$detail=''): array {
+ /**
+  * One existing WP-CLI worker receipt per site-scoped queued route. A failed
+  * browser attempt is NOT final: keep the job and an exponential retry date.
+  * Only a first-party certified/native terminal result removes the job.
+  */
+ public static function acknowledge_worker($path,$status,$detail='',
+     $expected_source_token=''): array {
   if (!self::scope() || !defined('WP_CLI') || !WP_CLI)return ['ok'=>false,'error'=>'local_cli_required'];
   $path=self::path($path);$status=sanitize_key((string)$status);
   if($path==='' || !in_array($status,['certified','hold','native','failed'],true))return ['ok'=>false,'error'=>'bad_event'];
-  $queue=array_values(array_filter(self::queue(),static fn($j)=>($j['path']??'')!==$path));
-  update_option(self::QUEUE,$queue,false);
+  $token=(string)$expected_source_token;
+  if($token!=='' && !preg_match('/^[a-f0-9]{32}$/D',$token))
+   return ['ok'=>false,'error'=>'invalid_expected_source_token'];
+  $now=time();
+  $saved=self::mutate_queue(static function(&$queue)use($path,$status,$token,$now){
+   $matched=0;$retries=0;$stale=0;
+   foreach($queue as $i=>$job){
+    if(!is_array($job) || ($job['path']??'')!==$path)continue;
+    if($token!=='' && !hash_equals(self::job_source_token($job),$token)){
+     ++$stale;continue;
+    }
+    ++$matched;
+    if($status==='certified' || $status==='native'){
+     unset($queue[$i]);continue;
+    }
+    $retries=min(12,max(0,(int)($job['attempts']??0))+1);
+    $delay=min(21600,300*(2**min(6,$retries-1)));
+    $queue[$i]['state']=$status==='failed'?'failed':'hold';
+    $queue[$i]['attempts']=$retries;
+    $queue[$i]['last_worker_status']=$status;
+    $queue[$i]['last_checked_at']=$now;
+    $queue[$i]['next_attempt_at']=$now+$delay;
+   }
+   return ['matched'=>$matched,'retries'=>$retries,'stale'=>$stale];
+  });
+  if(!($saved['ok']??false))return ['ok'=>false,'error'=>$saved['error']??'queue_write_failed'];
+  $matched=(int)($saved['value']['matched']??0);
+  $retries=(int)($saved['value']['retries']??0);
+  $stale=(int)($saved['value']['stale']??0);
+  if(!$matched && $token!=='')
+   return ['ok'=>false,'error'=>$stale?'source_revision_changed':'job_not_found'];
   $type=$status==='certified'?'certified':($status==='failed'?'error':'hold');
   $sev=$status==='certified'?'success':($status==='failed'?'critical':'warning');
   $result=self::emit($type,$sev,$path,'Adaptive CSS '.$status.': '.substr(sanitize_text_field((string)$detail),0,120),['digest'=>$status]);
-  return ['ok'=>true,'status'=>$status,'event'=>$result];
+  return ['ok'=>true,'status'=>$status,'matched'=>$matched,
+    'retry_scheduled'=>($matched>0 && in_array($status,['hold','failed'],true)),
+    'attempts'=>$retries,'event'=>$result];
+ }
+ /** Select the due work using the existing WP-CLI-only Worker contract. */
+ public static function due_worker_jobs(int $limit=10): array {
+  if(!self::scope() || !defined('WP_CLI') || !WP_CLI)return [];
+  $limit=max(1,min(25,$limit));$now=time();$out=[];
+  foreach(self::queue() as $job){
+   if(!is_array($job) || !in_array($job['state']??'', ['pending','hold','failed'],true)
+      || (int)($job['next_attempt_at']??0)>$now)continue;
+   $path=self::path($job['path']??'');
+   if($path==='')continue;
+   // Workers receive only public route, job digest and retry metadata.
+   $out[]=['id'=>(string)($job['id']??''),'path'=>$path,
+      'reason'=>sanitize_key((string)($job['reason']??'')),
+      'source_token'=>self::job_source_token($job),
+      'home_css_dependency'=>($job['home_css_dependency']??null),
+      'attempts'=>(int)($job['attempts']??0)];
+   if(count($out)>=$limit)break;
+  }
+  return $out;
  }
  public static function post_saved($id,$post,$update): void {
-  if (!$update || wp_is_post_revision($id) || !($post instanceof WP_Post) || $post->post_status!=='publish')return;
+  if (wp_is_post_revision($id) || wp_is_post_autosave($id)
+      || !($post instanceof WP_Post) || $post->post_status!=='publish')return;
   // Any public content type can own Elementor condition trees in any company.
   if ($post->post_type!=='elementor_library') {
    $object=get_post_type_object($post->post_type);
    if (!$object || empty($object->public))return;
+  }
+  // A tour-rate record is internal commerce source data even when a legacy
+  // CPT registration exposes public permalinks that actually return 404.
+  // Reuse the canonical linked tour, matching Cache Lifecycle's native
+  // related_tour_id contract; never queue /tour-rates/<id> for browser QA.
+  if($post->post_type==='tour-rates'){
+   $tour=(int)get_post_meta($id,'related_tour_id',true);
+   if($tour>0 && get_post_type($tour)==='tours-and-activities'
+       && get_post_status($tour)==='publish'){
+    $path=(string)wp_parse_url(get_permalink($tour),PHP_URL_PATH);
+    $impact=class_exists('MAD4B_Cache_Lifecycle_V1',false)
+       && method_exists('MAD4B_Cache_Lifecycle_V1','home_impact_preview')
+       ? MAD4B_Cache_Lifecycle_V1::home_impact_preview([$tour]):null;
+    self::mark_dirty('linked_rate_source_saved',$path,
+       !is_array($impact) || ($impact['purge']??true)!==false);
+   }else{
+    // Unknown source relation: fail closed to a canonical discovery pass.
+    // Do not manufacture a public HTTP page out of an internal rate record.
+    self::mark_dirty('unresolved_rate_source_saved','/',true);
+   }
+   return;
   }
   $path=$post->post_type==='elementor_library'?'/':(string)wp_parse_url(get_permalink($id),PHP_URL_PATH);
   $homeDependency=true;

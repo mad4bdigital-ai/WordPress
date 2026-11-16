@@ -21826,6 +21826,40 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-remote-media-adapter.php",
+      "source_blob_sha": "561264cbbcd585a8bdbd56811ae2d60996178f2d",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "MAD4B source-diff CI reviewer (not authenticated owner approval)",
+      "review_rationale": "Exact-Git-object comparison against the unchanged ancestor proves all executable, comment and other nonblank PHP source lines are identical; only separator whitespace removed to respect the pre-existing service source budget. No media publication, identity, expiry, checkout or runtime authorization change.",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/test_ci_whitespace_only_media_source_20261116.py"
+      ]
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-media-rights.php",
+      "source_blob_sha": "3dae946a0cf1cdb0fb3784484cc3412b502afd77",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "MAD4B source-diff CI reviewer (not authenticated owner approval)",
+      "review_rationale": "Exact-Git-object comparison against the unchanged ancestor proves all executable, comment and other nonblank PHP source lines are identical; only separator whitespace removed to respect the pre-existing service source budget. No media publication, identity, expiry, checkout or runtime authorization change.",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "tests/test_ci_whitespace_only_media_source_20261116.py"
+      ]
     }
   ],
   "code_change_rules": {

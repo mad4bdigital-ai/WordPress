@@ -15,6 +15,9 @@ function get_post_meta($id,$key,$single=true){return $GLOBALS['meta'][$id][$key]
 function home_url($path=''){return 'https://tours.dev.mad4b.com'.$path;}
 function wp_parse_url($raw,$component=-1){return parse_url($raw,$component);}
 function mad4b_render_query_market_identity(){return $GLOBALS['market'];}
+function mad4b_render_query_generation_for_id($id){return $GLOBALS['effective_query_generation']??'';}
+
+$GLOBALS['effective_query_generation']='generation-a';
 $GLOBALS['locale']='en';
 $GLOBALS['market']=['country'=>'DE','currency'=>'EUR'];
 $GLOBALS['meta']=[
@@ -68,8 +71,10 @@ $origin=$GLOBALS['options']['mad4b_secondary_grid_lazy_layout_proofs_v1'];
 check(true,'complete trusted country/locale/CSS/content/viewport parity');
 $GLOBALS['market']['country']='US';check(false,'foreign market cannot share country proof');
 $GLOBALS['market']['country']='DE';
-$GLOBALS['options']['mad4b_render_query_data_generation']='generation-b';
-check(false,'stale query generation denied');$GLOBALS['options']['mad4b_render_query_data_generation']='generation-a';
+$GLOBALS['effective_query_generation']='generation-b';
+check(false,'stale query generation denied');$GLOBALS['effective_query_generation']='generation-a';
+$GLOBALS['options']['mad4b_render_query_data_generation']='unrelated-global-fragment-epoch';
+check(true,'unrelated legacy fragment update preserves valid scoped certificate');
 $GLOBALS['locale']='es';check(false,'missing translated locale proof denied');$GLOBALS['locale']='en';
 $GLOBALS['options']['mad4b_css_ai_epoch_v1']=124;check(false,'stale css epoch denied');$GLOBALS['options']['mad4b_css_ai_epoch_v1']=123;
 $GLOBALS['meta'][25927]['_elementor_data'].='changed';check(false,'modified Elementor document denied');$GLOBALS['meta'][25927]['_elementor_data']=str_repeat('correct-authoring-payload;',20);
@@ -91,4 +96,4 @@ file_put_contents($GLOBALS['style_file'],'modified style '.str_repeat('x',100));
 file_put_contents($GLOBALS['style_file'],str_repeat('first-class-authoring-generated-css;',30));
 $GLOBALS['meta'][44]['_elementor_page_settings']['viewport_mobile']=768;check(false,'changed native Elementor breakpoint denied');$GLOBALS['meta'][44]['_elementor_page_settings']['viewport_mobile']=767;
 check(true,'full source/CSS/breakpoint proof restored');
-echo "PASS 20/20 native conditional term SSR/AJAX evidence tests\n";
+echo "PASS 21/21 native conditional term SSR/AJAX evidence tests\n";

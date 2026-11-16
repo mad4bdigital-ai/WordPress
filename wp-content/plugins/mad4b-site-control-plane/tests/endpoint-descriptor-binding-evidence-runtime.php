@@ -9,9 +9,26 @@ class WP_Error {
 }
 function is_wp_error( $value ) { return $value instanceof WP_Error; }
 class MAD4B_SCP_Capability_Descriptor_Registry {
+    const CONTRACT = 'mad4b.capability-descriptor.v2';
+    const GENERATION_CONTRACT = 'mad4b.capability-generation-roots.v1';
+    const CONSUMER_BINDING_CONTRACT = 'mad4b.capability-descriptor-consumer-binding.v1';
     public static function binding( $ability, $consumer ) {
         if ( $ability === 'mad4b/missing-descriptor' ) return new WP_Error( 'mad4b_chatgpt_projection_ability_unavailable' );
-        return array( 'contract' => 'mad4b.capability-descriptor-consumer-binding.v1', 'ability_name' => $ability, 'consumer' => $consumer );
+        return array(
+            'contract' => self::CONSUMER_BINDING_CONTRACT,
+            'descriptor_contract' => self::CONTRACT,
+            'generation_contract' => self::GENERATION_CONTRACT,
+            'ability_name' => $ability,
+            'consumer' => $consumer,
+            'input_schema_sha256' => hash('sha256','input:'.$ability),
+            'classification_sha256' => hash('sha256','class:'.$ability),
+            'descriptor_sha256' => hash('sha256','descriptor:'.$ability),
+            'execution_lane' => 'read',
+            'generation_roots' => array('contract_root' => str_repeat('a',64), 'site_root' => str_repeat('b',64)),
+            'authorizing' => false,
+            'authority_snapshot_is_grant' => false,
+            'authority_revalidation_required' => true,
+        );
     }
 }
 require __DIR__ . '/../includes/class-mad4b-scp-server-registration-evidence.php';

@@ -249,7 +249,11 @@ for forbidden_direct in [
 # is intercepted regardless of current write readiness and can only cross to
 # mad4b-write after authority, eligibility, and mount checks succeed.
 for marker in [
-    "'mad4b-chatgpt' === $current && MAD4B_SCP_Servers::is_external_write_candidate( $ability_name )",
+    "$external_write_candidate = MAD4B_SCP_Servers::is_external_write_candidate( $ability_name );",
+    "if ( ! is_bool( $external_write_candidate ) )",
+    "'mad4b_transport_write_catalog_unverified'",
+    "'mad4b_write_candidate_not_cataloged'",
+    "if ( 'mad4b-chatgpt' === $current && true === $external_write_candidate ) {",
     "'mad4b_write_authority_not_ready'",
     'MAD4B_SCP_Staging_Write_Authority::effective()',
     'MAD4B_SCP_Staging_Write_Authority::is_write_ability( $ability_name )',
@@ -258,6 +262,19 @@ for marker in [
     "'chatgpt_write_discovery_model' => 'stable_unified_catalog_fail_closed_execution'",
 ]:
     assert marker in transport_context, f'missing fail-closed ChatGPT write delegation marker: {marker}'
+
+# Exact source-order fence: a nonboolean original catalog result must be
+# rejected, and a declared Write ability not in that catalog must fail before
+# the eligible-write delegation branch. This updates the test expectation to
+# the hardened runtime; it does not loosen permissions or patch PHP.
+write_probe = transport_context.index(
+    "$external_write_candidate = MAD4B_SCP_Servers::is_external_write_candidate( $ability_name );")
+boolean_guard = transport_context.index("if ( ! is_bool( $external_write_candidate ) )", write_probe)
+unknown_catalog = transport_context.index("'mad4b_transport_write_catalog_unverified'", boolean_guard)
+uncataloged = transport_context.index("'mad4b_write_candidate_not_cataloged'", unknown_catalog)
+write_branch = transport_context.index(
+    "if ( 'mad4b-chatgpt' === $current && true === $external_write_candidate ) {", uncataloged)
+assert write_probe < boolean_guard < unknown_catalog < uncataloged < write_branch
 
 assert "'mad4b/database-raw-query'" in servers, 'Raw SQL isolation must remain explicit'
 assert "array( 'mad4b/database-raw-query' )" in servers, 'Breakglass raw SQL surface must remain isolated'

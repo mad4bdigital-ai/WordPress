@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Shared Secondary Listing Lazy Load
  * Description: Uses native JetEngine signed AJAX for secondary, public, non-filtered listing grids; site-specific opt-outs.
- * Version: 1.0.12
+ * Version: 1.0.13
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
@@ -178,7 +178,11 @@ function mad4b_secondary_grid_lazy_ajax_parity_proven( $query_id, $listing_id, $
     $market=strtolower($country.'-'.$currency);
     $locale=(string)apply_filters('wpml_current_language','');
     if (!preg_match('/^[a-z]{2}(?:-[a-z]{2})?$/D',$locale))return false;
-    $generation=(string)get_option('mad4b_render_query_data_generation','');
+    // Use the same source-scoped revision that owns the JetEngine cache group.
+    // Legacy public fragment revisions must not invalidate unrelated browser
+    // certificates. Missing Query Builder identity safely preserves native SSR.
+    $generation=function_exists('mad4b_render_query_generation_for_id')
+        ?(string)mad4b_render_query_generation_for_id($query_id):'';
     if ($generation==='' || strlen($generation)>160)return false;
     $doc_raw=get_post_meta($document_id,'_elementor_data',true);
     if (!is_string($doc_raw) || strlen($doc_raw)<200)return false;

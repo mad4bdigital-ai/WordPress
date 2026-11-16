@@ -28,13 +28,11 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 	const MAX_REMOTE_IMAGE_BYTES = 15728640;
 	const MAX_REMOTE_IMAGE_PIXELS = 40000000;
 	const MAX_REMOTE_CANDIDATES = 50;
-
 	public function id() { return 'remote-media'; }
 	public function label() { return 'Remote Media'; }
 	public function is_available() { return function_exists( 'wp_safe_remote_get' ) && class_exists( 'DOMDocument' ); }
 	protected function certified_provider_key() { return 'media'; }
 	protected function mutation_requires_certification() { return false; }
-
 	public function ability_names() {
 		return array(
 			'read' => array( self::REMOTE_DISCOVER_ABILITY, self::REMOTE_INSPECT_ABILITY, self::REMOTE_IMPORT_PLAN_ABILITY, self::REMOTE_MANIFEST_PLAN_ABILITY, self::REMOTE_PROVENANCE_GET_ABILITY, self::REMOTE_RECOVERY_STATUS_ABILITY ),
@@ -42,7 +40,6 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 			'admin' => array(),
 		);
 	}
-
 	public function register_abilities() {
 		$this->add_ability(
 			self::REMOTE_DISCOVER_ABILITY, 'Discover Remote Image Candidates', 'remote_source_discover',

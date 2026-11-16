@@ -85,3 +85,11 @@ Regression suite now has 20/20 successful assertions.
 No conditional grid was enrolled or forced into lazy rendering during
 production publication. Source Tours.dev remains at CSS epoch 123; older layout
 proofs remain at epoch 122. Never advance their epoch without browser recertification.
+
+## Native scoped Query Builder generation, 2026-11-16
+
+Auto-lazy v1.0.13 now gets the current true source-scoped generation from
+mad4b_render_query_generation_for_id(). An unrelated legacy fragment global
+epoch does not invalidate a valid component certificate, while actual CPT or
+term-dependency edits do. The updated regression has 21/21 assertions.
+Do not replace the newer 0.3.27 Critical CSS orchestrator from this branch.

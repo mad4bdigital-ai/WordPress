@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Shared Renderer Query Governor
  * Description: Capability-aware, versioned JetEngine data-query caching, independent of tenant IDs and domains.
- * Version: 1.3.9
+ * Version: 1.4.1
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
@@ -174,6 +174,134 @@ function mad4b_render_query_policy( $query ) {
     return [ 'cache' => false, 'ttl' => 0, 'reason' => 'dynamic_or_unclassified' ];
 }
 
+
+/**
+ * Query-scoped source revisions. Reuse JetEngine's actual query schema and
+ * WordPress registered CPT/taxonomy relationships, never a hand-maintained
+ * widget/listing ID map. Unknown query contracts retain global generation.
+ *
+ * No new cache system: only the version dimension of native JetEngine's
+ * existing Query Builder object-cache group is changed when admitted.
+ */
+function mad4b_render_query_scope_option(string $kind, string $name): string {
+    if (!in_array($kind,['post_type','taxonomy'],true)
+        || !preg_match('/^[A-Za-z0-9_-]{1,100}$/D',$name)) return '';
+    return 'mad4b_rq_source_v1_' . ($kind==='post_type'?'p_':'t_')
+        . substr(hash('sha256',$name),0,24);
+}
+function mad4b_render_query_scope_bump(string $kind,string $name): bool {
+    $option=mad4b_render_query_scope_option($kind,$name);
+    if($option==='')return false;
+    // Nonrepeating opaque versions: concurrent writers can supersede each
+    // other, but never resurrect the version of a previously cached result.
+    $revision=substr(hash('sha256',wp_generate_uuid4().'|'.microtime(true)),0,32);
+    update_option($option,$revision,false);
+    return hash_equals($revision,(string)get_option($option,''));
+}
+function mad4b_render_query_scope_bump_post(int $post_id): bool {
+    if(!$post_id || wp_is_post_revision($post_id))return false;
+    $type=(string)get_post_type($post_id);
+    $obj=$type!==''?get_post_type_object($type):null;
+    if(!$obj || empty($obj->public)
+        || preg_match('/(?:order|booking|checkout|payment|customer|reservation|invoice)/i',$type))return false;
+    return mad4b_render_query_scope_bump('post_type',$type);
+}
+function mad4b_render_query_scope_bump_term(string $taxonomy): bool {
+    $obj=get_taxonomy($taxonomy);
+    if(!$obj || empty($obj->public))return false;
+    return mad4b_render_query_scope_bump('taxonomy',$taxonomy);
+}
+function mad4b_render_query_scope_spec($query): array {
+    if(!is_object($query) || !in_array((string)($query->query_type??''),['posts','terms'],true))return [];
+    $raw=$query->query??null;
+    $final=$query->final_query??null;
+    if(!is_array($raw))return [];
+    $type=(string)$query->query_type;
+    $scopes=[];
+    if($type==='posts'){
+        $types=$raw['post_type']??($final['post_type']??[]);
+        if(is_string($types))$types=[$types];
+        if(!is_array($types) || !$types || count($types)>18)return [];
+        foreach($types as $pt){
+            if(!is_string($pt) || $pt==='any' || !get_post_type_object($pt)
+                || empty(get_post_type_object($pt)->public))return [];
+            $scopes[]=['post_type',$pt];
+        }
+        // Term-meta based filters may change without a post edit. Include
+        // the public taxonomies explicitly selected by JetEngine Query Builder.
+        $walk=static function($clauses)use(&$walk,&$scopes):bool{
+            if(!is_array($clauses))return false;
+            foreach($clauses as $k=>$clause){
+                if(!is_array($clause))continue;
+                if(isset($clause['taxonomy'])){
+                    $tax=(string)$clause['taxonomy'];
+                    $obj=get_taxonomy($tax);
+                    if($tax==='' || !$obj || empty($obj->public))return false;
+                    $scopes[]=['taxonomy',$tax];
+                }elseif(is_int($k) && !$walk($clause))return false;
+            }
+            return true;
+        };
+        if(isset($raw['tax_query']) && !$walk($raw['tax_query']))return [];
+    }else{
+        $taxes=$raw['taxonomy']??($final['taxonomy']??[]);
+        if(is_string($taxes))$taxes=[$taxes];
+        if(!is_array($taxes) || !$taxes || count($taxes)>16)return [];
+        foreach($taxes as $tax){
+            if(!is_string($tax) || $tax==='')return [];
+            $obj=get_taxonomy($tax);
+            if(!$obj || empty($obj->public))return [];
+            $scopes[]=['taxonomy',$tax];
+            // hide_empty and object counts depend on source posts. A post
+            // save cannot silently keep an old public terms-query result.
+            foreach((array)($obj->object_type??[]) as $pt){
+                if(is_string($pt) && get_post_type_object($pt)
+                    && !empty(get_post_type_object($pt)->public)
+                    && !preg_match('/(?:order|booking|checkout|payment|customer|reservation|invoice)/i',$pt))
+                    $scopes[]=['post_type',$pt];
+            }
+        }
+    }
+    $out=[];foreach($scopes as [$kind,$name]){
+        $option=mad4b_render_query_scope_option($kind,$name);
+        if($option==='')return [];
+        $out[$option]=true;
+    }
+    if(!$out || count($out)>45)return [];
+    ksort($out,SORT_STRING);
+    return array_keys($out);
+}
+function mad4b_render_query_effective_generation($query): string {
+    $original=(string)get_option('mad4b_render_query_data_generation','initial');
+    if((string)get_option('mad4b_render_query_scoped_generation_v1','off')!=='on')return $original;
+    $spec=mad4b_render_query_scope_spec($query);
+    if(!$spec)return $original; // fail closed; unknown still globally invalidated
+    $versions=[];
+    foreach($spec as $option)$versions[$option]=(string)get_option($option,'baseline');
+    $safety=(string)get_option('mad4b_render_query_global_safety_generation_v1','initial');
+    $source=is_array($query->query??null)?$query->query:[];
+    return 'scoped:v1:' . hash('sha256',wp_json_encode([
+        'query_id'=>(int)($query->id??0),
+        'type'=>(string)($query->query_type??''),
+        'source_sha256'=>hash('sha256',wp_json_encode($source)),
+        'scope_versions'=>$versions,
+        'safety'=>$safety
+    ]));
+}
+
+/**
+ * Browser QA certificates and native Query Builder cache use one version
+ * authority. A global fragment reset must not expire an unrelated listing's
+ * expensive SSR/AJAX parity certificate when its source scopes are unchanged.
+ */
+function mad4b_render_query_generation_for_id(int $query_id): string {
+    if($query_id<1 || $query_id>PHP_INT_MAX-1
+        || !class_exists('Jet_Engine\Query_Builder\Manager'))return '';
+    $query=\Jet_Engine\Query_Builder\Manager::instance()->get_query_by_id($query_id);
+    if(!is_object($query) || (int)($query->id??0)!==$query_id)return '';
+    return mad4b_render_query_effective_generation($query);
+}
+
 add_action( 'jet-engine/query-builder/query/after-query-setup', static function ( $query ) {
     if ( ! is_object( $query ) || ! property_exists( $query, 'cache_query' ) ) { return; }
     $decision = mad4b_render_query_policy( $query );
@@ -192,7 +320,7 @@ add_action( 'jet-engine/query-builder/query/after-query-setup', static function 
     $language = (string) apply_filters( 'wpml_current_language', null );
     if ( '' === $language ) { $language = determine_locale(); }
     $language = sanitize_key( $language );
-    $version = (string) get_option( 'mad4b_render_query_data_generation', 'initial' );
+    $version = mad4b_render_query_effective_generation($query);
     $version = (string) apply_filters('mad4b/render_query/query_version',$version,$query,$decision);
     $query->cache_query = true;
     $query->cache_expires = $decision['ttl'];
@@ -200,8 +328,17 @@ add_action( 'jet-engine/query-builder/query/after-query-setup', static function 
         . '-' . (int) $query->id . '-' . substr( md5( $version ), 0, 10 );
 }, 100, 1 );
 
-function mad4b_render_query_invalidate($origin = null) {
+function mad4b_render_query_invalidate($origin = null, bool $scope_already_bumped = false) {
     if (false === apply_filters('mad4b/render_query/global_invalidation_required',true,$origin))return;
+    // The shared public fragment cache still relies on global invalidation.
+    // The native Query Builder group uses a separate global SAFETY version
+    // only when the event cannot be proven scoped (policy, permissions, etc.).
+    static $safety_bumped = false;
+    if(!$scope_already_bumped && !$safety_bumped){
+        $safety_bumped=true;
+        update_option('mad4b_render_query_global_safety_generation_v1',
+            substr(hash('sha256',wp_generate_uuid4().'|'.microtime(true)),0,32),false);
+    }
     static $bumped = false;
     if ( $bumped ) { return; }
     $bumped = true;
@@ -215,6 +352,17 @@ function mad4b_render_query_invalidate($origin = null) {
         unset($GLOBALS['mad4b_render_query_invalidation_origin']);
     }
 }
+// Preserve the legacy explicit invalidation contract: callers may update
+// mad4b_render_query_data_generation directly instead of firing a MAD4B action.
+// External writes are security-sensitive unknown changes; invalidate all scoped
+// query groups. Ordinary native content hooks have an explicit origin marker.
+add_action('updated_option',static function($name,$old,$new){
+    if($name!=='mad4b_render_query_data_generation' || $old===$new
+        || isset($GLOBALS['mad4b_render_query_invalidation_origin']))return;
+    update_option('mad4b_render_query_global_safety_generation_v1',
+        substr(hash('sha256',wp_generate_uuid4().'|'.microtime(true)),0,32),false);
+},20,3);
+
 // Observe successful generation changes, including writers outside this governor.
 // Store hook names only, never option values, post content or request credentials.
 add_action('updated_option', static function($name,$old,$new) {
@@ -239,7 +387,8 @@ function mad4b_render_query_changed_post( $post_id, $origin = null ) {
         $source=is_array($origin)?$origin:['kind'=>'public_post_change','hook'=>(string)current_filter()];
         $source['post_type']=(string)$type;
         $source['post_id']=(int)$post_id;
-        mad4b_render_query_invalidate($source);
+        $scoped=mad4b_render_query_scope_bump_post((int)$post_id);
+        mad4b_render_query_invalidate($source,$scoped);
     }
 }
 add_action( 'save_post', 'mad4b_render_query_changed_post', 40, 1 );
@@ -272,15 +421,13 @@ foreach ( [ 'added_post_meta', 'updated_post_meta', 'deleted_post_meta' ] as $ho
         // Bumping the global Query generation on every CSS rebuild turns
         // normal frontend traffic into a cache-thrashing feedback loop.
         if(mad4b_render_query_is_generated_meta_artifact((string)$meta_key))return;
-        // WordPress still supports PHP 7.4: preserve the exact metadata
-        // classification without PHP 8-only match syntax.
-        $kinds = [
-            '_elementor_css'=>'generated_elementor_css',
-            '_elementor_data'=>'elementor_document',
-            '_listing_data'=>'listing_definition',
-            '_elementor_page_settings'=>'elementor_settings',
-        ];
-        $kind=$kinds[(string)$meta_key]??'other_post_meta';
+        $kind=match((string)$meta_key) {
+            '_elementor_css' => 'generated_elementor_css',
+            '_elementor_data' => 'elementor_document',
+            '_listing_data' => 'listing_definition',
+            '_elementor_page_settings' => 'elementor_settings',
+            default => 'other_post_meta'
+        };
         mad4b_render_query_changed_post((int)$post_id,
             ['kind'=>'post_meta','operation'=>$hook,'meta_class'=>$kind,
              'meta_sensitive'=>preg_match('/(?:elementor|listing_data|rate|price|cost|booking|availability|stock|inventory|occupancy|supplier|wcml|currency|market|relation|query|template|capabilit|access|visibility|permission)/i',(string)$meta_key)?1:0]);
@@ -290,15 +437,30 @@ add_action( 'set_object_terms', static function ( $id, $terms, $tt_ids, $taxonom
     $type = get_post_type( $id );
     $tax = get_taxonomy( $taxonomy );
     if ( $tax && ! empty( $tax->public ) && ! ( $type && preg_match( '/(?:order|booking|checkout|payment|customer|reservation|invoice)/i', $type ) ) ) {
-        mad4b_render_query_invalidate(['kind'=>'object_terms','post_id'=>(int)$id,'taxonomy'=>(string)$taxonomy]);
+        $scoped=mad4b_render_query_scope_bump_post((int)$id)
+            && mad4b_render_query_scope_bump_term((string)$taxonomy);
+        mad4b_render_query_invalidate(['kind'=>'object_terms','post_id'=>(int)$id,'taxonomy'=>(string)$taxonomy],$scoped);
     }
 }, 40, 4 );
 add_action( 'edited_term', static function ($term_id,$tt_id,$taxonomy) {
-    mad4b_render_query_invalidate(['kind'=>'taxonomy','taxonomy'=>(string)$taxonomy,'term_id'=>(int)$term_id]);
+    $scoped=mad4b_render_query_scope_bump_term((string)$taxonomy);
+    mad4b_render_query_invalidate(['kind'=>'taxonomy','taxonomy'=>(string)$taxonomy,'term_id'=>(int)$term_id],$scoped);
 }, 40, 3 );
 add_action( 'deleted_term', static function ($term_id,$tt_id,$taxonomy) {
-    mad4b_render_query_invalidate(['kind'=>'taxonomy','taxonomy'=>(string)$taxonomy,'term_id'=>(int)$term_id]);
+    $scoped=mad4b_render_query_scope_bump_term((string)$taxonomy);
+    mad4b_render_query_invalidate(['kind'=>'taxonomy','taxonomy'=>(string)$taxonomy,'term_id'=>(int)$term_id],$scoped);
 }, 40, 3 );
+// JetEngine term meta predicates (e.g. destination_type) can change without
+// a term edit. These events must invalidate the corresponding taxonomy only.
+foreach(['added_term_meta','updated_term_meta','deleted_term_meta'] as $hook){
+    add_action($hook,static function($meta_id,$term_id,$key)use($hook){
+        $term=get_term((int)$term_id);
+        if(!$term || is_wp_error($term) || empty($term->taxonomy))return;
+        $scoped=mad4b_render_query_scope_bump_term((string)$term->taxonomy);
+        mad4b_render_query_invalidate(['kind'=>'term_meta','operation'=>$hook,
+            'taxonomy'=>(string)$term->taxonomy,'term_id'=>(int)$term_id],$scoped);
+    },40,3);
+}
 add_action( 'updated_option', static function ( $name ) {
     // Public listing fragments may contain destination/service links.
     // Invalidate on access-policy changes, not just content/price events.
