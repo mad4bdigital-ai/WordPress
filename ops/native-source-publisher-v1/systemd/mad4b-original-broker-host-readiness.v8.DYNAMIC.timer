@@ -1,0 +1,13 @@
+[Unit]
+Description=MAD4B Original305 signed readiness refresh via enrolled original Provider Registry
+
+[Timer]
+OnBootSec=3min
+OnUnitInactiveSec=55s
+RandomizedDelaySec=5s
+AccuracySec=10s
+Persistent=false
+Unit=mad4b-original-broker-host-readiness.service
+
+[Install]
+WantedBy=timers.target
