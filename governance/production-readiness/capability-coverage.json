@@ -21945,6 +21945,50 @@
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/trait-mad4b-scp-abilities-registration.php",
       "source_blob_sha": "44dceee8c103677cd5a87b6dd4ded70d3e86b106",
       "review_rationale": "Exact extracted private WordPress Ability registration method loaded solely by the existing Abilities facade. Normalizing its method signature reproduces the original method Git blob 5021c2a8fe944ff3a23959557bd0e80ceec244ac, preserving 34 ordered Ability names and callback metadata. Any future change requires new source review and executed regression; no runtime authorization is issued."
+    },
+    {
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "MAD4B exact-source source code reviewer; no authenticated owner release authority",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "MCP-01",
+        "EXECUTION-01",
+        "PLATFORM-01"
+      ],
+      "needs_new_control": false,
+      "regression_tests": [
+        "tests/test_server_vps_local_identity_trait_parity.py"
+      ],
+      "coverage_reuse_rationale": "The six source-owned Host CLI identity/transport guards remain exactly byte-identical, including Host Agent/NHI, site identity, origin and protected environment checks; no new permissions or product capabilities.",
+      "execution_note": "A deterministic original-method Git blob check plus CI regression is source-only. No user site deployed, no Host grants or Original305/313 receipt issued.",
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
+      "source_blob_sha": "e06444d774647161c56c667ef5be814e9c798f44",
+      "review_rationale": "Exact byte-preserving extraction of six VPS local identity methods out of the registered MCP Servers facade into a first-party trait. A stable `use` statement loads the trait before initialization. The previous 1177-line facade becomes 1020 lines and meets the existing 1050 limit; all other methods and guarded execution/provider registration remain the same. No Host identity or write admission broadened."
+    },
+    {
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "MAD4B exact-source source code reviewer; no authenticated owner release authority",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "MCP-01",
+        "EXECUTION-01",
+        "PLATFORM-01"
+      ],
+      "needs_new_control": false,
+      "regression_tests": [
+        "tests/test_server_vps_local_identity_trait_parity.py"
+      ],
+      "coverage_reuse_rationale": "The six source-owned Host CLI identity/transport guards remain exactly byte-identical, including Host Agent/NHI, site identity, origin and protected environment checks; no new permissions or product capabilities.",
+      "execution_note": "A deterministic original-method Git blob check plus CI regression is source-only. No user site deployed, no Host grants or Original305/313 receipt issued.",
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/trait-mad4b-scp-servers-vps-local-identity.php",
+      "source_blob_sha": "72e597b1415da4443f005bd8796098e52a72b7bd",
+      "review_rationale": "Six exact original VPS-local Host identity methods extracted to a first-party PHP trait with unchanged source byte order, protected Staging write and independent read proof, registered NHI actor verification, non-impersonating WordPress actor, restore/grant isolation. Extracted body Git SHA is 03cbb71ffd2587da6db54a730507a93edad8be01. This is nonauthorizing source parity, never a grant or release approval."
     }
   ],
   "code_change_rules": {
