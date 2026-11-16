@@ -8491,7 +8491,8 @@
       ],
       "regression_tests": [
         "tests/test_content_readiness_trait_parity.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/content-completeness-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-completeness-runtime.php",
+        "tests/test_brand_integrity_lifecycle_contract.py"
       ],
       "owner_role": "MAD4B CI source reviewer only; release Owner independently required",
       "status": "reviewed_for_ci_only",
@@ -8499,7 +8500,7 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "coverage_reuse_rationale": "No additional runtime feature: only byte-preserved original Content Readiness methods with unchanged class callbacks.",
-      "review_rationale": "Exactly identical original source method bodies extracted from the 1,844-line Content Readiness facade (original blob b06b328391319b18ace8e4118ee2e0e5b619eff6) and loaded through two named first-party traits; executable negative predecessor comparison guards prove no policy, writes, publishing, scheduling, filtering, auditing or REST permission change. Non-authorizing source review only; no live-site or Release Owner evidence.",
+      "review_rationale": "Exactly identical original source method bodies extracted from the 1,844-line Content Readiness facade (original blob b06b328391319b18ace8e4118ee2e0e5b619eff6) and loaded through two named first-party traits; executable negative predecessor comparison guards prove no policy, writes, publishing, scheduling, filtering, auditing or REST permission change. Non-authorizing source review only; no live-site or Release Owner evidence. Same-PR Brand Integrity lifecycle source regression requires the two exact loader/use bindings and tests restored coverage for Content Readiness, supplementing byte-parity verification.",
       "execution_note": "Exact method parity/PHP parse source evidence, never a signed deployment, Host312 grant or Original305/313 receipt."
     },
     {
@@ -8515,7 +8516,8 @@
       ],
       "regression_tests": [
         "tests/test_content_readiness_trait_parity.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/content-completeness-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-completeness-runtime.php",
+        "tests/test_brand_integrity_lifecycle_contract.py"
       ],
       "owner_role": "MAD4B CI source reviewer only; release Owner independently required",
       "status": "reviewed_for_ci_only",
@@ -8523,7 +8525,7 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "coverage_reuse_rationale": "No additional runtime feature: only byte-preserved original Content Readiness methods with unchanged class callbacks.",
-      "review_rationale": "Exactly identical original source method bodies extracted from the 1,844-line Content Readiness facade (original blob b06b328391319b18ace8e4118ee2e0e5b619eff6) and loaded through two named first-party traits; executable negative predecessor comparison guards prove no policy, writes, publishing, scheduling, filtering, auditing or REST permission change. Non-authorizing source review only; no live-site or Release Owner evidence.",
+      "review_rationale": "Exactly identical original source method bodies extracted from the 1,844-line Content Readiness facade (original blob b06b328391319b18ace8e4118ee2e0e5b619eff6) and loaded through two named first-party traits; executable negative predecessor comparison guards prove no policy, writes, publishing, scheduling, filtering, auditing or REST permission change. Non-authorizing source review only; no live-site or Release Owner evidence. Same-PR Brand Integrity lifecycle source regression requires the two exact loader/use bindings and tests restored coverage for Content Readiness, supplementing byte-parity verification.",
       "execution_note": "Exact method parity/PHP parse source evidence, never a signed deployment, Host312 grant or Original305/313 receipt."
     },
     {
