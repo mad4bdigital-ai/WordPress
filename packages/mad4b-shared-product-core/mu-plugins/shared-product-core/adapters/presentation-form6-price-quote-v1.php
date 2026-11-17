@@ -1,6 +1,7 @@
 <?php
 /** Governed, nonfinancial price preview for original Fluent Form #6. */
 defined('ABSPATH')||exit;
+require_once WPMU_PLUGIN_DIR.'/shared-product-core/adapters/presentation-form6-date-normalization-v1.php';
 /**
  * Presentation is a governed runtime capability, not an environment type.
  * Explicit runtime enablement works for Staging (and for authorized deployments).
@@ -379,15 +380,8 @@ add_filter('fluentform/filter_insert_data',static function($insert){
      (string)$response[$formField]!== (string)($input[$key]??''))return $insert;
  }
  $rawDate=$response['datetime']??'';
- if(!is_string($rawDate))return $insert;
- $formDate=null;
- foreach(['Y-m-d','d-M-Y','d/m/Y','m/d/Y'] as $format){
-  $parsed=DateTimeImmutable::createFromFormat('!'.$format,trim($rawDate));
-  if($parsed&&$parsed->format($format)===trim($rawDate)){
-   $formDate=$parsed->format('Y-m-d');break;
-  }
- }
- if($formDate!==(string)($input['travel_date']??''))return $insert;
+ $formDate=$input['travel_date']??null;
+ if(!shared_form6_dates_equal_v1($rawDate,$formDate,6,'datetime'))return $insert;
  // Never persist a browser-supplied total. Always re-quote on the server.
  $priceInput=$input;
  unset($priceInput['stay_stages']);

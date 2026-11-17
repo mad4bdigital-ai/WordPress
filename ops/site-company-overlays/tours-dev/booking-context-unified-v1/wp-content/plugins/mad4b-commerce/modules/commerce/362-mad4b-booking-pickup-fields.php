@@ -5,6 +5,7 @@
  * Version: 0.3.0
  */
 defined('ABSPATH') || exit;
+require_once WPMU_PLUGIN_DIR.'/shared-product-core/adapters/presentation-form6-date-normalization-v1.php';
 // The ordered-mu original loader may include this file before plugins_loaded.
 // Make the policy provider available in THAT lane, not only in commerce boot.
 $pickupPolicyFile=__DIR__.'/362-mad4b-booking-pickup-policy.php';
@@ -301,13 +302,29 @@ final class MAD4B_Booking_Pickup_Fields {
    * preference is independent of whether Pickup happens to be included.
    */
   static function persist_stay_review($insert){
-    if(!self::enabled()||!is_array($insert)||
-       (int)($insert['form_id']??0)!==self::FORM_ID||
-       !function_exists('shared_form6_review_stays'))return $insert;
+    // Accommodation preference and pickup are independent services.
+    // Require the original, server-signed Fluent source context (priority 35)
+    // rather than inferring Tour identity or eligibility from Pickup.
+    if(!is_array($insert)||(int)($insert['form_id']??0)!==self::FORM_ID||
+       !function_exists('shared_form6_review_stays')||
+       !function_exists('shared_form6_source_context_v1'))return $insert;
     $response=json_decode((string)($insert['response']??''),true);
     if(!is_array($response))return $insert;
-    $tour=self::submission_tour($response);
-    if(!$tour)return $insert;
+    $existing=$response['_shared_tour_booking_intent_v2']??null;
+    if(is_array($existing)&&is_array($existing['stay_stages']??null))
+      return $insert; // Full Commerce is the original verified stay owner.
+    $context=$response['_request_advance_context']??null;
+    if(!is_array($context)||array_diff(array_keys($context),
+         ['source_id','form_id','seal'])||
+       !is_int($context['source_id']??null)||
+       (int)($context['form_id']??0)!==self::FORM_ID||
+       !is_string($context['seal']??null))return $insert;
+    $tour=(int)$context['source_id'];
+    $verified=['source_id'=>$tour,'form_id'=>self::FORM_ID];
+    $correct=hash_hmac('sha256',wp_json_encode($verified),wp_salt('secure_auth'));
+    if($tour<1||!hash_equals($correct,$context['seal'])||
+       get_post_type($tour)!=='tours-and-activities'||
+       get_post_status($tour)!=='publish')return $insert;
     $posted=[];
     if(is_string($_POST['data']??null) && strlen($_POST['data'])<90000)
       parse_str(wp_unslash($_POST['data']),$posted);
@@ -321,22 +338,19 @@ final class MAD4B_Booking_Pickup_Fields {
        count($selection['stay_stages'])>20 ||
        !$selection['stay_stages'])return $insert;
     $rate=absint($selection['rate_id']??0);
-    if(!MAD4B_Booking_Pickup_Policy::rateFor($tour,$rate))return $insert;
+    if(!$rate)return $insert;
     $adults=absint($selection['adults']??0);
     if($adults<1||$adults>100 ||
        !isset($response['no_of_adults'])||
        (string)$response['no_of_adults']!==(string)$adults)return $insert;
     $date=(string)($selection['travel_date']??'');
     if(!preg_match('/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/D',$date))return $insert;
-    $when=(string)($response['datetime']??'');
-    $matched=false;
-    foreach(['Y-m-d','d-M-Y','d/m/Y','m/d/Y'] as $fmt){
-      $parsed=DateTimeImmutable::createFromFormat('!'.$fmt,$when);
-      if($parsed && $parsed->format($fmt)===$when && $parsed->format('Y-m-d')===$date){
-        $matched=true;break;
-      }
-    }
-    if(!$matched)return $insert;
+    $when=$response['datetime']??null;
+    if(!shared_form6_dates_equal_v1($when,$date,self::FORM_ID,'datetime'))return $insert;
+    $resolved=shared_form6_source_context_v1($tour,$date);
+    if(is_wp_error($resolved)||($resolved['source']??'')!=='rate'||
+       !in_array($rate,array_map('intval',
+         (array)($resolved['eligible_rate_ids']??[])),true))return $insert;
     $review=shared_form6_review_stays($tour,$rate,$date,$adults,$selection['stay_stages']);
     if(is_wp_error($review)||!is_array($review)||!$review['rows'])return $insert;
     $response['_mad4b_stay_preference_review_v1']=[

@@ -77,3 +77,29 @@ def test_wpml_direct_source_is_current_tour_not_rate_catalog_fallback():
     for name in ("start_price", "tour_base_currency", "tour_price_unit"):
         assert "get_post_meta($tour,'" + name + "',true)" in php
         assert "get_post_meta($sourceTour,'" + name + "',true)" not in php
+
+def test_date_contract_uses_fluid_field_settings_and_disambiguates():
+    core = ROOT / "packages/mad4b-shared-product-core/mu-plugins/shared-product-core"
+    date = (core / "adapters/presentation-form6-date-normalization-v1.php").read_text()
+    quote = (core / "adapters/presentation-form6-price-quote-v1.php").read_text()
+    pickup = (ROOT / "ops/site-company-overlays/wayfatours/booking-context-unified-v1/wp-content/plugins/mad4b-commerce/modules/commerce/362-mad4b-booking-pickup-fields.php").read_text()
+    assert "SELECT form_fields FROM" in date
+    assert "settings']['date_format" in date
+    assert "shared_form6_date_parse_v1" in date
+    assert "count($matches)>1" in date
+    assert "shared_form6_dates_equal_v1($rawDate,$formDate,6,'datetime')" in quote
+    assert "shared_form6_dates_equal_v1($when,$date,self::FORM_ID,'datetime')" in pickup
+    assert "require_once WPMU_PLUGIN_DIR" in quote
+    assert "require_once WPMU_PLUGIN_DIR" in pickup
+
+def test_stay_pref_source_is_verified_not_pickup_inferred():
+    pickup = (ROOT / "ops/site-company-overlays/wayfatours/booking-context-unified-v1/wp-content/plugins/mad4b-commerce/modules/commerce/362-mad4b-booking-pickup-fields.php").read_text()
+    block = pickup.split("static function persist_stay_review($insert){", 1)[1].split("static function order_payload(",1)[0]
+    assert "_request_advance_context" in block
+    assert "hash_equals($correct,$context['seal'])" in block
+    assert "shared_form6_source_context_v1($tour,$date)" in block
+    assert "eligible_rate_ids" in block
+    assert "additional_amount_authorized'=>false" in block
+    assert "supplier_confirmation'=>false" in block
+    assert "self::submission_tour" not in block
+    assert "MAD4B_Booking_Pickup_Policy::rateFor" not in block
