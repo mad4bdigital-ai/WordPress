@@ -454,8 +454,28 @@ final class MAD4B_SCP_Site_Profile {
 		// Use WPML's own current-language identity instead. This is read-only
 		// and remains guarded by the exact canonical origin, scheme and host.
 		$sitepress = $GLOBALS['sitepress'] ?? null;
-		if ( ! ( $sitepress instanceof \SitePress )
-			|| ! hash_equals( $code, (string) $sitepress->get_this_lang() ) ) return $observed;
+		if ( ! ( $sitepress instanceof \SitePress ) ) return $observed;
+		if ( ! hash_equals( $code, (string) $sitepress->get_this_lang() )
+			|| ! hash_equals( $stored . '/' . $code, $observed ) ) {
+			// WPML may localize home_url() to /es/ from a same-origin Referer
+			// while both SitePress and wpml_current_language still report en
+			// inside admin-AJAX/REST. Derive only the EXACT active language
+			// suffix of this site's canonical HOME; never trust the Referer as
+			// an origin or allow a country/market/session to mint a site identity.
+			$async = ( function_exists( 'wp_doing_ajax' ) && wp_doing_ajax() )
+				|| ( defined( 'REST_REQUEST' ) && REST_REQUEST );
+			$prefix = $stored . '/';
+			if ( ! $async || ! str_starts_with( $observed, $prefix ) ) return $observed;
+			$localized = substr( $observed, strlen( $prefix ) );
+			if ( 1 !== preg_match( '/^[a-z]{2,8}(?:[-_][a-z0-9]{2,8})?$/Di', $localized ) )
+				return $observed;
+			$settings = get_option( 'icl_sitepress_settings', array() );
+			$active = is_array( $settings ) ? (array) ( $settings['active_languages'] ?? array() ) : array();
+			$hidden = is_array( $settings ) ? (array) ( $settings['hidden_languages'] ?? array() ) : array();
+			if ( ! in_array( $localized, $active, true ) || in_array( $localized, $hidden, true ) )
+				return $observed;
+			$code = $localized;
+		}
 		if ( ! hash_equals( $stored . '/' . $code, $observed ) ) return $observed;
 		if ( ! empty( $_SERVER['HTTP_HOST'] ) ) {
 			$expected_host = strtolower( (string) wp_parse_url( $stored, PHP_URL_HOST ) );
