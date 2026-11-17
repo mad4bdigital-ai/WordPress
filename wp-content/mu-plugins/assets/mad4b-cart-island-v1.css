@@ -1,0 +1,11 @@
+/* Static cart shell; never contains cart values or personalized styles. */
+.mad4b-cart-island { position:relative;display:inline-block;max-width:100%;font:inherit }
+.mad4b-cart-island__toggle { cursor:pointer;border:1px solid currentColor;border-radius:.5rem;background:transparent;color:inherit;padding:.55rem .85rem;font:inherit }
+.mad4b-cart-island__toggle:focus-visible { outline:2px solid currentColor;outline-offset:2px }
+.mad4b-cart-island [data-cart-count] { display:inline-flex;align-items:center;justify-content:center;min-width:1.5em;min-height:1.5em;margin-inline-start:.4em;border-radius:999px;background:transparent;color:inherit;font-variant-numeric:tabular-nums;box-shadow:inset 0 0 0 1px currentColor }
+.mad4b-cart-island [data-cart-panel] { position:absolute;inset-inline-end:0;top:calc(100% + .4rem);z-index:30;min-width:min(22rem,90vw);max-width:min(26rem,95vw);max-height:75vh;overflow:auto;padding:1rem;border:1px solid currentColor;border-radius:.75rem;background:Canvas;color:CanvasText;box-shadow:0 .5rem 1.5rem #0002 }
+.mad4b-cart-island [data-cart-panel][hidden] { display:none!important }
+.mad4b-cart-island [data-cart-items] { list-style:none;margin:.75rem 0;padding:0 }
+.mad4b-cart-island [data-cart-items] li { padding:.4rem 0;border-bottom:1px solid #8884 }
+.mad4b-cart-island [data-cart-total] { display:block;text-align:end;font-weight:600;direction:auto }
+@media (prefers-reduced-motion:reduce) { .mad4b-cart-island *, .mad4b-cart-island *::before { transition:none!important } }
