@@ -16,7 +16,7 @@ final class MAD4B_Admin_UI_Auto_Scan_V1 {
         add_action('wp_ajax_mad4b_admin_ui_auto_scan_v1',[__CLASS__,'receive']);
     }
     public static function receive():void {
-        if(!current_user_can('manage_options'))wp_send_json_error(['code'=>'not_authorized'],403);
+        if(!current_user_can('manage_options') && !current_user_can('mad4b_manage_company_operations'))wp_send_json_error(['code'=>'not_authorized'],403);
         check_ajax_referer('mad4b_admin_ui_auto_scan_v1','nonce');
         if(!isset($_POST['payload'])||!is_string($_POST['payload'])||strlen($_POST['payload'])>12000)
             wp_send_json_error(['code'=>'payload_invalid'],400);
