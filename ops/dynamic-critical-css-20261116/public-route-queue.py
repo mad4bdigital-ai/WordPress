@@ -59,6 +59,26 @@ def source_key(cat,r,state,depends_on_listings=False):
           str(state.get('css_epoch')),str(state.get('native_breakpoint')),
           str(state.get('critical_css')),str(state.get('runtime_sha',''))]
     return hashlib.sha256('|'.join(deps).encode()).hexdigest()
+def optimizer_source_key(cat,r,state):
+    """Negative browser proof for an exact Elementor+optimizer source.
+    Independent of route/listing revisions, never authorizes CSS promotion.
+    """
+    graph=r.get('source_graph','');profile=r.get('source_profile','')
+    optimizer=state.get('source_optimizer_sha','');runtime=state.get('runtime_sha','')
+    if (r.get('source_graph_status')!='configured'
+        or not isinstance(graph,str) or not re.fullmatch('[a-f0-9]{64}',graph)
+        or not isinstance(profile,str) or not re.fullmatch('[A-Za-z0-9:/_-]{1,145}',profile)
+        or not isinstance(optimizer,str) or not re.fullmatch('[a-f0-9]{64}',optimizer)
+        or not isinstance(runtime,str) or not re.fullmatch('[a-f0-9]{64}',runtime)
+        or not isinstance(state.get('enabled_currencies'),list)):
+        return None
+    values=[cat['host'],r['type'],r['language'],profile,graph,
+        str(cat.get('global_generation',0)),str(state.get('css_epoch')),
+        str(state.get('native_breakpoint')),runtime,optimizer,
+        ','.join(sorted(state['enabled_currencies'])),
+        str(bool(state.get('wcml_multi_currency')))]
+    return hashlib.sha256('|'.join(values).encode()).hexdigest()
+
 def order_key(r):
     typ=r['type']
     # Simple static pages establish safe rollout first. Every other public
@@ -197,9 +217,13 @@ def main():
         # Category unable to pass market security should not monopolize the
         # next timer; but a later route revision triggers immediate retry.
         delay=0 if status in ('certified','native_preferred') else min(86400,1800*2**min(6,failures-1))
+        negative_key=(optimizer_source_key(catalog,route,state)
+            if status=='hold' and hold_reason=='source_css_bundle_unavailable'
+            else None)
         ledger['routes'][route['route_key']]={'source_key':key,'status':status,'failures':failures,
             'depends_on_listings':depends,'attempted_at':now,'retry_after':now+delay,
-            **({'hold_reason':hold_reason} if hold_reason else {})}
+            **({'hold_reason':hold_reason} if hold_reason else {}),
+            **({'optimizer_source_key':negative_key} if negative_key else {})}
         ledger['scheduler_sequence']=(int(ledger.get('scheduler_sequence',0))+1)%4
         if len(ledger['routes'])>30000:raise ValueError('ledger-memory-cap')
         atom(Path(ledgerfile),ledger)

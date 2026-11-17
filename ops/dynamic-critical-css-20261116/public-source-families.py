@@ -158,12 +158,24 @@ def build(site,catalog,state,ledger,root=None):
                     bool(rec.get('depends_on_listings')))):
                 attempted.append(r['route_key'])
         bounded=len(set(attempted))>=4
-        no_bundle={r['route_key'] for r in members
-            if isinstance((rec:=ledger['routes'].get(r['route_key'],{})),dict)
-            and rec.get('status')=='hold'
-            and rec.get('hold_reason')=='source_css_bundle_unavailable'
-            and rec.get('source_key')==queue.source_key(catalog,r,state,
-                bool(rec.get('depends_on_listings')))}
+        no_bundle=set()
+        for r in members:
+            rec=ledger['routes'].get(r['route_key'],{})
+            if (not isinstance(rec,dict) or rec.get('status')!='hold'
+                or rec.get('hold_reason')!='source_css_bundle_unavailable'):
+                continue
+            # Once the original optimizer contract has been enrolled, old
+            # negative captures without its signature NEVER qualify. Nor may
+            # a stale route source_key bypass a changed 406 or LiteSpeed ABI.
+            current=queue.optimizer_source_key(catalog,r,state)
+            if current is not None:
+                accepted=rec.get('optimizer_source_key')==current
+            elif state.get('source_optimizer_sha'):
+                accepted=False
+            else:
+                accepted=(rec.get('source_key')==queue.source_key(
+                    catalog,r,state,bool(rec.get('depends_on_listings'))))
+            if accepted:no_bundle.add(r['route_key'])
         verified_currencies={market.split('|',1)[1] for market in proven}
         currency_coverage_complete=set(supported).issubset(verified_currencies)
         # Geo-activated WCML can negotiate country-specific HTML/price/layout.
@@ -186,7 +198,10 @@ def build(site,catalog,state,ledger,root=None):
         else:
             choices=[]
             for r in members:
-                if r['route_key'] in seen or (bounded and r['route_key'] not in attempted):continue
+                if (r['route_key'] in seen
+                    or (bounded and r['route_key'] not in attempted)
+                    or (r['route_key'] in no_bundle and len(no_bundle)<2
+                        and len(members)>len(no_bundle))):continue
                 rec=ledger['routes'].get(r['route_key'],{})
                 if not isinstance(rec,dict):continue
                 keynow=queue.source_key(catalog,r,state,bool(rec.get('depends_on_listings')))

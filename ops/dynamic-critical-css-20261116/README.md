@@ -969,3 +969,28 @@ read-only isolation, root-capability drop, private temporary devices/dirs,
 and a single explicit report-directory write exception. The runtime's
 original WordPress CLI capabilities still execute through the enrolled
 Docker connection; this service cannot alter PHP files or CSS certificates.
+
+### Structural negative CSS-bundle source proof (2026-11-17)
+
+A template with 157 legitimate local stylesheet links and **no** LiteSpeed
+combined file is not eligible for the exact original route-critical-CSS
+certificate. Five independent Tours.dev tour HTML readbacks showed the same
+native source state, while the article CSS combiner stayed functional. The
+original LiteSpeed tokenizer parsed the tour and all 157 stylesheet contents
+were readable: the precise missing post-tokenize/bundle-stage reason remains
+unproven, so no vendor changes or speculative forced CSS were deployed.
+
+A genuine four-viewport Chromium failure `status=200 bundles=0` now saves
+an immutable **negative source optimizer** key in the existing private
+route ledger. This key binds the real Elementor Theme Builder graph,
+WPML language, CSS epoch, global source version, original 422 consumer SHA,
+LiteSpeed combine/minify/UCSS options, shared 406 source SHA, and the WCML
+policy. It intentionally does *not* bind to individual tour/listing content
+revisions, which cannot repair a genuinely absent source CSS bundle. Two
+independent current negative source keys mark that exact source cohort
+`source_native_optimizer_unavailable`, with unmodified native CSS and no
+pretend Ready:1. Old reports lacking an optimizer key cannot bypass this
+contract. Any optimizer policy, source graph, locale, global source, runtime
+or CSS-epoch change automatically reopens the source QA. No global purge,
+noncompliant stylesheet rewriting, independent market waiver or browser
+admission bypass is introduced by this rule.

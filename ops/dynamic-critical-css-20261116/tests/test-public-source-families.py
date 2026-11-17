@@ -120,4 +120,54 @@ with tempfile.TemporaryDirectory() as tmp:
  cat['listing_generation']+=1
  renewed=m.build('wayfa',cat,state,ledger,root)
  test('new source dependency generation can reopen native-only source admission',renewed['next_canary_route_key'] is not None)
+ # A native-only SOURCE is defined by two independent original-browser
+ # zero-bundle captures under the same Elementor+optimizer contract. Changing
+ # only the tour/listing source generation does not invalidate this negative
+ # optimizer evidence (nor mint an asset for a visitor).
+ for route in routes[:2]:
+  route['source_graph']='c'*64
+  route['source_graph_status']='configured'
+  route['source_listing_dependency']=True
+ state['source_optimizer_sha']='e'*64
+ cat['listing_generation']=6
+ ledger['routes']={}
+ for route in routes[:2]:
+  ledger['routes'][route['route_key']]={'status':'hold',
+    'source_key':m.queue.source_key(cat,route,state),
+    'optimizer_source_key':m.queue.optimizer_source_key(cat,route,state),
+    'hold_reason':'source_css_bundle_unavailable','attempted_at':1234,
+    'retry_after':0,'depends_on_listings':False}
+ reference=m.build('wayfa',cat,state,ledger,root)
+ test('two source optimizer SHA-bound Chrome failures close native-only cohort',
+      reference['source_groups_by_status'].get('source_native_optimizer_unavailable')==1)
+ cat['listing_generation']=7
+ after_tour_update=m.build('wayfa',cat,state,ledger,root)
+ test('tour content/listing generation does not retry the same proven absent optimizer',
+      after_tour_update['source_groups_by_status'].get('source_native_optimizer_unavailable')==1)
+ test('native-only contract still never grants a CSS or route certificate',
+      after_tour_update['source_canary_qualified_groups']==0 and after_tour_update['routes_with_exact_current_certificate']==0)
+ test('negative SOURCE key is invariant across route changes, not CSS changes',
+      m.queue.optimizer_source_key(cat,routes[0],state)==ledger['routes'][routes[0]['route_key']]['optimizer_source_key'])
+ state['source_optimizer_sha']='f'*64
+ invalid_opt=m.build('wayfa',cat,state,ledger,root)
+ test('changed LiteSpeed settings or 406 source reopens native-only proof',
+      invalid_opt['source_groups_by_status'].get('source_canary_pending')==1 and invalid_opt['next_canary_route_key'] is not None)
+ # Even when a legacy route source_key remains equal, the explicit optimizer
+ # signature is authoritative and cannot be bypassed after plugin changes.
+ test('legacy route key cannot waive changed CSS optimizer proof',
+      invalid_opt['source_families'][0]['native_no_bundle_canaries']==0)
+ state['source_optimizer_sha']='e'*64
+ routes[0]['source_graph']='f'*64
+ invalid_graph=m.build('wayfa',cat,state,ledger,root)
+ test('changed Elementor Theme Builder graph reopens affected native-only proof',
+      invalid_graph['source_groups_by_status'].get('source_canary_pending')>=1 and invalid_graph['next_canary_route_key'] is not None)
+ routes[0]['source_graph']='c'*64
+ state['css_epoch']=40
+ invalid_epoch=m.build('wayfa',cat,state,ledger,root)
+ test('new CSS epoch invalidates prior negative optimizer source ABI',
+      invalid_epoch['source_groups_by_status'].get('source_canary_pending')==1)
+ state['css_epoch']=39
+ state['runtime_sha']='d'*64
+ invalid_runtime=m.build('wayfa',cat,state,ledger,root)
+ test('native runtime changes reopen browser capture',invalid_runtime['source_groups_by_status'].get('source_canary_pending')==1)
  print(f'PASS {count}/{count} source-owned group certification invariants')

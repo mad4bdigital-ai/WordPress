@@ -48,6 +48,15 @@ $wcml_engine=is_object($woocommerce_wpml) && isset($woocommerce_wpml->multi_curr
 $codes=($wcml_active && $wcml_engine && method_exists($wcml_engine,"get_currencies"))
     ?array_keys((array)$wcml_engine->get_currencies(true)):[];
 $base=(string)get_option("woocommerce_currency","USD");
+$css_opt_config=[
+ (string)get_option("litespeed.conf.optm-css_comb",""),
+ (string)get_option("litespeed.conf.optm-css_min",""),
+ (string)get_option("litespeed.conf.optm-css_comb_ext_inl",""),
+ (string)get_option("litespeed.conf.optm-css_async",""),
+ (string)get_option("litespeed.conf.optm-ucss",""),
+ is_file(WPMU_PLUGIN_DIR."/406-mad4b-shared-performance-parity.php")
+ ?(string)hash_file("sha256",WPMU_PLUGIN_DIR."/406-mad4b-shared-performance-parity.php"):"missing",
+];
 $codes=array_values(array_unique(array_filter($wcml_active?$codes:[$base],
     static fn($value)=>is_string($value) && preg_match("/^[A-Z]{3}$/D",$value))));
 sort($codes,SORT_STRING);
@@ -61,6 +70,7 @@ echo wp_json_encode([
  "wcml_multi_currency"=>(bool)$wcml_active,
  "enabled_currencies"=>$codes,
  "base_currency"=>$base,
+ "source_optimizer_sha"=>hash("sha256",wp_json_encode($css_opt_config,JSON_UNESCAPED_SLASHES)),
  "global_generation"=>(int)get_option("mad4b_ccss_global_generation_v1",0),
  "listing_generation"=>(int)get_option("mad4b_ccss_listing_generation_v1",0),
  "wpml_languages"=>array_values((array)($s["active_languages"]??[])),
@@ -72,7 +82,8 @@ echo wp_json_encode([
         or data['native_breakpoint']!=767 or data['css_epoch']<=0
         or not isinstance(data.get('enabled_currencies'),list)
         or not 1<=len(data['enabled_currencies'])<=20
-        or data.get('base_currency') not in data['enabled_currencies']):
+        or data.get('base_currency') not in data['enabled_currencies']
+        or not re.fullmatch('[a-f0-9]{64}',str(data.get('source_optimizer_sha','')))):
         raise ValueError('SITE_ENVIRONMENT_OR_DEFAULT_POLICY_HOLD')
     return data
 def catalog(php,host):
