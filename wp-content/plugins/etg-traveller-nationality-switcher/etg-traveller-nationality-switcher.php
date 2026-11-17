@@ -43,9 +43,33 @@ final class Travel_Booking_Traveller_Nationality_Switcher {
   $src=self::flag_url($code);
   return $src?'<img class="travel-booking-country-flag" src="'.esc_url($src).'" alt="'.esc_attr(self::countries()[$code]).'" width="18" height="14">':'<span>'.esc_html($code).'</span>';
  }
- private static function site(){return hash('sha256',home_url('/'));}
+ // WPML can change home_url('/') on an /es/ page or even from an AJAX Referer.
+ // Bind new signed preferences to the saved canonical WordPress HOME instead.
+ // Keep the original default-language trailing-slash fingerprint unchanged.
+ private static function site(){
+  $home=(string)get_option('home','');
+  return hash('sha256',rtrim($home!==''?$home:home_url('/'),'/').'/');
+ }
+ private static function matches_site($digest){
+  if(!is_string($digest))return false;
+  if(hash_equals(self::site(),$digest))return true;
+  // Accept previously issued, signed WPML locale fingerprints during their
+  // existing cookie lifetime. Never accept an unregistered or hidden locale.
+  if(!defined('ICL_SITEPRESS_VERSION'))return false;
+  $canonical=(string)get_option('home','');
+  $settings=get_option('icl_sitepress_settings',[]);
+  if($canonical===''||!is_array($settings))return false;
+  $active=(array)($settings['active_languages']??[]);
+  $hidden=(array)($settings['hidden_languages']??[]);
+  foreach($active as $key=>$entry){
+   $lang=is_string($entry)?$entry:(is_string($key)?$key:'');
+   if(!preg_match('/^[a-z]{2,8}(?:[-_][a-z0-9]{2,8})?$/Di',$lang)||in_array($lang,$hidden,true))continue;
+   if(hash_equals(hash('sha256',rtrim($canonical,'/').'/'.$lang.'/'),$digest))return true;
+  }
+  return false;
+ }
  private static function unpack($record){
-  if(!is_array($record)||($record['site_uuid']??'')!==self::site())return '';
+  if(!is_array($record)||!self::matches_site($record['site_uuid']??null))return '';
   $contract=(string)($record['contract']??'');
   if($contract!==self::CONTRACT&&!apply_filters('travel_booking/accept_legacy_nationality_contract',false,$contract))return '';
   return self::valid($record['country']??'');
@@ -69,13 +93,36 @@ final class Travel_Booking_Traveller_Nationality_Switcher {
  public static function choose($country){
   $iso=self::valid($country);if(!$iso)return new WP_Error('travel_booking_nationality_unknown','Unsupported passport country');
   $record=['contract'=>self::CONTRACT,'site_uuid'=>self::site(),'country'=>$iso,'saved_at'=>time()];
-  if(function_exists('WC')&&WC()->session){WC()->session->set(self::SESSION,$record);if(method_exists(WC()->session,'set_customer_session_cookie'))WC()->session->set_customer_session_cookie(true);}
+  // Guest country/passport choices use their existing signed cookies. Only
+  // update an existing WooCommerce session, never bootstrap one for UI state.
+  if(function_exists('WC')&&WC()->session&&method_exists(WC()->session,'has_session')&&WC()->session->has_session())
+   WC()->session->set(self::SESSION,$record);
   if(!headers_sent()){
    $payload=rtrim(strtr(base64_encode(wp_json_encode($record)),'+/','-_'),'=');
    setcookie(self::COOKIE,$payload.'.'.hash_hmac('sha256',$payload,wp_salt('auth')),[
     'expires'=>time()+90*DAY_IN_SECONDS,'path'=>COOKIEPATH?:'/','secure'=>is_ssl(),'httponly'=>true,'samesite'=>'Lax']);
   }
   return $iso;
+ }
+ // Explicit nationality is independent of the visitor's market country.
+ // The native /apply API needs these methods for country and reset actions.
+ public static function selected_manual(){return self::selected();}
+ public static function reset_manual(){
+  $keys=[self::SESSION];
+  $legacy=apply_filters('travel_booking/legacy_nationality_preference_keys',[]);
+  if(is_array($legacy))foreach($legacy as $key)if(is_string($key)&&$key!=='')$keys[]=$key;
+  $session=(function_exists('WC')&&WC()->session)?WC()->session:null;
+  $existing=$session&&method_exists($session,'has_session')&&$session->has_session();
+  foreach(array_unique($keys) as $key){
+   if($existing){
+    if(method_exists($session,'__unset'))$session->__unset($key);
+    else $session->set($key,null);
+   }
+   unset($_COOKIE[$key]);
+   if(!headers_sent())setcookie($key,'',[
+    'expires'=>time()-DAY_IN_SECONDS,'path'=>COOKIEPATH?:'/',
+    'secure'=>is_ssl(),'httponly'=>true,'samesite'=>'Lax']);
+  }
  }
  /** Names are country names from Woo; nationality is ISO2 passport country, not an invented demonym. */
  public static function selector($name='nationality',$chosen='',$allow_blank=true){
