@@ -33,6 +33,10 @@ HOST_ROOT_HERMETIC_REGRESSIONS = frozenset((
 # Each path contains exit-on-failure assertions and a positive PASS marker.
 # Other PHP files continue to require PHPUnit; unknown paths fail closed.
 STANDALONE_PHP_REGRESSIONS = frozenset((
+    # Original Site Profile tested with hermetic WPML/WordPress functions.
+    # 12 positive/negative canonical-origin checks, PHP 7.4-compatible and
+    # source-only: no network, cookies, database, grants or Production change.
+    "tests/visitor-session-wpml-origin-hermetic.php",
     # Exact source-reviewed PHP CLI contracts with isolated WordPress stubs
     # and negative site/provider grant checks. These scripts are not PHPUnit
     # suites. No real WordPress, external API, owner approval or site write.
