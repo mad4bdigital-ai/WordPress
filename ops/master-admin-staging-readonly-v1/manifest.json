@@ -1,0 +1,21 @@
+{
+  "contract": "mad4b.master-admin-staging-readonly-source-overlay.v1",
+  "company_site": "tours.dev.mad4b.com",
+  "code_only": true,
+  "company_role_mutation": false,
+  "production_authorized": false,
+  "files": [
+    {
+      "path": "includes/class-mad4b-scp-skills-admin-ui.php",
+      "patch": "class-mad4b-scp-skills-admin-ui.php.patch",
+      "preimage_sha256": "435402a4589b46009a3bddb267865946e4084e8d0cf8998a96c34416601ea382",
+      "patched_sha256": "444886ff2c0c06a65dc1914d17fa1a6c345ab9bbd57b53430db9485b227e9f0f"
+    },
+    {
+      "path": "includes/class-mad4b-scp-skill-runtime-certification.php",
+      "patch": "class-mad4b-scp-skill-runtime-certification.php.patch",
+      "preimage_sha256": "1ffb6a199adb5799e2175cbbc2cae2f0de4e0d502c2271ea8269255e99c9caeb",
+      "patched_sha256": "fb175269225aec34eec69c58ab56dea724ac36a9344aa0eaa7b82178d542d3ee"
+    }
+  ]
+}

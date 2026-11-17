@@ -1,0 +1,22 @@
+--- a/wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-scp-company-master-admin.php
++++ b/wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-scp-company-master-admin.php
+@@ -3,7 +3,7 @@
+ defined('ABSPATH') || exit;
+ final class MAD4B_SCP_Company_Master_Admin {
+     const CAP='mad4b_manage_company_operations';
+-    const VERSION='20261028_v3';
++    const VERSION='20261117_v4';
+     const MIGRATION='mad4b_company_master_admin_role_version';
+     const STAFF_OWNER='mad4b_company_team_manager';
+     const ALLOWED_ROLES=array('editor','author','operator','company_translation_manager','commerce_pricing_manager','commerce_rate_publisher','commerce_template_editor','commerce_inquiry_agent','commerce_operations_manager','commerce_accountant');
+@@ -44,7 +44,9 @@
+         foreach($remove as$cap)$master->remove_cap($cap);
+         foreach(array('manage_options','activate_plugins','install_plugins','update_plugins',
+             'delete_plugins','edit_plugins','edit_theme_options','delete_users',
+-            'remove_users','fluentform_full_access','fluentform_settings_manager')as$cap)$master->remove_cap($cap);
++            'remove_users','fluentform_full_access','fluentform_settings_manager',
++            // Revoke legacy stored WooCommerce settings capability on next owner-approved role migration.
++            'manage_woocommerce')as$cap)$master->remove_cap($cap);
+         $admin=get_role('administrator');if($admin){$admin->add_cap(self::CAP,true);$admin->add_cap('mad4b_work_company_tasks',true);}
+         foreach(['editor','author','operator','company_translation_manager']as$staffRole){
+             $staff=get_role($staffRole);

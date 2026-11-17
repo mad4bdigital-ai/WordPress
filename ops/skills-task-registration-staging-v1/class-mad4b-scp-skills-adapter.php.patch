@@ -1,0 +1,11 @@
+--- a/includes/adapters/class-mad4b-scp-skills-adapter.php
++++ b/includes/adapters/class-mad4b-scp-skills-adapter.php
+@@ -34,6 +34,8 @@
+ 				'mad4b/skill-get',
+ 				'mad4b/skills-export-status',
+ 				'mad4b/skills-runtime-certification',
++				'mad4b/skill-match-task',
++				'mad4b/skill-composition-plan',
+ 			),
+ 			'content' => array(),
+ 			'admin' => array(),

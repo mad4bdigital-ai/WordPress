@@ -176,6 +176,21 @@ class UnifiedSourceNonRegression(unittest.TestCase):
         self.assertIn("'source_verified'=>$ready && 'source_unverified' !== $GLOBALS['case']",fixture)
         self.assertIn('unverified official source acquired a privileged maintenance lease',fixture)
 
+    def test_company_portfolio_owner_role_v4_source_patch_is_bounded(self):
+        import json
+        patch_dir=ROOT/'ops/company-portfolio-role-v4'
+        meta=json.loads((patch_dir/'manifest.json').read_text())
+        patch=(patch_dir/'0001-role-capability-drift.patch').read_text()
+        self.assertEqual(meta['owner_plugin'],'mad4b-company-portfolio-manager')
+        self.assertEqual(meta['target_environment'],'staging')
+        self.assertFalse(meta['role_mutation_on_patch'])
+        self.assertFalse(meta['production_write_authorized'])
+        self.assertTrue(meta['role_migration_requires_owner_browser_approval'])
+        self.assertIn("+    const VERSION='20261117_v4';",patch)
+        self.assertIn("'manage_woocommerce')as$cap)$master->remove_cap($cap);",patch)
+        self.assertEqual(patch.count('@@'),4)
+        self.assertIn("mad4b-company-portfolio-manager/includes/class-mad4b-scp-company-master-admin.php",patch)
+
     def test_review_evidence_is_non_authorizing(self):
         ledger=json.loads(code('governance/production-readiness/capability-coverage.json'))
         self.assertFalse(ledger['authorizing'])
