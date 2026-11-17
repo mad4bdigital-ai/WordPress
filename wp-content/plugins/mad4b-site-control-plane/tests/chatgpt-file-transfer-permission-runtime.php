@@ -65,7 +65,7 @@ $GLOBALS['environment']='development';
 check(!$cls::permitted(), 'Unreviewed environment is not eligible');
 $GLOBALS['environment']='staging';
 $rootMethod=new ReflectionMethod($cls,'root');
-$rootMethod->setAccessible(true); // PHP 7.4 still enforces visibility for ReflectionMethod::invoke().
+if (PHP_VERSION_ID < 80100) $rootMethod->setAccessible(true); // PHP 7.4 private ReflectionMethod access only.
 $firstRoot=$rootMethod->invoke(null);
 $GLOBALS['fixture_site_uuid']='b2222222-2222-2222-2222-222222222222';
 $otherRoot=$rootMethod->invoke(null);
