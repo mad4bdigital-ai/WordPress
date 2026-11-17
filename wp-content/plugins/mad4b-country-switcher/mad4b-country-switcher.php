@@ -47,9 +47,11 @@ final class MAD4B_Country_Switcher {
   $iso=MAD4B_SCP_Switcher_Sources::valid_country($country);
   if(!$iso||!isset(MAD4B_SCP_Switcher_Sources::market_countries()[$iso]))return new WP_Error('mad4b_country_unapproved','Country not targeted');
   $record=['contract'=>self::CONTRACT,'site_uuid'=>self::uuid(),'country'=>$iso,'time'=>time()];
-  if(function_exists('WC')&&WC()->session){
+  // A visitor preference is not a WooCommerce cart. A signed site-scoped
+  // cookie persists it; mirror into Woo only when a cart/session already exists.
+  // Never create a WooCommerce session solely from a header selection.
+  if(function_exists('WC')&&WC()->session&&method_exists(WC()->session,'has_session')&&WC()->session->has_session()){
    WC()->session->set(self::SESSION,$record);
-   if(method_exists(WC()->session,'set_customer_session_cookie'))WC()->session->set_customer_session_cookie(true);
   }
   if(!headers_sent()){
    $payload=rtrim(strtr(base64_encode(wp_json_encode($record)),'+/','-_'),'=');
