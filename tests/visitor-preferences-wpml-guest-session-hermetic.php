@@ -11,6 +11,7 @@ define('ICL_SITEPRESS_VERSION', '4.7');
 $GLOBALS['site_url_for_page'] = 'https://tenant.example.test/';
 $GLOBALS['hidden_languages'] = [];
 function add_action(...$args) {}
+function add_shortcode(...$args) {}
 function add_filter(...$args) {}
 function apply_filters($name, $default, ...$args) {
  return $name === 'travel_booking/legacy_nationality_preference_keys'
@@ -62,7 +63,7 @@ $GLOBALS['woocommerce']=(object)['session'=>new FakeWooSession()];
 function WC(){return $GLOBALS['woocommerce'];}
 $root=dirname(__DIR__).'/wp-content/plugins/';
 require $root.'mad4b-country-switcher/mad4b-country-switcher.php';
-require $root.'etg-traveller-nationality-switcher/etg-traveller-nationality-switcher.php';
+require $root.'mad4b-traveller-nationality/mad4b-traveller-nationality.php';
 function verify($ok,$name){if(!$ok)throw new RuntimeException('FAIL: '.$name);}
 function signed_preference($record){
  $payload=rtrim(strtr(base64_encode(json_encode($record)),'+/','-_'),'=');

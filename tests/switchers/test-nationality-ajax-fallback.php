@@ -13,6 +13,7 @@ function add_filter(...$args) {}
 function apply_filters($name,$value,...$args) {return $value;}
 function add_shortcode(...$args) {}
 function home_url($path = '/') { return 'http://local.test' . $path; }
+function get_option($key,$default=null) {return $key==='home'?'http://local.test':$default;}
 function wp_salt($scheme = 'auth') { return 'unit-test-only-key'; }
 function wp_json_encode($value) { return json_encode($value); }
 function is_ssl() { return false; }
@@ -31,7 +32,7 @@ class WC_Fake {
     public function __construct() {$this->countries = new WC_Countries();}
 }
 function WC() { static $wc; return $wc ??= new WC_Fake(); }
-require (getenv('SWITCHER_PLUGIN_FILE') ?: __DIR__ . '/../../wp-content/plugins/etg-traveller-nationality-switcher/etg-traveller-nationality-switcher.php');
+require (getenv('SWITCHER_PLUGIN_FILE') ?: __DIR__ . '/../../wp-content/plugins/mad4b-traveller-nationality/mad4b-traveller-nationality.php');
 $n = 'Travel_Booking_Traveller_Nationality_Switcher';
 $assert = static function ($what, $ok) {
     if (!$ok) { fwrite(STDERR, "$what=FAIL\n"); exit(1); }

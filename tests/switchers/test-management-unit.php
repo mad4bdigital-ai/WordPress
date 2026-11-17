@@ -49,7 +49,7 @@ function apply_filters($tag,$value,...$args){
  foreach($GLOBALS['unit_hooks'][$tag]??[] as $callback)$value=$callback($value,...$args);
  return $value;
 }
-require __DIR__.'/../../wp-content/plugins/etg-traveller-nationality-switcher/includes-traveller-management.php';
+require __DIR__.'/../../wp-content/plugins/mad4b-traveller-nationality/includes-traveller-management.php';
 $tm='Travel_Booking_Traveller_Management';$fail=0;
 $test=static function($name,$bool)use(&$fail){echo "$name=".($bool?'PASS':'FAIL').PHP_EOL;if(!$bool)$fail++;};
 $test('FIVE_FIXED_BUILTINS',count($tm::builtins())===5);

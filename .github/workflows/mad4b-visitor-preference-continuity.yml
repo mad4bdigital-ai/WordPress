@@ -5,12 +5,14 @@ on:
       - fix/visitor-preferences-identity-woo-session-20261117
     paths:
       - 'wp-content/plugins/mad4b-country-switcher/**'
+      - 'wp-content/plugins/mad4b-traveller-nationality/**'
       - 'wp-content/plugins/etg-traveller-nationality-switcher/**'
       - 'tests/visitor-preferences-wpml-guest-session-hermetic.php'
       - '.github/workflows/mad4b-visitor-preference-continuity.yml'
   pull_request:
     paths:
       - 'wp-content/plugins/mad4b-country-switcher/**'
+      - 'wp-content/plugins/mad4b-traveller-nationality/**'
       - 'wp-content/plugins/etg-traveller-nationality-switcher/**'
       - 'tests/visitor-preferences-wpml-guest-session-hermetic.php'
       - '.github/workflows/mad4b-visitor-preference-continuity.yml'
