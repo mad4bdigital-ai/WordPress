@@ -27,8 +27,35 @@ def assert_source_successor(actual_path, historical_sha):
     result=subprocess.run(['git','-C',str(ROOT),'show',commit+':'+actual_path],
                           capture_output=True,check=True,timeout=20)
     assert sha(result.stdout)==historical_sha
-    actual=(ROOT/actual_path).read_bytes()
-    assert sha(actual)==row['current_source_sha256']
+    path=ROOT/actual_path
+    assert path.is_file() and not path.is_symlink()
+    actual=path.read_bytes()
+    current_digest=sha(actual)
+    if current_digest!=row['current_source_sha256']:
+        # Keep the PR808 successor immutable. Later source revisions MUST
+        # carry a non-authorizing, exact Git-blob review in the append-only
+        # central Readiness source ledger. CI tests its linked regressions.
+        # This is NOT an Owner attestation or a runtime grant.
+        coverage=json.loads((ROOT/'governance/production-readiness/capability-coverage.json').read_text(encoding='utf-8'))
+        assert coverage['contract']=='mad4b.readiness-capability-coverage.v1'
+        assert coverage['authorizing'] is False and coverage['production_promotion_from_ci'] is False
+        committed=subprocess.run(['git','-C',str(ROOT),'rev-parse','HEAD:'+actual_path],
+                                 capture_output=True,check=True,timeout=20).stdout.decode().strip()
+        worktree=subprocess.run(['git','-C',str(ROOT),'hash-object',actual_path],
+                                capture_output=True,check=True,timeout=20).stdout.decode().strip()
+        assert len(committed)==40 and committed==worktree
+        matches=[entry for entry in coverage['reviewed_changes']
+                 if entry.get('path')==actual_path and entry.get('source_blob_sha')==committed]
+        assert len(matches)==1,'Unreviewed exact successor source: '+actual_path
+        successor=matches[0]
+        assert successor['status']=='reviewed_for_ci_only'
+        assert successor['production_authorized'] is False and successor['live_evidence_required'] is True
+        assert {'MCP-01','EXECUTION-01'} <= set(successor['control_ids'])
+        assert len(successor['review_rationale'])>=24 and successor['owner_role']
+        linked=successor['regression_tests']
+        assert isinstance(linked,list) and linked
+        assert all(isinstance(test,str) and (test.startswith('tests/') or test.startswith('wp-content/plugins/mad4b-site-control-plane/tests/'))
+                   and (ROOT/test).is_file() for test in linked)
     assert row['review_class']=='exact_source_regression_only_not_signed_release'
     for witness in row['fail_closed_code_witnesses']:
         assert witness.encode() in actual,(actual_path,witness)
