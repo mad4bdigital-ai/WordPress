@@ -122,8 +122,9 @@ else
   exit "$rc"
 fi
 GATE_STATUS=hold
+GATE_REASON=source_unavailable
 record_event_gate(){
-  python3 "$TOOLS/event-gate.py" complete "$SITE" "$STATE"     "$WP/mad4b-critical-css-v1/manifest.json"     "$WP/mu-plugins/415-mad4b-critical-css-orchestrator.php"     "$EVENT_LEDGER" "$GATE_STATUS" || true
+  python3 "$TOOLS/event-gate.py" complete "$SITE" "$STATE"     "$WP/mad4b-critical-css-v1/manifest.json"     "$WP/mu-plugins/415-mad4b-critical-css-orchestrator.php"     "$EVENT_LEDGER" "$GATE_STATUS" "$GATE_REASON" || true
 }
 trap record_event_gate EXIT
 # Lock expensive browser only after content fingerprint admits a real
@@ -132,6 +133,7 @@ exec 8>/run/lock/mad4b-native-lazy-browser-global.lock
 if ! flock -n 8;then
  echo "SKIP $SITE shared browser busy; retry during next timer"
  GATE_STATUS=pending
+ GATE_REASON=browser_busy
  exit 0
 fi
 # Avoid costly six-language fetches when another VPS task saturates CPU.
@@ -263,7 +265,7 @@ import json,sys
 rows=json.load(open(sys.argv[1]))['routes']
 raise SystemExit(0 if rows and all(r['status']=='certified_active' for r in rows) else 1)
 READY
- then GATE_STATUS=ready;fi
+ then GATE_STATUS=ready;GATE_REASON=certified;fi
  exit 0
 fi
 # Never measure LCP/FCP against a CPU-saturated VPS. The test browser is
@@ -282,6 +284,8 @@ print('QA_LOAD_OK',f'load1={load:.2f}',f'cores={cpus}')
 LOAD_GUARD
 then
  echo "HOLD $SITE: browser QA deferred until resource contention ends"
+ GATE_STATUS=pending
+ GATE_REASON=host_cpu_busy
  exit 0
 fi
 echo "CAPTURE $SITE $LANGS"
@@ -377,6 +381,8 @@ if ! probe_public "$ADMITTED_LANGS" recheck > "$JOB/probe-recheck.log" 2>&1;then
 fi
 if ! python3 "$TOOLS/verify-source-revision.py"  "$JOB/admitted-candidates.json" "$JOB/recheck" "$WP/litespeed/css"  > "$JOB/final-source-identity.json";then
  echo "HOLD $SITE source changed during browser QA"
+ GATE_STATUS=pending
+ GATE_REASON=source_changed_during_qa
  exit 0
 fi
 AFTER="$JOB/site-after.json"
@@ -464,4 +470,5 @@ if [[ "$SITE" == wayfa ]];then
  fi
 fi
 GATE_STATUS=pending
+GATE_REASON=post_publish_public_readback_pending
 echo "CERTIFIED $SITE $ADMITTED_LANGS epoch=$EPOCH manifest=$(sha256sum "$WP/mad4b-critical-css-v1/manifest.json"|cut -d' ' -f1)"

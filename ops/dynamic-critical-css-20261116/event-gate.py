@@ -101,9 +101,17 @@ def decide(g,ledger,now,quiet_sec=7*24*3600):
         if now-int(ledger.get("checked_at",0))<quiet_sec:
             return ("skip","unchanged_healthy_certificate")
         return ("inspect","bounded_weekly_browser_nonregression")
-    if now-int(ledger.get("checked_at",0))<3600:
-        return ("skip","unchanged_failed_generation_cooldown")
-    return ("inspect","retry_pending_same_generation")
+    # Resource deferrals are NOT failed CSS/browser qualification.
+    # A locked Chromium lane, busy CPU, or an in-progress generation can
+    # retry on the next 5-minute worker tick. Preserve full failure cooldown
+    # only after an actual QA failure (hold). Never relax source identity.
+    status=ledger.get("status")
+    age=max(0,now-int(ledger.get("checked_at",0)))
+    if status=="pending":
+        if age<120:return ("skip","resource_deferral_short_cooldown")
+        return ("inspect","retry_pending_resource_generation")
+    if age<3600:return ("skip","unchanged_failed_generation_cooldown")
+    return ("inspect","retry_failed_generation_after_cooldown")
 def write(path,obj):
     path.parent.mkdir(mode=0o700,parents=True,exist_ok=True)
     fd,tmp=tempfile.mkstemp(prefix=".mad4b-event-",dir=path.parent)
@@ -129,7 +137,14 @@ def main():
     if mode=="complete":
         if not args or args[0] not in ["ready","hold","pending"]:
             raise ValueError("complete requires an explicit verified status")
-        write(ledger,{"contract":CONTRACT,"site":site,"key":key,"status":args[0],"checked_at":now})
+        # Reason is an allowlisted stable code, never user-derived text.
+        reasons={"none","browser_busy","host_cpu_busy","source_changed_during_qa",
+                 "browser_qa_failed","source_unavailable","certified",
+                 "post_publish_public_readback_pending"}
+        reason=args[1] if len(args)>1 else "none"
+        if reason not in reasons:raise ValueError("invalid event gate completion reason")
+        write(ledger,{"contract":CONTRACT,"site":site,"key":key,"status":args[0],
+                      "reason":reason,"checked_at":now})
         print("CRITICAL_CSS_EVENT_LEDGER_COMMITTED",site,args[0],key[:16])
         return
     raise ValueError("unknown mode")
