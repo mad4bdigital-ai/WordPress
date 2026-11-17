@@ -6,8 +6,11 @@ $dir=sys_get_temp_dir().'/mad4b-demand-test-'.getmypid();
 mkdir($dir.'/uploads',0700,true);define('WP_CONTENT_DIR',$dir);
 $GLOBALS['options']=['mad4b_responsive_media_policy_v1'=>[
  'enabled'=>1,'taxonomy'=>'destinations','ids_option'=>'mad4b_perf_home_city_card_ids_v1',
- 'source_meta_key'=>'featured_image','selector'=>'.elementor-element-95d1c9c'],
- 'mad4b_perf_home_city_card_ids_v1'=>[123,124]];
+ 'source_meta_key'=>'featured_image','selector'=>'.elementor-element-95d1c9c',
+ 'root_lazy_class'=>'mad4b-city-geometry-lazy','card_visible_class'=>'mad4b-city-geometry-visible',
+ 'protected_primary_term_option'=>'mad4b_perf_primary_city_term_id'],
+ 'mad4b_perf_home_city_card_ids_v1'=>[123,124],
+ 'mad4b_perf_primary_city_term_id'=>722];
 $GLOBALS['schedule']=[];$GLOBALS['transients']=[];
 function get_option($n,$default=null){return $GLOBALS['options'][$n]??$default;}
 function get_transient($k){return $GLOBALS['transients'][$k]??false;}
@@ -68,6 +71,7 @@ check($c::query(123,640,false)['state']==='pending','source updates invalidate c
 $c::enqueue();
 check(str_contains($GLOBALS['enqueue'],'/mu-plugins/assets/mad4b-responsive-media-demand-v1.js'),'company-owned frontend script wired');
 check(str_contains($GLOBALS['config'],'/wp-json/mad4b/v1/responsive-media'),'public config has exact same-origin REST route');
+check(str_contains($GLOBALS['config'],'"protectedTermIds":[722]'),'company primary LCP city must be excluded from on-demand media');
 $batch=$c::rest(new FakeReq(['items'=>'123:576,124:576,999:576']));
 check($batch instanceof FakeResponse && count($batch->value['items'])===3,'one REST bootstrap batches three separately checked term/width pairs');
 check($batch->value['items']['999:576']['state']==='invalid_source','batch request cannot bypass term allowlist');
@@ -80,4 +84,4 @@ check($bad instanceof WP_Error,'injection-like media path rejected before queryi
 foreach(glob($dir.'/uploads/*') as $f)unlink($f);
 foreach(glob($dir.'/uploads/.*') as $f){if(is_file($f))unlink($f);}
 rmdir($dir.'/uploads');rmdir($dir);
-echo 'PASS 26/26 demand-only responsive media safety checks',"\n";
+echo 'PASS 27/27 demand-only responsive media safety checks',"\n";
