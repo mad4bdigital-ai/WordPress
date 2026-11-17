@@ -4,8 +4,8 @@
   "reviewed_base_sha": "5c72e4893e36e992f056c90cfc75908b3a8f7785",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 2506,
-  "changed_paths_sha256": "78c954e4509f49c03c84e62d73f0fe4987f6562141f0b528d1ac0bbc7c7439f3",
+  "changed_file_count": 2514,
+  "changed_paths_sha256": "08a2a8c6f28be369c88adda39578ec3786793ac1d44376e6ed98908283aa3bce",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -2783,6 +2783,23 @@
       ]
     },
     {
+      "id": "pr814-source-cohort-ops-host-aware-cron-20261117-01",
+      "semantic_unit": "PR #814 ops host aware cron 20261117 source-owner cohort 1: 7 exact changed paths; this is scope accounting, not publication authority.",
+      "revert_boundary": "Revert the 7 listed ops host aware cron 20261117 source artifacts as an explicit cohort, then revalidate dependent owner and runtime tests. No approvals, grants, or live sites are changed by this inventory.",
+      "certification": "exact_head",
+      "review_state": "source_inventory_only_pending_independent_acceptance",
+      "authorizing": false,
+      "path_globs": [
+        "ops/host-aware-cron-20261117/.gitignore",
+        "ops/host-aware-cron-20261117/README.md",
+        "ops/host-aware-cron-20261117/host-local-wp-cron.py",
+        "ops/host-aware-cron-20261117/systemd/mad4b-host-local-wp-cron@.service",
+        "ops/host-aware-cron-20261117/systemd/mad4b-host-local-wp-cron@source.timer",
+        "ops/host-aware-cron-20261117/systemd/mad4b-host-local-wp-cron@wayfa.timer",
+        "ops/host-aware-cron-20261117/tests/test-local-cron.py"
+      ]
+    },
+    {
       "id": "pr814-source-cohort-ops-host-load-quiet-windows-20261117-01",
       "semantic_unit": "PR #814 ops host load quiet windows 20261117 source-owner cohort 1: 11 exact changed paths; this is scope accounting, not publication authority.",
       "revert_boundary": "Revert the 11 listed ops host load quiet windows 20261117 source artifacts as an explicit cohort, then revalidate dependent owner and runtime tests. No approvals, grants, or live sites are changed by this inventory.",
@@ -3160,6 +3177,17 @@
       "authorizing": false,
       "path_globs": [
         "tests/home-top-cities/contract.php"
+      ]
+    },
+    {
+      "id": "pr814-source-cohort-tests-mcp-mixed-runtime-source-recovery-contract-py-01",
+      "semantic_unit": "PR #814 tests mcp mixed runtime source recovery contract.py source-owner cohort 1: 1 exact changed paths; this is scope accounting, not publication authority.",
+      "revert_boundary": "Revert the 1 listed tests mcp mixed runtime source recovery contract.py source artifacts as an explicit cohort, then revalidate dependent owner and runtime tests. No approvals, grants, or live sites are changed by this inventory.",
+      "certification": "exact_head",
+      "review_state": "source_inventory_only_pending_independent_acceptance",
+      "authorizing": false,
+      "path_globs": [
+        "tests/mcp-mixed-runtime-source-recovery-contract.py"
       ]
     },
     {
@@ -5030,6 +5058,6 @@
     }
   ],
   "source_cohort_review_state": "inventory_classified_only_requires_independent_approval",
-  "source_cohort_added_path_count": 1146,
-  "source_cohort_added_slice_count": 135
+  "source_cohort_added_path_count": 1154,
+  "source_cohort_added_slice_count": 137
 }

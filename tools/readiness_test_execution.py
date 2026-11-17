@@ -182,6 +182,10 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     # Canonical Inspector + Server evidence on synthetic WordPress Ability;
     # owner scopes and grant checks are not mocked as approved live writes.
     "tests/server-descriptor-canonical-multilane-hermetic.php",
+    # Exact source-owned no-WordPress capability lane fixture: 19 fail-on-
+    # assertion positive and negative checks, no database/network/real grants.
+    # The full foreign-class recovery remains a separate actual WP CI job.
+    "wp-content/plugins/mad4b-site-control-plane/tests/server-capability-lane-isolation.php",
     "tests/remote-execution/chatgpt-optional-catalog-smoke.php",
     "tests/remote-execution/developer-preparation-bridge-smoke.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/mcp-catalog-adaptive-budget.php",
@@ -895,6 +899,17 @@ def self_test():
         pass
     else:
         raise AssertionError("WP-authenticated HTTP fixture must not run as bare standalone PHP")
+    # Explicit, source-owned, isolated MCP lane fixture only. Do not admit
+    # the full WordPress mixed-class HTTP fixture as bare PHP or PHPUnit.
+    isolated = "wp-content/plugins/mad4b-site-control-plane/tests/server-capability-lane-isolation.php"
+    assert command_for(isolated) == ["php", str((ROOT / isolated).resolve())]
+    try:
+        command_for("wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-mixed-class-first-request.php")
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Mixed-class runtime test gained untrusted standalone execution")
+    assert has_assertion_pass("PASS: exact MCP descriptor routing and quarantine 19 positive-negative checks\n")
     assert has_assertion_pass("QA31 Live Write Provider Snapshot: PASS\n")
     assert has_assertion_pass("PASS: native plugin list retains MAD4B sidebar without heavy lifecycle\n")
     for path in ("README.md", "../secrets.py", "tests/does-not-exist.py"):

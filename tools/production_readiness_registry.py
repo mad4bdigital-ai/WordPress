@@ -837,6 +837,28 @@ def validate_coverage(coverage, controls, base, head, changed, added, removed):
     return failures, accepted, reviewed_behavior
 
 
+def current_behavior_regressions(coverage, reviewed_behavior):
+    """Use the exact current Git blob, never superseded historical reviews.
+
+    An append-only review history can contain several versions of the same
+    source path. Retain ALL records for audit integrity but execute the suite
+    attached to the blob actually in this PR. The independent runtime gates
+    still apply and the current mapping remains fail-closed if absent.
+    """
+    records = coverage.get("reviewed_changes", [])
+    tests = set()
+    for item in reviewed_behavior:
+        matches = [x for x in records
+                   if (x.get("path"), x.get("source_blob_sha")) ==
+                   (item["path"], item["git_blob"])]
+        ensure(len(matches) == 1, "Exact current source lacks one reviewed regression mapping: " + item["path"])
+        names = matches[0].get("regression_tests", [])
+        ensure(isinstance(names, list) and bool(names),
+               "Missing current source regression tests: " + item["path"])
+        tests.update(names)
+    return tests
+
+
 def impact_rows(changed, coverage, added, removed):
     rows = []
     for status, path in changed:
@@ -888,12 +910,8 @@ def evaluate(base, head):
         "retired": [{"id": k, "source": v} for k, v in sorted(removed.items())],
         "reviewed_for_ci_only": reviewed,
         "reviewed_behavior_changes": behavior,
-        "required_regression_tests": sorted({
-            test
-            for record in coverage.get("reviewed_changes", [])
-            if record["path"] in {item["path"] for item in behavior}
-            for test in record.get("regression_tests", [])
-        } | {
+        "required_regression_tests": sorted(current_behavior_regressions(
+            coverage, behavior) | {
             test
             for record in coverage.get("reviewed_capabilities", [])
             if record["id"] in reviewed
@@ -1112,6 +1130,23 @@ def self_test():
                    "<?php self::register( 'mad4b/example', 'Title')"):
         assert PHP_DECLARATION.search(source)
     assert not SHA.fullmatch("incorrect")
+    historical = {"reviewed_changes": [
+        {"path": "includes/mcp.php", "source_blob_sha": "a" * 40,
+         "regression_tests": ["tests/old-integration-only.php"]},
+        {"path": "includes/mcp.php", "source_blob_sha": "b" * 40,
+         "regression_tests": ["tests/new-tested-source.py"]},
+    ]}
+    assert current_behavior_regressions(historical, [
+        {"path": "includes/mcp.php", "git_blob": "b" * 40}
+    ]) == {"tests/new-tested-source.py"}
+    try:
+        current_behavior_regressions(historical, [
+            {"path": "includes/mcp.php", "git_blob": "c" * 40}
+        ])
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Missing current source regression mapping accepted")
     sample = {"controls": [{"id": "GOVERNANCE-01", "priority": "P0"}]}
     assert control_delta(sample, sample)[0]["state"] == "UNCHANGED"
     assert control_delta(sample, {"controls": [

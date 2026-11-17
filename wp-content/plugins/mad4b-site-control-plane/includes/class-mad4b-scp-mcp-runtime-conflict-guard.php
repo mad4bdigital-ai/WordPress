@@ -96,8 +96,20 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 		// Explicitly requested managed maintenance retains its own separate gates.
 		if ( ! $preventive ) {
 			$status['source_provenance_observational'] = true;
-			$status['state'] = ! empty( $status['runtime_class_loaded'] )
-				? 'runtime_source_observed' : 'runtime_not_loaded_at_guard';
+			// A completed, canonical MU bootstrap and an independently verified
+			// fully owned class set are stronger evidence than source observation.
+			// Do not call a partially repaired/mixed runtime canonical, and do
+			// not initiate recovery during an ordinary visitor/OAuth request.
+			$canonical = ! empty( $status['runtime_class_loaded'] )
+				&& ! empty( $status['runtime_from_official_plugin'] )
+				&& ! empty( $status['runtime_class_provenance_ready'] )
+				&& 'certified_class_set' === ( $status['runtime_class_provenance_state'] ?? '' )
+				&& 0 === (int) ( $status['runtime_class_provenance_failure_count'] ?? -1 )
+				&& ! empty( $status['mu_bootstrap_canonical_symbols_pinned'] )
+				&& ! empty( $status['mu_bootstrap_critical_class_set_pinned'] );
+			$status['state'] = $canonical ? 'canonical_runtime'
+				: ( ! empty( $status['runtime_class_loaded'] )
+					? 'runtime_source_observed' : 'runtime_not_loaded_at_guard' );
 			$status['blocker'] = '';
 			self::$status = $status;
 			return $status;

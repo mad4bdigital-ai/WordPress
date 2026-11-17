@@ -22744,6 +22744,28 @@
       "review_rationale": "Fix explicit governed MCP recovery where a foreign loaded validator class produces mixed_runtime with actual provenance failures, yet collision_risk_detected and original-class blocker were incorrectly left false because $mixed was constant false. Derive mixed exclusively from real failing mixed-runtime evidence; ordinary requests stay observational and no recovery is auto-started. A changed same-PR integration test asserts the loaded foreign class and exact mismatch denial.",
       "execution_note": "CI-only source coverage; the two real WordPress runtimes must independently prove mixed-runtime repair and later clean-request recovery."
     }
+  ,
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-runtime-conflict-guard.php",
+      "source_blob_sha": "163737b31009e1de791f11559c8ce804d98eb8f5",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/mcp-mixed-runtime-source-recovery-contract.py"
+      ],
+      "owner_role": "Repository source and CI regression reviewer only, not Site Owner or Production Release Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original WordPress Ability execution fences, first-party source and schema provenance, audit, maintenance lease, exact non-Production recovery and OAuth protocol hotpath denial remain independently enforced; source review does not authorize a release.",
+      "review_rationale": "A completed, official, fully provenance-certified MCP class set pinned by the managed MU bootstrap must show canonical_runtime on a later clean request, but foreign/unknown or unpinned class sets must remain observational. New source-owned Python regression executes 12 strict code invariants under the generic Readiness runner; the independent Connection Governance WordPress mixed-class first/recovered integration is still mandatory to validate actual runtime behavior.",
+      "execution_note": "CI-only source proof, not real recovery acceptance. Connection Governance must pass its two-request original WordPress/MU runtime test before this change is accepted."
+    }
   ],
   "code_change_rules": {
     "contract": "mad4b.readiness-reviewed-changes.v1",

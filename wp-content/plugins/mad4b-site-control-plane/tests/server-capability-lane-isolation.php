@@ -76,3 +76,4 @@ $check( false === $empty['admitted'], 'empty verified enrollment subset was regi
 $chatgpt = MAD4B_SCP_Server_Registration_Evidence::verified_subset( 'mad4b-chatgpt', array( 'mad4b/unknown' ), $evidence );
 $check( true === $chatgpt['admitted'] && array() === $chatgpt['tools'], 'chatgpt fail-closed route-only diagnostics are unavailable' );
 echo "SERVER_CAPABILITY_LANE_ISOLATION_PASS 19/19\n";
+echo "PASS: exact MCP descriptor routing and quarantine 19 positive-negative checks\n";
