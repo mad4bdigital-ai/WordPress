@@ -123,5 +123,28 @@ foreach([$stage,$prod,$dev] as $scope){
  foreach(['mad4b/database-raw-query','mad4b/write-execute','mad4b/developer-breakglass','mad4b/unknown-future','thirdparty/unknown'] as $name)
   parity_assert(!isset($scope[$name]),'Breakglass or future ability '.$name);
 }
+// Exact purpose-specific inventory is source-owned operational metadata,
+// NOT a rewrite of the original callback contracts or a Production grant.
+// Packaged standalone WordPress plugin does not ship repository governance
+// evidence; the GitHub workflow checks this manifest directly in source.
+$review_path=dirname(__DIR__,4).'/governance/production-readiness/purpose-specific-environment-operations.json';
+if (is_file($review_path)) {
+    $review=json_decode(file_get_contents($review_path),true);
+    parity_assert(is_array($review) && ($review['authorizing']??null)===false
+        && ($review['production_authorized']??null)===false
+        && ($review['creates_agent_grants']??null)===false,
+        'Source review must be non-authorizing');
+    $reviewed=array();
+    foreach((array)($review['operations']??[]) as $row) {
+        $ability=(string)($row['ability']??'');
+        parity_assert(!isset($reviewed[$ability]),'No duplicate purpose-specific review');
+        $reviewed[$ability]=(string)($row['provider']??'');
+        parity_assert(($row['production_source_eligibility']??null)===false
+            && ($row['route_equivalence_proven']??null)===false,
+            'Staging-specific operation cannot claim Production release equivalence');
+    }
+    ksort($reviewed);
+    parity_assert($reviewed===$staging_specific,'All sixteen purpose-specific operations reviewed exactly');
+}
 parity_assert(!MAD4B_SCP_Site_Profile::write_enabled(),'No grants may be inferred');
 echo 'MAD4B_ENVIRONMENT_PROVIDER_PARITY: PASS shared=68 staging_specific=16 grants_created=0'.PHP_EOL;

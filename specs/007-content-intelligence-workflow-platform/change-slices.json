@@ -4,8 +4,8 @@
   "reviewed_base_sha": "5c72e4893e36e992f056c90cfc75908b3a8f7785",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 2592,
-  "changed_paths_sha256": "fec7181bea7ec3babd7852bbfd733957445446c56c633ea9bb9757deb01b86bc",
+  "changed_file_count": 2606,
+  "changed_paths_sha256": "32ebc39c7824b8dd0ca2c8cea3859957651f69657ef1d0577200a3bd235e4469",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -5244,6 +5244,52 @@
       "path_globs": [
         "ops/dynamic-critical-css-20261116/home-source-poll-policy-v2.py",
         "ops/dynamic-critical-css-20261116/tests/test-home-source-poll-policy-v2.py"
+      ]
+    },
+    {
+      "id": "pr834-readonly-host-asset-observation-and-safe-inventory",
+      "semantic_unit": "Concurrent PR #834 read-only host asset monitoring, bounded inventory windows and independent provenance tests; no write authority.",
+      "revert_boundary": "Revert PR #834 host observer bundle and reviewed inventory windows atomically; keep the original company production scope.",
+      "certification": "exact_head",
+      "path_globs": [
+        ".github/workflows/mad4b-company-reconcile-host-observer.yml",
+        "docs/runtime/company-reconcile-inventory-safe-windows-20261117.md",
+        "ops/company-reconcile-inventory-bounded-gate-v1/company-reconcile-host-asset-observer.py",
+        "ops/company-reconcile-inventory-bounded-gate-v1/company-reconcile-inventory-bounded-gate.py",
+        "ops/company-reconcile-inventory-bounded-gate-v1/systemd/95-bounded-admission.conf",
+        "ops/company-reconcile-inventory-bounded-gate-v1/systemd/96-readonly-host-observer.conf",
+        "ops/company-reconcile-inventory-bounded-gate-v1/test_company_reconcile_host_asset_observer.py",
+        "ops/company-reconcile-inventory-bounded-gate-v1/test_company_reconcile_inventory_bounded_gate.py"
+      ]
+    },
+    {
+      "id": "pr814-protected-site-owner-and-transfer-regressions",
+      "semantic_unit": "Refresh the legacy static media transfer and local Owner preview tests to enforce exact company write confirmation while continuing to reject unauthorized Production grants.",
+      "revert_boundary": "Revert both nonauthorizing regressions together, never the existing Owner approval boundary.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-owner-grant-local-preview-runtime.php"
+      ]
+    },
+    {
+      "id": "pr814-isolated-wpml-fake-provider",
+      "semantic_unit": "Isolated request-local WPML REST fixture avoids synthetic adapter provider contamination of persisted exact write grants.",
+      "revert_boundary": "Revert isolated fixture with its source smoke and workflow call together, not the historical authorization checks.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-wpml-readonly-fixture.php"
+      ]
+    },
+    {
+      "id": "pr814-purpose-specific-production-original-routing",
+      "semantic_unit": "Nonauthorizing, source-checked complete 16 purpose-bound Staging operations review, with CI-only original-owner test and reviewer report.",
+      "revert_boundary": "Revert the source-purpose registry, exhaustive negative test and report together. Never replace original Production release controls.",
+      "certification": "exact_head",
+      "path_globs": [
+        "governance/production-readiness/purpose-specific-environment-operations.json",
+        "ops/reports/pr814-staging-purpose-closure-and-ci-20261117.md",
+        "tests/test_purpose_specific_environment_operations.py"
       ]
     }
   ],

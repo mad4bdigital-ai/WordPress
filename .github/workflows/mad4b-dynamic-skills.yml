@@ -300,10 +300,17 @@ jobs:
           php "$root/staging-write-grant-reviewed-inventory-runtime.php"
           php "$root/staging-write-dynamic-skills-exact-provider-review-runtime.php"
           php "$root/dynamic-company-environment-provider-parity-runtime.php"
+          python3 tests/test_purpose_specific_environment_operations.py
           php "$root/chatgpt-file-transfer-permission-runtime.php"
           php "$root/optional-governance-runtime.php"
 
-      - name: Prove tenant-bound Skills, governed writes, WPML REST pass-through and portable certification
+      - name: Prove WPML REST read-only behavior in a disposable isolated request
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-wpml-readonly-fixture.php" --path=/tmp/mad4b-dynamic-skills-staging --user=mad4b-ci-admin
+
+      - name: Prove tenant-bound Skills, governed writes and portable certification without synthetic WPML providers
         shell: bash
         run: |
           set -euo pipefail

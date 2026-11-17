@@ -1,0 +1,187 @@
+{
+  "contract": "mad4b.production-purpose-specific-operation-review.v1",
+  "version": 1,
+  "authorizing": false,
+  "production_authorized": false,
+  "creates_agent_grants": false,
+  "environment_policy": "original_execution_contract_first_site_profile_second",
+  "note": "A production_context_route is a related independently governed operation, not a substitute ticket or automatic capability migration.",
+  "operations": [
+    {
+      "ability": "mad4b/acceptance-target-provision",
+      "provider": "core",
+      "original_owner_source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-acceptance-gates.php",
+      "staging_source_eligibility": true,
+      "production_source_eligibility": false,
+      "production_context_route": "mad4b/production-certification-status",
+      "route_equivalence_proven": false,
+      "production_execution_state": "independent_contract_required",
+      "reviewed_reason": "Purpose-scoped Staging first-party executor or source enrollment; production admission needs an independently certified original operation, current Site Profile and exact approved Grant."
+    },
+    {
+      "ability": "mad4b/business-activity-wpai-observation-arm",
+      "provider": "core",
+      "original_owner_source": "wp-content/plugins/mad4b-site-control-plane/includes/trait-mad4b-scp-content-experience-ability-definitions.php",
+      "staging_source_eligibility": true,
+      "production_source_eligibility": false,
+      "production_context_route": "mad4b/business-activity-sync-begin",
+      "route_equivalence_proven": false,
+      "production_execution_state": "independent_contract_required",
+      "reviewed_reason": "Purpose-scoped Staging first-party executor or source enrollment; production admission needs an independently certified original operation, current Site Profile and exact approved Grant."
+    },
+    {
+      "ability": "mad4b/control-plane-selected-head-apply",
+      "provider": "core",
+      "original_owner_source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-selected-head-update.php",
+      "staging_source_eligibility": true,
+      "production_source_eligibility": false,
+      "production_context_route": "mad4b/control-plane-native-apply",
+      "route_equivalence_proven": false,
+      "production_execution_state": "independent_contract_required",
+      "reviewed_reason": "Purpose-scoped Staging first-party executor or source enrollment; production admission needs an independently certified original operation, current Site Profile and exact approved Grant."
+    },
+    {
+      "ability": "mad4b/deployment-binding-setup-apply",
+      "provider": "core",
+      "original_owner_source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-deployment-binding-setup.php",
+      "staging_source_eligibility": true,
+      "production_source_eligibility": false,
+      "production_context_route": "mad4b/deployment-binding-native-apply",
+      "route_equivalence_proven": false,
+      "production_execution_state": "independent_contract_required",
+      "reviewed_reason": "Purpose-scoped Staging first-party executor or source enrollment; production admission needs an independently certified original operation, current Site Profile and exact approved Grant."
+    },
+    {
+      "ability": "mad4b/fleet-intake-auto",
+      "provider": "core",
+      "original_owner_source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-write-catalog.php",
+      "staging_source_eligibility": true,
+      "production_source_eligibility": false,
+      "production_context_route": null,
+      "route_equivalence_proven": false,
+      "production_execution_state": "independent_contract_required",
+      "reviewed_reason": "Purpose-scoped Staging first-party executor or source enrollment; production admission needs an independently certified original operation, current Site Profile and exact approved Grant."
+    },
+    {
+      "ability": "mad4b/fleet-intake-plan",
+      "provider": "core",
+      "original_owner_source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-write-catalog.php",
+      "staging_source_eligibility": true,
+      "production_source_eligibility": false,
+      "production_context_route": null,
+      "route_equivalence_proven": false,
+      "production_execution_state": "independent_contract_required",
+      "reviewed_reason": "Purpose-scoped Staging first-party executor or source enrollment; production admission needs an independently certified original operation, current Site Profile and exact approved Grant."
+    },
+    {
+      "ability": "mad4b/fleet-intake-save",
+      "provider": "core",
+      "original_owner_source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-write-catalog.php",
+      "staging_source_eligibility": true,
+      "production_source_eligibility": false,
+      "production_context_route": null,
+      "route_equivalence_proven": false,
+      "production_execution_state": "independent_contract_required",
+      "reviewed_reason": "Purpose-scoped Staging first-party executor or source enrollment; production admission needs an independently certified original operation, current Site Profile and exact approved Grant."
+    },
+    {
+      "ability": "mad4b/hub-source-sync-request",
+      "provider": "core",
+      "original_owner_source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-write-catalog.php",
+      "staging_source_eligibility": true,
+      "production_source_eligibility": false,
+      "production_context_route": null,
+      "route_equivalence_proven": false,
+      "production_execution_state": "independent_contract_required",
+      "reviewed_reason": "Purpose-scoped Staging first-party executor or source enrollment; production admission needs an independently certified original operation, current Site Profile and exact approved Grant."
+    },
+    {
+      "ability": "mad4b/native-recovery-cleanup",
+      "provider": "core",
+      "original_owner_source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-recovery.php",
+      "staging_source_eligibility": true,
+      "production_source_eligibility": false,
+      "production_context_route": null,
+      "route_equivalence_proven": false,
+      "production_execution_state": "independent_contract_required",
+      "reviewed_reason": "Purpose-scoped Staging first-party executor or source enrollment; production admission needs an independently certified original operation, current Site Profile and exact approved Grant."
+    },
+    {
+      "ability": "mad4b/native-recovery-start",
+      "provider": "core",
+      "original_owner_source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-recovery.php",
+      "staging_source_eligibility": true,
+      "production_source_eligibility": false,
+      "production_context_route": null,
+      "route_equivalence_proven": false,
+      "production_execution_state": "independent_contract_required",
+      "reviewed_reason": "Purpose-scoped Staging first-party executor or source enrollment; production admission needs an independently certified original operation, current Site Profile and exact approved Grant."
+    },
+    {
+      "ability": "mad4b/provider-connection-refresh",
+      "provider": "core",
+      "original_owner_source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-connection-center.php",
+      "staging_source_eligibility": true,
+      "production_source_eligibility": false,
+      "production_context_route": null,
+      "route_equivalence_proven": false,
+      "production_execution_state": "independent_contract_required",
+      "reviewed_reason": "Purpose-scoped Staging first-party executor or source enrollment; production admission needs an independently certified original operation, current Site Profile and exact approved Grant."
+    },
+    {
+      "ability": "mad4b/runtime-release-set-apply",
+      "provider": "core",
+      "original_owner_source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-release-set.php",
+      "staging_source_eligibility": true,
+      "production_source_eligibility": false,
+      "production_context_route": null,
+      "route_equivalence_proven": false,
+      "production_execution_state": "independent_contract_required",
+      "reviewed_reason": "Purpose-scoped Staging first-party executor or source enrollment; production admission needs an independently certified original operation, current Site Profile and exact approved Grant."
+    },
+    {
+      "ability": "mad4b/staging-offline-attestor-enroll-apply",
+      "provider": "core",
+      "original_owner_source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ci-outage-attestation.php",
+      "staging_source_eligibility": true,
+      "production_source_eligibility": false,
+      "production_context_route": null,
+      "route_equivalence_proven": false,
+      "production_execution_state": "independent_contract_required",
+      "reviewed_reason": "Purpose-scoped Staging first-party executor or source enrollment; production admission needs an independently certified original operation, current Site Profile and exact approved Grant."
+    },
+    {
+      "ability": "mad4b/wordpress-native-candidate-opt-in-apply",
+      "provider": "core",
+      "original_owner_source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-write-catalog.php",
+      "staging_source_eligibility": true,
+      "production_source_eligibility": false,
+      "production_context_route": null,
+      "route_equivalence_proven": false,
+      "production_execution_state": "independent_contract_required",
+      "reviewed_reason": "Purpose-scoped Staging first-party executor or source enrollment; production admission needs an independently certified original operation, current Site Profile and exact approved Grant."
+    },
+    {
+      "ability": "mad4b/wp-native-build-start",
+      "provider": "core",
+      "original_owner_source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-build-owner-consent.php",
+      "staging_source_eligibility": true,
+      "production_source_eligibility": false,
+      "production_context_route": null,
+      "route_equivalence_proven": false,
+      "production_execution_state": "independent_contract_required",
+      "reviewed_reason": "Purpose-scoped Staging first-party executor or source enrollment; production admission needs an independently certified original operation, current Site Profile and exact approved Grant."
+    },
+    {
+      "ability": "mad4b/wp-native-self-approve-install",
+      "provider": "core",
+      "original_owner_source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-wp-native-self-approval.php",
+      "staging_source_eligibility": true,
+      "production_source_eligibility": false,
+      "production_context_route": null,
+      "route_equivalence_proven": false,
+      "production_execution_state": "independent_contract_required",
+      "reviewed_reason": "Purpose-scoped Staging first-party executor or source enrollment; production admission needs an independently certified original operation, current Site Profile and exact approved Grant."
+    }
+  ]
+}
