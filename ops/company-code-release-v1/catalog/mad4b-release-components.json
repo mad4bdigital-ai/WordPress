@@ -51,6 +51,19 @@
       "files": [
         "wp-content/mu-plugins/415-mad4b-critical-css-orchestrator.php"
       ]
+    },
+    {
+      "id": "mad4b-destination-demand-order",
+      "files": [
+        "wp-content/mu-plugins/mad4b-destination-demand-rank-v1.php"
+      ]
+    },
+    {
+      "id": "mad4b-navigation-lazy-immutable-v1",
+      "files": [
+        "wp-content/mu-plugins/mad4b-navigation-lazy-listings.php",
+        "wp-content/mu-plugins/mad4b-navigation-lazy-listings/navigation.ea09566dff9a.js"
+      ]
     }
   ]
 }

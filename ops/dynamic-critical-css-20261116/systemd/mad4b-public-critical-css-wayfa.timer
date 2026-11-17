@@ -2,7 +2,7 @@
 Description=MAD4B Wayfatours dynamic public-page CSS certification on change
 
 [Timer]
-OnCalendar=*-*-* *:02,17,32,47:00 UTC
+OnCalendar=*-*-* *:04,12,19,27,34,42,49,57:00 UTC
 RandomizedDelaySec=120
 AccuracySec=60s
 Persistent=true

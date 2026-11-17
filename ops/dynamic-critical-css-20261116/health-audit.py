@@ -35,6 +35,8 @@ queue=load(D/'public-route-queue.py','ccss_health_queue')
 status=load(D/'public-route-status.py','ccss_health_status')
 assess=load(D/'assess.py','ccss_health_original_home_assess')
 runner=load(D/'run-public-route.py','ccss_health_runner')
+source_family=load(D/'public-source-families.py','ccss_health_source_families')
+route_resume=load(D/'public-route-resume.py','ccss_health_route_resume')
 def command(args,timeout=25):
     return subprocess.run(args,capture_output=True,text=True,check=True,timeout=timeout).stdout.strip()
 def sha(path):
@@ -137,6 +139,79 @@ def verify_recent_chromium_home(site,lang,root,current_state,current_home_dirty,
                 json.JSONDecodeError):continue
     return None
 
+def coverage_completion(coverage):
+    """Operational health is not permission to claim complete CSS coverage."""
+    total=int(coverage['discovered'])
+    certified=int(coverage['certified_ledger_only'])
+    native=int(coverage['native_preferred_full_css'])
+    qualified=certified+native
+    held=int(coverage['held_full_css'])
+    pending=int(coverage['needs_certification'])+int(coverage['pending_native_confirmation'])
+    if min(total,certified,native,held,pending)<0 or qualified+held+pending!=total:
+        raise ValueError('INVALID_COVERAGE_PARTITION')
+    complete=total>0 and qualified==total
+    return {
+        'status':'complete' if complete else 'rolling',
+        'fully_qualified':complete,
+        'total_public_routes':total,
+        'certified_ledger_only':certified,
+        'independently_native_preferred':native,
+        'needs_certification_or_hold':held+pending,
+        'qualified_percent':round(100*qualified/total,2) if total else 0.0,
+        'note':'Route ledger completion only; verified market-specific browser readback is separate',
+    }
+
+def current_chromium_route_evidence(site,root,catalog,route,state,market,currency,
+                                    max_age=7*86400):
+    """Recognize trusted Chrome proof when generic curl uses another LSC CSS.
+
+    This is read-only; it never declares the generic HTTP variant Ready:1.
+    The original 422/route-resume verifier checks the *currently installed*
+    route certificate, CSS bytes, source generations, DOM and WCML market.
+    """
+    if site not in SITES or str(root)!=str(SITES[site]['root']):return None
+    if not isinstance(market,str) or not isinstance(currency,str):return None
+    reports=REPORT.parent
+    base=reports/'public-critical-css-v1'/site
+    alternate=reports/'critical-css-health-v1'
+    sources=[]
+    if base.is_dir() and not base.is_symlink():
+        sources.extend(sorted((x for x in base.glob('20*') if x.is_dir() and not x.is_symlink()),reverse=True)[:20])
+    if site=='wayfa' and alternate.is_dir() and not alternate.is_symlink():
+        sources.extend(sorted((x for x in alternate.glob('contact-hero-wayfa-*')
+                   if x.is_dir() and not x.is_symlink()),reverse=True)[:5])
+    for folder in sources:
+        r=folder/'route.json'
+        if r.is_symlink() or not r.is_file() or r.stat().st_size>8192:continue
+        try:
+            selected=json.loads(r.read_text())
+            if (selected.get('route_key')!=route['route_key']
+                or selected.get('path')!=route['path']
+                or selected.get('id')!=route['id']):continue
+        except (OSError,ValueError,TypeError,json.JSONDecodeError):continue
+        for name in ('readback','existing-certificate'):
+            proof=folder/name
+            if not proof.is_dir() or proof.is_symlink():continue
+            head=proof/(route['language']+'.headers')
+            html=proof/(route['language']+'.html')
+            if any(f.is_symlink() or not f.is_file() for f in (head,html)):continue
+            if (head.stat().st_size>16384 or html.stat().st_size>6000000
+                or html.stat().st_size<1000):continue
+            age=time.time()-min(head.stat().st_mtime,html.stat().st_mtime)
+            if not -60<=age<=max_age:continue
+            try:
+                matched=route_resume.ok_cert(site,root,catalog,route,state,
+                    head.read_text(),html.read_text(errors='replace'))
+                if (matched and matched.get('market')==market
+                    and matched.get('currency')==currency):
+                    return {'decision':'current_original_chromium_certificate',
+                            'site':site,'language':route['language'],
+                            'market':market,'currency':currency,
+                            'evidence_folder':folder.name,
+                            'css_sha':matched['css_sha']}
+            except (OSError,ValueError,KeyError,TypeError,json.JSONDecodeError):continue
+    return None
+
 def run_site(site,run_http=True):
     cfg=SITES[site];root=cfg['root'];host=cfg['host']
     errors=[];warnings=[]
@@ -166,6 +241,20 @@ def run_site(site,run_http=True):
         ('discovered','certified_ledger_only','held_full_css','native_preferred_full_css',
          'pending_native_confirmation','needs_certification')}
     result['languages']={lang:sum(counts.values()) for lang,counts in coverage['by_language'].items()}
+    result['coverage_completion']=coverage_completion(coverage)
+    result['coverage_by_language']=coverage['by_language']
+    # Source/template canary certification is the primary QA unit. Keep
+    # per-route CSS-ready evidence separate; unsampled objects remain native.
+    sources=source_family.build(site,catalog,state,ledger,root)
+    result['source_certification']={k:sources[k] for k in (
+       'source_groups_total','source_groups_by_status',
+       'source_canary_qualified_groups','routes_discovered',
+       'routes_with_exact_current_certificate','routes_on_native_or_unproven_css',
+       'source_lineage_note')}
+    result['source_by_profile']=[{'profile':x['source_profile'],'language':x['language'],
+       'type':x['route_type'],'members':x['member_count'],'status':x['status'],
+       'proven_markets':x['proven_market_profiles']}
+       for x in sources['source_families']]
     result['css_epoch']=state['css_epoch']
     report_root=Path('/opt/mad4b-company-provisioning/reports')
     browser_report_root=report_root/'dynamic-critical-css-20261116'/site
@@ -203,8 +292,10 @@ def run_site(site,run_http=True):
         and int(time.time())-attempted>48*3600):
         warnings.append('route_worker_no_progress_over_48h')
     result['public_certificate_files']=len(list((root/'mad4b-public-critical-css-v1/certs').glob('*.json')))
-    if coverage['certified_ledger_only']==0 and result['public_certificate_files']>0:
-        warnings.append('no_current_ledger_certificates_despite_published_assets')
+    result['native_fallback_after_source_dependency_change']=(
+        coverage['certified_ledger_only']==0 and result['public_certificate_files']>0)
+    # Correct invalidation is safe, not a broken engine. Historical assets
+    # stay immutable but never qualify without current source dependencies.
     if run_http:
         result['safe_profile_fallbacks']=[]
         result['home_chromium_evidence']={}
@@ -231,6 +322,7 @@ def run_site(site,run_http=True):
                 warnings.append('home_http_probe_failed:'+lang+':'+str(exc)[:80])
         # Check a small bounded number of ledger-certified public URLs.
         result['public_route_readback']=[]
+        result['safe_route_profile_fallbacks']=[]
         for route in catalog['routes']:
             rec=ledger['routes'].get(route['route_key'],{})
             if rec.get('status')!='certified':continue
@@ -253,13 +345,23 @@ def run_site(site,run_http=True):
                 result['public_route_readback'].append(variant)
                 if not probe['http'].endswith('200'):warnings.append('certified_route_http_not_200:'+route['path'])
                 if variant['certificate_for_observed_market'] and not variant['active_in_observed_market']:
-                    warnings.append('published_certificate_not_active_in_observed_market:'+route['path'])
+                    evidence=current_chromium_route_evidence(site,root,catalog,
+                        route,state,country,currency)
+                    if evidence:
+                        variant['current_chromium_proof']=evidence
+                        variant['status']='native_http_variant_with_current_chromium_proof'
+                        result['safe_route_profile_fallbacks'].append(route['path'])
+                    else:
+                        warnings.append('published_certificate_not_active_in_observed_market:'+route['path'])
             except (OSError,ValueError,subprocess.CalledProcessError,subprocess.TimeoutExpired) as exc:
                 warnings.append('public_route_probe_failed:'+route['path']+':'+str(exc)[:80])
     result['active_route_samples']=sum(int(p['active_in_observed_market'])
                                        for p in result.get('public_route_readback',[]))
     result['status']=('degraded' if warnings else
-                      'healthy_with_safe_fallback' if result.get('safe_profile_fallbacks')
+                      'healthy_with_safe_fallback' if (
+                          result.get('safe_profile_fallbacks')
+                          or result.get('safe_route_profile_fallbacks')
+                          or result.get('native_fallback_after_source_dependency_change'))
                       else 'healthy')
     return result
 def write(path,payload):

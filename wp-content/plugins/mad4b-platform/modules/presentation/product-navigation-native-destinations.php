@@ -646,7 +646,8 @@ function native_destinations_eligible_children(int $parent_id,string $language):
    if(native_destinations_sale_term_enabled($child_id,$language))
      $memo[$key][]=$child_id;
  }
- return $memo[$key];
+ return $memo[$key]=apply_filters('mad4b/destination_demand_rank/eligible_child_ids',
+     $memo[$key], $parent_id, $language);
 }
 /**
  * Native Elementor Nested Tabs for sale-qualified descendant branches.

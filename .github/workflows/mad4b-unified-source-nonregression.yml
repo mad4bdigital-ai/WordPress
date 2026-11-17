@@ -9,6 +9,14 @@ on:
       - '.github/workflows/mad4b-unified-source-nonregression.yml'
       - 'wp-content/plugins/mad4b-site-control-plane/**'
       - 'ops/company-code-release-v1/**'
+      # Keep navigation cache-busting and portable release assets from drifting.
+      - 'ops/destination-demand-ranking/**'
+      - 'ops/company-reconcile/runtime-owner-closure-v1/**'
+      - 'tests/destination-demand-ranking/**'
+      - 'wp-content/mu-plugins/mad4b-navigation-lazy-listings.php'
+      - 'wp-content/mu-plugins/mad4b-navigation-lazy-listings/**'
+      - 'wp-content/plugins/mad4b-platform/legacy-mu-tree/assets/mad4b-navigation-lazy-listings.js'
+      - 'wp-content/plugins/mad4b-platform/legacy-mu-tree/assets/mad4b-static-js/**'
       - 'ops/native-source-publisher-v1/**'
       - 'ops/performance-v2/**'
       - 'ops/mobile-critical-css-v1/**'
@@ -80,6 +88,12 @@ jobs:
         run: |
           set -euo pipefail
           python3 -m unittest discover -s tests -p 'test_unified_mad4b_behavior_invariants.py' -v
+          # No mutable JS URLs, stale minifier manifest, or partial company
+          # release: all pinned immutable navigation bytes must match source.
+          python3 tests/destination-demand-ranking/test_navigation_immutable_contract.py
+          python3 tests/destination-demand-ranking/test_portability_catalog.py
+          php -l wp-content/mu-plugins/mad4b-navigation-lazy-listings.php
+          node --check "$(find wp-content/mu-plugins/mad4b-navigation-lazy-listings -maxdepth 1 -name 'navigation.*.js' -print -quit)"
           python3 -m unittest discover -s tests -p 'test_tour_highlights_source_delta.py' -v
           python3 -m unittest discover -s tests -p 'test_pr813_destination_additive_reconcile.py' -v
           python3 -m unittest discover -s tests -p 'test_tour_highlights_site_neutral_scope.py' -v
@@ -240,6 +254,9 @@ jobs:
       - name: Verify exact immutable 238-file historical source
         run: |
           python3 ops/native-source-publisher-v1/ci_historical_additive_source_test.py --report /tmp/mad4b-historical-source-contract.json
+          # Verify every one of the historical 905 source blobs against the
+          # original receipt-creation commit, never today's mutable HEAD.
+          python3 -m unittest discover -s ops/company-reconcile/runtime-owner-closure-v1/tests -p 'test_runtime_owner_closure.py' -v
       - name: Preserve fail-closed historical source evidence
         if: always()
         uses: actions/upload-artifact@v4

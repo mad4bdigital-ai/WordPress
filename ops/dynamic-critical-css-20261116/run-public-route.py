@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Bounded permanent company page-by-page Critical CSS admission.
+"""Bounded permanent company source-template canary Critical CSS admission.
 
-One route and one anonymous browser at a time. No request can bypass
+One source canary and one anonymous browser at a time. No request can bypass
 WooCommerce/WCML/authorization partitioning. Source/locale/page/CSS revisions
 are re-read before publishing; safe native CSS remains for unproven contexts.
 """
@@ -69,6 +69,23 @@ echo wp_json_encode(MAD4B_Public_Critical_CSS_Coverage_V1::catalog(),JSON_UNESCA
     return out
 def jsonsave(p,obj):
     p.write_text(json.dumps(obj,indent=2,sort_keys=True)+'\n')
+def optimizer_bundle_missing(capture_index,route):
+    """Classify only four original Chromium HTTP-200 no-bundle captures."""
+    if capture_index.is_symlink() or not capture_index.is_file() or capture_index.stat().st_size>200000:
+        return False
+    try:
+        proof=json.loads(capture_index.read_text())
+        if proof.get('contract')!='mad4b.mobile-critical.capture.v1':return False
+        rows=proof.get('scenarios')
+        return (isinstance(rows,list) and len(rows)==4
+            and {r.get('width') for r in rows}=={320,390,414,768}
+            and all(r.get('uri')==route.get('path')
+                    and r.get('lang')==route.get('language')
+                    and r.get('error')=='Error: status=200 bundles=0'
+                    for r in rows))
+    except (OSError,ValueError,TypeError,KeyError,json.JSONDecodeError):
+        return False
+
 def locked(file):
     f=open(file,'a+');fcntl.flock(f,fcntl.LOCK_EX|fcntl.LOCK_NB);return f
 def browser(job,wp,site,env,script,output,extra=None,limit=1320):
@@ -106,6 +123,20 @@ def run_core(site):
         dst=wp/'mu-plugins'/name
         if not src.is_file() or not dst.is_file() or src.read_bytes()!=dst.read_bytes():
             raise ValueError('SOURCE_LIVE_NATIVE_COMPONENT_DRIFT:'+name)
+    # Borrow the host's existing 45-second CPU sensor instead of starting a
+    # Chromium run at 51-100% guest CPU (or with two original WPCLI slots).
+    # A deferred run never selects a route, mutates the ledger or changes a
+    # certificate. The next calendar opportunity retries automatically.
+    try:
+        admission=subprocess.run(['python3',str(TOOLS/'public-route-cpu-guard.py')],
+            capture_output=True,text=True,timeout=6)
+        if admission.returncode!=0:
+            print('DEFER_PUBLIC_CCSS_RESOURCE_WINDOW',site,
+                  admission.stdout.strip()[:140] or 'sensor_error')
+            return
+    except (OSError,subprocess.TimeoutExpired):
+        print('DEFER_PUBLIC_CCSS_RESOURCE_SENSOR_UNAVAILABLE',site)
+        return
     cores=os.cpu_count() or 1
     pressure=os.getloadavg()[0]
     if pressure>max(4,cores*1.35):
@@ -120,8 +151,30 @@ def run_core(site):
     statefile=jobdir/'site.json';catfile=jobdir/'catalog.json'
     ledger=base/'route-ledger.json';jobfile=jobdir/'selected.json'
     jsonsave(statefile,state);jsonsave(catfile,listing)
+    if any('source_profile' not in route for route in listing['routes']):
+        raise ValueError('UNQUALIFIED_LEGACY_SOURCE_CATALOG_NO_FAMILY_IDENTITY')
+    # The sole automatic route QA queue now selects *source canaries*.
+    # Source groups are built from WP-owned shared templates, real original
+    # browser certification receipts and the immutable CSS/Elementor assets;
+    # a route with different dynamic data is never silently given its sibling
+    # page's certificate. No extra Chromium run after a qualified cohort.
+    import importlib.util
+    spec=importlib.util.spec_from_file_location('source_families',TOOLS/'public-source-families.py')
+    family=importlib.util.module_from_spec(spec);spec.loader.exec_module(family)
+    report=family.build(site,listing,state,
+        family.queue.read_ledger(ledger,site),wp)
+    report['refreshed_at_utc']=time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime())
+    family.queue.atom(base/'source-families-latest.json',report)
+    preferred=report.get('next_canary_route_key')
+    print('PUBLIC_CCSS_SOURCE_FAMILIES',site,'total',report['source_groups_total'],
+        'qualified',report['source_canary_qualified_groups'],
+        'next',preferred[:12] if preferred else 'none',flush=True)
+    if not preferred:
+        print('READY_PUBLIC_CCSS_SOURCE_FAMILIES',site,
+              'NO_UNPROVEN_TEMPLATE_CANARY_ELIGIBLE_NATIVE_PAGE_FALLBACKS_REMAIN')
+        return
     run(['python3',str(TOOLS/'public-route-queue.py'),'select',site,
-        str(catfile),str(statefile),str(ledger),str(jobfile)])
+        str(catfile),str(statefile),str(ledger),str(jobfile),preferred])
     job=json.loads(jobfile.read_text())
     route=job['route']
     if route is None:
@@ -314,8 +367,10 @@ def run_core(site):
         print('CERTIFIED_PUBLIC_CCSS',site,lang,jobpath,'MARKET_CURRENCY_BOUND')
     except (subprocess.CalledProcessError,subprocess.TimeoutExpired,
             OSError,ValueError,KeyError,json.JSONDecodeError) as exc:
-        print('HOLD_PUBLIC_CCSS',site,lang,jobpath,str(exc)[:270])
-        try:record('hold')
+        no_bundle=optimizer_bundle_missing(jobdir/'capture-index.json',route)
+        print('HOLD_PUBLIC_CCSS',site,lang,jobpath,
+              'SOURCE_ORIGINAL_CSS_BUNDLE_UNAVAILABLE' if no_bundle else str(exc)[:270])
+        try:record('hold','source_css_bundle_unavailable' if no_bundle else None)
         except Exception as ledger_error:print('HOLD_QUEUE_LEDGER',str(ledger_error)[:180])
         # Do not declare service success as proof of a particular page.
 def main():

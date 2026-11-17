@@ -93,4 +93,19 @@ test('hard integrity failure delegates to existing rate-limited systemd alert ch
      'OnFailure=mad4b-alert-handler@%n.service' in unit)
 test('WPCLI busy keeps bounded retry without turning into a hard-error email storm',
      'Restart=on-failure' in unit and 'RestartPreventExitStatus=4' in unit)
+part={'discovered':100,'certified_ledger_only':8,'native_preferred_full_css':2,
+      'held_full_css':3,'needs_certification':87,'pending_native_confirmation':0}
+res=h.coverage_completion(part)
+test('low certificate count remains rolling regardless of healthy engine',
+     res['status']=='rolling' and not res['fully_qualified'] and res['qualified_percent']==10)
+test('independently negative-proven full native CSS counts as qualified',
+     res['independently_native_preferred']==2 and res['needs_certification_or_hold']==90)
+part.update({'certified_ledger_only':98,'native_preferred_full_css':2,
+             'held_full_css':0,'needs_certification':0})
+test('full scope only when all routes independently accounted',
+     h.coverage_completion(part)['fully_qualified'])
+part['needs_certification']=1
+try:h.coverage_completion(part)
+except ValueError:test('tampered overlapping counts refused',True)
+else:raise AssertionError('unbalanced coverage accepted')
 print(f'PASS {len(checks)}/{len(checks)} read-only permanent stability health invariants')

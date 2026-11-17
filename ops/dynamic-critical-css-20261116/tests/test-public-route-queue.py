@@ -93,4 +93,20 @@ with tempfile.TemporaryDirectory() as t:
            classified['status']=='hold' and classified['hold_reason']=='source_html_drift')
     finally:
         sys.argv=original
+# Source-based canary selection is deliberate, never arbitrary route promotion.
+fixture=dict(cat,routes=[a,b,c]);fixture['global_generation']=0;fixture['listing_generation']=0
+empty={'contract':q.QUEUE,'site':'source','routes':{}}
+chosen,key=q.choose(fixture,state,empty,3000,preferred=c['route_key'])
+ok('source owner selects one exact live tour exemplar',chosen==c and isinstance(key,str))
+empty['routes'][c['route_key']]={'source_key':key,'status':'hold','retry_after':5000}
+chosen,key=q.choose(fixture,state,empty,3000,preferred=c['route_key'])
+ok('source canary cannot bypass a HOLD cooldown',chosen is None and key is None)
+chosen,key=q.choose(fixture,state,empty,5001,preferred=c['route_key'])
+ok('cooldown completion admits source canary again',chosen==c)
+empty['routes'][c['route_key']]={'source_key':key,'status':'certified'}
+ok('already certified source exemplar never reruns',q.choose(fixture,state,empty,5002,preferred=c['route_key'])[0] is None)
+for wrong in ['../private', 'a'*64]:
+ try:q.choose(fixture,state,empty,5002,preferred=wrong)
+ except ValueError:ok('untrusted or missing source route rejected',True)
+ else:raise AssertionError('forged source selector accepted')
 print('PASS',len(checks),'/',len(checks),'incremental route scheduler invariants')

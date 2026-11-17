@@ -311,6 +311,7 @@ return [
  ['mad4b-central-homepage-sections.php','mad4b-platform/modules/operations/mad4b-central-homepage-sections.php'],
  ['mad4b-company-policy-library.php','mad4b-platform/modules/operations/mad4b-company-policy-library.php'],
  ['mad4b-company-template-identity.php','mad4b-platform/modules/authority/mad4b-company-template-identity.php'],
+ ['mad4b-destination-demand-rank-v1.php','mad4b-platform/modules/presentation/mad4b-destination-demand-rank-v1.php'],
  ['mad4b-frontend-impact-commerce-evidence.php','mad4b-commerce/modules/commerce/mad4b-frontend-impact-commerce-evidence.php'],
  ['mad4b-frontend-impact-shared-presentation-bridge.php','mad4b-platform/modules/presentation/mad4b-frontend-impact-shared-presentation-bridge.php'],
  ['mad4b-research-firecrawl-cycles.php','mad4b-platform/modules/integrations/mad4b-research-firecrawl-cycles.php'],

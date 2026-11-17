@@ -321,19 +321,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # Resolve the newest catalog-certified *CI-only* adapter profile.
-          # This is not a production upgrade permission or a runtime-policy
-          # target. The shared resolver validates archive digest, byte length,
-          # URL scheme and the exact autoload fingerprint before selection.
+          # CI candidate only. The repository runtime policy intentionally
+          # does not pin an Adapter version or authorize installation.
+          # Use the exact certified Provider catalog and the source-owned
+          # resolver. A failed resolution must fail this step before curl.
           python3 tools/resolve-certified-mcp-adapter-profile.py \
-            --profile auto-ci > /tmp/mad4b-certified-adapter.env
-          source /tmp/mad4b-certified-adapter.env
+            --profile auto-ci > /tmp/mad4b-package-adapter-profile.env
+          source /tmp/mad4b-package-adapter-profile.env
           MCP_ADAPTER_VERSION="$TARGET_VERSION"
           MCP_ADAPTER_SHA="$TARGET_SHA"
           MCP_ADAPTER_BYTES="$TARGET_BYTES"
           MCP_ADAPTER_URL="$TARGET_URL"
-          MCP_ADAPTER_ARCHIVE="mcp-adapter-${TARGET_VERSION}.zip"
-          MCP_ADAPTER_STAGE_PATH='/tmp/mad4b-certified-mcp-adapter.zip'
+          MCP_ADAPTER_ARCHIVE="mcp-adapter-$TARGET_VERSION.zip"
+          MCP_ADAPTER_STAGE_PATH="/tmp/mad4b-certified-mcp-adapter.zip"
           {
             echo "MCP_ADAPTER_VERSION=$MCP_ADAPTER_VERSION"
             echo "MCP_ADAPTER_SHA=$MCP_ADAPTER_SHA"

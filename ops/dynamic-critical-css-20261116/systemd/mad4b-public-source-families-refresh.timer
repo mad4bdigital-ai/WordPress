@@ -1,0 +1,12 @@
+[Unit]
+Description=MAD4B source-level Critical CSS family registry self-refresh
+
+[Timer]
+OnCalendar=*-*-* *:07,37:00 UTC
+AccuracySec=60s
+RandomizedDelaySec=90
+Persistent=true
+Unit=mad4b-public-source-families-refresh.service
+
+[Install]
+WantedBy=timers.target

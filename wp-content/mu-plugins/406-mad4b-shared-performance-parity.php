@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B · Shared First-Paint Performance
  * Description: Tenant-local font, public CSS stability, above-fold destination and responsive brand image optimizations.
- * Version: 1.0.8
+ * Version: 1.0.10
  */
 defined('ABSPATH') || exit;
 
@@ -107,10 +107,29 @@ final class MAD4B_Shared_First_Paint_Performance {
         wp_enqueue_style('mad4b-local-cairo',$asset['src'],[],$asset['version'],'all');
     }
 
+    /** JetEngine dynamic listing selectors on public articles must remain
+     * inline rather than poisoning the shared LiteSpeed combined CSS SHA.
+     * Scope strictly to a published canonical WPML post, never the blog
+     * index, page preview, search, logged-in, or private commerce route. */
+    private static function public_article(): bool {
+        if (!self::owner() || !is_singular('post') || is_home()
+            || is_admin() || wp_doing_ajax() || is_preview() || is_feed()
+            || is_404()) return false;
+        $id=absint(get_queried_object_id());
+        $post=$id?get_post($id):null;
+        return $post instanceof WP_Post && $post->post_type==='post'
+            && $post->post_status==='publish'
+            && is_post_publicly_viewable($post)
+            && !post_password_required($post);
+    }
+
     private static function safe_public_css(): bool {
-        if (!self::homepage() || is_user_logged_in() || ($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET'
+        $home=self::homepage();
+        $article=self::public_article();
+        if ((!$home && !$article) || is_user_logged_in()
+            || ($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET'
             || (!empty($_SERVER['QUERY_STRING']) &&
-              ((string)$_SERVER['QUERY_STRING'] !== 'mad4b_predictive_css_probe=1'
+              (!$home || (string)$_SERVER['QUERY_STRING'] !== 'mad4b_predictive_css_probe=1'
                || wp_get_environment_type() !== 'staging'))
             || !empty($_SERVER['HTTP_AUTHORIZATION'])
             || !empty($_SERVER['HTTP_X_MAD4B_CURRENCY']) || !empty($_SERVER['HTTP_X_GEO_COUNTRY'])
@@ -157,11 +176,40 @@ final class MAD4B_Shared_First_Paint_Performance {
         return true;
     }
 
+    /** Contact above-fold image is already WordPress eager/high-priority.
+     * LiteSpeed must not replace it with a 1x1 placeholder; the resulting
+     * late load was the 320px mobile LCP regression on Spanish Contact.
+     * Only the dedicated image class on a canonical public page is exempt;
+     * every other gallery, card or below-fold image remains lazily loaded. */
+    public static function contact_hero_image_priority(): void {
+        if (!self::owner() || !is_page() || is_home() || is_admin()
+            || wp_doing_ajax() || is_preview() || is_feed() || is_404()
+            || is_user_logged_in()
+            || ($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET'
+            || !empty($_SERVER['QUERY_STRING'])) return;
+        $id=absint(get_queried_object_id());
+        $post=$id?get_post($id):null;
+        if (!$post instanceof WP_Post || $post->post_type!=='page'
+            || $post->post_status!=='publish' || !is_post_publicly_viewable($post)
+            || post_password_required($post))return;
+        $url=get_permalink($post);
+        $path=(string)wp_parse_url((string)$url,PHP_URL_PATH);
+        $request=(string)wp_parse_url((string)($_SERVER['REQUEST_URI']??''),PHP_URL_PATH);
+        if ($path==='' || $request!==$path || wp_parse_url((string)$url,PHP_URL_QUERY)!==null
+            || strtolower((string)wp_parse_url((string)$url,PHP_URL_HOST))!==
+               strtolower((string)wp_parse_url((string)get_option('home',''),PHP_URL_HOST)))return;
+        add_filter('litespeed_media_lazy_img_cls_excludes',static function($excludes) {
+            $excludes=is_array($excludes)?$excludes:[];
+            $excludes[]='mad4b-contact-hero-photo';
+            return array_values(array_unique($excludes));
+        },9999);
+    }
+
     public static function stable_css_combination(): void {
         if (!self::safe_public_css()
             || (string)get_option('litespeed.conf.optm-css_comb') !== '1'
             || (string)get_option('litespeed.conf.optm-css_comb_ext_inl') !== '1') return;
-        // JetEngine inserts different elementor-dcss-* selectors per rendered city.
+        // JetEngine inserts per-item dynamic selectors for cities and article recommendations.
         // Retain those per-item rules outside LiteSpeed's reusable static CSS bundle.
         add_filter('litespeed_optimize_css_excludes', static function($excludes) {
             $excludes = is_array($excludes) ? $excludes : [];
@@ -347,6 +395,7 @@ final class MAD4B_Shared_First_Paint_Performance {
         if (!self::owner()) return;
         add_action('wp', [__CLASS__,'remove_duplicate_hero_preload'], 120);
         add_action('wp', [__CLASS__,'stable_css_combination'], 105);
+        add_action('wp', [__CLASS__,'contact_hero_image_priority'], 106);
         add_filter('astra_render_fonts', [__CLASS__,'avoid_duplicate_astra_font'], 9999, 1);
         add_action('wp_enqueue_scripts', [__CLASS__,'locally_hosted_font'], 99999);
         add_action('wp_head', [__CLASS__,'mobile_city_lcp'], 3);

@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: MAD4B Public Critical CSS Coverage & Dependency Events
- * Version: 1.1.1
+ * Version: 1.1.2
  * Description: Source-scoped dirty events and CLI-only public route discovery; no unverified CSS transformations.
  */
 defined('ABSPATH') || exit;
@@ -252,6 +252,22 @@ final class MAD4B_Public_Critical_CSS_Coverage_V1 {
             ['element_id'=>$id,'element_type'=>$kind]);
         return is_string($lang) && preg_match('/^[a-z]{2}$/D',$lang) ? $lang : $default;
     }
+    /** Content originates in a shared template or an authored Elementor
+     * document. This is a source *candidate*, not a blanket CSS certificate:
+     * Elementor conditional Theme Builder templates, dynamic cards, LCP images
+     * and WCML variants still need current proof before reusing any asset. */
+    private static function source_profile(string $type,int $id): string {
+        if (str_starts_with($type,'archive:')) return 'archive:'.$type;
+        if (in_array($type,self::TAXONOMIES,true)) return 'taxonomy:'.$type;
+        if (!in_array($type,self::TYPES,true) || $id<=0) return 'unclassified';
+        $mode=(string)get_post_meta($id,'_elementor_edit_mode',true);
+        if ($mode==='builder') return 'elementor-document:'.$id;
+        $slug=(string)get_page_template_slug($id);
+        if ($slug==='' || !preg_match('~^[a-zA-Z0-9/_-]{1,96}$~D',$slug))
+            $slug='default';
+        return 'shared-template:'.$type.':'.str_replace('/','-',$slug);
+    }
+
     public static function catalog(): array {
         if (!self::authorized() || !defined('WP_CLI') || !WP_CLI) return [];
         $settings=get_option('icl_sitepress_settings',[]);
@@ -270,6 +286,7 @@ final class MAD4B_Public_Critical_CSS_Coverage_V1 {
             $revision=in_array($type,self::TYPES,true)
                 ? (int)get_post_meta((int)$id,'_mad4b_ccss_route_generation_v1',true) : 0;
             $rows[]=['path'=>$path,'type'=>$type,'id'=>(int)$id,'language'=>$language,
+                'source_profile'=>self::source_profile((string)$type,(int)$id),
                 'revision'=>$revision,
                 'route_key'=>hash('sha256',$key.'|'.$type.'|'.$id)];
         };

@@ -16,7 +16,8 @@ TYPES={'page','post','tours-and-activities','properties',
 HOLD_REASONS={'market_context_unavailable','capture_error',
               'source_html_drift','country_or_currency_context_drift',
               'unstable_css_source','unstable_elementor_graph',
-              'unstable_market_currency','candidate_incomplete'}
+              'unstable_market_currency','candidate_incomplete',
+              'source_css_bundle_unavailable'}
 EXCLUDED=['checkout','cart','my-account','order-pay','order-received','carrito',
           'carrello','panier','warenkorb','kasse','paiement','pagamento',
           'mein-konto','mio-account','account','password','login','checkout']
@@ -68,7 +69,7 @@ def order_key(r):
           'category':7,'tour-categories':8,
           'archive:tours-and-activities':9,'archive:properties':10}[typ]
     return (tier,0 if r['language']=='en' else 1,r['path'])
-def choose(cat,state,ledger,now):
+def choose(cat,state,ledger,now,preferred=None):
     rows=safe_catalog(cat,ledger['site'])
     if (state.get('site_host')!=cat['host'] or state.get('critical_css')!='on'
         or not isinstance(state.get('css_epoch'),int)):raise ValueError('WP-source-state-invalid')
@@ -79,6 +80,23 @@ def choose(cat,state,ledger,now):
     for r in rows:
         if r['route_key'] in ledger['routes']:
             groups[(r['type'],r['language'])]+=1
+    # An authenticated, source-template-level coordinator may nominate the
+    # next representative canary. Only already authorized catalog route keys
+    # are accepted; cooldown, exact generation, and prior certification remain
+    # non-overridable. Legacy selection remains available for diagnostics.
+    if preferred is not None:
+        if not isinstance(preferred,str) or not re.fullmatch('[a-f0-9]{64}',preferred):
+            raise ValueError('invalid-source-canary-selection')
+        chosen=next((r for r in rows if r['route_key']==preferred),None)
+        if chosen is None:raise ValueError('source-canary-route-not-in-catalog')
+        record=ledger['routes'].get(preferred,{})
+        if not isinstance(record,dict):raise ValueError('invalid-source-canary-ledger')
+        key=source_key(cat,chosen,state,bool(record.get('depends_on_listings')))
+        if record.get('source_key')!=key or (record.get('status') not in
+            ['certified','unsupported','native_preferred'] and
+            now>=int(record.get('retry_after',0))):
+            return chosen,key
+        return None,None
     unseen=[];changed=[];retry=[]
     for r in rows:
         if r['path'] in ['/',('/'+r['language']+'/')]:continue
@@ -130,7 +148,8 @@ def main():
     ledger=read_ledger(Path(ledgerfile),site)
     now=int(time.time())
     if mode=='select':
-        route,key=choose(catalog,state,ledger,now)
+        if len(rest)>1:raise ValueError('more-than-one-source-canary')
+        route,key=choose(catalog,state,ledger,now,rest[0] if rest else None)
         result={'contract':'mad4b.public-critical-css.job.v1','site':site,
                 'catalog_generation':catalog.get('generation',0),
                 'route':route,'source_key':key,'selected_at':now}

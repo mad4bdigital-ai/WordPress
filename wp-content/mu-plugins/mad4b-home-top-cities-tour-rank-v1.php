@@ -94,6 +94,9 @@ final class MAD4B_Home_Top_Cities_Tour_Rank_V1 {
     }
 
     public static function sort_query_items($items,$query) {
+        // The shared demand rank owns Query 288 and all compatible
+        // Elementor listing surfaces. Keep this original v1 as a fallback.
+        if (class_exists('MAD4B_Destination_Demand_Rank_V1',false)) return $items;
         if(!self::applies($query)||!is_array($items)||count($items)<2)
             return $items;
         $counts=self::published_tour_counts($items);

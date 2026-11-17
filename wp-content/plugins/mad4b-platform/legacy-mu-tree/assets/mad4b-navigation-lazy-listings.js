@@ -210,9 +210,53 @@
     return true;
   }
 
+  // An Elementor header root grid can be projected *after* native JetEngine
+  // init. Its signed lazy markup remains blank when a closed menu first opens.
+  // Re-enter the original JetEngine widget handler only after visitor intent;
+  // neither original query membership nor signed Ajax arguments are replaced.
+  const rootActivated = new WeakSet();
+  function activateVisibleRootListings(root) {
+    const engine = window.JetEngine;
+    if (!root || !engine || typeof engine.widgetListingGrid !== 'function' || !window.jQuery) return;
+    prepare(root);
+    root.querySelectorAll(SELECTOR).forEach(widget => {
+      if (isBranchWidget(widget) || rootActivated.has(widget)) return;
+      const grid = widget.querySelector('.jet-listing-grid--lazy-load[data-lazy-load]');
+      if (!grid) return; // Wayfatours pre-rendered grids need no second request.
+      const bounds = widget.getBoundingClientRect();
+      if (bounds.width < 1 || bounds.height < 1) return;
+      rootActivated.add(widget);
+      try { engine.widgetListingGrid(window.jQuery(widget)); }
+      catch (_) { rootActivated.delete(widget); }
+    });
+  }
+  function afterNativeOpen(root, toggle = null) {
+    if (!root) return;
+    const run = () => {
+      if (toggle && toggle.getAttribute('aria-expanded') !== 'true') return;
+      activateVisibleRootListings(root);
+    };
+    // Elementor's native country tabs finish activating *after* the menu
+    // button changes aria-expanded. One bounded on-intent delay gives the
+    // native panel geometry time to settle before JetEngine observes it.
+    window.setTimeout(run, 420);
+  }
+  document.addEventListener('click', event => {
+    const toggle = event.target.closest && event.target.closest(
+      'header.elementor-location-header .e-n-menu-dropdown-icon');
+    if (!toggle) return;
+    const contentId = toggle.getAttribute('aria-controls');
+    if (!contentId || !/^e-n-menu-content-[\w-]+$/.test(contentId)) return;
+    const root = document.getElementById(contentId);
+    if (root) afterNativeOpen(root, toggle);
+  });
+
   function tabEvent(event) {
     const tab = event.target.closest && event.target.closest('[role="tab"],.e-n-tab-title');
-    if (!tab || !tab.closest('header.elementor-location-header .native-destination-deep-tabs')) return;
+    if (!tab) return;
+    const tabRoot = tab.closest('header.elementor-location-header .native-destinations-tabs');
+    if (tabRoot) afterNativeOpen(tabRoot);
+    if (!tab.closest('header.elementor-location-header .native-destination-deep-tabs')) return;
     // Elementor updates aria-selected and active panels in the same event tick.
     scheduleDrain();
   }

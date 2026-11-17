@@ -726,3 +726,185 @@ embeds credentials or recipients in the CSS source. A degraded CSS profile
 still retains native CSS and is logged locally, not falsely reported as
 a fatal outage. The notifier's `check` command validates configuration
 without sending email. No test email is sent during installation.
+
+## CPU incident: never perform unbounded raw-byte SequenceMatcher on CSS
+
+On 2026-11-17 four detached `python3 -` shell diagnostics compared the same two
+~2.47MB LiteSpeed CSS files using `difflib.SequenceMatcher(..., autojunk=False)`.
+Each had run for over two hours, consuming nearly a CPU core, outside the
+managed Chromium/systemd admission and causing benign Critical CSS queue HOLDs.
+After exact process identity, parentage and orphaned-session verification, only
+those four diagnostics were terminated; WordPress/Chromium services were not
+stopped. The host's original load/capacity admission must not be relaxed.
+
+For future large stylesheet comparisons use **only the bounded, linear-time,
+read-only** tool instead of byte-level difflib:
+
+```
+/usr/bin/timeout 8s /usr/bin/python3 ops/dynamic-critical-css-20261116/safe-css-diff.py wayfa FIRST_32HEX.css SECOND_32HEX.css
+```
+
+It reads only enrolled staging/Wayfa LiteSpeed CSS assets, refuses symlinks,
+oversized files and invalid content-addressed filenames, and has hard per-run
+CPU and address-space limits. It outputs hashes, sizes, first-difference byte,
+unchanged prefix/suffix and overlap mismatch counts (no full CSS content).
+It performs no cache invalidation, remote fetch, WooCommerce changes, or CSS
+certificate issuance. This prevents the exact repeated-byte quadratic
+comparison trap; it does not claim to sandbox arbitrary SSH commands. Existing
+low-priority systemd workers and the shared Chromium lock continue normally.
+
+## Article-safe JetEngine per-item CSS source partition (Nov 17)
+
+The shared First-Paint 406 MU-plugin (v1.0.9) now carries its *existing*
+`litespeed_optimize_css_excludes` filter to the currently published, exact
+canonical permalink for `is_singular('post')`, in addition to homepages.
+The filter leaves `elementor-dcss-...` style blocks in original page HTML,
+where their selectors and image/background values still belong to the
+actually selected JetEngine posts, instead of folding their transient
+selectors and images into a globally reusable LiteSpeed combined CSS file.
+LiteSpeed's own `_parse_css()` checks the complete `<style>` block for its
+CSS exclude strings; the filter does **not** remove content from the HTML.
+
+Admission remains closed for unpublished/passworded posts, WordPress posts
+index, preview, draft, AJAX, REST, users with sessions, non-GET requests,
+query arguments, noncanonical paths or hosts, foreign WPML/blog context,
+unknown cookies and commerce/market override headers. There is no sitewide
+CSS exclusion, no breakpoint change, and no CSS certificate issued from a
+source change alone. Source-backed PHP mock tests cover the admitted public
+post and blocked variants; each changed live site requires a narrow cache
+renewal and independent browser capture before any critical certificate.
+
+## Operational health and fleet coverage are separate facts
+
+The daily audit now emits `coverage_completion.status=rolling|complete`,
+`fully_qualified`, `qualified_percent`, independent native-preferred counts,
+and `coverage_by_language` alongside the existing engine `status`. Unseen,
+HOLD, incomplete and stale source keys can never be shown as certified;
+ledger certification does not assert the live market-specific consumer is
+active. A healthy engine with 1% route coverage is still rolling. This
+changes private read-only reporting only, not certificate admission, site
+performance thresholds, notification gates or the publication runtime.
+
+## Contact hero's native eager-loading guarantee
+
+Plugin 406 v1.0.10 enrolls exactly `mad4b-contact-hero-photo` in the native
+LiteSpeed `litespeed_media_lazy_img_cls_excludes` list on published canonical
+public pages, preserving its already configured `loading=eager` and
+`fetchpriority=high` from the original Contact shortcode. In the prior Spanish
+Wayfatours 320px QA the full CSS candidate deferred this LCP image behind a
+LiteSpeed 1x1 GIF/data-src transformation, yielding +452ms LCP. Other images
+and gallery cards remain subject to native Lazy Load. The rule never applies
+to admin, session, draft, query, noncanonical or non-GET contexts. Post-change
+browser QA is independent of the unit tests and is required before promotion.
+
+## Quiet-window coverage scheduling
+
+Both companies now get up to eight staggered route-certification opportunities
+per hour (previously four), but each attempt is admitted only when the
+root-owned 45-second CPU-budget sensor is fresh (105s), the eight-vCPU
+identity is unchanged, host CPU is under 50%, live/recorded load under 7,
+steal under 20%, CPU PSI under 25 and fewer than two original Central WPCLI
+sessions are active. Missing/stale/invalid telemetry fails closed. Each
+company keeps its separate ledger, one Chromium global lock, per-job Docker
+CPU/memory caps, original 313 protections, direct source parity checks and
+original negative-QA/market/currency certificate gates. Deferred slots issue
+no certificate and cause no WPCLI work. The faster schedule improves
+throughput only when genuine spare CPU exists; it does not claim every
+public route already passes Chrome QA.
+
+## Source-owned CSS certification, v1: autonomous template canaries
+
+The fleet no longer treats every WPML URL as an independent mandatory
+performance-certification unit. WordPress's original source catalog now
+classifies each URL by a `source_profile` rooted in published post type,
+assigned page-template slug, taxonomy/archive or a separately authored
+Elementor document. These are *candidate source origins*, not blanket proofs
+of identical CSS, layout or LCP. WPML languages are discovered from the
+active SitePress registry, never hardcoded to EN/ES.
+
+`public-source-families.py` builds independent company + language + source
+family generations from the live WPML catalog, CSS epoch, global/listing
+revision, native breakpoint and exact original PHP consumer SHA. Every
+source exemplar must have an ORIGINAL five-viewport QA certificate, current
+route/Elementor/CSS hashes, matching server-resolved WCML market+currency,
+valid immutable assets and the exact source-specific route ledger. A truly
+shared template with multiple routes needs **two distinct** current Chromium
+canaries with the same Elementor document graph and market before its source
+behavior is qualified; individually authored Elementor documents and
+singletons need one. Divergent Elementor graphs form a source split/hold,
+not an inherited certificate. Failed, stale, untrusted or busy examples
+never count. The source registry is written as a private root-only report and
+shown in the source-level integrity audit, independently of URL metrics.
+
+The permanent browser worker now prioritizes exactly one eligible **source
+canary** from this registry, with the existing strict CPU/Chromium locks,
+independent five-viewport FCP/LCP/CLS and marketplace proof. Completed source
+families are skipped on recurring ticks. A content/Elementor/market/epoch
+change automatically invalidates the affected lineage and reopens its
+source QA. Autopilot is therefore bounded by source groups rather than
+1,876 route-level QA runs.
+
+**Important separation:** Source canary qualification certifies the shared
+*behavioral source*. The existing consumer 422 still deploys a particular
+Critical CSS asset only after the exact public route, live CSS bytes,
+Elementor document graph, responsive breakpoint, locale, market/currency,
+pricing/listing generations and its own original certification match.
+No 1:many route CSS asset inheritance, no fake Ready:1 headers, no weakened
+negative QA or arbitrary cross-company grant is allowed. Unproven route
+variants automatically retain the original complete CSS. Source-level
+certification is not a claim that all routes have been performance-optimized.
+
+### Independent source-register autopilot (no browser lock)
+
+`refresh-source-families.py` independently reconciles the authoritative
+WordPress source graph, original 421+422 PHP byte parity, WPML locales,
+CSS epoch, original signed QA canaries and their immutable assets for **both**
+companies. It writes root-private `source-families-latest.json` atomically
+inside each company's evidence directory; it never issues a certificate or
+modifies a visitor's page. The persistent systemd timer retries every 30
+minutes only when the existing eight-vCPU budget grants quiet WPCLI slots.
+The browser certification workers remain separate and use this same group
+algorithm to choose an eligible source canary rather than 1,876 route runs.
+A fresh report lists `source_canary_pending` and `source_canary_qualified`
+separately from actual per-route CSS-ready proof; no pending group is styled
+using another route's CSS. No operator action is needed after source changes;
+failing QA retains native CSS and next scheduled source slot is considered.
+
+### Bounded negative source canaries
+
+A shared family stops allocating fresh route canaries after four distinct
+attempts at the same dependency generation. Existing failed canaries may be
+rechecked only after their original exponential cooldown; any changed
+source generation resets the bound. If Elementor document fingerprints
+diverge, the family is marked `source_variants_need_split` and kept on native
+CSS rather than assigning another unrelated route's certified stylesheet.
+This prevents a 597-property shared template from silently reverting to
+hundreds of independent Chromium QA jobs when one source misbehaves.
+
+### Native-only source cohorts with no eligible combined stylesheet
+
+If all four exact Chromium capture viewports return HTTP 200 but expose zero
+combined CSS files, `optimizer_bundle_missing()` records the fixed
+`source_css_bundle_unavailable` HOLD reason. It never fabricates a critical
+CSS candidate, rewrites HTML or treats the result as a successful Chrome QA.
+The source coordinator can sample up to four different routes per unchanged
+dependency generation, then reuses cooled-down failed canaries rather than
+probing an entire group of tours. Source changes reopen certification.
+
+### Observed HTTP variant is not the measured Chrome CSS profile
+
+The daily audit must not treat a generic curl `Ready:0` as proof of a broken
+Chrome certificate: LiteSpeed legitimately negotiates different combined CSS
+hashes for the same anonymous market. When a published market-specific cert
+exists but the generic HTTP variant serves original blocking CSS, audit reads
+bounded, root-local ORIGINAL Chromium readbacks and invokes the exact 422
+`public-route-resume.ok_cert()` validator against current WP source state,
+Elementor document set, source CSS bytes, immutable certificate, current
+listing generation, language and WCML market/currency. Only current valid
+proof is reported as `native_http_variant_with_current_chromium_proof` and
+`healthy_with_safe_fallback`; neither the generic variant nor any other route
+gets a false Ready:1. If proof is expired/missing/mismatched, the original
+failure warning remains. Event-driven invalidation which correctly makes
+historic certificates stale is separately reported as an expected native
+CSS fallback, not a broken optimizer. Individual route CSS-readiness is still
+reported distinctly from source-family qualification.

@@ -1,5 +1,12 @@
 <?php
 declare(strict_types=1);
+// This is an isolated WordPress source fixture: define the bootstrap guard
+// before including the actual MU plugin so the test cannot exit early with
+// a misleading zero status. No real WordPress, database, or network access.
+define('ABSPATH', '/fixture/');
+define('DAY_IN_SECONDS', 86400);
+function add_action(...$args){}
+function add_filter(...$args){}
 $GLOBALS['options']=['mad4b_render_query_data_generation'=>'GLOBAL-A','mad4b_render_query_scoped_generation_v1'=>'off'];
 $GLOBALS['pt']=['post','page','tours-and-activities','properties','services','product','locations'];
 $GLOBALS['tax']=[

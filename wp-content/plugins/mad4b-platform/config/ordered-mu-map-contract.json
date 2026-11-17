@@ -1,11 +1,11 @@
 {
   "contract": "mad4b.mu-ordered-map-integrity.v1",
-  "expected_count": 378,
+  "expected_count": 379,
   "by_family": {
     "mad4b-commerce": 59,
-    "mad4b-platform": 319
+    "mad4b-platform": 320
   },
-  "ordered_entries_sha256": "9e3f08363d203d1a18ff0a863fdf42c641a5727423e974d34ed870528bfb7110",
+  "ordered_entries_sha256": "b3eb6e5c50c2b7d7418af9810dce273ae76f07611937c3ed92af45a4433959e1",
   "ordered_entries": [
     [
       "00-mu-plugins-control.php",
@@ -1246,6 +1246,10 @@
     [
       "mad4b-company-template-identity.php",
       "mad4b-platform/modules/authority/mad4b-company-template-identity.php"
+    ],
+    [
+      "mad4b-destination-demand-rank-v1.php",
+      "mad4b-platform/modules/presentation/mad4b-destination-demand-rank-v1.php"
     ],
     [
       "mad4b-frontend-impact-commerce-evidence.php",
