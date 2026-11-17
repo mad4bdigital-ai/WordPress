@@ -4,8 +4,8 @@
   "reviewed_base_sha": "5c72e4893e36e992f056c90cfc75908b3a8f7785",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 2606,
-  "changed_paths_sha256": "32ebc39c7824b8dd0ca2c8cea3859957651f69657ef1d0577200a3bd235e4469",
+  "changed_file_count": 2608,
+  "changed_paths_sha256": "ffeca1fb03663bea4c48d85062e1de45facbcdd625c89ce9432455fc943ec96f",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -5290,6 +5290,16 @@
         "governance/production-readiness/purpose-specific-environment-operations.json",
         "ops/reports/pr814-staging-purpose-closure-and-ci-20261117.md",
         "tests/test_purpose_specific_environment_operations.py"
+      ]
+    },
+    {
+      "id": "pr814-current-runner-and-company-media-roundtrip",
+      "semantic_unit": "Refresh exact source-tested company media roundtrip for site UUID-scoped storage, update QA31 historical output checks, and admit only four hermetic PHP CLI fixtures in Production Readiness trusted execution.",
+      "revert_boundary": "Revert the exact standalone runner admission and three dependent hermetic fixtures together; never weaken current owner authorization, grant or company transfer boundaries.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-regressions.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-roundtrip-runtime.php"
       ]
     }
   ],

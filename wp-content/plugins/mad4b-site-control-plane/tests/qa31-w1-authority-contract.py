@@ -13,7 +13,7 @@ cases={
     'site-profile-lifecycle-matrix-runtime.php':'"result":"PASS"',
     'site-profile-write-enablement-runtime.php':'mad4b.site-profile-write-enablement.runtime.v2: PASS',
     'site-profile-host-environment-reconcile-runtime.php':'PASS: host environment reconciliation decision matrix (11/11)',
-    'staging-write-grant-reviewed-inventory-runtime.php':'PASS: 38 Feature 007 plus 3 native Staging pairs',
+    'staging-write-grant-reviewed-inventory-runtime.php':'PASS: 38 reviewed Staging pairs classified by execution purpose; shared company providers match Production, no grants',
     'staging-write-authority-postcondition-runtime.php':'STAGING_WRITE_SELF_CONFIRMATION: PASS',
     'impact-approval-receipt-routing-runtime.php':'mad4b.impact-approval-receipt-routing.runtime.v1: PASS',
     'approval-plan-reconciliation-runtime.php':'mad4b.approval-plan-reconciliation.runtime.v1: PASS',

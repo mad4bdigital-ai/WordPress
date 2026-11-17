@@ -33,6 +33,14 @@ HOST_ROOT_HERMETIC_REGRESSIONS = frozenset((
 # Each path contains exit-on-failure assertions and a positive PASS marker.
 # Other PHP files continue to require PHPUnit; unknown paths fail closed.
 STANDALONE_PHP_REGRESSIONS = frozenset((
+    # Exact source-reviewed PHP CLI contracts with isolated WordPress stubs
+    # and negative site/provider grant checks. These scripts are not PHPUnit
+    # suites. No real WordPress, external API, owner approval or site write.
+    # Every path is exhaustively bounded below; arbitrary PHP still denied.
+    "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-permission-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/dynamic-company-environment-provider-parity-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/optional-governance-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-grant-reviewed-inventory-runtime.php",
     # Three separately reviewed original source-only fixtures. The Operation
     # Registry uses a process-scoped /tmp catalog and negative mutation policy;
     # Presentation Evidence and Integrity use fake WP state, local temporary
@@ -711,6 +719,23 @@ def self_test():
         "wp-content/plugins/mad4b-site-control-plane/tests/self-update-selected-head-release-trust-runtime.php",
     ):
         assert command_for(path) == ["php", str((ROOT / path).resolve())]
+    # Exact reviewed standalone contracts are executable only when their
+    # source-owned assertions are registered; synthetic runtime-wide WPML
+    # providers and unknown WordPress PHP fixtures remain denied.
+    for reviewed in (
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-permission-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/dynamic-company-environment-provider-parity-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/optional-governance-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-grant-reviewed-inventory-runtime.php",
+    ):
+        assert command_for(reviewed) == ["php", str((ROOT / reviewed).resolve())]
+    assert ("wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-wpml-readonly-fixture.php"
+            not in STANDALONE_PHP_REGRESSIONS)
+    for rejected in (
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-wpml-readonly-fixture.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/unknown-arbitrary-php.php",
+    ):
+        assert rejected not in STANDALONE_PHP_REGRESSIONS
     for reviewed in (
         "tests/operation-registry-native-policy-boundary-hermetic.php",
         "tests/presentation-browser-evidence-local-import-hermetic.php",
