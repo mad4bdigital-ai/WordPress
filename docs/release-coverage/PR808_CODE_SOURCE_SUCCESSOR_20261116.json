@@ -32,13 +32,27 @@
     },
     "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php": {
       "historical_source_sha256": "95abcad00a651254d1c672feb30cde56e43befc85383a631494c6f305d698ffb",
-      "current_source_sha256": "c07316aaa3a1d915fb9699a46a2c317e845647adcd501090a95dc8db4a98c285",
+      "current_source_sha256": "035faa0e6558f7c4f18db5e4ea1958d00af20ce74df7d51055ff79d3e41d8931",
       "fail_closed_code_witnesses": [
         "require_once __DIR__ . '/trait-mad4b-scp-abilities-registration.php';",
         "use MAD4B_SCP_Abilities_Registration_Trait;",
         "public function register_abilities()",
         "$this->register_source_abilities();",
-        "MAD4B_SCP_Authorization::authorize_mutation("
+        "MAD4B_SCP_Authorization::authorize_mutation(",
+        "if ( $readonly && in_array( (string) $name, array( 'mad4b/developer-discover', 'mad4b/developer-info' ), true ) )"
+      ],
+      "review_class": "exact_source_regression_only_not_signed_release"
+    },
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-governed-ability-census.php": {
+      "historical_source_sha256": "58236c8c96a0e3a39e569451dd2bc9333f3f011899258864b27522a3a8425ad9",
+      "current_source_sha256": "327dc92f60c304eca697568cd179e46c236db073219256746bedfa3604c057ff",
+      "fail_closed_code_witnesses": [
+        "private static function callback_pair_digest( $ability )",
+        "if ( '' === $callback_digest ) continue;",
+        "MAD4B_SCP_Operation_Registry::registered_write_policy( $name )",
+        "operator_grant_original_boundary_verified( $ability )",
+        "if ( '' === $identity || substr( $identity, -strlen( $suffix ) ) !== $suffix )",
+        "if ( ! isset( $trusted[ $name ] )"
       ],
       "review_class": "exact_source_regression_only_not_signed_release"
     }
