@@ -9,8 +9,8 @@ class WP_Error {
 function is_wp_error($v){return $v instanceof WP_Error;}
 function wp_json_encode($v,$flags=0){return json_encode($v,$flags);}
 function sanitize_key($v){return preg_replace('/[^a-z0-9_-]/','',strtolower((string)$v));}
-function wp_has_ability($name){return ($name==='mad4b/operator-grants-converge'&&isset($GLOBALS['operator_ability'])) || $name===($GLOBALS['fixture_ability_name']??'mad4b/operator-grants-converge');}
-function wp_get_ability($name){return $name==='mad4b/operator-grants-converge' && isset($GLOBALS['operator_ability']) ? $GLOBALS['operator_ability'] : new Demo_Ability();}
+function wp_has_ability($name){return ($name==='mad4b/operator-grants-converge'&&isset($GLOBALS['operator_ability'])) || ($name==='mad4b/staging-write-owner-attest'&&isset($GLOBALS['owner_ability'])) || $name===($GLOBALS['fixture_ability_name']??'mad4b/operator-grants-converge');}
+function wp_get_ability($name){if($name==='mad4b/operator-grants-converge'&&isset($GLOBALS['operator_ability']))return $GLOBALS['operator_ability'];if($name==='mad4b/staging-write-owner-attest'&&isset($GLOBALS['owner_ability']))return $GLOBALS['owner_ability'];return new Demo_Ability();}
 function apply_filters($filter,$value,...$args){return $value;}
 class Demo_Ability {
  function get_meta(){
@@ -177,26 +177,28 @@ foreach(array('mad4b/developer-execute','mad4b/enrollment-execute','demo/foreign
 // is invoked and no grant or WordPress site exists in this hermetic fixture.
 function add_action($hook,$callback,$priority=10){}
 require dirname(__DIR__).'/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-grant-convergence.php';
+require dirname(__DIR__).'/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-owner-intent.php';
 require dirname(__DIR__).'/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-governed-ability-census.php';
 class WP_Ability {
  private $execute_callback;
  private $permission_callback;
  private $meta;
- function __construct($execute,$permission,$meta){
-  $this->execute_callback=$execute; $this->permission_callback=$permission; $this->meta=$meta;
+ private $name;
+ function __construct($execute,$permission,$meta,$name='mad4b/operator-grants-converge'){
+  $this->execute_callback=$execute; $this->permission_callback=$permission; $this->meta=$meta; $this->name=$name;
  }
- function get_name(){return 'mad4b/operator-grants-converge';}
+ function get_name(){return $this->name;}
  function get_meta(){return $this->meta;}
  function get_input_schema(){return array('type'=>'object','properties'=>array('action'=>array('type'=>'string')));}
  function get_output_schema(){return array('type'=>'object');}
- function get_category(){return 'mad4b-developer-governance';}
- function get_label(){return 'Operator Grants';}
+ function get_category(){return $this->name==='mad4b/staging-write-owner-attest'?'mad4b-staging-write-authority':'mad4b-developer-governance';}
+ function get_label(){return 'Original first party guard';}
  function get_description(){return 'First party Operator Grants registered operation';}
  function execute(){}
 }
 class WP_Abilities_Registry {
  static function get_instance(){return new self();}
- function get_all_registered(){return array('mad4b/operator-grants-converge'=>$GLOBALS['operator_ability']);}
+ function get_all_registered(){ $a=array();if(isset($GLOBALS['operator_ability']))$a['mad4b/operator-grants-converge']=$GLOBALS['operator_ability'];if(isset($GLOBALS['owner_ability']))$a['mad4b/staging-write-owner-attest']=$GLOBALS['owner_ability'];return $a;}
 }
 class MAD4B_SCP_Operation_Registry {
  static function registered_write_policy($name){return $name==='mad4b/operator-grants-converge'&&
@@ -252,6 +254,51 @@ verified(!$bad['ready'] && empty($bad['bindings']),
  'Unregistered Operator policy became visible through MCP');
 ++$checks;
 unset($GLOBALS['operator_ability'],$GLOBALS['operator_policy_present']);
+
+/** The original Staging Owner intent is *not* a grant or execution claim.
+ * This fixture exercises both the original callback identity and canonical
+ * descriptor with real source methods but no WordPress mutations.
+ */
+$owner_meta=array(
+ 'mcp'=>array('surface'=>'enrollment','chatgpt_direct_step_up'=>true,
+  'exact_chatgpt_client_required'=>true,'generic_remote_admin'=>false,
+  'production_mutation_allowed'=>false,'breakglass_allowed'=>false,
+  'owner_intent_only'=>true,'governed_enrollment_broker'=>true,
+  'broker_dispatch_policy'=>'owner_attestation_v1'),
+ 'annotations'=>array('readonly'=>false));
+$owner='mad4b/staging-write-owner-attest';
+$GLOBALS['owner_ability']=new WP_Ability(
+ array('MAD4B_SCP_Staging_Write_Owner_Intent','attest'),
+ array('MAD4B_SCP_Staging_Write_Owner_Intent','can_remote_attest'),
+ $owner_meta,$owner);
+verified(MAD4B_SCP_Governed_Ability_Census::staging_owner_intent_original_boundary_verified(
+ $GLOBALS['owner_ability']),'Exact original Owner-intent callback proof missing');
+$owner_binding=MAD4B_SCP_Server_Registration_Evidence::capability_descriptor_evidence(
+ 'mad4b-chatgpt',array($owner));
+verified($owner_binding['ready']===true && isset($owner_binding['bindings'][$owner])
+  && $owner_binding['bindings'][$owner]['execution_lane']==='enrollment'
+  && $owner_binding['bindings'][$owner]['authorizing']===false
+  && $owner_binding['bindings'][$owner]['authority_revalidation_required']===true,
+ 'Staging Owner-intent descriptor was not source-bound');
+++$checks;
+$GLOBALS['owner_ability']=new WP_Ability(
+ array('MAD4B_SCP_Staging_Write_Owner_Intent','can_remote_attest'),
+ array('MAD4B_SCP_Staging_Write_Owner_Intent','attest'),$owner_meta,$owner);
+$owner_binding=MAD4B_SCP_Server_Registration_Evidence::capability_descriptor_evidence(
+ 'mad4b-chatgpt',array($owner));
+verified(!$owner_binding['ready'] && empty($owner_binding['bindings']),
+ 'Swapped Owner-intent execution and permission callbacks became MCP tools');
+++$checks;
+$unsafe=$owner_meta;$unsafe['mcp']['broker_dispatch_policy']='unknown';
+$GLOBALS['owner_ability']=new WP_Ability(
+ array('MAD4B_SCP_Staging_Write_Owner_Intent','attest'),
+ array('MAD4B_SCP_Staging_Write_Owner_Intent','can_remote_attest'),$unsafe,$owner);
+$owner_binding=MAD4B_SCP_Server_Registration_Evidence::capability_descriptor_evidence(
+ 'mad4b-chatgpt',array($owner));
+verified(!$owner_binding['ready'] && empty($owner_binding['bindings']),
+ 'Wrong Owner-intent broker policy became an MCP descriptor');
+++$checks;
+unset($GLOBALS['owner_ability']);
 unset($GLOBALS['fixture_ability_name'],$GLOBALS['fixture_category'],
       $GLOBALS['descriptor_read_marker']);
 echo "PASS: CANONICAL_MULTILANE_DESCRIPTOR ".$checks." real registry + inspector cases; non-authorizing".PHP_EOL;
