@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import re
+import subprocess
 from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
@@ -333,4 +334,17 @@ for smoke_name in ('runtime-chatgpt-tool-inventory-smoke.php', 'runtime-local-oa
     assert not re.search(r'count\(\s*\$(?:actual_names|names)\s*\)\s*>\s*(?:36|64)\b', smoke), smoke_name
     assert 'MCP_Catalog_Diagnostics::MAX_TOOLS' not in smoke, smoke_name
     assert 'MCP_Catalog_Diagnostics::MAX_SERIALIZED_TOOL_BYTES' not in smoke, smoke_name
+# Real callback provenance regressions are invoked by every MCP compatibility
+# contract runner. Structural descriptors never authorize a mutation.
+for runtime_test in (
+    'reviewed-step-up-descriptor-runtime.php',
+    'original-transport-callback-provenance-runtime.php',
+):
+    path = root / 'tests' / runtime_test
+    lint = subprocess.run(['php', '-l', str(path)], text=True, capture_output=True, timeout=90)
+    assert lint.returncode == 0, lint.stdout + lint.stderr
+    evidence = subprocess.run(['php', str(path)], text=True, capture_output=True, timeout=90)
+    assert evidence.returncode == 0, runtime_test + ': ' + evidence.stdout + evidence.stderr
+    assert 'PASS' in evidence.stdout, runtime_test + ': runtime produced no acceptance record'
+
 print('mad4b.site-control-plane.mcp-client-compatibility.v12: PASS')
