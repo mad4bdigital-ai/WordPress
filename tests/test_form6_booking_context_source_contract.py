@@ -103,3 +103,11 @@ def test_stay_pref_source_is_verified_not_pickup_inferred():
     assert "supplier_confirmation'=>false" in block
     assert "self::submission_tour" not in block
     assert "MAD4B_Booking_Pickup_Policy::rateFor" not in block
+
+
+def test_form6_quote_stays_enabled_for_verified_presentation_and_commerce():
+    quote = (ROOT / "packages/mad4b-shared-product-core/mu-plugins/shared-product-core/adapters/presentation-form6-price-quote-v1.php").read_text()
+    assert "$commerce=defined('MAD4B_COMMERCE_RUNTIME_ENABLED')" in quote
+    assert "$tenant=defined('MAD4B_BOOKING_V2_READONLY_ENABLED')" in quote
+    assert "return ($commerce||$tenant) && function_exists('shared_product_booking_v2_preview')" in quote
+    assert "&& (defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true));" not in quote

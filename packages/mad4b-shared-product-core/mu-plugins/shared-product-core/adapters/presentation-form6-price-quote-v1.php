@@ -8,9 +8,9 @@ require_once WPMU_PLUGIN_DIR.'/shared-product-core/adapters/presentation-form6-d
  * governed runtime keeps its isolated opt-in for standalone development only.
  */
 function shared_product_form6_price_runtime_enabled(): bool {
- return (defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED === true)
-  || ((defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true)
-   && (defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true));
+ $commerce=defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true;
+ $tenant=defined('MAD4B_BOOKING_V2_READONLY_ENABLED') && MAD4B_BOOKING_V2_READONLY_ENABLED===true;
+ return ($commerce||$tenant) && function_exists('shared_product_booking_v2_preview');
 }
 if(!shared_product_form6_price_runtime_enabled())return;
 /** Tax remains an informational projection until the original Woo receipt exists. */
