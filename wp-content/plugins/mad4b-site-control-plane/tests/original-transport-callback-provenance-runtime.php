@@ -6,6 +6,7 @@ function is_wp_error($v){return $v instanceof WP_Error;}
 $GLOBALS['registered_origins'] = array();
 function wp_has_ability($name){return isset($GLOBALS['registered_origins'][$name]);}
 function wp_get_ability($name){return $GLOBALS['registered_origins'][$name] ?? null;}
+function wp_get_abilities(){return $GLOBALS['registered_origins'];}
 function wp_register_ability($name,$args){$GLOBALS['registered_origins'][$name] = new WP_Ability($name,$args);return true;}
 class WP_Ability {
     private $name;
@@ -33,6 +34,7 @@ class MAD4B_SCP_Execution_Fence {
 require __DIR__.'/../includes/class-mad4b-scp-governed-ability-census.php';
 require __DIR__.'/../includes/class-mad4b-scp-direct-profile.php';
 require __DIR__.'/../includes/class-mad4b-scp-abilities.php';
+require __DIR__.'/../includes/class-mad4b-scp-governed-runtime-gates.php';
 $check=static function($ok,$message){if(!$ok)throw new RuntimeException($message);};
 $direct='MAD4B_SCP_Governed_Ability_Census';
 MAD4B_SCP_Direct_Profile::register_abilities();
@@ -88,4 +90,38 @@ foreach($dispatch as $name=>$pair){
     $bad['mcp']['generic_remote_admin']=false;
     $ability->replace_meta($bad);
 }
-echo "ORIGINAL_TRANSPORT_CALLBACK_PROVENANCE_RUNTIME: PASS (5 sources, foreign callbacks, final fence and policy denial)\n";
+// Runtime Gates is direct-only: never enroll it in the generic Staging broker.
+MAD4B_SCP_Governed_Runtime_Gates::register_abilities();
+$gate=wp_get_ability(MAD4B_SCP_Governed_Runtime_Gates::APPLY_ABILITY);
+$check($direct::original_runtime_gate_direct_boundary_verified($gate),'Original Runtime Gates callback was not bound.');
+$check(!isset($direct::structural_step_up()['mad4b/runtime-gates-apply']),
+    'High-risk Runtime Gates unexpectedly entered generic Enrollment broker.');
+$check(isset($direct::direct_only()['mad4b/runtime-gates-apply']),
+    'Exact Runtime Gates is not in the strict direct-only source census.');
+MAD4B_SCP_Execution_Fence::$enabled=false;
+$check(!$direct::original_runtime_gate_direct_boundary_verified($gate),'Runtime Gates accepted without Final Fence.');
+MAD4B_SCP_Execution_Fence::$enabled=true;
+$permission=new ReflectionProperty('WP_Ability','permission_callback');
+if(PHP_VERSION_ID<80100)$permission->setAccessible(true);
+$old_permission=$permission->getValue($gate);
+$gate->replace_permission(array('MAD4B_SCP_Governed_Runtime_Gates','can_access'));
+$check(!$direct::original_runtime_gate_direct_boundary_verified($gate),'Read permission substituted for high-risk step-up.');
+$gate->replace_permission($old_permission);
+$exec=new ReflectionProperty('WP_Ability','execute_callback');
+if(PHP_VERSION_ID<80100)$exec->setAccessible(true);
+$old_execute=$exec->getValue($gate);
+$gate->replace_execute(array('MAD4B_SCP_Governed_Runtime_Gates','plan'));
+$check(!$direct::original_runtime_gate_direct_boundary_verified($gate),'Runtime Gates plan callback substituted for apply.');
+$gate->replace_execute($old_execute);
+$valid_meta=$gate->get_meta();
+foreach (array('direct_only_excluded_from_staging_broker','generic_raw_sql_breakglass_configuration',
+               'exact_chatgpt_client_required','production_allowed') as $field) {
+    $tampered=$valid_meta;$tampered['mcp'][$field]=false;
+    $gate->replace_meta($tampered);
+    $check(!$direct::original_runtime_gate_direct_boundary_verified($gate),
+        'Runtime Gates admitted with missing original high-risk policy: '.$field);
+}
+$gate->replace_meta($valid_meta);
+$check($direct::original_runtime_gate_direct_boundary_verified($gate),
+    'Original Runtime Gates callback did not recover after restored metadata.');
+echo "ORIGINAL_TRANSPORT_CALLBACK_PROVENANCE_RUNTIME: PASS (6 originals, high-risk direct-only, foreign callbacks, fence and policy denials)\n";
