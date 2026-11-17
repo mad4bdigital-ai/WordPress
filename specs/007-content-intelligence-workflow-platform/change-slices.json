@@ -4,8 +4,8 @@
   "reviewed_base_sha": "5c72e4893e36e992f056c90cfc75908b3a8f7785",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 2570,
-  "changed_paths_sha256": "69ca75e7cc02dc7257ed9d77476ad59c32db4a7010688ef5f2150961f0eaa708",
+  "changed_file_count": 2581,
+  "changed_paths_sha256": "a874ef8f25966a6998a47b694cd0072df88e498fad4711a281f7371cf47aa50b",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -5158,6 +5158,41 @@
         "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/presentation-form6-source-context-v1.php",
         "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/booking-configuration-quote-readonly-v2.php",
         "wp-content/plugins/mad4b-commerce/modules/presentation/company-booking-v2-readonly-bootstrap-v1.php"
+      ]
+    },
+    {
+      "id": "pr814-dynamic-skills-environment-neutral-exact-provider",
+      "semantic_unit": "Reviewed Staging/Production source provider map, scoped identity and grant approval guards with negative tests.",
+      "revert_boundary": "Revert source provider mapping, test and report together; do not create/revoke actual site authority.",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/reports/pr814-dynamic-skills-environment-parity-20261117.md",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-dynamic-skills-exact-provider-review-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-grant-reviewed-inventory-runtime.php"
+      ]
+    },
+    {
+      "id": "pr814-shared-product-source-snapshot-immutable-lineage",
+      "semantic_unit": "Preserve exact previously frozen Shared Product Core source history and create a new nondeploying source-only snapshot.",
+      "revert_boundary": "Revert only the new snapshot boundary and source manifest update, never edit the prior immutable snapshot evidence.",
+      "certification": "exact_head",
+      "path_globs": [
+        "packages/mad4b-shared-product-core/docs/snapshots/0.1.1-dev.20261113/release-manifest.json",
+        "packages/mad4b-shared-product-core/docs/snapshots/0.1.1-dev.20261113/source-files.sha256"
+      ]
+    },
+    {
+      "id": "wayfa-performance-continuity-watchdog-v2",
+      "semantic_unit": "Concurrent Wayfatours home-route first-paint performance continuity with guarded retries, event gate and service observations.",
+      "revert_boundary": "Revert home retry watchdog, systemd service/timer and exact tests together; preserve existing critical CSS authority and low-impact site monitoring.",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/dynamic-critical-css-20261116/PERFORMANCE-CONTINUITY-V2.md",
+        "ops/dynamic-critical-css-20261116/home-recovery-priority.py",
+        "ops/dynamic-critical-css-20261116/performance-continuity-watchdog.py",
+        "ops/dynamic-critical-css-20261116/systemd/mad4b-performance-continuity-wayfa.service",
+        "ops/dynamic-critical-css-20261116/systemd/mad4b-performance-continuity-wayfa.timer",
+        "ops/dynamic-critical-css-20261116/tests/test-performance-continuity-v2.py"
       ]
     }
   ],

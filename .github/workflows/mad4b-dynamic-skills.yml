@@ -292,6 +292,14 @@ jobs:
               throw new RuntimeException( "Explicit generic Site Profile did not bind Skills + write authority." );
           }
           ' --path="$WP_PATH" --user=mad4b-ci-admin
+      - name: Assert exact Staging Dynamic Skills providers without creating grants
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane/tests'
+          php "$root/staging-write-grant-reviewed-inventory-runtime.php"
+          php "$root/staging-write-dynamic-skills-exact-provider-review-runtime.php"
+
       - name: Prove tenant-bound Skills, governed writes, WPML REST pass-through and portable certification
         shell: bash
         run: |

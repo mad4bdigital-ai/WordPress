@@ -203,8 +203,6 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 				'mad4b/runtime-release-set-apply' => 'core',
 				'mad4b/staging-offline-attestor-enroll-apply' => 'core',
 				'mad4b/taxonomy-update-term' => 'core',
-				'mad4b/translation-link-posts' => 'core',
-				'mad4b/translation-set-post-language' => 'core',
 				'media/import-external' => 'media',
 				'media/remote-import-apply' => 'media',
 			);
@@ -228,6 +226,39 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 				$staging_reviewed['mad4b/hub-universal-vps-enqueue'] = 'core';
 			}
 			foreach ( $staging_reviewed as $ability => $provider ) {
+				$allowed[ $ability ] = $provider;
+			}
+		}
+
+		// Environment-neutral provider eligibility for a fixed, source-reviewed
+		// set of abilities. Site Profile, active provider mount, exact company
+		// grant and one-time owner authorization still determine execution.
+		// This list does not mint grants or enable the Production write feature;
+		// 'production_write_confirmed' is enforced by Site Profile independently.
+		// Never turn a discovered third-party Ability into approved authority.
+		if ( in_array( self::current_environment(), array( 'staging', 'production' ), true ) ) {
+			$shared_reviewed = array(
+				'context/native-owner-transfer-apply' => 'google_drive_context',
+				'mad4b/approval-plan' => 'core',
+				'mad4b/content-job-cancel' => 'core',
+				'mad4b/content-job-create' => 'core',
+				'mad4b/content-job-transition' => 'core',
+				'mad4b/content-update-post' => 'core',
+				'mad4b/data-processing-record-decision' => 'core',
+				'mad4b/database-update' => 'core',
+				'mad4b/draft-apply' => 'core',
+				'mad4b/filesystem-patch' => 'core',
+				'mad4b/filesystem-write' => 'core',
+				'mad4b/intent-registry-reconcile' => 'core',
+				'mad4b/mutation-undo' => 'core',
+				'mad4b/plugin-activate' => 'core',
+				'mad4b/plugin-deactivate' => 'core',
+				'mad4b/provider-canary-execute' => 'core',
+				// Translation Bridge has a distinct provider, not the core.
+				'mad4b/translation-link-posts' => 'translation',
+				'mad4b/translation-set-post-language' => 'translation',
+			);
+			foreach ( $shared_reviewed as $ability => $provider ) {
 				$allowed[ $ability ] = $provider;
 			}
 		}

@@ -46,8 +46,8 @@ $expected = array(
     'mad4b/runtime-release-set-apply' => 'core',
     'mad4b/staging-offline-attestor-enroll-apply' => 'core',
     'mad4b/taxonomy-update-term' => 'core',
-    'mad4b/translation-link-posts' => 'core',
-    'mad4b/translation-set-post-language' => 'core',
+    'mad4b/translation-link-posts' => 'translation',
+    'mad4b/translation-set-post-language' => 'translation',
     'media/import-external' => 'media',
     'media/remote-import-apply' => 'media',
 );
@@ -91,9 +91,21 @@ $GLOBALS['test_env'] = 'production';
 $production = $c::allowed_ability_providers();
 verify_grants( !isset( $production['jetsmartfilters/update-filter-meta'] ),
     'The newly certified JetSmartFilters writer cannot expand Production grants.' );
+// Shared, provider-reviewed abilities have the same provider declaration
+// on both environments, without creating any grant. The other historical
+// Staging-only operations remain excluded until separately reviewed.
+$shared = array(
+    'mad4b/translation-link-posts' => 'translation',
+    'mad4b/translation-set-post-language' => 'translation',
+);
 foreach ( $expected as $ability => $provider ) {
+    if ( isset( $shared[ $ability ] ) ) {
+        verify_grants( ( $production[ $ability ] ?? '' ) === $shared[ $ability ],
+            'Translation bridge must be environment-neutral: ' . $ability );
+        continue;
+    }
     verify_grants( !isset( $production[ $ability ] ),
-        'New Staging-reviewed mutation cannot be included in Production: ' . $ability );
+        'Historic Staging-only mutation not source-reviewed for Production: ' . $ability );
 }
 verify_grants( ! isset( $production['mad4b/provider-connection-refresh'] ),
     'Provider token refresh must not be automatically granted on Production.' );
@@ -107,4 +119,4 @@ foreach ( $expected as $ability => $provider ) {
     verify_grants( ( $retire[ $ability ] ?? '' ) === $provider,
         'Current Staging review can retire exactly its stale version: ' . $ability );
 }
-echo "PASS: 38 Feature 007 plus 3 native Staging pairs, exact core grants only; no Production expansion\n";
+echo "PASS: 38 historic Staging pairs + shared WPML translation providers: exact source eligibility; no grants created\n";
