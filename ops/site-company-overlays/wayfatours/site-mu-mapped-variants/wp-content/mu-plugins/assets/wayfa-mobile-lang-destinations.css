@@ -1,0 +1,154 @@
+/* Full image and text share the real destination's native JetEngine anchor.
+   Only the existing Top Cities listing (EN #45927, ES #68823). */
+.jet-listing-grid__item > [data-elementor-id="45927"] .elementor-element-3b68b75,
+.jet-listing-grid__item > [data-elementor-id="68823"] .elementor-element-3b68b75 {
+  position: static !important;
+}
+.jet-listing-grid__item > [data-elementor-id="45927"] .elementor-element-95d1c9c,
+.jet-listing-grid__item > [data-elementor-id="68823"] .elementor-element-95d1c9c {
+  position: relative;
+}
+.jet-listing-grid__item > [data-elementor-id="45927"] .jet-listing-dynamic-link__link::after,
+.jet-listing-grid__item > [data-elementor-id="68823"] .jet-listing-dynamic-link__link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  cursor: pointer;
+}
+.jet-listing-grid__item > [data-elementor-id="45927"] .jet-listing-dynamic-link__link:focus-visible::after,
+.jet-listing-grid__item > [data-elementor-id="68823"] .jet-listing-dynamic-link__link:focus-visible::after {
+  outline: 3px solid var(--e-global-color-accent,#B48A46);
+  outline-offset: -4px;
+  border-radius: 50%;
+}
+@media (max-width:767px) {
+  /* WPML's original links remain in the page. JS only adds a proper menu trigger. */
+  body .elementor-element-798db22.clean-wpml .wpml-ls.wayfa-mobile-lang-ready {
+    position: relative;
+    overflow: visible !important;
+    z-index: 101;
+  }
+  body .elementor-element-798db22.clean-wpml .wayfa-mobile-lang-trigger {
+    min-width: 105px;
+    width: 100%;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 6px;
+    padding: 7px 9px;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,.53);
+    border-radius: 7px;
+    color: #fff;
+    font-size: 12px;
+    line-height: 1.2;
+    font-weight: 700;
+    text-transform: none;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: border-color .15s ease;
+  }
+  body .elementor-element-798db22.clean-wpml .wayfa-mobile-lang-trigger:hover {
+    border-color: var(--e-global-color-accent,#B48A46);
+    background: rgba(255,255,255,.08);
+  }
+  body .elementor-element-798db22.clean-wpml .wayfa-mobile-lang-trigger:focus-visible {
+    outline: 3px solid var(--e-global-color-accent,#B48A46);
+    outline-offset: 2px;
+  }
+  body .elementor-element-798db22.clean-wpml .wayfa-mobile-lang-trigger img {
+    width: 18px;
+    height: 12px;
+    flex-shrink: 0;
+    object-fit: cover;
+  }
+  body .elementor-element-798db22.clean-wpml .wayfa-mobile-lang-trigger .wayfa-lang-arrow {
+    margin-left: auto;
+    font-size: 13px;
+    line-height: 1;
+    transition: transform .15s ease;
+  }
+  body .elementor-element-798db22.clean-wpml .wayfa-mobile-lang-open > .wayfa-mobile-lang-trigger .wayfa-lang-arrow {transform:rotate(180deg);}
+  body .elementor-element-798db22.clean-wpml .wpml-ls.wayfa-mobile-lang-ready > ul {
+    display: none !important;
+    position: absolute !important;
+    float: none !important;
+    z-index: 500 !important;
+    top: calc(100% + 6px);
+    right: 0;
+    margin: 0 !important;
+    padding: 6px !important;
+    width: 160px;
+    max-width: calc(100vw - 18px);
+    list-style: none;
+    background: var(--e-global-color-primary,#102D40);
+    border: 1px solid rgba(255,255,255,.22);
+    border-radius: 8px;
+    box-shadow: 0 8px 20px rgba(0,0,0,.18);
+  }
+  body .elementor-element-798db22.clean-wpml .wpml-ls.wayfa-mobile-lang-open > ul {display: block !important;}
+  body .elementor-element-798db22.clean-wpml .wpml-ls.wayfa-mobile-lang-ready > ul > li {
+    display: block !important;
+    float: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100%;
+  }
+  /* The selected language is already named in the trigger.
+     Keep the WPML child submenu, but do not repeat its current-language link. */
+  body .elementor-element-798db22.clean-wpml .wpml-ls.wayfa-mobile-lang-open > ul > li.wpml-ls-current-language > a {
+    display:none!important;
+  }
+  body .elementor-element-798db22.clean-wpml .wpml-ls.wayfa-mobile-lang-ready > ul > li > a {
+    display: flex !important;
+    align-items: center;
+    width: 100%;
+    min-height: 38px;
+    gap: 7px;
+    padding: 8px 9px;
+    border-radius: 5px;
+    background: transparent;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  body .elementor-element-798db22.clean-wpml .wpml-ls.wayfa-mobile-lang-ready > ul > li > a:hover,
+  body .elementor-element-798db22.clean-wpml .wpml-ls.wayfa-mobile-lang-ready > ul > li > a:focus-visible {
+    background: rgba(255,255,255,.15);
+    outline-color: var(--e-global-color-accent,#B48A46);
+  }
+  body .elementor-element-798db22.clean-wpml .wpml-ls.wayfa-mobile-lang-ready .wpml-ls-current-language > a {
+    color: #E3C493 !important;
+  }
+}
+/* WPML's legacy dropdown keeps the secondary <ul> visibility:hidden
+   after the custom mobile trigger opens the parent list. Only reveal
+   the original WPML submenu while the accessible trigger is open. */
+@media (max-width: 767px) {
+ body .elementor-element-798db22.clean-wpml .wpml-ls.wayfa-mobile-lang-open > ul .wpml-ls-sub-menu {
+   display: block !important;
+   visibility: visible !important;
+   opacity: 1 !important;
+   position: static !important;
+   transform: none !important;
+   width: 100% !important;
+   min-width: 0 !important;
+   box-shadow: none !important;
+   margin: 0 !important;
+   padding: 0 !important;
+ }
+ body .elementor-element-798db22.clean-wpml .wpml-ls.wayfa-mobile-lang-open > ul .wpml-ls-sub-menu a {
+   display: flex !important;
+   visibility: visible !important;
+   align-items: center;
+   gap: 7px;
+   min-height: 38px;
+   padding: 8px 9px;
+   color: #fff;
+   background: transparent;
+   text-decoration: none;
+ }
+}
