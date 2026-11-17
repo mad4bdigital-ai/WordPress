@@ -1,11 +1,11 @@
 {
   "contract": "mad4b.change-slices.v2",
   "authorizing": false,
-  "reviewed_base_sha": "e7f30d944c354c3a4f7346330ad401d995e768c5",
+  "reviewed_base_sha": "5c72e4893e36e992f056c90cfc75908b3a8f7785",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 155,
-  "changed_paths_sha256": "ce57399585b81d4902f550cf79171a2e1b2b691dfe81c16b73333447e7ed0e19",
+  "changed_file_count": 1355,
+  "changed_paths_sha256": "679e0274dbdc89f9bb616ed83b04ace07cee8c6c6af0148876036a649c4f323f",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -264,6 +264,2271 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/unified-queue-extension-hermetic.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/unified-workflow-inspect-hermetic.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/unified-admin-rest-permissions-hermetic.php"
+      ]
+    },
+    {
+      "id": "source-slice-company-overlays--mcp-and-oauth-01",
+      "semantic_unit": "MCP descriptor, OAuth transport, registration and provider compatibility source/regressions (company-overlays, batch 1)",
+      "revert_boundary": "Revert this transport and descriptor slice with its source-owned negative tests; retain fail-closed OAuth and MCP boundaries",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/site-company-overlays/wayfatours/configuration-runtime/wp-content/mu-plugins/mad4b-configuration-jobs/providers.php",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/mad4b-composite-media-adapter.php",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/mad4b-media-attribution-registry.php",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/mad4b-z-company-media-mcp.php"
+      ]
+    },
+    {
+      "id": "source-slice-company-overlays--tour-and-commerce-01",
+      "semantic_unit": "Tour domain, booking, pricing, inventory, market and WooCommerce integrations (company-overlays, batch 1)",
+      "revert_boundary": "Revert related tour-domain schema, pricing logic, presentation and matching tests without reintroducing legacy checkout or field defaults",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/site-company-overlays/wayfatours/adaptive-runtime/source-forward-port-20261116.json",
+        "ops/site-company-overlays/wayfatours/adaptive-runtime/source-parity-20261116.json",
+        "ops/site-company-overlays/wayfatours/configuration-runtime/README.md",
+        "ops/site-company-overlays/wayfatours/configuration-runtime/manifest.json",
+        "ops/site-company-overlays/wayfatours/configuration-runtime/wp-content/mu-plugins/mad4b-configuration-notice-revalidation.php",
+        "ops/site-company-overlays/wayfatours/live-source-mirror-20261116.json",
+        "ops/site-company-overlays/wayfatours/media-release-candidates/library-rights-release-plan-20261116.json",
+        "ops/site-company-overlays/wayfatours/media-release-candidates/unified-media-apply-1.0.1.php",
+        "ops/site-company-overlays/wayfatours/media-review/gem-landscape-rights-review-20261116.json",
+        "ops/site-company-overlays/wayfatours/media-review/gem-local-library-reframe-applied-20261116.json",
+        "ops/site-company-overlays/wayfatours/media-review/media-rights-cross-repo-integration-20261116.json",
+        "ops/site-company-overlays/wayfatours/media-review/wayfa-exact-gallery-url-cas-20261116.json",
+        "ops/site-company-overlays/wayfatours/media-review/wayfa-manual-rights-release-20261116.json",
+        "ops/site-company-overlays/wayfatours/media-runtime/README.md",
+        "ops/site-company-overlays/wayfatours/media-runtime/manifest.json",
+        "ops/site-company-overlays/wayfatours/media-runtime/reconciliation-verdict-20261116.json",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/400-wayfa-above-fold-images.php",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/assets/accessibility-archive.js",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/assets/accessibility-contract.css",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/assets/accessibility-gallery.js",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/assets/accessibility-listing.js",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/assets/accessibility-swiper.js",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/assets/mad4b-city-visible-image.js",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/assets/mad4b-company-media-control.css",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/assets/mad4b-company-media-control.js",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/assets/mad4b-tour-story-gallery.1.2.0-20261111.js",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/assets/mad4b-tour-story-gallery.css",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/assets/mad4b-tour-story-gallery.js",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/mad4b-composite-media-patch.php",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/mad4b-elementor-copy-coverage.php"
+      ]
+    },
+    {
+      "id": "source-slice-company-overlays--tour-and-commerce-02",
+      "semantic_unit": "Tour domain, booking, pricing, inventory, market and WooCommerce integrations (company-overlays, batch 2)",
+      "revert_boundary": "Revert related tour-domain schema, pricing logic, presentation and matching tests without reintroducing legacy checkout or field defaults",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/mad4b-gallery-cruise-content-coverage-v1.php",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/mad4b-gallery-itinerary-policy-v1.php",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/mad4b-gallery-resolution-engine.php",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/mad4b-gallery-stage-policy-v1.php",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/mad4b-licensed-term-media-apply-v1.php",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/mad4b-media-association-v1.php",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/mad4b-media-composite-integrity.php",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/mad4b-media-gallery-identity-v1.php",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/mad4b-media-library-discovery-v1.php",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/mad4b-media-origin-integrity.php",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/mad4b-media-review-hierarchy.php",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/mad4b-media-rights-content-job-bridge.php",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/mad4b-media-rights-extraction-intake.php",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/mad4b-media-visual-lineage-v1.php",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/mad4b-page-dependency-cache.php",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/mad4b-tour-gallery-popup-layout.php",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/mad4b-tour-gallery-popup-layout/frame-focus-tag.php",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/mad4b-tour-gallery-popup-layout/frames.js",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/mad4b-tour-gallery-presentation.php",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/mad4b-tour-gallery-source-repair.php",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/mad4b-tour-media-governed-apply.php",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/mad4b-tour-media-portrait-derivative.php",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/mad4b-tour-media-reconcile.php",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/mad4b-tour-photo-quality.php",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/mad4b-tour-photo-quality/weighted-coverage.php",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/mad4b-tour-story-gallery.php",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/mad4b-uael-tour-gallery-addon.php",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/mad4b-unified-media-apply.php",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/mad4b-universal-media-readiness.php",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/portable-term-featured-media.php"
+      ]
+    },
+    {
+      "id": "source-slice-company-overlays--tour-and-commerce-03",
+      "semantic_unit": "Tour domain, booking, pricing, inventory, market and WooCommerce integrations (company-overlays, batch 3)",
+      "revert_boundary": "Revert related tour-domain schema, pricing logic, presentation and matching tests without reintroducing legacy checkout or field defaults",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/product-navigation-media.php",
+        "ops/site-company-overlays/wayfatours/media-runtime/wp-content/plugins/mad4b-commerce/modules/compat/tour-content-layout-control.php",
+        "ops/site-company-overlays/wayfatours/performance-runtime/secondary-native-lazy-parity-manifest-20261116.json",
+        "ops/site-company-overlays/wayfatours/performance-runtime/secondary-native-lazy-source-forward-port-20261116.json",
+        "ops/site-company-overlays/wayfatours/performance-runtime/wp-content/mu-plugins/mad4b-secondary-listing-lazy.php"
+      ]
+    },
+    {
+      "id": "source-slice-company-release--authority-and-execution-01",
+      "semantic_unit": "Exact owner, grant, authorization and execution-boundary source/regressions (company-release, batch 1)",
+      "revert_boundary": "Revert the exact authority/admission source and matching regressions together; retain signed Owner, grant and Original release requirements",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/company-code-release-v1/runtime_owner_observer.php",
+        "ops/company-code-release-v1/tests/test_runtime_owner_observer.php"
+      ]
+    },
+    {
+      "id": "source-slice-company-release--company-and-tenant-01",
+      "semantic_unit": "Company workspace, source/target reconciliation, per-site ownership and tenant boundaries (company-release, batch 1)",
+      "revert_boundary": "Revert this company/tenant source scope with matching consistency tests; do not let one company's state become another's authority",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/company-code-release-v1/.gitignore",
+        "ops/company-code-release-v1/README.md",
+        "ops/company-code-release-v1/catalog/mad4b-release-components.json",
+        "ops/company-code-release-v1/company_code_release.py",
+        "ops/company-code-release-v1/company_lifecycle_broker.py",
+        "ops/company-code-release-v1/docs/transaction-journal-cas-audit-v1.md",
+        "ops/company-code-release-v1/install_original_host_policy.py",
+        "ops/company-code-release-v1/integrations/305-firstparty-native-no-wp-user.php",
+        "ops/company-code-release-v1/integrations/check_original_305_no_user_regression.py",
+        "ops/company-code-release-v1/integrations/enroll_exact_source_plan_v1.py",
+        "ops/company-code-release-v1/integrations/guard_original_305_no_user_release.py",
+        "ops/company-code-release-v1/integrations/guard_original_313_v4_release.py",
+        "ops/company-code-release-v1/integrations/guard_original_313_worker_preclaim_release.py",
+        "ops/company-code-release-v1/integrations/issue_original_305_code_release.py",
+        "ops/company-code-release-v1/integrations/mad4b-original-source-release-v4-preclaim.service",
+        "ops/company-code-release-v1/integrations/mad4b-original-source-release-with-305-first.service",
+        "ops/company-code-release-v1/integrations/original_305_native_release_bridge.php",
+        "ops/company-code-release-v1/integrations/patch_305_native_cli.py",
+        "ops/company-code-release-v1/operation-catalog-candidate.json",
+        "ops/company-code-release-v1/original_313_code_release_contract.py",
+        "ops/company-code-release-v1/original_313_enrollment_gate.py",
+        "ops/company-code-release-v1/original_313_host_handler.py",
+        "ops/company-code-release-v1/original_313_independent_readback.py",
+        "ops/company-code-release-v1/policy.example.json",
+        "ops/company-code-release-v1/tests/305_native_no_wp_user_fixture.py",
+        "ops/company-code-release-v1/tests/305_native_no_wp_user_hermetic.php",
+        "ops/company-code-release-v1/tests/305_native_no_wp_user_rest.php",
+        "ops/company-code-release-v1/tests/test_dynamic_manifest_diagnostics.py",
+        "ops/company-code-release-v1/tests/test_exact_code_plan_enrollment.py",
+        "ops/company-code-release-v1/tests/test_filter_acceptance_contract.py"
+      ]
+    },
+    {
+      "id": "source-slice-company-release--company-and-tenant-02",
+      "semantic_unit": "Company workspace, source/target reconciliation, per-site ownership and tenant boundaries (company-release, batch 2)",
+      "revert_boundary": "Revert this company/tenant source scope with matching consistency tests; do not let one company's state become another's authority",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/company-code-release-v1/tests/test_lifecycle_bridge.py",
+        "ops/company-code-release-v1/tests/test_numeric_mad4b_mu_release_catalog.py",
+        "ops/company-code-release-v1/tests/test_original_305_no_user_guard.py",
+        "ops/company-code-release-v1/tests/test_original_305_recovery_guard.py",
+        "ops/company-code-release-v1/tests/test_original_313_contract.py",
+        "ops/company-code-release-v1/tests/test_original_313_enrollment.py",
+        "ops/company-code-release-v1/tests/test_original_313_full_cycle.py",
+        "ops/company-code-release-v1/tests/test_original_313_host_handler.py",
+        "ops/company-code-release-v1/tests/test_original_313_independent_readback.py",
+        "ops/company-code-release-v1/tests/test_original_313_v4_source_guards.py",
+        "ops/company-code-release-v1/tests/test_readiness.php",
+        "ops/company-code-release-v1/tests/test_release.py",
+        "ops/company-code-release-v1/tests/test_wayfa_overlay_reconcile.py"
+      ]
+    },
+    {
+      "id": "source-slice-company-release--mcp-and-oauth-01",
+      "semantic_unit": "MCP descriptor, OAuth transport, registration and provider compatibility source/regressions (company-release, batch 1)",
+      "revert_boundary": "Revert this transport and descriptor slice with its source-owned negative tests; retain fail-closed OAuth and MCP boundaries",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/company-code-release-v1/capability_acceptance.py",
+        "ops/company-code-release-v1/docs/dynamic-provider-acceptance-v1.md",
+        "ops/company-code-release-v1/tests/test_dynamic_capability_acceptance.py",
+        "ops/company-code-release-v1/tests/test_dynamic_capability_apply.py",
+        "ops/company-code-release-v1/tests/test_source_provider_manifest_pinning.py"
+      ]
+    },
+    {
+      "id": "source-slice-company-release--media-and-rights-01",
+      "semantic_unit": "Media discovery, image assignment, rights and brand integrity automation (company-release, batch 1)",
+      "revert_boundary": "Revert source image/right ownership policy and media reconciliation as a unit; preserve local-library publication and attribution safeguards",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/company-code-release-v1/tests/test_media_review_hierarchy_reconciliation.py"
+      ]
+    },
+    {
+      "id": "source-slice-company-release--performance-and-cache-01",
+      "semantic_unit": "Critical CSS, lazy loading, cache, request latency and performance contracts (company-release, batch 1)",
+      "revert_boundary": "Revert the exact asset/cache implementation with runtime guards and tests; preserve visitor variation and private HTML isolation",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/company-code-release-v1/tests/test_css_415_adaptive_breakpoint.php",
+        "ops/company-code-release-v1/tests/test_css_415_manifest_compatibility.php"
+      ]
+    },
+    {
+      "id": "source-slice-company-release--tour-and-commerce-01",
+      "semantic_unit": "Tour domain, booking, pricing, inventory, market and WooCommerce integrations (company-release, batch 1)",
+      "revert_boundary": "Revert related tour-domain schema, pricing logic, presentation and matching tests without reintroducing legacy checkout or field defaults",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/company-code-release-v1/overlays/wayfatours/415-mad4b-critical-css-orchestrator.php",
+        "ops/company-code-release-v1/overlays/wayfatours/content-readiness-validator.php",
+        "ops/company-code-release-v1/overlays/wayfatours/mad4b-elementor-copy-readiness-producer.php",
+        "ops/company-code-release-v1/requests/wayfatours-content-readiness.request.template.json"
+      ]
+    },
+    {
+      "id": "source-slice-control-plane-other--company-and-tenant-01",
+      "semantic_unit": "Company workspace, source/target reconciliation, per-site ownership and tenant boundaries (control-plane-other, batch 1)",
+      "revert_boundary": "Revert this company/tenant source scope with matching consistency tests; do not let one company's state become another's authority",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/data/company-communication-page-schema.json"
+      ]
+    },
+    {
+      "id": "source-slice-control-plane-other--content-and-publishing-01",
+      "semantic_unit": "Content operation, editorial approval, publishing and translation lifecycle (control-plane-other, batch 1)",
+      "revert_boundary": "Revert the matching content workflow and schema/test slice; preserve review permissions, WPML links and original content rollback",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt",
+        "wp-content/plugins/mad4b-site-control-plane/README.md",
+        "wp-content/plugins/mad4b-site-control-plane/assets/admin-settings-persistence.js",
+        "wp-content/plugins/mad4b-site-control-plane/config/central-release-issuer-public.pub",
+        "wp-content/plugins/mad4b-site-control-plane/config/central-staging-source.json",
+        "wp-content/plugins/mad4b-site-control-plane/config/cross-plugin-sources.json",
+        "wp-content/plugins/mad4b-site-control-plane/config/deployment-mode-dependencies.json",
+        "wp-content/plugins/mad4b-site-control-plane/config/egress-policy.json",
+        "wp-content/plugins/mad4b-site-control-plane/config/functional-gap-contract-evidence.generated.json",
+        "wp-content/plugins/mad4b-site-control-plane/config/remote-operation-catalog.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/runtime-release-policy.json",
+        "wp-content/plugins/mad4b-site-control-plane/config/semantic-content-field-contracts.json",
+        "wp-content/plugins/mad4b-site-control-plane/config/staging-deployment-handoff.json",
+        "wp-content/plugins/mad4b-site-control-plane/config/wordpress-addon-catalog.json",
+        "wp-content/plugins/mad4b-site-control-plane/data/central-neutral-demo-authoring-v1.json",
+        "wp-content/plugins/mad4b-site-control-plane/data/journey-look-and-feel-pattern-field.json",
+        "wp-content/plugins/mad4b-site-control-plane/data/journey-native-binding-field.json",
+        "wp-content/plugins/mad4b-site-control-plane/data/qa28-staging-context-fixtures.json",
+        "wp-content/plugins/mad4b-site-control-plane/docs/ELEMENTOR-NATIVE-TEMPLATE-PARITY.md",
+        "wp-content/plugins/mad4b-site-control-plane/docs/RC122-RUNTIME-READ-WRITE-ISOLATION.md",
+        "wp-content/plugins/mad4b-site-control-plane/wpml-config.xml"
+      ]
+    },
+    {
+      "id": "source-slice-control-plane-other--mcp-and-oauth-01",
+      "semantic_unit": "MCP descriptor, OAuth transport, registration and provider compatibility source/regressions (control-plane-other, batch 1)",
+      "revert_boundary": "Revert this transport and descriptor slice with its source-owned negative tests; retain fail-closed OAuth and MCP boundaries",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/bootstrap/mad4b-mcp-adapter-mu-bootstrap.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/adapter-registration-policy.json",
+        "wp-content/plugins/mad4b-site-control-plane/config/certified-provider-profiles.json",
+        "wp-content/plugins/mad4b-site-control-plane/config/mcp-protocol-profiles.json",
+        "wp-content/plugins/mad4b-site-control-plane/config/mcp-provider-handshake-inheritance.json",
+        "wp-content/plugins/mad4b-site-control-plane/config/operation-registry.json",
+        "wp-content/plugins/mad4b-site-control-plane/config/provider-capability-contracts.json",
+        "wp-content/plugins/mad4b-site-control-plane/config/skill-seed-manifest.json",
+        "wp-content/plugins/mad4b-site-control-plane/docs/RC120-MCP-SKILLS-RECONCILIATION.md",
+        "wp-content/plugins/mad4b-site-control-plane/skill-seeds/content-jobs-ui-reconcile/SKILL.md",
+        "wp-content/plugins/mad4b-site-control-plane/skill-seeds/content-jobs-ui-reconcile/references/content-jobs-reconcile-contract-v1.json",
+        "wp-content/plugins/mad4b-site-control-plane/skill-seeds/content-jobs-ui-reconcile/references/dynamic-skill-family-policy-v1.json",
+        "wp-content/plugins/mad4b-site-control-plane/skill-seeds/elementor-dynamic-content/SKILL.md",
+        "wp-content/plugins/mad4b-site-control-plane/skill-seeds/jetengine-content-modeling/SKILL.md",
+        "wp-content/plugins/mad4b-site-control-plane/skill-seeds/nile-cruise-jetengine-lifecycle/SKILL.md",
+        "wp-content/plugins/mad4b-site-control-plane/skill-seeds/nile-cruise-rate-readiness/SKILL.md",
+        "wp-content/plugins/mad4b-site-control-plane/skill-seeds/nile-intelligent-inheritance/SKILL.md",
+        "wp-content/plugins/mad4b-site-control-plane/skill-seeds/nile-tour-facts-and-content-hub-extras/SKILL.md",
+        "wp-content/plugins/mad4b-site-control-plane/skill-seeds/tour-optional-services-integrity/SKILL.md",
+        "wp-content/plugins/mad4b-site-control-plane/skill-seeds/wordpress-brand-context-builder/SKILL.md",
+        "wp-content/plugins/mad4b-site-control-plane/skill-seeds/wordpress-browser-acceptance/SKILL.md",
+        "wp-content/plugins/mad4b-site-control-plane/skill-seeds/wordpress-cache-performance-governor/SKILL.md",
+        "wp-content/plugins/mad4b-site-control-plane/skill-seeds/wordpress-change-safety/SKILL.md",
+        "wp-content/plugins/mad4b-site-control-plane/skill-seeds/wordpress-connection-diagnostics/SKILL.md",
+        "wp-content/plugins/mad4b-site-control-plane/skill-seeds/wordpress-mobile-css-delivery/SKILL.md",
+        "wp-content/plugins/mad4b-site-control-plane/skill-seeds/wordpress-performance-intelligence-v2/SKILL.md",
+        "wp-content/plugins/mad4b-site-control-plane/skill-seeds/wordpress-release-orchestration/SKILL.md",
+        "wp-content/plugins/mad4b-site-control-plane/skill-seeds/wordpress-settings-lifecycle/SKILL.md",
+        "wp-content/plugins/mad4b-site-control-plane/skill-seeds/wordpress-site-diagnostics/SKILL.md",
+        "wp-content/plugins/mad4b-site-control-plane/skills/visual-content-semantic-seo/SKILL.md"
+      ]
+    },
+    {
+      "id": "source-slice-control-plane-other--media-and-rights-01",
+      "semantic_unit": "Media discovery, image assignment, rights and brand integrity automation (control-plane-other, batch 1)",
+      "revert_boundary": "Revert source image/right ownership policy and media reconciliation as a unit; preserve local-library publication and attribution safeguards",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/assets/operational-remediation-ui.css",
+        "wp-content/plugins/mad4b-site-control-plane/assets/operational-remediation-ui.js"
+      ]
+    },
+    {
+      "id": "source-slice-control-plane-other--performance-and-cache-01",
+      "semantic_unit": "Critical CSS, lazy loading, cache, request latency and performance contracts (control-plane-other, batch 1)",
+      "revert_boundary": "Revert the exact asset/cache implementation with runtime guards and tests; preserve visitor variation and private HTML isolation",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/bootstrap/mad4b-runtime-cache-convergence-mu.php",
+        "wp-content/plugins/mad4b-site-control-plane/docs/CORE-WEB-VITALS-ADMIN-REST.md",
+        "wp-content/plugins/mad4b-site-control-plane/docs/RC121-LIVE-SOURCE-WEB-VITALS.md",
+        "wp-content/plugins/mad4b-site-control-plane/docs/RUNTIME-CACHE-CONVERGENCE.md"
+      ]
+    },
+    {
+      "id": "source-slice-control-plane-other--tour-and-commerce-01",
+      "semantic_unit": "Tour domain, booking, pricing, inventory, market and WooCommerce integrations (control-plane-other, batch 1)",
+      "revert_boundary": "Revert related tour-domain schema, pricing logic, presentation and matching tests without reintroducing legacy checkout or field defaults",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/assets/tour-destination-quick-preview.css",
+        "wp-content/plugins/mad4b-site-control-plane/assets/tour-destination-quick-preview.js",
+        "wp-content/plugins/mad4b-site-control-plane/assets/tour-highlights-v1.css",
+        "wp-content/plugins/mad4b-site-control-plane/assets/tour-journey-split-v3.css",
+        "wp-content/plugins/mad4b-site-control-plane/assets/tour-journey-split-v3.js",
+        "wp-content/plugins/mad4b-site-control-plane/assets/tour-journey-ui.js"
+      ]
+    },
+    {
+      "id": "source-slice-control-plane-source--authority-and-execution-01",
+      "semantic_unit": "Exact owner, grant, authorization and execution-boundary source/regressions (control-plane-source, batch 1)",
+      "revert_boundary": "Revert the exact authority/admission source and matching regressions together; retain signed Owner, grant and Original release requirements",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-governed-writes.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-agent-grant-lifecycle.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-auto-reconciliation.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-reviews-bridge.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli-execution-context.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-owner-activation.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-relationship-writeback-owner.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-developer-authority-policy-v2.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-developer-authority.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-authority.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-commit-guard.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-full-staging-authority.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-ability-trust.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-subject-user-bridge.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-grant-convergence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-grant-reconciliation-plan.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-grant-reconciliation.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-owner-intent.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/trait-mad4b-scp-authorization-recovery-state.php"
+      ]
+    },
+    {
+      "id": "source-slice-control-plane-source--company-and-tenant-01",
+      "semantic_unit": "Company workspace, source/target reconciliation, per-site ownership and tenant boundaries (control-plane-source, batch 1)",
+      "revert_boundary": "Revert this company/tenant source scope with matching consistency tests; do not let one company's state become another's authority",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-company-rollout.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-code-reconciliation.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-code-release-readiness.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-communication-team.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-communication.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-domain-cloudflare.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-email-routing.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-local-wpcli.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-master-admin.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-migration-decisions.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-operations-policy.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-release-status.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-sender-policy.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-task-handoff.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-tenant-migration.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-user-lifecycle.php"
+      ]
+    },
+    {
+      "id": "source-slice-control-plane-source--content-and-publishing-01",
+      "semantic_unit": "Content operation, editorial approval, publishing and translation lifecycle (control-plane-source, batch 1)",
+      "revert_boundary": "Revert the matching content workflow and schema/test slice; preserve review permissions, WPML links and original content rollback",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ability-contract-inspector.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-activity-import-review.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-activity-import-snapshot.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-interaction-ui.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-operation-router.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-navigation-manifest.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-settings-persistence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-task-routing.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-artifacts.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-background-agent-admission.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-background-agent-dispatch.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-catalog-intent-policy.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-write-acceptance.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-connection-admin-ui.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-tool-projection.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli-readiness.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-connection-status.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-completeness.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-intelligence-pipeline.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-job-groups.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-job-structural-qa.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-relationship-graph.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-relationship-writeback.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-workflow-modes.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-contentjob-structural-cwa.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-local-document-normalizer.php"
+      ]
+    },
+    {
+      "id": "source-slice-control-plane-source--content-and-publishing-02",
+      "semantic_unit": "Content operation, editorial approval, publishing and translation lifecycle (control-plane-source, batch 2)",
+      "revert_boundary": "Revert the matching content workflow and schema/test slice; preserve review permissions, WPML links and original content rollback",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-preflight.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-control-plane-test-router.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-ai-governance.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-connector-vault.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-delegation-mode.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dependency-manager.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-deployment-binding-native.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-developer-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-developer-workspace.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dfsb-environment-policy.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-direct-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-drive-scan-admin.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-drive-scan-continuation.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-drive-scan-cron.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-elementor-native-template-parity.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-enrollment-dispatch.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-faore-staging-canary-inspection.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-fcp-local-observability.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-fcp-queue-readback.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-firecrawl-crawl-integration-v1.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-firecrawl-page-store.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-frontend-impact-priority.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-geo-quality.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-global-runtime-lifecycle.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-governance-abilities.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-governed-ability-census.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-guided-continuation.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-bridge.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-hub-jetengine-consumer-governance.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-truth.php"
+      ]
+    },
+    {
+      "id": "source-slice-control-plane-source--content-and-publishing-03",
+      "semantic_unit": "Content operation, editorial approval, publishing and translation lifecycle (control-plane-source, batch 3)",
+      "revert_boundary": "Revert the matching content workflow and schema/test slice; preserve review permissions, WPML links and original content rollback",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-ai-governance.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-ollama-ability.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-locale-experience-alerts.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-migration-decision-catalog.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mutation-principal.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-general-settings-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-runtime-diagnostics.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-search-console.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-settings-locator.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operational-integrity.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-journeys.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-runner-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-origin-evidence-workflow.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-origin-external-research.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-original-job-readback.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-transaction.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-policy.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-presentation-browser-evidence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-presentation-integrity.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-read-consistency.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-event-automation.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-integrations.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-preactivation.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-scopes.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-team-preparation.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-workflow-options.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-reconnect-hardening.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-recovery-attempt-budget.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-recovery-route-resolver.php"
+      ]
+    },
+    {
+      "id": "source-slice-control-plane-source--content-and-publishing-04",
+      "semantic_unit": "Content operation, editorial approval, publishing and translation lifecycle (control-plane-source, batch 4)",
+      "revert_boundary": "Revert the matching content workflow and schema/test slice; preserve review permissions, WPML links and original content rollback",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-registered-write-admission.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-work-queue.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-research-groups.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-research-intelligence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-research-intelligence.php.before-serp-policy-20261030.bak",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-research-task-bridge.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-rest-compatibility.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-components-admin-ui.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-convergence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-obstacle-resolution.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-scheduler-admission.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-scheduler-backlog.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-core-catalog.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-registration-evidence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-write-catalog.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-lifecycle-rest.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile-enrollment.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-source-lifecycle.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-context-fixtures.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-fixture-drafts.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-source-selector.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-candidate-binding.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-planning-guard.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-switcher-sources.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-agent-connection.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-gate-funnel.php"
+      ]
+    },
+    {
+      "id": "source-slice-control-plane-source--content-and-publishing-05",
+      "semantic_unit": "Content operation, editorial approval, publishing and translation lifecycle (control-plane-source, batch 5)",
+      "revert_boundary": "Revert the matching content workflow and schema/test slice; preserve review permissions, WPML links and original content rollback",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-upgrade-continuity.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-visual-seo-strategy.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/trait-mad4b-scp-abilities-registration.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/trait-mad4b-scp-content-readiness-reconciliation.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/trait-mad4b-scp-content-readiness-scanning.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/trait-mad4b-scp-servers-vps-local-identity.php"
+      ]
+    },
+    {
+      "id": "source-slice-control-plane-source--mcp-and-oauth-01",
+      "semantic_unit": "MCP descriptor, OAuth transport, registration and provider compatibility source/regressions (control-plane-source, batch 1)",
+      "revert_boundary": "Revert this transport and descriptor slice with its source-owned negative tests; retain fail-closed OAuth and MCP boundaries",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-adapter-base.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-provider-adapter.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-write-preflight.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-context-adapter.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-dfsb-adapter.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-dynamic-content-adapter.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-elementor-adapter.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-etg-dfsb-adapter.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-firecrawl-research-adapter.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-litespeed-adapter.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-local-brand-draft-adapter.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-remote-media-adapter.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-skills-adapter.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-addon-registry.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-dependency-planner.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-source-inventory.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-transport-routing.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-release-registry.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-reconcile-skill-set.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-relationship-providers.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-provider-gateway.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dynamic-provider-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-elementor-native-mcp-awareness.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-firecrawl-provider.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-transport-policy.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-adapter-dynamic-integrity.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-catalog-budget.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-catalog-diagnostics.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-class-provenance.php"
+      ]
+    },
+    {
+      "id": "source-slice-control-plane-source--mcp-and-oauth-02",
+      "semantic_unit": "MCP descriptor, OAuth transport, registration and provider compatibility source/regressions (control-plane-source, batch 2)",
+      "revert_boundary": "Revert this transport and descriptor slice with its source-owned negative tests; retain fail-closed OAuth and MCP boundaries",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-mu-bootstrap-refresh.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-peer-governance.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-protocol-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-provider-readiness-matrix.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-request-scope.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-runtime-conflict-guard.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-runtime-recovery.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operation-registry.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-compatibility-certification.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-connection-center.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-field-intelligence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-installed-artifact.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-mcp-path-review.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-transport-eligibility.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-reversible-adapter-mutations.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-backend-registry.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-abilities.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-provider-discovery.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-registry.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-seeder.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skills-admin-ui.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-transport-context.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-capability-gateway.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-provider-routing.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-provider-autoprovision.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-provider-connections.php"
+      ]
+    },
+    {
+      "id": "source-slice-control-plane-source--media-and-rights-01",
+      "semantic_unit": "Media discovery, image assignment, rights and brand integrity automation (control-plane-source, batch 1)",
+      "revert_boundary": "Revert source image/right ownership policy and media reconciliation as a unit; preserve local-library publication and attribution safeguards",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-asset-intelligence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-context-builder.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-core-control-loop.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-core-remote-recovery.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-experience-quality.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-integrity.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-review-routing.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-media-rights.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-media.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-relationship-writeback-media.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-delegation-mode.php.before-seo-media-native-20261030.bak",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-external-media-ingest.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mutation-principal.php.before-seo-media-native-20261030.bak",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operational-remediation.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-media-rights.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-brand-trial.php"
+      ]
+    },
+    {
+      "id": "source-slice-control-plane-source--native-source-release-01",
+      "semantic_unit": "Native source package, signed Original305/312/313 release lifecycle and host evidence (control-plane-source, batch 1)",
+      "revert_boundary": "Revert these native source/publisher components with receipt and CAS regressions; do not promote preview records into signed Host execution",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-interaction-broker.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-source-release-review.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-release-set.php"
+      ]
+    },
+    {
+      "id": "source-slice-control-plane-source--performance-and-cache-01",
+      "semantic_unit": "Critical CSS, lazy loading, cache, request latency and performance contracts (control-plane-source, batch 1)",
+      "revert_boundary": "Revert the exact asset/cache implementation with runtime guards and tests; preserve visitor variation and private HTML isolation",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-query-performance-ui.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-web-vitals.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/trait-mad4b-scp-core-web-vitals-configuration.php"
+      ]
+    },
+    {
+      "id": "source-slice-control-plane-source--tour-and-commerce-01",
+      "semantic_unit": "Tour domain, booking, pricing, inventory, market and WooCommerce integrations (control-plane-source, batch 1)",
+      "revert_boundary": "Revert related tour-domain schema, pricing logic, presentation and matching tests without reintroducing legacy checkout or field defaults",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-market-content-exchange.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tour-highlights-presentation-v1.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tour-highlights-v1.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tour-workflow-runtime.php"
+      ]
+    },
+    {
+      "id": "source-slice-control-plane-tests--authority-and-execution-01",
+      "semantic_unit": "Exact owner, grant, authorization and execution-boundary source/regressions (control-plane-tests, batch 1)",
+      "revert_boundary": "Revert the exact authority/admission source and matching regressions together; retain signed Owner, grant and Original release requirements",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-owner-evidence-hermetic.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-authority-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-oauth-lifecycle-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/full-staging-authority-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/local-transport-oauth-isolation-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/oauth-multi-user-tenant-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w1-authority-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w1-authority-owner-boundary-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w1-ollama-local-permission-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-chatgpt-http-smoke.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/self-update-selected-head-release-trust-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-authority-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-owner-intent-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/transport-permission-containment-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/wordpress-addon-execution-guard-contract.php"
+      ]
+    },
+    {
+      "id": "source-slice-control-plane-tests--content-and-publishing-01",
+      "semantic_unit": "Content operation, editorial approval, publishing and translation lifecycle (control-plane-tests, batch 1)",
+      "revert_boundary": "Revert the matching content workflow and schema/test slice; preserve review permissions, WPML links and original content rollback",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-operation-router-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-settings-persistence-runtime.mjs",
+        "wp-content/plugins/mad4b-site-control-plane/tests/agent-governance-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/approval-console-v2-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/central-release-public-key-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-dynamic-tool-projection-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-optional-materialization-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-refresh-compact-catalog-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/connection-readiness-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/connector-resilience-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-intelligence-pipeline-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-job-transaction-fault-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-readiness/isolated-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-admin-recovery-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-managed-google-signin-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-preflight-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-semantic-source-approval-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-router-source-hermetic.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/dependency-certified-runtime-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-native-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/deployment-mode-dependencies-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/developer-runtime-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/drive-scan-continuation-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/dynamic-first-party-enrollment-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/dynamic-runtime-hardening-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/egress-policy-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/elementor-native-template-parity-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/elementor-native-template-parity-source-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/endpoint-diagnostic-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/enrollment-dispatch-runtime.php"
+      ]
+    },
+    {
+      "id": "source-slice-control-plane-tests--content-and-publishing-02",
+      "semantic_unit": "Content operation, editorial approval, publishing and translation lifecycle (control-plane-tests, batch 2)",
+      "revert_boundary": "Revert the matching content workflow and schema/test slice; preserve review permissions, WPML links and original content rollback",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/environment-journey-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/fixtures/search-runtime-fixtures.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/gateway-mutation-guards.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/google-gtm-publish-version-scope.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/google-incremental-consent-panel-regression.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/governed-draft-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-bridge-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp01-import-preview-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-plugin-management-menu-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-recovery-status-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/native313-dynamic-multiroute-regression.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/original-mutation-mount-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/php85-reflection-compatibility-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/post-manual-update-guidance-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/production-native-gates-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/production-native-principal-parity-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/projection-registration-lifecycle.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa20-source-allowlist-rc118-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa27-candidate-upload-plan-rc118-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa30-native-general-settings-rest-lifecycle.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa30-native-general-settings-rest-lifecycle.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/rc104-merged-release-regression.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/readonly-diagnostics-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-route-resolver-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-dynamic-tool-projection.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-projection-http.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-connection-readiness-smoke.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-content-experience-smoke.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-firecrawl-unready-write-mount.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-obstacle-resolution-runtime.php"
+      ]
+    },
+    {
+      "id": "source-slice-control-plane-tests--content-and-publishing-03",
+      "semantic_unit": "Content operation, editorial approval, publishing and translation lifecycle (control-plane-tests, batch 3)",
+      "revert_boundary": "Revert the matching content workflow and schema/test slice; preserve review permissions, WPML links and original content rollback",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/schema-dbdelta-upgrade-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/schema-migration-runtime-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/self-update-auto-update-state-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/self-update-candidate-drift-bootstrap-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/self-update-continuation-policy-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/self-update-dual-channel-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/self-update-staging-candidate-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-profile-feature-reenrollment-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-profile-feature-reenrollment-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-profile-lifecycle-matrix-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/spec-consistency-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-source-selector-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-candidate-binding-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/undo-intent-fault-injection.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-operational-scope-source-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/upgrade-continuity-runtime.php"
+      ]
+    },
+    {
+      "id": "source-slice-control-plane-tests--mcp-and-oauth-01",
+      "semantic_unit": "MCP descriptor, OAuth transport, registration and provider compatibility source/regressions (control-plane-tests, batch 1)",
+      "revert_boundary": "Revert this transport and descriptor slice with its source-owned negative tests; retain fail-closed OAuth and MCP boundaries",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-enrollment-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/capability-first-mcp-adapter-gate-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/capability-traits-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-registry-atomicity-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/dynamic-skills-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/endpoint-descriptor-binding-evidence-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/materialize-certified-mcp-adapter.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-adapter-compatibility-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-adapter-protocol-matrix.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-catalog-adaptive-budget.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-catalog-evidence-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-class-provenance-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-class-provenance-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-client-compatibility-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-mu-forward-version-fixture-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-mu-future-major-isolated-regression.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-official-required-preflight-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-preflight-registration-failure-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-protocol-profile-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-request-scope-provenance-regression.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-required-catalog-readiness-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-runtime-conflict-guard-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-runtime-recovery-cli-opt-in.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-runtime-recovery-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-runtime-surface-profile.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-topology-verdict-regression.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-package-mcp-governance-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-compatibility-engine-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-center-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-source-contract.py"
+      ]
+    },
+    {
+      "id": "source-slice-control-plane-tests--mcp-and-oauth-02",
+      "semantic_unit": "MCP descriptor, OAuth transport, registration and provider compatibility source/regressions (control-plane-tests, batch 2)",
+      "revert_boundary": "Revert this transport and descriptor slice with its source-owned negative tests; retain fail-closed OAuth and MCP boundaries",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-first-party-context-artifact-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-session-ttl-partial-context.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-transport-eligibility-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-version-neutral-read-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-backend-registry-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-smoke.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-runtime-conflict-recovered.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-plugin-adapter-discovery-smoke.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/session-safe-transport-resilience-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/skill-task-abilities-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/test_materialize_certified_mcp_adapter_source.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-capability-sources-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/write-dispatch-nested-transport-contract.py"
+      ]
+    },
+    {
+      "id": "source-slice-control-plane-tests--media-and-rights-01",
+      "semantic_unit": "Media discovery, image assignment, rights and brand integrity automation (control-plane-tests, batch 1)",
+      "revert_boundary": "Revert source image/right ownership policy and media reconciliation as a unit; preserve local-library publication and attribution safeguards",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-asset-source-binding-hermetic.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-core-control-loop-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-core-remote-recovery-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-core-remote-recovery-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/remote-media-rights-environment-runtime.php"
+      ]
+    },
+    {
+      "id": "source-slice-control-plane-tests--native-source-release-01",
+      "semantic_unit": "Native source package, signed Original305/312/313 release lifecycle and host evidence (control-plane-tests, batch 1)",
+      "revert_boundary": "Revert these native source/publisher components with receipt and CAS regressions; do not promote preview records into signed Host execution",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-source-release-review-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-release-set-contract.py"
+      ]
+    },
+    {
+      "id": "source-slice-control-plane-tests--performance-and-cache-01",
+      "semantic_unit": "Critical CSS, lazy loading, cache, request latency and performance contracts (control-plane-tests, batch 1)",
+      "revert_boundary": "Revert the exact asset/cache implementation with runtime guards and tests; preserve visitor variation and private HTML isolation",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/core-web-vitals-assessment-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/core-web-vitals-async-worker-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/core-web-vitals-rest-lifecycle-runtime.php"
+      ]
+    },
+    {
+      "id": "source-slice-control-plane-tests--tour-and-commerce-01",
+      "semantic_unit": "Tour domain, booking, pricing, inventory, market and WooCommerce integrations (control-plane-tests, batch 1)",
+      "revert_boundary": "Revert related tour-domain schema, pricing logic, presentation and matching tests without reintroducing legacy checkout or field defaults",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-concurrency-runtime.sh",
+        "wp-content/plugins/mad4b-site-control-plane/tests/market-growth-competitor-dmc-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-tool-inventory-smoke.php"
+      ]
+    },
+    {
+      "id": "source-slice-documentation--authority-and-execution-01",
+      "semantic_unit": "Exact owner, grant, authorization and execution-boundary source/regressions (documentation, batch 1)",
+      "revert_boundary": "Revert the exact authority/admission source and matching regressions together; retain signed Owner, grant and Original release requirements",
+      "certification": "exact_head",
+      "path_globs": [
+        "docs/original313-central-finalizer-signed-trust-review-20261111.md",
+        "docs/original313-receipt-only-signed-grant-preclaim-20261111.md",
+        "docs/release-coverage/ORIGINAL305_OBSERVER_WAYFA_OWNER_CONVERGENCE_20261116.md",
+        "docs/release-coverage/pr814-local-oauth-certified-profile-matrix-20261113.md",
+        "docs/release-coverage/pr814-local-oauth-cli-request-scope-20261113.md",
+        "docs/release-coverage/pr814-local-oauth-operator-stepup-readback-20261113.md",
+        "docs/release-coverage/pr814-local-oauth-stepup-site-fence-order-20261113.md"
+      ]
+    },
+    {
+      "id": "source-slice-documentation--documentation-and-evidence-01",
+      "semantic_unit": "Source review notes, static policies, CI evidence and nonauthorizing documentation (documentation, batch 1)",
+      "revert_boundary": "Revert exact source-only report/evidence changes separately from runtime code and keep historical signed artifacts immutable",
+      "certification": "exact_head",
+      "path_globs": [
+        "docs/release-coverage/HOST_V9_SOURCE_NONREGRESSION_CLOSEOUT_20261116.md",
+        "docs/release-coverage/HOST_V9_SUCCESSOR_SOURCE_ONLY_20261116.md",
+        "docs/release-coverage/NATIVE_SOURCE_CENTRAL_BRIDGE_V21_20261113.md",
+        "docs/release-coverage/NATIVE_SOURCE_IMMUTABLE_PLAN_REHYDRATION_V25_20261113.md",
+        "docs/release-coverage/NATIVE_SOURCE_POLICY_CONTRACT_V20_20261112.md",
+        "docs/release-coverage/PR808_CODE_SOURCE_SUCCESSOR_20261116.json",
+        "docs/release-coverage/PR814_EXACT_HEAD_CI_FIXTURE_REPAIR_20261116.md",
+        "docs/release-coverage/PR814_UNIFIED_HERMETIC_CI_RECONCILIATION_20261116.md",
+        "docs/release-coverage/UNIFIED_RECENT_BRANCHES_SEMANTIC_CONVERGENCE_20261116.md",
+        "docs/release-coverage/control-plane-rc128-live-rc129-review-candidate-20261113.json",
+        "docs/release-coverage/control-plane-rc129-v29-readonly-overlay-20261113.json",
+        "docs/release-coverage/google-measurement-bridge-gtm-live-parity-20261113.json",
+        "docs/release-coverage/gtm-original-mu-source-restore-20261113.json",
+        "docs/release-coverage/mad4b-first-party-plugin-additive-source-20261111.json",
+        "docs/release-coverage/pr808-developer-policy-sidecar-v2-review-20261113.json",
+        "docs/release-coverage/pr808-developer-v2-ci-reconciliation-20261113.md",
+        "docs/release-coverage/pr808-operator-governance-implementation-20261113.md",
+        "docs/release-coverage/pr808-policy-governed-operator-review-20261113.json",
+        "docs/release-coverage/pr814-dynamic-readiness-source-repair-20261115.md",
+        "docs/release-coverage/pr814-endpoint-diagnostic-dynamic-server-enumeration-20261113.md",
+        "docs/release-coverage/pr814-journey-source-successors-20261115.json",
+        "docs/release-coverage/pr814-local-branch-convergence-20261115.md",
+        "docs/release-coverage/pr814-pr813-split-v3-source-reconciliation-20261113.md",
+        "docs/release-coverage/pr814-site-profile-dynamic-environment-contract-20261113.md",
+        "docs/release-coverage/pr814-unified-native-v27-integration-20261113.md",
+        "docs/release-coverage/rc129-live-v29-readonly-release-hold-20261113.md",
+        "docs/release-coverage/unified-branch-census-source-snapshot-20261116.json"
+      ]
+    },
+    {
+      "id": "source-slice-documentation--frontend-and-search-01",
+      "semantic_unit": "Elementor, JetEngine archive, filters, gallery, frontend and site navigation (documentation, batch 1)",
+      "revert_boundary": "Revert frontend templates/queries and matching source parity checks as one scoped unit; preserve filter state and responsive layouts",
+      "certification": "exact_head",
+      "path_globs": [
+        "docs/release-coverage/JETENGINE_NATIVE_AJAX_SSR_PARITY_20261116.md"
+      ]
+    },
+    {
+      "id": "source-slice-documentation--mcp-and-oauth-01",
+      "semantic_unit": "MCP descriptor, OAuth transport, registration and provider compatibility source/regressions (documentation, batch 1)",
+      "revert_boundary": "Revert this transport and descriptor slice with its source-owned negative tests; retain fail-closed OAuth and MCP boundaries",
+      "certification": "exact_head",
+      "path_globs": [
+        "docs/original313-receipt-only-provider-integration-20261111.md",
+        "docs/release-coverage/HOST_PROVIDER_V8_PINNED_SOURCE_REVIEW_20261116.json",
+        "docs/release-coverage/HOST_PROVIDER_V8_PINNED_SOURCE_REVIEW_20261116.md",
+        "docs/release-coverage/NATIVE_SOURCE_REGISTRY_EXTENSION_PREFLIGHT_V23_20261113.md",
+        "docs/release-coverage/pr808-portable-skills-provenance-20261113.json",
+        "docs/release-coverage/pr814-mcp-catalog-identity-collision-20261113.md",
+        "docs/release-coverage/pr814-mcp-recovery-ci-source-verification-20261113.md",
+        "docs/release-coverage/pr814-pr815-dynamic-capability-integration-20261113.md",
+        "docs/release-coverage/pr814-root-owned-registry-ci-20261113.md"
+      ]
+    },
+    {
+      "id": "source-slice-documentation--media-and-rights-01",
+      "semantic_unit": "Media discovery, image assignment, rights and brand integrity automation (documentation, batch 1)",
+      "revert_boundary": "Revert source image/right ownership policy and media reconciliation as a unit; preserve local-library publication and attribution safeguards",
+      "certification": "exact_head",
+      "path_globs": [
+        "docs/media/media-policy-and-hero-subject-20261115.md",
+        "docs/release-coverage/MEDIA_RIGHTS_COVERAGE_CONVERGENCE_20261116.md",
+        "docs/release-coverage/UAEL_EXISTING_GALLERY_STAGE_TABS_20261113.md",
+        "docs/release-coverage/brand-integrity-live-local-git-20261114.json",
+        "docs/release-coverage/brand-integrity-permanent-guard-20261114.md",
+        "docs/release-coverage/brand-integrity-scan-20261113.md"
+      ]
+    },
+    {
+      "id": "source-slice-documentation--native-source-release-01",
+      "semantic_unit": "Native source package, signed Original305/312/313 release lifecycle and host evidence (documentation, batch 1)",
+      "revert_boundary": "Revert these native source/publisher components with receipt and CAS regressions; do not promote preview records into signed Host execution",
+      "certification": "exact_head",
+      "path_globs": [
+        "docs/original313-historical-receipt-recovery-v1.md",
+        "docs/release-coverage/NATIVE_SOURCE_ORIGINAL306_PRECLAIM_V24_20261113.md",
+        "docs/release-coverage/NATIVE_SOURCE_ORIGINAL313_EVIDENCE_CONTRACT_V26_20261113.md",
+        "docs/release-coverage/NATIVE_SOURCE_ORIGINAL313_SIGNED_FINALIZER_V27_20261113.md",
+        "docs/release-coverage/ORIGINAL305_CAS_SOURCE_CONVERGENCE_20261116.md",
+        "docs/release-coverage/pr814-native-source-ci-host-evidence-separation-20261113.md",
+        "docs/release-coverage/pr814-original313-sibling-consolidation-20261113.md",
+        "docs/release-coverage/pr814-original313-sibling-readback-reconciliation-20261113.json",
+        "docs/release-coverage/pr814-post-update-continuation-fixture-20261113.md"
+      ]
+    },
+    {
+      "id": "source-slice-documentation--performance-and-cache-01",
+      "semantic_unit": "Critical CSS, lazy loading, cache, request latency and performance contracts (documentation, batch 1)",
+      "revert_boundary": "Revert the exact asset/cache implementation with runtime guards and tests; preserve visitor variation and private HTML isolation",
+      "certification": "exact_head",
+      "path_globs": [
+        "docs/release-coverage/ADAPTIVE_CSS_COMPANY_PARITY_20261116.md",
+        "docs/release-coverage/CACHE_LIFECYCLE_LIVE_FORWARD_SOURCE_V22_20261113.md",
+        "docs/release-coverage/ORIGIN_CACHE_AND_WAYFA_NOTICE_SOURCE_CONVERGENCE_20261116.md"
+      ]
+    },
+    {
+      "id": "source-slice-documentation--tour-and-commerce-01",
+      "semantic_unit": "Tour domain, booking, pricing, inventory, market and WooCommerce integrations (documentation, batch 1)",
+      "revert_boundary": "Revert related tour-domain schema, pricing logic, presentation and matching tests without reintroducing legacy checkout or field defaults",
+      "certification": "exact_head",
+      "path_globs": [
+        "docs/integrations/toursdev-rc129-native-production-parity-20261110.md",
+        "docs/presentation/tour-gallery-clickable-frames.md",
+        "docs/presentation/tour-highlights-empty-whitespace-guard.md",
+        "docs/presentation/tour-rate-facet-lookfeel-policy.md",
+        "docs/release-coverage/pr814-native-tour-domain-site-neutral-review-20261113.md",
+        "docs/release-coverage/pr814-pr813-destination-preview-additive-20261114.json",
+        "docs/release-coverage/pr814-pr813-tour-highlights-governed-merge-20261113.md",
+        "docs/release-coverage/pr814-pr813-tour-highlights-reconciled-20261113.json",
+        "docs/release-coverage/pr814-tour-highlights-hook-readiness-successor-20261114.json",
+        "docs/release-coverage/pr814-tour-highlights-visible-text-successor-20261115.json",
+        "docs/tour-highlights-native-v1.md"
+      ]
+    },
+    {
+      "id": "source-slice-dynamic-registry--authority-and-execution-01",
+      "semantic_unit": "Exact owner, grant, authorization and execution-boundary source/regressions (dynamic-registry, batch 1)",
+      "revert_boundary": "Revert the exact authority/admission source and matching regressions together; retain signed Owner, grant and Original release requirements",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/dynamic-operation-registry-v1/integrations/claimed-job-worker-signed-grant-preclaim.py"
+      ]
+    },
+    {
+      "id": "source-slice-dynamic-registry--mcp-and-oauth-01",
+      "semantic_unit": "MCP descriptor, OAuth transport, registration and provider compatibility source/regressions (dynamic-registry, batch 1)",
+      "revert_boundary": "Revert this transport and descriptor slice with its source-owned negative tests; retain fail-closed OAuth and MCP boundaries",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/dynamic-operation-registry-v1/.gitignore",
+        "ops/dynamic-operation-registry-v1/README.md",
+        "ops/dynamic-operation-registry-v1/admission.py",
+        "ops/dynamic-operation-registry-v1/evidence.py",
+        "ops/dynamic-operation-registry-v1/executor-time-cas-v1/finalizer.py",
+        "ops/dynamic-operation-registry-v1/executor-time-cas-v1/host_handler.py",
+        "ops/dynamic-operation-registry-v1/executor-time-cas-v1/independent_readback.py",
+        "ops/dynamic-operation-registry-v1/executor-time-cas-v1/integrations/patch_original306_provider_preclaim.py",
+        "ops/dynamic-operation-registry-v1/executor-time-cas-v1/integrations/plan_original_registry_upgrade.py",
+        "ops/dynamic-operation-registry-v1/executor-time-cas-v1/preclaim.py",
+        "ops/dynamic-operation-registry-v1/first_party_install.py",
+        "ops/dynamic-operation-registry-v1/host312_original_issuer.py",
+        "ops/dynamic-operation-registry-v1/host_admission.py",
+        "ops/dynamic-operation-registry-v1/index.preview-NOT-ENROLLED.json",
+        "ops/dynamic-operation-registry-v1/integrations/ORIGINAL313_CURRENT_SOURCE_RECONCILIATION_20261110.md",
+        "ops/dynamic-operation-registry-v1/integrations/claimed-job-worker-postmeta-v6-code-release-merged.py",
+        "ops/dynamic-operation-registry-v1/integrations/claimed-job-worker-private-v5-hostreadiness.py",
+        "ops/dynamic-operation-registry-v1/integrations/guard_original_313_worker_hostreadiness_release.py",
+        "ops/dynamic-operation-registry-v1/integrations/guard_original_313_worker_postmeta_v6_code_release_merged.py",
+        "ops/dynamic-operation-registry-v1/integrations/guard_signed_license_preclaim_worker_source.py",
+        "ops/dynamic-operation-registry-v1/integrations/install_central_313_readonly.py",
+        "ops/dynamic-operation-registry-v1/integrations/patch_current_worker_preclaim.py",
+        "ops/dynamic-operation-registry-v1/integrations/patch_original_313b.py",
+        "ops/dynamic-operation-registry-v1/integrations/patch_original_worker.py",
+        "ops/dynamic-operation-registry-v1/integrations/plan_provider_v4_dependency_reconciliation.py",
+        "ops/dynamic-operation-registry-v1/integrations/promote_consolidated_worker_release.py",
+        "ops/dynamic-operation-registry-v1/integrations/promote_signed_license_preclaim_worker_release.py",
+        "ops/dynamic-operation-registry-v1/integrations/reconcile_central_313_v4_schema_v2.py",
+        "ops/dynamic-operation-registry-v1/integrations/reviewed-source/claimed-job-worker-license-preclaim-v1.py",
+        "ops/dynamic-operation-registry-v1/integrations/reviewed-source/claimed-job-worker-receipt-preclaim-v1.py"
+      ]
+    },
+    {
+      "id": "source-slice-dynamic-registry--mcp-and-oauth-02",
+      "semantic_unit": "MCP descriptor, OAuth transport, registration and provider compatibility source/regressions (dynamic-registry, batch 2)",
+      "revert_boundary": "Revert this transport and descriptor slice with its source-owned negative tests; retain fail-closed OAuth and MCP boundaries",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/dynamic-operation-registry-v1/integrations/reviewed-source/worker_adapter_receipt_only_v1.py",
+        "ops/dynamic-operation-registry-v1/integrations/sync_central_v4_provider_version.py",
+        "ops/dynamic-operation-registry-v1/integrations/upgrade_central_313_finalizer.py",
+        "ops/dynamic-operation-registry-v1/integrations/upgrade_first_party_registry_v2.py",
+        "ops/dynamic-operation-registry-v1/integrations/upgrade_provider_v3_copy_acceptance.py",
+        "ops/dynamic-operation-registry-v1/integrations/upgrade_provider_v3_dependencies.py",
+        "ops/dynamic-operation-registry-v1/php/313b-first-party-dynamic-v4.php",
+        "ops/dynamic-operation-registry-v1/php/class-mad4b-dynamic-313-verifier.php",
+        "ops/dynamic-operation-registry-v1/php/class-mad4b-dynamic-313-wordpress.php",
+        "ops/dynamic-operation-registry-v1/providers/company.code.release.receipt.reconcile/evidence-schema.json",
+        "ops/dynamic-operation-registry-v1/providers/company.code.release.receipt.reconcile/manifest.json",
+        "ops/dynamic-operation-registry-v1/providers/company.code.release/evidence-schema.json",
+        "ops/dynamic-operation-registry-v1/providers/company.code.release/manifest.json",
+        "ops/dynamic-operation-registry-v1/providers/company.resource.cas.apply/evidence-schema.json",
+        "ops/dynamic-operation-registry-v1/providers/company.resource.cas.apply/manifest.json",
+        "ops/dynamic-operation-registry-v1/providers/host.source.release/evidence-schema.json",
+        "ops/dynamic-operation-registry-v1/providers/host.source.release/manifest.v7.CANDIDATE.json",
+        "ops/dynamic-operation-registry-v1/providers/host.source.release/manifest.v8.CANDIDATE.json",
+        "ops/dynamic-operation-registry-v1/providers/host.source.release/manifest.v9.CANDIDATE.json",
+        "ops/dynamic-operation-registry-v1/receipt-reconcile-v1/enroll_receipt_recovery_plan.py",
+        "ops/dynamic-operation-registry-v1/receipt-reconcile-v1/historical_audit.py",
+        "ops/dynamic-operation-registry-v1/receipt-reconcile-v1/host_handler.py",
+        "ops/dynamic-operation-registry-v1/receipt-reconcile-v1/independent_readback.py",
+        "ops/dynamic-operation-registry-v1/receipt-reconcile-v1/install_first_party_receipt_provider.py",
+        "ops/dynamic-operation-registry-v1/receipt-reconcile-v1/issue_signed_recovery_305.py",
+        "ops/dynamic-operation-registry-v1/receipt-reconcile-v1/recovery_plan.py",
+        "ops/dynamic-operation-registry-v1/receipt-reconcile-v1/signed_recovery_admission.py",
+        "ops/dynamic-operation-registry-v1/registry.py",
+        "ops/dynamic-operation-registry-v1/tests/current-enrolled-provider-compat-readonly.py",
+        "ops/dynamic-operation-registry-v1/tests/original_dynamic_313_computed_ready.php"
+      ]
+    },
+    {
+      "id": "source-slice-dynamic-registry--mcp-and-oauth-03",
+      "semantic_unit": "MCP descriptor, OAuth transport, registration and provider compatibility source/regressions (dynamic-registry, batch 3)",
+      "revert_boundary": "Revert this transport and descriptor slice with its source-owned negative tests; retain fail-closed OAuth and MCP boundaries",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/dynamic-operation-registry-v1/tests/test_admission.py",
+        "ops/dynamic-operation-registry-v1/tests/test_consolidated_worker_release_promotion.py",
+        "ops/dynamic-operation-registry-v1/tests/test_dynamic_original_worker_preclaim.py",
+        "ops/dynamic-operation-registry-v1/tests/test_evidence.py",
+        "ops/dynamic-operation-registry-v1/tests/test_host312_original_issuer.py",
+        "ops/dynamic-operation-registry-v1/tests/test_original_host313_operational_readiness.py",
+        "ops/dynamic-operation-registry-v1/tests/test_original_v6_code_release_merge.py",
+        "ops/dynamic-operation-registry-v1/tests/test_receipt_only_preclaim_worker_candidate.py",
+        "ops/dynamic-operation-registry-v1/tests/test_receipt_only_worker_adapter_candidate.py",
+        "ops/dynamic-operation-registry-v1/tests/test_registry.py",
+        "ops/dynamic-operation-registry-v1/tests/test_remote_306_claim_source_scope.py",
+        "ops/dynamic-operation-registry-v1/tests/test_signed_license_preclaim_parity_promotion.py",
+        "ops/dynamic-operation-registry-v1/tests/test_signed_license_preclaim_source_guard.py",
+        "ops/dynamic-operation-registry-v1/tests/test_source_candidate.py",
+        "ops/dynamic-operation-registry-v1/tests/test_worker_adapter.py",
+        "ops/dynamic-operation-registry-v1/tests/test_worker_adapter_registry_signature.py",
+        "ops/dynamic-operation-registry-v1/upgrade_original_host_source_provider_v8.py",
+        "ops/dynamic-operation-registry-v1/worker_adapter.py"
+      ]
+    },
+    {
+      "id": "source-slice-github-workflows--authority-and-execution-01",
+      "semantic_unit": "Exact owner, grant, authorization and execution-boundary source/regressions (github-workflows, batch 1)",
+      "revert_boundary": "Revert the exact authority/admission source and matching regressions together; retain signed Owner, grant and Original release requirements",
+      "certification": "exact_head",
+      "path_globs": [
+        ".github/workflows/mad4b-apply-nhi-core-gate.yml",
+        ".github/workflows/mad4b-capability-owner-release-contract.yml",
+        ".github/workflows/mad4b-local-oauth-standalone.yml"
+      ]
+    },
+    {
+      "id": "source-slice-github-workflows--ci-and-regressions-01",
+      "semantic_unit": "Automated regression fixtures, repository gates, provenance and CI workflow verification (github-workflows, batch 1)",
+      "revert_boundary": "Revert CI checks only with their source-backed tests and independently governed workflow approval; never waive release or Owner attestations",
+      "certification": "exact_head",
+      "path_globs": [
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+        ".github/workflows/mad4b-connection-governance.yml",
+        ".github/workflows/mad4b-control-plane-package.yml",
+        ".github/workflows/mad4b-production-readiness-matrix.yml",
+        ".github/workflows/mad4b-runtime-integration.yml",
+        ".github/workflows/mad4b-shared-product-core-source.yml",
+        ".github/workflows/mad4b-site-control-plane.yml",
+        ".github/workflows/mad4b-unified-source-nonregression.yml"
+      ]
+    },
+    {
+      "id": "source-slice-github-workflows--mcp-and-oauth-01",
+      "semantic_unit": "MCP descriptor, OAuth transport, registration and provider compatibility source/regressions (github-workflows, batch 1)",
+      "revert_boundary": "Revert this transport and descriptor slice with its source-owned negative tests; retain fail-closed OAuth and MCP boundaries",
+      "certification": "exact_head",
+      "path_globs": [
+        ".github/workflows/mad4b-adapter-coverage.yml",
+        ".github/workflows/mad4b-dynamic-skills.yml",
+        ".github/workflows/mad4b-mcp-adaptive-catalog.yml",
+        ".github/workflows/mad4b-mcp-client-compatibility.yml"
+      ]
+    },
+    {
+      "id": "source-slice-github-workflows--native-source-release-01",
+      "semantic_unit": "Native source package, signed Original305/312/313 release lifecycle and host evidence (github-workflows, batch 1)",
+      "revert_boundary": "Revert these native source/publisher components with receipt and CAS regressions; do not promote preview records into signed Host execution",
+      "certification": "exact_head",
+      "path_globs": [
+        ".github/workflows/mad4b-runtime-release-set.yml"
+      ]
+    },
+    {
+      "id": "source-slice-github-workflows--tour-and-commerce-01",
+      "semantic_unit": "Tour domain, booking, pricing, inventory, market and WooCommerce integrations (github-workflows, batch 1)",
+      "revert_boundary": "Revert related tour-domain schema, pricing logic, presentation and matching tests without reintroducing legacy checkout or field defaults",
+      "certification": "exact_head",
+      "path_globs": [
+        ".github/workflows/mad4b-commerce-suite.yml"
+      ]
+    },
+    {
+      "id": "source-slice-misc--ci-and-regressions-01",
+      "semantic_unit": "Automated regression fixtures, repository gates, provenance and CI workflow verification (misc, batch 1)",
+      "revert_boundary": "Revert CI checks only with their source-backed tests and independently governed workflow approval; never waive release or Owner attestations",
+      "certification": "exact_head",
+      "path_globs": [
+        "governance/production-readiness/admin-pages-ci-source-reviews.json",
+        "governance/production-readiness/ci-workflow-source-reviews.json"
+      ]
+    },
+    {
+      "id": "source-slice-misc--mcp-and-oauth-01",
+      "semantic_unit": "MCP descriptor, OAuth transport, registration and provider compatibility source/regressions (misc, batch 1)",
+      "revert_boundary": "Revert this transport and descriptor slice with its source-owned negative tests; retain fail-closed OAuth and MCP boundaries",
+      "certification": "exact_head",
+      "path_globs": [
+        "plugins/mad4b-wordpress/skills/content-jobs-ui-reconcile/SKILL.md",
+        "plugins/mad4b-wordpress/skills/elementor-dynamic-content/SKILL.md",
+        "plugins/mad4b-wordpress/skills/jetengine-content-modeling/SKILL.md",
+        "plugins/mad4b-wordpress/skills/nile-cruise-jetengine-lifecycle/SKILL.md",
+        "plugins/mad4b-wordpress/skills/nile-cruise-rate-readiness/SKILL.md",
+        "plugins/mad4b-wordpress/skills/nile-intelligent-inheritance/SKILL.md",
+        "plugins/mad4b-wordpress/skills/nile-tour-facts-and-content-hub-extras/SKILL.md",
+        "plugins/mad4b-wordpress/skills/tour-optional-services-integrity/SKILL.md",
+        "plugins/mad4b-wordpress/skills/wordpress-brand-context-builder/SKILL.md",
+        "plugins/mad4b-wordpress/skills/wordpress-browser-acceptance/SKILL.md",
+        "plugins/mad4b-wordpress/skills/wordpress-cache-performance-governor/SKILL.md",
+        "plugins/mad4b-wordpress/skills/wordpress-change-safety/SKILL.md",
+        "plugins/mad4b-wordpress/skills/wordpress-connection-diagnostics/SKILL.md",
+        "plugins/mad4b-wordpress/skills/wordpress-mobile-css-delivery/SKILL.md",
+        "plugins/mad4b-wordpress/skills/wordpress-performance-intelligence-v2/SKILL.md",
+        "plugins/mad4b-wordpress/skills/wordpress-release-orchestration/SKILL.md",
+        "plugins/mad4b-wordpress/skills/wordpress-settings-lifecycle/SKILL.md",
+        "plugins/mad4b-wordpress/skills/wordpress-site-diagnostics/SKILL.md"
+      ]
+    },
+    {
+      "id": "source-slice-misc--tour-and-commerce-01",
+      "semantic_unit": "Tour domain, booking, pricing, inventory, market and WooCommerce integrations (misc, batch 1)",
+      "revert_boundary": "Revert related tour-domain schema, pricing logic, presentation and matching tests without reintroducing legacy checkout or field defaults",
+      "certification": "exact_head",
+      "path_globs": [
+        "config/elementor/destination-native-template-contract-v1.json"
+      ]
+    },
+    {
+      "id": "source-slice-mu-plugins--company-and-tenant-01",
+      "semantic_unit": "Company workspace, source/target reconciliation, per-site ownership and tenant boundaries (mu-plugins, batch 1)",
+      "revert_boundary": "Revert this company/tenant source scope with matching consistency tests; do not let one company's state become another's authority",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/mu-plugins/mad4b-company-browser-html-policy.php"
+      ]
+    },
+    {
+      "id": "source-slice-mu-plugins--content-and-publishing-01",
+      "semantic_unit": "Content operation, editorial approval, publishing and translation lifecycle (mu-plugins, batch 1)",
+      "revert_boundary": "Revert the matching content workflow and schema/test slice; preserve review permissions, WPML links and original content rollback",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/mu-plugins/mad4b-elementor-copy-coverage.php",
+        "wp-content/mu-plugins/mad4b-elementor-wpml-schema-guard.php",
+        "wp-content/mu-plugins/mad4b-extra-quick-preview-v1.php",
+        "wp-content/mu-plugins/mad4b-extra-quick-preview/quick-preview-frame.js",
+        "wp-content/mu-plugins/mad4b-extra-quick-preview/quick-preview.js",
+        "wp-content/mu-plugins/mad4b-gtm-consent-governance.php",
+        "wp-content/mu-plugins/mad4b-home-reviews-native-visibility.php",
+        "wp-content/mu-plugins/mad4b-need-help-native-visibility.php",
+        "wp-content/mu-plugins/mad4b-render-query-governor.php",
+        "wp-content/mu-plugins/mad4b-single-reviews-native-visibility.php",
+        "wp-content/mu-plugins/mad4b-story-observability.php",
+        "wp-content/mu-plugins/mad4b-uael-server-defer-v1.php"
+      ]
+    },
+    {
+      "id": "source-slice-mu-plugins--mcp-and-oauth-01",
+      "semantic_unit": "MCP descriptor, OAuth transport, registration and provider compatibility source/regressions (mu-plugins, batch 1)",
+      "revert_boundary": "Revert this transport and descriptor slice with its source-owned negative tests; retain fail-closed OAuth and MCP boundaries",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/mu-plugins/mad4b-composite-media-adapter.php",
+        "wp-content/mu-plugins/mad4b-media-attribution-registry.php",
+        "wp-content/mu-plugins/mad4b-z-company-media-mcp.php"
+      ]
+    },
+    {
+      "id": "source-slice-mu-plugins--media-and-rights-01",
+      "semantic_unit": "Media discovery, image assignment, rights and brand integrity automation (mu-plugins, batch 1)",
+      "revert_boundary": "Revert source image/right ownership policy and media reconciliation as a unit; preserve local-library publication and attribution safeguards",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/mu-plugins/mad4b-composite-media-patch.php",
+        "wp-content/mu-plugins/mad4b-gallery-itinerary-policy-v1.php",
+        "wp-content/mu-plugins/mad4b-gallery-resolution-engine.php",
+        "wp-content/mu-plugins/mad4b-gallery-stage-policy-v1.php",
+        "wp-content/mu-plugins/mad4b-licensed-term-media-apply-v1.php",
+        "wp-content/mu-plugins/mad4b-media-association-v1.php",
+        "wp-content/mu-plugins/mad4b-media-composite-integrity.php",
+        "wp-content/mu-plugins/mad4b-media-gallery-identity-v1.php",
+        "wp-content/mu-plugins/mad4b-media-library-discovery-v1.php",
+        "wp-content/mu-plugins/mad4b-media-origin-integrity.php",
+        "wp-content/mu-plugins/mad4b-media-review-hierarchy.php",
+        "wp-content/mu-plugins/mad4b-media-rights-content-job-bridge.php",
+        "wp-content/mu-plugins/mad4b-media-rights-extraction-intake.php",
+        "wp-content/mu-plugins/mad4b-media-visual-lineage-v1.php",
+        "wp-content/mu-plugins/mad4b-unified-media-apply.php",
+        "wp-content/mu-plugins/mad4b-universal-media-readiness.php"
+      ]
+    },
+    {
+      "id": "source-slice-mu-plugins--performance-and-cache-01",
+      "semantic_unit": "Critical CSS, lazy loading, cache, request latency and performance contracts (mu-plugins, batch 1)",
+      "revert_boundary": "Revert the exact asset/cache implementation with runtime guards and tests; preserve visitor variation and private HTML isolation",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/mu-plugins/406-mad4b-shared-performance-parity.php",
+        "wp-content/mu-plugins/415-mad4b-critical-css-orchestrator.php",
+        "wp-content/mu-plugins/mad4b-cache-control-v1.php",
+        "wp-content/mu-plugins/mad4b-elementor-widget-css-integrity-v1.php",
+        "wp-content/mu-plugins/mad4b-extra-quick-preview/quick-preview.css",
+        "wp-content/mu-plugins/mad4b-general-public-page-origin-cache.php",
+        "wp-content/mu-plugins/mad4b-page-dependency-cache.php",
+        "wp-content/mu-plugins/mad4b-secondary-listing-lazy.php"
+      ]
+    },
+    {
+      "id": "source-slice-mu-plugins--tour-and-commerce-01",
+      "semantic_unit": "Tour domain, booking, pricing, inventory, market and WooCommerce integrations (mu-plugins, batch 1)",
+      "revert_boundary": "Revert related tour-domain schema, pricing logic, presentation and matching tests without reintroducing legacy checkout or field defaults",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/mu-plugins/mad4b-gallery-cruise-content-coverage-v1.php",
+        "wp-content/mu-plugins/mad4b-rate-facet-visibility-v1.php",
+        "wp-content/mu-plugins/mad4b-tour-gallery-popup-layout.php",
+        "wp-content/mu-plugins/mad4b-tour-gallery-popup-layout/frame-focus-tag.php",
+        "wp-content/mu-plugins/mad4b-tour-gallery-popup-layout/frames.js",
+        "wp-content/mu-plugins/mad4b-tour-gallery-presentation.php",
+        "wp-content/mu-plugins/mad4b-tour-gallery-source-repair.php",
+        "wp-content/mu-plugins/mad4b-tour-media-governed-apply.php",
+        "wp-content/mu-plugins/mad4b-tour-media-portrait-derivative.php",
+        "wp-content/mu-plugins/mad4b-tour-media-reconcile.php",
+        "wp-content/mu-plugins/mad4b-tour-photo-quality.php",
+        "wp-content/mu-plugins/mad4b-tour-photo-quality/weighted-coverage.php",
+        "wp-content/mu-plugins/mad4b-tour-story-gallery.php",
+        "wp-content/mu-plugins/mad4b-uael-tour-gallery-addon.php"
+      ]
+    },
+    {
+      "id": "source-slice-native-publisher--authority-and-execution-01",
+      "semantic_unit": "Exact owner, grant, authorization and execution-boundary source/regressions (native-publisher, batch 1)",
+      "revert_boundary": "Revert the exact authority/admission source and matching regressions together; retain signed Owner, grant and Original release requirements",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/native-source-publisher-v1/ORIGINAL305_GRANT_LIFECYCLE_READBACK_20261112.md",
+        "ops/native-source-publisher-v1/native_host_source_ownership.py",
+        "ops/native-source-publisher-v1/original_historical_grants_audit.py"
+      ]
+    },
+    {
+      "id": "source-slice-native-publisher--mcp-and-oauth-01",
+      "semantic_unit": "MCP descriptor, OAuth transport, registration and provider compatibility source/regressions (native-publisher, batch 1)",
+      "revert_boundary": "Revert this transport and descriptor slice with its source-owned negative tests; retain fail-closed OAuth and MCP boundaries",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/native-source-publisher-v1/first_party_registry_extension_preflight.py"
+      ]
+    },
+    {
+      "id": "source-slice-native-publisher--native-source-release-01",
+      "semantic_unit": "Native source package, signed Original305/312/313 release lifecycle and host evidence (native-publisher, batch 1)",
+      "revert_boundary": "Revert these native source/publisher components with receipt and CAS regressions; do not promote preview records into signed Host execution",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/native-source-publisher-v1/.gitignore",
+        "ops/native-source-publisher-v1/ASSOCIATED_WORKER_INDEX_INTEGRATION_20261112.md",
+        "ops/native-source-publisher-v1/DYNAMIC_OPERATION_STATUS_20261112.md",
+        "ops/native-source-publisher-v1/LEGACY_PLAN_MIGRATION_20261112.md",
+        "ops/native-source-publisher-v1/ORIGINAL305312_HISTORICAL_RECEIPT_READBACK_20261112.md",
+        "ops/native-source-publisher-v1/ORIGINAL305_GOVERNED_HOLD_REVIEW_CONTRACT_20261116.md",
+        "ops/native-source-publisher-v1/ORIGINAL305_JOB_READBACK_ABILITY_CANDIDATE_20261112.md",
+        "ops/native-source-publisher-v1/ORIGINAL305_REVIEW_V2_LIVE_BINDING_20261116.md",
+        "ops/native-source-publisher-v1/PLAN_OPERATION_ASSOCIATION_CONTRACT_20261112.md",
+        "ops/native-source-publisher-v1/README.md",
+        "ops/native-source-publisher-v1/RELEASE_READINESS_AUDIT_20261112.md",
+        "ops/native-source-publisher-v1/associated_worker_index.py",
+        "ops/native-source-publisher-v1/audit_release_readiness.py",
+        "ops/native-source-publisher-v1/build_enrollment_candidate.py",
+        "ops/native-source-publisher-v1/catalog/ACTIVATION_GATES.md",
+        "ops/native-source-publisher-v1/catalog/IMPLEMENTATION_STATUS_20261112.md",
+        "ops/native-source-publisher-v1/catalog/evidence-schema.json",
+        "ops/native-source-publisher-v1/catalog/generated/source.code.release.manifest.json",
+        "ops/native-source-publisher-v1/catalog/operations/source.code.release.json",
+        "ops/native-source-publisher-v1/catalog/policy-template.DISABLED.json",
+        "ops/native-source-publisher-v1/catalog/publisher-enrollment-proposal.json",
+        "ops/native-source-publisher-v1/ci_historical_additive_source_test.py",
+        "ops/native-source-publisher-v1/ci_portable_native_tests.py",
+        "ops/native-source-publisher-v1/compact_job_readback_classifier.py",
+        "ops/native-source-publisher-v1/control_plane_readback_provenance.py",
+        "ops/native-source-publisher-v1/firstparty_install_original305_observer_v1.py",
+        "ops/native-source-publisher-v1/firstparty_upgrade_original305_dynamic_units_v8.py",
+        "ops/native-source-publisher-v1/firstparty_upgrade_original305_readiness_supervisor_v6.py",
+        "ops/native-source-publisher-v1/firstparty_upgrade_original305_readiness_supervisor_v7.py",
+        "ops/native-source-publisher-v1/host_original306_worker_lane.py"
+      ]
+    },
+    {
+      "id": "source-slice-native-publisher--native-source-release-02",
+      "semantic_unit": "Native source package, signed Original305/312/313 release lifecycle and host evidence (native-publisher, batch 2)",
+      "revert_boundary": "Revert these native source/publisher components with receipt and CAS regressions; do not promote preview records into signed Host execution",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/native-source-publisher-v1/host_source_activation_doctor.py",
+        "ops/native-source-publisher-v1/host_source_activation_doctor_v2.py",
+        "ops/native-source-publisher-v1/host_source_activation_doctor_v3.py",
+        "ops/native-source-publisher-v1/host_source_activation_doctor_v4.py",
+        "ops/native-source-publisher-v1/legacy_plan_migration_preview.py",
+        "ops/native-source-publisher-v1/native_host_source_final_receipt.py",
+        "ops/native-source-publisher-v1/native_host_source_readback.py",
+        "ops/native-source-publisher-v1/native_host_source_transaction.py",
+        "ops/native-source-publisher-v1/native_source_publisher.py",
+        "ops/native-source-publisher-v1/operation_plan_association.py",
+        "ops/native-source-publisher-v1/original305_hold_triage_v1.py",
+        "ops/native-source-publisher-v1/original305_host_unsigned_readiness_request.py",
+        "ops/native-source-publisher-v1/original305_host_unsigned_readiness_request_v4.py",
+        "ops/native-source-publisher-v1/original305_host_unsigned_readiness_request_v5.py",
+        "ops/native-source-publisher-v1/original305_incident_signed_review_v1.py",
+        "ops/native-source-publisher-v1/original305_incident_signed_review_v2.py",
+        "ops/native-source-publisher-v1/original305_readiness_supervisor_v6.py",
+        "ops/native-source-publisher-v1/original305_readiness_supervisor_v7.py",
+        "ops/native-source-publisher-v1/original305_runtime_observer_v1.py",
+        "ops/native-source-publisher-v1/original_306_preclaim.py",
+        "ops/native-source-publisher-v1/original_313_host_handler.py",
+        "ops/native-source-publisher-v1/original_313_host_source_finalizer.py",
+        "ops/native-source-publisher-v1/original_313_host_source_handler.py",
+        "ops/native-source-publisher-v1/original_313_host_source_verifier.py",
+        "ops/native-source-publisher-v1/original_313_independent_readback.py",
+        "ops/native-source-publisher-v1/original_313_source_finalizer.py",
+        "ops/native-source-publisher-v1/original_broker_host_readiness_refresh.py",
+        "ops/native-source-publisher-v1/original_broker_host_readiness_refresh_v3.py",
+        "ops/native-source-publisher-v1/original_broker_host_readiness_refresh_v4.py",
+        "ops/native-source-publisher-v1/original_broker_host_readiness_refresh_v5.py"
+      ]
+    },
+    {
+      "id": "source-slice-native-publisher--native-source-release-03",
+      "semantic_unit": "Native source package, signed Original305/312/313 release lifecycle and host evidence (native-publisher, batch 3)",
+      "revert_boundary": "Revert these native source/publisher components with receipt and CAS regressions; do not promote preview records into signed Host execution",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/native-source-publisher-v1/original_broker_host_readiness_refresh_v6.py",
+        "ops/native-source-publisher-v1/original_broker_host_readiness_refresh_v7.py",
+        "ops/native-source-publisher-v1/original_broker_host_readiness_refresh_v8.py",
+        "ops/native-source-publisher-v1/original_finish_readonly_audit.py",
+        "ops/native-source-publisher-v1/original_job_lifecycle_preview.py",
+        "ops/native-source-publisher-v1/plan_store_compatibility_audit.py",
+        "ops/native-source-publisher-v1/systemd/mad4b-original-broker-host-readiness.v6.CANDIDATE.service",
+        "ops/native-source-publisher-v1/systemd/mad4b-original-broker-host-readiness.v7.DYNAMIC.service",
+        "ops/native-source-publisher-v1/systemd/mad4b-original-broker-host-readiness.v8.DYNAMIC.service",
+        "ops/native-source-publisher-v1/systemd/mad4b-original-broker-host-readiness.v8.DYNAMIC.timer",
+        "ops/native-source-publisher-v1/systemd/mad4b-original305-observer.service",
+        "ops/native-source-publisher-v1/systemd/mad4b-original305-observer.timer",
+        "ops/native-source-publisher-v1/test_host_v4_static_contract.py",
+        "ops/native-source-publisher-v1/test_native_host_source_transaction.py",
+        "ops/native-source-publisher-v1/test_original305_hold_triage_v1.py",
+        "ops/native-source-publisher-v1/test_original305_incident_signed_review_v1.py",
+        "ops/native-source-publisher-v1/test_original305_incident_signed_review_v2.py",
+        "ops/native-source-publisher-v1/test_original305_readiness_supervisor_v7.py",
+        "ops/native-source-publisher-v1/test_original305_readiness_supervisor_v7_prewrite.py",
+        "ops/native-source-publisher-v1/test_original305_runtime_observer_v1.py",
+        "ops/native-source-publisher-v1/test_original_broker_v3_static_contract.py"
+      ]
+    },
+    {
+      "id": "source-slice-other-ops--authority-and-execution-01",
+      "semantic_unit": "Exact owner, grant, authorization and execution-boundary source/regressions (other-ops, batch 1)",
+      "revert_boundary": "Revert the exact authority/admission source and matching regressions together; retain signed Owner, grant and Original release requirements",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/media-source-ownership/fleet-active-media-sources-20261116.json",
+        "ops/media-source-ownership/wayfatours-media-company-ownership-20261116.json"
+      ]
+    },
+    {
+      "id": "source-slice-other-ops--ci-and-regressions-01",
+      "semantic_unit": "Automated regression fixtures, repository gates, provenance and CI workflow verification (other-ops, batch 1)",
+      "revert_boundary": "Revert CI checks only with their source-backed tests and independently governed workflow approval; never waive release or Owner attestations",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/adaptive-queue-self-heal-20261116/tests/test-adaptive-queue-self-healing.php",
+        "ops/query-scoped-generation-20261116/tests/run-scopes.sh",
+        "ops/query-scoped-generation-20261116/tests/test-render-query-scope.php"
+      ]
+    },
+    {
+      "id": "source-slice-other-ops--documentation-and-evidence-01",
+      "semantic_unit": "Source review notes, static policies, CI evidence and nonauthorizing documentation (other-ops, batch 1)",
+      "revert_boundary": "Revert exact source-only report/evidence changes separately from runtime code and keep historical signed artifacts immutable",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/adaptive-queue-self-heal-20261116/README.md",
+        "ops/native-browser-shadow-20261116/README.md",
+        "ops/query-scoped-generation-20261116/README.md"
+      ]
+    },
+    {
+      "id": "source-slice-other-ops--operational-infrastructure-01",
+      "semantic_unit": "Runtime tooling, provider release operations, deployment-safe infrastructure contracts (other-ops, batch 1)",
+      "revert_boundary": "Revert operational scripts and their dry-run/test coverage as a discrete unit; preserve Production HOLD and exact source identity",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/native-browser-shadow-20261116/browser-native-listing-shadow-v1.js",
+        "ops/native-browser-shadow-20261116/browser-native-route-recheck-v1.js",
+        "ops/native-browser-shadow-20261116/refresh-browser-audits.sh"
+      ]
+    },
+    {
+      "id": "source-slice-other-ops--performance-and-cache-01",
+      "semantic_unit": "Critical CSS, lazy loading, cache, request latency and performance contracts (other-ops, batch 1)",
+      "revert_boundary": "Revert the exact asset/cache implementation with runtime guards and tests; preserve visitor variation and private HTML isolation",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/adaptive-css-dependency-epoch-20261116/README.md",
+        "ops/adaptive-css-dependency-epoch-20261116/nginx-accept-family.py",
+        "ops/adaptive-css-dependency-epoch-20261116/test-nginx-accept-family.py",
+        "ops/adaptive-css-dependency-epoch-20261116/test-origin-gate-dynamic.php",
+        "ops/adaptive-css-dependency-epoch-20261116/tests/test-adaptive-epoch.php",
+        "ops/mobile-critical-css-v1/.gitignore",
+        "ops/mobile-critical-css-v1/PUBLISHER-COMPATIBILITY.md",
+        "ops/mobile-critical-css-v1/capture.js",
+        "ops/mobile-critical-css-v1/publish.py",
+        "ops/mobile-critical-css-v1/verify.js",
+        "ops/performance-v2/.gitignore",
+        "ops/performance-v2/README.md",
+        "ops/performance-v2/css_reconciliation_workflow_v3.py",
+        "ops/performance-v2/performance_http_readback_v2.py",
+        "ops/performance-v2/performance_monitor_v2.py",
+        "ops/performance-v2/policies/source-http-policy.json",
+        "ops/performance-v2/tests/test_adaptive_mobile_css_qa.py",
+        "ops/performance-v2/tests/test_critical_css_integrity.py",
+        "ops/performance-v2/tests/test_css_strategy.py",
+        "ops/performance-v2/tests/test_http_integrity.py",
+        "ops/secondary-native-lazy-parity-20261116/README.md",
+        "ops/secondary-native-lazy-parity-20261116/qa-verdict.json",
+        "ops/secondary-native-lazy-parity-20261116/tests/test-native-lazy-ajax-parity.php"
+      ]
+    },
+    {
+      "id": "source-slice-other-ops--tour-and-commerce-01",
+      "semantic_unit": "Tour domain, booking, pricing, inventory, market and WooCommerce integrations (other-ops, batch 1)",
+      "revert_boundary": "Revert related tour-domain schema, pricing logic, presentation and matching tests without reintroducing legacy checkout or field defaults",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/cache-lifecycle-rate-404-20261116/README.md",
+        "ops/cache-lifecycle-rate-404-20261116/tests/test-rate-routing.php",
+        "ops/default-private-market-microcache-20261116/README.md",
+        "ops/default-private-market-microcache-20261116/nginx.tours-staging.conf",
+        "ops/default-private-market-microcache-20261116/tests/test-default-private-microcache.py",
+        "ops/default-private-market-microcache-20261116/tests/test-market-scope.php",
+        "ops/performance-v2/policies/wayfatours-http-policy.json",
+        "ops/tenants/wayfatours/mu-plugins/README.md",
+        "ops/tenants/wayfatours/mu-plugins/mad4b-render-query-governor.php"
+      ]
+    },
+    {
+      "id": "source-slice-other-plugins--authority-and-execution-01",
+      "semantic_unit": "Exact owner, grant, authorization and execution-boundary source/regressions (other-plugins, batch 1)",
+      "revert_boundary": "Revert the exact authority/admission source and matching regressions together; retain signed Owner, grant and Original release requirements",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-platform/modules/authority/dynamic313/class-mad4b-original313-receipt-only-finalizer.php"
+      ]
+    },
+    {
+      "id": "source-slice-other-plugins--company-and-tenant-01",
+      "semantic_unit": "Company workspace, source/target reconciliation, per-site ownership and tenant boundaries (other-plugins, batch 1)",
+      "revert_boundary": "Revert this company/tenant source scope with matching consistency tests; do not let one company's state become another's authority",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-sparse-store.php",
+        "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-workflow.php"
+      ]
+    },
+    {
+      "id": "source-slice-other-plugins--content-and-publishing-01",
+      "semantic_unit": "Content operation, editorial approval, publishing and translation lifecycle (other-plugins, batch 1)",
+      "revert_boundary": "Revert the matching content workflow and schema/test slice; preserve review permissions, WPML links and original content rollback",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-google-measurement-bridge/includes/class-mad4b-google-measurement-admin.php",
+        "wp-content/plugins/mad4b-google-measurement-bridge/includes/class-mad4b-google-measurement-gtm-consent-audit.php",
+        "wp-content/plugins/mad4b-google-measurement-bridge/mad4b-google-measurement-bridge.php",
+        "wp-content/plugins/mad4b-google-measurement-bridge/tests/gtm-portfolio-consent-contract.php"
+      ]
+    },
+    {
+      "id": "source-slice-other-plugins--mcp-and-oauth-01",
+      "semantic_unit": "MCP descriptor, OAuth transport, registration and provider compatibility source/regressions (other-plugins, batch 1)",
+      "revert_boundary": "Revert this transport and descriptor slice with its source-owned negative tests; retain fail-closed OAuth and MCP boundaries",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-google-measurement-bridge/tests/gtm-live-provider-partial-consent-contract.php"
+      ]
+    },
+    {
+      "id": "source-slice-other-plugins--media-and-rights-01",
+      "semantic_unit": "Media discovery, image assignment, rights and brand integrity automation (other-plugins, batch 1)",
+      "revert_boundary": "Revert source image/right ownership policy and media reconciliation as a unit; preserve local-library publication and attribution safeguards",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-adaptive-asset-intelligence/includes/class-mad4b-scp-adaptive-asset-intelligence.php",
+        "wp-content/plugins/mad4b-adaptive-asset-intelligence/includes/class-mad4b-scp-adaptive-presentation-discovery.php",
+        "wp-content/plugins/mad4b-adaptive-asset-intelligence/includes/class-mad4b-scp-theme-builder-priority-plan.php",
+        "wp-content/plugins/mad4b-adaptive-asset-intelligence/mad4b-adaptive-asset-intelligence.php",
+        "wp-content/plugins/mad4b-adaptive-asset-intelligence/tests/contract.php"
+      ]
+    },
+    {
+      "id": "source-slice-other-plugins--performance-and-cache-01",
+      "semantic_unit": "Critical CSS, lazy loading, cache, request latency and performance contracts (other-plugins, batch 1)",
+      "revert_boundary": "Revert the exact asset/cache implementation with runtime guards and tests; preserve visitor variation and private HTML isolation",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-cache-lifecycle/includes/control.php",
+        "wp-content/plugins/mad4b-cache-lifecycle/includes/runtime.php",
+        "wp-content/plugins/mad4b-cache-lifecycle/mad4b-cache-lifecycle.php"
+      ]
+    },
+    {
+      "id": "source-slice-other-plugins--tour-and-commerce-01",
+      "semantic_unit": "Tour domain, booking, pricing, inventory, market and WooCommerce integrations (other-plugins, batch 1)",
+      "revert_boundary": "Revert related tour-domain schema, pricing logic, presentation and matching tests without reintroducing legacy checkout or field defaults",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-cache-lifecycle/pricing-cache-acceptance.php",
+        "wp-content/plugins/mad4b-commerce/modules/compat/tour-content-layout-control.php"
+      ]
+    },
+    {
+      "id": "source-slice-packages--ci-and-regressions-01",
+      "semantic_unit": "Automated regression fixtures, repository gates, provenance and CI workflow verification (packages, batch 1)",
+      "revert_boundary": "Revert CI checks only with their source-backed tests and independently governed workflow approval; never waive release or Owner attestations",
+      "certification": "exact_head",
+      "path_globs": [
+        "packages/mad4b-shared-product-core/tests/verify-snapshot.py"
+      ]
+    },
+    {
+      "id": "source-slice-packages--company-and-tenant-01",
+      "semantic_unit": "Company workspace, source/target reconciliation, per-site ownership and tenant boundaries (packages, batch 1)",
+      "revert_boundary": "Revert this company/tenant source scope with matching consistency tests; do not let one company's state become another's authority",
+      "certification": "exact_head",
+      "path_globs": [
+        "packages/mad4b-shared-product-core/tests/company-term-eligibility-readonly.php"
+      ]
+    },
+    {
+      "id": "source-slice-packages--documentation-and-evidence-01",
+      "semantic_unit": "Source review notes, static policies, CI evidence and nonauthorizing documentation (packages, batch 1)",
+      "revert_boundary": "Revert exact source-only report/evidence changes separately from runtime code and keep historical signed artifacts immutable",
+      "certification": "exact_head",
+      "path_globs": [
+        "packages/mad4b-shared-product-core/README.md",
+        "packages/mad4b-shared-product-core/docs/snapshots/0.1.0-dev.20261028/release-manifest.json",
+        "packages/mad4b-shared-product-core/docs/snapshots/0.1.0-dev.20261028/source-files.sha256"
+      ]
+    },
+    {
+      "id": "source-slice-packages--mcp-and-oauth-01",
+      "semantic_unit": "MCP descriptor, OAuth transport, registration and provider compatibility source/regressions (packages, batch 1)",
+      "revert_boundary": "Revert this transport and descriptor slice with its source-owned negative tests; retain fail-closed OAuth and MCP boundaries",
+      "certification": "exact_head",
+      "path_globs": [
+        "packages/mad4b-shared-product-core/mu-plugins/shared-product-core/adapters/company-term-eligibility-v1.php",
+        "packages/mad4b-shared-product-core/mu-plugins/shared-product-core/adapters/presentation-native-consumer-policy-v1.php",
+        "packages/mad4b-shared-product-core/mu-plugins/shared-product-core/adapters/presentation-native-filter-policy-v1.php"
+      ]
+    },
+    {
+      "id": "source-slice-packages--operational-infrastructure-01",
+      "semantic_unit": "Runtime tooling, provider release operations, deployment-safe infrastructure contracts (packages, batch 1)",
+      "revert_boundary": "Revert operational scripts and their dry-run/test coverage as a discrete unit; preserve Production HOLD and exact source identity",
+      "certification": "exact_head",
+      "path_globs": [
+        "packages/mad4b-shared-product-core/release-manifest.json",
+        "packages/mad4b-shared-product-core/source-files.sha256"
+      ]
+    },
+    {
+      "id": "source-slice-packages--tour-and-commerce-01",
+      "semantic_unit": "Tour domain, booking, pricing, inventory, market and WooCommerce integrations (packages, batch 1)",
+      "revert_boundary": "Revert related tour-domain schema, pricing logic, presentation and matching tests without reintroducing legacy checkout or field defaults",
+      "certification": "exact_head",
+      "path_globs": [
+        "packages/mad4b-shared-product-core/tests/company-tour-component-query-readonly.php"
+      ]
+    },
+    {
+      "id": "source-slice-repo-tests--authority-and-execution-01",
+      "semantic_unit": "Exact owner, grant, authorization and execution-boundary source/regressions (repo-tests, batch 1)",
+      "revert_boundary": "Revert the exact authority/admission source and matching regressions together; retain signed Owner, grant and Original release requirements",
+      "certification": "exact_head",
+      "path_globs": [
+        "tests/admin-surfaces-authorization-original-hermetic.php",
+        "tests/agent-grant-plan-original-hermetic.php",
+        "tests/authority-auto-reconcile-host-hermetic.php",
+        "tests/authority-review-inbox-native-hermetic.php",
+        "tests/authority-servers-original-review-suite.py",
+        "tests/authorization-preflight-original-hermetic.php",
+        "tests/background-agent-original-authority-hermetic.php",
+        "tests/central-write-acceptance-permission-original-hermetic.php",
+        "tests/content-relationship-media-owner-original-hermetic.php",
+        "tests/content-relationship-owner-cert-original-hermetic.php",
+        "tests/context-authority-original-review-suite.py",
+        "tests/converged-grant-eligibility-hermetic.php",
+        "tests/delegation-owner-original-hermetic.php",
+        "tests/developer-authority-access-original-hermetic.php",
+        "tests/execution-authority-identity-native-hermetic.php",
+        "tests/original-native-service-trust-hermetic.php",
+        "tests/readiness-native-cron-ownership-hermetic.php",
+        "tests/remote-execution/chatgpt-optional-catalog-smoke.php",
+        "tests/remote-execution/developer-authority-policy-v2-smoke.php",
+        "tests/remote-execution/governed-enrollment-dispatch-smoke.php",
+        "tests/remote-execution/governed-parent-enrollment-smoke.php",
+        "tests/remote-execution/governed-write-admission-smoke.php",
+        "tests/remote-execution/operator-grants-convergence-smoke.php",
+        "tests/remote-execution/skill-seeder-exact-site-denial-smoke.php",
+        "tests/runtime-convergence-owner-gate-native-hermetic.php",
+        "tests/staging-grant-agent-proof-native.php",
+        "tests/staging-write-delegated-identity-native-hermetic.php",
+        "tests/test_authorization_recovery_trait_nonregression.py",
+        "tests/test_dynamic_readiness_rest_ability_owner.py",
+        "tests/test_local_oauth_explicit_cli_mcp_scope.py"
+      ]
+    },
+    {
+      "id": "source-slice-repo-tests--authority-and-execution-02",
+      "semantic_unit": "Exact owner, grant, authorization and execution-boundary source/regressions (repo-tests, batch 2)",
+      "revert_boundary": "Revert the exact authority/admission source and matching regressions together; retain signed Owner, grant and Original release requirements",
+      "certification": "exact_head",
+      "path_globs": [
+        "tests/test_media_wayfa_company_source_ownership.py",
+        "tests/test_native_original305_incident_review_authority.py",
+        "tests/test_native_source_historical_grants.py",
+        "tests/test_original313_finalizer_signed_trust_source.py",
+        "tests/test_secondary_lazy_site_owner_and_ajax_gate.py",
+        "tests/test_servers_single_owner_convergence.py",
+        "tests/transport-context-permission-original-hermetic.php",
+        "tests/unified-gateway-permission-original-hermetic.php"
+      ]
+    },
+    {
+      "id": "source-slice-repo-tests--ci-and-regressions-01",
+      "semantic_unit": "Automated regression fixtures, repository gates, provenance and CI workflow verification (repo-tests, batch 1)",
+      "revert_boundary": "Revert CI checks only with their source-backed tests and independently governed workflow approval; never waive release or Owner attestations",
+      "certification": "exact_head",
+      "path_globs": [
+        "tests/adaptive-asset-bridge-original-hermetic.php",
+        "tests/adaptive-interaction-ui-original-hermetic.php",
+        "tests/admin-navigation-manifest-original-hermetic.php",
+        "tests/admin-settings-js-original-same-pr.py",
+        "tests/ai-task-routing-original-hermetic.php",
+        "tests/artifacts-original-hermetic.php",
+        "tests/catalog-intent-source-relevance-hermetic.php",
+        "tests/cli-readiness-original-hermetic.php",
+        "tests/control_plane_pr808_historical_successor.py",
+        "tests/core-ai-governance-usage-and-admission-hermetic.php",
+        "tests/core-connector-vault-original-hermetic.php",
+        "tests/developer-policy-v2-original-hermetic.php",
+        "tests/developer-workspace-admission-original-hermetic.php",
+        "tests/dfsb-environment-policy-original-hermetic.php",
+        "tests/drive-scan-cron-original-hermetic.php",
+        "tests/fcp-local-observability-site-bound-hermetic.php",
+        "tests/firecrawl-page-store-original-hermetic.php",
+        "tests/geo-quality-original-hermetic.php",
+        "tests/global-runtime-lifecycle-original-hermetic.php",
+        "tests/guided-continuation-write-surface-denial-hermetic.php",
+        "tests/journey-asset-bootstrap-runtime.js",
+        "tests/locale-experience-alerts-owned-observations-hermetic.php",
+        "tests/migration-decision-catalog-original-hermetic.php",
+        "tests/mutation-principal-first-party-hermetic.php",
+        "tests/native-original-job-readback/acceptance.php",
+        "tests/native-release-and-staging-canary-denial-hermetic.php",
+        "tests/native-visibility-preview/preview-guards.php",
+        "tests/native_source_manifest_history_contract.py",
+        "tests/operational-integrity-original-hermetic.php",
+        "tests/operator-runner-profile-original-hermetic.php"
+      ]
+    },
+    {
+      "id": "source-slice-repo-tests--ci-and-regressions-02",
+      "semantic_unit": "Automated regression fixtures, repository gates, provenance and CI workflow verification (repo-tests, batch 2)",
+      "revert_boundary": "Revert CI checks only with their source-backed tests and independently governed workflow approval; never waive release or Owner attestations",
+      "certification": "exact_head",
+      "path_globs": [
+        "tests/origin-evidence-workflow-original-hermetic.php",
+        "tests/original-queue-and-review-modes-native.php",
+        "tests/plugin-bootstrap-original-hermetic.php",
+        "tests/plugin-transaction-plan-original-hermetic.php",
+        "tests/presentation-browser-evidence-local-import-hermetic.php",
+        "tests/readiness-draft-only-original-hermetic.php",
+        "tests/readiness-original-source-behavior-matrix.py",
+        "tests/readiness-scopes-events-original-hermetic.php",
+        "tests/readiness-seven-original-p0-source-review.py",
+        "tests/readiness-workflow-options-original-hermetic.php",
+        "tests/remote-operation-catalog-original-hermetic.php",
+        "tests/scheduler-queue-original-same-pr-matrix.py",
+        "tests/servers-native-core-catalog-hermetic.php",
+        "tests/site-lifecycle-rest-original-hermetic.php",
+        "tests/source-lifecycle-original-hermetic.php",
+        "tests/staging-context-fixtures-original-hermetic.php",
+        "tests/staging-fixture-drafts-original-hermetic.php",
+        "tests/staging-host-candidate-gate-native-hermetic.php",
+        "tests/staging-selector-reviewed-token-equivalence.py",
+        "tests/staging-write-host-candidate-native-hermetic.php",
+        "tests/staging-write-planning-guard-original-hermetic.php",
+        "tests/switcher-sources-original-hermetic.php",
+        "tests/test_abilities_registration_trait_parity.py",
+        "tests/test_adaptive_asset_canonical_source_parity.py",
+        "tests/test_additive_mad4b_plugin_sources.py",
+        "tests/test_ci_legacy_contract_convergence.py",
+        "tests/test_ci_portable_native_source_partition.py",
+        "tests/test_control_plane_developer_policy_v2_contract.py",
+        "tests/test_control_plane_policy_governed_contract.py",
+        "tests/test_control_plane_rc129_live_integrity.py"
+      ]
+    },
+    {
+      "id": "source-slice-repo-tests--ci-and-regressions-03",
+      "semantic_unit": "Automated regression fixtures, repository gates, provenance and CI workflow verification (repo-tests, batch 3)",
+      "revert_boundary": "Revert CI checks only with their source-backed tests and independently governed workflow approval; never waive release or Owner attestations",
+      "certification": "exact_head",
+      "path_globs": [
+        "tests/test_control_plane_rc129_v29_readonly_overlay.py",
+        "tests/test_first_party_recovery_305_issuer.py",
+        "tests/test_journey_successor_no_regression.py",
+        "tests/test_native_source_associated_worker_index.py",
+        "tests/test_native_source_central_bridge_v21.py",
+        "tests/test_native_source_central_review_source.py",
+        "tests/test_native_source_compact_job_readback.py",
+        "tests/test_native_source_enrollment_contract_v20.py",
+        "tests/test_native_source_historical_finish_correlation.py",
+        "tests/test_native_source_host_v8_pin_convergence.py",
+        "tests/test_native_source_host_v9_successor.py",
+        "tests/test_native_source_immutable_plan_v25.py",
+        "tests/test_native_source_legacy_migration_preview.py",
+        "tests/test_native_source_manifest_candidate.py",
+        "tests/test_native_source_offline_runner_boundary.py",
+        "tests/test_native_source_operation_association.py",
+        "tests/test_native_source_original_job_lifecycle_preview.py",
+        "tests/test_native_source_original_job_readback_php.py",
+        "tests/test_native_source_plan_store_compatibility.py",
+        "tests/test_native_source_preclaim_v24.py",
+        "tests/test_native_source_readback_provenance.py",
+        "tests/test_native_source_release_readiness_audit.py",
+        "tests/test_native_visibility_source_scope.py",
+        "tests/test_readiness_supervisor.py",
+        "tests/test_server_vps_local_identity_trait_parity.py",
+        "tests/test_story_observability_severity.php",
+        "tests/test_uael_stage_labels_live.php",
+        "tests/test_unified_branch_census_contract.py",
+        "tests/test_unified_mad4b_behavior_invariants.py",
+        "tests/test_unified_recent_branch_no_regression.py"
+      ]
+    },
+    {
+      "id": "source-slice-repo-tests--ci-and-regressions-04",
+      "semantic_unit": "Automated regression fixtures, repository gates, provenance and CI workflow verification (repo-tests, batch 4)",
+      "revert_boundary": "Revert CI checks only with their source-backed tests and independently governed workflow approval; never waive release or Owner attestations",
+      "certification": "exact_head",
+      "path_globs": [
+        "tests/unified-gate-dynamic-original-hermetic.php",
+        "tests/visual-seo-strategy-original-hermetic.php"
+      ]
+    },
+    {
+      "id": "source-slice-repo-tests--company-and-tenant-01",
+      "semantic_unit": "Company workspace, source/target reconciliation, per-site ownership and tenant boundaries (repo-tests, batch 1)",
+      "revert_boundary": "Revert this company/tenant source scope with matching consistency tests; do not let one company's state become another's authority",
+      "certification": "exact_head",
+      "path_globs": [
+        "tests/central-company-release-signed-readonly-hermetic.php",
+        "tests/company-cloudflare-admission-original-hermetic.php",
+        "tests/company-code-cryptographic-pages-hermetic.php",
+        "tests/company-communication-policy-rest-hermetic.php",
+        "tests/company-email-routing-original-hermetic.php",
+        "tests/company-master-native-rest-gates-hermetic.php",
+        "tests/company-migration-decisions-transaction-hermetic.php",
+        "tests/company-task-handoff-native-cas-hermetic.php",
+        "tests/company-tenant-migration-rollback-hermetic.php",
+        "tests/company-user-native-lifecycle-hermetic.php",
+        "tests/test_company_original_cas_306_preclaim.py",
+        "tests/test_company_original_cas_313_finalizer.py",
+        "tests/test_company_original_cas_worker_patch.py",
+        "tests/test_company_release_catalog_git_completeness.py",
+        "tests/test_origin_gate_wayfa_notice_source_parity.py",
+        "tests/test_original305_and_company_source_parity.py",
+        "tests/test_wayfa_gem_landscape_source_review.py",
+        "tests/test_wayfa_gem_local_library_reframe_receipt.py",
+        "tests/test_wayfa_source_preserving_crop_queue.py"
+      ]
+    },
+    {
+      "id": "source-slice-repo-tests--content-and-publishing-01",
+      "semantic_unit": "Content operation, editorial approval, publishing and translation lifecycle (repo-tests, batch 1)",
+      "revert_boundary": "Revert the matching content workflow and schema/test slice; preserve review permissions, WPML links and original content rollback",
+      "certification": "exact_head",
+      "path_globs": [
+        "tests/content-completeness-original-hermetic.php",
+        "tests/content-job-groups-admission-original-hermetic.php",
+        "tests/content-job-register-native-hermetic.php",
+        "tests/content-job-structural-qa-admission-original-hermetic.php",
+        "tests/content-relationship-graph-site-original-hermetic.php",
+        "tests/content-relationship-terms-original-hermetic.php",
+        "tests/content-relationship-writeback-admission-original-hermetic.php",
+        "tests/contentjob-structural-cwa-original-hermetic.php",
+        "tests/dynamic-content-apply-native-ability-source-hermetic.php",
+        "tests/dynamic-content-bundle-native-rollback-preflight-hermetic.php",
+        "tests/test_content_readiness_trait_parity.py",
+        "tests/test_native_source_publisher_v1.py"
+      ]
+    },
+    {
+      "id": "source-slice-repo-tests--frontend-and-search-01",
+      "semantic_unit": "Elementor, JetEngine archive, filters, gallery, frontend and site navigation (repo-tests, batch 1)",
+      "revert_boundary": "Revert frontend templates/queries and matching source parity checks as one scoped unit; preserve filter state and responsive layouts",
+      "certification": "exact_head",
+      "path_globs": [
+        "tests/frontend-impact-same-origin-budget-hermetic.php",
+        "tests/hub-jetengine-consumer-fence-original-hermetic.php",
+        "tests/native-search-console-site-scope-php74-hermetic.php",
+        "tests/origin-external-research-source-bound-hermetic.php",
+        "tests/presentation-integrity-jetengine-source-hermetic.php",
+        "tests/research-intelligence-original-hermetic.php"
+      ]
+    },
+    {
+      "id": "source-slice-repo-tests--mcp-and-oauth-01",
+      "semantic_unit": "MCP descriptor, OAuth transport, registration and provider compatibility source/regressions (repo-tests, batch 1)",
+      "revert_boundary": "Revert this transport and descriptor slice with its source-owned negative tests; retain fail-closed OAuth and MCP boundaries",
+      "certification": "exact_head",
+      "path_globs": [
+        "tests/adapter-base-default-write-eligibility-hermetic.php",
+        "tests/agent-registry-exact-revoke-cas-hermetic.php",
+        "tests/capability-dependency-planner-original-hermetic.php",
+        "tests/central-transport-write-source-hermetic.php",
+        "tests/chatbotx-native-adapter-surface-hermetic.php",
+        "tests/company-reconcile-skill-set-no-executor-hermetic.php",
+        "tests/context-provider-gateway-original-hermetic.php",
+        "tests/dfsb-read-adapter-original-hermetic.php",
+        "tests/dynamic-provider-manifest-original-hermetic.php",
+        "tests/elementor-native-mcp-awareness-original-hermetic.php",
+        "tests/firecrawl-provider-php74-crawl-and-host-scope-hermetic.php",
+        "tests/firecrawl-research-adapter-provider-presence-hermetic.php",
+        "tests/litespeed-adapter-original-hermetic.php",
+        "tests/local-brand-draft-adapter-original-hermetic.php",
+        "tests/mcp-adapter-dynamic-integrity-original-hermetic.php",
+        "tests/mcp-protocol-scope-original-hermetic.php",
+        "tests/mcp-provider-matrix-readonly-inheritance-hermetic.php",
+        "tests/mcp-request-scope-original-hermetic.php",
+        "tests/native-capability-registry-adapter-first-party.php",
+        "tests/native-skills-seeder-enrollment-cron-hermetic.php",
+        "tests/operation-registry-native-policy-boundary-hermetic.php",
+        "tests/production_readiness_registry_contract.py",
+        "tests/provider-field-intelligence-site-readonly-php74-hermetic.php",
+        "tests/provider-mcp-path-original-hermetic.php",
+        "tests/provider-source-contract-evidence-boundary.py",
+        "tests/readiness-existing-original-providers-matrix.py",
+        "tests/search-provider-autoprovision-runtime-denials-hermetic.php",
+        "tests/server-descriptor-canonical-multilane-hermetic.php",
+        "tests/server-registration-descriptor-boundary-hermetic.php",
+        "tests/servers-original-native-transport-hermetic.php"
+      ]
+    },
+    {
+      "id": "source-slice-repo-tests--mcp-and-oauth-02",
+      "semantic_unit": "MCP descriptor, OAuth transport, registration and provider compatibility source/regressions (repo-tests, batch 2)",
+      "revert_boundary": "Revert this transport and descriptor slice with its source-owned negative tests; retain fail-closed OAuth and MCP boundaries",
+      "certification": "exact_head",
+      "path_globs": [
+        "tests/skill-provider-source-original-hermetic.php",
+        "tests/skill-registry-enrollment-original-hermetic.php",
+        "tests/test_certified_mcp_adapter_profile.py",
+        "tests/test_company_executor_time_cas_original_adapter.py",
+        "tests/test_company_original_cas_registry_upgrade.py",
+        "tests/test_first_party_receipt_provider_install.py",
+        "tests/test_mcp_runtime_surface_source_identity.py",
+        "tests/test_native_source_registry_candidate.py",
+        "tests/test_native_source_registry_extension_v23.py",
+        "tests/test_original313_receipt_only_provider_candidate.py",
+        "tests/test_provider_v4_dependency_reconciliation.py",
+        "tests/unified-provider-routing-native-safety-hermetic.php",
+        "tests/wayfa-fluent-smtp-transport-recovery-contract.php",
+        "tests/wayfa-provider-verified-notice-regression.php"
+      ]
+    },
+    {
+      "id": "source-slice-repo-tests--media-and-rights-01",
+      "semantic_unit": "Media discovery, image assignment, rights and brand integrity automation (repo-tests, batch 1)",
+      "revert_boundary": "Revert source image/right ownership policy and media reconciliation as a unit; preserve local-library publication and attribution safeguards",
+      "certification": "exact_head",
+      "path_globs": [
+        "tests/brand-quality-readiness-coverage-hermetic.php",
+        "tests/brand-review-routing-original-hermetic.php",
+        "tests/composite-media-integrity-gallery-contract.php",
+        "tests/content-media-local-missing-rights-original-hermetic.php",
+        "tests/content-media-rights-guard-original-hermetic.php",
+        "tests/external-media-ingest-original-hermetic.php",
+        "tests/media-rights-cct-after-commit-original-hermetic.php",
+        "tests/media-rights/README.md",
+        "tests/media-rights/media-rights-source-convergence-hermetic.php",
+        "tests/media-rights/wpcli-local-library-rights-policy-contract.php",
+        "tests/operational-remediation-tabs-runtime.js",
+        "tests/staging-brand-trial-original-hermetic.php",
+        "tests/test_brand_integrity_ledger_resolution.php",
+        "tests/test_brand_integrity_lifecycle_contract.py",
+        "tests/test_brand_integrity_lifecycle_runtime.php",
+        "tests/test_brand_integrity_runtime.php",
+        "tests/test_ci_whitespace_only_media_source_20261116.py",
+        "tests/test_media_crop_geometry_boundary_live.php",
+        "tests/test_media_existing_library_optional_rights_contract.py",
+        "tests/test_media_fleet_shared_source_identity.py",
+        "tests/test_media_rights_clearance_positive_live.php",
+        "tests/test_media_rights_scaled_original_alias.php",
+        "tests/test_media_scaled_core_subsize_resolver_live.php",
+        "tests/test_media_source_parity_preflight.py",
+        "tests/test_media_weighted_growth_contract.py",
+        "tests/test_photo_focus_native_specificity.py",
+        "tests/test_photo_frame_cover_crop_live.php",
+        "tests/test_photo_frame_focus_native_contract.py",
+        "tests/test_uael_existing_gallery_release_catalog.py",
+        "tests/test_wayfa_library_rights_nonblocking_live.php"
+      ]
+    },
+    {
+      "id": "source-slice-repo-tests--media-and-rights-02",
+      "semantic_unit": "Media discovery, image assignment, rights and brand integrity automation (repo-tests, batch 2)",
+      "revert_boundary": "Revert source image/right ownership policy and media reconciliation as a unit; preserve local-library publication and attribution safeguards",
+      "certification": "exact_head",
+      "path_globs": [
+        "tests/test_wayfa_media_story_and_rights_growth.py",
+        "tests/test_wayfa_photo_quality_dynamic_review_queue.py",
+        "tests/uael-stage-gallery/quickview-gallery-boundary.test.py",
+        "tests/uael-stage-gallery/quickview-gallery-interop.test.js",
+        "tests/uael-stage-gallery/test-asset-and-cache-contract.py",
+        "tests/uael-stage-gallery/test-native-category-labels.php",
+        "tests/wayfa-universal-media-deferred-queue-contract.php"
+      ]
+    },
+    {
+      "id": "source-slice-repo-tests--native-source-release-01",
+      "semantic_unit": "Native source package, signed Original305/312/313 release lifecycle and host evidence (repo-tests, batch 1)",
+      "revert_boundary": "Revert these native source/publisher components with receipt and CAS regressions; do not promote preview records into signed Host execution",
+      "certification": "exact_head",
+      "path_globs": [
+        "tests/native-source-central-bridge-v21.php",
+        "tests/native-source-central-review/acceptance.php",
+        "tests/native-source-central-review/bootstrap.php",
+        "tests/native-source-central-review/run-php-acceptance.sh",
+        "tests/native-source-original313-evidence-v26.php",
+        "tests/native-source-original313-signed-proof-v27.php",
+        "tests/test_native_original305_incident_review_no_stale_cli.py",
+        "tests/test_native_original305_incident_review_v2_live_binding.py",
+        "tests/test_native_original305_observer_install_cas.py",
+        "tests/test_native_source_original305_dynamic_systemd_v8.py",
+        "tests/test_native_source_original305_observer_unit_contract.py",
+        "tests/test_native_source_original305_phase_correct_supervisor_v7.py",
+        "tests/test_native_source_original305_supervisor_v6_cas.py",
+        "tests/test_native_source_original305_v8_postwrite_invariants.py",
+        "tests/test_native_source_original313_finalizer_v27.py",
+        "tests/test_native_source_original313_schema_v26.py",
+        "tests/test_native_source_original_313_receipt_proof.py",
+        "tests/test_original305_cas_source_convergence.py",
+        "tests/test_original313_receipt_plan_enrollment.py",
+        "tests/test_original313_signed_historical_code_release_audit.py",
+        "tests/test_receipt_recovery_first_party_manifest.py",
+        "tests/test_receipt_recovery_signed_preclaim.py"
+      ]
+    },
+    {
+      "id": "source-slice-repo-tests--performance-and-cache-01",
+      "semantic_unit": "Critical CSS, lazy loading, cache, request latency and performance contracts (repo-tests, batch 1)",
+      "revert_boundary": "Revert the exact asset/cache implementation with runtime guards and tests; preserve visitor variation and private HTML isolation",
+      "certification": "exact_head",
+      "path_globs": [
+        "tests/cache-lifecycle-forward-source-v22.php",
+        "tests/critical-runtime-policy-catalog-contracts.py",
+        "tests/readiness-core-web-vitals-rest-cron-hermetic.php",
+        "tests/test_cache_lifecycle_forward_source_v22.py",
+        "tests/test_core_web_vitals_configuration_trait_parity.py",
+        "tests/test_litespeed_exact_site_origin_contract.py",
+        "tests/test_local_cache_free_bootstrap.py"
+      ]
+    },
+    {
+      "id": "source-slice-repo-tests--tour-and-commerce-01",
+      "semantic_unit": "Tour domain, booking, pricing, inventory, market and WooCommerce integrations (repo-tests, batch 1)",
+      "revert_boundary": "Revert related tour-domain schema, pricing logic, presentation and matching tests without reintroducing legacy checkout or field defaults",
+      "certification": "exact_head",
+      "path_globs": [
+        "tests/host-node-inventory-signed-readback-hermetic.php",
+        "tests/market-exchange-original-same-pr.py",
+        "tests/native-cli-context-and-company-inventory-hermetic.php",
+        "tests/native-tour-highlights/acceptance.php",
+        "tests/original-research-tour-workflow-native.php",
+        "tests/test_pr813_destination_additive_reconcile.py",
+        "tests/test_tour_highlights_site_neutral_scope.py",
+        "tests/test_tour_highlights_source_delta.py",
+        "tests/test_wayfa_licensed_tour_source_import_contract.py",
+        "tests/tour_highlights_bootstrap_overlay.py"
+      ]
+    },
+    {
+      "id": "source-slice-scripts--company-and-tenant-01",
+      "semantic_unit": "Company workspace, source/target reconciliation, per-site ownership and tenant boundaries (scripts, batch 1)",
+      "revert_boundary": "Revert this company/tenant source scope with matching consistency tests; do not let one company's state become another's authority",
+      "certification": "exact_head",
+      "path_globs": [
+        "scripts/qa/journey-default-split-company-contract.php"
+      ]
+    },
+    {
+      "id": "source-slice-scripts--content-and-publishing-01",
+      "semantic_unit": "Content operation, editorial approval, publishing and translation lifecycle (scripts, batch 1)",
+      "revert_boundary": "Revert the matching content workflow and schema/test slice; preserve review permissions, WPML links and original content rollback",
+      "certification": "exact_head",
+      "path_globs": [
+        "scripts/qa/wpml-jetengine-taxonomy-native-prefetch-contract.php",
+        "scripts/qa/wpml-jetengine-taxonomy-source-guard.py",
+        "scripts/qa/wpml-journey-evidence-browser.py",
+        "scripts/qa/wpml-journey-evidence-contract.php"
+      ]
+    },
+    {
+      "id": "source-slice-scripts--media-and-rights-01",
+      "semantic_unit": "Media discovery, image assignment, rights and brand integrity automation (scripts, batch 1)",
+      "revert_boundary": "Revert source image/right ownership policy and media reconciliation as a unit; preserve local-library publication and attribution safeguards",
+      "certification": "exact_head",
+      "path_globs": [
+        "scripts/qa/gallery-focal-browser-contract.py",
+        "scripts/qa/media-quality-dynamic-contract.php"
+      ]
+    },
+    {
+      "id": "source-slice-scripts--native-source-release-01",
+      "semantic_unit": "Native source package, signed Original305/312/313 release lifecycle and host evidence (scripts, batch 1)",
+      "revert_boundary": "Revert these native source/publisher components with receipt and CAS regressions; do not promote preview records into signed Host execution",
+      "certification": "exact_head",
+      "path_globs": [
+        "scripts/audit_original313_signed_historical_code_release.py"
+      ]
+    },
+    {
+      "id": "source-slice-scripts--operational-infrastructure-01",
+      "semantic_unit": "Runtime tooling, provider release operations, deployment-safe infrastructure contracts (scripts, batch 1)",
+      "revert_boundary": "Revert operational scripts and their dry-run/test coverage as a discrete unit; preserve Production HOLD and exact source identity",
+      "certification": "exact_head",
+      "path_globs": [
+        "scripts/migrations/verified-alias-merge-cas.php",
+        "scripts/qa/journey-certainty-stable-key-contract.php",
+        "scripts/qa/journey-explicit-binding-rebind-contract.php",
+        "scripts/qa/journey-native-binding-schema-contract.php",
+        "scripts/qa/verify-first-paint-parity.py"
+      ]
+    },
+    {
+      "id": "source-slice-scripts--performance-and-cache-01",
+      "semantic_unit": "Critical CSS, lazy loading, cache, request latency and performance contracts (scripts, batch 1)",
+      "revert_boundary": "Revert the exact asset/cache implementation with runtime guards and tests; preserve visitor variation and private HTML isolation",
+      "certification": "exact_head",
+      "path_globs": [
+        "scripts/qa/cache-control-wpml-canonical-path-contract.php",
+        "scripts/qa/query-governor-elementor-generated-cache-contract.php",
+        "scripts/qa/verify-css-version-release.py"
+      ]
+    },
+    {
+      "id": "source-slice-scripts--tour-and-commerce-01",
+      "semantic_unit": "Tour domain, booking, pricing, inventory, market and WooCommerce integrations (scripts, batch 1)",
+      "revert_boundary": "Revert related tour-domain schema, pricing logic, presentation and matching tests without reintroducing legacy checkout or field defaults",
+      "certification": "exact_head",
+      "path_globs": [
+        "scripts/migrations/destination-highlight-aliases-terms-cas.php",
+        "scripts/migrations/destination-native-template-reconcile-v1.php",
+        "scripts/migrations/jetengine-destination-highlight-aliases-cas.php",
+        "scripts/migrations/tour-journey-role-migration.php",
+        "scripts/migrations/tour-journey-wpml-fr-de-20261113.php",
+        "scripts/migrations/tour-journey-wpml-independent-20261113.php",
+        "scripts/qa/destination-alias-coverage-scan.php",
+        "scripts/qa/destination-native-template-browser.py",
+        "scripts/qa/fixtures/native-tour-rate-facet-lookfeel-field.json",
+        "scripts/qa/rate-facet-elementor-css-integrity-contract.php",
+        "scripts/qa/rate-facet-lookfeel-contract.php",
+        "scripts/qa/tour-destination-preview-browser.py",
+        "scripts/qa/tour-gallery-five-frames-contract.py",
+        "scripts/qa/tour-highlights-visible-text-contract.php",
+        "scripts/qa/tour-journey-acceptance.php",
+        "scripts/qa/tour-journey-browser.py",
+        "scripts/qa/tour-journey-compact-links-browser.py",
+        "scripts/qa/tour-journey-split-browser.py"
+      ]
+    },
+    {
+      "id": "source-slice-tools--ci-and-regressions-01",
+      "semantic_unit": "Automated regression fixtures, repository gates, provenance and CI workflow verification (tools, batch 1)",
+      "revert_boundary": "Revert CI checks only with their source-backed tests and independently governed workflow approval; never waive release or Owner attestations",
+      "certification": "exact_head",
+      "path_globs": [
+        "tools/test_mad4b_standalone_build.py"
+      ]
+    },
+    {
+      "id": "source-slice-tools--content-and-publishing-01",
+      "semantic_unit": "Content operation, editorial approval, publishing and translation lifecycle (tools, batch 1)",
+      "revert_boundary": "Revert the matching content workflow and schema/test slice; preserve review permissions, WPML links and original content rollback",
+      "certification": "exact_head",
+      "path_globs": [
+        "tools/cron/mad4b-content-readiness-supervisor",
+        "tools/mad4b-content-readiness-supervisor.py"
+      ]
+    },
+    {
+      "id": "source-slice-tools--mcp-and-oauth-01",
+      "semantic_unit": "MCP descriptor, OAuth transport, registration and provider compatibility source/regressions (tools, batch 1)",
+      "revert_boundary": "Revert this transport and descriptor slice with its source-owned negative tests; retain fail-closed OAuth and MCP boundaries",
+      "certification": "exact_head",
+      "path_globs": [
+        "tools/production_readiness_registry.py",
+        "tools/resolve-certified-mcp-adapter-profile.py"
+      ]
+    },
+    {
+      "id": "source-slice-tools--media-and-rights-01",
+      "semantic_unit": "Media discovery, image assignment, rights and brand integrity automation (tools, batch 1)",
+      "revert_boundary": "Revert source image/right ownership policy and media reconciliation as a unit; preserve local-library publication and attribution safeguards",
+      "certification": "exact_head",
+      "path_globs": [
+        "tools/brand-integrity-content-repair.php",
+        "tools/live-overlays/wayfa-readiness-brand-integrity-20261114.patch",
+        "tools/mad4b_live_remediation_simulator.py",
+        "tools/mad4b_media_source_parity.py"
+      ]
+    },
+    {
+      "id": "source-slice-tools--operational-infrastructure-01",
+      "semantic_unit": "Runtime tooling, provider release operations, deployment-safe infrastructure contracts (tools, batch 1)",
+      "revert_boundary": "Revert operational scripts and their dry-run/test coverage as a discrete unit; preserve Production HOLD and exact source identity",
+      "certification": "exact_head",
+      "path_globs": [
+        "tools/check_plugin_site_neutrality.py",
+        "tools/mad4b_standalone_build.py",
+        "tools/unified_branch_census.py",
+        "tools/verify_additive_mad4b_plugin_sources.py"
       ]
     }
   ]
