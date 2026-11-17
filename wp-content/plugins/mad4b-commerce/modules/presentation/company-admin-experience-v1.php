@@ -131,7 +131,7 @@ final class MAD4B_Admin_Experience_V1 {
         // Auto-scan only the admin's visited screens. Persist aggregate issue
         // metadata (no DOM text or full URLs) through the original WP AJAX.
         $autoScan=__DIR__.'/assets/company-admin-ui-auto-scan-v1.js';
-        if(current_user_can('manage_options') && is_readable($autoScan)){
+        if((current_user_can('manage_options') || current_user_can('mad4b_manage_company_operations')) && is_readable($autoScan)){
             wp_enqueue_script('mad4b-company-admin-ui-auto-scan',
                 plugins_url('assets/company-admin-ui-auto-scan-v1.js',__FILE__),
                 ['mad4b-company-admin-contrast-auditor'],
