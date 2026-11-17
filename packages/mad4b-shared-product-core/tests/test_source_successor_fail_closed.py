@@ -49,6 +49,11 @@ class ImmutableSuccessorTests(unittest.TestCase):
 
     def test_exact_successor_source_only_passes(self):self.verify(True)
 
+    def test_missing_successor_review_pointer_denied(self):
+        manifest=self.manifest();manifest.pop('source_successor_review',None)
+        self.save_manifest(manifest)
+        self.verify(False,'SOURCE_SUCCESSOR_REVIEW_REQUIRED')
+
     def test_review_digest_mutation_denied(self):
         f=self.base/'docs/snapshots/0.1.2-dev.20261117-source-review.json'
         f.write_text(f.read_text().replace('source-only ETG Lab','unreviewed ETG Lab'))
