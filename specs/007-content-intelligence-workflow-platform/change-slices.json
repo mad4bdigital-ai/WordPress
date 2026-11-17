@@ -4,8 +4,8 @@
   "reviewed_base_sha": "5c72e4893e36e992f056c90cfc75908b3a8f7785",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 2620,
-  "changed_paths_sha256": "9a0a702df174801e9c8952e649af48c120e775a997fc6f2ef4f6598f4a3b3ecb",
+  "changed_file_count": 2627,
+  "changed_paths_sha256": "c18922801b3a0dd233bd084c5264afc30f3f833265110cdee434f22afe3752d0",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -5328,6 +5328,29 @@
         "ops/company-reconcile-production-admission-v1/systemd/97-production-admission.conf",
         "ops/company-reconcile-production-admission-v1/test_legacy_broker_signed_only.py",
         "ops/company-reconcile-production-admission-v1/test_production_admission.py"
+      ]
+    },
+    {
+      "id": "production-identity-one-action",
+      "semantic_unit": "Read-only authenticated Production Site Profile quickstart and native identity guard.",
+      "revert_boundary": "Revert quickstart documentation, 502 MU guard and identity tests together; do not issue grants or owner attestations.",
+      "certification": "exact_head",
+      "path_globs": [
+        "docs/runtime/production-identity-quickstart-20261117.md",
+        "tests/mad4b-production-identity-quickstart-hermetic.php",
+        "wp-content/mu-plugins/502-mad4b-production-identity-quickstart.php"
+      ]
+    },
+    {
+      "id": "company-master-admin-ops-source-parity",
+      "semantic_unit": "Company admin UI, scoped permissions, role-reduction guard and parity tests.",
+      "revert_boundary": "Revert company admin parity documentation, 501 MU role guard and regression tests together; preserve existing permission-denial boundaries.",
+      "certification": "exact_head",
+      "path_globs": [
+        "docs/runtime/company-reconcile-live-admin-source-parity-20261117.md",
+        "tests/mad4b-admin-ui-company-operations-hermetic.php",
+        "tests/mad4b-company-master-admin-role-guard-hermetic.php",
+        "wp-content/mu-plugins/501-mad4b-company-role-reduction-guard.php"
       ]
     }
   ],
