@@ -723,6 +723,19 @@ final class MAD4B_SCP_Servers {
 			// precedence cannot relabel a required transport tool.
 			if ( $dynamic_projected ) return $remember( 'dynamic_projection' );
 
+			// The two original Direct Profile post writes are deliberately NOT
+			// registered on the generic governed Write/Content broker. Bind them
+			// as core on this same ChatGPT endpoint only after the census proves
+			// the exact first-party WP_Ability callback pair and final fence.
+			// This is provider identity, NEVER a scope, grant or execution permit;
+			// Direct_Profile::permitted(true) remains the per-call OAuth/WP gate.
+			if ( class_exists( 'MAD4B_SCP_Direct_Profile', false )
+				&& class_exists( 'MAD4B_SCP_Governed_Ability_Census', false )
+				&& function_exists( 'wp_get_ability' )
+				&& in_array( $ability_name, MAD4B_SCP_Direct_Profile::write_tools(), true )
+				&& MAD4B_SCP_Governed_Ability_Census::original_direct_post_boundary_verified( wp_get_ability( $ability_name ) ) )
+				return $remember( 'core' );
+
 			// The compact direct transport is overwhelmingly Control Plane core.
 			// Resolve those without scanning adapter/write catalogs. Underlying
 			// provider mutations are deliberately hidden behind write-execute.
