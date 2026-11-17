@@ -22,10 +22,19 @@ without an enrolled, re-certified site cannot mint any permissions.
 The catalog currently has ZERO certified pairs. No live add-on writes are
 authorized as a result of this source change.
 
-Open independent issue: the full original Company Portfolio Manager source
-tree is not in the current GitHub integration branch. Pre-Staging correctly
-reports source_root_missing. Do not substitute a partial proxy or an installed
-Staging file for a reviewed, complete repository release.
+The original Company Portfolio Manager source tree was recovered in #837:
+86 first-party source files (82 PHP), pinned by exact SHA-256. Pre-Staging now
+correctly rejects 99 raw mutation/HTTP/DB/file textual matches in 33 PHP files.
+These matches include a few test-only or non-write expressions, but real host,
+role, DNS and WordPress writes still require original owner operation-level
+review. No certified provider/Add-on pair exists and unknown sites stay shadow.
+
+A non-authorizing original-PHP test checks company domain scope, exact browser
+nonce/session, and restricted Cloudflare REST write routes. It was tested on
+PHP 8.3 and 8.5 with network disabled and WordPress writes mocked to fail.
+The Pre-Staging runner executes those security tests separately and retains
+the explicit mutating-source admission failure until the original operations
+have independent authority and negative tests.
 
 Tests include PHP 8.3 and PHP 8.5 exact-pair and negative cases, the
 WordPress add-on source contract, the dynamic ring policy source contract,

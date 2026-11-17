@@ -11,6 +11,8 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import subprocess
+import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
@@ -317,6 +319,51 @@ record(
     lifecycle_invalidation_required=True,
     production_authorized=False,
 )
+
+# Original Company Portfolio source tests are non-authorizing evidence. Test
+# the actual restored PHP bytes with stubbed WordPress permissions and explicit
+# network/database denial; a passing test never exempts mutating calls.
+original_company_test = (
+    REPO / "ops/company-reconcile/portfolio-source-owner-v1/tests/"
+    "test_portfolio_source_owner.py"
+)
+if original_company_test.is_file():
+    command = [
+        sys.executable, "-m", "unittest", "discover",
+        "-s", str(original_company_test.parent),
+        "-p", original_company_test.name, "-v",
+    ]
+    try:
+        process = subprocess.run(
+            command, cwd=REPO, capture_output=True, text=True,
+            timeout=45, check=False,
+        )
+        counts = re.search(r"(?m)^Ran ([0-9]+) tests? in ", process.stderr)
+        tests_run = int(counts.group(1)) if counts else 0
+        source_regression_ok = (
+            process.returncode == 0
+            and tests_run >= 5
+            and re.search(r"(?m)^OK$", process.stderr) is not None
+        )
+        if not source_regression_ok:
+            fail(
+                "company_portfolio_original_source_regression",
+                "source checks, Cloudflare owner/tenant denials or mutation "
+                "fixtures failed; no runtime admission inferred",
+            )
+        record(
+            "company_portfolio_original_source_regression",
+            source=str(original_company_test.relative_to(REPO)),
+            tests_run=tests_run,
+            passed=source_regression_ok,
+            mutation_side_effects_allowed=False,
+            original_owner_or_production_authority_inferred=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        fail(
+            "company_portfolio_original_source_regression",
+            "source security tests unavailable or timed out; admission denied",
+        )
 
 # Canonical Skill inventory must have one source of truth.
 skill_manifest_path = CP / "config" / "skill-seed-manifest.json"
