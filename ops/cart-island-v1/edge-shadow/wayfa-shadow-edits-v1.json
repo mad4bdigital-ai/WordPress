@@ -1,0 +1,26 @@
+{
+  "contract": "mad4b.cart-cache.loopback-shadow-source.v1",
+  "site_host": "wayfatours.com",
+  "original_sha256": "96788e29da08903602b0a55c76aeaa596d686d2eea266dfe0c15c27a57b7c861",
+  "proposed_sha256": "7b8f418155e529483c30c874211f0de0b711562b9251b55e486c7b96e2dcba1e",
+  "marker": "# MAD4B home CSS mobile variant cache keys, desktop exact cache key preserved.\n",
+  "insert_before_marker": "# MAD4B cart-island edge-shadow v1. TEST ONLY: loopback listener 18081,\n# not reachable via production Traefik (which routes to 8080).\n# No private upstream response can ever be added to the shared cache.\nmap \"$server_port|$http_x_mad4b_cart_cache_test|$request_method|$request_uri|$wayfa_html_device|$http_cookie|$wayfa_sensitive_request_context|$query_string|$http_authorization\" $mad4b_cart_shell_probe_eligible {\n    default 0;\n    \"~^18081\\\\|v1\\\\|GET\\\\|/(?:es/)?\\\\|mobile\\\\|wp_woocommerce_session_[a-f0-9]{32}=t_[A-Za-z0-9]{30}\\\\|[0-9]{10}\\\\|[0-9]{10}\\\\|[a-f0-9]{32}\\\\|0\\\\|\\\\|$\" 1;\n}\nmap \"$mad4b_cart_shell_probe_eligible|$wayfa_html_no_cache_request\" $mad4b_cart_shell_probe_bypass {\n    default $wayfa_html_no_cache_request;\n    \"1|1\" 0;\n}\nmap \"$mad4b_cart_shell_probe_eligible|$wayfa_cookie_cache_suffix\" $mad4b_cart_shell_probe_suffix {\n    default $wayfa_cookie_cache_suffix;\n    ~^1\\\\| \"\";\n}\n",
+  "replacements": [
+    {
+      "before": "\"wayfa-public-v3|$scheme://$host$request_uri$wayfa_cookie_cache_suffix$mad4b_locale_seen_root_suffix_v1\"",
+      "after": "\"wayfa-public-v3|$scheme://$host$request_uri$mad4b_cart_shell_probe_suffix$mad4b_locale_seen_root_suffix_v1\""
+    },
+    {
+      "before": "\"wayfa-mobile-css-v3-safe-cookie|$scheme://$host$request_uri$wayfa_cookie_cache_suffix$mad4b_locale_seen_root_suffix_v1\"",
+      "after": "\"wayfa-mobile-css-v3-safe-cookie|$scheme://$host$request_uri$mad4b_cart_shell_probe_suffix$mad4b_locale_seen_root_suffix_v1\""
+    },
+    {
+      "before": "  listen 8080;",
+      "after": "  listen 8080;\n  listen 127.0.0.1:18081; # MAD4B isolated shadow test"
+    },
+    {
+      "before": "    fastcgi_cache_bypass $wayfa_html_no_cache_path $wayfa_html_no_cache_request;",
+      "after": "    fastcgi_cache_bypass $wayfa_html_no_cache_path $mad4b_cart_shell_probe_bypass;"
+    }
+  ]
+}

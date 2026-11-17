@@ -55,6 +55,7 @@ jobs:
           php tests/visitor-preferences-wpml-guest-session-hermetic.php
           php tests/cart-island/test-cart-island-hermetic.php
           python3 tests/cart-island/test-cart-cache-boundary.py
+          python3 tests/cart-island/test-edge-shadow-read-only.py
           bash -n ops/cart-island-v1/run-site.sh
           python3 -m py_compile ops/cart-island-v1/probe.py
           node --check wp-content/mu-plugins/assets/mad4b-cart-island-v1.js

@@ -106,3 +106,16 @@ production hostname or any credentials.
 The six URLs are discovered read-only from the site's active WPML languages
 and published tours at each daily run. This avoids permanently pinning the
 audit to a tour slug that an editor may retire or translate differently.
+
+
+## Source-scoped real Woo session shadow audit (17 Nov 2026)
+
+A separate local-only Nginx test listener proved that already-certified
+anonymous EN/ES home HTML can be read from FastCGI by two genuinely signed,
+persisted WooCommerce guest sessions while browser Cache-Control remains
+private/no-store. Production port 8080 still BYPASSes those same sessions;
+FastCGI write veto remains unchanged. No cart, checkout or payment was
+activated. Refer to edge-shadow/README.md and the audited minimal
+Wayfatours Nginx diff. This proof is not production cache admission;
+in particular, it does not yet certify nonempty carts or full checkout
+browser interactions. Never widen the loopback-only rule automatically.
