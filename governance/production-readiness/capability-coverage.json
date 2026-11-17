@@ -22418,6 +22418,48 @@
         "needs_new_control": false,
         "coverage_reuse_rationale": "Only exact original source-owned Operator grants callback/policy proof can bind the existing ChatGPT direct step-up transport; canonical descriptor does not issue consent, site grants or Runtime/Host authority.",
         "review_rationale": "Canonical Inspector emits nonauthorizing enrollment descriptor only when exact original Operator first-party callback and registered write-policy proof are present; structural provider resolves through the actually mounted ChatGPT server rather than unrelated generic enrollment discovery. Original source permission_callback, executed call authorization and five-grant canonical plan/apply checks are unchanged. Executable PHP test denies swapped callbacks and missing policy and proves positive binding."
+    },
+    {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-governed-ability-census.php",
+        "source_blob_sha": "1fe5ab9f3f9d829311e89dbf701d570e88be74dc",
+        "control_ids": [
+            "MCP-01",
+            "GOVERNANCE-01",
+            "SECURITY-01",
+            "EXECUTION-01",
+            "OAUTH-01"
+        ],
+        "regression_tests": [
+            "tests/server-descriptor-canonical-multilane-hermetic.php"
+        ],
+        "owner_role": "MAD4B repository security and source reviewer — CI only; not the site/release Owner",
+        "status": "reviewed_for_ci_only",
+        "production_authorized": false,
+        "live_evidence_required": true,
+        "needs_new_control": false,
+        "coverage_reuse_rationale": "Existing exact original WordPress Ability, OAuth, MCP, execution, callback provenance and registered owner-intent controls retain independent runtime authority; structural review cannot grant consent.",
+        "review_rationale": "Adds a single exact first-party Staging Owner-intent source-owned callback pair proof for descriptor visibility. It verifies current registered core WP_Ability, exact original attest/can_remote_attest ancestry, owner_attestation_v1 broker metadata, non-Production/non-breakglass flags and first-party census digest. Same-PR PHP hermetic regression checks positive binding and negative swapped callbacks or forged broker policy. No owner intent, consent, grant, remote call or site mutation performed."
+    },
+    {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ability-contract-inspector.php",
+        "source_blob_sha": "64278e5df7914d9cfee95954a760a63fa68e2989",
+        "control_ids": [
+            "MCP-01",
+            "GOVERNANCE-01",
+            "SECURITY-01",
+            "EXECUTION-01",
+            "OAUTH-01"
+        ],
+        "regression_tests": [
+            "tests/server-descriptor-canonical-multilane-hermetic.php"
+        ],
+        "owner_role": "MAD4B repository security and source reviewer — CI only; not the site/release Owner",
+        "status": "reviewed_for_ci_only",
+        "production_authorized": false,
+        "live_evidence_required": true,
+        "needs_new_control": false,
+        "coverage_reuse_rationale": "All original explicit source markers, callback identity checks, canonical enrollment descriptor, OAuth/owner admission and independent execution claim requirements are unchanged; no broad authorizing fallback.",
+        "review_rationale": "Binds only the independently verified original Staging Owner intent to its actually mounted ChatGPT MCP descriptor. Treats that exact proof as nonauthorizing structural source evidence; actual attest still requires Staging owner, exact client, OAuth step-up, plan digest and confirmation. Does not change descriptors for missing/foreign execute callbacks or unrelated mutation lanes; same-PR real inspector and descriptor tests assert both accepted and rejected cases."
     }
   ],
   "code_change_rules": {
