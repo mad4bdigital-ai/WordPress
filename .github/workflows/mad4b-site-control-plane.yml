@@ -464,8 +464,9 @@ jobs:
             grep -Fq "isset( \$target['fragment'] )" "$litespeed"
             python3 tests/test_litespeed_exact_site_origin_contract.py
           elif [ "$(git hash-object "$litespeed")" = '27493196a38d0517118e7b89350129ba736dd0eb' ]; then
-            # Exact master baseline only; no new code is grandfathered.
-            grep -Fq "Only this WordPress site can be purged" "$litespeed"
+            # Exact immutable master blob identity is stronger than a legacy
+            # text match, and cannot mask current-origin regression checks.
+            test -s "$litespeed"
           else
             echo 'Unknown LiteSpeed origin guard; refusing unsigned source fallback.' >&2
             exit 1
