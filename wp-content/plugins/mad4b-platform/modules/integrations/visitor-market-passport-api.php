@@ -22,6 +22,20 @@ add_action('rest_api_init',static function(){
  register_rest_route('visitor-preferences/v1','/apply',[
   'methods'=>'POST','permission_callback'=>'__return_true',
   'callback'=>static function(WP_REST_Request $request){
+   // A WordPress guest nonce is not session-specific by default. Enforce
+   // exact same-origin JSON POST to prevent CSRF preference writes from
+   // cross-origin forms; state reads remain same-origin no-store.
+   $origin=(string)($_SERVER['HTTP_ORIGIN']??'');
+   $source=wp_parse_url($origin);
+   $target=wp_parse_url(home_url('/'));
+   if (!is_array($source) || !is_array($target)
+      || ($source['scheme']??'')!==($target['scheme']??'')
+      || strcasecmp((string)($source['host']??''),(string)($target['host']??''))!==0
+      || (int)($source['port']??($source['scheme']==='https'?443:80))
+         !==(int)($target['port']??($target['scheme']==='https'?443:80)))
+     return new WP_Error('invalid_origin','Invalid preference request origin',['status'=>403]);
+   if (!preg_match('~^application/json(?:\s*;|$)~i',(string)($_SERVER['CONTENT_TYPE']??'')))
+     return new WP_Error('invalid_content_type','JSON required',['status'=>415]);
    // The Site Control Plane deliberately stays zero-touch on unrelated REST
    // paths. Load ONLY the read-only country/market classes for this audited
    // visitor preference route, not the Control Plane full runtime.
@@ -70,7 +84,8 @@ add_action('rest_api_init',static function(){
     'market_profile_id'=>$profile['profile_id']??null,
     'requires_market_revalidation'=>$action==='country',
    ],200);
-   $response->header('Cache-Control','no-store');
+   $response->header('Cache-Control','private, no-store, max-age=0');
+   $response->header('Vary','Cookie');
    return $response;
   },
   'args'=>[
