@@ -22765,6 +22765,101 @@
       "coverage_reuse_rationale": "Original WordPress Ability execution fences, first-party source and schema provenance, audit, maintenance lease, exact non-Production recovery and OAuth protocol hotpath denial remain independently enforced; source review does not authorize a release.",
       "review_rationale": "A completed, official, fully provenance-certified MCP class set pinned by the managed MU bootstrap must show canonical_runtime on a later clean request, but foreign/unknown or unpinned class sets must remain observational. New source-owned Python regression executes 12 strict code invariants under the generic Readiness runner; the independent Connection Governance WordPress mixed-class first/recovered integration is still mandatory to validate actual runtime behavior.",
       "execution_note": "CI-only source proof, not real recovery acceptance. Connection Governance must pass its two-request original WordPress/MU runtime test before this change is accepted."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/skill-seed-manifest.json",
+      "source_blob_sha": "ad2a178760ac748871a3877628790b4a52ac8165",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/master-admin-skill-seed-pack-contract.py"
+      ],
+      "owner_role": "MAD4B CI-only source-integrity reviewer; independent company owner and native release gate retain authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source-only Skills, Admin, Browser and performance controls already cover the bounded change; runtime identity, original execution grants and Production approval remain independent.",
+      "review_rationale": "Seed v31 appends exactly eight bounded company operations Skills (21 to 29). The new per-tenant Runbooks are mirrored byte-for-byte in the portable package, preserve two disabled provider seeds, and grant zero WordPress abilities or site access. Exact manifest/portable fixture verifies scope and digest parity; independent owner controls still gate release."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-seeder.php",
+      "source_blob_sha": "0721ca650ef7e4d1bb598ec3da79be040e03f03b",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/master-admin-skill-seed-pack-contract.py"
+      ],
+      "owner_role": "MAD4B CI-only source-integrity reviewer; independent company owner and native release gate retain authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source-only Skills, Admin, Browser and performance controls already cover the bounded change; runtime identity, original execution grants and Production approval remain independent.",
+      "review_rationale": "The seeder version changes only from v30 to v31 to match the reviewed canonical manifest. Existing exact enrolled-Site-Profile guard, audit storage and managed-file digest checks remain intact; test asserts the version and guards without reconciling live content or bypassing owner review."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-runtime-certification.php",
+      "source_blob_sha": "c90c70d43dfe13cc1ddfd76ed524b7986cf9609e",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01",
+        "GOVERNANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/master-admin-skill-readiness-hermetic.php"
+      ],
+      "owner_role": "MAD4B CI-only source-integrity reviewer; independent company owner and native release gate retain authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source-only Skills, Admin, Browser and performance controls already cover the bounded change; runtime identity, original execution grants and Production approval remain independent.",
+      "review_rationale": "The existing aggregate certification and build provenance remain fail-closed. A new strictly additive read-only projection separates catalog readability, verified ChatGPT App binding, and explicitly enabled authoring, with explicit false execution authority. The hermetic PHP fixture covers disabled authoring, missing app, corrupt seed, and default no grants."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skills-admin-ui.php",
+      "source_blob_sha": "c753181db10b66a5bf2db6ddff29153171fafaee",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/master-admin-skill-operations-hermetic.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/master-admin-skill-coverage-hermetic.php"
+      ],
+      "owner_role": "MAD4B CI-only source-integrity reviewer; independent company owner and native release gate retain authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source-only Skills, Admin, Browser and performance controls already cover the bounded change; runtime identity, original execution grants and Production approval remain independent.",
+      "review_rationale": "Master Admin gets an isolated company capability read-only dashboard and company-aware Skill coverage view; existing edit/export/reconcile handlers remain administrator-only. Hermetic tests exercise unauthorized denial before catalog reads, nonauthorizing status, original editor permissions, exact missing coverage, and tenant-specific optional packs."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-master-admin.php",
+      "source_blob_sha": "390a57765a70740f189c8f1741439eb280f8637c",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/master-admin-capability-drift-contract.py"
+      ],
+      "owner_role": "MAD4B CI-only source-integrity reviewer; independent company owner and native release gate retain authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source-only Skills, Admin, Browser and performance controls already cover the bounded change; runtime identity, original execution grants and Production approval remain independent.",
+      "review_rationale": "A future owner-approved role migration revision removes unintended manage_woocommerce from the Master Admin stored role while keeping operations permissions and denying Production migration. The source fixture verifies no auto Production mutation, existing Staging owner browser consent, and absence of global WordPress administrator escalation."
     }
   ],
   "code_change_rules": {
