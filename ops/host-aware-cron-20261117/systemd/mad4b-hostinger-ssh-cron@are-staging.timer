@@ -1,0 +1,12 @@
+[Unit]
+Description=MAD4B are-staging pinned-SSH native WP Cron (hosting account owns PHP work)
+
+[Timer]
+OnCalendar=*-*-* *:02/5:00 UTC
+RandomizedDelaySec=10s
+AccuracySec=30s
+Persistent=true
+Unit=mad4b-hostinger-ssh-cron@are-staging.service
+
+[Install]
+WantedBy=timers.target

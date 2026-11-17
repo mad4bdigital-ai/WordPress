@@ -1,0 +1,12 @@
+[Unit]
+Description=MAD4B etg-production pinned-SSH native WP Cron (hosting account owns PHP work)
+
+[Timer]
+OnCalendar=*-*-* *:01/5:00 UTC
+RandomizedDelaySec=10s
+AccuracySec=30s
+Persistent=true
+Unit=mad4b-hostinger-ssh-cron@etg-production.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,17 @@
+[Unit]
+Description=MAD4B remote site-local WordPress Cron on registered Hostinger site %i
+After=network-online.target
+Wants=network-online.target
+OnFailure=mad4b-alert-handler@%n.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/mad4b-company-provisioning/worktrees/pr814-converged-local-20261115/ops/host-aware-cron-20261117/hostinger-ssh-cron-dispatch.py %i
+TimeoutStartSec=125
+Nice=15
+CPUQuota=20%
+CPUWeight=10
+IOWeight=10
+MemoryMax=200M
+NoNewPrivileges=true
+UMask=0077
