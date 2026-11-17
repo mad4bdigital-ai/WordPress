@@ -5,7 +5,7 @@ Reads prior original evidence and exact installed provider manifests. Prevents
 stale reports/unsigned Host readbacks from becoming Original305/312/313 claims.
 """
 from __future__ import annotations
-import argparse,datetime as dt,hashlib,json,os,pathlib,re,stat,tempfile
+import argparse,datetime as dt,hashlib,importlib.util,json,os,pathlib,re,stat,tempfile
 ROOT=pathlib.Path('/opt/mad4b-company-provisioning')
 EXTERNAL=ROOT/'reports/company-native-external-enrollment-diagnostics-current.json'
 INVENTORY=ROOT/'reports/company-reconcile-host-assets-current.json'
@@ -87,7 +87,11 @@ def project(external:dict,host:dict,native:dict,providers:set[str],now:dt.dateti
         elif not item.get('remote_site_uuid'):
             state='OWNER_SITE_PROFILE_SAVE_REQUIRED'
         elif not matched:state='SIGNED_EXACT_IDENTITY_ENROLLMENT_REQUIRED'
-        elif item.get('production_environment_owner_operations_authorized') is not True and env=='production':
+        elif env=='production' and not (
+            item.get('central_owner_delegation_active') is True
+            and item.get('central_assignment_matches_target_site_uuid') is True
+            and item.get('central_admin_has_exact_tenant_identity') is True
+            and item.get('production_environment_owner_operations_authorized') is True):
             state='ORIGINAL_OWNER_DELEGATION_NOT_VERIFIED'
         elif item.get('original_grant_present') is not True:
             state='ORIGINAL_REMOTE_305_GRANT_NOT_ISSUED'
@@ -136,15 +140,26 @@ def main():
     if os.geteuid()!=0:raise RuntimeError('HOST_ROOT_READBACK_REQUIRED')
     external=root_doc(EXTERNAL,'mad4b.company-native-external-enrollment-doctor.v1')
     host=root_doc(INVENTORY,'mad4b.company-reconcile.host-asset-observation.v1')
-    # Native report is advisory. If it has an unknown contract, refuse success.
-    native=json.loads(NATIVE.read_text())
-    if not isinstance(native,dict):raise RuntimeError('NATIVE_REPORT_SHAPE_INVALID')
-    root_doc(REGISTER/'index.json','mad4b.dynamic-operation-index.v1')
+    # Original installed registry validates *all* handlers, verifier programs,
+    # first-party dependencies and evidence schemas, not just manifest hashes.
+    # It only reads protected root-owned files and issues no original 305/313.
+    native=root_doc(NATIVE,'mad4b.company-native-universal-readiness.v1')
+    registry_path=REGISTER/'registry.py'
+    if (registry_path.is_symlink() or not registry_path.is_file()
+        or registry_path.stat().st_uid!=0 or registry_path.stat().st_mode&0o022):
+        raise RuntimeError('ORIGINAL_REGISTRY_VALIDATOR_NOT_PINNED')
+    spec=importlib.util.spec_from_file_location('_mad4b_original_registry_readonly',str(registry_path))
+    if spec is None or spec.loader is None:raise RuntimeError('ORIGINAL_REGISTRY_VALIDATOR_UNAVAILABLE')
+    module=importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    original_registry=module.Registry(REGISTER)
     def read_man(relative):
         f=REGISTER/relative
         m=root_doc(f,'mad4b.dynamic-operation-provider.v1')
         return m,hashlib.sha256(f.read_bytes()).hexdigest()
     ops=enrolled_ops(root_doc(REGISTER/'index.json','mad4b.dynamic-operation-index.v1'),read_man)
+    if ops!=set(original_registry.manifests):
+        raise RuntimeError('ORIGINAL_PROVIDER_REGISTRY_VALIDATION_MISMATCH')
     out=project(external,host,native,ops,dt.datetime.now(dt.timezone.utc))
     publish(out)
     print(json.dumps({'contract':CONTRACT,'scopes':{v['scope']:v['state'] for v in out['scopes']},

@@ -40,9 +40,33 @@ class Tests(unittest.TestCase):
   x=self.project({'remote_sites':[remote(uuid=identity)]})
   self.assertEqual(x['scopes'][0]['state'],'ORIGINAL_OWNER_DELEGATION_NOT_VERIFIED')
   self.assertFalse(x['scopes'][0]['signed_312_job_ready'])
+ def test_production_delegation_requires_all_independent_owner_proofs(self):
+  uuid='38a8a4fa-f103-4db4-9a71-31bb13a20341'
+  r=remote(company='all-royal-egypt',uuid=uuid)
+  r.update({'central_owner_delegation_active':True,
+     'central_assignment_matches_target_site_uuid':False,
+     'central_admin_has_exact_tenant_identity':False,
+     'production_environment_owner_operations_authorized':True})
+  self.assertEqual(self.project({'remote_sites':[r]})['scopes'][0]['state'],
+                   'ORIGINAL_OWNER_DELEGATION_NOT_VERIFIED')
+  for missing in ['central_owner_delegation_active','central_assignment_matches_target_site_uuid',
+                  'central_admin_has_exact_tenant_identity','production_environment_owner_operations_authorized']:
+   q=dict(r);q.update({key:True for key in [
+    'central_owner_delegation_active','central_assignment_matches_target_site_uuid',
+    'central_admin_has_exact_tenant_identity','production_environment_owner_operations_authorized']})
+   q[missing]=False
+   self.assertEqual(self.project({'remote_sites':[q]})['scopes'][0]['state'],
+                    'ORIGINAL_OWNER_DELEGATION_NOT_VERIFIED')
+  q=dict(r);q.update({key:True for key in [
+    'central_owner_delegation_active','central_assignment_matches_target_site_uuid',
+    'central_admin_has_exact_tenant_identity','production_environment_owner_operations_authorized']})
+  self.assertEqual(self.project({'remote_sites':[q]})['scopes'][0]['state'],
+                   'ORIGINAL_REMOTE_305_GRANT_NOT_ISSUED')
  def test_standing_grant_does_not_sign_313(self):
   identity='38a8a4fa-f103-4db4-9a71-31bb13a20341'
-  r=remote(uuid=identity);r.update({'production_environment_owner_operations_authorized':True,'original_grant_present':True,'original_transport_state':'REMOTE_HOSTINGER_WPCLI_ACCESS_VERIFIED'})
+  r=remote(uuid=identity);r.update({'production_environment_owner_operations_authorized':True,'central_owner_delegation_active':True,
+           'central_assignment_matches_target_site_uuid':True,'central_admin_has_exact_tenant_identity':True,
+           'original_grant_present':True,'original_transport_state':'REMOTE_HOSTINGER_WPCLI_ACCESS_VERIFIED'})
   x=self.project({'remote_sites':[r]});self.assertEqual(x['scopes'][0]['state'],'BOUND_REMOTE_ORIGINAL_305_STILL_REQUIRES_JOB_SCOPED_312_313')
   self.assertFalse(x['scopes'][0]['signed_313_execution_receipt'])
  def test_old_remote_evidence_fails_closed(self):

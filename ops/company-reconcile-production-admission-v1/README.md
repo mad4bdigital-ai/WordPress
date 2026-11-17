@@ -80,3 +80,23 @@ with a stub of an otherwise host-only import and checks that Production and
 Staging apply are denied before any site access, source assets remain bounded
 and plan/verify remain present. The manually reconciled 11 Wayfatours assets
 stay unchanged and still yield a source/target SHA match.
+
+### Exact production owner-principal readback and native registry pin
+
+A matched Site UUID does not mean the intended Production administrator and
+manager are the same approved principal. The observer now requires all four
+separate first-party evidence bits in Production: active Central owner
+delegation, **exact target UUID** (not the Staging assignment UUID), exact
+administrator matching the authenticated remote target, and environment owner
+operations authorization. This correctly classifies All Royal Egypt Production
+as `ORIGINAL_OWNER_DELEGATION_NOT_VERIFIED`, even though its Production Site
+Profile and Production UUID are present and equal on both sides. No previous
+Staging user delegation is silently reused.
+
+The root-installed original dynamic operation registry is now loaded through
+its own `registry.Registry` admission validator: **every** manifest, provider
+handler, verifier, evidence schema, and declared dependency is content-pinned
+and root protected before any operation can be described as registered. A mere
+manifest entry is not a valid enrolled signed executor. If validation fails the
+report fails closed; neither the original Host Worker nor site contents are
+changed. Combined tests: **26/26** hermetic admission plus legacy Broker tests.
