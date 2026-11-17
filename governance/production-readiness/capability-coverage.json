@@ -22634,6 +22634,29 @@
       "coverage_reuse_rationale": "The two first-party Direct Profile post abilities retain existing exact OAuth bearer, administrator and post capabilities, explicit staging-only policy and final execution-admission checks. All foreign direct identities and all other write abilities retain original governed NHI, approval ticket, audit and source policy; no permissions or provider grants are issued.",
       "review_rationale": "The global Staging Write Authority registration filter previously wrapped both explicitly Direct Profile write abilities and classified them as governed ticket/NHI writes. A narrow source-verified bypass now requires the exact registered first-party Direct Profile post method, readonly=false, content category and the original permission closure with matching method/registration lines. Foreign callbacks and names remain governed. Hermetic and full WordPress MCP regressions prove the original permission callback stays enforced; Direct Profile still denies Production writes.",
       "execution_note": "This exact-blob CI review is non-authorizing. Exact-head native WordPress and OAuth/MCP integration runs, site acceptance, grants and independent release governance remain required."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
+      "source_blob_sha": "c12f5162ecc4297c8c7d4e0487ede7fa01898d95",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "GOVERNANCE-01",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-client-compatibility-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/direct-mcp-same-endpoint-contract.py"
+      ],
+      "owner_role": "Repository exact-source reviewer — CI only, no Site Owner or Production grant",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Same existing Core MCP and exact first-party Direct Profile callback, final execution fence, OAuth bearer, step-up scope, WordPress capability and enrolled Staging mode apply. No provider grants or new Write lane are introduced.",
+      "review_rationale": "Correct the 41/43 live MCP registered tool discrepancy: two first-party Direct post mutations already passed census callback and final fence checks but provider resolution returned null. Bind core provider ONLY for the two exact Direct Profile names with a genuine registered WP_Ability and the existing census check; foreign direct tools and governed write remain unaffected. Full WordPress MCP protocol and negative tests validate the result.",
+      "execution_note": "Non-authorizing source coverage; exact-head MCP and OAuth integration, Original release admission, independent Owner decision, and live Staging acceptance remain separate requirements."
     }
   ],
   "code_change_rules": {
