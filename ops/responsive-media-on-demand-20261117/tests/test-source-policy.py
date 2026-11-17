@@ -28,6 +28,12 @@ checks={
  'REST responses never cache pending results':"Cache-Control','private, no-store, max-age=0" in php,
  'no global WP Cron disable or commerce writes':'DISABLE_WP_CRON' not in php and 'wc_' not in php,
  'operator documented':'26/26' in report,
+ 'host-specific lazy gate must be explicitly configured':"'root_lazy_class'" in php and "'card_visible_class'" in php,
+ 'no background swap when already revealed':"if(!card.isConnected||alreadyRevealed(card))return;" in js,
+ 'derivative prepared before normal native reveal':"prepareBeforeReveal(card,asset.href)" in js,
+ 'no late swap when image still loading':"image.onload=null;image.onerror=null;image.src='';" in js,
+ 'stale/unknown gate fails closed':"!document.documentElement.classList.contains(opts.rootLazyClass)" in js,
+ 'limited network-ahead image context':"rootMargin:'1400px 320px'" in js,
  'company adapters explicit':'mad4b_responsive_media_policy_v1' in report,
 }
 for label,pass_ in checks.items():

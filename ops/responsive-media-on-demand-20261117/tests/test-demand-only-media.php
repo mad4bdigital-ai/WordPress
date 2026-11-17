@@ -6,7 +6,8 @@ $dir=sys_get_temp_dir().'/mad4b-demand-test-'.getmypid();
 mkdir($dir.'/uploads',0700,true);define('WP_CONTENT_DIR',$dir);
 $GLOBALS['options']=['mad4b_responsive_media_policy_v1'=>[
  'enabled'=>1,'taxonomy'=>'destinations','ids_option'=>'mad4b_perf_home_city_card_ids_v1',
- 'source_meta_key'=>'featured_image','selector'=>'.elementor-element-95d1c9c'],
+ 'source_meta_key'=>'featured_image','selector'=>'.elementor-element-95d1c9c',
+ 'root_lazy_class'=>'mad4b-city-geometry-lazy','card_visible_class'=>'mad4b-city-geometry-visible'],
  'mad4b_perf_home_city_card_ids_v1'=>[123,124]];
 $GLOBALS['schedule']=[];$GLOBALS['transients']=[];
 function get_option($n,$default=null){return $GLOBALS['options'][$n]??$default;}

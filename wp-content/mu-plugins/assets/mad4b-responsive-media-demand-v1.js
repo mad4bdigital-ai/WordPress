@@ -1,11 +1,50 @@
-/* MAD4B site-local responsive media: measure an actually visible card, then ask for one cached physical width. */
+/* MAD4B site-local media: request only near-viewport sizes, never redownload an already revealed CSS background. */
 (function(){
  'use strict';
  var opts=window.MAD4BResponsiveMedia||{};
- if(!opts.endpoint||!opts.selector||opts.step!==64||!('IntersectionObserver' in window))return;
+ if(!opts.endpoint||!opts.selector||opts.step!==64||!('IntersectionObserver' in window)||
+    !/^mad4b-[a-z0-9_-]{3,64}$/.test(opts.rootLazyClass||'')||
+    !/^mad4b-[a-z0-9_-]{3,64}$/.test(opts.cardVisibleClass||''))return;
  var endpoint;
  try{endpoint=new URL(opts.endpoint,location.origin);if(endpoint.origin!==location.origin)return;}catch(e){return;}
  var inFlight=0,maxConcurrent=2,observer=null,seen=new WeakSet(),requests=new WeakMap(),waiting=[];
+ var preparation=new WeakSet();
+ function alreadyRevealed(card){
+   return card.classList.contains(opts.cardVisibleClass) ||
+     !document.documentElement.classList.contains(opts.rootLazyClass) ||
+     !!card.closest('.jet-listing-grid__item[data-mad4b-card-bg-ready]');
+ }
+ function prepareBeforeReveal(card,url){
+   if(!card.isConnected||alreadyRevealed(card)||preparation.has(card))return;
+   preparation.add(card);
+   // Preload the existing static derivative, not a PHP image stream.
+   // The legacy background stays behind the normal geometry-lazy gate.
+   var image=new Image(),loaded=false,finished=false;
+   var watcher=new MutationObserver(function(){
+     if(!alreadyRevealed(card))return;
+     watcher.disconnect();finished=true;
+     if(loaded){
+       // Mutation callbacks run before the browser's next paint, allowing
+       // the ready static derivative to win over the old CSS background.
+       card.style.setProperty('background-image','url("'+url+'")','important');
+       card.setAttribute('data-mad4b-responsive-image','ready');
+     } else {
+       // Card became visible before the better file was ready: preserve the
+       // native image. No late swap, thus no double image delivery.
+       image.onload=null;image.onerror=null;image.src='';
+     }
+   });
+   watcher.observe(card,{attributes:true,attributeFilter:['class']});
+   image.onload=function(){
+     if(finished)return;
+     if(alreadyRevealed(card)){
+       finished=true;watcher.disconnect();return;
+     }
+     loaded=true;
+   };
+   image.onerror=function(){finished=true;watcher.disconnect();};
+   image.src=url;
+ }
  function targetWidth(cssWidth){
    if(!cssWidth||cssWidth<64)return 0;
    var conn=navigator.connection||{};
@@ -22,7 +61,7 @@
    var targets=Object.create(null),keys=[];
    batch.forEach(function(item){
      var card=item.card;
-     if(!card.isConnected)return;
+     if(!card.isConnected||alreadyRevealed(card))return;
      var width=targetWidth(item.width),term=termId(card);
      if(!width||!term||requests.get(card)===width)return;
      requests.set(card,width);
@@ -44,9 +83,8 @@
          var asset=new URL(result.url,location.origin);
          if(asset.origin!==location.origin||!/\.mad4b-demand-\d+-[a-f0-9]{12}\.webp$/.test(asset.pathname))return;
          targets[key].forEach(function(card){
-           if(!card.isConnected)return;
-           card.style.setProperty('background-image','url("'+asset.href+'")','important');
-           card.setAttribute('data-mad4b-responsive-image','ready');
+           if(!card.isConnected||alreadyRevealed(card))return;
+           prepareBeforeReveal(card,asset.href);
          });
        });
      }).catch(function(){}).finally(function(){inFlight--;drain();});
@@ -60,7 +98,7 @@
  observer=new IntersectionObserver(function(entries){
    entries.forEach(function(e){if(!e.isIntersecting)return;observer.unobserve(e.target);waiting.push({card:e.target,width:e.boundingClientRect.width});});
    drain();
- },{rootMargin:'0px',threshold:0.01});
+ },{rootMargin:'1400px 320px',threshold:0.01});
  function register(root){
    if(!root||!root.querySelectorAll)return;
    var cards=[];

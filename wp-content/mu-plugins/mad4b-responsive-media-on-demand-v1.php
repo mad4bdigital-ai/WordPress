@@ -31,6 +31,11 @@ final class MAD4B_Responsive_Media_On_Demand_V1 {
             'ids_option' => preg_match('/^[a-z][a-z0-9_]{3,80}$/D',(string)($p['ids_option']??'')) ? $p['ids_option'] : '',
             'source_meta_key' => preg_match('/^[a-z][a-z0-9_]{3,80}$/D',(string)($p['source_meta_key']??'')) ? $p['source_meta_key'] : '',
             'selector' => preg_match('/^\.elementor-element-[a-f0-9]{7}$/D',(string)($p['selector']??'')) ? $p['selector'] : '',
+            // A company must declare its *existing* lazy background gate.
+            // Without an event-gated legacy CSS fallback there is no safe
+            // way to prevent downloading both old and newly generated images.
+            'root_lazy_class' => preg_match('/^mad4b-[a-z0-9_-]{3,64}$/D',(string)($p['root_lazy_class']??'')) ? $p['root_lazy_class'] : '',
+            'card_visible_class' => preg_match('/^mad4b-[a-z0-9_-]{3,64}$/D',(string)($p['card_visible_class']??'')) ? $p['card_visible_class'] : '',
         ];
     }
     private static function eligible_term(int $term_id): ?array {
@@ -226,12 +231,14 @@ final class MAD4B_Responsive_Media_On_Demand_V1 {
     }
     public static function enqueue(): void {
         $p=self::policy();
-        if (!$p['enabled'] || !$p['selector'] || !is_front_page() || is_admin() || is_user_logged_in())return;
+        if (!$p['enabled'] || !$p['selector'] || !$p['root_lazy_class'] || !$p['card_visible_class']
+            || !is_front_page() || is_admin() || is_user_logged_in())return;
         $asset=__DIR__.'/assets/mad4b-responsive-media-demand-v1.js';
         if (!is_file($asset))return;
         wp_enqueue_script('mad4b-responsive-media-demand',content_url('/mu-plugins/assets/mad4b-responsive-media-demand-v1.js'),[],(string)filemtime($asset),true);
         wp_add_inline_script('mad4b-responsive-media-demand','window.MAD4BResponsiveMedia='.wp_json_encode([
             'selector'=>$p['selector'],
+            'rootLazyClass'=>$p['root_lazy_class'],'cardVisibleClass'=>$p['card_visible_class'],
             'endpoint'=>rest_url('mad4b/v1/responsive-media'),
             'minWidth'=>self::MIN_WIDTH,'maxWidth'=>self::MAX_WIDTH,
             'step'=>self::WIDTH_STEP,

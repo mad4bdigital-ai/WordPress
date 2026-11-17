@@ -18,7 +18,9 @@ The **same plugin source** is installed per WordPress company, on its own host. 
   "taxonomy": "destinations",
   "ids_option": "mad4b_perf_home_city_card_ids_v1",
   "source_meta_key": "featured_image",
-  "selector": ".elementor-element-95d1c9c"
+  "selector": ".elementor-element-95d1c9c",
+  "root_lazy_class": "mad4b-city-geometry-lazy",
+  "card_visible_class": "mad4b-city-geometry-visible"
 }
 ```
 
@@ -54,3 +56,37 @@ A live Staging guest REST response (before batching) took ~1.32 seconds to
 boot WordPress. Batching avoids multiplying this overhead by the number of
 visible cards. This is a risk-control design, not a new LCP performance
 claim; measure after controlled company opt-in.
+
+## Preventing duplicate CSS background downloads
+
+Do not enable this adapter on a surface that does not already have a
+working geometry-lazy background gate. The opt-in policy must declare the
+site's exact root lazy class and card-visible class. The browser starts a
+cheap batched lookup for cards *near* but not yet revealed. If the static
+derivative is available it preloads only that image, and applies it when
+the normal card reveal class is set. If the card reveals while the better
+file is still loading or before the REST response arrives, the existing
+legacy CSS image wins; the script **never swaps a background after it is
+visible**, avoiding a second download. No image is ever hidden while a
+remote REST response is pending. A missing lazy gate fails closed.
+
+This safeguards the currently enrolled Wayfatours city geometry engine.
+Other company layouts must register their equivalent existing lazy gate
+before this opt-in applies; the plugin is otherwise inert there.
+
+### Live browser non-regression evidence for the lazy delivery gate
+
+An isolated Chromium network canary exercised the actual source JS with
+Wayfatours-style lazy CSS, native DOM reveal, and a valid WebP stub.
+
+- **Derivative ready before reveal:** 1 optimized WebP request, **0** baseline
+  image requests; no blank card or console error.
+- **Card reveals before derivative is ready:** 1 baseline image request,
+  **0** optimized image requests; no late swap.
+- **Card already revealed before adapter starts:** no REST lookup and 1
+  baseline image request; no second image delivery.
+
+This is also guarded by deterministic JavaScript event tests. A missing
+`root_lazy_class`/`card_visible_class` company policy prevents frontend
+activation; sites must reuse an existing native lazy-background event
+contract rather than adding a parallel rendering mechanism.

@@ -20,7 +20,7 @@ const code=fs.readFileSync('/assets/mad4b-responsive-media-demand-v1.js','utf8')
      await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(response)});
    });
    await page.goto('https://wayfatours.com/',{waitUntil:'domcontentloaded',timeout:35000});
-   await page.evaluate(()=>window.MAD4BResponsiveMedia={endpoint:location.origin+'/wp-json/mad4b/v1/responsive-media',selector:'.elementor-element-95d1c9c',step:64,minWidth:192,maxWidth:1536});
+   await page.evaluate(()=>window.MAD4BResponsiveMedia={endpoint:location.origin+'/wp-json/mad4b/v1/responsive-media',selector:'.elementor-element-95d1c9c',rootLazyClass:'mad4b-city-geometry-lazy',cardVisibleClass:'mad4b-city-geometry-visible',step:64,minWidth:192,maxWidth:1536});
    await page.addScriptTag({content:code});
    await page.waitForTimeout(550);
    const before=rest.length;
