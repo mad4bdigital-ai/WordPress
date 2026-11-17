@@ -23091,6 +23091,27 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php",
+      "source_blob_sha": "19fa8785a31906622295a4311d197c288ff4ff08",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/visitor-wpml-site-profile-origin-hermetic.py"
+      ],
+      "owner_role": "Repository source reviewer for exact WPML Site Profile change; CI-only, not Site Owner, Release Owner or Production approver",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuse existing canonical Site Profile origin binding, exact enrolled host/URL verification, WPML active/hidden language gates, and security/authority controls; do not add a permission or production bypass.",
+      "review_rationale": "Reviewed exact Site Profile PHP blob after source-owned WPML/AJAX origin normalization fix. The isolated executable PHP test invokes the original class across canonical EN, localized ES AJAX/REST, non-async mismatch, hidden/unknown locale, foreign host/origin, noncanonical site URL and invalid WPML language. All denial paths fail closed. Separately owned visitor preference REST/JS and live Chromium checks remain required; this CI-only record does not prove Production session continuity.",
+      "execution_note": "No live site mutation or original Host access; Owner attestation, certified release artifact and exact-head runtime evidence remain independent gates."
     }
   ],
   "code_change_rules": {
