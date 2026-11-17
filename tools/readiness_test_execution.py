@@ -453,23 +453,8 @@ WP_SANDBOX = "/tmp/mad4b-readiness-wordpress"
 
 
 def trusted_wordpress_readback(test, stdout):
-    try:
-        payload = json.loads(stdout.strip())
-    except (ValueError, TypeError):
-        return False
-    if not isinstance(payload, dict):
-        return False
-    if test == "tests/test_brand_integrity_lifecycle_runtime.php":
-        return (payload.get("contract") == "mad4b.brand-integrity.lifecycle-qa.v1"
-                and isinstance(payload.get("tests"), int) and payload["tests"] >= 20
-                and payload.get("passed") == payload["tests"]
-                and payload.get("failures") == [] and isinstance(payload.get("actual_post_id"), int)
-                and payload["actual_post_id"] > 0)
-    if test == "tests/test_brand_integrity_runtime.php":
-        return (payload.get("contract") == "mad4b.brand-integrity.runtime-test.v1"
-                and isinstance(payload.get("total"), int) and payload["total"] >= 20
-                and payload.get("passed") == payload["total"]
-                and payload.get("failures") == [])
+    # This one authenticated smoke has a review-bound PASS envelope, not bare JSON.
+    # Evaluate it before the generic JSON decoder; preserve every field/denial gate.
     if test == "wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-chatgpt-http-smoke.php":
         prefix = "mad4b.site-control-plane.runtime-local-oauth-chatgpt-http.v7: PASS "
         if not isinstance(stdout, str) or not stdout.startswith(prefix):
@@ -490,6 +475,23 @@ def trusted_wordpress_readback(test, stdout):
                 and isinstance(result.get("tool_count"), int) and result["tool_count"] > 0
                 and result.get("http_filter_calls") == 0
                 and result.get("unpreempted_http_calls") == 0)
+    try:
+        payload = json.loads(stdout.strip())
+    except (ValueError, TypeError):
+        return False
+    if not isinstance(payload, dict):
+        return False
+    if test == "tests/test_brand_integrity_lifecycle_runtime.php":
+        return (payload.get("contract") == "mad4b.brand-integrity.lifecycle-qa.v1"
+                and isinstance(payload.get("tests"), int) and payload["tests"] >= 20
+                and payload.get("passed") == payload["tests"]
+                and payload.get("failures") == [] and isinstance(payload.get("actual_post_id"), int)
+                and payload["actual_post_id"] > 0)
+    if test == "tests/test_brand_integrity_runtime.php":
+        return (payload.get("contract") == "mad4b.brand-integrity.runtime-test.v1"
+                and isinstance(payload.get("total"), int) and payload["total"] >= 20
+                and payload.get("passed") == payload["total"]
+                and payload.get("failures") == [])
     if test == "wp-content/plugins/mad4b-site-control-plane/tests/runtime-firecrawl-unready-write-mount.php":
         available = payload.get("adapter_available")
         mounted = payload.get("write_mounted")
@@ -655,6 +657,39 @@ def self_test():
         "tests/test_brand_integrity_runtime.php",
         json.dumps({"contract": "mad4b.brand-integrity.runtime-test.v1",
                     "total": 29, "passed": 28, "failures": [{}]}))
+    oauth_path = "wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-chatgpt-http-smoke.php"
+    oauth_evidence = {
+        "session_established": True,
+        "bearer_identity_verified": True,
+        "prior_site_uuid_aliases_denied": True,
+        "registration_bearer_invariant": True,
+        "preauth_internal_primitives_hidden": True,
+        "read_bearer_step_up_hidden": True,
+        "read_bearer_step_up_denied": True,
+        "step_up_bearer_scope_verified": True,
+        "step_up_bearer_projection_visible": True,
+        "foreign_step_up_client_hidden": True,
+        "foreign_step_up_client_denied": True,
+        "false_exact_identity_fail_closed": True,
+        "browser_read_dispatch_verified": True,
+        "tool_count": 43,
+        "http_filter_calls": 0,
+        "unpreempted_http_calls": 0,
+    }
+    oauth_prefix = "mad4b.site-control-plane.runtime-local-oauth-chatgpt-http.v7: PASS "
+    oauth_serialized = oauth_prefix + json.dumps(oauth_evidence)
+    assert trusted_wordpress_readback(oauth_path, oauth_serialized)
+    assert not trusted_wordpress_readback(oauth_path, json.dumps(oauth_evidence))
+    assert not trusted_wordpress_readback(oauth_path, oauth_serialized + "\\nUNEXPECTED_OUTPUT")
+    for invalid_field, invalid_value in (
+        ("tool_count", 0),
+        ("read_bearer_step_up_denied", False),
+        ("foreign_step_up_client_hidden", False),
+        ("unpreempted_http_calls", 1),
+    ):
+        altered = dict(oauth_evidence)
+        altered[invalid_field] = invalid_value
+        assert not trusted_wordpress_readback(oauth_path, oauth_prefix + json.dumps(altered))
     assert has_assertion_pass("PASS: verified real case\n")
     assert has_assertion_pass("SUMMARY pass=8 fail=0\n")
     assert has_assertion_pass("SUMMARY checks=21 failures=0\n")
