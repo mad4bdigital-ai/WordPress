@@ -111,6 +111,50 @@ if ( $actual_names !== $expected_names ) {
 			'quarantined_abilities' => array_slice( (array) ( $descriptor['quarantined_abilities'] ?? array() ), 0, 30 ),
 			// Bounded structural diagnosis only. This never registers tools or
 			// treats an unverified descriptor as authorization.
+			// Inspection-only callback ancestry evidence, restricted to the two
+			// original Direct mutations. Never dump callable captures, input,
+			// OAuth tokens, admin data or runtime grants into public CI logs.
+			'direct_callback_source' => array_map( static function ( $ability_name ) {
+				$source = array( 'ability' => $ability_name, 'registered' => false );
+				if ( ! in_array( (string) $ability_name, array(
+					'mad4b/direct-create-post', 'mad4b/direct-update-post'
+				), true ) || ! function_exists( 'wp_get_ability' ) ) return $source;
+				$ability = wp_get_ability( $ability_name );
+				if ( ! is_object( $ability ) ) return $source;
+				$source['registered'] = true;
+				$source['final_fence'] = class_exists( 'MAD4B_SCP_Execution_Fence' )
+					&& MAD4B_SCP_Execution_Fence::final_execution_wrapper_verified( $ability_name );
+				$source['original_census'] = class_exists( 'MAD4B_SCP_Governed_Ability_Census' )
+					&& MAD4B_SCP_Governed_Ability_Census::original_direct_post_boundary_verified( $ability );
+				foreach ( array( 'execute_callback', 'permission_callback' ) as $field ) {
+					try {
+						$property = new ReflectionProperty( 'WP_Ability', $field );
+						if ( PHP_VERSION_ID < 80100 ) $property->setAccessible( true );
+						$callback = $property->getValue( $ability );
+						$chain = array();
+						for ( $depth = 0; $depth < 5; ++$depth ) {
+							if ( is_array( $callback ) && 2 === count( $callback ) ) {
+								$chain[] = array( 'type' => 'method', 'class' => is_object( $callback[0] ) ? get_class( $callback[0] ) : (string) $callback[0], 'method' => (string) $callback[1] );
+								break;
+							}
+							if ( ! $callback instanceof Closure ) { $chain[] = array( 'type' => gettype( $callback ) ); break; }
+							$reflection = new ReflectionFunction( $callback );
+							$scope = $reflection->getClosureScopeClass();
+							$chain[] = array( 'type' => 'closure', 'scope' => $scope ? $scope->getName() : '', 'file' => basename( (string) $reflection->getFileName() ) );
+							$captured = array_filter( $reflection->getStaticVariables(), static function ( $var ) {
+								return $var instanceof Closure || ( is_array( $var ) && 2 === count( $var ) && is_callable( $var ) );
+							} );
+							$callback = 1 === count( $captured ) ? reset( $captured ) : null;
+							if ( null === $callback ) break;
+						}
+						$source[ $field ] = $chain;
+					} catch ( Throwable $error ) { $source[ $field ] = array( 'inspection_error' => get_class( $error ) ); }
+				}
+				return $source;
+			}, array_values( array_intersect(
+				(array) ( $descriptor['quarantined_abilities'] ?? array() ),
+				array( 'mad4b/direct-create-post', 'mad4b/direct-update-post' )
+			) ) ),
 			'descriptor_classification' => array_map( static function ( $ability_name ) {
 				$row = MAD4B_SCP_Ability_Contract_Inspector::inspect( $ability_name );
 				if ( is_wp_error( $row ) ) return array( 'ability' => $ability_name, 'code' => $row->get_error_code() );
