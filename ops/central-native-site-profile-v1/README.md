@@ -18,6 +18,10 @@ Primary VPS tool:
  /usr/local/libexec/mad4b-central-native-site-profile-enroll.py
 
 The source is ops/central-native-site-profile-v1/host_enroll.py.
+The paired registration entrypoint is installed at
+/usr/local/libexec/mad4b-central-native-site-profile-register.py,
+and imports only the root-owned stable Host entrypoint, never a disposable
+Git worktree.
 The default mode enroll verifies the pinned SSH route, company, environment,
 original source file hash and audit readiness. It then performs a native
 identity-only save and checks again through a separate SSH connection.

@@ -6,7 +6,7 @@ receipts. No site password, OAuth, WP --user, signed313 or delegated grant.
 """
 from pathlib import Path
 import base64,datetime as dt,hashlib,json,os,re,runpy,subprocess,sys
-SOURCE=Path('/opt/mad4b-company-provisioning/worktrees/central-native-ssh-enrollment-20261117/ops/central-native-site-profile-v1/host_enroll.py')
+SOURCE=Path('/usr/local/libexec/mad4b-central-native-site-profile-enroll.py')
 RECEIPT=Path('/opt/mad4b-company-provisioning/reports/central-ssh-site-profile-20261117/native-provisioning-receipts.json')
 CENTRAL='php-wkgtkzta35wkkgouwt6ruljc'
 MARK='MAD4B_CENTRAL_BINDING:'
@@ -56,6 +56,9 @@ def main():
         or receipt.get('revision')!=1):raise RuntimeError('HOST_RECEIPT_AUTHORITY_INVALID')
     stamp=dt.datetime.fromisoformat(receipt['verified_at_utc'].replace('Z','+00:00'))
     if not 0<=(dt.datetime.now(dt.timezone.utc)-stamp).total_seconds()<=7200:raise RuntimeError('HOST_RECEIPT_TOO_OLD')
+    if (SOURCE.is_symlink() or not SOURCE.is_file()
+        or SOURCE.stat().st_uid!=0 or SOURCE.stat().st_mode & 0o022):
+        raise RuntimeError('CENTRAL_HOST_EXECUTOR_SOURCE_NOT_ROOT_VERIFIED')
     m=runpy.run_path(str(SOURCE),run_name='_verified_central_host_enroller')
     first=runpy.run_path(str(m['FIRST_PARTY']),run_name='_root_first_party_policy')
     routes=[r for r in first['policy_routes']() if r['company_id']==company and r['environment']=='production']
