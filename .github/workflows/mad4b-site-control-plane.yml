@@ -225,7 +225,12 @@ jobs:
           fi
           grep -Fq "LOAD_FILE" "$abilities"
           grep -Fq "CREATE\\s+(?:USER|ROLE)" "$abilities"
-          grep -Fq "expected_modified_gmt" "$abilities"
+          # The original Abilities facade includes the extracted first-party
+          # registration Trait. Verify the include AND the actual declared
+          # field in the Trait, not an obsolete facade-only source location.
+          grep -Fq "trait-mad4b-scp-abilities-registration.php" "$abilities"
+          grep -Fq "use MAD4B_SCP_Abilities_Registration_Trait" "$abilities"
+          grep -Fq "expected_modified_gmt" "$root/includes/trait-mad4b-scp-abilities-registration.php"
           grep -Fq "max_affected" "$abilities"
           grep -Fq "can_structured_database_read" "$abilities"
           grep -Fq "can_structured_database_write" "$abilities"
