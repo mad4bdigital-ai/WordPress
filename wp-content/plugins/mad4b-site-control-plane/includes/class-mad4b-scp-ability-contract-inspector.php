@@ -102,6 +102,15 @@ final class MAD4B_SCP_Ability_Contract_Inspector {
 		// Seven named first-party readonly abilities are *either* the exact declared
 		// readonly source identity or unclassified. Never let an enrollment
 		// transport label override their read lane or confer a write lane.
+		// Special transport names are not generic write surfaces. Exact
+		// first-party execute/permission callback provenance and final execution
+		// admission must be proven from the registered WP_Ability itself.
+		$original_core_dispatch = class_exists( 'MAD4B_SCP_Governed_Ability_Census' )
+			&& in_array( $ability_name, array( 'mad4b/write-execute', 'mad4b/developer-execute', 'mad4b/enrollment-execute' ), true )
+			&& MAD4B_SCP_Governed_Ability_Census::original_dispatch_transport_boundary_verified( $ability );
+		$original_direct_post = class_exists( 'MAD4B_SCP_Governed_Ability_Census' )
+			&& in_array( $ability_name, array( 'mad4b/direct-create-post', 'mad4b/direct-update-post' ), true )
+			&& MAD4B_SCP_Governed_Ability_Census::original_direct_post_boundary_verified( $ability );
 		$native_discovery_name = in_array( $ability_name, array(
 			'mad4b/developer-discover', 'mad4b/developer-info',
 			'mad4b/enrollment-discover', 'mad4b/enrollment-info',
@@ -112,6 +121,11 @@ final class MAD4B_SCP_Ability_Contract_Inspector {
 			$lane = 'read';
 		} elseif ( $native_discovery_name ) {
 			$lane = 'unclassified';
+		} elseif ( $original_core_dispatch ) {
+			$lane = 'mad4b/write-execute' === $ability_name ? 'write'
+				: ( 'mad4b/developer-execute' === $ability_name ? 'developer' : 'enrollment' );
+		} elseif ( $original_direct_post ) {
+			$lane = 'content';
 		} elseif ( in_array( $surface, $mutation_lanes, true ) || in_array( $surface, array( 'admin', 'content' ), true ) ) {
 			$lane = $surface;
 		} elseif ( $readonly_declared && true === $annotations['readonly'] && in_array( $surface, array( '', 'read' ), true ) ) {
@@ -156,7 +170,7 @@ final class MAD4B_SCP_Ability_Contract_Inspector {
 			&& 1 === preg_match( '/^[a-f0-9]{64}$/D', (string) ( $direct_step_up_census[ $ability_name ]['callback_pair_digest'] ?? '' ) )
 			&& class_exists( 'MAD4B_SCP_Execution_Fence' )
 			&& MAD4B_SCP_Execution_Fence::final_execution_wrapper_verified( $ability_name );
-		$original_bounded_boundary = $original_operator_boundary || $original_owner_intent_boundary || $original_projection_boundary || $reviewed_direct_step_up_boundary;
+		$original_bounded_boundary = $original_operator_boundary || $original_owner_intent_boundary || $original_projection_boundary || $reviewed_direct_step_up_boundary || $original_core_dispatch || $original_direct_post;
 		$provider = class_exists( 'MAD4B_SCP_Servers' )
 			? ( method_exists( 'MAD4B_SCP_Servers', 'provider_for_capability_descriptor' )
 				? MAD4B_SCP_Servers::provider_for_capability_descriptor( $original_bounded_boundary ? 'mad4b-chatgpt' : 'mad4b-' . $lane, $ability_name )
