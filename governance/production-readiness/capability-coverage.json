@@ -23197,6 +23197,23 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Original P0 fixture and dynamic Addon Registry runtime denials provide exact source-backed, non-authorizing CI evidence.",
       "execution_note": "No Production deployment, certified pair, direct native write exception, Original312/313 proof or Owner attestation is inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/wordpress-addon-catalog.json",
+      "source_blob_sha": "c9c10d7ed4442761b76811d19e030a316c5169fb",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "MAD4B original first-party Company add-on source reviewer; independent Owner release verdict required",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/test_dynamic_addon_release_ring_contract.py"
+      ],
+      "review_rationale": "Exact source-only successor of the restored Company Management add-on catalog: provider version was corrected to the actual Control Plane header 0.4.0-rc.129 and add-on version to actual Company Management header 0.4.3-company-addon. Five source contract tests and two deliberately wrong-version cases validated exact runtime-header parity; certified_pairs remains empty, unknown-site ring remains shadow, and production_authorized remains false. This CI-only review preserves every older catalog and registry source record and does not certify the 99 outstanding direct write/DB/filesystem/network call sites, add a grant, or authorize any live deployment."
     }
   ],
   "code_change_rules": {
