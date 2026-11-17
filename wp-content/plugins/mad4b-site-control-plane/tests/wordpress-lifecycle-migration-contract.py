@@ -3,6 +3,7 @@ root=Path(__file__).resolve().parents[1]
 profile=(root/"includes/class-mad4b-scp-wordpress-lifecycle-migration-profile.php").read_text(encoding="utf-8")
 config=(root/"config/wordpress-lifecycle-migration-profile.json").read_text(encoding="utf-8")
 authorization=(root/"includes/class-mad4b-scp-authorization.php").read_text(encoding="utf-8")
+authorization_recovery=(root/"includes/trait-mad4b-scp-authorization-recovery-state.php").read_text(encoding="utf-8")
 fence=(root/"includes/class-mad4b-scp-execution-fence.php").read_text(encoding="utf-8")
 projection=(root/"includes/class-mad4b-scp-chatgpt-tool-projection.php").read_text(encoding="utf-8")
 wpability=(root.parents[2]/"wp-includes/abilities-api/class-wp-ability.php").read_text(encoding="utf-8")
@@ -17,9 +18,22 @@ workflow=(root.parents[2]/".github/workflows/feature-007-pre-staging-hybrid-audi
 for hook in ["wp_ability_invoked","wp_pre_execute_ability","wp_ability_permission_result","wp_ability_execute_result"]:
     if hook not in wpability or hook not in config:
         raise SystemExit("FAIL lifecycle migration native hook missing: "+hook)
-for marker in ["ReflectionObject","trusted_execution_boundaries"]:
+# Authorization retains the trusted callback registry, while its verified
+# Reflection-based reader now lives in the required recovery-state Trait.
+# Check both halves and their real class wiring before allowing native cutover.
+for marker in ["trusted_execution_boundaries",
+               "require_once __DIR__ . '/trait-mad4b-scp-authorization-recovery-state.php';",
+               "use MAD4B_SCP_Authorization_Recovery_State_Trait;",
+               "remember_trusted_execution_boundary(", "propagate_trusted_execution_boundary("]:
     if marker not in authorization:
-        raise SystemExit("FAIL legacy Authorization provenance surface disappeared before parity: "+marker)
+        raise SystemExit("FAIL legacy Authorization boundary or Trait wiring disappeared before parity: "+marker)
+for marker in ["public static function execution_boundary_verified(", "get_name()",
+               "new ReflectionObject( $ability )", "getProperty( 'execute_callback' )",
+               "$callback instanceof Closure",
+               "in_array( $callback, self::$trusted_execution_boundaries[ $name ], true )",
+               "catch ( Throwable $e ) { return false; }"]:
+    if marker not in authorization_recovery:
+        raise SystemExit("FAIL legacy Authorization Reflection provenance Trait disappeared before parity: "+marker)
 for marker in ["ReflectionObject","trusted_final_boundaries"]:
     if marker not in fence:
         raise SystemExit("FAIL legacy Execution Fence provenance surface disappeared before parity: "+marker)
