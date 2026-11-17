@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
+from native_source_forward_supersession_contract import verified_forward_source
 
 ROOT = Path(__file__).resolve().parents[1]
 OPS = ROOT / "ops"
@@ -56,11 +57,14 @@ def check_current_source_and_historical_fixture(check, candidate: dict) -> None:
          "company-code-release-v1/company_code_release.py"},
         "Unreviewed dynamic source transition",
     )
+    forward=verified_forward_source(check)
     for relative, digest in cur.items():
         paths = [OPS / relative, OPS / "dynamic-operation-registry-v1" / relative]
         resolved = [item for item in paths if item.is_file() and not item.is_symlink()]
         check.assertEqual(len(resolved), 1, "Missing/ambiguous dynamic source " + relative)
         check.assertEqual(sha256(resolved[0].read_bytes()), digest, relative)
+        if relative=='native-source-publisher-v1/native_source_publisher.py':
+            check.assertEqual(digest,forward['current_native_source_sha256'])
 
     v8, v9 = (json.loads(x.read_text()) for x in (V8, V9))
     check.assertEqual((v8["version"], v9["version"]), (8, 9))
@@ -71,8 +75,10 @@ def check_current_source_and_historical_fixture(check, candidate: dict) -> None:
         {name for name in v8_deps if v8_deps[name] != v9_deps[name]},
         {"company-code-release-v1/company_code_release.py"},
     )
-    check.assertEqual(cur["native-source-publisher-v1/native_source_publisher.py"],
-                      v8_deps["native-source-publisher-v1/native_source_publisher.py"])
+    # The immutable V8/V9 source pin belongs to the older historical Git
+    # revision, not the current delegated Native Publisher code.
+    check.assertEqual(v8_deps["native-source-publisher-v1/native_source_publisher.py"],
+                      forward['historical_native_source_sha256'])
     check.assertEqual(cur["company-code-release-v1/company_code_release.py"],
                       v9_deps["company-code-release-v1/company_code_release.py"])
     check.assertFalse((V9.parent / "manifest.json").exists(),

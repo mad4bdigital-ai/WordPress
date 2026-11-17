@@ -58,3 +58,7 @@ Hostinger 318 Host Authority, because the site is a local Docker-backed source.
 Until the above checks pass, code output remains SOURCE_ONLY and publishing
 is explicitly denied. Never use root CLI, SCP, or raw WP-CLI to work around
 a denied signed publishing channel.
+
+## Optional standing consent for low-risk assets (source candidate, 2026-11-17)
+
+The explicit manual Master decision above remains the default and applies to all sensitive source. A new **disabled-by-default** verification lane (`standing_release_delegation.py`) permits exact previously-present `.css`/`.js` asset paths only after separate first-party enrollment of an original Master-signed, revocable, root-private standing certificate and a new Master-issuer-signed exact-plan decision for each release. The existing Broker, Original305/306/312/313 and readback checks remain mandatory. No site has been authorized by merely checking in this code. See `STANDING_DELEGATION_V1.md`. Do not confuse this optional mode with the current native source publisher enrollment or treat a fake ticket as a real human approval.

@@ -189,6 +189,56 @@ final class MAD4B_SCP_Approval_Decision_Admin {
 		exit;
 	}
 
+	/**
+	 * Explain distinct human and cryptographic release boundaries without
+	 * issuing a ticket, grant, signature or host-ready assertion.
+	 * WordPress does not have access to the first-party Original313 signer.
+	 */
+	public static function release_authority_guidance() {
+		$readiness = class_exists( 'MAD4B_SCP_Company_Code_Release_Readiness' )
+			? MAD4B_SCP_Company_Code_Release_Readiness::status( array() ) : array();
+		return array(
+			'contract' => 'mad4b.approval-inbox.release-authority-guide.readonly.v1',
+			'release_dispatch_registered_locally' => ! empty( $readiness['dispatch_ability_registered'] ),
+			'host_and_signer_verification' => 'not_observable_from_wordpress',
+			'current_code_release_decision' => 'exact_master_admin_approval_required_by_current_original313_lane',
+			'routine_operations' => 'depends_on_central_impact_policy_and_effective_site_grants',
+			'future_scoped_delegation' => 'design_option_not_enrolled_or_active',
+			'approval_is_not_execution' => true,
+			'digital_signatures_are_not_manual_approvals' => true,
+			'can_issue_approval_or_release' => false,
+			'production_release_authorized' => false,
+			'read_only' => true,
+		);
+	}
+
+	/** Read-only on-screen explanation; not a second approval console. */
+	public static function render_release_authority_guidance() {
+		$guide = self::release_authority_guidance();
+		echo '<section aria-labelledby="mad4b-release-authority-title">';
+		echo '<h2 id="mad4b-release-authority-title">' . esc_html__( 'Approvals, delegation and technical signatures', 'mad4b-site-control-plane' ) . '</h2>';
+		echo '<p>' . esc_html__( 'Not every MAD4B operation needs a human approval. Read-only operations and low-impact changes follow their effective site policy. Code release is currently a protected, exact-plan operation. A human decision is separate from the technical signatures and the actual deployment.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '<table class="widefat striped"><caption>' . esc_html__( 'Who does what before a governed code release', 'mad4b-site-control-plane' ) . '</caption><thead><tr>';
+		foreach ( array( 'Stage', 'Who acts', 'What it means' ) as $label ) echo '<th scope="col">' . esc_html__( $label, 'mad4b-site-control-plane' ) . '</th>';
+		echo '</tr></thead><tbody>';
+		$rows = array(
+			array( 'Standing site permissions', 'Site authority / policy', 'Enrolled site, permitted operations and approved scopes; not an approval of any arbitrary code.' ),
+			array( 'Release review', 'Master Admin — for the current exact-plan release lane', 'Review the target site, immutable Git plan, impact and rollback before deciding. An approval cannot be reused for changed code.' ),
+			array( 'Signed execution grant', 'Original312 / Broker', 'Short-lived, bound technical permission checked automatically; not another manual approval.' ),
+			array( 'Signed receipt and verification', 'Original313', 'Independent post-install readback and signed evidence; failure must stop or roll back.' ),
+		);
+		foreach ( $rows as $row ) {
+			echo '<tr>';
+			foreach ( $row as $cell ) echo '<td>' . esc_html__( $cell, 'mad4b-site-control-plane' ) . '</td>';
+			echo '</tr>';
+		}
+		echo '</tbody></table>';
+		echo '<p><strong>' . esc_html__( 'Local release dispatch:', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html__( $guide['release_dispatch_registered_locally'] ? 'Registered in this WordPress runtime' : 'Not registered in this WordPress runtime', 'mad4b-site-control-plane' ) . '. ' . esc_html__( 'Host enrollment, signed Master decision, Broker grant and Original313 receipt cannot be verified by this page. Do not interpret missing local evidence as a request to approve or an executed release.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '<details><summary>' . esc_html__( 'Why is manual approval currently required for code releases?', 'mad4b-site-control-plane' ) . '</summary><p>' . esc_html__( 'The current Original313 release lane requires a fresh Master Admin decision for an exact immutable plan. This is a current governance policy, not a requirement of digital signatures. A future bounded standing delegation could reduce repeated prompts, but it would require separate enrolled authority, risk limits, audit and rollback. That mode is not enabled by this page.', 'mad4b-site-control-plane' ) . '</p></details>';
+		echo '<p class="description">' . esc_html__( 'This is the decision inbox for eligible mutation tickets, not a Host release installer. Approving a ticket does not itself publish files or create a Broker signature.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '</section>';
+	}
+
 	public static function render_page() {
 		$is_approver = class_exists( 'MAD4B_SCP_Policy' ) && method_exists( 'MAD4B_SCP_Policy', 'can_approve_mutations' ) ? MAD4B_SCP_Policy::can_approve_mutations() : current_user_can( 'manage_options' );
 		if ( ! $is_approver ) wp_die( esc_html__( 'Approval capability is required to decide MAD4B approval tickets.', 'mad4b-site-control-plane' ) );
@@ -196,6 +246,7 @@ final class MAD4B_SCP_Approval_Decision_Admin {
 		echo '<div class="wrap"><h1>' . esc_html__( 'MAD4B Approval Decisions', 'mad4b-site-control-plane' ) . '</h1>';
 		echo '<p>' . esc_html__( 'This is the HUMAN decision inbox. Separately, an explicitly delegated AI Agent can approve or reject eligible exact tickets over MCP; those decisions appear in history and are never attributed as human review. GET is read-only; each POST revalidates exact site/build and ticket.', 'mad4b-site-control-plane' ) . '</p>';
 		echo '<p class="description">' . esc_html__( 'Before approving: identify the operation, affected provider and target, review the precise mutation plan and its rollback evidence. Unknown impact is never assumed safe.', 'mad4b-site-control-plane' ) . '</p>';
+		self::render_release_authority_guidance();
 		if ( isset( $_GET['mad4b_decision_result'] ) ) {
 			$code = sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'mad4b_decision_result' ) );
 			$status = isset( $_GET['mad4b_decision_status'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'mad4b_decision_status' ) ) : '';
