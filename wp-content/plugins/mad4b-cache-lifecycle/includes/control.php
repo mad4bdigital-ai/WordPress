@@ -134,7 +134,7 @@ final class MAD4B_Cache_Lifecycle_Control_V1 {
    else ++$pending;
    if($state!=='VERIFIED')$oldest=max($oldest,$now-(int)($r['updated']??$now));
   }
-  return ['contract'=>'mad4b.cache-lifecycle-status.v1','version'=>'1.0.2','enabled'=>true,'home'=>get_option('home'),'environment'=>wp_get_environment_type(),
+  return ['contract'=>'mad4b.cache-lifecycle-status.v1','version'=>'1.0.4','enabled'=>true,'home'=>get_option('home'),'environment'=>wp_get_environment_type(),
    'edge_html_policy'=>get_option('mad4b_cache_lifecycle_edge_isolation_verified_v1',false)===true?'verified_public':'private_until_isolation_verified','object_cache_active'=>wp_using_ext_object_cache(),'native_purge_available'=>(bool)has_action('litespeed_purge_url'),
    'configuration'=>get_option('mad4b_cache_lifecycle_configuration_v1',[]),'pending'=>$pending,'verified'=>$verified,'failed'=>$failed,
    'observed_not_cacheable'=>$not_cacheable,'total_routes'=>count($rows),'oldest_unverified_seconds'=>$oldest,'verification_scope'=>'http_route_revision_only','full_lifecycle_accepted'=>false,
@@ -159,20 +159,35 @@ final class MAD4B_Cache_Lifecycle_Control_V1 {
   // DB advisory lock is site-scoped and is released even on exceptions.
   global $wpdb;$lock='mad4b_cache_'.substr(hash('sha256',ABSPATH),0,24);
   if((string)$wpdb->get_var($wpdb->prepare('SELECT GET_LOCK(%s,0)',$lock))!=='1')return ['state'=>'BUSY'];
-  $out=['contract'=>'mad4b.cache-lifecycle-drain.v1','run_id'=>wp_generate_uuid4(),'checked'=>0,'verified'=>0,'failed'=>0,'observed_not_cacheable'=>0,'stale_revision_skipped'=>0,'observed_utc'=>gmdate('c'),'verification_scope'=>'http_route_revision_only'];
+  $out=['contract'=>'mad4b.cache-lifecycle-drain.v1','run_id'=>wp_generate_uuid4(),'checked'=>0,'verified'=>0,'failed'=>0,'observed_not_cacheable'=>0,'stale_revision_skipped'=>0,'observed_utc'=>gmdate('c'),'verification_scope'=>'http_route_revision_only','purge_reissued'=>false];
   try{
    $rows=get_option(MAD4B_Cache_Lifecycle_V1::OPTION,[]);
-   $pending=self::select_due(is_array($rows)?$rows:[],time(),12);
-   foreach($pending as $row)if(MAD4B_Cache_Lifecycle_V1::safe_url($row['url']??''))do_action('litespeed_purge_url',$row['url']);
-   if($pending&&method_exists('LiteSpeed\\Core','kick_purge_queue'))LiteSpeed\Core::kick_purge_queue();
-   else if($pending){
-    // Legacy LiteSpeed drains its own queue at web initialization. This GET
-    // contains no authorization and cannot create a purge not already queued.
-    wp_remote_get(add_query_arg('_mad4b_cache_delivery',wp_generate_uuid4(),home_url('/')),['timeout'=>15,'redirection'=>0,'limit_response_size'=>1024]);
-   }
+   // Verification is only advisory; Cron may need to run WooCommerce,
+   // Action Scheduler, Fluent Forms and other business hooks afterward.
+   // Keep the total worst-case remote wait bounded to 3 x 3 seconds.
+   $started=microtime(true);
+   $max_routes=3;
+   $per_request_timeout_s=3;
+   $max_wall_s=12;
+   $out['verification_budget']=['max_routes'=>$max_routes,
+     'per_request_timeout_seconds'=>$per_request_timeout_s,
+     'max_wall_seconds'=>$max_wall_s];
+   $pending=self::select_due(is_array($rows)?$rows:[],time(),$max_routes);
+   // Initial invalidation happens ONCE in MAD4B_Cache_Lifecycle_V1::queue_urls().
+   // The verification timer must not issue another purge: failed or old
+   // revisions can remain in the ledger for days. Repeating that action
+   // would advance Nginx FastCGI generations on EVERY five-minute retry,
+   // produce cold MISSes for mobile/desktop and starve new revisions.
+   // Read-only verification with fair selection, CAS acknowledgement and
+   // bounded failure backoff remain active below.
    foreach($pending as $key=>$row){
+    // If transport timeout exceeds its configured deadline, defer the rest
+    // without altering original cache invalidation or unverified receipts.
+    if(microtime(true)-$started>=$max_wall_s)break;
     $url=$row['url']??'';if(!MAD4B_Cache_Lifecycle_V1::safe_url($url))continue;++$out['checked'];
-    $response=wp_remote_get($url,['timeout'=>8,'redirection'=>0,'limit_response_size'=>1024,'user-agent'=>'MAD4B-Cache-Lifecycle/1.0']);
+    $response=wp_remote_get($url,['timeout'=>$per_request_timeout_s,
+      'redirection'=>0,'limit_response_size'=>1024,
+      'user-agent'=>'MAD4B-Cache-Lifecycle/1.0']);
     $code=is_wp_error($response)?0:wp_remote_retrieve_response_code($response);
     $revision=is_wp_error($response)?'':(string)wp_remote_retrieve_header($response,'x-mad4b-content-revision');
     $control=is_wp_error($response)?'':(string)wp_remote_retrieve_header($response,'cache-control');
@@ -190,6 +205,8 @@ final class MAD4B_Cache_Lifecycle_Control_V1 {
       ++$out[$ok?'verified':($not_cacheable?'observed_not_cacheable':'failed')];
     else ++$out['stale_revision_skipped'];
    }
+   $out['duration_ms']=round((microtime(true)-$started)*1000,1);
+   $out['budget_deferred']=max(0,count($pending)-$out['checked']);
    $remaining=get_option(MAD4B_Cache_Lifecycle_V1::OPTION,[]);
    $out['remaining_unverified']=is_array($remaining)?count(array_filter($remaining,
      static fn($r)=>($r['state']??'')!=='VERIFIED')):null;
