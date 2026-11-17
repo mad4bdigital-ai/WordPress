@@ -63,7 +63,11 @@ require(ROOT / "tests/admin-pages-wordpress.php",
         "Provider Coverage tab manifest and disposable WordPress render cases must match exactly")
 require(".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
         "dynamic-mcp-hybrid-runtime.php", "version_compare(PHP_VERSION, \"8.5.11\", \"<\")",
-        "php: ['7.4', '8.3', '8.4', '8.5']")
+        "php: ['7.4', '8.3', '8.4', '8.5']",
+    "Restore verified WP-CLI when setup-php tool installation fails",
+    "wp-cli-2.12.0.phar",
+    "sha256sum -c -",
+    'echo "$RUNNER_TEMP" >> "$GITHUB_PATH"')
 
 registry = json.loads((ROOT / "config/cross-plugin-sources.json").read_text(encoding="utf-8"))
 etg = next((x for x in registry.get("sources", []) if x.get("id") == "etg-dynamic-filter-seo-bridge"), None)

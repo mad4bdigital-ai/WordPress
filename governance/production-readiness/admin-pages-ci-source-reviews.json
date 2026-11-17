@@ -30,6 +30,19 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/integration-pr415-pr416-pr420-pr421-contract.py"
       ],
       "review_rationale": "Append-only reviewed exact Git blob for disposable WP admin page smoke, extending authenticated company-scoped render test of mad4b-skills-operations. Existing nonce, malformed request and unauthenticated checks remain intact. Does not modify earlier historical fingerprints or grant a Production release, Owner approval, role capability, or mutation."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php",
+      "prior_source_blob_sha": "8302918191b3786c445d3ee4be17ee3df6c347cc",
+      "source_blob_sha": "5782f7c4c7b5a9859ef263c97c8ba28407527194",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-pr415-pr416-pr420-pr421-contract.py"
+      ],
+      "review_rationale": "Append-only exact reviewed successor for the disposable WordPress admin smoke, binding capability-filtered workspace inventory to permitted routes while asserting forbidden registered routes never appear. Explicit route-denial, unauthenticated user, nonce and zero-outbound GET coverage remain. This is CI-only source review; no historical delivery hashes, privileges, site writes, Owner verdict or Production admission change."
     }
   ]
 }

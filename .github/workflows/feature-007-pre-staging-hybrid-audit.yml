@@ -878,6 +878,31 @@ jobs:
           tools: wp-cli
           coverage: none
 
+      - name: Restore verified WP-CLI when setup-php tool installation fails
+        shell: bash
+        run: |
+          set -euo pipefail
+          if command -v wp >/dev/null 2>&1 && wp --info >/dev/null 2>&1; then
+            echo 'ADAPTIVE_WPCLI_TOOL_READY: setup-php'
+            exit 0
+          fi
+          # setup-php may report success despite a failed wp-cli tool fetch.
+          # Restrict fallback to a versioned official release and verify
+          # the published SHA256 before running downloaded PHP code.
+          base='https://github.com/wp-cli/wp-cli/releases/download/v2.12.0/wp-cli-2.12.0.phar'
+          phar="$RUNNER_TEMP/mad4b-adaptive-wp-cli.phar"
+          checksum="$RUNNER_TEMP/mad4b-adaptive-wp-cli.phar.sha256"
+          curl --fail --location --retry 3 --max-time 90 --silent --show-error "$base" -o "$phar"
+          curl --fail --location --retry 3 --max-time 90 --silent --show-error "$base.sha256" -o "$checksum"
+          digest="$(awk 'NR == 1 { print $1 }' "$checksum")"
+          [[ "$digest" =~ ^[a-fA-F0-9]{64}$ ]] || { echo 'INVALID_WPCLI_CHECKSUM' >&2; exit 1; }
+          printf '%s  %s\n' "$digest" "$phar" | sha256sum -c -
+          php "$phar" --info
+          printf '#!/usr/bin/env bash\nexec php "%s" "$@"\n' "$phar" > "$RUNNER_TEMP/wp"
+          chmod 0700 "$RUNNER_TEMP/wp"
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+          echo 'ADAPTIVE_WPCLI_VERIFIED_FALLBACK: PASS'
+
       - name: Adaptive Runtime convergence safety / PHP ${{ matrix.php }}
         shell: bash
         run: |
