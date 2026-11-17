@@ -101,7 +101,13 @@
         "fail_closed_when_binding_missing": true,
         "fallback_execution": false
       },
-      "release_ring": "staging",
+      "release_ring": "dynamic",
+      "release_policy": {
+        "mode": "site_bound_certified_pair",
+        "requires_enrolled_site_profile": true,
+        "unknown_pair_fallback": "shadow",
+        "production_authorized": false
+      },
       "certified_pairs": [],
       "mu_migration": {
         "state": "legacy_mu_slots_retired_staging",

@@ -248,7 +248,28 @@ for manifest in addon_catalog.get("addons", []):
     certification = manifest.get("certification", {})
     if certification.get("exact_provider_version_required") is not True or certification.get("exact_addon_version_required") is not True:
         addon_violations.append(f"{addon_id}:exact_pair_not_required")
-    if manifest.get("release_ring") not in {"shadow","canary","active"}:
+    ring = manifest.get("release_ring")
+    if ring == "dynamic":
+        # Lifecycle stage is derived from this company's exact certificate,
+        # never from an implicit Staging/Production environment assumption.
+        policy = manifest.get("release_policy")
+        required = {
+            "mode": "site_bound_certified_pair",
+            "requires_enrolled_site_profile": True,
+            "unknown_pair_fallback": "shadow",
+            "production_authorized": False,
+        }
+        if not isinstance(policy, dict) or policy != required:
+            addon_violations.append(f"{addon_id}:dynamic_release_policy_invalid")
+        for pair in manifest.get("certified_pairs", []):
+            if (not isinstance(pair, dict)
+                    or not isinstance(pair.get("site_uuid"), str)
+                    or not isinstance(pair.get("site_profile_digest"), str)
+                    or len(pair["site_profile_digest"]) != 64
+                    or any(ch not in "0123456789abcdef" for ch in pair["site_profile_digest"])
+                    or pair.get("release_ring") not in {"shadow", "canary", "active"}):
+                addon_violations.append(f"{addon_id}:dynamic_exact_pair_binding_invalid")
+    elif ring not in {"shadow", "canary", "active"}:
         addon_violations.append(f"{addon_id}:release_ring_invalid")
     if manifest.get("failure_policy", {}).get("reconcile_before_retry_after_uncertain_write") is not True:
         addon_violations.append(f"{addon_id}:uncertain_retry_policy_invalid")

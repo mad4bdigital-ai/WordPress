@@ -22860,6 +22860,40 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing source-only Skills, Admin, Browser and performance controls already cover the bounded change; runtime identity, original execution grants and Production approval remain independent.",
       "review_rationale": "A future owner-approved role migration revision removes unintended manage_woocommerce from the Master Admin stored role while keeping operations permissions and denying Production migration. The source fixture verifies no auto Production mutation, existing Staging owner browser consent, and absence of global WordPress administrator escalation."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/wordpress-addon-catalog.json",
+      "source_blob_sha": "a356781f9fab0f3fc0f0eb2e315e0bca4ccb4235",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/wordpress-addon-execution-guard-contract.php"
+      ],
+      "owner_role": "MAD4B policy source reviewer \u2014 nonauthorizing CI",
+      "review_rationale": "The invalid static staging ring is replaced by a strict company Site Profile and exact pair derived policy. The catalog has no certified pairs; without independent provider and owner evidence it cannot grant execution. Original invalid rings, foreign UUID and profile-digest drifts deny.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-addon-registry.php",
+      "source_blob_sha": "f55803c90df51ef19c255da600bf1441669db16a",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/wordpress-addon-execution-guard-contract.php"
+      ],
+      "owner_role": "MAD4B nonauthorizing source-backed CI assessment",
+      "review_rationale": "The core registry resolves an effective lifecycle ring from the installed, byte-pinned, provider-certified exact company pair and current enrolled Site Profile UUID and digest; stale profile, clone, missing pair and canary all deny execution. The original Production authority and mutation guard remain independent.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "code_change_rules": {

@@ -115,6 +115,20 @@ final class MAD4B_SCP_Addon_Registry {
 		if ( ( $manifest['failure_policy']['reconcile_before_retry_after_uncertain_write'] ?? null ) !== true )
 			return new WP_Error( 'mad4b_addon_manifest_uncertain_retry_invalid', 'MAD4B add-ons must explicitly reconcile before retry after an uncertain write.' );
 		if ( ! isset( $manifest['network_access']['allowed_hosts'] ) || ! is_array( $manifest['network_access']['allowed_hosts'] ) ) return new WP_Error( 'mad4b_addon_manifest_network_policy_invalid', 'MAD4B add-on network policy must explicitly declare allowed_hosts.' );
+		$release_ring = (string) $manifest['release_ring'];
+		if ( 'dynamic' === $release_ring ) {
+			$policy = isset( $manifest['release_policy'] ) && is_array( $manifest['release_policy'] ) ? $manifest['release_policy'] : array();
+			$expected = array(
+				'mode' => 'site_bound_certified_pair',
+				'requires_enrolled_site_profile' => true,
+				'unknown_pair_fallback' => 'shadow',
+				'production_authorized' => false,
+			);
+			if ( self::canonicalize( $policy ) !== self::canonicalize( $expected ) )
+				return new WP_Error( 'mad4b_addon_dynamic_release_policy_invalid', 'Dynamic ring must be derived from a site-bound exact certified pair without inheriting Production authority.' );
+		} elseif ( ! in_array( $release_ring, array( 'shadow', 'canary', 'active' ), true ) ) {
+			return new WP_Error( 'mad4b_addon_release_ring_invalid', 'Add-on ring must describe a release lifecycle stage or site-bound dynamic policy.' );
+		}
 		return true;
 	}
 
@@ -193,6 +207,53 @@ final class MAD4B_SCP_Addon_Registry {
 			'runtime_contract_ok' => ( $provider['runtime_contract_ok'] ?? null ) === true,
 			'certification_authority' => isset( $provider['certification_authority'] ) ? (string) $provider['certification_authority'] : '',
 		) );
+		// A release lifecycle stage is not a server environment. Dynamic
+		// selection requires the current enrolled Site Profile plus an exact,
+		// byte-pinned, company-specific provider/add-on certificate.
+		$dynamic = 'dynamic' === (string) $manifest['release_ring'];
+		$site_uuid = '';
+		$site_profile_digest = '';
+		$site_bound = false;
+		if ( $dynamic && class_exists( 'MAD4B_SCP_Site_Profile', false )
+			&& is_callable( array( 'MAD4B_SCP_Site_Profile', 'site_uuid' ) )
+			&& is_callable( array( 'MAD4B_SCP_Site_Profile', 'origin_enrolled' ) )
+			&& is_callable( array( 'MAD4B_SCP_Site_Profile', 'site_urls_match_enrollment' ) )
+			&& is_callable( array( 'MAD4B_SCP_Site_Profile', 'profile_digest' ) ) ) {
+			$site_uuid = strtolower( trim( (string) MAD4B_SCP_Site_Profile::site_uuid() ) );
+			$site_profile_digest = (string) MAD4B_SCP_Site_Profile::profile_digest();
+			$site_bound = 1 === preg_match( '/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/D', $site_uuid )
+				&& 1 === preg_match( '/^[a-f0-9]{64}$/D', $site_profile_digest )
+				&& true === MAD4B_SCP_Site_Profile::origin_enrolled()
+				&& true === MAD4B_SCP_Site_Profile::site_urls_match_enrollment();
+		}
+		$effective_ring = $dynamic ? 'shadow' : sanitize_key( (string) $manifest['release_ring'] );
+		$certified_pair = false;
+		foreach ( (array) $manifest['certified_pairs'] as $candidate ) {
+			if ( ! is_array( $candidate ) ) continue;
+			if ( $provider_version !== ( isset( $candidate['provider_version'] ) ? (string) $candidate['provider_version'] : '' ) ) continue;
+			if ( $addon['version'] !== ( isset( $candidate['addon_version'] ) ? (string) $candidate['addon_version'] : '' ) ) continue;
+			if ( $extension_points_sha256 !== ( isset( $candidate['extension_points_sha256'] ) ? strtolower( (string) $candidate['extension_points_sha256'] ) : '' ) ) continue;
+			// Exact installed add-on bytes are required, not version strings alone.
+			$expected_main_sha = $candidate['addon_main_file_sha256'] ?? null;
+			if ( ! is_string( $expected_main_sha )
+				|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', strtolower( $expected_main_sha ) )
+				|| ! is_string( $addon['sha256'] )
+				|| ! hash_equals( strtolower( $expected_main_sha ), strtolower( $addon['sha256'] ) ) ) continue;
+			if ( $dynamic ) {
+				$pair_site = isset( $candidate['site_uuid'] ) && is_string( $candidate['site_uuid'] )
+					? strtolower( trim( $candidate['site_uuid'] ) ) : '';
+				$pair_ring = isset( $candidate['release_ring'] ) && is_string( $candidate['release_ring'] )
+					? (string) $candidate['release_ring'] : '';
+				$pair_profile_digest = isset( $candidate['site_profile_digest'] ) && is_string( $candidate['site_profile_digest'] )
+					? strtolower( $candidate['site_profile_digest'] ) : '';
+				if ( ! $site_bound || ! hash_equals( $site_uuid, $pair_site )
+					|| ! hash_equals( $site_profile_digest, $pair_profile_digest )
+					|| ! in_array( $pair_ring, array( 'shadow', 'canary', 'active' ), true ) ) continue;
+				$effective_ring = $pair_ring;
+			}
+			$certified_pair = true;
+			break;
+		}
 		$pair = array(
 			'provider_id' => $provider_id,
 			'provider_version' => $provider_version,
@@ -202,30 +263,26 @@ final class MAD4B_SCP_Addon_Registry {
 			'addon_main_file_sha256' => $addon['sha256'],
 			'addon_manifest_sha256' => $manifest_sha256,
 			'extension_points_sha256' => $extension_points_sha256,
-			'release_ring' => sanitize_key( (string) $manifest['release_ring'] ),
+			'release_ring' => $effective_ring,
 			'registry_epoch' => (int) get_option( self::EPOCH_OPTION, 0 ),
 		);
-		$pair_fingerprint = self::fingerprint( $pair );
-		$certified_pair = false;
-		foreach ( (array) $manifest['certified_pairs'] as $candidate ) {
-			if ( ! is_array( $candidate ) ) continue;
-			if ( $provider_version !== ( isset( $candidate['provider_version'] ) ? (string) $candidate['provider_version'] : '' ) ) continue;
-			if ( $addon['version'] !== ( isset( $candidate['addon_version'] ) ? (string) $candidate['addon_version'] : '' ) ) continue;
-			if ( $extension_points_sha256 !== ( isset( $candidate['extension_points_sha256'] ) ? strtolower( (string) $candidate['extension_points_sha256'] ) : '' ) ) continue;
-			// Installed add-on *bytes* are part of the exact signed provider
-			// pair. Version+extension declarations alone cannot authorize a write.
-			$expected_main_sha = $candidate['addon_main_file_sha256'] ?? null;
-			if ( ! is_string( $expected_main_sha )
-				|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', strtolower( $expected_main_sha ) )
-				|| ! is_string( $addon['sha256'] )
-				|| ! hash_equals( strtolower( $expected_main_sha ), strtolower( $addon['sha256'] ) ) ) continue;
-			$certified_pair = true;
-			break;
+		if ( $dynamic ) {
+			$pair['release_policy'] = 'site_bound_certified_pair';
+			$pair['site_uuid'] = $site_bound ? $site_uuid : '';
+			$pair['site_profile_digest'] = $site_bound ? $site_profile_digest : '';
 		}
-
+		$pair_fingerprint = self::fingerprint( $pair );
 		$provider_verified = ( $provider['runtime_contract_ok'] ?? null ) === true
 			&& is_string( $provider['status'] ?? null )
 			&& in_array( $provider['status'], array( 'certified', 'native_core_runtime_bound' ), true );
+		// A provider that loses runtime certification, or an inactive add-on,
+		// may not retain a previously promoted dynamic ring.
+		if ( $dynamic && ( ! $provider_verified
+			|| ( ! $addon['active'] && ! $addon['network_active'] ) ) ) {
+			$pair['release_ring'] = 'shadow';
+			$effective_ring = 'shadow';
+			$pair_fingerprint = self::fingerprint( $pair );
+		}
 		$state = 'pair_uncertified';
 		if ( ! $addon['installed'] ) $state = 'addon_unavailable';
 		elseif ( ! $addon['active'] && ! $addon['network_active'] ) $state = 'addon_inactive';
@@ -235,7 +292,11 @@ final class MAD4B_SCP_Addon_Registry {
 		return array(
 			'state' => $state,
 			'certified' => 'certified' === $state,
-			'mutating_capabilities_eligible' => 'certified' === $state,
+			'mutating_capabilities_eligible' => 'certified' === $state
+				&& ( ! $dynamic || 'active' === $effective_ring ),
+			'release_ring_mode' => $dynamic ? 'site_bound_certified_pair' : 'legacy_explicit',
+			'effective_release_ring' => $effective_ring,
+			'site_profile_bound' => $dynamic && $site_bound,
 			'addon' => $addon,
 			'provider' => $provider,
 			'pair' => $pair,
@@ -262,6 +323,10 @@ final class MAD4B_SCP_Addon_Registry {
 		$manifest = self::manifest_by_id( $addon_id );
 		if ( is_wp_error( $manifest ) ) return $manifest;
 		$status = self::pair_status( $manifest );
+		if ( ! empty( $status['certified'] )
+			&& empty( $status['mutating_capabilities_eligible'] ) )
+			return new WP_Error( 'mad4b_addon_release_ring_not_active',
+				'Site-bound dynamic add-on ring must be active for execution binding; shadow and canary remain read-only.' );
 		if ( empty( $status['certified'] ) ) return new WP_Error(
 			'mad4b_addon_pair_not_certified',
 			'MAD4B add-on execution binding is unavailable until the exact provider/add-on runtime pair is certified.',
