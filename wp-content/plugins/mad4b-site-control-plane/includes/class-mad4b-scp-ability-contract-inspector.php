@@ -139,7 +139,24 @@ final class MAD4B_SCP_Ability_Contract_Inspector {
 		$original_projection_boundary = 'enrollment' === $lane
 			&& class_exists( 'MAD4B_SCP_Governed_Ability_Census' )
 			&& MAD4B_SCP_Governed_Ability_Census::chatgpt_projection_original_boundary_verified( $ability );
-		$original_bounded_boundary = $original_operator_boundary || $original_owner_intent_boundary || $original_projection_boundary;
+		// Other reviewed first-party enrollment Step-ups have their own exact
+		// permission/approval policies rather than the generic Authorization
+		// wrapper. Their registered callback pair must be proven by the census,
+		// and the actual WordPress callback must retain final execution admission.
+		// This is descriptor provenance only: it never authorizes a tools/call.
+		$direct_step_up_census = 'enrollment' === $lane && class_exists( 'MAD4B_SCP_Governed_Ability_Census' )
+			? MAD4B_SCP_Governed_Ability_Census::structural_step_up() : array();
+		$reviewed_direct_step_up_boundary = 'enrollment' === $lane
+			&& ! $readonly
+			&& true === ( $mcp['chatgpt_direct_step_up'] ?? null )
+			&& true === ( $mcp['exact_chatgpt_client_required'] ?? null )
+			&& false === ( $mcp['generic_remote_admin'] ?? null )
+			&& isset( $direct_step_up_census[ $ability_name ] )
+			&& 'verified_first_party_php_callbacks' === ( $direct_step_up_census[ $ability_name ]['source'] ?? null )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/D', (string) ( $direct_step_up_census[ $ability_name ]['callback_pair_digest'] ?? '' ) )
+			&& class_exists( 'MAD4B_SCP_Execution_Fence' )
+			&& MAD4B_SCP_Execution_Fence::final_execution_wrapper_verified( $ability_name );
+		$original_bounded_boundary = $original_operator_boundary || $original_owner_intent_boundary || $original_projection_boundary || $reviewed_direct_step_up_boundary;
 		$provider = class_exists( 'MAD4B_SCP_Servers' )
 			? ( method_exists( 'MAD4B_SCP_Servers', 'provider_for_capability_descriptor' )
 				? MAD4B_SCP_Servers::provider_for_capability_descriptor( $original_bounded_boundary ? 'mad4b-chatgpt' : 'mad4b-' . $lane, $ability_name )
