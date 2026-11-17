@@ -1,11 +1,11 @@
 {
   "contract": "mad4b.change-slices.v2",
   "authorizing": false,
-  "reviewed_base_sha": "0783f79ad85e50c525e12f8a1edae3c9fbee16dd",
+  "reviewed_base_sha": "a0c7ee5c8dabb2a86ef9081a30678cbe3c7dca73",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 96,
-  "changed_paths_sha256": "4f54e9882b0d25a38090578931b6a5547b97c990ebf67d2a28c4904ac2586655",
+  "changed_file_count": 97,
+  "changed_paths_sha256": "a7f046867e5c40b23b238c56037f990c654afbb55d493e7acef4674221f63373",
   "slices": [
     {
       "id": "release-governance",
@@ -31,11 +31,12 @@
     },
     {
       "id": "global-regression",
-      "semantic_unit": "Independent dynamic add-on release ring regression.",
-      "revert_boundary": "Revert tests only with separately reviewed changes to the original admission contract.",
+      "semantic_unit": "Independent dynamic add-on release ring and exact reviewed Original P0 successor denial regression.",
+      "revert_boundary": "Revert both regression sources only with separately reviewed changes to the original admission and source-lineage contract.",
       "certification": "exact_head",
       "path_globs": [
-        "tests/test_dynamic_addon_release_ring_contract.py"
+        "tests/test_dynamic_addon_release_ring_contract.py",
+        "tests/readiness-seven-original-p0-source-review.py"
       ]
     },
     {
