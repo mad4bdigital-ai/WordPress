@@ -465,7 +465,8 @@ final class MAD4B_SCP_Site_Profile {
 			$async = ( function_exists( 'wp_doing_ajax' ) && wp_doing_ajax() )
 				|| ( defined( 'REST_REQUEST' ) && REST_REQUEST );
 			$prefix = $stored . '/';
-			if ( ! $async || ! str_starts_with( $observed, $prefix ) ) return $observed;
+			// PHP 7.4-compatible exact prefix, no untrusted origin inference.
+            if ( ! $async || 0 !== strpos( $observed, $prefix ) ) return $observed;
 			$localized = substr( $observed, strlen( $prefix ) );
 			if ( 1 !== preg_match( '/^[a-z]{2,8}(?:[-_][a-z0-9]{2,8})?$/Di', $localized ) )
 				return $observed;
