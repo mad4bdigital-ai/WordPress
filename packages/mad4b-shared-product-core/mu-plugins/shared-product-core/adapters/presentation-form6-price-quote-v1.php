@@ -1,10 +1,37 @@
 <?php
-/** Local lab; read-only price preview for the existing Fluent Form #6. */
+/** Governed, nonfinancial price preview for original Fluent Form #6. */
 defined('ABSPATH')||exit;
-if(wp_get_environment_type()!=='local'||!defined('SHARED_PRODUCT_LAB_ONLY')||!SHARED_PRODUCT_LAB_ONLY)return;
+/**
+ * Presentation is a governed runtime capability, not an environment type.
+ * Explicit runtime enablement works for Staging (and for authorized deployments).
+ * governed runtime keeps its isolated opt-in for standalone development only.
+ */
+function shared_product_form6_price_runtime_enabled(): bool {
+ return (defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED === true)
+  || ((defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true)
+   && (defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true));
+}
+if(!shared_product_form6_price_runtime_enabled())return;
+/** Tax remains an informational projection until the original Woo receipt exists. */
+function shared_form6_apply_woo_tax_preview(array $preview):array {
+ if(!class_exists('\Commerce\Composition\RequestAdvancePayments',false)
+   ||!is_numeric($preview['display_amount']??$preview['total']??null)
+   ||!is_string($preview['currency']??null))return $preview;
+ $tax=\Commerce\Composition\RequestAdvancePayments::wooTaxSnapshot(
+   (float)($preview['display_amount']??$preview['total']),(string)$preview['currency']);
+ if(is_wp_error($tax)) {
+    $preview['tax_state']='requires_review';
+    $preview['tax_reason']=$tax->get_error_code();
+ }elseif($tax['applied']) {
+    // Only server-calculated VAT; no second client-side percentage.
+    $preview['tax']=$tax;
+    $preview['tax_state']='woocommerce_native';
+ }
+ return $preview;
+}
 function shared_presentation_form6_price_quote($raw) {
  if(!is_array($raw)||array_diff(array_keys($raw),
- ['tour_id','source','rate_id','travel_date','adults','children','infants','occupancy','extras']))
+ ['tour_id','source','rate_id','travel_date','adults','children','infants','occupancy','extras','child_ages','infant_ages']))
   return new WP_Error('form6_quote_invalid_fields');
  $tour=absint($raw['tour_id']??0);$source=$raw['source']??'';
  $rate=absint($raw['rate_id']??0);
@@ -17,6 +44,14 @@ function shared_presentation_form6_price_quote($raw) {
   $siblings=class_exists('ETG_Tour_Rate_Display')
    ?ETG_Tour_Rate_Display::language_ids($tour):[$tour];
   if(!in_array($pricingTour,$siblings,true))return new WP_Error('form6_quote_wpml_rate_not_sibling');
+  // Shared/default-language Rate fallback is source-specific, not a blanket
+  // permission to quote any WPML sibling currency or market record.
+  if(class_exists('MAD4B_Tour_Rate_Language_Policy_V1',false)){
+   $locale=MAD4B_Tour_Rate_Language_Policy_V1::resolve_context($tour);
+   if(($locale['resolved_source']??'')==='default_language' &&
+      !MAD4B_Tour_Rate_Language_Policy_V1::eligible_rate($tour,$rate))
+    return new WP_Error('form6_quote_rate_source_policy_mismatch');
+  }
  }
  if($p->post_password!==''||get_post_meta($tour,'_booking_experience_qa_pricing_fixture',true)!=='')
   return new WP_Error('form6_quote_protected_tour');
@@ -36,8 +71,9 @@ function shared_presentation_form6_price_quote($raw) {
  }
  $adults=(int)$raw['adults'];$children=(int)$raw['children'];$infants=(int)$raw['infants'];
  if($adults<1||$adults+$children+$infants>100)return new WP_Error('form6_quote_traveler_invalid');
- // Child/infant pricing is not inferable from adult person prices.
- if($children||$infants)return new WP_Error('form6_quote_age_pricing_requires_manual_review');
+ // Missing child/infant policy never hides an otherwise valid adult-source price.
+ // Quote the adults only; unknown minor charges must not be treated as zero.
+ $hasMinors=$children>0||$infants>0;
  $date=$raw['travel_date']??null;
  if(!is_string($date)||!preg_match('/^\d{4}-\d{2}-\d{2}$/D',$date))
   return new WP_Error('form6_quote_date_invalid');
@@ -80,13 +116,40 @@ function shared_presentation_form6_price_quote($raw) {
    }
   }
  }
- return ['status'=>'price_preview_only','tour_id'=>$tour,
+ $adultReference=round((float)$total,2);
+ $preview=['status'=>$hasMinors?'partial_price_preview_only':'price_preview_only','tour_id'=>$tour,
   'pricing_tour_id'=>$pricingTour,'source'=>$source,
-  'rate_id'=>$rate?:null,'currency'=>$currency,'subtotal'=>round(array_sum(array_column($lines,'amount')),2),
-  'total'=>round((float)$total,2),'lines'=>$lines,'extra_prices'=>$extraPrices,
-  'pricing_scope'=>'tour_base_and_eligible_optional_activities_only',
+  'rate_id'=>$rate?:null,'currency'=>$currency,
+  'subtotal'=>$hasMinors?null:round(array_sum(array_column($lines,'amount')),2),
+  // Never assign an adult-only reference to the all-traveller total field.
+  'total'=>$hasMinors?null:$adultReference,
+  'base_preview_amount'=>$hasMinors?$adultReference:null,
+  'base_preview_scope'=>$hasMinors?'adults_only_excludes_children_infants':null,
+  'base_preview_adults'=>$hasMinors?$adults:null,
+  // Presentation consumers must label this nonbinding amount by its scope.
+  'display_amount'=>$adultReference,
+  'display_kind'=>$hasMinors?'adults_only_reference':'nonbinding_price_preview',
+  'display_notice'=>$hasMinors?'Child/infant charges are not included; final booking total requires review.':null,
+  'child_price_state'=>$hasMinors?'requires_separate_pricing': 'not_applicable',
+  'children_count'=>$children,'infants_count'=>$infants,
+  'lines'=>$lines,'extra_prices'=>$extraPrices,
+  'pricing_scope'=>$hasMinors?'adults_only_reference_without_minor_charges':'tour_base_and_eligible_optional_activities_only',
   'component_adjustments_certified'=>false,'availability'=>'not_checked',
   'checkout_ready'=>false,'order_created'=>false];
+ if($hasMinors) {
+   // Native age registry and separately configured unit-specific rules are
+   // the only authority for an age-adjusted NONFINANCIAL retail preview.
+   // A missing rule returns the exact preexisting adults-only response.
+   $candidate=apply_filters('mad4b/form6_minor_price_preview',$preview,$raw,
+     $result,$pricingTour,$rate,$source,$adults,$children,$infants);
+   if(is_array($candidate) &&
+      in_array($candidate['status']??'',
+        ['partial_price_preview_only','age_adjusted_price_preview_only'],true) &&
+      ($candidate['checkout_ready']??null)===false &&
+      ($candidate['order_created']??null)===false)
+     return shared_form6_apply_woo_tax_preview($candidate);
+ }
+ return shared_form6_apply_woo_tax_preview($preview);
 }
 /**
  * Informational, original-source price on the *marked QA fixture only*.
@@ -184,15 +247,17 @@ function shared_presentation_form6_indicative_qa_rate($raw) {
  $totalSource=round($base+$pricedExtras+$additional,2);
  $converted=pricing_currency_convert($totalSource,$source,$display);
  if($converted===null||$converted<=0)return new WP_Error('indicative_currency_unavailable');
- return ['status'=>'indicative_preview_only','currency'=>$display,
+ return shared_form6_apply_woo_tax_preview(['status'=>'indicative_preview_only','currency'=>$display,
    'total'=>$converted,'adult_count'=>$adults,'occupancy'=>$occ,
    'extras_included'=>count($selected)>0&&$extraPending===0,
    'extras_pending_count'=>$extraPending,
    'stay_lines'=>$stays['rows'],'stay_pending_count'=>$stays['pending_count']+$stayCurrencyPending,
    'stay_additional_included'=>$additional>0,'accommodation_included'=>false,
    'source_currency'=>$source,'checkout_ready'=>false,
-   'availability'=>'not_checked','order_created'=>false];
+   'availability'=>'not_checked','order_created'=>false]);
 }
+
+require_once __DIR__.'/presentation-form6-source-context-v1.php';
 add_action('rest_api_init',static function(){
  register_rest_route('shared-product/v1','/tour-form-indicative-qa-preview',[
   'methods'=>WP_REST_Server::READABLE,'permission_callback'=>'__return_true',
@@ -225,10 +290,18 @@ add_action('rest_api_init',static function(){
    $result=shared_presentation_form6_price_quote($request->get_json_params());
    if(is_wp_error($result))return new WP_Error($result->get_error_code(),
      'Price preview unavailable',['status'=>422]);
-   return rest_ensure_response($result);
+   $response=rest_ensure_response($result);
+   if($response instanceof WP_REST_Response){
+    $response->header('Cache-Control','private, no-store, max-age=0');
+    $response->header('X-Robots-Tag','noindex, nofollow');
+   }
+   return $response;
   }
  ]);
 });
+
+// The canonical Presentation Fluent controller owns the single Form #6 price UI.
+// Do not append a second widget: Tour Rate is selected by its broker, not a form field.
 
 /**
  * Retain source-verified stage/property preferences for staff review only.
@@ -238,11 +311,13 @@ function shared_presentation_form6_validate_stay_choices($tour,$rate,$rows){
  if(!is_array($rows)||!array_is_list($rows)||count($rows)>20)
   return new WP_Error('form6_stay_selection_invalid');
  if(!$rows)return [];
+ require_once __DIR__.'/presentation-form6-occupancy-policy-v1.php';
  if(get_post_type($tour)!=='tours-and-activities'||
     get_post_type($rate)!=='tour-rates'||get_post_status($rate)!=='publish'||
-    (int)get_post_meta($rate,'related_tour_id',true)!==(int)$tour)
+    !shared_form6_verified_rate_parent_v1(absint($tour),absint($rate)))
   return new WP_Error('form6_stay_rate_unverified');
- $defined=get_post_meta($rate,'_booking_experience_stay_stages_v1',true);
+ $context=shared_form6_accommodation_policy_v1((int)$tour);
+ $defined=$context['plans_by_rate'][(string)(int)$rate]['stages']??null;
  if(!is_array($defined)||count($defined)>20)return new WP_Error('form6_stay_stage_source_missing');
  $allowed=[];
  foreach($defined as $stage){
@@ -269,11 +344,10 @@ function shared_presentation_form6_validate_stay_choices($tour,$rate,$rows){
  return $out;
 }
 
-// REV82 Local Lab: retain a server-verified quote snapshot within the existing
+// Governed runtime: retain a server-verified quote snapshot within the existing
 // Fluent Form #6 submission. This is NOT a WooCommerce order or price approval.
 add_filter('fluentform/filter_insert_data',static function($insert){
- if(wp_get_environment_type()!=='local'||!defined('SHARED_PRODUCT_LAB_ONLY')||
-    !SHARED_PRODUCT_LAB_ONLY||!is_array($insert)||
+ if(!shared_product_form6_price_runtime_enabled()||!is_array($insert)||
     (int)($insert['form_id']??0)!==6)return $insert;
  $raw=$_POST['shared_tour_selection_v2']??null;
  // Fluent Forms AJAX sends the serialized form as POST[data], not as flat POST fields.
@@ -396,9 +470,16 @@ add_filter('fluentform/filter_insert_data',static function($insert){
  if(is_wp_error($quote)){
   $record['reason']=$quote->get_error_code();
  }else{
-  $record['state']='server_price_preview';
+  // Persist a server-priced adult reference, never a fabricated child-inclusive total.
+  $partial=($quote['status']??'')==='partial_price_preview_only';
+  $record['state']=$partial?'partial_price_preview':'server_price_preview';
   $record['currency']=$quote['currency'];
-  $record['total']=$quote['total'];
+  if($partial){
+   $record['base_preview_amount']=$quote['base_preview_amount'];
+   $record['base_preview_adults']=$quote['base_preview_adults'];
+   $record['minor_price_state']='requires_separate_pricing';
+   $record['checkout_ready']=false;
+  }else $record['total']=$quote['total'];
   $record['price_scope']=$quote['pricing_scope'];
   $record['rate_id']=$quote['rate_id'];
  }
@@ -410,37 +491,88 @@ add_filter('fluentform/filter_insert_data',static function($insert){
   $transportRaw=$submissionFields['shared_transport_preferences_v1']??null;
  $record['transport_options']=[];
  $record['transport_review_required']=false;
+ $record['transport_validation']='not_selected';
+ // Direct pricing quotes canonically store rate_id=null, while the hidden
+ // transport preference contract uses 0. Normalize only for validation;
+ // do not change either original record's documented representation.
+ $transportRateContext=absint($record['rate_id']??0);
+ // Tour-based pricing can accept transport preferences without an invented
+ // Rate. Server authority comes from the original price-entry source, never
+ // from the browser's rate_id=0, a JetEngine condition or QA preview state.
+ $rateLessTransportAllowed=false;
+ if($transportRateContext===0&&$record['source']==='direct'
+   &&class_exists('Shared_Tour_Pricing_Entry_v1')
+   &&get_post_status($record['tour_id'])==='publish'){
+  $priceEntry=Shared_Tour_Pricing_Entry_v1::inspect((int)$record['tour_id']);
+  $rateLessTransportAllowed=!empty($priceEntry['ok'])
+   &&in_array($priceEntry['effective_mode']??'',
+     ['direct_per_person','seed_rate_simulation','inquiry'],true);
+ }
  if(is_string($transportRaw)&&strlen($transportRaw)<=4096){
   $transport=json_decode(wp_unslash($transportRaw),true);
   if(is_array($transport)&&
      !array_diff(array_keys($transport),['tour_id','rate_id','options'])&&
      (int)($transport['tour_id']??0)===$record['tour_id']&&
-     (int)($transport['rate_id']??0)===$record['rate_id']&&
-     $record['rate_id']>0&&
-     (int)get_post_meta($record['rate_id'],'related_tour_id',true)===$record['tour_id']&&
+     (int)($transport['rate_id']??0)===$transportRateContext&&
+     ($rateLessTransportAllowed||
+      ($transportRateContext>0&&get_post_type($transportRateContext)==='tour-rates'
+       &&get_post_status($record['rate_id'])==='publish'&&
+       ( (int)get_post_meta($record['rate_id'],'related_tour_id',true)===$record['tour_id'] ||
+        (class_exists('MAD4B_Tour_Rate_Language_Policy_V1',false) &&
+         MAD4B_Tour_Rate_Language_Policy_V1::resolve_context((int)$record['tour_id'])['resolved_source']==='default_language' &&
+         MAD4B_Tour_Rate_Language_Policy_V1::eligible_rate((int)$record['tour_id'],(int)$record['rate_id'])))))&&
      is_array($transport['options']??null)&&
      array_is_list($transport['options'])&&count($transport['options'])<=30&&
      class_exists('Shared_Product_Presentation_Transport_Context_v1')){
     $sources=Shared_Product_Presentation_Transport_Context_v1::categories();
     $seenTransport=[];
     foreach($transport['options'] as $choice){
-     if(!is_array($choice)||array_diff(array_keys($choice),['transport_id','group']))continue;
+     if(!is_array($choice)||array_diff(array_keys($choice),
+       ['transport_id','group','rate_id','extras']))continue;
      $group=(string)($choice['group']??'');
      $category=str_starts_with($group,'transport-')?substr($group,10):'';
      if(!isset($sources[$category])||$group!=='transport-'.$category)continue;
      $source=(string)$sources[$category]['source'];
      if((string)get_post_meta($record['tour_id'],(string)$sources[$category]['enabled'],true)!=='1')continue;
      $rawLinks=get_post_meta($record['tour_id'],$source,true);
+     if(is_string($rawLinks))$rawLinks=maybe_unserialize($rawLinks);
+     if(is_scalar($rawLinks))$rawLinks=array_filter(array_map('trim',explode(',',(string)$rawLinks)));
      $allowed=array_map('absint',is_array($rawLinks)?$rawLinks:[]);
      $id=absint($choice['transport_id']??0);
      if(!$id||isset($seenTransport[$id])||!in_array($id,$allowed,true)||
-       get_post_type($id)!=='transportations'||get_post_status($id)!=='publish')continue;
+       get_post_type($id)!=='transportations'||get_post_status($id)!=='publish'||
+       empty(Shared_Product_Presentation_Transport_Context_v1::candidate($id,$category)['ok'])||
+       (function_exists('service_channel_allowed')&&
+        !service_channel_allowed('transportations','tour_component')))continue;
      $seenTransport[$id]=true;
-     $record['transport_options'][]=['transport_id'=>$id,'group'=>$group,'review_required'=>true];
+     $candidate=['transport_id'=>$id,'group'=>$group,'review_required'=>true];
+     $extras=$choice['extras']??[];
+     if($extras){
+      $rid=absint($choice['rate_id']??0);
+      if(!$rid||get_post_type($rid)!=='transport-rates'||
+         get_post_status($rid)!=='publish'||
+         !class_exists('BookingExperience\\Transport_Extras_V1'))continue;
+      $rates=BookingExperience\transport_rate_candidates($id);
+      if(!in_array($rid,array_map(static fn($post)=>(int)$post->ID,$rates),true))continue;
+      $verified=BookingExperience\Transport_Extras_V1::review_selection($rid,$extras);
+      if(is_wp_error($verified))continue;
+      $candidate['rate_id']=$rid;
+      $candidate['extras_review']=$verified['selections'];
+      $candidate['extras_financially_verified']=false;
+     }elseif(!is_array($extras)||!array_is_list($extras))continue;
+     $record['transport_options'][]=$candidate;
     }
     $record['transport_review_required']=!empty($record['transport_options']);
+    $record['transport_validation']=count($record['transport_options'])!==count($transport['options'])
+      ?'source_choice_unverified'
+      :($record['transport_options']?'linked_preferences_requires_supplier_review':'not_selected');
+   }else{
+    // Rejected intent must never become a payable transportation line.
+    $record['transport_validation']='source_or_rate_mismatch';
    }
  }
+ if(class_exists('Commerce\Composition\RequestAdvancePayments'))
+  $record=\Commerce\Composition\RequestAdvancePayments::sealIntent($record,(int)$insert['form_id']);
  $response['_shared_tour_booking_intent_v2']=$record;
  $insert['response']=wp_json_encode($response,JSON_UNESCAPED_UNICODE);
  return $insert;
@@ -454,8 +586,7 @@ add_filter('fluentform/filter_insert_data',static function($insert){
  */
 add_action('fluentform/before_form_actions_processing',
     static function($submissionId,$formData,$form) {
-        if(wp_get_environment_type()!=='local'||
-            !defined('SHARED_PRODUCT_LAB_ONLY')||!SHARED_PRODUCT_LAB_ONLY||
+        if(!shared_product_form6_price_runtime_enabled()||
             (int)($form->id??0)!==6||!is_numeric($submissionId))return;
         global $wpdb,$wp_filter;
         $saved=$wpdb->get_var($wpdb->prepare(
@@ -507,7 +638,7 @@ add_action('fluentform/before_form_actions_processing',
  */
 add_filter('fluentform/submission_confirmation',
     static function($response,$form,$confirmation=null,$submissionId=null,$formData=null){
-        if(wp_get_environment_type()!=='local'||!is_array($response)||
+        if(!shared_product_form6_price_runtime_enabled()||!is_array($response)||
            !is_object($form)||!is_numeric($form->id??null)||
            !is_numeric($submissionId))return $response;
         global $wpdb;

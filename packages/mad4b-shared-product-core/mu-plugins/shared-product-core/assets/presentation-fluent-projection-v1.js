@@ -68,8 +68,16 @@
    Object.entries(row.components||{}).flatMap(([kind,groups])=>
     Object.entries(groups).map(([groupKey,optionIds])=>
      ({rateId:row.rateId,kind,groupKey,optionIds:[...optionIds]}))));
+  if(!selectedRateId){
+   for(const [groupKey,optionIds] of Object.entries(snapshot.transportIntent||{}))
+    if(/^transport-(vehicles|train|air)$/.test(groupKey)&&Array.isArray(optionIds))
+     components.push({rateId:null,kind:'transport',groupKey,optionIds:[...optionIds]});
+  }
   const needs=[];
-  if(!selectedRateId)needs.push('select_rate');
+  const resolved=window.SharedPresentationSourceContextV1?.get?.(form);
+  const rateRequired=resolved?.pending||
+    (resolved?resolved.source==='rate':cfg.pricingEntryEffectiveMode==='existing_rates');
+  if(rateRequired&&!selectedRateId)needs.push('select_rate');
   if(!countsValid||!travelers||travelers>100)needs.push('valid_travelers');
   if(!date)needs.push('valid_arrival_date');
   // Browser data is not rate/date/occupancy eligibility evidence.
@@ -77,7 +85,9 @@
   // Rooms/meals and explicit occupancy are not authored by this projection.
   const transportIds=[...new Set(components.filter(row=>row.kind==='transport').flatMap(row=>row.optionIds))];
   const candidate=!needs.length?{
-   tour_id:Number(cfg.tourId),rate_id:selectedRateId,
+   tour_id:Number(cfg.tourId),rate_id:selectedRateId||null,
+   pricing_source:selectedRateId?'rate':
+     (resolved?.source==='direct'?'direct':(cfg.pricingEntryEffectiveMode||'inquiry')),
    stay_stages:stayStages.map(row=>({stage_key:row.stageKey,property_id:row.propertyId})),
    extras:extras.map(value=>({tour_id:Number(value)})),
    transportations:transportIds.map(value=>({id:Number(value)})),booking_intent:'quote'
@@ -106,7 +116,9 @@
   if(!output)return;
   const lines=[];
   if(data.selectedRateId)lines.push('Selected Rate #'+data.selectedRateId);
-  else lines.push('Select a Tour Rate to preview your choices');
+  else if(cfg.pricingEntryEffectiveMode==='existing_rates')
+   lines.push('Select a Tour Rate to preview your choices');
+  else lines.push('Tour-based selection — rate not required');
   const t=data.travelers;
   if(t.total!==null)lines.push('Travelers: '+t.adults+' adults, '+t.children+' children, '+t.infants+' infants');
   else lines.push('Enter valid traveler quantities');
@@ -146,6 +158,9 @@
  function initialize(){
   if(formSelector)document.querySelectorAll(formSelector).forEach(attach);
  }
+ document.addEventListener('shared-presentation-source-context-changed',()=>{
+  for(const form of forms)if(form.isConnected)render(form);
+ });
  document.addEventListener('shared-presentation-selection-changed',()=>{
   for(const form of forms)if(form.isConnected)render(form);
  });
