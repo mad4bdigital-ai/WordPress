@@ -47,5 +47,74 @@ class OriginalPortfolioOwnerSource(unittest.TestCase):
         self.assertFalse(self.manifest['signed_original313_deployment_authority'])
         self.assertFalse(self.manifest['production_site_deployment'])
 
+
+    def test_restored_write_surface_cannot_be_silently_reclassified(self):
+        """Pin the unapproved first-party write inventory, not execution authority.
+
+        The Pre-Staging scanner must continue denying the original ADDON's
+        raw mutating primitives until the exact owner/operation guards have
+        been independently reviewed.  A reviewed source SHA is not a grant.
+        """
+        import re
+        from collections import Counter
+
+        patterns = {
+            'direct_content_or_option_mutation':
+                r'\b(?:wp_update_post|update_option|add_option|delete_option)\s*\(',
+            'direct_wpdb_query':
+                r'\$wpdb\s*->\s*(?:query|insert|update|delete)\s*\(',
+            'direct_filesystem_write':
+                r'\b(?:file_put_contents|fwrite|unlink|rename)\s*\(',
+            'direct_outbound_http':
+                r'\bwp_remote_(?:get|post|request|head)\s*\(',
+            'shell_exec': r'\bshell_exec\s*\(',
+            'proc_open': r'\bproc_open\s*\(',
+            'passthru': r'\bpassthru\s*\(',
+            'eval': r'\beval\s*\(',
+        }
+        counts = Counter()
+        affected_files = set()
+        php_count = 0
+        for item in self.manifest['files']:
+            if not item['path'].endswith('.php'):
+                continue
+            php_count += 1
+            code = (ROOT / item['path']).read_text(encoding='utf-8')
+            for kind, pattern in patterns.items():
+                n = len(re.findall(pattern, code))
+                counts[kind] += n
+                if n:
+                    affected_files.add(item['path'])
+
+        self.assertEqual(php_count, 82)
+        self.assertEqual(len(affected_files), 33)
+        self.assertEqual(dict(counts), {
+            'direct_content_or_option_mutation': 74,
+            'direct_wpdb_query': 12,
+            'direct_filesystem_write': 11,
+            'direct_outbound_http': 2,
+            'shell_exec': 0,
+            'proc_open': 0,
+            'passthru': 0,
+            'eval': 0,
+        })
+        self.assertEqual(sum(counts.values()), 99)
+
+        # This deliberately includes non-executing text, method declarations
+        # and CLI-only fixtures. Removing those is NOT permission to allow
+        # genuine company/site, provider or host mutations.
+        catalog_item = next(
+            x for x in self.catalog['addons']
+            if x.get('addon_id') == 'mad4b-company-management'
+        )
+        self.assertEqual(catalog_item['certified_pairs'], [])
+        self.assertFalse(catalog_item['release_policy']['production_authorized'])
+        self.assertFalse(self.manifest['signed_original313_deployment_authority'])
+        scanner = (ROOT / 'tools/mad4b_pre_staging_hybrid_audit.py').read_text(
+            encoding='utf-8'
+        )
+        self.assertIn('if addon_static_hits:', scanner)
+        self.assertIn('fail("addon_registry", "forbidden direct execution/mutation primitives:', scanner)
+
 if __name__ == '__main__':
     unittest.main()
