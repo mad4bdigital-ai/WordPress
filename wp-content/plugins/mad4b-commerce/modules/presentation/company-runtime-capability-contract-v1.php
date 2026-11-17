@@ -36,6 +36,7 @@ final class MAD4B_Company_Runtime_Capability_Contract_V1 {
                 'native_price_display' => $read,
                 'public_indicative_quote' => $preview,
                 'booking_v2_preview' => $active && function_exists('shared_product_booking_v2_preview'),
+                'form6_booking_v2' => $active && function_exists('shared_presentation_form6_price_quote'),
                 'pricing_rules_v2' => $active && function_exists('shared_product_pricing_quote_contract_v2'),
                 'rate_generation_provider' => $active && class_exists('Shared_Product_Rate_Generation', false),
                 'price_cache_recovery' => $active && function_exists('mad4b_commerce_native_card_price_cache_reconcile_v1'),

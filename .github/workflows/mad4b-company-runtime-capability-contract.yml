@@ -4,9 +4,10 @@ on:
     paths:
       - '.github/workflows/mad4b-company-runtime-capability-contract.yml'
       - 'wp-content/plugins/mad4b-commerce/mad4b-commerce.php'
-      - 'wp-content/plugins/mad4b-commerce/modules/presentation/company-runtime-capability-contract-v1.php'
+      - 'wp-content/plugins/mad4b-commerce/modules/presentation/**'
       - 'wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/**'
       - 'tests/mad4b-company-runtime-capability-hermetic.php'
+      - 'tests/mad4b-booking-v2-form6-readonly-hermetic.php'
       - 'tests/test_company_core_parity.py'
       - 'tools/verify-company-core-parity.py'
   workflow_dispatch:
@@ -40,6 +41,9 @@ jobs:
               for policy in inquiry_only request_to_book instant_booking invalid; do
                 php tests/mad4b-company-runtime-capability-hermetic.php "$mode" "$policy" | grep -q "\"passed\":true"
               done
+            done
+            for mode in commerce presentation presentation_unadmitted disabled; do
+              php tests/mad4b-booking-v2-form6-readonly-hermetic.php "$mode" | grep -q "\"passed\":true"
             done
             find wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core -name "*.php" -type f -exec php -l {} \; >/dev/null
           '

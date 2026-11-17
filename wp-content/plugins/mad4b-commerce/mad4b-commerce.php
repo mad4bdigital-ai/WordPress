@@ -8,6 +8,7 @@
 defined('ABSPATH')||exit;
 // Read-only company capability inventory; never a booking/payment grant.
 require_once __DIR__.'/modules/presentation/company-runtime-capability-contract-v1.php';
+require_once __DIR__.'/modules/presentation/company-booking-v2-readonly-bootstrap-v1.php';
 // Shared read-only price card recovery for both Commerce and Presentation.
 require_once __DIR__.'/modules/presentation/shared-tour-card-price-recovery-v1.php';
 // Runtime modules are loaded early from the one MU bootstrap, in original
