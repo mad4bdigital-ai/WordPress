@@ -65,6 +65,9 @@ $GLOBALS['environment']='development';
 check(!$cls::permitted(), 'Unreviewed environment is not eligible');
 $GLOBALS['environment']='staging';
 $rootMethod=new ReflectionMethod($cls,'root');
+// PHP 7.4 requires explicit reflection access for private methods; PHP
+// 8.1+ invokes them without it. Keep both CI runtime versions covered.
+if ( PHP_VERSION_ID < 80100 ) $rootMethod->setAccessible(true);
 $firstRoot=$rootMethod->invoke(null);
 $GLOBALS['fixture_site_uuid']='b2222222-2222-2222-2222-222222222222';
 $otherRoot=$rootMethod->invoke(null);
