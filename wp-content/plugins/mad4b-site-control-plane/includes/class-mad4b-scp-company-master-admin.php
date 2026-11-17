@@ -3,7 +3,7 @@
 defined('ABSPATH') || exit;
 final class MAD4B_SCP_Company_Master_Admin {
     const CAP='mad4b_manage_company_operations';
-    const VERSION='20261028_v3';
+    const VERSION='20261117_v4';
     const MIGRATION='mad4b_company_master_admin_role_version';
     const STAFF_OWNER='mad4b_company_team_manager';
     const ALLOWED_ROLES=array('editor','author','operator','company_translation_manager');
@@ -44,7 +44,9 @@ final class MAD4B_SCP_Company_Master_Admin {
         foreach($remove as$cap)$master->remove_cap($cap);
         foreach(array('manage_options','activate_plugins','install_plugins','update_plugins',
             'delete_plugins','edit_plugins','edit_theme_options','delete_users',
-            'remove_users','fluentform_full_access','fluentform_settings_manager')as$cap)$master->remove_cap($cap);
+            'remove_users','fluentform_full_access','fluentform_settings_manager',
+            // Correct legacy stored-capability drift only via owner-approved migration.
+            'manage_woocommerce')as$cap)$master->remove_cap($cap);
         $admin=get_role('administrator');if($admin){$admin->add_cap(self::CAP,true);$admin->add_cap('mad4b_work_company_tasks',true);}
         foreach(['editor','author','operator','company_translation_manager']as$staffRole){
             $staff=get_role($staffRole);
