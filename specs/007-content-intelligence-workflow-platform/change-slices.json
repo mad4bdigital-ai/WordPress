@@ -4,8 +4,8 @@
   "reviewed_base_sha": "5c72e4893e36e992f056c90cfc75908b3a8f7785",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 1355,
-  "changed_paths_sha256": "679e0274dbdc89f9bb616ed83b04ace07cee8c6c6af0148876036a649c4f323f",
+  "changed_file_count": 1359,
+  "changed_paths_sha256": "1c1e8600efb89077c730bc77844fda47fa1ef80f0e1780ed37d63958ee24d841",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -160,7 +160,8 @@
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/rebind-delivery.py",
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_rebind_delivery.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/are-staging-operations-http-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/staging-live-dns-order-contract.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-live-dns-order-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/remote-operation-parity-contract.py"
       ]
     },
     {
