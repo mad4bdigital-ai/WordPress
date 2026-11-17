@@ -36,6 +36,8 @@ jobs:
           coverage: none
       - name: Validate frozen-source provenance
         run: python3 packages/mad4b-shared-product-core/tests/verify-snapshot.py
+      - name: Verify immutable source successor and denial regressions
+        run: python3 packages/mad4b-shared-product-core/tests/test_source_successor_fail_closed.py
       - name: PHP syntax lint for full package
         run: |
           find packages/mad4b-shared-product-core/mu-plugins -type f -name '*.php' -print0 |

@@ -1,6 +1,6 @@
 # MAD4B Shared Product Core — canonical source candidate
 
-**Version:** `0.1.1-dev.20261113` · **Lifecycle:** source-only / Draft PR · **Origin:** ETG WooCommerce Local Lab on VPS. This is the first version-controlled home for 135 tracked candidate source files (the original 134-file snapshot remains archived under docs/snapshots/0.1.0-dev.20261028). The `*.before-*` recovery files and any WordPress database, customers, orders, media, vendor plugins, runtime secrets, `.env`, and vault contents are **not** included.
+**Version:** `0.1.2-dev.20261117` · **Lifecycle:** source-only / Draft PR · **Origin:** ETG WooCommerce Local Lab on VPS. The current 137-file source includes the reviewed Form #6 date, occupancy and quote contract changes. Prior 135-file and original 134-file source snapshots are preserved under `docs/snapshots/0.1.1-dev.20261113` and `docs/snapshots/0.1.0-dev.20261028`. The `*.before-*` recovery files and any WordPress database, customers, orders, media, vendor plugins, runtime secrets, `.env`, and vault contents are **not** included.
 
 ## Layout
 

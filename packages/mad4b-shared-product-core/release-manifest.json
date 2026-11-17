@@ -28,5 +28,10 @@
     "prior_source_hash_path": "docs/snapshots/0.1.1-dev.20261113/source-files.sha256",
     "prior_source_manifest_sha256": "ff69c421ba1d9934aa55a291b2751582eb5e2304dbfcb4a729492835d72d1481",
     "state": "source_only_not_deployment"
+  },
+  "source_successor_review": {
+    "path": "docs/snapshots/0.1.2-dev.20261117-source-review.json",
+    "sha256": "98ac90798fdff91623148556c6bc5e983449188b292a454bb026b5dc2a4c38ca",
+    "state": "source_only_review_no_host_admission"
   }
 }
