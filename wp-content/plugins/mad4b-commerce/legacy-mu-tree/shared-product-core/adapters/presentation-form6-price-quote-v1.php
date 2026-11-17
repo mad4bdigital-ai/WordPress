@@ -1,6 +1,7 @@
 <?php
 /** Governed, nonfinancial price preview for original Fluent Form #6. */
 defined('ABSPATH')||exit;
+require_once WPMU_PLUGIN_DIR.'/shared-product-core/adapters/presentation-form6-date-normalization-v1.php';
 /**
  * Presentation is a governed runtime capability, not an environment type.
  * Explicit runtime enablement works for Staging (and for authorized deployments).
@@ -256,6 +257,8 @@ function shared_presentation_form6_indicative_qa_rate($raw) {
    'source_currency'=>$source,'checkout_ready'=>false,
    'availability'=>'not_checked','order_created'=>false]);
 }
+
+require_once __DIR__.'/presentation-form6-source-context-v1.php';
 add_action('rest_api_init',static function(){
  register_rest_route('shared-product/v1','/tour-form-indicative-qa-preview',[
   'methods'=>WP_REST_Server::READABLE,'permission_callback'=>'__return_true',
@@ -309,11 +312,13 @@ function shared_presentation_form6_validate_stay_choices($tour,$rate,$rows){
  if(!is_array($rows)||!array_is_list($rows)||count($rows)>20)
   return new WP_Error('form6_stay_selection_invalid');
  if(!$rows)return [];
+ require_once __DIR__.'/presentation-form6-occupancy-policy-v1.php';
  if(get_post_type($tour)!=='tours-and-activities'||
     get_post_type($rate)!=='tour-rates'||get_post_status($rate)!=='publish'||
-    (int)get_post_meta($rate,'related_tour_id',true)!==(int)$tour)
+    !shared_form6_verified_rate_parent_v1(absint($tour),absint($rate)))
   return new WP_Error('form6_stay_rate_unverified');
- $defined=get_post_meta($rate,'_booking_experience_stay_stages_v1',true);
+ $context=shared_form6_accommodation_policy_v1((int)$tour);
+ $defined=$context['plans_by_rate'][(string)(int)$rate]['stages']??null;
  if(!is_array($defined)||count($defined)>20)return new WP_Error('form6_stay_stage_source_missing');
  $allowed=[];
  foreach($defined as $stage){
@@ -375,15 +380,8 @@ add_filter('fluentform/filter_insert_data',static function($insert){
      (string)$response[$formField]!== (string)($input[$key]??''))return $insert;
  }
  $rawDate=$response['datetime']??'';
- if(!is_string($rawDate))return $insert;
- $formDate=null;
- foreach(['Y-m-d','d-M-Y','d/m/Y','m/d/Y'] as $format){
-  $parsed=DateTimeImmutable::createFromFormat('!'.$format,trim($rawDate));
-  if($parsed&&$parsed->format($format)===trim($rawDate)){
-   $formDate=$parsed->format('Y-m-d');break;
-  }
- }
- if($formDate!==(string)($input['travel_date']??''))return $insert;
+ $formDate=$input['travel_date']??null;
+ if(!shared_form6_dates_equal_v1($rawDate,$formDate,6,'datetime'))return $insert;
  // Never persist a browser-supplied total. Always re-quote on the server.
  $priceInput=$input;
  unset($priceInput['stay_stages']);

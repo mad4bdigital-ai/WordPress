@@ -1,0 +1,39 @@
+name: MAD4B Company Runtime Capability Contract
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/mad4b-company-runtime-capability-contract.yml'
+      - 'wp-content/plugins/mad4b-commerce/mad4b-commerce.php'
+      - 'wp-content/plugins/mad4b-commerce/modules/presentation/company-runtime-capability-contract-v1.php'
+      - 'wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/**'
+      - 'tests/mad4b-company-runtime-capability-hermetic.php'
+      - 'tests/test_company_core_parity.py'
+      - 'tools/verify-company-core-parity.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.3','8.5']
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read-only scanner regression
+        run: python3 tests/test_company_core_parity.py -v
+      - name: PHP syntax and policy isolation
+        run: |
+          docker run --rm -v "$GITHUB_WORKSPACE:/src:ro" -w /src php:${{ matrix.php }}-cli sh -euc '
+            php -l wp-content/plugins/mad4b-commerce/mad4b-commerce.php
+            php -l wp-content/plugins/mad4b-commerce/modules/presentation/company-runtime-capability-contract-v1.php
+            php -l tests/mad4b-company-runtime-capability-hermetic.php
+            for mode in commerce presentation disabled conflict; do
+              for policy in inquiry_only request_to_book instant_booking invalid; do
+                php tests/mad4b-company-runtime-capability-hermetic.php "$mode" "$policy" | grep -q "\"passed\":true"
+              done
+            done
+            find wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core -name "*.php" -type f -exec php -l {} \; >/dev/null
+          '

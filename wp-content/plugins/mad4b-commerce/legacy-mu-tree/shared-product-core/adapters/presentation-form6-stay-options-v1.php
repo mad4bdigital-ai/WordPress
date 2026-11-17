@@ -1,33 +1,39 @@
 <?php
-/** Local Lab only: optional, source-backed room and meal choices. */
+/** Native BookingExperience stay preferences (read-only, never payable by itself).
+ * Uses the existing read-only first-party presentation provider in companies
+ * without full Commerce; no global commerce flag or alternate pricing engine.
+ */
 defined('ABSPATH')||exit;
-if((!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || !MAD4B_COMMERCE_RUNTIME_ENABLED)||!defined('MAD4B_COMMERCE_RUNTIME_ENABLED')||!MAD4B_COMMERCE_RUNTIME_ENABLED)return;
+$fullCommerce=defined('MAD4B_COMMERCE_RUNTIME_ENABLED')&&MAD4B_COMMERCE_RUNTIME_ENABLED===true;
+$presentationOnly=defined('MAD4B_PRESENTATION_RUNTIME_ENABLED')&&MAD4B_PRESENTATION_RUNTIME_ENABLED===true
+ && class_exists('MAD4B_Form6_Readonly_Price_Preview_V1',false)
+ && !empty(MAD4B_Form6_Readonly_Price_Preview_V1::status()['enabled'])
+ && !empty(MAD4B_Form6_Readonly_Price_Preview_V1::status()['all_readonly_dependencies']);
+if(!$fullCommerce && !$presentationOnly)return;
 function shared_form6_stay_stage($tour,$rate,$key,$property){
- if(get_post_type($tour)!=='tours-and-activities'||get_post_status($tour)!=='publish'||
-    get_post_type($rate)!=='tour-rates'||get_post_status($rate)!=='publish'||
-    (int)get_post_meta($rate,'related_tour_id',true)!==$tour||
+ // Native source arbitration accepts exactly verified local or previously
+ // approved default-language Rate fallback; never an arbitrary sibling Rate.
+ require_once __DIR__.'/presentation-form6-occupancy-policy-v1.php';
+ if(!shared_form6_verified_rate_parent_v1(absint($tour),absint($rate)) ||
     get_post_type($property)!=='properties'||get_post_status($property)!=='publish')
-   return new WP_Error('stay_source_unavailable');
- $stages=get_post_meta($rate,'_booking_experience_stay_stages_v1',true);
- // Simple/OR plans have always been derived by the native BookingExperience
- // provider rather than stored in the multi-stage meta array. Reuse the
- // canonical rate plan used by the original Hotel Options listing and the
- // existing presentation-stay-selection adapter, with no new price authority.
- if(!is_array($stages)||!$stages){
-  if(!function_exists('BookingExperience\\tour_stay_rate_plan'))
-   return new WP_Error('stay_stage_missing');
-  $plan=BookingExperience\tour_stay_rate_plan($rate);
-  if(is_wp_error($plan)||!is_array($plan)||($plan['mode']??'')!=='simple_or')
-   return new WP_Error('stay_stage_missing');
+  return new WP_Error('stay_source_unavailable');
+ if(!function_exists('BookingExperience\tour_stay_rate_plan'))
+  return new WP_Error('stay_native_provider_unavailable');
+ $plan=BookingExperience\tour_stay_rate_plan($rate);
+ if(is_wp_error($plan)||!is_array($plan))return new WP_Error('stay_stage_missing');
+ if(($plan['mode']??'')==='simple_or'){
   $ids=array_map('absint',(array)($plan['properties']??[]));
-  if(count($ids)>120||!$ids||$key!=='simple'||!in_array($property,$ids,true))
+  if(count($ids)>80||!$ids||$key!=='simple'||!in_array((int)$property,$ids,true))
    return new WP_Error('stay_not_related_to_rate');
   return ['key'=>'simple','label'=>'Hotel alternatives',
-   'properties'=>$ids,'price_policy'=>'inquiry',
+   'properties'=>$ids,'price_policy'=>($plan['price_policy']??'inquiry'),
    'day_offset'=>0,'nights'=>0];
  }
- foreach($stages as $stage)
-  if(($stage['key']??null)===$key&&in_array($property,array_map('intval',$stage['properties']??[]),true))return $stage;
+ if(($plan['mode']??'')!=='multi_stage')return new WP_Error('stay_plan_unsupported');
+ foreach((array)($plan['stages']??[]) as $stage)
+  if(($stage['key']??null)===$key &&
+     in_array((int)$property,array_map('intval',(array)($stage['properties']??[])),true))
+   return $stage;
  return new WP_Error('stay_not_related_to_rate');
 }
 function shared_form6_stay_catalog($tour,$rate,$key,$property){
