@@ -315,6 +315,37 @@ $check( $staging_ring['state'] === 'manifest_invalid'
     && 'mad4b_addon_release_ring_invalid' === $staging_ring['error_code'],
     'Server environment illegally substituted for a release lifecycle ring.' );
 
+// Candidate-only source records must not become execution bindings merely
+// because they appear next to the active company-specific release catalog.
+$pending_catalog = array(
+	'contract' => MAD4B_SCP_Addon_Registry::CATALOG_CONTRACT,
+	'addons' => array(),
+	'pending_addon_candidates' => array(
+		array(
+			'addon_id' => 'mad4b-company-management',
+			'state' => 'REVIEW_REQUIRED_SOURCE_NOT_AT_THIS_HEAD',
+			'execution_eligible' => false,
+			'production_authorized' => false,
+		),
+	),
+	'defaults' => array( 'production_authorized' => false ),
+);
+file_put_contents( MAD4B_SCP_DIR . 'config/wordpress-addon-catalog.json', json_encode( $pending_catalog ) );
+$pending_status = MAD4B_SCP_Addon_Registry::status();
+$check( $pending_status['ready'] === false
+	&& $pending_status['state'] === 'no_registered_addons'
+	&& $pending_status['count'] === 0
+	&& $pending_status['pending_candidate_count'] === 1
+	&& $pending_status['production_authorized'] === false,
+	'Empty dynamic add-on catalog incorrectly claimed certified release readiness' );
+$pending_binding = MAD4B_SCP_Addon_Registry::execution_binding( 'mad4b-company-management' );
+$check( is_wp_error( $pending_binding ) && $pending_binding->get_error_code() === 'mad4b_addon_not_cataloged',
+	'Candidate-only source was silently accepted as a certified dynamic pair' );
+$pending_guard = MAD4B_SCP_Addon_Registry::mutation_guard(
+	'mad4b-company-management', $active['pair_fingerprint'], $active['certification_fingerprint'] );
+$check( is_wp_error( $pending_guard ) && $pending_guard->get_error_code() === 'mad4b_addon_not_cataloged',
+	'Candidate-only source incorrectly passed the dynamic pair mutation guard' );
+
 @unlink( $addon_file );
 @unlink( MAD4B_SCP_DIR . 'config/wordpress-addon-catalog.json' );
 @rmdir( WP_PLUGIN_DIR . '/mad4b-test-addon' );
