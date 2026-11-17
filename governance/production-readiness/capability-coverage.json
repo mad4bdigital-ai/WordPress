@@ -22975,7 +22975,6 @@
       ],
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/wordpress-addon-execution-guard-contract.php",
-        "tools/mad4b_pre_staging_hybrid_audit.py",
         "tests/critical-runtime-policy-catalog-contracts.py"
       ],
       "owner_role": "First-party WordPress Addon source reviewer, CI-only; independent release Owner verdict is required",
