@@ -209,6 +209,37 @@ $GLOBALS['addon_active'] = false;
 $inactive = MAD4B_SCP_Addon_Registry::execution_binding( 'mad4b-test-addon' );
 $check( is_wp_error( $inactive ) && 'mad4b_addon_pair_not_certified' === $inactive->get_error_code(), 'inactive add-on remained execution eligible' );
 
+// Unrestored original company add-on is a non-authorizing candidate,
+// never an active catalog member or a vacuously certified registry.
+$pending_catalog = array(
+	'contract' => 'mad4b.wordpress-addon-catalog.v1',
+	'addons' => array(),
+	'pending_addon_candidates' => array(
+		array(
+			'addon_id' => 'mad4b-company-management',
+			'state' => 'REVIEW_REQUIRED_SOURCE_NOT_AT_THIS_HEAD',
+			'execution_eligible' => false,
+			'production_authorized' => false,
+		),
+	),
+	'defaults' => array( 'production_authorized' => false ),
+);
+file_put_contents( MAD4B_SCP_DIR . 'config/wordpress-addon-catalog.json', json_encode( $pending_catalog ) );
+$pending_status = MAD4B_SCP_Addon_Registry::status();
+$check( $pending_status['ready'] === false
+	&& $pending_status['state'] === 'no_registered_addons'
+	&& $pending_status['count'] === 0
+	&& $pending_status['pending_candidate_count'] === 1
+	&& $pending_status['production_authorized'] === false,
+	'Empty active registry must not claim readiness for an unrestored source candidate' );
+$pending_binding = MAD4B_SCP_Addon_Registry::execution_binding( 'mad4b-company-management' );
+$check( is_wp_error( $pending_binding ) && $pending_binding->get_error_code() === 'mad4b_addon_not_cataloged',
+	'Historical candidate incorrectly received an execution binding' );
+$pending_commit = MAD4B_SCP_Addon_Registry::mutation_guard(
+	'mad4b-company-management', $binding['pair_fingerprint'], $binding['certification_fingerprint'] );
+$check( is_wp_error( $pending_commit ) && $pending_commit->get_error_code() === 'mad4b_addon_not_cataloged',
+	'Historical candidate incorrectly passed an original mutation guard' );
+
 @unlink( $addon_file );
 @unlink( MAD4B_SCP_DIR . 'config/wordpress-addon-catalog.json' );
 @rmdir( WP_PLUGIN_DIR . '/mad4b-test-addon' );

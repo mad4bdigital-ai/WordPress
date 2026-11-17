@@ -305,7 +305,9 @@ final class MAD4B_SCP_Addon_Registry {
 		$catalog = self::catalog();
 		if ( is_wp_error( $catalog ) ) return array( 'contract' => self::CONTRACT, 'ready' => false, 'state' => 'catalog_invalid', 'error_code' => $catalog->get_error_code(), 'production_authorized' => false );
 		$items = array();
-		$ready = true;
+		// An empty release catalog is not a certified registry. Historical
+		// source candidates cannot authorize an add-on execution binding.
+		$ready = ! empty( $catalog['addons'] );
 		foreach ( $catalog['addons'] as $manifest ) {
 			if ( ! is_array( $manifest ) ) { $ready = false; $items[] = array( 'state' => 'manifest_invalid', 'certified' => false ); continue; }
 			$row = self::pair_status( $manifest );
@@ -318,7 +320,8 @@ final class MAD4B_SCP_Addon_Registry {
 			'catalog_fingerprint' => self::fingerprint( $catalog ),
 			'registry_epoch' => (int) get_option( self::EPOCH_OPTION, 0 ),
 			'ready' => $ready,
-			'state' => $ready ? 'ready' : 'certification_required',
+			'state' => empty( $items ) ? 'no_registered_addons' : ( $ready ? 'ready' : 'certification_required' ),
+			'pending_candidate_count' => isset( $catalog['pending_addon_candidates'] ) && is_array( $catalog['pending_addon_candidates'] ) ? count( $catalog['pending_addon_candidates'] ) : 0,
 			'addons' => $items,
 			'count' => count( $items ),
 			'exact_pair_certification_required' => true,
