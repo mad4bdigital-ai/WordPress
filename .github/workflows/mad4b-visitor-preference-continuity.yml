@@ -14,6 +14,7 @@ on:
       - 'wp-content/mu-plugins/assets/mad4b-cart-island-v1.*'
       - 'tests/cart-island/**'
       - 'ops/cart-island-v1/**'
+      - 'ops/browser-qa-concurrency-v1/**'
       - '.github/workflows/mad4b-visitor-preference-continuity.yml'
   pull_request:
     paths:
@@ -27,6 +28,7 @@ on:
       - 'wp-content/mu-plugins/assets/mad4b-cart-island-v1.*'
       - 'tests/cart-island/**'
       - 'ops/cart-island-v1/**'
+      - 'ops/browser-qa-concurrency-v1/**'
       - '.github/workflows/mad4b-visitor-preference-continuity.yml'
 permissions:
   contents: read
@@ -56,6 +58,7 @@ jobs:
           php tests/cart-island/test-cart-island-hermetic.php
           python3 tests/cart-island/test-cart-cache-boundary.py
           python3 tests/cart-island/test-edge-shadow-read-only.py
+          python3 ops/browser-qa-concurrency-v1/tests/test_browser_qa_concurrency.py
           bash -n ops/cart-island-v1/run-site.sh
           python3 -m py_compile ops/cart-island-v1/probe.py
           node --check wp-content/mu-plugins/assets/mad4b-cart-island-v1.js
