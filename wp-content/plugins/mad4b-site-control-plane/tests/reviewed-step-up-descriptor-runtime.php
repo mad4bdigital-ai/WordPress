@@ -23,13 +23,24 @@ class WP_Ability {
     public function get_name() { return $this->name; }
     public function get_meta() { return $this->meta; }
     public function set_meta( array $meta ) { $this->meta = $meta; }
-    public function get_category() { return 'mad4b-enrollment'; }
+    public function get_category() { return 'mad4b/runtime-gates-apply' === $this->name ? 'mad4b-runtime-gates' : 'mad4b-enrollment'; }
     public function get_input_schema() { return array( 'type' => 'object', 'properties' => array() ); }
     public function get_output_schema() { return array( 'type' => 'object' ); }
     public function execute( $input = null ) { throw new RuntimeException( 'No execution is allowed in descriptor tests.' ); }
 }
 class MAD4B_SCP_Governed_Ability_Census {
     public static $reviewed = true;
+    public static $directGate = true;
+    public static function original_runtime_gate_direct_boundary_verified( $ability ) {
+        $meta = $ability->get_meta();
+        $mcp = $meta['mcp'] ?? array();
+        return self::$directGate && 'mad4b/runtime-gates-apply' === $ability->get_name()
+            && true === ( $mcp['direct_only_excluded_from_staging_broker'] ?? null )
+            && true === ( $mcp['generic_raw_sql_breakglass_configuration'] ?? null )
+            && true === ( $mcp['exact_chatgpt_client_required'] ?? null )
+            && false === ( $mcp['generic_remote_admin'] ?? null )
+            && MAD4B_SCP_Execution_Fence::final_execution_wrapper_verified( $ability->get_name() );
+    }
     public static function structural_step_up() {
         return self::$reviewed ? array(
             'mad4b/full-staging-authority-apply' => array(
@@ -45,7 +56,7 @@ class MAD4B_SCP_Governed_Ability_Census {
 class MAD4B_SCP_Execution_Fence {
     public static $verified = true;
     public static function final_execution_wrapper_verified( $name ) {
-        return self::$verified && 'mad4b/full-staging-authority-apply' === $name;
+        return self::$verified && in_array( $name, array( 'mad4b/full-staging-authority-apply', 'mad4b/runtime-gates-apply' ), true );
     }
 }
 class MAD4B_SCP_Authorization {
@@ -104,4 +115,38 @@ $assert( 'none' === $inspect()['execution_lane'], 'Generic admin execution is no
 $GLOBALS['tested_ability']->set_meta( $meta );
 
 $assert( false === isset( $ok['authorizing'] ), 'Inspector must not mint authority fields.' );
-echo "REVIEWED_STEP_UP_DESCRIPTOR_RUNTIME: PASS (structural-only, 5 assertions, no invocation)\n";
+
+// Direct-only Runtime Gates is distinct from generic broker-eligible Step-ups.
+$gate_name = 'mad4b/runtime-gates-apply';
+$gate_meta = array(
+    'annotations' => array( 'readonly' => false ),
+    'mcp' => array(
+        'surface' => 'enrollment',
+        'chatgpt_direct_step_up' => true,
+        'exact_chatgpt_client_required' => true,
+        'generic_remote_admin' => false,
+        'direct_only_excluded_from_staging_broker' => true,
+        'generic_raw_sql_breakglass_configuration' => true,
+        'production_allowed' => true,
+    ),
+);
+$GLOBALS['tested_ability'] = new WP_Ability( $gate_name, $gate_meta );
+$gate_result = MAD4B_SCP_Ability_Contract_Inspector::inspect( $gate_name );
+$assert( is_array( $gate_result ) && 'enrollment' === $gate_result['execution_lane']
+    && 'core' === $gate_result['execution_provider']
+    && true === $gate_result['execution_boundary_verified'],
+    'Exact first-party direct-only Runtime Gates must be structurally bound.' );
+MAD4B_SCP_Governed_Ability_Census::$directGate = false;
+$gate_denial = MAD4B_SCP_Ability_Contract_Inspector::inspect( $gate_name );
+$assert( 'none' === $gate_denial['execution_lane'], 'No direct-only callback proof must fail closed.' );
+MAD4B_SCP_Governed_Ability_Census::$directGate = true;
+MAD4B_SCP_Execution_Fence::$verified = false;
+$gate_denial = MAD4B_SCP_Ability_Contract_Inspector::inspect( $gate_name );
+$assert( 'none' === $gate_denial['execution_lane'], 'Direct-only mutation without Final Fence was admitted.' );
+MAD4B_SCP_Execution_Fence::$verified = true;
+$changed_gate = $gate_meta;
+$changed_gate['mcp']['generic_raw_sql_breakglass_configuration'] = false;
+$GLOBALS['tested_ability']->set_meta( $changed_gate );
+$gate_denial = MAD4B_SCP_Ability_Contract_Inspector::inspect( $gate_name );
+$assert( 'none' === $gate_denial['execution_lane'], 'Weakened high-risk identity flag was admitted.' );
+echo "REVIEWED_STEP_UP_DESCRIPTOR_RUNTIME: PASS (generic Step-up and exact direct-only Runtime Gates, structural only)\n";
