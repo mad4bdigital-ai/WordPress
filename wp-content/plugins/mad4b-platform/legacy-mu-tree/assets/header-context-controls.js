@@ -239,6 +239,7 @@
       const button = root.querySelector('[data-header-context-toggle]');
       const panel = root.querySelector('.header-context-panel');
       if (!button || !panel) return;
+      if (!panel.id) panel.id = 'visitor-market-panel-' + roots().indexOf(root);
       root.dataset.contextInitialized = '1';
       button.setAttribute('aria-controls',panel.id);
       button.addEventListener('click',() => {
