@@ -65,4 +65,14 @@ $check( ! $verify( 'breakglass', 'mad4b/other-query', 'mad4b-chatgpt' ), 'unsele
 $check( $verify( 'developer-breakglass', 'mad4b/developer-breakglass-shell', 'mad4b-developer-breakglass' ), 'exact Developer Breakglass rejected' );
 $check( ! $verify( 'developer-breakglass', 'mad4b/developer-breakglass-shell', 'mad4b-chatgpt' ), 'Developer Breakglass leaked to ChatGPT' );
 $check( ! $verify( 'developer-breakglass', 'mad4b/developer-breakglass-other', 'mad4b-developer-breakglass' ), 'unknown Developer Breakglass accepted' );
-echo "SERVER_CAPABILITY_LANE_ISOLATION_PASS 14/14\n";
+$evidence = array( 'bindings' => array( 'mad4b/verified' => array() ), 'blockers' => array( 'mad4b/unknown:descriptor_binding_unverified' ) );
+$subset = MAD4B_SCP_Server_Registration_Evidence::verified_subset( 'mad4b-enrollment', array( 'mad4b/unknown', 'mad4b/verified' ), $evidence );
+$check( true === $subset['admitted'] && array( 'mad4b/verified' ) === $subset['tools'], 'enrollment subset incorrectly materialized blocked Ability' );
+$check( true === $subset['evidence']['degraded'] && array( 'mad4b/unknown' ) === $subset['evidence']['quarantined_abilities'], 'partial enrollment registration omitted quarantine evidence' );
+$denied = MAD4B_SCP_Server_Registration_Evidence::verified_subset( 'mad4b-write', array( 'mad4b/unknown', 'mad4b/verified' ), $evidence );
+$check( false === $denied['admitted'], 'unreviewed write transport degraded outside explicit presentation surfaces' );
+$empty = MAD4B_SCP_Server_Registration_Evidence::verified_subset( 'mad4b-enrollment', array( 'mad4b/unknown' ), $evidence );
+$check( false === $empty['admitted'], 'empty verified enrollment subset was registered' );
+$chatgpt = MAD4B_SCP_Server_Registration_Evidence::verified_subset( 'mad4b-chatgpt', array( 'mad4b/unknown' ), $evidence );
+$check( true === $chatgpt['admitted'] && array() === $chatgpt['tools'], 'chatgpt fail-closed route-only diagnostics are unavailable' );
+echo "SERVER_CAPABILITY_LANE_ISOLATION_PASS 19/19\n";

@@ -22658,6 +22658,92 @@
       "review_rationale": "Correct the 41/43 live MCP registered tool discrepancy: two first-party Direct post mutations already passed census callback and final fence checks but provider resolution returned null. Bind core provider ONLY for the two exact Direct Profile names with a genuine registered WP_Ability and the existing census check; foreign direct tools and governed write remain unaffected. Full WordPress MCP protocol and negative tests validate the result.",
       "execution_note": "Non-authorizing source coverage; exact-head MCP and OAuth integration, Original release admission, independent Owner decision, and live Staging acceptance remain separate requirements."
     }
+  ,
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-registration-evidence.php",
+      "source_blob_sha": "871a2851f92d36c22d90ea9d9a8302e943881d3a",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/server-capability-lane-isolation.php"
+      ],
+      "owner_role": "Repository source and CI test reviewer, not Site Owner, Release Owner or Production approver",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuse original first-party MCP callback provenance, verified canonical descriptor hashes, final execution fence, governed NHI/one-time approval and exact OAuth bearer checks; this coverage record creates no permissions or deployment rights.",
+      "review_rationale": "Preserve original descriptor identity and generation-roots validation. Bind raw and Developer Breakglass only on their exact original exceptional server, and raw Breakglass on ChatGPT only when a schema-pinned projection already exists; never treat execution_lane none as eligible. The new hermetic test proves 19 positive/negative routing and quarantine properties.",
+      "execution_note": "CI-only exact source identity; real OAuth/MCP runtime, independent Release Owner and signed deployment proof are still required."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
+      "source_blob_sha": "ba0e13e7c5810bc12575f7ed37227b2d214c90a1",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/server-capability-lane-isolation.php"
+      ],
+      "owner_role": "Repository source and CI test reviewer, not Site Owner, Release Owner or Production approver",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuse original first-party MCP callback provenance, verified canonical descriptor hashes, final execution fence, governed NHI/one-time approval and exact OAuth bearer checks; this coverage record creates no permissions or deployment rights.",
+      "review_rationale": "Replace broad Enrollment server failure caused by unverified individual abilities with a strictly verified subset, while failing closed on other server surfaces and on empty Enrollment subsets. Only independently descriptor-verified tools reach the MCP Adapter; preserve bounded failure evidence and route-only ChatGPT diagnostics.",
+      "execution_note": "CI-only exact source identity; real OAuth/MCP runtime, independent Release Owner and signed deployment proof are still required."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-connection-status.php",
+      "source_blob_sha": "ecf0207feed03681b4ef0c733983c92a40671f43",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/server-capability-lane-isolation.php"
+      ],
+      "owner_role": "Repository source and CI test reviewer, not Site Owner, Release Owner or Production approver",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuse original first-party MCP callback provenance, verified canonical descriptor hashes, final execution fence, governed NHI/one-time approval and exact OAuth bearer checks; this coverage record creates no permissions or deployment rights.",
+      "review_rationale": "Expose how many canonical descriptors were quarantined and whether an Enrollment/ChatGPT tool list is degraded. This is a shallow, observational admin-status field only; it cannot assert external OAuth session readiness or confer ability execution authority.",
+      "execution_note": "CI-only exact source identity; real OAuth/MCP runtime, independent Release Owner and signed deployment proof are still required."
+    }
+  ,
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-runtime-conflict-guard.php",
+      "source_blob_sha": "d1236451a7325815f6f4afba407d929579697582",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-mixed-class-first-request.php"
+      ],
+      "owner_role": "Repository source and CI test reviewer; not a Site Owner or Production Release Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing guarded non-Production maintenance authorization, official MCP adapter integrity, audit readiness, lease and next-request MU bootstrap remain mandatory. A source-review record creates no runtime authority.",
+      "review_rationale": "Fix explicit governed MCP recovery where a foreign loaded validator class produces mixed_runtime with actual provenance failures, yet collision_risk_detected and original-class blocker were incorrectly left false because $mixed was constant false. Derive mixed exclusively from real failing mixed-runtime evidence; ordinary requests stay observational and no recovery is auto-started. A changed same-PR integration test asserts the loaded foreign class and exact mismatch denial.",
+      "execution_note": "CI-only source coverage; the two real WordPress runtimes must independently prove mixed-runtime repair and later clean-request recovery."
+    }
   ],
   "code_change_rules": {
     "contract": "mad4b.readiness-reviewed-changes.v1",
