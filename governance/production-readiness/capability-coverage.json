@@ -22278,230 +22278,230 @@
       "review_rationale": "Seven existing Core Web Vitals setting, encrypted key and validated monitored URL functions relocated byte-identically from historical facade SHA a70bfc23212bb9289d3ab218dc08a530f46c5ad1; require/use binding and negative tamper tests retain source and executable checks. No credential change, URL allowlist bypass, new permission, mutation, or release authorization. Same-PR exact-source behavior review is bound only to the changed executable parity test; historical runtime fixture remains in the independent capability/source regression suite."
     },
     {
-        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php",
-        "source_blob_sha": "0f6bfcb6e73f0441e7f6b7068a87a076f6ba7d0a",
-        "control_ids": [
-            "MCP-01",
-            "SECURITY-01",
-            "GOVERNANCE-01",
-            "EXECUTION-01"
-        ],
-        "regression_tests": [
-            "tests/server-descriptor-canonical-multilane-hermetic.php"
-        ],
-        "owner_role": "Repository source/CI review; not Site Owner or Release Owner",
-        "status": "reviewed_for_ci_only",
-        "production_authorized": false,
-        "live_evidence_required": true,
-        "needs_new_control": false,
-        "coverage_reuse_rationale": "Existing MCP, Security, Governance and Execution controls govern all original readonly discovery permissions and forbid mutation/approval elevation.",
-        "review_rationale": "Exact source-only readonly marker for four previously registered Developer/Enrollment discover/info methods. Original dispatch surface, callbacks, WordPress permissions and all execution grants remain unchanged. The same-PR executable regression checks accepted original metadata plus malformed category/readonly and untrusted execute failures. CI-only: not a Site Owner or Production certification."
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php",
+      "source_blob_sha": "0f6bfcb6e73f0441e7f6b7068a87a076f6ba7d0a",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/server-descriptor-canonical-multilane-hermetic.php"
+      ],
+      "owner_role": "Repository source/CI review; not Site Owner or Release Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP, Security, Governance and Execution controls govern all original readonly discovery permissions and forbid mutation/approval elevation.",
+      "review_rationale": "Exact source-only readonly marker for four previously registered Developer/Enrollment discover/info methods. Original dispatch surface, callbacks, WordPress permissions and all execution grants remain unchanged. The same-PR executable regression checks accepted original metadata plus malformed category/readonly and untrusted execute failures. CI-only: not a Site Owner or Production certification."
     },
     {
-        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ability-contract-inspector.php",
-        "source_blob_sha": "b57b1806a683283001ed9b1087127b1939751912",
-        "control_ids": [
-            "MCP-01",
-            "SECURITY-01",
-            "GOVERNANCE-01",
-            "EXECUTION-01"
-        ],
-        "regression_tests": [
-            "tests/server-descriptor-canonical-multilane-hermetic.php"
-        ],
-        "owner_role": "Repository source/CI review; not Site Owner or Release Owner",
-        "status": "reviewed_for_ci_only",
-        "production_authorized": false,
-        "live_evidence_required": true,
-        "needs_new_control": false,
-        "coverage_reuse_rationale": "Existing exact descriptor, execution lane, MCP allowlist, Schema SHA, authorization and site-specific governance controls are retained.",
-        "review_rationale": "Exact code binds only four source-marked original readonly discover/info abilities to canonical read descriptor while preserving their original transport metadata. Mutation, missing marker, foreign ability name, wrong category and false readonly all fail closed; runtime grants, approvals, execution boundaries and Original lanes are not altered. Same-PR hermetic source test covers positive and negative cases. This review is CI only."
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ability-contract-inspector.php",
+      "source_blob_sha": "b57b1806a683283001ed9b1087127b1939751912",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/server-descriptor-canonical-multilane-hermetic.php"
+      ],
+      "owner_role": "Repository source/CI review; not Site Owner or Release Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing exact descriptor, execution lane, MCP allowlist, Schema SHA, authorization and site-specific governance controls are retained.",
+      "review_rationale": "Exact code binds only four source-marked original readonly discover/info abilities to canonical read descriptor while preserving their original transport metadata. Mutation, missing marker, foreign ability name, wrong category and false readonly all fail closed; runtime grants, approvals, execution boundaries and Original lanes are not altered. Same-PR hermetic source test covers positive and negative cases. This review is CI only."
     },
     {
-        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ability-contract-inspector.php",
-        "source_blob_sha": "73518a54533d1b041512cc06dbaf9a0060798354",
-        "control_ids": [
-            "MCP-01",
-            "SECURITY-01",
-            "GOVERNANCE-01",
-            "EXECUTION-01"
-        ],
-        "regression_tests": [
-            "tests/server-descriptor-canonical-multilane-hermetic.php"
-        ],
-        "owner_role": "Repository source/CI reviewer; not production or site Owner",
-        "status": "reviewed_for_ci_only",
-        "production_authorized": false,
-        "live_evidence_required": true,
-        "needs_new_control": false,
-        "coverage_reuse_rationale": "Same approved MCP canonical descriptor, exact source identity, safety and execution-lane controls remain in force; no new grants or Production authority are introduced.",
-        "review_rationale": "Original four read-only Developer/Enrollment discover/info abilities must take the exact source-authored readonly descriptor branch before transport classification; if their marker/category/annotation differs they must remain unclassified. This repairs the hermetic negative test while retaining original execution and permission callbacks, authorization, grant requirements and source-lane denial for mutations."
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ability-contract-inspector.php",
+      "source_blob_sha": "73518a54533d1b041512cc06dbaf9a0060798354",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/server-descriptor-canonical-multilane-hermetic.php"
+      ],
+      "owner_role": "Repository source/CI reviewer; not production or site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Same approved MCP canonical descriptor, exact source identity, safety and execution-lane controls remain in force; no new grants or Production authority are introduced.",
+      "review_rationale": "Original four read-only Developer/Enrollment discover/info abilities must take the exact source-authored readonly descriptor branch before transport classification; if their marker/category/annotation differs they must remain unclassified. This repairs the hermetic negative test while retaining original execution and permission callbacks, authorization, grant requirements and source-lane denial for mutations."
     },
     {
-        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-direct-profile.php",
-        "source_blob_sha": "d451f54f75c35b0956c61190a2c0298a9d2ec547",
-        "control_ids": [
-            "MCP-01",
-            "SECURITY-01",
-            "GOVERNANCE-01",
-            "EXECUTION-01"
-        ],
-        "regression_tests": [
-            "tests/server-descriptor-canonical-multilane-hermetic.php"
-        ],
-        "owner_role": "Repository source/CI reviewer; no Owner approval",
-        "status": "reviewed_for_ci_only",
-        "production_authorized": false,
-        "live_evidence_required": true,
-        "needs_new_control": false,
-        "coverage_reuse_rationale": "Reuse original authenticated WordPress read permissions, source Metadata contracts, MCP and execution safety controls; no change in direct write ability behavior or grants.",
-        "review_rationale": "Source declares non-authorizing read Descriptor identity only for three preexisting read-only Direct Profile operations; registered surface stays direct, original permission callbacks and OAuth site checks remain unchanged. Two direct create/update abilities receive no read marker and remain unprojectable without original governed write-lane evidence. Same-PR executable tests assert negative tampered/mutation cases."
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-direct-profile.php",
+      "source_blob_sha": "d451f54f75c35b0956c61190a2c0298a9d2ec547",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/server-descriptor-canonical-multilane-hermetic.php"
+      ],
+      "owner_role": "Repository source/CI reviewer; no Owner approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuse original authenticated WordPress read permissions, source Metadata contracts, MCP and execution safety controls; no change in direct write ability behavior or grants.",
+      "review_rationale": "Source declares non-authorizing read Descriptor identity only for three preexisting read-only Direct Profile operations; registered surface stays direct, original permission callbacks and OAuth site checks remain unchanged. Two direct create/update abilities receive no read marker and remain unprojectable without original governed write-lane evidence. Same-PR executable tests assert negative tampered/mutation cases."
     },
     {
-        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ability-contract-inspector.php",
-        "source_blob_sha": "ae06f88c95feba440ef9d6719e3c49eb290798e5",
-        "control_ids": [
-            "MCP-01",
-            "SECURITY-01",
-            "GOVERNANCE-01",
-            "EXECUTION-01"
-        ],
-        "regression_tests": [
-            "tests/server-descriptor-canonical-multilane-hermetic.php"
-        ],
-        "owner_role": "Repository source/CI reviewer; no Owner approval",
-        "status": "reviewed_for_ci_only",
-        "production_authorized": false,
-        "live_evidence_required": true,
-        "needs_new_control": false,
-        "coverage_reuse_rationale": "Original exact Ability name, readonly annotation, source marker, category and MCP structural lane controls retained; no mutation execution, OAuth, Host or Owner gates relaxed.",
-        "review_rationale": "Extends bounded canonical Inspector classification to exactly three preexisting readonly Direct Profile names, requiring source-declared marker, read category and matching direct surface. Invalid marker, mutating readonly annotation and direct-create/direct-update are denied by the original fail-closed Descriptor path. Same-PR hermetic negative tests exercise actual Inspector and Descriptor."
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ability-contract-inspector.php",
+      "source_blob_sha": "ae06f88c95feba440ef9d6719e3c49eb290798e5",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/server-descriptor-canonical-multilane-hermetic.php"
+      ],
+      "owner_role": "Repository source/CI reviewer; no Owner approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original exact Ability name, readonly annotation, source marker, category and MCP structural lane controls retained; no mutation execution, OAuth, Host or Owner gates relaxed.",
+      "review_rationale": "Extends bounded canonical Inspector classification to exactly three preexisting readonly Direct Profile names, requiring source-declared marker, read category and matching direct surface. Invalid marker, mutating readonly annotation and direct-create/direct-update are denied by the original fail-closed Descriptor path. Same-PR hermetic negative tests exercise actual Inspector and Descriptor."
     },
     {
-        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-governed-ability-census.php",
-        "source_blob_sha": "07dd38df0606a81ee29f7abe2f91e68157ce7644",
-        "control_ids": [
-            "MCP-01",
-            "GOVERNANCE-01",
-            "EXECUTION-01",
-            "SECURITY-01",
-            "OAUTH-01"
-        ],
-        "regression_tests": [
-            "tests/server-descriptor-canonical-multilane-hermetic.php"
-        ],
-        "owner_role": "Repository security/source CI reviewer; no site owner or release authorization",
-        "status": "reviewed_for_ci_only",
-        "production_authorized": false,
-        "live_evidence_required": true,
-        "needs_new_control": false,
-        "coverage_reuse_rationale": "Original governed enrolment policy, exact first-party callback provenance, OAuth, MCP and immutable execution admission remain independently checked at use time; no grant is created by the census.",
-        "review_rationale": "The structural census now verifies one exact WordPress core Ability and original Operator convergence execute/can_access callback ancestry from its installed first-party source, plus the existing registered policy and exact callback digest. It does not execute either callback and returns no authority. A same-PR executable PHP regression tests the real original callbacks and denies swapped callbacks or missing registered policy."
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-governed-ability-census.php",
+      "source_blob_sha": "07dd38df0606a81ee29f7abe2f91e68157ce7644",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "EXECUTION-01",
+        "SECURITY-01",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "tests/server-descriptor-canonical-multilane-hermetic.php"
+      ],
+      "owner_role": "Repository security/source CI reviewer; no site owner or release authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original governed enrolment policy, exact first-party callback provenance, OAuth, MCP and immutable execution admission remain independently checked at use time; no grant is created by the census.",
+      "review_rationale": "The structural census now verifies one exact WordPress core Ability and original Operator convergence execute/can_access callback ancestry from its installed first-party source, plus the existing registered policy and exact callback digest. It does not execute either callback and returns no authority. A same-PR executable PHP regression tests the real original callbacks and denies swapped callbacks or missing registered policy."
     },
     {
-        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ability-contract-inspector.php",
-        "source_blob_sha": "bbd59376b0482705d6dd1aaae247c3458a4f0be8",
-        "control_ids": [
-            "MCP-01",
-            "GOVERNANCE-01",
-            "EXECUTION-01",
-            "SECURITY-01",
-            "OAUTH-01"
-        ],
-        "regression_tests": [
-            "tests/server-descriptor-canonical-multilane-hermetic.php"
-        ],
-        "owner_role": "Repository security/source CI reviewer; no site owner or release authorization",
-        "status": "reviewed_for_ci_only",
-        "production_authorized": false,
-        "live_evidence_required": true,
-        "needs_new_control": false,
-        "coverage_reuse_rationale": "Only exact original source-owned Operator grants callback/policy proof can bind the existing ChatGPT direct step-up transport; canonical descriptor does not issue consent, site grants or Runtime/Host authority.",
-        "review_rationale": "Canonical Inspector emits nonauthorizing enrollment descriptor only when exact original Operator first-party callback and registered write-policy proof are present; structural provider resolves through the actually mounted ChatGPT server rather than unrelated generic enrollment discovery. Original source permission_callback, executed call authorization and five-grant canonical plan/apply checks are unchanged. Executable PHP test denies swapped callbacks and missing policy and proves positive binding."
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ability-contract-inspector.php",
+      "source_blob_sha": "bbd59376b0482705d6dd1aaae247c3458a4f0be8",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "EXECUTION-01",
+        "SECURITY-01",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "tests/server-descriptor-canonical-multilane-hermetic.php"
+      ],
+      "owner_role": "Repository security/source CI reviewer; no site owner or release authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Only exact original source-owned Operator grants callback/policy proof can bind the existing ChatGPT direct step-up transport; canonical descriptor does not issue consent, site grants or Runtime/Host authority.",
+      "review_rationale": "Canonical Inspector emits nonauthorizing enrollment descriptor only when exact original Operator first-party callback and registered write-policy proof are present; structural provider resolves through the actually mounted ChatGPT server rather than unrelated generic enrollment discovery. Original source permission_callback, executed call authorization and five-grant canonical plan/apply checks are unchanged. Executable PHP test denies swapped callbacks and missing policy and proves positive binding."
     },
     {
-        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-governed-ability-census.php",
-        "source_blob_sha": "1fe5ab9f3f9d829311e89dbf701d570e88be74dc",
-        "control_ids": [
-            "MCP-01",
-            "GOVERNANCE-01",
-            "SECURITY-01",
-            "EXECUTION-01",
-            "OAUTH-01"
-        ],
-        "regression_tests": [
-            "tests/server-descriptor-canonical-multilane-hermetic.php"
-        ],
-        "owner_role": "MAD4B repository security and source reviewer — CI only; not the site/release Owner",
-        "status": "reviewed_for_ci_only",
-        "production_authorized": false,
-        "live_evidence_required": true,
-        "needs_new_control": false,
-        "coverage_reuse_rationale": "Existing exact original WordPress Ability, OAuth, MCP, execution, callback provenance and registered owner-intent controls retain independent runtime authority; structural review cannot grant consent.",
-        "review_rationale": "Adds a single exact first-party Staging Owner-intent source-owned callback pair proof for descriptor visibility. It verifies current registered core WP_Ability, exact original attest/can_remote_attest ancestry, owner_attestation_v1 broker metadata, non-Production/non-breakglass flags and first-party census digest. Same-PR PHP hermetic regression checks positive binding and negative swapped callbacks or forged broker policy. No owner intent, consent, grant, remote call or site mutation performed."
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-governed-ability-census.php",
+      "source_blob_sha": "1fe5ab9f3f9d829311e89dbf701d570e88be74dc",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "tests/server-descriptor-canonical-multilane-hermetic.php"
+      ],
+      "owner_role": "MAD4B repository security and source reviewer — CI only; not the site/release Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing exact original WordPress Ability, OAuth, MCP, execution, callback provenance and registered owner-intent controls retain independent runtime authority; structural review cannot grant consent.",
+      "review_rationale": "Adds a single exact first-party Staging Owner-intent source-owned callback pair proof for descriptor visibility. It verifies current registered core WP_Ability, exact original attest/can_remote_attest ancestry, owner_attestation_v1 broker metadata, non-Production/non-breakglass flags and first-party census digest. Same-PR PHP hermetic regression checks positive binding and negative swapped callbacks or forged broker policy. No owner intent, consent, grant, remote call or site mutation performed."
     },
     {
-        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ability-contract-inspector.php",
-        "source_blob_sha": "64278e5df7914d9cfee95954a760a63fa68e2989",
-        "control_ids": [
-            "MCP-01",
-            "GOVERNANCE-01",
-            "SECURITY-01",
-            "EXECUTION-01",
-            "OAUTH-01"
-        ],
-        "regression_tests": [
-            "tests/server-descriptor-canonical-multilane-hermetic.php"
-        ],
-        "owner_role": "MAD4B repository security and source reviewer — CI only; not the site/release Owner",
-        "status": "reviewed_for_ci_only",
-        "production_authorized": false,
-        "live_evidence_required": true,
-        "needs_new_control": false,
-        "coverage_reuse_rationale": "All original explicit source markers, callback identity checks, canonical enrollment descriptor, OAuth/owner admission and independent execution claim requirements are unchanged; no broad authorizing fallback.",
-        "review_rationale": "Binds only the independently verified original Staging Owner intent to its actually mounted ChatGPT MCP descriptor. Treats that exact proof as nonauthorizing structural source evidence; actual attest still requires Staging owner, exact client, OAuth step-up, plan digest and confirmation. Does not change descriptors for missing/foreign execute callbacks or unrelated mutation lanes; same-PR real inspector and descriptor tests assert both accepted and rejected cases."
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ability-contract-inspector.php",
+      "source_blob_sha": "64278e5df7914d9cfee95954a760a63fa68e2989",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "tests/server-descriptor-canonical-multilane-hermetic.php"
+      ],
+      "owner_role": "MAD4B repository security and source reviewer — CI only; not the site/release Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "All original explicit source markers, callback identity checks, canonical enrollment descriptor, OAuth/owner admission and independent execution claim requirements are unchanged; no broad authorizing fallback.",
+      "review_rationale": "Binds only the independently verified original Staging Owner intent to its actually mounted ChatGPT MCP descriptor. Treats that exact proof as nonauthorizing structural source evidence; actual attest still requires Staging owner, exact client, OAuth step-up, plan digest and confirmation. Does not change descriptors for missing/foreign execute callbacks or unrelated mutation lanes; same-PR real inspector and descriptor tests assert both accepted and rejected cases."
     },
     {
-        "control_ids": [
-            "MCP-01",
-            "GOVERNANCE-01",
-            "SECURITY-01",
-            "EXECUTION-01",
-            "OAUTH-01"
-        ],
-        "regression_tests": [
-            "tests/server-descriptor-canonical-multilane-hermetic.php"
-        ],
-        "owner_role": "MAD4B repository source CI reviewer, not the site or release Owner",
-        "status": "reviewed_for_ci_only",
-        "production_authorized": false,
-        "live_evidence_required": true,
-        "needs_new_control": false,
-        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-governed-ability-census.php",
-        "source_blob_sha": "d997ce9444199ad74a49a6fd9770dbf0b271bf5c",
-        "coverage_reuse_rationale": "Reuse canonical WordPress Ability, exact first-party callback ancestry, site OAuth and runtime projection controls; structural descriptor proof is neither consent nor a grant.",
-        "review_rationale": "Exact original ChatGPT Projection source has Staging-only OAuth step-up, current source-owned apply/can_apply callbacks and nonauthorizing tools/list-only metadata. Census checks exact class, real registered WP Ability object, first-party callback pair, source Contract and non-Production policy. Same-PR hermetic regression rejects swapped callbacks and authority-changing metadata; no mutable site call made."
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "tests/server-descriptor-canonical-multilane-hermetic.php"
+      ],
+      "owner_role": "MAD4B repository source CI reviewer, not the site or release Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-governed-ability-census.php",
+      "source_blob_sha": "d997ce9444199ad74a49a6fd9770dbf0b271bf5c",
+      "coverage_reuse_rationale": "Reuse canonical WordPress Ability, exact first-party callback ancestry, site OAuth and runtime projection controls; structural descriptor proof is neither consent nor a grant.",
+      "review_rationale": "Exact original ChatGPT Projection source has Staging-only OAuth step-up, current source-owned apply/can_apply callbacks and nonauthorizing tools/list-only metadata. Census checks exact class, real registered WP Ability object, first-party callback pair, source Contract and non-Production policy. Same-PR hermetic regression rejects swapped callbacks and authority-changing metadata; no mutable site call made."
     },
     {
-        "control_ids": [
-            "MCP-01",
-            "GOVERNANCE-01",
-            "SECURITY-01",
-            "EXECUTION-01",
-            "OAUTH-01"
-        ],
-        "regression_tests": [
-            "tests/server-descriptor-canonical-multilane-hermetic.php"
-        ],
-        "owner_role": "MAD4B repository source CI reviewer, not the site or release Owner",
-        "status": "reviewed_for_ci_only",
-        "production_authorized": false,
-        "live_evidence_required": true,
-        "needs_new_control": false,
-        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ability-contract-inspector.php",
-        "source_blob_sha": "5724898d6be8f11196bdbfaf36f163de8239b55c",
-        "coverage_reuse_rationale": "Canonical Descriptor and independent original execution callbacks remain unchanged; only exactly verified non-authorizing projection operation gains structural ChatGPT transport identity.",
-        "review_rationale": "Canonical Inspector recognizes one original Projection provider/source identity only when first-party Census proves genuine source callbacks and non-grant metadata. It does not broadly admit enrollment or unknown ability classes. Original Staging Site Profile, OAuth step-up and exact plan CAS are still enforced at execution. Same-PR test validates success and tampering denial."
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "tests/server-descriptor-canonical-multilane-hermetic.php"
+      ],
+      "owner_role": "MAD4B repository source CI reviewer, not the site or release Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ability-contract-inspector.php",
+      "source_blob_sha": "5724898d6be8f11196bdbfaf36f163de8239b55c",
+      "coverage_reuse_rationale": "Canonical Descriptor and independent original execution callbacks remain unchanged; only exactly verified non-authorizing projection operation gains structural ChatGPT transport identity.",
+      "review_rationale": "Canonical Inspector recognizes one original Projection provider/source identity only when first-party Census proves genuine source callbacks and non-grant metadata. It does not broadly admit enrollment or unknown ability classes. Original Staging Site Profile, OAuth step-up and exact plan CAS are still enforced at execution. Same-PR test validates success and tampering denial."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
@@ -22657,8 +22657,7 @@
       "coverage_reuse_rationale": "Same existing Core MCP and exact first-party Direct Profile callback, final execution fence, OAuth bearer, step-up scope, WordPress capability and enrolled Staging mode apply. No provider grants or new Write lane are introduced.",
       "review_rationale": "Correct the 41/43 live MCP registered tool discrepancy: two first-party Direct post mutations already passed census callback and final fence checks but provider resolution returned null. Bind core provider ONLY for the two exact Direct Profile names with a genuine registered WP_Ability and the existing census check; foreign direct tools and governed write remain unaffected. Full WordPress MCP protocol and negative tests validate the result.",
       "execution_note": "Non-authorizing source coverage; exact-head MCP and OAuth integration, Original release admission, independent Owner decision, and live Staging acceptance remain separate requirements."
-    }
-  ,
+    },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-registration-evidence.php",
       "source_blob_sha": "871a2851f92d36c22d90ea9d9a8302e943881d3a",
@@ -22721,8 +22720,7 @@
       "coverage_reuse_rationale": "Reuse original first-party MCP callback provenance, verified canonical descriptor hashes, final execution fence, governed NHI/one-time approval and exact OAuth bearer checks; this coverage record creates no permissions or deployment rights.",
       "review_rationale": "Expose how many canonical descriptors were quarantined and whether an Enrollment/ChatGPT tool list is degraded. This is a shallow, observational admin-status field only; it cannot assert external OAuth session readiness or confer ability execution authority.",
       "execution_note": "CI-only exact source identity; real OAuth/MCP runtime, independent Release Owner and signed deployment proof are still required."
-    }
-  ,
+    },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-runtime-conflict-guard.php",
       "source_blob_sha": "d1236451a7325815f6f4afba407d929579697582",
@@ -22743,8 +22741,7 @@
       "coverage_reuse_rationale": "Existing guarded non-Production maintenance authorization, official MCP adapter integrity, audit readiness, lease and next-request MU bootstrap remain mandatory. A source-review record creates no runtime authority.",
       "review_rationale": "Fix explicit governed MCP recovery where a foreign loaded validator class produces mixed_runtime with actual provenance failures, yet collision_risk_detected and original-class blocker were incorrectly left false because $mixed was constant false. Derive mixed exclusively from real failing mixed-runtime evidence; ordinary requests stay observational and no recovery is auto-started. A changed same-PR integration test asserts the loaded foreign class and exact mismatch denial.",
       "execution_note": "CI-only source coverage; the two real WordPress runtimes must independently prove mixed-runtime repair and later clean-request recovery."
-    }
-  ,
+    },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-runtime-conflict-guard.php",
       "source_blob_sha": "163737b31009e1de791f11559c8ce804d98eb8f5",
@@ -22862,6 +22859,46 @@
       "review_rationale": "A future owner-approved role migration revision removes unintended manage_woocommerce from the Master Admin stored role while keeping operations permissions and denying Production migration. The source fixture verifies no auto Production mutation, existing Staging owner browser consent, and absence of global WordPress administrator escalation."
     },
     {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-runtime-certification.php",
+      "source_blob_sha": "9d483a66dc0e4012ec942b05d5e9c844e64ff730",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01",
+        "GOVERNANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/master-admin-skill-readiness-hermetic.php"
+      ],
+      "owner_role": "MAD4B CI-only source-integrity reviewer; independent company owner and native release gate retain authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source-only Skills, Admin, Browser and performance controls already cover the bounded change; runtime identity, original execution grants and Production approval remain independent.",
+      "review_rationale": "Exact reviewed successor adds an explicitly company-local operations-ready status independent of optional external App binding and Production editor authoring, retaining original full-stack certificate fail-closed and all execution grants false. This is source-CI-only review, not a Production deployment or authorization."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skills-admin-ui.php",
+      "source_blob_sha": "59b685b92c0a7e009dc8d97cf878f810fe676584",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/master-admin-skill-operations-hermetic.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/master-admin-skill-coverage-hermetic.php"
+      ],
+      "owner_role": "MAD4B CI-only source-integrity reviewer; independent company owner and native release gate retain authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source-only Skills, Admin, Browser and performance controls already cover the bounded change; runtime identity, original execution grants and Production approval remain independent.",
+      "review_rationale": "Exact reviewed successor shows operational local Skill catalog ready while exposing external ChatGPT App as optional and unavailable until company binding. Keeps original administrator-only editor/POST gates, company scope and read-only access; separately reports full historical external certificate. No role or grant changes."
+    },
+    {
       "path": "wp-content/plugins/mad4b-site-control-plane/config/wordpress-addon-catalog.json",
       "source_blob_sha": "a356781f9fab0f3fc0f0eb2e315e0bca4ccb4235",
       "control_ids": [
@@ -22872,7 +22909,7 @@
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/wordpress-addon-execution-guard-contract.php"
       ],
-      "owner_role": "MAD4B policy source reviewer \u2014 nonauthorizing CI",
+      "owner_role": "MAD4B policy source reviewer — nonauthorizing CI",
       "review_rationale": "The invalid static staging ring is replaced by a strict company Site Profile and exact pair derived policy. The catalog has no certified pairs; without independent provider and owner evidence it cannot grant execution. Original invalid rings, foreign UUID and profile-digest drifts deny.",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,

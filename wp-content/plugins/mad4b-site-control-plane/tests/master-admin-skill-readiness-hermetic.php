@@ -7,6 +7,8 @@ $c=array_fill_keys($names,true);$c['profile_app_mapping_bound']=false;$c['editor
 $n=0;function yes($v,$name){global $n;if(!$v){fwrite(STDERR,"FAIL: $name\n");exit(1);}echo "PASS: $name\n";++$n;}
 $x=MAD4B_SCP_Skill_Runtime_Certification::capability_readiness($c);
 yes($x['catalog_read_ready']===true,'production catalog read independent of editor');
+yes($x['local_operations_ready']===true,'local operations remain ready with app unbound and editor disabled');
+yes($x['external_app_required_for_local_operations']===false,'ChatGPT app explicitly optional for company-local use');
 yes($x['external_app_projection_ready']===false,'missing real App mapping blocks MCP projection');
 yes($x['authoring_ready']===false,'editor remains disabled');
 yes($x['editor_disabled_by_policy']===true,'disabled editor classified correctly');

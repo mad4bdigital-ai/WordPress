@@ -17,6 +17,19 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/integration-pr415-pr416-pr420-pr421-contract.py"
       ],
       "review_rationale": "Exact reviewed extension of the disposable WordPress admin-page smoke to five newly registered company pages; preserves authenticated and unauthenticated checks, malformed input checks, nonce checks and zero outbound requests. Non-authorizing source evidence only; neither historical delivery hashes nor runtime/write/Owner release policies changed."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php",
+      "prior_source_blob_sha": "ae5fb3221fe82ac7629c300e2194e31465912af7",
+      "source_blob_sha": "8302918191b3786c445d3ee4be17ee3df6c347cc",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-pr415-pr416-pr420-pr421-contract.py"
+      ],
+      "review_rationale": "Append-only reviewed exact Git blob for disposable WP admin page smoke, extending authenticated company-scoped render test of mad4b-skills-operations. Existing nonce, malformed request and unauthenticated checks remain intact. Does not modify earlier historical fingerprints or grant a Production release, Owner approval, role capability, or mutation."
     }
   ]
 }

@@ -33,7 +33,7 @@ class MAD4B_SCP_Skill_Runtime_Certification {
  public static function current_status(){return ['checks'=>['skills_feature_enabled'=>true],'blockers'=>['profile_app_mapping_mismatch']];}
  public static function persisted_status(){return ['ready'=>false,'build_identity_current'=>true];}
  public static function capability_readiness(array $x){return [
-  'catalog_read_ready'=>true,'external_app_projection_ready'=>false,'authoring_ready'=>false,
+  'catalog_read_ready'=>true,'local_operations_ready'=>true,'external_app_required_for_local_operations'=>false,'external_app_projection_ready'=>false,'authoring_ready'=>false,
   'editor_disabled_by_policy'=>true,'catalog_blockers'=>[],
   'external_app_blockers'=>['profile_app_mapping_mismatch'],'authoring_blockers'=>[]
  ];}
@@ -47,6 +47,9 @@ ok($GLOBALS['calls']===0,'Unauthorized request triggers no registry or provider 
 $GLOBALS['allowed']=true;
 $r=MAD4B_SCP_Skills_Admin_UI::operations_snapshot();
 ok($r['read_only'] && $r['authority_effect']==='none','Snapshot is explicitly non-authorizing');
+ok($r['local_operations_ready']===true,'Local operations ready independent of optional App');
+ok($r['app_binding_optional_for_local_operations']===true,'Optional App is not a required operation');
+
 ok($r['catalog_count']===2 && $r['catalog_enabled_count']===1,'Enabled and total counts are distinct');
 ok($r['profile_skills_enabled']===true,'Live feature state not mistaken for stale persisted certificate');
 ok($r['historical_certificate_ready']===false,'Historical certificate remains historical');
@@ -63,7 +66,10 @@ ob_start();
 MAD4B_SCP_Skills_Admin_UI::render_operations_page();
 $html=ob_get_clean();
 ok(strpos($html,'wordpress-site-diagnostics')!==false,'Manager sees available Skills');
-ok(strpos($html,'profile_app_mapping_mismatch')!==false,'Manager sees exact unresolved binding');
+ok(strpos($html,'External ChatGPT App connection is optional and currently deferred')!==false,
+ 'Manager sees optional App connection notice without a blocking requirement');
+ok(strpos($html,'<h2>Required checks</h2>')===false,
+ 'Optional App and editor-off policy cannot create a required local-operation blocker');
 ok(strpos($html,'Skill authoring (administrator only)')===false,'Manager has no editor link');
 ok(strpos($html,'name="mad4b_skill_action"')===false,'Dashboard never exposes write forms');
 ok(strpos($html,'https://company.test')!==false,'Dashboard uses current company rather than source hard-code');

@@ -130,6 +130,9 @@ final class MAD4B_SCP_Skills_Admin_UI {
 			'catalog_enabled' => ! empty( $status['catalog_enabled'] ),
 			'coverage' => $coverage,
 			'capability_readiness' => $dimensions,
+			'local_operations_ready' => ! empty( $dimensions['local_operations_ready'] )
+				&& ! empty( $role_caps['mad4b_manage_company_operations'] ),
+			'app_binding_optional_for_local_operations' => true,
 			'live_blockers' => array_values( (array) ( $live['blockers'] ?? array() ) ),
 			'historical_certificate_ready' => ! empty( $persisted['ready'] ),
 			'historical_certificate_build_current' => ! empty( $persisted['build_identity_current'] ),
@@ -148,7 +151,7 @@ final class MAD4B_SCP_Skills_Admin_UI {
 	/** Exact-code explanation, never a self-grant or automatic repair. */
 	public static function explain_operations_blocker( $code ) {
 		$hints = array(
-			'profile_app_mapping_mismatch' => 'Bind a verified ChatGPT App ID to this exact company Site Profile; never copy another company App ID.',
+			'profile_app_mapping_mismatch' => 'Optional: register a verified company ChatGPT App only if external MCP projection is needed. Local Skills and Master Admin operations work independently.',
 			'site_profile_skills_disabled' => 'Check current Site Profile state before touching feature flags; historical certificates can be stale.',
 			'skill_editor_disabled' => 'Production Skill authoring is disabled by policy, not necessarily the read catalog.',
 			'seed_pack_ready' => 'Review exact canonical Skill seed digests before authorized reconciliation.',
@@ -172,11 +175,12 @@ final class MAD4B_SCP_Skills_Admin_UI {
 		echo '<p><strong>' . esc_html__( 'Company:', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html( $view['company_origin'] ) . '</p>';
 		echo '<table class="widefat striped"><thead><tr><th>Operating dimension</th><th>Live state</th></tr></thead><tbody>';
 		$rows = array(
+			'Local Skills & Master Admin operations' => ! empty( $view['local_operations_ready'] ) ? 'Ready (no ChatGPT App required)' : 'Needs catalog or role repair',
 			'Company Skill catalog' => ! empty( $d['catalog_read_ready'] ) ? 'Ready to read' : 'Needs repair',
-			'ChatGPT App binding' => ! empty( $d['external_app_projection_ready'] ) ? 'Bound' : 'Unverified / unavailable',
-			'Skill authoring' => ! empty( $d['authoring_ready'] ) ? 'Enabled' : 'Disabled / not eligible',
+			'External ChatGPT App (optional)' => ! empty( $d['external_app_projection_ready'] ) ? 'Connected' : 'Not connected; local operation unaffected',
+			'Skill authoring' => ! empty( $d['authoring_ready'] ) ? 'Enabled' : 'Disabled by environment policy',
 			'Catalog size (enabled / total)' => $view['catalog_enabled_count'] . ' / ' . $view['catalog_count'],
-			'Historical certificate' => $view['historical_certificate_ready'] ? 'Previously ready (not live evidence)' : 'Previous result blocked',
+			'Historical full-stack certificate' => $view['historical_certificate_ready'] ? 'Previously ready (not live evidence)' : 'Incomplete for external integration; not local read access',
 			'Skill execution authority' => 'None conferred by Skills',
 		);
 		foreach ( $rows as $name => $value ) {
@@ -193,8 +197,16 @@ final class MAD4B_SCP_Skills_Admin_UI {
 			}
 			echo '</ul></div>';
 		}
-		$issues = array_merge( (array)( $d['catalog_blockers'] ?? array() ),
-			(array)( $d['external_app_blockers'] ?? array() ), (array)( $d['authoring_blockers'] ?? array() ) );
+		// This section contains only local-operation requirements. Do not
+		// classify optional external App binding or Production editor policy
+		// as errors for a company that needs read-only managed Skills.
+		$issues = (array)( $d['catalog_blockers'] ?? array() );
+		if ( ! empty( $view['app_binding_optional_for_local_operations'] )
+			&& empty( $d['external_app_projection_ready'] ) ) {
+			echo '<div class="notice notice-info inline"><p>' .
+				esc_html__( 'External ChatGPT App connection is optional and currently deferred. Local managed Skills, task matching and planning are independent. MCP App projection is unavailable until verified company binding.', 'mad4b-site-control-plane' ) .
+				'</p></div>';
+		}
 		if ( ! empty( $d['editor_disabled_by_policy'] ) ) {
 			echo '<div class="notice notice-info inline"><p>' . esc_html__( 'Skill editing is deliberately disabled; this does not by itself block catalog reading.', 'mad4b-site-control-plane' ) . '</p></div>';
 		}
