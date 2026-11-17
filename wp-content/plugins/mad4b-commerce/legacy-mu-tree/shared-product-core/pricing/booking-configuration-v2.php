@@ -2,8 +2,7 @@
 /** Booking Configuration v2: server-only validated price preview, not checkout authority. */
 if (!defined('ABSPATH'))return;
 $mad4bBookingPreviewEnabled=(defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true)
- || ((defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true)
-  && (defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true));
+ || (defined('MAD4B_BOOKING_V2_READONLY_ENABLED') && MAD4B_BOOKING_V2_READONLY_ENABLED===true);
 if (!$mad4bBookingPreviewEnabled)return;
 require_once __DIR__.'/rate-date-eligibility-readonly-v1.php';
 require_once __DIR__.'/extra-source-quote.php';

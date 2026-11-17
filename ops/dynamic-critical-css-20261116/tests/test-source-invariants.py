@@ -36,9 +36,10 @@ checks=[
   'CSS_IDLE_ADMISSION' in run and run.index('CSS_IDLE_ADMISSION')<run.index('stamp=$(date -u')),
  ('browser negative QA is a successful native-CSS HOLD',
   'no fully certified language in batch; fair queue advances' in run),
- ('both renewal timers retry each 15 minutes with company stagger',
+ ('source renewal remains bounded 15m while Wayfa degraded-home retries every 5m',
   '*:05,20,35,50:00 UTC' in (p/'systemd/mad4b-critical-css-source.timer').read_text()
-  and '*:12,27,42,57:00 UTC' in (p/'systemd/mad4b-critical-css-wayfa.timer').read_text()),
+  and '*:02/5:00 UTC' in (p/'systemd/mad4b-critical-css-wayfa.timer').read_text()
+  and 'RandomizedDelaySec=15' in (p/'systemd/mad4b-critical-css-wayfa.timer').read_text()),
 
  ('legacy Wayfa publisher explicitly uses strict existing v1 adapter',
   'MAD4B_CSS_NATIVE_V1_COMPAT' in run and 'MANIFEST_VERSION' in run and

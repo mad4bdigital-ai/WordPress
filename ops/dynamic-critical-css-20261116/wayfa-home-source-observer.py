@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Read-only trigger for true live EN/ES CSS changes. Never issues a certificate."""
-import hashlib,json,os,re,sys,tempfile,time
+import hashlib,json,os,re,sys,tempfile,time,importlib.util
 from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import urljoin,urlsplit
@@ -64,6 +64,14 @@ def atomic(file,obj):
   os.replace(temp,file)
  finally:
   if os.path.exists(temp):os.unlink(temp)
+def observation_cooldown(now):
+ # Pure verified source readback; never issues a browser certificate.
+ policy=Path(__file__).resolve().parent/'home-source-poll-policy-v2.py'
+ if policy.is_symlink() or not policy.is_file() or policy.stat().st_size>16384:
+  raise ValueError('untrusted-home-source-poll-policy')
+ spec=importlib.util.spec_from_file_location('wayfa_source_poll_policy',policy)
+ module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+ return module.cooldown(now)
 def observe(now=None):
  now=int(time.time() if now is None else now)
  state=json.loads((REPORT/'current-site.json').read_text())
@@ -76,7 +84,9 @@ def observe(now=None):
  old=json.loads(ledger.read_text()) if ledger.is_file() else {}
  if old and (old.get('contract')!=CONTRACT or old.get('host')!=HOST):
   raise ValueError('foreign-observation-ledger')
- if now-int(old.get('checked_at',0))<3600:
+ # A confirmed `CSS-Ready:0` lets source drift detection retry every
+ # five minutes; healthy/untrusted context retains the original hour.
+ if now-int(old.get('checked_at',0))<observation_cooldown(now):
   return 'cooled',old.get('fingerprint','')
  rows={l:inspect(l) for l in ('en','es')}
  key=fingerprint(rows)

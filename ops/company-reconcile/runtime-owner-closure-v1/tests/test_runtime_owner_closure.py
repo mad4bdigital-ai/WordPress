@@ -45,7 +45,16 @@ class CompanyRuntimeOwnerClosureTests(unittest.TestCase):
            ('mad4b-jetengine','mad4b-jetengine.php','1.0.0')):
             module=BASE/name/entry
             self.assertTrue(module.is_file())
-            self.assertIn('Version: '+version,module.read_text())
+            # Original signed receipt is anchored to an immutable ancestor.
+            # A later source HEAD may legitimately declare a newer version;
+            # do not pretend that mutable HEAD remains the historical release.
+            original=historic_git_blob(f'wp-content/plugins/{name}/{entry}').decode()
+            self.assertIn('Version: '+version,original)
+            current=module.read_text()
+            match=re.search(r'\bVersion:\s*(\d+)\.(\d+)\.(\d+)',current)
+            self.assertIsNotNone(match,name)
+            self.assertGreaterEqual(tuple(map(int,match.groups())),
+                                    tuple(map(int,version.split('.'))),name)
 
     def test_source_fingerprint_receipts_match_without_hidden_overwrites(self):
         r=self.report
@@ -109,12 +118,43 @@ class CompanyRuntimeOwnerClosureTests(unittest.TestCase):
                 nextfile=(f.parent/dep).resolve()
                 self.assertTrue(nextfile.is_relative_to(COM.resolve()))
                 queue.append(nextfile)
-        self.assertEqual(len(seen),23)
+        # Validate BOTH historical dependency graph and current additive
+        # source. Four reviewed read-only Presentation modules were introduced
+        # after the immutable 23-node Commerce ancestor.
+        historical_seen=set()
+        historical_queue=['wp-content/plugins/mad4b-commerce/mad4b-commerce.php']
+        while historical_queue:
+            path=historical_queue.pop()
+            if path in historical_seen:continue
+            historical_seen.add(path)
+            source=historic_git_blob(path).decode()
+            for dep in pat.findall(source):
+                child=(Path(path).parent/dep).as_posix()
+                self.assertTrue(child.startswith('wp-content/plugins/mad4b-commerce/'),child)
+                historical_queue.append(child)
+        self.assertEqual(len(historical_seen),23)
+        current_seen={f.relative_to(ROOT).as_posix() for f in seen}
+        expected_additive={
+            'wp-content/plugins/mad4b-commerce/modules/presentation/company-booking-v2-readonly-bootstrap-v1.php',
+            'wp-content/plugins/mad4b-commerce/modules/presentation/company-runtime-capability-contract-v1.php',
+            'wp-content/plugins/mad4b-commerce/modules/presentation/native-rate-runtime-owner-v1.php',
+            'wp-content/plugins/mad4b-commerce/modules/presentation/shared-tour-card-price-recovery-v1.php',
+        }
+        self.assertEqual(current_seen-historical_seen,expected_additive)
+        self.assertFalse(historical_seen-current_seen)
+        self.assertEqual(len(seen),27)
         bootstrap=(COM/'mad4b-commerce.php').read_text()
+        historical_bootstrap=historic_git_blob(
+            'wp-content/plugins/mad4b-commerce/mad4b-commerce.php').decode()
+        # The immutable original bootstrap owned the native rate-tag fallback;
+        # latest Presentation Runtime has a single separate source owner.
+        self.assertIn('tour-component-structured-price-tags.php',historical_bootstrap)
+        self.assertIn("function_exists('tour_component_structured_price_value')",
+                      historical_bootstrap)
+        self.assertIn('require_once $module',historical_bootstrap)
         self.assertIn('362-mad4b-booking-pickup-fields.php',bootstrap)
-        self.assertIn('tour-component-structured-price-tags.php',bootstrap)
-        self.assertIn("function_exists('tour_component_structured_price_value')",bootstrap)
-        self.assertIn('require_once $module',bootstrap)
+        self.assertIn('company-booking-v2-readonly-bootstrap-v1.php',bootstrap)
+        self.assertIn('native-rate-runtime-owner-v1.php',bootstrap)
         self.assertTrue((COM/'modules/commerce/362-mad4b-booking-pickup-fields.php').is_file())
         self.assertEqual(hashlib.sha256((COM/'modules/commerce/tour-component-structured-price-tags.php').read_bytes()).hexdigest(),
                          '4e4ef66c60846d8a58365e4b7abbcd08d7314bd1af084df357be17e2ddce78a7')

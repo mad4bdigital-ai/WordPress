@@ -1,6 +1,6 @@
 <?php
 /** Generic server-authoritative composite booking preview. Lab only; not a checkout price. */
-if (!defined('ABSPATH') || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
+if (!defined('ABSPATH') || (!((defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED === true) || (defined('MAD4B_BOOKING_V2_READONLY_ENABLED') && MAD4B_BOOKING_V2_READONLY_ENABLED === true)))) return;
 function shared_product_composite_quote($rate_id, $audience, $occupancy, $options = []) {
     if (!is_array($options)) return new WP_Error('invalid_booking_options');
     $currency = isset($options['currency']) && is_string($options['currency']) ? strtoupper($options['currency']) : null;

@@ -1,0 +1,26 @@
+name: MAD4B Company Reconcile Safe Admission and Observer
+on:
+  pull_request:
+    paths:
+      - 'ops/company-reconcile-inventory-bounded-gate-v1/**'
+      - '.github/workflows/mad4b-company-reconcile-host-observer.yml'
+      - 'docs/runtime/company-reconcile-inventory-safe-windows-20261117.md'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: mad4b-company-inventory-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+jobs:
+  python-observation-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: No credentials, no force admission, and no fake native receipts
+        run: |
+          python3 -m unittest discover -s ops/company-reconcile-inventory-bounded-gate-v1 -p 'test_*.py' -v
+          python3 -m py_compile ops/company-reconcile-inventory-bounded-gate-v1/*.py

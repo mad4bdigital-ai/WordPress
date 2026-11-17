@@ -36,6 +36,15 @@ with tempfile.TemporaryDirectory() as t:
   ok('first exact two-locale CSS source signal is recorded','changed'==action and len(key)==64)
   action2,key2=m.observe(now=100200)
   ok('15-minute timer skips duplicate HTTP observation',action2=='cooled' and key2==key)
+  # Independent degraded-health proof can shorten *observation* latency
+  # without weakening the actual Chromium CSS certificate QA.
+  old_cooldown=m.observation_cooldown
+  try:
+   m.observation_cooldown=lambda now:300
+   action_fast,key_fast=m.observe(now=100301)
+   ok('degraded mobile home probes source CSS after five minutes without browser',
+      action_fast=='stable' and key_fast==key)
+  finally:m.observation_cooldown=old_cooldown
   state=json.loads((tmp/'home-current-css-source.json').read_text())
   ok('private route proof is explicitly not a certificate',
     state['scope']=='trigger-fresh-browser-QA-only-not-a-certificate' and
@@ -57,7 +66,7 @@ with tempfile.TemporaryDirectory() as t:
    source_event=g.digest(source,manifest,consumer,'source')
    ok('source site never inherits Wayfa CSS observation',g.observed_home_source_key('source') is None)
    m.inspect=lambda l:dict(got,route='/' if l=='en' else '/es/',sha256='f'*64)
-   action3,next_key=m.observe(now=103700)
+   action3,next_key=m.observe(now=104000)
    ok('new source bytes cause a new bounded QA-only dependency signal',
       action3=='changed' and next_key!=key and g.observed_home_source_key('wayfa')==next_key)
    ok('real Wayfa CSS mutation invalidates home QA event digest',

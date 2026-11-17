@@ -139,6 +139,16 @@ def run_core(site):
     base=ROOT/'reports/public-critical-css-v1'/site
     base.mkdir(parents=True,exist_ok=True,mode=0o700)
     a=locked('/run/lock/mad4b-public-critical-css-'+site+'.lock')
+    # Home owns first recovery opportunity while native full CSS is in use.
+    # Advisory evidence is local and per-company; no queue item is consumed.
+    if site=='wayfa':
+        import importlib.util
+        spec=importlib.util.spec_from_file_location('home_css_priority',TOOLS/'home-recovery-priority.py')
+        priority=importlib.util.module_from_spec(spec);spec.loader.exec_module(priority)
+        policy,reason=priority.from_file()
+        if policy=='defer':
+            print('DEFER_PUBLIC_CCSS_HOME_RECOVERY',site,reason)
+            return
     try:b=locked('/run/lock/mad4b-native-lazy-browser-global.lock')
     except BlockingIOError:
         print('SKIP_PUBLIC_CCSS_BROWSER_BUSY',site);return

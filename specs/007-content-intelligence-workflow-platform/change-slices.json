@@ -4,8 +4,8 @@
   "reviewed_base_sha": "5c72e4893e36e992f056c90cfc75908b3a8f7785",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 2514,
-  "changed_paths_sha256": "08a2a8c6f28be369c88adda39578ec3786793ac1d44376e6ed98908283aa3bce",
+  "changed_file_count": 2608,
+  "changed_paths_sha256": "ffeca1fb03663bea4c48d85062e1de45facbcdd625c89ce9432455fc943ec96f",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -1123,7 +1123,8 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/skill-task-abilities-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/test_materialize_certified_mcp_adapter_source.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/unified-capability-sources-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/write-dispatch-nested-transport-contract.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/write-dispatch-nested-transport-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-mixed-class-recovered.php"
       ]
     },
     {
@@ -5054,6 +5055,251 @@
       "authorizing": false,
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/tests/wordpress-lifecycle-migration-contract.py"
+      ]
+    },
+    {
+      "id": "site-owned-wordpress-cron-reconciliation",
+      "semantic_unit": "Site-local WP-Cron source, host drain proof and bounded callback backlog observation.",
+      "revert_boundary": "Revert local host and site-owned worker proofs together; never re-enable cross-host Cron or disable WordPress request scheduling.",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/host-aware-cron-20261117/CRON-INCIDENT-20261117.md",
+        "ops/host-aware-cron-20261117/mad4b-cron-callback-observer.php",
+        "ops/host-aware-cron-20261117/tests/test-cache-drain-integration.php",
+        "ops/host-aware-cron-20261117/tests/test-cache-lifecycle-cron-budget.php",
+        "ops/site-local-cron-runtime-20261117/README.md",
+        "ops/site-local-cron-runtime-20261117/site-cron-execution-policy-v1.json",
+        "ops/site-local-cron-runtime-20261117/tests/test-no-central-remote-cron.py",
+        "ops/site-local-cron-runtime-20261117/tests/test-site-cron-runtime.php",
+        "wp-content/mu-plugins/mad4b-site-local-cron-runtime-v1.php"
+      ]
+    },
+    {
+      "id": "form6-booking-context-and-stay-proof",
+      "semantic_unit": "Unified applied-date price source, original Form #6 write constraints, and verified rate-local stay selection for two company overlays.",
+      "revert_boundary": "Revert Form #6 source adapters, per-site overlays, topology reports and their tests together; do not alter paid orders or booking authority.",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/reports/form6-booking-context-20261117-live-acceptance.md",
+        "ops/reports/form6-booking-context-20261117-stay-topology.md",
+        "ops/reports/form6-canonical-date-and-signed-stay-20261117.md",
+        "ops/reports/form6-stay-topology-tours-dev-20261117.json",
+        "ops/reports/form6-stay-topology-wayfatours-20261117.json",
+        "ops/site-company-overlays/tours-dev/booking-context-unified-v1/wp-content/mu-plugins/shared-product-core/assets/presentation-selection-state-v1.js",
+        "ops/site-company-overlays/tours-dev/booking-context-unified-v1/wp-content/plugins/mad4b-commerce/modules/commerce/362-mad4b-booking-pickup-fields.php",
+        "ops/site-company-overlays/tours-dev/booking-context-unified-v1/wp-content/plugins/mad4b-commerce/modules/compat/local-presentation-fluent-projection-v1.php",
+        "ops/site-company-overlays/wayfatours/booking-context-unified-v1/wp-content/plugins/mad4b-commerce/modules/commerce/362-mad4b-booking-pickup-fields.php",
+        "ops/site-company-overlays/wayfatours/booking-context-unified-v1/wp-content/plugins/mad4b-commerce/modules/compat/local-presentation-fluent-projection-v1.php",
+        "packages/mad4b-shared-product-core/mu-plugins/shared-product-core/adapters/presentation-form6-date-normalization-v1.php",
+        "packages/mad4b-shared-product-core/mu-plugins/shared-product-core/adapters/presentation-form6-occupancy-policy-v1.php",
+        "packages/mad4b-shared-product-core/mu-plugins/shared-product-core/adapters/presentation-form6-price-quote-v1.php",
+        "packages/mad4b-shared-product-core/mu-plugins/shared-product-core/adapters/presentation-form6-source-context-v1.php",
+        "packages/mad4b-shared-product-core/mu-plugins/shared-product-core/adapters/presentation-form6-stay-options-v1.php",
+        "packages/mad4b-shared-product-core/mu-plugins/shared-product-core/assets/presentation-fluent-projection-v1.js",
+        "packages/mad4b-shared-product-core/mu-plugins/shared-product-core/assets/presentation-fluent-quote-v1.js",
+        "packages/mad4b-shared-product-core/mu-plugins/shared-product-core/assets/presentation-selection-state-v1.js",
+        "tests/form6-date-canonical-wpcli-smoke.php",
+        "tests/test_form6_booking_context_source_contract.py",
+        "tools/audit_form6_stay_topology.php"
+      ]
+    },
+    {
+      "id": "wpml-rate-same-currency-parity",
+      "semantic_unit": "WPML latest-revision price metadata parity with same-currency and parent-Tour trust, plus bounded native host integrity checks.",
+      "revert_boundary": "Revert the Rate parity MU hook, cron runner, test and report together while preserving per-market currency decisions.",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/reports/wpml-rate-price-language-parity-20261117.md",
+        "ops/runtime/rate-price-language-parity/cron.d.mad4b-tour-rate-language-parity",
+        "ops/runtime/rate-price-language-parity/reconcile.sh",
+        "tests/test_wpml_rate_price_parity_contract.py",
+        "wp-content/mu-plugins/432-mad4b-rate-price-language-parity-v1.php"
+      ]
+    },
+    {
+      "id": "company-runtime-capability-parity",
+      "semantic_unit": "Native company-wide runtime capability contracts and deterministic core parity QA.",
+      "revert_boundary": "Revert company runtime contract, source parity proof and QA together without changing tenant privileges.",
+      "certification": "exact_head",
+      "path_globs": [
+        ".github/workflows/mad4b-company-runtime-capability-contract.yml",
+        "docs/runtime/company-capability-contract-20261117.md",
+        "tests/mad4b-company-runtime-capability-hermetic.php",
+        "tests/test_company_core_parity.py",
+        "tools/verify-company-core-parity.py",
+        "wp-content/plugins/mad4b-commerce/modules/presentation/company-runtime-capability-contract-v1.php"
+      ]
+    },
+    {
+      "id": "native-rate-card-presentation-recovery",
+      "semantic_unit": "Native Tour Rate presentation and featured card price fallback, original cache and multilingual rules.",
+      "revert_boundary": "Revert price card and Native Rate UI together; do not modify order totals or stored Rate prices.",
+      "certification": "exact_head",
+      "path_globs": [
+        ".github/workflows/mad4b-featured-price-safeguard.yml",
+        "docs/wayfatours/featured-price-autorecovery-manual-20261117.md",
+        "tests/mad4b-native-rate-runtime-owner-hermetic.php",
+        "tests/mad4b-native-tour-card-price-tags-hermetic.php",
+        "tests/mad4b-tour-card-price-cache-reconcile-hermetic.php",
+        "wp-content/plugins/mad4b-commerce/modules/presentation/mad4b-tour-multilingual-interface-v1.php",
+        "wp-content/plugins/mad4b-commerce/modules/presentation/native-rate-runtime-owner-v1.php",
+        "wp-content/plugins/mad4b-commerce/modules/presentation/shared-tour-card-price-recovery-v1.php"
+      ]
+    },
+    {
+      "id": "booking-v2-form6-commerce-compatibility",
+      "semantic_unit": "Booking V2 and Form 6 Presentation read-only compatibility from original commerce source with live code.",
+      "revert_boundary": "Revert original booking compatibility preview, date source mirrors and hermetic contract tests together; never relax financial authority.",
+      "certification": "exact_head",
+      "path_globs": [
+        "docs/runtime/booking-v2-form6-unified-readonly-20261117.md",
+        "tests/mad4b-booking-v2-form6-readonly-hermetic.php",
+        "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/presentation-form6-date-normalization-v1.php",
+        "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/presentation-form6-source-context-v1.php",
+        "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/booking-configuration-quote-readonly-v2.php",
+        "wp-content/plugins/mad4b-commerce/modules/presentation/company-booking-v2-readonly-bootstrap-v1.php"
+      ]
+    },
+    {
+      "id": "pr814-dynamic-skills-environment-neutral-exact-provider",
+      "semantic_unit": "Reviewed Staging/Production source provider map, scoped identity and grant approval guards with negative tests.",
+      "revert_boundary": "Revert source provider mapping, test and report together; do not create/revoke actual site authority.",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/reports/pr814-dynamic-skills-environment-parity-20261117.md",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-dynamic-skills-exact-provider-review-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-grant-reviewed-inventory-runtime.php"
+      ]
+    },
+    {
+      "id": "pr814-shared-product-source-snapshot-immutable-lineage",
+      "semantic_unit": "Preserve exact previously frozen Shared Product Core source history and create a new nondeploying source-only snapshot.",
+      "revert_boundary": "Revert only the new snapshot boundary and source manifest update, never edit the prior immutable snapshot evidence.",
+      "certification": "exact_head",
+      "path_globs": [
+        "packages/mad4b-shared-product-core/docs/snapshots/0.1.1-dev.20261113/release-manifest.json",
+        "packages/mad4b-shared-product-core/docs/snapshots/0.1.1-dev.20261113/source-files.sha256"
+      ]
+    },
+    {
+      "id": "wayfa-performance-continuity-watchdog-v2",
+      "semantic_unit": "Concurrent Wayfatours home-route first-paint performance continuity with guarded retries, event gate and service observations.",
+      "revert_boundary": "Revert home retry watchdog, systemd service/timer and exact tests together; preserve existing critical CSS authority and low-impact site monitoring.",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/dynamic-critical-css-20261116/PERFORMANCE-CONTINUITY-V2.md",
+        "ops/dynamic-critical-css-20261116/home-recovery-priority.py",
+        "ops/dynamic-critical-css-20261116/performance-continuity-watchdog.py",
+        "ops/dynamic-critical-css-20261116/systemd/mad4b-performance-continuity-wayfa.service",
+        "ops/dynamic-critical-css-20261116/systemd/mad4b-performance-continuity-wayfa.timer",
+        "ops/dynamic-critical-css-20261116/tests/test-performance-continuity-v2.py"
+      ]
+    },
+    {
+      "id": "historical-site-media-transfer-identity-isolation",
+      "semantic_unit": "Site Profile-confirmed Production media transfer and temp-file per-company isolation.",
+      "revert_boundary": "Revert transfer source and permission fixture together; no current Production media upload is implicit.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-file-transfer.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-permission-runtime.php"
+      ]
+    },
+    {
+      "id": "historical-site-advisory-governance-parity",
+      "semantic_unit": "Exact-site owner-governed operator advisory mutations with environment/profile-digest plan replay protection.",
+      "revert_boundary": "Revert advisory registration, plan/authorization source and behavioral fixture together; preserve audited read-only policy.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-optional-governance-remote.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/optional-governance-runtime.php"
+      ]
+    },
+    {
+      "id": "historical-site-environment-provider-matrix",
+      "semantic_unit": "Source review of 66 historical abilities, 50 general operations and 16 purpose-bound staging-only exceptions.",
+      "revert_boundary": "Revert source matrix report and exact non-mutating provider matrix test together; do not grant authority.",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/reports/pr814-historical-ability-environment-parity-20261117.md",
+        "wp-content/plugins/mad4b-site-control-plane/tests/dynamic-company-environment-provider-parity-runtime.php"
+      ]
+    },
+    {
+      "id": "company-owner-exact-scope-review-20261117",
+      "semantic_unit": "Source-reviewed and exact site scope company reconciliation owner file checks and negative runtime proofs.",
+      "revert_boundary": "Revert owner scope workflow, report and hermetic fixture as one; no company write authorization by this CI gate.",
+      "certification": "exact_head",
+      "path_globs": [
+        ".github/workflows/mad4b-company-reconcile-owner-scope.yml",
+        "docs/runtime/company-reconcile-exact-owner-review-20261117.md",
+        "tests/mad4b-company-reconcile-owner-scope-hermetic.php"
+      ]
+    },
+    {
+      "id": "wayfa-home-critical-css-source-poll-v2",
+      "semantic_unit": "Bounded fingerprint source polling for Wayfa Home critical CSS, with regression fixture.",
+      "revert_boundary": "Revert source poll and its tests together while retaining production CSS fallback.",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/dynamic-critical-css-20261116/home-source-poll-policy-v2.py",
+        "ops/dynamic-critical-css-20261116/tests/test-home-source-poll-policy-v2.py"
+      ]
+    },
+    {
+      "id": "pr834-readonly-host-asset-observation-and-safe-inventory",
+      "semantic_unit": "Concurrent PR #834 read-only host asset monitoring, bounded inventory windows and independent provenance tests; no write authority.",
+      "revert_boundary": "Revert PR #834 host observer bundle and reviewed inventory windows atomically; keep the original company production scope.",
+      "certification": "exact_head",
+      "path_globs": [
+        ".github/workflows/mad4b-company-reconcile-host-observer.yml",
+        "docs/runtime/company-reconcile-inventory-safe-windows-20261117.md",
+        "ops/company-reconcile-inventory-bounded-gate-v1/company-reconcile-host-asset-observer.py",
+        "ops/company-reconcile-inventory-bounded-gate-v1/company-reconcile-inventory-bounded-gate.py",
+        "ops/company-reconcile-inventory-bounded-gate-v1/systemd/95-bounded-admission.conf",
+        "ops/company-reconcile-inventory-bounded-gate-v1/systemd/96-readonly-host-observer.conf",
+        "ops/company-reconcile-inventory-bounded-gate-v1/test_company_reconcile_host_asset_observer.py",
+        "ops/company-reconcile-inventory-bounded-gate-v1/test_company_reconcile_inventory_bounded_gate.py"
+      ]
+    },
+    {
+      "id": "pr814-protected-site-owner-and-transfer-regressions",
+      "semantic_unit": "Refresh the legacy static media transfer and local Owner preview tests to enforce exact company write confirmation while continuing to reject unauthorized Production grants.",
+      "revert_boundary": "Revert both nonauthorizing regressions together, never the existing Owner approval boundary.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-owner-grant-local-preview-runtime.php"
+      ]
+    },
+    {
+      "id": "pr814-isolated-wpml-fake-provider",
+      "semantic_unit": "Isolated request-local WPML REST fixture avoids synthetic adapter provider contamination of persisted exact write grants.",
+      "revert_boundary": "Revert isolated fixture with its source smoke and workflow call together, not the historical authorization checks.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-wpml-readonly-fixture.php"
+      ]
+    },
+    {
+      "id": "pr814-purpose-specific-production-original-routing",
+      "semantic_unit": "Nonauthorizing, source-checked complete 16 purpose-bound Staging operations review, with CI-only original-owner test and reviewer report.",
+      "revert_boundary": "Revert the source-purpose registry, exhaustive negative test and report together. Never replace original Production release controls.",
+      "certification": "exact_head",
+      "path_globs": [
+        "governance/production-readiness/purpose-specific-environment-operations.json",
+        "ops/reports/pr814-staging-purpose-closure-and-ci-20261117.md",
+        "tests/test_purpose_specific_environment_operations.py"
+      ]
+    },
+    {
+      "id": "pr814-current-runner-and-company-media-roundtrip",
+      "semantic_unit": "Refresh exact source-tested company media roundtrip for site UUID-scoped storage, update QA31 historical output checks, and admit only four hermetic PHP CLI fixtures in Production Readiness trusted execution.",
+      "revert_boundary": "Revert the exact standalone runner admission and three dependent hermetic fixtures together; never weaken current owner authorization, grant or company transfer boundaries.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-regressions.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-roundtrip-runtime.php"
       ]
     }
   ],
