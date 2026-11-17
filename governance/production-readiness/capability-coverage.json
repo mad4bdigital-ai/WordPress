@@ -305,7 +305,8 @@
       ],
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/etg-dfsb-write-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/etg-native-regressions.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/etg-native-regressions.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/dynamic-company-environment-provider-parity-runtime.php"
       ],
       "owner_role": "Repository security and release reviewer",
       "review_rationale": "Static scanner observes an existing central undo ability referenced by the new adapter; it is not a newly registered undo endpoint or an authority grant.",
@@ -1363,7 +1364,8 @@
       ],
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/integration-ticket-brand-runtime-regressions.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/approval-plan-route-preflight-contract.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/approval-plan-route-preflight-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/dynamic-company-environment-provider-parity-runtime.php"
       ],
       "owner_role": "Repository source reviewer — combined CI-only; no Site Owner, Staging installation or Production authorization",
       "review_rationale": "Persisted exact ticket input still requires governed risk classification and approved decision. Also retains the master-side live approval-route fail-closed review: Record the static ability:mad4b/approval-plan source candidate introduced by the router's read-only live-authority check. The underlying ability already exists and remains governed by the existing write grant, OAuth, and one-time ticket rules. The same-PR PHP regression verifies denied routing, wrong target server and no ticket creation; production authorization stays false.",
@@ -1428,7 +1430,8 @@
         "SECURITY-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/integration-ticket-brand-runtime-regressions.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-ticket-brand-runtime-regressions.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/dynamic-company-environment-provider-parity-runtime.php"
       ],
       "owner_role": "Repository source reviewer — CI-only mapping; neither Staging Write Owner nor Production approval",
       "review_rationale": "An internal nonpublished ContentJob can record the pending tour task while Brand Core is incomplete.",
@@ -8547,6 +8550,94 @@
       "coverage_reuse_rationale": "Mechanical byte-preserved relocation of already reviewed Core Web Vitals configuration owner.",
       "review_rationale": "Seven existing Core Web Vitals setting, encrypted key and validated monitored URL functions relocated byte-identically from historical facade SHA a70bfc23212bb9289d3ab218dc08a530f46c5ad1; require/use binding and negative tamper tests retain source and executable checks. No credential change, URL allowlist bypass, new permission, mutation, or release authorization.",
       "execution_note": "No live-site credential, release Owner, Original305 or Original313 verification inferred."
+    },
+    {
+      "id": "ability:mad4b/content-job-cancel",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01",
+        "MCP-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/dynamic-company-environment-provider-parity-runtime.php"
+      ],
+      "owner_role": "MAD4B first-party repository source reviewer, CI-only; independent Site/Release Owner required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original exact OAuth grant, current Site Profile, audited execution and mutation ticket boundaries remain mandatory independently of shared provider source mapping.",
+      "review_rationale": "The source inventory explicitly lists a pre-existing first-party governed content/job Ability for the reviewed Staging and Production provider keys. This is source eligibility, not a new API endpoint, executable workflow, issued Grant or Owner consent. The changed exact-ability regression rejects unknown and Breakglass authorities and verifies an unreviewed environment remains excluded.",
+      "execution_note": "No Production release, site mutation or standing delegation inferred. Live execution requires exact environment and owner approval."
+    },
+    {
+      "id": "ability:mad4b/content-job-transition",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01",
+        "MCP-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/dynamic-company-environment-provider-parity-runtime.php"
+      ],
+      "owner_role": "MAD4B first-party repository source reviewer, CI-only; independent Site/Release Owner required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original exact OAuth grant, current Site Profile, audited execution and mutation ticket boundaries remain mandatory independently of shared provider source mapping.",
+      "review_rationale": "The source inventory explicitly lists a pre-existing first-party governed content/job Ability for the reviewed Staging and Production provider keys. This is source eligibility, not a new API endpoint, executable workflow, issued Grant or Owner consent. The changed exact-ability regression rejects unknown and Breakglass authorities and verifies an unreviewed environment remains excluded.",
+      "execution_note": "No Production release, site mutation or standing delegation inferred. Live execution requires exact environment and owner approval."
+    },
+    {
+      "id": "ability:mad4b/draft-apply",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01",
+        "MCP-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/dynamic-company-environment-provider-parity-runtime.php"
+      ],
+      "owner_role": "MAD4B first-party repository source reviewer, CI-only; independent Site/Release Owner required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original exact OAuth grant, current Site Profile, audited execution and mutation ticket boundaries remain mandatory independently of shared provider source mapping.",
+      "review_rationale": "The source inventory explicitly lists a pre-existing first-party governed content/job Ability for the reviewed Staging and Production provider keys. This is source eligibility, not a new API endpoint, executable workflow, issued Grant or Owner consent. The changed exact-ability regression rejects unknown and Breakglass authorities and verifies an unreviewed environment remains excluded.",
+      "execution_note": "No Production release, site mutation or standing delegation inferred. Live execution requires exact environment and owner approval."
+    },
+    {
+      "id": "ability:mad4b/intent-registry-reconcile",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01",
+        "MCP-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/dynamic-company-environment-provider-parity-runtime.php"
+      ],
+      "owner_role": "MAD4B first-party repository source reviewer, CI-only; independent Site/Release Owner required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original exact OAuth grant, current Site Profile, audited execution and mutation ticket boundaries remain mandatory independently of shared provider source mapping.",
+      "review_rationale": "The source inventory explicitly lists a pre-existing first-party governed content/job Ability for the reviewed Staging and Production provider keys. This is source eligibility, not a new API endpoint, executable workflow, issued Grant or Owner consent. The changed exact-ability regression rejects unknown and Breakglass authorities and verifies an unreviewed environment remains excluded.",
+      "execution_note": "No Production release, site mutation or standing delegation inferred. Live execution requires exact environment and owner approval."
     }
   ],
   "lifecycle": [],
@@ -22762,6 +22853,75 @@
       "coverage_reuse_rationale": "Original WordPress Ability execution fences, first-party source and schema provenance, audit, maintenance lease, exact non-Production recovery and OAuth protocol hotpath denial remain independently enforced; source review does not authorize a release.",
       "review_rationale": "A completed, official, fully provenance-certified MCP class set pinned by the managed MU bootstrap must show canonical_runtime on a later clean request, but foreign/unknown or unpinned class sets must remain observational. New source-owned Python regression executes 12 strict code invariants under the generic Readiness runner; the independent Connection Governance WordPress mixed-class first/recovered integration is still mandatory to validate actual runtime behavior.",
       "execution_note": "CI-only source proof, not real recovery acceptance. Connection Governance must pass its two-request original WordPress/MU runtime test before this change is accepted."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-file-transfer.php",
+      "source_blob_sha": "2afa542b96484671771e7e376af2580ec0f3cf84",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "MCP-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-permission-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-contract.py"
+      ],
+      "owner_role": "Repository source and executable regression reviewer; never OAuth Owner or Production release approver",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuse exact first-party Site Profile, scoped OAuth, mutation execution fence and persisted audit controls; the current changed test is the source-only negative proof.",
+      "review_rationale": "Reviewed exact committed source extends provider metadata to explicitly enrolled Production profiles without minting authority. Media transfer and optional advisory mutations check confirmed Profile write, current site identity, scoped capabilities and one-time approval; policy excludes 16 purpose-specific Staging operations. An exact-head negative behavioral test is attached and executed in CI.",
+      "execution_note": "CI source review, not Host312/Original313 execution, independent Owner verdict or deployed Production runtime proof."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-optional-governance-remote.php",
+      "source_blob_sha": "f006edb953275c47400f6e40c719c04adf31db25",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "MCP-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/optional-governance-runtime.php"
+      ],
+      "owner_role": "Repository source and executable regression reviewer; never OAuth Owner or Production release approver",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuse exact first-party Site Profile, scoped OAuth, mutation execution fence and persisted audit controls; the current changed test is the source-only negative proof.",
+      "review_rationale": "Reviewed exact committed source extends provider metadata to explicitly enrolled Production profiles without minting authority. Media transfer and optional advisory mutations check confirmed Profile write, current site identity, scoped capabilities and one-time approval; policy excludes 16 purpose-specific Staging operations. An exact-head negative behavioral test is attached and executed in CI.",
+      "execution_note": "CI source review, not Host312/Original313 execution, independent Owner verdict or deployed Production runtime proof."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-grant-reconciliation.php",
+      "source_blob_sha": "e9b85d591b6f17ad6b031496fc8e2688c88105e9",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "MCP-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/dynamic-company-environment-provider-parity-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-grant-reviewed-inventory-runtime.php"
+      ],
+      "owner_role": "Repository source and executable regression reviewer; never OAuth Owner or Production release approver",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuse exact first-party Site Profile, scoped OAuth, mutation execution fence and persisted audit controls; the current changed test is the source-only negative proof.",
+      "review_rationale": "Reviewed exact committed source extends provider metadata to explicitly enrolled Production profiles without minting authority. Media transfer and optional advisory mutations check confirmed Profile write, current site identity, scoped capabilities and one-time approval; policy excludes 16 purpose-specific Staging operations. An exact-head negative behavioral test is attached and executed in CI.",
+      "execution_note": "CI source review, not Host312/Original313 execution, independent Owner verdict or deployed Production runtime proof."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/config/skill-seed-manifest.json",

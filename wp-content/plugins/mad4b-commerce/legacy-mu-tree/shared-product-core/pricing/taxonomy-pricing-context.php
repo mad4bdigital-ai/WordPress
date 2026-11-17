@@ -108,6 +108,7 @@ function shared_product_private_price_rule($tour,$rate) {
 }
 
 /** Private pricing configuration on the existing Tour and Tour Rate editors. */
+if(defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true)
 foreach(['tours-and-activities','tour-rates'] as $type){
  add_action('add_meta_boxes_'.$type,static function()use($type){
   add_meta_box('shared_product_private_pricing','Private booking price (taxonomy controlled)',

@@ -9,7 +9,9 @@ write_catalog = (root / "includes/class-mad4b-scp-server-write-catalog.php").rea
 chatgpt_servers = (root / "includes/class-mad4b-scp-servers.php").read_text()
 staging_grants = (root / "includes/class-mad4b-scp-staging-write-grant-reconciliation.php").read_text()
 checks = {
-    "staging_only": "'staging' === sanitize_key" in source,
+    "site_profile_explicit_write": "function site_ready()" in source and "MAD4B_SCP_Site_Profile::write_enabled()" in source and "array( 'staging', 'production' )" in source,
+    "site_identity_temp_scope": "function site_digest()" in source and "MAD4B_SCP_Site_Profile::site_uuid()" in source and "MAD4B_SCP_Site_Profile::site_origin()" in source,
+    "media_not_host_header_bound": "hash( 'sha256', home_url( '/' ) )" not in source,
     "no_anonymous": "is_user_logged_in()" in source,
     "wp_upload_capability": "current_user_can( 'upload_files' )" in source,
     "site_profile": "site_urls_match_enrollment()" in source and "origin_enrolled()" in source,

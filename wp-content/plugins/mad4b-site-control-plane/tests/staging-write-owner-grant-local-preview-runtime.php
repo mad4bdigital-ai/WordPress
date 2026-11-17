@@ -145,9 +145,14 @@ check_preview(!isset($allowed['mad4b/database-raw-query']),
 $GLOBALS['environment'] = 'production';
 $production_allowed = $policy::allowed_ability_providers();
 $production_retired = $policy::retirable_stale_ability_providers();
-check_preview(!isset($production_allowed['mad4b/optional-governance-apply'])
+// Production source eligibility does not provide Production authority:
+// local owner previews are Staging-only and cannot create any grants.
+check_preview(($production_allowed['mad4b/optional-governance-apply'] ?? '') === 'core'
     && !isset($production_retired['mad4b/provider-behavioral-recertify']),
-    'Staging-only review may not elevate Production grants or retirements');
+    'Shared source provider retains historic retirement restrictions');
+check_preview(is_wp_error($grant::plan_for_local_owner())
+    && $grant::plan_for_local_owner()->get_error_code()==='mad4b_grant_local_preview_staging_only',
+    'Production cannot issue grants through a local owner preview');
 check_preview($policy::required_confirmation() === $policy::PRODUCTION_CONFIRMATION,
     'Production retains distinct confirmation');
 $GLOBALS['environment'] = 'staging';

@@ -3,7 +3,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /**
  * WordPress-native, named optional-governance remote operations.
- * Read-only plan/verify and one Staging-only exact-approved mutation.
+ * Read-only plan/verify and one exact Site Profile-bound approved mutation.
  * This deliberately cannot change real authority, release or recovery gates.
  */
 final class MAD4B_SCP_Optional_Governance_Remote {
@@ -57,7 +57,7 @@ final class MAD4B_SCP_Optional_Governance_Remote {
             wp_register_ability( $operation[0], array(
                 'label'=>$operation[1],
                 'description'=>$readonly ? 'Read-only advisory preview/readback.' :
-                    'Staging-only exact-plan, enrolled-owner, OAuth step-up and ticket-governed advisory option mutation.',
+                    'Current Site Profile exact-plan, enrolled-owner, OAuth step-up and ticket-governed advisory option mutation.',
                 'category'=>$readonly ? 'mad4b-read' : 'mad4b-write',
                 'execute_callback'=>array( __CLASS__, $operation[2] ),
                 'permission_callback'=>$readonly
@@ -68,7 +68,7 @@ final class MAD4B_SCP_Optional_Governance_Remote {
                 'meta'=>array( 'public'=>false, 'show_in_rest'=>false,
                     'mcp'=>array( 'public'=>false, 'type'=>'tool',
                         'surface'=>$readonly ? 'read' : 'write',
-                        'generic_remote_admin'=>false, 'production_mutation_allowed'=>false,
+                        'generic_remote_admin'=>false, 'production_mutation_allowed'=>! $readonly,
                         'mad4b_governed_write_authority'=>! $readonly ),
                     'annotations'=>array( 'readonly'=>$readonly,
                         'destructive'=>! $readonly, 'idempotent'=>$readonly ) ),
@@ -163,6 +163,13 @@ final class MAD4B_SCP_Optional_Governance_Remote {
             'revision'=>$status['revision'],
             'catalog_sha256'=>$status['definitions_sha256'],
             'site_origin_sha256'=>hash( 'sha256', $site ),
+            // An approved plan is never portable across Site Profile
+            // environments, even if an enrolled site later changes mode.
+            'site_profile_environment'=>class_exists( 'MAD4B_SCP_Site_Profile', false )
+                ? (string) MAD4B_SCP_Site_Profile::current_environment() : 'unconfigured',
+            'site_profile_digest'=>class_exists( 'MAD4B_SCP_Site_Profile', false )
+                && method_exists( 'MAD4B_SCP_Site_Profile', 'profile_digest' )
+                ? (string) MAD4B_SCP_Site_Profile::profile_digest() : '',
             'actor_id'=>function_exists('get_current_user_id') ? get_current_user_id() : 0,
             'blog_id'=>function_exists('get_current_blog_id') ? get_current_blog_id() : 0,
             'new_modes'=>$all, 'scope'=>'operator_advisory_only',
@@ -235,12 +242,17 @@ final class MAD4B_SCP_Optional_Governance_Remote {
     private static function apply_actor_preflight() {
         if ( ! current_user_can( 'manage_options' ) ||
             ! class_exists( 'MAD4B_SCP_Site_Profile', false ) ||
-            'staging' !== (string) MAD4B_SCP_Site_Profile::current_environment() ||
+            ! in_array( (string) MAD4B_SCP_Site_Profile::current_environment(),
+                array( 'staging', 'production' ), true ) ||
+            ! MAD4B_SCP_Site_Profile::configured() ||
+            ! MAD4B_SCP_Site_Profile::origin_enrolled() ||
+            ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ||
+            ! MAD4B_SCP_Site_Profile::write_enabled() ||
             ! MAD4B_SCP_Site_Profile::user_is_enrolled( get_current_user_id() ) ||
             ! class_exists( 'MAD4B_SCP_Policy', false ) ||
             ! MAD4B_SCP_Policy::can_mutate() )
-            return new WP_Error( 'mad4b_optional_remote_staging_authority_denied',
-                'Enrolled Staging owner with governed Write is required.' );
+            return new WP_Error( 'mad4b_optional_remote_site_authority_denied',
+                'Exact enrolled owner with explicitly enabled Site Profile Write is required.' );
         if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge', false ) ||
             ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ||
             ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope(
@@ -330,6 +342,7 @@ final class MAD4B_SCP_Optional_Governance_Remote {
             'readback_verified'=>true, 'audit_recorded'=>! empty( $receipt['audit_recorded'] ),
             'preferences_mutated'=>! empty( $receipt['advisory_preferences_saved'] ),
             'no_change'=>! empty( $receipt['no_change'] ), 'authority_created'=>false,
-            'production_authorized'=>false );
+            'executed_under_environment'=>(string) MAD4B_SCP_Site_Profile::current_environment(),
+            'production_authorized'=>'production' === MAD4B_SCP_Site_Profile::current_environment() );
     }
 }

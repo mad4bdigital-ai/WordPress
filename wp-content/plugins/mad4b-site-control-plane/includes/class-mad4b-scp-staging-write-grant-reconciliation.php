@@ -98,115 +98,35 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 			'context/source-scan-apply' => 'google_drive_context',
 		);
 
-		// Feature 007 Staging reconciliation review (38 exact ability/provider
-		// pairs).  These were already in the runtime-eligible governed Write
-		// inventory, but omitted from this grant-reconciliation source policy.
-		// This is NOT wildcard authority or a grant: the separate reconciliation
-		// execution still demands exact Site Profile, immutable provenance,
-		// explicit 95-ability plan, one-time approval, audit and rollback.
-		// Never include these wider administrative operations on Production.
+		// Review the original Staging-specific support/diagnostic lanes.
+		// Ordinary source-owned company operations are promoted separately
+		// to exact Staging + Production provider parity below. Those are
+		// grant eligibility ONLY, never issued grants or runtime authority.
+		// Scratch recovery, unverified self-certified installs, CI-outage
+		// attestations and source-bound Staging probes remain environment-limited
+		// until their own independent production-safe contracts are certified.
 		if ( 'staging' === self::current_environment() ) {
 			$staging_reviewed = array(
-				// Enrolled Staging-only Media Library transfer has separate
-				// mad4b_attachment_transfer capability, upload_files and mutation
-				// kill-switch gates. An exact NHI grant never bypasses them.
-				'mad4b/attachment-transfer' => 'core',
-				// Exact Staging-only source-sync queue request, limited to the
-				// enrolled central tourism provider/dataset. Eligibility for an
-				// OWNER-APPROVED exact grant is not execution authorization.
-				'mad4b/hub-source-sync-request' => 'core',
-                // Exact current Staging-only first-party write abilities from
-                // the reviewed runtime inventory. This is eligibility, not
-                // grant creation or consent to publish commercial content.
-                'mad4b/artifact-append' => 'core',
-                'mad4b/fleet-intake-auto' => 'core',
-                'mad4b/fleet-intake-plan' => 'core',
-                'mad4b/fleet-intake-save' => 'core',
-                'mad4b/tours-and-activities-r2-create-apply' => 'core',
-                'mad4b/tours-and-activities-r2-publish-apply' => 'core',
-                'mad4b/tours-and-activities-r2-update-apply' => 'core',
-
-				// Only the exact reversible JetSmartFilters metadata writer.
-				// Its behavioral certificate makes it inventory-eligible, but a
-				// grant is never issued without a fresh source/profile/inventory
-				// bound plan, separate owner approval, one-time claim and audit.
-				'jetsmartfilters/update-filter-meta' => 'jetsmartfilters',
-				// WordPress-native candidate opt-in is an exact owner-approved
-				// administrative toggle, never a blanket wp_options update.
-				'mad4b/wordpress-native-candidate-opt-in-apply' => 'core',
-				// Build-only scheduling and self-certified install are distinct, exact
-				// Staging abilities. Grant eligibility never starts a build or install:
-				// each requires its own owner OAuth step-up, one-time approval,
-				// exact plan, execution claim and audited postconditions.
-				'mad4b/wp-native-build-start' => 'core',
-				'mad4b/wp-native-self-approve-install' => 'core',
-				// One reviewed, ticketed token-refresh operation for the enrolled
-				// Staging grant. Other provider adapters are discovery-only until
-				// separately certified and explicitly allowlisted.
-				'mad4b/provider-connection-refresh' => 'core',
-				// Exact reviewed first-party WordPress content operations already
-				// present in the canonical Staging governed-write inventory.
-				// This enumerates eligibility only; it never creates a grant.
-				// The original owner plan, step-up, exact grant admission and
-				// independently audited execution continue to apply.
-				'mad4b/page-r1-create-apply' => 'core',
-				'mad4b/page-r1-publish-apply' => 'core',
-				'mad4b/page-r1-update-apply' => 'core',
-				'mad4b/post-r1-create-apply' => 'core',
-				'mad4b/post-r1-publish-apply' => 'core',
-				'mad4b/post-r1-update-apply' => 'core',
-				'mad4b/properties-r1-create-apply' => 'core',
-				'mad4b/properties-r1-publish-apply' => 'core',
-				'mad4b/properties-r1-update-apply' => 'core',
-				'mad4b/tours-and-activities-r1-create-apply' => 'core',
-				'mad4b/tours-and-activities-r1-publish-apply' => 'core',
-				'mad4b/tours-and-activities-r1-update-apply' => 'core',
-				'mad4b/transportations-r1-create-apply' => 'core',
-				'mad4b/transportations-r1-publish-apply' => 'core',
-				'mad4b/transportations-r1-update-apply' => 'core',
-
-				'context/brand-profile-save' => 'google_drive_context',
-				'context/governed-source-upsert' => 'google_drive_context',
-				'context/remote-owner-review-apply' => 'google_drive_context',
+                // Only the original Staging-specific facilities remain here.
+                // Their own callbacks enforce separate scratch/CI/source
+                // identity or self-certified-install boundaries. Ordinary
+                // company operations live in the reviewed shared map below.
 				'mad4b/acceptance-target-provision' => 'core',
-				'mad4b/business-activity-import-approve' => 'core',
-				'mad4b/business-activity-import-batch-append' => 'core',
-				'mad4b/business-activity-import-batch-approve' => 'core',
-				'mad4b/business-activity-import-batch-archive' => 'core',
-				'mad4b/business-activity-import-batch-begin' => 'core',
-				'mad4b/business-activity-link-apply' => 'core',
-				'mad4b/business-activity-sync-advance' => 'core',
-				'mad4b/business-activity-sync-archive' => 'core',
-				'mad4b/business-activity-sync-begin' => 'core',
-				'mad4b/business-activity-sync-cancel' => 'core',
-				'mad4b/business-activity-sync-finalize-reconciled' => 'core',
-				'mad4b/business-activity-sync-recover' => 'core',
 				'mad4b/business-activity-wpai-observation-arm' => 'core',
-				'mad4b/content-delete-meta' => 'core',
-				'mad4b/content-experience-profile-apply' => 'core',
-				'mad4b/content-experience-profile-clone-apply' => 'core',
-				'mad4b/content-experience-profile-delete-apply' => 'core',
-				'mad4b/content-import-bundle' => 'core',
-				'mad4b/content-set-meta' => 'core',
-				'mad4b/content-trash-post' => 'core',
 				'mad4b/control-plane-selected-head-apply' => 'core',
-				// PR #423: the registered Optional Governance Apply is covered by
-				// canonical one-time ticket admission; this is an exact Staging
-				// provider pair, never a new generic/Wildcard grant.
-				'mad4b/optional-governance-apply' => 'core',
-				'mad4b/deployment-binding-native-apply' => 'core',
 				'mad4b/deployment-binding-setup-apply' => 'core',
-				'mad4b/host-operation-apply' => 'core',
-				'mad4b/market-growth-policy-update' => 'core',
+				'mad4b/fleet-intake-auto' => 'core',
+				'mad4b/fleet-intake-plan' => 'core',
+				'mad4b/fleet-intake-save' => 'core',
+				'mad4b/hub-source-sync-request' => 'core',
 				'mad4b/native-recovery-cleanup' => 'core',
 				'mad4b/native-recovery-start' => 'core',
+				'mad4b/provider-connection-refresh' => 'core',
 				'mad4b/runtime-release-set-apply' => 'core',
 				'mad4b/staging-offline-attestor-enroll-apply' => 'core',
-				'mad4b/taxonomy-update-term' => 'core',
-				'mad4b/translation-link-posts' => 'core',
-				'mad4b/translation-set-post-language' => 'core',
-				'media/import-external' => 'media',
-				'media/remote-import-apply' => 'media',
+				'mad4b/wordpress-native-candidate-opt-in-apply' => 'core',
+				'mad4b/wp-native-build-start' => 'core',
+				'mad4b/wp-native-self-approve-install' => 'core',
 			);
 			// Only a registered, exact central Staging diagnostic may receive a
 			// separately approved core grant. General Hub enqueue remains forbidden.
@@ -228,6 +148,96 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 				$staging_reviewed['mad4b/hub-universal-vps-enqueue'] = 'core';
 			}
 			foreach ( $staging_reviewed as $ability => $provider ) {
+				$allowed[ $ability ] = $provider;
+			}
+		}
+
+		// Environment-neutral provider eligibility for a fixed, source-reviewed
+		// set of abilities. Site Profile, active provider mount, exact company
+		// grant and one-time owner authorization still determine execution.
+		// This list does not mint grants or enable the Production write feature;
+		// 'production_write_confirmed' is enforced by Site Profile independently.
+		// Never turn a discovered third-party Ability into approved authority.
+		if ( in_array( self::current_environment(), array( 'staging', 'production' ), true ) ) {
+			$shared_reviewed = array(
+				// Original media transfer and operator advisory mutations now enforce
+				// exact site-bound Production write confirmation in their own
+				// callbacks. Eligibility never issues a transfer or a grant.
+				'mad4b/attachment-transfer' => 'core',
+				'mad4b/optional-governance-apply' => 'core',
+				// Source-reviewed company operations: the provider is the same
+				// on enrolled Staging and Production. No ability is added by
+				// third-party runtime discovery. Production still requires its
+				// explicit Site Profile write confirmation and exact grant.
+				'context/brand-profile-save' => 'google_drive_context',
+				'context/governed-source-upsert' => 'google_drive_context',
+				'context/remote-owner-review-apply' => 'google_drive_context',
+				'jetsmartfilters/update-filter-meta' => 'jetsmartfilters',
+				'mad4b/artifact-append' => 'core',
+				'mad4b/business-activity-import-approve' => 'core',
+				'mad4b/business-activity-import-batch-append' => 'core',
+				'mad4b/business-activity-import-batch-approve' => 'core',
+				'mad4b/business-activity-import-batch-archive' => 'core',
+				'mad4b/business-activity-import-batch-begin' => 'core',
+				'mad4b/business-activity-link-apply' => 'core',
+				'mad4b/business-activity-sync-advance' => 'core',
+				'mad4b/business-activity-sync-archive' => 'core',
+				'mad4b/business-activity-sync-begin' => 'core',
+				'mad4b/business-activity-sync-cancel' => 'core',
+				'mad4b/business-activity-sync-finalize-reconciled' => 'core',
+				'mad4b/business-activity-sync-recover' => 'core',
+				'mad4b/content-delete-meta' => 'core',
+				'mad4b/content-experience-profile-apply' => 'core',
+				'mad4b/content-experience-profile-clone-apply' => 'core',
+				'mad4b/content-experience-profile-delete-apply' => 'core',
+				'mad4b/content-import-bundle' => 'core',
+				'mad4b/content-set-meta' => 'core',
+				'mad4b/content-trash-post' => 'core',
+				'mad4b/deployment-binding-native-apply' => 'core',
+				'mad4b/host-operation-apply' => 'core',
+				'mad4b/market-growth-policy-update' => 'core',
+				'mad4b/page-r1-create-apply' => 'core',
+				'mad4b/page-r1-publish-apply' => 'core',
+				'mad4b/page-r1-update-apply' => 'core',
+				'mad4b/post-r1-create-apply' => 'core',
+				'mad4b/post-r1-publish-apply' => 'core',
+				'mad4b/post-r1-update-apply' => 'core',
+				'mad4b/properties-r1-create-apply' => 'core',
+				'mad4b/properties-r1-publish-apply' => 'core',
+				'mad4b/properties-r1-update-apply' => 'core',
+				'mad4b/taxonomy-update-term' => 'core',
+				'mad4b/tours-and-activities-r1-create-apply' => 'core',
+				'mad4b/tours-and-activities-r1-publish-apply' => 'core',
+				'mad4b/tours-and-activities-r1-update-apply' => 'core',
+				'mad4b/tours-and-activities-r2-create-apply' => 'core',
+				'mad4b/tours-and-activities-r2-publish-apply' => 'core',
+				'mad4b/tours-and-activities-r2-update-apply' => 'core',
+				'mad4b/transportations-r1-create-apply' => 'core',
+				'mad4b/transportations-r1-publish-apply' => 'core',
+				'mad4b/transportations-r1-update-apply' => 'core',
+				'media/import-external' => 'media',
+				'media/remote-import-apply' => 'media',
+				'context/native-owner-transfer-apply' => 'google_drive_context',
+				'mad4b/approval-plan' => 'core',
+				'mad4b/content-job-cancel' => 'core',
+				'mad4b/content-job-create' => 'core',
+				'mad4b/content-job-transition' => 'core',
+				'mad4b/content-update-post' => 'core',
+				'mad4b/data-processing-record-decision' => 'core',
+				'mad4b/database-update' => 'core',
+				'mad4b/draft-apply' => 'core',
+				'mad4b/filesystem-patch' => 'core',
+				'mad4b/filesystem-write' => 'core',
+				'mad4b/intent-registry-reconcile' => 'core',
+				'mad4b/mutation-undo' => 'core',
+				'mad4b/plugin-activate' => 'core',
+				'mad4b/plugin-deactivate' => 'core',
+				'mad4b/provider-canary-execute' => 'core',
+				// Translation Bridge has a distinct provider, not the core.
+				'mad4b/translation-link-posts' => 'translation',
+				'mad4b/translation-set-post-language' => 'translation',
+			);
+			foreach ( $shared_reviewed as $ability => $provider ) {
 				$allowed[ $ability ] = $provider;
 			}
 		}
