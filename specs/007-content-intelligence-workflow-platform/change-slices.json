@@ -4,8 +4,8 @@
   "reviewed_base_sha": "5c72e4893e36e992f056c90cfc75908b3a8f7785",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 2627,
-  "changed_paths_sha256": "c18922801b3a0dd233bd084c5264afc30f3f833265110cdee434f22afe3752d0",
+  "changed_file_count": 2633,
+  "changed_paths_sha256": "ec206063cbab93304355a545c60a28273e15e3ab6cdb38c8db2be95dc3f86399",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -5351,6 +5351,17 @@
         "tests/mad4b-admin-ui-company-operations-hermetic.php",
         "tests/mad4b-company-master-admin-role-guard-hermetic.php",
         "wp-content/mu-plugins/501-mad4b-company-role-reduction-guard.php"
+      ]
+    },
+    {
+      "id": "central-native-ssh-source-identity-readback",
+      "semantic_unit": "First-party Central native SSH identity reuse: explicit host enrollment readback without replacing Original313 production write authorization.",
+      "revert_boundary": "Revert the original SSH readback script, bounded source/identity tests and supporting handoff together. Read-only discovery cannot authorize signed Production write grants.",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/unified-production-authority-v1/README.md",
+        "ops/unified-production-authority-v1/company-native-external-enrollment-readback.py",
+        "ops/unified-production-authority-v1/test_readonly_identity_parity.py"
       ]
     }
   ],
