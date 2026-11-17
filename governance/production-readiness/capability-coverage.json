@@ -22534,8 +22534,8 @@
         "EXECUTION-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/reviewed-step-up-descriptor-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/original-transport-callback-provenance-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/direct-mcp-same-endpoint-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-client-compatibility-contract.py"
       ],
       "review_rationale": "Restrict canonical MCP descriptor classification to exact first-party enrollment Step-ups, the three original nested-only dispatchers and two Direct Profile post mutations. Demand registered WordPress Ability identity, original callback/fence evidence and exact declared policy flags; never infer execution permission from classification or mint a grant.",
       "owner_role": "Repository source reviewer — CI-only, not Site Owner, Release Owner or Production approval",
@@ -22557,7 +22557,7 @@
         "PLATFORM-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/original-transport-callback-provenance-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/direct-mcp-same-endpoint-contract.py"
       ],
       "review_rationale": "Verify exact source-file and class/method provenance of real WordPress execute and permission callbacks for three dispatch transports and two Direct Profile post operations, including final execution admission, scoped Direct permission closures, and negative tests for foreign callbacks and relaxed remote-admin metadata. No mutation callback is invoked by verification.",
       "owner_role": "Repository source reviewer — CI-only, not Site Owner, Release Owner or Production approval",
