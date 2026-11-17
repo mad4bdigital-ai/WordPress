@@ -962,7 +962,8 @@ final class MAD4B_SCP_Servers {
 		$requested_tools = $tools;
 		$descriptor_evidence = $materialized ? MAD4B_SCP_Server_Registration_Evidence::capability_descriptor_evidence( $id, $tools ) : array( 'contract' => 'mad4b.server-capability-descriptor-bindings.v1', 'server_id' => (string) $id, 'ready' => true, 'bindings' => array(), 'blockers' => array(), 'authorizing' => false, 'authority_effect' => 'none' );
 		if ( $materialized && empty( $descriptor_evidence['ready'] ) ) {
-			if ( 'mad4b-chatgpt' !== $id ) {
+			// Quarantine unverified Enrollment tools; other lanes fail closed.
+			if ( ! in_array( $id, array( 'mad4b-chatgpt', 'mad4b-enrollment' ), true ) ) {
 				self::$registrations[ $id ] = array(
 					'registered' => false,
 					'error' => 'capability_descriptor_binding_unavailable',
@@ -982,7 +983,16 @@ final class MAD4B_SCP_Servers {
 			} ) );
 			$descriptor_evidence['quarantined_abilities'] = array_values( array_diff( $requested_tools, $tools ) );
 			$descriptor_evidence['partial_ready'] = ! empty( $tools );
-			$descriptor_evidence['degraded'] = ! empty( $tools );
+			$descriptor_evidence['degraded'] = ! empty( $descriptor_evidence['quarantined_abilities'] );
+			if ( 'mad4b-enrollment' === $id && ! $tools ) {
+				self::$registrations[ $id ] = array(
+					'registered' => false, 'error' => 'capability_descriptor_binding_unavailable',
+					'materialized' => false, 'tool_count' => 0,
+					'requested_tool_count' => count( $requested_tools ),
+					'capability_descriptor_evidence' => $descriptor_evidence,
+				);
+				return;
+			}
 			if ( ! $tools ) $preflight = array( 'ready'=>false,
 				'blocker'=>'capability_descriptor_binding_unavailable',
 				'authorizing'=>false );
@@ -1007,6 +1017,12 @@ final class MAD4B_SCP_Servers {
 			return;
 		}
 		self::$registrations[ $id ] = array( 'registered' => true, 'error' => '', 'materialized' => (bool) $materialized, 'tool_count' => count( $tools ), 'capability_descriptor_evidence' => $descriptor_evidence );
+		if ( $materialized ) {
+			// Report genuine gaps; never imply all enrollment abilities mounted.
+			self::$registrations[ $id ]['requested_tool_count'] = count( $requested_tools );
+			self::$registrations[ $id ]['descriptor_quarantined_count'] = count( (array) ( $descriptor_evidence['quarantined_abilities'] ?? array() ) );
+			self::$registrations[ $id ]['descriptor_degraded'] = self::$registrations[ $id ]['descriptor_quarantined_count'] > 0;
+		}
 		if ( 'mad4b-chatgpt' === $id && $materialized ) {
 			$server = method_exists( $adapter, 'get_server' ) ? $adapter->get_server( $id ) : null;
 			$evidence = MAD4B_SCP_MCP_Catalog_Diagnostics::inspect( $server, $tools );

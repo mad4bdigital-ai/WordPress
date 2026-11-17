@@ -59,6 +59,8 @@ jobs:
           php -l "$root/includes/class-mad4b-scp-mcp-peer-governance.php"
           php -l "$root/includes/class-mad4b-scp-mcp-provider-isolation.php"
           php -l "$root/tests/runtime-connection-readiness-smoke.php"
+          php -l "$root/tests/server-capability-lane-isolation.php"
+          php "$root/tests/server-capability-lane-isolation.php"
           php -l "$root/tests/runtime-write-surface-smoke.php"
           php -l "$root/tests/write-dispatch-scope-delegation-runtime.php"
           php -l "$root/tests/runtime-foreign-mcp-transport-blocker.php"

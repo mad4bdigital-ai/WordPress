@@ -359,6 +359,10 @@ final class MAD4B_SCP_Connection_Status {
 					'deep_registration_deferred' => ! empty( $identity['deep_registration_deferred'] ),
 					'materialized' => ! empty( $row['materialized'] ),
 					'tool_count' => isset( $row['tool_count'] ) ? max( 0, (int) $row['tool_count'] ) : 0,
+					// Deep validation is deferred on admin GET; however observed
+					// descriptor quarantine must not be hidden as full coverage.
+					'capability_quarantined_count' => max( 0, (int) ( $row['descriptor_quarantined_count'] ?? 0 ) ),
+					'capability_registration_degraded' => ! empty( $row['descriptor_degraded'] ),
 					'route_registered' => null,
 					'permission_callback_match' => null,
 					'deep_route_validation_deferred' => true,

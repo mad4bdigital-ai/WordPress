@@ -51,14 +51,13 @@ final class MAD4B_SCP_Server_Registration_Evidence {
 			|| false !== ( $binding['authorizing'] ?? null )
 			|| false !== ( $binding['authority_snapshot_is_grant'] ?? null )
 			|| true !== ( $binding['authority_revalidation_required'] ?? null )
-			// The inspector emits the *original* WordPress Ability surface, not
-			// a collapsed read/write class. Only explicitly classified, mounted
-			// and independently governed non-breakglass lanes can be projected.
-			|| ! in_array( $binding['execution_lane'] ?? null,
-				array( 'read', 'write', 'content', 'admin', 'enrollment', 'developer' ), true )
-			// A mutation classified as read is never admissible on the public
-			// read-only server; execution authorization remains independently due.
-			|| ( 'mad4b-read' === $server_id && 'read' !== ( $binding['execution_lane'] ?? null ) ) )
+			// Never treat an unclassified/blocked execution as a descriptor:
+			// execution_lane='none' means its first-party final boundary failed.
+			// Exceptional lanes are structurally mountable ONLY on their
+			// original exceptional server, or as an already schema-pinned,
+			// independently scoped ChatGPT projection. This does not authorize
+			// a call, create a grant, or bypass bearer/approval checks.
+			|| ! self::descriptor_lane_matches_server( $binding, $ability_name, $server_id ) )
 			return false;
 		foreach ( array( 'input_schema_sha256', 'classification_sha256', 'descriptor_sha256' ) as $field ) {
 			if ( ! is_string( $binding[ $field ] ?? null )
@@ -71,6 +70,26 @@ final class MAD4B_SCP_Server_Registration_Evidence {
 				|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', $roots[ $field ] ) ) return false;
 		}
 		return true;
+	}
+
+	/** Strict routing of exceptional source lanes; never promote 'none'. */
+	private static function descriptor_lane_matches_server( array $binding, $ability_name, $server_id ) {
+		$lane = (string) ( $binding['execution_lane'] ?? '' );
+		if ( in_array( $lane, array( 'read', 'write', 'content', 'admin', 'enrollment', 'developer' ), true ) ) {
+			return 'mad4b-read' !== $server_id || 'read' === $lane;
+		}
+		if ( 'breakglass' === $lane && 'mad4b/database-raw-query' === $ability_name ) {
+			if ( 'mad4b-breakglass' === $server_id ) return true;
+			return 'mad4b-chatgpt' === $server_id
+				&& class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' )
+				&& MAD4B_SCP_ChatGPT_Tool_Projection::is_projected( $ability_name );
+		}
+		if ( 'developer-breakglass' === $lane && 'mad4b-developer-breakglass' === $server_id
+			&& class_exists( 'MAD4B_SCP_Servers' ) ) {
+			return in_array( $ability_name,
+				MAD4B_SCP_Servers::core_tools( 'mad4b-developer-breakglass' ), true );
+		}
+		return false;
 	}
 
 	public static function capability_descriptor_evidence( $server_id, array $tools ) {
