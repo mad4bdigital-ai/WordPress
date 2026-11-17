@@ -128,6 +128,16 @@ foreach ( $reviewed_step_up_abilities as $ability_name ) {
             'preflight_ready' => ! empty( $preflight['ready'] ),
             'preflight_error_codes' => $preflight_codes,
             'preflight_blocker' => sanitize_key( (string) ( $preflight['blocker'] ?? '' ) ),
+            // Structural diagnostics only: no token, metadata, grant or
+            // high-risk policy value is exposed in a failed CI readback.
+            'direct_only_census' => 'mad4b/runtime-gates-apply' === $ability_name
+                && class_exists( 'MAD4B_SCP_Governed_Ability_Census' )
+                && isset( MAD4B_SCP_Governed_Ability_Census::direct_only()[ $ability_name ] ),
+            'original_runtime_gate_boundary' => 'mad4b/runtime-gates-apply' === $ability_name
+                && class_exists( 'MAD4B_SCP_Governed_Ability_Census' )
+                && MAD4B_SCP_Governed_Ability_Census::original_runtime_gate_direct_boundary_verified( wp_get_ability( $ability_name ) ),
+            'final_execution_fence' => class_exists( 'MAD4B_SCP_Execution_Fence' )
+                && MAD4B_SCP_Execution_Fence::final_execution_wrapper_verified( $ability_name ),
             'registered_tools_count' => count( $preauth_names ),
         );
     }
