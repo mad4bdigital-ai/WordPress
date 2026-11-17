@@ -122,10 +122,30 @@ final class MAD4B_Responsive_Media_On_Demand_V1 {
         return ['state'=>'pending','width'=>$width];
     }
     public static function rest($req) {
-        $term_id=(int)$req->get_param('term_id');
-        $width=$req->get_param('width');
+        $batch=$req->get_param('items');
+        if ($batch!==null) {
+            // One site-local WordPress bootstrap for at most eight *visible*
+            // image requests. Invalid/oversized lists fail closed.
+            if (!is_string($batch) || strlen($batch)>170 ||
+                !preg_match('/^[0-9]{1,9}:[0-9]{3,4}(?:,[0-9]{1,9}:[0-9]{3,4}){0,7}$/D',$batch))
+                return new WP_Error('mad4b_invalid_media_batch','Invalid media batch',['status'=>400]);
+            $result=[];
+            foreach (explode(',',$batch) as $pair) {
+                [$term,$width]=array_map('intval',explode(':',$pair));
+                $key=$term.':'.$width;
+                if (array_key_exists($key,$result)) continue;
+                $result[$key]=self::query($term,$width,true);
+            }
+            $payload=['contract'=>self::CONTRACT,'items'=>$result];
+        } else {
+            $term_id=(int)$req->get_param('term_id');
+            $width=$req->get_param('width');
+            if ($term_id<1 || $width===null)
+                return new WP_Error('mad4b_invalid_media_request','Invalid media request',['status'=>400]);
+            $payload=self::query($term_id,$width,true);
+        }
         // No guest PII, no request-selected source file, no arbitrary URL.
-        $response=rest_ensure_response(self::query($term_id,$width,true));
+        $response=rest_ensure_response($payload);
         $response->header('Cache-Control','private, no-store, max-age=0');
         return $response;
     }
@@ -224,8 +244,9 @@ final class MAD4B_Responsive_Media_On_Demand_V1 {
             register_rest_route('mad4b/v1','/responsive-media',[
                 'methods'=>'GET','callback'=>[__CLASS__,'rest'],
                 'permission_callback'=>'__return_true',
-                'args'=>['term_id'=>['required'=>true,'type'=>'integer','minimum'=>1],
-                         'width'=>['required'=>true,'type'=>'integer','minimum'=>self::MIN_WIDTH,'maximum'=>self::MAX_WIDTH]]]);
+                'args'=>['term_id'=>['required'=>false,'type'=>'integer','minimum'=>1],
+                         'width'=>['required'=>false,'type'=>'integer','minimum'=>self::MIN_WIDTH,'maximum'=>self::MAX_WIDTH],
+                         'items'=>['required'=>false,'type'=>'string','maxLength'=>170]]]);
         });
     }
 }

@@ -29,6 +29,11 @@ function register_rest_route($ns,$name,$args){}
 function wp_enqueue_script($handle,$src,$deps,$ver,$footer){$GLOBALS['enqueue']=$src;}
 function wp_add_inline_script($handle,$data,$position){$GLOBALS['config']=$data;}
 function rest_url($s){return 'https://wayfatours.com/wp-json/'.$s;}
+class WP_Error {public $code;public function __construct($code,$message,$data=[]){$this->code=$code;}}
+class FakeResponse {public $value;public $headers=[];public function __construct($v){$this->value=$v;}public function header($k,$v){$this->headers[$k]=$v;}}
+class FakeReq {private $params;public function __construct($p){$this->params=$p;}public function get_param($k){return $this->params[$k]??null;}}
+function rest_ensure_response($v){return new FakeResponse($v);}
+
 function wp_json_encode($v,$opts=0){return json_encode($v,$opts);}
 function check($condition,$label){if(!$condition)throw new RuntimeException('TEST_FAILED:'.$label);echo 'PASS ',$label,"\n";}
 copy($argv[2],$dir.'/uploads/test.jpg');
@@ -52,6 +57,8 @@ $der=count($candidates)===1?$candidates[0]:'';
 check(is_file($der) && filesize($der)>1500,'real local Imagick generated first requested derivative');
 $sz=getimagesize($der);
 check($sz[0]===640 && $sz[1]>200,'generated exact physical bucket size');
+$c::process(123,704);
+check(!glob($dir.'/uploads/test.jpg.mad4b-demand-704-*.webp'),'site CPU cooldown defers a second image conversion');
 check($c::query(123,640)['state']==='ready','cached derivative reused without generation');
 check(preg_match('~test\.jpg\.mad4b-demand-640-[a-f0-9]{12}\.webp$~',$c::query(123,640)['url'])===1,'returned same-origin static image only');
 check(!glob($dir.'/uploads/test.jpg.mad4b-demand-896-*.webp'),'never generated unrequested fifth image');
@@ -61,7 +68,16 @@ check($c::query(123,640,false)['state']==='pending','source updates invalidate c
 $c::enqueue();
 check(str_contains($GLOBALS['enqueue'],'/mu-plugins/assets/mad4b-responsive-media-demand-v1.js'),'company-owned frontend script wired');
 check(str_contains($GLOBALS['config'],'/wp-json/mad4b/v1/responsive-media'),'public config has exact same-origin REST route');
+$batch=$c::rest(new FakeReq(['items'=>'123:576,124:576,999:576']));
+check($batch instanceof FakeResponse && count($batch->value['items'])===3,'one REST bootstrap batches three separately checked term/width pairs');
+check($batch->value['items']['999:576']['state']==='invalid_source','batch request cannot bypass term allowlist');
+check(($batch->headers['Cache-Control']??'')==='private, no-store, max-age=0','REST pending response can never be publicly cached');
+$bad=$c::rest(new FakeReq(['items'=>'123:192,123:256,123:320,123:384,123:448,123:512,123:576,123:640,123:704']));
+check($bad instanceof WP_Error && $bad->code==='mad4b_invalid_media_batch','more than eight media items rejected');
+$bad=$c::rest(new FakeReq(['items'=>'123:576,../../etc/passwd:576']));
+check($bad instanceof WP_Error,'injection-like media path rejected before querying');
+
 foreach(glob($dir.'/uploads/*') as $f)unlink($f);
 foreach(glob($dir.'/uploads/.*') as $f){if(is_file($f))unlink($f);}
 rmdir($dir.'/uploads');rmdir($dir);
-echo 'PASS 20/20 demand-only responsive media safety checks',"\n";
+echo 'PASS 26/26 demand-only responsive media safety checks',"\n";

@@ -18,29 +18,45 @@
    var found=(item.className||'').match(/(?:^|\s)jet-listing-dynamic-post-(\d+)(?=\s|$)/);
    return found?Number(found[1]):0;
  }
- function drain(){
-   while(inFlight<maxConcurrent && waiting.length){
-     var item=waiting.shift(),card=item.card;
-     if(!card.isConnected)continue;
+ function sendBatch(batch){
+   var targets=Object.create(null),keys=[];
+   batch.forEach(function(item){
+     var card=item.card;
+     if(!card.isConnected)return;
      var width=targetWidth(item.width),term=termId(card);
-     if(!width||!term||requests.get(card)===width)continue;
+     if(!width||!term||requests.get(card)===width)return;
      requests.set(card,width);
-     var url=new URL(endpoint.href);
-     url.searchParams.set('term_id',String(term));
-     url.searchParams.set('width',String(width));
-     inFlight++;
-     fetch(url.href,{credentials:'omit',cache:'no-store',headers:{Accept:'application/json'}})
-       .then(function(r){if(!r.ok)throw new Error('no media');return r.json();})
-       .then((function(card){return function(result){
-         if(result.state!=='ready'||typeof result.url!=='string'||!card.isConnected)return;
+     var key=String(term)+':'+String(width);
+     if(!targets[key]){targets[key]=[];keys.push(key);}
+     targets[key].push(card);
+   });
+   if(!keys.length)return;
+   var endpointUrl=new URL(endpoint.href);
+   endpointUrl.searchParams.set('items',keys.join(','));
+   inFlight++;
+   fetch(endpointUrl.href,{credentials:'omit',cache:'no-store',headers:{Accept:'application/json'}})
+     .then(function(r){if(!r.ok)throw new Error('no media');return r.json();})
+     .then(function(answer){
+       var values=answer&&answer.items||{};
+       keys.forEach(function(key){
+         var result=values[key];
+         if(!result||result.state!=='ready'||typeof result.url!=='string')return;
          var asset=new URL(result.url,location.origin);
          if(asset.origin!==location.origin||!/\.mad4b-demand-\d+-[a-f0-9]{12}\.webp$/.test(asset.pathname))return;
-         card.style.setProperty('background-image','url("'+asset.href+'")','important');
-         card.setAttribute('data-mad4b-responsive-image','ready');
-       };})(card))
-       .catch(function(){}).finally(function(){inFlight--;drain();});
+         targets[key].forEach(function(card){
+           if(!card.isConnected)return;
+           card.style.setProperty('background-image','url("'+asset.href+'")','important');
+           card.setAttribute('data-mad4b-responsive-image','ready');
+         });
+       });
+     }).catch(function(){}).finally(function(){inFlight--;drain();});
+ }
+ function drain(){
+   while(inFlight<maxConcurrent && waiting.length){
+     sendBatch(waiting.splice(0,8));
    }
  }
+
  observer=new IntersectionObserver(function(entries){
    entries.forEach(function(e){if(!e.isIntersecting)return;observer.unobserve(e.target);waiting.push({card:e.target,width:e.boundingClientRect.width});});
    drain();

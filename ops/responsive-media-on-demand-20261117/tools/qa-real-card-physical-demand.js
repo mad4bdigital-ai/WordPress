@@ -10,8 +10,14 @@ const code=fs.readFileSync('/assets/mad4b-responsive-media-demand-v1.js','utf8')
    page.on('pageerror',e=>errors.push(e.message.slice(0,120)));
    await page.route('**/wp-json/mad4b/v1/responsive-media?*',async route=>{
      const query=new URL(route.request().url()).searchParams;
-     rest.push({id:query.get('term_id'),width:parseInt(query.get('width'),10)});
-     await route.fulfill({status:200,contentType:'application/json',body:'{"state":"pending"}'});
+     const items=(query.get('items')||'').split(',').filter(Boolean);
+     const response={contract:'mad4b.responsive-media.demand.v1',items:{}};
+     for(const item of items){
+       const [id,width]=item.split(':');
+       rest.push({id,width:Number(width)});
+       response.items[item]={state:'pending'};
+     }
+     await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(response)});
    });
    await page.goto('https://wayfatours.com/',{waitUntil:'domcontentloaded',timeout:35000});
    await page.evaluate(()=>window.MAD4BResponsiveMedia={endpoint:location.origin+'/wp-json/mad4b/v1/responsive-media',selector:'.elementor-element-95d1c9c',step:64,minWidth:192,maxWidth:1536});
