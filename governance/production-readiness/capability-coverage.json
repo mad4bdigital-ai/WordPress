@@ -23006,6 +23006,28 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing exact source provenance, original Addon Registry registered-plugin certification, missing-source fail-closed checks and mutation-denial contract cover the change.",
       "execution_note": "This source-only review does not restore the absent Company Portfolio Manager 0.4.0 tree, issue a certified add-on pair, authorize Production, or mutate live sites."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php",
+      "source_blob_sha": "d955b854bd777486a3c6b94807f83f8476b0131e",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "tests/mad4b-central-native-ssh-site-profile-hermetic.php"
+      ],
+      "owner_role": "Independent Central Site Profile source and Host SSH admission reviewer; CI evidence only, not Production content-release owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuse existing Site Profile exact-origin binding, CLI and Host transport identity, append-only audit, zero-user nonimpersonation and independently scoped Production write-denial controls.",
+      "review_rationale": "Reviewed exact portable Site Profile PHP blob: removed tenant-specific hardcoded Production URLs and replaced them with exact Host SSH-provided company and canonical origin matches. Retains explicit WordPress Production environment, zero WordPress user, dedicated Host CLI intent, existing CAS, audit and write-disabled enrollment. Same-PR executable hermetic PHP admission regression covers missing SSH intent, unexpected WordPress actor, mismatched company and origin, non-Production scope, missing audit and no grants. Original 1825-assertion lifecycle regression remains mandatory. The original WordPress Administrator route still exists as fallback.",
+      "execution_note": "CI source review only; pinned real Host SSH readbacks on both Production sites were independently checked, but Original305/312/313 signed content changes and per-company owner delegation remain separate and non-authorized."
     }
   ],
   "code_change_rules": {

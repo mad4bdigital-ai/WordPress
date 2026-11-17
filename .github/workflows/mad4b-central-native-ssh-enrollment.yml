@@ -1,0 +1,45 @@
+name: MAD4B Central Native SSH Site Profile
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php'
+      - 'wp-content/mu-plugins/505-mad4b-central-native-host-identity.php'
+      - 'tests/mad4b-central-native-*'
+      - 'ops/central-native-site-profile-v1/**'
+      - '.github/workflows/mad4b-central-native-ssh-enrollment.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: mad4b-central-native-ssh-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+jobs:
+  exact-native-auth:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3', '8.5']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Test native Host admission and Central read-only registry
+        run: |
+          docker run --rm -v "$GITHUB_WORKSPACE:/src:ro" -w /src php:${{ matrix.php }}-cli sh -euc '
+            php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php
+            php -l wp-content/mu-plugins/505-mad4b-central-native-host-identity.php
+            php tests/mad4b-central-native-ssh-site-profile-hermetic.php
+            php tests/mad4b-central-native-host-registry-hermetic.php
+            php wp-content/plugins/mad4b-site-control-plane/tests/site-profile-lifecycle-matrix-runtime.php
+          '
+      - name: Python admission and source contract (no Host SSH in CI)
+        run: |
+          python3 -B ops/central-native-site-profile-v1/test_native_enrollment_contract.py
+          python3 -B - <<'PY'
+          from pathlib import Path
+          for p in Path('ops/central-native-site-profile-v1').glob('*.py'):
+              compile(p.read_text(),str(p),'exec')
+          PY
