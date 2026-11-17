@@ -1,0 +1,43 @@
+name: MAD4B Featured Price Self-Recovery
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-commerce/mad4b-commerce.php'
+      - 'wp-content/plugins/mad4b-commerce/modules/presentation/**'
+      - 'tests/mad4b-*rate*hermetic.php'
+      - 'tests/mad4b-tour-card-price-cache-reconcile-hermetic.php'
+      - '.github/workflows/mad4b-featured-price-safeguard.yml'
+  push:
+    paths:
+      - 'wp-content/plugins/mad4b-commerce/mad4b-commerce.php'
+      - 'wp-content/plugins/mad4b-commerce/modules/presentation/**'
+      - '.github/workflows/mad4b-featured-price-safeguard.yml'
+jobs:
+  rate-ui-source-invariants:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.3', '8.5']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+      - name: Lint first-party presentation code
+        run: |
+          php -l wp-content/plugins/mad4b-commerce/mad4b-commerce.php
+          php -l wp-content/plugins/mad4b-commerce/modules/presentation/native-rate-runtime-owner-v1.php
+          php -l wp-content/plugins/mad4b-commerce/modules/presentation/mad4b-tour-multilingual-interface-v1.php
+      - name: Reject invalid fallback/cache actions
+        run: |
+          set -eu
+          for mode in presentation missing_asset symlink commerce already_loaded off; do
+            php tests/mad4b-native-rate-runtime-owner-hermetic.php "$mode"
+          done
+          for mode in presentation commerce off missing symlink no_evidence already_loaded; do
+            php tests/mad4b-native-tour-card-price-tags-hermetic.php "$mode"
+          done
+          for mode in normal repeat no-tag no-host host-failed too-many lock-held commerce off symlink source-update; do
+            php tests/mad4b-tour-card-price-cache-reconcile-hermetic.php "$mode"
+          done

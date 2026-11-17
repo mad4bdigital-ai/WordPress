@@ -6,6 +6,9 @@
  * Requires PHP: 8.0
  */
 defined('ABSPATH')||exit;
+// Original read-only Rate UI and fingerprint-based Featured price recovery.
+// Ownership and Commerce readiness guards are inside this first-party module.
+require_once __DIR__.'/modules/presentation/native-rate-runtime-owner-v1.php';
 // Runtime modules are loaded early from the one MU bootstrap, in original
 // order, to preserve authority and inter-module dependencies. This plugin
 // supplies the inventory/Settings surface, not a second module-loader.
