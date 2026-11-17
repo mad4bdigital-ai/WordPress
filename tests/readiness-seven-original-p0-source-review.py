@@ -6,6 +6,7 @@ reuse of stale tests after any source change.
 """
 from pathlib import Path
 import hashlib
+import json
 import re
 import subprocess
 
@@ -109,14 +110,36 @@ CASES = (
      "tests/staging-write-planning-guard-original-hermetic.php",
      "PASS: STAGING_WRITE_PLANNING_GUARD_ORIGINAL 64"),
 )
+# Preserve the immutable original P0 SHA pin. Only this exact successor,
+# backed by a separate non-authorizing source review and the original runtime
+# regression, may supersede the previous Addon Registry source bytes.
+REVIEWED_SUCCESSORS = {
+    "includes/class-mad4b-scp-addon-registry.php": (
+        "69e220a8c11a494da3216a1f98ce2cff770142ce",
+        "4db830176dc8da77c29e954a0783b7e4a0bab2d2",
+    ),
+}
+review_ledger = json.loads((ROOT / "governance/production-readiness/capability-coverage.json").read_text(encoding="utf-8"))
+
 assert len(CASES) == 24
 for source, git_blob, fixture, marker in CASES:
     source_path = ROOT / PLUGIN / source
     fixture_path = ROOT / fixture
     assert source_path.is_file() and fixture_path.is_file(), (source, "missing")
-    assert git_blob == subprocess.check_output(
+    actual_blob = subprocess.check_output(
         ["git", "hash-object", str(source_path)], cwd=ROOT, text=True
-    ).strip(), (source, "source SHA changed; new review required")
+    ).strip()
+    if actual_blob != git_blob:
+        pair = REVIEWED_SUCCESSORS.get(source)
+        assert pair == (git_blob, actual_blob), (source, "unknown successor; exact original SHA remains protected")
+        full_path = PLUGIN + source
+        rows = [r for r in review_ledger["reviewed_changes"]
+                if r.get("path") == full_path and r.get("source_blob_sha") == actual_blob
+                and r.get("status") == "reviewed_for_ci_only"
+                and r.get("production_authorized") is False
+                and r.get("live_evidence_required") is True
+                and fixture in r.get("regression_tests", [])]
+        assert len(rows) == 1, (source, "independent exact Git blob review missing")
     fixture_text = fixture_path.read_text(encoding="utf-8")
     assert Path(source).name in fixture_text, (
         source, "original fixture no longer loads this first-party source")

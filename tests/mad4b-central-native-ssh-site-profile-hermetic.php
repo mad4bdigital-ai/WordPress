@@ -28,7 +28,10 @@ $GLOBALS['siteurl']='https://egypttourgates.com';
 $GLOBALS['actor']=0;$GLOBALS['audit_ready']=false;$GLOBALS['admin']=false;
 $checks=0;
 $assert=static function($condition,$label)use(&$checks){if(!$condition)throw new RuntimeException($label);++$checks;};
-$call=static function($code='egypt-tour-gates') { return MAD4B_SCP_Site_Profile::provision_from_central_host(array('company_code'=>$code)); };
+$call=static function($code='egypt-tour-gates', $origin='https://egypttourgates.com') {
+    return MAD4B_SCP_Site_Profile::provision_from_central_host(
+        array('company_code'=>$code,'canonical_origin'=>$origin));
+};
 $deny=static function($expected,$label)use($call,$assert){
  $result=$call();
  $assert(is_wp_error($result) && $result->get_error_code()===$expected,$label);
@@ -36,6 +39,8 @@ $deny=static function($expected,$label)use($call,$assert){
 putenv('MAD4B_CENTRAL_SSH_ENROLLMENT');
 $deny('mad4b_central_host_cli_admission_required','must declare exact CLI intent');
 putenv('MAD4B_CENTRAL_SSH_ENROLLMENT=1');
+putenv('MAD4B_CENTRAL_SSH_COMPANY=egypt-tour-gates');
+putenv('MAD4B_CENTRAL_SSH_ORIGIN=https://egypttourgates.com');
 $GLOBALS['actor']=7;
 $deny('mad4b_central_host_cli_admission_required','never impersonate a WordPress user');
 $GLOBALS['actor']=0;
@@ -50,6 +55,12 @@ $GLOBALS['siteurl']='https://egypttourgates.com';
 $GLOBALS['origin']='https://tourism.almallahgroup-mg.com';
 $deny('mad4b_central_host_exact_scope_required','cross-company origin rejected');
 $GLOBALS['origin']='https://egypttourgates.com';
+putenv('MAD4B_CENTRAL_SSH_ORIGIN=https://another.example');
+$deny('mad4b_central_host_exact_scope_required','origin cannot differ from Host policy');
+putenv('MAD4B_CENTRAL_SSH_ORIGIN=https://egypttourgates.com');
+putenv('MAD4B_CENTRAL_SSH_COMPANY=another-company');
+$deny('mad4b_central_host_exact_scope_required','company cannot differ from Host policy');
+putenv('MAD4B_CENTRAL_SSH_COMPANY=egypt-tour-gates');
 $deny('mad4b_central_host_audit_required','append-only audit prerequisite');
 $assert(!array_key_exists('current_profile', $GLOBALS),'denied operations do not write');
 $assert(!current_user_can('manage_options'),'no WordPress Administrator required');

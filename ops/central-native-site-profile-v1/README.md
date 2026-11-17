@@ -4,8 +4,12 @@ The preferred mode is MAD4B Central VPS using existing root-owned Hostinger
 SSH keys and exact ed25519 host pins, without logging into WordPress on
 individual companies. The existing site Administrator UI is fallback only.
 
-The new Site Profile method provision_from_central_host() is available only in
+The portable Site Profile method provision_from_central_host() is available only in
 native WP-CLI with zero WordPress actor and exact host-intent declaration.
+The generic plugin contains no tenant host literals: the company code and
+canonical origin come from separately validated pinned Host SSH policy and
+are matched against dedicated CLI intent values, WordPress home/site URL
+and the running Production environment.
 It is locked to the two verified Production origins and uses the ORIGINAL
 WordPress CAS, audit and finalization mechanism, with no OAuth users and no
 write authority.
@@ -50,7 +54,7 @@ plugin overwrite. Original preimages and private readback receipts are under
 /opt/mad4b-company-provisioning/reports/central-ssh-site-profile-20261117/.
 
 Testing: the existing Site Profile lifecycle matrix passes 1825 assertions;
-12 native admission and 22 Central registry assertions on PHP 7.4, 8.3, 8.5.
+14 native admission and 22 Central registry assertions on PHP 7.4, 8.3, 8.5.
 Python hermetic source checks prove strict host pin and no WP user impersonation.
 Rollback of code is permitted by exact source hash; NEVER delete the saved
 database Site Profiles or their immutable audit events.

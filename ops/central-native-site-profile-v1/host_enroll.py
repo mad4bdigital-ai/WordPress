@@ -13,7 +13,7 @@ ALLOW={
  'egypt-tour-gates':'https://egypttourgates.com',
  'tourism-almallahgroup':'https://tourism.almallahgroup-mg.com',
 }
-PHP_SHA='761a37f09c748e706f008db1b4f74e20416c4df3e6a4b5ce93ab34887953e92c'
+PHP_SHA='d2e334993ecbb5afb2c35bcfd319f441754cf38afc96d1be5f27fc4bc223a88a'
 MARK='MAD4B_CENTRAL_HOST_PROFILE:'
 
 def remote_args(first_party,row):
@@ -29,7 +29,11 @@ def remote_args(first_party,row):
       row['ssh_username']+'@'+row['host']]
 
 def ssh_eval(args,row,php,authorize=False):
-    prefix='MAD4B_CENTRAL_SSH_ENROLLMENT=1 ' if authorize else ''
+    prefix=(
+        'MAD4B_CENTRAL_SSH_ENROLLMENT=1 '
+        + 'MAD4B_CENTRAL_SSH_COMPANY='+shlex.quote(row['company_id'])+' '
+        + 'MAD4B_CENTRAL_SSH_ORIGIN='+shlex.quote(row['origin'])+' '
+    ) if authorize else ''
     cmd=prefix+'wp --path='+shlex.quote(row['ssh_root'])+' --skip-themes eval '+shlex.quote(php)
     p=subprocess.run(args+[cmd],capture_output=True,text=True,timeout=84)
     lines=[x.split(MARK,1)[1] for x in p.stdout.splitlines() if x.startswith(MARK)]
@@ -100,7 +104,10 @@ echo 'MAD4B_CENTRAL_HOST_PROFILE:'.wp_json_encode([
 def apply_code(company):
     return r'''
 $c='''+json.dumps(company)+r''';
-$r=MAD4B_SCP_Site_Profile::provision_from_central_host(['company_code'=>$c]);
+$r=MAD4B_SCP_Site_Profile::provision_from_central_host([
+    'company_code'=>$c,
+    'canonical_origin'=>untrailingslashit(home_url('/'))
+]);
 if(is_wp_error($r)){WP_CLI::error('NATIVE_SCOPE_OR_AUDIT_DENIED:'.$r->get_error_code());}
 $s=MAD4B_SCP_Site_Profile::status();
 $p=MAD4B_SCP_Site_Profile::profile();

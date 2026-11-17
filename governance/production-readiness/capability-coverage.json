@@ -22964,6 +22964,70 @@
       "coverage_reuse_rationale": "Existing enrolled Site Profile canonical-origin, identity-bound host, WPML language and write grants remain independently enforced; PHP prefix comparison does not add a new feature or authorize execution.",
       "review_rationale": "Exact current Site Profile source fixes a PHP 7.4 Fatal in WPML AJAX canonical origin matching with a byte-exact strpos prefix, preserving deny-by-default behavior. Hermetic test executes 12 acceptance and denial cases against the original class under PHP 7.4 and 8.5, including cross-host, unregistered and hidden locales, additional/encoded paths, non-AJAX, siteurl mismatch and missing SitePress. No live WordPress mutation or grant.",
       "execution_note": "Source review and hermetic PHP proof only; current live site upgrade, Chrome acceptance and Production deployment require independent verification."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/wordpress-addon-catalog.json",
+      "source_blob_sha": "3a8eac3fca573b8306da5a916945af37138c757e",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/wordpress-addon-execution-guard-contract.php",
+        "tests/critical-runtime-policy-catalog-contracts.py"
+      ],
+      "owner_role": "First-party WordPress Addon source reviewer, CI-only; independent release Owner verdict is required",
+      "review_rationale": "Exact Git successor of the prior registered Company Management 0.4.0 candidate source inventory. The missing candidate was moved into explicit pending_addon_candidates; previous exact catalog blob is pinned in that record. No active add-ons remain, no certified pair exists, no Production execution or release authorization is granted. Original runtime negative PHP fixture verifies a pending historical candidate cannot produce execution_binding or mutation_guard success; Feature 007 static audit continues to reject any actual active missing root, illegal release ring, direct source unsafe primitive or production inheritance. This quarantine is not source restoration or package certification.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing exact source provenance, original Addon Registry registered-plugin certification, missing-source fail-closed checks and mutation-denial contract cover the change.",
+      "execution_note": "This source-only review does not restore the absent Company Portfolio Manager 0.4.0 tree, issue a certified add-on pair, authorize Production, or mutate live sites."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-addon-registry.php",
+      "source_blob_sha": "4db830176dc8da77c29e954a0783b7e4a0bab2d2",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/wordpress-addon-execution-guard-contract.php",
+        "tests/readiness-seven-original-p0-source-review.py"
+      ],
+      "owner_role": "First-party WordPress Addon source reviewer, CI-only; independent release Owner verdict is required",
+      "review_rationale": "Reviewed exact Add-on Registry source successor keeps all original exact provider/addon checks and original mutation guard unchanged, while replacing the empty-list vacuous readiness result with ready=false and no_registered_addons plus read-only pending_candidate_count. Isolated original WordPress stubs and negative execution tests passed on both PHP 7.4 and PHP 8.5. Original historical Git blob 69e220a8c11a494da3216a1f98ce2cff770142ce remains an immutable test pin; the 24-case source review admits only this successor SHA, conditional on an independent CI-only source review and the existing original PHP execution contract. Nothing here supplies an original host receipt, Owner approval or Production grant.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing exact source provenance, original Addon Registry registered-plugin certification, missing-source fail-closed checks and mutation-denial contract cover the change.",
+      "execution_note": "This source-only review does not restore the absent Company Portfolio Manager 0.4.0 tree, issue a certified add-on pair, authorize Production, or mutate live sites."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php",
+      "source_blob_sha": "d955b854bd777486a3c6b94807f83f8476b0131e",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "tests/mad4b-central-native-ssh-site-profile-hermetic.php"
+      ],
+      "owner_role": "Independent Central Site Profile source and Host SSH admission reviewer; CI evidence only, not Production content-release owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuse existing Site Profile exact-origin binding, CLI and Host transport identity, append-only audit, zero-user nonimpersonation and independently scoped Production write-denial controls.",
+      "review_rationale": "Reviewed exact portable Site Profile PHP blob: removed tenant-specific hardcoded Production URLs and replaced them with exact Host SSH-provided company and canonical origin matches. Retains explicit WordPress Production environment, zero WordPress user, dedicated Host CLI intent, existing CAS, audit and write-disabled enrollment. Same-PR executable hermetic PHP admission regression covers missing SSH intent, unexpected WordPress actor, mismatched company and origin, non-Production scope, missing audit and no grants. Original 1825-assertion lifecycle regression remains mandatory. The original WordPress Administrator route still exists as fallback.",
+      "execution_note": "CI source review only; pinned real Host SSH readbacks on both Production sites were independently checked, but Original305/312/313 signed content changes and per-company owner delegation remain separate and non-authorized."
     }
   ],
   "code_change_rules": {

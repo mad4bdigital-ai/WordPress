@@ -907,12 +907,18 @@ final class MAD4B_SCP_Site_Profile {
 			return new WP_Error( 'mad4b_central_host_cli_admission_required', 'A dedicated native Host WP-CLI connection is required.' );
 		$company = isset( $scope['company_code'] ) && is_string( $scope['company_code'] )
 			? $scope['company_code'] : '';
-		$expected = array(
-			'egypt-tour-gates' => 'https://egypttourgates.com',
-			'tourism-almallahgroup' => 'https://tourism.almallahgroup-mg.com',
-		);
+		// Company/origin authority comes from a pre-validated, pinned Host
+		// connection, not a tenant-specific hardcoded list in distributable code.
+		// Its intent environment is never set by REST, admin-post or the browser.
+		$expected_origin = isset( $scope['canonical_origin'] ) && is_string( $scope['canonical_origin'] )
+			? $scope['canonical_origin'] : '';
+		$host_company = (string) getenv( 'MAD4B_CENTRAL_SSH_COMPANY' );
+		$host_origin = (string) getenv( 'MAD4B_CENTRAL_SSH_ORIGIN' );
 		$origin = self::current_origin();
-		if ( ! isset( $expected[$company] ) || ! hash_equals( $expected[$company], $origin )
+		if ( ! preg_match( '/^[a-z][a-z0-9-]{2,47}$/D', $company )
+			|| ! hash_equals( $company, $host_company )
+			|| '' === $expected_origin || ! hash_equals( $expected_origin, $host_origin )
+			|| ! hash_equals( $expected_origin, $origin )
 			|| ! hash_equals( $origin, untrailingslashit( home_url( '/' ) ) )
 			|| ! hash_equals( $origin, untrailingslashit( site_url( '/' ) ) )
 			|| 'production' !== wp_get_environment_type() )
