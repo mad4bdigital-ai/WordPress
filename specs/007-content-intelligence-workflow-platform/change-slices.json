@@ -4,8 +4,8 @@
   "reviewed_base_sha": "5c72e4893e36e992f056c90cfc75908b3a8f7785",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 2613,
-  "changed_paths_sha256": "239d8e610fd9f5f5a9a41b2548ee82ae2dfa4b5dcc28a5e975b3887a4b9a29c2",
+  "changed_file_count": 2620,
+  "changed_paths_sha256": "9a0a702df174801e9c8952e649af48c120e775a997fc6f2ef4f6598f4a3b3ecb",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -5313,6 +5313,21 @@
         "ops/visitor-session-continuity-20261117/tools/qa-guest-switcher-real-journey.js",
         "tests/visitor-session-wpml-origin-hermetic.php",
         "tests/visitor-wpml-site-profile-origin-hermetic.py"
+      ]
+    },
+    {
+      "id": "pr814-company-reconcile-production-native-admission",
+      "semantic_unit": "Company reconciliation signed-original Production admission evidence, scoped company System Appearance Broker, and independent negative contract tests; no implicit Production execution or grant from a coverage record.",
+      "revert_boundary": "Revert the seven exact Company Reconcile Production admission source, workflow, Broker and hermetic test files as a unit. Preserve preexisting company reconciliation semantics, non-authorizing source reviews, required signed Native proofs and independent Owner verdict.",
+      "certification": "exact_head",
+      "path_globs": [
+        ".github/workflows/mad4b-company-reconcile-production-admission.yml",
+        "ops/company-reconcile-production-admission-v1/README.md",
+        "ops/company-reconcile-production-admission-v1/company-reconcile-production-admission.py",
+        "ops/company-reconcile-production-admission-v1/company-system-appearance-broker-reconcile.py",
+        "ops/company-reconcile-production-admission-v1/systemd/97-production-admission.conf",
+        "ops/company-reconcile-production-admission-v1/test_legacy_broker_signed_only.py",
+        "ops/company-reconcile-production-admission-v1/test_production_admission.py"
       ]
     }
   ],
