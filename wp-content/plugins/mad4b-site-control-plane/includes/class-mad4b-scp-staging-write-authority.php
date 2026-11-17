@@ -1440,6 +1440,40 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		// the exact NHI grant, approval, budget, policy, commit-guard and audit.
 		if ( in_array( $mcp_surface, array( 'enrollment', 'developer-dispatch', 'write-dispatch' ), true ) ) return $args;
 
+		// Direct Profile owns precisely two authenticated WordPress post writes.
+		// Do not convert their separately scoped OAuth + WP-capability admission
+		// into an unrelated governed NHI/approval-ticket operation. This exemption
+		// requires the ORIGINAL registered permission closure and execute method,
+		// never a generic surface=direct label or an arbitrary callback. The
+		// original Direct_Profile::permitted(true) still denies Production writes.
+		if ( 'direct' === $mcp_surface
+			&& 'mad4b-content' === ( $args['category'] ?? null )
+			&& class_exists( 'MAD4B_SCP_Direct_Profile', false )
+			&& isset( $args['execute_callback'], $args['permission_callback'] )
+			&& $args['permission_callback'] instanceof Closure ) {
+			$direct_methods = array(
+				MAD4B_SCP_Direct_Profile::CREATE_POST => 'create_post',
+				MAD4B_SCP_Direct_Profile::UPDATE_POST => 'update_post',
+			);
+			$method = isset( $direct_methods[ $name ] ) ? $direct_methods[ $name ] : '';
+			if ( '' !== $method
+				&& $args['execute_callback'] === array( 'MAD4B_SCP_Direct_Profile', $method ) ) {
+				try {
+					$reflection = new ReflectionFunction( $args['permission_callback'] );
+					$registration = new ReflectionMethod( 'MAD4B_SCP_Direct_Profile', 'register_abilities' );
+					$scope = $reflection->getClosureScopeClass();
+					$captured = $reflection->getStaticVariables();
+					if ( $scope && 'MAD4B_SCP_Direct_Profile' === $scope->getName()
+						&& realpath( (string) $reflection->getFileName() ) === realpath( __DIR__ . '/class-mad4b-scp-direct-profile.php' )
+						&& $reflection->getStartLine() >= $registration->getStartLine()
+						&& $reflection->getEndLine() <= $registration->getEndLine()
+						&& ( $captured['method'] ?? null ) === $method
+						&& is_array( $captured['def'] ?? null )
+						&& false === ( $captured['def'][3] ?? null ) ) return $args;
+				} catch ( Throwable $error ) { /* Unknown origin retains governed admission. */ }
+			}
+		}
+
 		$ai_review = class_exists( 'MAD4B_SCP_Context_Authority' ) && MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY === (string) $name;
 		$ai_approval = class_exists( 'MAD4B_SCP_AI_Approval' ) && MAD4B_SCP_AI_Approval::ABILITY === (string) $name;
 		$production_batch_configured = class_exists( 'MAD4B_SCP_Production_Automation' ) && '' !== MAD4B_SCP_Production_Automation::agent_id();
