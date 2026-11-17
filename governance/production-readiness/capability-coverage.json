@@ -22765,6 +22765,29 @@
       "coverage_reuse_rationale": "Original WordPress Ability execution fences, first-party source and schema provenance, audit, maintenance lease, exact non-Production recovery and OAuth protocol hotpath denial remain independently enforced; source review does not authorize a release.",
       "review_rationale": "A completed, official, fully provenance-certified MCP class set pinned by the managed MU bootstrap must show canonical_runtime on a later clean request, but foreign/unknown or unpinned class sets must remain observational. New source-owned Python regression executes 12 strict code invariants under the generic Readiness runner; the independent Connection Governance WordPress mixed-class first/recovered integration is still mandatory to validate actual runtime behavior.",
       "execution_note": "CI-only source proof, not real recovery acceptance. Connection Governance must pass its two-request original WordPress/MU runtime test before this change is accepted."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "ea5192a33d64ce3c188734e5e52610d801801c4b",
+      "owner_role": "MAD4B repository source-only exact-blob code review; independent first-party Owner and Host release required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PROVIDERS-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/original305-review-native-source-contract.py",
+        "ops/pr814-live-preservation/run_original305_php_isolated.py",
+        "tests/test_tour_highlights_source_delta.py"
+      ],
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Use existing native approval ticket, Original305 signer/hold rejection, Host source release denial, and exact source CAS controls. This source-only review confers no live release permission, Owner signature, or Host grant.",
+      "review_rationale": "Reviewed exact additive six-line bootstrap over frozen PR813 source: registers the previously live Original305 incident diagnostics and source-release review adapters after Approval Tickets. Verified source SHA, Git blob and byte-exact removal restoring the original 67,907-byte historical source; both isolated and archival regression tests run. No new Host executor, automatic HOLD closure, signer timer or release authority."
     }
   ],
   "code_change_rules": {

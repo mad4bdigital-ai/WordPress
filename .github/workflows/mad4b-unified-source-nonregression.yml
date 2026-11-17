@@ -8,6 +8,8 @@ on:
     paths:
       - '.github/workflows/mad4b-unified-source-nonregression.yml'
       - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'wp-content/plugins/mad4b-company-portfolio-manager/**'
+      - 'ops/pr814-live-preservation/**'
       - 'ops/company-code-release-v1/**'
       # Keep navigation cache-busting and portable release assets from drifting.
       - 'ops/destination-demand-ranking/**'
@@ -88,6 +90,13 @@ jobs:
         run: |
           set -euo pipefail
           python3 -m unittest discover -s tests -p 'test_unified_mad4b_behavior_invariants.py' -v
+          # Preserve the exact enrolled runtime, not the limited ops/ patch.
+          # These are file/isolated tests, not live release certification.
+          python3 ops/pr814-live-preservation/test_company_portfolio_runtime_source.py
+          python3 ops/pr814-live-preservation/test_public_issuer_key_source.py
+          php -l wp-content/plugins/mad4b-company-portfolio-manager/mad4b-company-portfolio-manager.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/original305-review-native-source-contract.py
+          python3 ops/pr814-live-preservation/run_original305_php_isolated.py
           # No mutable JS URLs, stale minifier manifest, or partial company
           # release: all pinned immutable navigation bytes must match source.
           python3 tests/destination-demand-ranking/test_navigation_immutable_contract.py

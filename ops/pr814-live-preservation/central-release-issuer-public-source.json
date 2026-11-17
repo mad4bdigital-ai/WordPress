@@ -1,0 +1,12 @@
+{
+  "contract": "mad4b.original305-public-issuer-key-source-preservation.v1",
+  "live_path": "wp-content/plugins/mad4b-site-control-plane/config/central-release-issuer-public.pem",
+  "private_key_present": false,
+  "production_mutated": false,
+  "public_only": true,
+  "reason": "Never put key-material-looking PEM files into the distributable WordPress Control Plane package; preserve exact public bytes as non-shipping source evidence. No live runtime references to the former config filepath were found.",
+  "release_authorized": false,
+  "sha256": "eb7e753bc93cb0151f483e546bb8a2d09de85915a30699db4f4f179a360f7f01",
+  "source_preservation_path": "ops/pr814-live-preservation/central-release-issuer-public.pem",
+  "source_site": "tours.dev.mad4b.com"
+}

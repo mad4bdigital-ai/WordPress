@@ -29,11 +29,10 @@ $evidence = static function () use ( $guard, $bridge, $mu_runtime ) {
 };
 
 if ( empty( $guard['eligible'] ) ) $fail( 'guard must remain eligible on exact Staging origin' . $evidence() );
-// The guard intentionally observes source ownership in a read-only request.
-// The retired "canonical_runtime" verdict would imply unrequested repair.
-// Verify actual authoritative provenance, complete pinning and no mutation.
-if ( 'runtime_source_observed' !== ( isset( $guard['state'] ) ? $guard['state'] : '' ) )
-    $fail( 'read-only runtime source observation unavailable after MU recovery' . $evidence() );
+// Read-only inspection can report an already proven canonical runtime.
+// This requires complete class/MU evidence and MUST NOT itself initiate repair.
+if ( 'canonical_runtime' !== ( isset( $guard['state'] ) ? $guard['state'] : '' ) )
+    $fail( 'certified canonical runtime not observed after MU recovery' . $evidence() );
 if ( empty( $guard['source_provenance_observational'] ) )
     $fail( 'source ownership must remain observational outside governed recovery' . $evidence() );
 if ( empty( $guard['runtime_from_official_plugin'] ) || empty( $guard['runtime_class_provenance_complete'] )

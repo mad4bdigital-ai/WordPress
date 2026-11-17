@@ -6,9 +6,82 @@ final class MAD4B_SCP_Drive_Scan_Continuation {
  const CONTRACT = 'mad4b.drive-scan-continuation.v1';
  const TTL = 7200;
  const MAX_BYTES = 8388608;
+ const MAX_WORK_ITEMS = 4096;
+ const MAX_REVISIONS = 8192;
+ const MAX_METADATA_FILES_PER_STEP = 8;
+ const MAX_RECOVERY_SECONDS = 86400;
  private static function error( $suffix ) { return new WP_Error( 'mad4b_scan_' . $suffix, 'Scan continuation stopped: ' . $suffix . '. Reinspect the exact source; no Context registry write was performed.' ); }
  private static function digest( $data ) { return hash( 'sha256', wp_json_encode( $data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) ); }
  private static function key() { return hash( 'sha256', wp_salt( 'auth' ) . '|' . self::CONTRACT, true ); }
+
+    /** Verify an already-indexed source against its latest immutable partial-apply
+     * Audit receipt and the actual live Context assets. Read only: a pending
+     * newer scan never becomes an approval and cannot erase this receipt.
+     */
+    public static function indexed_source_receipt(string $source_id) {
+        if(!preg_match('/^[a-f0-9]{64}$/D',$source_id)
+           ||!class_exists('MAD4B_SCP_Context_Authority',false)
+           ||!class_exists('MAD4B_SCP_Site_Profile',false)
+           ||!class_exists('MAD4B_SCP_Schema',false))return false;
+        $source=MAD4B_SCP_Context_Authority::source($source_id);
+        $site=MAD4B_SCP_Site_Profile::status();
+        $site_id=(string)($site['site_uuid']??'');
+        if(!is_array($source)||!$source||!preg_match('/^[a-f0-9-]{36}$/D',$site_id)
+           ||(string)($source['source_id']??'')!==$source_id
+           ||(string)($source['site_uuid']??'')!==$site_id
+           ||(string)($source['provider']??'')!=='google_drive'
+           ||(string)($source['mode']??'')!=='governed'
+           ||(string)($source['status']??'')!=='partial_scan'
+           ||!empty($source['last_scan_complete'])
+           ||!preg_match('/^[a-f0-9]{64}$/D',(string)($source['last_scan_generation']??'')))return false;
+        $asset_count=(int)($source['asset_count']??0);
+        $brand_id=(string)($source['brand_id']??'');
+        $synced=(int)strtotime((string)($source['last_synced_at']??''));
+        if($asset_count<1||$brand_id===''||$synced<1||$synced>time()+300)return false;
+        $tables=MAD4B_SCP_Schema::tables();
+        $table=(string)($tables['audit_events']??'');
+        if($table===''||!preg_match('/^[a-zA-Z0-9_]+$/D',$table))return false;
+        global $wpdb;
+        $rows=$wpdb->get_results($wpdb->prepare(
+            "SELECT id,status,occurred_at,summary_json,entry_hash FROM `$table` WHERE ability=%s ORDER BY id DESC LIMIT 100",
+            'mad4b/context-source-scan'),ARRAY_A);
+        $receipt=null;
+        foreach((array)$rows as $row){
+            $event=json_decode((string)($row['summary_json']??''),true);
+            if(!is_array($event)||(string)($event['source_id']??'')!==$source_id)continue;
+            $receipt=['row'=>$row,'event'=>$event];
+            break; // Never fall back to an older receipt for this source.
+        }
+        if(!$receipt)return false;
+        $event=$receipt['event'];$row=$receipt['row'];
+        $at=(int)strtotime((string)($row['occurred_at']??''));
+        if((string)($row['status']??'')!=='partial'
+           ||(string)($event['scan_generation']??'')!==(string)$source['last_scan_generation']
+           ||(string)($event['provider']??'')!=='google_drive'
+           ||(string)($event['mode']??'')!=='governed'
+           ||(int)($event['observed_asset_count']??-1)!==$asset_count
+           ||(int)($event['represented_asset_count']??-1)!==$asset_count
+           ||!in_array('file_normalization_deferred',(array)($event['truncation_reasons']??[]),true)
+           ||$at<1 ||abs($at-$synced)>600
+           ||!preg_match('/^[a-f0-9]{64}$/D',(string)($row['entry_hash']??'')))return false;
+        $count=0;
+        foreach(MAD4B_SCP_Context_Authority::assets() as $asset){
+            if(!is_array($asset)||(string)($asset['source_id']??'')!==$source_id)continue;
+            if((string)($asset['site_uuid']??'')!==$site_id
+               ||(string)($asset['brand_id']??'')!==$brand_id
+               ||empty($asset['content_complete'])
+               ||!preg_match('/^[a-f0-9]{64}$/D',(string)($asset['content_hash']??'')))return false;
+            ++$count;
+        }
+        if($count!==$asset_count)return false;
+        return ['contract'=>'mad4b.drive-indexed-source-receipt.v1',
+            'source_id'=>$source_id,'site_uuid'=>$site_id,
+            'source_generation'=>(string)$source['last_scan_generation'],
+            'indexed_at'=>$synced,'indexed_count'=>$count,
+            'audit_id'=>(int)$row['id'],'audit_entry_hash'=>(string)$row['entry_hash'],
+            'registry_revision'=>MAD4B_SCP_Context_Authority::registry_revision()];
+    }
+
  public static function option_name( array $scope ) { return 'mad4b_scan_checkpoint_' . self::digest( $scope['checkpoint_owner'] ?? $scope ); }
  private static function cursor( array $state, $scope_sha ) {
   $body = $state['generation'] . ':' . $state['revision'];
@@ -75,13 +148,37 @@ final class MAD4B_SCP_Drive_Scan_Continuation {
   $held = MAD4B_SCP_Distributed_Lock::acquire( $lock ); if ( is_wp_error( $held ) ) return $held;
   try {
    $raw = self::read_raw( $name ); $state = null === $raw ? null : self::open( $raw, $scope_sha );
-   if ( is_wp_error( $state ) ) {
-    if ( '' === $cursor && ! $final_only && 'mad4b_scan_checkpoint_scope_changed' === $state->get_error_code() ) $state = null;
-    else return $state;
-   }
+   // Scope drift must never silently overwrite an existing encrypted inventory.
+   if ( is_wp_error( $state ) ) return $state;
    if ( is_array( $state ) && $state['expires_at'] <= time() ) {
-    if ( '' !== $cursor ) return self::error( 'checkpoint_expired' );
-    $state = null;
+    // An expired encrypted checkpoint is data, not active authority. Preserve
+    // its inventory only after exact-scope, grant and Drive-change proofs.
+    // Never silently restart, discard evidence or approve any Context asset.
+    if ( $restart || $final_only || !isset($state['revision'],$state['generation'])
+     || time() - (int)$state['expires_at'] > self::MAX_RECOVERY_SECONDS
+     || ('' !== $cursor && !hash_equals(self::cursor($state,$scope_sha),$cursor)) )
+     return self::error('checkpoint_expired');
+    $valid=call_user_func($provider,'revalidate',$scope);
+    if ( true !== $valid ) return is_wp_error($valid)?$valid:self::error('scope_changed');
+    $unchanged=call_user_func($provider,'verify',$state);
+    if ( true !== $unchanged ) return is_wp_error($unchanged)?$unchanged:self::error('provider_changed');
+    $renewed=$state;
+    $renewed['expires_at']=time()+self::TTL;
+    $renewed['revision']++;
+    $renewed['last_request']='';
+    $sealed=self::seal($renewed,$scope_sha);
+    if(is_wp_error($sealed))return $sealed;
+    if(!class_exists('MAD4B_SCP_Audit'))return self::error('audit_unavailable');
+    $audit=MAD4B_SCP_Audit::record('context/source-scan-plan',array(
+     'event'=>'expired_checkpoint_revalidated','scope_sha256'=>$scope_sha,
+     'generation'=>$renewed['generation'],'revision'=>$renewed['revision'],
+     'checkpoint_sha256'=>hash('sha256',$sealed),'registry_mutation'=>false));
+    if(is_wp_error($audit)||!$audit)return self::error('audit_failed');
+    if(!MAD4B_SCP_Distributed_Lock::owns($lock))return self::error('checkpoint_lock_lost');
+    $saved=self::save($name,$raw,$sealed);
+    if(is_wp_error($saved))return $saved;
+    self::save_ui_progress($scope,$renewed);
+    return self::result($renewed,$scope_sha);
    }
    if ( $restart ) {
     if ( $final_only || ! is_array( $state ) || ! hash_equals( self::cursor( $state, $scope_sha ), $cursor ) ) return self::error( 'restart_requires_current_cursor' );
@@ -104,7 +201,7 @@ final class MAD4B_SCP_Drive_Scan_Continuation {
     if ( hash_equals( $state['last_request'], hash( 'sha256', $cursor ) ) && ! $final_only ) return self::readback( $state, $scope_sha, $provider );
     if ( ! hash_equals( self::cursor( $state, $scope_sha ), $cursor ) ) return self::error( 'cursor_stale_or_foreign' );
    }
-   if ( $state['revision'] >= 1024 ) return self::error( 'page_limit' );
+   if ( $state['revision'] >= self::MAX_REVISIONS ) return self::error( 'page_limit' );
    if ( $state['complete'] ) return self::readback( $state, $scope_sha, $provider );
    if ( $final_only ) return self::error( 'inventory_incomplete' );
    $next = self::advance( $state, $recursive, $provider ); if ( is_wp_error( $next ) ) return $next;
@@ -128,8 +225,46 @@ final class MAD4B_SCP_Drive_Scan_Continuation {
    return is_wp_error( $saved ) ? $saved : self::result( $next, $scope_sha );
   } finally { MAD4B_SCP_Distributed_Lock::release( $lock ); }
  }
+ /**
+  * Reconcile historical scan checkpoints produced by the old SVG markup
+  * normalizer. A visual asset is not a verified text document merely because
+  * removing its markup yields a string (including the empty string).
+  * Only legacy local SVG/drawing paths are demoted: genuinely extracted
+  * multimodal evidence and text documents are retained by their exact hashes.
+  * Never changes source selection, authorization, or Context registry assets.
+  */
+ private static function quarantine_legacy_visual_assets( array $state ) {
+  $kept=array();
+  $deferred=is_array($state['deferred']??null)?$state['deferred']:array();
+  $deferred_ids=array();
+  foreach($deferred as $row)if(is_array($row)&&isset($row['file_id']))$deferred_ids[(string)$row['file_id']]=true;
+  foreach((array)($state['assets']??array()) as $asset){
+   if(!is_array($asset)){$kept[]=$asset;continue;}
+   $mime=strtolower((string)($asset['mimeType']??''));
+   $reason=(string)($asset['normalization_reason']??'');
+   $legacy=($mime==='image/svg+xml' && $reason==='markup_local')
+    ||($mime==='application/vnd.google-apps.drawing' && $reason==='google_drawing_svg_export');
+   if(!$legacy){$kept[]=$asset;continue;}
+   $id=(string)($asset['file_id']??'');
+   if($id===''){$kept[]=$asset;continue;}
+   if(!isset($deferred_ids[$id])){
+    $deferred[]=array('file_id'=>$id,'title'=>(string)($asset['title']??''),
+     'mime_type'=>$mime,'normalization_reason'=>'visual_media_extraction_required',
+     'content_complete'=>false,'status'=>'deferred_review_required');
+    $deferred_ids[$id]=true;
+   }
+  }
+  $state['assets']=$kept;
+  $state['deferred']=$deferred;
+  return $state;
+ }
  private static function advance( array $state, $recursive, $provider ) {
+  $state=self::quarantine_legacy_visual_assets($state);
   if ( $state['pending'] ) {
+   // Provider metadata-only media can be classified in a small bounded batch.
+   // Each actual document fetch still ends the step to preserve IO ceilings.
+   $processed = 0;
+   do {
    $file = $state['pending'][0];
    // Content fetch is bounded to 16 MiB. Advertised larger binary files
    // are inventoried by verified Drive metadata, not downloaded into PHP.
@@ -180,6 +315,10 @@ final class MAD4B_SCP_Drive_Scan_Continuation {
     if ( $file['id'] !== ($asset['file_id']??'') ) return self::error('file_identity_changed');
     $state['assets'][]=$asset; array_shift($state['pending']);
    }
+   ++$processed;
+   if ($deferred_reason !== 'visual_media_extraction_required'
+       || $processed >= self::MAX_METADATA_FILES_PER_STEP) break;
+   } while (!empty($state['pending']));
   } elseif ( $state['queue'] ) {
    $folder = $state['queue'][0];
    $page = call_user_func( $provider, 'list', $folder ); if ( is_wp_error( $page ) ) return $page;
@@ -199,7 +338,7 @@ final class MAD4B_SCP_Drive_Scan_Continuation {
      $state['queue'][]=array('id'=>$id,'path'=>$file['path'],'depth'=>$folder['depth']+1,'token'=>'');
     } else {
      if ( 'application/vnd.google-apps.shortcut' === ($file['mimeType']??'') ) return self::error( 'shortcut_scope_review_required' );
-     if ( count($state['assets'])+count($state['pending']) >= 500 ) return self::error( 'file_limit' );
+     if ( count((array)$state['assets'])+count((array)$state['pending'])+count((array)$state['deferred']) >= self::MAX_WORK_ITEMS ) return self::error( 'file_limit' );
      $state['pending'][]=$file;
     }
    }
@@ -221,7 +360,48 @@ final class MAD4B_SCP_Drive_Scan_Continuation {
   if ( true !== $valid ) return is_wp_error($valid)?$valid:self::error('scope_changed');
   return self::result($state,$scope_sha);
  }
+
+ /**
+  * Strictly metadata-only routing for fully inventoried but unnormalized Drive
+  * files. The result is a risk/discovery hint, never a permission to publish.
+  * A rights decision always needs original provenance and review evidence.
+  */
+ public static function deferred_intake_triage(array $rows) {
+  $counts=[];$reasons=[];$visual=0;
+  foreach($rows as $row) {
+   if(!is_array($row))continue;
+   $mime=strtolower(trim((string)($row['mime_type']??$row['mimeType']??'')));
+   $reason=sanitize_key((string)($row['normalization_reason']??'unknown'));
+   $routes='specialist_extractor_review';
+   if($mime==='image/svg+xml'){$routes='svg_safety_rights_and_semantics';++$visual;}
+   elseif(0 === strpos($mime,'image/')){$routes='image_rights_and_destination_accuracy';++$visual;}
+   elseif(0 === strpos($mime,'font/') || 0 === strpos($mime,'application/x-font-')
+       || in_array($mime,['application/font-woff','application/vnd.ms-fontobject'],true))
+       $routes='font_licensing_and_distribution';
+   elseif(in_array($mime,['application/zip','application/x-zip-compressed',
+         'application/x-tar','application/gzip','application/x-rar-compressed'],true))
+       $routes='archive_expansion_and_rights';
+   elseif($mime==='application/vnd.google-apps.spreadsheet'
+       ||in_array($mime,['text/csv','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],true))
+       $routes='bounded_structured_dataset_review';
+   elseif(false !== strpos($mime,'executable')||false !== strpos($mime,'msdos')
+       ||in_array($mime,['application/x-msdownload','application/x-dosexec'],true))
+       $routes='executable_quarantine';
+   $counts[$routes]=($counts[$routes]??0)+1;
+   $reasons[$reason]=($reasons[$reason]??0)+1;
+  }
+  ksort($counts,SORT_STRING);ksort($reasons,SORT_STRING);
+  return ['contract'=>'mad4b.scan-deferred-intake-triage.v1',
+   'source_metadata_only'=>true,'asset_count'=>array_sum($counts),
+   'visual_count'=>$visual,'nonvisual_count'=>array_sum($counts)-$visual,
+   'intake_routes'=>$counts,'normalization_reasons'=>$reasons,
+   'automatic_approval_count'=>0,'published_count'=>0,
+   'requires_original_rights_and_source_evidence'=>true,
+   'context_registry_mutated'=>false,'media_registry_mutated'=>false];
+ }
+
  private static function result( array $state, $scope_sha ) {
+  $state=self::quarantine_legacy_visual_assets($state);
   $deferred=is_array($state['deferred']??null)?$state['deferred']:array();
   $inventory_complete=!empty($state['complete']);
   $all_normalized=$inventory_complete && !$deferred;
@@ -233,6 +413,7 @@ final class MAD4B_SCP_Drive_Scan_Continuation {
    'truncation_reasons'=>!$inventory_complete?array('scan_page_pending')
      : ($deferred?array('file_normalization_deferred'):array()),
    'deferred_files'=>$deferred,'deferred_count'=>count($deferred),
+   'deferred_intake_triage'=>self::deferred_intake_triage($deferred),
    'assets'=>$state['assets'], 'asset_count'=>count($state['assets']),
    'scan_cursor'=>self::cursor($state,$scope_sha), 'expires_at'=>$state['expires_at'],
    'checkpoint_revision'=>$state['revision'], 'registry_mutation_performed'=>false,

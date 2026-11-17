@@ -3152,7 +3152,7 @@ final class MAD4B_SCP_Context_Authority {
         );
         $matched_evidence='';
         foreach($claims as $claim) {
-            if(!preg_match('/^\s*(.{2,120}?)\s*[—–|]\s*(?:Brand Strategy|Tone of Voice|Editorial Guidelines)\b/iu',
+            if(!preg_match('/^\s*(.{2,120}?)\s*[-—–|]\s*(?:Brand Core|Brand Strategy|Tone of Voice|Editorial Guidelines)\b/iu',
                 $claim['text'],$m))continue;
             $claimed=trim($m[1]);
             $normalize=static function($text){
@@ -3282,6 +3282,19 @@ final class MAD4B_SCP_Context_Authority {
             // Low confidence blocks approval only; AI may still document
             // defects using needs_changes or reject without changing classification.
             $requested_decision = sanitize_key( isset( $input['decision'] ) ? (string) $input['decision'] : 'approve' );
+            // A corrected classifier must not silently inherit an old
+            // automatically assigned Brand Authority category. Reconcile the
+            // indexed source through exact plan/revision and owner confirmation
+            // before giving such metadata an approved content-hash receipt.
+            if ('approve' === $requested_decision && 'automatic_heuristic' === $classification_source) {
+                $fresh = self::classify_asset((string)($asset['title']??''),
+                    (string)($asset['path']??''));
+                if ((string)($asset['category']??'') !== (string)$fresh['category']
+                    || (string)($asset['authority_class']??'') !== (string)$fresh['authority_class']
+                    || !empty($asset['required']) !== !empty($fresh['required']))
+                    return new WP_Error('mad4b_context_auto_classification_stale_requires_reindex',
+                        'Automatic Context classification has changed. Reconcile the exact source index before approving.');
+            }
             if ( $low_confidence_classification && 'approve' === $requested_decision ) {
 				$actor_type = isset( $actor['actor_type'] ) ? sanitize_key( (string) $actor['actor_type'] ) : '';
 				if ( 'ai_agent' === $actor_type ) {
@@ -3958,13 +3971,18 @@ final class MAD4B_SCP_Context_Authority {
 		);
 	}
 	public static function classify_asset( $name, $path = '', $content = '' ) {
-		$haystack = strtolower( trim( (string) $name . ' ' . (string) $path . ' ' . substr( (string) $content, 0, 6000 ) ) );
+		// Only the document's own name may establish automatic authority.
+		// A folder such as 00 Brand Core contains kits, fonts, scripts, and
+		// reference data; its path is provenance, never a document category.
+		// Body mentions are contextual evidence for later review, not an
+		// implicit owner-issued Brand Strategy or required-scope assignment.
+		$haystack = mb_strtolower( trim( (string) $name ), 'UTF-8' );
 		$rules = array(
-			 'brand_strategy' => array( 'brand strategy', 'brand core', 'core brand identity', 'brand identity', 'brand plan', 'استراتيجية العلامة', 'استراتيجية البراند', 'جوهر العلامة' ),
+			 'brand_strategy' => array( 'brand strategy', 'brand core', 'core brand identity', 'brand plan', 'استراتيجية العلامة', 'استراتيجية البراند', 'جوهر العلامة' ),
 			 'brand_positioning' => array( 'positioning', 'brand position', 'تموضع العلامة', 'التموضع' ),
 			 'audience_persona' => array( 'persona', 'audience', 'customer profile', 'buyer profile', 'الجمهور', 'شخصية العميل', 'العميل المثالي' ),
 			 'tone_of_voice' => array( 'tone of voice', 'tone-of-voice', 'brand voice', 'tov', 'نبرة الصوت', 'نبرة العلامة', 'أسلوب الكتابة' ),
-			'messaging' => array( 'messaging', 'message framework', 'key messages' ),
+			'messaging' => array( 'messaging', 'message framework', 'key messages', 'message map', 'message maps' ),
 			 'editorial_guidelines' => array( 'editorial', 'writing guideline', 'style guide', 'content guideline', 'دليل التحرير', 'إرشادات الكتابة', 'قواعد المحتوى' ),
 			 'terminology' => array( 'terminology', 'naming rule', 'glossary', 'vocabulary', 'المصطلحات', 'قاموس', 'التسمية' ),
 			'claim_policy' => array( 'prohibited claim', 'claim policy', 'restriction', 'legal claim' ),
@@ -3974,7 +3992,7 @@ final class MAD4B_SCP_Context_Authority {
 			'product_knowledge' => array( 'product knowledge', 'product guide', 'product catalog' ),
 			'service_knowledge' => array( 'service knowledge', 'service guide', 'services' ),
 			'destination_knowledge' => array( 'destination guide', 'destination knowledge', 'travel guide' ),
-			 'market_research' => array( 'market research', 'market report', 'research report', 'market insight', 'بحث السوق', 'دراسة السوق', 'تقرير السوق' ),
+			 'market_research' => array( 'market research', 'market report', 'research report', 'market insight', 'keyword planner', 'بحث السوق', 'دراسة السوق', 'تقرير السوق' ),
 			 'writer_reference' => array( 'writer reference', 'author reference', 'journalist', 'writing sample', 'style profile', 'مرجع كاتب', 'نموذج كتابة', 'أسلوب الكاتب' ),
 			'content_example' => array( 'content example', 'sample article', 'sample blog', 'example copy' ),
 		);
@@ -3982,7 +4000,7 @@ final class MAD4B_SCP_Context_Authority {
 		$best_hits = 0;
 		foreach ( $rules as $category => $needles ) {
 			$hits = 0;
-			foreach ( $needles as $needle ) if ( false !== strpos( $haystack, $needle ) ) ++$hits;
+			foreach ( $needles as $needle ) if ( false !== strpos( $haystack, mb_strtolower( $needle, 'UTF-8' ) ) ) ++$hits;
 			if ( $hits > $best_hits ) { $best = $category; $best_hits = $hits; }
 		}
 		// Authoritative document titles are stronger evidence of document type
@@ -3990,15 +4008,15 @@ final class MAD4B_SCP_Context_Authority {
 		// Brand Strategy and Tone of Voice without becoming a strategy asset.
 		// Use only explicit multi-word authority identifiers in title or path;
 		// do not infer Brand authority from arbitrary content mentions.
-		$title_path = strtolower( trim( (string) $name . ' ' . (string) $path ) );
+		$title_path = mb_strtolower( trim( (string) $name ), 'UTF-8' );
 		$named_authority_rules = array(
 			'editorial_guidelines' => array( 'editorial guideline', 'style guide', 'دليل التحرير', 'قواعد المحتوى' ),
 			'tone_of_voice' => array( 'tone of voice', 'tone-of-voice', 'نبرة الصوت', 'نبرة العلامة' ),
-			'brand_strategy' => array( 'brand strategy', 'core brand identity', 'استراتيجية العلامة', 'استراتيجية البراند' ),
+			'brand_strategy' => array( 'brand strategy', 'brand core', 'core brand identity', 'استراتيجية العلامة', 'استراتيجية البراند', 'جوهر العلامة' ),
 		);
 		foreach ( $named_authority_rules as $category => $names ) {
 			foreach ( $names as $named_phrase ) {
-				if ( false === strpos( $title_path, $named_phrase ) ) continue;
+				if ( false === strpos( $title_path, mb_strtolower( $named_phrase, 'UTF-8' ) ) ) continue;
 				$best = $category;
 				$best_hits = max( 2, $best_hits );
 				break 2;
@@ -4011,10 +4029,10 @@ final class MAD4B_SCP_Context_Authority {
 		// An explicit human-classified asset is preserved by the caller and can
 		// still be reviewed via the separate Context review authority surface.
 		if ( in_array( $best, array( 'brand_strategy', 'tone_of_voice', 'editorial_guidelines' ), true ) ) {
-			$title_path = strtolower( trim( (string) $name . ' ' . (string) $path ) );
+			$title_path = mb_strtolower( trim( (string) $name ), 'UTF-8' );
 			$named_authority = false;
 			foreach ( $rules[ $best ] as $needle ) {
-				if ( false !== strpos( $title_path, $needle ) ) { $named_authority = true; break; }
+				if ( false !== strpos( $title_path, mb_strtolower( $needle, 'UTF-8' ) ) ) { $named_authority = true; break; }
 			}
 			$operational_title = 1 === preg_match(
 				'/\\b(wordpress|wp-json|connector|mcp|configuration|snapshot|workflow|import|export|api|operational|operations|publish preparation|data store|database)\\b/i',
@@ -4043,6 +4061,115 @@ final class MAD4B_SCP_Context_Authority {
 			'priority' => $priority,
 		);
 	}
+
+    /** Plan a metadata-only reconciliation using current title-based classifier. */
+    public static function classification_reconcile_plan($source_id) {
+        $source_id = trim((string)$source_id);
+        $source = self::source($source_id);
+        $site = self::site_binding();
+        if (is_wp_error($site)) return $site;
+        if (!is_array($source) || ($source['mode']??'')!=='governed'
+            || ($source['status']??'')!=='partial_scan'
+            || ($source['provider']??'')!=='google_drive'
+            || !hash_equals((string)$site['site_uuid'],(string)($source['site_uuid']??'')))
+            return new WP_Error('mad4b_reconcile_source_not_eligible','Only an indexed, site-owned governed source may be reconciled.');
+        $changes=[];$reviewed=0;$count=0;
+        foreach (self::raw_assets() as $id=>$asset) {
+            if (!is_array($asset) || (string)($asset['source_id']??'')!==$source_id) continue;
+            ++$count;
+            if (!hash_equals((string)$site['site_uuid'],(string)($asset['site_uuid']??''))
+                || !hash_equals((string)$source['brand_id'],(string)($asset['brand_id']??'')))
+                return new WP_Error('mad4b_reconcile_asset_scope_invalid','An asset does not match the enrolled site and brand.');
+            $fresh=self::classify_asset((string)($asset['title']??''),(string)($asset['path']??''));
+            $different=(string)($asset['category']??'')!==(string)$fresh['category']
+                ||(string)($asset['authority_class']??'')!==(string)$fresh['authority_class']
+                ||(bool)($asset['required']??false)!==(bool)$fresh['required']
+                ||(int)($asset['priority']??0)!==(int)$fresh['priority'];
+            if (!$different) continue; // An independent confidence-only adjustment is out of scope.
+            if ((string)($asset['classification_source']??'')!=='automatic_heuristic'
+                ||(string)($asset['review_status']??'')!=='unreviewed'
+                ||(string)($asset['reviewed_content_hash']??'')!==''
+                ||(string)($asset['reviewed_at']??'')!==''
+                ||empty($asset['content_complete'])
+                ||!preg_match('/^[a-f0-9]{64}$/D',(string)($asset['content_hash']??''))) {
+                ++$reviewed; continue;
+            }
+            $fields=['category','authority_class','required','priority','classification_confidence'];
+            $changes[]=['asset_id'=>(string)$id,'content_hash'=>(string)$asset['content_hash'],
+              'before'=>array_intersect_key($asset,array_flip($fields)),
+              'after'=>array_intersect_key($fresh,array_flip($fields))];
+        }
+        usort($changes,static fn($a,$b)=>strcmp($a['asset_id'],$b['asset_id']));
+        $plan=['contract'=>'mad4b.context-classification-only-reconcile.v1',
+          'source_id'=>$source_id,'site_uuid'=>(string)$site['site_uuid'],
+          'source_generation'=>(string)($source['last_scan_generation']??''),
+          'registry_revision'=>self::registry_revision(),
+          'manifest_sha256'=>self::authority_manifest_fingerprint(),
+          'source_asset_count'=>$count,'blocked_reviewed_count'=>$reviewed,
+          'changes'=>$changes];
+        $encoded=wp_json_encode($plan,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
+        if(!is_string($encoded))return new WP_Error('mad4b_reconcile_plan_failed','Plan encoding failed.');
+        $plan['plan_sha256']=hash('sha256',$encoded);
+        return $plan;
+    }
+
+    /** Exact, one-shot, local operator reconciliation. Never a remote write ability. */
+    public static function classification_reconcile_apply(array $request) {
+        if (!defined('WP_CLI') || true!==WP_CLI || (defined('REST_REQUEST') && REST_REQUEST)
+            || get_current_user_id()<1 || !current_user_can('manage_options')
+            ||!class_exists('MAD4B_SCP_Site_Profile')
+            ||!MAD4B_SCP_Site_Profile::governed_write_ready())
+            return new WP_Error('mad4b_reconcile_native_admin_required','An enrolled site-local WP-CLI administrator is required.');
+        $gate=class_exists('MAD4B_SCP_Policy')?MAD4B_SCP_Policy::mutation_gate_status():[];
+        if(!empty($gate['explicit_kill_switch']))
+            return new WP_Error('mad4b_reconcile_hard_kill_switch','Explicit runtime kill switch is active.');
+        if(empty($request['confirm_metadata_only']))
+            return new WP_Error('mad4b_reconcile_confirmation_required','Confirm classification-only mutation.');
+        $source_id=(string)($request['source_id']??'');
+        $expected_hash=(string)($request['plan_sha256']??'');
+        $expected_revision=(int)($request['registry_revision']??-1);
+        if(!preg_match('/^[a-f0-9]{64}$/D',$expected_hash))
+            return new WP_Error('mad4b_reconcile_plan_hash_invalid','A bound plan hash is required.');
+        return self::with_registry_lock('classification_reconcile',static function()use($source_id,$expected_hash,$expected_revision){
+            $plan=self::classification_reconcile_plan($source_id);
+            if(is_wp_error($plan))return $plan;
+            if(!hash_equals((string)$plan['plan_sha256'],$expected_hash)
+                ||(int)$plan['registry_revision']!==$expected_revision)
+                return new WP_Error('mad4b_reconcile_plan_stale','Registry, site, source or classification plan changed.');
+            if($plan['blocked_reviewed_count']!==0)
+                return new WP_Error('mad4b_reconcile_reviewed_assets','Reviewed assets need a separate review.');
+            if(!$plan['changes'])return new WP_Error('mad4b_reconcile_no_changes','Nothing remains to reconcile.');
+            $audit=self::audit_preflight();if(is_wp_error($audit))return $audit;
+            $records=self::raw_assets();$content_hashes=[];
+            foreach($plan['changes'] as $row){
+                $id=$row['asset_id'];
+                if(!isset($records[$id])||!hash_equals($row['content_hash'],(string)($records[$id]['content_hash']??''))
+                    ||(string)($records[$id]['review_status']??'')!=='unreviewed')
+                    return new WP_Error('mad4b_reconcile_asset_changed','Content or review changed.');
+                $content_hashes[$id]=$records[$id]['content_hash'];
+                foreach($row['after'] as $field=>$value)$records[$id][$field]=$value;
+            }
+            // Update only Registry assets; leave source, profile, content and review receipts unchanged.
+            $saved=self::commit_option_changes([self::ASSETS_OPTION=>$records],
+              'mad4b_reconcile_commit_failed','Classification reconciliation could not be saved.');
+            if(is_wp_error($saved))return $saved;
+            foreach($content_hashes as $id=>$hash){
+                $now=self::raw_assets();
+                if(!isset($now[$id])||!hash_equals((string)$hash,(string)($now[$id]['content_hash']??''))
+                    ||(string)($now[$id]['review_status']??'')!=='unreviewed')
+                    return new WP_Error('mad4b_reconcile_readback_invalid','Readback changed content or review.');
+            }
+            return self::audited_registry_result(
+              ['contract'=>'mad4b.context-classification-only-reconcile.v1',
+               'reclassified'=>count($plan['changes']),'approved'=>0,'source_rescanned'=>false,
+               'registry_revision_before'=>$expected_revision],
+              'mad4b/context-classification-only-reconcile',
+              ['source_id'=>$source_id,'plan_sha256'=>$expected_hash,
+               'registry_revision_before'=>$expected_revision,
+               'reclassified'=>count($plan['changes']),
+               'approval_granted'=>false,'content_modified'=>false]);
+        });
+    }
 
 	public static function score_asset( array $metadata, $content = '' ) {
 		$content = trim( (string) $content );

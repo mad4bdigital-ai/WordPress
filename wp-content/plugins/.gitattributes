@@ -1,0 +1,4 @@
+# Preserve exact enrolled-live Company Management source bytes in this review.
+# Historical whitespace in two files is not a safe reason to rewrite them.
+mad4b-company-portfolio-manager/includes/class-mad4b-company-task-origin-card.php -whitespace
+mad4b-company-portfolio-manager/includes/class-mad4b-scp-company-task-handoff.php -whitespace
