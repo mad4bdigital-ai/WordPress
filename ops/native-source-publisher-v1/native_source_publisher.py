@@ -78,6 +78,10 @@ def validate_policy(policy: dict) -> None:
             raise Denied("SOURCE_INDEPENDENT_PUBLIC_KEY_MISSING:"+name) from exc
     if keys[0]==keys[1]:
         raise Denied("SOURCE_MASTER_AND_BROKER_KEYS_NOT_DISTINCT")
+    if type(policy.get("standing_delegation_enabled",False)) is not bool:
+        raise Denied("SOURCE_STANDING_DELEGATION_POLICY_FLAG_INVALID")
+    # True is an opt-in only. It cannot itself issue a certificate, make a
+    # human decision, bypass Original312, or authorize a Production release.
     for scope,target in policy["targets"].items():
         if not isinstance(scope,str) or not SCOPE.fullmatch(scope) or not isinstance(target,dict):
             raise Denied("SOURCE_TARGET_SCOPE_INVALID")
@@ -685,8 +689,44 @@ def approval_message(approval: dict) -> bytes:
         {k:v for k,v in approval.items() if k!="signature"})
 
 
+def load_pinned_standing_module(path: Path, verified_source: bytes):
+    # Interpret exactly the bytes whose SHA was checked against the signed
+    # first-party Registry; never load a substituted pycache or sys.path module.
+    import types
+    module=types.ModuleType("_mad4b_original313_pinned_standing_source")
+    module.__file__=str(path)
+    exec(compile(verified_source,str(path),"exec"),module.__dict__)
+    return module
+
+
+def verified_standing_plan(plan: dict, policy: dict, approval: dict,
+                           *, now: datetime | None = None) -> dict:
+    """Signed standing consent; never interpret a local bool as approval."""
+    if policy.get("standing_delegation_enabled") is not True:
+        raise Denied("SOURCE_STANDING_DELEGATION_NOT_ENROLLED")
+    manifest=enrolled_original_provider(plan[BINDING_KEY]["operation_id"])
+    dependency="native-source-publisher-v1/standing_release_delegation.py"
+    registered=[d for d in manifest.get("dependencies",[])
+                if isinstance(d,dict) and d.get("path")==dependency]
+    local=(Path(__file__).resolve().parent/"standing_release_delegation.py")
+    if local.is_symlink() or not local.is_file():
+        raise Denied("SOURCE_STANDING_DELEGATION_DEPENDENCY_NOT_PINNED")
+    verified_source=local.read_bytes()
+    if len(registered)!=1 or registered[0].get("sha256")!=sha(verified_source):
+        raise Denied("SOURCE_STANDING_DELEGATION_DEPENDENCY_NOT_PINNED")
+    standing=load_pinned_standing_module(local,verified_source)
+    try:
+        cert=standing.read_enrolled_certificate()
+        return standing.verify_plan_and_decision(plan,policy,cert,approval,now=now)
+    except (OSError,ValueError,KeyError,TypeError) as exc:
+        raise Denied("SOURCE_STANDING_DELEGATION_PROOF_NOT_VALID:"+str(exc)) from exc
+
+
 def verify_master_approval(plan: dict, policy: dict, approval: dict, *,
                            now: datetime | None = None) -> None:
+    if isinstance(approval,dict) and approval.get("contract")==            "mad4b.native-source-delegated-plan-decision.v1":
+        verified_standing_plan(plan,policy,approval,now=now)
+        return
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
     required={"contract","operation_id","plan_sha256","approval_ability",
          "approval_provider","source_manifest_sha256","operation_binding_sha256","scope","site_uuid","origin","ticket_id",
@@ -748,8 +788,13 @@ def validate_master_ticket_row(plan: dict, approval: dict, row: dict,
 
 
 def fresh_master_ticket_readback(plan: dict, policy: dict, approval: dict) -> None:
-    """Read the REAL approved WordPress ticket and recompute its dynamic target."""
+    """Reverify live exact owner ticket OR signed root-enrolled delegation."""
     company_policy(policy)
+    if isinstance(approval,dict) and approval.get("contract")==            "mad4b.native-source-delegated-plan-decision.v1":
+        # Independent reader of the root-private signed certificate. Deleting
+        # or replacing it revokes any later claim/finalizer using this mode.
+        verified_standing_plan(plan,policy,approval)
+        return
     ticket=approval["ticket_id"]
     if not ID.fullmatch(ticket):
         raise Denied("SOURCE_MASTER_TICKET_ID_INVALID")
@@ -808,8 +853,16 @@ def native_runtime_binding(plan: dict, policy: dict) -> None:
 def reserve_master_ticket_once(plan: dict, policy: dict,
                                approval: dict, receipt_root: Path) -> None:
     core.assert_pinned_receipt_directory(company_policy(policy),receipt_root)
-    ticket=approval["ticket_id"]
-    if not ID.fullmatch(ticket):
+    if isinstance(approval,dict) and approval.get("contract")==            "mad4b.native-source-delegated-plan-decision.v1":
+        verified_standing_plan(plan,policy,approval)
+        # One-use token bound to the unique signed decision and exact plan;
+        # never manufacture a fake WP master approval ticket or actor ID.
+        ticket="standing-"+approval["delegation_id"]+"-"+approval["nonce"]
+    else:
+        ticket=approval["ticket_id"]
+    if not (ID.fullmatch(ticket) or (ticket.startswith("standing-")
+          and len(ticket)==len("standing-")+36+1+36
+          and ID.fullmatch(ticket[9:45]) and ID.fullmatch(ticket[46:]))):
         raise Denied("SOURCE_MASTER_TICKET_ID_INVALID")
     marker=receipt_root/("master-"+ticket+".reserved")
     core.no_link(marker)

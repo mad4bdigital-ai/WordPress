@@ -2,6 +2,7 @@
 from pathlib import Path
 from hashlib import sha256
 import json, unittest
+from native_source_forward_supersession_contract import verified_forward_source, OLD_FILE
 ROOT=Path(__file__).resolve().parents[1]
 DIR=ROOT/'ops/dynamic-operation-registry-v1/providers/host.source.release'
 V8=DIR/'manifest.v8.CANDIDATE.json'
@@ -25,10 +26,15 @@ class V9SuccessorCandidate(unittest.TestCase):
    if rec['path'] in pins:self.assertEqual(pins[rec['path']],rec['sha256'])
    pins[rec['path']]=rec['sha256']
   self.assertEqual(len(pins),27)
+  forward=verified_forward_source(self)
   for path,digest in pins.items():
    file=ROOT/'ops'/path
    with self.subTest(path=path):
-    self.assertTrue(file.is_file());self.assertEqual(checksum(file),digest)
+    self.assertTrue(file.is_file())
+    if path==OLD_FILE:
+     self.assertEqual(digest,forward['historical_native_source_sha256'])
+     self.assertEqual(checksum(file),forward['current_native_source_sha256'])
+    else:self.assertEqual(checksum(file),digest)
  def test_successor_is_not_runtime_authority(self):
   p=DIR/'manifest.json'
   self.assertFalse(p.exists())

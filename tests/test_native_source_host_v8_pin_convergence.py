@@ -5,6 +5,7 @@ import hashlib
 import json
 import unittest
 from pathlib import Path
+from native_source_forward_supersession_contract import verified_forward_source, OLD_FILE
 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "ops/dynamic-operation-registry-v1/providers/host.source.release/manifest.v8.CANDIDATE.json"
@@ -43,6 +44,7 @@ class ProviderV8PinnedSource(unittest.TestCase):
         self.assertEqual(len(drift), 1)
         self.assertEqual({r["path"] for r in drift}, {"company-code-release-v1/company_code_release.py"})
         self.assertEqual({r["path"] for r in exact + drift}, set(pins))
+        forward=verified_forward_source(self)
         for item in exact + drift:
             with self.subTest(path=item["path"]):
                 relative = Path(item["path"])
@@ -51,12 +53,21 @@ class ProviderV8PinnedSource(unittest.TestCase):
                 path = ROOT / "ops" / relative
                 self.assertTrue(path.is_file())
                 self.assertEqual(item["provider_pinned_sha256"], pins[item["path"]])
-                self.assertEqual(item["current_sha256"], sha(path))
-                if item in exact:
-                    self.assertEqual(sha(path), pins[item["path"]])
-                    if path.suffix == ".py": ast.parse(path.read_text())
+                if item["path"]==OLD_FILE:
+                    # V8 is an immutable historic review, never a modern
+                    # license to repin its original SHA to a new source.
+                    self.assertIn(item,exact)
+                    self.assertEqual(item["current_sha256"],forward["historical_native_source_sha256"])
+                    self.assertEqual(pins[item["path"]],forward["historical_native_source_sha256"])
+                    self.assertEqual(sha(path),forward["current_native_source_sha256"])
+                    ast.parse(path.read_text())
                 else:
-                    self.assertNotEqual(sha(path), pins[item["path"]])
+                    self.assertEqual(item["current_sha256"], sha(path))
+                    if item in exact:
+                        self.assertEqual(sha(path), pins[item["path"]])
+                        if path.suffix == ".py": ast.parse(path.read_text())
+                    else:
+                        self.assertNotEqual(sha(path), pins[item["path"]])
 
     def test_no_implicit_activation_or_approval(self):
         self.assertFalse((MANIFEST.parent / "manifest.json").exists())

@@ -107,6 +107,9 @@ jobs:
           # Production Readiness/Release Verdict, not synthesized here.
           python3 -m unittest discover -s tests -p 'test_ci_portable_native_source_partition.py' -q
           python3 ops/native-source-publisher-v1/ci_portable_native_tests.py
+          # First-party Master-signed bounded standing consent must never
+          # become a self-signed automatic release or bypass Original312/313.
+          python3 -m unittest discover -s tests -p 'test_native_source_standing_delegation.py' -v
           # Source-only V7 incident reviewer: test signature scope and CAS
           # without executing any live incident closure or signing helper.
           python3 -m unittest discover -s ops/native-source-publisher-v1 -p 'test_original305*.py' -q
