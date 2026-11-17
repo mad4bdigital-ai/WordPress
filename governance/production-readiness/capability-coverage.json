@@ -22502,6 +22502,26 @@
         "source_blob_sha": "5724898d6be8f11196bdbfaf36f163de8239b55c",
         "coverage_reuse_rationale": "Canonical Descriptor and independent original execution callbacks remain unchanged; only exactly verified non-authorizing projection operation gains structural ChatGPT transport identity.",
         "review_rationale": "Canonical Inspector recognizes one original Projection provider/source identity only when first-party Census proves genuine source callbacks and non-grant metadata. It does not broadly admit enrollment or unknown ability classes. Original Staging Site Profile, OAuth step-up and exact plan CAS are still enforced at execution. Same-PR test validates success and tampering denial."
+    },
+    {
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/approval-decision-release-authority-guide-hermetic.php"
+      ],
+      "owner_role": "MAD4B repository source CI reviewer, not site Master or release signer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-decision-admin.php",
+      "source_blob_sha": "e97359433e2913cc3c511892becc61fc524d234f",
+      "coverage_reuse_rationale": "Reuse existing Governance, ticket integrity, OAuth and security controls: the changed approval screen presents truthful read-only delegation guidance, not new permissions or execution paths.",
+      "review_rationale": "Exact reviewed PHP source introduces only the accessible read-only explanation of standing permissions, current exact-plan Master decisions, Broker and Original313 technical signatures, and unknown Host status. The same-PR 14-case hermetic PHP regression verifies both registered/unregistered local dispatch renderings, absence of approval actions, absence of Production release authority, and explicit distinction between consent and signing. This CI-only review does not issue any grant or approve a release."
     }
   ],
   "code_change_rules": {
