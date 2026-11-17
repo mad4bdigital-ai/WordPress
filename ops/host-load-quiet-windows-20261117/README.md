@@ -31,3 +31,31 @@ qualification services are unchanged.
 
 The host-level CPU admission guard remains in charge of other elective work;
 we do not kill long-running QA jobs or throttle PHP-FPM checkout traffic.
+
+## Persistent host + real visitor stability SLO
+
+An independent `mad4b-host-visitor-stability.timer` executes every 30 minutes,
+reading the existing 5-minute `mad4b-visitor-tail-observer` history. It makes
+**no additional WordPress/HTTP requests**, so detection itself does not create
+CPU bursts. It persists a root-private `reports/host-visitor-stability-v1/latest.json`
+with the 24-hour baseline before the first Wayfa quiet-window deployment
+(2026-11-17 08:47:18 UTC), post-change observed samples, 1/4-hour recent
+percentiles and the exact number of reliable source-home observations.
+
+A rolling 24-hour stability statement requires at least 220 real observer
+samples and at least 80% valid CPU telemetry. Earlier output is
+`under_observation` rather than a fabricated success. CPU pressure is a
+separate diagnostic; it never automatically pages anyone without visitor
+impact. Multiple independent AJAX p95 windows >=3000ms with >=25 real
+requests, or repeated confirmed HTTP errors, raise an actionable incident
+through the existing `mad4b-alert-handler@%n.service`, debounced for 4h.
+A bounded curl timeout (HTTP status 0) is *inconclusive*, not proof of an HTTP
+5xx. No observer data for >30 minutes reports `observer_stale`; neither
+case can be called long-run stable. Root systemd service has read-only
+filesystem permissions except the private report directory, CPUQuota=20%,
+MemoryMax=128M, and no capabilities.
+
+Rollback: disable the single new timer and remove
+`/etc/systemd/system/mad4b-host-visitor-stability.{service,timer}`. Retain
+original 5-minute observation data; do not stop visitor monitoring or
+critical services.
