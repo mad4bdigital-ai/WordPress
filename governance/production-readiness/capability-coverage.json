@@ -22460,6 +22460,48 @@
         "needs_new_control": false,
         "coverage_reuse_rationale": "All original explicit source markers, callback identity checks, canonical enrollment descriptor, OAuth/owner admission and independent execution claim requirements are unchanged; no broad authorizing fallback.",
         "review_rationale": "Binds only the independently verified original Staging Owner intent to its actually mounted ChatGPT MCP descriptor. Treats that exact proof as nonauthorizing structural source evidence; actual attest still requires Staging owner, exact client, OAuth step-up, plan digest and confirmation. Does not change descriptors for missing/foreign execute callbacks or unrelated mutation lanes; same-PR real inspector and descriptor tests assert both accepted and rejected cases."
+    },
+    {
+        "control_ids": [
+            "MCP-01",
+            "GOVERNANCE-01",
+            "SECURITY-01",
+            "EXECUTION-01",
+            "OAUTH-01"
+        ],
+        "regression_tests": [
+            "tests/server-descriptor-canonical-multilane-hermetic.php"
+        ],
+        "owner_role": "MAD4B repository source CI reviewer, not the site or release Owner",
+        "status": "reviewed_for_ci_only",
+        "production_authorized": false,
+        "live_evidence_required": true,
+        "needs_new_control": false,
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-governed-ability-census.php",
+        "source_blob_sha": "d997ce9444199ad74a49a6fd9770dbf0b271bf5c",
+        "coverage_reuse_rationale": "Reuse canonical WordPress Ability, exact first-party callback ancestry, site OAuth and runtime projection controls; structural descriptor proof is neither consent nor a grant.",
+        "review_rationale": "Exact original ChatGPT Projection source has Staging-only OAuth step-up, current source-owned apply/can_apply callbacks and nonauthorizing tools/list-only metadata. Census checks exact class, real registered WP Ability object, first-party callback pair, source Contract and non-Production policy. Same-PR hermetic regression rejects swapped callbacks and authority-changing metadata; no mutable site call made."
+    },
+    {
+        "control_ids": [
+            "MCP-01",
+            "GOVERNANCE-01",
+            "SECURITY-01",
+            "EXECUTION-01",
+            "OAUTH-01"
+        ],
+        "regression_tests": [
+            "tests/server-descriptor-canonical-multilane-hermetic.php"
+        ],
+        "owner_role": "MAD4B repository source CI reviewer, not the site or release Owner",
+        "status": "reviewed_for_ci_only",
+        "production_authorized": false,
+        "live_evidence_required": true,
+        "needs_new_control": false,
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ability-contract-inspector.php",
+        "source_blob_sha": "5724898d6be8f11196bdbfaf36f163de8239b55c",
+        "coverage_reuse_rationale": "Canonical Descriptor and independent original execution callbacks remain unchanged; only exactly verified non-authorizing projection operation gains structural ChatGPT transport identity.",
+        "review_rationale": "Canonical Inspector recognizes one original Projection provider/source identity only when first-party Census proves genuine source callbacks and non-grant metadata. It does not broadly admit enrollment or unknown ability classes. Original Staging Site Profile, OAuth step-up and exact plan CAS are still enforced at execution. Same-PR test validates success and tampering denial."
     }
   ],
   "code_change_rules": {
