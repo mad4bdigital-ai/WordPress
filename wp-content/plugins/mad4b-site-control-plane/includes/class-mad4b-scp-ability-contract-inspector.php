@@ -170,7 +170,14 @@ final class MAD4B_SCP_Ability_Contract_Inspector {
 			&& 1 === preg_match( '/^[a-f0-9]{64}$/D', (string) ( $direct_step_up_census[ $ability_name ]['callback_pair_digest'] ?? '' ) )
 			&& class_exists( 'MAD4B_SCP_Execution_Fence' )
 			&& MAD4B_SCP_Execution_Fence::final_execution_wrapper_verified( $ability_name );
-		$original_bounded_boundary = $original_operator_boundary || $original_owner_intent_boundary || $original_projection_boundary || $reviewed_direct_step_up_boundary || $original_core_dispatch || $original_direct_post;
+		// Runtime Gates Apply is a single *direct-only* exception to generic
+		// Staging broker projection. Its original per-call OAuth, site, plan and
+		// confirmation gates stay intact; only descriptor provenance is bound.
+		$original_runtime_gate_direct = 'enrollment' === $lane
+			&& 'mad4b/runtime-gates-apply' === $ability_name
+			&& class_exists( 'MAD4B_SCP_Governed_Ability_Census' )
+			&& MAD4B_SCP_Governed_Ability_Census::original_runtime_gate_direct_boundary_verified( $ability );
+		$original_bounded_boundary = $original_operator_boundary || $original_owner_intent_boundary || $original_projection_boundary || $reviewed_direct_step_up_boundary || $original_core_dispatch || $original_direct_post || $original_runtime_gate_direct;
 		$provider = class_exists( 'MAD4B_SCP_Servers' )
 			? ( method_exists( 'MAD4B_SCP_Servers', 'provider_for_capability_descriptor' )
 				? MAD4B_SCP_Servers::provider_for_capability_descriptor( $original_bounded_boundary ? 'mad4b-chatgpt' : 'mad4b-' . $lane, $ability_name )
