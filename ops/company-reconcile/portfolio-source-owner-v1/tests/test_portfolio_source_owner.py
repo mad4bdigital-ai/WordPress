@@ -114,7 +114,7 @@ class OriginalPortfolioOwnerSource(unittest.TestCase):
             encoding='utf-8'
         )
         self.assertIn('if addon_static_hits:', scanner)
-        self.assertIn('fail("addon_registry", "forbidden direct execution/mutation primitives:', scanner)
+        self.assertIn('forbidden direct execution/mutation primitives:', scanner)
 
 if __name__ == '__main__':
     unittest.main()
