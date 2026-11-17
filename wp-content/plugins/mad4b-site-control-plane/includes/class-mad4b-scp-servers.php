@@ -401,9 +401,9 @@ final class MAD4B_SCP_Servers {
         // without blocking the base connector if their DTO is unavailable.
         $tools = array_values( array_unique( array_merge(
             // Bootstrap pending tickets and gated decisions before optional
-            // enrollment convenience steps. The 36-tool MCP limit may
-            // exclude the last optional entries; never exclude the fixed
-            // read/write dispatcher transport to make room.
+            // enrollment convenience steps. Historical display budgets are
+            // performance hints, not fixed total catalog limits. Never drop
+            // required dispatcher transports merely to reduce visible count.
             self::chatgpt_approval_bootstrap_tools(), $tools ) ) );
         return $tools;
     }
