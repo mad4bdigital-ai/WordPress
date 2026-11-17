@@ -22502,6 +22502,71 @@
         "source_blob_sha": "5724898d6be8f11196bdbfaf36f163de8239b55c",
         "coverage_reuse_rationale": "Canonical Descriptor and independent original execution callbacks remain unchanged; only exactly verified non-authorizing projection operation gains structural ChatGPT transport identity.",
         "review_rationale": "Canonical Inspector recognizes one original Projection provider/source identity only when first-party Census proves genuine source callbacks and non-grant metadata. It does not broadly admit enrollment or unknown ability classes. Original Staging Site Profile, OAuth step-up and exact plan CAS are still enforced at execution. Same-PR test validates success and tampering denial."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
+      "source_blob_sha": "bf009be5ae26253c5a2fd6f2509b23fab464892b",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-client-compatibility-contract.py"
+      ],
+      "review_rationale": "Remove the stale code comment claiming that the historical 36-tool display suggestion is an effective universal catalog cap. No conditional branch, limit, tool inventory, provider mount, authorization or production policy was changed.",
+      "owner_role": "Repository source reviewer — CI-only, not Site Owner, Release Owner or Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP exact Ability identity, verified first-party callback lineage, OAuth scope, dedicated mutation policy, final execution fence, site-bound transport, and governance remain mandatory; source review neither executes an operation nor creates runtime authority.",
+      "execution_note": "GitHub exact-head PHP lint, positive and negative provenance runtime tests, live OAuth/MCP acceptance and owner governance are separate required proofs; none is implied by this CI-only review."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ability-contract-inspector.php",
+      "source_blob_sha": "18372433e5eb198ebdbfd0372dfc45ba468e0783",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/reviewed-step-up-descriptor-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/original-transport-callback-provenance-runtime.php"
+      ],
+      "review_rationale": "Restrict canonical MCP descriptor classification to exact first-party enrollment Step-ups, the three original nested-only dispatchers and two Direct Profile post mutations. Demand registered WordPress Ability identity, original callback/fence evidence and exact declared policy flags; never infer execution permission from classification or mint a grant.",
+      "owner_role": "Repository source reviewer — CI-only, not Site Owner, Release Owner or Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP exact Ability identity, verified first-party callback lineage, OAuth scope, dedicated mutation policy, final execution fence, site-bound transport, and governance remain mandatory; source review neither executes an operation nor creates runtime authority.",
+      "execution_note": "GitHub exact-head PHP lint, positive and negative provenance runtime tests, live OAuth/MCP acceptance and owner governance are separate required proofs; none is implied by this CI-only review."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-governed-ability-census.php",
+      "source_blob_sha": "b0b36c1d5f67f53f381254579c2fbc7720a8d614",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/original-transport-callback-provenance-runtime.php"
+      ],
+      "review_rationale": "Verify exact source-file and class/method provenance of real WordPress execute and permission callbacks for three dispatch transports and two Direct Profile post operations, including final execution admission, scoped Direct permission closures, and negative tests for foreign callbacks and relaxed remote-admin metadata. No mutation callback is invoked by verification.",
+      "owner_role": "Repository source reviewer — CI-only, not Site Owner, Release Owner or Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP exact Ability identity, verified first-party callback lineage, OAuth scope, dedicated mutation policy, final execution fence, site-bound transport, and governance remain mandatory; source review neither executes an operation nor creates runtime authority.",
+      "execution_note": "GitHub exact-head PHP lint, positive and negative provenance runtime tests, live OAuth/MCP acceptance and owner governance are separate required proofs; none is implied by this CI-only review."
     }
   ],
   "code_change_rules": {
