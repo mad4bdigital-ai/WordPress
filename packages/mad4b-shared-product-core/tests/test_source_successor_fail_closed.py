@@ -77,6 +77,11 @@ class ImmutableSuccessorTests(unittest.TestCase):
         manifest=self.manifest();manifest['source_manifest_sha256']=hashlib.sha256(new.encode()).hexdigest();self.save_manifest(manifest)
         self.verify(False,'SOURCE_SUCCESSOR_UNREVIEWED_CONTENT_DRIFT')
 
+    def test_prior_manifest_byte_drift_denied(self):
+        history=self.base/'docs/snapshots/0.1.1-dev.20261113/release-manifest.json'
+        history.write_bytes(history.read_bytes()+b'\n')
+        self.verify(False,'SOURCE_SUCCESSOR_PRIOR_MANIFEST_DRIFT')
+
     def test_historical_source_history_drift_denied(self):
         history=self.base/'docs/snapshots/0.1.1-dev.20261113/source-files.sha256'
         history.write_bytes(history.read_bytes()+b'fake  extra.php\n')
