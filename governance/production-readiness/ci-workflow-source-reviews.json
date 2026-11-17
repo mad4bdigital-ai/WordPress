@@ -8,7 +8,7 @@
   "reviews": [
     {
       "path": ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
-      "source_blob_sha": "baf4d199687cbdecb91e1bd4256d2ff91c1f6aaa",
+      "source_blob_sha": "f2fb4fd8421b4f156708482160ede30e9e5e4f7c",
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/integration-pr415-pr416-pr420-pr421-contract.py"
       ],
@@ -17,8 +17,8 @@
       "live_evidence_required": true,
       "root_policy_authorized": false,
       "owner_role": "MAD4B repository CI source reviewer (not owner authorization)",
-      "review_rationale": "Non-authorizing exact-source review of Feature 007 CI addition for SHA256-paginated dependency evidence verification. Historical delivery manifest hashes remain immutable. Release-critical root changes require separate governance-only PR and exact owner attestation. Exact later workflow successor adds one no-network negative Python test for the official GitHub/WordPress.org MCP Adapter installer origin, redirect and certificate authority policy; this does not alter deployment jobs, owner release approvals, role grants or source manifests. Retain preceding reviewed SHA explicitly; fail closed on any other workflow changes. Exact reviewed successor: execute tests/test_authorization_recovery_trait_nonregression.py and PHP lint for the first-party Authorization recovery trait before architecture audit; this source-only CI guard never authorizes a deployment or modifies WordPress grants. Reviewed exact successor adds a non-authorizing original content-readiness method-byte parity test and PHP lint for its two mechanically extracted first-party traits. Original source and permissions remain unchanged. Exact source-only successor adds first-party Core Web Vitals encryption/key/URL guard method-byte parity and PHP syntax, without changing workflow deployment or permissions.",
-      "prior_source_blob_sha": "5c7e157abfe9274c7a296bdad1d28c2252faf0c7"
+      "review_rationale": "Non-authorizing exact-source review of Feature 007 CI addition for SHA256-paginated dependency evidence verification. Historical delivery manifest hashes remain immutable. Release-critical root changes require separate governance-only PR and exact owner attestation. Exact later workflow successor adds one no-network negative Python test for the official GitHub/WordPress.org MCP Adapter installer origin, redirect and certificate authority policy; this does not alter deployment jobs, owner release approvals, role grants or source manifests. Retain preceding reviewed SHA explicitly; fail closed on any other workflow changes. Exact reviewed successor: execute tests/test_authorization_recovery_trait_nonregression.py and PHP lint for the first-party Authorization recovery trait before architecture audit; this source-only CI guard never authorizes a deployment or modifies WordPress grants. Reviewed exact successor adds a non-authorizing original content-readiness method-byte parity test and PHP lint for its two mechanically extracted first-party traits. Original source and permissions remain unchanged. Exact source-only successor adds first-party Core Web Vitals encryption/key/URL guard method-byte parity and PHP syntax, without changing workflow deployment or permissions. Exact successor adds a fail-closed WP-CLI bootstrapping fallback for the Adaptive Search PHP matrix after setup-php can report unsuccessful wp-cli tool setup without failing the action. It uses the official versioned WP-CLI 2.12.0 PHAR and validates its published SHA-256 before executing any downloaded PHP. A failed install, checksum or CLI preflight terminates CI. The existing source-only integration regression asserts this exact fallback and the immutable history is preserved; no Production source, grant, release or protected root workflow is changed.",
+      "prior_source_blob_sha": "baf4d199687cbdecb91e1bd4256d2ff91c1f6aaa"
     }
   ],
   "historical_reviews": [
@@ -63,6 +63,20 @@
       "owner_role": "MAD4B repository CI source reviewer (not owner authorization)",
       "review_rationale": "Non-authorizing exact-source review of Feature 007 CI addition for SHA256-paginated dependency evidence verification. Historical delivery manifest hashes remain immutable. Release-critical root changes require separate governance-only PR and exact owner attestation. Exact later workflow successor adds one no-network negative Python test for the official GitHub/WordPress.org MCP Adapter installer origin, redirect and certificate authority policy; this does not alter deployment jobs, owner release approvals, role grants or source manifests. Retain preceding reviewed SHA explicitly; fail closed on any other workflow changes. Exact reviewed successor: execute tests/test_authorization_recovery_trait_nonregression.py and PHP lint for the first-party Authorization recovery trait before architecture audit; this source-only CI guard never authorizes a deployment or modifies WordPress grants. Reviewed exact successor adds a non-authorizing original content-readiness method-byte parity test and PHP lint for its two mechanically extracted first-party traits. Original source and permissions remain unchanged.",
       "prior_source_blob_sha": "419e44e681c853d15888157211f34b9b1437ef39"
+    },
+    {
+      "path": ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+      "source_blob_sha": "baf4d199687cbdecb91e1bd4256d2ff91c1f6aaa",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-pr415-pr416-pr420-pr421-contract.py"
+      ],
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "root_policy_authorized": false,
+      "owner_role": "MAD4B repository CI source reviewer (not owner authorization)",
+      "review_rationale": "Non-authorizing exact-source review of Feature 007 CI addition for SHA256-paginated dependency evidence verification. Historical delivery manifest hashes remain immutable. Release-critical root changes require separate governance-only PR and exact owner attestation. Exact later workflow successor adds one no-network negative Python test for the official GitHub/WordPress.org MCP Adapter installer origin, redirect and certificate authority policy; this does not alter deployment jobs, owner release approvals, role grants or source manifests. Retain preceding reviewed SHA explicitly; fail closed on any other workflow changes. Exact reviewed successor: execute tests/test_authorization_recovery_trait_nonregression.py and PHP lint for the first-party Authorization recovery trait before architecture audit; this source-only CI guard never authorizes a deployment or modifies WordPress grants. Reviewed exact successor adds a non-authorizing original content-readiness method-byte parity test and PHP lint for its two mechanically extracted first-party traits. Original source and permissions remain unchanged. Exact source-only successor adds first-party Core Web Vitals encryption/key/URL guard method-byte parity and PHP syntax, without changing workflow deployment or permissions.",
+      "prior_source_blob_sha": "5c7e157abfe9274c7a296bdad1d28c2252faf0c7"
     }
   ]
 }
