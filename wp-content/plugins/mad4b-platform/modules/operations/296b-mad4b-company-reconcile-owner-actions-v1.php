@@ -137,6 +137,31 @@ final class MAD4B_Company_Reconcile_Owner_Actions_V1 {
         $epoch=$inventory['observed_epoch']??null;
         return is_int($epoch)&&$epoch>0&&$epoch<=time()+60&&time()-$epoch<3600;
     }
+    /** Read-only no-change determination, never Original313 write authority. */
+    public static function inventory_in_sync(array $target,$inventory):bool {
+        if(!self::inventory_fresh($inventory) || !is_array($inventory)
+           || ($inventory['contract']??null)!=='mad4b.company-reconcile-asset-inventory.v1'
+           || ($inventory['company_code']??null)!==($target['company_code']??null)
+           || ($inventory['environment']??null)!==($target['environment']??null)
+           || ($inventory['site_uuid']??null)!==($target['site_uuid']??null)
+           || ($inventory['origin']??null)!==($target['origin']??null))return false;
+        $items=$inventory['items']??null;
+        if(!is_array($items)||!array_is_list($items)||!$items||count($items)>40)return false;
+        $seen=[];
+        foreach($items as $item){
+            if(!is_array($item))return false;
+            $path=$item['path']??null;
+            $source=$item['source_sha256']??null;
+            $dest=$item['target_sha256']??null;
+            if(!is_string($path)||!preg_match('~^wp-content/(?:plugins/mad4b-commerce/modules/presentation/[a-zA-Z0-9_./-]+|maintenance\.php)$~D',$path)
+               ||str_contains($path,'..')||isset($seen[$path])
+               ||!is_string($source)||!preg_match('/^[a-f0-9]{64}$/D',$source)
+               ||!is_string($dest)||!hash_equals($source,$dest)
+               ||($item['needs_sync']??null)!==false)return false;
+            $seen[$path]=true;
+        }
+        return true;
+    }
     public static function review_matches_inventory(array $target,$inventory,$review,?int $actor=null):bool {
         if(!is_array($review)
           ||($review['state']??'')!=='OWNER_SCOPE_REVIEWED_NOT_NATIVE_WRITE_AUTHORIZED'
@@ -343,6 +368,7 @@ final class MAD4B_Company_Reconcile_Owner_Actions_V1 {
         echo '<div class="postbox" style="padding:16px;max-width:1050px"><h2 class="hndle">Admin Experience — operation scope</h2>';
         echo '<p>Source-owned presentation files only: styles, theme switcher, contrast, WordPress notices, tables and UI auto-scan. No users, passwords, tour content, payments, orders, or database cloning.</p>';
         $inventory=self::inventory($target);
+        $in_sync=self::inventory_in_sync($target,$inventory);
         if($inventory){
             $files=(array)($inventory['items']??[]);$pending=array_filter($files,static fn($f)=>!empty($f['needs_sync']));
             echo '<p><strong>Latest source/target scan:</strong> '.esc_html(gmdate('Y-m-d H:i', (int)$inventory['observed_epoch'])).' UTC · '.count($files).' supported files · '.count($pending).' different.</p>';
@@ -353,7 +379,10 @@ final class MAD4B_Company_Reconcile_Owner_Actions_V1 {
             echo '</tbody></table></div>';
             echo '<p><small>The inventory is a previous host readback, not an authorization receipt; the execution preflight above is evaluated live.</small></p>';
         }else echo '<p><em>No host file-diff snapshot has been published for this selection. The native authorization results above are live.</em></p>';
-        echo '<p><strong>Pending execution:</strong> '.($data['ready']?'Provider is authorized; an original exact job is still required.':'A signed, exact original 305/306/312 write job and independent 313 executor are required.').'</p>';
+        if($in_sync)
+            echo '<div class="notice notice-success inline" role="status"><p><strong>Source parity verified:</strong> all scanned Admin Experience files match their current source SHA256. No new Original305 job, 312 write, or 313 certificate is required to eliminate file drift. Historical jobs are retained for audit; this read-only comparison does not certify a past manual deployment.</p></div>';
+        else echo '<p><strong>Pending execution:</strong> '.($data['ready']?'Provider is authorized; an original exact job is still required.':'A signed, exact original 305/306/312 write job and independent 313 executor are required.').'</p>';
+        if(!$in_sync){
         if(!empty($data['stale_review_record_present']))
             echo '<div class="notice notice-warning inline" role="alert"><p>Previous scope review is not valid for this exact file inventory. Re-review after a fresh host scan; no prior acknowledgement grants a changed operation.</p></div>';
         if($review)echo '<div class="notice notice-success inline"><p>Scope review recorded at '.esc_html(gmdate('Y-m-d H:i:s', (int)($review['reviewed_epoch']??0))).' UTC. This is not execution authorization.</p></div>';
@@ -439,6 +468,9 @@ final class MAD4B_Company_Reconcile_Owner_Actions_V1 {
         echo '</div>';
         echo '<p><a class="button button-secondary" href="'.esc_url(self::url($target)).'">Refresh live preflight</a> ';
         echo '<a class="button button-secondary" href="'.esc_url(admin_url('tools.php?page=mad4b-native-313')).'">Native 313 read-only diagnostics</a></p>';
+        } else {
+            echo '<p role="status">This scope is currently reconciled. No owner review, new signed job, or production write action is needed. Any expired Original305 job remains historical evidence only.</p>';
+        }
         echo '</div></div>';
     }
     public static function submit_original_305():void {
