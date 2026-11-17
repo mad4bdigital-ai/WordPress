@@ -100,8 +100,33 @@ final class MAD4B_SCP_AI_Review_Lifecycle {
         if(!is_array($asset) || empty($asset) || ($asset['source_mode']??'')!=='governed')
             return new WP_Error('mad4b_ai_evidence_asset_missing','Governed Context asset not found.',array('status'=>404));
         $source=MAD4B_SCP_Context_Authority::source((string)($asset['source_id']??''));
+        if(is_array($source) && ($source['provider']??'')==='google_drive') {
+            if(!class_exists('MAD4B_SCP_Google_Drive_Context',false)
+                ||!method_exists('MAD4B_SCP_Google_Drive_Context','exact_review_text_evidence'))
+                return new WP_Error('mad4b_ai_evidence_provider_capability_missing',
+                    'Original Drive evidence provider is not registered.',array('status'=>409));
+            $evidence=MAD4B_SCP_Google_Drive_Context::exact_review_text_evidence($asset,$source);
+            if(is_wp_error($evidence))return $evidence;
+            $queue=MAD4B_SCP_Context_Authority::review_queue();
+            $current=MAD4B_SCP_Context_Authority::asset($asset_id);
+            if(!is_array($current)||!hash_equals((string)$evidence['content_hash'],
+                (string)($current['content_hash']??'')))
+                return new WP_Error('mad4b_ai_evidence_registry_changed',
+                    'Registry changed during provider evidence extraction.',array('status'=>409));
+            return array('contract'=>'mad4b.ai-review-evidence.v1',
+                'asset_id'=>$asset_id,'title'=>(string)($current['title']??''),
+                'category'=>(string)($current['category']??''),
+                'mime_type'=>(string)($evidence['mime_type']??''),
+                'normalized_text'=>(string)$evidence['normalized_text'],
+                'content_hash'=>(string)$evidence['content_hash'],
+                'source_generation'=>(string)$evidence['source_generation'],
+                'expected_registry_revision'=>(int)$queue['registry_revision'],
+                'expected_authority_manifest_fingerprint'=>(string)$queue['authority_manifest_fingerprint'],
+                'read_only'=>true,'mutation_performed'=>false,'publication_authorized'=>false);
+        }
         if(!is_array($source) || ($source['provider']??'')!=='wordpress_media')
-            return new WP_Error('mad4b_ai_evidence_provider_delegation_required','Use the original source provider to inspect this asset.',array('status'=>409));
+            return new WP_Error('mad4b_ai_evidence_provider_delegation_required',
+                'Use a registered original source provider to inspect this asset.',array('status'=>409));
         $id=(int)($asset['file_id']??0);
         $path=$id>0 && get_post_type($id)==='attachment'?get_attached_file($id):false;
         $real=is_string($path)?realpath($path):false;

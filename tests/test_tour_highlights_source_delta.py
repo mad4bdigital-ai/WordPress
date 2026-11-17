@@ -86,13 +86,36 @@ class TourHighlightsReviewedSource(unittest.TestCase):
             self.assertTrue(matches[0]['live_evidence_required'])
 
     def reviewed_historical_main(self, actual):
-        # PR813 added three small *independent* early privacy/reconciliation
-        # hooks after the PR808 Tour Highlights overlay. Remove only these
-        # exact SHA-bound additions before checking the historical certificate.
+        # Historical PR813 proof is immutable. Accept only the separately
+        # reviewed, exact six-line Original305 bootstrap successor; prove its
+        # removal reproduces the entire historical current source byte-for-byte.
         meta=json.loads((ROOT/'docs/release-coverage/pr814-pr813-destination-preview-additive-20261114.json').read_text())['original_plugin_entry']
         self.assertEqual(meta['path'],MAIN)
-        self.assertEqual((len(actual),hashlib.sha256(actual).hexdigest()),
-                         (meta['current_bytes'],meta['current_sha256']))
+        baseline=(meta['current_bytes'],meta['current_sha256'])
+        if (len(actual),hashlib.sha256(actual).hexdigest()) != baseline:
+            review=json.loads((ROOT/'ops/pr814-live-preservation/'
+                               'pr830-original305-bootstrap-additive-source-review.json').read_text())
+            self.assertEqual(review['contract'],'mad4b.pr830-original305-additive-source-review.v1')
+            self.assertEqual(review['status'],'reviewed_for_ci_only')
+            self.assertEqual(review['source_path'],MAIN)
+            for key in ('authorizing','production_authorized','owner_attestation_provided',
+                        'host_release_authorized','original305_hold_closed'):
+                self.assertIs(review[key],False)
+            self.assertIs(review['live_evidence_required'],True)
+            self.assertEqual((len(actual),hashlib.sha256(actual).hexdigest()),
+                             (review['source_bytes'],review['source_sha256']))
+            added=('\n'.join(review['addition_lines'])+'\n').encode()
+            self.assertEqual((len(added),hashlib.sha256(added).hexdigest()),
+                             (review['addition_bytes'],review['addition_sha256']))
+            self.assertEqual(actual.count(added),1)
+            self.assertEqual(review['baseline_sha256'],meta['current_sha256'])
+            self.assertEqual(review['baseline_bytes'],meta['current_bytes'])
+            self.assertIn(b'Original305_Incident_Review::boot();',added)
+            self.assertIn(b'Native_Host_Source_Release_Review::boot();',added)
+            anchor=b"require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-approval-tickets.php';\n"
+            self.assertEqual(actual.count(anchor+added),1)
+            actual=actual.replace(added,b'')
+        self.assertEqual((len(actual),hashlib.sha256(actual).hexdigest()),baseline)
         lines=actual.splitlines(True)
         for add in reversed(meta['additions']):
             pos=add['start_line']

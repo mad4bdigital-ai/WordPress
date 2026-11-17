@@ -417,6 +417,12 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-crypto-profile.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-certification-pack-registry.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-execution-receipt.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-approval-tickets.php';
+// Preserve the enrolled site's exact independent incident-review surfaces.
+// Host source execution remains denied until separately certified by Original authority.
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-native-host-source-release-review.php';
+MAD4B_SCP_Native_Host_Source_Release_Review::boot();
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-original305-incident-review.php';
+MAD4B_SCP_Original305_Incident_Review::boot();
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-budgets.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-provider-isolation.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-request-scope.php';

@@ -47,7 +47,7 @@ final class MAD4B_SCP_Origin_Evidence_Workflow {
             return new WP_Error('mad4b_origin_evidence_job_scope_invalid');
         $post=get_post($id);
         $segments=[];$snippets=[];
-        foreach(['itinerary_item_description','highlight_rows','_description','excerpt'] as $key){
+        foreach(['itinerary_item_description','tour_highlights_content','_description','excerpt'] as $key){
             $raw=get_post_meta($id,$key,true);
             if(is_array($raw))$raw=wp_json_encode($raw);
             if(!is_scalar($raw)||trim((string)$raw)==='')continue;

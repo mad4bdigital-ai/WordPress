@@ -205,7 +205,9 @@ final class MAD4B_SCP_Company_Communication {
         add_filter('woocommerce_email_from_name',array(__CLASS__,'woocommerceName'));
         add_filter('woocommerce_email_from_address',array(__CLASS__,'woocommerceFrom'));
         add_filter('woocommerce_email_recipient_new_order',array(__CLASS__,'woocommerceNewOrder'),30);
-        add_filter('fluentform/email_to',array(__CLASS__,'formRecipient'),30,4);
+        // Native Fluent Forms recipients are resolved exclusively by the exact-feed
+        // MAD4B_SCP_Company_Email_Routing::fluent_form_recipient binding at priority 100.
+        // Do not add a second competing company recipient filter here.
         add_action('rest_api_init',array(__CLASS__,'rest'),30);
     }
     public static function rest():void {

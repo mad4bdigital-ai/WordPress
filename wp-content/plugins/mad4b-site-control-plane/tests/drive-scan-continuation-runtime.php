@@ -108,9 +108,42 @@ MAD4B_SCP_Distributed_Lock::$held=true;assert_scan(is_wp_error($c::run($scope,$r
 // Re-seal a simulated expired generation with the same real crypto envelope.
 $open=new ReflectionMethod($c,'open');$open->setAccessible(true);$seal=new ReflectionMethod($c,'seal');$seal->setAccessible(true);$digest=new ReflectionMethod($c,'digest');$digest->setAccessible(true);
 $sha=$digest->invoke(null,$scope);$state=$open->invoke(null,$GLOBALS['store'][$c::option_name($scope)],$sha);$state['expires_at']=time()-1;
+$expired_raw=$seal->invoke(null,$state,$sha);
+$GLOBALS['store'][$c::option_name($scope)]=$expired_raw;
+// The current engine may recover a recently expired, sealed checkpoint ONLY
+// after the exact original scope, grant, provider change-token and audit/CAS
+// conditions are reverified. This is not a Context registry permission grant.
+$changed=true;
+assert_scan(is_wp_error($c::run($scope,$root,true,$result['scan_cursor'],false,$provider))
+ && $GLOBALS['store'][$c::option_name($scope)]===$expired_raw,'expired provider-change checkpoint reaccepted');
+$changed=false;$scope_valid=false;
+assert_scan(is_wp_error($c::run($scope,$root,true,$result['scan_cursor'],false,$provider))
+ && $GLOBALS['store'][$c::option_name($scope)]===$expired_raw,'expired scope-revocation checkpoint reaccepted');
+$scope_valid=true;
+assert_scan(is_wp_error($c::run($scope,$root,true,$result['scan_cursor'],true,$provider))
+ && $GLOBALS['store'][$c::option_name($scope)]===$expired_raw,'expired final-only checkpoint reaccepted');
+assert_scan(is_wp_error($c::run($scope,$root,true,'forged',false,$provider))
+ && $GLOBALS['store'][$c::option_name($scope)]===$expired_raw,'expired foreign cursor reaccepted');
+MAD4B_SCP_Audit::$ok=false;
+assert_scan(is_wp_error($c::run($scope,$root,true,$result['scan_cursor'],false,$provider))
+ && $GLOBALS['store'][$c::option_name($scope)]===$expired_raw,'expired checkpoint advanced on failed audit');
+MAD4B_SCP_Audit::$ok=true;$GLOBALS['wpdb']->fail=true;
+assert_scan(is_wp_error($c::run($scope,$root,true,$result['scan_cursor'],false,$provider))
+ && $GLOBALS['store'][$c::option_name($scope)]===$expired_raw,'expired checkpoint advanced on failed CAS');
+$GLOBALS['wpdb']->fail=false;
+$renewed=$c::run($scope,$root,true,$result['scan_cursor'],false,$provider);
+assert_scan(is_array($renewed)&&$renewed['checkpoint_revision']===$state['revision']+1
+ && $renewed['scan_cursor']!==$result['scan_cursor']
+ && $renewed['registry_mutation_performed']===false
+ && $renewed['scan_generation']===$result['scan_generation'],
+ 'bounded expired checkpoint did not require a new sealed cursor without Context writes');
+assert_scan(is_wp_error($c::run($scope,$root,true,$result['scan_cursor'],false,$provider)),
+ 'expired original cursor remained reusable after renewal');
+$state['expires_at']=time()-$c::MAX_RECOVERY_SECONDS-1;
 $GLOBALS['store'][$c::option_name($scope)]=$seal->invoke(null,$state,$sha);
-assert_scan(is_wp_error($c::run($scope,$root,true,$result['scan_cursor'],false,$provider)),'expired checkpoint admitted continuation');
-echo "DRIVE_SCAN_CONTINUATION: PASS; sealed multi-request 25-file fixture, not live certification\n";
+assert_scan(is_wp_error($c::run($scope,$root,true,$result['scan_cursor'],false,$provider)),
+ 'checkpoint beyond the bounded recovery horizon reaccepted');
+echo "DRIVE_SCAN_CONTINUATION: PASS; sealed multi-request and bounded expired recovery, no live certification\n";
 // Explicit current-generation restart replaces only encrypted diagnostic state.
 $GLOBALS['store']=array();$mode='normal';$fresh=$c::run($scope,$root,true,'',false,$provider);
 assert_scan(is_wp_error($c::run($scope,$root,true,'forged',false,$provider,true)),'restart accepted a foreign cursor');

@@ -100,13 +100,7 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 			// fully owned class set are stronger evidence than source observation.
 			// Do not call a partially repaired/mixed runtime canonical, and do
 			// not initiate recovery during an ordinary visitor/OAuth request.
-			$canonical = ! empty( $status['runtime_class_loaded'] )
-				&& ! empty( $status['runtime_from_official_plugin'] )
-				&& ! empty( $status['runtime_class_provenance_ready'] )
-				&& 'certified_class_set' === ( $status['runtime_class_provenance_state'] ?? '' )
-				&& 0 === (int) ( $status['runtime_class_provenance_failure_count'] ?? -1 )
-				&& ! empty( $status['mu_bootstrap_canonical_symbols_pinned'] )
-				&& ! empty( $status['mu_bootstrap_critical_class_set_pinned'] );
+			$canonical = self::canonical_runtime_observed( $status );
 			$status['state'] = $canonical ? 'canonical_runtime'
 				: ( ! empty( $status['runtime_class_loaded'] )
 					? 'runtime_source_observed' : 'runtime_not_loaded_at_guard' );
@@ -396,12 +390,30 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 			return $status;
 		}
 
-		// Pure read-only observation: never block by source provenance.
+		// Read-only status must agree with bootstrap() after an already-governed
+		// next-request MU repair. The proof is observed, never manufactured here.
+		// A mixed or incomplete class set remains observational, not canonical.
 		$status['source_provenance_observational'] = true;
-		$status['state'] = ! empty( $status['runtime_class_loaded'] )
-			? 'runtime_source_observed' : 'runtime_not_loaded_at_guard';
+		$status['state'] = self::canonical_runtime_observed( $status )
+			? 'canonical_runtime' : ( ! empty( $status['runtime_class_loaded'] )
+				? 'runtime_source_observed' : 'runtime_not_loaded_at_guard' );
 		$status['blocker'] = '';
 		return $status;
+	}
+
+	/**
+	 * Pure common predicate for bootstrap/status; returns an observed state.
+	 * In particular it never enrolls a class, repairs an MU file or grants
+	 * permission. All certification inputs come from read-only provenance.
+	 */
+	private static function canonical_runtime_observed( array $status ) {
+		return ! empty( $status['runtime_class_loaded'] )
+			&& ! empty( $status['runtime_from_official_plugin'] )
+			&& ! empty( $status['runtime_class_provenance_ready'] )
+			&& 'certified_class_set' === ( $status['runtime_class_provenance_state'] ?? '' )
+			&& 0 === (int) ( $status['runtime_class_provenance_failure_count'] ?? -1 )
+			&& ! empty( $status['mu_bootstrap_canonical_symbols_pinned'] )
+			&& ! empty( $status['mu_bootstrap_critical_class_set_pinned'] );
 	}
 
 	private static function official_plugin_identity( array $active ) {

@@ -188,7 +188,7 @@ $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::SOURCES_OPTION ]
 	),
 );
 
-function mad4b_review_asset_payload( $file_id, $content, $title = 'Voice Reference Notes', $path = 'Brand Core/Voice Reference Notes.txt' ) {
+function mad4b_review_asset_payload( $file_id, $content, $title = 'Tone of Voice', $path = 'Brand Core/Tone of Voice.txt' ) {
 	return array(
 		'file_id' => $file_id,
 		'parent_folder_id' => 'folder-brand-core',
