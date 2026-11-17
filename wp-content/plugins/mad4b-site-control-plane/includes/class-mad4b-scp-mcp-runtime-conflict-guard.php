@@ -85,7 +85,11 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 			return $status;
 		}
 
-		$mixed = false; // Source/hash drift is never a runtime repair trigger.
+		// A foreign loaded class is real mixed-runtime provenance, not simple
+		// source/hash drift. Ordinary inspection stays observational; only a
+		// separately admitted governed recovery may arm the next-request repair.
+		$mixed = 'mixed_runtime' === ( $status['runtime_class_provenance_state'] ?? '' )
+			&& ! empty( $status['runtime_class_provenance_failure_count'] );
 		$preventive = $preventive && class_exists( 'MAD4B_SCP_MCP_Runtime_Recovery', false ) && MAD4B_SCP_MCP_Runtime_Recovery::active();
 		// Class provenance remains visible to diagnostics, never a reason to
 		// reorder loaded plugins or to pin an old Adapter file after an update.

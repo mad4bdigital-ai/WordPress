@@ -962,29 +962,9 @@ final class MAD4B_SCP_Servers {
 		$requested_tools = $tools;
 		$descriptor_evidence = $materialized ? MAD4B_SCP_Server_Registration_Evidence::capability_descriptor_evidence( $id, $tools ) : array( 'contract' => 'mad4b.server-capability-descriptor-bindings.v1', 'server_id' => (string) $id, 'ready' => true, 'bindings' => array(), 'blockers' => array(), 'authorizing' => false, 'authority_effect' => 'none' );
 		if ( $materialized && empty( $descriptor_evidence['ready'] ) ) {
-			// Quarantine unverified Enrollment tools; other lanes fail closed.
-			if ( ! in_array( $id, array( 'mad4b-chatgpt', 'mad4b-enrollment' ), true ) ) {
-				self::$registrations[ $id ] = array(
-					'registered' => false,
-					'error' => 'capability_descriptor_binding_unavailable',
-					'materialized' => false,
-					'tool_count' => 0,
-					'requested_tool_count' => count( $requested_tools ),
-					'capability_descriptor_evidence' => $descriptor_evidence,
-				);
-				return;
-			}
-			// Register ONLY abilities whose canonical descriptor binding verified.
-			// A bad descriptor is quarantined individually: it never becomes a tool,
-			// and never hides unrelated, successfully bound abilities.
-			$verified = array_fill_keys( array_keys( $descriptor_evidence['bindings'] ?? array() ), true );
-			$tools = array_values( array_filter( $tools, static function ( $ability ) use ( $verified ) {
-				return isset( $verified[ $ability ] );
-			} ) );
-			$descriptor_evidence['quarantined_abilities'] = array_values( array_diff( $requested_tools, $tools ) );
-			$descriptor_evidence['partial_ready'] = ! empty( $tools );
-			$descriptor_evidence['degraded'] = ! empty( $descriptor_evidence['quarantined_abilities'] );
-			if ( 'mad4b-enrollment' === $id && ! $tools ) {
+			$subset = MAD4B_SCP_Server_Registration_Evidence::verified_subset( $id, $requested_tools, $descriptor_evidence );
+			$descriptor_evidence = $subset['evidence'];
+			if ( empty( $subset['admitted'] ) ) {
 				self::$registrations[ $id ] = array(
 					'registered' => false, 'error' => 'capability_descriptor_binding_unavailable',
 					'materialized' => false, 'tool_count' => 0,
@@ -993,9 +973,10 @@ final class MAD4B_SCP_Servers {
 				);
 				return;
 			}
-			if ( ! $tools ) $preflight = array( 'ready'=>false,
-				'blocker'=>'capability_descriptor_binding_unavailable',
-				'authorizing'=>false );
+			$tools = $subset['tools']; // Unverified abilities never reach the Adapter.
+			if ( ! $tools ) $preflight = array( 'ready' => false,
+				'blocker' => 'capability_descriptor_binding_unavailable',
+				'authorizing' => false );
 		}
 		if ( 'mad4b-chatgpt' === $id && $materialized && null === $preflight ) {
 			// Server registration and client/runtime checks must share this exact order.

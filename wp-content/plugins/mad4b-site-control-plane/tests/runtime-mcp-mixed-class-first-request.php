@@ -12,6 +12,7 @@ $provenance = MAD4B_SCP_MCP_Class_Provenance::status( true );
 if ( empty( $guard['runtime_from_official_plugin'] ) ) mad4b_mixed_class_fail( 'Adapter entrypoint must remain owned by the official plugin.', $guard );
 if ( empty( $guard['runtime_class_provenance_enforced'] ) || ! empty( $guard['runtime_class_provenance_ready'] ) ) mad4b_mixed_class_fail( 'Mixed class set was not detected.', $guard );
 if ( empty( $guard['runtime_provenance_mismatch'] ) || empty( $guard['collision_risk_detected'] ) ) mad4b_mixed_class_fail( 'Mixed class set must be a runtime provenance mismatch.', $guard );
+if ( 'mixed_runtime' !== ( $guard['runtime_class_provenance_state'] ?? '' ) || (int) ( $guard['runtime_class_provenance_failure_count'] ?? 0 ) < 1 ) mad4b_mixed_class_fail( 'Collision evidence must come from an actual foreign loaded class.', $guard );
 if ( 'mcp_adapter_class_provenance_mismatch' !== ( $guard['blocker'] ?? '' ) ) mad4b_mixed_class_fail( 'Unexpected mixed-class blocker.', $guard );
 if ( ! in_array( $guard['state'] ?? '', array( 'mu_bootstrap_installed_for_class_set_next_request', 'class_set_repair_armed_for_next_request' ), true ) ) mad4b_mixed_class_fail( 'Mixed-class repair was not armed for the next request.', $guard );
 if ( empty( $guard['next_request_required'] ) ) mad4b_mixed_class_fail( 'Mixed-class repair must require a fresh request.', $guard );

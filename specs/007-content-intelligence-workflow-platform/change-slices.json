@@ -4,8 +4,8 @@
   "reviewed_base_sha": "5c72e4893e36e992f056c90cfc75908b3a8f7785",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 2488,
-  "changed_paths_sha256": "da63602f3206b2531d3add147136eb60cfa004789267eb1db087a45c615824b3",
+  "changed_file_count": 2495,
+  "changed_paths_sha256": "9987091b23c3ebe2ebe937f272df2e2df11418afaeadc6b918985f4f104d7715",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -2767,6 +2767,22 @@
       ]
     },
     {
+      "id": "pr814-source-cohort-ops-host-load-quiet-windows-20261117-01",
+      "semantic_unit": "PR #814 ops host load quiet windows 20261117 source-owner cohort 1: 6 exact changed paths; this is scope accounting, not publication authority.",
+      "revert_boundary": "Revert the 6 listed ops host load quiet windows 20261117 source artifacts as an explicit cohort, then revalidate dependent owner and runtime tests. No approvals, grants, or live sites are changed by this inventory.",
+      "certification": "exact_head",
+      "review_state": "source_inventory_only_pending_independent_acceptance",
+      "authorizing": false,
+      "path_globs": [
+        "ops/host-load-quiet-windows-20261117/README.md",
+        "ops/host-load-quiet-windows-20261117/systemd/mad4b-wayfa-home-cache-warm.service.d-90-quiet-window.conf",
+        "ops/host-load-quiet-windows-20261117/systemd/mad4b-wayfa-home-cache-warm.timer.d-90-quiet-window.conf",
+        "ops/host-load-quiet-windows-20261117/systemd/mad4b-wayfa-mobile-prime.service.d-90-quiet-window.conf",
+        "ops/host-load-quiet-windows-20261117/systemd/mad4b-wayfa-mobile-prime.timer.d-90-quiet-window.conf",
+        "ops/host-load-quiet-windows-20261117/tests/test-quiet-windows.py"
+      ]
+    },
+    {
       "id": "pr814-source-cohort-ops-media-audits-01",
       "semantic_unit": "PR #814 ops media audits source-owner cohort 1: 3 exact changed paths; this is scope accounting, not publication authority.",
       "revert_boundary": "Revert the 3 listed ops media audits source artifacts as an explicit cohort, then revalidate dependent owner and runtime tests. No approvals, grants, or live sites are changed by this inventory.",
@@ -4959,6 +4975,17 @@
       ]
     },
     {
+      "id": "pr814-source-cohort-ite-control-plane-tests-runtime-mcp-mixed-class-first-request-php-01",
+      "semantic_unit": "PR #814 mad4b site control plane tests runtime mcp mixed class first request.php source-owner cohort 1: 1 exact changed paths; this is scope accounting, not publication authority.",
+      "revert_boundary": "Revert the 1 listed mad4b site control plane tests runtime mcp mixed class first request.php source artifacts as an explicit cohort, then revalidate dependent owner and runtime tests. No approvals, grants, or live sites are changed by this inventory.",
+      "certification": "exact_head",
+      "review_state": "source_inventory_only_pending_independent_acceptance",
+      "authorizing": false,
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-mixed-class-first-request.php"
+      ]
+    },
+    {
       "id": "pr814-source-cohort-d4b-site-control-plane-tests-server-capability-lane-isolation-php-01",
       "semantic_unit": "PR #814 mad4b site control plane tests server capability lane isolation.php source-owner cohort 1: 1 exact changed paths; this is scope accounting, not publication authority.",
       "revert_boundary": "Revert the 1 listed mad4b site control plane tests server capability lane isolation.php source artifacts as an explicit cohort, then revalidate dependent owner and runtime tests. No approvals, grants, or live sites are changed by this inventory.",
@@ -4982,6 +5009,6 @@
     }
   ],
   "source_cohort_review_state": "inventory_classified_only_requires_independent_approval",
-  "source_cohort_added_path_count": 1128,
-  "source_cohort_added_slice_count": 132
+  "source_cohort_added_path_count": 1135,
+  "source_cohort_added_slice_count": 134
 }

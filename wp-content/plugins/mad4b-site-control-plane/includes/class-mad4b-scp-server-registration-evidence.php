@@ -92,6 +92,18 @@ final class MAD4B_SCP_Server_Registration_Evidence {
 		return false;
 	}
 
+	/** Verify only already-bound tools; preserve explicit quarantine diagnostics. */
+	public static function verified_subset( $server_id, array $requested, array $evidence ) {
+		$verified = array_fill_keys( array_keys( $evidence['bindings'] ?? array() ), true );
+		$tools = array_values( array_filter( $requested, static function ( $name ) use ( $verified ) { return isset( $verified[ $name ] ); } ) );
+		$quarantined = array_values( array_diff( $requested, $tools ) );
+		$evidence['quarantined_abilities'] = $quarantined;
+		$evidence['partial_ready'] = ! empty( $tools );
+		$evidence['degraded'] = ! empty( $quarantined );
+		$surface = in_array( $server_id, array( 'mad4b-chatgpt', 'mad4b-enrollment' ), true );
+		return array( 'admitted' => $surface && ( ! empty( $tools ) || 'mad4b-chatgpt' === $server_id ), 'tools' => $tools, 'evidence' => $evidence, 'authorizing' => false );
+	}
+
 	public static function capability_descriptor_evidence( $server_id, array $tools ) {
 		$bindings = array();
 		$blockers = array();
