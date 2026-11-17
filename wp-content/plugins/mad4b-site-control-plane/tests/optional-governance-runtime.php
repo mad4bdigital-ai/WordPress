@@ -545,3 +545,4 @@ expect( is_wp_error($stale_apply)
     && $stale_apply->get_error_code()==='mad4b_optional_remote_plan_stale',
     'Concurrent preference update must invalidate earlier remote plans' );
 echo "OPTIONAL_GOVERNANCE: PASS (fresh Off, single/all/selected, validation, tenancy, stale revisions, admin/MCP, OAuth/Write, CAS, audit, Production site confirmation/denial)\n";
+echo "PASS: OPTIONAL_GOVERNANCE reviewed Site Profile, Owner CAS and Production denial assertions\n";
