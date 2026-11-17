@@ -582,6 +582,41 @@ def has_assertion_pass(stdout):
         r"checks=[1-9][0-9]* failures=0)[ \t]*$", stdout))
 
 
+# Two audited standalone fixtures report assertion counts/denials after PASS.
+# Their exact terminators are accepted only on these paths, never as a global
+# weakening of has_assertion_pass() for arbitrary PHP or forged PHPUnit output.
+PARITY_FIXTURE = "wp-content/plugins/mad4b-site-control-plane/tests/dynamic-company-environment-provider-parity-runtime.php"
+OPTIONAL_GOVERNANCE_FIXTURE = "wp-content/plugins/mad4b-site-control-plane/tests/optional-governance-runtime.php"
+OPTIONAL_GOVERNANCE_TERMINAL = (
+    "OPTIONAL_GOVERNANCE: PASS (fresh Off, single/all/selected, validation, "
+    "tenancy, stale revisions, admin/MCP, OAuth/Write, CAS, audit, "
+    "Production site confirmation/denial)"
+)
+
+EXACT_SOURCE_FIXTURE_TERMINALS = {
+    "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-permission-runtime.php":
+        "CHATGPT_TRANSFER_PERMISSION_RUNTIME: PASS",
+    "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-grant-reviewed-inventory-runtime.php":
+        "PASS: 38 reviewed Staging pairs classified by execution purpose; shared company providers match Production, no grants",
+}
+
+
+def trusted_mapped_standalone_readback(test, stdout):
+    if not isinstance(stdout, str):
+        return False
+    if test == PARITY_FIXTURE:
+        matched = re.fullmatch(
+            r"MAD4B_ENVIRONMENT_PROVIDER_PARITY: PASS shared=([1-9][0-9]*) "
+            r"staging_specific=([1-9][0-9]*) grants_created=0\n?", stdout
+        )
+        return matched is not None
+    if test == OPTIONAL_GOVERNANCE_FIXTURE:
+        return stdout.rstrip("\n") == OPTIONAL_GOVERNANCE_TERMINAL
+    if test in EXACT_SOURCE_FIXTURE_TERMINALS:
+        return stdout.rstrip("\n") == EXACT_SOURCE_FIXTURE_TERMINALS[test]
+    return has_assertion_pass(stdout)
+
+
 def run_tests(impact, head, timeout):
     ensure(SHA.fullmatch(head or "") and impact.get("exact_head_sha") == head,
            "Exact HEAD mismatch in regression test plan")
@@ -627,7 +662,7 @@ def run_tests(impact, head, timeout):
                 # Require positive assertions, never accept exit(0) or lint-only
                 # output. Existing original contracts also print N test cases
                 # in an anchored success-only terminal summary.
-                ok = ok and has_assertion_pass(result.stdout)
+                ok = ok and trusted_mapped_standalone_readback(name, result.stdout)
             tail = (result.stdout + "\n" + result.stderr)[-5000:]
             outcome = "PASS" if ok else "FAIL"
             code = result.returncode
@@ -655,6 +690,26 @@ def run_tests(impact, head, timeout):
 
 
 def self_test():
+    reviewed_exact = (
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-permission-runtime.php",
+        PARITY_FIXTURE, OPTIONAL_GOVERNANCE_FIXTURE,
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-grant-reviewed-inventory-runtime.php",
+    )
+    for name in reviewed_exact:
+        assert command_for(name) == ["php", str((ROOT / name).resolve())]
+        assert not trusted_mapped_standalone_readback(name, "PASS fake\n")
+        assert not trusted_mapped_standalone_readback(name, "")
+    assert trusted_mapped_standalone_readback(
+        PARITY_FIXTURE,
+        "MAD4B_ENVIRONMENT_PROVIDER_PARITY: PASS shared=68 staging_specific=16 grants_created=0\n")
+    assert not trusted_mapped_standalone_readback(
+        PARITY_FIXTURE,
+        "MAD4B_ENVIRONMENT_PROVIDER_PARITY: PASS shared=68 staging_specific=16 grants_created=1\n")
+    assert trusted_mapped_standalone_readback(OPTIONAL_GOVERNANCE_FIXTURE,
+                                             OPTIONAL_GOVERNANCE_TERMINAL + "\n")
+    assert not trusted_mapped_standalone_readback(
+        OPTIONAL_GOVERNANCE_FIXTURE,
+        OPTIONAL_GOVERNANCE_TERMINAL + "\nUNVERIFIED_EXTRA_OUTPUT")
     for test in WORDPRESS_RUNTIME_REGRESSIONS:
         assert command_for(test) == ["php", WP_CLI_PHAR, "eval-file",
                                       str((ROOT / test).resolve()),
