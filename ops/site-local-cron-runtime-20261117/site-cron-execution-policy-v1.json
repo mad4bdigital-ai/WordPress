@@ -1,0 +1,33 @@
+{
+  "contract": "mad4b.site-cron-execution-policy.v1",
+  "version": "1.0.0",
+  "scope": "all_company_wordpress_sites",
+  "execution_owner": "site_host_runtime",
+  "central_role": ["read_site_runtime_state", "reconcile_verified_native_host_scheduler", "alert_on_critical_backlog"],
+  "central_remote_cron_execution_enabled": false,
+  "default": {
+    "mode": "wordpress_core_request_driven",
+    "site_local": true,
+    "disable_wp_cron": false,
+    "billing_and_booking_events_keep_running": true
+  },
+  "native_scheduler_adapters": [
+    "site_local_systemd",
+    "site_local_hpanel_cron",
+    "site_local_cpanel_cron",
+    "site_local_provider_scheduler",
+    "site_local_container_cronjob"
+  ],
+  "host_native_promotion_requires": [
+    "current_exact_site_identity",
+    "scheduler_executes_inside_site_host_runtime",
+    "site_native_host_scheduler_proof",
+    "complete_wp_cron_event_cycle_evidence",
+    "action_scheduler_backlog_nonregression",
+    "rollback_to_wordpress_core_request_driven"
+  ],
+  "hostinger_hpanel_cron_reconciliation": "deferred_until_site_host_authority_verified",
+  "legacy_central_ssh_wp_cron": "retired_disabled_no_auto_enable",
+  "auto_mutate_wp_config": false,
+  "remote_host_changes_in_this_release": false
+}
