@@ -4,6 +4,22 @@ The preferred mode is MAD4B Central VPS using existing root-owned Hostinger
 SSH keys and exact ed25519 host pins, without logging into WordPress on
 individual companies. The existing site Administrator UI is fallback only.
 
+**One command is the permanent default**, combining the original Host Site
+Profile enrollment, exact Central registration, and a third independent Host
+readback. It is root-only, pins both first-party executors and never grants
+content mutations or impersonates a WordPress account:
+
+    python3 /usr/local/libexec/mad4b-central-native-site-profile-provision.py --company egypt-tour-gates
+    python3 /usr/local/libexec/mad4b-central-native-site-profile-provision.py --company tourism-almallahgroup
+
+The first-party source is ops/central-native-site-profile-v1/provision.py.
+Only enrolled, pinned Production targets are currently accepted; adding a
+company requires verified Host policy and matching Site Profile deployment,
+not an unreviewed CLI argument. A repeat invocation leaves the existing UUID,
+registry and audit history unchanged. If Central registration fails after a
+successful Host save, rerun the same command; the original Host identity is
+not deleted or reissued.
+
 The portable Site Profile method provision_from_central_host() is available only in
 native WP-CLI with zero WordPress actor and exact host-intent declaration.
 The generic plugin contains no tenant host literals: the company code and

@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-import importlib.util,pathlib,unittest
+import importlib.util,pathlib,unittest,unittest.mock
 P=pathlib.Path(__file__).parent
 def load(filename):
     spec=importlib.util.spec_from_file_location('mad4b_'+filename.replace('.','_'),P/filename)
     m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);return m
 host=load('host_enroll.py')
 register=load('central_register.py')
+provision=load('provision.py')
 class Contract(unittest.TestCase):
     def probe(self):
         return dict(contract='mad4b.central.native-site-profile.probe.v1',
@@ -51,4 +52,49 @@ class Contract(unittest.TestCase):
         self.assertIn('mad4b_tourism_company_site_registry_v1',r)
         self.assertIn('native_write_authorized',r)
         self.assertNotIn('wp_set_current_user',r)
+class OneCommand(unittest.TestCase):
+    def test_disallows_unknown_company(self):
+        with unittest.mock.patch.object(provision.os,'geteuid',return_value=0):
+            with self.assertRaisesRegex(RuntimeError,'OUTSIDE_ENROLLED'):
+                provision.orchestrate('unknown-company')
+    def test_requires_root(self):
+        with unittest.mock.patch.object(provision.os,'geteuid',return_value=1000):
+            with self.assertRaisesRegex(RuntimeError,'ROOT_REQUIRED'):
+                provision.orchestrate('egypt-tour-gates')
+    def test_happy_path_validates_separate_receipts_and_readback(self):
+        def fake_run(args,stage):
+            self.assertEqual(args[0],'/usr/bin/python3')
+            self.assertEqual(args[1],'-I')
+            self.assertNotIn('--user',args)
+            if stage=='host':
+                return dict(state='ALREADY_ENROLLED_NO_DUPLICATE_WRITE',
+                    company='egypt-tour-gates',site_uuid='0c7786ba-a025-4650-9ceb-32a51d74aaec',
+                    site_write_enabled=False,signed_original313=False)
+            if stage=='central':
+                return dict(state='ALREADY_REGISTERED_EXACT_IDENTITY_VERIFIED',
+                    company='egypt-tour-gates',site_uuid='0c7786ba-a025-4650-9ceb-32a51d74aaec',
+                    write_authorized=False)
+            return dict(state='ALREADY_ENROLLED_NO_DUPLICATE_WRITE',
+                company='egypt-tour-gates',site_uuid='0c7786ba-a025-4650-9ceb-32a51d74aaec',
+                site_write_enabled=False)
+        from unittest import mock
+        with mock.patch.object(provision.os,'geteuid',return_value=0),             mock.patch.object(provision,'exact_root_owned_program'),             mock.patch.object(provision,'run_one',side_effect=fake_run):
+            out=provision.orchestrate('egypt-tour-gates')
+        self.assertFalse(out['write_authorized'])
+        self.assertFalse(out['site_profile_recreated'])
+        self.assertEqual(out['state'],'CONNECTED_READ_ONLY_CENTRAL_NATIVE_SSH')
+    def test_remote_grant_or_wrong_uuid_blocks(self):
+        from unittest import mock
+        def bad_run(args,stage):
+            if stage=='host':
+                return dict(state='ALREADY_ENROLLED_NO_DUPLICATE_WRITE',
+                    company='egypt-tour-gates',site_uuid='0c7786ba-a025-4650-9ceb-32a51d74aaec',
+                    site_write_enabled=False,signed_original313=False)
+            return dict(state='ALREADY_REGISTERED_EXACT_IDENTITY_VERIFIED',
+                company='egypt-tour-gates',site_uuid='b8dffda1-db99-4789-aa72-86bf63f557cc',
+                write_authorized=False)
+        with mock.patch.object(provision.os,'geteuid',return_value=0),             mock.patch.object(provision,'exact_root_owned_program'),             mock.patch.object(provision,'run_one',side_effect=bad_run):
+            with self.assertRaisesRegex(RuntimeError,'NOT_BOUND'):
+                provision.orchestrate('egypt-tour-gates')
+
 if __name__=='__main__':unittest.main(verbosity=2)
