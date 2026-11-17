@@ -22922,6 +22922,48 @@
       "coverage_reuse_rationale": "Reuse exact first-party Site Profile, scoped OAuth, mutation execution fence and persisted audit controls; the current changed test is the source-only negative proof.",
       "review_rationale": "Reviewed exact committed source extends provider metadata to explicitly enrolled Production profiles without minting authority. Media transfer and optional advisory mutations check confirmed Profile write, current site identity, scoped capabilities and one-time approval; policy excludes 16 purpose-specific Staging operations. An exact-head negative behavioral test is attached and executed in CI.",
       "execution_note": "CI source review, not Host312/Original313 execution, independent Owner verdict or deployed Production runtime proof."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php",
+      "source_blob_sha": "19fa8785a31906622295a4311d197c288ff4ff08",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/visitor-wpml-site-profile-origin-hermetic.py"
+      ],
+      "owner_role": "Repository source reviewer for exact WPML Site Profile change; CI-only, not Site Owner, Release Owner or Production approver",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuse existing canonical Site Profile origin binding, exact enrolled host/URL verification, WPML active/hidden language gates, and security/authority controls; do not add a permission or production bypass.",
+      "review_rationale": "Reviewed exact Site Profile PHP blob after source-owned WPML/AJAX origin normalization fix. The isolated executable PHP test invokes the original class across canonical EN, localized ES AJAX/REST, non-async mismatch, hidden/unknown locale, foreign host/origin, noncanonical site URL and invalid WPML language. All denial paths fail closed. Separately owned visitor preference REST/JS and live Chromium checks remain required; this CI-only record does not prove Production session continuity.",
+      "execution_note": "No live site mutation or original Host access; Owner attestation, certified release artifact and exact-head runtime evidence remain independent gates."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php",
+      "source_blob_sha": "511317c6d76a1b19e155aab05c0c6bb581b7fa14",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/visitor-session-wpml-origin-hermetic.php"
+      ],
+      "owner_role": "First-party Site Profile source security reviewer; CI-only, independent release Owner approval still required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing enrolled Site Profile canonical-origin, identity-bound host, WPML language and write grants remain independently enforced; PHP prefix comparison does not add a new feature or authorize execution.",
+      "review_rationale": "Exact current Site Profile source fixes a PHP 7.4 Fatal in WPML AJAX canonical origin matching with a byte-exact strpos prefix, preserving deny-by-default behavior. Hermetic test executes 12 acceptance and denial cases against the original class under PHP 7.4 and 8.5, including cross-host, unregistered and hidden locales, additional/encoded paths, non-AJAX, siteurl mismatch and missing SitePress. No live WordPress mutation or grant.",
+      "execution_note": "Source review and hermetic PHP proof only; current live site upgrade, Chrome acceptance and Production deployment require independent verification."
     }
   ],
   "code_change_rules": {

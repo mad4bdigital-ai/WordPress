@@ -4,8 +4,8 @@
   "reviewed_base_sha": "5c72e4893e36e992f056c90cfc75908b3a8f7785",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 2608,
-  "changed_paths_sha256": "ffeca1fb03663bea4c48d85062e1de45facbcdd625c89ce9432455fc943ec96f",
+  "changed_file_count": 2627,
+  "changed_paths_sha256": "c18922801b3a0dd233bd084c5264afc30f3f833265110cdee434f22afe3752d0",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -5300,6 +5300,57 @@
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-regressions.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-roundtrip-runtime.php"
+      ]
+    },
+    {
+      "id": "pr814-visitor-session-wpml-original-site-profile-boundary",
+      "semantic_unit": "Original REST/JS browser session switcher and Site Profile canonical WPML identity: native source regression, 12 hermetic origin permissions, PHP 7.4/8.5 parity and reversibility.",
+      "revert_boundary": "Revert visitor source docs, real-site journey canary and exact hermetic origin fixture together with original Site Profile change; preserve signed cookie and per-company policy.",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/visitor-session-continuity-20261117/README.md",
+        "ops/visitor-session-continuity-20261117/tests/test-source-session-contract.py",
+        "ops/visitor-session-continuity-20261117/tools/qa-guest-switcher-real-journey.js",
+        "tests/visitor-session-wpml-origin-hermetic.php",
+        "tests/visitor-wpml-site-profile-origin-hermetic.py"
+      ]
+    },
+    {
+      "id": "pr814-company-reconcile-production-native-admission",
+      "semantic_unit": "Company reconciliation signed-original Production admission evidence, scoped company System Appearance Broker, and independent negative contract tests; no implicit Production execution or grant from a coverage record.",
+      "revert_boundary": "Revert the seven exact Company Reconcile Production admission source, workflow, Broker and hermetic test files as a unit. Preserve preexisting company reconciliation semantics, non-authorizing source reviews, required signed Native proofs and independent Owner verdict.",
+      "certification": "exact_head",
+      "path_globs": [
+        ".github/workflows/mad4b-company-reconcile-production-admission.yml",
+        "ops/company-reconcile-production-admission-v1/README.md",
+        "ops/company-reconcile-production-admission-v1/company-reconcile-production-admission.py",
+        "ops/company-reconcile-production-admission-v1/company-system-appearance-broker-reconcile.py",
+        "ops/company-reconcile-production-admission-v1/systemd/97-production-admission.conf",
+        "ops/company-reconcile-production-admission-v1/test_legacy_broker_signed_only.py",
+        "ops/company-reconcile-production-admission-v1/test_production_admission.py"
+      ]
+    },
+    {
+      "id": "production-identity-one-action",
+      "semantic_unit": "Read-only authenticated Production Site Profile quickstart and native identity guard.",
+      "revert_boundary": "Revert quickstart documentation, 502 MU guard and identity tests together; do not issue grants or owner attestations.",
+      "certification": "exact_head",
+      "path_globs": [
+        "docs/runtime/production-identity-quickstart-20261117.md",
+        "tests/mad4b-production-identity-quickstart-hermetic.php",
+        "wp-content/mu-plugins/502-mad4b-production-identity-quickstart.php"
+      ]
+    },
+    {
+      "id": "company-master-admin-ops-source-parity",
+      "semantic_unit": "Company admin UI, scoped permissions, role-reduction guard and parity tests.",
+      "revert_boundary": "Revert company admin parity documentation, 501 MU role guard and regression tests together; preserve existing permission-denial boundaries.",
+      "certification": "exact_head",
+      "path_globs": [
+        "docs/runtime/company-reconcile-live-admin-source-parity-20261117.md",
+        "tests/mad4b-admin-ui-company-operations-hermetic.php",
+        "tests/mad4b-company-master-admin-role-guard-hermetic.php",
+        "wp-content/mu-plugins/501-mad4b-company-role-reduction-guard.php"
       ]
     }
   ],

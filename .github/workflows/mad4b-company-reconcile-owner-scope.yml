@@ -4,8 +4,13 @@ on:
     paths:
       - '.github/workflows/mad4b-company-reconcile-owner-scope.yml'
       - 'tests/mad4b-company-reconcile-owner-scope-hermetic.php'
+      - 'tests/mad4b-admin-ui-company-operations-hermetic.php'
+      - 'tests/mad4b-company-master-admin-role-guard-hermetic.php'
+      - 'wp-content/mu-plugins/501-mad4b-company-role-reduction-guard.php'
       - 'wp-content/plugins/mad4b-platform/modules/operations/296b-mad4b-company-reconcile-owner-actions-v1.php'
-      - 'docs/runtime/company-reconcile-exact-owner-review-20261117.md'
+      - 'wp-content/plugins/mad4b-commerce/modules/presentation/company-admin-experience-v1.php'
+      - 'wp-content/plugins/mad4b-commerce/modules/presentation/company-admin-ui-auto-scan-v1.php'
+      - 'docs/runtime/company-reconcile-live-admin-source-parity-20261117.md'
   workflow_dispatch:
 permissions:
   contents: read
@@ -25,10 +30,21 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
-      - name: Original owner-review PHP syntax and live-code behavior
+      - name: Exact source code and unit test syntax
         run: |
           docker run --rm -v "$GITHUB_WORKSPACE:/src:ro" -w /src php:${{ matrix.php }}-cli sh -euc '
             php -l wp-content/plugins/mad4b-platform/modules/operations/296b-mad4b-company-reconcile-owner-actions-v1.php
+            php -l wp-content/plugins/mad4b-commerce/modules/presentation/company-admin-experience-v1.php
+            php -l wp-content/plugins/mad4b-commerce/modules/presentation/company-admin-ui-auto-scan-v1.php
             php -l tests/mad4b-company-reconcile-owner-scope-hermetic.php
-            php tests/mad4b-company-reconcile-owner-scope-hermetic.php | grep -q "\\\"passed\\\":22"
+            php -l tests/mad4b-admin-ui-company-operations-hermetic.php
+            php -l wp-content/mu-plugins/501-mad4b-company-role-reduction-guard.php
+            php -l tests/mad4b-company-master-admin-role-guard-hermetic.php
+          '
+      - name: Original305 scope isolation and no-drift closure / Master Admin scanner authority
+        run: |
+          docker run --rm -v "$GITHUB_WORKSPACE:/src:ro" -w /src php:${{ matrix.php }}-cli sh -euc '
+            php tests/mad4b-company-reconcile-owner-scope-hermetic.php
+            php tests/mad4b-admin-ui-company-operations-hermetic.php
+            php tests/mad4b-company-master-admin-role-guard-hermetic.php
           '

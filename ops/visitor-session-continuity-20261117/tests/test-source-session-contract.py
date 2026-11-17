@@ -19,7 +19,7 @@ checks={
  'browser journey handles only fingerprint reuse':"MAD4BBrowserJourney?.getNonces" in head,
  'first view native Elementor panel accessibility':'if (!panel.id) panel.id' in head,
  'WPML home canonical host anchored':'$stored = self::normalize_origin' in prof and "self::normalize_origin( site_url( '/' ) )" in prof,
- 'WPML path suffix anchored to canonical origin':'$prefix = $stored .' in prof and 'str_starts_with( $observed, $prefix )' in prof,
+ 'WPML path suffix anchored to canonical origin':'$prefix = $stored .' in prof and '0 !== strpos( $observed, $prefix )' in prof,
  'only site active languages admitted':'active_languages' in prof and 'hidden_languages' in prof and 'in_array( $localized, $active, true )' in prof,
  'only REST/AJAX locale mismatch admitted':'wp_doing_ajax()' in prof and "defined( 'REST_REQUEST' )" in prof,
  'different host is rejected':'! hash_equals( $expected_host, $request_host )' in prof,
