@@ -214,6 +214,10 @@ final class MAD4B_SCP_Skill_Runtime_Certification {
 		return array(
 			'contract' => 'mad4b.skill-capability-readiness.v1',
 			'catalog_read_ready' => $catalog,
+			// Local company tasks require a healthy read catalog, not a
+			// ChatGPT App registration or Production skill authoring access.
+			'local_operations_ready' => $catalog,
+			'external_app_required_for_local_operations' => false,
 			'external_app_projection_ready' => $app,
 			'authoring_ready' => $author,
 			'editor_disabled_by_policy' => empty( $checks['editor_enabled'] ),
