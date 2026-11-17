@@ -133,10 +133,14 @@ final class MAD4B_SCP_Ability_Contract_Inspector {
 		$original_operator_boundary = 'enrollment' === $lane
 			&& class_exists( 'MAD4B_SCP_Governed_Ability_Census' )
 			&& MAD4B_SCP_Governed_Ability_Census::operator_grant_original_boundary_verified( $ability );
+		$original_owner_intent_boundary = 'enrollment' === $lane
+			&& class_exists( 'MAD4B_SCP_Governed_Ability_Census' )
+			&& MAD4B_SCP_Governed_Ability_Census::staging_owner_intent_original_boundary_verified( $ability );
+		$original_bounded_boundary = $original_operator_boundary || $original_owner_intent_boundary;
 		$provider = class_exists( 'MAD4B_SCP_Servers' )
 			? ( method_exists( 'MAD4B_SCP_Servers', 'provider_for_capability_descriptor' )
-				? MAD4B_SCP_Servers::provider_for_capability_descriptor( $original_operator_boundary ? 'mad4b-chatgpt' : 'mad4b-' . $lane, $ability_name )
-				: MAD4B_SCP_Servers::provider_for_ability( $original_operator_boundary ? 'mad4b-chatgpt' : 'mad4b-' . $lane, $ability_name ) )
+				? MAD4B_SCP_Servers::provider_for_capability_descriptor( $original_bounded_boundary ? 'mad4b-chatgpt' : 'mad4b-' . $lane, $ability_name )
+				: MAD4B_SCP_Servers::provider_for_ability( $original_bounded_boundary ? 'mad4b-chatgpt' : 'mad4b-' . $lane, $ability_name ) )
 			: null;
 		$breakglass = in_array( $lane, array( 'breakglass', 'developer-breakglass' ), true ) || in_array(
 			$ability_name,
@@ -152,7 +156,7 @@ final class MAD4B_SCP_Ability_Contract_Inspector {
 		if ( 'internal' === $lane ) $projection_blockers[] = 'internal_surface_not_direct';
 		$projection_eligible = empty( $projection_blockers );
 
-		$boundary_verified = $original_operator_boundary || ( class_exists( 'MAD4B_SCP_Authorization' ) && MAD4B_SCP_Authorization::execution_boundary_verified( $ability ) );
+		$boundary_verified = $original_bounded_boundary || ( class_exists( 'MAD4B_SCP_Authorization' ) && MAD4B_SCP_Authorization::execution_boundary_verified( $ability ) );
 		$execution_blocker = ! $projection_eligible
 			? 'ability_projection_policy_blocked'
 			: ( ! $readonly && ! $boundary_verified
