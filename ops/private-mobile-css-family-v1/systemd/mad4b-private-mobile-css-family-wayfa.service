@@ -1,0 +1,18 @@
+[Unit]
+Description=MAD4B Wayfatours private mobile CSS event-triggered Chromium recertification
+Wants=network-online.target docker.service
+After=network-online.target docker.service
+ConditionPathExists=/opt/mad4b-company-provisioning/ops/private-mobile-css-family-v1/monitor.py
+ConditionPathExists=/opt/wayfa-rebuild-20261102/site-copy/wp-content/mu-plugins/423-mad4b-private-mobile-css-family.php
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/usr/bin/flock -n -E 0 /run/lock/mad4b-private-css-family-wayfa.lock /usr/bin/python3 /opt/mad4b-company-provisioning/ops/private-mobile-css-family-v1/monitor.py
+TimeoutStartSec=1050
+Nice=17
+IOSchedulingClass=idle
+NoNewPrivileges=true
+StandardOutput=journal
+StandardError=journal

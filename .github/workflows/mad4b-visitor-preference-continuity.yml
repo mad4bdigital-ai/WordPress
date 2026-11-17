@@ -8,6 +8,8 @@ on:
       - 'wp-content/plugins/mad4b-traveller-nationality/**'
       - 'wp-content/plugins/etg-traveller-nationality-switcher/**'
       - 'tests/visitor-preferences-wpml-guest-session-hermetic.php'
+      - 'wp-content/mu-plugins/423-mad4b-private-mobile-css-family.php'
+      - 'ops/private-mobile-css-family-v1/**'
       - '.github/workflows/mad4b-visitor-preference-continuity.yml'
   pull_request:
     paths:
@@ -15,6 +17,8 @@ on:
       - 'wp-content/plugins/mad4b-traveller-nationality/**'
       - 'wp-content/plugins/etg-traveller-nationality-switcher/**'
       - 'tests/visitor-preferences-wpml-guest-session-hermetic.php'
+      - 'wp-content/mu-plugins/423-mad4b-private-mobile-css-family.php'
+      - 'ops/private-mobile-css-family-v1/**'
       - '.github/workflows/mad4b-visitor-preference-continuity.yml'
 permissions:
   contents: read
@@ -38,4 +42,9 @@ jobs:
           php -l wp-content/plugins/mad4b-traveller-nationality/mad4b-traveller-nationality.php
           php -l wp-content/plugins/etg-traveller-nationality-switcher/etg-traveller-nationality-switcher.php
           php -l tests/visitor-preferences-wpml-guest-session-hermetic.php
+          php -l wp-content/mu-plugins/423-mad4b-private-mobile-css-family.php
           php tests/visitor-preferences-wpml-guest-session-hermetic.php
+          python3 ops/private-mobile-css-family-v1/test_source_contract.py
+          python3 -m py_compile ops/private-mobile-css-family-v1/monitor.py
+          node --check ops/private-mobile-css-family-v1/qa-family-candidate.cjs
+          node --check ops/private-mobile-css-family-v1/verify-live-chromium.cjs
