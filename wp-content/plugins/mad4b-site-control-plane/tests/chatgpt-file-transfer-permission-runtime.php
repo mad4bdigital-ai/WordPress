@@ -65,6 +65,9 @@ $GLOBALS['environment']='development';
 check(!$cls::permitted(), 'Unreviewed environment is not eligible');
 $GLOBALS['environment']='staging';
 $rootMethod=new ReflectionMethod($cls,'root');
+// PHP 7.4 permits private fixture-only introspection after explicit access.
+// The production method remains private; no permission behavior changes.
+$rootMethod->setAccessible(true);
 $firstRoot=$rootMethod->invoke(null);
 $GLOBALS['fixture_site_uuid']='b2222222-2222-2222-2222-222222222222';
 $otherRoot=$rootMethod->invoke(null);
