@@ -13,7 +13,7 @@ QA_COMMON=('run-site.sh','event-gate.py','coverage-queue.py',
            'tools/verify.js','tools/probe-public.js',
            'tools/publish.py','verify-source-revision.py')
 QA_SOURCES=QA_COMMON+('safe-cap-fallback.py','wayfa-home-preflight.py',
-                      'wayfa-home-source-observer.py')
+                      'wayfa-home-source-observer.py','home-source-poll-policy-v2.py')
 LIVE_WAYFA_CSS=Path('/opt/mad4b-company-provisioning/reports/dynamic-critical-css-20261116/wayfa/home-current-css-source.json')
 def observed_home_source_key(site):
     # Source-file fingerprints from cookie-free mobile HTTP are a
@@ -34,7 +34,7 @@ def qa_semantics(site):
     # a HOLD for an old QA implementation might be replayed for an hour,
     # or a stale ready certificate reused for up to seven days. Only the
     # company's own strategy dependency is fingerprinted.
-    paths=QA_COMMON+('safe-cap-fallback.py',) if site=='source' else QA_COMMON+('wayfa-home-preflight.py','wayfa-home-source-observer.py')
+    paths=QA_COMMON+('safe-cap-fallback.py',) if site=='source' else QA_COMMON+('wayfa-home-preflight.py','wayfa-home-source-observer.py','home-source-poll-policy-v2.py')
     result={}
     for name in paths:
         path=QA_ROOT/name

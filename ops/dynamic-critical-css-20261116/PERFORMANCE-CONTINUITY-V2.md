@@ -61,3 +61,15 @@
 - A monitor result or successful runner exit does NOT itself certify
   live performance improvement; keep the public `CSS-Ready` header and
   paired browser QA receipts as separate acceptance evidence.
+
+## Adaptive source-change detection
+
+The old read-only Wayfa EN/ES stylesheet SHA observer had a fixed 3600s
+cooldown even when the mobile CSS consumer was visibly in native full-CSS
+fallback. The new exact-host, root-private healthy/degraded report adjusts
+ONLY that cheap source observation to 300s while a fresh, authenticated
+`CSS-Ready:0` proof exists. Unknown, stale or tampered reports keep the
+original hourly interval. The new pure policy module is part of the
+Wayfa-specific QA-source fingerprint; source Staging receives no new
+invalidations. Certificate signing, CSS content addressing, paired browser
+QA and cache release are unchanged.
