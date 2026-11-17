@@ -77,6 +77,8 @@ if review_ref is not None:
     if hashlib.sha256(review_bytes).hexdigest() != review_ref['sha256']:
         raise SystemExit('SOURCE_SUCCESSOR_REVIEW_DIGEST_DRIFT')
     review = json.loads(review_bytes)
+    if hashlib.sha256(prev_paths[0].read_bytes()).hexdigest() != review.get('old_manifest_sha256'):
+        raise SystemExit('SOURCE_SUCCESSOR_PRIOR_MANIFEST_DRIFT')
     if (review.get('contract') != 'mad4b.shared-product-core.source-successor-review.v1'
             or review.get('scope') != 'source-only ETG Lab; no tenant/runtime/Production admission'
             or review.get('current_version') != manifest.get('version')
