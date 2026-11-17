@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - 'ops/company-reconcile-production-admission-v1/**'
+      - 'wp-content/mu-plugins/502-mad4b-production-identity-quickstart.php'
+      - 'tests/mad4b-production-identity-quickstart-hermetic.php'
       - '.github/workflows/mad4b-company-reconcile-production-admission.yml'
   workflow_dispatch:
 permissions:
@@ -23,3 +25,23 @@ jobs:
         run: |
           python3 -m unittest discover -s ops/company-reconcile-production-admission-v1 -p 'test_*.py' -v
           python3 -m py_compile ops/company-reconcile-production-admission-v1/*.py
+
+  owner-session-production-identity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4','8.3','8.5']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Validate one-click Site Profile and all denial cases
+        run: |
+          docker run --rm -v "$GITHUB_WORKSPACE:/src:ro" -w /src php:${{ matrix.php }}-cli sh -euc '
+            php -l wp-content/mu-plugins/502-mad4b-production-identity-quickstart.php
+            php -l tests/mad4b-production-identity-quickstart-hermetic.php
+            php tests/mad4b-production-identity-quickstart-hermetic.php
+          '
