@@ -19,10 +19,10 @@ for path in (root / "includes").rglob("*.php"):
             f"unguarded PHP 8.5 deprecated reflection access: {path}:{contents.count(chr(10), 0, match.start()) + 1}"
         )
         hits.append(str(path.relative_to(root)))
-# Original Operator and Staging Owner source-owned callback probes each add
-# one guarded ReflectionProperty access to the first-party Ability census.
+# Original Operator, Staging Owner and Projection callback probes each
+# add one guarded ReflectionProperty access to the first-party Ability census.
 # Every original access remains subject to the same PHP <8.1 safeguard.
-assert len(hits) == 11, f"expected eleven guarded ReflectionProperty accesses; got {len(hits)}"
+assert len(hits) == 12, f"expected twelve guarded ReflectionProperty accesses; got {len(hits)}"
 probe = r"""
 <?php
 class PrivateCallback { private $execute_callback = 'trusted'; }
