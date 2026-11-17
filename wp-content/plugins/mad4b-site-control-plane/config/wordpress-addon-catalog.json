@@ -12,7 +12,7 @@
         "plugin_file": "mad4b-site-control-plane/mad4b-site-control-plane.php"
       },
       "compatible_versions": [
-        "0.4.0-rc.118"
+        "0.4.0-rc.129"
       ],
       "extension_points": [
         "mad4b_scp_company_management_bootstrap",
@@ -52,7 +52,7 @@
         "exact_addon_version_required": true,
         "current_state": "native_core_runtime_bound_exact_pair_certification_pending",
         "no_owner_attestation_inferred": true,
-        "addon_runtime_version": "0.4.0-company-addon"
+        "addon_runtime_version": "0.4.3-company-addon"
       },
       "tests": {
         "php_lint": "passed_staging",

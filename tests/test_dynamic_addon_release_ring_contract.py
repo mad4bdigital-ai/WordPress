@@ -23,6 +23,23 @@ class DynamicRingPolicy(unittest.TestCase):
   self.assertEqual(addon['certified_pairs'],[])
   self.assertFalse(addon['authority_impact']['inherits_production_authority'])
   self.assertTrue(addon['certification']['exact_provider_version_required'])
+ def test_catalog_versions_are_the_actual_installed_source_headers(self):
+  data=json.loads((CP/'config/wordpress-addon-catalog.json').read_text())
+  addon=next(x for x in data['addons'] if x['addon_id']=='mad4b-company-management')
+  def version(path):
+   lines=path.read_text(encoding='utf-8').splitlines()
+   values=[line.split('Version:',1)[1].strip() for line in lines
+           if line.strip().startswith('* Version:')]
+   self.assertEqual(len(values),1,str(path))
+   return values[0]
+  provider=version(CP/'mad4b-site-control-plane.php')
+  installed=version(ROOT/'wp-content/plugins'/addon['plugin_file'])
+  self.assertIn(provider,addon['compatible_versions'])
+  self.assertEqual(addon['certification']['addon_runtime_version'],installed)
+  self.assertEqual(addon['base_provider']['plugin_file'],'mad4b-site-control-plane/mad4b-site-control-plane.php')
+  self.assertEqual(addon['certified_pairs'],[])
+  self.assertFalse(addon['release_policy']['production_authorized'])
+
  def test_runtime_exact_binding(self):
   source=(CP/'includes/class-mad4b-scp-addon-registry.php').read_text()
   for item in (
