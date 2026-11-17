@@ -334,6 +334,16 @@ for smoke_name in ('runtime-chatgpt-tool-inventory-smoke.php', 'runtime-local-oa
     assert not re.search(r'count\(\s*\$(?:actual_names|names)\s*\)\s*>\s*(?:36|64)\b', smoke), smoke_name
     assert 'MCP_Catalog_Diagnostics::MAX_TOOLS' not in smoke, smoke_name
     assert 'MCP_Catalog_Diagnostics::MAX_SERIALIZED_TOOL_BYTES' not in smoke, smoke_name
+# Core resolution of the two first-party Direct writes must never be
+# generalized into all surface=direct mutators or the governed Write broker.
+direct_names=("mad4b/direct-create-post", "mad4b/direct-update-post")
+for direct in direct_names:
+    assert direct in (root / 'includes/class-mad4b-scp-direct-profile.php').read_text(encoding='utf-8')
+assert "MAD4B_SCP_Governed_Ability_Census::original_direct_post_boundary_verified( wp_get_ability( $ability_name ) )" in servers
+assert "MAD4B_SCP_Direct_Profile::write_tools()" in servers
+assert "return $remember( 'core' );" in servers
+assert "MAD4B_SCP_Direct_Profile::write_tools()" not in (root / 'includes/class-mad4b-scp-server-write-catalog.php').read_text(encoding='utf-8')
+
 # Real callback provenance regressions are invoked by every MCP compatibility
 # contract runner. Structural descriptors never authorize a mutation.
 for runtime_test in (
