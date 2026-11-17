@@ -4,10 +4,11 @@ define( 'ABSPATH', __DIR__ . '/' );
 class WP_Error { private $code; public function __construct($code, $message=''){$this->code=$code;} public function get_error_code(){return $this->code;} }
 function is_wp_error($v){return $v instanceof WP_Error;}
 $GLOBALS['registered_origins'] = array();
+$GLOBALS['raw_registrations'] = array();
 function wp_has_ability($name){return isset($GLOBALS['registered_origins'][$name]);}
 function wp_get_ability($name){return $GLOBALS['registered_origins'][$name] ?? null;}
 function wp_get_abilities(){return $GLOBALS['registered_origins'];}
-function wp_register_ability($name,$args){$GLOBALS['registered_origins'][$name] = new WP_Ability($name,$args);return true;}
+function wp_register_ability($name,$args){$GLOBALS['raw_registrations'][$name]=$args;$GLOBALS['registered_origins'][$name] = new WP_Ability($name,$args);return true;}
 class WP_Ability {
     private $name;
     private $meta;
@@ -33,12 +34,27 @@ class MAD4B_SCP_Execution_Fence {
 }
 require __DIR__.'/../includes/class-mad4b-scp-governed-ability-census.php';
 require __DIR__.'/../includes/class-mad4b-scp-direct-profile.php';
+require __DIR__.'/../includes/class-mad4b-scp-staging-write-authority.php';
 require __DIR__.'/../includes/class-mad4b-scp-abilities.php';
 require __DIR__.'/../includes/class-mad4b-scp-governed-runtime-gates.php';
 $check=static function($ok,$message){if(!$ok)throw new RuntimeException($message);};
 $direct='MAD4B_SCP_Governed_Ability_Census';
 MAD4B_SCP_Direct_Profile::register_abilities();
 foreach(array('mad4b/direct-create-post','mad4b/direct-update-post') as $name){
+    // Check the real pre-registration WordPress args, not a hand-written
+    // generic metadata fixture. The exact Direct Profile must be kept out of
+    // the global NHI/ticket augmenter; foreign callbacks must not be.
+    $original_args=$GLOBALS['raw_registrations'][$name];
+    $same=MAD4B_SCP_Staging_Write_Authority::augment_write_ability($original_args,$name);
+    $check($same===$original_args,'Direct post was rewritten as a governed NHI mutation: '.$name);
+    $forged=$original_args;
+    $forged['permission_callback']=static function($input=null){return true;};
+    $denied=MAD4B_SCP_Staging_Write_Authority::augment_write_ability($forged,$name);
+    $check(($denied['meta']['mcp']['mad4b_governed_write_authority']??'')===MAD4B_SCP_Staging_Write_Authority::CONTRACT,
+        'Forged direct permission bypassed regular governed write fence: '.$name);
+    $misnamed=MAD4B_SCP_Staging_Write_Authority::augment_write_ability($original_args,'mad4b/other-direct-post');
+    $check(($misnamed['meta']['mcp']['mad4b_governed_write_authority']??'')===MAD4B_SCP_Staging_Write_Authority::CONTRACT,
+        'Unregistered direct name bypassed global governed write fence.');
     $ability=wp_get_ability($name);
     $check($direct::original_direct_post_boundary_verified($ability),'Original direct post callback rejected: '.$name);
     MAD4B_SCP_Execution_Fence::$enabled=false;
