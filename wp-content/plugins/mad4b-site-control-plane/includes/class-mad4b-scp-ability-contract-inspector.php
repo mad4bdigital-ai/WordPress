@@ -136,7 +136,10 @@ final class MAD4B_SCP_Ability_Contract_Inspector {
 		$original_owner_intent_boundary = 'enrollment' === $lane
 			&& class_exists( 'MAD4B_SCP_Governed_Ability_Census' )
 			&& MAD4B_SCP_Governed_Ability_Census::staging_owner_intent_original_boundary_verified( $ability );
-		$original_bounded_boundary = $original_operator_boundary || $original_owner_intent_boundary;
+		$original_projection_boundary = 'enrollment' === $lane
+			&& class_exists( 'MAD4B_SCP_Governed_Ability_Census' )
+			&& MAD4B_SCP_Governed_Ability_Census::chatgpt_projection_original_boundary_verified( $ability );
+		$original_bounded_boundary = $original_operator_boundary || $original_owner_intent_boundary || $original_projection_boundary;
 		$provider = class_exists( 'MAD4B_SCP_Servers' )
 			? ( method_exists( 'MAD4B_SCP_Servers', 'provider_for_capability_descriptor' )
 				? MAD4B_SCP_Servers::provider_for_capability_descriptor( $original_bounded_boundary ? 'mad4b-chatgpt' : 'mad4b-' . $lane, $ability_name )
