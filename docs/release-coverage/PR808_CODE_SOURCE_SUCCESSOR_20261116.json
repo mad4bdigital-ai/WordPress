@@ -55,7 +55,7 @@
         "if ( ! isset( $trusted[ $name ] )",
         "staging_owner_intent_original_boundary_verified( $ability )",
         "'permission_callback' => 'can_remote_attest'",
-        "'broker_dispatch_policy' ?? null"
+        "'owner_attestation_v1' !== ( $mcp['broker_dispatch_policy'] ?? null )"
       ],
       "review_class": "exact_source_regression_only_not_signed_release"
     }
