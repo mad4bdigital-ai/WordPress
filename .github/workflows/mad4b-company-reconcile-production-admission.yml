@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'ops/company-reconcile-production-admission-v1/**'
+      - 'ops/unified-production-authority-v1/**'
       - 'wp-content/mu-plugins/502-mad4b-production-identity-quickstart.php'
       - 'tests/mad4b-production-identity-quickstart-hermetic.php'
       - '.github/workflows/mad4b-company-reconcile-production-admission.yml'
@@ -25,6 +26,12 @@ jobs:
         run: |
           python3 -m unittest discover -s ops/company-reconcile-production-admission-v1 -p 'test_*.py' -v
           python3 -m py_compile ops/company-reconcile-production-admission-v1/*.py
+          python3 -B -m unittest discover -s ops/unified-production-authority-v1 -p 'test_*.py' -v
+          python3 -B - <<'PY_INNER'
+          from pathlib import Path
+          for file in Path('ops/unified-production-authority-v1').glob('*.py'):
+              compile(file.read_text(),str(file),'exec')
+          PY_INNER
 
   owner-session-production-identity:
     runs-on: ubuntu-latest
