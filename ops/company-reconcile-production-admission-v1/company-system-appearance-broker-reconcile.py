@@ -8,12 +8,25 @@ No user, role, password, pricing, checkout, SMTP or WPML option mutation.
 """
 from __future__ import annotations
 import argparse,datetime as dt,hashlib,json,os,pathlib,re,runpy,shutil,subprocess,sys,tempfile,time
-from central_staging_container import resolve_container
 BASE=pathlib.Path('/opt/mad4b-company-provisioning')
 POLICY=BASE/'policies/company-fx-distribution-v1.json'
-COMMON=runpy.run_path(str(BASE/'bin/company-mode-price-policy-reconcile.py'),run_name='mad4b_appearance_common')
-_original_run_wp=COMMON['run_wp']
-gather_bindings=COMMON['gather_bindings']; ensure_mount=COMMON['ensure_mount']; CORE=COMMON['CORE']
+_original_run_wp=None
+resolve_container=None
+gather_bindings=None
+ensure_mount=None
+CORE=None
+
+def load_host_read_dependencies():
+    """Use original protected Host providers only for plan/verify, after Apply refusal."""
+    global _original_run_wp,resolve_container,gather_bindings,ensure_mount,CORE
+    from central_staging_container import resolve_container as original_resolve_container
+    original=runpy.run_path(str(BASE/'bin/company-mode-price-policy-reconcile.py'),
+                            run_name='mad4b_appearance_common')
+    resolve_container=original_resolve_container
+    _original_run_wp=original['run_wp']
+    gather_bindings=original['gather_bindings']
+    ensure_mount=original['ensure_mount']
+    CORE=original['CORE']
 def run_wp(container, code, extra=None, timeout=85):
     # WP-CLI's existing two-slot guard remains authoritative.
     # Retry only transient capacity denials. No fallback to shell or another site.
@@ -146,6 +159,7 @@ def main():
         raise RuntimeError('DIRECT_APPEARANCE_APPLY_DISABLED_SIGNED_ORIGINAL_305_306_312_313_REQUIRED')
     if not re.fullmatch('[a-z][a-z0-9-]{2,47}',args.company):
         raise RuntimeError('COMPANY_CODE_INVALID')
+    load_host_read_dependencies()
     policy=json.loads(POLICY.read_text())
     if policy.get('contract')!='mad4b.company-fx-distribution.v1':raise RuntimeError('BROKER_SOURCE_CONTRACT_INVALID')
     # The enrolled source identity is stable; the Docker PHP container is not.

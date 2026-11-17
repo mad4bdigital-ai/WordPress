@@ -104,3 +104,19 @@ changed. Combined tests: **26/26** hermetic admission plus legacy Broker tests.
 ### Hosted CI import isolation
 
 GitHub runners do not have the Hostinger-only `central_staging_container` or the protected `company-mode-price-policy-reconcile.py` installed. The hermetic denial test mocks **only that top-level Host module import** and installs explicit throwing stubs for any WordPress/Host operation. It then runs the real legacy CLI with `--mode apply`; a return code other than the exact refusal is a test failure. The running Host script was not modified for CI, and the live Production refusal and read-only Plan were tested independently.
+
+### Live fail-before-import hardening
+
+On this correction the active legacy host script was further changed, **before
+GitHub publication**, so `--mode apply` terminates with the fixed signed-job
+HOLD **before even importing Host-only `central_staging_container` or running
+its price-policy WP-CLI helpers**. Original Host helpers now load lazily only
+after command parsing and exact direct-apply refusal for read-only `plan` and
+`verify`. The independent hermetic test executes the **actual CLI directly on
+GitHub** without any Host mocks and asserts both refusal and no attempted Host
+imports; no dependency on the authorized VPS is needed for the denial test.
+
+Installed script digest and source agree, and an actual authorized VPS `plan`
+returned `APPEARANCE_SOURCE_PARITY_VERIFIED` with no site mutation. Current
+combined hermetic suite: 27 assertions/cases. A preimage backup and signed
+refusal/plan readback are retained under the VPS original host install reports.

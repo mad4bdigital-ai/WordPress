@@ -1,39 +1,23 @@
 #!/usr/bin/env python3
 """Hermetic fail-closed old Broker: only Original signed native may mutate.
-Runs a real copy of the source CLI in a process with a harmless import stub.
+Runs the real CLI directly; no Host-only import or mock required.
 """
 from __future__ import annotations
 import ast,hashlib,pathlib,subprocess,sys,unittest
 SCRIPT=pathlib.Path(__file__).with_name('company-system-appearance-broker-reconcile.py')
-STUB=r'''import sys,types,runpy
-sys.modules['central_staging_container']=types.SimpleNamespace(resolve_container=lambda: None)
-sys.argv=['company-system-appearance-broker-reconcile.py']+sys.argv[1:]
-runpy.run_path(sys.argv[0] if False else sys.argv.pop(0),run_name='__main__')
-'''
 class Tests(unittest.TestCase):
  def invoke(self,*args):
-  # The first argument after -c is the argv[0] placeholder; runpy uses an
-  # explicitly pinned source path. No live program is imported as a dependency.
-  runner='''import sys,types,runpy
-sys.modules['central_staging_container']=types.SimpleNamespace(resolve_container=lambda: None)
-original=runpy.run_path
-def reject_host(*args,**kwargs):
-    raise RuntimeError('HOST_DEPENDENCY_ACCESS_NOT_PERMITTED_IN_FAIL_CLOSED_TEST')
-def isolated_source(path,run_name=None):
-    if str(path).endswith('/company-mode-price-policy-reconcile.py'):
-        return {'run_wp':reject_host,'gather_bindings':reject_host,'ensure_mount':reject_host,'CORE':None}
-    return original(path,run_name=run_name)
-runpy.run_path=isolated_source
-path=sys.argv[1]
-sys.argv=['company-appearance',*sys.argv[2:]]
-original(path,run_name='__main__')
-'''
-  return subprocess.run([sys.executable,'-c',runner,str(SCRIPT),*args],
+  return subprocess.run([sys.executable,str(SCRIPT),*args],
                         capture_output=True,text=True,timeout=8)
  def test_apply_production_denied_before_host_or_site_read(self):
   r=self.invoke('--company','wayfatours','--environment','production','--mode','apply','--allow-production')
   self.assertEqual(r.returncode,3);self.assertIn('DIRECT_APPEARANCE_APPLY_DISABLED',r.stdout)
   self.assertIn('"production_mutated": false',r.stdout)
+ def test_untrusted_host_dependency_not_imported_on_apply(self):
+  r=self.invoke('--company','wayfatours','--environment','production','--mode=apply')
+  self.assertEqual(r.returncode,3)
+  self.assertNotIn('ModuleNotFoundError',r.stderr)
+  self.assertIn('DIRECT_APPEARANCE_APPLY_DISABLED',r.stdout)
  def test_apply_staging_denied(self):
   r=self.invoke('--company','wayfatours','--environment','staging','--mode','apply')
   self.assertEqual(r.returncode,3);self.assertIn('SIGNED_ORIGINAL_305_306_312_313_REQUIRED',r.stdout)
