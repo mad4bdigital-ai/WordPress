@@ -148,3 +148,4 @@ if (is_file($review_path)) {
 }
 parity_assert(!MAD4B_SCP_Site_Profile::write_enabled(),'No grants may be inferred');
 echo 'MAD4B_ENVIRONMENT_PROVIDER_PARITY: PASS shared=68 staging_specific=16 grants_created=0'.PHP_EOL;
+echo 'PASS: MAD4B_ENVIRONMENT_PROVIDER_PARITY shared=68 staging_specific=16 grants_created=0'.PHP_EOL;
