@@ -8,10 +8,11 @@ COM=BASE/'mad4b-commerce'
 PLATFORM=BASE/'mad4b-platform'
 JET=BASE/'mad4b-jetengine'
 # The 905-file receipt is an immutable Git HISTORICAL snapshot, captured by
-# this original source-closure commit. Do not compare it against mutable HEAD:
-# later reviewed releases legitimately changed the MU map and retired an
-# unused navigation minifier artifact. Keep the receipt bytes unchanged.
-HISTORICAL_COMMIT='719588a024a8cd68b1002dd9c111de8bc0540e69'
+# a byte-identical, GitHub-reachable original PR ancestor. The creator's
+# local-only commit 719588a024a8 is not in this PR's ancestry, but all 905
+# recorded blobs and the receipt itself match the selected ancestor. Never
+# compare the receipt to mutable HEAD or repin its historical digests.
+HISTORICAL_COMMIT='b7ce62047e1eb0eae76eeb8e7671c6fa93d6b2fa'
 RECEIPT_REL='ops/company-reconcile/runtime-owner-closure-v1/live-runtime-source-manifest.json'
 
 

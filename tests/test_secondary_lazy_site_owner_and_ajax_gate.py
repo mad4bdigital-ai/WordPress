@@ -24,7 +24,25 @@ class NativeLazyOwner(unittest.TestCase):
   for guard in ('production_authorized','live_source_reverified_after_delta','auto_promote_to_wayfatours','target_company_release_authorized'):
    self.assertFalse(newer[guard])
   self.assertEqual(newer['candidate_relative_path'],m['sites']['tours_dev']['relative_path'])
-  self.assertEqual(hashlib.sha256((ROOT/newer['candidate_relative_path']).read_bytes()).hexdigest(),newer['candidate_sha256'])
+  # The forward-port receipt recorded an earlier source candidate. A later
+  # reviewed lazy source revision is not allowed to rewrite that receipt.
+  # Pin the original bytes in a non-executable historical fixture, verify both
+  # SHA-256 and native Git blob SHA-1, then check the new source separately.
+  successor=json.loads((META.parent/'secondary-native-lazy-source-successor-20261117.json').read_text())
+  self.assertEqual(successor['contract'],'mad4b.secondary-lazy-source-successor.v1')
+  historical=(ROOT/successor['original_candidate_fixture']).read_bytes()
+  self.assertEqual(hashlib.sha256(historical).hexdigest(),newer['candidate_sha256'])
+  blob=b'blob '+str(len(historical)).encode()+b'\0'+historical
+  self.assertEqual(hashlib.sha1(blob).hexdigest(),newer['candidate_git_blob_sha1'])
+  self.assertEqual(successor['original_candidate_sha256'],newer['candidate_sha256'])
+  self.assertEqual(successor['original_candidate_git_blob_sha1'],newer['candidate_git_blob_sha1'])
+  self.assertEqual(successor['current_candidate_relative_path'],newer['candidate_relative_path'])
+  self.assertTrue(successor['site_source_readiness_only'])
+  for guard in ('company_release_authorized','wayfatours_live_reverified','automatic_promotion_enabled'):
+   self.assertFalse(successor[guard])
+  self.assertEqual(hashlib.sha256((ROOT/newer['candidate_relative_path']).read_bytes()).hexdigest(),
+                   successor['current_candidate_sha256'])
+  self.assertNotEqual(successor['current_candidate_sha256'],newer['candidate_sha256'])
   self.assertNotEqual(newer['candidate_sha256'],m['sites']['tours_dev']['sha256'])
   company=m['sites']['wayfatours']
   self.assertEqual(hashlib.sha256((ROOT/company['relative_path']).read_bytes()).hexdigest(),company['sha256'])
