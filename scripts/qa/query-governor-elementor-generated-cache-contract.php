@@ -12,6 +12,7 @@ $cases=[
     '_elementor_css' => true,
     '_edit_lock' => true,
     '_edit_last' => true,
+    '_mad4b_watermark_fingerprint_v1' => true,
     '_elementor_data' => false,
     '_elementor_page_settings' => false,
     '_listing_data' => false,

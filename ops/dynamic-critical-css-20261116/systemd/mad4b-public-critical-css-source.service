@@ -1,0 +1,19 @@
+[Unit]
+Description=MAD4B Source per-route change-driven Critical CSS automatic coverage
+Wants=network-online.target docker.service
+After=network-online.target docker.service
+ConditionPathExists=/opt/mad4b-company-provisioning/worktrees/pr814-converged-local-20261115/ops/dynamic-critical-css-20261116/run-public-route.py
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/usr/bin/python3 /opt/mad4b-company-provisioning/worktrees/pr814-converged-local-20261115/ops/dynamic-critical-css-20261116/run-public-route.py source
+TimeoutStartSec=2650
+Nice=17
+IOSchedulingClass=idle
+NoNewPrivileges=true
+Environment=PYTHONUNBUFFERED=1
+UMask=0077
+StandardOutput=journal
+StandardError=journal

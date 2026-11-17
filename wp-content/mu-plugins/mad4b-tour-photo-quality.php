@@ -514,10 +514,10 @@ final class MAD4B_Tour_Photo_Quality_V1 {
                     'has_destination_context'=>true];
             }
         }
-        return ['contract'=>self::CONTRACT,'post_id'=>$tour,'hero_slots'=>count($hero),'gallery_items'=>count($gallery['ids']),
+        return apply_filters('mad4b/tour_photo_quality/audit',['contract'=>self::CONTRACT,'post_id'=>$tour,'hero_slots'=>count($hero),'gallery_items'=>count($gallery['ids']),
             'issues'=>$issues,'issue_count'=>count($issues),'source_image_identity_verified'=>true,
             'cross_tour_image_reuse_allowed'=>true,'ai_detection_complete'=>false,
-            'ai_limitations'=>'Positive generator tags are conclusive for blocking; absence of metadata does not prove photographic origin'];
+            'ai_limitations'=>'Positive generator tags are conclusive for blocking; absence of metadata does not prove photographic origin'],$tour);
     }
     /** Company-extendable title-first story profile, never a publication grant. */
     private static function headline_context(int $tour):array {
@@ -707,6 +707,7 @@ final class MAD4B_Tour_Photo_Quality_V1 {
                             'no_automatic_rights_or_visual_approval'=>true];
                         continue;
                     }
+                    if(!apply_filters('mad4b/tour_photo_quality/hero_candidate_eligible',true,$tour,$slot_fields[$slot]??'',$entry,$id))continue;
                     $focus=self::headline_photo_hint($id,$headline);
                     if($pass==='company_local_shared_subject_pool_review_only'&&!$focus)continue;
                     if($pass==='weighted_registered_context_review_only'
@@ -724,6 +725,7 @@ final class MAD4B_Tour_Photo_Quality_V1 {
                     $score=(float)($entry['role_scores'][$role]??0);
                     if($focus)$score+=($slot<3?80:45);
                     $score+=(float)($entry['hero_score']??0);
+                    $score=apply_filters('mad4b/tour_photo_quality/hero_candidate_score',$score,$tour,$slot_fields[$slot]??'',$entry,$id,array_values($selected));
                     if($score>$best_score){$best=['id'=>$id,'sha'=>$o['origin_sha256'],'evidence'=>$evidence,
                         'provenance'=>self::provenance($id)['status'],
                         'subject_signal'=>$subject['basis'],'headline_subject_hint'=>$focus,
@@ -792,7 +794,7 @@ final class MAD4B_Tour_Photo_Quality_V1 {
         }
         $proposed_by_field=[];
         foreach($selected as $index=>$candidate)if(isset($slot_fields[$index]))$proposed_by_field[$slot_fields[$index]]=$candidate;
-        return ['contract'=>self::CONTRACT,'post_id'=>$tour,'mode'=>'proposal_only_no_automatic_writes',
+        return apply_filters('mad4b/tour_photo_quality/selection_plan',['contract'=>self::CONTRACT,'post_id'=>$tour,'mode'=>'proposal_only_no_automatic_writes',
             'hero_ready'=>count($selected)===$slot_total,'hero_target_slots'=>$slot_fields,
             'headline_profile'=>$headline['profile'],'headline_min_subject_slots'=>$headline['min_hero'],
             'shared_company_local_candidates'=>count($shared),
@@ -815,7 +817,7 @@ final class MAD4B_Tour_Photo_Quality_V1 {
             'bulk_gallery_evidence'=>$bulk,
             'gallery_proposal_excludes_unreviewed_shared_set'=>$bulk['untrusted'],
             'gallery_policy'=>'Same original photo may appear in several tours when their itineraries overlap; inside one tour, unique originals and no confirmed synthetic media',
-            'pending'=>'visual subject accuracy, licensing and source provenance editorial review'];
+            'pending'=>'visual subject accuracy, licensing and source provenance editorial review'],$tour);
     }
     public static function state_sha(int $tour):string{
         $keys=array_merge(['gallery'],self::hero_fields($tour),['_thumbnail_id','_mad4b_media_focal_points_v1','mad4b_media_frame_focus_v2','_mad4b_media_subject_evidence_v1','_mad4b_tour_media_association_v1']);
@@ -842,7 +844,10 @@ final class MAD4B_Tour_Photo_Quality_V1 {
             'media_rate_property_photo_coverage_gap'=>'medium',
             'media_story_coverage_gap'=>'medium',
             'media_itinerary_geography_conflict'=>'high',
-            'media_origin_provenance_unverified'=>'low'];
+            'media_origin_provenance_unverified'=>'low',
+                'media_viewpoint_grid_portrait_cover_risk'=>'medium',
+                'media_viewpoint_museum_exterior_overview_review'=>'medium',
+                'media_viewpoint_museum_interior_scene_repeat'=>'medium'];
         foreach(($state['tours']??[]) as $tour=>$rows){
             $tour=(int)$tour;
             if(!$tour||get_post_type($tour)!=='tours-and-activities'||get_post_status($tour)!=='publish')continue;

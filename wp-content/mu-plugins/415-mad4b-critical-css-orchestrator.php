@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: MAD4B Verified Critical CSS
- * Version: 0.3.27
+ * Version: 0.3.29
  * Description: Serve measured first-paint CSS only for exact live LiteSpeed CSS content hashes. Fail open on any mismatch.
  */
 defined('ABSPATH') || exit;
@@ -11,6 +11,11 @@ final class MAD4B_Verified_Critical_CSS_V1 {
     private const STORAGE = '/mad4b-critical-css-v1';
     private const MAX_CSS = 1048576;
     private static $manifest = null;
+    // Only the exact request which successfully rewrote a fully verified
+    // sub-mobile cap may certify its final HTML as cache-ready.
+    private static ?int $verifiedSubMobileCap = null;
+    private static ?int $verifiedSubMobileNative = null;
+
 
     private static function eligible(): bool {
         if ((string)($_SERVER['MAD4B_TRUSTED_DEVICE_CLASS'] ?? '') !== 'mobile'
@@ -81,6 +86,34 @@ final class MAD4B_Verified_Critical_CSS_V1 {
         return (int)$raw;
     }
 
+    /**
+     * A performance-qualified sub-mobile first-paint cap may be narrower
+     * than Elementor's actual mobile breakpoint. This is NOT a change to
+     * Elementor templates, its media queries or the device classifier:
+     * >=cap+1 receives native render-blocking LiteSpeed CSS.
+     *
+     * A narrower cap requires its own complete Chromium proof at the
+     * cap/cap+1 edge AND the actual Elementor mobile/mobile+1 edge.
+     * Unknown breakpoints, stale evidence and wider-than-native caps fail
+     * closed to the original stylesheet.
+     */
+    private static function adaptive_width_proven(int $cap, array $cert): bool {
+        $native=self::native_mobile_breakpoint();
+        if ($cap<480 || $native===null || $cap>$native) return false;
+        $widths=(array)($cert['viewports']??[]);
+        if (($cert['adaptive_mobile_breakpoint_px']??null)!==$cap
+            || ($cert['decision']??'')!=='passed_evidence'
+            || !in_array($cap,$widths,true)
+            || !in_array($cap+1,$widths,true)) return false;
+        if ($cap===$native) return true;
+        return ($cert['native_mobile_breakpoint_px']??null)===$native
+            && in_array($native,$widths,true)
+            && in_array($native+1,$widths,true)
+            && in_array(320,$widths,true)
+            && in_array(390,$widths,true)
+            && in_array(414,$widths,true);
+    }
+
     private static function verified_variant(array $manifest, array $meta,
         string $filename, string $buffer, string $locale): ?array {
         if ((int)($manifest['version']??0)===1) {
@@ -114,13 +147,8 @@ final class MAD4B_Verified_Critical_CSS_V1 {
         if (array_key_exists('css_critical_mobile_breakpoint',$variant)) {
             $px=$variant['css_critical_mobile_breakpoint'];
             $cert=(array)($variant['evidence']??[]);
-            $native=self::native_mobile_breakpoint();
-            if (!is_int($px) || $px<480 || $px>1100
-                || $native===null || $native!==$px
-                || ($cert['adaptive_mobile_breakpoint_px']??null)!==$px
-                || ($cert['decision']??'')!=='passed_evidence'
-                || !in_array($px,(array)($cert['viewports']??[]),true)
-                || !in_array($px+1,(array)($cert['viewports']??[]),true)
+            if (!is_int($px) || $px>1100
+                || !self::adaptive_width_proven($px,$cert)
                 || str_contains($buffer,'data-mad4b-first-city='))
                 return null;
         }
@@ -201,11 +229,17 @@ final class MAD4B_Verified_Critical_CSS_V1 {
         $fullMedia=$adaptive>0?'(min-width:'.($adaptive+1).'px)':'print';
         $markup = '<style id="mad4b-critical-css-v1"'.$criticalMedia.'>' . $critical . '</style>';
         if (($meta['css_full_preload']??false)===true) {
-            $markup .= '<link rel="preload" as="style" fetchpriority="high" href="' . $safeUrl . '" />';
+            // Only preload the full stylesheet when Critical CSS is active.
+            // At >=768px the original full CSS must remain render-blocking,
+            // without a duplicate high-priority preload stealing LCP bandwidth.
+            $preloadMedia=$adaptive>0?' media="(max-width:'.$adaptive.'px)"':'';
+            $markup .= '<link rel="preload" as="style" fetchpriority="high"'.$preloadMedia.' href="' . $safeUrl . '" />';
         }
-        // Complete CSS must not steal LCP poster priority. Exact SHA-matched
-        // bundle loads natively as print then becomes all on load.
-        $markup .= '<link id="mad4b-css-rest-v1" rel="stylesheet" href="' . $safeUrl . '" media="' . $fullMedia . '" fetchpriority="' . $priority . '" onload="this.onload=null;this.media=&#39;all&#39;" />';
+        // At tablet widths the native full CSS remains render-blocking.
+        // Default browser priority, with no tablet preload, preserves
+        // the original 768px LCP and first-paint critical path.
+        $fullPriority=$adaptive>0?'auto':$priority;
+        $markup .= '<link id="mad4b-css-rest-v1" rel="stylesheet" href="' . $safeUrl . '" media="' . $fullMedia . '" fetchpriority="' . $fullPriority . '" onload="this.onload=null;this.media=&#39;all&#39;" />';
         $markup .= '<noscript>' . $tag . '</noscript>';
         // If a CSP/loader suppresses the link onload, restore after load.
         $inlineLoader = class_exists('MAD4B_Mobile_CSS_Inline_Contract_V1', false)
@@ -217,7 +251,15 @@ final class MAD4B_Verified_Critical_CSS_V1 {
             // contract has not yet been provisioned or is intentionally off.
             $markup .= '<script data-no-optimize="1">(function(){var e=document.getElementById("mad4b-css-rest-v1");if(!e)return;window.addEventListener("load",function(){if(e.media!=="all")e.media="all"},{once:true});setTimeout(function(){if(e.media!=="all")e.media="all"},6500)})()</script>';
         }
-        return substr_replace($buffer, $markup, $pos, strlen($tag));
+        $result=substr_replace($buffer, $markup, $pos, strlen($tag));
+        $native=self::native_mobile_breakpoint();
+        if ($adaptive>0 && $native!==null && $adaptive<$native) {
+            // Final-header admission is request-local; a LiteSpeed hit that
+            // skipped our rewrite MUST NOT inherit this mutable state.
+            self::$verifiedSubMobileCap=$adaptive;
+            self::$verifiedSubMobileNative=$native;
+        }
+        return $result;
     }
 
 
@@ -237,8 +279,13 @@ final class MAD4B_Verified_Critical_CSS_V1 {
         $start=$match[0][1]+strlen($match[0][0]);
         $adaptive=isset($match[1][0])?(int)$match[1][0]:0;
         if ($adaptive>0) {
+            $native=self::native_mobile_breakpoint();
+            $requestProof=$native!==null
+                && $adaptive<$native
+                && self::$verifiedSubMobileCap===$adaptive
+                && self::$verifiedSubMobileNative===$native;
             if ($adaptive<480 || $adaptive>1100
-                || self::native_mobile_breakpoint()!==$adaptive
+                || ($native!==$adaptive && !$requestProof)
                 || !str_contains($html,'id="mad4b-css-rest-v1"')
                 || !str_contains($html,'media="(min-width:'.($adaptive+1).'px)"')
                 || str_contains($html,'data-mad4b-first-city=')) return false;

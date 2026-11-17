@@ -1,0 +1,509 @@
+/* MAD4B Commerce — scoped to Woo order-pay advance pages only.
+   Keep Stripe Elements internal layout, Woo form/nonce and payment handlers untouched. */
+body.mad4b-advance-checkout-ui {
+  --mad4b-pay-ink:#163443;
+  --mad4b-pay-subtle:#506776;
+  --mad4b-pay-border:#dfe8ec;
+  --mad4b-pay-surface:#fff;
+  --mad4b-pay-backdrop:#f4f8f9;
+  --mad4b-pay-radius:12px;
+  color:var(--mad4b-pay-ink);
+}
+body.mad4b-advance-checkout-ui #content {
+  background:var(--mad4b-pay-backdrop);
+}
+body.mad4b-advance-checkout-ui #primary article {
+  padding:32px clamp(16px,3vw,48px) 44px !important;
+  margin:0 !important;
+}
+body.mad4b-advance-checkout-ui .entry-content {
+  max-width:none;
+  margin:0 !important;
+}
+body.mad4b-advance-checkout-ui .entry-content > .woocommerce {
+  overflow-x:clip;
+}
+body.mad4b-advance-checkout-ui .woocommerce form#order_review {
+  display:grid;
+  grid-template-columns:minmax(0,.86fr) minmax(0,1.14fr);
+  gap:0 24px;
+  align-items:start;
+  width:100%;
+  max-width:1120px;
+  margin:12px auto 0;
+  padding:0;
+  border:0;
+  font-size:15px;
+  line-height:1.6;
+  color:var(--mad4b-pay-ink);
+}
+body.mad4b-advance-checkout-ui form#order_review > table.shop_table {
+  grid-column:1;
+  grid-row:1 / span 2;
+  position:sticky;
+  top:24px;
+  border:1px solid var(--mad4b-pay-border);
+  border-collapse:separate;
+  border-spacing:0;
+  border-radius:var(--mad4b-pay-radius);
+  background:var(--mad4b-pay-surface);
+  width:100%;
+  min-width:0;
+  margin:0;
+  box-shadow:0 5px 18px rgba(15,46,64,.045);
+  overflow:hidden;
+}
+body.mad4b-advance-checkout-ui form#order_review table.shop_table th,
+body.mad4b-advance-checkout-ui form#order_review table.shop_table td {
+  font-size:14px;
+  line-height:1.5;
+  padding:14px 16px;
+  border-bottom:1px solid var(--mad4b-pay-border);
+  border-right:0;
+  background:#fff;
+  color:var(--mad4b-pay-ink);
+  overflow-wrap:anywhere;
+  vertical-align:middle;
+}
+body.mad4b-advance-checkout-ui form#order_review table.shop_table tr:last-child td,
+body.mad4b-advance-checkout-ui form#order_review table.shop_table tr:last-child th {
+  border-bottom:0;
+}
+body.mad4b-advance-checkout-ui form#order_review table.shop_table tfoot td {
+  width:36%;
+  font-weight:600;
+  text-align:right;
+  white-space:normal;
+}
+body.mad4b-advance-checkout-ui form#order_review table.shop_table tfoot th {
+  width:64%;
+  font-weight:500;
+}
+body.mad4b-advance-checkout-ui form#order_review table.shop_table:not(:has(tbody tr)) thead,
+body.mad4b-advance-checkout-ui form#order_review table.shop_table:not(:has(tbody tr)) tfoot tr:first-child {
+  display:none;
+}
+body.mad4b-advance-checkout-ui .mad4b-advance-heading {
+  grid-column:2;
+  grid-row:1;
+  min-width:0;
+  background:#fff;
+  border:1px solid var(--mad4b-pay-border);
+  border-bottom:0;
+  border-radius:var(--mad4b-pay-radius) var(--mad4b-pay-radius) 0 0;
+  padding:22px 24px 4px;
+}
+body.mad4b-advance-checkout-ui .mad4b-advance-eyebrow {
+  display:block;
+  color:#527281;
+  font-size:12px;
+  font-weight:700;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  margin-bottom:6px;
+}
+body.mad4b-advance-checkout-ui .mad4b-advance-heading h2 {
+  margin:0 0 8px;
+  font-size:24px;
+  line-height:1.25;
+  font-weight:700;
+  color:var(--mad4b-pay-ink);
+}
+body.mad4b-advance-checkout-ui .mad4b-advance-heading p {
+  margin:0 0 12px;
+  color:var(--mad4b-pay-subtle);
+  font-size:14px;
+  line-height:1.55;
+}
+body.mad4b-advance-checkout-ui .mad4b-advance-sandbox {
+  display:inline-block;
+  color:#745615;
+  background:#fff8e6;
+  border:1px solid #e9d8a5;
+  padding:5px 10px;
+  margin:0 0 12px;
+  border-radius:5px;
+  font-size:12px;
+  font-weight:600;
+}
+body.mad4b-advance-checkout-ui .woocommerce form#order_review > #payment {
+  grid-column:2;
+  grid-row:2;
+  display:block;
+  min-width:0;
+  max-width:100%;
+  background:var(--mad4b-pay-surface);
+  border:1px solid var(--mad4b-pay-border);
+  border-top:0;
+  border-radius:0 0 var(--mad4b-pay-radius) var(--mad4b-pay-radius);
+  padding:12px 24px 24px;
+  margin:0;
+  box-shadow:0 5px 18px rgba(15,46,64,.045);
+}
+body.mad4b-advance-checkout-ui #payment ul.payment_methods,
+body.mad4b-advance-checkout-ui #payment .form-row,
+body.mad4b-advance-checkout-ui #payment li.payment_method_stripe {
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  box-sizing:border-box;
+}
+body.mad4b-advance-checkout-ui #payment ul.payment_methods {
+  padding:0;
+  margin:0 0 16px;
+  border:0;
+  background:transparent;
+}
+body.mad4b-advance-checkout-ui #payment ul.payment_methods > li {
+  list-style:none;
+  padding:0;
+  margin:0;
+}
+body.mad4b-advance-checkout-ui #payment .payment_box {
+  box-sizing:border-box;
+  margin:12px 0 0;
+  padding:16px;
+  background:#f6f9fa;
+  border:1px solid var(--mad4b-pay-border);
+  border-radius:8px;
+  color:var(--mad4b-pay-ink);
+  max-width:100%;
+}
+body.mad4b-advance-checkout-ui #payment .form-row {
+  padding:0 !important;
+  margin:0;
+  float:none;
+}
+body.mad4b-advance-checkout-ui .woocommerce-terms-and-conditions-wrapper {
+  margin:10px 0 18px;
+  color:var(--mad4b-pay-subtle);
+  font-size:13px;
+  line-height:1.6;
+}
+body.mad4b-advance-checkout-ui .woocommerce-terms-and-conditions-wrapper p {margin:0 0 10px;}
+body.mad4b-advance-checkout-ui .mad4b-advance-agreement {
+  min-width:0;
+  margin:14px 0 20px;
+  border-top:1px solid var(--mad4b-pay-border);
+  padding:20px 0 0;
+}
+body.mad4b-advance-checkout-ui .mad4b-advance-agreement h3 {
+  margin:0 0 8px;
+  color:var(--mad4b-pay-ink);
+  font-size:18px;
+  line-height:1.35;
+  font-weight:700;
+}
+body.mad4b-advance-checkout-ui .mad4b-advance-intro {
+  color:var(--mad4b-pay-subtle);
+  font-size:14px;
+  line-height:1.65;
+  margin:0 0 16px;
+}
+body.mad4b-advance-checkout-ui .mad4b-advance-facts {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+  margin:0 0 16px;
+}
+body.mad4b-advance-checkout-ui .mad4b-advance-facts > div {
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+  padding:12px 14px;
+  background:#f4f8f9;
+  border:1px solid var(--mad4b-pay-border);
+  border-radius:8px;
+  min-width:0;
+}
+body.mad4b-advance-checkout-ui .mad4b-advance-facts dt,
+body.mad4b-advance-checkout-ui .mad4b-advance-facts dd {
+  padding:0;
+  margin:0;
+}
+body.mad4b-advance-checkout-ui .mad4b-advance-facts dt {
+  color:#506776;
+  font-size:12px;
+  line-height:1.45;
+}
+body.mad4b-advance-checkout-ui .mad4b-advance-facts dd {
+  color:var(--mad4b-pay-ink);
+  font-size:16px;
+  font-weight:700;
+  line-height:1.45;
+  overflow-wrap:anywhere;
+}
+body.mad4b-advance-checkout-ui .mad4b-advance-policy-details {
+  display:block;
+  width:100%;
+  margin:12px 0 18px;
+  border:1px solid var(--mad4b-pay-border);
+  background:#fff;
+  border-radius:8px;
+  box-sizing:border-box;
+  overflow:hidden;
+}
+body.mad4b-advance-checkout-ui .mad4b-advance-policy-details > summary {
+  cursor:pointer;
+  display:list-item;
+  padding:14px 16px;
+  font-size:14px;
+  font-weight:600;
+  line-height:1.5;
+  color:var(--mad4b-pay-ink);
+  list-style-position:inside;
+  background:#f7fafb;
+}
+body.mad4b-advance-checkout-ui .mad4b-advance-policy-details > summary:hover,
+body.mad4b-advance-checkout-ui .mad4b-advance-policy-details > summary:focus-visible {
+  background:#edf4f6;
+}
+body.mad4b-advance-checkout-ui .mad4b-advance-policy-details[open] > summary {
+  border-bottom:1px solid var(--mad4b-pay-border);
+}
+body.mad4b-advance-checkout-ui .mad4b-advance-policy-content {
+  padding:18px;
+  line-height:1.7;
+  font-size:14px;
+  color:var(--mad4b-pay-ink);
+  overflow-wrap:anywhere;
+}
+body.mad4b-advance-checkout-ui .mad4b-advance-policy-content p {
+  margin:0 0 14px !important;
+  line-height:1.7;
+}
+body.mad4b-advance-checkout-ui .mad4b-advance-policy-content p:last-child {margin-bottom:0!important;}
+body.mad4b-advance-checkout-ui .mad4b-advance-policy-content table,
+body.mad4b-advance-checkout-ui .mad4b-advance-policy-content .mad4b-company-cancellation-schedule {
+  border-collapse:collapse;
+  table-layout:fixed;
+  width:100%;
+  max-width:100%;
+  margin:14px 0 20px;
+  font-size:13px;
+}
+body.mad4b-advance-checkout-ui .mad4b-advance-policy-content th,
+body.mad4b-advance-checkout-ui .mad4b-advance-policy-content td {
+  padding:10px 12px;
+  border:1px solid var(--mad4b-pay-border);
+  text-align:left;
+  vertical-align:top;
+  line-height:1.5;
+  overflow-wrap:anywhere;
+}
+body.mad4b-advance-checkout-ui .mad4b-advance-policy-content th {background:#f0f5f6;font-weight:600;}
+body.mad4b-advance-checkout-ui .mad4b-advance-policy-content ul,
+body.mad4b-advance-checkout-ui .mad4b-advance-policy-content ol {margin:0 0 14px;padding-inline-start:22px;}
+body.mad4b-advance-checkout-ui .mad4b-advance-accept {
+  display:flex;
+  align-items:flex-start;
+  gap:10px;
+  padding:14px;
+  background:#f3f8f8;
+  border:1px solid #c9dbdf;
+  border-radius:8px;
+  cursor:pointer;
+  font-size:14px;
+  line-height:1.55;
+  font-weight:500;
+  color:var(--mad4b-pay-ink);
+  margin:0;
+}
+body.mad4b-advance-checkout-ui .mad4b-advance-accept input[type=checkbox] {
+  flex:0 0 19px;
+  width:19px;
+  height:19px;
+  min-height:19px;
+  margin:1px 0 0;
+  padding:0;
+  accent-color:#0f5966;
+}
+body.mad4b-advance-checkout-ui #place_order {
+  display:block;
+  width:100%;
+  min-height:52px;
+  border:0;
+  border-radius:8px;
+  margin:16px 0 0 !important;
+  background:#0f5866;
+  color:#fff;
+  font-weight:700;
+  font-size:16px;
+  line-height:1.3;
+  padding:14px 20px;
+  cursor:pointer;
+  box-shadow:none;
+  float:none;
+}
+body.mad4b-advance-checkout-ui #place_order:hover {background:#0a4350;}
+body.mad4b-advance-checkout-ui #place_order:focus-visible,
+body.mad4b-advance-checkout-ui .mad4b-advance-policy-details summary:focus-visible {
+  outline:3px solid #d9b86a;
+  outline-offset:3px;
+}
+body.mad4b-advance-checkout-ui #wc-stripe-hidden-style-input {
+  max-width:100% !important;
+  box-sizing:border-box !important;
+}
+/* A compact, purpose-built payment footer. Keep the existing legal bottom bar. */
+body.mad4b-advance-checkout-ui footer.elementor-location-footer .mad4b-footer-root {display:none!important;}
+body.mad4b-advance-checkout-ui footer.elementor-location-footer .mad4b-footer-bottom {
+  min-height:0!important;
+  padding:18px 16px!important;
+}
+body.mad4b-advance-checkout-ui footer.elementor-location-footer {min-height:0!important;}
+@media(max-width:900px) {
+  body.mad4b-advance-checkout-ui .woocommerce form#order_review {
+    grid-template-columns:minmax(0,1fr);
+    max-width:640px;
+    gap:0;
+  }
+  body.mad4b-advance-checkout-ui form#order_review > table.shop_table {
+    grid-column:1;grid-row:auto;position:static;margin:0 0 18px;
+  }
+  body.mad4b-advance-checkout-ui .mad4b-advance-heading {grid-column:1;grid-row:auto;}
+  body.mad4b-advance-checkout-ui .woocommerce form#order_review > #payment {grid-column:1;grid-row:auto;}
+}
+@media(max-width:600px) {
+  body.mad4b-advance-checkout-ui #primary article {
+    padding:18px 14px 28px !important;
+  }
+  body.mad4b-advance-checkout-ui .woocommerce form#order_review {
+    font-size:15px;
+    line-height:1.55;
+    margin-top:0;
+  }
+  body.mad4b-advance-checkout-ui form#order_review table.shop_table th,
+  body.mad4b-advance-checkout-ui form#order_review table.shop_table td {
+    font-size:13px;
+    padding:12px 10px;
+  }
+  body.mad4b-advance-checkout-ui form#order_review table.shop_table tfoot td {width:40%;}
+  body.mad4b-advance-checkout-ui form#order_review table.shop_table tfoot th {width:60%;}
+  body.mad4b-advance-checkout-ui .mad4b-advance-heading {padding:18px 16px 4px;}
+  body.mad4b-advance-checkout-ui .mad4b-advance-heading h2 {font-size:22px;}
+  body.mad4b-advance-checkout-ui .woocommerce form#order_review > #payment {padding:12px 16px 20px;}
+  body.mad4b-advance-checkout-ui .mad4b-advance-policy-content {padding:14px;}
+  body.mad4b-advance-checkout-ui .mad4b-advance-policy-content table {font-size:12px;}
+  body.mad4b-advance-checkout-ui .mad4b-advance-policy-content td,
+  body.mad4b-advance-checkout-ui .mad4b-advance-policy-content th {padding:9px 8px;}
+  body.mad4b-advance-checkout-ui .mad4b-advance-facts > div {padding:10px;}
+  body.mad4b-advance-checkout-ui .mad4b-advance-facts dd {font-size:14px;}
+  body.mad4b-advance-checkout-ui .mad4b-advance-accept {padding:12px;gap:8px;font-size:13px;}
+  body.mad4b-advance-checkout-ui .payment_box {padding:12px!important;}
+}
+@media(max-width:359px) {
+  body.mad4b-advance-checkout-ui #primary article {padding-inline:10px!important;}
+  body.mad4b-advance-checkout-ui .woocommerce form#order_review > #payment {padding-inline:12px;}
+  body.mad4b-advance-checkout-ui .mad4b-advance-facts {grid-template-columns:minmax(0,1fr);}
+}
+
+/* Derived from the original verified traveler arrival date. */
+body.mad4b-advance-checkout-ui .mad4b-advance-facts .mad4b-advance-due-context {
+  display:block;
+  margin-top:2px;
+  color:#506776;
+  font-size:12px;
+  font-weight:400;
+  line-height:1.5;
+}
+body.mad4b-advance-checkout-ui .mad4b-advance-facts time {
+  white-space:normal;
+}
+
+/* Stripe express checkout is injected as a direct sibling of #payment.
+   Keep the Stripe-owned DOM and events untouched; explicitly place its
+   Elements iframe and OR separator in our responsive payment column. */
+body.mad4b-advance-checkout-ui form#order_review > table.shop_table {
+  grid-row:1 / span 4;
+}
+body.mad4b-advance-checkout-ui form#order_review > .mad4b-advance-heading {
+  grid-column:2;
+  grid-row:1;
+}
+body.mad4b-advance-checkout-ui form#order_review > #wc-stripe-express-checkout-element {
+  grid-column:2;
+  grid-row:2;
+  box-sizing:border-box;
+  min-width:0;
+  width:100%;
+  max-width:100%;
+  margin:0;
+  padding:8px 24px 0;
+  background:#fff;
+  border-left:1px solid var(--mad4b-pay-border);
+  border-right:1px solid var(--mad4b-pay-border);
+  align-self:stretch;
+}
+body.mad4b-advance-checkout-ui form#order_review > #wc-stripe-express-checkout-element > div {
+  max-width:100%;
+  min-width:0;
+  flex:1 1 auto;
+}
+body.mad4b-advance-checkout-ui form#order_review > #wc-stripe-express-checkout-button-separator {
+  grid-column:2;
+  grid-row:3;
+  box-sizing:border-box;
+  margin:0;
+  padding:10px 24px 4px;
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  text-align:center;
+  color:var(--mad4b-pay-subtle);
+  background:#fff;
+  border-left:1px solid var(--mad4b-pay-border);
+  border-right:1px solid var(--mad4b-pay-border);
+}
+body.mad4b-advance-checkout-ui form#order_review > wc-order-attribution-inputs {
+  grid-column:2;
+  grid-row:3;
+  width:0;
+  height:0;
+  align-self:start;
+  justify-self:start;
+}
+body.mad4b-advance-checkout-ui .woocommerce form#order_review > #payment {
+  grid-column:2;
+  grid-row:4;
+}
+@media(max-width:900px){
+  body.mad4b-advance-checkout-ui form#order_review > table.shop_table {
+    grid-column:1;
+    grid-row:1;
+  }
+  body.mad4b-advance-checkout-ui form#order_review > .mad4b-advance-heading {
+    grid-column:1;
+    grid-row:2;
+  }
+  body.mad4b-advance-checkout-ui form#order_review > #wc-stripe-express-checkout-element {
+    grid-column:1;
+    grid-row:3;
+  }
+  body.mad4b-advance-checkout-ui form#order_review > #wc-stripe-express-checkout-button-separator,
+  body.mad4b-advance-checkout-ui form#order_review > wc-order-attribution-inputs {
+    grid-column:1;
+    grid-row:4;
+  }
+  body.mad4b-advance-checkout-ui .woocommerce form#order_review > #payment {
+    grid-column:1;
+    grid-row:5;
+  }
+}
+@media(max-width:600px){
+  body.mad4b-advance-checkout-ui form#order_review > #wc-stripe-express-checkout-element {
+    padding:6px 16px 0;
+  }
+  body.mad4b-advance-checkout-ui form#order_review > #wc-stripe-express-checkout-button-separator {
+    padding:8px 16px 4px;
+  }
+}
+@media(max-width:359px){
+  body.mad4b-advance-checkout-ui form#order_review > #wc-stripe-express-checkout-element {
+    padding-inline:12px;
+  }
+  body.mad4b-advance-checkout-ui form#order_review > #wc-stripe-express-checkout-button-separator {
+    padding-inline:12px;
+  }
+}
+

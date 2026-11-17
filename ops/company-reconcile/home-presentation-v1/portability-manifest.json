@@ -1,0 +1,71 @@
+{
+  "contract": "mad4b.company-home-sections-portability.v1",
+  "canonical_owner": "mad4b-platform",
+  "source_file": "wp-content/plugins/mad4b-platform/modules/operations/mad4b-central-homepage-sections.php",
+  "source_module_sha256": "0f1a0cc423c2a7a8c9b761a19ae88a3417ae6dbed0112eb52014186806fef5fc",
+  "source_runtime": {
+    "origin": "https://tours.dev.mad4b.com",
+    "installed_in": "mad4b-platform",
+    "environment_independent": true
+  },
+  "tenant_runtime": {
+    "origin": "https://wayfatours.com",
+    "installed_in": "mu-plugins",
+    "filename": "041-mad4b-company-home-sections-v1.php",
+    "expected_same_sha256": "0f1a0cc423c2a7a8c9b761a19ae88a3417ae6dbed0112eb52014186806fef5fc"
+  },
+  "wpml_langs_verified": [
+    "en",
+    "es"
+  ],
+  "company_owned_options": [
+    "look-and-feel",
+    "service-activation",
+    "destination-activation"
+  ],
+  "company_geographic_scope_option": "service-activation.operating_country_ids",
+  "page_binding": "get_option(page_on_front) + wpml_object_id",
+  "behavior": "hide unavailable sections; preserve original Elementor and native filters",
+  "invalidation": "event-driven public HTML only; no Redis flush",
+  "future_company_rollout": "only on independently bound enrolled tenant with verified Elementor template identities",
+  "can_auto_publish": false,
+  "can_change_rates": false,
+  "can_override_company_country_scope": false,
+  "original313_release_certified": false,
+  "language_scope_contract": "mad4b.company-home-sections-active-wpml-languages.v1",
+  "wpml_language_resolution": "per-tenant active_languages in icl_sitepress_settings; wpml_active_languages fallback in runtime",
+  "wpml_home_url_resolution": "wpml_active_languages readback per locale, no inferred language path",
+  "wpml_template_resolution": "per-request wpml_current_language + wpml_object_id, memoized by language",
+  "active_languages_on_last_verification": {
+    "source": [
+      "en",
+      "es",
+      "de",
+      "fr",
+      "ar",
+      "it"
+    ],
+    "target": [
+      "en",
+      "es"
+    ]
+  },
+  "per_language_public_home_status_verified": {
+    "source": {
+      "en": true,
+      "es": true,
+      "de": true,
+      "fr": true,
+      "ar": true,
+      "it": true
+    },
+    "target": {
+      "en": true,
+      "es": true
+    }
+  },
+  "active_language_config_change_invalidation": "update_option_icl_sitepress_settings, only on actual active_languages/default_language change",
+  "unpublished_translation_behavior": "HOLD, not a claimed PASS; no auto publish",
+  "fleet_language_behavior": "dynamic from each enrolled WordPress site; no central source language copying",
+  "language_domains": "site-bound WPML language origin only; any separate domains require independent enrollment"
+}

@@ -1,0 +1,24 @@
+[Unit]
+Description=MAD4B safe SHA-verified Critical CSS browser evidence archival (both companies)
+Wants=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/usr/bin/flock -n -E 0 /run/lock/mad4b-native-lazy-browser-global.lock /usr/bin/python3 /opt/mad4b-company-provisioning/worktrees/pr814-converged-local-20261115/ops/dynamic-critical-css-20261116/report-retention.py --apply
+Environment=PYTHONDONTWRITEBYTECODE=1
+TimeoutStartSec=2400
+Nice=19
+IOSchedulingClass=idle
+CPUQuota=35%
+MemoryMax=256M
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/mad4b-company-provisioning/reports/dynamic-critical-css-20261116 /opt/mad4b-company-provisioning/reports/public-critical-css-v1 /run/lock
+UMask=0077
+StandardOutput=journal
+StandardError=journal

@@ -1,0 +1,118 @@
+{
+  "contract": "mad4b.geographic-operating-scope.source-target-ownership.v1",
+  "observed_utc": "2026-11-17T03:24:25.330730+00:00",
+  "source": "https://tours.dev.mad4b.com",
+  "target": "https://wayfatours.com",
+  "source_site_uuid": "e5e64bca-ed62-48d2-b2b3-dff693cd702a",
+  "target_site_uuid": "a3a7cc36-db7e-4a14-8456-b41857def05c",
+  "service_activation_option": "service-activation",
+  "owned_country_field": "operating_country_ids",
+  "country_scope_version_field": "country_operating_scope_version",
+  "destination_catalog_option": "destination-activation",
+  "source_operating_country_ids": [
+    665,
+    2759,
+    2764,
+    2769
+  ],
+  "wayfatours_operating_country_ids": [
+    665
+  ],
+  "source_destination_catalog_country_ids": [
+    665,
+    2759,
+    2764,
+    2769
+  ],
+  "target_destination_catalog_country_ids": [
+    665,
+    2759,
+    2764,
+    2769
+  ],
+  "source_scope_module_sha256": "1beb1dc8f897c747f977dd469dbe0b93f45ead95a81b968c54a688329ff9b4bf",
+  "target_scope_module_sha256": "1beb1dc8f897c747f977dd469dbe0b93f45ead95a81b968c54a688329ff9b4bf",
+  "source_pricing_workspace_sha256": "851fb0c17e02d2784b62be981d5bf0cbb94d1d788679fa509c80af3974383852",
+  "tenant_pricing_workspace_existing_code_preserved": true,
+  "tenant_pricing_workspace_live_expected_sha256": "fce12f09561d632f6c1f523be2a031189e4e41e54be1db18a1ed650c080974c3",
+  "source_published_target_draft_country_held_tour_ids": [
+    60619,
+    60621,
+    60625,
+    60663,
+    60665
+  ],
+  "source_only_italian_tour_draft": 60681,
+  "country_held_published_rate_count": 16,
+  "original_rate_amounts_modified": false,
+  "original_tour_publication_statuses_modified": false,
+  "source_values_auto_copied_to_tenant": false,
+  "permissions_or_release_grants_created": false,
+  "code_source_branch": "fix/price-tag-company-reconcile-20261117",
+  "original313_release_certified": false,
+  "read_only_company_reconcile_state": "PASS_VERIFIED",
+  "context": "Source/target production-ready source overlays, NOT full code release certification",
+  "active_source_wpml_languages": [
+    "en",
+    "es",
+    "de",
+    "fr",
+    "ar",
+    "it"
+  ],
+  "active_wayfatours_wpml_languages": [
+    "en",
+    "es"
+  ],
+  "all_published_tours_in_scope_per_active_language": true,
+  "published_tour_language_checks": {
+    "source": [
+      {
+        "language": "en",
+        "published_count": 45,
+        "invalid_count": 0
+      },
+      {
+        "language": "es",
+        "published_count": 46,
+        "invalid_count": 0
+      },
+      {
+        "language": "de",
+        "published_count": 46,
+        "invalid_count": 0
+      },
+      {
+        "language": "fr",
+        "published_count": 46,
+        "invalid_count": 0
+      },
+      {
+        "language": "ar",
+        "published_count": 46,
+        "invalid_count": 0
+      },
+      {
+        "language": "it",
+        "published_count": 46,
+        "invalid_count": 0
+      }
+    ],
+    "target": [
+      {
+        "language": "en",
+        "published_count": 42,
+        "invalid_count": 0
+      },
+      {
+        "language": "es",
+        "published_count": 42,
+        "invalid_count": 0
+      }
+    ]
+  },
+  "wpml_canonical_country_ancestry_fixed": true,
+  "wpml_canonical_itinerary_review_inheritance": true,
+  "country_scope_not_permission_to_publish": true,
+  "full_interactive_browser_certified": false
+}

@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B — Native Elementor Home Reviews Visibility
  * Description: Reusable review eligibility and Elementor template visibility on public pages, archives and WPML translations.
- * Version: 1.1.1
+ * Version: 1.1.2
  */
 if (!defined('ABSPATH')) {
     exit;
@@ -145,19 +145,63 @@ final class MAD4B_Home_Reviews_Native_Visibility_V1 {
         return $cached = self::query_has_items();
     }
 
+    /**
+     * JetEngine Options Page media gallery stores attachment IDs on some sites
+     * and a comma-delimited list of original attachment URLs on others.
+     * Treat only a *local, existing, image attachment* as eligible content;
+     * do not mistake arbitrary remote URLs or broken gallery items for reviews.
+     */
     private static function has_image_gallery($value): bool {
         if ($value === null || $value === '' || $value === []) {
             return false;
         }
-        $entries = is_array($value) ? $value : preg_split('/\s*,\s*/', (string) $value);
-        foreach ((array) $entries as $entry) {
+        if (is_string($value)) {
+            if (strlen($value) > 131072) return false;
+            $entries = preg_split('/\s*,\s*/', $value);
+        } elseif (is_array($value)) {
+            $entries = $value;
+        } else {
+            return false;
+        }
+        if (!is_array($entries) || count($entries) > 120) return false;
+
+        $uploads = wp_upload_dir();
+        $base = isset($uploads['baseurl']) ? rtrim((string) $uploads['baseurl'], '/') . '/' : '';
+        $host = (string) wp_parse_url($base, PHP_URL_HOST);
+        $base_path = (string) wp_parse_url($base, PHP_URL_PATH);
+        if ($host === '' || $base_path === '') return false;
+
+        foreach ($entries as $entry) {
             $id = 0;
-            if (is_numeric($entry)) {
+            if (is_int($entry) || (is_string($entry) && ctype_digit(trim($entry)))) {
                 $id = (int) $entry;
-            } elseif (is_array($entry)) {
-                $id = (int) ($entry['id'] ?? ($entry['ID'] ?? 0));
+            } else {
+                if (is_array($entry)) {
+                    $id = (int) ($entry['id'] ?? ($entry['ID'] ?? 0));
+                    $entry = $entry['url'] ?? '';
+                }
+                if ($id < 1 && is_string($entry)) {
+                    $url = trim($entry);
+                    $parts = wp_parse_url($url);
+                    if (!is_array($parts)
+                        || !in_array(strtolower((string) ($parts['scheme'] ?? '')), ['https', 'http'], true)
+                        || strcasecmp((string) ($parts['host'] ?? ''), $host) !== 0
+                        || isset($parts['user']) || isset($parts['pass'])
+                        || !str_starts_with((string) ($parts['path'] ?? ''), $base_path)) {
+                        continue;
+                    }
+                    // Relative or external images do not prove gallery
+                    // eligibility; resolve the exact local Media Library file.
+                    $id = (int) attachment_url_to_postid($url);
+                }
             }
-            if ($id > 0 && wp_attachment_is_image($id) && get_post_status($id) === 'inherit') {
+            if ($id < 1 || !wp_attachment_is_image($id)) continue;
+            $attachment = get_post($id);
+            // get_post_status() resolves inherited *parent* status for attached
+            // media (often "publish"); inspect the attachment's own status.
+            if ($attachment instanceof \WP_Post && $attachment->post_type === 'attachment'
+                && in_array($attachment->post_status, ['inherit', 'publish'], true)
+                && is_file((string) get_attached_file($id))) {
                 return true;
             }
         }

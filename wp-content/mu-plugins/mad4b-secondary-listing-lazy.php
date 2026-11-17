@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Shared Secondary Listing Lazy Load
  * Description: Uses native JetEngine signed AJAX for secondary, public, non-filtered listing grids; site-specific opt-outs.
- * Version: 1.0.13
+ * Version: 1.0.16
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
@@ -217,7 +217,7 @@ function mad4b_secondary_grid_lazy_ajax_parity_proven( $query_id, $listing_id, $
             || !hash_equals((string)($entry['listing_css_sha256']??''),$style_hash))return false;
         $proof=$entry['ajax_parity_by_market'][$market]??null;
         if(!is_array($proof)
-            || ($proof['contract']??'')!=='mad4b.native-listing.ajax-parity.v1'
+            || ($proof['contract']??'')!=='mad4b.native-listing.ajax-parity.v2'
             || ($proof['status']??'')!=='pass'
             || (int)($proof['query_id']??0)!==$query_id
             || (int)($proof['document_id']??0)!==$document_id
@@ -247,6 +247,40 @@ function mad4b_secondary_grid_lazy_ajax_parity_proven( $query_id, $listing_id, $
         if(count($widths)<3
             || ($band==='mobile' && ($widths[0]>320 || end($widths)<$mobile))
             || ($band==='wide' && ($widths[0]>$mobile+1 || end($widths)<1920)))return false;
+        // Responsive carousels legitimately render DIFFERENT item counts at
+        // 768/1024/1920. A representative SHA must NEVER certify the whole
+        // band. Require signed, complete, exact per-viewport SSR/AJAX
+        // equivalence including the actual measured placeholder footprint.
+        $per_width=$proof['viewport_evidence']??null;
+        if(!is_array($per_width) || count($per_width)!==count($widths)
+            || count($per_width)>12)return false;
+        $largest_shift=0.0;
+        foreach($widths as $width){
+            $view=$per_width[(string)$width]??null;
+            if(!is_array($view)
+                || (int)($view['width']??0)!==$width
+                || ($view['status']??'')!=='pass'
+                || ($view['signed_ajax_verified']??false)!==true
+                || (int)($view['ssr_items']??0)<1
+                || (int)($view['ssr_items']??0)!==(int)($view['ajax_items']??-1)
+                || (int)($entry['height_px']??0)<100
+                || (int)($entry['height_px']??0)!==(int)($view['ssr_height_px']??-1)
+                || (int)($view['reserved_height_px']??-1)!==(int)($view['ssr_height_px']??0)
+                || (int)($view['ssr_width_px']??0)<50
+                || (int)($view['ssr_width_px']??0)!==(int)($view['reserved_width_px']??-1)
+                || !is_numeric($view['max_cls']??null)
+                || (float)($view['max_cls']??-1)<0
+                || (float)($view['max_cls']??1)>0.10)return false;
+            $largest_shift=max($largest_shift,(float)$view['max_cls']);
+            foreach(['links','content'] as $field){
+                $left=(string)($view['ssr_'.$field.'_sha256']??'');
+                $right=(string)($view['ajax_'.$field.'_sha256']??'');
+                if(!preg_match('/^[a-f0-9]{64}$/D',$left)
+                   || !preg_match('/^[a-f0-9]{64}$/D',$right)
+                   || !hash_equals($left,$right))return false;
+            }
+        }
+        if($largest_shift>(float)$proof['max_cls']+0.00001)return false;
     }
     return true;
 }
@@ -335,10 +369,11 @@ function mad4b_secondary_grid_lazy_has_enough_results( $settings, $query ) {
  * No listing ID, height, language or template is embedded in this engine.
  */
 function mad4b_secondary_grid_lazy_measured_mobile_height( $settings, $band = 'mobile' ) {
-    // Viewport width is not known reliably at PHP render time. All mobile-UA
-    // cache entries must carry BOTH Elementor breakpoint bands, independent
-    // of whether the UA says phone, tablet, or foldable.
-    if ( ! is_array( $settings ) || ! wp_is_mobile()
+    // Browser viewport width is not reliably known by PHP, including on
+    // desktop and tablet UAs. All approved renders must carry both
+    // Elementor breakpoint bands, with source and CSS fingerprints, so
+    // a desktop lazy loader never collapses to a 36px native spinner.
+    if ( ! is_array( $settings )
         || ! in_array( $band, [ 'mobile', 'wide' ], true ) ) { return 0; }
     $listing_id = absint( $settings['lisitng_id'] ?? 0 );
     if ( ! $listing_id || get_post_status( $listing_id ) !== 'publish' ) { return 0; }
@@ -415,7 +450,7 @@ add_action( 'elementor/frontend/widget/before_render', static function ( $widget
 }, 12 );
 
 add_action( 'wp_head', static function () {
-    if ( ! mad4b_secondary_grid_lazy_context() || ! wp_is_mobile() ) { return; }
+    if ( ! mad4b_secondary_grid_lazy_context() ) { return; }
     // Elementor's current mobile boundary is part of the verified option.
     $proof = get_option( 'mad4b_secondary_grid_lazy_layout_proofs_v1', [] );
     $kit = absint( get_option( 'elementor_active_kit', 0 ) );
@@ -500,10 +535,10 @@ function mad4b_secondary_grid_lazy_eligible( $settings ) {
         $eligible = mad4b_secondary_grid_lazy_heavy_terms_eligible(
             $settings, $heavy_query, $query_id, $listing_id, $document_id
         );
-        // A native placeholder with an unknown first card height produces a
-        // large mobile layout shift when JetEngine injects the first batch.
-        // Keep eager SSR until the company measures this listing's layout.
-        if ( $eligible && wp_is_mobile() && ! wp_doing_ajax() ) {
+        // In all viewport families, a native placeholder with unknown
+        // height produces a layout shift. The proof must cover BOTH
+        // Elementor breakpoint bands before replacing full SSR.
+        if ( $eligible && ! wp_doing_ajax() ) {
             return mad4b_secondary_grid_lazy_measured_mobile_height( $settings ) > 0
                 && mad4b_secondary_grid_lazy_measured_mobile_height( $settings, 'wide' ) > 0;
         }
@@ -542,10 +577,9 @@ function mad4b_secondary_grid_lazy_eligible( $settings ) {
         }
     }
     $allow = $allow && mad4b_secondary_grid_lazy_has_enough_results( $settings, $query );
-    // Generic secondary grids need the same two-band mobile CSS proof as
-    // large conditional sliders. Never replace an unmeasured mobile card with
-    // a 36px native spinner even when a Query Builder result count is large.
-    if ( $allow && wp_is_mobile() && ! wp_doing_ajax() ) {
+    // Any secondary grid needs a two-band viewport proof. Never replace
+    // an unmeasured desktop/tablet/mobile grid with a 36px spinner.
+    if ( $allow && ! wp_doing_ajax() ) {
         $allow = mad4b_secondary_grid_lazy_measured_mobile_height( $settings ) > 0
             && mad4b_secondary_grid_lazy_measured_mobile_height( $settings, 'wide' ) > 0;
     }
@@ -671,6 +705,91 @@ function mad4b_secondary_grid_inner_batch( $settings ) {
     return max( $columns + 1, min( 36, $columns * $rows ) );
 }
 
+/**
+ * The outer JetEngine get_listing AJAX and the inner progressive paginator
+ * share a request handler. A valid full-SSR/first-AJAX certificate does NOT
+ * prove that later pagination will fetch the remaining terms. Never shrink
+ * a signed outer Ajax response into a partial batch until an independent
+ * end-to-end page-delivery certificate is installed for this exact cohort.
+ * Missing or stale evidence means a full first AJAX render, not hidden cards.
+ */
+function mad4b_secondary_grid_inner_completed_delivery_proven( $query_id, $listing_id, $document_id, $batch ) {
+    $query_id=absint($query_id);
+    $listing_id=absint($listing_id);
+    $document_id=absint($document_id);
+    $batch=absint($batch);
+    if(!$query_id || !$listing_id || !$document_id || $batch<2 || $batch>36
+        || !function_exists('mad4b_render_query_market_identity')
+        || !function_exists('mad4b_render_query_generation_for_id'))return false;
+
+    $market=mad4b_render_query_market_identity();
+    if(!is_array($market))return false;
+    $country=(string)($market['country']??'');
+    $currency=(string)($market['currency']??'');
+    if(!preg_match('/^(?:[A-Z]{2}|base)$/D',$country)
+        || !preg_match('/^[A-Z]{3}$/D',$currency))return false;
+    $market_key=strtolower($country.'-'.$currency);
+    $locale=(string)apply_filters('wpml_current_language','');
+    if(!preg_match('/^[a-z]{2}(?:-[a-z]{2})?$/D',$locale))return false;
+    $generation=(string)mad4b_render_query_generation_for_id($query_id);
+    if($generation==='' || strlen($generation)>160)return false;
+    $document_raw=get_post_meta($document_id,'_elementor_data',true);
+    $listing_raw=get_post_meta($listing_id,'_elementor_data',true);
+    if(!is_string($document_raw) || strlen($document_raw)<200
+        || !is_string($listing_raw) || strlen($listing_raw)<200)return false;
+    $css=WP_CONTENT_DIR.'/uploads/elementor/css/post-'.$listing_id.'.css';
+    if(is_link($css) || !is_file($css)
+        || @filesize($css)<100 || @filesize($css)>1048576)return false;
+    $css_sha=@hash_file('sha256',$css);
+    if(!is_string($css_sha))return false;
+
+    $registry=get_option('mad4b_secondary_grid_inner_pagination_proofs_v1',[]);
+    if(!is_array($registry)
+        || ($registry['contract']??'')!=='mad4b.native-inner.complete-pagination.v1'
+        || ($registry['site_host']??'')!==(string)wp_parse_url(home_url('/'),PHP_URL_HOST)
+        || (int)($registry['css_epoch']??-1)!==(int)get_option('mad4b_css_ai_epoch_v1',0))return false;
+    $key=implode('|',[$query_id,$listing_id,$document_id,$locale,$market_key,$batch]);
+    $proof=$registry['entries'][$key]??null;
+    if(!is_array($proof) || ($proof['status']??'')!=='pass'
+        || ($proof['mode']??'')!=='native-signed-get-listing-and-load-more'
+        || ($proof['query_generation']??'')!==$generation
+        || ($proof['document_sha256']??'')!==hash('sha256',$document_raw)
+        || ($proof['listing_sha256']??'')!==hash('sha256',$listing_raw)
+        || ($proof['listing_css_sha256']??'')!==$css_sha
+        || ($proof['first_ajax_signed']??false)!==true
+        || ($proof['every_load_more_signed']??false)!==true
+        || ($proof['terminal_page_verified']??false)!==true
+        || ($proof['same_order_and_content_as_ssr']??false)!==true
+        || !is_numeric($proof['max_cls']??null)
+        || (float)($proof['max_cls']??-1)<0 || (float)$proof['max_cls']>0.10)return false;
+    $at=(int)($proof['audited_at']??0);
+    if($at<time()-7*DAY_IN_SECONDS || $at>time()+120)return false;
+    $total=(int)($proof['ssr_items']??0);
+    $delivered=(int)($proof['all_pages_items']??-1);
+    $counts=$proof['page_item_counts']??null;
+    if($total<=$batch || $total>500 || $delivered!==$total
+        || !is_array($counts) || count($counts)<2 || count($counts)>50
+        || (int)($counts[0]??0)!==$batch)return false;
+    $sum=0;
+    foreach($counts as $count) {
+        if(!is_int($count) || $count<1 || $count>$batch)return false;
+        $sum+=$count;
+    }
+    if($sum!==$total)return false;
+    foreach(['links','content'] as $part) {
+        $a=(string)($proof['ssr_'.$part.'_sha256']??'');
+        $b=(string)($proof['loaded_'.$part.'_sha256']??'');
+        if(!preg_match('/^[a-f0-9]{64}$/D',$a)
+            || !preg_match('/^[a-f0-9]{64}$/D',$b)
+            || !hash_equals($a,$b))return false;
+    }
+    $widths=array_values(array_unique(array_map('absint',(array)($proof['tested_widths']??[]))));
+    sort($widths);
+    if(count($widths)<6 || $widths[0]>320 || end($widths)<1920
+        || !in_array(767,$widths,true) || !in_array(768,$widths,true))return false;
+    return true;
+}
+
 /** Check the actual saved widget, page context and Query Builder relation. */
 function mad4b_secondary_grid_inner_admit( $settings, $document_id, $element_id ) {
     if ( ! mad4b_secondary_grid_inner_enabled() ) { return 0; }
@@ -694,6 +813,11 @@ function mad4b_secondary_grid_inner_admit( $settings, $document_id, $element_id 
     if ( ! mad4b_secondary_grid_lazy_heavy_terms_eligible( $source, $query, $query_id, $listing_id, $document_id, true ) ) { return 0; }
     $batch = mad4b_secondary_grid_inner_batch( $source );
     if ( ! $batch || $batch >= (int) $query->get_items_total_count() ) { return 0; }
+    // A certificate for full native Lazy AJAX is deliberately insufficient
+    // to enable partial inner pagination; missing E2E load-more proof => full.
+    if ( ! mad4b_secondary_grid_inner_completed_delivery_proven(
+        $query_id, $listing_id, $document_id, $batch
+    ) ) { return 0; }
     return $batch;
 }
 

@@ -93,3 +93,11 @@ mad4b_render_query_generation_for_id(). An unrelated legacy fragment global
 epoch does not invalidate a valid component certificate, while actual CPT or
 term-dependency edits do. The updated regression has 21/21 assertions.
 Do not replace the newer 0.3.27 Critical CSS orchestrator from this branch.
+
+## Superseded by 2026-11-16 safe-default v1.0.16 release
+
+The earlier statement that no layout proof was enrolled is historical.
+The later release in ops/native-lazy-default-v1016-20261116 supersedes
+it for certified Tours.dev DE-USD cohorts. The root cause was the native
+Inner Progressive first-batch truncation and desktop missing CSS height.
+Only independently audited source- and market-matching cohorts auto-load.

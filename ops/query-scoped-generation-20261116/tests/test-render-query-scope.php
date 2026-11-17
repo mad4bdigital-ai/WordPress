@@ -36,11 +36,15 @@ chk(mad4b_render_query_effective_generation($tour)===$t1 && mad4b_render_query_e
 chk(mad4b_render_query_scope_bump_post(10),'tour post change detected');
 $t2=mad4b_render_query_effective_generation($tour);
 $d2=mad4b_render_query_effective_generation($terms);
-chk($t2!==$t1 && $d2!==$d1,'tour changes invalidate query and destination hide_empty counts');
+chk($t2!==$t1 && $d2===$d1,'tour content metadata does not change destination term membership');
+chk(mad4b_render_query_scope_bump('membership_taxonomy','destinations::tours-and-activities'),
+  'real destination membership revision saved');
+$d2b=mad4b_render_query_effective_generation($terms);
+chk($d2b!==$d2,'related post-taxonomy membership invalidates terms');
 chk(mad4b_render_query_scope_bump_term('destinations'),'term source revision saved');
 $t3=mad4b_render_query_effective_generation($tour);
 $d3=mad4b_render_query_effective_generation($terms);
-chk($t3===$t2 && $d3!==$d2,'term meta edits affect dependent terms query only');
+chk($t3===$t2 && $d3!==$d2b,'term meta edits affect dependent terms query only');
 $GLOBALS['options']['mad4b_render_query_data_generation']='GLOBAL-B';
 chk(mad4b_render_query_effective_generation($tour)===$t3 && mad4b_render_query_effective_generation($terms)===$d3,'legacy fragment global epoch no longer thrashes scoped JetEngine groups');
 chk(mad4b_render_query_effective_generation($unknown)==='GLOBAL-B','unrecognized query safely inherits new global epoch');

@@ -1,0 +1,18 @@
+.mad4b-task-origin-card{margin:18px 0;border:1px solid #dcdcde;border-radius:6px;padding:17px 19px;background:#fff;box-shadow:none}
+.mad4b-task-origin-heading{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;align-items:center}
+.mad4b-task-origin-heading h2{margin:0 0 3px}
+.mad4b-task-origin-heading p{color:#50575e;margin:0 0 8px}
+.mad4b-task-origin-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:15px 0}
+.mad4b-task-origin-metric{border:1px solid #dcdcde;background:#f6f7f7;padding:13px 14px;border-radius:5px;min-width:0}
+.mad4b-task-origin-metric span{display:block;font-size:12px;color:#50575e}
+.mad4b-task-origin-metric strong{display:block;font-size:25px;font-weight:650;margin-top:3px;line-height:1.2;font-variant-numeric:tabular-nums}
+.mad4b-task-origin-card details{margin-top:13px;border-top:1px solid #eceef0;padding-top:10px}
+.mad4b-task-origin-card summary{cursor:pointer;color:#135e96;font-weight:600;padding:5px 0;min-height:30px}
+.mad4b-task-origin-card summary:focus-visible{outline:2px solid #2271b1;outline-offset:3px}
+.mad4b-task-origin-table{overflow-x:auto;max-width:100%;margin-top:10px}
+.mad4b-task-origin-table table{min-width:570px}
+.mad4b-task-origin-card code{overflow-wrap:anywhere}
+.mad4b-task-origin-footnote{font-size:12px;color:#646970;margin:14px 0 0}
+@media(max-width:850px){.mad4b-task-origin-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:470px){.mad4b-task-origin-metrics{grid-template-columns:1fr}.mad4b-task-origin-card{padding:13px}}
+

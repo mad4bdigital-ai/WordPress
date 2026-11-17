@@ -1,0 +1,52 @@
+{
+  "contract": "mad4b.mobile-first-city-lcp-patch.v1",
+  "site_host": "tours.dev.mad4b.com",
+  "environment": "staging",
+  "device": "mobile",
+  "route": "/",
+  "locale": "en",
+  "site_plugin": "wp-content/mu-plugins/406-mad4b-shared-performance-parity.php",
+  "site_plugin_sha256": "cb0ca0f5dbcb7cee25c8858239b815fd930512d95e54e739115085fdedc1ab8e",
+  "status": "staging_patch_deployed_monitor",
+  "scope": "selected_first_destination_only_mobile_max_767",
+  "pilot_pair_count": 2,
+  "pilot_source": "browser_response_interception_only",
+  "pilot_pairs": [
+    {
+      "pair": 0,
+      "fcp_delta_ms": -4540,
+      "lcp_delta_ms": -10724,
+      "lcp_after_ttfb_delta_ms": -6733.5,
+      "cls_delta": 0.0
+    },
+    {
+      "pair": 1,
+      "fcp_delta_ms": -1068,
+      "lcp_delta_ms": -4724,
+      "lcp_after_ttfb_delta_ms": -3440.3,
+      "cls_delta": 0.0008338
+    }
+  ],
+  "postdeploy_mobile": {
+    "fcp_ms": 5560,
+    "lcp_ms": 8432,
+    "cls": 0.0008151457349391154,
+    "ttfb_ms": 51.5,
+    "swiper_ready": true,
+    "filters": true,
+    "currency_options": 4
+  },
+  "postdeploy_desktop": {
+    "fcp_ms": 452,
+    "lcp_ms": 836,
+    "cls": 0.026697659431530775,
+    "swiper_ready": true,
+    "filters": true,
+    "currency_options": 4
+  },
+  "public_predictive_css_approved": false,
+  "css_settings_mutated": false,
+  "release_approval": false,
+  "recorded_at_utc": "2026-11-06T08:23:31Z",
+  "next_action": "Monitor live front-page LCP and CLS across cold/warm mobile cache, markets and languages; test Predictive CSS separately after 5+ valid pairs per active bundle"
+}

@@ -1,0 +1,17 @@
+[Unit]
+Description=MAD4B source-backed native Lazy browser certificate renewal (Tours staging)
+Wants=network-online.target docker.service
+After=network-online.target docker.service
+ConditionPathExists=/opt/mad4b-company-provisioning/ops/native-lazy-auto-renew-20261116/run-native-lazy-renew.sh
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/opt/mad4b-company-provisioning/ops/native-lazy-auto-renew-20261116/run-native-lazy-renew.sh
+TimeoutStartSec=900
+Nice=15
+IOSchedulingClass=idle
+NoNewPrivileges=true
+StandardOutput=journal
+StandardError=journal

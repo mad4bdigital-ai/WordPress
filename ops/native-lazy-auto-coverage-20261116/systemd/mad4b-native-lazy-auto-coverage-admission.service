@@ -1,0 +1,17 @@
+[Unit]
+Description=MAD4B native Lazy auto-coverage full signed browser and WordPress certificate gate
+Wants=network-online.target docker.service
+After=network-online.target docker.service
+ConditionPathExists=/opt/mad4b-company-provisioning/worktrees/pr814-converged-local-20261115/ops/native-lazy-auto-coverage-20261116/run-auto-coverage-admission.sh
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/opt/mad4b-company-provisioning/worktrees/pr814-converged-local-20261115/ops/native-lazy-auto-coverage-20261116/run-auto-coverage-admission.sh
+TimeoutStartSec=1800
+Nice=15
+IOSchedulingClass=idle
+NoNewPrivileges=true
+StandardOutput=journal
+StandardError=journal

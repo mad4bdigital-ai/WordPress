@@ -1,0 +1,12 @@
+[Unit]
+Description=MAD4B Wayfatours dynamic public-page CSS certification on change
+
+[Timer]
+OnCalendar=*-*-* *:02,17,32,47:00 UTC
+RandomizedDelaySec=120
+AccuracySec=60s
+Persistent=true
+Unit=mad4b-public-critical-css-wayfa.service
+
+[Install]
+WantedBy=timers.target

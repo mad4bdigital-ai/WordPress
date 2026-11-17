@@ -1,0 +1,5 @@
+/* Result-dependent visibility: never hide an uninitialized/lazy grid. */
+body.single-tours-and-activities .elementor-48366 .mad4b-dynamic-empty,
+body.tax-destinations .elementor-45774 .mad4b-dynamic-empty {
+ display:none!important;
+}

@@ -1,0 +1,324 @@
+{
+  "contract": "mad4b.destination-governorate-photography-curation.v1",
+  "review_date": "2026-11-17",
+  "scope": "Existing terms tagged destination_type=state_governorate; not all 27 Egyptian governorates",
+  "source_site": "https://tours.dev.mad4b.com",
+  "target_site": "https://wayfatours.com",
+  "reviewed_term_count": 17,
+  "licensed_replacements": 10,
+  "retained_original_photos": 7,
+  "verified_rights_total": 11,
+  "pending_rights_verification": 6,
+  "wpml_verified_terms": {
+    "source": 59,
+    "wayfatours": 20
+  },
+  "governance": "No auto-rights grants. Original photos with incomplete metadata are not declared unauthorized or removed; avoid undocumented replacements. Licenses retained in media_rights CCT and public Image Attribution archive.",
+  "presentation": "Top Cities dynamic label styles are implemented by mad4b-governorate-scenic-card-v1.php, which automatically applies to every rendered term card (including WPML).",
+  "entries": [
+    {
+      "term_name": "Alexandria",
+      "source_term_id": 722,
+      "country": "Egypt",
+      "classification": "state_governorate",
+      "selected_image": {
+        "subject": "Qaitbay Citadel, Alexandria",
+        "alt": "Citadel of Qaitbay overlooking the Mediterranean Sea in Alexandria, Egypt",
+        "creator": "AhmedBeltagy9090",
+        "license": "CC BY-SA 4.0",
+        "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Picture_of_Qaitbay_Citadel.jpg",
+        "sha256": "4634bd27e18bc043184112b453aa8586e53873e6b0021a51c0a281461088317a",
+        "source_api": "Wikimedia Commons imageinfo extmetadata"
+      },
+      "review_status": "licensed_photo_applied_verified",
+      "applied_translation_counts": {
+        "source": 6,
+        "wayfatours": 2
+      },
+      "previous_photo_filename": "Pompey_s-Pillar-__7-Other-Amazing-Attractions-in-A.jpg"
+    },
+    {
+      "term_name": "Aswan",
+      "source_term_id": 122,
+      "country": "Egypt",
+      "classification": "state_governorate",
+      "selected_image": {
+        "subject": "Temple of Philae, Aswan",
+        "alt": "Temple of Isis on Philae island in Aswan, Egypt",
+        "creator": "Diego Delso",
+        "license": "CC BY-SA 4.0",
+        "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:File,_Asu%C3%A1n,_Egipto,_2022-04-01,_DD_144.jpg",
+        "sha256": "5521a1f8f408ed63fa0071b128b24a1070e045eab6554fb28791f0c18e516e90",
+        "source_api": "Wikimedia Commons imageinfo extmetadata"
+      },
+      "review_status": "licensed_photo_applied_verified",
+      "applied_translation_counts": {
+        "source": 6,
+        "wayfatours": 2
+      },
+      "previous_photo_filename": "philae-temple-philae-island-e1644759113599-Philae-Temple-High-Dam-Unfinished-Obelisk-–-Aswan-Highlights-1-Day-Tour.jpeg"
+    },
+    {
+      "term_name": "Asyut",
+      "source_term_id": 732,
+      "country": "Egypt",
+      "classification": "state_governorate",
+      "selected_image": null,
+      "review_status": "existing_photo_retained",
+      "existing_media_url_at_review": "https://wayfatours.com/wp-content/uploads/2026/02/Asyut.jpg",
+      "reason": "Existing photo visually depicts Asyut heritage. Wikimedia alternatives were weaker; original rights still require source verification.",
+      "media_rights_verified": false,
+      "previous_photo_filename": "Asyut.jpg"
+    },
+    {
+      "term_name": "Balqa",
+      "source_term_id": 2794,
+      "country": "Jordan",
+      "classification": "state_governorate",
+      "selected_image": null,
+      "review_status": "existing_photo_retained",
+      "existing_media_url_at_review": "https://wayfatours.com/wp-content/uploads/2025/11/balqa.webp",
+      "reason": "Existing city-view photo is more compelling than found Commons alternatives; rights not verified.",
+      "media_rights_verified": false,
+      "previous_photo_filename": "balqa.webp"
+    },
+    {
+      "term_name": "Beni Suef",
+      "source_term_id": 2357,
+      "country": "Egypt",
+      "classification": "state_governorate",
+      "selected_image": null,
+      "review_status": "existing_photo_retained",
+      "existing_media_url_at_review": "https://wayfatours.com/wp-content/uploads/2026/11/beni-suef-nile-shaimaa-ahmed-saleh-cc-by-sa-2.jpg",
+      "reason": "Existing Nile photograph is credited in WP media library to Shaimaa Ahmed Saleh, CC BY-SA 2.0.",
+      "media_rights_verified": true,
+      "previous_photo_filename": "beni-suef-nile-shaimaa-ahmed-saleh-cc-by-sa-2.jpg"
+    },
+    {
+      "term_name": "Cairo",
+      "source_term_id": 123,
+      "country": "Egypt",
+      "classification": "state_governorate",
+      "selected_image": {
+        "subject": "Al-Muizz Street, Historic Cairo",
+        "alt": "Madrasa of al-Nasir Muhammad on Al-Muizz Street in Cairo, Egypt",
+        "creator": "Radosław Botev",
+        "license": "CC BY 3.0 pl",
+        "license_url": "https://creativecommons.org/licenses/by/3.0/pl/deed.en",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Madrasa_of_al-Nasir_Muhammad_-_Muizz_Street_Cairo_(1).jpg",
+        "sha256": "ef648d63a1bbc2ad7d7338a78c5239af9ced3908bed227f76bf4bd6880dbffb5",
+        "source_api": "Wikimedia Commons imageinfo extmetadata"
+      },
+      "review_status": "licensed_photo_applied_verified",
+      "applied_translation_counts": {
+        "source": 6,
+        "wayfatours": 2
+      },
+      "previous_photo_filename": "the-best-old-cairo-tour-1.jpg"
+    },
+    {
+      "term_name": "El Minya",
+      "source_term_id": 713,
+      "country": "Egypt",
+      "classification": "state_governorate",
+      "selected_image": null,
+      "review_status": "existing_photo_retained",
+      "existing_media_url_at_review": "https://wayfatours.com/wp-content/uploads/2026/02/El-Minya.jpg",
+      "reason": "Existing waterfront panorama is more recognizable than licensed candidates found; source/license not verified.",
+      "media_rights_verified": false,
+      "previous_photo_filename": "El-Minya.jpg"
+    },
+    {
+      "term_name": "El-fayoum",
+      "source_term_id": 721,
+      "country": "Egypt",
+      "classification": "state_governorate",
+      "selected_image": {
+        "subject": "Wadi El Rayan, Fayoum",
+        "alt": "Waterfalls of Wadi El Rayan in Fayoum Governorate, Egypt",
+        "creator": "youssef_alam",
+        "license": "CC BY 3.0",
+        "license_url": "https://creativecommons.org/licenses/by/3.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Wadi_El_Rayan,_Faiyum_Governorate,_Egypt_-_panoramio.jpg",
+        "sha256": "e7035dc9a9636fc5ecc4c5e922100e90dbc31e77bc72230bf87fff2c3a243515",
+        "source_api": "Wikimedia Commons imageinfo extmetadata"
+      },
+      "review_status": "licensed_photo_applied_verified",
+      "applied_translation_counts": {
+        "source": 6,
+        "wayfatours": 2
+      },
+      "previous_photo_filename": "El-fayoum.jpg"
+    },
+    {
+      "term_name": "Giza",
+      "source_term_id": 560,
+      "country": "Egypt",
+      "classification": "state_governorate",
+      "selected_image": {
+        "subject": "Pyramids of Giza — aerial view",
+        "alt": "Aerial panorama showing the three main Giza Pyramids and the Giza Plateau, Egypt",
+        "creator": "Raimond Spekking",
+        "license": "CC BY-SA 4.0",
+        "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Giza_pyramid_complex_from_air_(2928).jpg",
+        "sha256": "5ed533c3bde9e4cc19617bd2f1b32dbb156e819f91fc7fd251b337f185756461",
+        "source_api": "Wikimedia Commons imageinfo extmetadata"
+      },
+      "review_status": "licensed_photo_applied_verified",
+      "applied_translation_counts": {
+        "source": 6,
+        "wayfatours": 2
+      },
+      "previous_photo_filename": "Unforgettable-Egypt-Jordan-Discovery-Journey-–-7-Days-allroyalegypt-165.jpg"
+    },
+    {
+      "term_name": "Hurghada",
+      "source_term_id": 124,
+      "country": "Egypt",
+      "classification": "city_misclassified_as_state_governorate",
+      "selected_image": {
+        "subject": "Hurghada Red Sea coast",
+        "alt": "View of the Red Sea coast near Sheraton Road in Hurghada, Egypt",
+        "creator": "Hassan Gaafar",
+        "license": "CC BY 3.0",
+        "license_url": "https://creativecommons.org/licenses/by/3.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Sheraton_Rd,_Qesm_Hurghada,_Red_Sea_Governorate,_Egypt_-_panoramio.jpg",
+        "sha256": "c7247f35d5d989617cfbc73e4c1985b8a232e4e64333ff1076637570d6b0c60f",
+        "source_api": "Wikimedia Commons imageinfo extmetadata"
+      },
+      "review_status": "licensed_photo_applied_verified",
+      "applied_translation_counts": {
+        "source": 6,
+        "wayfatours": 2
+      },
+      "previous_photo_filename": "Hurghada-City-1.png"
+    },
+    {
+      "term_name": "Luxor",
+      "source_term_id": 125,
+      "country": "Egypt",
+      "classification": "state_governorate",
+      "selected_image": {
+        "subject": "Temple of Hatshepsut, Luxor",
+        "alt": "Mortuary Temple of Hatshepsut at Deir el-Bahari in Luxor, Egypt",
+        "creator": "Diego Delso",
+        "license": "CC BY-SA 4.0",
+        "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Templo_funerario_de_Hatshepsut,_Luxor,_Egipto,_2022-04-03,_DD_13.jpg",
+        "sha256": "5e25e7ed3a99a3654c925d3dab4f9faf592b9d0f24b794169857e4522207a600",
+        "source_api": "Wikimedia Commons imageinfo extmetadata"
+      },
+      "review_status": "licensed_photo_applied_verified",
+      "applied_translation_counts": {
+        "source": 6,
+        "wayfatours": 2
+      },
+      "previous_photo_filename": "luxor-temple-is-large-ancient-egyptian-temple-complex-east-bank-nile-river-luxor-ancient-thebes-view-from-nile-river_491799-7351.avif"
+    },
+    {
+      "term_name": "Ma'an",
+      "source_term_id": 2799,
+      "country": "Jordan",
+      "classification": "state_governorate",
+      "selected_image": {
+        "subject": "Al-Khazneh at Petra, Ma’an",
+        "alt": "Treasury at Petra viewed from the Siq gorge in Ma’an Governorate, Jordan",
+        "creator": "Esin Üstün  from Istanbul, Turkey",
+        "license": "CC BY 2.0",
+        "license_url": "https://creativecommons.org/licenses/by/2.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Treasury_from_Siq,_Petra,_Jordan_(16044613195).jpg",
+        "sha256": "a487330a99e3838ceebcbcff6847af4f60583c3d26a5fee1a09f7cf6e7da3e1c",
+        "source_api": "Wikimedia Commons imageinfo extmetadata"
+      },
+      "review_status": "licensed_photo_applied_verified",
+      "applied_translation_counts": {
+        "source": 5,
+        "wayfatours": 2
+      },
+      "previous_photo_filename": "Maan.webp"
+    },
+    {
+      "term_name": "New Valley",
+      "source_term_id": 742,
+      "country": "Egypt",
+      "classification": "state_governorate",
+      "selected_image": null,
+      "review_status": "existing_photo_retained",
+      "existing_media_url_at_review": "https://wayfatours.com/wp-content/uploads/2026/02/New-Valley.webp",
+      "reason": "Existing photograph identifies an oasis historic site; Wikimedia candidates were less illustrative; rights not verified.",
+      "media_rights_verified": false,
+      "previous_photo_filename": "New-Valley.webp"
+    },
+    {
+      "term_name": "Port Said",
+      "source_term_id": 714,
+      "country": "Egypt",
+      "classification": "state_governorate",
+      "selected_image": {
+        "subject": "Suez Canal Authority Port Said",
+        "alt": "View of Port Said and the Suez Canal Authority building at night, Egypt",
+        "creator": "Vyacheslav Argenberg",
+        "license": "CC BY 4.0",
+        "license_url": "https://creativecommons.org/licenses/by/4.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Port_Said,_Egypt,_Suez_Canal_Authority_(SCA)_at_night.jpg",
+        "sha256": "840f40b166b0dff78f1b63842fbe9e46147ab800efd97ea5315e99156c400b16",
+        "source_api": "Wikimedia Commons imageinfo extmetadata"
+      },
+      "review_status": "licensed_photo_applied_verified",
+      "applied_translation_counts": {
+        "source": 6,
+        "wayfatours": 2
+      },
+      "previous_photo_filename": "Port-Said.webp"
+    },
+    {
+      "term_name": "Qena",
+      "source_term_id": 313,
+      "country": "Egypt",
+      "classification": "state_governorate",
+      "selected_image": null,
+      "review_status": "existing_photo_retained",
+      "existing_media_url_at_review": "https://wayfatours.com/wp-content/uploads/2026/02/qena.jpg",
+      "reason": "Existing temple-exterior photograph is better for a wide home card than found licensed close-ups; rights not verified.",
+      "media_rights_verified": false,
+      "previous_photo_filename": "qena.jpg"
+    },
+    {
+      "term_name": "Red Sea",
+      "source_term_id": 320,
+      "country": "Egypt",
+      "classification": "state_governorate",
+      "selected_image": null,
+      "review_status": "existing_photo_retained",
+      "existing_media_url_at_review": "https://wayfatours.com/wp-content/uploads/2025/11/Best-of-Egypt-Cairo-Luxor-Nile-Cruise-Red-Sea-–-12-Days-allroyalegypt-93-scaled.jpg",
+      "reason": "Existing real coral reef photograph is more relevant than licensed dry-coast alternatives; source/license not verified.",
+      "media_rights_verified": false,
+      "previous_photo_filename": "Best-of-Egypt-Cairo-Luxor-Nile-Cruise-Red-Sea-–-12-Days-allroyalegypt-93-scaled.jpg"
+    },
+    {
+      "term_name": "Sohag",
+      "source_term_id": 314,
+      "country": "Egypt",
+      "classification": "state_governorate",
+      "selected_image": {
+        "subject": "Temple of Seti I at Abydos, Sohag",
+        "alt": "Interior of the Temple of Seti I at Abydos in Sohag Governorate, Egypt",
+        "creator": "Vyacheslav Argenberg",
+        "license": "CC BY 4.0",
+        "license_url": "https://creativecommons.org/licenses/by/4.0",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Temple_of_Seti_I,_Interior,_Abydos,_Egypt.jpg",
+        "sha256": "eae848214e990d03d996b0bb7b8443cad635fce49672de4048c659106bdbc10a",
+        "source_api": "Wikimedia Commons imageinfo extmetadata"
+      },
+      "review_status": "licensed_photo_applied_verified",
+      "applied_translation_counts": {
+        "source": 6,
+        "wayfatours": 2
+      },
+      "previous_photo_filename": "sohag-egypt.jpg"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+[Unit]
+Description=Automatically prove and enroll changed or new public JetEngine Lazy contexts
+
+[Timer]
+OnCalendar=*-*-* *:15,45:00 UTC
+RandomizedDelaySec=300
+AccuracySec=120s
+Persistent=true
+Unit=mad4b-native-lazy-auto-coverage-admission.service
+
+[Install]
+WantedBy=timers.target

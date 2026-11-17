@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Shared Renderer Query Governor
  * Description: Capability-aware, versioned JetEngine data-query caching, independent of tenant IDs and domains.
- * Version: 1.4.1
+ * Version: 1.4.3
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
@@ -184,9 +184,19 @@ function mad4b_render_query_policy( $query ) {
  * existing Query Builder object-cache group is changed when admitted.
  */
 function mad4b_render_query_scope_option(string $kind, string $name): string {
-    if (!in_array($kind,['post_type','taxonomy'],true)
-        || !preg_match('/^[A-Za-z0-9_-]{1,100}$/D',$name)) return '';
-    return 'mad4b_rq_source_v1_' . ($kind==='post_type'?'p_':'t_')
+    if (!in_array($kind,['post_type','taxonomy','membership','membership_taxonomy'],true))return '';
+    // Each published taxonomic membership is bound to *both* taxonomy and
+    // public post type. A package_levels assignment to a tour cannot rotate
+    // the destinations listing's source version merely because both
+    // taxonomies happen to be registered to tours-and-activities.
+    $pattern=$kind==='membership_taxonomy'
+        ? '/^[A-Za-z0-9_-]{1,100}::[A-Za-z0-9_-]{1,100}$/D'
+        : '/^[A-Za-z0-9_-]{1,100}$/D';
+    if(!preg_match($pattern,$name))return '';
+    $prefix=match($kind){
+       'post_type'=>'p_','taxonomy'=>'t_','membership'=>'m_','membership_taxonomy'=>'mt_'
+    };
+    return 'mad4b_rq_source_v1_' . $prefix
         . substr(hash('sha256',$name),0,24);
 }
 function mad4b_render_query_scope_bump(string $kind,string $name): bool {
@@ -205,6 +215,51 @@ function mad4b_render_query_scope_bump_post(int $post_id): bool {
     if(!$obj || empty($obj->public)
         || preg_match('/(?:order|booking|checkout|payment|customer|reservation|invoice)/i',$type))return false;
     return mad4b_render_query_scope_bump('post_type',$type);
+}
+/**
+ * Only relation and published-membership events should rotate this version.
+ * Ordinary post meta edits continue to bump their own post-content version
+ * for queries returning posts, but not a native terms query.
+ */
+function mad4b_render_query_scope_bump_membership_post(
+    int $post_id, ?string $changed_taxonomy=null
+): bool {
+    if(!$post_id || wp_is_post_revision($post_id))return false;
+    $type=(string)get_post_type($post_id);
+    $obj=$type!==''?get_post_type_object($type):null;
+    if(!$obj || empty($obj->public)
+        || preg_match('/(?:order|booking|checkout|payment|customer|reservation|invoice)/i',$type))return false;
+
+    $all=(array)get_object_taxonomies($type);
+    $public=[];
+    foreach($all as $taxonomy){
+        if(!is_string($taxonomy))continue;
+        $tax=get_taxonomy($taxonomy);
+        if($tax && !empty($tax->public)
+            && in_array($type,(array)($tax->object_type??[]),true))
+            $public[$taxonomy]=true;
+    }
+    if($changed_taxonomy!==null){
+        // set_object_terms affects exactly one taxonomy, never the complete
+        // list of taxonomies registered to the same post type.
+        if(!isset($public[$changed_taxonomy]))return false;
+        return mad4b_render_query_scope_bump(
+            'membership_taxonomy',$changed_taxonomy.'::'.$type
+        );
+    }
+    if(!$public)return false;
+    // A publish/unpublish/delete can affect any public taxonomy bound to
+    // this post type. Rotate all *registered* taxonomy/type pairs (not
+    // unrelated post types or taxonomies). This intentionally avoids using
+    // WPML-filtered term lookups that could miss assignments in other
+    // languages during a status change.
+    $any=false;
+    foreach(array_keys($public) as $taxonomy){
+        $any=mad4b_render_query_scope_bump(
+            'membership_taxonomy',$taxonomy.'::'.$type
+        )||$any;
+    }
+    return $any;
 }
 function mad4b_render_query_scope_bump_term(string $taxonomy): bool {
     $obj=get_taxonomy($taxonomy);
@@ -258,7 +313,7 @@ function mad4b_render_query_scope_spec($query): array {
                 if(is_string($pt) && get_post_type_object($pt)
                     && !empty(get_post_type_object($pt)->public)
                     && !preg_match('/(?:order|booking|checkout|payment|customer|reservation|invoice)/i',$pt))
-                    $scopes[]=['post_type',$pt];
+                    $scopes[]=['membership_taxonomy',$tax.'::'.$pt];
             }
         }
     }
@@ -391,6 +446,23 @@ function mad4b_render_query_changed_post( $post_id, $origin = null ) {
         mad4b_render_query_invalidate($source,$scoped);
     }
 }
+// Native term counts depend on published relation membership, not arbitrary
+// draft metadata. Explicit transitions and deletions preserve completeness.
+add_action('transition_post_status',static function($new,$old,$post){
+    if($new===$old || ($new!=='publish' && $old!=='publish')
+       || !is_object($post) || empty($post->ID))return;
+    $scoped=mad4b_render_query_scope_bump_membership_post((int)$post->ID);
+    if($scoped)mad4b_render_query_invalidate([
+        'kind'=>'public_membership_status','post_type'=>(string)get_post_type($post->ID)
+    ],true);
+},40,3);
+add_action('before_delete_post',static function($post_id){
+    if(get_post_status($post_id)!=='publish')return;
+    $scoped=mad4b_render_query_scope_bump_membership_post((int)$post_id);
+    if($scoped)mad4b_render_query_invalidate([
+        'kind'=>'published_membership_delete','post_type'=>(string)get_post_type($post_id)
+    ],true);
+},41,1);
 add_action( 'save_post', 'mad4b_render_query_changed_post', 40, 1 );
 add_action( 'before_delete_post', 'mad4b_render_query_changed_post', 40, 1 );
 add_action( 'trashed_post', 'mad4b_render_query_changed_post', 40, 1 );
@@ -401,7 +473,12 @@ add_action( 'trashed_post', 'mad4b_render_query_changed_post', 40, 1 );
  * Real Elementor documents/settings, custom fields and prices still invalidate.
  */
 function mad4b_render_query_is_generated_meta_artifact(string $meta_key): bool {
-    if (in_array($meta_key,['_edit_lock','_edit_last','_elementor_css'],true)) return true;
+    // This watermark *detection fingerprint* is generated by the media
+    // diagnostics cron. It is not the underlying image/alt/copyright source.
+    // Its hourly refresh must not invalidate destination card AJAX proofs.
+    if (in_array($meta_key,[
+        '_edit_lock','_edit_last','_elementor_css','_mad4b_watermark_fingerprint_v1'
+    ],true)) return true;
     foreach ([
         ['Elementor\\Core\\Base\\Document','CACHE_META_KEY'],
         ['Elementor\\Core\\Base\\Elements_Iteration_Actions\\Assets','ASSETS_META_KEY'],
@@ -433,15 +510,24 @@ foreach ( [ 'added_post_meta', 'updated_post_meta', 'deleted_post_meta' ] as $ho
              'meta_sensitive'=>preg_match('/(?:elementor|listing_data|rate|price|cost|booking|availability|stock|inventory|occupancy|supplier|wcml|currency|market|relation|query|template|capabilit|access|visibility|permission)/i',(string)$meta_key)?1:0]);
     }, 40, 3 );
 }
-add_action( 'set_object_terms', static function ( $id, $terms, $tt_ids, $taxonomy ) {
-    $type = get_post_type( $id );
+add_action( 'set_object_terms', static function ( $id, $terms, $tt_ids, $taxonomy, $append=false, $old_tt_ids=[] ) {
     $tax = get_taxonomy( $taxonomy );
-    if ( $tax && ! empty( $tax->public ) && ! ( $type && preg_match( '/(?:order|booking|checkout|payment|customer|reservation|invoice)/i', $type ) ) ) {
-        $scoped=mad4b_render_query_scope_bump_post((int)$id)
-            && mad4b_render_query_scope_bump_term((string)$taxonomy);
-        mad4b_render_query_invalidate(['kind'=>'object_terms','post_id'=>(int)$id,'taxonomy'=>(string)$taxonomy],$scoped);
-    }
-}, 40, 4 );
+    if ( !$tax || empty( $tax->public ) || get_post_status($id)!=='publish' )return;
+    // WordPress can fire set_object_terms even for a no-op replay; do not
+    // rotate the certificate without a changed relation membership set.
+    $before=array_values(array_unique(array_map('absint',(array)$old_tt_ids)));
+    $after=array_values(array_unique(array_map('absint',(array)$tt_ids)));
+    // When append=true WordPress provides only the supplied new term IDs,
+    // not necessarily the whole existing set; merge before comparing.
+    if($append)$after=array_values(array_unique(array_merge($before,$after)));
+    sort($before,SORT_NUMERIC);sort($after,SORT_NUMERIC);
+    if($before===$after)return;
+    $scoped=mad4b_render_query_scope_bump_membership_post((int)$id,(string)$taxonomy);
+    if($scoped)mad4b_render_query_invalidate([
+        'kind'=>'public_term_membership','taxonomy'=>(string)$taxonomy,
+        'post_type'=>(string)get_post_type($id)
+    ],true);
+}, 40, 6 );
 add_action( 'edited_term', static function ($term_id,$tt_id,$taxonomy) {
     $scoped=mad4b_render_query_scope_bump_term((string)$taxonomy);
     mad4b_render_query_invalidate(['kind'=>'taxonomy','taxonomy'=>(string)$taxonomy,'term_id'=>(int)$term_id],$scoped);

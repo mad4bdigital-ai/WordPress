@@ -1,0 +1,22 @@
+/* Staging ETG: width parity for the shared Elementor header, all WPML languages. */
+.elementor-location-header .elementor-element.elementor-element-e9d5787 {
+  --width: 100%;
+  --content-width: 100%;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+.elementor-location-archive:is(.elementor-30875,.elementor-40485,.elementor-36452,.elementor-36454,.elementor-35430,.elementor-40128)
+> .e-con > .elementor-widget-heading:first-child,
+.elementor-location-archive:is(.elementor-30875,.elementor-40485,.elementor-36452,.elementor-36454,.elementor-35430,.elementor-40128)
+> .e-con > .elementor-widget-heading:first-child .elementor-heading-title {
+  width: 100%;
+  text-align: center !important;
+}
+html[dir="rtl"] .elementor-location-header .navigation-editor-menu :is(
+  .e-n-menu-heading,.e-n-menu-content,.navigation-editor-panel,
+  .navigation-editor-card,.navigation-editor-card-text,.jet-listing-grid__item
+) { direction: rtl; }
+html[dir="rtl"] .elementor-location-header .navigation-editor-menu :is(
+  .e-n-menu-title-text,.navigation-editor-card-text,
+  .jet-listing-dynamic-field__content,.elementor-button-text
+) { text-align: start !important; }
