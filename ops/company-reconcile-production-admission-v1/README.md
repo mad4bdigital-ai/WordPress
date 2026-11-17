@@ -57,3 +57,26 @@ certificate, stale readback, all registered company independence, missing
 signed operation provider, signed-grant separation, duplicate paths/identities,
 fail-closed content hashes, and no writes. Run
 `python3 -m unittest discover -s ops/company-reconcile-production-admission-v1 -p 'test_*.py'`.
+
+## Direct legacy Broker Apply removed at live execution source
+
+The older host-local `company-system-appearance-broker-reconcile.py` contained
+an `--mode apply` that only checked a *generic current native resolver plan*
+and the operator-supplied `--allow-production` flag. That is **not** proof of
+a specific signed Original305 Job/306 Claim/312 authority/313 result. On the
+live VPS this unsafe direct write path was closed **before reading any site**,
+then its old file-copy block (including rollback-only-in-process) was deleted.
+Existing `--mode plan` and `--mode verify` are retained for source observation.
+Any direct `--mode apply` is a deterministic **HOLD** with no mutation. The
+future signed native operation must be implemented as a separately registered,
+content-pinned provider through Original306/312/313, not by relaxing this
+legacy script or borrowing an unrelated code-release grant.
+
+The exact host source is committed here as
+`company-system-appearance-broker-reconcile.py`; SHA256 equals the installed
+`/opt/mad4b-company-provisioning/bin/company-system-appearance-broker-reconcile.py`.
+`test_legacy_broker_signed_only.py` runs actual isolated CLI invocations
+with a stub of an otherwise host-only import and checks that Production and
+Staging apply are denied before any site access, source assets remain bounded
+and plan/verify remain present. The manually reconciled 11 Wayfatours assets
+stay unchanged and still yield a source/target SHA match.
