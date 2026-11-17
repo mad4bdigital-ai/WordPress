@@ -260,6 +260,58 @@ final class MAD4B_SCP_Governed_Ability_Census {
      * Require the actual installed WP_Ability and the exact original
      * execute/permission callback ancestry, even when wrappers are present.
      */
+    /**
+     * Verify one original Staging Owner intent operation for the Descriptor.
+     * It does not authorize consent, create a grant, or execute the callback.
+     * All original OAuth/client/plan/confirmation checks remain due at call time.
+     */
+    public static function staging_owner_intent_original_boundary_verified( $ability ) {
+        $name = 'mad4b/staging-write-owner-attest';
+        if ( ! is_object( $ability ) || ! class_exists( 'WP_Ability', false )
+            || get_class( $ability ) !== 'WP_Ability'
+            || ! method_exists( $ability, 'get_name' )
+            || $ability->get_name() !== $name
+            || ! function_exists( 'wp_get_ability' )
+            || wp_get_ability( $name ) !== $ability
+            || ! class_exists( 'MAD4B_SCP_Staging_Write_Owner_Intent', false )
+            || MAD4B_SCP_Staging_Write_Owner_Intent::ATTEST_ABILITY !== $name
+            || ! method_exists( $ability, 'get_meta' ) ) return false;
+        $meta = $ability->get_meta();
+        $mcp = is_array( $meta ) && is_array( $meta['mcp'] ?? null )
+            ? $meta['mcp'] : array();
+        $annotations = is_array( $meta ) && is_array( $meta['annotations'] ?? null )
+            ? $meta['annotations'] : array();
+        if ( 'enrollment' !== ( $mcp['surface'] ?? null )
+            || 'owner_attestation_v1' !== ( $mcp['broker_dispatch_policy'] ?? null )
+            || true !== ( $mcp['chatgpt_direct_step_up'] ?? null )
+            || true !== ( $mcp['exact_chatgpt_client_required'] ?? null )
+            || true !== ( $mcp['governed_enrollment_broker'] ?? null )
+            || true !== ( $mcp['owner_intent_only'] ?? null )
+            || false !== ( $mcp['generic_remote_admin'] ?? null )
+            || false !== ( $mcp['production_mutation_allowed'] ?? null )
+            || false !== ( $mcp['breakglass_allowed'] ?? null )
+            || false !== ( $annotations['readonly'] ?? null ) ) return false;
+        $trusted = self::structural_step_up();
+        if ( ! isset( $trusted[ $name ] )
+            || 'verified_first_party_php_callbacks' !== ( $trusted[ $name ]['source'] ?? '' )
+            || ! preg_match( '/^[a-f0-9]{64}$/D', (string) ( $trusted[ $name ]['callback_pair_digest'] ?? '' ) ) ) return false;
+        foreach ( array(
+            'execute_callback' => 'attest',
+            'permission_callback' => 'can_remote_attest',
+        ) as $property_name => $method ) {
+            try {
+                $property = new ReflectionProperty( 'WP_Ability', $property_name );
+                if ( PHP_VERSION_ID < 80100 ) $property->setAccessible( true );
+                $identity = self::callback_identity( $property->getValue( $ability ) );
+                $suffix = 'MAD4B_SCP_Staging_Write_Owner_Intent::' . $method
+                    . '@class-mad4b-scp-staging-write-owner-intent.php';
+                if ( '' === $identity || substr( $identity, -strlen( $suffix ) ) !== $suffix )
+                    return false;
+            } catch ( Throwable $error ) { return false; }
+        }
+        return true;
+    }
+
     public static function operator_grant_original_boundary_verified( $ability ) {
         $name = 'mad4b/operator-grants-converge';
         if ( ! is_object( $ability ) || ! class_exists( 'WP_Ability', false )
