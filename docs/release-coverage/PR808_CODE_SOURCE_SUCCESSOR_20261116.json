@@ -45,7 +45,7 @@
     },
     "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-governed-ability-census.php": {
       "historical_source_sha256": "58236c8c96a0e3a39e569451dd2bc9333f3f011899258864b27522a3a8425ad9",
-      "current_source_sha256": "29f401e10eda13fa2616534e394a81b390b76c99a2b7498aa6aff0974886d333",
+      "current_source_sha256": "6eba6e010e76d6f782b6a76454279da57691d24c353a983cb0d9b8e60d61df2a",
       "fail_closed_code_witnesses": [
         "private static function callback_pair_digest( $ability )",
         "if ( '' === $callback_digest ) continue;",
@@ -55,7 +55,10 @@
         "if ( ! isset( $trusted[ $name ] )",
         "staging_owner_intent_original_boundary_verified( $ability )",
         "'permission_callback' => 'can_remote_attest'",
-        "'owner_attestation_v1' !== ( $mcp['broker_dispatch_policy'] ?? null )"
+        "'owner_attestation_v1' !== ( $mcp['broker_dispatch_policy'] ?? null )",
+        "chatgpt_projection_original_boundary_verified( $ability )",
+        "'permission_callback' => 'can_apply'",
+        "false !== ( $mcp['projection_changes_authority'] ?? null )"
       ],
       "review_class": "exact_source_regression_only_not_signed_release"
     }
