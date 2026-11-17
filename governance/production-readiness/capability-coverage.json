@@ -22567,6 +22567,50 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing MCP exact Ability identity, verified first-party callback lineage, OAuth scope, dedicated mutation policy, final execution fence, site-bound transport, and governance remain mandatory; source review neither executes an operation nor creates runtime authority.",
       "execution_note": "GitHub exact-head PHP lint, positive and negative provenance runtime tests, live OAuth/MCP acceptance and owner governance are separate required proofs; none is implied by this CI-only review."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-governed-ability-census.php",
+      "source_blob_sha": "d768e328e7bc4995422f83c6889f5c846e898fd2",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/direct-mcp-same-endpoint-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-client-compatibility-contract.py"
+      ],
+      "review_rationale": "Add exact registered callback pair and final execution fence proof exclusively for direct-only mad4b/runtime-gates-apply; require original Governed_Runtime_Gates apply/can_apply, high-risk production/Raw-SQL metadata, first-party direct-only census and fail-closed negative tests. No eligibility rule, OAuth check, Write Grant or target execution is changed.",
+      "owner_role": "Repository source reviewer — CI-only, no Owner attestation, runtime grant or Production decision",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuses strict original WordPress Ability identity, first-party execute/permission callback ancestry, final execution admission, exact ChatGPT client/OAuth step-up gate, site profile, confirmation, and audited high-risk runtime policy. The direct-only tool never enters the generic Staging broker; descriptor classification authorizes nothing.",
+      "execution_note": "The original Local OAuth live HTTP and MCP Client compatibility tests must independently pass on exact head; code review is non-authorizing."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ability-contract-inspector.php",
+      "source_blob_sha": "6a65a64b04163228c56456c8b51dfaf442549a8a",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/direct-mcp-same-endpoint-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-client-compatibility-contract.py"
+      ],
+      "review_rationale": "Bind canonical ChatGPT descriptor only for exact separately governed runtime-gates-apply upon independently verified Direct-only original callback/fence proof. Preserve existing generic enrollment, provider, OAuth and Runtime Gates execution-time admission; never project arbitrary direct-only Tools.",
+      "owner_role": "Repository source reviewer — CI-only, no Owner attestation, runtime grant or Production decision",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuses strict original WordPress Ability identity, first-party execute/permission callback ancestry, final execution admission, exact ChatGPT client/OAuth step-up gate, site profile, confirmation, and audited high-risk runtime policy. The direct-only tool never enters the generic Staging broker; descriptor classification authorizes nothing.",
+      "execution_note": "The original Local OAuth live HTTP and MCP Client compatibility tests must independently pass on exact head; code review is non-authorizing."
     }
   ],
   "code_change_rules": {
