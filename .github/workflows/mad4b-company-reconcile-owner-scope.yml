@@ -1,0 +1,34 @@
+name: MAD4B Company Reconcile Exact Owner Scope
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/mad4b-company-reconcile-owner-scope.yml'
+      - 'tests/mad4b-company-reconcile-owner-scope-hermetic.php'
+      - 'wp-content/plugins/mad4b-platform/modules/operations/296b-mad4b-company-reconcile-owner-actions-v1.php'
+      - 'docs/runtime/company-reconcile-exact-owner-review-20261117.md'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: mad4b-company-reconcile-owner-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+jobs:
+  exact-review-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.3','8.5']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Original owner-review PHP syntax and live-code behavior
+        run: |
+          docker run --rm -v "$GITHUB_WORKSPACE:/src:ro" -w /src php:${{ matrix.php }}-cli sh -euc '
+            php -l wp-content/plugins/mad4b-platform/modules/operations/296b-mad4b-company-reconcile-owner-actions-v1.php
+            php -l tests/mad4b-company-reconcile-owner-scope-hermetic.php
+            php tests/mad4b-company-reconcile-owner-scope-hermetic.php | grep -q "\\\"passed\\\":22"
+          '

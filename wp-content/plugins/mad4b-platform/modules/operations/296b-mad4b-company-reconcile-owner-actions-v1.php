@@ -15,9 +15,12 @@ final class MAD4B_Company_Reconcile_Owner_Actions_V1 {
     public const ORIGINAL_JOBS='mad4b_company_reconcile_exact_305_jobs_v1';
     public const CONTRACT='mad4b.company-reconcile-owner-actions.v1';
     private static function admitted():bool {
+        // Native company owner capability is shared by administrator and
+        // master_admin; neither generic WordPress Settings nor plugin
+        // activation rights are a prerequisite for a read/review screen.
         return class_exists('MAD4B_Company_Portfolio_Manager_V1',false)
             && MAD4B_Company_Portfolio_Manager_V1::staging()
-            && current_user_can('manage_options') && current_user_can('activate_plugins');
+            && current_user_can('mad4b_manage_company_operations');
     }
     private static function browser_owner():bool {
         if(!self::admitted() || !is_user_logged_in() || !defined('LOGGED_IN_COOKIE'))return false;
@@ -92,6 +95,67 @@ final class MAD4B_Company_Reconcile_Owner_Actions_V1 {
             return ['state'=>'EXPIRED_UNCLAIMED','retryable'=>true,'expires'=>$expires,'record'=>$last];
         return ['state'=>$state,'retryable'=>false,'expires'=>$expires,'record'=>$last];
     }
+    /** Content-addressed owner review for one exact site and file-diff request.
+     * A re-scan of identical bytes does not require another owner review;
+     * changed paths, source/target bytes, request, or site identity do.
+     */
+    public static function scope_manifest_digest(array $target,$inventory):?string {
+        if(!is_array($inventory)
+          ||($inventory['contract']??'')!=='mad4b.company-reconcile-asset-inventory.v1'
+          ||($inventory['company_code']??'')!==($target['company_code']??null)
+          ||($inventory['environment']??'')!==($target['environment']??null)
+          ||($inventory['site_uuid']??'')!==($target['site_uuid']??null)
+          ||($inventory['origin']??'')!==($target['origin']??null))return null;
+        $request=$inventory['exact_original_request_sha256']??null;
+        $items=$inventory['items']??null;
+        if(!is_string($request)||!preg_match('/^[a-f0-9]{64}$/D',$request)
+          ||!is_array($items)||!array_is_list($items)||!$items||count($items)>40)return null;
+        $rows=[];$different=0;
+        foreach($items as $item){
+            if(!is_array($item))return null;
+            $path=$item['path']??null;
+            $source=$item['source_sha256']??null;
+            $dest=$item['target_sha256']??null;
+            $needs=$item['needs_sync']??null;
+            if(!is_string($path)||!preg_match('~^wp-content/(?:plugins/mad4b-commerce/modules/presentation/[a-zA-Z0-9_./-]+|maintenance\.php)$~D',$path)
+              ||str_contains($path,'..')||isset($rows[$path])
+              ||!is_string($source)||!preg_match('/^[a-f0-9]{64}$/D',$source)
+              ||($dest!==null&&(!is_string($dest)||!preg_match('/^[a-f0-9]{64}$/D',$dest)))
+              ||!is_bool($needs)||$needs!==($source!==$dest))return null;
+            $different+=(int)$needs;
+            $rows[$path]=['source_sha256'=>$source,'target_sha256'=>$dest];
+        }
+        if(!$different)return null;
+        ksort($rows,SORT_STRING);
+        return hash('sha256',wp_json_encode(['scope'=>[
+            $target['company_code'],$target['environment'],$target['site_uuid'],$target['origin']],
+            'original305_request_sha256'=>$request,'assets'=>$rows],JSON_UNESCAPED_SLASHES));
+    }
+    /** A scan older than an hour or unexpectedly from the future cannot submit. */
+    public static function inventory_fresh($inventory):bool {
+        if(!is_array($inventory))return false;
+        $epoch=$inventory['observed_epoch']??null;
+        return is_int($epoch)&&$epoch>0&&$epoch<=time()+60&&time()-$epoch<3600;
+    }
+    public static function review_matches_inventory(array $target,$inventory,$review,?int $actor=null):bool {
+        if(!is_array($review)
+          ||($review['state']??'')!=='OWNER_SCOPE_REVIEWED_NOT_NATIVE_WRITE_AUTHORIZED'
+          ||($review['company_code']??'')!==($target['company_code']??null)
+          ||($review['environment']??'')!==($target['environment']??null)
+          ||($review['site_uuid']??'')!==($target['site_uuid']??null)
+          ||($review['origin']??'')!==($target['origin']??null)
+          ||!is_int($review['reviewed_epoch']??null)
+          ||!is_int($review['actor_id']??null)
+          ||(int)$review['reviewed_epoch']<=0
+          ||(int)$review['reviewed_epoch']>time()+60
+          ||($actor!==null && (int)($review['actor_id']??0)!==$actor))return false;
+        $current=self::scope_manifest_digest($target,$inventory);
+        if($current===null)return false;
+        $old=$review['scope_digest_sha256']??null;
+        return is_string($old)&&preg_match('/^[a-f0-9]{64}$/D',$old)
+          &&hash_equals($old,$current)
+          &&($review['request_sha256']??null)===($inventory['exact_original_request_sha256']??null);
+    }
     private static function details(array $target):array {
         $company=$target['company_code'];$environment=$target['environment'];
         $plan=class_exists('MAD4B_Company_Execution_Resolver_V1',false)
@@ -108,11 +172,13 @@ final class MAD4B_Company_Reconcile_Owner_Actions_V1 {
             && ($plan['remote_write_permitted']??false)===true;
         $rows=get_option(self::REVIEWS,[]);if(!is_array($rows))$rows=[];
         $review=$rows[$company.':'.$environment]??null;
-        if(!is_array($review) || ($review['site_uuid']??'')!==$target['site_uuid'])$review=null;
+        $currentInventory=self::inventory($target);
+        $staleReview=is_array($review)&&!self::review_matches_inventory($target,$currentInventory,$review);
+        if($staleReview)$review=null;
         return ['plan'=>is_array($plan)?$plan:[],
             'preflight'=>is_array($preflight)?$preflight:[],
             'proof'=>is_array($proof)?$proof:[],
-            'ready'=>$ready,'review'=>$review,
+            'ready'=>$ready,'review'=>$review,'stale_review_record_present'=>$staleReview,
             'identity_bound'=>$valid];
     }
     /** Publish only sanitized live host scan metadata, never a grant or job. */
@@ -179,11 +245,11 @@ final class MAD4B_Company_Reconcile_Owner_Actions_V1 {
     public static function menu():void {
         if(!self::admitted())return;
         add_submenu_page('mad4b-company-brand-readiness',
-            'Company Reconcile &amp; Deploy','Reconcile &amp; Deploy','manage_options',
+            'Company Reconcile &amp; Deploy','Reconcile &amp; Deploy','mad4b_manage_company_operations',
             self::SLUG,[__CLASS__,'screen']);
         // A visible entry also appears under the main Company area.
         add_submenu_page('mad4b-company',
-            'Company Reconcile &amp; Deploy','Reconcile &amp; Deploy','manage_options',
+            'Company Reconcile &amp; Deploy','Reconcile &amp; Deploy','mad4b_manage_company_operations',
             self::SLUG,[__CLASS__,'screen']);
     }
     public static function shortcut():void {
@@ -288,22 +354,31 @@ final class MAD4B_Company_Reconcile_Owner_Actions_V1 {
             echo '<p><small>The inventory is a previous host readback, not an authorization receipt; the execution preflight above is evaluated live.</small></p>';
         }else echo '<p><em>No host file-diff snapshot has been published for this selection. The native authorization results above are live.</em></p>';
         echo '<p><strong>Pending execution:</strong> '.($data['ready']?'Provider is authorized; an original exact job is still required.':'A signed, exact original 305/306/312 write job and independent 313 executor are required.').'</p>';
+        if(!empty($data['stale_review_record_present']))
+            echo '<div class="notice notice-warning inline" role="alert"><p>Previous scope review is not valid for this exact file inventory. Re-review after a fresh host scan; no prior acknowledgement grants a changed operation.</p></div>';
         if($review)echo '<div class="notice notice-success inline"><p>Scope review recorded at '.esc_html(gmdate('Y-m-d H:i:s', (int)($review['reviewed_epoch']??0))).' UTC. This is not execution authorization.</p></div>';
         else echo '<p><em>No browser owner scope review recorded for this exact site identity.</em></p>';
         if(self::browser_owner()){
+            $reviewForMe=$review&&($review['actor_id']??null)===get_current_user_id();
+            $can_review=$reviewForMe||(
+                self::scope_manifest_digest($target,$inventory)!==null
+                &&self::inventory_fresh($inventory));
             echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'" style="margin:12px 0">';
             wp_nonce_field('mad4b_reconcile_review_'.$target['company_code'].'_'.$target['environment'].'_'.$target['site_uuid']);
             echo '<input type="hidden" name="action" value="'.esc_attr(self::REVIEW_ACTION).'">';
             echo '<input type="hidden" name="company" value="'.esc_attr($target['company_code']).'">';
             echo '<input type="hidden" name="environment" value="'.esc_attr($target['environment']).'">';
             echo '<input type="hidden" name="site_uuid" value="'.esc_attr($target['site_uuid']).'">';
-            echo '<input type="hidden" name="review_action" value="'.($review?'withdraw':'confirm').'">';
-            echo '<button type="submit" class="button '.($review?'button-secondary':'button-primary').'">'.($review?'Withdraw scope review':'Confirm reviewed operation scope').'</button>';
+            echo '<input type="hidden" name="review_action" value="'.($reviewForMe?'withdraw':'confirm').'">';
+            echo '<button type="submit" class="button '.($reviewForMe?'button-secondary':'button-primary').'" '
+                .disabled(!$can_review,true,false).'>'.($reviewForMe?'Withdraw scope review':'Confirm reviewed operation scope').'</button>';
+            if(!$can_review)echo '<p role="status">A fresh, exact host file inventory and Original 305 request hash are required before confirming a reviewed scope.</p>';
             echo '</form>';
         }else echo '<p>Scope confirmation requires an active, authenticated WordPress owner browser session. WP-CLI user override cannot confirm it.</p>';
         // State machine readback. Never confuse owner scope review with signed
         // ORIGINAL 305 acceptance or signed independent 313 write evidence.
-        $reviewed=$review && ($review['state']??'')==='OWNER_SCOPE_REVIEWED_NOT_NATIVE_WRITE_AUTHORIZED';
+        $reviewed=$review && ($review['state']??'')==='OWNER_SCOPE_REVIEWED_NOT_NATIVE_WRITE_AUTHORIZED'
+            &&($review['actor_id']??null)===get_current_user_id();
         $submission=($plan['original_305_313_submission_preflight_passed']??false)===true;
         $signed_write=$data['ready'];
         echo '<div class="postbox" style="padding:16px;max-width:1050px"><h2 class="hndle">What happens next?</h2>';
@@ -318,16 +393,18 @@ final class MAD4B_Company_Reconcile_Owner_Actions_V1 {
         echo '<li><strong>Independent 313 proof:</strong> '.esc_html(self::state($proof['state']??null)).'. Emitted only after successful apply, readback and rollback verification.</li>';
         echo '</ol>';
         $request_hash=is_array($inventory)?(string)($inventory['exact_original_request_sha256']??''):'';
-        $valid_request=preg_match('/^[a-f0-9]{64}$/D',$request_hash)===1;
-        $fresh_inventory=is_array($inventory)&&time()-(int)($inventory['observed_epoch']??0)<3600;
+        $valid_request=self::scope_manifest_digest($target,$inventory)!==null;
+        $fresh_inventory=self::inventory_fresh($inventory);
         $write_capable=is_array($inventory)&&($inventory['write_executor_capable']??false)===true;
         if(!$created){
             $owner_session=self::browser_owner();
-            $can_submit=$owner_session&&$reviewed&&$submission&&$valid_request&&$fresh_inventory&&$write_capable;
+            $can_submit=$owner_session&&$reviewed&&($review['actor_id']??null)===get_current_user_id()
+                &&$submission&&$valid_request&&$fresh_inventory&&$write_capable;
             $age=is_array($inventory)?max(0,time()-(int)($inventory['observed_epoch']??0)):null;
             $blocked_reasons=[];
             if(!$owner_session)$blocked_reasons[]='Sign in with the original owner browser session';
-            if(!$reviewed)$blocked_reasons[]='Complete the exact scope review';
+            if(!$reviewed || ($review['actor_id']??null)!==get_current_user_id())
+                $blocked_reasons[]='Complete the exact current-file scope review using this owner session';
             if(!$submission)$blocked_reasons[]='Native 305/306 scope preflight is unavailable';
             if(!$valid_request)$blocked_reasons[]='Exact 305 request manifest is missing';
             if(!$fresh_inventory)$blocked_reasons[]='File inventory is outdated; a new host-side file scan is required';
@@ -384,11 +461,9 @@ final class MAD4B_Company_Reconcile_Owner_Actions_V1 {
         }
         $reviews=get_option(self::REVIEWS,[]);$review=is_array($reviews)?($reviews[$company.':'.$env]??null):null;
         $inventory=self::inventory($target);
-        if(!is_array($review)||($review['actor_id']??null)!==get_current_user_id()
-          ||($review['site_uuid']??null)!==$uuid
-          ||($review['state']??null)!=='OWNER_SCOPE_REVIEWED_NOT_NATIVE_WRITE_AUTHORIZED'
-          ||!is_array($inventory)||($inventory['exact_original_request_sha256']??null)!==$sha
-          ||time()-(int)($inventory['observed_epoch']??0)>3600)
+        if(!self::review_matches_inventory($target,$inventory,$review,get_current_user_id())
+          ||!self::inventory_fresh($inventory)
+          ||($inventory['exact_original_request_sha256']??null)!==$sha)
             wp_die('Original owner review or exact recent file inventory required',409);
         if(($inventory['write_executor_capable']??false)!==true)
             wp_die('Native write and rollback executor is not ready. No Original 305 Job created.',409);
@@ -499,10 +574,19 @@ final class MAD4B_Company_Reconcile_Owner_Actions_V1 {
         $rows=get_option(self::REVIEWS,[]);if(!is_array($rows))$rows=[];
         $key=$company.':'.$env;
         if($action==='withdraw')unset($rows[$key]);
-        else $rows[$key]=['contract'=>self::CONTRACT,'company_code'=>$company,'environment'=>$env,
-            'site_uuid'=>$uuid,'component'=>'admin-experience','reviewed_epoch'=>time(),
+        else {
+            $inventory=self::inventory($target);
+            $digest=self::scope_manifest_digest($target,$inventory);
+            if($digest===null || !self::inventory_fresh($inventory))
+                wp_die('Fresh exact Original 305 file scope must be inspected before owner review',409);
+            $rows[$key]=['contract'=>self::CONTRACT,'company_code'=>$company,'environment'=>$env,
+            'site_uuid'=>$uuid,'origin'=>$target['origin'],'component'=>'admin-experience',
+            'request_sha256'=>$inventory['exact_original_request_sha256'],
+            'scope_digest_sha256'=>$digest,'reviewed_file_count'=>count($inventory['items']),
+            'reviewed_epoch'=>time(),
             'actor_id'=>get_current_user_id(),'state'=>'OWNER_SCOPE_REVIEWED_NOT_NATIVE_WRITE_AUTHORIZED',
             'original_305_job_created'=>false,'execution_authorized'=>false,'production_mutated'=>false];
+        }
         if(count($rows)>100)$rows=array_slice($rows,-100,null,true);
         update_option(self::REVIEWS,$rows,false);
         wp_safe_redirect(self::url($target));exit;
