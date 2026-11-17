@@ -10,7 +10,7 @@
   "historic_v9_provider_pins_not_rewritten": true,
   "historical_generated_manifest_sha256": "1b117e63e2cb762718378048e8e47707a97f906415e60f9d9a1bb319c54f85f3",
   "historical_native_source_sha256": "32656d20a0729fd0c165a65b6b7d2ad51014a87e69c636fa568c5bfff51b7eae",
-  "new_standing_verifier_sha256": "845c7987b26094c9caaaa49d6fc206fc49845f483a909a124c56fc671698b92e",
+  "new_standing_verifier_sha256": "48dbc35af96f949bc4fe546816537ba926394a260ab56de1e85054532c1d855e",
   "original313_signed_receipt_verified": false,
   "prior_manual_approval_code_path_preserved": true,
   "runtime_code_auto_published": false,

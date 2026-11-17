@@ -27,6 +27,24 @@ ASSET=re.compile(r'^wp-content/plugins/[a-z][a-z0-9-]{2,80}/assets/(?:[a-zA-Z0-9
 MAX_LIFETIME=timedelta(days=30)
 MAX_FILES=10
 MAX_BYTES=1024*1024
+# Even an explicitly Master-signed asset allowlist cannot downgrade a known
+# privileged, commerce or money-related plugin to a routine UI release.
+PROTECTED_PLUGIN_SLUGS=frozenset({
+ 'mad4b-site-control-plane','mad4b-platform','mad4b-commerce',
+ 'mad4b-commerce-suite','commerce-composition','woocommerce-travel-bridge',
+ 'mad4b-pricing-registry','mad4b-age-occupancy-registry',
+ 'mad4b-country-switcher','mad4b-tenant-sync','mad4b-cache-lifecycle',
+})
+PROTECTED_ASSET_TOKENS=frozenset({
+ 'auth','authentication','authorization','security','credentials','credential',
+ 'key','keys','token','tokens','trust','policy','policies','control','host',
+ 'admin','privilege','permission','permissions','delegation','tenant',
+ 'commerce','commercial','payment','payments','checkout','billing','bill',
+ 'invoice','invoices','pricing','price','prices','rate','rates','tax',
+ 'deposit','refund','refunds','cart','carts','order','orders','booking',
+ 'bookings','woo','woocommerce','stripe','finance','financial',
+ 'occupancy','age','currency','market','country','passport','cache',
+})
 CERT_KEYS={'contract','delegation_id','company','environment','site_uuid','origin',
  'operation_id','provider','approval_ability','source_manifest_sha256','issued_at',
  'expires_at','allowed_targets','max_changed_files','max_total_bytes','signature'}
@@ -92,8 +110,19 @@ def safe_asset_target(value:object)->bool:
     if not isinstance(value,str) or ASSET.fullmatch(value) is None:
         return False
     parts=value.split('/')
-    if parts[3] in ('mad4b-site-control-plane','mad4b-platform','mad4b-commerce','woocommerce-travel-bridge'):
+    # wp-content/plugins/<slug>/assets/<file>: the slug is parts[2], never
+    # parts[3] (which is always 'assets'). Apply this before signer admission.
+    plugin_slug=parts[2]
+    if plugin_slug in PROTECTED_PLUGIN_SLUGS:
         return False
+    # Asset filenames/directories can also declare sensitive behavior, even
+    # when the plugin itself is otherwise an approved front-end provider.
+    # This is a conservative *additional* rejection; the enrolled Master
+    # certificate must still individually name each otherwise permitted file.
+    for segment in (plugin_slug,*parts[4:]):
+        tokens=set(re.split(r'[-_.]+',segment.lower()))
+        if tokens & PROTECTED_ASSET_TOKENS:
+            return False
     # A lexical path which contains '..' is unsafe even if it matches the
     # character class of a normal assets directory.
     return all(segment not in ('.','..') and not segment.startswith('.')

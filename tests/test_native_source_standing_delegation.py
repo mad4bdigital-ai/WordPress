@@ -96,6 +96,34 @@ class SignedStandingRelease(unittest.TestCase):
   malicious='wp-content/plugins/mad4b-website/assets/hooks.php'
   self.cert['allowed_targets']=[malicious];self.resign(self.cert)
   self.assertRejected('ALLOWED_ASSETS_INVALID')
+ def test_sensitive_plugin_asset_cannot_be_authorized_by_standing_certificate(self):
+  protected=(
+    'wp-content/plugins/mad4b-site-control-plane/assets/frontend.js',
+    'wp-content/plugins/mad4b-platform/assets/frontend.js',
+    'wp-content/plugins/mad4b-commerce/assets/frontend.js',
+    'wp-content/plugins/woocommerce-travel-bridge/assets/frontend.js',
+    'wp-content/plugins/commerce-composition/assets/frontend.js',
+    'wp-content/plugins/mad4b-commerce-suite/assets/frontend.css',
+    'wp-content/plugins/mad4b-pricing-registry/assets/pricing-ui.js',
+    'wp-content/plugins/mad4b-age-occupancy-registry/assets/fluent-ages.js',
+    'wp-content/plugins/mad4b-country-switcher/assets/switcher.js',
+    'wp-content/plugins/mad4b-tenant-sync/assets/frontend.js',
+    'wp-content/plugins/mad4b-website/assets/checkout.js',
+    'wp-content/plugins/mad4b-website/assets/booking-price.js',
+    'wp-content/plugins/mad4b-website/assets/payment-widgets.css',
+    'wp-content/plugins/mad4b-website/assets/security/login.js',
+  )
+  self.assertTrue(sd.safe_asset_target(ASSET))
+  self.assertTrue(sd.safe_asset_target('wp-content/plugins/mad4b-website/assets/home-hero.css'))
+  for target in protected:
+   with self.subTest(target=target):
+    self.assertFalse(sd.safe_asset_target(target),target)
+    candidate=deepcopy(self.cert)
+    candidate['allowed_targets']=[target]
+    self.sign(candidate,sd.CERT_CONTRACT)
+    with self.assertRaisesRegex(sd.DelegationDenied,'STANDING_ALLOWED_ASSETS_INVALID'):
+     sd.verify_certificate(candidate,self.policy,now=NOW)
+
  def test_cannot_touch_mu_php(self):
   self.cert['allowed_targets']=['wp-content/mu-plugins/runner.php'];self.resign(self.cert)
   self.assertRejected('ALLOWED_ASSETS_INVALID')
