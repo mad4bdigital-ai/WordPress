@@ -892,8 +892,64 @@ final class MAD4B_SCP_Site_Profile {
 		);
 	}
 
+	/**
+	 * Central-first enrollment for an SSH-host authenticated, exact Production
+	 * target. This is NOT a WordPress Administrator session, a delegated Grant
+	 * or a signing oracle. The pinned SSH transport is verified by the Central
+	 * Host orchestrator before wp-cli is executed. A local CLI process must
+	 * declare the exact central enrollment intent; HTTP cannot call this path.
+	 */
+	public static function provision_from_central_host( array $scope ) {
+		if ( ! defined( 'WP_CLI' ) || ! WP_CLI || PHP_SAPI !== 'cli'
+			|| ! function_exists( 'get_current_user_id' )
+			|| 0 !== (int) get_current_user_id()
+			|| '1' !== (string) getenv( 'MAD4B_CENTRAL_SSH_ENROLLMENT' ) )
+			return new WP_Error( 'mad4b_central_host_cli_admission_required', 'A dedicated native Host WP-CLI connection is required.' );
+		$company = isset( $scope['company_code'] ) && is_string( $scope['company_code'] )
+			? $scope['company_code'] : '';
+		$expected = array(
+			'egypt-tour-gates' => 'https://egypttourgates.com',
+			'tourism-almallahgroup' => 'https://tourism.almallahgroup-mg.com',
+		);
+		$origin = self::current_origin();
+		if ( ! isset( $expected[$company] ) || ! hash_equals( $expected[$company], $origin )
+			|| ! hash_equals( $origin, untrailingslashit( home_url( '/' ) ) )
+			|| ! hash_equals( $origin, untrailingslashit( site_url( '/' ) ) )
+			|| 'production' !== wp_get_environment_type() )
+			return new WP_Error( 'mad4b_central_host_exact_scope_required', 'The pinned host Production scope does not match this company and origin.' );
+		$existing = get_option( self::OPTION, null );
+		if ( null !== $existing && false !== $existing ) {
+			$status = self::status();
+			$stored = self::profile();
+			if ( is_array( $stored ) && ! empty( $status['configured'] )
+				&& ( $status['site_uuid'] ?? '' ) === ( $stored['site_uuid'] ?? '' )
+				&& ( $stored['canonical_origin'] ?? '' ) === $origin
+				&& ( $stored['environment'] ?? '' ) === 'production'
+				&& empty( $stored['features']['write'] )
+				&& empty( $status['mutation_pending_audit'] ) )
+				return $status; // idempotent; never rotates the existing UUID.
+			return new WP_Error( 'mad4b_central_host_existing_profile_review_required', 'Existing or pending Production identity needs review; no overwrite.' );
+		}
+		if ( ! class_exists( 'MAD4B_SCP_Audit', false )
+			|| empty( MAD4B_SCP_Audit::storage_status()['ready'] ) )
+			return new WP_Error( 'mad4b_central_host_audit_required', 'Append-only Site Profile audit must be ready before central enrollment.' );
+		return self::save_current_site_admitted( array(
+			'environment' => 'production', 'environment_sync_mode' => 'profile_only',
+			'expected_revision' => 0, 'expected_profile_digest' => '',
+			'oauth_user_ids' => array(), 'oauth_enabled' => false,
+			'skills_enabled' => false, 'write_enabled' => false,
+			'provider_isolation_enabled' => false, 'managed_runtime_enabled' => false,
+			'acceptance_enabled' => false,
+		), $company );
+	}
+
 	public static function save_current_site( array $input ) {
-		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_site_profile_admin_required', 'Administrator capability is required to enroll this site.' );
+		return self::save_current_site_admitted( $input, '' );
+	}
+
+	private static function save_current_site_admitted( array $input, $central_company ) {
+		if ( '' === $central_company && ! current_user_can( 'manage_options' ) )
+			return new WP_Error( 'mad4b_site_profile_admin_required', 'Administrator capability is required to enroll this site.' );
 		self::bootstrap();
 		$wordpress_environment = self::wordpress_environment();
 		$requested_environment = isset( $input['environment'] ) ? sanitize_key( (string) $input['environment'] ) : '';
@@ -986,7 +1042,7 @@ final class MAD4B_SCP_Site_Profile {
 		if ( '' !== $app_id && ! preg_match( '/^(?:plugin_)?asdk_app_[A-Za-z0-9]+$/D', $app_id ) ) return new WP_Error( 'mad4b_site_profile_app_id_invalid', 'ChatGPT App ID is invalid.' );
 
 		$user_ids = isset( $input['oauth_user_ids'] ) ? self::normalize_user_ids( $input['oauth_user_ids'] ) : array();
-		if ( empty( $user_ids ) ) $user_ids = array( get_current_user_id() );
+		if ( empty( $user_ids ) ) $user_ids = '' !== $central_company ? array() : array( get_current_user_id() );
 		foreach ( $user_ids as $user_id ) if ( ! get_userdata( $user_id ) ) return new WP_Error( 'mad4b_site_profile_user_invalid', 'Every enrolled OAuth user must exist on this WordPress site.' );
 
 		$write = ! empty( $input['write_enabled'] );
@@ -1070,6 +1126,8 @@ final class MAD4B_SCP_Site_Profile {
 				'previous_environment' => $existing_valid ? (string) $existing_normalized['environment'] : '',
 				'previous_canonical_origin' => $existing_valid ? (string) $existing_normalized['canonical_origin'] : '',
 				'write_enabled' => $write,
+				'enrollment_authority' => '' !== $central_company ? 'central_pinned_ssh_host' : 'wordpress_administrator',
+				'enrollment_company_code' => '' !== $central_company ? $central_company : '',
 				'oauth_user_count' => count( $user_ids ),
 			), 'ok' );
 			if ( is_wp_error( $audit ) ) {
