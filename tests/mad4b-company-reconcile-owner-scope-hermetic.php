@@ -123,5 +123,24 @@ try{$class::post();throw new RuntimeException('withdraw did not redirect');}
 catch(RedirectExpected $e){}
 $assert(!isset($GLOBALS['options'][$class::REVIEWS]['wayfatours:production']),'withdraw succeeds without scan');
 $assert($GLOBALS['checks']>=4,'nonce checks are exercised');
+// Read-only parity is a separate no-change state, never a legacy 305/313
+// execution authority or an excuse to claim a stale report is current.
+$clean=$inventory;
+$clean['items'][0]['target_sha256']=$source;
+$clean['items'][0]['needs_sync']=false;
+$clean['exact_original_request_sha256']=null;
+$assert($class::inventory_in_sync($target,$clean),'zero-diff host inventory recognized without job');
+$assert($class::scope_manifest_digest($target,$clean)===null,'zero-diff never creates new 305 scope digest');
+$assert(!$class::review_matches_inventory($target,$clean,$review,42),'zero-diff does not reuse old owner review');
+$assert(!$class::inventory_in_sync($target,$inventory),'nonzero drift cannot be claimed in sync');
+$older=$clean;$older['observed_epoch']=time()-3700;
+$assert(!$class::inventory_in_sync($target,$older),'stale identical files do not certify fresh parity');
+$wrongCompany=$target;$wrongCompany['company_code']='other-company';
+$assert(!$class::inventory_in_sync($wrongCompany,$clean),'another company cannot inherit parity');
+$dupe=$clean;$dupe['items'][]=$clean['items'][0];
+$assert(!$class::inventory_in_sync($target,$dupe),'duplicate paths cannot certify parity');
+$bad=$clean;$bad['items'][0]['target_sha256']='not-a-sha';
+$assert(!$class::inventory_in_sync($target,$bad),'malformed target digest cannot certify parity');
+$assert(!array_key_exists($class::ORIGINAL_JOBS,$GLOBALS['options']),'no original job created by parity');
 echo json_encode(['contract'=>'mad4b.company-reconcile.exact-owner-scope.v1','passed'=>$passed,
  'original_jobs_created'=>0,'site_mutated'=>false,'payment_affected'=>false]),"\n";
