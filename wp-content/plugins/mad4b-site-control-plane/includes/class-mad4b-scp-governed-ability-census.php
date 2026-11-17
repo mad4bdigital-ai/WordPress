@@ -395,6 +395,131 @@ final class MAD4B_SCP_Governed_Ability_Census {
         return true;
     }
 
+    /**
+     * Strict structural identity for the original three ChatGPT dispatcher
+     * transports. Their callbacks only dispatch to separately authorized
+     * targets; descriptor presentation never licenses a child operation.
+     */
+    public static function original_dispatch_transport_boundary_verified( $ability ) {
+        $reviewed = array(
+            'mad4b/write-execute' => array( 'write-dispatch', 'write_execute', 'can_write_dispatch' ),
+            'mad4b/developer-execute' => array( 'developer-dispatch', 'developer_execute', 'can_developer_dispatch' ),
+            'mad4b/enrollment-execute' => array( 'enrollment', 'enrollment_execute', 'can_enrollment_dispatch' ),
+        );
+        if ( ! is_object( $ability ) || ! class_exists( 'WP_Ability', false )
+            || get_class( $ability ) !== 'WP_Ability'
+            || ! method_exists( $ability, 'get_name' ) || ! method_exists( $ability, 'get_meta' )
+            || ! function_exists( 'wp_get_ability' ) ) return false;
+        $name = (string) $ability->get_name();
+        if ( ! isset( $reviewed[ $name ] ) || wp_get_ability( $name ) !== $ability
+            || ! class_exists( 'MAD4B_SCP_Abilities', false )
+            || ! class_exists( 'MAD4B_SCP_Execution_Fence', false )
+            || ! MAD4B_SCP_Execution_Fence::final_execution_wrapper_verified( $name )
+            || ! method_exists( $ability, 'get_category' ) || 'mad4b-admin' !== $ability->get_category() )
+            return false;
+        $meta = $ability->get_meta();
+        $mcp = is_array( $meta ) && is_array( $meta['mcp'] ?? null ) ? $meta['mcp'] : array();
+        $annotations = is_array( $meta ) && is_array( $meta['annotations'] ?? null ) ? $meta['annotations'] : array();
+        if ( $reviewed[ $name ][0] !== ( $mcp['surface'] ?? null )
+            || false !== ( $mcp['generic_remote_admin'] ?? null )
+            || false !== ( $annotations['readonly'] ?? null ) ) return false;
+        if ( 'mad4b/enrollment-execute' === $name ) {
+            if ( 'per_child_registered_write_policy_v1' !== ( $mcp['conditional_enrollment_policy'] ?? null )
+                || 'policy_governed' !== ( $mcp['production_mutation_allowed'] ?? null )
+                || 'policy_governed' !== ( $mcp['production_allowed'] ?? null ) ) return false;
+        } elseif ( false !== ( $mcp['production_mutation_allowed'] ?? null )
+            || false !== ( $mcp['breakglass_allowed'] ?? null ) ) return false;
+        foreach ( array(
+            'execute_callback' => $reviewed[ $name ][1],
+            'permission_callback' => $reviewed[ $name ][2],
+        ) as $property_name => $method ) {
+            try {
+                $property = new ReflectionProperty( 'WP_Ability', $property_name );
+                if ( PHP_VERSION_ID < 80100 ) $property->setAccessible( true );
+                $identity = self::callback_identity( $property->getValue( $ability ) );
+                $suffix = 'MAD4B_SCP_Abilities::' . $method . '@class-mad4b-scp-abilities.php';
+                if ( '' === $identity || substr( $identity, -strlen( $suffix ) ) !== $suffix )
+                    return false;
+            } catch ( Throwable $error ) { return false; }
+        }
+        return true;
+    }
+
+    /** Reject foreign permission closures even if they capture a valid
+     * first-party method. The original direct permission closure is defined
+     * inside Direct_Profile::register_abilities and captures its exact mode. */
+    private static function original_direct_permission( $callback, $method, $depth = 0 ) {
+        if ( $depth > 12 || ! $callback instanceof Closure ) return false;
+        try {
+            $reflection = new ReflectionFunction( $callback );
+            $file = realpath( (string) $reflection->getFileName() );
+            $root = realpath( __DIR__ );
+            $scope = $reflection->getClosureScopeClass();
+            if ( false === $file || false === $root
+                || 0 !== strpos( $file, $root . DIRECTORY_SEPARATOR )
+                || ! $scope || ! preg_match( '/^MAD4B_SCP_[A-Za-z0-9_]+$/D', $scope->getName() ) )
+                return false;
+            if ( 'MAD4B_SCP_Direct_Profile' === $scope->getName()
+                && 'class-mad4b-scp-direct-profile.php' === basename( $file ) ) {
+                $registration = new ReflectionMethod( 'MAD4B_SCP_Direct_Profile', 'register_abilities' );
+                $vars = $reflection->getStaticVariables();
+                return $reflection->getStartLine() >= $registration->getStartLine()
+                    && $reflection->getEndLine() <= $registration->getEndLine()
+                    && ( $vars['method'] ?? null ) === $method
+                    && is_array( $vars['def'] ?? null )
+                    && false === ( $vars['def'][3] ?? null );
+            }
+            $children = array();
+            foreach ( $reflection->getStaticVariables() as $captured ) {
+                if ( $captured instanceof Closure
+                    || ( is_array( $captured ) && 2 === count( $captured ) && is_callable( $captured ) ) )
+                    $children[] = $captured;
+            }
+            return 1 === count( $children )
+                && self::original_direct_permission( $children[0], $method, $depth + 1 );
+        } catch ( Throwable $error ) { return false; }
+    }
+
+    /** Exact two Direct Profile mutations: execution and permission ancestry
+     * must both originate in the installed plugin. No mode/permission is
+     * granted by this method; Direct_Profile::permitted() runs on every call. */
+    public static function original_direct_post_boundary_verified( $ability ) {
+        $reviewed = array(
+            'mad4b/direct-create-post' => 'create_post',
+            'mad4b/direct-update-post' => 'update_post',
+        );
+        if ( ! is_object( $ability ) || ! class_exists( 'WP_Ability', false )
+            || get_class( $ability ) !== 'WP_Ability'
+            || ! method_exists( $ability, 'get_name' ) || ! method_exists( $ability, 'get_meta' )
+            || ! method_exists( $ability, 'get_category' ) || ! function_exists( 'wp_get_ability' )
+            || ! class_exists( 'MAD4B_SCP_Direct_Profile', false )
+            || ! class_exists( 'MAD4B_SCP_Execution_Fence', false ) ) return false;
+        $name = (string) $ability->get_name();
+        if ( ! isset( $reviewed[ $name ] )
+            || wp_get_ability( $name ) !== $ability
+            || ! in_array( $name, MAD4B_SCP_Direct_Profile::write_tools(), true )
+            || 'mad4b-content' !== $ability->get_category()
+            || ! MAD4B_SCP_Execution_Fence::final_execution_wrapper_verified( $name ) ) return false;
+        $meta = $ability->get_meta();
+        $mcp = is_array( $meta ) && is_array( $meta['mcp'] ?? null ) ? $meta['mcp'] : array();
+        $annotations = is_array( $meta ) && is_array( $meta['annotations'] ?? null ) ? $meta['annotations'] : array();
+        if ( 'direct' !== ( $mcp['surface'] ?? null ) || false !== ( $annotations['readonly'] ?? null )
+            || ! empty( $mcp['mad4b_governed_write_authority'] ) ) return false;
+        try {
+            $execute_property = new ReflectionProperty( 'WP_Ability', 'execute_callback' );
+            $permission_property = new ReflectionProperty( 'WP_Ability', 'permission_callback' );
+            if ( PHP_VERSION_ID < 80100 ) {
+                $execute_property->setAccessible( true );
+                $permission_property->setAccessible( true );
+            }
+            $identity = self::callback_identity( $execute_property->getValue( $ability ) );
+            $suffix = 'MAD4B_SCP_Direct_Profile::' . $reviewed[ $name ]
+                . '@class-mad4b-scp-direct-profile.php';
+            return '' !== $identity && substr( $identity, -strlen( $suffix ) ) === $suffix
+                && self::original_direct_permission( $permission_property->getValue( $ability ), $reviewed[ $name ] );
+        } catch ( Throwable $error ) { return false; }
+    }
+
     public static function structural_step_up() { return self::scan( 'projection' ); }
 
     public static function eligible() {
