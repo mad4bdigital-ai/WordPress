@@ -69,7 +69,9 @@ final class MAD4B_Cart_Island_V1 {
         // Simple semantic shell can be included in cached public HTML byte-for-byte.
         // Even a logged-in or cart-holding request receives identical markup.
         return '<div class="mad4b-cart-island" data-mad4b-cart-island="v1"'
-            .' data-cart-endpoint="'.esc_url($url).'">'
+            .' data-cart-endpoint="'.esc_url($url).'"'
+            .' data-cart-empty="'.esc_attr__('Your cart is empty.','woocommerce').'"'
+            .' data-cart-error="'.esc_attr__('Cart unavailable.','woocommerce').'">'
             .'<button class="mad4b-cart-island__toggle" type="button" data-cart-open'
             .' aria-expanded="false" aria-controls="'.esc_attr($panel_id).'">'
             .esc_html__('Cart','woocommerce')

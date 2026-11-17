@@ -1,0 +1,13 @@
+[Unit]
+Description=Daily MAD4B guest/public vs cart/private cache safety regression
+
+[Timer]
+OnBootSec=25min
+OnUnitInactiveSec=1d
+AccuracySec=15min
+RandomizedDelaySec=20min
+Persistent=true
+Unit=mad4b-cart-island-boundary-wayfa.service
+
+[Install]
+WantedBy=timers.target

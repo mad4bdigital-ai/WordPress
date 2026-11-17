@@ -60,7 +60,7 @@
       });
     }
     if (total) total.textContent = money(payload && payload.totals);
-    if (status) status.textContent = quantity ? '' : 'Your cart is empty.';
+    if (status) status.textContent = quantity ? '' : (root.getAttribute('data-cart-empty') || 'Your cart is empty.');
   }
   function clear(root, reason) {
     var count = root.querySelector('[data-cart-count]');
@@ -68,7 +68,7 @@
     hide(root.querySelector('[data-cart-items]'));
     hide(root.querySelector('[data-cart-total]'));
     var status = root.querySelector('[data-cart-status]');
-    if (status) status.textContent = reason || 'Cart unavailable.';
+    if (status) status.textContent = reason || root.getAttribute('data-cart-error') || 'Cart unavailable.';
   }
   function validateEndpoint(raw) {
     try {

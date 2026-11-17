@@ -11,17 +11,22 @@ function check(ok,msg){if(!ok)throw Error('FAIL '+msg);console.log('PASS '+msg);
 (async()=>{
 const browser=await chromium.launch({headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
 try{
+  for(const locale of ['en','es']){
   for(const country of ['A','B']){
+   const title=country+'/'+locale;
+   const endpoint=BASE+(locale==='es'?'/es':'')+'/wp-json/wc/store/v1/cart';
+   const html=locale==='en'?HTML:HTML.replace('lang="en"','lang="es"').replace('wayfatours.com/wp-json/','wayfatours.com/es/wp-json/');
    const context=await browser.newContext({viewport:{width:390,height:844}});
    const page=await context.newPage();
    let navigations=0,fetches=0;
+   const pageErrors=[];
    page.on('framenavigated',()=>navigations++);
-   page.on('pageerror',e=>{console.error('PAGEERROR',e.message);});
-   await page.route(BASE+PATH,route=>route.fulfill({status:200,contentType:'text/html',body:HTML,headers:{'Cache-Control':'public,max-age=1800'}}));
+   page.on('pageerror',e=>pageErrors.push(e.message));
+   await page.route(BASE+PATH,route=>route.fulfill({status:200,contentType:'text/html',body:html,headers:{'Cache-Control':'public,max-age=1800'}}));
    let count=country==='A'?2:7;
    let cache='private, no-store, max-age=0';
    let slow=false;
-   await page.route(BASE+'/wp-json/wc/store/v1/cart',async route=>{
+   await page.route(endpoint,async route=>{
     fetches++;
     let captured=count;
     let payload={items_count:captured,items:[{name:country==='A'?'<img src=x onerror=alert(1)>':'Other person',quantity:captured}],totals:{currency_code:'USD',currency_minor_unit:2,total_price:String(captured*10000)}};
@@ -61,7 +66,9 @@ try{
    check(fetches===5&&navigations===initialNav,'public-cache cart response rejected '+country);
    const storage=await page.evaluate(()=>({session:sessionStorage.length,local:localStorage.length}));
    check(storage.session===0&&storage.local===0,'no local cart storage '+country);
+   check(pageErrors.length===0,'no runtime errors '+title);
    await context.close();
+  }
   }
 }finally{await browser.close();}
 console.log('PASS_CART_ISLAND_BROWSER_COMPLETE');

@@ -76,3 +76,33 @@ item names/counts: no reload, no cross-session leak, no HTML injection,
 no browser storage, invalid public-cache API response rejected.
 Live Woo Store API GET returned private/no-store. No real cart purchases or
 changes were exercised, because the Woo public cart remains disabled.
+
+## Permanent cache safety observer
+
+The operator-only runtime under ops/cart-island-v1/probe.py checks real
+Wayfatours pages with synthetic invalid cookies. It never supplies real
+shopper data, cart tokens or payment credentials.
+
+The Wayfatours systemd timer (ops/cart-island-v1/systemd) runs a lightweight
+read-only boundary audit approximately once a day, with bounded evidence
+retention. It checks six current WPML EN/ES public routes at 30 combinations (anonymous,
+cart hash, invalid Woo session, invalid market preference and invalid
+manual passport preference) and four Store API read combinations including
+the WPML Spanish REST path. Any sensitive HTML cache HIT, UPDATING,
+missing explicit BYPASS, or lost private/no-store policy fails the service,
+rather than weakening Nginx to keep the cache green.
+
+The watcher automatically reads Woo's current public-experience mode;
+it does not activate the cart or create any order. The original WordPress
+payment links, Nginx FastCGI key, Woo session contract, and Woo Store API
+ownership remain unchanged.
+
+Hermetic negative tests in tests/cart-island/test-cart-cache-boundary.py
+check that the audit itself fails on a leaked HIT, a missing BYPASS, a
+public cart API response, and leaked Cart Island HTML state.
+Daily real HTTP evidence is production-only; CI must not depend on the
+production hostname or any credentials.
+
+The six URLs are discovered read-only from the site's active WPML languages
+and published tours at each daily run. This avoids permanently pinning the
+audit to a tour slug that an editor may retire or translate differently.
