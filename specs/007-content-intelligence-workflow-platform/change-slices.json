@@ -4,8 +4,8 @@
   "reviewed_base_sha": "5c72e4893e36e992f056c90cfc75908b3a8f7785",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 2608,
-  "changed_paths_sha256": "ffeca1fb03663bea4c48d85062e1de45facbcdd625c89ce9432455fc943ec96f",
+  "changed_file_count": 2613,
+  "changed_paths_sha256": "239d8e610fd9f5f5a9a41b2548ee82ae2dfa4b5dcc28a5e975b3887a4b9a29c2",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -5300,6 +5300,19 @@
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-regressions.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-roundtrip-runtime.php"
+      ]
+    },
+    {
+      "id": "pr814-visitor-session-wpml-original-site-profile-boundary",
+      "semantic_unit": "Original REST/JS browser session switcher and Site Profile canonical WPML identity: native source regression, 12 hermetic origin permissions, PHP 7.4/8.5 parity and reversibility.",
+      "revert_boundary": "Revert visitor source docs, real-site journey canary and exact hermetic origin fixture together with original Site Profile change; preserve signed cookie and per-company policy.",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/visitor-session-continuity-20261117/README.md",
+        "ops/visitor-session-continuity-20261117/tests/test-source-session-contract.py",
+        "ops/visitor-session-continuity-20261117/tools/qa-guest-switcher-real-journey.js",
+        "tests/visitor-session-wpml-origin-hermetic.php",
+        "tests/visitor-wpml-site-profile-origin-hermetic.py"
       ]
     }
   ],
