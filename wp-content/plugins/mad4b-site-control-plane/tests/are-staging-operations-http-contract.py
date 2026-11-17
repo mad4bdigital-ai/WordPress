@@ -55,11 +55,27 @@ def call(label, path, expected, *, method="GET", body=None, bearer=None):
         data=json.dumps(body, separators=(",", ":")).encode() if body is not None else None
     )
     start = time.monotonic()
-    try:
-        with OPENER.open(request, timeout=18) as response:
-            status, data, response_headers = response.status, response.read(2_000_000), response.headers
-    except urllib.error.HTTPError as e:
-        status, data, response_headers = e.code, e.read(2_000_000), e.headers
+    # Live read-only GET probes may hit a transient CDN/origin read timeout.
+    # Retry once only for a recognized network timeout. Never repeat POST
+    # (even malformed-denial probes); never accept a different HTTP status,
+    # follow redirects, disable HTTPS verification, or convert failure to PASS.
+    max_attempts = 2 if method == "GET" else 1
+    for attempt in range(max_attempts):
+        try:
+            with OPENER.open(request, timeout=18) as response:
+                status, data, response_headers = response.status, response.read(2_000_000), response.headers
+            break
+        except urllib.error.HTTPError as e:
+            status, data, response_headers = e.code, e.read(2_000_000), e.headers
+            break
+        except (TimeoutError, socket.timeout) as exc:
+            if attempt + 1 >= max_attempts:
+                raise
+            print(f"{label}: read timeout on GET; retrying once ({type(exc).__name__})", flush=True)
+        except urllib.error.URLError as exc:
+            if attempt + 1 >= max_attempts or not isinstance(exc.reason, (TimeoutError, socket.timeout)):
+                raise
+            print(f"{label}: network timeout on GET; retrying once", flush=True)
     seconds = round(time.monotonic() - start, 3)
     print(f"{label}: HTTP {status}, {seconds}s", flush=True)
     if status != expected:
