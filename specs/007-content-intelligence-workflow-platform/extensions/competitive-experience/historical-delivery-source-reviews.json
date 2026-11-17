@@ -23,7 +23,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/historical_source_successor.py",
-      "source_blob_sha": "2a8c51aee3f5338882799cc29ad463c149d340e3",
+      "source_blob_sha": "e39022044ef70a1fd24f1975e779c7e0fe7ca980",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true,
@@ -35,7 +35,55 @@
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/historical-delivery-successor-contract.py"
       ],
-      "review_rationale": "Reviewed exact current historical delivery verifier for two narrowly scoped QA31 successors (G2 Write catalog and G8 Pre-Staging CI). Archives and historical hashes remain immutable. Original verifier blob 046bb44a3856617fd1a849a0b98ae78329af2310 remains traceable in Git history; current SHA bound to negative contract tests and CI-only source, not live or owner authority."
+      "review_rationale": "Reviewed exact current historical delivery verifier for two narrowly scoped QA31 successors (G2 Write catalog and G8 Pre-Staging CI). Archives and historical hashes remain immutable. Original verifier blob 046bb44a3856617fd1a849a0b98ae78329af2310 remains traceable in Git history; current SHA bound to negative contract tests and CI-only source, not live or owner authority. Exact-source successor preserves historic SHA/bytes, original Git ancestor, current reviewed Git blob, and fail-closed test proof; root tests/ paths now match existing source-review contract without widening runtime or production authority."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt",
+      "source_blob_sha": "19e8fa2af69a8a43710b13e7fb008cd98ad54297",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/historical-delivery-successor-contract.py"
+      ],
+      "review_rationale": "Immutable historical Feature 007 delivery source: exact original Git ancestry and current Git blob for wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt; CI-only archival evidence, no production, host, or original owner authority. Positive/negative source contract checks SHA, bytes, tampered content and foreign path."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/README.md",
+      "source_blob_sha": "1389f41fe4c1230241e7dee4b449e7f6111b0dbf",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/historical-delivery-successor-contract.py"
+      ],
+      "review_rationale": "Immutable historical Feature 007 delivery source: exact original Git ancestry and current Git blob for wp-content/plugins/mad4b-site-control-plane/README.md; CI-only archival evidence, no production, host, or original owner authority. Positive/negative source contract checks SHA, bytes, tampered content and foreign path."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-enrollment-runtime.php",
+      "source_blob_sha": "37aadcc044df11bcea8877172e6e6e95171b9f82",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/historical-delivery-successor-contract.py"
+      ],
+      "review_rationale": "Immutable historical Feature 007 delivery source: exact original Git ancestry and current Git blob for wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-enrollment-runtime.php; CI-only archival evidence, no production, host, or original owner authority. Positive/negative source contract checks SHA, bytes, tampered content and foreign path."
     }
   ]
 }
