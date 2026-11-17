@@ -1,0 +1,16 @@
+{
+  "contract": "mad4b.company-owner-release-compatibility-source-review.v1",
+  "site": "tours.dev.mad4b.com",
+  "environment": "staging",
+  "owner_plugin": "mad4b-company-portfolio-manager",
+  "target_path": "includes/class-mad4b-scp-company-owner-activation.php",
+  "preimage_sha256": "ca980531ed98d3391deb66a63573b4ef6becebf2ba3e009d92467879b3212bc3",
+  "patched_sha256": "68063d543f332a4fd8d372849b498c405fe112326d249faa7665eb5f801148f9",
+  "allowed_releases": [
+    "0.4.0-rc.109",
+    "0.4.0-rc.128"
+  ],
+  "browser_owner_nonce_required": true,
+  "role_migration_executed": false,
+  "production_authorized": false
+}

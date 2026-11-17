@@ -1,0 +1,14 @@
+--- a/includes/class-mad4b-scp-company-owner-activation.php
++++ b/includes/class-mad4b-scp-company-owner-activation.php
+@@ -65,7 +65,10 @@
+         if(($profile['environment']??'')!=='staging')$problems[]='site_profile_not_staging';
+         if(!($site['authority_ready']??false))$problems[]='site_profile_not_ready';
+         if(!$role)$problems[]='master_admin_missing';
+-        if($version!=='0.4.0-rc.109')$problems[]='unexpected_release_version';
++        // Explicit native Staging source compatibility: rc128 is the proven installed
++        // counterpart to the original rc109 owner flow; all browser/nonce,
++        // schema and plan-digest verification still apply before any mutation.
++        if(!in_array($version,['0.4.0-rc.109','0.4.0-rc.128'],true))$problems[]='unexpected_release_version';
+         foreach($existing as$slug=>$page){
+             if(($page['parent']??'')!=='mad4b-company' ||
+               ($page['capability']??'')!=='mad4b_manage_company_operations')
