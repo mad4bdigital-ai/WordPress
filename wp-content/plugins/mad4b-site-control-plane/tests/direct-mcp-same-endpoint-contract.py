@@ -15,6 +15,7 @@ SOURCES = (
     ROOT / "tests/direct-mcp-same-endpoint-runtime.php",
 )
 STEP_UP_RUNTIME = ROOT / "tests/reviewed-step-up-descriptor-runtime.php"
+ORIGINAL_TRANSPORT_RUNTIME = ROOT / "tests/original-transport-callback-provenance-runtime.php"
 
 
 def run(args: list[str]) -> str:
@@ -26,12 +27,14 @@ def run(args: list[str]) -> str:
 
 
 def main() -> None:
-    for item in SOURCES + (STEP_UP_RUNTIME,):
+    for item in SOURCES + (STEP_UP_RUNTIME, ORIGINAL_TRANSPORT_RUNTIME):
         run(["php", "-l", str(item)])
     php_output = run(["php", str(SOURCES[-1])])
     assert "DIRECT_MCP_RUNTIME: PASS" in php_output
     step_up_output = run(["php", str(STEP_UP_RUNTIME)])
     assert "REVIEWED_STEP_UP_DESCRIPTOR_RUNTIME: PASS" in step_up_output
+    provenance_output = run(["php", str(ORIGINAL_TRANSPORT_RUNTIME)])
+    assert "ORIGINAL_TRANSPORT_CALLBACK_PROVENANCE_RUNTIME: PASS" in provenance_output
 
     direct = SOURCES[0].read_text(encoding="utf-8")
     servers = SOURCES[1].read_text(encoding="utf-8")
@@ -56,6 +59,7 @@ def main() -> None:
     assert "MAD4B_SCP_Authorization::claim_mutation" not in direct
     print(php_output.strip())
     print(step_up_output.strip())
+    print(provenance_output.strip())
     print("DIRECT_SAME_ENDPOINT_CONTRACT: PASS (PHP behavior, nine-server invariant, strict ability mount)")
 
 
