@@ -29,6 +29,7 @@ checks={
  'no global WP Cron disable or commerce writes':'DISABLE_WP_CRON' not in php and 'wc_' not in php,
  'operator documented':'26/26' in report,
  'host-specific lazy gate must be explicitly configured':"'root_lazy_class'" in php and "'card_visible_class'" in php,
+ 'primary LCP card inherits original delivery without double download':"'protected_primary_term_option'" in php and 'protectedTermIds' in js,
  'no background swap when already revealed':"if(!card.isConnected||alreadyRevealed(card))return;" in js,
  'derivative prepared before normal native reveal':"prepareBeforeReveal(card,asset.href)" in js,
  'no late swap when image still loading':"image.onload=null;image.onerror=null;image.src='';" in js,

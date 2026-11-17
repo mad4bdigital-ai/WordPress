@@ -16,7 +16,7 @@ async function test(scenario){
  class IntersectionObserver {constructor(cb){io=cb;}observe(target){queueMicrotask(()=>io([{isIntersecting:true,target,boundingClientRect:{width:288}}]));}unobserve(){}}
  class MutationObserver {constructor(cb){this.cb=cb;}observe(target,options){if(target===card)revealObserver=this.cb;}disconnect(){revealObserver=null;}}
  class Image {set src(value){if(value){signals.image++;queueMicrotask(()=>this.onload&&this.onload());}}}
- const config={endpoint:ORIGIN+'/wp-json/mad4b/v1/responsive-media',selector:'.elementor-element-95d1c9c',rootLazyClass:rootClass,cardVisibleClass:visibleClass,minWidth:192,maxWidth:1536,step:64};
+ const config={protectedTermIds:scenario==='primary-lcp-protected'?[123]:[],endpoint:ORIGIN+'/wp-json/mad4b/v1/responsive-media',selector:'.elementor-element-95d1c9c',rootLazyClass:rootClass,cardVisibleClass:visibleClass,minWidth:192,maxWidth:1536,step:64};
  const window={MAD4BResponsiveMedia:config,IntersectionObserver,MutationObserver,requestIdleCallback:fn=>fn(),devicePixelRatio:2,addEventListener(){}};
  const navigator={connection:{saveData:false}};
  const fetch=async url=>{signals.rest++;assert(new URL(url).searchParams.get('items')==='123:576');if(scenario==='slow-response')await new Promise(resolve=>{restResolve=resolve;});return {ok:true,json:async()=>({items:{'123:576':{state:'ready',width:576,url:DERIVATIVE}}})};};
@@ -33,9 +33,11 @@ async function test(scenario){
    assert.deepStrictEqual({rest:signals.rest,image:signals.image,applied:signals.applied},{rest:1,image:1,applied:0});
    reveal();await flushed();
    assert.deepStrictEqual({rest:signals.rest,image:signals.image,applied:signals.applied},{rest:1,image:1,applied:1});
+ } else if(scenario==='primary-lcp-protected'){
+   assert.deepStrictEqual({rest:signals.rest,image:signals.image,applied:signals.applied},{rest:0,image:0,applied:0});
  } else if(scenario==='already-visible'){
    assert.deepStrictEqual({rest:signals.rest,image:signals.image,applied:signals.applied},{rest:0,image:0,applied:0});
  }
  console.log('PASS',scenario,JSON.stringify(signals));
 }
-(async()=>{await test('before-reveal');await test('slow-response');await test('already-visible');console.log('PASS 3/3 no duplicate image swap event invariants');})().catch(e=>{console.error(e.stack);process.exit(1)});
+(async()=>{await test('before-reveal');await test('slow-response');await test('already-visible');await test('primary-lcp-protected');console.log('PASS 4/4 no duplicate image swap and LCP protection invariants');})().catch(e=>{console.error(e.stack);process.exit(1)});

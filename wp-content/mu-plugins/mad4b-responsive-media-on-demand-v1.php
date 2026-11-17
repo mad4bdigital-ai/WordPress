@@ -36,6 +36,7 @@ final class MAD4B_Responsive_Media_On_Demand_V1 {
             // way to prevent downloading both old and newly generated images.
             'root_lazy_class' => preg_match('/^mad4b-[a-z0-9_-]{3,64}$/D',(string)($p['root_lazy_class']??'')) ? $p['root_lazy_class'] : '',
             'card_visible_class' => preg_match('/^mad4b-[a-z0-9_-]{3,64}$/D',(string)($p['card_visible_class']??'')) ? $p['card_visible_class'] : '',
+            'protected_primary_term_option' => preg_match('/^[a-z][a-z0-9_]{3,80}$/D',(string)($p['protected_primary_term_option']??'')) ? $p['protected_primary_term_option'] : '',
         ];
     }
     private static function eligible_term(int $term_id): ?array {
@@ -235,10 +236,23 @@ final class MAD4B_Responsive_Media_On_Demand_V1 {
             || !is_front_page() || is_admin() || is_user_logged_in())return;
         $asset=__DIR__.'/assets/mad4b-responsive-media-demand-v1.js';
         if (!is_file($asset))return;
+        // A company may already force its first-city LCP image through the
+        // existing Critical CSS / preload owner, bypassing geometry lazy.
+        // Never issue a second media request for this current-language term.
+        $protected=[];
+        if ($p['protected_primary_term_option']) {
+            $primary=(int)get_option($p['protected_primary_term_option'],0);
+            if ($primary>0) {
+                $language=(string)apply_filters('wpml_current_language',null);
+                $translated=$language!=='' ? (int)apply_filters('wpml_object_id',$primary,$p['taxonomy'],false,$language) : 0;
+                $protected[]= $translated>0 ? $translated : $primary;
+            }
+        }
         wp_enqueue_script('mad4b-responsive-media-demand',content_url('/mu-plugins/assets/mad4b-responsive-media-demand-v1.js'),[],(string)filemtime($asset),true);
         wp_add_inline_script('mad4b-responsive-media-demand','window.MAD4BResponsiveMedia='.wp_json_encode([
             'selector'=>$p['selector'],
             'rootLazyClass'=>$p['root_lazy_class'],'cardVisibleClass'=>$p['card_visible_class'],
+            'protectedTermIds'=>$protected,
             'endpoint'=>rest_url('mad4b/v1/responsive-media'),
             'minWidth'=>self::MIN_WIDTH,'maxWidth'=>self::MAX_WIDTH,
             'step'=>self::WIDTH_STEP,

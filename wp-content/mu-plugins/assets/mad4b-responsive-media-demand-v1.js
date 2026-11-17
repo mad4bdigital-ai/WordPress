@@ -63,7 +63,8 @@
      var card=item.card;
      if(!card.isConnected||alreadyRevealed(card))return;
      var width=targetWidth(item.width),term=termId(card);
-     if(!width||!term||requests.get(card)===width)return;
+     if(!width||!term||requests.get(card)===width||
+        (Array.isArray(opts.protectedTermIds)&&opts.protectedTermIds.indexOf(term)!==-1))return;
      requests.set(card,width);
      var key=String(term)+':'+String(width);
      if(!targets[key]){targets[key]=[];keys.push(key);}

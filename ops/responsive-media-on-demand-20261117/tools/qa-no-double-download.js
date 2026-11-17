@@ -6,7 +6,8 @@ const base='https://wayfatours.com';
 const img=base+'/wp-content/uploads/2026/11/fallback-city.webp';
 const optimized=base+'/wp-content/uploads/2026/11/fallback-city.jpg.mad4b-demand-576-aaaaaaaaaaaa.webp';
 const ua='Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 Chrome/157.0.0.0 Mobile Safari/537.36';
-const cases=[{name:'pre-reveal-ready',reveal:'after',delay:0,expected:{rest:1,baseline:0,optimized:1}},{name:'reveal-before-ready',reveal:'early',delay:1100,expected:{rest:1,baseline:1,optimized:0}},{name:'initially-visible',reveal:'before',delay:0,expected:{rest:0,baseline:1,optimized:0}}];
+const cases=[{name:'pre-reveal-ready',reveal:'after',delay:0,expected:{rest:1,baseline:0,optimized:1}},{name:'reveal-before-ready',reveal:'early',delay:1100,expected:{rest:1,baseline:1,optimized:0}},{name:'initially-visible',reveal:'before',delay:0,expected:{rest:0,baseline:1,optimized:0}},
+ {name:'primary-lcp-protected',reveal:'protected',delay:0,expected:{rest:0,baseline:1,optimized:0}}];
 (async()=>{
  const browser=await chromium.launch({headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
  try{
@@ -27,8 +28,12 @@ const cases=[{name:'pre-reveal-ready',reveal:'after',delay:0,expected:{rest:1,ba
    const cls=tc.reveal==='before'?' mad4b-city-geometry-visible':'';
    const markup='<html class="mad4b-city-geometry-lazy"><head><style>.elementor-element-95d1c9c{background-image:url("'+img+'");width:288px;height:288px;}html.mad4b-city-geometry-lazy .elementor-element-95d1c9c:not(.mad4b-city-geometry-visible){background-image:none!important;}</style></head><body><main style="height:930px"></main><div class="jet-listing-grid__item jet-listing-dynamic-post-123"><div class="elementor-element-95d1c9c'+cls+'"></div></div></body></html>';
    await page.setContent(markup,{waitUntil:'load'});
-   await page.evaluate(()=>window.MAD4BResponsiveMedia={endpoint:location.origin+'/wp-json/mad4b/v1/responsive-media',selector:'.elementor-element-95d1c9c',rootLazyClass:'mad4b-city-geometry-lazy',cardVisibleClass:'mad4b-city-geometry-visible',step:64,minWidth:192,maxWidth:1536});
+   await page.evaluate((protectedIds)=>window.MAD4BResponsiveMedia={endpoint:location.origin+'/wp-json/mad4b/v1/responsive-media',selector:'.elementor-element-95d1c9c',protectedTermIds:protectedIds,rootLazyClass:'mad4b-city-geometry-lazy',cardVisibleClass:'mad4b-city-geometry-visible',step:64,minWidth:192,maxWidth:1536},tc.name==='primary-lcp-protected'?[123]:[]);
    await page.addScriptTag({content:src});
+   if(tc.reveal==='protected'){
+     await page.waitForTimeout(600);
+     await page.evaluate(()=>document.querySelector('.elementor-element-95d1c9c').classList.add('mad4b-city-geometry-visible'));
+   }
    if(tc.reveal==='early'){
      await page.waitForTimeout(250);
      await page.evaluate(()=>document.querySelector('.elementor-element-95d1c9c').classList.add('mad4b-city-geometry-visible'));
