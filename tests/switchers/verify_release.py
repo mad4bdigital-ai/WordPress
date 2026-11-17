@@ -8,10 +8,34 @@ ROOT = Path(__file__).resolve().parents[2]
 PLUG = ROOT / "wp-content/plugins"
 CORE = PLUG / "mad4b-site-control-plane"
 COUNTRY = PLUG / "mad4b-country-switcher"
-NATIONALITY = PLUG / "etg-traveller-nationality-switcher"
+NATIONALITY = PLUG / "mad4b-traveller-nationality"
 MAIN = (CORE / "mad4b-site-control-plane.php").read_text()
 
 class ReleaseContracts(unittest.TestCase):
+    def test_canonical_mad4b_naming_and_session_boundary(self):
+        """One canonical, company-neutral runtime; old ETG slug is bridge only."""
+        canon = PLUG / "mad4b-traveller-nationality" / "mad4b-traveller-nationality.php"
+        former = PLUG / "etg-traveller-nationality-switcher" / "etg-traveller-nationality-switcher.php"
+        self.assertTrue(canon.is_file())
+        self.assertTrue(former.is_file())
+        source = canon.read_text()
+        bridge = former.read_text()
+        country = (COUNTRY / "mad4b-country-switcher.php").read_text()
+        self.assertIn("Plugin Name: MAD4B Traveller Nationality", source)
+        self.assertIn("get_option('home','')", source)
+        self.assertIn("function matches_site(", source)
+        self.assertIn("function selected_manual(", source)
+        self.assertIn("function reset_manual(", source)
+        self.assertIn("has_session()", source)
+        self.assertNotIn("set_customer_session_cookie", source)
+        self.assertNotIn("set_customer_session_cookie", country)
+        self.assertIn("MAD4B_SCP_Switcher_Sources::countries()", country)
+        self.assertIn("require_once $canonical;", bridge)
+        self.assertNotIn("final class Travel_Booking_Traveller_Nationality_Switcher", bridge)
+        self.assertTrue((NATIONALITY / "assets/nationality.js").is_file())
+        self.assertTrue((NATIONALITY / "assets/nationality.css").is_file())
+        self.assertNotIn("etg-", source.lower())
+
     def test_data_sources_and_market_runtime_copackaged(self):
         for part in ("market-profiles", "switcher-sources", "market-context", "market-preferences"):
             filename = "class-mad4b-scp-" + part + ".php"
@@ -55,7 +79,7 @@ class ReleaseContracts(unittest.TestCase):
         self.assertIn("wp_safe_redirect(", context)
         self.assertNotIn("str_contains(", preferences)
         country_source = (COUNTRY / "mad4b-country-switcher.php").read_text()
-        nationality_source = (NATIONALITY / "etg-traveller-nationality-switcher.php").read_text()
+        nationality_source = (NATIONALITY / "mad4b-traveller-nationality.php").read_text()
         self.assertNotIn("str_contains(", country_source)
         self.assertNotIn("str_contains(", nationality_source)
         management_source = (NATIONALITY / "includes-traveller-management.php").read_text()
@@ -108,7 +132,7 @@ class ReleaseContracts(unittest.TestCase):
 
     def test_unified_management_guards(self):
         src = (NATIONALITY / "includes-traveller-management.php").read_text()
-        main = (NATIONALITY / "etg-traveller-nationality-switcher.php").read_text()
+        main = (NATIONALITY / "mad4b-traveller-nationality.php").read_text()
         blocks = (NATIONALITY / "includes-checkout-blocks.php").read_text()
         for marker in (
             "const LEGACY_BATCH_SIZE=20", "shared_product_booking_configuration_matches",

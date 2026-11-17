@@ -26,8 +26,8 @@ class Travel_Booking_Traveller_Nationality_Switcher {
   return array_values($input);
  }
 }
-require getenv('SWITCHER_MANAGEMENT_FILE') ?: __DIR__ . '/../../wp-content/plugins/etg-traveller-nationality-switcher/includes-traveller-management.php';
-require getenv('SWITCHER_BLOCKS_FILE') ?: __DIR__ . '/../../wp-content/plugins/etg-traveller-nationality-switcher/includes-checkout-blocks.php';
+require getenv('SWITCHER_MANAGEMENT_FILE') ?: __DIR__ . '/../../wp-content/plugins/mad4b-traveller-nationality/includes-traveller-management.php';
+require getenv('SWITCHER_BLOCKS_FILE') ?: __DIR__ . '/../../wp-content/plugins/mad4b-traveller-nationality/includes-checkout-blocks.php';
 $c='Travel_Booking_Traveller_Nationality_Checkout_Blocks';
 $check=static function($name,$pass){if(!$pass){fwrite(STDERR,$name."=FAIL\n");exit(1);}echo $name."=PASS\n";};
 $rate=['product_id'=>101,'quantity'=>1,'data'=>new WC_Product(101),'shared_booking_configuration'=>[

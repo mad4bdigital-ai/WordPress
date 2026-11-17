@@ -5,7 +5,7 @@ from pathlib import Path
 import os
 from playwright.sync_api import sync_playwright
 
-SRC = Path(os.environ.get("SWITCHER_JS", "/opt/hostinger-migrations/hosting-3/etg-woocommerce-lab/site-copy/wp-content/plugins/etg-traveller-nationality-switcher/assets/checkout-blocks.js"))
+SRC = Path(os.environ.get("SWITCHER_JS", str(Path(__file__).resolve().parents[2] / "wp-content/plugins/mad4b-traveller-nationality/assets/checkout-blocks.js")))
 WP = Path(os.environ.get("WP_SITE", "/opt/hostinger-migrations/hosting-3/etg-woocommerce-lab/site-copy"))
 REACT = Path(os.environ.get("SWITCHER_REACT", str(WP / "wp-includes/js/dist/vendor/react.min.js")))
 REACT_DOM = Path(os.environ.get("SWITCHER_REACT_DOM", str(WP / "wp-includes/js/dist/vendor/react-dom.min.js")))

@@ -1,0 +1,13 @@
+[Unit]
+Description=Reclaim verified stale Playwright test processes without touching managed browser API
+
+[Timer]
+OnBootSec=20min
+OnUnitInactiveSec=30min
+AccuracySec=4min
+RandomizedDelaySec=5min
+Persistent=true
+Unit=mad4b-stale-playwright-qa-cleanup.service
+
+[Install]
+WantedBy=timers.target

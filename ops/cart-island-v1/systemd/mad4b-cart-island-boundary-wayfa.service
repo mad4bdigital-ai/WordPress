@@ -1,0 +1,18 @@
+[Unit]
+Description=MAD4B Woo cart isolation / public HTML privacy read-only guard
+Wants=network-online.target docker.service
+After=network-online.target docker.service
+ConditionPathExists=/opt/mad4b-company-provisioning/ops/cart-cache-boundary-v1/run-site.sh
+ConditionPathExists=/opt/wayfa-rebuild-20261102/site-copy/wp-content/mu-plugins/433-mad4b-cart-island-v1.php
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/usr/bin/flock -n -E 0 /run/lock/mad4b-cart-island-boundary-wayfa.lock /opt/mad4b-company-provisioning/ops/cart-cache-boundary-v1/run-site.sh
+TimeoutStartSec=420
+Nice=18
+IOSchedulingClass=idle
+NoNewPrivileges=true
+StandardOutput=journal
+StandardError=journal

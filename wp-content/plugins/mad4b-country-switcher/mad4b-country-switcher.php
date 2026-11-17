@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: MAD4B Country Switcher
- * Description: Site-approved country selector over MAD4B Market Profiles, WPML, WooCommerce and MaxMind. No pricing or language duplication.
- * Version: 0.1.0-local
+ * Description: Site-approved country selector over configured market profiles, WPML, WooCommerce and MaxMind. No pricing or language duplication.
+ * Version: 0.1.2-mad4b
  * Requires Plugins: woocommerce, mad4b-site-control-plane
  * License: GPL-2.0-or-later
  * Text Domain: mad4b-country-switcher
@@ -17,7 +17,8 @@ final class MAD4B_Country_Switcher {
  private static function validated_record($a){
   if(!is_array($a)||($a['contract']??'')!==self::CONTRACT||($a['site_uuid']??'')!==self::uuid())return '';
   $iso=MAD4B_SCP_Switcher_Sources::valid_country($a['country']??'');
-  return $iso&&isset(MAD4B_SCP_Switcher_Sources::market_countries()[$iso])?$iso:'';
+  // Visitor geography is not itself an approved marketing entitlement.
+  return $iso&&isset(MAD4B_SCP_Switcher_Sources::countries()[$iso])?$iso:'';
  }
  public static function saved_country(){
   if(!self::available())return '';
@@ -45,11 +46,15 @@ final class MAD4B_Country_Switcher {
  public static function set_country($country){
   if(!self::available())return new WP_Error('mad4b_country_dependency','Missing MAD4B source');
   $iso=MAD4B_SCP_Switcher_Sources::valid_country($country);
-  if(!$iso||!isset(MAD4B_SCP_Switcher_Sources::market_countries()[$iso]))return new WP_Error('mad4b_country_unapproved','Country not targeted');
+  if(!$iso)return new WP_Error('mad4b_country_invalid','Invalid ISO2 Woo country');
+  // Selecting a visitor country does not approve a Market Profile.
+  // Only resolve() may grant a site-authorized market profile.
   $record=['contract'=>self::CONTRACT,'site_uuid'=>self::uuid(),'country'=>$iso,'time'=>time()];
-  if(function_exists('WC')&&WC()->session){
+  // Country preference uses the existing signed tenant cookie.
+  // Mirror to Woo only when a real Woo session already exists.
+  if(function_exists('WC')&&WC()->session
+     &&method_exists(WC()->session,'has_session')&&WC()->session->has_session()){
    WC()->session->set(self::SESSION,$record);
-   if(method_exists(WC()->session,'set_customer_session_cookie'))WC()->session->set_customer_session_cookie(true);
   }
   if(!headers_sent()){
    $payload=rtrim(strtr(base64_encode(wp_json_encode($record)),'+/','-_'),'=');
@@ -74,25 +79,30 @@ final class MAD4B_Country_Switcher {
  }
  public static function shortcode($atts=[]){
   if(!self::available())return '';
-  $countries=MAD4B_SCP_Switcher_Sources::market_countries();if(!$countries)return '';
+  $countries=MAD4B_SCP_Switcher_Sources::countries();if(!$countries)return '';
+  // Country selector uses the original Woo country catalog.
+  // Market pricing entitlement remains checked by approved Market Profiles.
   $a=shortcode_atts(['label'=>'Country','class'=>''],$atts,'mad4b_country_switcher');
-  $context=self::context();$current=$context['country'];$class=sanitize_html_class($a['class']);
+  // Shared public HTML must never contain a country inferred from a visitor IP.
+  // Private AJAX will resolve the advisory geo country for the current visitor.
+  $explicit=self::saved_country();$market=$explicit?self::resolve($explicit):[];
+  $context=['explicit'=>$explicit!=='','eligible_market'=>(bool)$market];
+  $current=$explicit;$class=sanitize_html_class($a['class']);
   $out='<form class="mad4b-country-switcher '.esc_attr($class).'" method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
   $out.='<input type="hidden" name="action" value="mad4b_country_choose">'.wp_nonce_field('mad4b_country_choose','_mad4b_country_nonce',true,false);
-  $out.='<label><span class="mad4b-switcher-label">'.esc_html($a['label']).'</span> '.MAD4B_SCP_Switcher_Sources::flag_html($current);
-  $out.='<select name="market_country" required><option value="">'.esc_html__('Select country','mad4b-country-switcher').'</option>';
+  $out.='<label><span class="mad4b-switcher-label">'.esc_html($a['label']).'</span> '.($current ? MAD4B_SCP_Switcher_Sources::flag_html($current) : '<img class="mad4b-country-flag" width="18" height="14" alt="" hidden loading="lazy" decoding="async">');
+  $placeholder=apply_filters('wpml_current_language',null)==='ar'?'اختر الدولة':__('Select country','mad4b-country-switcher');
+  $out.='<select name="market_country" required><option value="">'.esc_html($placeholder).'</option>';
   foreach($countries as $iso=>$label){
-   $availability=self::resolve($iso);
-   $suffix=$availability?'':' (choose supported language)';
-   $out.='<option value="'.esc_attr($iso).'" '.selected($current,$iso,false).'>'.esc_html($label.$suffix).'</option>';
+   // Market eligibility is resolved only for the selected country, not every catalog entry.
+   $out.='<option value="'.esc_attr($iso).'" '.selected($current,$iso,false).'>'.esc_html($label).'</option>';
   }
-  $out.='</select></label><button type="submit">'.esc_html__('Apply','mad4b-country-switcher').'</button>';
+  $out.='</select></label><noscript><button type="submit">'.esc_html__('Apply','mad4b-country-switcher').'</button></noscript>';
   $out.='<span class="mad4b-country-market-status" role="status" aria-live="polite">';
   if($context['explicit']&&!$context['eligible_market'])$out.=esc_html__('Choose a supported language for this country.','mad4b-country-switcher');
-  elseif($context['source']==='woo_maxmind_advisory')$out.=esc_html__('Suggested by location; please confirm.','mad4b-country-switcher');
   $out.='</span></form>';
   wp_enqueue_style('mad4b-country-switcher',plugins_url('assets/switcher.css',__FILE__),[], '0.1.0');
-  wp_enqueue_script('mad4b-country-switcher',plugins_url('assets/switcher.js',__FILE__),[], '0.1.0',true);
+  wp_enqueue_script('mad4b-country-switcher',plugins_url('assets/switcher.js',__FILE__),[], (string)filemtime(__DIR__.'/assets/switcher.js'),true);
   wp_add_inline_script('mad4b-country-switcher','window.mad4bCountryAjax='.wp_json_encode(admin_url('admin-ajax.php?action=mad4b_country_state')).';','before');
   return $out;
  }

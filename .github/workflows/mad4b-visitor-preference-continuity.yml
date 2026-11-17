@@ -1,0 +1,69 @@
+name: MAD4B Visitor Preference Continuity
+on:
+  push:
+    branches:
+      - fix/visitor-preferences-identity-woo-session-20261117
+    paths:
+      - 'wp-content/plugins/mad4b-country-switcher/**'
+      - 'wp-content/plugins/mad4b-traveller-nationality/**'
+      - 'wp-content/plugins/etg-traveller-nationality-switcher/**'
+      - 'tests/visitor-preferences-wpml-guest-session-hermetic.php'
+      - 'wp-content/mu-plugins/423-mad4b-private-mobile-css-family.php'
+      - 'ops/private-mobile-css-family-v1/**'
+      - 'wp-content/mu-plugins/433-mad4b-cart-island-v1.php'
+      - 'wp-content/mu-plugins/assets/mad4b-cart-island-v1.*'
+      - 'tests/cart-island/**'
+      - 'ops/cart-island-v1/**'
+      - 'ops/browser-qa-concurrency-v1/**'
+      - '.github/workflows/mad4b-visitor-preference-continuity.yml'
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-country-switcher/**'
+      - 'wp-content/plugins/mad4b-traveller-nationality/**'
+      - 'wp-content/plugins/etg-traveller-nationality-switcher/**'
+      - 'tests/visitor-preferences-wpml-guest-session-hermetic.php'
+      - 'wp-content/mu-plugins/423-mad4b-private-mobile-css-family.php'
+      - 'ops/private-mobile-css-family-v1/**'
+      - 'wp-content/mu-plugins/433-mad4b-cart-island-v1.php'
+      - 'wp-content/mu-plugins/assets/mad4b-cart-island-v1.*'
+      - 'tests/cart-island/**'
+      - 'ops/cart-island-v1/**'
+      - 'ops/browser-qa-concurrency-v1/**'
+      - '.github/workflows/mad4b-visitor-preference-continuity.yml'
+permissions:
+  contents: read
+concurrency:
+  group: mad4b-visitor-preferences-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+jobs:
+  original-php-session:
+    name: Original PHP signed preference and WooCommerce session contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: PHP syntax and original-class behavior
+        run: |
+          php -v
+          php -l wp-content/plugins/mad4b-country-switcher/mad4b-country-switcher.php
+          php -l wp-content/plugins/mad4b-traveller-nationality/mad4b-traveller-nationality.php
+          php -l wp-content/plugins/etg-traveller-nationality-switcher/etg-traveller-nationality-switcher.php
+          php -l tests/visitor-preferences-wpml-guest-session-hermetic.php
+          php -l wp-content/mu-plugins/423-mad4b-private-mobile-css-family.php
+          php -l wp-content/mu-plugins/433-mad4b-cart-island-v1.php
+          php tests/visitor-preferences-wpml-guest-session-hermetic.php
+          php tests/cart-island/test-cart-island-hermetic.php
+          python3 tests/cart-island/test-cart-cache-boundary.py
+          python3 tests/cart-island/test-edge-shadow-read-only.py
+          python3 ops/browser-qa-concurrency-v1/tests/test_browser_qa_concurrency.py
+          bash -n ops/cart-island-v1/run-site.sh
+          python3 -m py_compile ops/cart-island-v1/probe.py
+          node --check wp-content/mu-plugins/assets/mad4b-cart-island-v1.js
+          node --check tests/cart-island/test-cart-island-browser.cjs
+          python3 ops/private-mobile-css-family-v1/test_source_contract.py
+          python3 -m py_compile ops/private-mobile-css-family-v1/monitor.py
+          node --check ops/private-mobile-css-family-v1/qa-family-candidate.cjs
+          node --check ops/private-mobile-css-family-v1/verify-live-chromium.cjs

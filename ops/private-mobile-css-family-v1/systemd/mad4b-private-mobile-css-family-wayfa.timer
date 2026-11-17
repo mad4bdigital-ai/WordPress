@@ -1,0 +1,13 @@
+[Unit]
+Description=Check Wayfatours private-mobile Critical CSS source drift without recurring full QA
+
+[Timer]
+OnBootSec=12min
+OnUnitInactiveSec=30min
+AccuracySec=1min
+RandomizedDelaySec=2min
+Persistent=true
+Unit=mad4b-private-mobile-css-family-wayfa.service
+
+[Install]
+WantedBy=timers.target

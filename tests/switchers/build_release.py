@@ -11,7 +11,7 @@ PLUGINS = ROOT / "wp-content/plugins"
 OUT = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "dist/country-nationality"
 OUT.mkdir(parents=True, exist_ok=True)
 result = {"status": "qa_candidate_not_production_certified", "plugins": {}, "control_plane_sha256": {}}
-for name in ("mad4b-country-switcher", "etg-traveller-nationality-switcher"):
+for name in ("mad4b-country-switcher", "mad4b-traveller-nationality"):
     root = PLUGINS / name
     archive = OUT / f"{name}-qa.zip"
     with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as z:

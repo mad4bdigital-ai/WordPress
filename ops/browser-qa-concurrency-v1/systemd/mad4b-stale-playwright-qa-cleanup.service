@@ -1,0 +1,18 @@
+[Unit]
+Description=MAD4B audited selective cleanup for abandoned one-shot Playwright QA
+After=docker.service
+Wants=docker.service
+ConditionPathExists=/opt/mad4b-company-provisioning/operations/stale-playwright-qa-janitor-v1.py
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/usr/bin/python3 /opt/mad4b-company-provisioning/operations/stale-playwright-qa-janitor-v1.py --min-age-minutes 60 --max-stop 8
+TimeoutStartSec=145
+Nice=19
+IOSchedulingClass=idle
+NoNewPrivileges=true
+UMask=0077
+StandardOutput=journal
+StandardError=journal
