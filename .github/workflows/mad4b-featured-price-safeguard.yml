@@ -12,6 +12,13 @@ on:
       - 'wp-content/plugins/mad4b-commerce/mad4b-commerce.php'
       - 'wp-content/plugins/mad4b-commerce/modules/presentation/**'
       - '.github/workflows/mad4b-featured-price-safeguard.yml'
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-featured-price-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
 jobs:
   rate-ui-source-invariants:
     runs-on: ubuntu-latest
@@ -21,6 +28,9 @@ jobs:
         php: ['8.3', '8.5']
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
