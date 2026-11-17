@@ -4,8 +4,8 @@
   "reviewed_base_sha": "5c72e4893e36e992f056c90cfc75908b3a8f7785",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 2581,
-  "changed_paths_sha256": "a874ef8f25966a6998a47b694cd0072df88e498fad4711a281f7371cf47aa50b",
+  "changed_file_count": 2592,
+  "changed_paths_sha256": "fec7181bea7ec3babd7852bbfd733957445446c56c633ea9bb9757deb01b86bc",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -5193,6 +5193,57 @@
         "ops/dynamic-critical-css-20261116/systemd/mad4b-performance-continuity-wayfa.service",
         "ops/dynamic-critical-css-20261116/systemd/mad4b-performance-continuity-wayfa.timer",
         "ops/dynamic-critical-css-20261116/tests/test-performance-continuity-v2.py"
+      ]
+    },
+    {
+      "id": "historical-site-media-transfer-identity-isolation",
+      "semantic_unit": "Site Profile-confirmed Production media transfer and temp-file per-company isolation.",
+      "revert_boundary": "Revert transfer source and permission fixture together; no current Production media upload is implicit.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-file-transfer.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-permission-runtime.php"
+      ]
+    },
+    {
+      "id": "historical-site-advisory-governance-parity",
+      "semantic_unit": "Exact-site owner-governed operator advisory mutations with environment/profile-digest plan replay protection.",
+      "revert_boundary": "Revert advisory registration, plan/authorization source and behavioral fixture together; preserve audited read-only policy.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-optional-governance-remote.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/optional-governance-runtime.php"
+      ]
+    },
+    {
+      "id": "historical-site-environment-provider-matrix",
+      "semantic_unit": "Source review of 66 historical abilities, 50 general operations and 16 purpose-bound staging-only exceptions.",
+      "revert_boundary": "Revert source matrix report and exact non-mutating provider matrix test together; do not grant authority.",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/reports/pr814-historical-ability-environment-parity-20261117.md",
+        "wp-content/plugins/mad4b-site-control-plane/tests/dynamic-company-environment-provider-parity-runtime.php"
+      ]
+    },
+    {
+      "id": "company-owner-exact-scope-review-20261117",
+      "semantic_unit": "Source-reviewed and exact site scope company reconciliation owner file checks and negative runtime proofs.",
+      "revert_boundary": "Revert owner scope workflow, report and hermetic fixture as one; no company write authorization by this CI gate.",
+      "certification": "exact_head",
+      "path_globs": [
+        ".github/workflows/mad4b-company-reconcile-owner-scope.yml",
+        "docs/runtime/company-reconcile-exact-owner-review-20261117.md",
+        "tests/mad4b-company-reconcile-owner-scope-hermetic.php"
+      ]
+    },
+    {
+      "id": "wayfa-home-critical-css-source-poll-v2",
+      "semantic_unit": "Bounded fingerprint source polling for Wayfa Home critical CSS, with regression fixture.",
+      "revert_boundary": "Revert source poll and its tests together while retaining production CSS fallback.",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/dynamic-critical-css-20261116/home-source-poll-policy-v2.py",
+        "ops/dynamic-critical-css-20261116/tests/test-home-source-poll-policy-v2.py"
       ]
     }
   ],

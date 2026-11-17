@@ -204,7 +204,17 @@ expect( $stale_denied && MAD4B_SCP_Audit::$count === 2
 function enable_optional_remote_owner_fixture() {
     class MAD4B_SCP_Site_Profile {
         public static $environment = 'staging';
+        public static $write_enabled = true;
+        public static $production_write_confirmed = false;
+        public static $origin_match = true;
+        public static function configured() { return true; }
         public static function current_environment() { return self::$environment; }
+        public static function origin_enrolled() { return self::$origin_match; }
+        public static function site_urls_match_enrollment() { return self::$origin_match; }
+        public static function write_enabled() { return self::$write_enabled &&
+            ( self::$environment !== 'production' || self::$production_write_confirmed ); }
+        public static function profile_digest() { return hash('sha256', self::$environment .
+            ':' . (self::$production_write_confirmed ? 'confirmed' : 'unconfirmed')); }
         public static function user_is_enrolled( $id ) { return 1 === $id; }
     }
     class MAD4B_SCP_Policy {
@@ -294,11 +304,22 @@ $stale = governed_optional_apply_fixture( array( 'policy_id'=>'developer_lane', 
 expect( is_wp_error($stale) && $stale->get_error_code()==='mad4b_optional_remote_plan_stale',
     'Stale remote plan must reject replay' );
 MAD4B_SCP_Site_Profile::$environment = 'production';
-$prod_plan = $remote::plan( array( 'policy_id'=>'machine_ingress', 'mode'=>'off' ) );
-$prod = governed_optional_apply_fixture( array( 'policy_id'=>'machine_ingress', 'mode'=>'off',
-    'expected_plan_sha256'=>$prod_plan['plan_sha256'], 'confirmation'=>$remote::CONFIRM ) );
-expect( is_wp_error($prod) && $prod->get_error_code()==='mad4b_optional_remote_staging_authority_denied',
-    'Production remote policy mutation must be denied' );
+$prod_plan = $remote::plan( array( 'policy_id'=>'machine_ingress', 'mode'=>'advisory' ) );
+$prod_input = array( 'policy_id'=>'machine_ingress', 'mode'=>'advisory',
+    'expected_plan_sha256'=>$prod_plan['plan_sha256'], 'confirmation'=>$remote::CONFIRM );
+$prod = governed_optional_apply_fixture( $prod_input );
+expect( is_wp_error($prod) && $prod->get_error_code()==='mad4b_optional_remote_site_authority_denied',
+    'Unconfirmed Production Write must be denied' );
+MAD4B_SCP_Site_Profile::$production_write_confirmed = true;
+$prod_review = $remote::plan( array( 'policy_id'=>'machine_ingress', 'mode'=>'advisory' ) );
+expect( $prod_review['plan_sha256'] !== $prod_plan['plan_sha256'],
+    'Production mode and profile confirmation must invalidate prior plans' );
+$prod_approved_preview = $remote::can_apply(array(
+    'policy_id'=>'machine_ingress', 'mode'=>'advisory',
+    'expected_plan_sha256'=>$prod_review['plan_sha256'], 'confirmation'=>$remote::CONFIRM ));
+expect( is_array($prod_approved_preview) && !empty($prod_approved_preview['allowed']),
+    'Exact Production owner Site Profile and OAuth step-up must enable an individually ticketed plan' );
+MAD4B_SCP_Site_Profile::$production_write_confirmed = false;
 // Shared admin AJAX entry verifies the identical CAS/audit state and returns
 // a signed-by-source view contract, with no independent persistence shortcut.
 function check_ajax_referer( $action ) { return true; }
@@ -469,19 +490,19 @@ $before_security = get_option($cls::OPTION,null);
 $GLOBALS['mock_admin_allowed']=false;
 $actor_denied=$remote::can_apply($secure_input);
 expect( is_wp_error($actor_denied)
-    && $actor_denied->get_error_code()==='mad4b_optional_remote_staging_authority_denied',
+    && $actor_denied->get_error_code()==='mad4b_optional_remote_site_authority_denied',
     'Insufficient WordPress administrator capability must prevent remote Apply' );
 unset($GLOBALS['mock_admin_allowed']);
 $GLOBALS['mock_actor_id']=2;
 $not_enrolled=$remote::can_apply($secure_input);
 expect( is_wp_error($not_enrolled)
-    && $not_enrolled->get_error_code()==='mad4b_optional_remote_staging_authority_denied',
+    && $not_enrolled->get_error_code()==='mad4b_optional_remote_site_authority_denied',
     'Unenrolled actor must not remotely edit optional policy' );
 unset($GLOBALS['mock_actor_id']);
 MAD4B_SCP_Policy::$write_allowed=false;
 $write_denied=$remote::can_apply($secure_input);
 expect( is_wp_error($write_denied)
-    && $write_denied->get_error_code()==='mad4b_optional_remote_staging_authority_denied',
+    && $write_denied->get_error_code()==='mad4b_optional_remote_site_authority_denied',
     'Missing governed Write permission must deny even an advisory option' );
 MAD4B_SCP_Policy::$write_allowed=true;
 foreach ( array('bearer_valid','scope_valid','client_valid') as $property ) {
@@ -497,9 +518,15 @@ expect( get_option($cls::OPTION,null)===$before_security,
 MAD4B_SCP_Site_Profile::$environment='production';
 $prod_batch=governed_optional_apply_fixture($secure_input);
 expect( is_wp_error($prod_batch)
-    && $prod_batch->get_error_code()==='mad4b_optional_remote_staging_authority_denied'
+    && $prod_batch->get_error_code()==='mad4b_optional_remote_site_authority_denied'
     && get_option($cls::OPTION,null)===$before_security,
-    'Production remote selected batch must remain denied' );
+    'Production with unconfirmed Site Profile Write remains denied' );
+MAD4B_SCP_Site_Profile::$production_write_confirmed=true;
+$stale_across_environment=$remote::can_apply($secure_input);
+expect( is_wp_error($stale_across_environment)
+    && $stale_across_environment->get_error_code()==='mad4b_optional_remote_plan_stale',
+    'Production may not reuse a signed plan reviewed for Staging' );
+MAD4B_SCP_Site_Profile::$production_write_confirmed=false;
 MAD4B_SCP_Site_Profile::$environment='staging';
 
 // Stale revision from a concurrent local admin save: no replay of reviewed plan.
@@ -517,4 +544,4 @@ $stale_apply=governed_optional_apply_fixture(array('policy_id'=>$remote::SELECTE
 expect( is_wp_error($stale_apply)
     && $stale_apply->get_error_code()==='mad4b_optional_remote_plan_stale',
     'Concurrent preference update must invalidate earlier remote plans' );
-echo "OPTIONAL_GOVERNANCE: PASS (fresh Off, single/all/selected, validation, tenancy, stale revisions, admin/MCP, OAuth/Write, CAS, audit, Production denial)\n";
+echo "OPTIONAL_GOVERNANCE: PASS (fresh Off, single/all/selected, validation, tenancy, stale revisions, admin/MCP, OAuth/Write, CAS, audit, Production site confirmation/denial)\n";
