@@ -187,13 +187,16 @@ def build(site,catalog,state,ledger,root=None):
         if graph_unresolved:status='source_graph_unresolved'
         elif divergent:status='source_variants_need_split'
         elif not proven and len(no_bundle)>=2:
-            status='source_native_optimizer_unavailable'
+            status=('source_native_optimizer_unavailable' if not geo_dynamic
+                    and len(supported)==1
+                    else 'source_native_optimizer_market_partial')
         elif bounded and not proven:status='source_canary_hold'
         # Different conditional Theme Builder documents are different true
         # sources even when WordPress calls them the same CPT/archive type.
         # Never spend 1,000 route QA runs chasing a false shared family.
         if status in ('source_variants_need_split','source_graph_unresolved',
-                       'source_native_optimizer_unavailable'):
+                       'source_native_optimizer_unavailable',
+                       'source_native_optimizer_market_partial'):
             next_route=None
         else:
             choices=[]

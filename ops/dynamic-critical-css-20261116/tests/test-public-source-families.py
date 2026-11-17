@@ -140,6 +140,19 @@ with tempfile.TemporaryDirectory() as tmp:
  reference=m.build('wayfa',cat,state,ledger,root)
  test('two source optimizer SHA-bound Chrome failures close native-only cohort',
       reference['source_groups_by_status'].get('source_native_optimizer_unavailable')==1)
+ state['wcml_multi_currency']=True
+ state['enabled_currencies']=['USD','EUR','EGP','GBP']
+ for route in routes[:2]:
+  ledger['routes'][route['route_key']]['optimizer_source_key']=m.queue.optimizer_source_key(cat,route,state)
+ partial_native=m.build('wayfa',cat,state,ledger,root)
+ test('native-only evidence in one geo profile remains source-market partial',
+      partial_native['source_groups_by_status'].get('source_native_optimizer_market_partial')==1)
+ test('no CSS in one market cannot certify every WCML currency',
+      partial_native['source_canary_qualified_groups']==0 and partial_native['next_canary_route_key'] is None)
+ state['wcml_multi_currency']=False
+ state['enabled_currencies']=['USD']
+ for route in routes[:2]:
+  ledger['routes'][route['route_key']]['optimizer_source_key']=m.queue.optimizer_source_key(cat,route,state)
  cat['listing_generation']=7
  after_tour_update=m.build('wayfa',cat,state,ledger,root)
  test('tour content/listing generation does not retry the same proven absent optimizer',

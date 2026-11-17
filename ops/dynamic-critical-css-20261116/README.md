@@ -994,3 +994,12 @@ contract. Any optimizer policy, source graph, locale, global source, runtime
 or CSS-epoch change automatically reopens the source QA. No global purge,
 noncompliant stylesheet rewriting, independent market waiver or browser
 admission bypass is introduced by this rule.
+
+The zero-bundle proof is scoped to its observed original browser profile.
+On a WCML multi-currency/geo site this is reported as
+`source_native_optimizer_market_partial`, **not** whole-market source
+qualification or global native-only closure. The worker can avoid repeated
+identical CSS-combiner attempts while market coverage remains explicitly
+pending for the independent source-progress SLO. Only a single-currency site
+with no country-dependent WCML profile can close its source as
+`source_native_optimizer_unavailable` from the matching negative evidence.
