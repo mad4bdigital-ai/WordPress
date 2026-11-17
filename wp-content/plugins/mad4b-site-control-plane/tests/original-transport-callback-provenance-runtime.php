@@ -3,6 +3,7 @@
 define( 'ABSPATH', __DIR__ . '/' );
 class WP_Error { private $code; public function __construct($code, $message=''){$this->code=$code;} public function get_error_code(){return $this->code;} }
 function is_wp_error($v){return $v instanceof WP_Error;}
+function sanitize_key($v){return strtolower(preg_replace('/[^a-z0-9_-]/i', '', (string)$v));}
 $GLOBALS['registered_origins'] = array();
 $GLOBALS['raw_registrations'] = array();
 function wp_has_ability($name){return isset($GLOBALS['registered_origins'][$name]);}
@@ -48,11 +49,14 @@ foreach(array('mad4b/direct-create-post','mad4b/direct-update-post') as $name){
     $same=MAD4B_SCP_Staging_Write_Authority::augment_write_ability($original_args,$name);
     $check($same===$original_args,'Direct post was rewritten as a governed NHI mutation: '.$name);
     $forged=$original_args;
+    unset($forged['input_schema']); // no unrelated ticket schema dependencies in this isolated fixture
     $forged['permission_callback']=static function($input=null){return true;};
     $denied=MAD4B_SCP_Staging_Write_Authority::augment_write_ability($forged,$name);
     $check(($denied['meta']['mcp']['mad4b_governed_write_authority']??'')===MAD4B_SCP_Staging_Write_Authority::CONTRACT,
         'Forged direct permission bypassed regular governed write fence: '.$name);
-    $misnamed=MAD4B_SCP_Staging_Write_Authority::augment_write_ability($original_args,'mad4b/other-direct-post');
+    $other=$original_args;
+    unset($other['input_schema']);
+    $misnamed=MAD4B_SCP_Staging_Write_Authority::augment_write_ability($other,'mad4b/other-direct-post');
     $check(($misnamed['meta']['mcp']['mad4b_governed_write_authority']??'')===MAD4B_SCP_Staging_Write_Authority::CONTRACT,
         'Unregistered direct name bypassed global governed write fence.');
     $ability=wp_get_ability($name);
