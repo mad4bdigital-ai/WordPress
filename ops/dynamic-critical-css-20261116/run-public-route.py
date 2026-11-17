@@ -41,6 +41,16 @@ def obs(php,host,env):
     data=wp_eval(php,r'''
 $s=get_option("icl_sitepress_settings",[]);
 $bp=\Elementor\Plugin::$instance->breakpoints->get_breakpoints()["mobile"]->get_value();
+global $woocommerce_wpml;
+$wcml_active=function_exists("wcml_is_multi_currency_on") && wcml_is_multi_currency_on();
+$wcml_engine=is_object($woocommerce_wpml) && isset($woocommerce_wpml->multi_currency)
+    ?$woocommerce_wpml->multi_currency:null;
+$codes=($wcml_active && $wcml_engine && method_exists($wcml_engine,"get_currencies"))
+    ?array_keys((array)$wcml_engine->get_currencies(true)):[];
+$base=(string)get_option("woocommerce_currency","USD");
+$codes=array_values(array_unique(array_filter($wcml_active?$codes:[$base],
+    static fn($value)=>is_string($value) && preg_match("/^[A-Z]{3}$/D",$value))));
+sort($codes,SORT_STRING);
 echo wp_json_encode([
  "site_host"=>(string)wp_parse_url(home_url("/"),PHP_URL_HOST),
  "environment"=>wp_get_environment_type(),
@@ -48,6 +58,9 @@ echo wp_json_encode([
  "all_public_css"=>(string)get_option("mad4b_perf_critical_css_all_public_v1","off"),
  "native_breakpoint"=>(int)$bp,
  "css_epoch"=>(int)get_option("mad4b_css_ai_epoch_v1",0),
+ "wcml_multi_currency"=>(bool)$wcml_active,
+ "enabled_currencies"=>$codes,
+ "base_currency"=>$base,
  "global_generation"=>(int)get_option("mad4b_ccss_global_generation_v1",0),
  "listing_generation"=>(int)get_option("mad4b_ccss_listing_generation_v1",0),
  "wpml_languages"=>array_values((array)($s["active_languages"]??[])),
@@ -56,7 +69,10 @@ echo wp_json_encode([
 ''')
     if (data['site_host']!=host or data['environment']!=env
         or data['critical_css']!='on' or data['all_public_css']!='on'
-        or data['native_breakpoint']!=767 or data['css_epoch']<=0):
+        or data['native_breakpoint']!=767 or data['css_epoch']<=0
+        or not isinstance(data.get('enabled_currencies'),list)
+        or not 1<=len(data['enabled_currencies'])<=20
+        or data.get('base_currency') not in data['enabled_currencies']):
         raise ValueError('SITE_ENVIRONMENT_OR_DEFAULT_POLICY_HOLD')
     return data
 def catalog(php,host):

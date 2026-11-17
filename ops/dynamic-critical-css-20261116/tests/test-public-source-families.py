@@ -78,4 +78,46 @@ with tempfile.TemporaryDirectory() as tmp:
  retry=m.build('wayfa',cat,state,ledger,root)
  test('bounded retry reuses a failed canary rather than new unseen routes',
       retry['next_canary_route_key'] in ledger['routes'])
+ # Live Elementor source-graph contract: static content ignores unrelated
+ # tour/listing changes, dynamic/unknown graphs never bypass invalidation.
+ source=dict(routes[0],source_graph='a'*64,source_graph_status='configured',source_listing_dependency=False,type='page',source_profile='shared-template:page:default')
+ prior=m.family_key(cat,state,source)
+ bumped=m.family_key({**cat,'listing_generation':cat['listing_generation']+1},state,source)
+ test('proven plain source does not requalify for unrelated tour update',prior==bumped)
+ source['source_listing_dependency']=True
+ test('listing dependent source requalifies after tour update',m.family_key(cat,state,source)!=m.family_key({**cat,'listing_generation':cat['listing_generation']+1},state,source))
+ source.pop('source_listing_dependency')
+ test('missing dependency metadata fails closed',m.family_key(cat,state,source)!=m.family_key({**cat,'listing_generation':cat['listing_generation']+1},state,source))
+ source['source_listing_dependency']=False
+ test('different actual Theme Builder document gives distinct source generation',m.family_key(cat,state,source)!=m.family_key(cat,state,{**source,'source_graph':'b'*64}))
+ source['source_graph_status']='ambiguous'
+ test('ambiguous Theme Builder proof may not bypass global listing invalidation',m.family_key(cat,state,source)!=m.family_key({**cat,'listing_generation':cat['listing_generation']+1},state,source))
+ source['source_graph_status']='configured'
+ test('different WCML activation configuration reopens a source generation',m.family_key(cat,state,source)!=m.family_key(cat,{**state,'wcml_multi_currency':True},source))
+ # A source proved only in USD must not be declared production qualified
+ # for EUR, EGP and GBP markets with unobserved country rules.
+ cat['routes']=routes[:2];cat['listing_generation']=3
+ state['runtime_sha']='a'*64
+ ledger['routes']={}
+ certify(routes[0]);certify(routes[1])
+ state['enabled_currencies']=['USD','EUR','EGP','GBP'];state['base_currency']='USD';state['wcml_multi_currency']=True
+ partial=m.build('wayfa',cat,state,ledger,root)
+ test('USD source canaries do not certify multi-currency geo market matrix',partial['source_canary_qualified_groups']==0 and partial['source_groups_by_status'].get('source_canary_market_partial')==1)
+ test('market report explicitly lists missing source currencies',partial['source_families'][0]['currencies_pending']==['EGP','EUR','GBP'] and partial['country_market_scope']=='dynamic_not_enumerated')
+ # Native-only eligibility is a SOURCE decision after independent
+ # original-browser evidence that this template has no reusable CSS bundle.
+ state['wcml_multi_currency']=False;state['enabled_currencies']=['USD']
+ state['base_currency']='USD';ledger['routes']={}
+ for route in routes[:2]:
+  ledger['routes'][route['route_key']]={'status':'hold',
+     'source_key':m.queue.source_key(cat,route,state),
+     'hold_reason':'source_css_bundle_unavailable','attempted_at':99,
+     'retry_after':0,'depends_on_listings':False}
+ native=m.build('wayfa',cat,state,ledger,root)
+ test('two actual zero-bundle Chrome canaries close source as native-only',native['source_groups_by_status'].get('source_native_optimizer_unavailable')==1)
+ test('native-only source stops futile unbounded Chromium attempts',native['next_canary_route_key'] is None and native['source_families'][0]['native_no_bundle_canaries']==2)
+ test('native-only source never reports source CSS qualification',native['source_canary_qualified_groups']==0)
+ cat['listing_generation']+=1
+ renewed=m.build('wayfa',cat,state,ledger,root)
+ test('new source dependency generation can reopen native-only source admission',renewed['next_canary_route_key'] is not None)
  print(f'PASS {count}/{count} source-owned group certification invariants')

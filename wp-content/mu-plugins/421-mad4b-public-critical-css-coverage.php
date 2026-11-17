@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: MAD4B Public Critical CSS Coverage & Dependency Events
- * Version: 1.1.2
+ * Version: 1.1.4
  * Description: Source-scoped dirty events and CLI-only public route discovery; no unverified CSS transformations.
  */
 defined('ABSPATH') || exit;
@@ -252,6 +252,131 @@ final class MAD4B_Public_Critical_CSS_Coverage_V1 {
             ['element_id'=>$id,'element_type'=>$kind]);
         return is_string($lang) && preg_match('/^[a-z]{2}$/D',$lang) ? $lang : $default;
     }
+    /** Read original published Theme Builder rules once per WPML catalog.
+     * Keep actual template IDs/data SHA, never just post_type slug. Only
+     * safely understood Elementor rules may prove a common source. */
+    private static function source_template_rules(): array {
+        static $cached=null;
+        if ($cached!==null) return $cached;
+        $cached=[];
+        if (!function_exists('get_posts')) return $cached;
+        $ids=get_posts(['post_type'=>'elementor_library','post_status'=>'publish',
+            'fields'=>'ids','numberposts'=>-1,'suppress_filters'=>true,
+            'orderby'=>'ID','order'=>'ASC']);
+        if (!is_array($ids) || count($ids)>6000)return $cached;
+        foreach($ids as $id){
+            $id=(int)$id;
+            $role=(string)get_post_meta($id,'_elementor_template_type',true);
+            if (!in_array($role,['single','archive','header','footer'],true))continue;
+            $rules=get_post_meta($id,'_elementor_conditions',true);
+            if (!is_array($rules) || !$rules)continue;
+            $raw=(string)get_post_meta($id,'_elementor_data',true);
+            // Elementor Library changes invalidate generations via 421;
+            // this extra digest also detects silent edits not hooked by a
+            // conventional post_updated event.
+            $dynamic=(bool)preg_match('/jet[-_]listing|jet[-_]engine|dynamic_tags|shortcode|tour[-_]rate|woocommerce|listing_id/i',$raw);
+            $template_lang=apply_filters('wpml_element_language_code',null,
+                ['element_id'=>$id,'element_type'=>'post_elementor_library']);
+            $cached[]=['id'=>$id,'role'=>$role,'rules'=>$rules,
+                'language'=>is_string($template_lang)?$template_lang:'',
+                'dynamic'=>$dynamic,
+                'content_sha'=>hash('sha256',$raw.'|'.(string)get_post_meta($id,'_elementor_css',true))];
+        }
+        return $cached;
+    }
+    /** Rule matcher: unknown conditions are never treated as approval. */
+    private static function source_rule_match(string $rule,string $type,int $id): int {
+        $parts=explode('/',$rule);
+        if (count($parts)<2 || count($parts)>4) return -1;
+        $place=$parts[1];$subject=$parts[2]??'';$target=$parts[3]??'';
+        if ($place==='general' && $subject==='' && $target==='')return 1;
+        $archive=str_starts_with($type,'archive:') || in_array($type,self::TAXONOMIES,true);
+        if ($archive && $place==='archive') {
+            if ($subject==='')return 1;
+            $slug=str_starts_with($type,'archive:')?substr($type,8).'_archive':$type;
+            if ($subject!==$slug)return 0;
+            if ($target==='' || $target===(string)$id)return $target===''?3:5;
+            return 0;
+        }
+        if (!$archive && $place==='singular'){
+            if ($subject==='')return 1;
+            if ($subject!==$type)return 0;
+            if ($target==='' || $target===(string)$id)return $target===''?3:5;
+            return 0;
+        }
+        if (in_array($place,['archive','singular'],true))return 0;
+        return -1;
+    }
+    /** Conservative rule resolver: unresolved/tied templates remain native. */
+    private static function source_graph(string $type,int $id,string $language='en'): array {
+        $roles=['header','footer',str_starts_with($type,'archive:')
+            || in_array($type,self::TAXONOMIES,true)?'archive':'single'];
+        $groups=[];$ambiguous=false;
+        foreach(self::source_template_rules() as $template){
+            if (!in_array($template['role'],$roles,true))continue;
+            $best=0;$denied=false;
+            foreach($template['rules'] as $rule){
+                if (!is_string($rule) || strlen($rule)>160){$ambiguous=true;continue;}
+                $parts=explode('/',$rule);$direction=$parts[0]??'';
+                if (!in_array($direction,['include','exclude'],true)){
+                    $ambiguous=true;continue;
+                }
+                $specificity=self::source_rule_match($rule,$type,$id);
+                if ($specificity<0){$ambiguous=true;continue;}
+                if ($direction==='exclude' && $specificity>0)$denied=true;
+                if ($direction==='include')$best=max($best,$specificity);
+            }
+            if (!$best || $denied)continue;
+            $groups[$template['role']][]=['weight'=>$best,'template'=>$template];
+        }
+        $selected=[];$dynamic=false;
+        $settings=get_option('icl_sitepress_settings',[]);
+        $default=is_array($settings)?(string)($settings['default_language']??'en'):'en';
+        foreach($roles as $role){
+            $choices=$groups[$role]??[];
+            if (!$choices)continue;
+            // Localized Elementor templates can have the same include/general
+            // rule. The language-attested template, not the source's English
+            // sibling, owns this language's footer/header source identity.
+            $exact=array_values(array_filter($choices,static fn($item)=>
+                ($item['template']['language']??'')===$language));
+            if ($exact)$choices=$exact;
+            else {
+                $fallback=array_values(array_filter($choices,static fn($item)=>
+                    in_array(($item['template']['language']??''),[$default,''],true)));
+                if ($fallback)$choices=$fallback;
+                else {$ambiguous=true;continue;}
+            }
+            usort($choices,static fn($a,$b)=>$b['weight']<=>$a['weight']);
+            if (count($choices)>1 && $choices[0]['weight']===$choices[1]['weight']){
+                $ambiguous=true;continue;
+            }
+            $picked=$choices[0]['template'];
+            $dynamic=$dynamic || !empty($picked['dynamic']);
+            $selected[]=['role'=>$role,'id'=>$picked['id'],
+                'content_sha'=>$picked['content_sha'],
+                'rules'=>array_values((array)$picked['rules'])];
+        }
+        usort($selected,static fn($a,$b)=>strcmp($a['role'],$b['role']));
+        // Negative listing dependency requires *positive* evidence: an
+        // ordinary published page/post with no custom Elementor document,
+        // shortcode, dynamic content or dynamic Theme Builder component.
+        // All other contexts fail closed and retain listing invalidation.
+        $static=false;
+        if (!$ambiguous && !$dynamic && in_array($type,['page','post'],true)
+            && function_exists('get_post')) {
+            $post=get_post($id);
+            $body=is_object($post)?(string)($post->post_content??''):'';
+            $mode=(string)get_post_meta($id,'_elementor_edit_mode',true);
+            $static=is_object($post) && $mode!=='builder'
+                && !str_contains($body,'[') && !str_contains($body,'<!-- wp:shortcode')
+                && !preg_match('/jet[-_]listing|jet[-_]engine|mad4b[-_]|woocommerce|tour[-_]rate/i',$body);
+        }
+        return ['status'=>$ambiguous?'ambiguous':'configured',
+            'sha'=>hash('sha256',json_encode($selected,JSON_UNESCAPED_SLASHES)),
+            'document_ids'=>array_column($selected,'id'),
+            'listing_dependency'=>!$static];
+    }
     /** Content originates in a shared template or an authored Elementor
      * document. This is a source *candidate*, not a blanket CSS certificate:
      * Elementor conditional Theme Builder templates, dynamic cards, LCP images
@@ -285,8 +410,13 @@ final class MAD4B_Public_Critical_CSS_Coverage_V1 {
             $seen[$key]=true;
             $revision=in_array($type,self::TYPES,true)
                 ? (int)get_post_meta((int)$id,'_mad4b_ccss_route_generation_v1',true) : 0;
+            $graph=self::source_graph((string)$type,(int)$id,(string)$language);
             $rows[]=['path'=>$path,'type'=>$type,'id'=>(int)$id,'language'=>$language,
                 'source_profile'=>self::source_profile((string)$type,(int)$id),
+                'source_graph'=>$graph['sha'],
+                'source_graph_status'=>$graph['status'],
+                'source_document_ids'=>$graph['document_ids'],
+                'source_listing_dependency'=>$graph['listing_dependency'],
                 'revision'=>$revision,
                 'route_key'=>hash('sha256',$key.'|'.$type.'|'.$id)];
         };

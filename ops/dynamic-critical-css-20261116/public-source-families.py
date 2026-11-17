@@ -26,10 +26,21 @@ def source_profile(route):
     return 'legacy-route:'+route['route_key']
 
 def family_key(catalog,state,route):
+    graph=route.get('source_graph')
+    graph_ok=(isinstance(graph,str) and re.fullmatch('[a-f0-9]{64}',graph)
+              and route.get('source_graph_status')=='configured')
+    # Only the WordPress-attested plain-source negative can exclude an
+    # unrelated tour/listing update. Missing/ambiguous data stays fail-closed.
+    needs_listing=(not graph_ok or route.get('source_listing_dependency') is not False
+                   or route['type'] not in ('page','post'))
     fields=[catalog['host'],route['type'],route['language'],source_profile(route),
+            graph if graph_ok else 'legacy-or-unresolved',
             str(catalog.get('global_generation',0)),
-            str(catalog.get('listing_generation',0)),str(state['css_epoch']),
-            str(state['native_breakpoint']),str(state.get('runtime_sha',''))]
+            str(catalog.get('listing_generation',0)) if needs_listing else '',
+            str(state['css_epoch']),str(state['native_breakpoint']),
+            str(state.get('runtime_sha','')),
+            ','.join(sorted(state.get('enabled_currencies',[]))),
+            str(bool(state.get('wcml_multi_currency',False)))]
     return hashlib.sha256('|'.join(fields).encode()).hexdigest()
 
 def asset(root,subdir,name,pat,maxbytes):
@@ -119,6 +130,15 @@ def build(site,catalog,state,ledger,root=None):
         # and market, establish *source behavior*, not route CSS equivalence.
         # A unique Elementor-authored document or singleton needs only itself.
         shared=source_profile(head).startswith(('shared-template:','taxonomy:')) and len(members)>1
+        graph_unresolved=any(r.get('source_graph_status')=='ambiguous' for r in members)
+        supported=state.get('enabled_currencies')
+        if not isinstance(supported,list) or not supported:
+            supported=[state.get('base_currency','USD')]
+        supported=sorted(set(v for v in supported
+            if isinstance(v,str) and re.fullmatch('[A-Z]{3}',v)))
+        if not supported:raise ValueError('source-required-currency-scope-unknown')
+        geo_dynamic=bool(state.get('wcml_multi_currency',False))
+
         permarket=collections.defaultdict(list)
         for c in candidates:permarket[c['market']+'|'+c['currency']].append(c)
         proven={};divergent=[]
@@ -138,13 +158,30 @@ def build(site,catalog,state,ledger,root=None):
                     bool(rec.get('depends_on_listings')))):
                 attempted.append(r['route_key'])
         bounded=len(set(attempted))>=4
-        status='source_canary_qualified' if proven else 'source_canary_pending'
-        if divergent:status='source_variants_need_split'
+        no_bundle={r['route_key'] for r in members
+            if isinstance((rec:=ledger['routes'].get(r['route_key'],{})),dict)
+            and rec.get('status')=='hold'
+            and rec.get('hold_reason')=='source_css_bundle_unavailable'
+            and rec.get('source_key')==queue.source_key(catalog,r,state,
+                bool(rec.get('depends_on_listings')))}
+        verified_currencies={market.split('|',1)[1] for market in proven}
+        currency_coverage_complete=set(supported).issubset(verified_currencies)
+        # Geo-activated WCML can negotiate country-specific HTML/price/layout.
+        # Do not claim all countries are tested from base USD evidence.
+        full_market_coverage=currency_coverage_complete and not geo_dynamic
+        status=('source_canary_qualified' if proven and full_market_coverage
+                else 'source_canary_market_partial' if proven
+                else 'source_canary_pending')
+        if graph_unresolved:status='source_graph_unresolved'
+        elif divergent:status='source_variants_need_split'
+        elif not proven and len(no_bundle)>=2:
+            status='source_native_optimizer_unavailable'
         elif bounded and not proven:status='source_canary_hold'
         # Different conditional Theme Builder documents are different true
         # sources even when WordPress calls them the same CPT/archive type.
         # Never spend 1,000 route QA runs chasing a false shared family.
-        if status=='source_variants_need_split':
+        if status in ('source_variants_need_split','source_graph_unresolved',
+                       'source_native_optimizer_unavailable'):
             next_route=None
         else:
             choices=[]
@@ -162,7 +199,21 @@ def build(site,catalog,state,ledger,root=None):
         qcounts[status]+=1;qualified_routes+=len(seen)
         rows.append({'family_key':key,'source_profile':source_profile(head),'route_type':head['type'],
           'language':head['language'],'member_count':len(members),'canary_count':len(seen),'attempted_canary_count':len(set(attempted)),
-          'status':status,'proven_market_profiles':proven,'divergent_market_profiles':divergent,
+          'native_no_bundle_canaries':len(no_bundle),
+          'status':status,'source_graph_status':head.get('source_graph_status','legacy'),
+          'source_graph':head.get('source_graph'),
+          'required_currencies':supported,
+          'currency_profiles_proven':sorted(verified_currencies),
+          'currencies_pending':sorted(set(supported)-verified_currencies),
+          'market_country_scope':'dynamic_not_enumerated' if geo_dynamic else 'base',
+          'market_coverage_complete':full_market_coverage,
+          'proven_market_profiles':proven,'divergent_market_profiles':divergent,
+          'observed_source_variants':[
+              {'market':market,'doc_sha':doc,
+               'routes':sorted({c['route_key'] for c in candidates
+                   if c['market']+'|'+c['currency']==market and c['doc_sha']==doc})}
+              for market in sorted(permarket)
+              for doc in sorted({c['doc_sha'] for c in permarket[market]})],
           'sample_paths':[c['path'] for c in candidates[:5]],
           'source_routes_not_individually_certified':len(members)-len(seen),
           'next_canary':next_route})
@@ -179,6 +230,8 @@ def build(site,catalog,state,ledger,root=None):
       'listing_generation':catalog.get('listing_generation'),
       'source_groups_total':len(rows),'source_groups_by_status':dict(sorted(qcounts.items())),
       'source_canary_qualified_groups':qcounts['source_canary_qualified'],
+      'currency_scope_required':sorted(set(state.get('enabled_currencies',[]) or [state.get('base_currency','USD')])),
+      'country_market_scope':'dynamic_not_enumerated' if state.get('wcml_multi_currency') else 'base',
       'routes_discovered':len(catalogrows),'routes_with_exact_current_certificate':qualified_routes,
       'routes_on_native_or_unproven_css':len(catalogrows)-qualified_routes,
       'source_families':rows,'next_canary_route_key':wants[0]['next_canary'] if wants else None,

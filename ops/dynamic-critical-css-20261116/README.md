@@ -908,3 +908,64 @@ failure warning remains. Event-driven invalidation which correctly makes
 historic certificates stale is separately reported as an expected native
 CSS fallback, not a broken optimizer. Individual route CSS-readiness is still
 reported distinctly from source-family qualification.
+
+## Elementor source graph + WCML market contracts (November 17)
+
+The first-party `421` WordPress catalog now enumerates real **published**
+Elementor Pro Theme Builder locations (header, footer, singular and archive),
+parses the actual include/exclude condition metadata and applies conservative
+specificity matching per published WordPress/WPML route. The resulting
+`source_graph` SHA includes the selected Elementor document IDs, exact
+condition rules, serialized document/widget content hashes, and source
+resolution status. Unknown rule syntax or ambiguous equal-priority candidates
+fail closed as `source_graph_unresolved`. A candidate graph is **not** a
+statement that all frontend DOM children are identical; existing original
+Chromium DOM SHA checks remain authoritative. JetEngine and dynamic widgets
+are included in their serialized Elementor document/content hashes, rather
+than being guessed from CPT alone. Unconfigured or unproved legacy routes
+cannot receive shared CSS by inference.
+
+Static editorial pages may omit the global listing-generation dimension from
+**source-group** requalification only with positive WP source evidence:
+non-Elementor post, unambiguous template graph and no dynamic Elementor
+component, shortcode or explicit JetEngine/WooCommerce markup. All unproved,
+CPT, taxonomy, archive and dynamic pages retain the conservative listing
+invalidation. The independent per-route native CSS consumer keeps its
+original event checks and safe fallback.
+
+The original WooCommerce Multilingual API supplies the site's active currency
+set to the source contract (currently Tours.dev supports USD/EUR/EGP/GBP,
+Wayfatours base USD without WCML multi-currency). A source qualified in one
+observed market cannot be marked fully fleet-qualified while another enabled
+currency remains unproven. Geo-dependent multi-currency profiles report
+`dynamic_not_enumerated`: without an authoritative finite country activation
+matrix, source-group completion stays partial; no false country waiver.
+
+Two independent original Chromium captures returning HTTP 200 but no
+LiteSpeed combined CSS mark a source `source_native_optimizer_unavailable`:
+fully working native CSS stays enabled, futile repeated Chrome captures stop
+until the exact source/CSS/dependency generation changes, and no performance
+certificate is minted from negative evidence.
+
+### Source qualification progress SLO and escalation
+
+A standalone low-cost hourly timer checks both private source registry files;
+it does **not** need Chrome, WPCLI or free CPU slots to evaluate progress.
+Its atomic `critical-css-health-v1/source-progress-latest.json` separates:
+(1) active timers, (2) last successful authoritative registry update, and
+(3) newly proven current source+WCML-market combinations. A successfully
+returned `DEFER_SOURCE_FAMILY_REFRESH` is a healthy resource decision, not a
+new source success. A source registry older than 2 hours is explicitly stale,
+older than 6 hours is an incident. Pending source groups without newly
+qualified market evidence for 24 hours also become `stalled` even if all
+systemd workers continually exit 0. The hourly service escalates an actual
+SLO failure using the installed `mad4b-alert-handler@%n.service` path with a
+four-hour alarm cooldown, and the daily integrity auditor includes its
+source-progress status. No external delivery receipt is inferred solely
+from emitting the local OnFailure trigger.
+
+The source-registry refresh service has been placed under systemd filesystem
+read-only isolation, root-capability drop, private temporary devices/dirs,
+and a single explicit report-directory write exception. The runtime's
+original WordPress CLI capabilities still execute through the enrolled
+Docker connection; this service cannot alter PHP files or CSS certificates.

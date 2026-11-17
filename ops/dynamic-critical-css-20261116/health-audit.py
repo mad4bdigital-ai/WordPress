@@ -251,9 +251,28 @@ def run_site(site,run_http=True):
        'source_canary_qualified_groups','routes_discovered',
        'routes_with_exact_current_certificate','routes_on_native_or_unproven_css',
        'source_lineage_note')}
+    result['source_progress_slo']={'status':'not_yet_reported'}
+    monitor=REPORT/'source-progress-latest.json'
+    if monitor.is_file() and not monitor.is_symlink() and monitor.stat().st_size<130000:
+        with monitor.open() as stream:
+            progress=json.load(stream)
+        if progress.get('contract')=='mad4b.public-css.source-progress-slo.v1':
+            part=progress.get('sites',{}).get(site,{})
+            result['source_progress_slo']={
+                'status':progress.get('status'),
+                'last_success_epoch':progress.get('last_success_epoch'),
+                'seconds_since_proven_source_progress':progress.get('seconds_since_proven_source_progress'),
+                'registry_age_seconds':part.get('registry_age_seconds'),
+                'pending_groups':part.get('pending_groups'),
+                'current_proven_market_profiles':part.get('current_proven_market_profiles')}
+            if progress.get('status')=='stalled':
+                warnings.append('source_qualification_progress_slo_stalled')
     result['source_by_profile']=[{'profile':x['source_profile'],'language':x['language'],
        'type':x['route_type'],'members':x['member_count'],'status':x['status'],
-       'proven_markets':x['proven_market_profiles']}
+       'proven_markets':x['proven_market_profiles'],
+       'currency_scope':x.get('required_currencies',[]),
+       'pending_currencies':x.get('currencies_pending',[]),
+       'source_graph_status':x.get('source_graph_status')}
        for x in sources['source_families']]
     result['css_epoch']=state['css_epoch']
     report_root=Path('/opt/mad4b-company-provisioning/reports')

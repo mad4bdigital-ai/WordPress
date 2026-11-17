@@ -13,5 +13,7 @@ test('systemd unit only invokes reporting script','refresh-source-families.py' i
 test('unit resource limits and no new privileges',all(x in svc for x in ('CPUQuota=80%','Nice=19','NoNewPrivileges=true','UMask=0077','TimeoutStartSec=490')))
 test('timer persists autonomous refresh with stagger',all(x in timer for x in ('OnCalendar=*-*-* *:07,37:00 UTC','Persistent=true','RandomizedDelaySec=90')))
 test('source coordinator contains no Chromium or certificate publishing',all(x not in py for x in ('runner.browser(',"'public-route-certificate.py'",'queue.record(',"'certified'")))
+test('source registry refresh may write only its private report tree',
+    all(x in svc for x in ('ProtectSystem=strict','ReadWritePaths=/opt/mad4b-company-provisioning/reports/public-critical-css-v1','PrivateTmp=true','PrivateDevices=true','CapabilityBoundingSet=')))
 test('certification worker updates source timestamp with the same contract', "report['refreshed_at_utc']" in (D/'run-public-route.py').read_text())
 print(f'PASS {len(checks)}/{len(checks)} automatic source registry admission tests')
