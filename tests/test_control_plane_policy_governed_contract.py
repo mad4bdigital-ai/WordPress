@@ -43,6 +43,10 @@ class RegisteredGovernanceSourceReview(unittest.TestCase):
                 elif name in (
                     'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-registered-write-admission.php',
                     'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php',
+                    # PR808 census is immutable historical evidence; its
+                    # current callback/registered-policy source is a reviewed
+                    # successor, not a retrospective PR808 SHA rewrite.
+                    'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-governed-ability-census.php',
                 ):
                     # Later fail-closed exact policy receipt admission belongs
                     # to a successor source, not the frozen PR808 source pin.
