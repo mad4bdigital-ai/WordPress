@@ -100,3 +100,7 @@ and root protected before any operation can be described as registered. A mere
 manifest entry is not a valid enrolled signed executor. If validation fails the
 report fails closed; neither the original Host Worker nor site contents are
 changed. Combined tests: **26/26** hermetic admission plus legacy Broker tests.
+
+### Hosted CI import isolation
+
+GitHub runners do not have the Hostinger-only `central_staging_container` or the protected `company-mode-price-policy-reconcile.py` installed. The hermetic denial test mocks **only that top-level Host module import** and installs explicit throwing stubs for any WordPress/Host operation. It then runs the real legacy CLI with `--mode apply`; a return code other than the exact refusal is a test failure. The running Host script was not modified for CI, and the live Production refusal and read-only Plan were tested independently.
