@@ -18,6 +18,9 @@ on:
       - '.github/workflows/mad4b-visitor-preference-continuity.yml'
 permissions:
   contents: read
+concurrency:
+  group: mad4b-visitor-preferences-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
 jobs:
   original-php-session:
     name: Original PHP signed preference and WooCommerce session contract
@@ -25,10 +28,14 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - name: PHP syntax and original-class behavior
         run: |
           php -v
           php -l wp-content/plugins/mad4b-country-switcher/mad4b-country-switcher.php
+          php -l wp-content/plugins/mad4b-traveller-nationality/mad4b-traveller-nationality.php
           php -l wp-content/plugins/etg-traveller-nationality-switcher/etg-traveller-nationality-switcher.php
           php -l tests/visitor-preferences-wpml-guest-session-hermetic.php
           php tests/visitor-preferences-wpml-guest-session-hermetic.php
