@@ -15,7 +15,7 @@ final class MAD4B_Production_Identity_Quickstart_V1 {
         'https://tourism.almallahgroup-mg.com',
     );
 
-    public static function eligible() {
+    private static function owner_page() {
         if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) return false;
         if ( 'production' !== wp_get_environment_type() ) return false;
         if ( ! isset( $_GET['page'] ) || ! is_string( $_GET['page'] ) ||
@@ -25,9 +25,12 @@ final class MAD4B_Production_Identity_Quickstart_V1 {
             ! class_exists( 'MAD4B_SCP_Audit', false ) ) return false;
 
         $origin = untrailingslashit( home_url( '/' ) );
-        if ( ! in_array( $origin, self::ORIGINS, true ) ||
-             $origin !== untrailingslashit( site_url( '/' ) ) ) return false;
+        return in_array( $origin, self::ORIGINS, true )
+            && $origin === untrailingslashit( site_url( '/' ) );
+    }
 
+    public static function eligible() {
+        if ( ! self::owner_page() ) return false;
         // Only genuinely uninitialized profiles are safe. A cloned, invalid,
         // pending-audit or existing record always goes through the full review.
         $existing = get_option( MAD4B_SCP_Site_Profile::OPTION, null );
@@ -40,8 +43,36 @@ final class MAD4B_Production_Identity_Quickstart_V1 {
         return is_array( $audit ) && ! empty( $audit['ready'] );
     }
 
+    public static function completion_uuid() {
+        if ( ! self::owner_page() ) return '';
+        $record = get_option( MAD4B_SCP_Site_Profile::OPTION, null );
+        if ( ! is_array( $record ) || ! empty( $record['features']['write'] ) ) return '';
+        $status = MAD4B_SCP_Site_Profile::status();
+        $uuid = (string) ( $status['site_uuid'] ?? '' );
+        if ( empty( $status['configured'] ) || empty( $status['origin_match'] )
+             || empty( $status['environment_match'] )
+             || empty( $status['deployment_binding_match'] )
+             || ! empty( $status['mutation_pending_audit'] )
+             || ! empty( $status['reenrollment_required'] )
+             || ! wp_is_uuid( $uuid )
+             || $uuid !== (string) ( $record['site_uuid'] ?? '' )
+             || 'production' !== (string) ( $record['environment'] ?? '' )
+             || untrailingslashit( home_url( '/' ) ) !== (string) ( $record['canonical_origin'] ?? '' ) ) return '';
+        return $uuid;
+    }
+
     public static function render() {
-        if ( ! self::eligible() ) return;
+        if ( ! self::eligible() ) {
+            $uuid = self::completion_uuid();
+            if ( '' === $uuid ) return;
+            echo '<div class="notice notice-success" style="max-width:940px;padding:12px 16px">';
+            echo '<h2>' . esc_html__( 'Production identity saved', 'mad4b-site-control-plane' ) . '</h2>';
+            echo '<p>' . esc_html__( 'This read-only Production site identity is present. Complete only the exact company manager approval in Central; no duplicate Site Profile save is needed.', 'mad4b-site-control-plane' ) . '</p>';
+            echo '<p>Site UUID: <code>' . esc_html( $uuid ) . '</code></p>';
+            echo '<p><a href="https://tours.dev.mad4b.com/wp-admin/admin.php?page=mad4b-company-portfolio-managers" target="_blank" rel="noopener noreferrer">' . esc_html__( 'Open Central company owner approvals', 'mad4b-site-control-plane' ) . '</a></p>';
+            echo '</div>';
+            return;
+        }
         echo '<div class="notice notice-info" style="max-width:940px;padding:12px 16px">';
         echo '<h2>' . esc_html__( 'Connect this Production site in one step', 'mad4b-site-control-plane' ) . '</h2>';
         echo '<p>' . esc_html__( 'Creates a unique identity for this exact WordPress origin using the existing Administrator session, nonce, and append-only audit. All remote writes and payments remain unchanged and disabled by this action.', 'mad4b-site-control-plane' ) . '</p>';

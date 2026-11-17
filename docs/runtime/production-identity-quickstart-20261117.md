@@ -42,9 +42,9 @@ fabricated. Wayfatours currently has 11/11 matching source assets and
 needs no Original305/312/313 job merely to certify zero file delta.
 
 ## Evidence and rollback
-PHP 7.4, 8.3 and 8.5 each passed 23/23 hermetic tests. Source and two
+PHP 7.4, 8.3 and 8.5 each passed 32/32 hermetic tests. Source and two
 Production MU-plugin files have SHA256:
-c6f052e9b2d8227b5646ad0005dcd8701b8833ce4a9bab892b388cc0a449ad1a
+463cb82117dfdea7003b5e887984b2244c97eac5c63827f3cef99395ea7882c1
 
 Live remote WordPress bootstrap confirms MU-plugin loaded and no Site Profile
 created or governed write enabled as a result of installation. Source
@@ -53,3 +53,18 @@ receipt: /opt/mad4b-company-provisioning/reports/production-identity-quickstart-
 Rollback is deletion of ONLY this newly added MU-plugin, and only if
 its SHA256 still matches. Do not delete any saved Site Profile after an
 actual Administrator enrollment.
+
+
+## Verified next-action card
+On the subsequent page view, if the persisted profile belongs to the exact
+current Production origin, saved UUID matches WordPress readback, there is
+no pending audit, no stale migration and no governed write, the same MU
+plugin shows a simple success message with the saved UUID and a direct
+link to the Central owner delegation page. It does not show another
+Site Profile save form. On a mismatch it fails closed rather than claiming
+the site is ready. The host-private binding and independently signed
+Native execution remain separate only for operations that require them;
+the first read-only identity save does not create them.
+
+Updated manual SHA-pinned rollout and site readback receipt:
+ /opt/mad4b-company-provisioning/reports/production-identity-quickstart-revision-20261117/upgraded-production-sites.json
