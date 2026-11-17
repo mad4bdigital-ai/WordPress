@@ -2,10 +2,10 @@
 /** Isolated proof of one-shot price-template cache reconciliation. */
 declare(strict_types=1);
 $mode=$argv[1]??'normal';
-if(!in_array($mode,['normal','repeat','no-tag','no-host','host-failed','too-many','lock-held','commerce','off','symlink','source-update'],true))exit(4);
+if(!in_array($mode,['normal','repeat','no-tag','no-host','host-failed','too-many','lock-held','commerce','commerce-repeat','off','symlink','source-update'],true))exit(4);
 define('ABSPATH','/');
-if($mode!=='commerce'&&$mode!=='off')define('MAD4B_PRESENTATION_RUNTIME_ENABLED',true);
-if($mode==='commerce')define('MAD4B_COMMERCE_RUNTIME_ENABLED',true);
+if(!in_array($mode,['commerce','commerce-repeat','off'],true))define('MAD4B_PRESENTATION_RUNTIME_ENABLED',true);
+if(in_array($mode,['commerce','commerce-repeat'],true))define('MAD4B_COMMERCE_RUNTIME_ENABLED',true);
 $GLOBALS['testing_mode']=$mode;
 $GLOBALS['actions']=[];$GLOBALS['holds']=[];$GLOBALS['deleted']=[];$GLOBALS['purges']=[];
 $GLOBALS['options']=[];$GLOBALS['lock']=null;$GLOBALS['cache']=[];
@@ -50,8 +50,8 @@ function tour_component_structured_price_value(){return 'From USD 70.00 / per pe
 $root=sys_get_temp_dir().'/mad4b-cache-priced-card-'.getmypid();
 $dir=$root.'/mad4b-commerce/modules/presentation';$commerce=$root.'/mad4b-commerce/modules/commerce';
 mkdir($dir,0700,true);mkdir($commerce,0700,true);
-$orig=dirname(__DIR__).'/wp-content/plugins/mad4b-commerce/modules/presentation/native-rate-runtime-owner-v1.php';
-$owner=$dir.'/native-rate-runtime-owner-v1.php';copy($orig,$owner);
+$orig=dirname(__DIR__).'/wp-content/plugins/mad4b-commerce/modules/presentation/shared-tour-card-price-recovery-v1.php';
+$owner=$dir.'/shared-tour-card-price-recovery-v1.php';copy($orig,$owner);
 $provider=$commerce.'/tour-component-structured-price-tags.php';file_put_contents($provider,'<?php // original provider fingerprint fixture');
 if($mode==='symlink'){unlink($provider);symlink($owner,$provider);}
 require $owner;
@@ -60,12 +60,12 @@ mad4b_commerce_native_card_price_cache_reconcile_v1(\Elementor\Plugin::$instance
 $first=['deleted'=>count($GLOBALS['deleted']),'purges'=>count($GLOBALS['purges']),
  'fingerprint'=>get_option('mad4b_tour_card_price_source_fingerprint_v1','')!=='',
  'paths'=>$GLOBALS['purges'][0]??[]];
-if(in_array($mode,['repeat','no-host','host-failed','too-many'],true))mad4b_commerce_native_card_price_cache_reconcile_v1(\Elementor\Plugin::$instance->dynamic_tags);
+if(in_array($mode,['repeat','commerce-repeat','no-host','host-failed','too-many'],true))mad4b_commerce_native_card_price_cache_reconcile_v1(\Elementor\Plugin::$instance->dynamic_tags);
 if($mode==='source-update'){
  file_put_contents($provider,'<?php // original provider fingerprint fixture v2');
  mad4b_commerce_native_card_price_cache_reconcile_v1(\Elementor\Plugin::$instance->dynamic_tags);
 }
-$normal=in_array($mode,['normal','repeat','source-update'],true);
+$normal=in_array($mode,['normal','repeat','source-update','commerce','commerce-repeat'],true);
 $pass=count($registered)===1;
 if($normal){
  $pass=$pass && $first['deleted']===2 && $first['purges']===1 && $first['fingerprint']
@@ -74,7 +74,7 @@ if($normal){
  $pass=$pass && count($GLOBALS['deleted'])===$expected && count($GLOBALS['purges'])===($mode==='source-update'?2:1);
 }else{
  $pass=$pass && !$first['fingerprint'];
- if(in_array($mode,['commerce','off','no-tag','lock-held','symlink'],true))
+ if(in_array($mode,['off','no-tag','lock-held','symlink'],true))
   $pass=$pass && !$first['deleted'] && !$first['purges'];
  if($mode==='too-many')$pass=$pass && !$first['deleted'] && !$first['purges'];
  if($mode==='no-host')$pass=$pass && $first['deleted']===0 && count($GLOBALS['purges'])===0;
