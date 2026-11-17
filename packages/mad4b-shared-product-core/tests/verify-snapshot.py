@@ -60,6 +60,8 @@ if (previous.get('version') != lineage.get('prior_version')
 # Exact successor review: a new snapshot may only inherit a proven, immutable
 # prior file list. Never turn source parity into any booking/payment authority.
 review_ref = manifest.get('source_successor_review')
+if review_ref is None:
+    raise SystemExit('SOURCE_SUCCESSOR_REVIEW_REQUIRED')
 if review_ref is not None:
     if (not isinstance(review_ref, dict)
             or review_ref.get('state') != 'source_only_review_no_host_admission'
