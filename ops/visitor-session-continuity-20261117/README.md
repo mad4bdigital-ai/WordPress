@@ -26,3 +26,16 @@
 - Use the existing MAD4B company reconciliation mechanism, not new site-local duplicate integrations. Deploy source file + JS and restart no business/commerce process.
 - After source update, invalidate cached **public HTML representations** that contain old combined JS; never purge CSSJS wholesale or revoke valid critical CSS certificates. Revalidate EN/ES, fresh/incognito and returning-cookie contexts separately.
 - On regression, rollback the exact JS/API/Site Profile files from private preimage backups, refresh public HTML representation version, and retain all visitor signed-cookie state and WooCommerce orders unchanged.
+
+## Exact-head PHP compatibility and regression (2026-11-17)
+
+The same-origin WPML AJAX current-origin normalization originally called
+str_starts_with(), unavailable in PHP 7.4 and causing a Fatal on the
+reviewed path. Source-owned Site Profile now uses 0 !== strpos(...)
+for an exact anchored prefix test. tests/visitor-session-wpml-origin-hermetic.php
+executes 12 positive/negative cases against the actual class on PHP 7.4
+and PHP 8.5: active language, hidden/unregistered language, non-AJAX,
+cross-host identity, port-normalized same host, encoded/extended paths,
+site URL mismatch, missing SitePress and unchanged canonical homepage.
+This source regression is independent of real Chrome/site acceptance.
+No Production write, Site Profile reenrollment or cookie clearing occurs.
