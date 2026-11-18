@@ -23620,6 +23620,27 @@
       "review_rationale": "Reject newly introduced root-relative HTML anchor paths containing raw colon segments that WordPress wp_kses_post can truncate (verified on original Tours.dev live). Add internal_links to site-owned first-party promotional fields regardless of neutral anchor wording. Preserve unchanged historic links for repair. Bounded standalone PHP fixture tests this precise regression, neutral-label offsite internal links and canonical internal alternative. No WordPress global hook, rewrite, term mutation or production grant.",
       "coverage_reuse_rationale": "Reuses site-branded source integrity, localization and provider trust controls, no new ability or persistent execution surface.",
       "execution_note": "Exact source successor tested in hermetic PHP. The observed live fix and runtime rendering evidence remain separate from code certification."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-integrity.php",
+      "source_blob_sha": "9169abd2dbce76dfbe087337799dd475eced8a66",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-integrity-destination-term-links-runtime.php"
+      ],
+      "owner_role": "MAD4B exact-source CI-only media/Brand Integrity reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Add bounded read-only term media origin census that parses JetEngine comma-delimited gallery URLs separately, resolves exact local uploads without rewriting raw metadata, and classifies foreign origin versus missing local file. Source-only method; no WP hooks or mutation. Real live evidence: Wayfa 181/181 legacy featured origins have local files, 16/19 ETG gallery local, Tours.dev 384/384 featured and 105/109 ETG gallery local. This independent media classification avoids false blocking in commercial-link gates.",
+      "coverage_reuse_rationale": "Existing Brand Integrity, localization, source provenance and media rights controls. No new provider authority or write ability.",
+      "execution_note": "Same-PR hermetic PHP fixture asserts 3 distinct URL tokens, origin classification, no mutation, and missing identity/term failures; site integration is separately required."
     }
   ],
   "code_change_rules": {
