@@ -64,7 +64,14 @@ final class MAD4B_SCP_DFSB_Environment_Policy {
     }
 
     public static function boot() {
-        add_action( 'admin_menu', array( __CLASS__, 'menu' ), 20 );
+        // The central route registry enforces canonical slug/capability and
+        // schedules this child only after the parent Admin menu exists.
+        // If the registry is absent or declines this exact declaration,
+        // do not create an unregistered direct submenu as a fallback.
+        if ( class_exists( 'MAD4B_SCP_Admin_Route_Registry', false )
+            && true === MAD4B_SCP_Admin_Route_Registry::register( 'mad4b-dfsb-environments', 'manage_options' ) ) {
+            MAD4B_SCP_Admin_Route_Registry::schedule_submenu( array( __CLASS__, 'menu' ), 92 );
+        }
         add_action( 'admin_post_mad4b_scp_dfsb_policy_save', array( __CLASS__, 'save' ) );
     }
 

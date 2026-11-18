@@ -113,7 +113,9 @@ native_menu_guards = {
         "if(!self::can_propose())wp_die('Company migration planning access denied',403);",
     ),
     'class-mad4b-scp-dfsb-environment-policy.php': (
-        "add_action( 'admin_menu', array( __CLASS__, 'menu' ), 20 );",
+        "class_exists( 'MAD4B_SCP_Admin_Route_Registry', false )",
+        "true === MAD4B_SCP_Admin_Route_Registry::register( 'mad4b-dfsb-environments', 'manage_options' )",
+        "MAD4B_SCP_Admin_Route_Registry::schedule_submenu( array( __CLASS__, 'menu' ), 92 );",
         "add_submenu_page( 'mad4b-control-plane', 'Dynamic SEO Environments',",
         "'Dynamic SEO Environments', 'manage_options'",
         "if ( ! current_user_can( 'manage_options' ) ) return;",
