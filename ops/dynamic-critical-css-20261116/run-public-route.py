@@ -80,6 +80,10 @@ echo wp_json_encode([
    ?(string)hash_file("sha256",WPMU_PLUGIN_DIR."/424-mad4b-private-html-css-bundler-v1.php"):null,
  "source_tour_css_policy_sha"=>is_file(WPMU_PLUGIN_DIR."/378-mad4b-tour-single-css-stability.php")
    ?(string)hash_file("sha256",WPMU_PLUGIN_DIR."/378-mad4b-tour-single-css-stability.php"):null,
+ // WordPress core categories keep their per-render JetEngine CSS inline.
+ // Bind the first-party optimizer file to category-only negative proof.
+ "source_category_css_policy_sha"=>is_file(WPMU_PLUGIN_DIR."/427-mad4b-public-archive-css-source-v1.php")
+   ?(string)hash_file("sha256",WPMU_PLUGIN_DIR."/427-mad4b-public-archive-css-source-v1.php"):null,
  "global_generation"=>(int)get_option("mad4b_ccss_global_generation_v1",0),
  "listing_generation"=>(int)get_option("mad4b_ccss_listing_generation_v1",0),
  "wpml_languages"=>array_values((array)($s["active_languages"]??[])),

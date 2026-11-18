@@ -65,6 +65,11 @@ def source_key(cat,r,state,depends_on_listings=False):
     # under unchanged WPML, WCML, CSS and WordPress dependency gates.
     if r['type']=='category':
         deps.append('core-category-body-class:category-id-v2')
+        if cat['host']=='wayfatours.com':
+            # Change only original core-category CSS source identity;
+            # stale archive negative proofs/cert-ready HOLDs now retry.
+            deps.append('category-native-css:'+str(
+                state.get('source_category_css_policy_sha') or 'absent'))
     return hashlib.sha256('|'.join(deps).encode()).hexdigest()
 def optimizer_source_key(cat,r,state):
     """Negative browser proof for an exact Elementor+optimizer source.
@@ -106,6 +111,9 @@ def optimizer_source_key(cat,r,state):
     # No destination, tour, property, post, page or archive source is dirty.
     if r['type']=='category':
         values.append('core-category-body-class:category-id-v2')
+        if cat['host']=='wayfatours.com':
+            values.append('category-native-css:'+str(
+                state.get('source_category_css_policy_sha') or 'absent'))
     return hashlib.sha256('|'.join(values).encode()).hexdigest()
 
 def order_key(r):

@@ -195,3 +195,48 @@ The original five-viewport QA is *not* rerun merely because the
 publisher's identity parsing was repaired. Publication remains
 conditional on exact source parity and a fresh public HTML readback;
 a successful dryrun alone is not a deployed certificate.
+
+## Wayfatours original WordPress core categories: stable compiled CSS source (18 Nov 2026)
+Original category archives in Wayfatours Production failed the final live
+Critical CSS readback despite passing five real Chromium viewports. The
+negative proof was valid: the certified 2,883,305-byte CSS bundle
+`d26b05e002dcea0b78d894c57d8c3cc7.css` was replaced after the
+selective release by a different CSS artifact
+`d8366a4964a24bda0dfe1b02d54e5100.css`. First CSS difference at
+byte 2,551,420 was volatile JetEngine `elementor-dcss-<hrtime>` selectors
+generated per request. CSS bytes differed even though they were the same
+size; the current runtime correctly rejected stale certification.
+Original 414 stabilizer was scoped to Home/Tour and did not handle
+WordPress core category archives.
+
+The new first-party 427 MU plugin applies LiteSpeed's native
+`litespeed_optimize_css_excludes` for `elementor-dcss-` ONLY to
+canonical published public WordPress `category` GET routes on
+Wayfatours Production when unauthenticated, cookie-free, query-free and
+without payment/user state. Dynamic selectors remain in the matching
+live HTML inline styles; immutable global styles continue to combine.
+No changes to WooCommerce, language/currency/market, WP core category
+identity, Elementor layouts, HTML cache policy or native JS. The feature
+has a per-company off switch
+`mad4b_public_category_stable_css_source_v1=off`.
+Live evidence from independently versioned origin cache generations for
+`/category/interests/`: HTTP 200, one CSS bundle
+`ab3c9e74709d568f8124bf0683ebf75a.css`, SHA-256
+`ee20c27b8d5dc326e0550950aef3100eb1e48c9ee4c2c850b3b27e7c664170f0`
+identical across two separate MISS generations; FastCGI MISS -> HIT;
+0 volatile selector tokens in compiled CSS, 12 native dynamic CSS
+inline style blocks, public original HTML cache policy preserved.
+Original backout is deleting only the new 427 MU file, with selective
+route revalidation if required.
+
+The original source-family runner now reports the original 427 source
+file SHA only for Wayfatours core categories, invalidating historical
+category-only negative QA/hold keys when the optimizer changes. It
+does not inherit successful source-family certification or bypass the
+five-viewport Chromium and exact WPML/WCML or CSS source checks.
+Both Interests and Uncategorized were proved eligible for fresh
+original category source QA with their exact 427 fingerprint, with
+no change to Tour, destinations, other types or Tours.dev.
+Six hermetic PHP CSS-exclusion tests and eight source-key isolation
+tests passed. Independent live Chromium recertification is still
+necessary before these category pages count as Critical CSS Ready.
