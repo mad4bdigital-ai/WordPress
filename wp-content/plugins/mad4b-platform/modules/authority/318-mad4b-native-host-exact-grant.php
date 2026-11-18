@@ -446,8 +446,71 @@ final class MAD4B_Native_Host_Exact_Grant_V1 {
    'word_press_user_required'=>false,'remote_write_authorized'=>false,
    'grant_created'=>false,'execution_performed'=>false];
  }
+ /**
+  * Fresh signed Original318 snapshot for the *independent* Original313 reader.
+  *
+  * This verifies the Broker signature against the current Site Profile.
+  * It NEVER asserts the independent root-ledger high-water, a reserved Job,
+  * write eligibility or an Original313 receipt. A restored but valid old
+  * ACTIVE WordPress option is rejected by the separate root checkpoint.
+  */
+ public static function current_anchor_readback_v2(string $company,string $environment):array {
+  $out=['contract'=>'mad4b.original318.host-anchor-current-readback.v2',
+    'source'=>'original318_fresh_wp_readback',
+    'company'=>$company,'environment'=>$environment,
+    'observed_epoch'=>time(),'readback_verified'=>false,
+    'state'=>'MISSING_OR_INVALID','revision'=>0,
+    'anchor_nonce'=>null,'site_uuid'=>null,
+    'current_anchor_signature_verified'=>false,
+    'current_anchor_eligible'=>false,'signed_anchor_active_in_option'=>false,
+    'prior_grants_ineligible'=>false,
+    'fresh_central_highwater_verified'=>false,
+    'original313_certified'=>false,'write_authorized'=>false,
+    'grant_created'=>false];
+  if(!preg_match('/^[a-z][a-z0-9-]{2,47}$/D',$company)
+    ||!preg_match('/^[a-z][a-z0-9_-]{1,39}$/D',$environment)
+    ||!class_exists('MAD4B_Company_Environment_Registry_V2',false))return $out;
+  $site=MAD4B_Company_Environment_Registry_V2::target($company,$environment);
+  if(!is_array($site)||($site['company_id']??null)!==$company
+    ||($site['environment']??null)!==$environment
+    ||!wp_is_uuid((string)($site['site_uuid']??''))
+    ||!is_string($site['identity_evidence']['profile_digest']??null))return $out;
+  $record=self::dynamic_anchor($company,$environment);
+  if(is_array($record)
+    &&($record['site_uuid']??null)===$site['site_uuid']
+    &&($record['canonical_origin']??null)===$site['canonical_origin']
+    &&($record['profile_digest']??null)===$site['identity_evidence']['profile_digest']) {
+    $message=implode(chr(10),array_map(static fn($field)=>(string)$record[$field],
+      self::DYNAMIC_ANCHOR_SIGNED_FIELDS));
+    $out['site_uuid']=$record['site_uuid'];
+    $out['state']='ACTIVE';$out['revision']=$record['revision'];
+    $out['anchor_nonce']=$record['nonce'];
+    $out['readback_verified']=true;
+    $out['current_anchor_signature_verified']=true;
+    $out['signed_anchor_active_in_option']=true;
+    $out['signed_anchor_message_sha256']=hash('sha256',$message);
+    return $out;
+  }
+  $revoked=self::independent_revoked_anchor_observation_v2($company,$environment);
+  if(($revoked['signed_revocation_record_observed']??false)===true
+    &&($revoked['site_uuid']??null)===$site['site_uuid']) {
+    $out['site_uuid']=$revoked['site_uuid'];
+    $out['state']='REVOKED';$out['revision']=$revoked['anchor_revision'];
+    $out['anchor_nonce']=$revoked['anchor_nonce'];
+    $out['readback_verified']=true;
+    $out['signed_anchor_message_sha256']=$revoked['signed_anchor_message_sha256'];
+  }
+  return $out;
+ }
  public static function cli($args,$assoc) {
   $action=(string)($args[0]??'');
+  if($action==='anchor-current-readback') {
+   if(array_keys($assoc)!==['company','environment'])
+     WP_CLI::error('EXACT_COMPANY_ENVIRONMENT_REQUIRED');
+   WP_CLI::line(wp_json_encode(self::current_anchor_readback_v2(
+     (string)$assoc['company'],(string)$assoc['environment']),JSON_UNESCAPED_SLASHES));
+   return;
+  }
   if($action==='identity-status') {
    if(array_keys($assoc)!==['company','environment'])WP_CLI::error('EXACT_COMPANY_ENVIRONMENT_REQUIRED');
    WP_CLI::line(wp_json_encode(self::dynamic_identity_status((string)$assoc['company'],(string)$assoc['environment']),JSON_UNESCAPED_SLASHES));
