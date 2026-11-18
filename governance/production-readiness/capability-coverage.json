@@ -3641,6 +3641,81 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Use existing governance/site identity/security and signed Host execution controls; no new route accessible to foreign REST clients, no production release admission, no runtime signer or company grant created, and no protected control weakened.",
       "review_rationale": "Introduce site-scoped Host Ed25519 execution as an independent signed CLI service. Enforce exact site/DB/environment, one-time expiring nonce, pinned public key, exact registered agent and ability grant. Missing optional Media provider fails closed. A signed bind operation remains explicitly host-signed and is never invoked by read-only registration."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-settings-locator.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readonly-native-settings-locator-runtime.php"
+      ],
+      "owner_role": "Independent read-only module CI source reviewer — not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Pure read-only service, no external route, grant issuance, registered write Ability or mandatory company deployment. Existing source security gates remain unchanged.",
+      "review_rationale": "Read-only WooCommerce MaxMind locator requires manage_woocommerce and permitted broker; never exposes license value, writes options or downloads database."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-installed-artifact.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readonly-provider-installed-artifact-runtime.php"
+      ],
+      "owner_role": "Independent read-only module CI source reviewer — not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Pure read-only service, no external route, grant issuance, registered write Ability or mandatory company deployment. Existing source security gates remain unchanged. Active installed provider observation also falls under exact MCP/provider/execution source controls; this still confers no provider write admission.",
+      "review_rationale": "Observe only exact active WordPress plugin header and SHA. Reject plugin path traversal, outside symlinks, version divergence and multiple candidates; runtime identity never certifies package or write authority."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-gate-funnel.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readonly-unified-gate-funnel-runtime.php"
+      ],
+      "owner_role": "Independent read-only module CI source reviewer — not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Pure read-only service, no external route, grant issuance, registered write Ability or mandatory company deployment. Existing source security gates remain unchanged.",
+      "review_rationale": "Read-only dependency DAG validates surface, dependencies and cycles; caller observations can close gates only; readiness never authorizes approval or execution."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-global-runtime-lifecycle.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readonly-global-runtime-lifecycle-runtime.php"
+      ],
+      "owner_role": "Independent read-only module CI source reviewer — not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Pure read-only service, no external route, grant issuance, registered write Ability or mandatory company deployment. Existing source security gates remain unchanged.",
+      "review_rationale": "Project original provider states with native receipt verification. No automatic retry, provider dispatch, substitute CAS, authority escalation or full release certification."
     }
   ],
   "lifecycle": [],
@@ -11808,6 +11883,107 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing registered governance, exact site origin, append-only audit, signed Host CLI and Context Asset review controls cover this focused live-source parity slice. No issuer enrollment, release admission, API access widening, media provider activation or new production grant is authorized by review metadata.",
       "review_rationale": "Recover latest live Ed25519 pinned-public-key Host Agent. Signatures bind exact site UUID/origin/environment/database/body/operation and an expiring nonce; no OAuth or implicit WordPress user grants. Optional tourism media functions return explicit missing-provider errors without resurrecting live-retired modules."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-settings-locator.php",
+      "source_blob_sha": "17f50bc26c50a196eb509e358d2586befda63027",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readonly-native-settings-locator-runtime.php"
+      ],
+      "owner_role": "Independent repo source/security reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing WordPress original-provider ownership, least-privilege read-only status and security review controls apply. No key, grant, async job or Production release credential is created or loaded.",
+      "review_rationale": "Read-only WooCommerce MaxMind locator requires manage_woocommerce and permitted broker; never exposes license value, writes options or downloads database."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-installed-artifact.php",
+      "source_blob_sha": "2d6c6282fdb22841992c1d4348613f49f38e4eea",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readonly-provider-installed-artifact-runtime.php"
+      ],
+      "owner_role": "Independent repo source/security reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing WordPress original-provider ownership, least-privilege read-only status and security review controls apply. No key, grant, async job or Production release credential is created or loaded. Active installed provider observation also falls under exact MCP/provider/execution source controls; this still confers no provider write admission.",
+      "review_rationale": "Observe only exact active WordPress plugin header and SHA. Reject plugin path traversal, outside symlinks, version divergence and multiple candidates; runtime identity never certifies package or write authority."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-gate-funnel.php",
+      "source_blob_sha": "e423f1564ccfa9a9bc2c71342ea241c86b7f96c3",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readonly-unified-gate-funnel-runtime.php"
+      ],
+      "owner_role": "Independent repo source/security reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing WordPress original-provider ownership, least-privilege read-only status and security review controls apply. No key, grant, async job or Production release credential is created or loaded.",
+      "review_rationale": "Read-only dependency DAG validates surface, dependencies and cycles; caller observations can close gates only; readiness never authorizes approval or execution."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-global-runtime-lifecycle.php",
+      "source_blob_sha": "437bad33ea76f341ea1a5cbce6cd7d5a8d318ad5",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readonly-global-runtime-lifecycle-runtime.php"
+      ],
+      "owner_role": "Independent repo source/security reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing WordPress original-provider ownership, least-privilege read-only status and security review controls apply. No key, grant, async job or Production release credential is created or loaded.",
+      "review_rationale": "Project original provider states with native receipt verification. No automatic retry, provider dispatch, substitute CAS, authority escalation or full release certification."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "a9400294dceb6ce769172acffe55c8e781ca8ff8",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readonly-native-settings-locator-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readonly-provider-installed-artifact-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readonly-unified-gate-funnel-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readonly-global-runtime-lifecycle-runtime.php"
+      ],
+      "owner_role": "Independent repo source/security reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing WordPress original-provider ownership, least-privilege read-only status and security review controls apply. No key, grant, async job or Production release credential is created or loaded.",
+      "review_rationale": "Load only four sealed read-only source classes beside their original dependencies; adding require_once declarations does not authorize services or register write routes."
     }
   ],
   "code_change_rules": {

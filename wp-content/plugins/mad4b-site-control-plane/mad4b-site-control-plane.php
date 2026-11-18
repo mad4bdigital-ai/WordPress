@@ -232,6 +232,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-aci01-intake-preview.php'
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-aci01-evidence-preview.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-aci01-opportunity-preview.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-aci01-native-relation-audit.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-unified-gate-funnel.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-dynamic-content-pipeline.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-governed-draft.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-publication-verification.php';
@@ -328,6 +329,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-g7-read-surfaces.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-g7-compensation-audit.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-g7-release-acceptance-audit.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-g7-workload-measurement.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-installed-artifact.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-compatibility-certification.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-auto-reconcile-scenarios.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-production-automation.php';
@@ -469,6 +471,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-production-readiness-eval
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operator-control-center.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-request-generation.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-error-contract-registry.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-native-settings-locator.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-adaptive-interaction-broker.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-authorization.php';
 // The mutation execution-boundary filter must exist before any ability can be
@@ -535,6 +538,7 @@ MAD4B_SCP_Ability_Catalog_Transport::boot();
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-chatgpt-tool-projection.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-capability-search-index.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-capability-source-inventory.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-global-runtime-lifecycle.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-capability-dependency-planner.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-recovery-route-resolver.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-unified-capability-gateway.php';
