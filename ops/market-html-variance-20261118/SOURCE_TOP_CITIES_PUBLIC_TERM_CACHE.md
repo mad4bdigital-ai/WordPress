@@ -109,3 +109,30 @@ isolation and independent browser/booking proof are still required
 before claiming safe public-shell caching. No current production
 Wayfatours files, WordPress payment policies or Nginx configuration
 changed.
+
+## 19 November — consent banner explained the apparent Swiper click failure
+
+Real Playwright source/native and source/cached sessions initialized the
+Swiper component with identical card/link counts, link SHA and dimensions.
+The first 390px and 768px click probes were non-actionable because
+the first-visit consent banner, role=region and selector
+mad4b-consent-banner, was visibly above the cards at z-index 2147483001.
+A native Chromium layer survey identified the exact nearest obstructing
+DOM parent as section.mad4b-consent-banner. Three temporary CSS z-index
+and pointer-event variants in an isolated browser test **did not** remove
+the obstruction, correctly showing this is a consent state, not a CSS
+regression or destination-card cache bug.
+
+The revised v3 QA interacts with the REAL site's Reject optional button,
+then verifies the banner is hidden BEFORE evaluating Swiper, while
+mocking ONLY the optional consent-receipt POST within the isolated test
+browser to avoid test data writes. It uses genuine pointer click +
+keyboard focus, and compares errors and DOM/link geometry between the
+cached and native bypass variant at 390px and 768px. The original
+site's consent UX is not changed or overridden.
+
+The prior consent-visible baseline must not be interpreted as an
+interaction failure of the underlying slider. A v3 browser run must
+still complete independently before the post-consent pointer actions
+can be declared passing. Consent audit remains mandatory on real
+site visitors; the test's in-browser interception is never deployed.

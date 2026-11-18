@@ -24,11 +24,25 @@ const hash = s => crypto.createHash('sha256').update(s).digest('hex').slice(0,20
     const pageErrors=[];
     const page=await context.newPage();
     page.on('pageerror',e=>pageErrors.push(String(e.message||e).slice(0,100)));
+    // Privacy QA never records a test visitor's choice on the live site.
+    // The real UI is exercised; only the isolated browser's optional
+    // consent-receipt network side effect is intercepted.
+    await page.route(url=>{
+      const u=new URL(url);
+      return u.pathname.includes('/mad4b-consent/v1/receipt')
+        || (u.searchParams.get('rest_route')||'').includes('/mad4b-consent/v1/receipt');
+    },route=>route.fulfill({status:200,contentType:'application/json',body:'{"success":true,"data":{"test":true}}'}));
     try{
      const response=await page.goto(site,{waitUntil:'domcontentloaded',timeout:60000});
      if(!response || response.status()!==200)throw Error('HTML_NOT_200:'+variant+':'+width);
      const headers=await response.allHeaders();
      if(headers['x-mad4b-mobile-css-ready']!=='1')throw Error('MOBILE_CSS_NOT_READY');
+     const banner=page.locator('#mad4b-consent-banner');
+     await banner.waitFor({state:'visible',timeout:12000});
+     await banner.locator('[data-mad4b-choice="reject"]').click({timeout:9000});
+     await banner.waitFor({state:'hidden',timeout:12000});
+     const consentDismissed=await banner.isHidden();
+     if(!consentDismissed)throw Error('CONSENT_UI_DID_NOT_CLOSE');
      const widget=page.locator('.elementor-element-b25dbff').first();
      await widget.waitFor({state:'attached',timeout:12000});
      await widget.scrollIntoViewIfNeeded({timeout:15000});
@@ -106,14 +120,14 @@ const hash = s => crypto.createHash('sha256').update(s).digest('hex').slice(0,20
        }catch(e){actionabilityError=String(e.message||e).slice(0,100);}
      }else{actionabilityError='no-visible-unoccluded-anchor';}
      const row={
-       contract:'mad4b.source.top-cities.browser-qa.v2',
+       contract:'mad4b.source.top-cities.browser-qa.v3',
        width,variant,http:response.status(),cssReady:headers['x-mad4b-mobile-css-ready'],
        cacheStatus:headers['x-mad4b-preset-cache']||null,
        cards:info.cardCount,links:info.linkCount,linkDigest:hash(JSON.stringify(info.hrefs)),
        widthPx:info.widgetWidth,heightPx:info.widgetHeight,
        visibleCards:info.visibleCardCount,display:info.computedDisplay,
        volatileDcss:info.volatileDcssCount,realClickDelivered:actionable,
-       keyboardFocusable,swiperReady,
+       keyboardFocusable,swiperReady,consentDismissed,
        hitTestCandidateCount:info.hitTestCandidates.length,
        blockedLinkCount:info.blockedLinkCount,blockerTags:info.blockerTags,
        actionabilityError,
@@ -139,12 +153,13 @@ const hash = s => crypto.createHash('sha256').update(s).digest('hex').slice(0,20
      || native.visibleCards!==canary.visibleCards
      || native.volatileDcss!==0 || canary.volatileDcss!==0
      || !native.swiperReady || !canary.swiperReady
+     || !native.consentDismissed || !canary.consentDismissed
      || !native.realClickDelivered || !canary.realClickDelivered
      || !native.keyboardFocusable || !canary.keyboardFocusable
      || canary.jsErrorCount>native.jsErrorCount)
      throw Error('BROWSER_MOBILE_TOP_CITIES_CANARY_PARITY_HOLD_'+width);
  }
- fs.writeFileSync(out,JSON.stringify({contract:'mad4b.top-cities-canary-browser-qa.v2',
+ fs.writeFileSync(out,JSON.stringify({contract:'mad4b.top-cities-canary-browser-qa.v3',
   passed:true,source_site:'tours.dev.mad4b.com',results},null,2)+'\n',{mode:0o600});
  console.log('SOURCE_TOP_CITIES_BROWSER_QA_PASSED_390_768',results.length);
 })().catch(e=>{console.error('SOURCE_TOP_CITIES_BROWSER_QA_HOLD',String(e));process.exitCode=8;});
