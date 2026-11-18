@@ -1,0 +1,39 @@
+{
+  "additive_current_bytes": 68430,
+  "additive_current_git_blob_sha": "fcf54c0b6312c575c0ab34b3d751cd5168ca46fa",
+  "additive_current_sha256": "f613ca22a1e9158b9711d0ebd85d406b83e5d2b81bd0fbba2835d99a7200e1b9",
+  "authorizing": false,
+  "base_commit": "de85fdf39169737d17be8d2473ab4f53350d1ba2",
+  "contract": "mad4b.original305-source-review-bootstrap-additive.v1",
+  "exact_addition_bytes": 523,
+  "exact_addition_lines": 7,
+  "exact_addition_sha256": "d17bcd055021c137f4c37bfcc8bcd34f02915c6ade74f83fcda9ca1093d850f9",
+  "exact_anchor_sha256": "f21419a89ea2a7339ea47b40f5356b98e636b79723916fd3ccb53860bc80b9d4",
+  "historical_current_bytes": 67907,
+  "historical_current_sha256": "87007b03164b4de741920384431f22950870f9ff395654cbf28816ac1a5b6ef3",
+  "historical_review": "docs/release-coverage/pr814-pr813-destination-preview-additive-20261114.json",
+  "historical_source_review_immutable": true,
+  "host312_authorized": false,
+  "live_evidence_required": true,
+  "main_path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+  "master_signed_envelope_issued": false,
+  "production_authorized": false,
+  "regression_tests": [
+    "tests/test_tour_highlights_source_delta.py",
+    "wp-content/plugins/mad4b-site-control-plane/tests/original305-host-review-denial-runtime.php"
+  ],
+  "retained_modules": [
+    {
+      "bytes": 4655,
+      "git_blob_sha": "8300200ae8693f727460531db72756084d9435fe",
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-host-source-release-review.php",
+      "sha256": "e6d1900343d9ffd5347d7d51e916ccb918513f835136da97b7547ff6f312378a"
+    },
+    {
+      "bytes": 30250,
+      "git_blob_sha": "124f6d64bae08fb0f557c43177bd5e0b6557db19",
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-original305-incident-review.php",
+      "sha256": "142c278c4b952f334171d1bbbb81d9e655f5189bc7d87948065b7eda9d7adb6f"
+    }
+  ]
+}
