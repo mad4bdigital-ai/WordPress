@@ -51,4 +51,4 @@ must(!isset($hosts['wayfatours.com']),'first-party URL allowed');
 must(isset($hosts['museum.example'])&&$hosts['museum.example']['severity']==='medium','external citation review-only');
 must(!MAD4B_SCP_Brand_Integrity::analyze_links('<a href="https://museum.example/source">Museum study</a>','post_content',$brand['scope']),'ordinary editorial citations stay allowed');
 must(MAD4B_SCP_Brand_Integrity::scan_term_report(999,$brand)['complete']===false,'missing term fails closed');
-echo "BRAND_DESTINATION_TERM_LINKS: PASS\n";
+echo "PASS: BRAND_DESTINATION_TERM_LINKS\n";
