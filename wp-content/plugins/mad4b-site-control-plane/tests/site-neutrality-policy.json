@@ -224,6 +224,12 @@
         "api.github.com"
       ],
       "rationale": "Immutable public GitHub REST source-reader authority only, not a tenant or site default. This exact hostname pin rejects config drift to unreviewed providers; HTTPS, TLS, DNS and redirect checks remain governed by Egress Policy."
+    },
+    "includes/class-mad4b-scp-context-local-document-normalizer.php": {
+      "hosts": [
+        "schemas.openxmlformats.org"
+      ],
+      "rationale": "The OOXML 2006 relationships URI in DOMDocument::getAttributeNS is a namespace identifier in offline zipped XML, not a fetchable network endpoint. Exception is limited to exactly this source path; URL/tenant, macro execution and remote transport checks remain enforced."
     }
   },
   "optional_named_tag_integrations": [

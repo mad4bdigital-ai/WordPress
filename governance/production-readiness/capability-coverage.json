@@ -3716,6 +3716,108 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Pure read-only service, no external route, grant issuance, registered write Ability or mandatory company deployment. Existing source security gates remain unchanged.",
       "review_rationale": "Project original provider states with native receipt verification. No automatic retry, provider dispatch, substitute CAS, authority escalation or full release certification."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-local-document-normalizer.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-context-local-document-normalizer-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-ooxml-namespace-neutrality-contract.py"
+      ],
+      "owner_role": "Independent provider/site security code reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Current approved source security controls already cover this bounded service and its exact negative test. Dynamic service discovery is not release or write authorization.",
+      "review_rationale": "Provider-neutral local bounded OOXML/DOCX/PDF read-only parsing; validates MIME and size, uses isolated temporary archive with cleanup, does not invoke cloud APIs or WordPress database writes."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-field-intelligence.php",
+      "control_ids": [
+        "EXECUTION-01",
+        "GOVERNANCE-01",
+        "MCP-01",
+        "PLATFORM-01",
+        "PROVIDERS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-provider-field-read-parity-runtime.php"
+      ],
+      "owner_role": "Independent provider/site security code reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Current approved source security controls already cover this bounded service and its exact negative test. Dynamic service discovery is not release or write authorization.",
+      "review_rationale": "GET-only admin protected REST provider field inventory, exact Site Profile, bounded metadata keys redacted of credentials and secret names; no field values or write/translation ability. The missing-subtype fallback is generalized to built-in WordPress post, preserving explicit company CPT choices."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-visual-seo-strategy.php",
+      "control_ids": [
+        "AI-01",
+        "GOVERNANCE-01",
+        "LOCALIZATION-01",
+        "PLATFORM-01",
+        "PROVIDERS-02",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-visual-seo-strategy-runtime.php"
+      ],
+      "owner_role": "Independent provider/site security code reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Current approved source security controls already cover this bounded service and its exact negative test. Dynamic service discovery is not release or write authorization.",
+      "review_rationale": "Verified site/post/media/WPML context, explicit proposal-only visual SEO/alt suggestions. Never writes alt text, media metadata or grants approval."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-transport-policy.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "TICKETS-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-local-transport-boundary-runtime.php"
+      ],
+      "owner_role": "Independent provider/site security code reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Current approved source security controls already cover this bounded service and its exact negative test. Dynamic service discovery is not release or write authorization.",
+      "review_rationale": "Fail-closed local-only loopback policy: exact OS host/port and enrolled Site Profile, no reverse proxy, spoofed Forwarded headers, public host, Production, or write authority."
+    },
+    {
+      "id": "rest:mad4b/v1/provider-fields",
+      "owner_role": "Independent REST capability and WordPress privacy reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "GOVERNANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-provider-field-read-parity-runtime.php"
+      ],
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The existing REST/MCP/provider execution controls require a WordPress manage_options permission check, source profile binding and read-only GET semantics; introducing this source metadata inspection does not grant a new write privilege or bypass owner authority.",
+      "review_rationale": "A site administrator may query registered/observed field-key metadata only. The exact GET endpoint rejects unauthenticated users, requires current_user_can(manage_options), bounds responses, filters secret/password/token key names and reveals no stored value; test verifies REST permission callback and denies writes."
     }
   ],
   "lifecycle": [],
@@ -11984,6 +12086,114 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing WordPress original-provider ownership, least-privilege read-only status and security review controls apply. No key, grant, async job or Production release credential is created or loaded.",
       "review_rationale": "Load only four sealed read-only source classes beside their original dependencies; adding require_once declarations does not authorize services or register write routes."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-local-document-normalizer.php",
+      "source_blob_sha": "2c196292a4d1c41ebbcd21d4cc175424ceb85687",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-context-local-document-normalizer-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-ooxml-namespace-neutrality-contract.py"
+      ],
+      "owner_role": "Independent provider/site security code reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing immutable Site Profile, provider read disclosure restrictions, native local-only transport and governed change-control apply; this source review makes no activation, runtime grant, deployment or content mutation possible.",
+      "review_rationale": "Provider-neutral local bounded OOXML/DOCX/PDF read-only parsing; validates MIME and size, uses isolated temporary archive with cleanup, does not invoke cloud APIs or WordPress database writes."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-field-intelligence.php",
+      "source_blob_sha": "92b227d03975a12d0193f439fa931a179c46c156",
+      "control_ids": [
+        "EXECUTION-01",
+        "GOVERNANCE-01",
+        "MCP-01",
+        "PLATFORM-01",
+        "PROVIDERS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-provider-field-read-parity-runtime.php"
+      ],
+      "owner_role": "Independent provider/site security code reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing immutable Site Profile, provider read disclosure restrictions, native local-only transport and governed change-control apply; this source review makes no activation, runtime grant, deployment or content mutation possible.",
+      "review_rationale": "GET-only admin protected REST provider field inventory, exact Site Profile, bounded metadata keys redacted of credentials and secret names; no field values or write/translation ability. Site-neutral correction replaces the three hard-coded Tours CPT fallback defaults with the registered built-in post type; explicit subtype inputs continue unchanged. Preserve the original live SHA-256 in the private source snapshot, and do not treat adapted bytes as an identical live-source match. The candidate removes only a redundant trailing blank line from the captured live PHP file to satisfy Git whitespace checks; semantic behavior is identical."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-visual-seo-strategy.php",
+      "source_blob_sha": "9fc3097180957970e26eac3c67721e4f02343182",
+      "control_ids": [
+        "AI-01",
+        "GOVERNANCE-01",
+        "LOCALIZATION-01",
+        "PLATFORM-01",
+        "PROVIDERS-02",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-visual-seo-strategy-runtime.php"
+      ],
+      "owner_role": "Independent provider/site security code reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing immutable Site Profile, provider read disclosure restrictions, native local-only transport and governed change-control apply; this source review makes no activation, runtime grant, deployment or content mutation possible.",
+      "review_rationale": "Verified site/post/media/WPML context, explicit proposal-only visual SEO/alt suggestions. Never writes alt text, media metadata or grants approval. The candidate removes only a redundant trailing blank line from the captured live PHP file to satisfy Git whitespace checks; semantic behavior is identical."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-transport-policy.php",
+      "source_blob_sha": "a45a00c1aa9b12bf05377672c7e8a0f6e3347399",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "TICKETS-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-local-transport-boundary-runtime.php"
+      ],
+      "owner_role": "Independent provider/site security code reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing immutable Site Profile, provider read disclosure restrictions, native local-only transport and governed change-control apply; this source review makes no activation, runtime grant, deployment or content mutation possible.",
+      "review_rationale": "Fail-closed local-only loopback policy: exact OS host/port and enrolled Site Profile, no reverse proxy, spoofed Forwarded headers, public host, Production, or write authority."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "bf2a581c44553027a4f24d57e1f2d0acc81c4773",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-context-local-document-normalizer-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-provider-field-read-parity-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-visual-seo-strategy-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-local-transport-boundary-runtime.php"
+      ],
+      "owner_role": "Independent exact bootstrap source reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Four surgical require_once statements adjacent to existing dependencies; no plugin version replacement, security issuer, signers, write grants, remote media or WPML settings changed.",
+      "review_rationale": "Only four sealed, SHA-256-confirmed source files are loaded from current Tours.dev as read-only analysis/transport guards; existing Git bootstrap logic remains unchanged and the declared GET-only provider REST route has an explicit manage_options permission callback."
     }
   ],
   "code_change_rules": {

@@ -300,6 +300,7 @@ if ( function_exists( 'wp_get_environment_type' )
     require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-client-admin.php';
 }
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-passwordless-connection.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-context-local-document-normalizer.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-wordpress-media-context.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-context-source-pipeline.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-connector-resilience.php';
@@ -630,6 +631,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-live-truth.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-staging-certification.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operational-remediation.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cso01-read-foundation.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-transport-policy.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cso-scope.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cso-registry.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cso-forms.php';
@@ -691,6 +693,8 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-opt-in.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-native-cron-acceptance.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-native-hybrid-acceptance.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-site-capability-discovery.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-field-intelligence.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-visual-seo-strategy.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-native-capability-browser-provider.php';
 add_filter( 'mad4b_browser_acceptance_providers', array( 'MAD4B_SCP_Native_Capability_Browser_Provider', 'register' ), 15 );
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skills-admin-ui.php';
