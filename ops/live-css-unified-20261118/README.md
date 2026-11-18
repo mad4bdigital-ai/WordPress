@@ -400,3 +400,13 @@ The eight source-vs-wayfa state tests compare unchanged and mutated
 QA/content contracts, and assert both final branches cover all initial
 synthetic fields; historic production certificates and public HTML
 are not changed by this patch.
+
+## Complete native-negative source revision symmetry
+Besides the fresh certificate and existing-certificate-resume paths,
+the native CSS nonbenefit proof branch (original `native_candidate`)
+also read new WP runtime state without the newly introduced QA policy
+source fingerprint. It now compares the same exact approved 421/422
+runtime and QA implementation SHA as the other two final readbacks,
+so stable negative performance evidence is not discarded incorrectly.
+No CSS, visitor preferences or commerce rules are loosened; actual
+original WordPress revision/market/QA changes still fail closed.

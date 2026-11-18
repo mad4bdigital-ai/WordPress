@@ -438,9 +438,13 @@ def run_core(site):
             modspec=importlib.util.spec_from_file_location('negative_css',TOOLS/'public-route-native-preferred.py')
             mod=importlib.util.module_from_spec(modspec);modspec.loader.exec_module(mod)
             if mod.is_native_preferred(q,lang):
+                # The independent native-CSS nonbenefit decision must
+                # compare the same source/QA release identity as original
+                # capture, otherwise legitimate negative evidence is
+                # incorrectly converted into a generic QA hold.
                 fresh=obs(php,host,env)
-                fresh['runtime_sha']=hashlib.sha256(
-                    (wp/'mu-plugins/422-mad4b-public-critical-css-runtime.php').read_bytes()).hexdigest()
+                fresh['runtime_sha']=approved_native_runtime_sha(site,wp)
+                fresh['qa_policy_sha']=qa_policy_sha()
                 current=next((x for x in catalog(php,host)['routes']
                               if x['route_key']==route['route_key']),None)
                 if fresh==state and current==route:
