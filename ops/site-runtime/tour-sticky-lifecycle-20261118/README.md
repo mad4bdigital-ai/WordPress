@@ -115,3 +115,52 @@ The seven-file snapshot and host watcher copies are evidence for selective,
 source-first reconciliation. Do NOT install the old source tree wholesale or
 overwrite newer live modules. An authorized owner exact-head attestation
 and all CI gates remain separate requirements before merge.
+
+
+## Uniform mobile bottom actions — both live sites, 18 November 2026
+
+Inspected three existing Elementor mobile presentation models on
+Wayfatours Production and Tours.dev Staging:
+- Archive: one native elementor-element-650c69 shortcode, moved into
+  body > .mad4b-mobile-dock-host by the current portal script.
+- Tour: elementor-element-d8505dd has one visible bottom-fixed action
+  and one hidden elementor-sticky__spacer clone preserving document flow.
+- Destination: elementor-element-9f6293a similarly has a fixed CTA
+  and hidden spacer. Unlike other templates, it remained visible while
+  the actual Elementor mobile menu was open.
+
+First-party 428-mad4b-mobile-bottom-action-nav-visibility.php is a
+presentation-only CSS rule to suspend existing bottom docks, active
+bottom-sticky actions and other mobile float controls whenever the real
+Elementor menu has aria-expanded=true. On closing the menu they return.
+No click capture or JavaScript hook, template ID rewrites, reparenting
+of elements, forced form visibility or edits to Elementor plugin code.
+
+The archive text Start from USD 28.00 / per person is the minimum scoped
+archive price, NOT the Best of Egypt tour price (From USD 2,310.00).
+It belongs to a single .mad4b-archive-price-value inside the original
+archive dock. In a degraded browser with the dock portal script
+intentionally aborted, the dock remains usable but this label is
+kept hidden until data-mad4b-dock-mounted=viewport exists. This
+prevents an isolated unanchored price overlay during delayed loading.
+No prices or actual JetEngine cards are changed.
+
+Verified with real Chromium on the source and Wayfatours:
+- Three kinds of pages, 390px and 427px: 12/12 open/close cycles, all
+  visible bottom docks hidden while menu open and restored when closed,
+  with zero page JavaScript errors.
+- Archive portaling normal/blocked on both sites: 4/4 correct visibility
+  states; browser-only synthetic price text proves that the CSS gate,
+  not a pending REST price response, causes the degraded visibility.
+- One visible sticky CTA per page; the hidden Elementor spacer clones
+  deliberately remain to avoid introducing layout shifts.
+- Eight source files tracked by existing per-site systemd path watchers
+  and five-minute timers. Recent selective public HTML reconciliation
+  receipts: Tours.dev 1,024 and Wayfatours 440 routes, both PASS,
+  private checkout and payment routes unchanged.
+
+Run tests/mobile-bottom-action-menu.test.js and
+tests/archive-preportal-price.test.js with TEST_ORIGIN set to the trusted
+site origin. This addresses inconsistent dock navigation policy, not the
+unreproduced physical-Android all-click freeze or browser extension
+message-channel closure.

@@ -8,6 +8,7 @@ PathChanged=/opt/hostinger-migrations/hosting-3/etg-commerce-staging/site-copy/w
 PathChanged=/opt/hostinger-migrations/hosting-3/etg-commerce-staging/site-copy/wp-content/mu-plugins/407-mad4b-elementor-sticky-lifecycle-guard.php
 PathChanged=/opt/hostinger-migrations/hosting-3/etg-commerce-staging/site-copy/wp-content/mu-plugins/assets/mad4b-elementor-sticky-lifecycle-c77a2b2fbdc39daa.js
 PathChanged=/opt/hostinger-migrations/hosting-3/etg-commerce-staging/site-copy/wp-content/mu-plugins/411-mad4b-direct-menu-link-contract.php
+PathChanged=/opt/hostinger-migrations/hosting-3/etg-commerce-staging/site-copy/wp-content/mu-plugins/428-mad4b-mobile-bottom-action-nav-visibility.php
 Unit=mad4b-form6-permanent-assets-source.service
 [Install]
 WantedBy=multi-user.target
