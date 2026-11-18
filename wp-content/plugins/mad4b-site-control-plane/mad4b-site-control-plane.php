@@ -442,6 +442,9 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-oauth-loopback-guar
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-oauth-browser-canary.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-oauth-resource-bridge.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-chatgpt-auto-binding.php';
+// Original signed Host WP-CLI transport remains dormant without per-site public trust,
+// exact site binding, an independent enrolled NHI and each operation's grant.
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-host-agent-bridge.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-multi-authority-registry.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-oauth-subject-user-bridge.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-application-password-agent-bridge.php';

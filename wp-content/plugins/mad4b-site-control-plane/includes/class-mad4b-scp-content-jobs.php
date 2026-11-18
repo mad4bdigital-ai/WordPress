@@ -328,6 +328,13 @@ final class MAD4B_SCP_Content_Jobs {
 	}
 
 	private static function actor() {
+        if ( class_exists( 'MAD4B_SCP_Host_Agent_Bridge', false )
+            && ( MAD4B_SCP_Host_Agent_Bridge::active_for( 'mad4b/content-job-create' )
+                || MAD4B_SCP_Host_Agent_Bridge::active_for( 'mad4b/content-job-transition' ) ) ) {
+            $agent = MAD4B_SCP_Host_Agent_Bridge::agent();
+            if ( is_array( $agent ) && ! empty( $agent['public_id'] ) )
+                return array( 'type' => 'nhi', 'id' => (string) $agent['public_id'], 'nhi' => (string) $agent['public_id'] );
+        }
         if ( class_exists( 'MAD4B_Native_Origin_Content_Jobs_V1', false )
             && MAD4B_Native_Origin_Content_Jobs_V1::is_admitted() )
             return MAD4B_Native_Origin_Content_Jobs_V1::actor();

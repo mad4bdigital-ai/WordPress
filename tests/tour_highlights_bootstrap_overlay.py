@@ -69,6 +69,18 @@ def _restore_destination_successor(candidate:bytes)->bytes:
 
 def original_bootstrap_bytes(candidate:bytes)->bytes:
  digest=hashlib.sha256(candidate).hexdigest()
+ # Original305 has a separate exact, nonauthorizing 7-line overlay review.
+ # Restore it before replaying the immutable PR813/PR808 source certificates.
+ # On rc129 Host integration, the same review first strips the independently
+ # pinned, no-signer Host loader. Nothing is inferred from version strings.
+ if digest not in (DESTINATION_SUCCESSOR_SHA256,CANDIDATE_SHA256):
+  try:
+   from qa31_original305_source_overlay import restore_exact_original305_overlay
+   record=json.loads((ROOT/'docs/release-coverage/pr814-pr813-destination-preview-additive-20261114.json').read_text())
+   candidate=restore_exact_original305_overlay(candidate,record['original_plugin_entry'])
+   digest=hashlib.sha256(candidate).hexdigest()
+  except (OSError,AssertionError,ValueError,KeyError,TypeError) as exc:
+   raise SourceOverlayDenied('ORIGINAL305_OR_HOST_ADDENDUM_NOT_EXACT') from exc
  if digest==DESTINATION_SUCCESSOR_SHA256:
   candidate=_restore_destination_successor(candidate)
  elif digest!=CANDIDATE_SHA256:
