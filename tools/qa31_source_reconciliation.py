@@ -34,6 +34,8 @@ def act(status,cat):
 def main():
     a=argparse.ArgumentParser()
     for k in ('staging_root','github_root','expected_head','out'):a.add_argument('--'+k.replace('_','-'),required=True)
+    a.add_argument('--report-manifest-drift', action='store_true',
+                   help='Diagnostic only: emit a nonauthorizing, release-blocked inventory even if the old build manifest is stale.')
     x=a.parse_args()
     stage=Path(x.staging_root).resolve();github=Path(x.github_root).resolve()
     if not stage.is_dir() or not github.is_dir():raise ValueError('Missing root')
@@ -43,9 +45,21 @@ def main():
     prov=json.loads((stage/'MAD4B-BUILD-PROVENANCE.json').read_text())
     assert prov['control_plane_version'].startswith('0.4.0-rc.')
     si=inventory(stage);gi=inventory(github)
-    corrupt=[e['path'] for e in prov['package_files'] if e['path'] not in si or
-             si[e['path']]['sha256']!=e['sha256'] or si[e['path']]['bytes']!=e['bytes']]
-    if corrupt:raise ValueError('Staging package manifest drift: '+str(corrupt[:7]))
+    reference_files=prov['package_files']
+    if not isinstance(reference_files,list) or not all(
+            isinstance(e,dict) and isinstance(e.get('path'),str)
+            and isinstance(e.get('sha256'),str)
+            and type(e.get('bytes')) is int for e in reference_files):
+        raise ValueError('Malformed historical package manifest inventory')
+    missing=[e['path'] for e in reference_files if e['path'] not in si]
+    changed=[e['path'] for e in reference_files if e['path'] in si and (
+        si[e['path']]['sha256']!=e['sha256'] or si[e['path']]['bytes']!=e['bytes'])]
+    corrupt=missing+changed
+    if corrupt and not x.report_manifest_drift:
+        raise ValueError('Staging package manifest drift: '+str(corrupt[:7]))
+    # An old manifest must not prevent a read-only source inventory, but it
+    # can never be treated as a valid release identity or a promotion receipt.
+    manifest_integrity='DRIFT' if corrupt else 'MATCH'
     allpaths=sorted(set(si)|set(gi))
     records=[];summary=Counter();actions=Counter()
     for path in allpaths:
@@ -64,11 +78,20 @@ def main():
       'contract':'mad4b.qa31.source-reconciliation-inventory.v1',
       'authorizing':False,'production_authorized':False,'contains_source_bodies':False,
       'github':{'head_sha':current,'version':re.search(r'(?m)^\s*\* Version:\s*(\S+)',(github/'mad4b-site-control-plane.php').read_text()).group(1),'files':len(gi)},
-      'staging':{'package_version':prov['control_plane_version'],'build_source_sha':prov['source_commit_sha'],'manifest_verified_count':len(prov['package_files']),'files':len(si)},
+      'staging':{'package_version':prov['control_plane_version'],'build_source_sha':prov['source_commit_sha'],
+                 'manifest_verified_count':len(reference_files)-len(corrupt),'files':len(si)},
+      'historical_manifest':{'state':manifest_integrity,
+                             'reference_file_count':len(reference_files),
+                             'matched_file_count':len(reference_files)-len(corrupt),
+                             'missing_file_count':len(missing),'changed_file_count':len(changed),
+                             'sample_paths':sorted(set(corrupt))[:12],
+                             'diagnostic_override_used':bool(corrupt and x.report_manifest_drift),
+                             'is_release_certificate':False},
       'matched_files':len(set(si)&set(gi))-summary['DIVERGENT'],
       'diff_count_by_state':dict(summary),'diff_count_by_action':dict(actions),
       'protected_source_divergence_count':len(sensitive),
-      'release_gate':'BLOCKED_SOURCE_DIVERGENCE' if sensitive or summary['DIVERGENT'] else 'REVIEW_REQUIRED',
+      'release_gate':('BLOCKED_STALE_BUILD_PROVENANCE' if corrupt else
+                      'BLOCKED_SOURCE_DIVERGENCE' if sensitive or summary['DIVERGENT'] else 'REVIEW_REQUIRED'),
       'decisions':records}
     out=Path(x.out);out.parent.mkdir(parents=True,exist_ok=True)
     out.write_text(json.dumps(report,sort_keys=True,indent=2)+'\n')
@@ -78,7 +101,10 @@ def main():
       'diff_by_state':report['diff_count_by_state'],
       'decisions':report['diff_count_by_action'],
       'protected_source_divergence':len(sensitive),
-      'manifest_verified':len(prov['package_files']),
+      'manifest_verified':len(reference_files)-len(corrupt),
+      'historical_manifest_state':manifest_integrity,
+      'historical_manifest_missing':len(missing),
+      'historical_manifest_changed':len(changed),
       'report_sha256':sha(out)},indent=2))
 if __name__=='__main__':
   try:main()
