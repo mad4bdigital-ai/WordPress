@@ -136,6 +136,13 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     # Source-only Skills Cron dedupe, in-memory WP scheduler and denied
     # nonenrolled/mismatched origin before any Skill filesystem or DB writes.
     "tests/native-skills-seeder-enrollment-cron-hermetic.php",
+    # Three exact Master Admin/Skill evidence fixtures are self-contained
+    # and deny unauthenticated operations, authoring or execution grants.
+    # Their PASS counters are checked by the runner; no live WP users,
+    # provider network, database, or role mutations can occur.
+    "wp-content/plugins/mad4b-site-control-plane/tests/master-admin-skill-readiness-hermetic.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/master-admin-skill-operations-hermetic.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/master-admin-skill-coverage-hermetic.php",
     # Tour Highlights Elementor/JetEngine/WPML source behavior uses only
     # in-memory WP metadata/terms and .invalid URLs; denied publishing and
     # cross-locale writes are asserted. No site/database mutations.

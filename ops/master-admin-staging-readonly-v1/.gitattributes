@@ -1,0 +1,3 @@
+# Exact source diffs carry indentation from the original WordPress files.
+# Git's generic patch-file whitespace check must not rewrite their context.
+*.patch -whitespace

@@ -1,0 +1,31 @@
+--- a/includes/class-mad4b-scp-skill-abilities.php
++++ b/includes/class-mad4b-scp-skill-abilities.php
+@@ -121,6 +121,28 @@
+ 			array( 'type' => 'object', 'additionalProperties' => false ),
+ 			array( __CLASS__, 'skills_runtime_certification' )
+ 		);
++
++        // Two task-aware discovery APIs. Their ability definitions are
++        // read-only; input validation and source requests remain in the
++        // bounded composition service. This is not a Skill execution lane.
++        $task_input = array(
++            'type' => 'object',
++            'properties' => array(
++                'task' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 4000 ),
++                'task_context' => array( 'type' => 'string', 'maxLength' => 4000 ),
++                'topics' => array( 'type' => 'array', 'maxItems' => 12, 'items' => array( 'type' => 'string', 'maxLength' => 80 ) ),
++                'source_ids' => array( 'type' => 'array', 'maxItems' => 40, 'items' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{24}$' ) ),
++                'source_offset' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 40 ),
++                'max_results' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 12 ),
++            ),
++            'required' => array( 'task' ),
++            'additionalProperties' => false,
++        );
++        self::add( 'mad4b/skill-match-task', 'Match Task to Available Skills', $task_input,
++            array( 'SCP_Skill_Task_Composition', 'match_task' ) );
++        self::add( 'mad4b/skill-composition-plan', 'Review Skill Composition Plan', $task_input,
++            array( 'SCP_Skill_Task_Composition', 'composition_plan' ) );
++
+ 	}
+ 
+ 	private static function add( $name, $label, array $input_schema, $callback ) {

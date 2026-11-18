@@ -1,0 +1,43 @@
+{
+  "contract": "mad4b.wayfa-read-only-operations-v1",
+  "site": "wayfatours.com",
+  "environment": "production",
+  "mode": "manual_code_only_source_candidate",
+  "role_changes": false,
+  "app_id_changes": false,
+  "grants_issued": false,
+  "skill_authoring_enabled": false,
+  "declares_original_release": false,
+  "files": [
+    {
+      "path": "includes/class-mad4b-scp-skill-abilities.php",
+      "patch": "includes__class-mad4b-scp-skill-abilities.php.patch",
+      "preimage_sha256": "94dea9e123e142a8b1b3ac11ba94e3478bd9209abcf0f0f40483378da51cac3b",
+      "patched_sha256": "dced2f31215ea6114fa12064a224e0a39578093bb5f754fec84c31b29c8b7e21"
+    },
+    {
+      "path": "includes/adapters/class-mad4b-scp-skills-adapter.php",
+      "patch": "includes__adapters__class-mad4b-scp-skills-adapter.php.patch",
+      "preimage_sha256": "e27df6e6638cc45d1d607f2fd38773518d8210b7eeb909dde9dfca9823bfdea0",
+      "patched_sha256": "e8589e3d9c0fef3dfaae7a2e168fd3c4ee579fecaa64fee93d8db767e089cc83"
+    },
+    {
+      "path": "mad4b-site-control-plane.php",
+      "patch": "mad4b-site-control-plane.php.patch",
+      "preimage_sha256": "5597a33f45cc670e4a745ec5f4ebf0af65b22e1ce34e5f6f8e2da71efe14c182",
+      "patched_sha256": "972ddddd1d6aaece10ff78c498391d0baac359feb2ff8b7dba6b4bd3fc34b361"
+    },
+    {
+      "path": "includes/class-mad4b-scp-skills-admin-ui.php",
+      "patch": "includes__class-mad4b-scp-skills-admin-ui.php.patch",
+      "preimage_sha256": "435402a4589b46009a3bddb267865946e4084e8d0cf8998a96c34416601ea382",
+      "patched_sha256": "444886ff2c0c06a65dc1914d17fa1a6c345ab9bbd57b53430db9485b227e9f0f"
+    },
+    {
+      "path": "includes/class-mad4b-scp-skill-runtime-certification.php",
+      "patch": "includes__class-mad4b-scp-skill-runtime-certification.php.patch",
+      "preimage_sha256": "1ffb6a199adb5799e2175cbbc2cae2f0de4e0d502c2271ea8269255e99c9caeb",
+      "patched_sha256": "fb175269225aec34eec69c58ab56dea724ac36a9344aa0eaa7b82178d542d3ee"
+    }
+  ]
+}

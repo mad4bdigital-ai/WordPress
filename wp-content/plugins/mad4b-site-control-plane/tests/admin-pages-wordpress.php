@@ -31,6 +31,7 @@ $pages = array(
 	'mad4b-control-plane-site-profile' => array( 'MAD4B_SCP_Site_Profile_Admin', 'render_page', array( '' ) ),
 	'mad4b-control-plane-performance' => array( 'MAD4B_SCP_Admin_Query_Performance_UI', 'render_page', array( '' ) ),
 	'mad4b-control-plane-skills' => array( 'MAD4B_SCP_Skills_Admin_UI', 'render_page', array( '' ) ),
+	'mad4b-skills-operations' => array( 'MAD4B_SCP_Skills_Admin_UI', 'render_operations_page', array( '' ) ),
 	'mad4b-browser-acceptance' => array( 'MAD4B_SCP_Browser_Acceptance_Admin_UI', 'render_page', array( '' ) ),
 	'mad4b-control-plane-oauth-canary' => array( 'MAD4B_SCP_Local_OAuth_Browser_Canary', 'render_page', array( '' ) ),
 	'mad4b-runtime-components' => array( 'MAD4B_SCP_Runtime_Components_Admin_UI', 'render_page', array( 'overview', 'core', 'plugins', 'mu-plugins', 'drop-ins', 'themes', 'astra', 'maintenance' ) ),
@@ -56,7 +57,11 @@ $adapter_manifest_tabs = $nav_definitions['mad4b-adapter-coverage'][4] ?? array(
 $check( $adapter_manifest_tabs === $pages['mad4b-adapter-coverage'][2],
     'Provider Coverage tab manifest and disposable WordPress render cases must match exactly.' );
 $workspaces = MAD4B_SCP_Admin_Workspace::inventory();
-$check( ! array_diff( array_keys( $routes ), array_keys( $workspaces ) ) && ! array_diff( array_keys( $workspaces ), array_keys( $routes ) ), 'Every registered page is discoverable in the workspace directory.' );
+$visible_routes = array_filter( $routes, static function ( $route ) {
+	return current_user_can( $route['required_capability'] );
+} );
+$check( ! array_diff( array_keys( $visible_routes ), array_keys( $workspaces ) ) && ! array_diff( array_keys( $workspaces ), array_keys( $visible_routes ) ), 'Every permitted registered page is discoverable; restricted routes are absent from the workspace directory.' );
+$check( ! array_intersect( array_diff( array_keys( $routes ), array_keys( $visible_routes ) ), array_keys( $workspaces ) ), 'A registered route without the required capability cannot appear in the workspace directory.' );
 foreach ( $workspaces as $slug => $workspace ) {
 	$_GET = array( 'page' => $slug );
 	$check( $slug === MAD4B_SCP_Admin_Workspace::current_page(), 'Workspace exact route and capability: ' . $slug );
@@ -102,6 +107,11 @@ $probe_render = static function ( $slug, array $page, array $query ) use ( $rend
 	catch ( Throwable $error ) { $render_failures[] = $error->getMessage(); fwrite( STDERR, 'Admin page smoke: ' . $error->getMessage() . "\n" ); return ''; }
 };
 foreach ( $pages as $slug => $page ) {
+	if ( ! isset( $visible_routes[ $slug ] ) ) {
+		$_GET = array( 'page' => $slug );
+		$check( '' === MAD4B_SCP_Admin_Workspace::current_page(), 'Unauthorized registered route does not resolve in the workspace: ' . $slug );
+		continue;
+	}
 	foreach ( $page[2] as $tab ) {
 		$key = in_array( $slug, array( 'mad4b-search-intelligence', 'mad4b-control-plane-security' ), true ) ? 'section' : ( 'mad4b-approval-decisions' === $slug ? 'view' : 'tab' );
 		$probe_render( $slug, $page, array( $key => $tab ) );
@@ -152,7 +162,7 @@ $html = $render( 'mad4b-search-intelligence', $pages['mad4b-search-intelligence'
 $check( false === strpos( $html, 'Provider settings saved and verified.' ), 'A provider GET flag cannot fabricate save success.' );
 $check( false !== strpos( $html, 'Add or manage search API credentials' ) && false !== strpos( $html, 'search-providers' ), 'Provider setup remains prominent after a profile is created.' );
 $check( 0 === $requests, 'All ordinary GET views make zero outbound requests.' );
-$check( count( $rendered_control_counts ) >= count( $pages ), 'Every registered admin page records a rendered Control DOM census' );
+$check( count( $rendered_control_counts ) >= count( $visible_routes ), 'Every permitted registered admin page records a rendered Control DOM census' );
 $check( array_sum( array_map( static function ( $row ) {
     return $row['buttons'] + $row['fields'] + $row['forms'] + $row['links'];
 }, $rendered_control_counts ) ) > 0, 'Admin Control coverage needs actual rendered interactive elements, not route-only discovery' );

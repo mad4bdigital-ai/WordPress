@@ -1,0 +1,56 @@
+diff --git a/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-runtime-certification.php b/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-runtime-certification.php
+index 91986ef05c..c90c70d43d 100644
+--- a/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-runtime-certification.php
++++ b/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-runtime-certification.php
+@@ -191,6 +191,43 @@ final class MAD4B_SCP_Skill_Runtime_Certification {
+ 		return $stored;
+ 	}
+ 
++	/**
++	 * Independent states without weakening legacy full certification.
++	 * Production catalogs can be read while the authoring editor stays off.
++	 * No Skill readiness claim authorizes execution or new write grants.
++	 */
++	public static function capability_readiness( array $checks ) {
++		$required = array(
++			'site_profile_enrolled', 'skills_feature_enabled', 'storage_initialized',
++			'storage_writable', 'seed_pack_ready', 'provider_reconciliation_ready',
++			'provider_mutation_absent', 'provider_skill_delete_absent',
++			'base_skills_enabled', 'read_abilities_registered',
++			'skill_write_abilities_absent', 'snapshot_has_enabled_skills',
++			'snapshot_identity_ready', 'snapshot_identity_skill_count_matches',
++			'build_provenance_identity_ready',
++		);
++		$catalog_blockers = array();
++		foreach ( $required as $key ) if ( empty( $checks[ $key ] ) ) $catalog_blockers[] = $key;
++		$catalog = empty( $catalog_blockers );
++		$app = $catalog && ! empty( $checks['profile_app_mapping_bound'] );
++		$author = $app && ! empty( $checks['editor_enabled'] ) && ! empty( $checks['scripts_disabled'] );
++		return array(
++			'contract' => 'mad4b.skill-capability-readiness.v1',
++			'catalog_read_ready' => $catalog,
++			'external_app_projection_ready' => $app,
++			'authoring_ready' => $author,
++			'editor_disabled_by_policy' => empty( $checks['editor_enabled'] ),
++			'catalog_blockers' => $catalog_blockers,
++			'external_app_blockers' => $catalog && ! $app ? array( 'profile_app_mapping_mismatch' ) : array(),
++			'authoring_blockers' => $app && ! $author ? array_values( array_filter( array(
++				empty( $checks['editor_enabled'] ) ? 'skill_editor_disabled' : '',
++				empty( $checks['scripts_disabled'] ) ? 'scripts_editor_enabled' : '',
++			) ) ) : array(),
++			'execution_authority_granted' => false,
++			'mutation_performed' => false,
++		);
++	}
++
+ 	private static function evaluate() {
+ 		$environment = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
+ 		$blockers = array();
+@@ -320,6 +357,7 @@ final class MAD4B_SCP_Skill_Runtime_Certification {
+ 			'state' => empty( $blockers ) ? 'ready' : 'blocked',
+ 			'blockers' => array_values( array_unique( $blockers ) ),
+ 			'checks' => $checks,
++			'capability_readiness' => self::capability_readiness( $checks ),
+ 			'missing_base_skills' => $missing_base,
+ 			'missing_read_abilities' => $missing_abilities,
+ 			'write_ability_leaks' => $write_leaks,

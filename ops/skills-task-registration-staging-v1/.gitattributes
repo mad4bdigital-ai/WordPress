@@ -1,0 +1,2 @@
+# Source patches preserve original PHP whitespace for deterministic readback.
+*.patch -whitespace

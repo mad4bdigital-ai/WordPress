@@ -8,15 +8,18 @@ $guard = MAD4B_SCP_MCP_Runtime_Conflict_Guard::status();
 $provenance = MAD4B_SCP_MCP_Class_Provenance::status( true );
 $mu = isset( $GLOBALS['mad4b_scp_mcp_mu_bootstrap'] ) && is_array( $GLOBALS['mad4b_scp_mcp_mu_bootstrap'] ) ? $GLOBALS['mad4b_scp_mcp_mu_bootstrap'] : array();
 
-// Status is deliberately observational in ordinary requests. Certification
-// comes from independently verified MU bootstrap/class provenance and not a
-// privileged state label or a second repair lifecycle.
-if ( 'runtime_source_observed' !== ( $guard['state'] ?? '' ) || empty( $guard['source_provenance_observational'] ) ) {
-    mad4b_mixed_class_recovered_fail( 'Recovered request is not read-only and source-observed.', $guard );
+// The conflict guard is strictly observational in ordinary requests.
+// Require both nonmutating status and the independently executed, pinned,
+// integrity-checked MU bootstrap before treating class sources as verified.
+if ( 'runtime_source_observed' !== ( $guard['state'] ?? '' )
+    || empty( $guard['source_provenance_observational'] )
+    || ! empty( $guard['repair_applied'] )
+    || ! empty( $guard['next_request_required'] ) ) {
+    mad4b_mixed_class_recovered_fail( 'Recovered request lacks nonmutating canonical source evidence.', $guard );
 }
-if ( empty( $guard['mu_bootstrap_integrity'] ) || empty( $guard['mu_bootstrap_executed'] ) ||
-     empty( $guard['mu_bootstrap_canonical_symbols_pinned'] ) ||
-     empty( $guard['mu_bootstrap_critical_class_set_pinned'] ) ) {
+if ( empty( $guard['mu_bootstrap_integrity'] ) || empty( $guard['mu_bootstrap_executed'] )
+    || empty( $guard['mu_bootstrap_canonical_symbols_pinned'] )
+    || empty( $guard['mu_bootstrap_critical_class_set_pinned'] ) ) {
     mad4b_mixed_class_recovered_fail( 'Recovered request lacks trusted executed bootstrap proof.', $guard );
 }
 if ( empty( $guard['runtime_from_official_plugin'] ) || ! empty( $guard['runtime_provenance_mismatch'] ) ) mad4b_mixed_class_recovered_fail( 'Recovered runtime ownership mismatch remains.', $guard );

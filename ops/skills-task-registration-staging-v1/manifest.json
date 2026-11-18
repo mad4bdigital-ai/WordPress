@@ -1,0 +1,28 @@
+{
+  "contract": "mad4b.skill-task-registered-source-overlay.v1",
+  "site": "tours.dev.mad4b.com",
+  "environment": "staging",
+  "read_only": true,
+  "grants_created": false,
+  "production_authorized": false,
+  "entry_files": [
+    {
+      "path": "includes/class-mad4b-scp-skill-abilities.php",
+      "patch": "class-mad4b-scp-skill-abilities.php.patch",
+      "preimage_sha256": "64143f2b8334d93bba670d9981d2fcc27f0dcc00178d1ee8993c1d2cabb3c8c0",
+      "patched_sha256": "8f424ba9fc1a04fe2e3f67728fa0be652b7ed992f925a109cc6efee10bfae16b"
+    },
+    {
+      "path": "includes/adapters/class-mad4b-scp-skills-adapter.php",
+      "patch": "class-mad4b-scp-skills-adapter.php.patch",
+      "preimage_sha256": "e27df6e6638cc45d1d607f2fd38773518d8210b7eeb909dde9dfca9823bfdea0",
+      "patched_sha256": "e8589e3d9c0fef3dfaae7a2e168fd3c4ee579fecaa64fee93d8db767e089cc83"
+    },
+    {
+      "path": "mad4b-site-control-plane.php",
+      "patch": "mad4b-site-control-plane.php.patch",
+      "preimage_sha256": "7d45ac5f3f2708ca7099d135d5bae3f0b277d25eff24b1cd5fd63310e94c3fd9",
+      "patched_sha256": "99e859c8dec89d29c4ba6c985f858b25640aff2984123e8337c38745e2cb9ef9"
+    }
+  ]
+}
