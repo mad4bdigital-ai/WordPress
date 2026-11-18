@@ -4705,6 +4705,245 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing exact-site, agent, execution, lease/fencing, authorization and governed release controls remain mandatory; restoring source bytes creates no authority or runtime activation.",
       "review_rationale": "Verified SHA256 byte-exact against installed Tours.dev Control Plane and independently preserved v3 995-file source archive. Imported strictly as a source-only module without main-plugin include, auto boot, new grant or background queue execution. Same-PR no-network PHP 7.4 denial fixture verifies no enrolled Site Profile or mutation permission means no lease claim/heartbeat/fencing and no host apply."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-auto-reconciliation.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-authority-review-source-only-runtime.php"
+      ],
+      "owner_role": "Independent original-source audit, CI-only, not site owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original security, site, identity, execution, admission, policy and release controls remain binding; source preservation adds no effective ability.",
+      "review_rationale": "Tour.dev installed bytes were checked against the original sealed v3 source. Restored only as unactivated reference code. Two original modules contain top-level boot calls: they are not safe to require until separately reviewed. Full authority, exact identity, lease/fencing, signing, isolation and independent runtime evidence remain required for any future use."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-reviews-bridge.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-authority-review-source-only-runtime.php"
+      ],
+      "owner_role": "Independent original-source audit, CI-only, not site owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original security, site, identity, execution, admission, policy and release controls remain binding; source preservation adds no effective ability.",
+      "review_rationale": "Tour.dev installed bytes were checked against the original sealed v3 source. Restored only as unactivated reference code. Two original modules contain top-level boot calls: they are not safe to require until separately reviewed. Full authority, exact identity, lease/fencing, signing, isolation and independent runtime evidence remain required for any future use."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-reconcile-skill-set.php",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-authority-review-source-only-runtime.php"
+      ],
+      "owner_role": "Independent original-source audit, CI-only, not site owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original security, site, identity, execution, admission, policy and release controls remain binding; source preservation adds no effective ability.",
+      "review_rationale": "Tour.dev installed bytes were checked against the original sealed v3 source. Restored only as unactivated reference code. No new runtime include or provider registration is added. Full authority, exact identity, lease/fencing, signing, isolation and independent runtime evidence remain required for any future use."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-connector-vault.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-authority-review-source-only-runtime.php"
+      ],
+      "owner_role": "Independent original-source audit, CI-only, not site owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original security, site, identity, execution, admission, policy and release controls remain binding; source preservation adds no effective ability.",
+      "review_rationale": "Tour.dev installed bytes were checked against the original sealed v3 source. Restored only as unactivated reference code. No new runtime include or provider registration is added. Full authority, exact identity, lease/fencing, signing, isolation and independent runtime evidence remain required for any future use."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-host-source-release-review.php",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-authority-review-source-only-runtime.php"
+      ],
+      "owner_role": "Independent original-source audit, CI-only, not site owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original security, site, identity, execution, admission, policy and release controls remain binding; source preservation adds no effective ability.",
+      "review_rationale": "Tour.dev installed bytes were checked against the original sealed v3 source. Restored only as unactivated reference code. No new runtime include or provider registration is added. Full authority, exact identity, lease/fencing, signing, isolation and independent runtime evidence remain required for any future use."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-original305-incident-review.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-authority-review-source-only-runtime.php"
+      ],
+      "owner_role": "Independent original-source audit, CI-only, not site owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original security, site, identity, execution, admission, policy and release controls remain binding; source preservation adds no effective ability.",
+      "review_rationale": "Tour.dev installed bytes were checked against the original sealed v3 source. Restored only as unactivated reference code. No new runtime include or provider registration is added. Full authority, exact identity, lease/fencing, signing, isolation and independent runtime evidence remain required for any future use."
+    },
+    {
+      "id": "ability:mad4b/content-job-reconcile-skill-acceptance",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "GOVERNANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-authority-review-source-only-runtime.php"
+      ],
+      "owner_role": "Independent original-source static-authority review — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original identity, scope, environment, approval, agent, execution, cron and audit controls remain required. Static name discovery does not grant authority.",
+      "review_rationale": "Conservatively discovered literal candidate in original SHA256-verified Tours.dev source. Exact source-only regression proves it is not loaded from main bootstrap. No registered execution or mutating endpoint, lease, scheduled action, owner attestation or production authority is asserted. Two original classes auto-boot on include and therefore remain deliberately unrequired."
+    },
+    {
+      "id": "ability:mad4b/content-job-reconcile-skill-plan",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "GOVERNANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-authority-review-source-only-runtime.php"
+      ],
+      "owner_role": "Independent original-source static-authority review — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original identity, scope, environment, approval, agent, execution, cron and audit controls remain required. Static name discovery does not grant authority.",
+      "review_rationale": "Conservatively discovered literal candidate in original SHA256-verified Tours.dev source. Exact source-only regression proves it is not loaded from main bootstrap. No registered execution or mutating endpoint, lease, scheduled action, owner attestation or production authority is asserted. Two original classes auto-boot on include and therefore remain deliberately unrequired."
+    },
+    {
+      "id": "ability:mad4b/host-source-release",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-authority-review-source-only-runtime.php"
+      ],
+      "owner_role": "Independent original-source static-authority review — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original identity, scope, environment, approval, agent, execution, cron and audit controls remain required. Static name discovery does not grant authority.",
+      "review_rationale": "Conservatively discovered literal candidate in original SHA256-verified Tours.dev source. Exact source-only regression proves it is not loaded from main bootstrap. No registered execution or mutating endpoint, lease, scheduled action, owner attestation or production authority is asserted. Two original classes auto-boot on include and therefore remain deliberately unrequired."
+    },
+    {
+      "id": "ability:mad4b/original305-incident-review",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "GOVERNANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-authority-review-source-only-runtime.php"
+      ],
+      "owner_role": "Independent original-source static-authority review — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original identity, scope, environment, approval, agent, execution, cron and audit controls remain required. Static name discovery does not grant authority.",
+      "review_rationale": "Conservatively discovered literal candidate in original SHA256-verified Tours.dev source. Exact source-only regression proves it is not loaded from main bootstrap. No registered execution or mutating endpoint, lease, scheduled action, owner attestation or production authority is asserted. Two original classes auto-boot on include and therefore remain deliberately unrequired."
+    },
+    {
+      "id": "ajax:wp_ajax_mad4b_original305_readiness_status",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-authority-review-source-only-runtime.php"
+      ],
+      "owner_role": "Independent original-source static-authority review — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original identity, scope, environment, approval, agent, execution, cron and audit controls remain required. Static name discovery does not grant authority.",
+      "review_rationale": "Conservatively discovered literal candidate in original SHA256-verified Tours.dev source. Exact source-only regression proves it is not loaded from main bootstrap. No registered execution or mutating endpoint, lease, scheduled action, owner attestation or production authority is asserted. Two original classes auto-boot on include and therefore remain deliberately unrequired."
+    },
+    {
+      "id": "cron:hourly",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-authority-review-source-only-runtime.php"
+      ],
+      "owner_role": "Independent original-source static-authority review — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original identity, scope, environment, approval, agent, execution, cron and audit controls remain required. Static name discovery does not grant authority.",
+      "review_rationale": "Conservatively discovered literal candidate in original SHA256-verified Tours.dev source. Exact source-only regression proves it is not loaded from main bootstrap. No registered execution or mutating endpoint, lease, scheduled action, owner attestation or production authority is asserted. Two original classes auto-boot on include and therefore remain deliberately unrequired."
     }
   ],
   "lifecycle": [],
@@ -13592,6 +13831,130 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing exact-site, agent, execution, lease/fencing, authorization and governed release controls remain mandatory; restoring source bytes creates no authority or runtime activation.",
       "review_rationale": "Verified SHA256 byte-exact against installed Tours.dev Control Plane and independently preserved v3 995-file source archive. Imported strictly as a source-only module without main-plugin include, auto boot, new grant or background queue execution. Same-PR no-network PHP 7.4 denial fixture verifies no enrolled Site Profile or mutation permission means no lease claim/heartbeat/fencing and no host apply."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-auto-reconciliation.php",
+      "source_blob_sha": "d53f6d0d224fa7fcd8318b57762a2e9c9219fe55",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-authority-review-source-only-runtime.php"
+      ],
+      "owner_role": "Independent original-source audit, CI-only, not site owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original security, site, identity, execution, admission, policy and release controls remain binding; source preservation adds no effective ability.",
+      "review_rationale": "Tour.dev installed bytes were checked against the original sealed v3 source. Restored only as unactivated reference code. Two original modules contain top-level boot calls: they are not safe to require until separately reviewed. Full authority, exact identity, lease/fencing, signing, isolation and independent runtime evidence remain required for any future use."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-reviews-bridge.php",
+      "source_blob_sha": "bd0914207936c7bfc20a73e1f000a90b91bd9a15",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-authority-review-source-only-runtime.php"
+      ],
+      "owner_role": "Independent original-source audit, CI-only, not site owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original security, site, identity, execution, admission, policy and release controls remain binding; source preservation adds no effective ability.",
+      "review_rationale": "Tour.dev installed bytes were checked against the original sealed v3 source. Restored only as unactivated reference code. Two original modules contain top-level boot calls: they are not safe to require until separately reviewed. Full authority, exact identity, lease/fencing, signing, isolation and independent runtime evidence remain required for any future use."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-reconcile-skill-set.php",
+      "source_blob_sha": "61e54546bbd5119b027374bc9fd3f3dd30a7fd6c",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-authority-review-source-only-runtime.php"
+      ],
+      "owner_role": "Independent original-source audit, CI-only, not site owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original security, site, identity, execution, admission, policy and release controls remain binding; source preservation adds no effective ability.",
+      "review_rationale": "The exact installed Tours.dev original is independently preserved in frozen v3 with SHA256 75586bbcd4d89d160b079be43a4f613a7d26fa788d9b936003867a3bf12b6464. This reviewed successor strips exactly one redundant terminal newline solely to satisfy Git diff --check; it retains all code bytes and semantics. Same-PR regression certifies that appending one newline reproduces the original sealed hash. No main bootstrap, role, grant or execution activation. Tour.dev installed bytes were checked against the original sealed v3 source. Restored only as unactivated reference code. No new runtime include or provider registration is added. Full authority, exact identity, lease/fencing, signing, isolation and independent runtime evidence remain required for any future use."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-connector-vault.php",
+      "source_blob_sha": "e8ed381c3622d93b3853b89acf5d82f7b64e6bc8",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-authority-review-source-only-runtime.php"
+      ],
+      "owner_role": "Independent original-source audit, CI-only, not site owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original security, site, identity, execution, admission, policy and release controls remain binding; source preservation adds no effective ability.",
+      "review_rationale": "Tour.dev installed bytes were checked against the original sealed v3 source. Restored only as unactivated reference code. No new runtime include or provider registration is added. Full authority, exact identity, lease/fencing, signing, isolation and independent runtime evidence remain required for any future use."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-host-source-release-review.php",
+      "source_blob_sha": "8300200ae8693f727460531db72756084d9435fe",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-authority-review-source-only-runtime.php"
+      ],
+      "owner_role": "Independent original-source audit, CI-only, not site owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original security, site, identity, execution, admission, policy and release controls remain binding; source preservation adds no effective ability.",
+      "review_rationale": "Tour.dev installed bytes were checked against the original sealed v3 source. Restored only as unactivated reference code. No new runtime include or provider registration is added. Full authority, exact identity, lease/fencing, signing, isolation and independent runtime evidence remain required for any future use."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-original305-incident-review.php",
+      "source_blob_sha": "124f6d64bae08fb0f557c43177bd5e0b6557db19",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-authority-review-source-only-runtime.php"
+      ],
+      "owner_role": "Independent original-source audit, CI-only, not site owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original security, site, identity, execution, admission, policy and release controls remain binding; source preservation adds no effective ability.",
+      "review_rationale": "Tour.dev installed bytes were checked against the original sealed v3 source. Restored only as unactivated reference code. No new runtime include or provider registration is added. Full authority, exact identity, lease/fencing, signing, isolation and independent runtime evidence remain required for any future use."
     }
   ],
   "code_change_rules": {
