@@ -111,9 +111,17 @@ final class MAD4B_SCP_Brand_Integrity {
         if (!is_string($html) || $html === '' || strlen($html)>self::MAX_FIELD_BYTES) return array();
         // Links in editorial material are review-only; navigation and
         // internal-linking promotions must point to a bound company domain.
-        $promotional = preg_match('/(?:^meta\.tour_internal_linking|(?:^|[._])(?:promotional|cta|campaign_links|internal_linking)(?:[._]|$))/i',$field_path)===1;
+        // Source-field intent is authoritative, not the generated URL.
+        // Destination further reading and related content link internally by default.
+        $promotional = preg_match('/(?:^meta\.tour_internal_linking|(?:^|[._])(?:promotional|cta|campaign_links|internal_linking|further_reading|related_tours?|related_destinations?|related_articles?|related_links?|destination_links)(?:[._]|$))/i',$field_path)===1;
         $allowed = self::allowed_hosts($scope);
         preg_match_all('~<a\b[^>]*\bhref\s*=\s*(?:"([^"]*)"|\x27([^\x27]*)\x27|([^\s>]+))[^>]*>(.*?)</a>~isu',$html,$raw,PREG_SET_ORDER);
+        // JetEngine term repeaters can store title and URL in separate leaves.
+        // Previously plain URLs never reached the HTML-only parser.
+        $url_only = trim($html);
+        if (preg_match('~^(?:https?:)?//[^\s<>]+$~i',$url_only)) {
+            $raw[] = array('', $url_only, '', '', '');
+        }
         $out = array();
         foreach (array_slice($raw,0,80) as $entry) {
             $href=html_entity_decode((string)($entry[1]?:($entry[2]?:($entry[3]??''))),ENT_QUOTES|ENT_HTML5,'UTF-8');
@@ -127,12 +135,22 @@ final class MAD4B_SCP_Brand_Integrity {
             // violation. A conversion CTA in editorial copy is advisory;
             // a company-owned internal-linking field is a hard mismatch.
             $cta=preg_match('/\b(?:book\s+(?:our|your)\s+(?:tour|trip)|reserve\s+your\s+tour|explore\s+our\s+(?:tours|trips)|reserva\s+tu\s+tour|réservez\s+votre\s+voyage)\b/iu',$anchor)===1;
-            if(!$promotional && !$cta)continue;
+            // External link leaves in public term metadata require review even
+            // without booking language; editorial post citations remain unchanged.
+            $term_link = str_starts_with($field_path,'termmeta.')
+                && preg_match('/(?:^|[._])(?:url|href|links?|further_reading|related_resources)(?:[._]|$)/i',$field_path)===1;
+            // Free-form rich HTML (e.g. termmeta.destination_contents) may
+            // contain a commercial anchor without a nested further_reading key.
+            // Keep ordinary scholarly citations outside this strict check.
+            $commercial_term = str_starts_with($field_path,'termmeta.')
+                && preg_match('/\b(?:tours?|cruises?|excursions?|packages?|book(?:ing)?|trips?)\b/iu',$anchor)===1;
+            if(!$promotional && !$cta && !$term_link && !$commercial_term)continue;
             $out[hash('sha256',$href)]=array('host'=>$host,
                 'anchor_text'=>$anchor,
                 'url_sha256'=>hash('sha256',$href),
-                'rule'=>$promotional?'external_promotional_destination':'external_editorial_destination',
-                'confidence'=>$promotional?'high':'needs_review');
+                'rule'=>$promotional?'external_promotional_destination'
+                    :($commercial_term?'external_commercial_term_link':'external_editorial_destination'),
+                'confidence'=>($promotional||$commercial_term)?'high':'needs_review');
         }
         return array_values($out);
     }
@@ -181,8 +199,18 @@ final class MAD4B_SCP_Brand_Integrity {
         // textual setting names. Scan every eligible source leaf rather than
         // maintaining a fixed widget-property allowlist; styling/script fields
         // were excluded above by their source type.
+        // Include standalone URLs in structured meta, not only long prose.
+        if (preg_match('~^(?:https?:)?//\S+$~i',trim($value))
+            && preg_match('/(?:^|[._])(?:url|href|links?|further_reading|related_tours?|related_destinations?)(?:[._]|$)/i',$path)) {
+            $fields[$path] = array('text'=>'','html'=>trim($value));
+            return;
+        }
         $text = self::clean($value);
-        if ($text !== '' && mb_strlen($text) >= 12 && !preg_match('~^(?:https?://|//)\S+$~i',$text)) {
+        // A real customer-facing link can have a short label such as
+        // "Cairo Tours" (11 chars). Text-length thresholds must not drop it.
+        $contains_anchor = preg_match('~<a\b[^>]*\bhref\s*=~i',$value)===1;
+        if ($text !== '' && (mb_strlen($text) >= 12 || $contains_anchor)
+            && !preg_match('~^(?:https?://|//)\S+$~i',$text)) {
             if (mb_strlen($text)>self::MAX_SCANNED_TEXT_CHARS)
                 self::coverage_gap($coverage,$path,'scanned_text_excerpt_limit');
             if (substr_count(strtolower($value),'<a ')>80)
@@ -506,6 +534,72 @@ final class MAD4B_SCP_Brand_Integrity {
             'Potential attribution to another company was found in proposed content.');
         return array('contract'=>self::CONTRACT,'allowed'=>true,
             'review_issues'=>count($issues),'post_id'=>absint($post_id));
+    }
+
+
+    /**
+     * Read-only term-meta audit for public destination/editorial taxonomies.
+     * No auto replacement, publishing, WordPress writes or external fetching.
+     */
+    public static function scan_term_report($term_id, $brand=null) {
+        $term_id=absint($term_id);
+        $term=get_term($term_id);
+        if (!$term instanceof WP_Term || is_wp_error($term))
+            return array('complete'=>false,'issues'=>array(),'field_count'=>0,
+                'gap_count'=>1,'gap_samples'=>array(array('reason'=>'term_not_found')));
+        $coverage=array('complete'=>true,'gap_count'=>0,'gap_samples'=>array());
+        $fields=array();
+        self::append_leaf($fields,'term.name',(string)$term->name,0,$coverage);
+        self::append_leaf($fields,'term.description',(string)$term->description,0,$coverage);
+        foreach ((array)get_term_meta($term_id) as $key=>$values) {
+            if (!is_string($key) ||
+                preg_match('/(?:password|secret|token|private_key|api_key|nonce|license|cache|session)/i',$key))
+                continue;
+            if (str_starts_with($key,'_') && $key!=='_description') continue;
+            foreach ((array)$values as $index=>$value)
+                self::append_leaf($fields,'termmeta.'.$key.'.'.$index,maybe_unserialize($value),0,$coverage);
+        }
+        if (!is_array($brand)) {
+            $brand=class_exists('MAD4B_SCP_Brand_Experience_Quality',false)
+                ? MAD4B_SCP_Brand_Experience_Quality::brand_context() : array();
+        }
+        $identity=self::identity($brand);
+        if (empty($identity['scope']['brand_name']))
+            self::coverage_gap($coverage,'term','site_identity_missing');
+        $issues=array();
+        if (!empty($identity['scope']['brand_name'])) {
+            foreach ($fields as $path=>$value) {
+                foreach (self::analyze_links($value['html'],$path,$identity['scope']) as $link) {
+                    $code='brand_external_link_attribution_mismatch';
+                    $key=hash('sha256',get_current_blog_id().'|term|'.$term_id.'|'
+                        .$code.'|'.$path.'|'.$link['host'].'|'.$link['url_sha256']);
+                    $issues[$key]=array(
+                        'id'=>$key,'object_type'=>'term','taxonomy'=>(string)$term->taxonomy,
+                        'object_id'=>$term_id,'code'=>$code,
+                        'severity'=>$link['confidence']==='high'?'high':'medium',
+                        'label'=>'External destination term link requires company-domain verification',
+                        'source'=>'mad4b-brand-experience',
+                        'source_evidence'=>array(
+                            'contract'=>self::CONTRACT,
+                            'field_path'=>$path,'matched_entity'=>$link['host'],
+                            'detection_rule'=>$link['rule'],
+                            'evidence_excerpt'=>$link['anchor_text'],
+                            'url_sha256'=>$link['url_sha256'],
+                            'source_sha256'=>hash('sha256',$value['html'].'|'.$link['url_sha256']),
+                            'review_only'=>true,'publication_authorized'=>false,
+                            'auto_replacement_authorized'=>false));
+                    if (count($issues)>=self::MAX_ISSUES_PER_POST) {
+                        self::coverage_gap($coverage,$path,'issue_limit_reached');
+                        break 2;
+                    }
+                }
+            }
+        }
+        return array('contract'=>self::CONTRACT,'complete'=>$coverage['complete'],
+            'gap_count'=>$coverage['gap_count'],'gap_samples'=>$coverage['gap_samples'],
+            'field_count'=>count($fields),'issues'=>array_values($issues),
+            'object_type'=>'term','taxonomy'=>(string)$term->taxonomy,
+            'object_id'=>$term_id,'mutation_performed'=>false);
     }
 
     public static function scan_batch(array $types, $after_id=0, $limit=100) {
