@@ -1,0 +1,12 @@
+[Unit]
+Description=Watch Form 6 canonical runtime changes (wayfa)
+[Path]
+PathChanged=/opt/wayfa-rebuild-20261102/site-copy/wp-content/mu-plugins/shared-product-core/assets/presentation-fluent-quote-v1.js
+PathChanged=/opt/wayfa-rebuild-20261102/site-copy/wp-content/mu-plugins/shared-product-core/adapters/presentation-form6-occupancy-policy-v1.php
+PathChanged=/opt/wayfa-rebuild-20261102/site-copy/wp-content/plugins/mad4b-commerce/modules/compat/local-presentation-fluent-projection-v1.php
+PathChanged=/opt/wayfa-rebuild-20261102/site-copy/wp-content/mu-plugins/410-mad4b-tour-rate-lazy-footprint.php
+PathChanged=/opt/wayfa-rebuild-20261102/site-copy/wp-content/mu-plugins/407-mad4b-elementor-sticky-lifecycle-guard.php
+PathChanged=/opt/wayfa-rebuild-20261102/site-copy/wp-content/mu-plugins/assets/mad4b-elementor-sticky-lifecycle-c77a2b2fbdc39daa.js
+Unit=mad4b-form6-permanent-assets-wayfa.service
+[Install]
+WantedBy=multi-user.target

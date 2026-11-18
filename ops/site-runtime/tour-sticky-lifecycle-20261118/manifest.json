@@ -3,10 +3,16 @@
   "contract": "mad4b.tour.sticky.lifecycle.v1",
   "date": "2026-11-18",
   "deployment_authority": false,
+  "layout_shift_contract": "mad4b.tour.rate-lazy-footprint.v1",
   "paths": {
+    "payload/host/bin/company-form6-asset-cache-reconciler-v1.py": "ec1682b3be2a5582185cd9e1295fd7a833beec36b1be7dd0ffce6820751930b5",
+    "payload/host/systemd/mad4b-form6-permanent-assets-source.path": "23c7d422077a8f432b9645b2a5a0348d040c995087571ed2d3f9205a49001626",
+    "payload/host/systemd/mad4b-form6-permanent-assets-wayfa.path": "3cea74e88d9303785ca1ed3c95c92d6d5abb6d37b831463eb2a99086bb2afdab",
     "payload/mu-plugins/407-mad4b-elementor-sticky-lifecycle-guard.php": "88a05c8b9399c1634921ca46276b05dc1bfc05091992a46c810996b2f133b6df",
+    "payload/mu-plugins/410-mad4b-tour-rate-lazy-footprint.php": "71c5dea784611f0ffad9b46f153e4eb46db0cd9483702b175552f6bc6478c361",
     "payload/mu-plugins/assets/mad4b-elementor-sticky-lifecycle-c77a2b2fbdc39daa.js": "c77a2b2fbdc39daac0c7a76b873433a192a500e5bd86638874f711e3fb071c61"
   },
+  "reconciler_sources": 6,
   "source_policy": "verified_live_selective_fix",
   "vendor_behavior_sha256": "02c0d6068d4dbfb5c047c145d32a1f6965c402006f21fcd6f6adfd6c0aea7c29"
 }

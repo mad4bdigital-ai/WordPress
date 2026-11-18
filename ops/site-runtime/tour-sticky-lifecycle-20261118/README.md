@@ -12,3 +12,31 @@ After the runtime change, public tour route cache generations were updated: 1,02
 One screenshot message concerning a closed asynchronous response channel may originate from a Chrome extension and is not claimed resolved. Test without extensions if it persists.
 
 Run python3 verify.py for source and SHA verification. Optional browser test: tests/sticky-recovery-in-browser.js runs against Tours.dev; it changes only the isolated browser DOM to force the fallback, not site data. Any upstream Elementor Sticky source behavior change results in the original upstream library being used until this adapter is revalidated. Release/merge and runtime compatibility checks are separate.
+
+
+## Second independent layout-shift cause — Rate Lazy Load
+Reproduced a 241px jump in the form's document position while JetEngine
+replaced the rate grid's 36px loader with two real rows totaling 277px. The
+underlying source is the rate listing widget itself, not a fixed CSS margin.
+A source-owned MU presentation component, 410-mad4b-tour-rate-lazy-footprint.php,
+reads the native Query Builder count associated with the listing's own
+data-lazy-load query_id and reserves a measured mobile row footprint before
+the signed AJAX result replaces it. It supports Arabic/Persian digits, caps
+implausible counts, leaves zero/unknown counts unchanged, never queries or
+changes booking/rate data, and scopes its observer to the containing Elementor
+rate template (not the entire DOM). Existing JetEngine loading remains lazy.
+
+Verified canonical Wayfatours mobile 427px: 277px reserved and 277px rendered,
+form document-top delta 0px; mobile 390px on Wayfatours and Tours.dev:
+277px reserved then 276.6875px actual, delta -0.3125px. Async rate
+cards completed; no JS exception. The tests/rate-lazy-footprint.test.js script
+repeats the contract on read-only public tour pages.
+
+The existing source + Wayfatours Form #6 asset reconciler now fingerprints
+this rate footprint, the sticky guard and its immutable JS as well as the
+original three Form #6 sources, and existing per-site systemd.path watches all
+six sources. Any source change produces selective public-tour HTML generations;
+no extra service, sitewide purge, checkout mutation or database writes.
+This bundle is a later, source-owned operational snapshot: the separate
+historical Form #6 PR remains immutable and should not overwrite the newer
+six-source reconciler during a future release.
