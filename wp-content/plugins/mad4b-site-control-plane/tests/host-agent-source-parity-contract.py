@@ -5,18 +5,22 @@ import hashlib
 ROOT=Path(__file__).resolve().parents[1]
 INCLUDES=ROOT/'includes'
 def read(name): return (ROOT/name).read_text()
-required=[
- 'class-mad4b-scp-host-agent-bridge.php',
- 'class-mad4b-scp-host-media-intake.php',
- 'class-mad4b-scp-host-media-closure.php',
- 'class-mad4b-scp-host-media-reconcile-proposal.php',
- 'class-mad4b-scp-host-visual-strategy-proposal.php']
-for name in required:
- assert (INCLUDES/name).is_file(),name
- assert 'defined(\'ABSPATH\')' in (INCLUDES/name).read_text() or 'defined(\'ABSPATH\') || exit' in (INCLUDES/name).read_text()
+# Tourism operations are optional and must not be bundled into the tenant-neutral core.
+TOUR_MODULES = (
+    'class-mad4b-scp-host-media-intake.php',
+    'class-mad4b-scp-host-media-closure.php',
+    'class-mad4b-scp-host-media-reconcile-proposal.php',
+    'class-mad4b-scp-host-visual-strategy-proposal.php',
+)
+ADDON = ROOT.parent / 'mad4b-tour-media-host-bridge'
+for name in TOUR_MODULES:
+    assert not (INCLUDES/name).exists(), 'tour-only module leaked into generic control plane'
+    # Standalone Control Plane distributions may omit the optional addon.
+    if ADDON.exists(): assert (ADDON/'includes'/name).is_file(),name
 p=read('mad4b-site-control-plane.php')
 assert p.count("require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-host-agent-bridge.php';")==1
 assert not (INCLUDES/'mad4b-host-agent-public.b64').exists(), 'site-specific host trust must never be inherited'
+assert 'mad4b_optional_tour_media_unavailable' in read('includes/class-mad4b-scp-host-agent-bridge.php')
 bridge=read('includes/class-mad4b-scp-host-agent-bridge.php')
 for v in ['sodium_crypto_sign_verify_detached','body_sha256','binding_ready()','active_for($ability)','nonce','expires_at','site_uuid']:
  assert v in bridge, v

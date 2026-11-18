@@ -272,21 +272,25 @@ final class MAD4B_SCP_Host_Agent_Bridge {
             if($proof['operation']==='policy')
                 return self::change_review_policy((array)$envelope['body']);
             if($proof['operation']==='media_intake'){
-                require_once __DIR__.'/class-mad4b-scp-host-media-intake.php';
+                if (!class_exists('MAD4B_SCP_Host_Media_Intake',false))
+                    return new WP_Error('mad4b_optional_tour_media_unavailable','Bound tourism Media provider not installed.');
                 return MAD4B_SCP_Host_Media_Intake::execute((array)$envelope['body']);
             }
             if($proof['operation']==='media_proposal'){
-                require_once __DIR__.'/class-mad4b-scp-host-media-intake.php';
+                if (!class_exists('MAD4B_SCP_Host_Media_Intake',false))
+                    return new WP_Error('mad4b_optional_tour_media_unavailable','Bound tourism Media provider not installed.');
                 return MAD4B_SCP_Host_Media_Intake::propose_localized_alt(
                     (array)$envelope['body']);
             }
             if($proof['operation']==='media_strategy'){
-                require_once __DIR__.'/class-mad4b-scp-host-visual-strategy-proposal.php';
+                if (!class_exists('MAD4B_SCP_Host_Visual_Strategy_Proposal',false))
+                    return new WP_Error('mad4b_optional_tour_media_unavailable','Bound tourism Media provider not installed.');
                 return MAD4B_SCP_Host_Visual_Strategy_Proposal::execute(
                     (array)$envelope['body']);
             }
             if($proof['operation']==='media_reconcile'){
-                require_once __DIR__.'/class-mad4b-scp-host-media-reconcile-proposal.php';
+                if (!class_exists('MAD4B_SCP_Host_Media_Reconcile_Proposal',false))
+                    return new WP_Error('mad4b_optional_tour_media_unavailable','Bound tourism Media provider not installed.');
                 return MAD4B_SCP_Host_Media_Reconcile_Proposal::execute(
                     (array)$envelope['body']);
             }
@@ -301,7 +305,8 @@ final class MAD4B_SCP_Host_Agent_Bridge {
                 return MAD4B_Tour_Media_Association_V1::execute((array)$envelope['body']);
             }
             if($proof['operation']==='media_close'){
-                require_once __DIR__.'/class-mad4b-scp-host-media-closure.php';
+                if (!class_exists('MAD4B_SCP_Host_Media_Closure',false))
+                    return new WP_Error('mad4b_optional_tour_media_unavailable','Bound tourism Media provider not installed.');
                 return MAD4B_SCP_Host_Media_Closure::execute((array)$envelope['body']);
             }
             return self::review((array)$envelope['body']);
