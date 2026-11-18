@@ -7,6 +7,13 @@ if(!function_exists('is_wp_error')){function is_wp_error($v){return $v instanceo
 if(!function_exists('wp_check_invalid_utf8')){function wp_check_invalid_utf8($v,$strip=false){return (string)$v;}}
 if(!function_exists('sanitize_key')){function sanitize_key($s){return preg_replace('/[^a-z0-9_-]/','',strtolower((string)$s));}}
 if(!function_exists('wp_json_encode')){function wp_json_encode($v,$options=0){return json_encode($v,$options);}}
+if(count($argv)===1){
+ $plugin=dirname(__DIR__,2);
+ $argv=array($argv[0],
+  $plugin.'/includes/class-mad4b-scp-google-drive-context.php',
+  $plugin.'/includes/class-mad4b-scp-drive-scan-continuation.php',
+  $plugin.'/includes/class-mad4b-scp-brand-context-builder.php');
+}
 if(count($argv)!==4){fwrite(STDERR,"usage: php isolated-contract.php drive.php continuation.php builder.php\n");exit(2);}
 foreach(array_slice($argv,1) as $p){if(!is_file($p)){fwrite(STDERR,"missing module\n");exit(2);}require_once $p;}
 function check($ok,$label){echo ($ok?'PASS ':'FAIL ').$label."\n";if(!$ok)exit(3);}
