@@ -179,6 +179,7 @@ for case in ('modified_sha','changed_test','changed_historical_state'):
             'forged_source_entry_denied_'+case)
 
 checked=evaluate(ledger,plugin)
+print('QA31_EXPECTED_REVIEW_COUNTS:',checked['reviewed_github_successor_count'],checked['pending_count'],checked['unexpected_count'])
 # Preserve 65 historical successor reviews unchanged, plus the two formerly
 # non-successor ChatbotX paths now reviewed by a separate exact manifest.
 expected_reviewed_paths=reviewed_paths | {
@@ -188,7 +189,9 @@ expected_reviewed_paths=reviewed_paths | {
 chk(set(checked['reviewed_github_successor_paths'])==expected_reviewed_paths
     and checked['reviewed_github_successor_count']==len(expected_reviewed_paths)
     and checked['unexpected_count']==0
-    and checked['pending_count']==68
+    # Two originally stage-identical ChatbotX files now have separately
+    # reviewed, source-pinned successors; they remain pending as live parity.
+    and checked['pending_count']==70
     and checked['version_match'] is False
     and checked['decision']=='BLOCKED_SOURCE_RECONCILIATION'
     and checked['authorizing'] is False and checked['production_authorized'] is False,
