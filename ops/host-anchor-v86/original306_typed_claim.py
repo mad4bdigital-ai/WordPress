@@ -71,11 +71,26 @@ def inspect_claimed_original(registry_index, original_job: dict,
          and job.get("command_format") == "host.anchor.ref.v2"
          and job.get("operation") == op,
          "ORIGINAL306_SIGNED_V2_JOB_SHAPE_REQUIRED")
-    need(original_claim.get("job_id") == job["job_id"]
-         and original_claim.get("command_sha256") == job["command_sha256"]
+    # Original306's ACTUAL persisted claim has: contract, job_id,
+    # host_id, nonce, claimed_epoch, state, production_mutation_performed.
+    # It does NOT duplicate command_sha256 or contain executed. Never
+    # reconstruct missing fields or accept a synthetic Claim shape.
+    need(set(original_claim) ==
+         {"contract", "job_id", "host_id", "nonce", "claimed_epoch",
+          "state", "production_mutation_performed"}
+         and original_claim.get("contract") ==
+             "mad4b.central-vps-broker.v1"
+         and original_claim.get("job_id") == job["job_id"]
+         and original_claim.get("host_id") ==
+             job.get("broker_host_id") == "srv2030908"
+         and type(original_claim.get("nonce")) is str
+         and HEX32.fullmatch(original_claim["nonce"]) is not None
+         and type(original_claim.get("claimed_epoch")) is int
+         and original_claim.get("claimed_epoch") ==
+             job.get("claimed_epoch")
          and original_claim.get("state") ==
              "BROKER_CLAIMED_PENDING_INDEPENDENT_HOST_AUTHORITY"
-         and original_claim.get("executed") is False,
+         and original_claim.get("production_mutation_performed") is False,
          "ORIGINAL306_SIGNED_CLAIM_INVALID")
     need(original_broker_row.get("job_id") == job["job_id"]
          and original_broker_row.get("command_sha256") ==

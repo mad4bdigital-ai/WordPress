@@ -53,7 +53,7 @@
   "plan_contract": "mad4b.host-authority.anchor-revoke.plan.v2",
   "preclaim": {
     "path": "host-anchor-v2/anchor_preclaim.py",
-    "sha256": "9dd53e3f9fd6228ba911ef9b42b878a1eb9b4f4e8d3a1ea44b02b402037b0d4f"
+    "sha256": "0274abf14021773ef0294e7e3a6b2d5a6e7e1dd78dbce3b4e904cdc032f907a1"
   },
   "provider": "mad4b-host-anchor-v2",
   "resource_kind": "host_anchor",

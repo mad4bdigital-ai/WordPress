@@ -110,12 +110,16 @@ class ProviderReadback(unittest.TestCase):
                 "plan_sha256":plan["plan_sha256"],
                 "command_sha256":idx.command_sha256(provider,plan["plan_sha256"]),
                 "broker_host_id":"srv2030908",
+                "claimed_epoch":1794999000,
             }
             claim={
+                "contract":"mad4b.central-vps-broker.v1",
                 "job_id":job["job_id"],
-                "command_sha256":job["command_sha256"],
+                "host_id":"srv2030908",
+                "nonce":"4"*32,
+                "claimed_epoch":job["claimed_epoch"],
                 "state":"BROKER_CLAIMED_PENDING_INDEPENDENT_HOST_AUTHORITY",
-                "executed":False,
+                "production_mutation_performed":False,
             }
             row={k:job[k] for k in ("job_id","command_sha256","company",
                                     "environment","site_uuid","broker_host_id")}
@@ -138,7 +142,8 @@ class ProviderReadback(unittest.TestCase):
                 with self.subTest(field=field), self.assertRaises(ValueError):
                     module.resolve_remote_host_v2_claim(
                         idx,altered,claim,row,plan)
-            for field in ("job_id","state","command_sha256"):
+            for field in ("job_id","state","host_id","nonce","claimed_epoch",
+                          "production_mutation_performed"):
                 changed=dict(claim)
                 changed[field]="x"
                 with self.subTest(claim_field=field), self.assertRaises(ValueError):

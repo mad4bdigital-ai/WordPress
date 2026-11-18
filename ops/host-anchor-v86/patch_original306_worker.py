@@ -18,7 +18,7 @@ ORIGINAL_WORKER_SHA256 = (
     "625aa6916ca1f37a0177a22437cc6a88fddeadf888a153dcfae5b467c1fc0b99"
 )
 CLASSIFIER_SHA256 = (
-    "40e01518c83b57d3020d797adb9990f23ddded0c7b40b7deac36b4b0c1eecc45"
+    "84d209b40144fe04fe19d7db3ea869e7335c06694c76d286bf0b2f3e26d68b5f"
 )
 FIRST_INSERT = "def firstparty_host_source_claimed_execution(actor, entry, *, execute=False):"
 SECOND_INSERT = """  if target_id!='srv2030908':
@@ -88,7 +88,7 @@ READ_ONLY_ADAPTER = '''def firstparty_host_v2_claimed_observation(actor, entry):
             or st.st_uid != 0 or st.st_gid != 0
             or st.st_mode & 0o077
             or hashlib.sha256(modulefile.read_bytes()).hexdigest() !=
-               '40e01518c83b57d3020d797adb9990f23ddded0c7b40b7deac36b4b0c1eecc45'):
+               '84d209b40144fe04fe19d7db3ea869e7335c06694c76d286bf0b2f3e26d68b5f'):
             raise RuntimeError('ORIGINAL306_V86_SIGNED_CLASSIFIER_SOURCE_DRIFT')
         spec = importlib.util.spec_from_file_location(
             '_mad4b_original306_exact_host_v2_classifier', modulefile)

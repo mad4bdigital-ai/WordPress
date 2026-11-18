@@ -29,7 +29,7 @@ class WorkerPatchChecks(unittest.TestCase):
         after=patch.render(before)
         self.assertNotEqual(after,before)
         self.assertEqual(hashlib.sha256(after).hexdigest(),
-                         "c5c1888bc1319f81a158b70d9a5617df5258f6aaa5006636d1f53393b8185acf")
+                         "819d2509fc5f072189f9c23ddde7116739ba2b6442950bdadf8436a08f7c7120")
         self.assertEqual(after.count(b"firstparty_host_v2_claimed_observation"),2)
         self.assertEqual(after.count(b"ORIGINAL306_HOST_V2_CLAIM_HELD"),1)
         compile(after, "original306_worker_v86_exact.py", "exec")

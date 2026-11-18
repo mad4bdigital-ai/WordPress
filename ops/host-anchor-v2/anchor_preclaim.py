@@ -65,7 +65,14 @@ def verify_claimable(index, plan, job, original_claim):
          and job.get("executed") is False
          and job.get("plan_sha256") == plan.get("plan_sha256")
          and job.get("job_id") == original_claim.get("job_id")
-         and job.get("command_sha256") == original_claim.get("command_sha256")
+         and original_claim.get("contract") == "mad4b.central-vps-broker.v1"
+         and original_claim.get("host_id") ==
+             job.get("broker_host_id") == "srv2030908"
+         and original_claim.get("claimed_epoch") ==
+             job.get("claimed_epoch")
+         and type(original_claim.get("nonce")) is str and
+         HEX32.fullmatch(original_claim["nonce"]) is not None
+         and original_claim.get("production_mutation_performed") is False
          and type(job.get("job_id")) is str and
          HEX32.fullmatch(job["job_id"]) is not None
          and type(job.get("command_sha256")) is str and
@@ -75,7 +82,11 @@ def verify_claimable(index, plan, job, original_claim):
          "HOST_ANCHOR_ORIGINAL_SIGNED_CLAIM_REQUIRED")
     need(original_claim.get("state") ==
          "BROKER_CLAIMED_PENDING_INDEPENDENT_HOST_AUTHORITY"
-         and original_claim.get("executed") is False,
+         and original_claim.get("production_mutation_performed") is False
+         and set(original_claim) == {
+             "contract", "job_id", "host_id", "nonce", "claimed_epoch",
+             "state", "production_mutation_performed",
+         },
          "HOST_ANCHOR_ORIGINAL306_CLAIM_NOT_ACTIVE")
     return {
         "contract": "mad4b.original306.host-anchor-v2-typed-preclaim.v1",
