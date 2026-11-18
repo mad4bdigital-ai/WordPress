@@ -324,6 +324,10 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "tests/content-media-local-missing-rights-original-hermetic.php",
     "tests/developer-workspace-admission-original-hermetic.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/content-intelligence-pipeline-contract.php",
+    # Exact read-only destination term-meta link regression: isolated stubs,
+    # no WordPress boot, HTTP, filesystem writes or arbitrary PHP execution.
+    "wp-content/plugins/mad4b-site-control-plane/tests/brand-integrity-destination-term-links-runtime.php",
+
 
     # Original Scheduler and Queue behavior plus Skill Registry exact enrollment.
     "wp-content/plugins/mad4b-site-control-plane/tests/scheduler-admission-contract.php",
