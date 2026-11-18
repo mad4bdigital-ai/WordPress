@@ -12534,6 +12534,28 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-visual-seo-strategy.php",
+      "source_blob_sha": "9fc3097180957970e26eac3c67721e4f02343182",
+      "control_ids": [
+        "AI-01",
+        "GOVERNANCE-01",
+        "LOCALIZATION-01",
+        "PLATFORM-01",
+        "PROVIDERS-02",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-visual-seo-strategy-runtime.php"
+      ],
+      "owner_role": "Independent provider/site security code reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing immutable Site Profile, provider read disclosure restrictions, native local-only transport and governed change-control apply; this source review makes no activation, runtime grant, deployment or content mutation possible.",
+      "review_rationale": "Verified site/post/media/WPML context, explicit proposal-only visual SEO/alt suggestions. Never writes alt text, media metadata or grants approval. The candidate removes only a redundant trailing blank line from the captured live PHP file to satisfy Git whitespace checks; semantic behavior is identical."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-visual-seo-strategy.php",
       "source_blob_sha": "9916696d80be36784dfac39aa84edafa1a279872",
       "control_ids": [
         "AI-01",
