@@ -13,8 +13,8 @@ class WP_Term {
 class WP_Error {}
 function is_wp_error($v) {return $v instanceof WP_Error;}
 function absint($x) {return abs((int)$x);}
-function get_term($id) {return $id===665?new WP_Term():null;}
-function get_term_meta($id) {return array('destination_contents'=>array(serialize(array(
+function get_term($id) {if($id!==665 && $id!==666)return null;$t=new WP_Term();$t->term_id=$id;return $t;}
+function get_term_meta($id,$key='',$single=false) {$data=array('destination_contents'=>array(serialize(array(
  'further_reading'=>array(
   array('title'=>'Cairo Tours','url'=>'https://other-tour-operator.example/cairo-tours'),
   array('title'=>'Wayfa trip','url'=>'https://wayfatours.com/tours/cairo'),
@@ -22,7 +22,7 @@ function get_term_meta($id) {return array('destination_contents'=>array(serializ
  ),
  'editorial_reference'=>array('url'=>'https://museum.example/research'),
  'flat_contents'=>'<p><a href="https://flat-commercial.example/cairo">Cairo Tours</a></p>'
-))));}
+))));if($id===666)$data=array('destination_contents'=>array(serialize(array('further_reading'=>array(array('url'=>'https://wayfatours.com/es/egypt'))))));if($key==='')return $data;return $single?maybe_unserialize($data[$key][0]??''):($data[$key]??array());}
 function maybe_unserialize($v) {return is_string($v)&&preg_match('/^a:\d+:/',$v)?unserialize($v):$v;}
 function get_bloginfo($key) {return 'Wayfa Tours';}
 function home_url($path='/') {return 'https://wayfatours.com'.$path;}
@@ -32,7 +32,10 @@ function remove_accents($s) {return $s;}
 function wp_json_encode($v) {return json_encode($v);}
 function apply_filters($n,$v) {return $v;}
 function get_taxonomies($args=array(),$output='names') {return array('destinations');}
-function get_terms($args=array()) {return array('Egypt');}
+function get_terms($args=array()) {if(($args['fields']??'')==='ids')return array_slice(array(665,666),(int)($args['offset']??0),(int)($args['number']??2));return array('Egypt');}
+function taxonomy_exists($tax) {return $tax==='destinations';}
+function get_taxonomy($tax) {return (object)array('public'=>$tax==='destinations');}
+function sanitize_key($s) {return strtolower((string)$s);}
 function get_current_blog_id() {return 1;}
 function must($ok,$why) {if(!$ok){fwrite(STDERR,"FAIL: ".$why."\n");exit(1);}}
 require_once dirname(__DIR__).'/includes/class-mad4b-scp-brand-integrity.php';
@@ -51,4 +54,22 @@ must(!isset($hosts['wayfatours.com']),'first-party URL allowed');
 must(isset($hosts['museum.example'])&&$hosts['museum.example']['severity']==='medium','external citation review-only');
 must(!MAD4B_SCP_Brand_Integrity::analyze_links('<a href="https://museum.example/source">Museum study</a>','post_content',$brand['scope']),'ordinary editorial citations stay allowed');
 must(MAD4B_SCP_Brand_Integrity::scan_term_report(999,$brand)['complete']===false,'missing term fails closed');
+$batch=MAD4B_SCP_Brand_Integrity::scan_term_batch(array('destinations'),0,1,$brand);
+must($batch['scanned']===1&&!$batch['pagination_complete']&&$batch['next_offset']===1,'bounded census first page');
+$second=MAD4B_SCP_Brand_Integrity::scan_term_batch(array('destinations'),1,1,$brand);
+must($second['scanned']===1&&$second['pagination_complete']&&$second['complete'],'WPML translation batch complete');
+must($second['issues']===array(),'second translated term has first-party URL only');
+must(!MAD4B_SCP_Brand_Integrity::scan_term_batch(array('private_tax'),0,5,$brand)['complete'],'private taxonomy fails closed');
+$original=get_term_meta(665,'destination_contents',true);
+$unchanged=MAD4B_SCP_Brand_Integrity::term_meta_candidate_preflight(665,'destination_contents',$original,$brand);
+must(!is_wp_error($unchanged)&&$unchanged['allowed']&&!$unchanged['mutation_performed'],'unchanged historic issue remains repairable');
+$bad=array('further_reading'=>array(array('title'=>'Cairo Tours','url'=>'https://unapproved-operator.example/cairo')));
+must(is_wp_error(MAD4B_SCP_Brand_Integrity::term_meta_candidate_preflight(665,'destination_contents',$bad,$brand)),'new external promotional field blocked');
+$good=array('further_reading'=>array(array('url'=>'https://wayfatours.com/es/cairo')));
+must(!is_wp_error(MAD4B_SCP_Brand_Integrity::term_meta_candidate_preflight(666,'destination_contents',$good,$brand)),'first party WPML term accepted');
+$editorial=array('editorial_reference'=>array('url'=>'https://museum.example/research'));
+$advisory=MAD4B_SCP_Brand_Integrity::term_meta_candidate_preflight(665,'destination_contents',$editorial,$brand);
+must(!is_wp_error($advisory)&&$advisory['review_issues']===1,'editorial external citation review only');
+must(is_wp_error(MAD4B_SCP_Brand_Integrity::term_meta_candidate_preflight(665,'destination_contents',$bad,array('scope'=>array()))),'missing identity denied');
+must(is_wp_error(MAD4B_SCP_Brand_Integrity::term_meta_candidate_preflight(999,'destination_contents',$bad,$brand)),'missing term denied');
 echo "PASS: BRAND_DESTINATION_TERM_LINKS\n";
