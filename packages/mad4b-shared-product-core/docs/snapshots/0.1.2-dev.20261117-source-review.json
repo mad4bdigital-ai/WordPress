@@ -1,0 +1,67 @@
+{
+  "added_files": [
+    {
+      "path": "shared-product-core/adapters/presentation-form6-date-normalization-v1.php",
+      "reason": "source-only Form #6 date and server-priced context contract added in current PR",
+      "sha256": "d28616e05f0d8a718af43e7295ab11877e7f01fcc9bcb058a2a25ee32b64033f"
+    },
+    {
+      "path": "shared-product-core/adapters/presentation-form6-source-context-v1.php",
+      "reason": "source-only Form #6 date and server-priced context contract added in current PR",
+      "sha256": "96d994d348dffaf1d998a2802e7198950ebe4a829a72fa2de1342f70e62be8bd"
+    }
+  ],
+  "booking_payment_or_grants_authorized": false,
+  "changed_files": [
+    {
+      "current_sha256": "75670945a49d4b2cb8defe194656d58b2649118fc9abba8f36ad5cb67a76a471",
+      "path": "shared-product-core/adapters/presentation-form6-occupancy-policy-v1.php",
+      "prior_sha256": "71760a77dc826d8c9dcbe86bf3a3952a8ab9890295226e3dfa833d8d8a6f4f17",
+      "reason": "source-only Form #6 quoting, occupancy, stay or presentation context change"
+    },
+    {
+      "current_sha256": "13855d53712347a136e8d61bc29da5f980eb2c8ba3e766c2f21c0b9b1aa4d0d9",
+      "path": "shared-product-core/adapters/presentation-form6-price-quote-v1.php",
+      "prior_sha256": "ae1441c9978fc76330eda1cc5a780489a50231ab214f7973ab9b7795cc14ea76",
+      "reason": "source-only Form #6 quoting, occupancy, stay or presentation context change"
+    },
+    {
+      "current_sha256": "6d641c9762ec886aca2770421c31e62ca17d69a115775ca9dd5aac8986f65f41",
+      "path": "shared-product-core/adapters/presentation-form6-stay-options-v1.php",
+      "prior_sha256": "ec27f2d78bdf0a5d7d42855d5119d8e89a2d66f9515ca7f77e9bf7ff40d7e313",
+      "reason": "source-only Form #6 quoting, occupancy, stay or presentation context change"
+    },
+    {
+      "current_sha256": "50b69facf68c01982b1a476f510ce533d3e1c46ab6cd52276b4675c57acc96dc",
+      "path": "shared-product-core/assets/presentation-fluent-projection-v1.js",
+      "prior_sha256": "018d7e7a22acd13f7e6dd5e113f6036d1d95dd1604a22f8fa1bd4630d09a05df",
+      "reason": "source-only Form #6 quoting, occupancy, stay or presentation context change"
+    },
+    {
+      "current_sha256": "f60566d376e2d9c3f4ae4526319e30d504201e18fc549da7be9e458dee2821dc",
+      "path": "shared-product-core/assets/presentation-fluent-quote-v1.js",
+      "prior_sha256": "01fcfd4251815c7b46cf0f11b6e3fcb1333f54b208a0cffed111b45d5c72cd31",
+      "reason": "source-only Form #6 quoting, occupancy, stay or presentation context change"
+    },
+    {
+      "current_sha256": "5f0dfc3a62e0e8bfca2c21a7af8a9eb2c343eb8f58aae18bbe8072af5e486508",
+      "path": "shared-product-core/assets/presentation-selection-state-v1.js",
+      "prior_sha256": "d13cc54a8ceba5facaa46e692ba82db96fedefbeceb9942884a993347cd7004e",
+      "reason": "source-only Form #6 quoting, occupancy, stay or presentation context change"
+    }
+  ],
+  "contract": "mad4b.shared-product-core.source-successor-review.v1",
+  "current_file_count": 137,
+  "current_version": "0.1.2-dev.20261117",
+  "historical_exact_git_commit": "938f0dc1cefe8493b0dfb203593e3dd6392839fc",
+  "old_manifest_sha256": "bac04f8389299505837c6985c83e01584143aed7a5d65c822c24015a6f6d20ce",
+  "old_source_hash_list_sha256": "ff69c421ba1d9934aa55a291b2751582eb5e2304dbfcb4a729492835d72d1481",
+  "original_historical_files_changed": false,
+  "previous_file_count": 135,
+  "prior_version": "0.1.1-dev.20261113",
+  "production_release_authorized": false,
+  "reconciliation_for_existing_live_tenant_done": false,
+  "removed_files": [],
+  "reviewed_historical_file_hashes_preserved": true,
+  "scope": "source-only ETG Lab; no tenant/runtime/Production admission"
+}

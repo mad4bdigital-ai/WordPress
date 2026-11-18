@@ -57,6 +57,66 @@ if (previous.get('version') != lineage.get('prior_version')
         or len(prev_paths[1].read_text().splitlines()) != previous.get('source_file_count')
         or previous.get('version') == manifest.get('version')):
     raise SystemExit('HISTORICAL_SOURCE_LINEAGE_DRIFT')
+# Exact successor review: a new snapshot may only inherit a proven, immutable
+# prior file list. Never turn source parity into any booking/payment authority.
+review_ref = manifest.get('source_successor_review')
+if review_ref is None:
+    raise SystemExit('SOURCE_SUCCESSOR_REVIEW_REQUIRED')
+if review_ref is not None:
+    if (not isinstance(review_ref, dict)
+            or review_ref.get('state') != 'source_only_review_no_host_admission'
+            or not isinstance(review_ref.get('sha256'), str)
+            or not isinstance(review_ref.get('path'), str)
+            or not review_ref['path'].startswith('docs/snapshots/')
+            or '..' in Path(review_ref['path']).parts):
+        raise SystemExit('UNTRUSTED_SOURCE_SUCCESSOR_REVIEW')
+    review_file = root / review_ref['path']
+    if not review_file.is_file() or review_file.is_symlink():
+        raise SystemExit('SOURCE_SUCCESSOR_REVIEW_MISSING')
+    review_bytes = review_file.read_bytes()
+    if hashlib.sha256(review_bytes).hexdigest() != review_ref['sha256']:
+        raise SystemExit('SOURCE_SUCCESSOR_REVIEW_DIGEST_DRIFT')
+    review = json.loads(review_bytes)
+    if hashlib.sha256(prev_paths[0].read_bytes()).hexdigest() != review.get('old_manifest_sha256'):
+        raise SystemExit('SOURCE_SUCCESSOR_PRIOR_MANIFEST_DRIFT')
+    if (review.get('contract') != 'mad4b.shared-product-core.source-successor-review.v1'
+            or review.get('scope') != 'source-only ETG Lab; no tenant/runtime/Production admission'
+            or review.get('current_version') != manifest.get('version')
+            or review.get('prior_version') != previous.get('version')
+            or review.get('old_source_hash_list_sha256') != previous_digest
+            or review.get('previous_file_count') != previous.get('source_file_count')
+            or review.get('current_file_count') != len(actual)
+            or review.get('removed_files') != []
+            or review.get('reviewed_historical_file_hashes_preserved') is not True
+            or review.get('original_historical_files_changed') is not False
+            or review.get('reconciliation_for_existing_live_tenant_done') is not False
+            or review.get('booking_payment_or_grants_authorized') is not False
+            or review.get('production_release_authorized') is not False):
+        raise SystemExit('SOURCE_SUCCESSOR_REVIEW_NOT_ADMITTED')
+    prior = {}
+    for row in prev_paths[1].read_text().splitlines():
+        sha, relative = row.split('  ', 1)
+        if relative in prior:
+            raise SystemExit('PRIOR_SOURCE_SUCCESSOR_DUPLICATE')
+        prior[relative] = sha
+    additions = sorted(set(actual) - set(prior))
+    removed = sorted(set(prior) - set(actual))
+    changes = sorted(k for k in set(actual) & set(prior) if actual[k] != prior[k])
+    claimed_added = review.get('added_files')
+    claimed_changed = review.get('changed_files')
+    if not isinstance(claimed_added, list) or not isinstance(claimed_changed, list):
+        raise SystemExit('SOURCE_SUCCESSOR_REVIEW_ROWS_INVALID')
+    if removed or len(claimed_added) != len(additions) or len(claimed_changed) != len(changes):
+        raise SystemExit('SOURCE_SUCCESSOR_UNREVIEWED_CHANGE_COUNT')
+    if ([(r['path'], r['sha256']) for r in claimed_added]
+            != [(k, actual[k]) for k in additions]
+            or [(r['path'], r['prior_sha256'], r['current_sha256']) for r in claimed_changed]
+            != [(k, prior[k], actual[k]) for k in changes]):
+        raise SystemExit('SOURCE_SUCCESSOR_UNREVIEWED_CONTENT_DRIFT')
+    if any(not isinstance(r.get('reason'), str) or not r['reason'].strip()
+           for r in claimed_added + claimed_changed):
+        raise SystemExit('SOURCE_SUCCESSOR_REASON_MISSING')
+
 print('FROZEN_SOURCE_MANIFEST_PASS files=', len(actual),
       'version=', manifest['version'], 'prior_source_immutable=', True,
       'source_only=', True)

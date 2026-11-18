@@ -81,24 +81,9 @@ jobs:
       - name: Prepare pinned isolated PHP original schema verifier
         run: |
           set -euo pipefail
-          # Offline Python acceptance uses --pull=never. Retry only the
-          # image acquisition (never the tests); transient Docker Hub EOF/5xx
-          # must not become a false regression or an accepted missing image.
-          if ! docker image inspect php:8.5-cli >/dev/null 2>&1; then
-            for attempt in 1 2 3; do
-              if docker pull php:8.5-cli; then
-                break
-              fi
-              if [ "$attempt" -eq 3 ]; then
-                echo "::error::php:8.5-cli could not be acquired after 3 attempts"
-                exit 1
-              fi
-              sleep "$((attempt * 3))"
-            done
-          fi
-          # Inspect the actual local image before hermetic --pull=never use.
-          docker image inspect php:8.5-cli --format '{{.Id}}' |
-            grep -Eq '^sha256:[a-f0-9]{64}$'
+          # Offline Python acceptance uses --pull=never; ensure the exact
+          # public test image is locally available before hermetic checks.
+          docker image inspect php:8.5-cli >/dev/null 2>&1 || docker pull php:8.5-cli
       - name: Semantic non-regression and source integrity
         run: |
           set -euo pipefail
