@@ -25,7 +25,7 @@ final class MAD4B_SCP_Switcher_Sources {
   if(!is_dir($root.'/res/flags'))return '';
   $stem=strtolower($iso);
   foreach([$stem.'.country.svg',$stem.'.svg'] as $file){
-   if(is_file($root.'/res/flags/'.$file))return plugins_url('res/flags/'.$file,$root.'/sitepress.php');
+   if(is_file($root.'/res/flags/'.$file))return set_url_scheme(plugins_url('res/flags/'.$file,$root.'/sitepress.php'),wp_parse_url(home_url('/'),PHP_URL_SCHEME)==='https'?'https':'http');
   }
   return '';
  }
