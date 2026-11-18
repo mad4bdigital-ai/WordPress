@@ -109,3 +109,30 @@ retry, normal same-release backoff, and Wayfa isolation.
 During this rollout, the host CPU/PSI guard continued to defer Chromium
 when resources were saturated. An eligible ticket does not mean the
 CSS visual/source certificate has passed.
+
+## Native CSS v7: exact seven-width WPML progress evidence
+
+The original source mobile safe-cap fallback at adaptiveMaxWidth 599
+passed seven independently tested browser widths: 320, 390, 414, 599,
+600, 767 and 768. Original native QA and publisher passed, but the old
+WPML fair-queue result recorder expected exactly five results. It had
+marked the successful Italian certificate hold_passed_evidence and
+introduced an unnecessary per-language retry cooldown.
+
+Immutable native v7 changes only the WPML fair-queue result recorder:
+when the original browser QA has decision passed_evidence and
+adaptiveMaxWidth 599, exactly seven distinct widths and seven passing
+measurements are required, otherwise the original five-width source
+rule is required. Failed widths, missing measurements and unapproved
+adaptive profile overrides remain denied. The independent qa-admission,
+source SHA/Elementor verification, browser QA, signed original
+publisher, source cache release and final public readback are unchanged.
+
+v7 keeps the same source-only host Chromium group 33 read-only CSS
+access, cap-drop ALL and no-new-privileges. Existing CPU/PSI and
+WP-CLI limits and shared browser lock are mandatory. Wayfatours still
+uses its old bridge context and its prior safe query-cache rules.
+Source worker v7 and previous worker backups are retained separately.
+The due original first_fold ticket can retry once after an actual
+immutable revision, then uses normal backoff; no ticket, CSS manifest,
+Woo payment, price policy or original QA rule is bypassed.

@@ -65,8 +65,15 @@ def record(selection,site,history,batch,qa,now,reason=None):
         gate=(qa or {}).get('gates',{}).get(lang,{})
         measured=[v for v in (qa or {}).get('results',[]) if v.get('lang')==lang]
         expected={320,390,414,767,768} if selection.get('site')=='source' else {320,390,414,768}
+        # The separately attested 599px safe-cap fallback is tested at
+        # SEVEN widths. Its published 7-width QA must not be marked as a
+        # failed 5-width retry, yet cannot borrow the normal proof.
+        if selection.get('site')=='source' and gate.get('adaptiveMaxWidth')==599:
+            expected={320,390,414,599,600,767,768}
+        widths=gate.get('widths',[])
         passed=(reason is None and gate.get('decision')=='passed_evidence'
-             and expected.issubset(set(gate.get('widths',[])))
+             and isinstance(widths,list) and set(widths)==expected and len(widths)==len(expected)
+             and len(measured)==len(expected)
              and {v['width'] for v in measured}==expected
              and all(v.get('pass') is True for v in measured))
         fails=0 if passed else min(20,int(current.get('failures',0))+1)
