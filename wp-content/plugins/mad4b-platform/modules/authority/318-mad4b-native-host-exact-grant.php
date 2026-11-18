@@ -19,6 +19,9 @@ final class MAD4B_Native_Host_Exact_Grant_V1 {
  const DYNAMIC_IDENTITY_CONTRACT='mad4b.company.native-host-signed-identity.v2';
  const DYNAMIC_IDENTITY_PREFIX='mad4b_company_native_host_signed_identity_v2_';
  const DYNAMIC_IDENTITY_NONCE='mad4b_company_native_host_signed_identity_nonce_v2_';
+ const DYNAMIC_ANCHOR_PREFIX='mad4b_company_native_host_identity_anchor_v1_';
+ const DYNAMIC_ANCHOR_CONTRACT='mad4b.company-host-authority-anchor.v2';
+ const DYNAMIC_ANCHOR_SIGNED_FIELDS=['contract','company','environment','site_uuid','canonical_origin','profile_digest','host_id','ssh_target','ssh_principal','ssh_root_sha256','host_key_sha256','registry_sha256','policy_sha256','revision','issued','expires','nonce','state','revoked','source'];
  const DYNAMIC_IDENTITY_FIELDS=['contract','company','environment','site_uuid',
   'canonical_origin','profile_digest','host_id','ssh_target','ssh_principal',
   'ssh_root_sha256','host_key_sha256','registry_sha256','policy_sha256',
@@ -193,6 +196,129 @@ final class MAD4B_Native_Host_Exact_Grant_V1 {
   * Distinct from signed target P-256 V4 and NEVER a 305/318 mutation grant.
   * The already pinned VPS Host signer authorizes an exact read-only claim.
   */
+ /** Separately enrolled host authority snapshot; NEVER derived from a
+  * self-signed identity claim or a Hostinger read route alone. An enrolled
+  * anchor must be maintained by the original signed Host authority lifecycle.
+  */
+ /** Separately signed Host Authority anchor, using the existing Central
+  * Broker public key. A WordPress option/source label is NEVER an authority.
+  * The signed anchor is stored only by a separate approved enroll/reconcile.
+  */
+ private static function dynamic_anchor(string $company,string $environment):?array {
+  $key=self::DYNAMIC_ANCHOR_PREFIX.$company.'_'.$environment;
+  $row=get_option($key,false);
+  if(!is_array($row)
+     ||array_keys($row)!==array_merge(self::DYNAMIC_ANCHOR_SIGNED_FIELDS,['signature'])
+     ||($row['contract']??null)!==self::DYNAMIC_ANCHOR_CONTRACT
+     ||($row['company']??null)!==$company
+     ||($row['environment']??null)!==$environment
+     ||($row['state']??null)!=='ACTIVE_INDEPENDENT_HOST_AUTHORITY'
+     ||($row['revoked']??true)!==false
+     ||($row['source']??null)!=='original_approved_host_authority_reconcile'
+     ||!is_int($row['revision'])||$row['revision']<1
+     ||!is_int($row['issued'])||!is_int($row['expires'])
+     ||$row['issued']>time()+10||$row['expires']<time()
+     ||$row['expires']<=$row['issued']||$row['expires']>$row['issued']+3600
+     ||!self::okhex($row['nonce'],32)
+     ||!wp_is_uuid($row['site_uuid']))return null;
+  foreach(['host_id','ssh_target','ssh_principal','canonical_origin'] as $field)
+    if(!is_string($row[$field]??null)||$row[$field]==='')return null;
+  if($row['host_id']!==self::HOST
+    ||!preg_match('/^hosting-[123]$/D',$row['ssh_target'])
+    ||!preg_match('/^u[0-9]{9}$/D',$row['ssh_principal'])
+    ||!preg_match('/^https:\/\/[a-z0-9.-]+$/D',$row['canonical_origin']))return null;
+  foreach(['profile_digest','ssh_root_sha256','host_key_sha256','registry_sha256','policy_sha256'] as $field)
+    if(!self::okhex($row[$field]??null,64))return null;
+  if(!class_exists('MAD4B_Central_VPS_Broker_V1',false)
+    ||!class_exists('MAD4B_Central_Dual_Lane_Registry_V1',false)
+    ||!MAD4B_Central_Dual_Lane_Registry_V1::central())return null;
+  $public=base64_decode((string)get_option(MAD4B_Central_VPS_Broker_V1::PUBKEY,''),true);
+  $signature=base64_decode((string)$row['signature'],true);
+  if(!is_string($public)||strlen($public)!==SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES
+     ||!is_string($signature)||strlen($signature)!==SODIUM_CRYPTO_SIGN_BYTES)return null;
+  $message=implode("\n",array_map(static fn($field)=>(string)$row[$field],self::DYNAMIC_ANCHOR_SIGNED_FIELDS));
+  if(!sodium_crypto_sign_verify_detached($signature,$message,$public))return null;
+  return $row;
+ }
+ /** Signed revoked Anchor state ONLY. Not a write grant or final 313 proof.
+  * The independent root revision/high-water ledger is mandatory for certification.
+  * An older valid ACTIVE snapshot can be restored to WordPress options; the root
+  * consumer must reject it if its revision is below the independent current epoch.
+  */
+ public static function independent_revoked_anchor_observation_v2(string $company,string $environment):array {
+  $out=['contract'=>'mad4b.original318.signed-revocation-observation.v2',
+   'company'=>$company,'environment'=>$environment,
+   'signed_revocation_record_observed'=>false,
+   'independent_highwater_verified'=>false,
+   'original313_certified'=>false,
+   'write_authorized'=>false,'grant_created'=>false];
+  if(!preg_match('/^[a-z][a-z0-9-]{2,47}$/D',$company)
+    ||!preg_match('/^[a-z][a-z0-9_-]{1,39}$/D',$environment))return $out;
+  $row=get_option(self::DYNAMIC_ANCHOR_PREFIX.$company.'_'.$environment,false);
+  if(!is_array($row)
+    ||array_keys($row)!==array_merge(self::DYNAMIC_ANCHOR_SIGNED_FIELDS,['signature'])
+    ||($row['contract']??null)!==self::DYNAMIC_ANCHOR_CONTRACT
+    ||($row['company']??null)!==$company
+    ||($row['environment']??null)!==$environment
+    ||($row['state']??null)!=='REVOKED_INDEPENDENT_HOST_AUTHORITY'
+    ||($row['revoked']??null)!==true
+    ||($row['source']??null)!=='original_approved_host_authority_reconcile'
+    ||!is_int($row['revision'])||$row['revision']<2
+    ||!is_int($row['issued'])||!is_int($row['expires'])
+    ||$row['issued']>time()+10||$row['expires']<=$row['issued']
+    ||!self::okhex($row['nonce']??null,32)
+    ||!wp_is_uuid($row['site_uuid']??null)
+    ||!class_exists('MAD4B_Central_VPS_Broker_V1',false)
+    ||!class_exists('MAD4B_Central_Dual_Lane_Registry_V1',false)
+    ||!MAD4B_Central_Dual_Lane_Registry_V1::central())return $out;
+  foreach(['host_id','ssh_target','ssh_principal','canonical_origin'] as $field)
+    if(!is_string($row[$field]??null)||$row[$field]==='')return $out;
+  if($row['host_id']!==self::HOST
+    ||!preg_match('/^hosting-[123]$/D',$row['ssh_target'])
+    ||!preg_match('/^u[0-9]{9}$/D',$row['ssh_principal'])
+    ||!preg_match('/^https:\/\/[a-z0-9.-]+$/D',$row['canonical_origin']))return $out;
+  foreach(['profile_digest','ssh_root_sha256','host_key_sha256','registry_sha256','policy_sha256'] as $field)
+    if(!self::okhex($row[$field]??null,64))return $out;
+  $site=class_exists('MAD4B_Company_Environment_Registry_V2',false)
+    ?MAD4B_Company_Environment_Registry_V2::target($company,$environment):null;
+  if(!is_array($site)
+    ||($site['site_uuid']??null)!==$row['site_uuid']
+    ||($site['canonical_origin']??null)!==$row['canonical_origin']
+    ||($site['identity_evidence']['profile_digest']??null)!==$row['profile_digest'])return $out;
+  $public=base64_decode((string)get_option(MAD4B_Central_VPS_Broker_V1::PUBKEY,''),true);
+  $signature=base64_decode((string)$row['signature'],true);
+  if(!is_string($public)||strlen($public)!==SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES
+    ||!is_string($signature)||strlen($signature)!==SODIUM_CRYPTO_SIGN_BYTES)return $out;
+  $message=implode("\n",array_map(static fn($field)=>(string)$row[$field],self::DYNAMIC_ANCHOR_SIGNED_FIELDS));
+  if(!sodium_crypto_sign_verify_detached($signature,$message,$public))return $out;
+  $out['signed_revocation_record_observed']=true;
+  $out['site_uuid']=$row['site_uuid'];
+  $out['anchor_revision']=$row['revision'];
+  $out['anchor_nonce']=$row['nonce'];
+  $out['signed_anchor_message_sha256']=hash('sha256',$message);
+  return $out;
+ }
+ /** Read-only attestation cannot create or refresh its own authority anchor. */
+ private static function dynamic_anchor_matches(array $anchor,array $p):bool {
+  foreach(['company','environment','site_uuid','canonical_origin',
+    'profile_digest','host_id','ssh_target','ssh_principal','ssh_root_sha256',
+    'host_key_sha256','registry_sha256','policy_sha256'] as $key)
+    if(!isset($anchor[$key],$p[$key]) ||
+       !hash_equals((string)$anchor[$key],(string)$p[$key]))return false;
+  return true;
+ }
+ /** Exact per-command host signer binding: not a grant or privilege.
+  * Only an independently enrolled, nonrevoked v59+ host anchor may approve
+  * this predicate; the identity receipt alone cannot certify a host policy.
+  */
+ public static function independent_anchor_live_v2(array $proof):bool {
+  $co=$proof['company']??null;$env=$proof['environment']??null;
+  if(!is_string($co)||!is_string($env))return false;
+  $anchor=self::dynamic_anchor($co,$env);
+  if(!is_array($anchor)||!self::dynamic_anchor_matches($anchor,$proof))return false;
+  $identity=self::dynamic_identity_status($co,$env);
+  return ($identity['identity_readback_verified']??false)===true;
+ }
  public static function verify_dynamic_identity(array $p):array {
   if(array_keys($p)!==array_merge(self::DYNAMIC_IDENTITY_FIELDS,['signature']))
    return self::deny('DYNAMIC_HOST_IDENTITY_SIGNED_SHAPE_INVALID');
@@ -232,6 +358,9 @@ final class MAD4B_Native_Host_Exact_Grant_V1 {
    ||($site['canonical_origin']??null)!==$p['canonical_origin']
    ||($site['identity_evidence']['profile_digest']??null)!==$p['profile_digest'])
    return self::deny('DYNAMIC_HOST_IDENTITY_CANONICAL_SITE_MISMATCH');
+  $anchor=self::dynamic_anchor($co,$env);
+  if(!$anchor || !self::dynamic_anchor_matches($anchor,$p))
+   return self::deny('DYNAMIC_HOST_IDENTITY_INDEPENDENT_ANCHOR_MISSING_OR_DRIFT');
   $pub=base64_decode((string)get_option(MAD4B_Central_VPS_Broker_V1::PUBKEY,''),true);
   $sig=base64_decode((string)$p['signature'],true);
   if(!is_string($pub)||strlen($pub)!==SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES
@@ -264,7 +393,11 @@ final class MAD4B_Native_Host_Exact_Grant_V1 {
    'ssh_root_sha256'=>$p['ssh_root_sha256'],
    'host_key_sha256'=>$p['host_key_sha256'],
    'registry_sha256'=>$p['registry_sha256'],'policy_sha256'=>$p['policy_sha256'],
-   'signed_sha256'=>$v['signed_sha256'],'verified_at_epoch'=>time(),
+   'signed_sha256'=>$v['signed_sha256'],
+   'issued'=>$p['issued'],'expires'=>$p['expires'],
+   'nonce'=>$p['nonce'],'signature'=>$p['signature'],
+   'anchor_revision'=>(int)(self::dynamic_anchor($p['company'],$p['environment'])['revision']??0),
+   'verified_at_epoch'=>time(),
    'remote_write_authorized'=>false,'grant_created'=>false];
   if(!update_option($key,$record,false) && get_option($key,null)!==$record)
    return self::deny('DYNAMIC_HOST_IDENTITY_READBACK_PERSIST_FAILED');
@@ -278,7 +411,21 @@ final class MAD4B_Native_Host_Exact_Grant_V1 {
   $row=get_option($key,false);
   $site=class_exists('MAD4B_Company_Environment_Registry_V2',false)
    ?MAD4B_Company_Environment_Registry_V2::target($company,$environment):null;
-  $ok=is_array($row)&&is_array($site)
+  $anchor=self::dynamic_anchor($company,$environment);
+  // Rebuild the exact signed message on every readback. A stored option
+  // alone cannot attest to itself, and expired signed proof is never current.
+  $signedInput=[];
+  if(is_array($row)) {
+    foreach(self::DYNAMIC_IDENTITY_FIELDS as $field)$signedInput[$field]=$row[$field]??null;
+    $signedInput['signature']=$row['signature']??null;
+  }
+  $reverified=is_array($anchor)&&is_array($site)&&is_array($row)
+    &&(self::verify_dynamic_identity($signedInput)['eligible']??false)===true;
+  $ok=$reverified&&is_array($anchor)
+   &&self::dynamic_anchor_matches($anchor,$row)
+   &&($row['anchor_revision']??null)===($anchor['revision']??null)
+   &&($row['signed_sha256']??null)===hash('sha256',implode("\n",
+        array_map(static fn($field)=>(string)$signedInput[$field],self::DYNAMIC_IDENTITY_FIELDS)))
    &&($row['contract']??'')===self::DYNAMIC_IDENTITY_CONTRACT
    &&($row['company']??'')===$company
    &&($row['environment']??'')===$environment
@@ -290,7 +437,7 @@ final class MAD4B_Native_Host_Exact_Grant_V1 {
    &&($row['grant_created']??true)===false
    &&($row['verified_at_epoch']??0)>0
    &&($row['verified_at_epoch']??0)<=time()
-   &&time()-$row['verified_at_epoch']<=3600;
+   &&time()-$row['verified_at_epoch']<=60;
   return ['contract'=>self::DYNAMIC_IDENTITY_CONTRACT,
    'state'=>$ok?'SIGNED_HOST_IDENTITY_READBACK_RECENT':'HOST_IDENTITY_ATTESTATION_MISSING_OR_STALE',
    'company'=>$company,'environment'=>$environment,

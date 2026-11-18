@@ -12,6 +12,11 @@ class SourceCandidate(unittest.TestCase):
   self.assertEqual(doc['contract'],'mad4b.original318.v82.governed-release-proposal.v1')
   for key in ['direct_ssh_file_replacement_allowed','publisher_approval_granted','independent_receipt_signed','real_anchor_issued_or_revoked','publish_executed']:
    self.assertIs(doc[key],False)
+ def test_canonical_wordpress_deploy_target_matches_reviewed_candidate(self):
+  target=BASE.parents[1]/'wp-content/plugins/mad4b-platform/modules/authority/318-mad4b-native-host-exact-grant.php'
+  self.assertTrue(target.is_file(), 'canonical WordPress deploy target must exist')
+  self.assertEqual(target.read_bytes(),SOURCE.read_bytes(),
+      'deploy target must exactly equal the reviewed Original318 v82 candidate')
  def test_source_requires_distinct_signed_anchor(self):
   s=SOURCE.read_text()
   for t in ["const DYNAMIC_ANCHOR_CONTRACT='mad4b.company-host-authority-anchor.v2'",
