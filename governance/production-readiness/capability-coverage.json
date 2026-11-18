@@ -11538,6 +11538,25 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "The existing original Agent Registry exact grant, Staging-only provider review, site profile, mutation gate, owner approval, checkpoint, readback and audit safeguards govern this single diagnostic, without wildcard rights.",
       "review_rationale": "Exact source review allows a core grant to be considered only for mad4b/hub-queue-site-health-enqueue when the Ability is registered on the correct central Staging site. No grant is issued merely because this provider pair appears; broad hub-bulk-enqueue remains outside the reviewed policy and Production is not enabled."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-switcher-sources.php",
+      "source_blob_sha": "c70ac599f9b4b4b27cb208aa923db051485d0c83",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-switcher-flag-scheme-runtime.php"
+      ],
+      "owner_role": "Repository source/UI security reviewer — CI-only; no Site Owner or release authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing core platform, provider-sourced WPML asset, native Woo country validation and security controls cover HTTPS flag URL scheme binding without modifying pricing, identity or publication rights. Release approval remains independent.",
+      "review_rationale": "The byte-verified installed Tours.dev WPML flag adapter changes only the generated URL scheme to match WordPress home_url, preventing mixed-content SVG flag requests on an HTTPS site. The registered country list, original WPML flag files, filename priority, malformed country rejection and accessible fallback remain unchanged. Offline assertions cover HTTPS, HTTP, missing plugin/flag and invalid ISO without any live WordPress action."
     }
   ],
   "code_change_rules": {
