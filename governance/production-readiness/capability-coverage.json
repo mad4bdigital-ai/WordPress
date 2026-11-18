@@ -3605,6 +3605,42 @@
       "new_control_ids": [],
       "coverage_reuse_rationale": "Existing MCP admission, platform identity, security, owner-scoped administrative rights and execution-denial controls cover these staging-only authorization surfaces, without granting Production execution or public access.",
       "review_rationale": "New surface ability:mad4b/staging-write-grant-reconcile-staging is source-pinned in the W1 authority integration and assessed with hermetic owner-browser, agent REST route, Site Profile, OAuth, replay, write grant, exact mapping and negative permission fixtures. This is only CI source review, not evidence that the route is registered, usable, or authorized in Production."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli-execution-context.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-cli-context-identity-runtime.php"
+      ],
+      "owner_role": "Independent signed Host service source and security code reviewer — CI only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Use existing governance/site identity/security and signed Host execution controls; no new route accessible to foreign REST clients, no production release admission, no runtime signer or company grant created, and no protected control weakened.",
+      "review_rationale": "Introduce exactly enrolled, non-impersonating Host WP-CLI identity service with strictly configured environment, deployment/clone binding and append-only audit, and with no generic mutation authority. Dynamic input or an OAuth token cannot impersonate its site scope."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-agent-bridge.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-signed-host-agent-negative-runtime.php"
+      ],
+      "owner_role": "Independent signed Host service source and security code reviewer — CI only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Use existing governance/site identity/security and signed Host execution controls; no new route accessible to foreign REST clients, no production release admission, no runtime signer or company grant created, and no protected control weakened.",
+      "review_rationale": "Introduce site-scoped Host Ed25519 execution as an independent signed CLI service. Enforce exact site/DB/environment, one-time expiring nonce, pinned public key, exact registered agent and ability grant. Missing optional Media provider fails closed. A signed bind operation remains explicitly host-signed and is never invoked by read-only registration."
     }
   ],
   "lifecycle": [],
@@ -11538,6 +11574,85 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "The existing original Agent Registry exact grant, Staging-only provider review, site profile, mutation gate, owner approval, checkpoint, readback and audit safeguards govern this single diagnostic, without wildcard rights.",
       "review_rationale": "Exact source review allows a core grant to be considered only for mad4b/hub-queue-site-health-enqueue when the Ability is registered on the correct central Staging site. No grant is issued merely because this provider pair appears; broad hub-bulk-enqueue remains outside the reviewed policy and Production is not enabled."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "f14b4f19848359ad09fd0915147e571a2334ccea",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-signed-host-agent-negative-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-cli-context-identity-runtime.php"
+      ],
+      "owner_role": "Independent exact-source Host/Context security code reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing registered governance, exact site origin, append-only audit, signed Host CLI and Context Asset review controls cover this focused live-source parity slice. No issuer enrollment, release admission, API access widening, media provider activation or new production grant is authorized by review metadata.",
+      "review_rationale": "Surgical include of strictly site-bound signed Host Agent and standalone WP-CLI identity context after existing OAuth and Context Authority loads. No keys, site grants, mutating bootstrap or foreign REST routes are registered by this source change."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php",
+      "source_blob_sha": "543512fe3c52842d3688ff53556ae2523c01fd9d",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-signed-host-context-review-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-signed-host-agent-negative-runtime.php"
+      ],
+      "owner_role": "Independent exact-source Host/Context security code reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing registered governance, exact site origin, append-only audit, signed Host CLI and Context Asset review controls cover this focused live-source parity slice. No issuer enrollment, release admission, API access widening, media provider activation or new production grant is authorized by review metadata.",
+      "review_rationale": "Add only signed Host asset review method; it requires the real active signed Host Agent, exact Agent and scoped grant, effective explicit review policy and complete governed asset, rejects governance field changes and reuses the original locked audited review engine."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli-execution-context.php",
+      "source_blob_sha": "e917e01fdb20064d35739f9e693182c63e63d31b",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-cli-context-identity-runtime.php"
+      ],
+      "owner_role": "Independent exact-source Host/Context security code reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing registered governance, exact site origin, append-only audit, signed Host CLI and Context Asset review controls cover this focused live-source parity slice. No issuer enrollment, release admission, API access widening, media provider activation or new production grant is authorized by review metadata.",
+      "review_rationale": "Recover strict enrolled CLI identity, deployment, clone protection, append-only audit, no WP --user impersonation, exact environment and narrow maintenance operation policy from live; ordinary CLI reads are distinct from mutations."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-agent-bridge.php",
+      "source_blob_sha": "929da81830eb6ea18957ae9a4b7dcd06eea0a7f5",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-signed-host-agent-negative-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-signed-host-context-review-runtime.php"
+      ],
+      "owner_role": "Independent exact-source Host/Context security code reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing registered governance, exact site origin, append-only audit, signed Host CLI and Context Asset review controls cover this focused live-source parity slice. No issuer enrollment, release admission, API access widening, media provider activation or new production grant is authorized by review metadata.",
+      "review_rationale": "Recover latest live Ed25519 pinned-public-key Host Agent. Signatures bind exact site UUID/origin/environment/database/body/operation and an expiring nonce; no OAuth or implicit WordPress user grants. Optional tourism media functions return explicit missing-provider errors without resurrecting live-retired modules."
     }
   ],
   "code_change_rules": {
