@@ -52,6 +52,8 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     # context; 7.4/8.3/8.5 exercised SVG fail-closed and regular text.
     # Explicitly review this named regression only; no generic PHP relaxation.
     "wp-content/plugins/mad4b-site-control-plane/tests/context-document-normalization-runtime.php",
+    # Exact ChatGPT per-connector metadata and redirect safety in isolated PHP.
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-cimd-client-security-runtime.php",
     # Three separately reviewed original source-only fixtures. The Operation
     # Registry uses a process-scoped /tmp catalog and negative mutation policy;
     # Presentation Evidence and Integrity use fake WP state, local temporary

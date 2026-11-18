@@ -321,4 +321,49 @@ for case in ('forge_new_sha','forge_old_blob','forge_old_sha256','swap_test','fo
             (plugin/item['path']).read_bytes()),
             'visual_media_source_entry_denied_'+case)
 
+
+# Exact ChatGPT per-connector CIMD parity is independently pinned after
+# Context Media; its source review is CI-only and never a permission grant.
+cimd_manifest=repo/'governance/release-parity/qa31-rc129-cimd-source-successor-20261118.json'
+cimd_data=json.loads(cimd_manifest.read_text())
+cimd_rel='includes/class-mad4b-scp-local-oauth-server.php'
+cimd_bytes=(plugin/cimd_rel).read_bytes()
+chk(cimd_data['contract']=='mad4b.qa31-rc129-cimd-source-successor.v1'
+    and cimd_data['base_source_commit']=='6ee165ef798c1e37bdc0e09513d57e4dfcb224af'
+    and cimd_data['authorizing'] is False
+    and cimd_data['production_authorized'] is False
+    and cimd_data['source_promotion_approved'] is False
+    and cimd_data['release_gate']=='BLOCKED_SOURCE_RECONCILIATION'
+    and cimd_data['exact_source_files']==1,'cimd_review_is_ci_only')
+chk(reviewed_ci_only_source_successor(plugin,cimd_rel,cimd_bytes),
+    'exact_cimd_source_is_reviewed')
+chk(not reviewed_ci_only_source_successor(plugin,cimd_rel,cimd_bytes+b'\nFAKE'),
+    'tampered_cimd_source_is_denied')
+target_cimd=cimd_manifest.resolve()
+for case,change in (
+    ('release_flag',{'production_authorized':True}),
+    ('wrong_parent',{'base_source_commit':'a'*40}),
+    ('wrong_media',{'context_media_manifest_sha256':'b'*64}),
+    ('wrong_review',{'source_reviewed_blob_sha':'c'*40}),
+):
+    forged=dict(cimd_data);forged.update(change)
+    def substitute(self,*args,**kwargs):
+        if self.resolve()==target_cimd:return json.dumps(forged)
+        return original_read(self,*args,**kwargs)
+    with mock.patch.object(Path,'read_text',substitute):
+        chk(not reviewed_ci_only_source_successor(plugin,cimd_rel,cimd_bytes),
+            'cimd_manifest_forgery_denied_'+case)
+for case,change in (
+    ('current_blob',{'current_blob_sha':'e'*40}),
+    ('parent_blob',{'parent_blob_sha':'d'*40}),
+    ('substitute_test',{'required_regression':'tests/qa31_release_source_gate_contract.py'}),
+):
+    forged=json.loads(json.dumps(cimd_data));forged['entry'].update(change)
+    def substitute(self,*args,**kwargs):
+        if self.resolve()==target_cimd:return json.dumps(forged)
+        return original_read(self,*args,**kwargs)
+    with mock.patch.object(Path,'read_text',substitute):
+        chk(not reviewed_ci_only_source_successor(plugin,cimd_rel,cimd_bytes),
+            'cimd_entry_forgery_denied_'+case)
+
 print('QA31_SOURCE_PARITY_NEGATIVE_REGRESSIONS: PASS (source reviewed; release blocked)')

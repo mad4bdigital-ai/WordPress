@@ -272,6 +272,64 @@ def reviewed_rc129_context_media_successor(repo:Path,path:str,contents:bytes):
         return None
 
 
+
+def reviewed_rc129_chatgpt_cimd_successor(repo:Path,path:str,contents:bytes):
+    """Exact rc129 OAuth successor from reviewed Tours.dev PR #865. CI-only:
+    neither matching metadata URL nor this evidence grants OAuth authority."""
+    exact='includes/class-mad4b-scp-local-oauth-server.php'
+    if path!=exact or not isinstance(contents,bytes):return None
+    manifest=repo/'governance/release-parity/qa31-rc129-cimd-source-successor-20261118.json'
+    media=repo/'governance/release-parity/qa31-rc129-context-media-successors-20261118.json'
+    old=repo/'governance/release-parity/qa31-commerce-staging-source-parity.json'
+    test='wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-cimd-client-security-runtime.php'
+    baseline='6ee165ef798c1e37bdc0e09513d57e4dfcb224af'
+    old_pair=('407a81c61bf5346d33d8206312bab0010f311fa4',
+              '8408f559be99bf92bdc1d42dc5abcbc831261a8e2d2dcbedf2dda9261935dab3')
+    new_pair=('0fd413ea1abb92a808c7372d41f001b447c0be2f',
+              'd27f262e12993b2ed0574f1386762ac84ae55b6718ec0a7d572e382689547135')
+    try:
+        if not manifest.is_file() or manifest.is_symlink():return None
+        v=json.loads(manifest.read_text(encoding='utf-8'))
+        entry=v.get('entry')
+        if (v.get('contract')!='mad4b.qa31-rc129-cimd-source-successor.v1'
+            or v.get('base_source_commit')!=baseline
+            or v.get('source_review_only') is not True
+            or v.get('authorizing') is not False
+            or v.get('production_authorized') is not False
+            or v.get('source_promotion_approved') is not False
+            or v.get('is_build_provenance') is not False
+            or v.get('live_evidence_required') is not True
+            or v.get('release_gate')!='BLOCKED_SOURCE_RECONCILIATION'
+            or v.get('exact_source_files')!=1
+            or v.get('source_review_reference')!='https://github.com/mad4bdigital-ai/WordPress/pull/865'
+            or v.get('source_reviewed_blob_sha')!=new_pair[0]
+            or v.get('context_media_manifest')!='governance/release-parity/qa31-rc129-context-media-successors-20261118.json'
+            or v.get('context_media_manifest_sha256')!=digest(media)
+            or v.get('historical_qa31_ledger')!='governance/release-parity/qa31-commerce-staging-source-parity.json'
+            or v.get('historical_qa31_sha256')!=digest(old)
+            or not isinstance(entry,dict)
+            or entry.get('path')!=exact
+            or (entry.get('parent_blob_sha'),entry.get('parent_sha256'))!=old_pair
+            or (entry.get('current_blob_sha'),entry.get('current_sha256'))!=new_pair
+            or entry.get('required_regression')!=test
+            or hashlib.sha256(contents).hexdigest()!=new_pair[1]
+            or hashlib.sha1(b'blob '+str(len(contents)).encode('ascii')+b'\0'+contents).hexdigest()!=new_pair[0]
+            or not (repo/test).is_file() or (repo/test).is_symlink()):return None
+        has_base=subprocess.run(['git','cat-file','-e',baseline+'^{commit}'],
+            cwd=repo,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=8)
+        if has_base.returncode==0:
+            predecessor=subprocess.check_output(['git','rev-parse',
+                baseline+':wp-content/plugins/mad4b-site-control-plane/'+exact],
+                cwd=repo,stderr=subprocess.DEVNULL,timeout=8).decode().strip()
+            if predecessor!=old_pair[0]:return None
+        elif subprocess.check_output(['git','rev-parse','--is-shallow-repository'],
+            cwd=repo,stderr=subprocess.DEVNULL,timeout=8).decode().strip()!='true':
+            return None
+        return test
+    except (OSError,ValueError,KeyError,TypeError,subprocess.CalledProcessError,
+            subprocess.TimeoutExpired,json.JSONDecodeError):
+        return None
+
 def reviewed_ci_only_source_successor(root:Path,path:str,contents:bytes)->bool:
     """Accept exact, reviewed Git blobs for CI inventory only; never parity.
     Static legacy entries remain valid; rc129 successors are independently
@@ -284,7 +342,9 @@ def reviewed_ci_only_source_successor(root:Path,path:str,contents:bytes)->bool:
     source=root/path
     if source.is_symlink() or not source.is_file() or source.read_bytes()!=contents:
         return False
-    requested=reviewed_rc129_context_media_successor(repo,path,contents)
+    requested=reviewed_rc129_chatgpt_cimd_successor(repo,path,contents)
+    if requested is None:
+        requested=reviewed_rc129_context_media_successor(repo,path,contents)
     if requested is None:
         requested=reviewed_rc129_host_integration_successor(repo,path,contents)
     if requested is None:
