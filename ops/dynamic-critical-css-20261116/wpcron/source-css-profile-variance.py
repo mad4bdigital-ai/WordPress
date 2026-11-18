@@ -33,18 +33,33 @@ def classify(http,manifest,browser,epoch):
         raise ValueError('foreign_live_source_profile')
     for lang in LANGS:
         current=http['sources'][lang]
-        item=browser.get(lang)
-        if not isinstance(item,dict):
+        observed=browser.get(lang)
+        # Older callers may pass one snapshot. Actual live monitoring keeps
+        # multiple independently observed network/market source identities.
+        profiles=[observed] if isinstance(observed,dict) else observed
+        if not isinstance(profiles,list) or not profiles:
             results[lang]={'status':'browser_profile_missing','http_css_sha':current['sha256']}
             pending.append(lang);continue
-        cssfile=item['css_file'];css_sha=item['css_sha'];doc_sha=item['doc_sha']
-        entry=manifest.get('entries',{}).get(css_sha,{})
-        variant=entry.get('variants',{}).get(current['route']+'|'+lang+'|mobile',{})
-        browser_qualified=(entry.get('bundle_file')==cssfile
-                           and variant.get('gate_status')=='pass'
-                           and variant.get('css_epoch')==epoch
-                           and variant.get('elementor_doc_fingerprint')==doc_sha
-                           and item.get('ready')=='1')
+        if len(profiles)>3 or any(not isinstance(item,dict) for item in profiles):
+            raise ValueError('untrusted_browser_profile_collection')
+        qualified=[];browser_http_seen=False;current_qualified=False
+        for item in profiles:
+            cssfile=item['css_file'];css_sha=item['css_sha'];doc_sha=item['doc_sha']
+            entry=manifest.get('entries',{}).get(css_sha,{})
+            variant=entry.get('variants',{}).get(current['route']+'|'+lang+'|mobile',{})
+            valid=(entry.get('bundle_file')==cssfile
+                   and variant.get('gate_status')=='pass'
+                   and variant.get('css_epoch')==epoch
+                   and variant.get('elementor_doc_fingerprint')==doc_sha
+                   and item.get('ready')=='1')
+            same=(current['sha256']==css_sha
+                  and current['elementor_doc_fingerprint']==doc_sha)
+            browser_http_seen=browser_http_seen or same
+            current_qualified=current_qualified or (same and valid)
+            if valid:qualified.append(css_sha)
+        browser_qualified=bool(qualified)
+        lead=profiles[0]
+        css_sha=lead['css_sha'];doc_sha=lead['doc_sha']
         # An independently original-QA-certified HTTP source may be used
         # only under its OWN exact SHA + Elementor document graph, never by
         # inheriting a valid Chrome certificate for a different bundle.
@@ -55,8 +70,7 @@ def classify(http,manifest,browser,epoch):
                        and http_variant.get('css_epoch')==epoch
                        and http_variant.get('elementor_doc_fingerprint')==current['elementor_doc_fingerprint'])
         if not http_qualified:pending.append(lang)
-        status=('same_exact_profile' if (http_qualified and browser_qualified
-                         and current['sha256']==css_sha and current['elementor_doc_fingerprint']==doc_sha)
+        status=('same_exact_profile' if (http_qualified and current_qualified)
                 else 'both_profiles_independently_certified' if http_qualified and browser_qualified
                 else 'distinct_css_or_elementor_graph_pending_qa')
         results[lang]={
@@ -67,6 +81,9 @@ def classify(http,manifest,browser,epoch):
           'same_elementor_graph':current['elementor_doc_fingerprint']==doc_sha,
           'chromium_previous_certificate_matched':browser_qualified,
           'http_previous_independent_certificate_matched':http_qualified,
+          'browser_profiles_seen':len(profiles),
+          'chromium_qualified_source_shas':sorted(set(qualified)),
+          'http_current_profile_seen_in_browser':browser_http_seen,
         }
     return {'contract':'mad4b.source-css-profile-variance.v1','host':http['host'],
             'checked_at':int(time.time()),'site_css_epoch':epoch,
@@ -120,8 +137,11 @@ def main():
     for root in roots[:10]:
         if time.time()-root.stat().st_mtime>5400:continue
         rows=native_browser_rows(root/'observed')
-        for lang,row in rows.items():browser.setdefault(lang,row)
-        if len(browser)==len(LANGS):break
+        for lang,row in rows.items():
+            seen=browser.setdefault(lang,[])
+            identity=(row['css_sha'],row['doc_sha'])
+            if len(seen)<3 and not any((x['css_sha'],x['doc_sha'])==identity for x in seen):
+                seen.append(row)
     result=classify(http,manifest,browser,epoch)
     atomic(OUT,result)
     print('SOURCE_CSS_PROFILE_COHORTS','HTTP_UNQUALIFIED='+','.join(result['http_profiles_pending_visual_qa']),

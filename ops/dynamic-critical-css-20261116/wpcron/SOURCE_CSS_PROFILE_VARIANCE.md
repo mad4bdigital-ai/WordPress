@@ -76,3 +76,18 @@ The existing v5 runtime remains available as a rollback and its
 failed capture cannot issue certificates or acknowledge WP tickets.
 V6 keeps every existing original visual QA/independent SHA and
 publication gate unchanged.
+
+## Multi-profile observer correction
+
+The original watcher initially retained only the most recent Chromium
+snapshot per locale. Once v5 ran an uncertified host-egress capture, that
+could hide the still-valid earlier Docker-bridge certificate in the
+monitor's reporting. The corrected observer now considers up to three
+independently observed CSS SHA + Elementor document-graph profiles per
+language, deduplicated from actual first-party Chromium run receipts.
+An old bridge certificate remains explicitly visible without ever
+qualifying a different HTTP CSS source. The EN/ES/IT host-egress profile
+remains pending a separately verified native browser publication.
+No manifest, CSS file, cache key, WordPress ticket, or grant is mutated
+by this purely observational change. Original and new regressions
+cover dual-profile coexistence and stale CSS epoch refusal.
