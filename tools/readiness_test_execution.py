@@ -439,6 +439,7 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-native-runtime.php",
 
 
+    "wp-content/plugins/mad4b-site-control-plane/tests/context-scan-media-integrity/isolated-contract.php",
 ))
 
 
@@ -659,6 +660,7 @@ def run_tests(impact, head, timeout):
 
 
 def self_test():
+    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/context-scan-media-integrity/isolated-contract.php")[0] == "php"
     for test in WORDPRESS_RUNTIME_REGRESSIONS:
         assert command_for(test) == ["php", WP_CLI_PHAR, "eval-file",
                                       str((ROOT / test).resolve()),

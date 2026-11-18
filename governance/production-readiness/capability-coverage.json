@@ -23006,6 +23006,79 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing exact source provenance, original Addon Registry registered-plugin certification, missing-source fail-closed checks and mutation-denial contract cover the change.",
       "execution_note": "This source-only review does not restore the absent Company Portfolio Manager 0.4.0 tree, issue a certified add-on pair, authorize Production, or mutate live sites."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php",
+      "source_blob_sha": "baa55d92c01aeaaaeb47c815c96a0c492ee49f24",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02",
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-scan-media-integrity/isolated-contract.php"
+      ],
+      "owner_role": "MAD4B Context source security reviewer / CI-only; independent site owner authority required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing bounded Drive scanner, content normalization, source checkpoint, exact Context registry, site-scoped Review and release rollback controls cover visual media extraction and application, without new write authority.",
+      "review_rationale": "Exact live normalization: SVG remains visual media requiring certified multimodal extraction; regular HTML remains normalized text, and native binary downloads cannot smuggle SVG markup into verified Context. The exact source successor uses PHP 7.4-compatible strpos prefix checks rather than a PHP 8-only function."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-drive-scan-continuation.php",
+      "source_blob_sha": "aef41cf495697268aa787ee22a899bbb5bc7a271",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02",
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-scan-media-integrity/isolated-contract.php"
+      ],
+      "owner_role": "MAD4B Context source security reviewer / CI-only; independent site owner authority required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing bounded Drive scanner, content normalization, source checkpoint, exact Context registry, site-scoped Review and release rollback controls cover visual media extraction and application, without new write authority.",
+      "review_rationale": "Legacy visual checkpoint quarantine preserves verified documents and defers only markup-local SVG or Google Drawing without changing source registry grants or provider scope."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-context-builder.php",
+      "source_blob_sha": "b70e80680ba1a3a8ca00b1a7a2cacb222bc71e2a",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02",
+        "AUTOMATION-01",
+        "PERFORMANCE-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-scan-media-integrity/isolated-contract.php"
+      ],
+      "owner_role": "MAD4B Context source security reviewer / CI-only; independent site owner authority required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing bounded Drive scanner, content normalization, source checkpoint, exact Context registry, site-scoped Review and release rollback controls cover visual media extraction and application, without new write authority.",
+      "review_rationale": "Complete and partial apply reject unextracted visual markup with historical digests. Existing unique ID, digest, user selection and independent Review safeguards remain unchanged."
     }
   ],
   "code_change_rules": {

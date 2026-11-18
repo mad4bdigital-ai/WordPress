@@ -128,7 +128,41 @@ final class MAD4B_SCP_Drive_Scan_Continuation {
    return is_wp_error( $saved ) ? $saved : self::result( $next, $scope_sha );
   } finally { MAD4B_SCP_Distributed_Lock::release( $lock ); }
  }
+ /**
+  * Reconcile historical scan checkpoints produced by the old SVG markup
+  * normalizer. A visual asset is not a verified text document merely because
+  * removing its markup yields a string (including the empty string).
+  * Only legacy local SVG/drawing paths are demoted: genuinely extracted
+  * multimodal evidence and text documents are retained by their exact hashes.
+  * Never changes source selection, authorization, or Context registry assets.
+  */
+ private static function quarantine_legacy_visual_assets( array $state ) {
+  $kept=array();
+  $deferred=is_array($state['deferred']??null)?$state['deferred']:array();
+  $deferred_ids=array();
+  foreach($deferred as $row)if(is_array($row)&&isset($row['file_id']))$deferred_ids[(string)$row['file_id']]=true;
+  foreach((array)($state['assets']??array()) as $asset){
+   if(!is_array($asset)){$kept[]=$asset;continue;}
+   $mime=strtolower((string)($asset['mimeType']??''));
+   $reason=(string)($asset['normalization_reason']??'');
+   $legacy=($mime==='image/svg+xml' && $reason==='markup_local')
+    ||($mime==='application/vnd.google-apps.drawing' && $reason==='google_drawing_svg_export');
+   if(!$legacy){$kept[]=$asset;continue;}
+   $id=(string)($asset['file_id']??'');
+   if($id===''){$kept[]=$asset;continue;}
+   if(!isset($deferred_ids[$id])){
+    $deferred[]=array('file_id'=>$id,'title'=>(string)($asset['title']??''),
+     'mime_type'=>$mime,'normalization_reason'=>'visual_media_extraction_required',
+     'content_complete'=>false,'status'=>'deferred_review_required');
+    $deferred_ids[$id]=true;
+   }
+  }
+  $state['assets']=$kept;
+  $state['deferred']=$deferred;
+  return $state;
+ }
  private static function advance( array $state, $recursive, $provider ) {
+  $state=self::quarantine_legacy_visual_assets($state);
   if ( $state['pending'] ) {
    $file = $state['pending'][0];
    // Content fetch is bounded to 16 MiB. Advertised larger binary files
