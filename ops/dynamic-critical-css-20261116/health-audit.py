@@ -41,7 +41,16 @@ def command(args,timeout=25):
     return subprocess.run(args,capture_output=True,text=True,check=True,timeout=timeout).stdout.strip()
 def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
-def attest_files(root):
+def attest_files(root,site=None):
+    # Original public runtime admission already recognizes the *exact*
+    # independently approved staging 422 SHA, while requiring original
+    # 421 parity on both sites and original 422 parity on Wayfatours.
+    # Do not falsely reject this enrolled Source Staging source release.
+    if site is not None:
+        runner.approved_native_runtime_sha(site,root)
+        return ['421-mad4b-public-critical-css-coverage.php',
+                '422-mad4b-public-critical-css-runtime.php']
+    # Hermetic fixture and legacy original-parity test.
     checks=[]
     for name in ('421-mad4b-public-critical-css-coverage.php',
                  '422-mad4b-public-critical-css-runtime.php'):
@@ -62,15 +71,63 @@ def file_permissions(root):
             raise ValueError('unsafe-or-unreadable-public-css-directory:'+str(entry))
     return True
 def unit_health(site):
-    units={}
-    for group in ('public-critical-css','critical-css'):
-        unit=f'mad4b-{group}-{site}.timer'
-        details=command(['systemctl','show',unit,'-p','ActiveState','-p','UnitFileState'],15)
-        values=dict(line.split('=',1) for line in details.splitlines() if '=' in line)
-        if values.get('ActiveState')!='active' or values.get('UnitFileState')!='enabled':
-            raise ValueError('required-timer-not-enabled:'+unit)
-        units[group]=values
-    return units
+    """Read the *actual* WP-Cron owner, not retired systemd CSS timers.
+
+    The native CSS policy and existing signed certificate checks remain
+    independent; an unavailable audit cannot deactivate frontend CSS.
+    """
+    if site not in SITES:raise ValueError('unknown-first-party-css-site')
+    cronfile=Path('/etc/cron.d/mad4b-css-wpcron')
+    expected_cron=D/'wpcron/mad4b-css-wpcron.cron'
+    expected_plugin=D/'wpcron/429-mad4b-css-wpcron-dispatch-v1.php'
+    plugin=SITES[site]['root']/'mu-plugins/429-mad4b-css-wpcron-dispatch-v1.php'
+    for current,expected in ((cronfile,expected_cron),(plugin,expected_plugin)):
+        if (current.is_symlink() or expected.is_symlink()
+            or not current.is_file() or not expected.is_file()
+            or current.stat().st_uid!=0 or current.stat().st_mode&0o022
+            or sha(current)!=sha(expected)):
+            raise ValueError('wpcron_scheduler_source_or_permission_drift:'+str(current))
+    if command(['systemctl','is-active','cron'],8)!='active':
+        raise ValueError('wpcron_host_wakeup_daemon_not_active')
+    # Duplicate ownership would run two independent workers. Verify the
+    # retired scheduling is genuinely disabled before reporting healthy.
+    retired=[
+        'mad4b-critical-css-'+site+'.timer',
+        'mad4b-public-critical-css-'+site+'.timer',
+        'mad4b-public-source-families-refresh.timer',
+        'mad4b-post-policy-visual-watch.timer',
+        'mad4b-critical-css-integrity-audit.timer',
+        'mad4b-critical-css-evidence-retention.timer']
+    for unit in retired:
+        check=subprocess.run(['systemctl','is-enabled',unit],
+            capture_output=True,text=True,timeout=8,check=False)
+        if check.stdout.strip() not in ('disabled','masked'):
+            raise ValueError('duplicate-systemd-css-timer-ownership:'+unit)
+    wp=runner.wp_eval(SITES[site]['php'],r"""
+$class='MAD4B_CCSS_WPCron_Dispatch_V1';
+if(!class_exists($class,false))exit(3);
+$now=time();$tick=wp_next_scheduled($class::TICK);
+$state=$class::snapshot();
+echo wp_json_encode([
+ 'contract'=>$class::CONTRACT,'site'=>$class::site(),
+ 'host'=>(string)wp_parse_url(home_url('/'),PHP_URL_HOST),
+ 'next_tick'=>$tick===false?0:(int)$tick,
+ 'last_tick'=>(int)($state['last_tick']??0),
+ 'pending_count'=>count((array)($state['pending']??[]))
+],JSON_UNESCAPED_SLASHES),"\n";
+""")
+    if (wp.get('contract')!='mad4b.css.wpcron.dispatch.v1'
+        or wp.get('site')!=site or wp.get('host')!=SITES[site]['host']
+        or not isinstance(wp.get('next_tick'),int) or wp['next_tick']<=0):
+        raise ValueError('wpcron_live_scheduler_not_admitted:'+site)
+    if wp['next_tick']<int(time.time())-1800:
+        raise ValueError('wpcron_event_overdue_beyond_30_minutes:'+site)
+    return {'engine':'wpcron_native','host_wake':'cron_5_min',
+        'wp_next_tick_epoch':wp['next_tick'],
+        'wp_last_tick_epoch':wp['last_tick'],
+        'pending_jobs':wp['pending_count'],
+        'retired_systemd_timers_disabled':True,
+        'wpcron_source_integrity':'verified'}
 def http_get(host,path):
     if (not isinstance(path,str) or not re.fullmatch(r'/[A-Za-z0-9/_%.\-]{0,349}',path)
         or '//' in path or '..' in path or re.search(r'%2f|%5c',path,re.I)):
@@ -217,7 +274,7 @@ def run_site(site,run_http=True):
     errors=[];warnings=[]
     result={'site':site,'host':host,'at_utc':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),
             'status':'unknown','issues':errors,'warnings':warnings}
-    result['file_parity']=attest_files(root)
+    result['file_parity']=attest_files(root,site)
     home_runtime=root/'mu-plugins/415-mad4b-critical-css-orchestrator.php'
     if (home_runtime.is_symlink() or not home_runtime.is_file()
         or sha(home_runtime)!=HOME_SHA[site]):
