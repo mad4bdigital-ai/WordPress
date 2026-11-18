@@ -82,8 +82,33 @@
             var pair = String(pairs[i] || '').trim(); if (!pair) { continue; }
             var pairColon = pair.indexOf(':'); if (pairColon <= 0 || pairColon === pair.length - 1) { return { group: key, query: {}, valid: false, reason: 'pretty_path_filter_malformed' }; }
             var taxonomy = pair.slice(0, pairColon).trim(), value = pair.slice(pairColon + 1).trim();
-            if (!/^[A-Za-z0-9_-]+$/.test(taxonomy) || !value || value.length > 500 || seen[taxonomy]) { return { group: key, query: {}, valid: false, reason: seen[taxonomy] ? 'pretty_path_filter_duplicate' : 'pretty_path_filter_malformed' }; }
-            seen[taxonomy] = true; query['_tax_query_' + taxonomy] = value;
+            if (!/^[A-Za-z0-9_-]+$/.test(taxonomy) || !value || value.length > 500) { return { group: key, query: {}, valid: false, reason: 'pretty_path_filter_malformed' }; }
+            // JetSmartFilters permits several selected terms of a taxonomy.
+            // Merge commas/repeated taxonomy facets without overwriting them.
+            // AND/OR evaluation still belongs to JSF's signed query, not this URL.
+            var terms = value.split(',').map(function (term) { return term.trim(); });
+            if (!terms.length || terms.some(function (term) { return !/^[A-Za-z0-9_-]{1,100}$/.test(term); })) {
+                return { group: key, query: {}, valid: false, reason: 'pretty_path_term_malformed' };
+            }
+            // An explicit native JSF operator is not a taxonomy term. Preserve
+            // it separately so an AND deep-link never becomes an assumed IN
+            // count or a fabricated slug named "operator_AND".
+            var operators = terms.filter(function (term) { return /^operator_(?:AND|IN)$/.test(term); });
+            if (operators.length > 1) { return { group: key, query: {}, valid: false, reason: 'pretty_path_operator_ambiguous' }; }
+            if (terms.some(function (term) { return /^operator_/i.test(term) && !/^operator_(?:AND|IN)$/.test(term); })) {
+                return { group: key, query: {}, valid: false, reason: 'pretty_path_operator_unsupported' };
+            }
+            terms = terms.filter(function (term) { return !/^operator_(?:AND|IN)$/.test(term); });
+            if (!terms.length) { return { group: key, query: {}, valid: false, reason: 'pretty_path_terms_missing' }; }
+            var existing = seen[taxonomy] || [], merged = existing.concat(terms);
+            merged = merged.filter(function (term, index) { return merged.indexOf(term) === index; });
+            if (merged.length > 20) { return { group: key, query: {}, valid: false, reason: 'pretty_path_term_limit_exceeded' }; }
+            seen[taxonomy] = merged;
+            if (operators.length && merged.length > 1) {
+                query['_tax_query_' + taxonomy] = merged.concat(operators);
+            } else {
+                query['_tax_query_' + taxonomy] = merged.join(',');
+            }
         }
         return { group: key, query: query, valid: true, reason: 'pretty_url_group' };
     }
@@ -129,16 +154,38 @@
         var postType = String(query.get('post_type') || '');
         return /^[a-z0-9_-]{1,80}$/.test(postType) ? '/' + postType + '/' : '/';
     }
+    function nativeQueryMatchesPath(native, pathQuery) {
+        if (!native || typeof native !== 'object' || !pathQuery || typeof pathQuery !== 'object') { return false; }
+        var pathKeys = Object.keys(pathQuery), nativeKeys = Object.keys(native).filter(function (key) { return queryHasSemanticFilters((function () { var q = {}; q[key] = native[key]; return q; }())); });
+        if (!pathKeys.length || pathKeys.length !== nativeKeys.length) { return false; }
+        return pathKeys.every(function (key) {
+            if (key.indexOf('_tax_query_') !== 0 || !Object.prototype.hasOwnProperty.call(native, key)) { return false; }
+            var taxonomy = key.slice('_tax_query_'.length);
+            var raw = Array.isArray(native[key]) ? native[key] : String(native[key] || '').split(',');
+            var nativeTerms = raw.map(String).filter(function (value) { return value && value.indexOf('operator_') !== 0; });
+            var pretty = Array.isArray(pathQuery[key]) ? pathQuery[key] : String(pathQuery[key] || '').split(',');
+            var prettyTerms = pretty.filter(function (value) { return value && value.indexOf('operator_') !== 0; });
+            if (nativeTerms.length !== prettyTerms.length) { return false; }
+            var inputs = Array.prototype.slice.call(document.querySelectorAll('input[data-url-value]'));
+            var slugs = nativeTerms.map(function (term) {
+                if (!/^[0-9]+$/.test(term)) { return term; }
+                var input = inputs.find(function (el) { return el.name === taxonomy && String(el.value) === term; });
+                return input ? String(input.getAttribute('data-url-value') || '') : '';
+            });
+            slugs.sort(); prettyTerms.sort();
+            return slugs.every(function (slug, index) { return slug && slug === prettyTerms[index]; });
+        });
+    }
+
     function effectiveCurrentQuery(key, group) {
         var currentQuery = group && group.currentQuery && typeof group.currentQuery === 'object' ? group.currentQuery : {};
         var state = prettyPathState();
-        // At direct URL hydration JetSmartFilters may initialize only one of
-        // several taxonomy facets (e.g. half-day but not Cairo). Reconstruct
-        // the full *presentation* state from the validated deep-link path
-        // until a live filter event is seen; after that, JSF's observed query
-        // replaces the URL snapshot. Backend scope checks remain authoritative.
+        // On direct URL hydration use the real native JSF query (including
+        // AND/IN operator) if its terms exactly match the validated deep link.
+        // Only fall back to the URL snapshot when JSF has not hydrated every
+        // facet. This is presentation evidence, never URL publication authority.
         if (!eventSeenKeys[key] && state.valid && state.group === key && queryHasSemanticFilters(state.query)) {
-            return state.query;
+            return nativeQueryMatchesPath(currentQuery, state.query) ? currentQuery : state.query;
         }
         return currentQuery;
     }
