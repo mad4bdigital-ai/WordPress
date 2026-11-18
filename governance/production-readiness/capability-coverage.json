@@ -11538,6 +11538,82 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "The existing original Agent Registry exact grant, Staging-only provider review, site profile, mutation gate, owner approval, checkpoint, readback and audit safeguards govern this single diagnostic, without wildcard rights.",
       "review_rationale": "Exact source review allows a core grant to be considered only for mad4b/hub-queue-site-health-enqueue when the Ability is registered on the correct central Staging site. No grant is issued merely because this provider pair appears; broad hub-bulk-enqueue remains outside the reviewed policy and Production is not enabled."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-abilities.php",
+      "source_blob_sha": "e697afbf941019da49d6f1942043e7410ac201cb",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-live-skills-list-paging-runtime.php"
+      ],
+      "owner_role": "Repository automated exact-source code reviewer; CI-only evidence, not Site Owner approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing Skills, security, admin, performance and automated source gates cover read-only discovery and profile-bound visibility; authenticated owner release and live runtime acceptance remain independent.",
+      "review_rationale": "The live-source list Ability adds read-only query and bounded pages without enabling Skills execution, self-approval or any write lane. External Skill Sources and task composition continue to be declared; scanning remains limited and disclosure indicates the 500-item scan ceiling."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-registry.php",
+      "source_blob_sha": "a6cdbf2434a7901ce7fb694c6469c08bb501ab3f",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-live-catalog-read-runtime.php"
+      ],
+      "owner_role": "Repository automated exact-source code reviewer; CI-only evidence, not Site Owner approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing Skills, security, admin, performance and automated source gates cover read-only discovery and profile-bound visibility; authenticated owner release and live runtime acceptance remain independent.",
+      "review_rationale": "The new catalog status checks exact Site Profile enrollment, matching site URLs and enabled company Skills feature. Editor and script creation gates remain unchanged; a failed profile check fails closed."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-runtime-certification.php",
+      "source_blob_sha": "9d483a66dc0e4012ec942b05d5e9c844e64ff730",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-live-source-skills-parity-runtime.php"
+      ],
+      "owner_role": "Repository automated exact-source code reviewer; CI-only evidence, not Site Owner approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing Skills, security, admin, performance and automated source gates cover read-only discovery and profile-bound visibility; authenticated owner release and live runtime acceptance remain independent.",
+      "review_rationale": "The live-source readiness split distinguishes company catalog reads, optional external ChatGPT App projection and separately permissioned authoring. It never asserts an execution grant or treats a historical certificate as fresh runtime authority."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skills-admin-ui.php",
+      "source_blob_sha": "7448de7bf3df7c3878df92051843caaedb0c0dc6",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-live-source-skills-parity-runtime.php"
+      ],
+      "owner_role": "Repository automated exact-source code reviewer; CI-only evidence, not Site Owner approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing Skills, security, admin, performance and automated source gates cover read-only discovery and profile-bound visibility; authenticated owner release and live runtime acceptance remain independent.",
+      "review_rationale": "The read-only company operations page retains explicit manage-company-operations checks, reports active site and managed Skills gaps, and does not perform reconciliation. Existing Git source_add/source_remove and source rendering remain wired instead of being removed by the older live overlay."
     }
   ],
   "code_change_rules": {
