@@ -133,6 +133,13 @@ def approved_browser_network(site,env,script):
     # All other tenant/workload combinations retain their original network.
     if site=='tours.dev.mad4b.com' and env=='staging' and script in (
         'capture.js','verify.js','probe-public.js'):
+        # Original Source LiteSpeed CSS directory is www-data:www-data
+        # (0770). With all Linux capabilities dropped, root-in-container
+        # cannot traverse it without group 33. Grant ONLY the supplemental
+        # group needed by the read-only /source-css capture bind, not the
+        # directory write access or DAC override capabilities.
+        if script=='capture.js':
+            return ['--network=host','--cap-drop=ALL','--group-add=33']
         return ['--network=host','--cap-drop=ALL']
     if (site,env) not in [
         ('tours.dev.mad4b.com','staging'),('wayfatours.com','production')]:

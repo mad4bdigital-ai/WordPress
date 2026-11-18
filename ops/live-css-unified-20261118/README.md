@@ -117,3 +117,22 @@ legitimate Source 422 release must update the pinned digest with its tested
 source proof. No extra timer, grant, or operator gate was introduced.
 Hermetic tests enforce Git-content hash identity, company scope and the
 absence of any dependency on the temporary worktree.
+
+## Cap-drop ALL in host-network CSS capture: group-only read permission
+Original Source LiteSpeed CSS files are stored inside a www-data:www-data
+0770 directory, with 0644 CSS files. The hardened staging Source browser
+uses host network and drops all Linux capabilities, so its original 0:0
+container process can no longer traverse the CSS directory and the first
+real capture returned EACCES reading the immutable CSS file. This was
+correctly recorded as HOLD; no certificate was created.
+
+An isolated original Playwright image test demonstrated that adding only
+the www-data supplemental GID 33 to the capture container permits
+read-only access to that exact static 3.7 MB CSS artifact, without
+reintroducing any Linux capabilities. The source CSS volume remains mounted
+read-only. The original first-party runner now adds --group-add=33 only to
+Tours.dev Staging capture.js and keeps --cap-drop=ALL. Source verification
+and browser readback remain cap-dropped without supplemental group, while
+Wayfatours Production and offline assembly are unchanged. The source-only
+browser gate, original resource admission and private HTML policies
+continue to apply.

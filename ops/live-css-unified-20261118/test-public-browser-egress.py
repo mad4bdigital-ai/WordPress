@@ -9,7 +9,11 @@ def proof(condition,name):
     print('PASS',name)
 for name in ['capture.js','verify.js','probe-public.js']:
     opts=m.approved_browser_network('tours.dev.mad4b.com','staging',name)
-    proof(opts==['--network=host','--cap-drop=ALL'],f'source stage {name} measures public host network with no container caps')
+    expected=['--network=host','--cap-drop=ALL']
+    if name=='capture.js':expected+=['--group-add=33']
+    proof(opts==expected,f'source stage {name} measures public host network with no container caps')
+    if name=='capture.js':
+        proof(opts.count('--group-add=33')==1,'only CSS capture is allowed www-data read-only group')
 proof(m.approved_browser_network('tours.dev.mad4b.com','staging','assemble.js')==[],'CSS assembly remains offline on original network')
 for n in ['capture.js','verify.js','probe-public.js','assemble.js']:
     proof(m.approved_browser_network('wayfatours.com','production',n)==[],f'Wayfa native {n} transport unchanged')
