@@ -64,7 +64,9 @@ final class MAD4B_SCP_Servers {
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-admin-settings-persistence.php';
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-context-admin-ui.php';
 function render( $method ) {
- $reflection = new ReflectionMethod( 'MAD4B_SCP_Context_Admin_UI', $method ); $reflection->setAccessible( true );
+ $reflection = new ReflectionMethod( 'MAD4B_SCP_Context_Admin_UI', $method );
+ // setAccessible() is redundant on PHP 8.1+ and emits E_DEPRECATED on PHP 8.5.
+ if ( PHP_VERSION_ID < 80100 ) $reflection->setAccessible( true );
  ob_start(); try { $reflection->invoke( null ); return ob_get_contents(); } finally { ob_end_clean(); }
 }
 function views( $html ) {
@@ -111,3 +113,4 @@ check( false !== strpos( render( 'render_write_governance_readiness' ), 'runtime
 MAD4B_SCP_Staging_Write_Authority::$current = true;
 check( false !== strpos( render( 'render_write_governance_readiness' ), 'Governed Drive write checkpoint is current.' ), 'Current checkpoint was not rendered, or obsolete variables survived' );
 echo "Context admin recovery render/handler runtime: PASS\n";
+
