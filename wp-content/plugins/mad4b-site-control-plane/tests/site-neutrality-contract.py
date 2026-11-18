@@ -17,7 +17,12 @@ commands = [
     [php, str(PLUGIN / "tests/elementor-site-neutral-runtime.php")],
     [php, str(PLUGIN / "tests/object-cache-diagnostics-runtime.php")],
     [php, str(PLUGIN / "tests/admin-file-workspace-runtime.php")],
+    [sys.executable, str(PLUGIN / "tests/host-agent-source-parity-contract.py")],
+    [php, str(PLUGIN / "tests/host-agent-fail-closed-runtime.php")],
 ]
+optional_domain = ROOT / "wp-content/plugins/mad4b-tour-media-host-bridge"
+if optional_domain.is_dir():
+    commands.append([sys.executable, str(optional_domain / "tests/source-domain-contract.py")])
 for command in commands:
     result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, timeout=30)
     if result.returncode or result.stderr or "Warning:" in result.stdout:
