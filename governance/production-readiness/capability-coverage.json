@@ -23141,26 +23141,6 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing exact source provenance, original Addon Registry registered-plugin certification, missing-source fail-closed checks and mutation-denial contract cover the change.",
       "execution_note": "This source-only review does not restore the absent Company Portfolio Manager 0.4.0 tree, issue a certified add-on pair, authorize Production, or mutate live sites."
-    },
-    {
-      "path": "specs/007-content-intelligence-workflow-platform/post-merge-capability-fabric-closure.json",
-      "source_blob_sha": "6ed5d5e6a6614668299ce8ab12a33f5845778931",
-      "control_ids": [
-        "GOVERNANCE-01",
-        "PLATFORM-01",
-        "SECURITY-01"
-      ],
-      "regression_tests": [
-        "tests/test_feature007_capfab_parent_reconciliation.py"
-      ],
-      "owner_role": "Feature 007 original source-review owner; CI-only parent provenance, independent release Owner attestation still required",
-      "status": "reviewed_for_ci_only",
-      "production_authorized": false,
-      "live_evidence_required": true,
-      "needs_new_control": false,
-      "coverage_reuse_rationale": "Existing Feature 007 exact repository-parent and Capability Fabric fail-closed checks remain authoritative. This synchronizes non-authorizing source metadata without changing runtime permission, policy, task ownership or Phase 37 completion.",
-      "review_rationale": "The exact Capability Fabric ledger is rebound from historical 37858923 to its separately reviewed master parent 83cbe5ef after the 14-commit / 16-path master delta; historical Phase 37 source review remains pinned at its original parent. The same-PR negative test rejects drift in each of the three current parent mirrors, enforces the historical record and asserts no Production, shell, SQL, break-glass or deployable runtime grant.",
-      "execution_note": "Source-only CI review. No Production admission, live acceptance, package recapture, 305/312/313 original authority or owner merge authorization inferred."
     }
   ],
   "code_change_rules": {
