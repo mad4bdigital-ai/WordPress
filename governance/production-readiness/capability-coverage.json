@@ -11538,6 +11538,26 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "The existing original Agent Registry exact grant, Staging-only provider review, site profile, mutation gate, owner approval, checkpoint, readback and audit safeguards govern this single diagnostic, without wildcard rights.",
       "review_rationale": "Exact source review allows a core grant to be considered only for mad4b/hub-queue-site-health-enqueue when the Ability is registered on the correct central Staging site. No grant is issued merely because this provider pair appears; broad hub-bulk-enqueue remains outside the reviewed policy and Production is not enabled."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php",
+      "source_blob_sha": "6a89f35c987baa207960bd82b2500b997f6c15ef",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "LOCALIZATION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-profile-wpml-ajax-origin-runtime.php"
+      ],
+      "owner_role": "Repository source security and WPML integration reviewer; CI-only, no deployment authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing Site Profile canonical origin, WordPress/Host matching, WPML language enrollment, source review and rollback controls cover this narrow read-only localization correction. No new identity, credential or Write path is created.",
+      "review_rationale": "Preserve exact SitePress and canonical site-origin security checks while admitting only the registered WPML locale suffix during an asynchronous request. Reject hidden languages, foreign domains, extra path segments, mismatched request hosts and unrelated canonicals. No grant or Production mutation follows."
     }
   ],
   "code_change_rules": {

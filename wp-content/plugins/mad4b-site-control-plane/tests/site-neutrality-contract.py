@@ -17,6 +17,7 @@ commands = [
     [php, str(PLUGIN / "tests/elementor-site-neutral-runtime.php")],
     [php, str(PLUGIN / "tests/object-cache-diagnostics-runtime.php")],
     [php, str(PLUGIN / "tests/admin-file-workspace-runtime.php")],
+    [php, str(PLUGIN / "tests/site-profile-wpml-ajax-origin-runtime.php")],
 ]
 for command in commands:
     result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, timeout=30)
