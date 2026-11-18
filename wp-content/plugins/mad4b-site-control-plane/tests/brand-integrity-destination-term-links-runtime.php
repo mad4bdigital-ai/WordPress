@@ -72,4 +72,22 @@ $advisory=MAD4B_SCP_Brand_Integrity::term_meta_candidate_preflight(665,'destinat
 must(!is_wp_error($advisory)&&$advisory['review_issues']===1,'editorial external citation review only');
 must(is_wp_error(MAD4B_SCP_Brand_Integrity::term_meta_candidate_preflight(665,'destination_contents',$bad,array('scope'=>array()))),'missing identity denied');
 must(is_wp_error(MAD4B_SCP_Brand_Integrity::term_meta_candidate_preflight(999,'destination_contents',$bad,$brand)),'missing term denied');
+
+$neutral_external='<ul><li><a href="https://foreign-operator.example/cairo">Learn more</a></li></ul>';
+$neutral=MAD4B_SCP_Brand_Integrity::analyze_links(
+    $neutral_external,'termmeta.internal_links.0',$brand['scope']);
+must(count($neutral)===1&&$neutral[0]['confidence']==='high',
+    'internal_links requires first-party ownership even with neutral anchor text');
+must(is_wp_error(MAD4B_SCP_Brand_Integrity::term_meta_candidate_preflight(
+    665,'internal_links',$neutral_external,$brand)),
+    'governed preflight blocks neutral-label external internal-link');
+$unstable='<a href="/tours-and-activities/jsf/jet-engine:tours_query_archive/tax/destinations:cairo/">Cairo Tours</a>';
+must(is_wp_error(MAD4B_SCP_Brand_Integrity::term_meta_candidate_preflight(
+    665,'internal_links',$unstable,$brand)),
+    'root-relative colon-bearing JetSmartFilters href rejected before save');
+$canonical='<a href="/destination/africa-containent/egypt/cairo/">Cairo Tours</a>';
+$canonical_result=MAD4B_SCP_Brand_Integrity::term_meta_candidate_preflight(
+    665,'internal_links',$canonical,$brand);
+must(!is_wp_error($canonical_result)&&$canonical_result['allowed']===true,
+    'canonical relative destination link accepted');
 echo "PASS: BRAND_DESTINATION_TERM_LINKS\n";

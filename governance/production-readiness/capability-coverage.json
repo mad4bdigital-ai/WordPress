@@ -23599,6 +23599,27 @@
       "review_rationale": "Bounded read-only term census across explicit public taxonomies and term-meta candidate admission with before/after issue comparison, WPML term-ID isolation, and safe repair of existing issues. External promotional link additions block in a governed calling adapter while editorial citations remain advisory. No WordPress global metadata hook, database mutation, content replacement, release grant or deployment.",
       "coverage_reuse_rationale": "Existing AI content integrity, localization, provider attribution and security controls apply without introducing new execution authorities or WordPress write abilities.",
       "execution_note": "Exact same-PR isolated PHP fixture tests term pagination, non-mutation, blocked external promotions, allowed first-party links and advisory citations. Site integration and real Production term-meta readback not yet accepted."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-integrity.php",
+      "source_blob_sha": "7b96c98c9b2eb423092a3a4b96be2e5097ea45bf",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-integrity-destination-term-links-runtime.php"
+      ],
+      "owner_role": "MAD4B exact-source Brand Integrity reviewer; CI-only; release remains independent",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Reject newly introduced root-relative HTML anchor paths containing raw colon segments that WordPress wp_kses_post can truncate (verified on original Tours.dev live). Add internal_links to site-owned first-party promotional fields regardless of neutral anchor wording. Preserve unchanged historic links for repair. Bounded standalone PHP fixture tests this precise regression, neutral-label offsite internal links and canonical internal alternative. No WordPress global hook, rewrite, term mutation or production grant.",
+      "coverage_reuse_rationale": "Reuses site-branded source integrity, localization and provider trust controls, no new ability or persistent execution surface.",
+      "execution_note": "Exact source successor tested in hermetic PHP. The observed live fix and runtime rendering evidence remain separate from code certification."
     }
   ],
   "code_change_rules": {
