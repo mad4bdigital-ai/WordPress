@@ -48,7 +48,8 @@ def reviewed_rc129_pinned_successor(repo:Path,path:str,contents:bytes):
             or entry.get('historical_github_sha256')!=record.get('github_sha256')
             or not SHA.fullmatch(str(entry.get('current_sha256','')))
             or not SHA40.fullmatch(str(entry.get('current_git_blob_sha','')))
-            or hashlib.sha256(contents).hexdigest()!=entry['current_sha256']):return None
+            or hashlib.sha256(contents).hexdigest()!=entry['current_sha256']
+            or hashlib.sha1(b'blob '+str(len(contents)).encode('ascii')+b'\0'+contents).hexdigest()!=entry['current_git_blob_sha']):return None
         test=entry.get('required_regression')
         if path.startswith('bootstrap/'):
             if path not in (
