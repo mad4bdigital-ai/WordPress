@@ -164,7 +164,8 @@ def verify_signed_current(job: dict, ledger: dict, checkpoint: dict, wp: dict,
     Callers MUST NOT expose this helper as an authority API.
     """
     _scope(job)
-    require(wp.get("current_anchor_eligible") is True
+    require(wp.get("signed_anchor_active_in_option") is True
+            and wp.get("current_anchor_eligible") is False
             and wp.get("original313_certified") is False
             and wp.get("write_authorized") is False
             and wp.get("fresh_central_highwater_verified") is False,

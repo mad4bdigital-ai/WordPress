@@ -462,7 +462,8 @@ final class MAD4B_Native_Host_Exact_Grant_V1 {
     'state'=>'MISSING_OR_INVALID','revision'=>0,
     'anchor_nonce'=>null,'site_uuid'=>null,
     'current_anchor_signature_verified'=>false,
-    'current_anchor_eligible'=>false,'prior_grants_ineligible'=>false,
+    'current_anchor_eligible'=>false,'signed_anchor_active_in_option'=>false,
+    'prior_grants_ineligible'=>false,
     'fresh_central_highwater_verified'=>false,
     'original313_certified'=>false,'write_authorized'=>false,
     'grant_created'=>false];
@@ -486,7 +487,7 @@ final class MAD4B_Native_Host_Exact_Grant_V1 {
     $out['anchor_nonce']=$record['nonce'];
     $out['readback_verified']=true;
     $out['current_anchor_signature_verified']=true;
-    $out['current_anchor_eligible']=true;
+    $out['signed_anchor_active_in_option']=true;
     $out['signed_anchor_message_sha256']=hash('sha256',$message);
     return $out;
   }

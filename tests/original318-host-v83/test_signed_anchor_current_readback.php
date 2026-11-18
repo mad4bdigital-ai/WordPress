@@ -51,6 +51,8 @@ $check(($live['readback_verified']??false)===true);
 $check(($live['state']??'')==='ACTIVE');
 $check(($live['revision']??0)===1);
 $check(($live['current_anchor_signature_verified']??false)===true);
+$check(($live['current_anchor_eligible']??true)===false);
+$check(($live['signed_anchor_active_in_option']??false)===true);
 $check(($live['fresh_central_highwater_verified']??true)===false);
 $check(($live['original313_certified']??true)===false);
 $check(($live['grant_created']??true)===false);

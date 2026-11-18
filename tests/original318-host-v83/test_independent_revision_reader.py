@@ -63,7 +63,7 @@ wp = {
  "site_uuid":job["site_uuid"],"state":"ACTIVE","revision":2,
  "anchor_nonce":"a"*32,"observed_epoch":now,
  "readback_verified":True,"current_anchor_signature_verified":True,
- "current_anchor_eligible":True,"fresh_central_highwater_verified":False,
+ "signed_anchor_active_in_option":True,"current_anchor_eligible":False,"fresh_central_highwater_verified":False,
  "original313_certified":False,"write_authorized":False,
 }
 checks=0
@@ -96,7 +96,8 @@ j=copy.deepcopy(job);j["company"]="../staging";deny(lambda:verify(j=j))
 j=copy.deepcopy(job);j["operation_id"]="company.code.release";deny(lambda:verify(j=j))
 j=copy.deepcopy(job);j["executed"]=True;deny(lambda:verify(j=j))
 j=copy.deepcopy(job);j["principal_type"]="wp_admin";deny(lambda:verify(j=j))
-w=copy.deepcopy(wp);w["current_anchor_eligible"]=False;deny(lambda:verify(w=w))
+w=copy.deepcopy(wp);w["current_anchor_eligible"]=True;deny(lambda:verify(w=w))
+w=copy.deepcopy(wp);w["signed_anchor_active_in_option"]=False;deny(lambda:verify(w=w))
 deny(lambda:reader.read_current(job)) # Missing independent root event is HOLD
 print({"state":"PASS","tests":checks,
        "execution_authorized":False,"original313_signed":False,
