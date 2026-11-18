@@ -47,6 +47,7 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-grant-reviewed-inventory-runtime.php",
     # No enrolled Host signer, no original grant, no WordPress/remote I/O.
     "wp-content/plugins/mad4b-site-control-plane/tests/host-agent-fail-closed-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/context-scan-media-integrity/isolated-contract.php",
     # Three separately reviewed original source-only fixtures. The Operation
     # Registry uses a process-scoped /tmp catalog and negative mutation policy;
     # Presentation Evidence and Integrity use fake WP state, local temporary

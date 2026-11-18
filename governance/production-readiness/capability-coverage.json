@@ -23352,6 +23352,69 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Original independently enrolled Host public trust, Site Profile, signed nonce verification, exact NHI grants, Host adapter ability restrictions, bounded Context Review, append-only audit, release CI and rollback controls remain mandatory. No grant or acceptance is inferred.",
       "review_rationale": "Adds passive, bounded Host binding and review policy readiness metadata to rc129 Context Review routing. It does not infer Host signature or auto approve an asset and does not alter review decisions."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-context-builder.php",
+      "source_blob_sha": "b70e80680ba1a3a8ca00b1a7a2cacb222bc71e2a",
+      "control_ids": [
+        "AI-01",
+        "SECURITY-01",
+        "ADMIN-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-scan-media-integrity/isolated-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-document-normalization-runtime.php"
+      ],
+      "owner_role": "MAD4B Context ingestion source security reviewer; CI-only; independent release owner retains authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing original Google Drive scanning, source asset integrity, immutable normalized evidence, signed extraction admission, required human/AI review and rollback gate already apply. No grant, signer or automated source approval is introduced.",
+      "review_rationale": "Reject unverified legacy SVG and Google Drawing strings and normalize only actually extracted scanned document content on complete or partial Apply. Preserve review identity, unique asset ID, hash and scoped source selection."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-drive-scan-continuation.php",
+      "source_blob_sha": "aef41cf495697268aa787ee22a899bbb5bc7a271",
+      "control_ids": [
+        "AI-01",
+        "SECURITY-01",
+        "AUTOMATION-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-scan-media-integrity/isolated-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-document-normalization-runtime.php"
+      ],
+      "owner_role": "MAD4B Context ingestion source security reviewer; CI-only; independent release owner retains authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing original Google Drive scanning, source asset integrity, immutable normalized evidence, signed extraction admission, required human/AI review and rollback gate already apply. No grant, signer or automated source approval is introduced.",
+      "review_rationale": "Quarantine source-stale SVG/Google Drawing scan checkpoints idempotently without discarding real extracted documents, corrupting the source cursor, or activating writes. No automatic asset review."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php",
+      "source_blob_sha": "baa55d92c01aeaaaeb47c815c96a0c492ee49f24",
+      "control_ids": [
+        "AI-01",
+        "SECURITY-01",
+        "PROVIDERS-02",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-scan-media-integrity/isolated-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-document-normalization-runtime.php"
+      ],
+      "owner_role": "MAD4B Context ingestion source security reviewer; CI-only; independent release owner retains authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing original Google Drive scanning, source asset integrity, immutable normalized evidence, signed extraction admission, required human/AI review and rollback gate already apply. No grant, signer or automated source approval is introduced.",
+      "review_rationale": "Mark SVG and Google-native SVG markup as visual extraction required, keep HTML as text and certified extractor output as complete; do not treat visual markup as source-authoritative text."
     }
   ],
   "code_change_rules": {

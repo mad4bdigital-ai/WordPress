@@ -53,7 +53,7 @@ nassert(!is_wp_error($r) && false!==strpos($r['content'],'Brand') && false===str
 
 $svg = "<svg xmlns=\"http://www.w3.org/2000/svg\"><text>Visual brand rule</text></svg>";
 $r = $normalize->invoke(null,'image/svg+xml',$svg,'brand.svg');
-nassert(!is_wp_error($r) && false!==strpos($r['content'],'Visual brand rule'), 'SVG visible text must normalize locally.', $r);
+nassert(!is_wp_error($r) && empty($r['complete']) && ''===$r['content'] && 'extractor_required'===$r['normalization_status'] && 'visual_media_extraction_required'===$r['normalization_reason'], 'SVG markup must defer to approved visual extraction rather than self-certify embedded text.', $r);
 
 $pdfText = "BT /F1 12 Tf (Brand Strategy) Tj ET";
 $pdfBytes = "%PDF-1.4\n1 0 obj << /Length ".strlen($pdfText)." >>\nstream\n".$pdfText."\nendstream\nendobj\n%%EOF";

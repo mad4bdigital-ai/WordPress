@@ -193,6 +193,85 @@ def reviewed_rc129_host_integration_successor(repo:Path,path:str,contents:bytes)
         return None
 
 
+def reviewed_rc129_context_media_successor(repo:Path,path:str,contents:bytes):
+    """Read-only SHA-pinned reconciliation for exactly three live Context Media
+    integrity changes. Previous QA31 source ledgers remain immutable; neither
+    media fixture success nor this review is Production authorization.
+    """
+    allowed={
+        'includes/class-mad4b-scp-brand-context-builder.php':
+            ('bce973b8a6957e5c820253fc3b6ab4d4cf642a78','77059ff5ad1c2a8b7d4984256ff8e425716b5cdd17d50f42e473161be087f028'),
+        'includes/class-mad4b-scp-drive-scan-continuation.php':
+            ('d440f529a5a022a266961872d2de16d97bf17074','76f69898a5e205dd5fef0a81e8c27f4795da71ccc9cc1a2f8f4ce87f4e46b43c'),
+        'includes/class-mad4b-scp-google-drive-context.php':
+            ('2768e78e8ca214145aea083440ff9634adc2304b','c3a69ee0fded972fbe2d07dcdd3bf9a35a5fe02d83d87c9c2b4d27490b76b3be')
+    }
+    if path not in allowed or not isinstance(contents,bytes):return None
+    reg=repo/'governance/release-parity/qa31-rc129-context-media-successors-20261118.json'
+    if not reg.is_file() or reg.is_symlink():return None
+    source_base='1fe48421cbc1444bc6698f57bf589784ec4a982f'
+    required='wp-content/plugins/mad4b-site-control-plane/tests/context-scan-media-integrity/isolated-contract.php'
+    doc_test='wp-content/plugins/mad4b-site-control-plane/tests/context-document-normalization-runtime.php'
+    historical=repo/'governance/release-parity/qa31-commerce-staging-source-parity.json'
+    host=repo/'governance/release-parity/qa31-rc129-host-agent-integration-successors-20261118.json'
+    predecessor=repo/'governance/release-parity/qa31-rc129-reviewed-successors-20261118.json'
+    try:
+        data=json.loads(reg.read_text(encoding='utf-8'))
+        old=json.loads(historical.read_text(encoding='utf-8'))
+        entries=data.get('entries')
+        names=[i.get('path') for i in entries if isinstance(i,dict)] if isinstance(entries,list) else []
+        if (data.get('contract')!='mad4b.qa31-rc129-context-media-successors.v1'
+            or data.get('base_source_commit')!=source_base
+            or data.get('source_review_only') is not True
+            or data.get('authorizing') is not False
+            or data.get('production_authorized') is not False
+            or data.get('source_promotion_approved') is not False
+            or data.get('is_build_provenance') is not False
+            or data.get('live_evidence_required') is not True
+            or data.get('release_gate')!='BLOCKED_SOURCE_RECONCILIATION'
+            or data.get('historical_qa31_ledger')!='governance/release-parity/qa31-commerce-staging-source-parity.json'
+            or data.get('historical_qa31_sha256')!=digest(historical)
+            or data.get('host_integration_review')!='governance/release-parity/qa31-rc129-host-agent-integration-successors-20261118.json'
+            or data.get('host_integration_sha256')!=digest(host)
+            or data.get('original_rc129_review_sha256')!=digest(predecessor)
+            or data.get('exact_source_files')!=3
+            or data.get('legacy_qa31_overrides')!=2
+            or names!=sorted(allowed)):return None
+        entry=entries[names.index(path)]
+        if ((entry.get('parent_blob_sha'),entry.get('parent_sha256'))!=allowed[path]
+            or entry.get('required_regression')!=required
+            or entry.get('document_regression')!=doc_test
+            or not SHA.fullmatch(str(entry.get('current_sha256','')))
+            or not SHA40.fullmatch(str(entry.get('current_blob_sha','')))
+            or hashlib.sha256(contents).hexdigest()!=entry['current_sha256']
+            or hashlib.sha1(b'blob '+str(len(contents)).encode('ascii')+b'\0'+contents).hexdigest()!=entry['current_blob_sha']):return None
+        original={e['path']:e for e in old.get('source_decisions',[])}
+        prior=original.get(path)
+        if prior is None:
+            if entry.get('legacy_qa31_state') is not None:return None
+            if any(k in entry for k in ('legacy_qa31_staging_sha256','legacy_qa31_github_sha256')):return None
+        else:
+            if (entry.get('legacy_qa31_state')!=prior.get('state')
+                or entry.get('legacy_qa31_staging_sha256')!=prior.get('staging_sha256')
+                or entry.get('legacy_qa31_github_sha256')!=prior.get('github_sha256')):return None
+        if (not (repo/required).is_file() or (repo/required).is_symlink()
+            or not (repo/doc_test).is_file() or (repo/doc_test).is_symlink()):return None
+        have_base=subprocess.run(['git','cat-file','-e',source_base+'^{commit}'],
+            cwd=repo,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=8)
+        if have_base.returncode==0:
+            prev=subprocess.check_output(['git','rev-parse',source_base+
+                ':wp-content/plugins/mad4b-site-control-plane/'+path],
+                cwd=repo,stderr=subprocess.DEVNULL,timeout=8).decode().strip()
+            if prev!=entry['parent_blob_sha']:return None
+        elif subprocess.check_output(['git','rev-parse','--is-shallow-repository'],
+            cwd=repo,stderr=subprocess.DEVNULL,timeout=8).decode().strip()!='true':
+            return None
+        return required
+    except (OSError,ValueError,KeyError,TypeError,subprocess.CalledProcessError,
+            subprocess.TimeoutExpired,json.JSONDecodeError):
+        return None
+
+
 def reviewed_ci_only_source_successor(root:Path,path:str,contents:bytes)->bool:
     """Accept exact, reviewed Git blobs for CI inventory only; never parity.
     Static legacy entries remain valid; rc129 successors are independently
@@ -205,7 +284,9 @@ def reviewed_ci_only_source_successor(root:Path,path:str,contents:bytes)->bool:
     source=root/path
     if source.is_symlink() or not source.is_file() or source.read_bytes()!=contents:
         return False
-    requested=reviewed_rc129_host_integration_successor(repo,path,contents)
+    requested=reviewed_rc129_context_media_successor(repo,path,contents)
+    if requested is None:
+        requested=reviewed_rc129_host_integration_successor(repo,path,contents)
     if requested is None:
         requested=reviewed_rc129_pinned_successor(repo,path,contents)
     if requested is None:

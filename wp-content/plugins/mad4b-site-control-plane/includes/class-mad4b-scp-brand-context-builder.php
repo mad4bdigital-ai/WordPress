@@ -1633,6 +1633,15 @@ final class MAD4B_SCP_Brand_Context_Builder {
 	}
 
 	/** Apply is forbidden until every enumerated provider file is complete. */
+	/** Legacy visual markup is not trustworthy extracted Brand text. */
+	private static function legacy_visual_scan_asset( $item ) {
+		if ( ! is_array( $item ) ) return false;
+		$mime = strtolower( (string)( $item['mimeType'] ?? '' ) );
+		$reason = (string)( $item['normalization_reason'] ?? '' );
+		return ( 'image/svg+xml' === $mime && 'markup_local' === $reason )
+			|| ( 'application/vnd.google-apps.drawing' === $mime && 'google_drawing_svg_export' === $reason );
+	}
+
 	public static function source_scan_apply_admission( $plan, $scan ) {
 		if ( ! is_array( $plan ) || ! is_array( $scan ) || true !== ( $plan['scan_complete'] ?? null )
 			|| true !== ( $scan['complete'] ?? null ) || ! empty( $scan['truncated'] )
@@ -1643,7 +1652,7 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		$seen = array();
 		foreach ( $scan['assets'] as $item ) {
 			$id = is_array( $item ) ? (string) ( $item['file_id'] ?? '' ) : '';
-			if ( '' === $id || isset( $seen[ $id ] ) || true !== ( $item['content_complete'] ?? null )
+			if ( '' === $id || isset( $seen[ $id ] ) || self::legacy_visual_scan_asset( $item ) || true !== ( $item['content_complete'] ?? null )
 				|| ! preg_match( '/^[a-f0-9]{64}$/D', (string) ( $item['content_hash'] ?? '' ) ) )
 				return new WP_Error( 'mad4b_context_source_scan_asset_unverified',
 					'Source Scan Apply requires unique, fully normalized content records with verifiable hashes.' );
@@ -1676,7 +1685,7 @@ final class MAD4B_SCP_Brand_Context_Builder {
         $seen=array();$assets=(array)($scan['assets']??array());
         foreach($assets as $asset){
             $id=is_array($asset)?(string)($asset['file_id']??''):'';
-            if($id===''||isset($seen[$id])||true!==($asset['content_complete']??null)
+            if($id===''||isset($seen[$id])||self::legacy_visual_scan_asset($asset)||true!==($asset['content_complete']??null)
                 ||!preg_match('/^[a-f0-9]{64}$/D',(string)($asset['content_hash']??'')))
                 return new WP_Error('mad4b_scan_partial_asset_unverified',
                     'Every indexed file must have a unique verified content digest.');
