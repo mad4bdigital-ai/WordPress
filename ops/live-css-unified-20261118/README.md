@@ -136,3 +136,19 @@ and browser readback remain cap-dropped without supplemental group, while
 Wayfatours Production and offline assembly are unchanged. The source-only
 browser gate, original resource admission and private HTML policies
 continue to apply.
+
+## Original WordPress category archives: exact body identity
+Original public-route browsers previously treated every taxonomy route as
+term-N, but WordPress core category archives use the distinct body class
+category-N. This caused a false BOUND_WP_OBJECT_DRIFT hold for valid
+Wayfatours category/interests (category-2943) and category/uncategorized
+(category-1). Unlike JetEngine custom taxonomies, which do use term-N,
+core categories must validate category-N only. The existing first-party
+capture and readback scripts now choose identity classes by the original
+route taxonomy. No forged category from another object, object-id prefix
+(e.g. category-29430), wrong page/post/archive, or custom term-ID can
+authorize capture. 30 hermetic checks exercise the original source
+functions for archive, taxonomy, post and tour cases. Both scripts were
+reconciled to original live source, backed up and atomically deployed.
+No WCML, WPML, payment or page template data was changed. New category
+certification still requires real independent Chromium QA.
