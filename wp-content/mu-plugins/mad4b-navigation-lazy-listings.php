@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Navigation Lazy Listings
  * Description: Brand-neutral JetEngine signed navigation and Elementor Nested Tabs on-demand loading.
- * Version: 1.2.0
+ * Version: 1.2.1
  */
 defined('ABSPATH') || exit;
 if (defined('MAD4B_NAVIGATION_LAZY_BOOTSTRAPPED')) return;
@@ -10,7 +10,7 @@ define('MAD4B_NAVIGATION_LAZY_BOOTSTRAPPED',true);
 final class MAD4B_Navigation_Lazy_Listings_V1 {
  // Pinned to the immutable artifact by the source build step. A company
  // release consists only of this loader + its exact JS, no hidden MU assets.
- private const ASSET_SHA256 = 'ea09566dff9a2a5bf9dbf2449cfdafd5023548f70ce6e4d0b4b8ee0736946654';
+ private const ASSET_SHA256 = 'c9315f96239be574299cc8cae7c2457c4524bc7d6709fa62d44139a8671e113c';
  public static function signed_options($options,$settings) {
   if (!is_array($settings) || !is_array($options) || !function_exists('jet_engine')) return $options;
   $classes=preg_split('/\s+/',trim((string)($settings['_css_classes']??'')));

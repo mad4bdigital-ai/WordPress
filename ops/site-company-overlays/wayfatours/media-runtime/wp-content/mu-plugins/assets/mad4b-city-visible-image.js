@@ -9,10 +9,10 @@
  }
  var queued=false,mutationObserver=null,intersectionObserver=null;
  var observedCards=new WeakSet(),observedSwipers=new WeakSet();
- var stats={version:'2.2.0',revealed:0,swipers:0,swiperEvents:0,ajaxCards:0,fallbacks:0,intentWarm:0,idleWarm:0,navigationWarm:0};
+ var stats={version:'2.2.1',revealed:0,swipers:0,swiperEvents:0,ajaxCards:0,fallbacks:0,intentWarm:0,idleWarm:0,navigationWarm:0};
  window.mad4bCityImageStats=stats;
  function cards(){return document.querySelectorAll(selector);}
- function near(card){
+ function near(card,sliderRects){
   var r=card.getBoundingClientRect();
   if(r.width<1 || r.height<1)return false;
   var sw=window.innerWidth||root.clientWidth,sh=window.innerHeight||root.clientHeight;
@@ -20,7 +20,8 @@
   var slider=card.closest('.swiper,.jet-listing-grid__slider');
   var left=-260,right=sw+260;
   if(slider){
-   var s=slider.getBoundingClientRect();
+   var s=sliderRects && sliderRects.get(slider);
+   if(!s){s=slider.getBoundingClientRect();if(sliderRects)sliderRects.set(slider,s);}
    if(s.bottom < -650 || s.top>sh+800)return false;
    left=Math.max(left,s.left-260);
    right=Math.min(right,s.right+260);
@@ -175,24 +176,27 @@
  function scan(){
   queued=false;
   bindSwipers();
-  var list=cards();
+  var list=cards(),toReveal=[],sliderRects=new WeakMap();
+  // Read all geometry before changing classes and data attributes.
+  // This avoids synchronous style/layout recalculation for every card.
   for(var i=0;i<list.length;i++){
    var card=list[i];
    if(!observedCards.has(card)){
     observedCards.add(card);stats.ajaxCards++;
     if(intersectionObserver)intersectionObserver.observe(card);
    }
-   if(near(card))reveal(card);
+   if(near(card,sliderRects))toReveal.push(card);
   }
+  for(var j=0;j<toReveal.length;j++)reveal(toReveal[j]);
  }
  function schedule(){if(queued)return;queued=true;window.requestAnimationFrame(scan);}
  function fallback(){
   if(document.hidden)return;
   // Observe slide movement even if a theme replaces the Swiper instance or
   // fails to dispatch events.  No network work is performed by this check.
-  var list=cards();
+  var list=cards(),sliderRects=new WeakMap();
   for(var i=0;i<list.length;i++){
-   if(!list[i].classList.contains(visibleClass) && near(list[i])){
+   if(!list[i].classList.contains(visibleClass) && near(list[i],sliderRects)){
     stats.fallbacks++;schedule();return;
    }
   }
@@ -201,8 +205,10 @@
  try{
   if('IntersectionObserver' in window){
    intersectionObserver=new IntersectionObserver(function(entries){
+    var toReveal=[],sliderRects=new WeakMap();
     for(var i=0;i<entries.length;i++)
-     if(entries[i].isIntersecting && near(entries[i].target))reveal(entries[i].target);
+     if(entries[i].isIntersecting && near(entries[i].target,sliderRects))toReveal.push(entries[i].target);
+    for(var j=0;j<toReveal.length;j++)reveal(toReveal[j]);
    },{rootMargin:'650px 260px 800px 260px',threshold:0.01});
   }
   window.addEventListener('scroll',schedule,{passive:true});
