@@ -19,6 +19,8 @@ final class MAD4B_SCP_Operator_Control_Center {
 		if ( self::$booted ) return;
 		self::$booted = true;
 		add_action( 'wp_ajax_mad4b_admin_report', array( __CLASS__, 'ajax_report' ) );
+		// Read-only scoped Host Authority Lifecycle observation, never mutation.
+		add_action( 'rest_api_init', array( __CLASS__, 'register_host_authority_read_routes' ), 95 );
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_ability' ), 39 );
 		MAD4B_SCP_Admin_Route_Registry::schedule_submenu( array( __CLASS__, 'register_menu' ), 32 );
 	}
@@ -320,6 +322,11 @@ final class MAD4B_SCP_Operator_Control_Center {
 	public static function ajax_report() {
 		require_once __DIR__ . '/class-mad4b-scp-deferred-admin-reports.php';
 		MAD4B_SCP_Deferred_Admin_Reports::ajax();
+	}
+
+	public static function register_host_authority_read_routes() {
+		require_once __DIR__ . '/class-mad4b-scp-deferred-admin-reports.php';
+		MAD4B_SCP_Host_Authority_Lifecycle::register_routes();
 	}
 
 	public static function render_page() {
