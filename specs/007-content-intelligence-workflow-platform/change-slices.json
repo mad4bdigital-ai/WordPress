@@ -4,8 +4,8 @@
   "reviewed_base_sha": "83cbe5ef992e3c99151891a0a55561a98139b948",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 2637,
-  "changed_paths_sha256": "63fa97eb732f3e4734f0182ea5072a55b3f4f036a4f1cc0a651976121f33f1ec",
+  "changed_file_count": 2643,
+  "changed_paths_sha256": "fa6b65d40f09d3a46f321327335c84b45f628dc7f69416af9de549fa471d373e",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -5388,6 +5388,28 @@
         "ops/original318-signed-anchor-candidate-v82/original318_signed_anchor_runtime.php",
         "ops/original318-signed-anchor-candidate-v82/release-proposal.NOT-AUTHORIZATION.json",
         "ops/original318-signed-anchor-candidate-v82/test_original318_v82.py"
+      ]
+    },
+    {
+      "id": "host-v2-signed-identity-on-demand-readback",
+      "semantic_unit": "First-party on-demand Host v2 signed identity readback, prerequisite validation and source-only Hermetic tests; identity is never a Production mutation or Host Anchor grant.",
+      "revert_boundary": "Remove the three Host v2 identity tool, tests and README as one source slice. Retain original principal and ledger signatures; never self-issue Host Authority anchors or authorize Original305/312/313 writes.",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/host-v2-signed-identity-runtime-v1/README.md",
+        "ops/host-v2-signed-identity-runtime-v1/host_signed_identity_attest.py",
+        "ops/host-v2-signed-identity-runtime-v1/test_signed_identity_runtime.py"
+      ]
+    },
+    {
+      "id": "original305-signed-incident-readiness-reconciliation",
+      "semantic_unit": "Bounded, root-only reconciliation of historical Original305 signed-readiness HOLD after independent verified expired receipt; manual incident tooling and tests only.",
+      "revert_boundary": "Revert reconciliation implementation, tests and docs together; no timer reactivation, signed grant or Production mutation, and retain original incident audit receipts and rollback-on-audit-failure.",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/original305-incident-reconciliation-v1/README.md",
+        "ops/original305-incident-reconciliation-v1/reconcile.py",
+        "ops/original305-incident-reconciliation-v1/test_reconcile.py"
       ]
     }
   ],
