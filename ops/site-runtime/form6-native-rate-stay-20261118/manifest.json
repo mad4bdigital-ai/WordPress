@@ -1,0 +1,41 @@
+{
+  "contract": "mad4b.site-runtime.form6-native-rate-stay-parity.v1",
+  "source_origin": "Wayfatours Production and Tours.dev verified identical 2026-11-18",
+  "runtime_installed": true,
+  "github_merge_is_release": false,
+  "deployment_allowed_by_this_manifest": false,
+  "canonical_runtime_relative_paths": [
+    "wp-content/mu-plugins/listing-option-selection-assets/options.js",
+    "wp-content/mu-plugins/shared-product-core/assets/presentation-fluent-quote-v1.js",
+    "wp-content/mu-plugins/shared-product-core/assets/presentation-pricing-basis-v1.css"
+  ],
+  "files": {
+    "wp-content/mu-plugins/listing-option-selection-assets/options.js": "afef3b46d9ff16bc093fef053f4b59d88deb58489dcac121eb696143de9860d7",
+    "wp-content/mu-plugins/shared-product-core/assets/presentation-fluent-quote-v1.js": "d4dd0b72092156b4cc248ae63da20bb22ab1ada6df3352a8a700950b9da0785f",
+    "wp-content/mu-plugins/shared-product-core/assets/presentation-pricing-basis-v1.css": "de5db62774124fbc8b1405855e6e64205c14591bafd5d5b8d880e2b8db2f6804"
+  },
+  "behavior": [
+    "One linked property follows the selected Rate from the shared broker",
+    "Room Type and Meals appear only when the linked Property provides eligible units/boards",
+    "Native Elementor price tiers drive the single Fluent Form pricing basis when visible",
+    "Form selectors remain accessible fallback when native Rate cards are not visible",
+    "Changing Rate clears a previously selected price tier before server quote recomputation"
+  ],
+  "known_runtime_qa": {
+    "wayfatours_tour_id": 60629,
+    "tour_rate_ids": [
+      60820,
+      60830
+    ],
+    "property_ids": [
+      36117,
+      36239
+    ],
+    "site_hosts": [
+      "tours.dev.mad4b.com",
+      "wayfatours.com"
+    ],
+    "browser_smoke": "Previously checked across 412px and 1365px and native Rate click",
+    "manual_session_validation": "Authenticated/cache-personalized Chrome session not certified by these checks"
+  }
+}

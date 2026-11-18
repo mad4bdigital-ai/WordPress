@@ -1,11 +1,11 @@
 {
   "contract": "mad4b.change-slices.v2",
   "authorizing": false,
-  "reviewed_base_sha": "83cbe5ef992e3c99151891a0a55561a98139b948",
+  "reviewed_base_sha": "c934e0a5a3ddc924db2c7adc2dc1241785ab49ee",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 2632,
-  "changed_paths_sha256": "a189f3e6f4bd395680f34e5d8887b7529b7494a6b2d19144c179dde39ed54fe4",
+  "changed_file_count": 2657,
+  "changed_paths_sha256": "abef8caf2e9b1eca0894bd41cfc301f755587bc73b5a3abd91630269b58ddc4b",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -5375,6 +5375,71 @@
         "ops/original-host-v2-readonly-scope/README.md",
         "ops/original-host-v2-readonly-scope/host_scope.py",
         "ops/original-host-v2-readonly-scope/test_host_scope.py"
+      ]
+    },
+    {
+      "id": "original318-v82-signed-anchor-source-candidate",
+      "semantic_unit": "Original318 v82 candidate: signed Host Authority Anchor validation, negative tests and non-authorizing release proposal. Source review only.",
+      "revert_boundary": "Revert all five Original318 v82 candidate files together; do not install or issue/revoke signed Anchors without independent Original305/312/313 authority, backup, readback and rollback.",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/original318-signed-anchor-candidate-v82/318-mad4b-native-host-exact-grant.php",
+        "ops/original318-signed-anchor-candidate-v82/README.md",
+        "ops/original318-signed-anchor-candidate-v82/original318_signed_anchor_runtime.php",
+        "ops/original318-signed-anchor-candidate-v82/release-proposal.NOT-AUTHORIZATION.json",
+        "ops/original318-signed-anchor-candidate-v82/test_original318_v82.py"
+      ]
+    },
+    {
+      "id": "host-v2-signed-identity-on-demand-readback",
+      "semantic_unit": "First-party on-demand Host v2 signed identity readback, prerequisite validation and source-only Hermetic tests; identity is never a Production mutation or Host Anchor grant.",
+      "revert_boundary": "Remove the three Host v2 identity tool, tests and README as one source slice. Retain original principal and ledger signatures; never self-issue Host Authority anchors or authorize Original305/312/313 writes.",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/host-v2-signed-identity-runtime-v1/README.md",
+        "ops/host-v2-signed-identity-runtime-v1/host_signed_identity_attest.py",
+        "ops/host-v2-signed-identity-runtime-v1/test_signed_identity_runtime.py"
+      ]
+    },
+    {
+      "id": "original305-signed-incident-readiness-reconciliation",
+      "semantic_unit": "Bounded, root-only reconciliation of historical Original305 signed-readiness HOLD after independent verified expired receipt; manual incident tooling and tests only.",
+      "revert_boundary": "Revert reconciliation implementation, tests and docs together; no timer reactivation, signed grant or Production mutation, and retain original incident audit receipts and rollback-on-audit-failure.",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/original305-incident-reconciliation-v1/README.md",
+        "ops/original305-incident-reconciliation-v1/reconcile.py",
+        "ops/original305-incident-reconciliation-v1/test_reconcile.py"
+      ]
+    },
+    {
+      "id": "original-host-v2-v79-v81-signed-admission-source",
+      "semantic_unit": "Exact first-party Host Authority v79/v81 signed-admission validators and hermetic negative regression sources, restored without executing Original305/306/312/313, issuing Anchors or modifying host policy.",
+      "revert_boundary": "Revert the original v79 plan contract, v81 bounded plan/bootstrap/current-revision/313 evidence/306 routing modules and five hermetic test files together. Do not infer issuer, revoke, signer, Grant, published runtime or Production authority from source presence.",
+      "certification": "exact_head",
+      "path_globs": [
+        "deploy/host-authority/v79/host-authority-v2/operation_contract.py",
+        "deploy/host-authority/v81/README.md",
+        "deploy/host-authority/v81/bootstrap_signed_job.py",
+        "deploy/host-authority/v81/current_revision_gate.py",
+        "deploy/host-authority/v81/operation313_evidence.py",
+        "deploy/host-authority/v81/operation_plan_contract.py",
+        "deploy/host-authority/v81/original306_admission_router.py",
+        "tests/test_bootstrap_signed_job_v81.py",
+        "tests/test_current_revision_gate_v81.py",
+        "tests/test_operation313_evidence_v81.py",
+        "tests/test_operation_plan_bootstrap_v81.py",
+        "tests/test_original306_admission_router_v81.py"
+      ]
+    },
+    {
+      "id": "host-v2-live-readiness-readonly-observer",
+      "semantic_unit": "Read-only Host Authority v2 candidate and live provenance readiness diagnostics with isolated negative tests; reports blockers and never authorizes or applies a release.",
+      "revert_boundary": "Remove the Host v2 release-readiness observer and its isolated test together. Retain current Original318 independent issuer/revoker, registered operation routing, signed proofs, independent readback and rollback requirements.",
+      "certification": "exact_head",
+      "path_globs": [
+        "scripts/host_v2_live_release_readiness.py",
+        "tests/test_host_v2_live_release_readiness.py"
       ]
     }
   ],
