@@ -1,7 +1,16 @@
 {
   "contract": "mad4b.capability-fabric-post-merge-closure.v1",
   "phase": 37,
-  "baseline_merge_commit": "3785892316d3c395ad144500fdecc6836ed2c176",
+  "baseline_merge_commit": "83cbe5ef992e3c99151891a0a55561a98139b948",
+  "current_repository_parent_review": {
+    "previous_reviewed_parent": "5c72e4893e36e992f056c90cfc75908b3a8f7785",
+    "reviewed_master_parent": "83cbe5ef992e3c99151891a0a55561a98139b948",
+    "scope": "14 master commits and 16 changed paths: 2 Governance #822 protected Workflows and 14 source-only media/site-local cron paths; no Feature 007 specification or Control Plane PHP runtime change in that delta",
+    "historic_phase37_review_retained": true,
+    "authorizing": false,
+    "production_authorized": false,
+    "live_acceptance_claimed": false
+  },
   "production_authorized": false,
   "breakglass_widened": false,
   "generic_shell_authorized": false,
