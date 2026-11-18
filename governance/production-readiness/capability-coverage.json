@@ -11538,6 +11538,25 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "The existing original Agent Registry exact grant, Staging-only provider review, site profile, mutation gate, owner approval, checkpoint, readback and audit safeguards govern this single diagnostic, without wildcard rights.",
       "review_rationale": "Exact source review allows a core grant to be considered only for mad4b/hub-queue-site-health-enqueue when the Ability is registered on the correct central Staging site. No grant is issued merely because this provider pair appears; broad hub-bulk-enqueue remains outside the reviewed policy and Production is not enabled."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-runtime-diagnostics.php",
+      "source_blob_sha": "3b37c6fc8b262166160fb57a0c6d8e8cda3b08d6",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-native-diagnostics-read-parity-runtime.php"
+      ],
+      "owner_role": "Repository exact-source source/diagnostics reviewer — CI only, not WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing authenticated read policy, enrolled Site Profile, WordPress runtime diagnostics, Staging-only probe and zero-mutation platform controls cover this narrow native status classification; independent runtime and release certification remain required.",
+      "review_rationale": "Byte-verified Tours.dev native diagnostics module now reports read-only status for an exactly enrolled company on Production as well as Staging, without treating Production as Staging. The paired network probe remains available only when the enrolled Staging environment and endpoint identity both match, never runs during a status read, and no grant, repair or browser transport proof is asserted."
     }
   ],
   "code_change_rules": {

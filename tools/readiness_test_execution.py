@@ -22,6 +22,8 @@ SHA = re.compile(r"^[a-f0-9]{40}$")
 # Each path contains exit-on-failure assertions and a positive PASS marker.
 # Other PHP files continue to require PHPUnit; unknown paths fail closed.
 STANDALONE_PHP_REGRESSIONS = frozenset((
+    # Exact, inspected no-network source-preservation fixtures; only these paths run as CLI.
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-native-diagnostics-read-parity-runtime.php",
     "tests/remote-execution/chatgpt-optional-catalog-smoke.php",
     "tests/remote-execution/developer-preparation-bridge-smoke.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/mcp-catalog-adaptive-budget.php",
@@ -259,6 +261,11 @@ def self_test():
         "egress-policy-runtime.php",
     ):
         exact = "wp-content/plugins/mad4b-site-control-plane/tests/" + standalone
+        assert command_for(exact) == ["php", str((ROOT / exact).resolve())]
+    # Admit these hermetic source-preservation PHP fixtures by exact path only.
+    for exact in (
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-native-diagnostics-read-parity-runtime.php",
+    ):
         assert command_for(exact) == ["php", str((ROOT / exact).resolve())]
     # WordPress-integrated smoke cannot be silently run as bare PHPUnit or CLI.
     try:
