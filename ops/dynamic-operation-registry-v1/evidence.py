@@ -137,3 +137,129 @@ def verify_signed(
         "original_313_certified":False,
         "central_receipt_created":False, "grant_issued":False,
     }
+
+# ORIGINAL HOST AUTHORITY V2: a different resource than WPCLI / Host Source.
+# No 313 proof may be accepted as a Central receipt without a later independent
+# original finalizer and reserved-job high-water readback. Keep the v1 verifier
+# and its exact accepted claims unchanged.
+HOST_V2_ISSUE = "company.host-authority.anchor.issue"
+HOST_V2_REVOKE = "company.host-authority.anchor.revoke"
+HOST_V2_OPERATIONS = frozenset((HOST_V2_ISSUE, HOST_V2_REVOKE))
+HOST_V2_PROOF_VERIFIER = (
+    "/opt/mad4b-company-transport/native-313-independent/"
+    "host-authority-v83/v81/operation313_evidence.py"
+)
+HOST_V2_PROOF_SHA256 = "10b844a4706680ceeea0cba986f014ddd4f7ee8abb25873401db637633ae9cbc"
+HOST_V2_REGISTRY_ROOT = (
+    "/opt/mad4b-company-transport/native-313-independent/"
+    "dynamic-operation-registry-v1/enrolled"
+)
+
+
+def _original_host_v2_proof_module():
+    """Load only exact pinned first-party Original313 verifier source."""
+    import hashlib
+    import importlib.util
+    from pathlib import Path
+    import stat
+
+    p = Path(HOST_V2_PROOF_VERIFIER)
+    root = p.parent
+    registry.require(
+        p.is_absolute() and not p.is_symlink() and
+        root.is_dir() and not root.is_symlink(),
+        "HOST_V2_ORIGINAL313_VERIFIER_NOT_INSTALLED",
+    )
+    for candidate in (p, root):
+        st = candidate.stat()
+        registry.require(
+            st.st_uid == 0 and st.st_gid == 0 and not st.st_mode & 0o077,
+            "HOST_V2_VERIFIER_NOT_ROOT_PROTECTED",
+        )
+    info = p.stat()
+    registry.require(
+        stat.S_ISREG(info.st_mode) and info.st_nlink == 1
+        and stat.S_IMODE(info.st_mode) == 0o600
+        and hashlib.sha256(p.read_bytes()).hexdigest() == HOST_V2_PROOF_SHA256,
+        "HOST_V2_VERIFIER_SOURCE_DIGEST_DRIFT",
+    )
+    spec = importlib.util.spec_from_file_location(
+        "_mad4b_original313_host_v2_signature_verifier", p,
+    )
+    registry.require(spec is not None and spec.loader is not None,
+                     "HOST_V2_SIGNATURE_VERIFIER_UNAVAILABLE")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _verify_host_v2_signed_operation_precondition(
+    proof: dict, original_job: dict, original312: dict,
+    actual_postcondition: dict, independent_public_key: bytes,
+) -> dict:
+    """Pure verified Original313 proof shape; **not** a signed Central receipt.
+
+    Inputs are original signed Job, Original312, and independently read
+    Original318 + revision ledger. The root worker must source them, never
+    a caller-selected REST request.
+    """
+    gate = _original_host_v2_proof_module()
+    verified = gate.verify_independent_operation_proof(
+        proof, independent_public_key, original_job, original312,
+        actual_postcondition,
+    )
+    registry.require(
+        verified.get("state") == "SIGNED_INDEPENDENT_HOST_OPERATION_PROOF_VERIFIED"
+        and verified.get("original313_certified") is False
+        and verified.get("central_receipt_created") is False
+        and verified.get("execution_authorized") is False,
+        "HOST_V2_INDEPENDENT_PROOF_RESULT_NOT_A_RECEIPT",
+    )
+    return verified
+
+
+def verify_host_v2_signed_operation(
+    registry_index: registry.Registry, proof: dict, original_job: dict,
+    original312: dict, actual_postcondition: dict,
+) -> dict:
+    """Only installed Registry + pinned Original313 may verify Host v2 proof.
+
+    Deliberately denies until *both* issue/revoke manifests are truly enrolled.
+    A valid signature cannot create/claim an original Job, generate a Grant,
+    issue an Anchor or certify Central's own final Original313 receipt.
+    """
+    from pathlib import Path
+
+    registry.require(
+        type(registry_index) is registry.Registry
+        and registry_index.root == Path(HOST_V2_REGISTRY_ROOT),
+        "HOST_V2_FIRST_PARTY_REGISTRY_REQUIRED",
+    )
+    registry.require(
+        type(proof) is dict and proof.get("operation_id") in HOST_V2_OPERATIONS,
+        "HOST_V2_OPERATION_REQUIRED",
+    )
+    manifests = [
+        registry_index.resolve(operation)
+        for operation in (HOST_V2_ISSUE, HOST_V2_REVOKE)
+    ]
+    for m in manifests:
+        registry.require(
+            m.get("resource_kind") == "host_anchor"
+            and m.get("target_scope") == "host"
+            and m.get("job_type") == "signed_remote_hostinger_wpcli_v2",
+            "HOST_V2_TYPED_PROVIDER_NOT_ENROLLED",
+        )
+    registry.require(
+        type(original_job) is dict
+        and original_job.get("job_type") == "signed_remote_hostinger_wpcli_v2"
+        and original_job.get("principal_type") == "signed_host_principal_v2"
+        and original_job.get("state") ==
+            "BROKER_CLAIMED_PENDING_INDEPENDENT_HOST_AUTHORITY"
+        and original_job.get("executed") is False,
+        "HOST_V2_ORIGINAL_306_CLAIM_REQUIRED",
+    )
+    return _verify_host_v2_signed_operation_precondition(
+        proof, original_job, original312, actual_postcondition,
+        registry_index.independent_verifier_public_key,
+    )
