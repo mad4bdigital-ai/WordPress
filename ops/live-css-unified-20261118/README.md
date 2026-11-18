@@ -268,3 +268,36 @@ canary bypassed that check. New original shared
 home, WPML, ordinary pages and categories. This reduces wasted browser
 cycles; it does not turn a source-family pass into an exact page
 certificate or disable CPU and browser admissions.
+
+## One audited native Runtime release gate for both CSS engines
+The standalone, read-only `mad4b-public-source-families-refresh` service
+still had a hard-coded 421/422 source byte-comparison from the original
+PR #814 checkout. After the approved Source 422 v1.0.1 Arabic WPML URI
+normalization was installed, the live per-route runner correctly admitted
+the audited Source-specific SHA but the separate registry refresh would
+have rejected it as `source_runtime_component_drift:source` whenever
+its WP-CLI/CPU admission reopened.
+
+Instead of weakening the check or copying staging code to production,
+the original `run-public-route.py` now owns one
+`approved_native_runtime_sha(site,wp)` function. Both the per-route
+worker and the source-family registry call it unchanged:
+- Original Source Staging 422 exact SHA-256
+  `254c382bb96faadda2510d75501107ac73ae80673093dd3c0a47a5f63f7f2ff6`;
+- Original 421 remains byte-equal to the audited central checkout on
+  both companies, and Wayfatours 422 remains byte-equal to that checkout;
+- Incorrect company/root, symlinks, absent or mutated PHP fail closed.
+The registry consumes the resulting actual 422 SHA when constructing
+source family evidence, so it cannot silently diverge from the
+certificate issuer. No independent approval or new background timer
+was added. The original 8 integration checks and updated 3 release-pin
+regression checks pass. Separate WP-CLI resource admission remains;
+a deferred registry refresh is not claimed to have completed.
+
+Read-only source-family calculation using the newest original WordPress
+catalogs with this release policy and the 427 category CSS source hash:
+Wayfa 846 generic routes/21 groups, next core-category Uncategorized;
+Source 1,022 generic routes/53 groups, next German Cairo tour.
+Six Source and two Wayfa independently owned Home language routes were
+excluded from the *generic route queue only*, not deleted from any
+site, language menu, cache, or original dedicated Home certifier.

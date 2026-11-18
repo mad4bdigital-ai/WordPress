@@ -169,6 +169,37 @@ def browser(job,wp,site,env,script,output,extra=None,limit=1320):
     for k,v in opts.items():args+=['-e',k+'='+v]
     args+=[IMAGE,'node','/tools/'+script]
     return run(args,timeout=limit,stdout=output)
+def approved_native_runtime_sha(site,wp):
+    """Exact original Git 421/422 parity shared by runner and registry.
+
+    Source Staging 422 has one independently attested immutable source
+    release SHA. Wayfatours 421/422 and Source 421 remain byte-equal to
+    the original central checkout. No runtime can authorize itself merely
+    by matching its own current or arbitrary installed bytes.
+    """
+    if site not in CONFIG or wp!=CONFIG[site][2] or wp.is_symlink():
+        raise ValueError('SOURCE_NATIVE_COMPONENT_COMPANY_ROOT_MISMATCH')
+    approved_stage_422='254c382bb96faadda2510d75501107ac73ae80673093dd3c0a47a5f63f7f2ff6'
+    original=ROOT/'worktrees/pr814-converged-local-20261115/wp-content/mu-plugins'
+    runtime=None
+    for name in ['421-mad4b-public-critical-css-coverage.php',
+                 '422-mad4b-public-critical-css-runtime.php']:
+        live=wp/'mu-plugins'/name
+        if live.is_symlink() or not live.is_file():
+            raise ValueError('SOURCE_LIVE_NATIVE_COMPONENT_DRIFT:'+name)
+        blob=live.read_bytes()
+        if site=='source' and name=='422-mad4b-public-critical-css-runtime.php':
+            if hashlib.sha256(blob).hexdigest()!=approved_stage_422:
+                raise ValueError('SOURCE_LIVE_NATIVE_COMPONENT_DRIFT:'+name)
+        else:
+            source=original/name
+            if source.is_symlink() or not source.is_file() or source.read_bytes()!=blob:
+                raise ValueError('SOURCE_LIVE_NATIVE_COMPONENT_DRIFT:'+name)
+        if name=='422-mad4b-public-critical-css-runtime.php':
+            runtime=hashlib.sha256(blob).hexdigest()
+    if not runtime:raise ValueError('SOURCE_NATIVE_RUNTIME_HASH_UNAVAILABLE')
+    return runtime
+
 def run_core(site):
     if site not in CONFIG:raise ValueError('UNKNOWN_COMPANY')
     host,php,wp,env=CONFIG[site]
@@ -188,27 +219,9 @@ def run_core(site):
     try:b=locked('/run/lock/mad4b-native-lazy-browser-global.lock')
     except BlockingIOError:
         print('SKIP_PUBLIC_CCSS_BROWSER_BUSY',site);return
-    # Never use a staging source code that was changed concurrently with
-    # publishing or a production runtime version out of sync with Git.
-    # Exact source-release identity: independent of the temporary checkout
-    # path used by PR #849. Staging Source 422 v1.0.1 was tested/deployed
-    # and committed on GitHub; the digest is its byte-for-byte identity.
-    # Any future 422 release must update this pinned expected hash with
-    # its own tested source. Never trust current live bytes just because
-    # they happen to exist or are PHP-lint clean.
-    approved_stage_422 = '254c382bb96faadda2510d75501107ac73ae80673093dd3c0a47a5f63f7f2ff6'
-    for name in ['421-mad4b-public-critical-css-coverage.php',
-                 '422-mad4b-public-critical-css-runtime.php']:
-        dst=wp/'mu-plugins'/name
-        if dst.is_symlink() or not dst.is_file():
-            raise ValueError('SOURCE_LIVE_NATIVE_COMPONENT_DRIFT:'+name)
-        if site=='source' and name=='422-mad4b-public-critical-css-runtime.php':
-            if hashlib.sha256(dst.read_bytes()).hexdigest()!=approved_stage_422:
-                raise ValueError('SOURCE_LIVE_NATIVE_COMPONENT_DRIFT:'+name)
-        else:
-            src=ROOT/'worktrees/pr814-converged-local-20261115/wp-content/mu-plugins'/name
-            if src.is_symlink() or not src.is_file() or src.read_bytes()!=dst.read_bytes():
-                raise ValueError('SOURCE_LIVE_NATIVE_COMPONENT_DRIFT:'+name)
+    # Shared exact first-party runtime admission; refresh registry uses
+    # the same source-release identity and cannot diverge from this runner.
+    verified_runtime_sha=approved_native_runtime_sha(site,wp)
     # Borrow the host's existing 45-second CPU sensor instead of starting a
     # Chromium run at 51-100% guest CPU (or with two original WPCLI slots).
     # A deferred run never selects a route, mutates the ledger or changes a
@@ -228,8 +241,7 @@ def run_core(site):
     if pressure>max(4,cores*1.35):
         print('HOLD_PUBLIC_CCSS_HIGH_LOAD',round(pressure,2));return
     state=obs(php,host,env)
-    state['runtime_sha']=hashlib.sha256(
-        (wp/'mu-plugins/422-mad4b-public-critical-css-runtime.php').read_bytes()).hexdigest()
+    state['runtime_sha']=verified_runtime_sha
     listing=catalog(php,host)
     stamp=time.strftime('%Y%m%dT%H%M%SZ',time.gmtime())
     jobdir=base/stamp
