@@ -334,3 +334,46 @@ the underlying absolute LCP still needs separate performance work.
 The eight baseline/late-image comparator cases and five integration
 checks run without a browser. Historical timings are used solely as
 sanitized regression examples, not forged new Chrome evidence.
+
+## Versioned negative canaries: no retesting successful route certificates
+The public source-family coordinator caps repeated failed canaries (four
+distinct source examples). Previously it counted historical failures
+even after the original Chromium verifier's LCP observation algorithm
+changed. That can preserve a stale `source_canary_hold` and prevent
+a fifth true template source from being sampled.
+
+The original per-route runner and its lightweight independent source
+registry now derive the same exact SHA-256 from the installed first-party
+`verify.js` and `lcp-observation-window.js`. Every newly recorded
+route attempt carries `qa_policy_sha` in the private ledger. Only a
+failed canary **with exactly the current source QA SHA** is counted
+against the existing four-source negative evidence cap. Old failures
+cannot block a new QA policy from sampling an untested legitimate
+WordPress source. Route `source_key`, published CSS/certificate SHA,
+WPML path, WCML market, generation deps, current successful
+certification and existing failure cooldown remain unchanged.
+
+The original invalid/absent QA script or symlink fails closed; there
+is no visitor header, user token or admin bypass. The 11 hermetic
+cohort/negative-proof test cases prove a fifth untested route becomes
+eligible after a versioned verifier change while four same-version
+failures still bound the group; 13 equal-window LCP checks remain
+independent. Each actual new route still requires original Chromium
+five-viewport pass and public readback.
+
+## Original read-only source family registry group parity
+The systemd `mad4b-public-source-families-refresh.service` uses
+`CapabilityBoundingSet=`, `ProtectSystem=strict`, and writes only
+to the first-party private coverage report path. The Source and
+Wayfatours WP_CONTENT_DIR roots are originally mode 0770 and owned by
+www-data:www-data. At 05:07 UTC its previously untested original
+read step failed with `Permission denied` because effective UID root
+had no DAC_OVERRIDE and was not in www-data; it is not a stale 422 SHA
+or a reason to expand WordPress file permissions.
+A service-scoped systemd drop-in
+`10-original-content-read-group.conf` adds
+`SupplementaryGroups=www-data` to that read-only report service
+only, preserving the original empty capabilities, strict read-only
+site mount policy and no writes outside the report path. Both original
+WordPress site roots remain untouched. Restore by removing only
+the drop-in, daemon-reloading systemd and restarting the native timer.

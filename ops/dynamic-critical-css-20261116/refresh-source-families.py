@@ -32,6 +32,7 @@ def main():
             # Source Staging 422 v1.0.1 is an approved separate release,
             # while Wayfa Production retains original 421/422 byte parity.
             state['runtime_sha']=runner.approved_native_runtime_sha(site,wp)
+            state['qa_policy_sha']=runner.qa_policy_sha()
             catalog=runner.catalog(php,host)
             if any('source_profile' not in item for item in catalog['routes']):
                 raise ValueError('source_catalog_not_migrated:'+site)

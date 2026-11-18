@@ -200,6 +200,17 @@ def approved_native_runtime_sha(site,wp):
     if not runtime:raise ValueError('SOURCE_NATIVE_RUNTIME_HASH_UNAVAILABLE')
     return runtime
 
+def qa_policy_sha():
+    # Exact deployed original Chromium QA code, never a user-supplied key.
+    # Invalidating negative attempts never publishes a public certificate.
+    digest=hashlib.sha256(b'mad4b-public-css-qa-implementation-v1\x00')
+    for name in ('verify.js','lcp-observation-window.js'):
+        p=TOOLS/'tools'/name
+        if p.is_symlink() or not p.is_file():
+            raise ValueError('QA_VERIFIER_TOOL_MISSING_OR_SYMLINK:'+name)
+        digest.update(name.encode()+b'\x00'+p.read_bytes()+b'\x00')
+    return digest.hexdigest()
+
 def run_core(site):
     if site not in CONFIG:raise ValueError('UNKNOWN_COMPANY')
     host,php,wp,env=CONFIG[site]
@@ -242,6 +253,7 @@ def run_core(site):
         print('HOLD_PUBLIC_CCSS_HIGH_LOAD',round(pressure,2));return
     state=obs(php,host,env)
     state['runtime_sha']=verified_runtime_sha
+    state['qa_policy_sha']=qa_policy_sha()
     listing=catalog(php,host)
     stamp=time.strftime('%Y%m%dT%H%M%SZ',time.gmtime())
     jobdir=base/stamp

@@ -272,8 +272,12 @@ def main():
         negative_key=(optimizer_source_key(catalog,route,state)
             if status=='hold' and hold_reason=='source_css_bundle_unavailable'
             else None)
+        qa=state.get('qa_policy_sha')
+        if qa is not None and (not isinstance(qa,str) or not re.fullmatch('[a-f0-9]{64}',qa)):
+            raise ValueError('invalid-qa-verifier-source-fingerprint')
         ledger['routes'][route['route_key']]={'source_key':key,'status':status,'failures':failures,
             'depends_on_listings':depends,'attempted_at':now,'retry_after':now+delay,
+            **({'qa_policy_sha':qa} if qa else {}),
             **({'hold_reason':hold_reason} if hold_reason else {}),
             **({'optimizer_source_key':negative_key} if negative_key else {})}
         ledger['scheduler_sequence']=(int(ledger.get('scheduler_sequence',0))+1)%4

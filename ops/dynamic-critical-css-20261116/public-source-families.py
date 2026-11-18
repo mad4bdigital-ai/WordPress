@@ -160,7 +160,11 @@ def build(site,catalog,state,ledger,root=None):
             rec=ledger['routes'].get(r['route_key'],{})
             if (isinstance(rec,dict) and rec.get('attempted_at')
                 and rec.get('source_key')==queue.source_key(catalog,r,state,
-                    bool(rec.get('depends_on_listings')))):
+                    bool(rec.get('depends_on_listings')))
+                # Count only unsuccessful attempts from the same exact
+                # QA implementation. Older negative proofs must not cap
+                # requalification when the original verifier changes.
+                and rec.get('qa_policy_sha')==state.get('qa_policy_sha')):
                 attempted.append(r['route_key'])
         bounded=len(set(attempted))>=4
         no_bundle=set()
