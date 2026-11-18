@@ -49,3 +49,22 @@ The regression measures the actual immediate next sibling of the rate listing,
 so the footprint check works on EN and ES without fabricating a visible form.
 Spanish 390px: native rates 277px to 276.6875px; next sibling delta -0.3125px.
 Do not force-show hidden language-specific booking forms based on this test.
+
+## Mobile reopening, browser history and idle interactions
+
+Another report described intermittent loss of touch after reopening a page,
+Back/Forward, or idle. It was NOT reproduced in disposable extension-free
+Chromium on the two live sites. The new
+tests/mobile-interaction-resume.test.js preserves read-only regression coverage:
+
+- Tour to Home to browser Back, Forward, Back and reload
+- Foreground after visiting another tab and a short idle period
+- Four Chromium frozen to active lifecycle transitions
+- Mobile hit-test for the native menu, first-touch state change,
+  stuck aria-busy detection, Sticky guard and Javascript exceptions
+
+The tested pages returned pageshow.persisted=false: BFCache was not
+observed, so do not claim that a true browser memory restore was tested.
+The extension-related closed message-channel warning is also not covered.
+No blanket touch interceptor, unsafe overlay clearing or preference deletion
+was installed in response to an unreplicated mobile symptom.
