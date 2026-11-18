@@ -170,3 +170,28 @@ that an old historical HOLD can retry without manually deleting a ledger,
 that the original ledger stays unchanged until the browser returns, and
 that every other public route type retains its exact original source key.
 No global cache purge or category post data was edited.
+
+## Original certificate publisher: core category taxonomy identity
+The first Wayfatours native category acceptance cohort (Uncategorized)
+passed *all five* original Chromium QA viewports after the original
+capture and public readback identity fixes. Publication nevertheless
+HOLDed because original public-route-certificate.py independently
+verified its server-side WordPress body class with the historical
+term-N check for all taxonomies. The original WordPress category body
+uses category-N, so this was an exact independent gate mismatch,
+not failed FCP/LCP/CLS or insecure market identity.
+
+The publisher now requires category-N for core WordPress category routes
+while preserving term-N on JetEngine taxonomies and postid/page-id for
+regular content. The first-party original source-identity test was
+expanded to 15 cases, including native Uncategorized and Interests,
+negative wrong IDs, prefix spoofing and category vs term confusion.
+The original certificate publisher dryrun passed using the existing
+Uncategorized five-viewport evidence and existing market/currency
+readback. A separate current WordPress WP-CLI check confirmed the
+original authenticated route, source state, market, currency and both
+dependency generations still match that captured browser evidence.
+The original five-viewport QA is *not* rerun merely because the
+publisher's identity parsing was repaired. Publication remains
+conditional on exact source parity and a fresh public HTML readback;
+a successful dryrun alone is not a deployed certificate.

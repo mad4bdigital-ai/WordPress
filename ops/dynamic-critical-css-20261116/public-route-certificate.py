@@ -30,7 +30,13 @@ def verify_queried_object(route,html):
         if route['id']!=0 or expected not in classes:
             raise ValueError('source-WP-archive-body-identity-drift')
     else:
-        rx=r'(?:^|\s)'+('term' if route['type'] in TERM_TYPES else r'(?:page-id|postid)')+r'-(\d+)(?:\s|$)'
+        # WordPress core category archives expose category-ID, not term-ID.
+        # Match the original browser capture/readback checks exactly;
+        # preserve custom JetEngine taxonomy term-ID and post/page identity.
+        id_type=('category' if route['type']=='category'
+            else 'term' if route['type'] in TERM_TYPES
+            else r'(?:page-id|postid)')
+        rx=r'(?:^|\s)'+id_type+r'-(\d+)(?:\s|$)'
         match=re.search(rx,' '.join(classes))
         if not match or int(match.group(1))!=route['id']:
             raise ValueError('source-WP-queried-object-drift')
