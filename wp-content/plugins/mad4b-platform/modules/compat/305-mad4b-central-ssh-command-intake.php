@@ -619,6 +619,59 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
         return rest_ensure_response(array('state'=>'REVOKED','object_id'=>$id));
     }
 
+    /** Distinct Host v2 REST owner action, never a native root --user. */
+    private static function host_anchor_v2_owner_session(
+        WP_REST_Request $request,string $company
+    ):bool {
+        if(defined('WP_CLI')&&WP_CLI)return false;
+        if(class_exists('MAD4B_Company_Manager_Unified_Administrator_Principal',false)
+          && MAD4B_Company_Manager_Unified_Administrator_Principal::verified())
+            return true;
+        $id=get_current_user_id();
+        return $id>0
+            && is_user_logged_in()
+            && current_user_can('manage_options')
+            && current_user_can('activate_plugins')
+            && class_exists('MAD4B_SCP_Site_Profile',false)
+            && MAD4B_SCP_Site_Profile::user_is_enrolled($id)
+            && (string)$request->get_method()==='POST'
+            && str_starts_with((string)$request->get_route(),
+                '/mad4b/v1/central-execution-lanes/'.$company.'/')
+            && (string)$request->get_header('X-WP-Nonce')!==''
+            && wp_verify_nonce((string)$request->get_header('X-WP-Nonce'),
+                'wp_rest')!==false;
+    }
+
+    /** Check original independently active 305/328 transport, not a new Grant.
+     * This is an identity prerequisite only: Host v2 owner must separately
+     * issue an operation-specific Grant with its own original305 request.
+     */
+    private static function host_anchor_v2_parent_grant(
+        string $company,string $environment,string $transport_id
+    ):?array {
+        if(!class_exists('MAD4B_Company_Native_WPCLI_Enrollment_V1',false)
+            ||!class_exists('MAD4B_Original_Remote_Hostinger_328_V1',false))
+            return null;
+        $slot=get_option(MAD4B_Company_Native_WPCLI_Enrollment_V1::SLOT.
+            $company.'_'.$environment,false);
+        if(!is_array($slot)
+            ||($slot['transport_id']??null)!==$transport_id)return null;
+        $id=(string)($slot['grant_id']??'');
+        if(!preg_match('/^[a-f0-9]{32}$/D',$id))return null;
+        $parent=get_option(self::PREFIX.$id,false);
+        $transport=get_option(self::TRANSPORT_PREFIX.$transport_id,false);
+        if(!is_array($parent)||!is_array($transport)
+            ||($parent['operation']??null)!=='company.remote.wpcli.full'
+            ||($parent['state']??null)!=='CENTRAL_OPERATION_SCOPE_GRANTED'
+            ||($parent['company']??null)!==$company
+            ||($parent['environment']??null)!==$environment
+            ||($parent['grant_mode']??null)!=='persistent'
+            ||($parent['transport_id']??null)!==$transport_id
+            ||!MAD4B_Original_Remote_Hostinger_328_V1::active($transport,$parent))
+            return null;
+        return $parent;
+    }
+
     public static function issue(WP_REST_Request $request) {
         if (!self::permitted($request)) return self::error('owner_step_up_required');
         $company = (string) $request['company'];
@@ -635,6 +688,15 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
         if (is_array($profile) && $profile['authority_family']==='original_305'
             && $profile['target_scope']==='wordpress')
             return self::error('use_owner_verified_wpcli_transport_enrollment', 403);
+        $hostAnchorV2=is_array($profile)
+            && ($profile['command_format']??'')==='host.anchor.ref.v2'
+            && in_array($operation,[
+                'company.host-authority.anchor.issue',
+                'company.host-authority.anchor.revoke'],true);
+        if($hostAnchorV2 && (!self::host_anchor_v2_owner_session($request,$company)
+            ||!MAD4B_Original_Native_Operation_Providers_V1::legacy_admitted(
+                $operation,'host','host.anchor.ref.v2')))
+            return self::error('host_anchor_v2_separate_signed_issuer_and_owner_required',403);
 
         $host = (string) ($input['host_id'] ?? '');
         $host_principal = (string) ($input['host_principal'] ?? '');
@@ -644,6 +706,8 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
         $ttl = (int) ($input['ttl_seconds'] ?? 300);
         if (!in_array($mode, array('one_time','persistent'), true))
             return self::error('grant_mode_invalid', 422);
+        if($hostAnchorV2 && $mode!=='persistent')
+            return self::error('host_anchor_v2_separate_persistent_grant_required',422);
         if ($mode === 'persistent') {
             if (isset($input['ttl_seconds']) && $input['ttl_seconds'] !== null)
                 return self::error('persistent_grant_does_not_expire_by_ttl', 422);
@@ -651,7 +715,14 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
                 return self::error('persistent_transport_reference_required', 422);
             $transport = get_option(self::TRANSPORT_PREFIX . $transport_id, null);
             if (!is_array($transport)
-                || ($transport['state'] ?? '') !== 'PENDING_INDEPENDENT_SSH_VERIFICATION')
+                || (!$hostAnchorV2 && ($transport['state'] ?? '') !==
+                    'PENDING_INDEPENDENT_SSH_VERIFICATION')
+                || ($hostAnchorV2 && (
+                    ($transport['state']??null)!=='REMOTE_HOSTINGER_WPCLI_ACCESS_VERIFIED'
+                    ||!in_array($host,['hosting-2','hosting-3'],true)
+                    ||!class_exists('MAD4B_Original_Remote_Hostinger_328_V1',false)
+                    ||!is_array(self::host_anchor_v2_parent_grant(
+                        $company,(string)($transport['environment']??''),$transport_id)))))
                 return self::error('persistent_transport_missing_or_revoked');
         } else {
             $transport = null;
@@ -689,6 +760,15 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
             || ($transport['environment'] ?? null) !== $scope['environment']
             || ($transport['assignment_revision'] ?? null) !== $scope['assignment_revision']))
             return self::error('persistent_transport_scope_mismatch');
+        if($hostAnchorV2) {
+            $parent=self::host_anchor_v2_parent_grant(
+                $company,(string)$scope['environment'],$transport_id);
+            if(!is_array($parent)
+                ||($parent['site_uuid']??null)!==$scope['site_uuid']
+                ||($parent['canonical_origin']??null)!==$scope['canonical_origin']
+                ||(int)($parent['central_principal_id']??0)!==self::actor_id())
+                return self::error('host_anchor_original328_parent_not_current',403);
+        }
         // This is a central policy scope; host-level privilege is NOT minted.
         // The SSH transport must independently verify host principal/grants.
         $grant_id = bin2hex(random_bytes(16));
@@ -709,6 +789,13 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
             'execution_authorized' => false, 'executed' => false,
             'reason' => sanitize_text_field($reason)
         );
+        if($hostAnchorV2) {
+            // Owner creates a DISTINCT per-operation grant. The parent 328
+            // proof is transport identity only, never inherited write scope.
+            $record['principal_type']='signed_host_principal_v2';
+            $record['original328_parent_grant_id']=$parent['grant_id'];
+            $record['host_v2_execution_authorized']=false;
+        }
         if (!add_option(self::PREFIX . $grant_id, $record, '', false))
             return self::error('grant_persistence_failed', 503);
         self::audit('grant_issued', $company, $grant_id, $record['state']);
@@ -805,6 +892,45 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
           'resource_type'=>'unpublished_draft_option',
         ];
     }
+    /** Typed source-only Original305 Host Anchor v2 exact owner reference.
+     * No Grant, Job, Claim or execution can be created by this pure verifier.
+     * The Broker must separately resolve the immutable root Plan, authority
+     * revision, signed owner source, original312 issuer and original313 reader.
+     */
+    public static function host_anchor_v2_exact_reference(
+        $operation, $argv, $witness, $grant, $command, $target_scope
+    ):?array {
+        $action=$operation==='company.host-authority.anchor.issue'
+            ? 'issue' : ($operation==='company.host-authority.anchor.revoke'
+            ? 'revoke' : '');
+        $required=['authority_mode','operation_id','plan_sha256',
+                   'site_uuid','target_host_id'];
+        if($action==='' || $target_scope!=='host' || $command!==null
+            || !is_array($grant) || !is_array($argv) || !is_array($witness)
+            || count($argv)!==4 || array_values($argv)!==$argv
+            || array_keys($witness)!==$required
+            || ($witness['operation_id']??null)!==$operation
+            || ($witness['site_uuid']??null)!==($grant['site_uuid']??null)
+            || ($witness['target_host_id']??null)!==($grant['target_host_id']??null)
+            || !in_array(($grant['target_host_id']??null),['hosting-2','hosting-3'],true)
+            || !in_array($witness['authority_mode']??null,
+                         ['bootstrap','operational'],true)
+            || ($witness['authority_mode']==='bootstrap'&&$action!=='issue')
+            || !is_string($witness['plan_sha256']??null)
+            || !preg_match('/^[a-f0-9]{64}$/D',$witness['plan_sha256'])
+            || $argv!==['mad4b','host-anchor',$action,
+                       '--plan_sha256='.$witness['plan_sha256']])
+            return null;
+        $canonical=wp_json_encode($argv,
+            JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
+        if(!is_string($canonical)
+            || strlen($canonical)>self::COMMAND_MAX_BYTES)
+            return null;
+        return ['format'=>'host.anchor.ref.v2',
+                'command_sha256'=>hash('sha256',$canonical),
+                'command_byte_length'=>strlen($canonical)];
+    }
+
     public static function accept_command(WP_REST_Request $request) {
         if (!self::permitted($request)) return self::error('owner_step_up_required');
         $company = (string) $request['company'];
@@ -863,6 +989,18 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
                 && (!class_exists('MAD4B_Original_WPCLI_Sealed_Command_V2',false)
                     || !MAD4B_Original_WPCLI_Sealed_Command_V2::witness_valid($input['verification'])))
                 return self::error('original_signed_wpcli_verification_invalid',422);
+        } elseif ($profile['target_scope']==='host'
+            && ($profile['command_format']??'')==='host.anchor.ref.v2') {
+            // Distinct first-party original305 owner-signed Host v2 intent.
+            $hostAnchor=$input['verification']??null;
+            $approved=self::host_anchor_v2_exact_reference(
+                (string)($grant['operation']??''),$argv,$hostAnchor,
+                $grant,$command,$target_scope);
+            if(!is_array($approved))
+                return self::error('host_anchor_original305_exact_plan_required',422);
+            $command_digest=$approved['command_sha256'];
+            $command_byte_length=$approved['command_byte_length'];
+            $command_format=$approved['format'];
         } elseif ($profile['target_scope']==='host'
             && ($profile['command_format']??'')==='host.source.ref.v1') {
             // Typed, immutable Git resource; this is NOT a shell command.
@@ -956,9 +1094,23 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
         $transport_id = (string) ($grant['transport_id'] ?? '');
         if ($mode === 'persistent') {
             $transport = get_option(self::TRANSPORT_PREFIX . $transport_id, null);
+            $isAnchor=(($command_format??null)==='host.anchor.ref.v2');
+            $anchorParent=$isAnchor ? self::host_anchor_v2_parent_grant(
+                $company,(string)($scope['environment']??''),$transport_id) : null;
+            $anchorValid=$isAnchor
+                && is_array($anchorParent)
+                && ($grant['operation']??null)===($hostAnchor['operation_id']??null)
+                && ($grant['original328_parent_grant_id']??null)===
+                    ($anchorParent['grant_id']??null)
+                && ($grant['principal_type']??null)==='signed_host_principal_v2'
+                && self::host_anchor_v2_owner_session($request,$company)
+                && MAD4B_Original_Native_Operation_Providers_V1::legacy_admitted(
+                    (string)$grant['operation'],'host','host.anchor.ref.v2')
+                && ($anchorParent['central_principal_id']??null)===self::actor_id();
             if (!is_array($transport)
-                || !class_exists('MAD4B_Original_Verified_WPCLI_Transport_V1',false)
-                || !MAD4B_Original_Verified_WPCLI_Transport_V1::permitted($transport,$grant)
+                || (!$anchorValid && ($isAnchor ||
+                    !class_exists('MAD4B_Original_Verified_WPCLI_Transport_V1',false)
+                    || !MAD4B_Original_Verified_WPCLI_Transport_V1::permitted($transport,$grant)))
                 || ($transport['company'] ?? null) !== $company
                 || ($transport['site_uuid'] ?? null) !== $scope['site_uuid']
                 || ($transport['canonical_origin'] ?? null) !== $scope['canonical_origin']
@@ -1042,6 +1194,8 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
             $receipt['sealed_argv_transport']='host_bound_x25519_original_305';
         }
         if (is_array($hostSource)) $receipt['host_source_identity']=$hostSource;
+        if (isset($hostAnchor) && is_array($hostAnchor))
+            $receipt['host_anchor_identity']=$hostAnchor;
         if (!add_option(self::REQUEST_PREFIX . $request_id, $receipt, '', false)) {
             self::audit('request_persistence_failed', $company, $request_id, 'FAILED');
             return self::error('request_persistence_failed', 503);

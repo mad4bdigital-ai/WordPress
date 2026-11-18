@@ -148,6 +148,54 @@ final class MAD4B_Central_VPS_Broker_V1 {
             return self::deny('coolify_original_intake_not_ready',409);
         return MAD4B_Tourism_Workflow_REST::coolify_reserve($request);
     }
+    /** A deterministic projection of the *original* signed 305 request.
+     * No caller-supplied fields, write permission or Broker claim results.
+     */
+    public static function original_host_v2_job_projection(array $source):?array {
+        $identity=$source['host_anchor_identity']??null;
+        $op=(string)($source['operation']??'');
+        $action=$op==='company.host-authority.anchor.issue'
+            ? 'issue' : ($op==='company.host-authority.anchor.revoke'
+            ? 'revoke' : '');
+        $keys=['authority_mode','operation_id','plan_sha256',
+               'site_uuid','target_host_id'];
+        if($action==='' || !is_array($identity)
+            || array_keys($identity)!==$keys
+            ||($identity['operation_id']??null)!==$op
+            ||($identity['site_uuid']??null)!==($source['site_uuid']??null)
+            ||($identity['target_host_id']??null)!==($source['target_host_id']??null)
+            ||!in_array($source['target_host_id']??null,['hosting-2','hosting-3'],true)
+            ||($source['target_scope']??null)!=='host'
+            ||($source['command_format']??null)!=='host.anchor.ref.v2'
+            ||($source['grant_mode']??null)!=='persistent'
+            ||!in_array($identity['authority_mode']??null,
+                         ['bootstrap','operational'],true)
+            ||($identity['authority_mode']==='bootstrap' && $action!=='issue')
+            ||!is_string($identity['plan_sha256']??null)
+            ||!preg_match('/^[a-f0-9]{64}$/D',$identity['plan_sha256'])
+            ||!is_string($source['target_ssh_principal']??null)
+            ||!preg_match('/^u[0-9]{9}$/D',$source['target_ssh_principal'])
+            ||!is_string($source['canonical_origin']??null)
+            ||!str_starts_with($source['canonical_origin'],'https://'))
+            return null;
+        $reference=['mad4b','host-anchor',$action,
+                    '--plan_sha256='.$identity['plan_sha256']];
+        $raw=wp_json_encode($reference,
+            JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
+        if(!is_string($raw)||!hash_equals(
+            hash('sha256',$raw),(string)($source['command_sha256']??'')))
+            return null;
+        return [
+            'operation_id'=>$op,
+            'principal_type'=>'signed_host_principal_v2',
+            'origin'=>$source['canonical_origin'],
+            'plan_sha256'=>$identity['plan_sha256'],
+            'authority_mode'=>$identity['authority_mode'],
+            'host_anchor_issuer_commissioned'=>false,
+            'original313_receipt_signed'=>false,
+        ];
+    }
+
     public static function dispatch(WP_REST_Request $r) {
         if (!MAD4B_Central_SSH_Command_Intake_V1::permitted($r))
             return self::deny('authenticated_owner_required');
@@ -173,6 +221,11 @@ final class MAD4B_Central_VPS_Broker_V1 {
         if (($source['target_host_id']??'')!==$broker_host) {
             $remoteWordPress=(($source['target_scope']??null)==='wordpress'
                 &&($source['operation']??null)==='company.remote.wpcli.full');
+            $remoteAnchorV2=($source['target_scope']??null)==='host'
+                &&($source['command_format']??null)==='host.anchor.ref.v2'
+                &&in_array($source['operation']??null,[
+                  'company.host-authority.anchor.issue',
+                  'company.host-authority.anchor.revoke'],true);
             if (($source['grant_mode']??null)!=='persistent'
                 || !preg_match('/^[a-f0-9]{32}$/D',(string)($source['transport_id']??'')))
                 return self::deny('remote_registry_transport_required',403);
@@ -196,6 +249,34 @@ final class MAD4B_Central_VPS_Broker_V1 {
                     || !class_exists('MAD4B_Original_Verified_WPCLI_Transport_V1',false)
                     || !MAD4B_Original_Verified_WPCLI_Transport_V1::active($transport,$grant))
                     return self::deny('remote_wordpress_original_328_required',403);
+            } elseif ($remoteAnchorV2) {
+                // A separately owner-approved Original305 Anchor grant must
+                // bind the same independently ACTIVE Original328 transport.
+                // The preexisting WPCLI grant proves transport identity only;
+                // its broader WordPress operation can NEVER authorize Anchor.
+                $slot=class_exists('MAD4B_Company_Native_WPCLI_Enrollment_V1',false)
+                    ? get_option(MAD4B_Company_Native_WPCLI_Enrollment_V1::SLOT.
+                        $company.'_'.$source['environment'],false) : false;
+                $parent=is_array($slot)
+                    ? get_option(MAD4B_Central_SSH_Command_Intake_V1::PREFIX.
+                        (string)($slot['grant_id']??''),false) : false;
+                if (!is_array($slot)||!is_array($parent)
+                    ||($slot['transport_id']??null)!==($source['transport_id']??null)
+                    ||($parent['grant_id']??null)!==($grant['original328_parent_grant_id']??null)
+                    ||($parent['operation']??null)!=='company.remote.wpcli.full'
+                    ||($parent['central_principal_id']??null)!==($grant['central_principal_id']??null)
+                    ||($parent['site_uuid']??null)!==($source['site_uuid']??null)
+                    ||($parent['environment']??null)!==($source['environment']??null)
+                    ||($grant['principal_type']??null)!=='signed_host_principal_v2'
+                    ||($grant['operation']??null)!==($source['operation']??null)
+                    ||($source['command_format']??null)!=='host.anchor.ref.v2'
+                    ||($transport['state']??null)!=='REMOTE_HOSTINGER_WPCLI_ACCESS_VERIFIED'
+                    || !class_exists('MAD4B_Original_Remote_Hostinger_328_V1',false)
+                    || !MAD4B_Original_Remote_Hostinger_328_V1::active($transport,$parent)
+                    || !class_exists('MAD4B_Original_Native_Operation_Providers_V1',false)
+                    || !MAD4B_Original_Native_Operation_Providers_V1::legacy_admitted(
+                        (string)$source['operation'],'host','host.anchor.ref.v2'))
+                    return self::deny('original_host_v2_owner_parent328_not_verified',403);
             } else {
                 // Preserve exactly the existing remote host-Shell scope.
                 if (!class_exists('MAD4B_Broker_Exact_SSH_Authority_V1',false)
@@ -229,6 +310,13 @@ final class MAD4B_Central_VPS_Broker_V1 {
                      (string)($source['operation']??''),'host','host.source.ref.v1'))
                 return self::deny('host_source_exact_original305_reference_missing',403);
         }
+        $hostV2Fields=null;
+        if (($source['command_format']??null)==='host.anchor.ref.v2') {
+            $hostV2Fields=self::original_host_v2_job_projection($source);
+            if(!is_array($hostV2Fields)
+               ||!isset($remoteAnchorV2)||$remoteAnchorV2!==true)
+               return self::deny('original_host_v2_exact_owner_plan_not_admitted',403);
+        }
         $existing=get_option(self::JOB.$id,null);
         if (is_array($existing))
             return new WP_REST_Response($existing,200);
@@ -261,16 +349,23 @@ final class MAD4B_Central_VPS_Broker_V1 {
             // Distinguish a signed company WPCLI Job from host Shell.
             // This tag NEVER authorizes execution without the exact 305/312
             // grant + transport + signed host/native receipt chain.
-            'job_type'=>$hostSourceIdentity!==null ? 'signed_vps_host_source'
+            'job_type'=>$hostV2Fields!==null
+                ? 'signed_remote_hostinger_wpcli_v2'
+                : ($hostSourceIdentity!==null ? 'signed_vps_host_source'
                 : (($source['target_scope']??'')==='wordpress'
                     ? (($source['target_host_id']??'')===$broker_host
                        ? 'signed_vps_wpcli' : 'signed_remote_hostinger_wpcli')
-                    : 'signed_host_shell'),
+                    : 'signed_host_shell')),
             'created_epoch'=>time(), 'expires_epoch'=>$source['expires_epoch'],
             'state'=>'QUEUED_FOR_VPS_BROKER_CLAIM',
             'executed'=>false,
             'independent_host_permission_verified'=>false
         );
+        if (is_array($hostV2Fields)) {
+            // Exact projection from owner-approved Original305 request;
+            // no issuer or execution authority is inferred from the Job.
+            $job=array_merge($job,$hostV2Fields);
+        }
         if (is_array($hostSourceIdentity)) {
             $job['host_id']=$broker_host;
             $job['owner_id']=$hostSourceIdentity['owner_id'];

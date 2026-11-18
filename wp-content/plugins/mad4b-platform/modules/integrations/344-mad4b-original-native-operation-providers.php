@@ -150,6 +150,82 @@ final class MAD4B_Original_Native_Operation_Providers_V1 {
    'execution_authorized'=>false];
  }
 
+ // Host Anchor v2 has two distinct first-party Original305 operations.
+ // A signed registry readback only qualifies the external issuer *provider*
+ // as available. It is NOT a Grant, a Broker Job, signed Original312, or 313.
+ // Absent actual signed independently verifiable issuer enrollment stays HOLD.
+ private static function host_anchor_v2_signed_readback(string $operation):array {
+  $provider=$operation==='company.host-authority.anchor.issue'
+    ? 'original_host_anchor_v2_issue' : 'original_host_anchor_v2_revoke';
+  $contract='mad4b.original-host-anchor-v2-readiness.v1';
+  $denied=['provider_ready'=>false,'contract'=>$contract,
+    'operation'=>$operation,'provider'=>$provider,
+    'authority_family'=>'original_305',
+    'state'=>'SIGNED_ORIGINAL312_HOST_ANCHOR_ISSUER_NOT_ENROLLED',
+    'execution_authorized'=>false,'anchor_issued'=>false];
+  if(!in_array($operation,['company.host-authority.anchor.issue',
+                            'company.host-authority.anchor.revoke'],true)
+    ||!class_exists('MAD4B_Central_VPS_Broker_V1',false)
+    ||!function_exists('sodium_crypto_sign_verify_detached'))
+      return $denied;
+  $proof=get_option('mad4b_original_host_anchor_v2_provider_readiness_v1_'.$operation,null);
+  $pub=base64_decode((string)get_option(MAD4B_Central_VPS_Broker_V1::PUBKEY,''),true);
+  if(!is_array($proof)||!is_string($pub)
+    ||strlen($pub)!==SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES)return $denied;
+  $fields=['contract','operation','provider','authority_family','target_scope',
+           'command_format','evidence_contract','broker_host_id',
+           'issuer_source_sha256','revoker_source_sha256','original306_worker_sha256',
+           'original313_verifier_sha256','issuer_and_revoker_commissioned',
+           'independent313_reader_ready','issued_epoch','expires_epoch','nonce'];
+  $keys=array_keys($proof);sort($keys,SORT_STRING);
+  $expected=array_merge($fields,['signature']);sort($expected,SORT_STRING);
+  if($keys!==$expected
+    ||($proof['contract']??null)!==$contract
+    ||($proof['operation']??null)!==$operation
+    ||($proof['provider']??null)!==$provider
+    ||($proof['authority_family']??null)!=='original_305'
+    ||($proof['target_scope']??null)!=='host'
+    ||($proof['command_format']??null)!=='host.anchor.ref.v2'
+    ||($proof['evidence_contract']??null)!==$contract
+    ||($proof['broker_host_id']??null)!=='srv2030908'
+    ||($proof['issuer_and_revoker_commissioned']??null)!==true
+    ||($proof['independent313_reader_ready']??null)!==true
+    ||!is_int($proof['issued_epoch']??null)
+    ||!is_int($proof['expires_epoch']??null)
+    ||$proof['issued_epoch']>time()+10
+    ||$proof['issued_epoch']<time()-90
+    ||$proof['expires_epoch']<=time()
+    ||$proof['expires_epoch']>$proof['issued_epoch']+90
+    ||!is_string($proof['nonce']??null)
+    ||!preg_match('/^[a-f0-9]{32}$/D',$proof['nonce']))
+       return $denied;
+  foreach(['issuer_source_sha256','revoker_source_sha256',
+           'original306_worker_sha256','original313_verifier_sha256'] as $field)
+    if(!is_string($proof[$field])
+      ||!preg_match('/^[a-f0-9]{64}$/D',$proof[$field]))return $denied;
+  $signature=base64_decode((string)$proof['signature'],true);
+  if(!is_string($signature)||strlen($signature)!==SODIUM_CRYPTO_SIGN_BYTES)
+    return $denied;
+  $payload=$proof;unset($payload['signature']);ksort($payload,SORT_STRING);
+  $canonical=wp_json_encode($payload,
+    JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
+  if(!is_string($canonical)||!sodium_crypto_sign_verify_detached(
+    $signature,$contract."\n".$canonical,$pub))return $denied;
+  return ['provider_ready'=>true,'contract'=>$contract,
+    'operation'=>$operation,'provider'=>$provider,
+    'authority_family'=>'original_305',
+    'state'=>'SIGNED_HOST_V2_PROVIDER_ENROLLED_NEEDS_INDEPENDENT_ORIGINAL305_306_312_313',
+    'execution_authorized'=>false,'anchor_issued'=>false];
+ }
+ public static function host_anchor_v2_issue_readback():array {
+  return self::host_anchor_v2_signed_readback(
+    'company.host-authority.anchor.issue');
+ }
+ public static function host_anchor_v2_revoke_readback():array {
+  return self::host_anchor_v2_signed_readback(
+    'company.host-authority.anchor.revoke');
+ }
+
  private static function ensure_registered():void {
   if(self::$registered)return;
   self::$registered=true;
@@ -181,6 +257,23 @@ final class MAD4B_Original_Native_Operation_Providers_V1 {
     'command_format'=>'host.source.ref.v1',
     'evidence_contract'=>'mad4b.original-host-source-readiness.v1',
     'readback'=>[__CLASS__,'host_source_signed_readback']]);
+  // A discovered Host v2 operation is deliberately NOT provider-ready
+  // until a live first-party Broker-signed issuer/reader readiness receipt
+  // matches exact code fingerprints. Do not inherit Host Source readiness.
+  self::register([
+    'operation'=>'company.host-authority.anchor.issue',
+    'provider'=>'original_host_anchor_v2_issue',
+    'authority_family'=>'original_305','target_scope'=>'host',
+    'command_format'=>'host.anchor.ref.v2',
+    'evidence_contract'=>'mad4b.original-host-anchor-v2-readiness.v1',
+    'readback'=>[__CLASS__,'host_anchor_v2_issue_readback']]);
+  self::register([
+    'operation'=>'company.host-authority.anchor.revoke',
+    'provider'=>'original_host_anchor_v2_revoke',
+    'authority_family'=>'original_305','target_scope'=>'host',
+    'command_format'=>'host.anchor.ref.v2',
+    'evidence_contract'=>'mad4b.original-host-anchor-v2-readiness.v1',
+    'readback'=>[__CLASS__,'host_anchor_v2_revoke_readback']]);
   // Additional future providers may register via this exact PHP API.
   // No user-supplied operation name can authorize execution.
   do_action('mad4b_original_native_operation_providers_register',__CLASS__);
