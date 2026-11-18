@@ -121,6 +121,11 @@ def indexed_plans(index: registry.Registry, plan_store: Path) -> dict[str, dict]
         else:
             selected=sorted(matching.items())
         for operation,manifest in selected:
+            # Host Anchor v2 is a separate Original306/312/313 authority lane.
+            # Never index its plan as the generic WordPress executable or
+            # accept an unsigned fallback to wpcli.argv.json.v1.
+            if manifest.get("command", {}).get("format") == registry.HOST_ANCHOR_FORMAT:
+                continue
             plan=admission.checked_plan(store,digest,manifest)
             sha=index.command_sha256(operation,plan["plan_sha256"])
             registry.require(sha not in rows,
@@ -189,6 +194,38 @@ def select(index: registry.Registry, store: Path,
     row=table[cmd]
     return admission.resolve_claimed(index,row["operation"],row["plan"],
                                      original_job,original_pending)
+
+
+def diagnose_host_anchor_v2_provider(index: registry.Registry) -> dict:
+    """Read-only typed provider enrollment check, NOT a Host issue/revoke issuer.
+
+    Both signed-issuer manifest pins and an independently rooted Original312
+    public key must be present. The original Worker can use this to decide
+    whether to route a future signed Job into the dedicated original lane.
+    A manifest name alone must never be counted as execution authorization.
+    """
+    registry.require(type(index) is registry.Registry,
+                     "ORIGINAL_HOST_V2_FIRST_PARTY_REGISTRY_REQUIRED")
+    registry.require(index.host_anchor_312_public_key is not None,
+                     "ORIGINAL_HOST_V2_312_ISSUER_NOT_ENROLLED")
+    operations = sorted(registry.HOST_ANCHOR_OPERATIONS)
+    manifests = [index.resolve(op) for op in operations]
+    registry.require(all(
+        m.get("resource_kind") == "host_anchor"
+        and m.get("source_family") == registry.HOST_ANCHOR_FAMILY
+        and m.get("job_type") == "signed_remote_hostinger_wpcli_v2"
+        and m.get("execution_enabled") is False
+        for m in manifests
+    ), "ORIGINAL_HOST_V2_TYPED_SIGNER_PROVIDER_DRIFT")
+    return {
+        "contract": "mad4b.original306.host-v2-provider-enrollment.v1",
+        "enrolled_operations": operations,
+        "typed_registry_and_signer_pin_verified": True,
+        "original312_signed_job_verified": False,
+        "original313_signed_receipt_verified": False,
+        "issue_or_revoke_enabled": False,
+        "execution_authorized": False,
+    }
 
 
 def execute_claimed(original_job: dict, original_pending: dict) -> dict:
