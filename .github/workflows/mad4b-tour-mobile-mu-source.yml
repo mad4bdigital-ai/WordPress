@@ -23,6 +23,10 @@ on:
       - '.github/workflows/mad4b-tour-mobile-mu-source.yml'
   workflow_dispatch:
 
+concurrency:
+  group: mad4b-tour-mobile-mu-source-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
