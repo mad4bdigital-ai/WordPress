@@ -3905,6 +3905,322 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "A GET-only route explicitly restricts WordPress permissions and immutable Site Profile; these existing controls do not certify queue writes, service dispatch or a release package.",
       "review_rationale": "Read original bounded assistant read work by UUID only, reject write operations, enforce Site Profile and runtime identity, private no-store, no queue claim/renew/execute."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-governed-writes.php",
+      "control_ids": [
+        "PROVIDERS-01",
+        "PROVIDERS-02",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-chatbotx-site-neutral-runtime.php"
+      ],
+      "owner_role": "Independent source-only code reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance checks apply, with no bootstrap, no capability admission and no write authority from source capture.",
+      "review_rationale": "Original installed Tours.dev bytes and SHA256 remain retained in the private frozen v3 archive. This exact Git successor removes hardcoded travel CPT lists in favor of a bounded, enrolled-site, explicit per-company post-type allowlist that defaults to deny, including independent preflight and write enforcement. No module require, WordPress route registration, grants, queue claim, original execution or company install is enabled in this PR. Same-PR negative PHP fixtures confirm frozen source and unactivated bootstrap."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-provider-adapter.php",
+      "control_ids": [
+        "PROVIDERS-01",
+        "PROVIDERS-02",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-chatbotx-site-neutral-runtime.php"
+      ],
+      "owner_role": "Independent source-only code reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance checks apply, with no bootstrap, no capability admission and no write authority from source capture.",
+      "review_rationale": "Original installed Tours.dev bytes and SHA256 remain retained in the private frozen v3 archive. This exact Git successor removes hardcoded travel CPT lists in favor of a bounded, enrolled-site, explicit per-company post-type allowlist that defaults to deny, including independent preflight and write enforcement. No module require, WordPress route registration, grants, queue claim, original execution or company install is enabled in this PR. Same-PR negative PHP fixtures confirm frozen source and unactivated bootstrap."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-write-preflight.php",
+      "control_ids": [
+        "PROVIDERS-01",
+        "PROVIDERS-02",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-chatbotx-site-neutral-runtime.php"
+      ],
+      "owner_role": "Independent source-only code reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance checks apply, with no bootstrap, no capability admission and no write authority from source capture.",
+      "review_rationale": "Original installed Tours.dev bytes and SHA256 remain retained in the private frozen v3 archive. This exact Git successor removes hardcoded travel CPT lists in favor of a bounded, enrolled-site, explicit per-company post-type allowlist that defaults to deny, including independent preflight and write enforcement. No module require, WordPress route registration, grants, queue claim, original execution or company install is enabled in this PR. Same-PR negative PHP fixtures confirm frozen source and unactivated bootstrap."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-dfsb-adapter.php",
+      "control_ids": [
+        "PROVIDERS-01",
+        "PROVIDERS-02",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent source-only code reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance checks apply, with no bootstrap, no capability admission and no write authority from source capture.",
+      "review_rationale": "Original installed Tours.dev file was SHA256-verified against the 995-file frozen capture, then copied byte-identically into a new, non-bootstrapped Git source-only candidate. No module require, WordPress route registration, grants, queue claim, original execution or company install is enabled in this PR. Same-PR negative PHP fixtures confirm frozen source and unactivated bootstrap."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-local-brand-draft-adapter.php",
+      "control_ids": [
+        "PROVIDERS-01",
+        "PROVIDERS-02",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent source-only code reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance checks apply, with no bootstrap, no capability admission and no write authority from source capture.",
+      "review_rationale": "Original installed Tours.dev file was SHA256-verified against the 995-file frozen capture, then copied byte-identically into a new, non-bootstrapped Git source-only candidate. No module require, WordPress route registration, grants, queue claim, original execution or company install is enabled in this PR. Same-PR negative PHP fixtures confirm frozen source and unactivated bootstrap."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-interaction-ui.php",
+      "control_ids": [
+        "AI-01",
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent source-only code reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance checks apply, with no bootstrap, no capability admission and no write authority from source capture.",
+      "review_rationale": "Original installed Tours.dev file was SHA256-verified against the 995-file frozen capture, then copied byte-identically into a new, non-bootstrapped Git source-only candidate. No module require, WordPress route registration, grants, queue claim, original execution or company install is enabled in this PR. Same-PR negative PHP fixtures confirm frozen source and unactivated bootstrap."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-task-routing.php",
+      "control_ids": [
+        "AI-01",
+        "AUTOMATION-01",
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent source-only code reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance checks apply, with no bootstrap, no capability admission and no write authority from source capture.",
+      "review_rationale": "Original installed Tours.dev file was SHA256-verified against the 995-file frozen capture, then copied byte-identically into a new, non-bootstrapped Git source-only candidate. No module require, WordPress route registration, grants, queue claim, original execution or company install is enabled in this PR. Same-PR negative PHP fixtures confirm frozen source and unactivated bootstrap."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli-readiness.php",
+      "control_ids": [
+        "EXECUTION-01",
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent source-only code reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance checks apply, with no bootstrap, no capability admission and no write authority from source capture.",
+      "review_rationale": "Original installed Tours.dev file was SHA256-verified against the 995-file frozen capture, then copied byte-identically into a new, non-bootstrapped Git source-only candidate. No module require, WordPress route registration, grants, queue claim, original execution or company install is enabled in this PR. Same-PR negative PHP fixtures confirm frozen source and unactivated bootstrap."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-code-release-readiness.php",
+      "control_ids": [
+        "EXECUTION-01",
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent source-only code reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance checks apply, with no bootstrap, no capability admission and no write authority from source capture.",
+      "review_rationale": "Original installed Tours.dev file was SHA256-verified against the 995-file frozen capture, then copied byte-identically into a new, non-bootstrapped Git source-only candidate. No module require, WordPress route registration, grants, queue claim, original execution or company install is enabled in this PR. Same-PR negative PHP fixtures confirm frozen source and unactivated bootstrap."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-ai-governance.php",
+      "control_ids": [
+        "AI-01",
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent source-only code reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance checks apply, with no bootstrap, no capability admission and no write authority from source capture.",
+      "review_rationale": "Original installed Tours.dev file was SHA256-verified against the 995-file frozen capture, then copied byte-identically into a new, non-bootstrapped Git source-only candidate. No module require, WordPress route registration, grants, queue claim, original execution or company install is enabled in this PR. Same-PR negative PHP fixtures confirm frozen source and unactivated bootstrap."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dfsb-environment-policy.php",
+      "control_ids": [
+        "PROVIDERS-01",
+        "PROVIDERS-02",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent source-only code reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance checks apply, with no bootstrap, no capability admission and no write authority from source capture.",
+      "review_rationale": "Original installed Tours.dev file was SHA256-verified against the 995-file frozen capture, then copied byte-identically into a new, non-bootstrapped Git source-only candidate. No module require, WordPress route registration, grants, queue claim, original execution or company install is enabled in this PR. Same-PR negative PHP fixtures confirm frozen source and unactivated bootstrap."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-faore-staging-canary-inspection.php",
+      "control_ids": [
+        "AI-01",
+        "AUTOMATION-01",
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent source-only code reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance checks apply, with no bootstrap, no capability admission and no write authority from source capture.",
+      "review_rationale": "Original installed Tours.dev file was SHA256-verified against the 995-file frozen capture, then copied byte-identically into a new, non-bootstrapped Git source-only candidate. No module require, WordPress route registration, grants, queue claim, original execution or company install is enabled in this PR. Same-PR negative PHP fixtures confirm frozen source and unactivated bootstrap."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-guided-continuation.php",
+      "control_ids": [
+        "AI-01",
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent source-only code reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance checks apply, with no bootstrap, no capability admission and no write authority from source capture.",
+      "review_rationale": "Original installed Tours.dev file was SHA256-verified against the 995-file frozen capture, then copied byte-identically into a new, non-bootstrapped Git source-only candidate. No module require, WordPress route registration, grants, queue claim, original execution or company install is enabled in this PR. Same-PR negative PHP fixtures confirm frozen source and unactivated bootstrap."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-ai-governance.php",
+      "control_ids": [
+        "AI-01",
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent source-only code reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance checks apply, with no bootstrap, no capability admission and no write authority from source capture.",
+      "review_rationale": "Original installed Tours.dev file was SHA256-verified against the 995-file frozen capture, then copied byte-identically into a new, non-bootstrapped Git source-only candidate. No module require, WordPress route registration, grants, queue claim, original execution or company install is enabled in this PR. Same-PR negative PHP fixtures confirm frozen source and unactivated bootstrap."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-ollama-ability.php",
+      "control_ids": [
+        "PROVIDERS-01",
+        "PROVIDERS-02",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent source-only code reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance checks apply, with no bootstrap, no capability admission and no write authority from source capture.",
+      "review_rationale": "Original installed Tours.dev file was SHA256-verified against the 995-file frozen capture, then copied byte-identically into a new, non-bootstrapped Git source-only candidate. No module require, WordPress route registration, grants, queue claim, original execution or company install is enabled in this PR. Same-PR negative PHP fixtures confirm frozen source and unactivated bootstrap."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-lifecycle-rest.php",
+      "control_ids": [
+        "EXECUTION-01",
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent source-only code reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance checks apply, with no bootstrap, no capability admission and no write authority from source capture.",
+      "review_rationale": "Original installed Tours.dev file was SHA256-verified against the 995-file frozen capture, then copied byte-identically into a new, non-bootstrapped Git source-only candidate. No module require, WordPress route registration, grants, queue claim, original execution or company install is enabled in this PR. Same-PR negative PHP fixtures confirm frozen source and unactivated bootstrap."
     }
   ],
   "lifecycle": [],
@@ -12346,6 +12662,338 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Two exact source byte loads and their original read-only REST registration beside site capability discovery. No mutation hook, signer issuance, automatic queue processing or database update is enabled.",
       "review_rationale": "Add only FCP local capabilities and original queue GET-only status routes, preserve all existing Git source and prevent enrollment/permission/queue write bypass."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-governed-writes.php",
+      "source_blob_sha": "11ed54a15cd53d6e1a9351204791e4f8ff38d5da",
+      "control_ids": [
+        "PROVIDERS-01",
+        "PROVIDERS-02",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-chatbotx-site-neutral-runtime.php"
+      ],
+      "owner_role": "Independent source-preservation and site-neutral review — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source provenance, site isolation, provider, execution and change-control checks remain mandatory; these files are held in unactivated source-only scope and do not introduce a new authorization surface.",
+      "review_rationale": "Original installed Tours.dev bytes and SHA256 remain retained in the private frozen v3 archive. This exact Git successor removes hardcoded travel CPT lists in favor of a bounded, enrolled-site, explicit per-company post-type allowlist that defaults to deny, including independent preflight and write enforcement. No module require, WordPress route registration, grants, queue claim, original execution or company install is enabled in this PR. Same-PR negative PHP fixtures confirm frozen source and unactivated bootstrap."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-provider-adapter.php",
+      "source_blob_sha": "b6af664ae88e3bf89571bfce239ae31a9f3a5f72",
+      "control_ids": [
+        "PROVIDERS-01",
+        "PROVIDERS-02",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-chatbotx-site-neutral-runtime.php"
+      ],
+      "owner_role": "Independent source-preservation and site-neutral review — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source provenance, site isolation, provider, execution and change-control checks remain mandatory; these files are held in unactivated source-only scope and do not introduce a new authorization surface.",
+      "review_rationale": "Original installed Tours.dev bytes and SHA256 remain retained in the private frozen v3 archive. This exact Git successor removes hardcoded travel CPT lists in favor of a bounded, enrolled-site, explicit per-company post-type allowlist that defaults to deny, including independent preflight and write enforcement. No module require, WordPress route registration, grants, queue claim, original execution or company install is enabled in this PR. Same-PR negative PHP fixtures confirm frozen source and unactivated bootstrap."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-write-preflight.php",
+      "source_blob_sha": "7de977116f29da225ac9624610fbdf93ce397963",
+      "control_ids": [
+        "PROVIDERS-01",
+        "PROVIDERS-02",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-chatbotx-site-neutral-runtime.php"
+      ],
+      "owner_role": "Independent source-preservation and site-neutral review — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source provenance, site isolation, provider, execution and change-control checks remain mandatory; these files are held in unactivated source-only scope and do not introduce a new authorization surface.",
+      "review_rationale": "Original installed Tours.dev bytes and SHA256 remain retained in the private frozen v3 archive. This exact Git successor removes hardcoded travel CPT lists in favor of a bounded, enrolled-site, explicit per-company post-type allowlist that defaults to deny, including independent preflight and write enforcement. No module require, WordPress route registration, grants, queue claim, original execution or company install is enabled in this PR. Same-PR negative PHP fixtures confirm frozen source and unactivated bootstrap."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-dfsb-adapter.php",
+      "source_blob_sha": "4793f8d3fde3d5d7c6086338db44a8c9cf4ff515",
+      "control_ids": [
+        "PROVIDERS-01",
+        "PROVIDERS-02",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent source-preservation and site-neutral review — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source provenance, site isolation, provider, execution and change-control checks remain mandatory; these files are held in unactivated source-only scope and do not introduce a new authorization surface.",
+      "review_rationale": "Original installed Tours.dev file was SHA256-verified against the 995-file frozen capture, then copied byte-identically into a new, non-bootstrapped Git source-only candidate. No module require, WordPress route registration, grants, queue claim, original execution or company install is enabled in this PR. Same-PR negative PHP fixtures confirm frozen source and unactivated bootstrap."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-local-brand-draft-adapter.php",
+      "source_blob_sha": "30685349b8f927f8a8212f5958695a2fad39af85",
+      "control_ids": [
+        "PROVIDERS-01",
+        "PROVIDERS-02",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent source-preservation and site-neutral review — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source provenance, site isolation, provider, execution and change-control checks remain mandatory; these files are held in unactivated source-only scope and do not introduce a new authorization surface.",
+      "review_rationale": "Original installed Tours.dev file was SHA256-verified against the 995-file frozen capture, then copied byte-identically into a new, non-bootstrapped Git source-only candidate. No module require, WordPress route registration, grants, queue claim, original execution or company install is enabled in this PR. Same-PR negative PHP fixtures confirm frozen source and unactivated bootstrap."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-interaction-ui.php",
+      "source_blob_sha": "7c284459eb7ad7e9426aef87bd9a96760012929b",
+      "control_ids": [
+        "AI-01",
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent source-preservation and site-neutral review — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source provenance, site isolation, provider, execution and change-control checks remain mandatory; these files are held in unactivated source-only scope and do not introduce a new authorization surface.",
+      "review_rationale": "Original installed Tours.dev file was SHA256-verified against the 995-file frozen capture, then copied byte-identically into a new, non-bootstrapped Git source-only candidate. No module require, WordPress route registration, grants, queue claim, original execution or company install is enabled in this PR. Same-PR negative PHP fixtures confirm frozen source and unactivated bootstrap."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-task-routing.php",
+      "source_blob_sha": "47a51d71b6582d554d8002f400866ce3e243c63d",
+      "control_ids": [
+        "AI-01",
+        "AUTOMATION-01",
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent source-preservation and site-neutral review — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source provenance, site isolation, provider, execution and change-control checks remain mandatory; these files are held in unactivated source-only scope and do not introduce a new authorization surface.",
+      "review_rationale": "Original installed Tours.dev file was SHA256-verified against the 995-file frozen capture, then copied byte-identically into a new, non-bootstrapped Git source-only candidate. No module require, WordPress route registration, grants, queue claim, original execution or company install is enabled in this PR. Same-PR negative PHP fixtures confirm frozen source and unactivated bootstrap."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli-readiness.php",
+      "source_blob_sha": "00ef192982f747e2e25fb538f7b389b9e71efbe8",
+      "control_ids": [
+        "EXECUTION-01",
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent source-preservation and site-neutral review — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source provenance, site isolation, provider, execution and change-control checks remain mandatory; these files are held in unactivated source-only scope and do not introduce a new authorization surface.",
+      "review_rationale": "Original installed Tours.dev file was SHA256-verified against the 995-file frozen capture, then copied byte-identically into a new, non-bootstrapped Git source-only candidate. No module require, WordPress route registration, grants, queue claim, original execution or company install is enabled in this PR. Same-PR negative PHP fixtures confirm frozen source and unactivated bootstrap."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-code-release-readiness.php",
+      "source_blob_sha": "d552413c02a63c395eaa2bec795c1218a4e09019",
+      "control_ids": [
+        "EXECUTION-01",
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent source-preservation and site-neutral review — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source provenance, site isolation, provider, execution and change-control checks remain mandatory; these files are held in unactivated source-only scope and do not introduce a new authorization surface.",
+      "review_rationale": "Original installed Tours.dev file was SHA256-verified against the 995-file frozen capture, then copied byte-identically into a new, non-bootstrapped Git source-only candidate. No module require, WordPress route registration, grants, queue claim, original execution or company install is enabled in this PR. Same-PR negative PHP fixtures confirm frozen source and unactivated bootstrap."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-ai-governance.php",
+      "source_blob_sha": "2929d3656fbc5284077de15809fe60bcfb9d4616",
+      "control_ids": [
+        "AI-01",
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent source-preservation and site-neutral review — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source provenance, site isolation, provider, execution and change-control checks remain mandatory; these files are held in unactivated source-only scope and do not introduce a new authorization surface.",
+      "review_rationale": "Original installed Tours.dev file was SHA256-verified against the 995-file frozen capture, then copied byte-identically into a new, non-bootstrapped Git source-only candidate. No module require, WordPress route registration, grants, queue claim, original execution or company install is enabled in this PR. Same-PR negative PHP fixtures confirm frozen source and unactivated bootstrap."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dfsb-environment-policy.php",
+      "source_blob_sha": "8448b67738a2064b03fd9bbe622490c1568e36bb",
+      "control_ids": [
+        "PROVIDERS-01",
+        "PROVIDERS-02",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent source-preservation and site-neutral review — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source provenance, site isolation, provider, execution and change-control checks remain mandatory; these files are held in unactivated source-only scope and do not introduce a new authorization surface.",
+      "review_rationale": "Original installed Tours.dev file was SHA256-verified against the 995-file frozen capture, then copied byte-identically into a new, non-bootstrapped Git source-only candidate. No module require, WordPress route registration, grants, queue claim, original execution or company install is enabled in this PR. Same-PR negative PHP fixtures confirm frozen source and unactivated bootstrap."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-faore-staging-canary-inspection.php",
+      "source_blob_sha": "4f74c57af06d1579edc7827417cec43088898477",
+      "control_ids": [
+        "AI-01",
+        "AUTOMATION-01",
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent source-preservation and site-neutral review — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source provenance, site isolation, provider, execution and change-control checks remain mandatory; these files are held in unactivated source-only scope and do not introduce a new authorization surface.",
+      "review_rationale": "Original installed Tours.dev file was SHA256-verified against the 995-file frozen capture, then copied byte-identically into a new, non-bootstrapped Git source-only candidate. No module require, WordPress route registration, grants, queue claim, original execution or company install is enabled in this PR. Same-PR negative PHP fixtures confirm frozen source and unactivated bootstrap."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-guided-continuation.php",
+      "source_blob_sha": "b09d5b79f69e8c0d7b4479669332c5f8a4661348",
+      "control_ids": [
+        "AI-01",
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent source-preservation and site-neutral review — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source provenance, site isolation, provider, execution and change-control checks remain mandatory; these files are held in unactivated source-only scope and do not introduce a new authorization surface.",
+      "review_rationale": "Original installed Tours.dev file was SHA256-verified against the 995-file frozen capture, then copied byte-identically into a new, non-bootstrapped Git source-only candidate. No module require, WordPress route registration, grants, queue claim, original execution or company install is enabled in this PR. Same-PR negative PHP fixtures confirm frozen source and unactivated bootstrap."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-ai-governance.php",
+      "source_blob_sha": "1cbd181206f08e301b04bab91e83ee19d33cf611",
+      "control_ids": [
+        "AI-01",
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent source-preservation and site-neutral review — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source provenance, site isolation, provider, execution and change-control checks remain mandatory; these files are held in unactivated source-only scope and do not introduce a new authorization surface.",
+      "review_rationale": "Original installed Tours.dev file was SHA256-verified against the 995-file frozen capture, then copied byte-identically into a new, non-bootstrapped Git source-only candidate. No module require, WordPress route registration, grants, queue claim, original execution or company install is enabled in this PR. Same-PR negative PHP fixtures confirm frozen source and unactivated bootstrap."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-ollama-ability.php",
+      "source_blob_sha": "2dad5ffaf463fe65575e80e5184961e2e024253a",
+      "control_ids": [
+        "PROVIDERS-01",
+        "PROVIDERS-02",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent source-preservation and site-neutral review — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source provenance, site isolation, provider, execution and change-control checks remain mandatory; these files are held in unactivated source-only scope and do not introduce a new authorization surface.",
+      "review_rationale": "Original installed Tours.dev file was SHA256-verified against the 995-file frozen capture, then copied byte-identically into a new, non-bootstrapped Git source-only candidate. No module require, WordPress route registration, grants, queue claim, original execution or company install is enabled in this PR. Same-PR negative PHP fixtures confirm frozen source and unactivated bootstrap."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-lifecycle-rest.php",
+      "source_blob_sha": "d712e575c11c1a17caffdc037159c51ca45125a3",
+      "control_ids": [
+        "EXECUTION-01",
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent source-preservation and site-neutral review — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source provenance, site isolation, provider, execution and change-control checks remain mandatory; these files are held in unactivated source-only scope and do not introduce a new authorization surface.",
+      "review_rationale": "Original installed Tours.dev file was SHA256-verified against the 995-file frozen capture, then copied byte-identically into a new, non-bootstrapped Git source-only candidate. No module require, WordPress route registration, grants, queue claim, original execution or company install is enabled in this PR. Same-PR negative PHP fixtures confirm frozen source and unactivated bootstrap."
     }
   ],
   "code_change_rules": {
