@@ -20,7 +20,8 @@ function get_term_meta($id) {return array('destination_contents'=>array(serializ
   array('title'=>'Wayfa trip','url'=>'https://wayfatours.com/tours/cairo'),
   array('title'=>'Book source','content'=>'<a href="https://another-operator.example/book">Cairo Tours</a>')
  ),
- 'editorial_reference'=>array('url'=>'https://museum.example/research')
+ 'editorial_reference'=>array('url'=>'https://museum.example/research'),
+ 'flat_contents'=>'<p><a href="https://flat-commercial.example/cairo">Cairo Tours</a></p>'
 ))));}
 function maybe_unserialize($v) {return is_string($v)&&preg_match('/^a:\d+:/',$v)?unserialize($v):$v;}
 function get_bloginfo($key) {return 'Wayfa Tours';}
@@ -44,6 +45,7 @@ $hosts=array();
 foreach($r['issues'] as $issue)$hosts[$issue['source_evidence']['matched_entity']]=$issue;
 must(isset($hosts['other-tour-operator.example']),'URL-only competitor link detected');
 must(isset($hosts['another-operator.example']),'HTML competitor link detected');
+must(isset($hosts['flat-commercial.example'])&&$hosts['flat-commercial.example']['severity']==='high','commercial link in flat HTML term field detected');
 must($hosts['other-tour-operator.example']['severity']==='high','Further reading internal by default');
 must(!isset($hosts['wayfatours.com']),'first-party URL allowed');
 must(isset($hosts['museum.example'])&&$hosts['museum.example']['severity']==='medium','external citation review-only');

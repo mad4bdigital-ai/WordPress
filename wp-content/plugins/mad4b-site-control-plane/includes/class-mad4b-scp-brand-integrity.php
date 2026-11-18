@@ -139,12 +139,18 @@ final class MAD4B_SCP_Brand_Integrity {
             // without booking language; editorial post citations remain unchanged.
             $term_link = str_starts_with($field_path,'termmeta.')
                 && preg_match('/(?:^|[._])(?:url|href|links?|further_reading|related_resources)(?:[._]|$)/i',$field_path)===1;
-            if(!$promotional && !$cta && !$term_link)continue;
+            // Free-form rich HTML (e.g. termmeta.destination_contents) may
+            // contain a commercial anchor without a nested further_reading key.
+            // Keep ordinary scholarly citations outside this strict check.
+            $commercial_term = str_starts_with($field_path,'termmeta.')
+                && preg_match('/\b(?:tours?|cruises?|excursions?|packages?|book(?:ing)?|trips?)\b/iu',$anchor)===1;
+            if(!$promotional && !$cta && !$term_link && !$commercial_term)continue;
             $out[hash('sha256',$href)]=array('host'=>$host,
                 'anchor_text'=>$anchor,
                 'url_sha256'=>hash('sha256',$href),
-                'rule'=>$promotional?'external_promotional_destination':'external_editorial_destination',
-                'confidence'=>$promotional?'high':'needs_review');
+                'rule'=>$promotional?'external_promotional_destination'
+                    :($commercial_term?'external_commercial_term_link':'external_editorial_destination'),
+                'confidence'=>($promotional||$commercial_term)?'high':'needs_review');
         }
         return array_values($out);
     }
