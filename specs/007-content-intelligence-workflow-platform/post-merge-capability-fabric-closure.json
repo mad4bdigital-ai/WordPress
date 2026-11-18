@@ -1,11 +1,11 @@
 {
   "contract": "mad4b.capability-fabric-post-merge-closure.v1",
   "phase": 37,
-  "baseline_merge_commit": "83cbe5ef992e3c99151891a0a55561a98139b948",
+  "baseline_merge_commit": "c934e0a5a3ddc924db2c7adc2dc1241785ab49ee",
   "current_repository_parent_review": {
-    "previous_reviewed_parent": "5c72e4893e36e992f056c90cfc75908b3a8f7785",
-    "reviewed_master_parent": "83cbe5ef992e3c99151891a0a55561a98139b948",
-    "scope": "14 master commits and 16 changed paths: 2 Governance #822 protected Workflows and 14 source-only media/site-local cron paths; no Feature 007 specification or Control Plane PHP runtime change in that delta",
+    "previous_reviewed_parent": "83cbe5ef992e3c99151891a0a55561a98139b948",
+    "reviewed_master_parent": "c934e0a5a3ddc924db2c7adc2dc1241785ab49ee",
+    "scope": "4 intervening master commits and 10 added files from merged PR #848 (source-only Form #6 native Rate/Stay behavior): 1 Form 6 workflow, 6 ops/site-runtime Form 6 test/manifest/docs source files, and 3 WP MU-Plugin JS/CSS files. No Feature 007 specification or Control Plane PHP files are changed by this master advancement. No live Staging or Production deployment/Authority is inferred.",
     "historic_phase37_review_retained": true,
     "authorizing": false,
     "production_authorized": false,

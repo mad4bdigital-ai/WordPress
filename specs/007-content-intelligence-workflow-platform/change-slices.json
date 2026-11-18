@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "authorizing": false,
-  "reviewed_base_sha": "2ebcedf6e661a62b239550f2fabdc6bc23e78e90",
+  "reviewed_base_sha": "fcb5ef5670dec31d31a643514b1cbf0e131a9306",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "changed_file_count": 97,

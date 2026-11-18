@@ -7,7 +7,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DIR = ROOT / "specs/007-content-intelligence-workflow-platform"
-EXPECTED = "83cbe5ef992e3c99151891a0a55561a98139b948"
+EXPECTED = "c934e0a5a3ddc924db2c7adc2dc1241785ab49ee"
 ARCHIVED = "3785892316d3c395ad144500fdecc6836ed2c176"
 
 def agrees(capfab, feature, closure):
