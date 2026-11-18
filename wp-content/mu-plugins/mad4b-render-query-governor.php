@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Shared Renderer Query Governor
  * Description: Capability-aware, versioned JetEngine data-query caching, independent of tenant IDs and domains.
- * Version: 1.4.3
+ * Version: 1.5.0
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
@@ -20,6 +20,92 @@ function mad4b_render_query_has_untrusted_market_header(): bool {
             return true;
     }
     return false;
+}
+
+/**
+ * A market-signed visitor may reuse safe JetEngine result objects without
+ * reusing a full personalized HTML page. All unknown request dimensions fail
+ * closed. This is deliberately independent of the anonymous FastCGI policy.
+ */
+function mad4b_render_query_signed_market_scope(): string {
+    static $resolved=false, $scope='';
+    if ($resolved) return $scope;
+    $resolved=true;
+    $mode=(string)get_option('mad4b_render_query_signed_market_v1','off');
+    if (!in_array($mode,['canary','on'],true))return '';
+    if ($mode==='canary'
+        && (string)($_SERVER['HTTP_X_MAD4B_SIGNED_QUERY_CANARY']??'')!=='v1')return '';
+    if (defined('WP_CLI') && WP_CLI)return '';
+    if ((string)wp_parse_url((string)get_option('home',''),PHP_URL_HOST)!=='wayfatours.com'
+        || !in_array((string)($_SERVER['REQUEST_URI']??''),['/','/es/'],true)
+        || (string)($_SERVER['REQUEST_METHOD']??'GET')!=='GET'
+        || (string)($_SERVER['QUERY_STRING']??'')!==''
+        || !is_front_page() || is_admin() || is_user_logged_in()
+        || is_preview() || wp_doing_ajax()
+        || (defined('REST_REQUEST') && REST_REQUEST)
+        || !wp_using_ext_object_cache()
+        || !class_exists('MAD4B_Country_Switcher',false)
+        || !class_exists('MAD4B_Public_Cookie_Cache_Contract_V1',false)
+        || !class_exists('MAD4B_Experience_Site_Scope_V1',false)
+        || !MAD4B_Experience_Site_Scope_V1::bound())return '';
+    if (mad4b_render_query_has_untrusted_market_header())return '';
+    foreach ([
+        'HTTP_AUTHORIZATION','PHP_AUTH_USER','HTTP_X_WP_NONCE',
+        'HTTP_X_REQUESTED_WITH','HTTP_X_MAD4B_BYPASS_CACHE',
+        'HTTP_X_MAD4B_BY_PASS_CACHE','HTTP_CF_IPCOUNTRY',
+        'HTTP_X_GEO_COUNTRY','HTTP_X_FORWARDED_GEO_COUNTRY',
+        'HTTP_X_MAD4B_CURRENCY','HTTP_X_MAD4B_MARKET_CONTEXT',
+        'HTTP_X_COUNTRY_CODE','HTTP_X_GEOIP_COUNTRY'
+    ] as $header)if (!empty($_SERVER[$header]))return '';
+    foreach ($_SERVER as $header=>$val) {
+        if (str_starts_with((string)$header,'HTTP_X_MAD4B_')
+            && $header!=='HTTP_X_MAD4B_SIGNED_QUERY_CANARY'
+            && is_scalar($val) && (string)$val!=='')return '';
+    }
+    if (function_exists('WC') && WC()->session
+        && method_exists(WC()->session,'has_session')
+        && WC()->session->has_session())return '';
+    $language=(string)apply_filters('wpml_current_language','');
+    $route=(string)($_SERVER['REQUEST_URI']??'');
+    if (!in_array($language,['en','es'],true)
+        || $language!==($route==='/es/'?'es':'en'))return '';
+    $raw=(string)($_SERVER['HTTP_COOKIE']??'');
+    if (strlen($raw)<35 || strlen($raw)>4096)return '';
+    $marketing=[];$countryCount=0;$seen=[];
+    foreach (explode(';',$raw) as $pair) {
+        $pair=trim($pair);
+        if ($pair==='' || !str_contains($pair,'='))return '';
+        [$name,$val]=explode('=',$pair,2);
+        if ($name==='' || isset($seen[$name]))return '';
+        $seen[$name]=true;
+        if ($name==='mad4b_country_selected_v1') {
+            $countryCount++;
+            if ($countryCount!==1 || $val==='' || strlen($val)>1500
+                || !isset($_COOKIE[$name]) || !is_string($_COOKIE[$name])
+                || !hash_equals((string)$_COOKIE[$name],rawurldecode($val)))return '';
+        } else $marketing[]=$pair;
+    }
+    if ($countryCount!==1)return '';
+    $safe=implode('; ',$marketing);
+    if ($safe!=='' && !MAD4B_Public_Cookie_Cache_Contract_V1::safe_marketing_cookie($safe))return '';
+    $country=(string)MAD4B_Country_Switcher::saved_country(); // native site-HMAC verified
+    if (!preg_match('/^[A-Z]{2}$/D',$country))return '';
+    $market=mad4b_render_query_market_identity(); // actual WCML identity, if enabled
+    if (!$market || !preg_match('/^[A-Z]{3}$/D',(string)($market['currency']??''))
+        || !preg_match('/^(?:base|[A-Z]{2})$/D',(string)($market['country']??'')))return '';
+    $approved=MAD4B_Country_Switcher::resolve($country,$language);
+    $profile=is_array($approved)?(string)($approved['profile_id']??''):'';
+    if (strlen($profile)>128)return '';
+    // Group per trusted market and currency, not IP or user-identifying cookie.
+    // A new policy generation cannot reuse a legacy anonymous query group.
+    $encoded=wp_json_encode([
+        'v'=>'signed-market-v1','site'=>(int)get_current_blog_id(),
+        'country'=>$country,'profile'=>$profile,
+        'wcml_country'=>$market['country'],'currency'=>$market['currency'],
+        'language'=>$language,'device'=>wp_is_mobile()?'mobile':'desktop'
+    ]);
+    if (!is_string($encoded))return '';
+    return $scope='sm1-'.substr(hash('sha256',$encoded),0,24);
 }
 
 function mad4b_render_query_private_context() {
@@ -118,8 +204,13 @@ function mad4b_render_query_policy( $query ) {
     if ( ! is_object( $query ) || empty( $query->id ) || ! isset( $query->query_type ) ) { return [ 'cache' => false, 'ttl' => 0, 'reason' => 'unidentified' ]; }
     if ( ! wp_using_ext_object_cache() ) { return [ 'cache' => false, 'ttl' => 0, 'reason' => 'no_persistent_backend' ]; }
     if ( 'off' === get_option( 'mad4b_render_query_governor', 'safe' ) ) { return [ 'cache' => false, 'ttl' => 0, 'reason' => 'policy_off' ]; }
-    if ( mad4b_render_query_private_context() ) { return [ 'cache' => false, 'ttl' => 0, 'reason' => 'private_context' ]; }
-    if ( !mad4b_render_query_market_partition_ready() ) { return [ 'cache' => false, 'ttl' => 0, 'reason' => 'market_partition_hold' ]; }
+    $signedScope=mad4b_render_query_signed_market_scope();
+    if ( !$signedScope && mad4b_render_query_private_context() ) { return [ 'cache' => false, 'ttl' => 0, 'reason' => 'private_context' ]; }
+    // Signed-market path caches only native public post/term query RESULTS.
+    // Never cache pricing, repeater, SQL, quote or visitor-specific sources.
+    if ($signedScope && !in_array((string)$query->query_type,['posts','terms'],true))
+        return [ 'cache'=>false,'ttl'=>0,'reason'=>'signed_market_query_type_veto' ];
+    if ( !$signedScope && !mad4b_render_query_market_partition_ready() ) { return [ 'cache' => false, 'ttl' => 0, 'reason' => 'market_partition_hold' ]; }
     if ( mad4b_render_query_sensitive_semantics($query) ) { return [ 'cache' => false, 'ttl' => 0, 'reason' => 'sensitive_semantic_query' ]; }
     if ( !mad4b_render_query_market_identity() ) { return [ 'cache' => false, 'ttl' => 0, 'reason' => 'unverified_market_identity' ]; }
     $type = (string) $query->query_type;
@@ -360,6 +451,7 @@ function mad4b_render_query_generation_for_id(int $query_id): string {
 add_action( 'jet-engine/query-builder/query/after-query-setup', static function ( $query ) {
     if ( ! is_object( $query ) || ! property_exists( $query, 'cache_query' ) ) { return; }
     $decision = mad4b_render_query_policy( $query );
+    $signedScope=mad4b_render_query_signed_market_scope();
     $query->cache_query = $decision['cache'];
     if ( ! $decision['cache'] ) { $query->cache_expires = 0; return; }
     // Canonical tenant ID is stable across WPML languages; current language is
@@ -378,8 +470,11 @@ add_action( 'jet-engine/query-builder/query/after-query-setup', static function 
     $version = mad4b_render_query_effective_generation($query);
     $version = (string) apply_filters('mad4b/render_query/query_version',$version,$query,$decision);
     $query->cache_query = true;
-    $query->cache_expires = $decision['ttl'];
+    // Signed guests have a short bounded TTL; legacy public policy unchanged.
+    $query->cache_expires = $signedScope
+        ? min(90,(int)$decision['ttl']) : $decision['ttl'];
     $query->cache_group = 'mad4b-rg-' . $site . '-' . $language . '-' . $marketSegment
+        . ($signedScope ? '-' . $signedScope : '')
         . '-' . (int) $query->id . '-' . substr( md5( $version ), 0, 10 );
 }, 100, 1 );
 
