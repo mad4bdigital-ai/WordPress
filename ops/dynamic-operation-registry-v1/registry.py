@@ -25,6 +25,13 @@ WORD = re.compile(r"^[a-zA-Z0-9_.:-]{1,96}$")
 CLI_WORD = re.compile(r"^[a-zA-Z0-9_./:-]{1,96}$")
 HOOK_NAME = re.compile(r"^[a-z][a-z0-9_]{2,63}$")
 HOOK_SYMBOL = re.compile(r"^[a-z][a-zA-Z0-9_]{1,95}$")
+HOST_ANCHOR_OPERATIONS = frozenset((
+    "company.host-authority.anchor.issue",
+    "company.host-authority.anchor.revoke",
+))
+HOST_ANCHOR_FAMILY = "mad4b.original-host-authority-anchor.v2"
+HOST_ANCHOR_FORMAT = "host.anchor.ref.v2"
+
 REQUIRED = ("operation_id", "provider", "version", "plan_contract",
             "handler", "verifier", "evidence_schema", "evidence", "command")
 
@@ -204,6 +211,23 @@ class Registry:
                 "store":home,
                 "issuer_public_key_b64":config["issuer_public_key_b64"]
             }
+        # A Host Anchor is a distinct signed authority, not a Host-file
+        # release. Its Original312 key must be explicitly enrolled in the
+        # root index, purpose-separated from Host-source 312 and Original313.
+        # The public key is a verifier pin, not permission to create a Job.
+        self.host_anchor_312_public_key = None
+        if "host_anchor_312_public_key_b64" in index:
+            try:
+                key = base64.b64decode(
+                    index["host_anchor_312_public_key_b64"], validate=True
+                )
+            except (TypeError, ValueError) as exc:
+                raise RegistryDenied("HOST_ANCHOR_312_PUBLIC_PIN_INVALID") from exc
+            require(len(key) == 32
+                    and key != self.independent_verifier_public_key
+                    and key != self.host_resource_312_public_key,
+                    "HOST_ANCHOR_312_SIGNER_NOT_DISTINCT")
+            self.host_anchor_312_public_key = key
         self.manifests: dict[str, dict] = {}
         for row in index["providers"]:
             require(isinstance(row, dict), "REGISTRY_ENTRY_INVALID")
@@ -343,7 +367,40 @@ class Registry:
         fmt=command.get("format") if isinstance(command,dict) else None
         # Host source is a different original resource family, NOT a
         # WordPress Job with an argv alias or a substitute signer.
-        if fmt == "host.source.ref.v1":
+        if fmt == HOST_ANCHOR_FORMAT:
+            require(self.host_anchor_312_public_key is not None,
+                    "HOST_ANCHOR_312_ROOT_SIGNER_NOT_ENROLLED")
+            require(
+                m.get("operation_id") in HOST_ANCHOR_OPERATIONS
+                and m.get("source_family") == HOST_ANCHOR_FAMILY
+                and m.get("resource_kind") == "host_anchor"
+                and m.get("target_scope") == "host"
+                and m.get("job_type") == "signed_remote_hostinger_wpcli_v2"
+                and m.get("original312_contracts") == (
+                    ["mad4b.original312.host-principal.bootstrap-issue.v1",
+                     "mad4b.original312.host-principal.exact-job.v2"]
+                    if m.get("operation_id") ==
+                       "company.host-authority.anchor.issue" else
+                    ["mad4b.original312.host-principal.exact-job.v2"]
+                )
+                and m.get("independent313_contract") ==
+                    "mad4b.original313.host-anchor-operation-proof.v1"
+                and m.get("execution_requires_signed_originals") is True
+                and m.get("execution_enabled") is False
+                and m.get("preclaim") is not None
+                and m.get("finalizer") is not None
+                and m.get("command", {}).get("bound_operation_id") ==
+                    m.get("operation_id"),
+                "HOST_ANCHOR_ORIGINAL_TYPED_PROVIDER_REQUIRED",
+            )
+            expected = (
+                "mad4b.host-authority.anchor-issue.plan.v2" if
+                m["operation_id"].endswith(".issue") else
+                "mad4b.host-authority.anchor-revoke.plan.v2"
+            )
+            require(m["plan_contract"] == expected,
+                    "HOST_ANCHOR_EXACT_PLAN_CONTRACT_REQUIRED")
+        elif fmt == "host.source.ref.v1":
             require(self.host_resource_312_public_key is not None,
                     "HOST312_ROOT_SIGNER_NOT_ENROLLED")
             require(m.get("source_family")=="mad4b.native-host-source-release.v1"
@@ -358,7 +415,8 @@ class Registry:
                     and m.get("target_scope","wordpress")=="wordpress",
                     "PROVIDER_COMMAND_RESOURCE_MISMATCH")
         require(isinstance(command, dict) and
-                fmt in ("wpcli.argv.json.v1","host.source.ref.v1") and
+                fmt in ("wpcli.argv.json.v1","host.source.ref.v1",
+                        HOST_ANCHOR_FORMAT) and
                 command.get("mode") == "plan_sha256" and
                 command.get("bound_operation_id") == m["operation_id"] and
                 isinstance(command.get("prefix"), list) and

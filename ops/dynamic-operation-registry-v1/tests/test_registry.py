@@ -220,3 +220,165 @@ class RegistryTests(unittest.TestCase):
         (self.root/"index.json").write_text(json.dumps(j))
         with self.assertRaisesRegex(r.RegistryDenied,"DUPLICATE_OPERATION"):
             r.Registry(self.root)
+
+
+class HostAnchorV2TypedRegistryTests(RegistryTests):
+    """No Host Anchor may inherit host.source or WordPress authority."""
+
+    def _source(self, *, operation="company.host-authority.anchor.issue"):
+        self.manifest.update({
+            "operation_id": operation,
+            "provider": "mad4b-host-anchor",
+            "plan_contract": (
+                "mad4b.host-authority.anchor-issue.plan.v2" if
+                operation.endswith(".issue") else
+                "mad4b.host-authority.anchor-revoke.plan.v2"
+            ),
+            "source_family": r.HOST_ANCHOR_FAMILY,
+            "resource_kind": "host_anchor",
+            "target_scope": "host",
+            "job_type": "signed_remote_hostinger_wpcli_v2",
+            "original312_contracts": (
+                ["mad4b.original312.host-principal.bootstrap-issue.v1",
+                 "mad4b.original312.host-principal.exact-job.v2"] if
+                operation.endswith(".issue") else
+                ["mad4b.original312.host-principal.exact-job.v2"]
+            ),
+            "independent313_contract":
+                "mad4b.original313.host-anchor-operation-proof.v1",
+            "execution_requires_signed_originals": True,
+            "execution_enabled": False,
+            "preclaim": self.manifest["handler"].copy(),
+            "finalizer": self.manifest["verifier"].copy(),
+        })
+        # The registry rejects reuse of a handler/verifier file as a hook.
+        (self.root/"code/preclaim.py").write_text("PASS = False\n")
+        (self.root/"code/finalizer.py").write_text("PASS = False\n")
+        self.manifest["preclaim"] = {
+            "path": "code/preclaim.py",
+            "sha256": r.sha((self.root/"code/preclaim.py").read_bytes())
+        }
+        self.manifest["finalizer"] = {
+            "path": "code/finalizer.py",
+            "sha256": r.sha((self.root/"code/finalizer.py").read_bytes())
+        }
+        self.manifest["command"].update({
+            "format": r.HOST_ANCHOR_FORMAT,
+            "prefix": ["mad4b", "host-anchor", "issue"
+                       if operation.endswith(".issue") else "revoke"],
+            "bound_operation_id": operation,
+        })
+        self.write_manifest()
+
+    def _pin(self, *, identical_to_source=False, identical_to_313=False):
+        signer = Ed25519PrivateKey.generate()
+        signer_raw = signer.public_key().public_bytes(
+            serialization.Encoding.Raw, serialization.PublicFormat.Raw)
+        source_raw = Ed25519PrivateKey.generate().public_key().public_bytes(
+            serialization.Encoding.Raw, serialization.PublicFormat.Raw)
+        other = self.verifier_pub if identical_to_313 else base64.b64encode(
+            source_raw if identical_to_source else signer_raw).decode()
+        data = json.loads((self.root/"index.json").read_text())
+        data["host_anchor_312_public_key_b64"] = other
+        data["host_resource_312_public_key_b64"] = base64.b64encode(
+            source_raw).decode()
+        (self.root/"index.json").write_text(json.dumps(data)+"\n")
+        return other
+
+    def test_issue_exact_typed_root_pin_can_load_without_execution(self):
+        self._source()
+        self._pin()
+        index = r.Registry(self.root)
+        m = index.resolve("company.host-authority.anchor.issue")
+        self.assertFalse(m["execution_enabled"])
+        self.assertFalse(index.summary()["execution_performed"])
+        self.assertFalse(index.summary()["grant_issued"])
+
+    def test_revoke_exact_typed_root_pin_can_load_without_execution(self):
+        self._source(operation="company.host-authority.anchor.revoke")
+        self._pin()
+        index = r.Registry(self.root)
+        self.assertEqual(index.resolve(
+            "company.host-authority.anchor.revoke")["resource_kind"],
+            "host_anchor")
+
+    def test_unpinned_original312_signer_rejected(self):
+        self._source()
+        with self.assertRaisesRegex(r.RegistryDenied,
+                                   "HOST_ANCHOR_312_ROOT_SIGNER_NOT_ENROLLED"):
+            r.Registry(self.root)
+
+    def test_original313_key_cannot_issue(self):
+        self._source()
+        self._pin(identical_to_313=True)
+        with self.assertRaisesRegex(r.RegistryDenied,
+                                   "HOST_ANCHOR_312_SIGNER_NOT_DISTINCT"):
+            r.Registry(self.root)
+
+    def test_host_source_312_key_cannot_issue(self):
+        self._source()
+        self._pin(identical_to_source=True)
+        with self.assertRaisesRegex(r.RegistryDenied,
+                                   "HOST_ANCHOR_312_SIGNER_NOT_DISTINCT"):
+            r.Registry(self.root)
+
+    def test_wordpress_command_type_cannot_host_anchor(self):
+        self._source()
+        self._pin()
+        self.manifest["command"]["format"] = "wpcli.argv.json.v1"
+        self.write_manifest()
+        self._pin()
+        with self.assertRaisesRegex(r.RegistryDenied,
+                                   "PROVIDER_COMMAND_RESOURCE_MISMATCH"):
+            r.Registry(self.root)
+
+    def test_host_source_command_type_cannot_host_anchor(self):
+        self._source()
+        self._pin()
+        self.manifest["command"]["format"] = "host.source.ref.v1"
+        self.write_manifest()
+        self._pin()
+        with self.assertRaisesRegex(r.RegistryDenied,
+                                   "HOST_PROVIDER_RESOURCE_CONTRACT_INVALID"):
+            r.Registry(self.root)
+
+    def test_no_unverified_activation_in_manifest(self):
+        self._source()
+        self._pin()
+        self.manifest["execution_enabled"] = True
+        self.write_manifest()
+        self._pin()
+        with self.assertRaisesRegex(r.RegistryDenied,
+                                   "HOST_ANCHOR_ORIGINAL_TYPED_PROVIDER_REQUIRED"):
+            r.Registry(self.root)
+
+    def test_manifest_requires_correct_operation(self):
+        self._source()
+        self._pin()
+        self.manifest["operation_id"] = "company.host-authority.anchor.rotate"
+        self.manifest["command"]["bound_operation_id"] = self.manifest["operation_id"]
+        self.write_manifest()
+        self._pin()
+        with self.assertRaisesRegex(r.RegistryDenied,
+                                   "HOST_ANCHOR_ORIGINAL_TYPED_PROVIDER_REQUIRED"):
+            r.Registry(self.root)
+
+    def test_provider_requires_preclaim_finalizer(self):
+        self._source()
+        self._pin()
+        del self.manifest["preclaim"]
+        self.write_manifest()
+        self._pin()
+        with self.assertRaisesRegex(r.RegistryDenied,
+                                   "HOST_ANCHOR_ORIGINAL_TYPED_PROVIDER_REQUIRED"):
+            r.Registry(self.root)
+
+    def test_wrong_plan_contract_rejected(self):
+        self._source()
+        self._pin()
+        self.manifest["plan_contract"] = "mad4b.host-authority.anchor-revoke.plan.v2"
+        self.write_manifest()
+        self._pin()
+        with self.assertRaisesRegex(r.RegistryDenied,
+                                   "HOST_ANCHOR_EXACT_PLAN_CONTRACT_REQUIRED"):
+            r.Registry(self.root)
