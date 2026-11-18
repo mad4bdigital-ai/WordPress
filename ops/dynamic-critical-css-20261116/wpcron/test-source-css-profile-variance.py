@@ -2,6 +2,7 @@
 """Exactly distinct source CSS bundles must never inherit another certificate."""
 import importlib.util
 import copy
+import tempfile,os,time
 from pathlib import Path
 p=Path(__file__).with_name('source-css-profile-variance.py')
 sp=importlib.util.spec_from_file_location('css_cohort',p)
@@ -48,7 +49,17 @@ zz=m.classify(changed,manifest3,browser,129)
 ck('stale CSS epoch never accepted',zz['http_profiles_pending_visual_qa']==['en'])
 missing=dict(browser);missing.pop('en')
 zz=m.classify(http,manifest,missing,129)
-ck('missing browser provenance never treated as complete',zz['http_profiles_pending_visual_qa']==['en'])
+ck('expired browser readback cannot fabricate a fresh Chromium result',
+   zz['browser_profiles_missing_or_expired']==['en']
+   and zz['http_profiles_pending_visual_qa']==[]
+   and zz['per_locale']['en']['http_previous_independent_certificate_matched'] is True
+   and zz['per_locale']['en']['chromium_previous_certificate_matched'] is False
+   and zz['certificate_issued'] is False)
+zz_unqualified=m.classify(changed,manifest,missing,129)
+ck('missing Chromium plus missing exact native CSS certificate stays pending',
+   zz_unqualified['http_profiles_pending_visual_qa']==['en']
+   and zz_unqualified['browser_profiles_missing_or_expired']==['en']
+   and zz_unqualified['per_locale']['en']['http_previous_independent_certificate_matched'] is False)
 # A newer uncertified host-egress browser snapshot must not erase the
 # older, independently valid Docker-bridge Chrome certificate.
 two={lang:[dict(row)] for lang,row in browser.items()}
@@ -66,4 +77,43 @@ ck('two different exact CSS proofs may coexist without borrowing QA',
    result['http_profiles_pending_visual_qa']==[]
    and len(result['per_locale']['en']['chromium_qualified_source_shas'])==2
    and result['per_locale']['en']['status']=='same_exact_profile')
-print('CSS_SOURCE_DUAL_PROFILE_TESTS 8')
+# A native job directory can have a recent mtime even when the independent
+# Chromium observed/ directory is outside the 90-minute readback window.
+# This stale fact must not abort new valid browser cohort checks.
+with tempfile.TemporaryDirectory() as d:
+    root=Path(d)
+    good=root/'20261118T152815Z';good.mkdir()
+    (good/'observed').mkdir()
+    stale=root/'20261118T151455Z';stale.mkdir()
+    (stale/'observed').mkdir()
+    now=time.time()
+    os.utime(good,(now,now))
+    os.utime(good/'observed',(now,now))
+    os.utime(stale,(now,now))
+    os.utime(stale/'observed',(now-5500,now-5500))
+    seen=[]
+    original=m.native_browser_rows
+    try:
+        def mock_native(p,**kw):
+            seen.append(p)
+            return {'en':dict(browser['en'])}
+        m.native_browser_rows=mock_native
+        rows=m.browser_provenance([good,stale])
+        ck('stale observed dir cannot suppress newer real Chrome cohort',
+           seen==[good/'observed'] and len(rows.get('en',[]))==1)
+        seen.clear()
+        rows=m.browser_provenance([stale])
+        ck('only stale receipts never grant a browser source certificate',
+           rows=={} and m.classify(http,manifest,rows,129)
+           ['browser_profiles_missing_or_expired']==list(LANGS)
+           and m.classify(http,manifest,rows,129)
+           ['http_profiles_pending_visual_qa']==[])
+        wrong=root/'20261118T164000Z';wrong.mkdir()
+        (wrong/'observed').symlink_to(good/'observed',target_is_directory=True)
+        try:m.browser_provenance([wrong,good])
+        except ValueError as e:
+            ck('symlinked newest browser readback still fails closed',
+               str(e)=='untrusted_browser_report')
+        else:raise AssertionError('untrusted observed symlink admitted')
+    finally:m.native_browser_rows=original
+print('CSS_SOURCE_DUAL_PROFILE_TESTS 12')

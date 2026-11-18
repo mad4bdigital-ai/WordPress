@@ -7,6 +7,10 @@ spec=importlib.util.spec_from_loader('original_css_wpcron',SourceFileLoader('ori
 mod=importlib.util.module_from_spec(spec);spec.loader.exec_module(mod)
 cases=[
  ('wayfa','public',0,'SKIP_PUBLIC_CCSS_BROWSER_BUSY wayfa',False),
+ ('wayfa','public',0,'DEFER_PUBLIC_CCSS_RESOURCE_WINDOW wayfa DEFER_PUBLIC_CCSS_HOST_CPU_BUDGET central_wpcli_slots_reserved',False),
+ ('source','public',0,'DEFER_PUBLIC_CCSS_RESOURCE_SENSOR_UNAVAILABLE source',False),
+ ('source','public',0,'HOLD_PUBLIC_CCSS_HIGH_LOAD 8.4',False),
+ ('source','families',0,'DEFER_SOURCE_FAMILY_REFRESH DEFER_PUBLIC_CCSS_HOST_CPU_BUDGET central_wpcli_slots_reserved\nLIGHT_VARIANTS_FROM_WP_SNAPSHOT source attempted 1',False),
  ('wayfa','public',0,'SKIP_PUBLIC_CCSS_ALREADY_RUNNING',False),
  ('wayfa','public',0,'HOLD_PUBLIC_CCSS wayfa en /foo/',False),
  ('wayfa','public',0,'PUBLIC_CCSS_QUEUE_RECORDED en /foo/ hold 1',False),
@@ -43,5 +47,14 @@ cases=[
 for i,(site,task,code,stdout,want) in enumerate(cases,1):
     got,reason=mod.verified_task_outcome(site,task,code,stdout,'')
     assert got is want,(i,task,stdout,got,reason)
+    if ('DEFER_PUBLIC_CCSS_RESOURCE_' in stdout or 'SKIP_PUBLIC_CCSS_BROWSER_BUSY' in stdout
+        or 'HOLD_PUBLIC_CCSS_HIGH_LOAD' in stdout or 'DEFER_SOURCE_FAMILY_REFRESH' in stdout):
+        assert reason=='host_resource_deferred',(site,task,reason)
+    if stdout.startswith('HOLD_PUBLIC_CCSS wayfa'):
+        assert reason=='public_source_or_browser_deferred'
     print('PASS',i,task,reason)
+assert mod.retry_policy(3,'host_resource_deferred',1000)==(0,1300)
+assert mod.retry_policy(3,'public_source_or_browser_deferred',1000)==(4,4600)
+assert mod.retry_policy(0,'host_resource_deferred',1000)==(0,1300)
+print('WPCRON_RESOURCE_BACKOFF_ADMISSION 3')
 print('WPCRON_CSS_EXACT_OUTCOME',len(cases))

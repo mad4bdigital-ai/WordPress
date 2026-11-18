@@ -190,3 +190,56 @@ and original exact WordPress generation. On the next quiet resource window,
 the original fresh WP-CLI catalog refresh and independently tested
 per-family canaries can proceed normally; no automatic native source
 QA gate or publish requirement is relaxed.
+
+## Native CSS v10: capacity deferrals are not browser/QA failures
+
+The original WordPress-owned CSS host worker previously applied its
+exponential QA-failure retry backoff even when an original worker
+clearly returned BEFORE starting Chromium, for example a
+DEFER_PUBLIC_CCSS_RESOURCE_WINDOW record with central WP-CLI slots
+reserved. The resulting private retry delay could exceed the original
+WordPress five-minute schedule although no source QA failure occurred.
+
+In immutable v10, exact first-party resource/lock markers from public
+canaries or source-family refresh map to host_resource_deferred. Such
+results do NOT acknowledge original WP-Cron tickets, authorize CSS,
+change browser/DOM safety gates, or start another expensive job.
+They reset only the host's private failure counter and use the ordinary
+300s retry interval. Authentic QA/source failures continue bounded
+exponential backoff. Nonzero worker exits and timed-out Chromium runs
+remain failures, not skipped.
+
+The original v9 snapshot-only source fallback remains enrolled for
+WP-CLI slot contention, without new public credential, price or booking
+cache exposure. v9/v8 host worker backups remain available.
+
+## Source CSS provenance observer: expired browser receipt is not CSS certificate revocation
+
+After original source first-fold had published QA-signed CSS for all six
+WPML home routes, root-owned Chromium observations aged beyond the
+90-minute readback window. A native run directory could still have a
+recent mtime after its observed/ directory was already expired, and the
+old reporter raised browser_readback_stale, suppressing the entire
+read-only cohort status. If all Chromium snapshots had expired, the
+reporter also mislabeled *independently certified* current HTTP CSS as
+HTTP_UNQUALIFIED merely because it lacked a fresh optional readback.
+
+The repaired observer ignores expired observed/ directories without
+relaxing checks on symlinks, malformed or foreign Chromium inputs.
+It tracks two independent dimensions: current source HTTP CSS qualified
+by its EXACT first-party manifest SHA + Elementor document fingerprint
++ CSS epoch + original QA decision, and an independently observed
+*recent* Chromium readback. A missing/expired browser profile is
+explicitly surfaced as browser_profiles_missing_or_expired, while
+http_profiles_pending_visual_qa contains only source identities that
+lack their own valid original published certificate.
+
+No current browser measurement is fabricated; an expired profile is
+never credited as a fresh browser proof, no CSS certificate is issued,
+no WordPress ticket is acknowledged, and no manifest/cache is touched.
+Live result after repair: 6/6 independently original-QA-certified
+HTTP source CSS, 0/6 currently fresh read-only Chromium snapshots.
+Original production admission remains owned by its separate actual
+source observer and original event ledger. Regression covers expired
+receipt with recent parent, all-expired snapshots, missing original
+certificate, symlinked capture source, and dual original source profiles.

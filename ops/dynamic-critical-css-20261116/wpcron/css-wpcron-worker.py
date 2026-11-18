@@ -10,7 +10,7 @@ import json,os,re,stat,subprocess,sys,time
 from pathlib import Path
 
 ROOT=Path('/opt/mad4b-company-provisioning')
-SOURCE=ROOT/'releases/template-aware-css-wpcron-v9-20261118/ops/dynamic-critical-css-20261116'
+SOURCE=ROOT/'releases/template-aware-css-wpcron-v10-20261118/ops/dynamic-critical-css-20261116'
 REPORT=ROOT/'reports/wpcron-css-v1'
 CONTAINERS={'source':'php-wkgtkzta35wkkgouwt6ruljc',
             'wayfa':'php-guxhp9y6vgh7oouuw8plxrlr'}
@@ -153,11 +153,12 @@ def invoke(site,job,jid,key,history,timeout=None):
             else:
                 print('WPCSS_ACK_STALE_OR_BOOT_DEFER',site,job,jid,flush=True)
         else:
-            failures+=1
-            backoff=min(3600,300*(2**min(failures,4)))
+            failures,next_retry=retry_policy(failures,reason,int(time.time()))
             history[key]={'last_attempt':attempt_time,'failures':failures,
-                          'next_retry':int(time.time())+backoff,**worker_marker}
+                          'next_retry':next_retry,**worker_marker}
             save_state(history)
+            if reason=='host_resource_deferred':
+                print('WPCSS_NONFAILURE_RESOURCE_RETRY',site,job,jid,flush=True)
     except (OSError,subprocess.TimeoutExpired) as e:
         failures+=1
         history[key]={'last_attempt':attempt_time,'failures':failures,
@@ -165,6 +166,15 @@ def invoke(site,job,jid,key,history,timeout=None):
                       **worker_marker}
         save_state(history)
         print('WPCSS_HEAVY_WORKER_DEFER',site,job,type(e).__name__,flush=True)
+def retry_policy(previous_failures:int,reason:str,now:int):
+    # Only a real QA failure earns exponential retry backoff; a proven
+    # before-QA capacity deferral uses one normal tick with no failure count.
+    if reason=='host_resource_deferred':
+        return 0,now+COOLDOWN
+    failures=max(0,int(previous_failures))+1
+    return failures,now+min(3600,300*(2**min(failures,4)))
+
+
 def verified_task_outcome(site,job,returncode,stdout,stderr):
     """Only an original, *completed* task result may consume a WP ticket.
 
@@ -176,6 +186,18 @@ def verified_task_outcome(site,job,returncode,stdout,stderr):
         return False,'worker_exit_nonzero'
     lines=[line.strip() for line in stdout.splitlines() if line.strip()]
     if job=='public':
+        # Explicit resource/lock deferrals occur BEFORE browser QA. Never
+        # convert them into failed source certificates or long backoff.
+        resource_prefixes=(
+            'DEFER_PUBLIC_CCSS_RESOURCE_WINDOW '+site+' ',
+            'DEFER_PUBLIC_CCSS_RESOURCE_SENSOR_UNAVAILABLE '+site,
+            'SKIP_PUBLIC_CCSS_BROWSER_BUSY '+site,
+            'SKIP_PUBLIC_CCSS_ALREADY_RUNNING',
+            'DEFER_PUBLIC_CCSS_HOME_RECOVERY '+site+' ',
+            'HOLD_PUBLIC_CCSS_HIGH_LOAD ',
+        )
+        if any(line.startswith(resource_prefixes) for line in lines):
+            return False,'host_resource_deferred'
         prefixes=(
             'CERTIFIED_PUBLIC_CCSS '+site+' ',
             'CERTIFIED_PUBLIC_CCSS_REUSED '+site+' ',
@@ -207,6 +229,10 @@ def verified_task_outcome(site,job,returncode,stdout,stderr):
             for line in lines)
         return success,'verified_home_result' if success else 'home_source_or_browser_deferred'
     if job=='families':
+        if any(line.startswith(('DEFER_SOURCE_FAMILY_REFRESH ',
+                                'SKIP_SOURCE_FAMILY_REFRESH_ALREADY_RUNNING'))
+               for line in lines):
+            return False,'host_resource_deferred'
         success=all(
             any(line.startswith('SOURCE_FAMILY_REGISTRY_REFRESH '+s+' ') for line in lines)
             for s in ('source','wayfa'))
