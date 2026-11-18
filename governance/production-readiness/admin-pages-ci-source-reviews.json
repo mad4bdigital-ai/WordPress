@@ -17,6 +17,19 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/integration-pr415-pr416-pr420-pr421-contract.py"
       ],
       "review_rationale": "Exact reviewed extension of the disposable WordPress admin-page smoke to five newly registered company pages; preserves authenticated and unauthenticated checks, malformed input checks, nonce checks and zero outbound requests. Non-authorizing source evidence only; neither historical delivery hashes nor runtime/write/Owner release policies changed."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php",
+      "prior_source_blob_sha": "ae5fb3221fe82ac7629c300e2194e31465912af7",
+      "source_blob_sha": "4cdee11733bc6c3b814855d7537cb1f70cd51153",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-pr415-pr416-pr420-pr421-contract.py"
+      ],
+      "review_rationale": "The exact successor adds the real, registered DFSB environment policy admin page to the existing disposable-WordPress smoke. Diff review confirms only two explanatory comments and one new page handler mapping; permission-denial checks, full page census, malformed request checks and zero outbound HTTP constraints remain intact. This is non-authorizing CI source evidence only; no historical Feature 007 hashes, runtime permissions or owner release policy are changed."
     }
   ]
 }

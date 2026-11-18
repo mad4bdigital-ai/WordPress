@@ -15,8 +15,29 @@ function check_dfsb($condition,$why){
  if(!$condition){fwrite(STDERR,'FAIL: '.$why.PHP_EOL);exit(1);}
  $GLOBALS['cases']=($GLOBALS['cases']??0)+1;
 }
+// Load the actual shared route registry; exercise WordPress hook scheduling
+// without installing a menu, database, or issuing permission grants.
+$GLOBALS['hook_schedule']=array();
+function add_action($name,$callback,$priority=10){
+ $GLOBALS['hook_schedule'][]=array('hook'=>$name,'callback'=>$callback,'priority'=>$priority);
+}
+function admin_url($path=''){return 'https://example.invalid/wp-admin/'.$path;}
+function add_query_arg($key,$value,$url){return $url.'?'.$key.'='.$value;}
+require dirname(__DIR__).'/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-route-registry.php';
 require dirname(__DIR__).'/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dfsb-environment-policy.php';
 $c='MAD4B_SCP_DFSB_Environment_Policy';
+$c::boot();
+$routes=MAD4B_SCP_Admin_Route_Registry::routes();
+check_dfsb(isset($routes['mad4b-dfsb-environments'])
+ && $routes['mad4b-dfsb-environments']['required_capability']==='manage_options',
+ 'DFSB admin route must have exact registered capability and canonical slug');
+$adminHooks=array_values(array_filter($GLOBALS['hook_schedule'],function($event){return $event['hook']==='admin_menu';}));
+check_dfsb(count($adminHooks)===1 && $adminHooks[0]['priority']===92
+ && $adminHooks[0]['callback']===array($c,'menu'),
+ 'DFSB submenu scheduled once after parent using route registry');
+check_dfsb(count($GLOBALS['hook_schedule'])===2
+ && $GLOBALS['hook_schedule'][1]['hook']==='admin_post_mad4b_scp_dfsb_policy_save',
+ 'Save action remains unchanged; boot itself performs no write');
 $GLOBALS['policy_options']=array();
 check_dfsb(!$c::allows('publication'),'Unconfigured Site Profile never permits DFSB publishing');
 $sha=str_repeat('a',40);

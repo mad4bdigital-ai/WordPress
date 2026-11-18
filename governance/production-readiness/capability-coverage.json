@@ -23495,6 +23495,26 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing exact-resource OAuth validation, signed token admission, Site Profile, sensitive-step-up and governance checks remain authoritative. Recognizing a CIMD URL does not create an execution grant or authenticate a caller.",
       "review_rationale": "Selectively preserve reviewed Tours.dev PR #865 per-connector ChatGPT CIMD identity and exact matching redirect, with negative host/port/userinfo/extra redirect and cross-connector tests; baseline rc129 file is byte-identical to PR #865 parent."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dfsb-environment-policy.php",
+      "source_blob_sha": "81b3a06e958de6c5cb477f392e0e50a5930c0fee",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/dfsb-environment-policy-original-hermetic.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-route-registry-contract.py"
+      ],
+      "owner_role": "MAD4B first-party source/risk reviewer for exact original runtime — CI only",
+      "review_rationale": "Selective Tours.dev source parity for DFSB Dynamic SEO Environment menu: canonical Admin Route Registry registration with exact manage_options capability must succeed before submenu scheduling after parent priority 92; missing or conflicting registry denies menu. Retain newer rc129 WP_Error/non-string environment fail-closed logic, staging/production isolation, strict local source SHA gate and immutable existing review. No runtime write, grant, administrative bypass or release approval.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "code_change_rules": {
