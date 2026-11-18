@@ -68,7 +68,9 @@ jobs:
 
 
   browser-smart-suggestions:
-    runs-on: ubuntu-latest
+    # Playwright 1.56.0 Chromium is not available on ubuntu26.04-x64.
+    # Pin only the real-browser job; keep installation and assertions intact.
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
