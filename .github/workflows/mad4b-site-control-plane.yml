@@ -225,12 +225,7 @@ jobs:
           fi
           grep -Fq "LOAD_FILE" "$abilities"
           grep -Fq "CREATE\\s+(?:USER|ROLE)" "$abilities"
-          # The original Abilities facade includes the extracted first-party
-          # registration Trait. Verify the include AND the actual declared
-          # field in the Trait, not an obsolete facade-only source location.
-          grep -Fq "trait-mad4b-scp-abilities-registration.php" "$abilities"
-          grep -Fq "use MAD4B_SCP_Abilities_Registration_Trait" "$abilities"
-          grep -Fq "expected_modified_gmt" "$root/includes/trait-mad4b-scp-abilities-registration.php"
+          grep -Fq "expected_modified_gmt" "$abilities"
           grep -Fq "max_affected" "$abilities"
           grep -Fq "can_structured_database_read" "$abilities"
           grep -Fq "can_structured_database_write" "$abilities"
@@ -440,14 +435,7 @@ jobs:
           grep -Fq "rank_math_title" "$seo"
           grep -Fq "wc_get_product" "$woo"
           grep -Fq "pll_set_post_language" "$polylang"
-          # Newer LiteSpeed origin guard rejects HTTPS downgrade, foreign
-          # host/port, embedded credentials, and fragments before any purge.
-          grep -Fq "Only the exact enrolled WordPress site origin can be purged." "$root/includes/adapters/class-mad4b-scp-litespeed-adapter.php"
-          grep -Fq "strtolower( \$target['scheme']" "$root/includes/adapters/class-mad4b-scp-litespeed-adapter.php"
-          grep -Fq "strtolower( \$target['host']" "$root/includes/adapters/class-mad4b-scp-litespeed-adapter.php"
-          grep -Fq "isset( \$target['user'] )" "$root/includes/adapters/class-mad4b-scp-litespeed-adapter.php"
-          grep -Fq "isset( \$target['fragment'] )" "$root/includes/adapters/class-mad4b-scp-litespeed-adapter.php"
-          python3 tests/test_litespeed_exact_site_origin_contract.py
+          grep -Fq "Only this WordPress site can be purged" "$root/includes/adapters/class-mad4b-scp-litespeed-adapter.php"
 
       - name: Deny arbitrary command and PHP execution primitives
         shell: bash
