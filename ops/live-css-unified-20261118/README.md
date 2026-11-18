@@ -301,3 +301,36 @@ Source 1,022 generic routes/53 groups, next German Cairo tour.
 Six Source and two Wayfa independently owned Home language routes were
 excluded from the *generic route queue only*, not deleted from any
 site, language menu, cache, or original dedicated Home certifier.
+
+## LCP measurement-window parity: preserve all original public QA gates
+Wayfatours Alexandria Corniche original Chrome evidence on 17 November
+recorded baseline DCL at 18.7–20.0 seconds and baseline last LCP at
+3.9–4.2 seconds. The same frozen HTML with candidate Critical CSS
+had DCL near 29.5–30 seconds; a background image
+`Alexandria-Corniche-Wikipedia-scaled.jpg` appeared as a new LCP
+entry at 30.0–30.3 seconds. The old verifier always waited 7.4
+seconds **after** DCL and sampled immediately, so baseline stopped
+observing around 27 seconds, while candidate was observed around
+37 seconds. This 10-second unequal sampling window cannot prove
+the image appeared later only in the candidate.
+
+A standalone pure `lcp-observation-window.js` helper detects only
+when a later sample contains an LCP entry beyond the earlier sample's
+actual navigation-relative observation time. For such a case the
+original Chromium verifier replays **only the earlier variant**
+against the same frozen first-party HTML, extending its sample to
+the later observation horizon + 600ms, at most twice. If a new late
+LCP appears on the replay it is scored normally. If observation
+parity remains unresolved the original pass gate fails explicitly.
+The original FCP minimum, maximum *relative* LCP regression, CLS,
+H1 geometry, interaction, CSS media, WPML and WCML evidence gates
+all remain untouched. In ordinary early-LCP cases no extra browser
+pass is run. A prospective report is not deemed certified until
+the complete original five-viewport QA and public readback pass.
+This corrects measurement comparison, **not** the page content or
+late image itself: if the image is truly delayed in both variants,
+the underlying absolute LCP still needs separate performance work.
+
+The eight baseline/late-image comparator cases and five integration
+checks run without a browser. Historical timings are used solely as
+sanitized regression examples, not forged new Chrome evidence.

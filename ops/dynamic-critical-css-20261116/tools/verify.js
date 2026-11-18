@@ -1,5 +1,6 @@
 'use strict';
 const {chromium}=require('playwright'),fs=require('fs'),path=require('path');
+const {needsReobservation}=require('./lcp-observation-window.js');
 const SITE=process.env.MAD4B_SOURCE_SITE||'https://tours.dev.mad4b.com';
 const OUT=process.env.MAD4B_OUTPUT||'/out';
 const ITEM=JSON.parse(fs.readFileSync(path.join(OUT,process.env.MAD4B_CANDIDATES_FILE||'candidates.json'),'utf8'));
@@ -18,7 +19,7 @@ const DEFER_CITY=process.env.MAD4B_FIRST_CITY_DEFER_CANDIDATE==='1';
 const ADAPTIVE_MAX=Number(process.env.MAD4B_CSS_ADAPTIVE_MAX||0);
 if(ADAPTIVE_MAX!==0&&(!Number.isInteger(ADAPTIVE_MAX)||ADAPTIVE_MAX<480||ADAPTIVE_MAX>767))throw Error('INVALID_ADAPTIVE_BREAKPOINT');
 
-async function measure(browser,candidate,width,asyncCss,frozenHtml){
+async function measure(browser,candidate,width,asyncCss,frozenHtml,minObservedMs=0){
  const ctx=await browser.newContext({viewport:{width,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:2,userAgent:UA,extraHTTPHeaders:{'Accept':HTML_ACCEPT,...(DIAG_BYPASS?{'X-MAD4B-BYPASS-CACHE':'1'}:{})}});
  const page=await ctx.newPage();
  const cdp=await ctx.newCDPSession(page);
@@ -67,8 +68,13 @@ async function measure(browser,candidate,width,asyncCss,frozenHtml){
  });
  let result={language:candidate.lang,width,variant:asyncCss?'candidate':'baseline'};
  try{
+  const navigationStartedAt=Date.now();
   const response=await page.goto(SITE+candidate.route,{waitUntil:'domcontentloaded',timeout:68000});
-  await page.waitForTimeout(7400);
+  // Normal QA keeps its existing observation time. Only a *proved*
+  // unequal late-LCP case replays the earlier peer until the later
+  // navigation-relative observation horizon. DCL timing must not create
+  // a false 26-second LCP regression (or hide a real one).
+  await page.waitForTimeout(Math.max(7400,minObservedMs-(Date.now()-navigationStartedAt)));
   if(asyncCss){
    // The source's native fallback waits for onload, then a 6500ms safety
    // timer. A heavily throttled document can still be applying the full CSS
@@ -83,7 +89,8 @@ async function measure(browser,candidate,width,asyncCss,frozenHtml){
   result={...result,...await page.evaluate(()=>{
     const nav=performance.getEntriesByType('navigation')[0],css=document.getElementById('mad4b-qa-complete')||document.querySelector('link[href*="/litespeed/css/"][rel="stylesheet"]');
     const rect=el=>{const r=el?.getBoundingClientRect();return r?[Math.round(r.x),Math.round(r.y),Math.round(r.width),Math.round(r.height)]:null};
-    return {fcp:window.__qa.paint.find(x=>x.name==='first-contentful-paint')?.t||null,lcp:window.__qa.lcp.at(-1)?.t||null,lcpTrace:window.__qa.lcp.slice(-4),cls:+window.__qa.shift.reduce((a,b)=>a+b,0).toFixed(5),ttfb:Math.round(nav.responseStart),dcl:Math.round(nav.domContentLoadedEventEnd),styleLoaded:!![...document.styleSheets].find(x=>x.href?.includes('/litespeed/css/')),cssMedia:css?.media||'',h1:rect(document.querySelector('h1')),hero:rect(document.querySelector('.elementor-element-e991bc9')),overflow:document.documentElement.scrollWidth-innerWidth,buttonVisible:(()=>{const b=document.querySelector('#tours_search_button');return !!(b&&b.getBoundingClientRect().width&&b.getBoundingClientRect().height);})()};
+    return {observedUntilMs:Math.round(performance.now()),
+      fcp:window.__qa.paint.find(x=>x.name==='first-contentful-paint')?.t||null,lcp:window.__qa.lcp.at(-1)?.t||null,lcpTrace:window.__qa.lcp.slice(-4),cls:+window.__qa.shift.reduce((a,b)=>a+b,0).toFixed(5),ttfb:Math.round(nav.responseStart),dcl:Math.round(nav.domContentLoadedEventEnd),styleLoaded:!![...document.styleSheets].find(x=>x.href?.includes('/litespeed/css/')),cssMedia:css?.media||'',h1:rect(document.querySelector('h1')),hero:rect(document.querySelector('.elementor-element-e991bc9')),overflow:document.documentElement.scrollWidth-innerWidth,buttonVisible:(()=>{const b=document.querySelector('#tours_search_button');return !!(b&&b.getBoundingClientRect().width&&b.getBoundingClientRect().height);})()};
   }),status:response.status(),rewritten,errors,failedCss};
   const trigger=page.locator('#tours_search_button:visible');
   if(await trigger.count()>0){
@@ -130,11 +137,27 @@ async function measure(browser,candidate,width,asyncCss,frozenHtml){
     continue;
   }
   for(const width of widths){
-   const baseline=await measure(browser,candidate,width,false,frozenHtml);
-   const variant=await measure(browser,candidate,width,true,frozenHtml);
+   let baseline=await measure(browser,candidate,width,false,frozenHtml);
+   let variant=await measure(browser,candidate,width,true,frozenHtml);
+   // Compare full LCP histories at matched observation horizons. Replay
+   // only when one variant saw a late LCP that fell strictly beyond the
+   // other variant's initial sample. Do not suppress the image or lower
+   // the original LCP threshold to make a false-positive certificate.
+   for(let replay=0;replay<2;replay++){
+     if(needsReobservation(baseline,variant)){
+       const until=variant.observedUntilMs+600;
+       console.log('QA_LCP_EQUAL_WINDOW_RECHECK',JSON.stringify({lang:candidate.lang,width,side:'baseline',until,replay}));
+       baseline=await measure(browser,candidate,width,false,frozenHtml,until);
+     }else if(needsReobservation(variant,baseline)){
+       const until=baseline.observedUntilMs+600;
+       console.log('QA_LCP_EQUAL_WINDOW_RECHECK',JSON.stringify({lang:candidate.lang,width,side:'candidate',until,replay}));
+       variant=await measure(browser,candidate,width,true,frozenHtml,until);
+     }else break;
+   }
+   const unequalLateLcp=needsReobservation(baseline,variant)||needsReobservation(variant,baseline);
    let fcpGain=(baseline.fcp||0)-(variant.fcp||0);
    let lcpReg=(variant.lcp||Infinity)-(baseline.lcp||0);
-   const pass= !baseline.error&&!variant.error&&variant.rewritten&&baseline.status===200&&variant.status===200
+   const pass= !unequalLateLcp&&!baseline.error&&!variant.error&&variant.rewritten&&baseline.status===200&&variant.status===200
        &&variant.styleLoaded&&variant.cssMedia==='all' &&variant.failedCss?.length===0
        &&variant.errors?.length===0&&variant.overflow<=0
        &&Number.isFinite(fcpGain)&&fcpGain >= (ADAPTIVE_MAX&&width>ADAPTIVE_MAX ? -250 : 150)
@@ -145,7 +168,7 @@ async function measure(browser,candidate,width,asyncCss,frozenHtml){
        &&JSON.stringify(variant.hero)===JSON.stringify(baseline.hero)
        &&(!baseline.popupOpened || variant.popupOpened)
        &&(!baseline.calendarOpened || variant.calendarOpened);
-   cases.push({width,pass,fcpGain,lcpReg,baseline,variant});
+   cases.push({width,pass,fcpGain,lcpReg,baseline,variant,unequalLateLcp});
    results.push({lang:candidate.lang,...cases.at(-1)});
    fs.writeFileSync(path.join(OUT,'verification.json'),JSON.stringify({contract:'mad4b.mobile-critical.qa.v1',tested:results.length,results,gates},null,2));
    console.log('QA_DECISION',JSON.stringify({lang:candidate.lang,width,pass,fcpGain,lcpReg,cls:variant.cls}));
