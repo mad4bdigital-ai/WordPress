@@ -603,6 +603,101 @@ final class MAD4B_SCP_Brand_Integrity {
     }
 
 
+
+    /**
+     * Enumerate stored term-media origins separately from external hyperlinks.
+     * This is an immutable audit only: a foreign hostname is not evidence
+     * that an attachment is missing, or that replacing it is authorized.
+     */
+    public static function scan_term_media_origin_report($term_id,$brand=null) {
+        $term_id=absint($term_id);
+        $term=get_term($term_id);
+        if(!($term instanceof WP_Term) || is_wp_error($term))
+            return array('complete'=>false,'coverage_reason'=>'term_not_found',
+                'mutation_performed'=>false);
+        if(!is_array($brand))
+            $brand=class_exists('MAD4B_SCP_Brand_Experience_Quality',false)
+                ? MAD4B_SCP_Brand_Experience_Quality::brand_context():array();
+        if(empty($brand['scope']['site_uuid']) || empty($brand['scope']['brand_name']))
+            return array('complete'=>false,'coverage_reason'=>'site_identity_missing',
+                'mutation_performed'=>false);
+        $meta=get_term_meta($term_id); // aggregate raw values, not the key-specific display override
+        if(!is_array($meta))
+            return array('complete'=>false,'coverage_reason'=>'term_meta_unavailable',
+                'mutation_performed'=>false);
+        $site_host=strtolower((string)wp_parse_url(home_url(),PHP_URL_HOST));
+        $site_host=(string)preg_replace('/^www\./i','',$site_host);
+        if($site_host==='')return array('complete'=>false,
+            'coverage_reason'=>'site_host_unavailable','mutation_performed'=>false);
+        $uploads=wp_get_upload_dir();
+        $base=!empty($uploads['error']) ? false : realpath((string)($uploads['basedir']??''));
+        $fields=array('featured_image','image_gellery','image_gallery','gallery_images');
+        $total=0;$foreign=0;$local=0;$missing=0;$unchecked=0;
+        $samples=array();$gaps=0;
+        foreach($fields as $key) {
+            foreach((array)($meta[$key]??array()) as $entry) {
+                $values=array(maybe_unserialize($entry));
+                for($step=0;$step<count($values) && $step<300;$step++) {
+                    $value=$values[$step];
+                    if(is_array($value)) {
+                        foreach($value as $part)$values[]=$part;
+                        if(count($values)>300){$gaps++;break;}
+                        continue;
+                    }
+                    if(!is_string($value) || $value==='')continue;
+                    if(strlen($value)>self::MAX_FIELD_BYTES){$gaps++;continue;}
+                    $json=json_decode($value,true);
+                    if(is_array($json)){foreach($json as $part)$values[]=$part;continue;}
+                    // A JetEngine gallery may store CSV URLs; a comma within
+                    // a filename is not a delimiter unless the next token is http(s).
+                    $tokens=preg_split('~,\s*(?=https?://)~i',$value);
+                    foreach((array)$tokens as $token) {
+                        $url=trim((string)$token);
+                        if(!preg_match('~^https?://~i',$url))continue;
+                        $host=strtolower((string)wp_parse_url($url,PHP_URL_HOST));
+                        if($host==='')continue;
+                        if($total>=300){$gaps++;break 3;}
+                        $total++;
+                        $host=(string)preg_replace('/^www\./i','',$host);
+                        $is_foreign=$host!==$site_host;
+                        $foreign+=(int)$is_foreign;
+                        $path=(string)wp_parse_url($url,PHP_URL_PATH);
+                        $prefix='/wp-content/uploads/';
+                        $relative=str_starts_with($path,$prefix)
+                            ? rawurldecode(substr($path,strlen($prefix))):'';
+                        $parts=explode('/',$relative);
+                        $safe=$relative!==''&&!str_contains($relative,"\0")
+                            &&!in_array('..',$parts,true)&&!in_array('.',$parts,true);
+                        $candidate=($safe && $base)
+                            ? realpath(rtrim($base,'/').'/'.$relative):false;
+                        $present=boolval($base && $candidate && is_file($candidate)
+                            && str_starts_with($candidate,rtrim($base,'/').DIRECTORY_SEPARATOR));
+                        if(!$base)$unchecked++;
+                        elseif($present)$local++;
+                        else $missing++;
+                        if(($is_foreign || !$present) && count($samples)<20) {
+                            $samples[]=array('term_id'=>$term_id,
+                                'field'=>$key,'stored_host'=>$host,
+                                'url_sha256'=>hash('sha256',$url),
+                                'origin_mismatch'=>$is_foreign,
+                                'local_file'=>!$base?'unchecked':($present?'present':'missing'),
+                                'auto_replacement_authorized'=>false);
+                        }
+                    }
+                }
+            }
+        }
+        return array('contract'=>self::CONTRACT.'.term-media-origins.v1',
+            'complete'=>$gaps===0,'gap_count'=>$gaps,
+            'term_id'=>$term_id,'taxonomy'=>(string)$term->taxonomy,
+            'site_uuid'=>(string)$brand['scope']['site_uuid'],
+            'media_urls_scanned'=>$total,'foreign_origin_count'=>$foreign,
+            'local_file_present_count'=>$local,'local_file_missing_count'=>$missing,
+            'local_file_unchecked_count'=>$unchecked,
+            'samples'=>$samples,'read_only'=>true,
+            'mutation_performed'=>false);
+    }
+
     /** Bounded, source-only analysis of one JetEngine/WordPress term meta value. */
     private static function term_value_report($term_id,$key,$raw,array $brand) {
         $coverage=array('complete'=>true,'gap_count'=>0,'gap_samples'=>array());
