@@ -42,6 +42,22 @@ class Readiness(unittest.TestCase):
         self.index.write_text(json.dumps(dict(contract="mad4b.dynamic-operation-index.v1",
           providers=[dict(manifest="dynamic-operation-registry-v1/providers/fake/manifest.json",sha256="a"*64)])))
         self.assertFalse(self.view()["checks"]["host_issue_provider_registered"])
+    def test_reviewed_v83_successor_does_not_regress_to_v82_pending(self):
+        reviewed=SOURCE/"wp-content/plugins/mad4b-platform/modules/authority/318-mad4b-native-host-exact-grant.php"
+        self.live.write_bytes(reviewed.read_bytes())
+        report=self.view()
+        self.assertTrue(report["checks"]["original318_live_reviewed"])
+        self.assertFalse(report["checks"]["original318_live_v82"])
+        self.assertTrue(report["checks"]["v83_signed_current_readback_code_present"])
+        self.assertEqual(report["original318_live_reviewed_version"],"v83")
+        self.assertNotIn("original318_live_v82",report["pending"])
+        self.assertFalse(report["original313_receipt_signed"])
+        self.assertEqual(report["state"],"BLOCKED")
+    def test_unrecognized_version_remains_denied(self):
+        self.live.write_text("<?php // deliberately unreviewed")
+        report=self.view()
+        self.assertFalse(report["checks"]["original318_live_reviewed"])
+        self.assertIn("original318_live_reviewed",report["pending"])
     def test_no_synthetic_receipt_from_source_presence(self):
         (self.registry/"worker_adapter.py").write_text("signed_remote_hostinger_wpcli_v2 resolve_remote_host_v2_claim")
         (self.registry/"evidence.py").write_text("signed_remote_hostinger_wpcli_v2 company.host-authority.anchor.revoke")

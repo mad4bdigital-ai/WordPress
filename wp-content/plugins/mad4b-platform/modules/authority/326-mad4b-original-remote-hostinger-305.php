@@ -34,6 +34,58 @@ final class MAD4B_Original_Remote_Hostinger_305_V1 {
    &&class_exists('MAD4B_Company_Environment_Registry_V2',false)
    &&is_array(MAD4B_Company_Environment_Registry_V2::target($company,$environment));
  }
+
+ /**
+  * Environment-specific Staging delegation verified independently of the
+  * global company binding (which may correctly point to Production).
+  * NEVER treats Staging rights as a Production grant.
+  */
+ private static function stagingOperationsDelegated(
+   string $manager,string $company,string $environment,int $user_id
+ ):bool {
+  if($environment!=='staging')
+    return MAD4B_Company_Portfolio_Manager_V1::has_delegation(
+      $manager,$company,'operations_manage',$user_id);
+  if($user_id<1
+    ||!class_exists('MAD4B_Company_Environment_Portfolio_Evidence_V1',false)
+    ||!class_exists('MAD4B_Company_Environment_Registry_V2',false)
+    ||!class_exists('MAD4B_Company_Portfolio_Manager_V1',false)
+    ||!MAD4B_Company_Portfolio_Manager_V1::staging())return false;
+  $target=MAD4B_Company_Environment_Registry_V2::target($company,'staging');
+  $proof=MAD4B_Company_Environment_Portfolio_Evidence_V1::readback($company,'staging');
+  if(!is_array($target)||!is_array($proof)
+    ||($target['company_id']??null)!==$company
+    ||($target['environment']??null)!=='staging'
+    ||($proof['contract']??null)!=='mad4b.company-environment-portfolio-evidence.v1'
+    ||($proof['company']??null)!==$company
+    ||($proof['environment']??null)!=='staging'
+    ||($proof['signed_identity_verified']??false)!==true
+    ||($proof['portfolio_assignment_bound']??false)!==true
+    ||($proof['operations_delegation_approved']??false)!==true
+    ||($proof['grant_issued']??true)!==false
+    ||($proof['production_mutation_allowed']??true)!==false
+    ||($proof['site_uuid']??null)!==($target['site_uuid']??null)
+    ||($proof['canonical_origin']??null)!==($target['canonical_origin']??null)
+    ||!self::isHash($proof['portfolio_binding_sha256']??null))return false;
+  $managerClass='MAD4B_Company_Portfolio_Manager_V1';
+  $managers=get_option($managerClass::MANAGERS,[]);
+  $members=get_option($managerClass::MEMBERS,[]);
+  $assignments=get_option($managerClass::ASSIGNMENTS,[]);
+  $memberKey=$manager.'|'.$user_id;
+  $assignmentKey=$manager.'|'.$company;
+  $member=is_array($members)?($members[$memberKey]??null):null;
+  $owner=is_array($managers)?($managers[$manager]??null):null;
+  $assignment=is_array($assignments)?($assignments[$assignmentKey]??null):null;
+  return is_array($owner)&&($owner['state']??null)==='registered'
+    &&is_array($member)&&($member['state']??null)==='active'
+    &&is_array($assignment)&&($assignment['state']??null)==='active'
+    &&($assignment['manager_id']??null)===$manager
+    &&($assignment['company_code']??null)===$company
+    &&($assignment['company_site_uuid']??null)===$target['site_uuid']
+    &&is_string($assignment['binding_sha256']??null)
+    &&hash_equals($proof['portfolio_binding_sha256'],$assignment['binding_sha256'])
+    &&in_array('operations_manage',(array)($assignment['rights']??[]),true);
+ }
  private static function isHash($v):bool{return is_string($v)&&preg_match('/^[a-f0-9]{64}$/D',$v)===1;}
  private static function isId($v):bool{return is_string($v)&&preg_match('/^[a-f0-9]{32}$/D',$v)===1;}
  private static function sourceScope($p):array {
@@ -90,7 +142,7 @@ final class MAD4B_Original_Remote_Hostinger_305_V1 {
   $a=is_array($assignments)?($assignments[$manager.'|'.$co]??null):null;
   if($manager===''||!$actor
    ||!user_can($actor,'manage_options')||!user_can($actor,'install_plugins')
-   ||!MAD4B_Company_Portfolio_Manager_V1::has_delegation($manager,$co,'operations_manage',$p['actor_user_id'])
+   ||!self::stagingOperationsDelegated($manager,$co,$env,(int)$p['actor_user_id'])
    ||!is_array($a)||($a['state']??null)!=='active'
    ||($a['revision']??null)!==$p['assignment_revision']
    ||($a['company_site_uuid']??null)!==$p['site_uuid'])
@@ -251,7 +303,7 @@ final class MAD4B_Original_Remote_Hostinger_305_V1 {
     ||($assignment['revision']??null)!==($g['assignment_revision']??null)
     ||($assignment['company_site_uuid']??null)!==($slot['site_uuid']??null)
     ||!$actor||!user_can($actor,'manage_options')||!user_can($actor,'install_plugins')
-    ||!MAD4B_Company_Portfolio_Manager_V1::has_delegation($manager,$co,'operations_manage',$uid))
+    ||!self::stagingOperationsDelegated($manager,$co,$env,$uid))
    return self::deny('REMOTE_ORIGINAL_305_PAIR_REVOKED_OR_CHANGED');
   return ['state'=>'ORIGINAL_305_PERSISTENT_PAIR_ENROLLED',
    'company'=>$co,'environment'=>$env,'site_uuid'=>$slot['site_uuid'],
