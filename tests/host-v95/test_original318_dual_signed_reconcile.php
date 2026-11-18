@@ -208,6 +208,7 @@ $answer=$cls::reconcile_signed_anchor_v95($revoke);
 check($answer['anchor_revoked']===true&&$answer['anchor_issued']===false,'signed revoke WP CAS');
 check($answer['original313_certified']===false,'revoke still root313 unverified');
 check($answer['fresh_wordpress_readback']['state']==='REVOKED','revoked readback cryptographically valid');
+check($answer['fresh_wordpress_readback']['prior_grants_ineligible']===true,'signed revoke invalidates Anchor-v2 dependent grants');
 check(count($GLOBALS['writes'])===2,'one CAS revocation write');
 check(failure($cls::reconcile_signed_anchor_v95($revoke)),'revoke replay rejected');
 check(count($GLOBALS['writes'])===2,'revoke replay no writes');

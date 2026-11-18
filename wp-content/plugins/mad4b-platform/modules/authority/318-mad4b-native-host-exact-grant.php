@@ -498,6 +498,10 @@ final class MAD4B_Native_Host_Exact_Grant_V1 {
     $out['state']='REVOKED';$out['revision']=$revoked['anchor_revision'];
     $out['anchor_nonce']=$revoked['anchor_nonce'];
     $out['readback_verified']=true;
+    // A valid signed REVOKED state prevents any Original318 Anchor-v2
+    // dependent grant from passing independent_anchor_live_v2(). This
+    // does not revoke unrelated legacy grants or certify Root high-water.
+    $out['prior_grants_ineligible']=true;
     $out['signed_anchor_message_sha256']=$revoked['signed_anchor_message_sha256'];
   }
   return $out;

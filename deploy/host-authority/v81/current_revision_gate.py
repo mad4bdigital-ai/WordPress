@@ -156,7 +156,14 @@ def verify_revoked_postcondition(job,ledger,checkpoint,wp,ledger_pubkey,checkpoi
          and wp.get("prior_grants_ineligible") is True
          and wp.get("revision")==ledger["revision"]
          and wp.get("state")=="REVOKED"
-         and wp.get("original_reserved_job_id")==job.get("job_id")
+         # WordPress Anchor v2 cannot contain a trusted reservation Job ID
+         # because it would be a mutable, unauthenticated option field.
+         # The distinct Broker-signed revision event MUST instead bind
+         # event_id to the original just-completed claimed/revoke Job.
+         # Original313 checkpoint pins the signed event hash separately.
+         and type(job.get("job_id")) is str
+         and HEX32.fullmatch(job["job_id"]) is not None
+         and ledger["event_id"]==job["job_id"]
          and type(wp.get("observed_epoch")) is int
          and instant-30 <= wp["observed_epoch"] <= instant+5,
          "REVOCATION_NOT_INDEPENDENTLY_EFFECTIVE")
