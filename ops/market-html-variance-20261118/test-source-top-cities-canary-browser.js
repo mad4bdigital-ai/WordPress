@@ -32,7 +32,20 @@ const hash = s => crypto.createHash('sha256').update(s).digest('hex').slice(0,20
      const widget=page.locator('.elementor-element-b25dbff').first();
      await widget.waitFor({state:'attached',timeout:12000});
      await widget.scrollIntoViewIfNeeded({timeout:15000});
-     await page.waitForTimeout(900);
+     // Lazy JetEngine/Swiper mounts can change both cloned slides and
+     // pointer hit targets after DOMContentLoaded. Check an actual
+     // initialized slider before accepting any click as a UI proof.
+     let swiperReady=false;
+     try{
+       await page.waitForFunction(()=>{
+         const root=document.querySelector('.elementor-element-b25dbff');
+         const slider=root?.querySelector('.jet-listing-grid__slider.swiper');
+         return Boolean(slider && (slider.swiper?.initialized ||
+           slider.classList.contains('swiper-initialized')));
+       },null,{timeout:12000});
+       swiperReady=true;
+     }catch(e){swiperReady=false;}
+     await page.waitForTimeout(600);
      const info=await widget.evaluate(el=>{
        const visible=elem=>{
          const s=getComputedStyle(elem);const b=elem.getBoundingClientRect();
@@ -47,7 +60,8 @@ const hash = s => crypto.createHash('sha256').update(s).digest('hex').slice(0,20
        for(let i=0;i<allLinks.length;i++){
          const a=allLinks[i],r=a.getBoundingClientRect();
          if(r.width<2||r.height<2||r.right<=0||r.bottom<=0||
-            r.left>=innerWidth||r.top>=innerHeight||r.top<0)continue;
+            r.left>=innerWidth||r.top>=innerHeight||r.top<0 ||
+            getComputedStyle(a).pointerEvents==='none')continue;
          const cx=Math.min(innerWidth-2,Math.max(2,r.left+r.width/2));
          const cy=Math.min(innerHeight-2,Math.max(2,r.top+r.height/2));
          const top=document.elementFromPoint(cx,cy);
@@ -68,20 +82,38 @@ const hash = s => crypto.createHash('sha256').update(s).digest('hex').slice(0,20
      });
      if(info.cardCount<6 || info.linkCount===0 || info.volatileDcssCount!==0)
        throw Error('TOP_CITIES_STRUCTURE_NOT_VERIFIED:'+variant+':'+width);
-     let actionable=false,actionabilityError='';
+     let actionable=false,actionabilityError='',keyboardFocusable=false;
      if(info.hitTestCandidates.length){
        const link=widget.locator('a[href]').nth(info.hitTestCandidates[0]);
-       try{await link.click({trial:true,timeout:6000});actionable=true;}
-       catch(e){actionabilityError=String(e.message||e).slice(0,100);}
+       try{
+         // Actual physical Playwright click, not a synthetic DOM click.
+         // The temporary capture handler keeps the user on the same
+         // test page without opening the destination or mutating it.
+         await page.evaluate(()=>{
+           window.__mad4bTermCardClickCount=0;
+           document.addEventListener('click',event=>{
+             const anchor=event.target.closest?.('.elementor-element-b25dbff a[href]');
+             if(!anchor)return;
+             event.preventDefault();
+             event.stopImmediatePropagation();
+             window.__mad4bTermCardClickCount++;
+           },true);
+         });
+         await link.click({timeout:9000});
+         actionable=(await page.evaluate(()=>window.__mad4bTermCardClickCount))===1;
+         await link.focus({timeout:2500});
+         keyboardFocusable=await link.evaluate(el=>document.activeElement===el);
+       }catch(e){actionabilityError=String(e.message||e).slice(0,100);}
      }else{actionabilityError='no-visible-unoccluded-anchor';}
      const row={
-       contract:'mad4b.source.top-cities.browser-qa.v1',
+       contract:'mad4b.source.top-cities.browser-qa.v2',
        width,variant,http:response.status(),cssReady:headers['x-mad4b-mobile-css-ready'],
        cacheStatus:headers['x-mad4b-preset-cache']||null,
        cards:info.cardCount,links:info.linkCount,linkDigest:hash(JSON.stringify(info.hrefs)),
        widthPx:info.widgetWidth,heightPx:info.widgetHeight,
        visibleCards:info.visibleCardCount,display:info.computedDisplay,
-       volatileDcss:info.volatileDcssCount,clickTrialActionable:actionable,
+       volatileDcss:info.volatileDcssCount,realClickDelivered:actionable,
+       keyboardFocusable,swiperReady,
        hitTestCandidateCount:info.hitTestCandidates.length,
        blockedLinkCount:info.blockedLinkCount,blockerTags:info.blockerTags,
        actionabilityError,
@@ -106,11 +138,13 @@ const hash = s => crypto.createHash('sha256').update(s).digest('hex').slice(0,20
      || Math.abs(native.heightPx-canary.heightPx)>3
      || native.visibleCards!==canary.visibleCards
      || native.volatileDcss!==0 || canary.volatileDcss!==0
-     || !native.clickTrialActionable || !canary.clickTrialActionable
+     || !native.swiperReady || !canary.swiperReady
+     || !native.realClickDelivered || !canary.realClickDelivered
+     || !native.keyboardFocusable || !canary.keyboardFocusable
      || canary.jsErrorCount>native.jsErrorCount)
      throw Error('BROWSER_MOBILE_TOP_CITIES_CANARY_PARITY_HOLD_'+width);
  }
- fs.writeFileSync(out,JSON.stringify({contract:'mad4b.top-cities-canary-browser-qa.v1',
+ fs.writeFileSync(out,JSON.stringify({contract:'mad4b.top-cities-canary-browser-qa.v2',
   passed:true,source_site:'tours.dev.mad4b.com',results},null,2)+'\n',{mode:0o600});
  console.log('SOURCE_TOP_CITIES_BROWSER_QA_PASSED_390_768',results.length);
 })().catch(e=>{console.error('SOURCE_TOP_CITIES_BROWSER_QA_HOLD',String(e));process.exitCode=8;});

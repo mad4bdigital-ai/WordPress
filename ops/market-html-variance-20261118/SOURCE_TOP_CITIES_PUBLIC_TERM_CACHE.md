@@ -42,3 +42,34 @@ WooCommerce / WCML pricing, changes customer bookings, or shares complete HTML.
   mobile only. Revert mode to canary or remove the option to fail closed.
   Original source plugin/config snapshots are under root-owned reports.
 - Do not extrapolate to other languages, devices, tour pages or pricing.
+
+## Follow-up 19 November: real Swiper interaction gate and source FastCGI
+
+Original readback at 390/768 CSS-ready proved equal Swiper DOM/cards/links
+for cached and bypassed layouts, but the former test used the first
+anchor even if offscreen/cloned. Its negative click trial occurred
+on BOTH cached and native render, and cannot prove a cache regression.
+The v2 browser test waits for actual Swiper initialization, picks a
+geometrically in-viewport/unoccluded original anchor, uses a real
+Playwright pointer click while intercepting navigation solely in the
+test browser, checks keyboard focus, and compares baseline JS errors.
+It must pass independently on 390px and 768px before browser
+interaction can be called certified. The original native test and
+v2 remain pending during other jobs' Chromium lock/CPU occupancy.
+No Chromium pass is inferred from a static check or cache hit.
+
+The separate first-party source Nginx uses bounded, client-IP isolated
+FastCGI HTML, **not** cross-IP shared market caching. New read-only
+test-source-ip-isolated-fastcgi-policy.py validates 13 immutable
+safety facts against the installed Nginx config: real client IP
+inside the key, exact trusted proxy real-IP source set, UA/language/
+device/Accept/path partitioning, cookie/auth/query/context/commerce
+bypass and no-store behavior. Both Nginx syntax and all 13 static
+admissions passed. Real cookie-backed WooCommerce and explicitly
+supplied currency-header HTTP requests returned 200 with FastCGI
+BYPASS and private,no-store. Normal anonymous requests have
+sometimes HIT in 15–65ms and at other times MISS in ~4–6s;
+**stable cache admission and reliable TTFB improvement have not been
+established**. Never enable shared cross-IP HTML without separate
+first-party market/consent/booking proof. No existing Nginx settings
+were modified in this follow-up.
