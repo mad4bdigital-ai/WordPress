@@ -53,3 +53,32 @@ idempotence, existing excludes preservation, separate Wayfa original
 path, and unadmitted user-context integrity. The QA MU plugin 426 was
 removed. Browser-wide layout and LCP certification are separate, not
 implied by this CSS identity repair; the shared browser slot must be free.
+
+## Arabic WPML percent-encoding and market-specific publication (18 Nov 2026)
+The first Source Arabic Tour reached `passed_evidence` in Chromium for all
+five viewports (320/390/414/767/768) with one stable CSS SHA. The original
+publisher wrote the SHA- and market/currency-bound certificate but its live
+readback correctly HOLDed; **the successful QA result is not a live
+Critical CSS installation proof**.
+
+A stage-gated diagnostic (temporary MU 425, removed after diagnosis) showed
+two distinct facts: browsers/WordPress sometimes send Arabic percent escapes
+as uppercase `%D8` while the original source catalogue and cert key
+serialize the exact same bytes as `%d8`, and the tested original browser
+cohort was `DE / USD` but current anonymous live requests were
+`DE / EUR`. Source 422 v1.0.1 canonicalizes ONLY the casing of valid
+percent escapes before certificate lookup, preserving all other URI
+characters and original object, WPML, WCML, currency and market checks.
+It was deployed on Tours.dev *only*, leaving Wayfatours Production 422
+unchanged. Six hermetic tests passed and live source readback confirmed the
+canonical Arabic path. This legitimate 422 source runtime hash change
+invalidates old Source certificates until an independently measured new
+runtime proof exists.
+
+No certificate is reused across currencies. EUR/DE continues with
+native source CSS until its own original Chromium proof and exact source
+market/currency checks pass. The AR candidate's prior USD/DE receipt must
+NEVER be relabelled EUR. The maintenance backlog is source certification
+per trusted market/currency, not a reason to disable the exchange guard.
+The old 425 diagnostic staging MU was deleted; no payment, Woo, WPML or
+guest HTML cache controls were changed.
