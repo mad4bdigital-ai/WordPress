@@ -14,7 +14,9 @@ class WP_Error {}
 function is_wp_error($v) {return $v instanceof WP_Error;}
 function absint($x) {return abs((int)$x);}
 function get_term($id) {if($id!==665 && $id!==666)return null;$t=new WP_Term();$t->term_id=$id;return $t;}
-function get_term_meta($id,$key='',$single=false) {$data=array('destination_contents'=>array(serialize(array(
+function get_term_meta($id,$key='',$single=false) {$data=array(
+ 'featured_image'=>array('https://staging.egypttourgates.com/wp-content/uploads/2026/02/example.jpg'),
+ 'image_gellery'=>array('https://staging.egypttourgates.com/wp-content/uploads/2026/02/first.jpg,https://staging.egypttourgates.com/wp-content/uploads/2026/02/second.jpg'),'destination_contents'=>array(serialize(array(
  'further_reading'=>array(
   array('title'=>'Cairo Tours','url'=>'https://other-tour-operator.example/cairo-tours'),
   array('title'=>'Wayfa trip','url'=>'https://wayfatours.com/tours/cairo'),
@@ -36,6 +38,7 @@ function get_terms($args=array()) {if(($args['fields']??'')==='ids')return array
 function taxonomy_exists($tax) {return $tax==='destinations';}
 function get_taxonomy($tax) {return (object)array('public'=>$tax==='destinations');}
 function sanitize_key($s) {return strtolower((string)$s);}
+function wp_get_upload_dir() {return array('basedir'=>sys_get_temp_dir(),'error'=>false);}
 function get_current_blog_id() {return 1;}
 function must($ok,$why) {if(!$ok){fwrite(STDERR,"FAIL: ".$why."\n");exit(1);}}
 require_once dirname(__DIR__).'/includes/class-mad4b-scp-brand-integrity.php';
@@ -90,4 +93,16 @@ $canonical_result=MAD4B_SCP_Brand_Integrity::term_meta_candidate_preflight(
     665,'internal_links',$canonical,$brand);
 must(!is_wp_error($canonical_result)&&$canonical_result['allowed']===true,
     'canonical relative destination link accepted');
+
+$media=MAD4B_SCP_Brand_Integrity::scan_term_media_origin_report(665,$brand);
+must($media['complete']&&$media['media_urls_scanned']===3,
+ 'CSV gallery URLs are individually counted plus featured image');
+must($media['foreign_origin_count']===3 &&
+ $media['local_file_missing_count']===3,'raw foreign media origins are not inferred as present');
+must($media['mutation_performed']===false&&count($media['samples'])===3,
+ 'media audit never mutates or silently rewrites URLs');
+must(MAD4B_SCP_Brand_Integrity::scan_term_media_origin_report(999,$brand)['complete']===false,
+ 'media audit unknown term fails closed');
+must(MAD4B_SCP_Brand_Integrity::scan_term_media_origin_report(665,array('scope'=>array()))['complete']===false,
+ 'media audit requires company identity');
 echo "PASS: BRAND_DESTINATION_TERM_LINKS\n";
