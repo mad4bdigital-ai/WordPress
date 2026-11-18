@@ -45,6 +45,9 @@ final class MAD4B_SCP_Skill_Abilities {
 					'level' => array( 'type' => 'string', 'enum' => MAD4B_SCP_Skill_Registry::levels() ),
 					'target' => array( 'type' => 'string', 'maxLength' => 120 ),
 					'enabled' => array( 'type' => 'boolean' ),
+					'query' => array( 'type' => 'string', 'maxLength' => 160 ),
+					'limit' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 100 ),
+					'offset' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 2147483647 ),
 				),
 				'additionalProperties' => false,
 			),
@@ -241,7 +244,32 @@ final class MAD4B_SCP_Skill_Abilities {
 		if ( isset( $input['target'] ) ) $filters['target'] = $input['target'];
 		if ( array_key_exists( 'enabled', $input ) ) $filters['enabled'] = (bool) $input['enabled'];
 		$skills = MAD4B_SCP_Skill_Registry::list_skills( $filters );
-		return array( 'contract' => 'mad4b.skills-list.v1', 'count' => count( $skills ), 'skills' => $skills );
+		$scanned_count = count( $skills );
+		$query = isset( $input['query'] ) ? strtolower( trim( substr( (string) $input['query'], 0, 160 ) ) ) : '';
+		if ( '' !== $query ) {
+			$skills = array_values( array_filter( $skills, static function ( $row ) use ( $query ) {
+				return false !== strpos( strtolower( (string) ( $row['name'] ?? '' ) . ' '
+					. (string) ( $row['description'] ?? '' ) . ' '
+					. (string) ( $row['logical_id'] ?? '' ) ), $query );
+			} ) );
+		}
+		$total = count( $skills );
+		$paged = array_key_exists( 'limit', $input ) || array_key_exists( 'offset', $input );
+		$offset = $paged ? max( 0, (int) ( $input['offset'] ?? 0 ) ) : 0;
+		$limit = $paged ? max( 1, min( 100, (int) ( $input['limit'] ?? 25 ) ) ) : $total;
+		if ( $paged ) $skills = array_slice( $skills, $offset, $limit );
+		$next = $offset + count( $skills );
+		return array(
+			'contract' => 'mad4b.skills-list.v1',
+			'count' => count( $skills ), 'skills' => $skills,
+			'total_count' => $total, 'offset' => $offset, 'limit' => $limit,
+			'has_more' => $paged && $next < $total,
+			'next_offset' => $paged && $next < $total ? $next : null,
+			// The existing registry enforces 500 scanned records per request.
+			// Do not claim a complete global count if its scan ceiling is hit.
+			'scan_ceiling_reached' => $scanned_count >= MAD4B_SCP_Skill_Registry::MAX_SCAN_SKILLS,
+			'read_only' => true, 'authority_effect' => 'none',
+		);
 	}
 
 	public static function skill_get( $input = array() ) {

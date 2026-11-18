@@ -15,7 +15,14 @@ function is_admin() { return false; }
 class WP_Error { public $code; public function __construct( $code ) { $this->code = $code; } }
 function is_wp_error( $v ) { return $v instanceof WP_Error; }
 class MAD4B_SCP_Policy { public static function can_read() { return $GLOBALS['allowed']; } }
-class MAD4B_SCP_Site_Profile { public static function status() { return array( 'configured_environment' => 'staging', 'origin_match' => true, 'environment_match' => true ); } }
+// Model a truly enrolled and admitted Staging Site Profile; simply matching
+// an environment string is no longer sufficient to authorize paired probes.
+class MAD4B_SCP_Site_Profile { public static function status() {
+    return array( 'configured' => true, 'authority_ready' => true,
+        'configured_environment' => 'staging', 'origin_match' => true,
+        'environment_match' => true, 'deployment_binding_match' => true,
+        'mutation_pending_audit' => false );
+} }
 class MAD4B_SCP_Query_Monitor_Evidence_Bridge {}
 class MAD4B_SCP_Frontend_Origin_Diagnostic {}
 require __DIR__ . '/../bootstrap/mad4b-native-incident-mu.php';
