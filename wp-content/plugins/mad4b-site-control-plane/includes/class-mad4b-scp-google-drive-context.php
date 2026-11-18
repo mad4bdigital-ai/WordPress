@@ -3224,7 +3224,8 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( in_array( $mime, array( 'application/zip', 'application/x-zip-compressed' ), true ) ) return self::normalize_generic_archive( $binary );
 		if ( in_array( $mime, array( 'application/rtf', 'text/rtf' ), true ) ) return self::normalize_rtf( $binary );
 		if ( 'application/pdf' === $mime ) return self::normalize_pdf( $binary );
-		if ( 'text/html' === $mime || 'application/xhtml+xml' === $mime || 'image/svg+xml' === $mime ) return self::normalization_record( self::html_visible_text( $binary ), true, 'ready', 'markup_local' );
+		if ( 'image/svg+xml' === $mime ) return self::normalization_record( '', false, 'extractor_required', 'visual_media_extraction_required', strlen( (string) $binary ) );
+		if ( 'text/html' === $mime || 'application/xhtml+xml' === $mime ) return self::normalization_record( self::html_visible_text( $binary ), true, 'ready', 'markup_local' );
 		return self::normalization_record( '', false, 'extractor_required', 'external_extractor_required', strlen( (string) $binary ) );
 	}
 
@@ -3237,6 +3238,8 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$utf8 = wp_check_invalid_utf8( $sample, true );
 		if ( ! $has_nul && '' !== trim( (string) $utf8 ) ) {
 			$trimmed = ltrim( $binary );
+			if ( preg_match( '/^\s*(?:<\?xml\b[^>]*>\s*)?<svg(?:\s|>)/i', $trimmed ) )
+				return self::normalization_record( '', false, 'extractor_required', 'visual_media_extraction_required', strlen( $binary ) );
 			if ( 0 === strpos( $trimmed, '<' ) ) return self::normalization_record( self::html_visible_text( $binary ), true, 'ready', 'google_native_markup_download' );
 			return self::normalization_record( $binary, true, 'ready', 'google_native_text_download' );
 		}
@@ -3260,6 +3263,21 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( '' === $file_id ) return new WP_Error( 'mad4b_google_drive_file_id_invalid', 'Google Drive file ID is invalid.' );
 		$mime = isset( $file['mimeType'] ) ? strtolower( (string) $file['mimeType'] ) : '';
 		$name = isset( $file['name'] ) ? (string) $file['name'] : '';
+
+        // Drive metadata is sufficient to track unextractable multimedia.
+        // Avoid binary download when no certified multimodal extractor exists.
+        $multimodal = 0 === strpos($mime,'image/') || 0 === strpos($mime,'audio/')
+            || 0 === strpos($mime,'video/')
+            || in_array($mime,array('application/vnd.google-apps.drawing',
+                'application/vnd.google-apps.vid','application/vnd.google-apps.photo',
+                'application/vnd.google-apps.pic','application/vnd.google-apps.audio',
+                'application/vnd.google-apps.video'),true);
+        if($multimodal && !self::external_extractor_configured()){
+            $declared=(isset($file['size']) && ctype_digit((string)$file['size']))
+                ? (int)$file['size'] : 0;
+            return self::normalization_record('',false,'extractor_required',
+                'visual_media_extraction_required',$declared);
+        }
 
 		if ( 'application/vnd.google-apps.shortcut' === $mime ) {
 			if ( $shortcut_depth >= 4 ) return new WP_Error( 'mad4b_google_drive_shortcut_depth_exceeded', 'Drive shortcut chain exceeds the certified normalization depth.' );
