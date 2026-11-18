@@ -110,13 +110,16 @@ CASES = (
      "tests/staging-write-planning-guard-original-hermetic.php",
      "PASS: STAGING_WRITE_PLANNING_GUARD_ORIGINAL 64"),
 )
-# Preserve the immutable original P0 SHA pin. Only this exact successor,
+# Preserve the immutable original P0 SHA pin. Only these two exact successor blobs,
 # backed by a separate non-authorizing source review and the original runtime
 # regression, may supersede the previous Addon Registry source bytes.
 REVIEWED_SUCCESSORS = {
     "includes/class-mad4b-scp-addon-registry.php": (
         "69e220a8c11a494da3216a1f98ce2cff770142ce",
-        "4db830176dc8da77c29e954a0783b7e4a0bab2d2",
+        (
+            "4db830176dc8da77c29e954a0783b7e4a0bab2d2",
+            "1ef03cf401eef9dfa18c67f6eb1b85d843092aec",
+        ),
     ),
 }
 review_ledger = json.loads((ROOT / "governance/production-readiness/capability-coverage.json").read_text(encoding="utf-8"))
@@ -131,7 +134,7 @@ for source, git_blob, fixture, marker in CASES:
     ).strip()
     if actual_blob != git_blob:
         pair = REVIEWED_SUCCESSORS.get(source)
-        assert pair == (git_blob, actual_blob), (source, "unknown successor; exact original SHA remains protected")
+        assert pair is not None and pair[0] == git_blob and actual_blob in pair[1], (source, "unknown successor; exact original SHA remains protected")
         full_path = PLUGIN + source
         rows = [r for r in review_ledger["reviewed_changes"]
                 if r.get("path") == full_path and r.get("source_blob_sha") == actual_blob

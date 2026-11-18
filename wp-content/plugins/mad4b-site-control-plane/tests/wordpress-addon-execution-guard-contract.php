@@ -38,6 +38,19 @@ function get_plugins(){
 	);
 }
 
+// A changing server environment is never itself an Add-on release grant.
+final class MAD4B_SCP_Site_Profile {
+    public static $uuid = 'a3a7cc36-db7e-4a14-8456-b41857def05c';
+    public static $enrolled = true;
+    public static $origin_matches = true;
+    public static $environment = 'staging';
+    public static $digest = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+    public static function site_uuid(){ return self::$uuid; }
+    public static function origin_enrolled(){ return self::$enrolled; }
+    public static function site_urls_match_enrollment(){ return self::$origin_matches; }
+    public static function profile_digest(){ return self::$digest; }
+}
+
 final class MAD4B_SCP_Policy { public static function can_read(){ return true; } }
 final class MAD4B_SCP_Audit { public static function record( $a, array $s, $status='ok', $join=false ){ return true; } }
 final class MAD4B_SCP_Provider_Contracts {
@@ -209,10 +222,103 @@ $GLOBALS['addon_active'] = false;
 $inactive = MAD4B_SCP_Addon_Registry::execution_binding( 'mad4b-test-addon' );
 $check( is_wp_error( $inactive ) && 'mad4b_addon_pair_not_certified' === $inactive->get_error_code(), 'inactive add-on remained execution eligible' );
 
-// Unrestored original company add-on is a non-authorizing candidate,
-// never an active catalog member or a vacuously certified registry.
+// Dynamic per-company ring tests retain the exact installed versions,
+ // hashes, provider runtime proof, and source-bound execution fingerprint.
+// Reset the original negative-path fixture's inactive-plugin state first.
+$GLOBALS['addon_active'] = true;
+$dynamic = $manifest;
+$dynamic['release_ring'] = 'dynamic';
+$dynamic['release_policy'] = array(
+    'mode' => 'site_bound_certified_pair',
+    'requires_enrolled_site_profile' => true,
+    'unknown_pair_fallback' => 'shadow',
+    'production_authorized' => false,
+);
+$dynamic['certified_pairs'][0]['site_uuid'] = MAD4B_SCP_Site_Profile::site_uuid();
+$dynamic['certified_pairs'][0]['site_profile_digest'] = MAD4B_SCP_Site_Profile::profile_digest();
+$dynamic['certified_pairs'][0]['release_ring'] = 'canary';
+$write_dynamic = static function ( $configuration ) {
+    file_put_contents( MAD4B_SCP_DIR . 'config/wordpress-addon-catalog.json',
+        json_encode( array( 'contract' => MAD4B_SCP_Addon_Registry::CATALOG_CONTRACT,
+            'addons' => array( $configuration ), 'defaults' => array( 'production_authorized' => false ) ) ) );
+};
+$write_dynamic( $dynamic );
+$canary_status = MAD4B_SCP_Addon_Registry::status();
+$row = $canary_status['addons'][0];
+$check( $row['certified'] && 'canary' === $row['effective_release_ring']
+    && $row['site_profile_bound'] && ! $row['mutating_capabilities_eligible'],
+    'Company-bound canary must be certified but not execution eligible.' );
+$canary_binding = MAD4B_SCP_Addon_Registry::execution_binding( 'mad4b-test-addon' );
+$check( is_wp_error( $canary_binding )
+    && 'mad4b_addon_release_ring_not_active' === $canary_binding->get_error_code(),
+    'Canary ring improperly granted a normal add-on execution binding.' );
+$dynamic['certified_pairs'][0]['release_ring'] = 'active';
+$write_dynamic( $dynamic );
+$active = MAD4B_SCP_Addon_Registry::execution_binding( 'mad4b-test-addon' );
+$check( is_array( $active ) && 'active' === $active['release_ring']
+    && $active['production_authorized'] === false,
+    'Exact site-bound active ring should bind without authorizing Production.' );
+$fp = $active['pair_fingerprint'];
+MAD4B_SCP_Site_Profile::$environment = 'production';
+$prod = MAD4B_SCP_Addon_Registry::execution_binding( 'mad4b-test-addon' );
+$check( is_array( $prod ) && $prod['pair_fingerprint'] === $fp,
+    'The WordPress environment string must not decide a signed release ring.' );
+MAD4B_SCP_Site_Profile::$uuid = '11111111-2222-3333-4444-555555555555';
+$wrong_site = MAD4B_SCP_Addon_Registry::execution_binding( 'mad4b-test-addon' );
+$check( is_wp_error( $wrong_site )
+    && 'mad4b_addon_pair_not_certified' === $wrong_site->get_error_code(),
+    'Another enrolled company inherited a foreign site certificate.' );
+$wrong_row = MAD4B_SCP_Addon_Registry::status()['addons'][0];
+$check( 'shadow' === $wrong_row['effective_release_ring']
+    && ! $wrong_row['mutating_capabilities_eligible'],
+    'Foreign site identity failed to fall back to shadow.' );
+MAD4B_SCP_Site_Profile::$uuid = 'a3a7cc36-db7e-4a14-8456-b41857def05c';
+MAD4B_SCP_Site_Profile::$enrolled = false;
+$not_enrolled = MAD4B_SCP_Addon_Registry::execution_binding( 'mad4b-test-addon' );
+$check( is_wp_error( $not_enrolled ), 'Unenrolled company got a release binding.' );
+MAD4B_SCP_Site_Profile::$enrolled = true;
+MAD4B_SCP_Site_Profile::$origin_matches = false;
+$foreign_origin = MAD4B_SCP_Addon_Registry::execution_binding( 'mad4b-test-addon' );
+$check( is_wp_error( $foreign_origin ), 'Cloned or conflicting origin got a binding.' );
+MAD4B_SCP_Site_Profile::$origin_matches = true;
+MAD4B_SCP_Site_Profile::$digest = str_repeat( 'b', 64 );
+$profile_changed = MAD4B_SCP_Addon_Registry::mutation_guard(
+    'mad4b-test-addon', $active['pair_fingerprint'], $active['certification_fingerprint']
+);
+$check( is_wp_error( $profile_changed )
+    && 'mad4b_addon_pair_not_certified' === $profile_changed->get_error_code(),
+    'A changed company Site Profile digest inherited an old exact certificate.' );
+// Once the new Site Profile is independently re-certified, the old planning
+// fingerprint must still be rejected by the original mutation guard.
+$updated_profile_pair = $dynamic;
+$updated_profile_pair['certified_pairs'][0]['site_profile_digest'] = MAD4B_SCP_Site_Profile::profile_digest();
+$write_dynamic( $updated_profile_pair );
+$profile_changed_with_recert = MAD4B_SCP_Addon_Registry::mutation_guard(
+    'mad4b-test-addon', $active['pair_fingerprint'], $active['certification_fingerprint']
+);
+$check( is_wp_error( $profile_changed_with_recert )
+    && 'mad4b_addon_pair_fingerprint_drift' === $profile_changed_with_recert->get_error_code(),
+    'New company profile certificate reused the old planned pair fingerprint.' );
+MAD4B_SCP_Site_Profile::$digest = str_repeat( 'a', 64 );
+$dynamic_invalid = $dynamic;
+$dynamic_invalid['release_policy']['production_authorized'] = true;
+$write_dynamic( $dynamic_invalid );
+$bad_policy = MAD4B_SCP_Addon_Registry::status()['addons'][0];
+$check( $bad_policy['state'] === 'manifest_invalid'
+    && 'mad4b_addon_dynamic_release_policy_invalid' === $bad_policy['error_code'],
+    'Untrusted dynamic release policy was accepted.' );
+$dynamic_invalid = $dynamic;
+$dynamic_invalid['release_ring'] = 'staging';
+$write_dynamic( $dynamic_invalid );
+$staging_ring = MAD4B_SCP_Addon_Registry::status()['addons'][0];
+$check( $staging_ring['state'] === 'manifest_invalid'
+    && 'mad4b_addon_release_ring_invalid' === $staging_ring['error_code'],
+    'Server environment illegally substituted for a release lifecycle ring.' );
+
+// Candidate-only source records must not become execution bindings merely
+// because they appear next to the active company-specific release catalog.
 $pending_catalog = array(
-	'contract' => 'mad4b.wordpress-addon-catalog.v1',
+	'contract' => MAD4B_SCP_Addon_Registry::CATALOG_CONTRACT,
 	'addons' => array(),
 	'pending_addon_candidates' => array(
 		array(
@@ -231,14 +337,14 @@ $check( $pending_status['ready'] === false
 	&& $pending_status['count'] === 0
 	&& $pending_status['pending_candidate_count'] === 1
 	&& $pending_status['production_authorized'] === false,
-	'Empty active registry must not claim readiness for an unrestored source candidate' );
+	'Empty dynamic add-on catalog incorrectly claimed certified release readiness' );
 $pending_binding = MAD4B_SCP_Addon_Registry::execution_binding( 'mad4b-company-management' );
 $check( is_wp_error( $pending_binding ) && $pending_binding->get_error_code() === 'mad4b_addon_not_cataloged',
-	'Historical candidate incorrectly received an execution binding' );
-$pending_commit = MAD4B_SCP_Addon_Registry::mutation_guard(
-	'mad4b-company-management', $binding['pair_fingerprint'], $binding['certification_fingerprint'] );
-$check( is_wp_error( $pending_commit ) && $pending_commit->get_error_code() === 'mad4b_addon_not_cataloged',
-	'Historical candidate incorrectly passed an original mutation guard' );
+	'Candidate-only source was silently accepted as a certified dynamic pair' );
+$pending_guard = MAD4B_SCP_Addon_Registry::mutation_guard(
+	'mad4b-company-management', $active['pair_fingerprint'], $active['certification_fingerprint'] );
+$check( is_wp_error( $pending_guard ) && $pending_guard->get_error_code() === 'mad4b_addon_not_cataloged',
+	'Candidate-only source incorrectly passed the dynamic pair mutation guard' );
 
 @unlink( $addon_file );
 @unlink( MAD4B_SCP_DIR . 'config/wordpress-addon-catalog.json' );

@@ -1,0 +1,39 @@
+<?php
+/** MAD4B original host enrollment preflight regression; read-only. */
+defined('ABSPATH')||exit;
+$fail=static function($assert,$label) {
+  if(!$assert) WP_CLI::error('HOST_RUNNER_PREFLIGHT_FAIL_'.$label);
+};
+$owner='MAD4B_Company_Host_Runner_Enrollment_V1';
+$fail(class_exists($owner),'OWNER_MISSING');
+$source=$owner::status('tours-central','staging');
+$fail(($source['contract']??'')==='mad4b.company-host-runner-enrollment-preflight.v1','CONTRACT');
+$fail(($source['enrolled_host_verified']??false)===true,'ORIGINAL_CENTRAL_LEDGER');
+$fail(($source['host_id']??'')==='srv2030908','ORIGINAL_HOST_TARGET');
+$fail(($source['state']??'')==='ORIGINAL_HOST_VERIFIED_NODE_ENROLLMENT_ISSUER_PENDING','ENROLLMENT_NOT_ISSUED');
+$fail(isset($source['supported_installed_runner_releases']['node-inventory-read-staging-20261106-v2']),'INSTALLED_V2_NOT_OBSERVED');
+$fail(($source['supported_installed_runner_releases']['node-inventory-read-staging-20261106-v2']['entrypoint_sha256']??'')
+  ==='8dcc71afd5727358d545e1f0f77a60a9cc63abcde27e6f2c1604dd221489902d',
+  'INSTALLED_V2_SOURCE_DRIFT');
+$fail(($source['enrollment_issued']??null)===false,'FALSE_ENROLLMENT_ISSUED');
+$fail(($source['node_enrollment_verified']??null)===false,'FALSE_NODE_VERIFIED');
+$fail(($source['host_issuer_available']??null)===false,'FALSE_HOST_ISSUER_READY');
+$fail(($source['mutation_performed']??null)===false,'MUTATION_CLAIM');
+$fake=$owner::status('unregistered-fake-company','staging');
+$fail(($fake['enrolled_host_verified']??true)===false,'FOREIGN_COMPANY_ADMITTED');
+$prod=$owner::status('tours-central','production');
+$fail(($prod['enrolled_host_verified']??true)===false,'PRODUCTION_ADMITTED');
+$routes=rest_get_server()->get_routes();
+$rest='/mad4b/v1/company-management/companies/(?P<company>[a-z][a-z0-9-]{2,47})/environments/(?P<environment>staging)/host-runner-enrollment-preflight';
+$fail(isset($routes[$rest]),'REST_NOT_REGISTERED');
+$before=get_option('mad4b_company_host_topology_registry_v1',[]);
+$after=get_option('mad4b_company_host_topology_registry_v1',[]);
+$fail($before===$after,'TOPOLOGY_MUTATED');
+WP_CLI::line(wp_json_encode([
+  'contract'=>'mad4b.original-host-runner-enrollment-preflight-regression.v1',
+  'result'=>'PASS','original_source_host_ledger_verified'=>true,
+  'installed_v2_source_sha256_verified'=>true,
+  'unknown_host_rejected'=>true,'production_not_enrolled'=>true,
+  'rest_get_available'=>true,'new_signed_enrollment_issued'=>false,
+  'node_inventory_proof_claimed'=>false,'mutation_performed'=>false
+],JSON_UNESCAPED_SLASHES));

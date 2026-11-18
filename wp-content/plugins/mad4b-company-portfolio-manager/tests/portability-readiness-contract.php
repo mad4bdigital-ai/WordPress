@@ -1,0 +1,66 @@
+<?php
+if(!class_exists('MAD4B_Company_Portability_Readiness_V1',false))
+ require_once '/tmp/mad4b-portability-readiness-candidate.php';
+$cls='MAD4B_Company_Portability_Readiness_V1';
+$checks=['class_loaded'=>class_exists($cls,false),
+ 'central_staging'=>MAD4B_Company_Portfolio_Manager_V1::staging()];
+$before=[
+ 'membership'=>get_option('mad4b_company_network_memberships_v1',null),
+ 'catalog'=>get_option('mad4b_company_service_catalog_modes_v1',null),
+ 'market'=>get_option('mad4b_central_company_market_portfolio_plans_v1',null)
+];
+$allTrue=array_fill_keys([
+ 'verified_company_binding','separate_company_runtime_identity',
+ 'company_profile_portable','hub_company_content_versions',
+ 'hub_publication_lineage','content_rights_disposition',
+ 'signed_last_common_baseline','typed_provider_import_readback',
+ 'financial_continuity_readback','remote_grant_revocation_readback'
+],true);
+$good=$cls::gates($allTrue);
+$checks['pure_all_evidence_logic']=$good['evidence_complete']
+ &&count($good['blocking_gates'])===0;
+$checks['no_implicit_grants']=$good['can_detach_now']===false
+ &&$good['can_rejoin_now']===false
+ &&$good['automated_publication_authorized']===false;
+$missing=$allTrue;$missing['content_rights_disposition']=false;
+$denied=$cls::gates($missing);
+$checks['missing_rights_blocked']=!$denied['evidence_complete']
+ &&$denied['blocking_gates']===['content_rights_disposition_missing'];
+$none=$cls::gates([]);
+$checks['missing_evidence_fails_closed']=!$none['evidence_complete']
+ &&count($none['blocking_gates'])===10;
+$codes=['tours-central','wayfatours'];$reports=[];
+foreach($codes as $code) {
+ $r=$cls::current($code);
+ $reports[$code]=is_wp_error($r)?['error'=>$r->get_error_code()]:[
+  'uuid'=>$r['company_site_uuid'],'membership'=>$r['membership_state'],
+  'matching_hub_records'=>$r['hub']['exact_company_site_brand_records'],
+  'hub_publications'=>$r['hub']['company_publication_target_count'],
+  'verified_publications'=>$r['hub']['verified_target_link_count'],
+  'blockers'=>$r['blocking_gates'],
+  'market_plan_site_bound'=>$r['company_market_plan_exact_site_bound'],
+  'same_central_site'=>$r['same_site_uuid_as_central_source']];
+ $checks['valid_'.$code]=!is_wp_error($r)
+  &&$r['company_code']===$code
+  &&$r['membership_state']==='connected'
+  &&$r['actual_company_export_created']===false
+  &&$r['can_detach_now']===false
+  &&$r['can_rejoin_now']===false
+  &&$r['hub']['verified_target_link_count']===0
+  &&!$r['hub']['rights_to_distribute_certified']
+  &&count($r['blocking_gates'])>=7;
+}
+$checks['company_bindings_isolated']=($reports['tours-central']['uuid']??'')
+ !==($reports['wayfatours']['uuid']??'');
+$checks['demo_no_separate_host']=$reports['tours-central']['same_central_site']===true;
+$checks['wayfa_not_central_host']=$reports['wayfatours']['same_central_site']===false;
+$invalid=$cls::current('invalid!company');
+$checks['unknown_company_blocked']=is_wp_error($invalid);
+$checks['unauthorized_get_denied']=is_wp_error($cls::permission());
+$checks['options_unchanged']=
+ $before['membership']===get_option('mad4b_company_network_memberships_v1',null)
+ &&$before['catalog']===get_option('mad4b_company_service_catalog_modes_v1',null)
+ &&$before['market']===get_option('mad4b_central_company_market_portfolio_plans_v1',null);
+echo wp_json_encode(['pass'=>!in_array(false,$checks,true),
+ 'checks'=>$checks,'reports'=>$reports],JSON_UNESCAPED_SLASHES),PHP_EOL;
+if(in_array(false,$checks,true))exit(8);

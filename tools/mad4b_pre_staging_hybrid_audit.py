@@ -11,6 +11,8 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import subprocess
+import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
@@ -248,7 +250,28 @@ for manifest in addon_catalog.get("addons", []):
     certification = manifest.get("certification", {})
     if certification.get("exact_provider_version_required") is not True or certification.get("exact_addon_version_required") is not True:
         addon_violations.append(f"{addon_id}:exact_pair_not_required")
-    if manifest.get("release_ring") not in {"shadow","canary","active"}:
+    ring = manifest.get("release_ring")
+    if ring == "dynamic":
+        # Lifecycle stage is derived from this company's exact certificate,
+        # never from an implicit Staging/Production environment assumption.
+        policy = manifest.get("release_policy")
+        required = {
+            "mode": "site_bound_certified_pair",
+            "requires_enrolled_site_profile": True,
+            "unknown_pair_fallback": "shadow",
+            "production_authorized": False,
+        }
+        if not isinstance(policy, dict) or policy != required:
+            addon_violations.append(f"{addon_id}:dynamic_release_policy_invalid")
+        for pair in manifest.get("certified_pairs", []):
+            if (not isinstance(pair, dict)
+                    or not isinstance(pair.get("site_uuid"), str)
+                    or not isinstance(pair.get("site_profile_digest"), str)
+                    or len(pair["site_profile_digest"]) != 64
+                    or any(ch not in "0123456789abcdef" for ch in pair["site_profile_digest"])
+                    or pair.get("release_ring") not in {"shadow", "canary", "active"}):
+                addon_violations.append(f"{addon_id}:dynamic_exact_pair_binding_invalid")
+    elif ring not in {"shadow", "canary", "active"}:
         addon_violations.append(f"{addon_id}:release_ring_invalid")
     if manifest.get("failure_policy", {}).get("reconcile_before_retry_after_uncertain_write") is not True:
         addon_violations.append(f"{addon_id}:uncertain_retry_policy_invalid")
@@ -296,6 +319,51 @@ record(
     lifecycle_invalidation_required=True,
     production_authorized=False,
 )
+
+# Original Company Portfolio source tests are non-authorizing evidence. Test
+# the actual restored PHP bytes with stubbed WordPress permissions and explicit
+# network/database denial; a passing test never exempts mutating calls.
+original_company_test = (
+    REPO / "ops/company-reconcile/portfolio-source-owner-v1/tests/"
+    "test_portfolio_source_owner.py"
+)
+if original_company_test.is_file():
+    command = [
+        sys.executable, "-m", "unittest", "discover",
+        "-s", str(original_company_test.parent),
+        "-p", original_company_test.name, "-v",
+    ]
+    try:
+        process = subprocess.run(
+            command, cwd=REPO, capture_output=True, text=True,
+            timeout=45, check=False,
+        )
+        counts = re.search(r"(?m)^Ran ([0-9]+) tests? in ", process.stderr)
+        tests_run = int(counts.group(1)) if counts else 0
+        source_regression_ok = (
+            process.returncode == 0
+            and tests_run >= 5
+            and re.search(r"(?m)^OK$", process.stderr) is not None
+        )
+        if not source_regression_ok:
+            fail(
+                "company_portfolio_original_source_regression",
+                "source checks, Cloudflare owner/tenant denials or mutation "
+                "fixtures failed; no runtime admission inferred",
+            )
+        record(
+            "company_portfolio_original_source_regression",
+            source=str(original_company_test.relative_to(REPO)),
+            tests_run=tests_run,
+            passed=source_regression_ok,
+            mutation_side_effects_allowed=False,
+            original_owner_or_production_authority_inferred=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        fail(
+            "company_portfolio_original_source_regression",
+            "source security tests unavailable or timed out; admission denied",
+        )
 
 # Canonical Skill inventory must have one source of truth.
 skill_manifest_path = CP / "config" / "skill-seed-manifest.json"

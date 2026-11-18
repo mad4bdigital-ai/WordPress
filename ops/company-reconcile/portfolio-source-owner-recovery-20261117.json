@@ -1,0 +1,528 @@
+{
+  "contract": "mad4b.company-portfolio-source-owner.recovered-v1",
+  "captured_at_utc": "2026-11-17T12:57:20.444683+00:00",
+  "source_origin": "https://tours.dev.mad4b.com",
+  "source_plugin": "mad4b-company-portfolio-manager/mad4b-company-portfolio-manager.php",
+  "plugin_version": "0.4.3-company-addon",
+  "read_only_runtime_copy": true,
+  "production_site_deployment": false,
+  "source_file_count": 86,
+  "source_php_file_count": 82,
+  "excluded_inactive_backups": [
+    {
+      "path": "mad4b-company-portfolio-manager.php.before-v44",
+      "sha256": "e3481a1f8a2b016e410cab3ad556de21d1de2b85e2ba74cff056ddcced02d0a0"
+    },
+    {
+      "path": "mad4b-company-portfolio-manager.php.before-original-runner-enrollment-preflight-20261106",
+      "sha256": "57f726d95b88f96bd5121a9d706a4048e8cb2b93b829ad68a3ea36cd9a2dbb55"
+    },
+    {
+      "path": "mad4b-company-portfolio-manager.php.before-dynamic-host-topology-20261106",
+      "sha256": "6a58a237c7209742eb00088f45cf140b310d03da52097c7ed5ddc458ec60355f"
+    },
+    {
+      "path": "includes/class-mad4b-company-plugin-live-reconcile.php.before-source-target-identity-20261105",
+      "sha256": "0b03087cd50ce7541a0cfeb318248d935370fe11845386bee60a4aad86e21593"
+    },
+    {
+      "path": "includes/class-mad4b-company-start-reconcile-completeness.php.before-host-topology-completeness-20261106",
+      "sha256": "3838398c4f7a7106671befaae628bbba0bbc19ea2a074793d4f6517aee0d8121"
+    },
+    {
+      "path": "includes/class-mad4b-company-host-topology-registry.php.before-original-host-inventory-reconcile-20261106",
+      "sha256": "3591330c99f4aa93cf90475c97a6bd9800f89ac886d6d2ff9bb0d93292fd2d14"
+    },
+    {
+      "path": "includes/class-mad4b-company-faore-broker-readback.php.before-host-topology-broker-readback-20261106",
+      "sha256": "e09a8da20f7c20729b2be1b53bd660040d1e23a1fdebac4f0cc61eb7de928650"
+    },
+    {
+      "path": "includes/class-mad4b-company-site-operations.php.before-content-inspect-20261108",
+      "sha256": "c0e9695e97beb5a2af5b85bc96d86c523142a23f79a46d510a8c1ca1c1189d96"
+    },
+    {
+      "path": "includes/class-mad4b-company-faore-broker-readback.php.before-generic-313-lifecycle-readback-20261106",
+      "sha256": "0e88d66337806283b47c7ba0ac1a1adf20e1c3766d9d51a6f9583457b57b967c"
+    },
+    {
+      "path": "includes/class-mad4b-company-site-operations-dashboard.php.before-content-inspect-20261108",
+      "sha256": "2ad871841740fa231aece1752565564e1633b655a82d211e7f43eab563febf08"
+    },
+    {
+      "path": "includes/class-mad4b-company-host-topology-registry.php.before-runner-profile-enrolled-discovery-20261106",
+      "sha256": "a99f4cd9a9a13e583734132aa9115087349ce41e55e813155195264ff17549aa"
+    },
+    {
+      "path": "includes/class-mad4b-scp-company-email-routing.php.before-native-contact-20261116.bak",
+      "sha256": "0667dee1d1add6f9fbcc5ffdca7c6eca27abd8eef8cf03a6a90db9fe3d2eee48"
+    },
+    {
+      "path": "includes/class-mad4b-scp-company-communication.php.before-native-email-single-owner-20261116.bak",
+      "sha256": "7dd747fd30fa91509ad08cc8af91f9f7b724cbca424acdba0d9107e066ef8eea"
+    },
+    {
+      "path": "includes/class-mad4b-company-mu-deploy-owner-launch.php.bak-json-order-20261106",
+      "sha256": "27350c3e619433f685fa618466a82b41d560052ce56affc100d0073144cae481"
+    },
+    {
+      "path": "includes/class-mad4b-scp-company-email-routing.php.before-managed-native-guard-20261116.bak",
+      "sha256": "d4601e928a3a4bcea221890186f65b5a1756f44bb6efa6855612d8f665d3aa9f"
+    },
+    {
+      "path": "includes/class-mad4b-scp-company-email-routing.php.before-native-auto-feed-20261116.bak",
+      "sha256": "ff630326514a9e67242055ae8127a8f13d6efd341ae6d7982f49d6b964be59b2"
+    },
+    {
+      "path": "includes/class-mad4b-scp-company-email-routing.php.before-f6-scoped-email-routing-20261116.bak",
+      "sha256": "f5d12c59859efe2c68c37bf58f0d8c264557039ac5081a20cf91ae47f27e3f92"
+    },
+    {
+      "path": "includes/class-mad4b-company-host-topology-registry.php.before-signed-node-provider-readiness-20261106",
+      "sha256": "f2cb7f742858a3821f0dce0f1e6dc5929a9eae291a71fc2c58f240936f036dc4"
+    }
+  ],
+  "files": [
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/CENTRAL-ADMIN-PROXY.md",
+      "sha256": "d79a3c6197d1021f4ed84c3a8d665f552fc33d0d45e12b2c49491207fb74433c",
+      "bytes": 1707
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/assets/company-site-operations.css",
+      "sha256": "22bcaaa55b00f7a2a3ebec0ad44429551df8b76c1fc7d0742386200a5f1575bb",
+      "bytes": 7088
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/assets/company-site-operations.js",
+      "sha256": "fbc46a99a30ba5446548988cb4ea917b798a61801fb3d1a34b7440ad89dd2b9c",
+      "bytes": 6443
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/central-admin-proxy-smoke.php",
+      "sha256": "67a91f8b17be4051832d264acc588df394e81078a067e8be2a6f1fade95fdc1f",
+      "bytes": 2333
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/class-mad4b-central-admin-proxy.php",
+      "sha256": "7802b9b2cb7877929172e769124842665c129cf9bd6c5b3435f7f25b571d8132",
+      "bytes": 13447
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/class-mad4b-unified-administrator-principal.php",
+      "sha256": "be5a10c300a7d1a4e076c44732445c46c5b7b0da51d068fdf0e667a2a9819e18",
+      "bytes": 2472
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/data/company-communication-page-schema.json",
+      "sha256": "6fc45de0212aa7a2e4caf6624e578ff1491e1149d44c476a66ced6971011c38b",
+      "bytes": 8514
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-bootstrap-contract.php",
+      "sha256": "be7cba37875087b6b932cca289319172731f375d719514ac76102f11daee3324",
+      "bytes": 10768
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-brand-readiness-hub.php",
+      "sha256": "940b9d89ec11b1d918b876ba85544a8b76b4b84cf706cea4f91ee448b3816e79",
+      "bytes": 25198
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-contentjob-skill-preflight.php",
+      "sha256": "8479e56312463d5f824add093d1333e183498cf79e715a6f539c16a26e25e6a3",
+      "bytes": 12331
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-distribution-provision.php",
+      "sha256": "4c1a4556398755a2ac580b5516391674b977f75e56150abde90e5785cbe614e9",
+      "bytes": 9183
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-environment-portfolio-evidence.php",
+      "sha256": "fe1089aa90695d6036ff94db1a31eddf3d265fae23fa60e4a157a5cbca0b6da4",
+      "bytes": 6109
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-experience-install-owner-launch.php",
+      "sha256": "26640192da40670382f2d53abbd4a2e3fda4caabc8e4eae1855999335dd5cdf3",
+      "bytes": 21143
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-faore-broker-readback.php",
+      "sha256": "2cb8dbd1c7251370548388390bd563d36728a51e40a7004098eb15dc9ddaa63f",
+      "bytes": 7406
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-faore-fleet-observability.php",
+      "sha256": "d7e96c878cff50f74e54c730308d8495cd035dfd077beb0963c4cd3aff75cc67",
+      "bytes": 3113
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-host-runner-enrollment.php",
+      "sha256": "2c26b533154a389685bbb0040172535e185a346fc30e8ee187eaf0784a3ff418",
+      "bytes": 7192
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-host-topology-registry.php",
+      "sha256": "210f652bf6684885286b369c92978aa8f88e2754cd9e2b72a48651c8c1cf498c",
+      "bytes": 24677
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-launch-setup.php",
+      "sha256": "e2e6d13d6ef215a9b8605e9f440d71613dec8484a8b4ac6b9812e1ca2d51621c",
+      "bytes": 48505
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-market-portfolio.php",
+      "sha256": "6f1c70111568789dd845c8c28e1266075069c3bb9e30e25090680cf62cf81b89",
+      "bytes": 29560
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-mu-deploy-lifecycle.php",
+      "sha256": "dde0e9a1a7513b8586f35cd820c869d0cdbe9b0575d5a4ec3087d279058eb431",
+      "bytes": 3975
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-mu-deploy-owner-launch.php",
+      "sha256": "d3d030f9e79840655611cc537e9e25db874b41f02c60d12658543a1141764fb7",
+      "bytes": 10977
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-native-mu-deploy-handler.php",
+      "sha256": "7e8cce2b31928d2e2b04f41cf8d7d5f7676cfff7da86779f1c75ca161a64cdb8",
+      "bytes": 5628
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-native-mu-deploy-provider.php",
+      "sha256": "45213ca9bb9b689769fd046c71dbf7b703f631c92ffdacd397dd6adadff7d2c5",
+      "bytes": 3672
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-native-plugin-install-handler.php",
+      "sha256": "d2e70c5111681e0921ba75bddcccf3924e3ac641a864b9298fac206ce8afa916",
+      "bytes": 7957
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-native-plugin-install-provider.php",
+      "sha256": "3171e9eff65943a640588d5f0245191e69264b58ff2592819f2914326d516ba2",
+      "bytes": 5698
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-native-scoped-write-handler.php",
+      "sha256": "fd804404711550736fef5b625b7cdab7354cbc61ac5c082e5005f6fbaa553e34",
+      "bytes": 11216
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-native-scoped-write-providers.php",
+      "sha256": "8e9211fc63e0cd9a9ef160af0ba3d701aae38cd7f1b2dd8dd125b4b937f42969",
+      "bytes": 10812
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-network-membership.php",
+      "sha256": "b2aa5e4d32345eaec7a30223483a509a2bfd3ffcf9d97efd0117792548ca0f74",
+      "bytes": 17775
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-original-lifecycle-router.php",
+      "sha256": "25ac41e4eba874fe9524f74a09defc5fbbb22a585808261db985723014e3c341",
+      "bytes": 8955
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-plugin-live-reconcile.php",
+      "sha256": "ac7b3ef7d4099dad234e811d83da2d58cb80cc387fe3c3a41f64f48c558862e5",
+      "bytes": 22139
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-plugin-sync-operation.php",
+      "sha256": "2a18cead510442c7212c515c33fd057c8a436f00612a310e1c3facb4af8ef854",
+      "bytes": 15456
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-portability-readiness.php",
+      "sha256": "5ec6579c719f42b3a29850939b9bd0ff4b251cf58f157c586e6ab2502200df9e",
+      "bytes": 11451
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-presentation-option-ownership.php",
+      "sha256": "66ca463186190df6ed0feaf5c1b70941e76915b7018851478d475b4bfe3cceb3",
+      "bytes": 18791
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-reconcile-depth-audit.php",
+      "sha256": "cf78260860a46a9869c60edc7910f3b39f9dd711b594bd264ee1f85e910257dc",
+      "bytes": 16393
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-reconcile-operation-readiness.php",
+      "sha256": "d98692cab4253635495a8f0a285163adc4a4315669fa3526a596b68187a74fb0",
+      "bytes": 12312
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-reconcile-work-plan.php",
+      "sha256": "a574e9521e83c3531034686e65f701d9be1f8f0280aae7739ce31ea0deeab4db",
+      "bytes": 26798
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-repair-baseline-review.php",
+      "sha256": "47296d5838ec8067eb613b55529d1b43051a76fe7512dd009a8fc557509d1aec",
+      "bytes": 6105
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-repair-capability-discovery.php",
+      "sha256": "e67807b9456346e146dbd54250b1cf6a289b2dd15b4b7dbf91e2c6e102bdbcc2",
+      "bytes": 8348
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-repair-job-contract.php",
+      "sha256": "355573105b633af5a07eabc90426277a840db12ba3c081558909fa8edbee45c9",
+      "bytes": 13857
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-repair-jobs.php",
+      "sha256": "47b0d4ecfe2d9c4335fb09d41ef770666b81fefae9f9c176978dac9d7c8d5e66",
+      "bytes": 91370
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-repair-resource-resolver.php",
+      "sha256": "0c2d5cab563332d0e08eafcccbb7ccc520622884690eaf54178ebf481ed8e634",
+      "bytes": 12056
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-resource-snapshot-store.php",
+      "sha256": "4f44a4fdee9fa9537ec3e01d1f333ca013c5eae02b09f9eb829f9fd6a98d354e",
+      "bytes": 10414
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-service-catalog.php",
+      "sha256": "377a36e2e5bcbb8eea45e8567706e632aa2e22fcda46b8812bad6f294187b1eb",
+      "bytes": 35111
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-site-operations-dashboard.php",
+      "sha256": "21787b31992a2d5411fba8e10e85b62e3aaf4c6ec54a9f25e54e3e9ca2c67456",
+      "bytes": 22045
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-site-operations.php",
+      "sha256": "0f6d4cdf35f334f24c46c2a387080031f01d781364686549dbf8dad3ff9e05ce",
+      "bytes": 24380
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-start-reconcile-completeness.php",
+      "sha256": "db65359d9db8720e2f3f2c32c23588c6fb80ec196e573c058315f50a0f8cce86",
+      "bytes": 15767
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-strategy-management.php",
+      "sha256": "d4f13a5145b55b46fc2908a7596ecb5aa0337dd8e6d450aa776b051420092d51",
+      "bytes": 34327
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-task-origin-card.php",
+      "sha256": "2facdec7151a24a6a079a174462a29dfe852aaec4123768e614692e6f7fe773c",
+      "bytes": 15232
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-pricing-strategy-drafts.php",
+      "sha256": "9f8631130adac1d96afd8361b070923547e455a113b5cd3b3827824dfb92ed15",
+      "bytes": 6669
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-scp-company-code-reconciliation.php",
+      "sha256": "21df6902b7455551ba93e8f409d72391186b9fcc148be6b586d666f5e41e1794",
+      "bytes": 11926
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-scp-company-communication-team.php",
+      "sha256": "e7890a6887cf62ea008ebc6aedd863e26d1d78fd15e16e6e352782ce8baae293",
+      "bytes": 8581
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-scp-company-communication.php",
+      "sha256": "431d6d1142bd84ca8e23f3d810f51648557abb0d37511a7dda7c30a4b72c3f1c",
+      "bytes": 16718
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-scp-company-domain-cloudflare.php",
+      "sha256": "09a261a59f519ae294219146b335467dd6c038b133f63866b88569fb4b765cc6",
+      "bytes": 23081
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-scp-company-email-routing.php",
+      "sha256": "1a6c76423e720d3e75ceb7d17b75b2df39b5739c1e4992c375dfb748a66fa7a9",
+      "bytes": 34604
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-scp-company-local-wpcli.php",
+      "sha256": "a2057b090e005d374f3039ef164a1c4793d8723d72cd125fe45dec90a46eed4a",
+      "bytes": 5434
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-scp-company-master-admin.php",
+      "sha256": "d11ed9083bfb3b0bfadbf7a7e33c478b1ce4b1d3e9bcc7b4edc030202fd55834",
+      "bytes": 25404
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-scp-company-migration-decisions.php",
+      "sha256": "408febe1cea99ce389f84e9035f91dce1930843ec2f535e9cbc9d987198e2488",
+      "bytes": 30909
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-scp-company-operations-policy.php",
+      "sha256": "759ce17f33738d8b78be86b07695e00984b4eea70f1a0481f262142e288a2ecf",
+      "bytes": 6969
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-scp-company-owner-activation.php",
+      "sha256": "68063d543f332a4fd8d372849b498c405fe112326d249faa7665eb5f801148f9",
+      "bytes": 16090
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-scp-company-release-status.php",
+      "sha256": "0d5c2d5c642caa2216823f578af0c63a834c643b4ecc70a85d08df29a1c56898",
+      "bytes": 2792
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-scp-company-sender-policy.php",
+      "sha256": "c272d7f3b1e181b1d1d8909281c098f3093971c09d2e4670582c159829453413",
+      "bytes": 17125
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-scp-company-task-handoff.php",
+      "sha256": "e647d8078b9d3f6544e3940d1f7b6d82e8a03ec069e30721a3a1cf9cb59a47c6",
+      "bytes": 21403
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-scp-company-tenant-migration.php",
+      "sha256": "06447093ff420e76af963d07285922972ff29be17ca1cb5d2072738d9c41bbf9",
+      "bytes": 24988
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-scp-company-user-lifecycle.php",
+      "sha256": "7d6417579a2d64e67a9d5535e1724d68cb5a361739edefefb1186c0c5fabbf5d",
+      "bytes": 15361
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-scp-migration-decision-catalog.php",
+      "sha256": "2321244f43113cc998887c03ad923ab8dfc50510c33a73d435a4127afc787b8d",
+      "bytes": 14006
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-scp-staging-brand-trial.php",
+      "sha256": "ea9b0e70a8e34e225024a3e668a6a05c3e50434d97842b016458e9a6a9ba677e",
+      "bytes": 7385
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-scp-staging-context-fixtures.php",
+      "sha256": "bb5d334b9b0855e18c1259ece83f5c8a0796e1e8863cfd47925bccbc8259cda3",
+      "bytes": 11566
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-scp-staging-fixture-drafts.php",
+      "sha256": "7ec0cdcf8dc8a1a7b0ddb99ce876582bc0e3b8edd4fde00b97119aac204c063e",
+      "bytes": 9871
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-vps-company-launch.php",
+      "sha256": "376b1124e6f6b03bb6ef93f2e5f6972762dc676c08b20f4ce9849013afbf5bea",
+      "bytes": 29603
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/mad4b-company-portfolio-manager.php",
+      "sha256": "4314c11978511c4399008fca0acda641f40cc9235870385da2242c613137852d",
+      "bytes": 113510
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/tests/company-manager-native-contentjob-acceptance.php",
+      "sha256": "50f0532690d23ee6973512dc44970580c31a6c38e84cd0d6b02492d9751a2086",
+      "bytes": 6709
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/tests/company-manager-scheduled-skill-acceptance.php",
+      "sha256": "daf3a56a9fe957fe963bfac5d16de04bff3a9854731dcda53340e54e7d420878",
+      "bytes": 2469
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/tests/company-reconcile-deep-regression-20261111.php",
+      "sha256": "a3c2c486b2148d73dcd05bf795a70903a16291dba853483af32686a99d9f1a4e",
+      "bytes": 4165
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/tests/company-reconcile-start-company-v1-regression.php",
+      "sha256": "937cb5b89a18905f9532b41d7535419c35598ba6241cfdb2db565cb996f7eb48",
+      "bytes": 3679
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/tests/company-strategy-empty-rebind-regression.php",
+      "sha256": "f91c1475650071ecdd25f0a64cd1423ea51c85fe4bd3d761f4acf3115093eb5f",
+      "bytes": 3254
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/tests/experience-owner-job-rotation-regression-20261106.php",
+      "sha256": "8b910ec50920c539e052a508c979252acd0ca790012a1e29426b625eb2fe7c17",
+      "bytes": 3143
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/tests/host-runner-enrollment-preflight-regression.php",
+      "sha256": "1ac1a6ad788482a268d042317f92d0db81ddfac6a079c319a44378da6ce336ec",
+      "bytes": 2548
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/tests/network-membership-contract.php",
+      "sha256": "2c9f9195fd8cddfe9539c78cdf716e7707cfa7c10949a231026d879ff0cbb56c",
+      "bytes": 2983
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/tests/network-membership-rest-contract.php",
+      "sha256": "cc5828fb6a630a7bc2bda360ced1202cd25b30bbc57aa704af60da58f65ac6ea",
+      "bytes": 2365
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/tests/plugin-install-provider-registration-regression-20261105.php",
+      "sha256": "1d11a80c1ea2614c2590fa25710f7b5f3cf94f132d94ed1e1bad1a0bf49738b2",
+      "bytes": 2796
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/tests/portability-readiness-contract.php",
+      "sha256": "e038c7673dbb07307cae69250adc01c69e472f1af2a633a49859ea3d5b903c68",
+      "bytes": 3439
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/tests/portability-readiness-rest-contract.php",
+      "sha256": "b82b320e2f33fccc20880ba8fdb102e8a36e0c073a4e68e731f0952f59bd7517",
+      "bytes": 2861
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/tests/presentation-option-ownership-regression-20261105.php",
+      "sha256": "55189a93b75c63302d888ebba8f55fb1c6f66ab3dd0afebe7e4b5b1afa44d3a3",
+      "bytes": 7570
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/tests/service-catalog-contract.php",
+      "sha256": "f765e6b05c2b8e4a8999aa8e0a4e680c15162996d1a2cb9ab6b1c4d229824680",
+      "bytes": 2143
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/tests/wo-vacation-native-scoped-write-regression.php",
+      "sha256": "76bfc5ddc90c703309f2a9f6814e610d5dbbca0473ddd719bc974c110a671a4a",
+      "bytes": 3268
+    },
+    {
+      "path": "wp-content/plugins/mad4b-company-portfolio-manager/tests-central-admin-proxy-source.php",
+      "sha256": "f47c5e651c298f5baf2f1cf31e10c8e17381974edad278c6f247e3dd7476e330",
+      "bytes": 2621
+    }
+  ],
+  "source_root_restored": true,
+  "retained_certificate_policy": "no exact provider/addon certified pair; shadow mode",
+  "secret_pattern_scan": {
+    "private_keys": 0,
+    "stripe_secret": 0,
+    "stripe_webhook_secret": 0,
+    "github_pat": 0,
+    "aws_key": 0,
+    "google_key": 0
+  },
+  "signed_original313_deployment_authority": false
+}

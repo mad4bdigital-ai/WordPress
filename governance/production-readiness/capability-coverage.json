@@ -23059,6 +23059,40 @@
       "review_rationale": "Exact reviewed successor shows operational local Skill catalog ready while exposing external ChatGPT App as optional and unavailable until company binding. Keeps original administrator-only editor/POST gates, company scope and read-only access; separately reports full historical external certificate. No role or grant changes."
     },
     {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/wordpress-addon-catalog.json",
+      "source_blob_sha": "a356781f9fab0f3fc0f0eb2e315e0bca4ccb4235",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/wordpress-addon-execution-guard-contract.php"
+      ],
+      "owner_role": "MAD4B policy source reviewer — nonauthorizing CI",
+      "review_rationale": "The invalid static staging ring is replaced by a strict company Site Profile and exact pair derived policy. The catalog has no certified pairs; without independent provider and owner evidence it cannot grant execution. Original invalid rings, foreign UUID and profile-digest drifts deny.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-addon-registry.php",
+      "source_blob_sha": "f55803c90df51ef19c255da600bf1441669db16a",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/wordpress-addon-execution-guard-contract.php"
+      ],
+      "owner_role": "MAD4B nonauthorizing source-backed CI assessment",
+      "review_rationale": "The core registry resolves an effective lifecycle ring from the installed, byte-pinned, provider-certified exact company pair and current enrolled Site Profile UUID and digest; stale profile, clone, missing pair and canary all deny execution. The original Production authority and mutation guard remain independent.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php",
       "source_blob_sha": "19fa8785a31906622295a4311d197c288ff4ff08",
       "control_ids": [
@@ -23141,6 +23175,45 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing exact source provenance, original Addon Registry registered-plugin certification, missing-source fail-closed checks and mutation-denial contract cover the change.",
       "execution_note": "This source-only review does not restore the absent Company Portfolio Manager 0.4.0 tree, issue a certified add-on pair, authorize Production, or mutate live sites."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-addon-registry.php",
+      "source_blob_sha": "1ef03cf401eef9dfa18c67f6eb1b85d843092aec",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/wordpress-addon-execution-guard-contract.php",
+        "tests/readiness-seven-original-p0-source-review.py",
+        "tests/test_dynamic_addon_release_ring_contract.py"
+      ],
+      "owner_role": "MAD4B first-party original Addon Registry source reviewer; CI-only, not release Owner authority",
+      "review_rationale": "Exact reviewed Git successor of the site-bound Dynamic Add-on Registry, derived from previously reviewed f55803c90df51ef19c255da600bf1441669db16a. Source comparison shows the existing provider/addon fingerprint, enrolled Site Profile UUID+digest, active/canary/shadow ring, clone/origin and mutation_guard restrictions are preserved; only empty-catalog readiness and read-only pending candidate count were appended from separately reviewed 4db830176dc8da77c29e954a0783b7e4a0bab2d2. The dynamic PHP runtime denial suite tests foreign company, stale digest, revoked enrollment, mismatched exact pair and false Production authority. These tests must pass on this exact merged Git head; source review cannot itself grant execution or authorize Production.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original P0 fixture and dynamic Addon Registry runtime denials provide exact source-backed, non-authorizing CI evidence.",
+      "execution_note": "No Production deployment, certified pair, direct native write exception, Original312/313 proof or Owner attestation is inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/wordpress-addon-catalog.json",
+      "source_blob_sha": "c9c10d7ed4442761b76811d19e030a316c5169fb",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "MAD4B original first-party Company add-on source reviewer; independent Owner release verdict required",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/test_dynamic_addon_release_ring_contract.py"
+      ],
+      "review_rationale": "Exact source-only successor of the restored Company Management add-on catalog: provider version was corrected to the actual Control Plane header 0.4.0-rc.129 and add-on version to actual Company Management header 0.4.3-company-addon. Five source contract tests and two deliberately wrong-version cases validated exact runtime-header parity; certified_pairs remains empty, unknown-site ring remains shadow, and production_authorized remains false. This CI-only review preserves every older catalog and registry source record and does not certify the 99 outstanding direct write/DB/filesystem/network call sites, add a grant, or authorize any live deployment."
     }
   ],
   "code_change_rules": {
