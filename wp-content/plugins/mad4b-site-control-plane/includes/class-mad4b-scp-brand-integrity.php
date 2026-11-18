@@ -113,7 +113,7 @@ final class MAD4B_SCP_Brand_Integrity {
         // internal-linking promotions must point to a bound company domain.
         // Source-field intent is authoritative, not the generated URL.
         // Destination further reading and related content link internally by default.
-        $promotional = preg_match('/(?:^meta\.tour_internal_linking|(?:^|[._])(?:promotional|cta|campaign_links|internal_linking|further_reading|related_tours?|related_destinations?|related_articles?|related_links?|destination_links)(?:[._]|$))/i',$field_path)===1;
+        $promotional = preg_match('/(?:^meta\.tour_internal_linking|(?:^|[._])(?:promotional|cta|campaign_links|internal_linking|internal_links|further_reading|related_tours?|related_destinations?|related_articles?|related_links?|destination_links)(?:[._]|$))/i',$field_path)===1;
         $allowed = self::allowed_hosts($scope);
         preg_match_all('~<a\b[^>]*\bhref\s*=\s*(?:"([^"]*)"|\x27([^\x27]*)\x27|([^\s>]+))[^>]*>(.*?)</a>~isu',$html,$raw,PREG_SET_ORDER);
         // JetEngine term repeaters can store title and URL in separate leaves.
@@ -628,6 +628,36 @@ final class MAD4B_SCP_Brand_Integrity {
             'fields_scanned'=>count($fields),'issues'=>array_values($issues));
     }
 
+
+    /**
+     * Real WordPress wp_kses_post() shortens root-relative links with unencoded
+     * colon path segments (JetSmartFilters archive examples collapse to
+     * "cairo/"). Audit new candidate anchors BEFORE the editor applies KSES.
+     * We fingerprint only the offending href and field, not private content.
+     * This is a governed term write preflight, never a global save hook.
+     */
+    private static function unstable_relative_anchor_hrefs($value, $meta_key) {
+        $fields=array();
+        $coverage=array('complete'=>true,'gap_count'=>0,'gap_samples'=>array());
+        self::append_leaf($fields,'termmeta.'.$meta_key.'.0',maybe_unserialize($value),0,$coverage);
+        $found=array();
+        foreach($fields as $field_path=>$leaf) {
+            if(!preg_match_all('~<a\b[^>]*\bhref\s*=\s*(?:"([^"]*)"|\x27([^\x27]*)\x27|([^\s>]+))~iu',
+                    (string)$leaf['html'],$links,PREG_SET_ORDER))continue;
+            foreach(array_slice($links,0,80) as $link) {
+                $href=html_entity_decode((string)($link[1]?:($link[2]?:($link[3]??''))),
+                    ENT_QUOTES|ENT_HTML5,'UTF-8');
+                if(!str_starts_with($href,'/') || str_starts_with($href,'//'))continue;
+                $path=explode('?',explode('#',$href,2)[0],2)[0];
+                if(!preg_match('~/(?:[^/?#]+:[^/?#]+)~',$path))continue;
+                $fingerprint=hash('sha256',$field_path.'|'.$href);
+                $found[$fingerprint]=array('field_path'=>$field_path,
+                    'href_sha256'=>hash('sha256',$href));
+            }
+        }
+        return $found;
+    }
+
     /**
      * Governed Content Job / JetEngine adapters can call this BEFORE writing.
      * No global metadata filter: WPML and editor saves remain untouched.
@@ -654,6 +684,20 @@ final class MAD4B_SCP_Brand_Integrity {
         if(!$before['complete'] || !$after['complete'])
             return new WP_Error('mad4b_term_link_coverage_incomplete',
                 'Term field coverage incomplete.',array('term_id'=>$term_id,'meta_key'=>$key));
+
+        // Compare with the current value so an unchanged legacy link never
+        // prevents an operator from repairing that term. New KSES-unstable
+        // relative anchors must fail before any governed metadata write.
+        $existing_unsafe=self::unstable_relative_anchor_hrefs(
+            get_term_meta($term_id,$key,true),$key);
+        $candidate_unsafe=self::unstable_relative_anchor_hrefs($candidate,$key);
+        $introduced_unsafe=array_diff_key($candidate_unsafe,$existing_unsafe);
+        if($introduced_unsafe)
+            return new WP_Error('mad4b_term_link_relative_href_unstable',
+                'The proposed root-relative link changes when WordPress sanitizes HTML. Use a canonical first-party destination URL.',
+                array('term_id'=>$term_id,'taxonomy'=>(string)$term->taxonomy,
+                    'meta_key'=>$key,'unsafe_links'=>array_values($introduced_unsafe),
+                    'auto_replacement_authorized'=>false));
         $new=self::newly_introduced_high($before,$after);
         if($new)
             return new WP_Error('mad4b_term_link_external_promotional_blocked',
