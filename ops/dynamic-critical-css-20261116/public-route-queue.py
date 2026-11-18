@@ -52,6 +52,15 @@ def read_ledger(p,site):
     x=json.loads(p.read_text())
     if x.get('contract')!=QUEUE or x.get('site')!=site or not isinstance(x.get('routes'),dict):raise ValueError('foreign-ledger')
     return x
+def independently_certified_home(route):
+    # Home EN and translated Home pages already have an independent first-
+    # fold and origin-cache lifecycle. The per-route cache release refuses
+    # them on purpose; never select them for this separate worker.
+    language=route.get('language')
+    path=route.get('path')
+    return (isinstance(language,str) and isinstance(path,str)
+            and path in ('/','/'+language+'/'))
+
 def source_key(cat,r,state,depends_on_listings=False):
     deps=[cat['host'],r['language'],r['path'],r['route_key'],
           str(r.get('revision',0)),str(cat.get('global_generation',0)),
@@ -146,6 +155,10 @@ def choose(cat,state,ledger,now,preferred=None):
             raise ValueError('invalid-source-canary-selection')
         chosen=next((r for r in rows if r['route_key']==preferred),None)
         if chosen is None:raise ValueError('source-canary-route-not-in-catalog')
+        if independently_certified_home(chosen):
+            # A stale source-family suggestion cannot send Home to the
+            # per-route cache-release path. It remains on its own certifier.
+            return None,None
         record=ledger['routes'].get(preferred,{})
         if not isinstance(record,dict):raise ValueError('invalid-source-canary-ledger')
         key=source_key(cat,chosen,state,bool(record.get('depends_on_listings')))
@@ -156,7 +169,7 @@ def choose(cat,state,ledger,now,preferred=None):
         return None,None
     unseen=[];changed=[];retry=[]
     for r in rows:
-        if r['path'] in ['/',('/'+r['language']+'/')]:continue
+        if independently_certified_home(r):continue
         record=ledger['routes'].get(r['route_key'],{})
         if not isinstance(record,dict):raise ValueError('invalid-queue-state-record')
         key=source_key(cat,r,state,bool(record.get('depends_on_listings')))
@@ -223,6 +236,8 @@ def main():
         previous=ledger['routes'].get(route['route_key'],{})
         if actual!=route or source_key(catalog,route,state,bool(previous.get('depends_on_listings')))!=key:
             raise ValueError('stale-catalog-revision')
+        if independently_certified_home(route):
+            raise ValueError('home-owned-by-independent-first-paint-certifier')
         if not rest or rest[0] not in ['certified','hold','unsupported','native_candidate']:raise ValueError('invalid-result')
         status=rest[0]
         # First-party capture preflight may carry a bounded machine-readable

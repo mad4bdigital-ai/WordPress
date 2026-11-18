@@ -240,3 +240,31 @@ no change to Tour, destinations, other types or Tours.dev.
 Six hermetic PHP CSS-exclusion tests and eight source-key isolation
 tests passed. Independent live Chromium recertification is still
 necessary before these category pages count as Critical CSS Ready.
+
+## Home-page ownership: do not send independent critical-css Home to the per-route pipeline
+Observed after Wayfatours core-category source fixes: the original
+`mad4b-public-critical-css-wayfa` worker spent a full cycle selecting
+`page /`, then the original selective cache release correctly refused
+it with `home-or-out-of-scope-route`. The standalone EN and translated
+Home views already have a different, independently certified Critical
+CSS/cache controller and MUST NOT be recaptured by the generic
+source-family/route worker. This was not a CSS or eligibility failure;
+it was a false source-family nomination that starved eligible pages.
+
+The original general queue already excluded `/` and `/<language>/`
+only for *legacy* selection, but an authenticated preferred source-family
+canary bypassed that check. New original shared
+`independently_certified_home(route)`:
+- Filters independent Home and WPML translated Home out of the source
+  family candidate collection; all other existing pages remain.
+- Rejects a stale preferred Home proposal before a cache release.
+- Rejects recording a fabricated or stale Home per-route certificate,
+  retaining the separate home owner.
+- Leaves all original WooCommerce routes excluded, WordPress core
+  category candidates admitted and original cache-release safeguards
+  unchanged.
+
+11 focused route-selection/record tests passed including independent
+home, WPML, ordinary pages and categories. This reduces wasted browser
+cycles; it does not turn a source-family pass into an exact page
+certificate or disable CPU and browser admissions.

@@ -109,7 +109,12 @@ def build(site,catalog,state,ledger,root=None):
         raise ValueError('source-engine-context-invalid')
     if root is None:root=Path(ROOTS[site][0])
     if str(root)!=ROOTS[site][0] or root.is_symlink():raise ValueError('untrusted-source-site-root')
-    catalogrows=queue.safe_catalog(catalog,site)
+    # Home and translated Home pages belong to a separate original CSS
+    # certifier. Never nominate them as source-family representative
+    # canaries: their native selective per-route cache release disallows
+    # Home and would otherwise waste one entire expensive Chromium slot.
+    catalogrows=[r for r in queue.safe_catalog(catalog,site)
+                 if not queue.independently_certified_home(r)]
     published=load_certs(root)
     by_route=collections.defaultdict(list)
     for (lang,path,market,currency),cert in published.items():
