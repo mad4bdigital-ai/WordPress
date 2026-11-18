@@ -1,0 +1,58 @@
+name: MAD4B Tour Mobile MU Source QA
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/mu-plugins/407-mad4b-elementor-sticky-lifecycle-guard.php'
+      - 'wp-content/mu-plugins/410-mad4b-tour-rate-lazy-footprint.php'
+      - 'wp-content/mu-plugins/411-mad4b-direct-menu-link-contract.php'
+      - 'wp-content/mu-plugins/428-mad4b-mobile-bottom-action-nav-visibility.php'
+      - 'wp-content/mu-plugins/assets/mad4b-elementor-sticky-lifecycle-*.js'
+      - 'ops/site-runtime/tour-mobile-canonical-source-20261119/**'
+      - '.github/workflows/mad4b-tour-mobile-mu-source.yml'
+  push:
+    branches:
+      - master
+    paths:
+      - 'wp-content/mu-plugins/407-mad4b-elementor-sticky-lifecycle-guard.php'
+      - 'wp-content/mu-plugins/410-mad4b-tour-rate-lazy-footprint.php'
+      - 'wp-content/mu-plugins/411-mad4b-direct-menu-link-contract.php'
+      - 'wp-content/mu-plugins/428-mad4b-mobile-bottom-action-nav-visibility.php'
+      - 'wp-content/mu-plugins/assets/mad4b-elementor-sticky-lifecycle-*.js'
+      - 'ops/site-runtime/tour-mobile-canonical-source-20261119/**'
+      - '.github/workflows/mad4b-tour-mobile-mu-source.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  canonical-source-php83:
+    name: Verified MU source / PHP 8.3
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+      - name: Verify exact live-source snapshot and admin exclusion
+        run: python3 ops/site-runtime/tour-mobile-canonical-source-20261119/verify-source.py
+
+  canonical-source-php85:
+    name: Verified MU source / PHP 8.5
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          coverage: none
+      - name: Verify exact live-source snapshot and admin exclusion
+        run: python3 ops/site-runtime/tour-mobile-canonical-source-20261119/verify-source.py
