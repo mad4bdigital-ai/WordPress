@@ -96,6 +96,87 @@ def reviewed_rc129_pinned_successor(repo:Path,path:str,contents:bytes):
         return None
 
 
+def reviewed_rc129_host_integration_successor(repo:Path,path:str,contents:bytes):
+    """Return only the source-pinned Host regression for the six exact current
+    files. The original QA31 ledger and prior rc129 successor reviews are
+    immutable; this review neither authorizes release nor grants Host writes.
+    """
+    src=repo/'governance/release-parity/qa31-rc129-host-agent-integration-successors-20261118.json'
+    if not src.is_file() or src.is_symlink():return None
+    base='27883e019d7b9ddc744f6be33608b78c54ec411b'
+    allowed=(
+        'includes/class-mad4b-scp-artifacts.php',
+        'includes/class-mad4b-scp-brand-review-routing.php',
+        'includes/class-mad4b-scp-content-jobs.php',
+        'includes/class-mad4b-scp-context-authority.php',
+        'includes/class-mad4b-scp-host-agent-bridge.php',
+        'mad4b-site-control-plane.php',
+    )
+    if path not in allowed or not isinstance(contents,bytes):return None
+    try:
+        v=json.loads(src.read_text(encoding='utf-8'))
+        previous=repo/'governance/release-parity/qa31-rc129-reviewed-successors-20261118.json'
+        historical=repo/'governance/release-parity/qa31-commerce-staging-source-parity.json'
+        ledger=json.loads(historical.read_text(encoding='utf-8'))
+        rows=v.get('source_entries')
+        if (v.get('contract')!='mad4b.qa31-host-integration-exact-successors.v1'
+            or v.get('base_source_commit')!=base
+            or v.get('original_qa31_ledger')!='governance/release-parity/qa31-commerce-staging-source-parity.json'
+            or v.get('previous_rc129_reviews')!='governance/release-parity/qa31-rc129-reviewed-successors-20261118.json'
+            or v.get('original_qa31_sha256')!=digest(historical)
+            or v.get('previous_rc129_reviews_sha256')!=digest(previous)
+            or v.get('authorizing') is not False
+            or v.get('production_authorized') is not False
+            or v.get('source_promotion_approved') is not False
+            or v.get('is_build_provenance') is not False
+            or v.get('live_evidence_required') is not True
+            or v.get('release_gate')!='BLOCKED_SOURCE_RECONCILIATION'
+            or v.get('exact_source_files')!=6
+            or v.get('historical_qa31_overrides')!=3
+            or not isinstance(rows,list) or len(rows)!=6):return None
+        names=[r.get('path') for r in rows if isinstance(r,dict)]
+        if len(names)!=6 or tuple(names)!=allowed:return None
+        entry=rows[allowed.index(path)]
+        existing={r['path']:r for r in ledger['source_decisions']}
+        listed=existing.get(path)
+        if listed:
+            if (entry.get('source_record_scope')!='qa31_historical'
+                or entry.get('original_qa31_state')!=listed.get('state')
+                or entry.get('original_qa31_staging_sha256')!=listed.get('staging_sha256')
+                or entry.get('original_qa31_github_sha256')!=listed.get('github_sha256')):return None
+        elif entry.get('source_record_scope')!='new_or_separate_review':return None
+        if (entry.get('required_regression')!='wp-content/plugins/mad4b-site-control-plane/tests/host-agent-source-parity-contract.py'
+            or not SHA.fullmatch(str(entry.get('current_sha256','')))
+            or not SHA40.fullmatch(str(entry.get('current_blob_sha','')))
+            or hashlib.sha256(contents).hexdigest()!=entry['current_sha256']
+            or hashlib.sha1(b'blob '+str(len(contents)).encode('ascii')+b'\0'+contents).hexdigest()!=entry['current_blob_sha']):return None
+        previous_sha=entry.get('parent_sha256')
+        previous_blob=entry.get('parent_blob_sha')
+        newfile=path=='includes/class-mad4b-scp-host-agent-bridge.php'
+        if newfile:
+            if previous_sha is not None or previous_blob is not None:return None
+        elif not SHA.fullmatch(str(previous_sha)) or not SHA40.fullmatch(str(previous_blob)):
+            return None
+        parent=subprocess.run(['git','cat-file','-e',base+'^{commit}'],
+            cwd=repo,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=8)
+        if parent.returncode==0:
+            old=subprocess.run(['git','rev-parse','--verify',
+                base+':wp-content/plugins/mad4b-site-control-plane/'+path],
+                cwd=repo,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,timeout=8)
+            if newfile:
+                if old.returncode==0:return None
+            elif old.returncode!=0 or old.stdout.decode().strip()!=previous_blob:
+                return None
+        else:
+            is_shallow=subprocess.check_output(['git','rev-parse','--is-shallow-repository'],
+                cwd=repo,stderr=subprocess.DEVNULL,timeout=8).decode().strip()
+            if is_shallow!='true':return None
+        return entry['required_regression']
+    except (OSError,ValueError,KeyError,TypeError,subprocess.CalledProcessError,
+            subprocess.TimeoutExpired,json.JSONDecodeError):
+        return None
+
+
 def reviewed_ci_only_source_successor(root:Path,path:str,contents:bytes)->bool:
     """Accept exact, reviewed Git blobs for CI inventory only; never parity.
     Static legacy entries remain valid; rc129 successors are independently
@@ -108,7 +189,9 @@ def reviewed_ci_only_source_successor(root:Path,path:str,contents:bytes)->bool:
     source=root/path
     if source.is_symlink() or not source.is_file() or source.read_bytes()!=contents:
         return False
-    requested=reviewed_rc129_pinned_successor(repo,path,contents)
+    requested=reviewed_rc129_host_integration_successor(repo,path,contents)
+    if requested is None:
+        requested=reviewed_rc129_pinned_successor(repo,path,contents)
     if requested is None:
         requested=_REVIEWED_CI_ONLY_SOURCE_TESTS.get(path)
     if requested is None:return False

@@ -1,0 +1,81 @@
+{
+  "authorizing": false,
+  "base_source_commit": "27883e019d7b9ddc744f6be33608b78c54ec411b",
+  "contract": "mad4b.qa31-host-integration-exact-successors.v1",
+  "exact_source_files": 6,
+  "historical_qa31_overrides": 3,
+  "is_build_provenance": false,
+  "live_evidence_required": true,
+  "original_qa31_ledger": "governance/release-parity/qa31-commerce-staging-source-parity.json",
+  "original_qa31_sha256": "24f82e7898d4523bea658f4805329ea62cde807c54e63ecd0b8fe98b43fe1819",
+  "previous_rc129_reviews": "governance/release-parity/qa31-rc129-reviewed-successors-20261118.json",
+  "previous_rc129_reviews_sha256": "dce059a5058b66cc1cb5f6d4cd01aab24b1e6b75a8fba6a1655579de038ff821",
+  "production_authorized": false,
+  "release_gate": "BLOCKED_SOURCE_RECONCILIATION",
+  "source_entries": [
+    {
+      "current_blob_sha": "60750fb4a0cf8180f012254acd3fc2ccc43bba78",
+      "current_sha256": "4a0faeeedfd58d6e864b171a0e2405bd444948af288755b04c62203ed4d5a4ec",
+      "parent_blob_sha": "7dcbcff762053e27ab858bd2554c277fb6f39d44",
+      "parent_sha256": "27c37d078984f9ed05639a8bdffda59f0406ecb6a63b42e9f2e79e3e00666efe",
+      "path": "includes/class-mad4b-scp-artifacts.php",
+      "required_regression": "wp-content/plugins/mad4b-site-control-plane/tests/host-agent-source-parity-contract.py",
+      "source_record_scope": "new_or_separate_review"
+    },
+    {
+      "current_blob_sha": "40e375d2a88823ad9a5c699564b1a2988cd24940",
+      "current_sha256": "f10d5be247a54e71a07feba55d6b521264be75fe93bcac19dc89fba32750821e",
+      "parent_blob_sha": "ad582bbdfe20f02166050558d0cf80fda3fc5b65",
+      "parent_sha256": "273824bd5fbdfe3343b07b7e234e43b198d73770751b5a4a8ff2870f5cd2321e",
+      "path": "includes/class-mad4b-scp-brand-review-routing.php",
+      "required_regression": "wp-content/plugins/mad4b-site-control-plane/tests/host-agent-source-parity-contract.py",
+      "source_record_scope": "new_or_separate_review"
+    },
+    {
+      "current_blob_sha": "36efb28bbfc98fe29ca1ed76f84f7d9d606cd1c5",
+      "current_sha256": "8ef1425c1ed3034a39a3c60304e8afffcf0e47bc15a2b384b6b1456f848e7f3c",
+      "original_qa31_github_sha256": "c7de2e2f97da73061582ea82e1cb7a36b54cc6881fa04a38198f878125b3f547",
+      "original_qa31_staging_sha256": "c8eb29318e8c66d267dc1aa555b44ef2d774ab8a9c9aab4eb1dad9ee4d88f96a",
+      "original_qa31_state": "DIVERGENT",
+      "parent_blob_sha": "6414871eaef0a7ab4e19d9ecf7cfc1200c1a76c4",
+      "parent_sha256": "cc8ed43625db6ea74cb3d20b395f06545db661267880cec5b37f94dedcca7a70",
+      "path": "includes/class-mad4b-scp-content-jobs.php",
+      "required_regression": "wp-content/plugins/mad4b-site-control-plane/tests/host-agent-source-parity-contract.py",
+      "source_record_scope": "qa31_historical"
+    },
+    {
+      "current_blob_sha": "037d6563a3a42561a69b30e8f5d450e40a2d4a40",
+      "current_sha256": "c7e06a51d85ae3dde944d7e38eff3a34f456f25dc2e2f0f3510c5912f8aa3398",
+      "original_qa31_github_sha256": "f3377dfaab7ff7178809235652fb4dc3f48ad32b9735d25469cfd22a3db0acb3",
+      "original_qa31_staging_sha256": "368dae8d3a094913021df5bb749b55cf9d62b32ba0502529a2f253504c9118d8",
+      "original_qa31_state": "DIVERGENT",
+      "parent_blob_sha": "43e71753bfb1e43e0cb48f22690ab3522c44d695",
+      "parent_sha256": "7c0b8507a7bc6d54bb88669797f413a0e3fe2dbe139322d90149bde0a0f1ec50",
+      "path": "includes/class-mad4b-scp-context-authority.php",
+      "required_regression": "wp-content/plugins/mad4b-site-control-plane/tests/host-agent-source-parity-contract.py",
+      "source_record_scope": "qa31_historical"
+    },
+    {
+      "current_blob_sha": "929da81830eb6ea18957ae9a4b7dcd06eea0a7f5",
+      "current_sha256": "19de32ee3c1ced6e47bbfca8e7443e24bb114b662a14cab3c920e293a0b708d2",
+      "parent_blob_sha": null,
+      "parent_sha256": null,
+      "path": "includes/class-mad4b-scp-host-agent-bridge.php",
+      "required_regression": "wp-content/plugins/mad4b-site-control-plane/tests/host-agent-source-parity-contract.py",
+      "source_record_scope": "new_or_separate_review"
+    },
+    {
+      "current_blob_sha": "dcae0a0a32495bfcedd4300fd78a8ec765235697",
+      "current_sha256": "9e20c4a6eb57b884bf31c5959a4bc7895717b0d9497d94def27c0e41343f7977",
+      "original_qa31_github_sha256": "14ab468df5db4abd5042c86c73da1b56230db17d17c2c01d90e23bb330a3d206",
+      "original_qa31_staging_sha256": "32d3aa84b15b0fa549c6dd8ffc131c2c292640e5b63991dab1a94f3f0e97cc00",
+      "original_qa31_state": "DIVERGENT",
+      "parent_blob_sha": "fcf54c0b6312c575c0ab34b3d751cd5168ca46fa",
+      "parent_sha256": "f613ca22a1e9158b9711d0ebd85d406b83e5d2b81bd0fbba2835d99a7200e1b9",
+      "path": "mad4b-site-control-plane.php",
+      "required_regression": "wp-content/plugins/mad4b-site-control-plane/tests/host-agent-source-parity-contract.py",
+      "source_record_scope": "qa31_historical"
+    }
+  ],
+  "source_promotion_approved": false
+}

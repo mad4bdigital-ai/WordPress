@@ -53,6 +53,9 @@ final class MAD4B_SCP_Brand_Review_Routing_V1 {
             && ($policy['ready']??null)===true
             && ($policy['exact_grant_ready']??null)===true
             && ($policy['catalog_eligible']??null)===true;
+        $host_bound=class_exists('MAD4B_SCP_Host_Agent_Bridge',false)
+            && MAD4B_SCP_Host_Agent_Bridge::binding_ready();
+        $host_review_ready=$host_bound && $can_ai;
         $can_human=$mode!=='ai_only';
         $blockers=$mode==='human_only'?[]:(array)($policy['blockers']??[]);
         // Exact delegated Agent permission and this site's model worker
@@ -95,6 +98,8 @@ final class MAD4B_SCP_Brand_Review_Routing_V1 {
             'review_route'=>$route,
             'authority_ready'=>$mode==='human_only'||$can_ai,
             'ai_review_eligible'=>$can_ai,
+            'host_agent_registered'=>$host_bound,
+            'host_wpcli_review_ready'=>$host_review_ready,
             'local_ai_worker_ready'=>$worker_ready,
             'local_ai_worker_blockers'=>$worker_blockers,
             'human_review_eligible'=>$can_human,
@@ -113,6 +118,7 @@ final class MAD4B_SCP_Brand_Review_Routing_V1 {
         return array_intersect_key($r,array_flip([
             'contract','source_id','policy_source','source_override','effective_mode',
             'review_route','authority_ready','ai_review_eligible',
+            'host_agent_registered','host_wpcli_review_ready',
             'local_ai_worker_ready','local_ai_worker_blockers',
             'human_review_eligible','blockers','indexed_assets','reviewable_verified_assets',
             'next_action','publication_authorized','agent_grants_inherited','automatic_approval'

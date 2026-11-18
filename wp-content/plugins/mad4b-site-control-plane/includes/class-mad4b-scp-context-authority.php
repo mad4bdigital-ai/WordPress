@@ -3243,6 +3243,67 @@ final class MAD4B_SCP_Context_Authority {
 		return self::review_asset_with_actor( $asset_id, $review_input, $actor );
 	}
 
+    /** Independent signed-Host WP-CLI review lane. Never accepts OAuth or a
+     * WordPress --user impersonation. It shares the original review mutation
+     * engine, source SHA/revision checks and append-only audit.
+     */
+    public static function review_asset_by_host_agent(array $input, array $agent,
+                                                       $subject_fingerprint) {
+        if(!class_exists('MAD4B_SCP_Host_Agent_Bridge',false)
+            ||!MAD4B_SCP_Host_Agent_Bridge::active())
+            return new WP_Error('mad4b_host_review_proof_required',
+                'Fresh exact Host WP-CLI signature required.');
+        foreach(array('category','authority_class','required',
+            'required_scope_confirmed','quality_mode','quality_score',
+            'classification_confirmed','approve_stale_generation_evidence')
+            as $forbidden) {
+            if(array_key_exists($forbidden,$input))
+                return new WP_Error('mad4b_host_ai_governance_mutation_denied',
+                    'Host AI review cannot change governance classification or quality.');
+        }
+        $policy=self::review_policy();
+        if(!in_array((string)($policy['mode']??'human_only'),
+            array('human_and_ai','ai_only'),true)
+            ||!hash_equals((string)($policy['ai_agent_public_id']??''),
+                (string)($agent['public_id']??'')))
+            return new WP_Error('mad4b_host_ai_review_policy_denied',
+                'The exact Agent is not delegated by the effective Review Policy.');
+        $ability=MAD4B_SCP_Agent_Registry::exact_grant(
+            (int)($agent['id']??0),'mad4b-write',self::AI_REVIEW_ABILITY,'core');
+        if(!is_array($ability)||($ability['effect']??'')!=='allow'
+            ||($ability['environment']??'')!==self::site_profile_environment())
+            return new WP_Error('mad4b_host_ai_review_grant_denied',
+                'Exact site and environment review grant required.');
+        $asset_id=strtolower(trim(sanitize_text_field((string)($input['asset_id']??''))));
+        $asset=self::asset($asset_id);
+        if(!$asset || empty($asset['content_complete']))
+            return new WP_Error('mad4b_host_review_asset_incomplete',
+                'Only completely indexed governed assets can be reviewed.');
+        $review=array(
+            'category'=>(string)($asset['category']??''),
+            'authority_class'=>(string)($asset['authority_class']??''),
+            'required'=>!empty($asset['required']),
+            'required_scope_confirmed'=>false,
+            'quality_mode'=>'preserve','quality_score'=>'',
+            'decision'=>(string)($input['decision']??''),
+            'review_note'=>(string)($input['review_note']??''),
+            'review_evidence'=>(string)($input['review_evidence']??''),
+            'classification_proposal'=>(string)($input['classification_proposal']??''),
+            'expected_content_hash'=>(string)($input['expected_content_hash']??''),
+            'expected_registry_revision'=>(int)($input['expected_registry_revision']??-1),
+            'expected_authority_manifest_fingerprint'=>(string)
+                ($input['expected_authority_manifest_fingerprint']??''),
+        );
+        $actor=array(
+            'actor_type'=>'ai_agent','wp_user_id'=>0,
+            'agent_public_id'=>(string)$agent['public_id'],
+            'subject_fingerprint'=>(string)$subject_fingerprint,
+            'issuer_fingerprint'=>'','client_fingerprint'=>'',
+            'session_fingerprint'=>'','identity_method'=>'signed_host_wpcli',
+        );
+        return self::review_asset_with_actor($asset_id,$review,$actor);
+    }
+
 	private static function review_asset_with_actor( $asset_id, array $input, array $actor ) {
 		$operation = 'ai_agent' === ( isset( $actor['actor_type'] ) ? (string) $actor['actor_type'] : '' ) ? 'review_asset_ai' : 'review_asset';
 		return self::with_registry_lock(

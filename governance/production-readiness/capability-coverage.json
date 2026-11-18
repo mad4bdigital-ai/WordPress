@@ -8755,6 +8755,28 @@
       "new_control_ids": [],
       "coverage_reuse_rationale": "Existing original Site Profile, authenticated browser/WordPress nonce, exact Approval Ticket, independent Host312/313 issuer, release root trust and fail-closed denial controls cover this bounded review-only surface; no new Host issuer or Production grant is introduced.",
       "review_rationale": "The incident adapter preserves the on-site WordPress administration review surface, exact ticket digest and separate approval permissions. It cannot independently close an incident or issue Master/Host authority."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-agent-bridge.php",
+      "owner_role": "MAD4B unified-source security reviewer; independent Production owner authorization required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "MCP-01",
+        "EXECUTION-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-agent-source-parity-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-agent-fail-closed-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Original signed Host CLI, site-root trust and agent binding checks, exact existing permission scopes, nonce and release gates cover this first-party generic service. It has no public REST grant and no source-inherited signer.",
+      "review_rationale": "Preserve exact live generic signed Host bridge within new rc129 source. Tour media extensions remain optional, and no Host key, production signer or delegated permission is transferred."
     }
   ],
   "lifecycle": [],
@@ -23193,6 +23215,143 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Original host-root trust, Site Profile, independent grant issuer, WordPress admin browser authentication and immutable pending approval audit remain mandatory; this port does not issue a root approval.",
       "review_rationale": "Only the two existing review-only classes are loaded and booted next to the original approval-ticket API; rc129 new modules and root behavior remain unchanged."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "dcae0a0a32495bfcedd4300fd78a8ec765235697",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "MCP-01",
+        "EXECUTION-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-agent-source-parity-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-agent-fail-closed-runtime.php"
+      ],
+      "owner_role": "MAD4B unified-source Host integration security owner; exact source CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original independently enrolled Host public trust, Site Profile, signed nonce verification, exact NHI grants, Host adapter ability restrictions, bounded Context Review, append-only audit, release CI and rollback controls remain mandatory. No grant or acceptance is inferred.",
+      "review_rationale": "Exactly one generic signed Host bridge bootstrap, appended to the original rc129 source without replacing Native 305 Incident Review, Content/Artifacts, WPML, or existing MCP/OAuth. No embedded keys, grants or tenant defaults."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-agent-bridge.php",
+      "source_blob_sha": "929da81830eb6ea18957ae9a4b7dcd06eea0a7f5",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "MCP-01",
+        "EXECUTION-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-agent-source-parity-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-agent-fail-closed-runtime.php"
+      ],
+      "owner_role": "MAD4B unified-source Host integration security owner; exact source CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original independently enrolled Host public trust, Site Profile, signed nonce verification, exact NHI grants, Host adapter ability restrictions, bounded Context Review, append-only audit, release CI and rollback controls remain mandatory. No grant or acceptance is inferred.",
+      "review_rationale": "Bit-identical first-party Tours.dev generic signed Host CLI bridge; bound exact site UUID, origin, database and environment, positive original Agent enrollment, explicit grant and context policy, one-time detached signature/nonce anti-replay. Missing public signer fails closed. Optional tour media operations require independently installed domain plugin."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php",
+      "source_blob_sha": "36efb28bbfc98fe29ca1ed76f84f7d9d606cd1c5",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "MCP-01",
+        "EXECUTION-01",
+        "ROLLOUT-01",
+        "AUTOMATION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-agent-source-parity-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-agent-fail-closed-runtime.php"
+      ],
+      "owner_role": "MAD4B unified-source Host integration security owner; exact source CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original independently enrolled Host public trust, Site Profile, signed nonce verification, exact NHI grants, Host adapter ability restrictions, bounded Context Review, append-only audit, release CI and rollback controls remain mandatory. No grant or acceptance is inferred.",
+      "review_rationale": "Host-only authenticated NHI actor attribution during explicitly admitted ContentJob operation; preserves higher-level rc129 original Native ContentJob actor and existing JWT/OAuth/WordPress actor paths when no signed Host operation is active."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-artifacts.php",
+      "source_blob_sha": "60750fb4a0cf8180f012254acd3fc2ccc43bba78",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "MCP-01",
+        "EXECUTION-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-agent-source-parity-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-agent-fail-closed-runtime.php"
+      ],
+      "owner_role": "MAD4B unified-source Host integration security owner; exact source CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original independently enrolled Host public trust, Site Profile, signed nonce verification, exact NHI grants, Host adapter ability restrictions, bounded Context Review, append-only audit, release CI and rollback controls remain mandatory. No grant or acceptance is inferred.",
+      "review_rationale": "Host Artifacts receive site-bound Host agent reference only after exact append grant and active authenticated signed Host operation; retains historical revision, append-only audit and source fields unchanged."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php",
+      "source_blob_sha": "037d6563a3a42561a69b30e8f5d450e40a2d4a40",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "MCP-01",
+        "EXECUTION-01",
+        "ROLLOUT-01",
+        "AI-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-agent-source-parity-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-agent-fail-closed-runtime.php"
+      ],
+      "owner_role": "MAD4B unified-source Host integration security owner; exact source CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original independently enrolled Host public trust, Site Profile, signed nonce verification, exact NHI grants, Host adapter ability restrictions, bounded Context Review, append-only audit, release CI and rollback controls remain mandatory. No grant or acceptance is inferred.",
+      "review_rationale": "Copies exact live bounded Host Context AI Review entry with existing per-asset source SHA/revision and audit engine. Rejects untrusted / stale or unindexed assets, governance metadata and quality mutations, unapproved agents and missing exact environment grant."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-review-routing.php",
+      "source_blob_sha": "40e375d2a88823ad9a5c699564b1a2988cd24940",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "MCP-01",
+        "EXECUTION-01",
+        "ROLLOUT-01",
+        "AI-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-agent-source-parity-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-agent-fail-closed-runtime.php"
+      ],
+      "owner_role": "MAD4B unified-source Host integration security owner; exact source CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original independently enrolled Host public trust, Site Profile, signed nonce verification, exact NHI grants, Host adapter ability restrictions, bounded Context Review, append-only audit, release CI and rollback controls remain mandatory. No grant or acceptance is inferred.",
+      "review_rationale": "Adds passive, bounded Host binding and review policy readiness metadata to rc129 Context Review routing. It does not infer Host signature or auto approve an asset and does not alter review decisions."
     }
   ],
   "code_change_rules": {

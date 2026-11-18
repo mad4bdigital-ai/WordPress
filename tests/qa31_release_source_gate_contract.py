@@ -189,4 +189,75 @@ chk(set(checked['reviewed_github_successor_paths'])==reviewed_paths
     'zero_unexpected_but_historical_parity_still_blocked')
 chk(not reviewed_bootstrap_successor(plugin,'mad4b-site-control-plane.php',
     current+b'\nmodified'), 'tampered_main_bootstrap_denied')
+# New Host Agent code changes a second, bounded overlay. It does not
+# repin or approve either the 65-source rc129 ledger or QA31 rc104 evidence.
+host_manifest=repo/'governance/release-parity/qa31-rc129-host-agent-integration-successors-20261118.json'
+host_data=json.loads(host_manifest.read_text())
+chk(host_data['contract']=='mad4b.qa31-host-integration-exact-successors.v1'
+    and host_data['base_source_commit']=='27883e019d7b9ddc744f6be33608b78c54ec411b'
+    and len(host_data['source_entries'])==6
+    and host_data['historical_qa31_overrides']==3
+    and host_data['authorizing'] is False
+    and host_data['production_authorized'] is False
+    and host_data['source_promotion_approved'] is False
+    and host_data['release_gate']=='BLOCKED_SOURCE_RECONCILIATION',
+    'host_source_overlay_ci_only_and_exact_six_paths')
+known=[e['path'] for e in host_data['source_entries']]
+for rel in known:
+    candidate=(plugin/rel).read_bytes()
+    chk(reviewed_ci_only_source_successor(plugin,rel,candidate),
+        'host_exact_blob_ci_reviewed_'+rel)
+    chk(not reviewed_ci_only_source_successor(plugin,rel,candidate+b'\nforged'),
+        'host_tampered_blob_denied_'+rel)
+chk(set(known).issuperset({
+    'mad4b-site-control-plane.php','includes/class-mad4b-scp-context-authority.php',
+    'includes/class-mad4b-scp-content-jobs.php'}),
+    'host_overlay_covers_all_qa31_historical_source_changes')
+
+from qa31_rc129_host_bootstrap_overlay import strip_rc129_signed_host_overlay
+signed_root=(plugin/'mad4b-site-control-plane.php').read_bytes()
+restored=strip_rc129_signed_host_overlay(signed_root)
+host_proof=json.loads((repo/'docs/release-coverage/pr814-rc129-host-agent-bootstrap-additive-20261118.json').read_text())
+chk((len(restored),hashlib.sha256(restored).hexdigest())==(
+    host_proof['base_main_bytes'],host_proof['base_main_sha256']),
+    'host_overlay_reconstructs_exact_original305_parent')
+try:strip_rc129_signed_host_overlay(signed_root.replace(b'signed Host WP-CLI transport',
+                                                     b'unsigned Host transport'))
+except AssertionError:print('PASS forged_host_bootstrap_rejected')
+else:raise AssertionError('Modified Host bootstrap accepted')
+
+original_read=Path.read_text
+target_host=host_manifest.resolve()
+for case,updates in (
+    ('production_authority',{'production_authorized':True}),
+    ('release_approved',{'release_gate':'SOURCE_PARITY_CANDIDATE_UNCERTIFIED'}),
+    ('foreign_base',{'base_source_commit':'c'*40}),
+    ('wrong_legacy_evidence',{'original_qa31_sha256':'d'*64}),
+    ('wrong_count',{'exact_source_files':7}),
+):
+    forged=json.loads(json.dumps(host_data));forged.update(updates)
+    def substituted(self,*args,**kwargs):
+        if self.resolve()==target_host:return json.dumps(forged)
+        return original_read(self,*args,**kwargs)
+    with mock.patch.object(Path,'read_text',substituted):
+        chk(not reviewed_ci_only_source_successor(plugin,
+            'includes/class-mad4b-scp-context-authority.php',
+            (plugin/'includes/class-mad4b-scp-context-authority.php').read_bytes()),
+            'host_forged_manifest_denied_'+case)
+for case in ('changed_current_blob','changed_required_regression',
+             'changed_source_scope','changed_parent_blob'):
+    forged=json.loads(json.dumps(host_data))
+    row=next(e for e in forged['source_entries']
+             if e['path']=='includes/class-mad4b-scp-context-authority.php')
+    if case=='changed_current_blob':row['current_blob_sha']='f'*40
+    elif case=='changed_required_regression':row['required_regression']='tests/qa31_rc129_bootstrap_source_contract.py'
+    elif case=='changed_source_scope':row['source_record_scope']='new_or_separate_review'
+    else:row['parent_blob_sha']='a'*40
+    def substituted(self,*args,**kwargs):
+        if self.resolve()==target_host:return json.dumps(forged)
+        return original_read(self,*args,**kwargs)
+    with mock.patch.object(Path,'read_text',substituted):
+        chk(not reviewed_ci_only_source_successor(plugin,row['path'],
+            (plugin/row['path']).read_bytes()),'host_forged_review_denied_'+case)
+
 print('QA31_SOURCE_PARITY_NEGATIVE_REGRESSIONS: PASS (source reviewed; release blocked)')
