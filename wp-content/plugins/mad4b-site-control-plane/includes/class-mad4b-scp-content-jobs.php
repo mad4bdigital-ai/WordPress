@@ -221,6 +221,13 @@ final class MAD4B_SCP_Content_Jobs {
 	}
 
 	private static function actor() {
+		if ( class_exists( 'MAD4B_SCP_Host_Agent_Bridge', false )
+			&& ( MAD4B_SCP_Host_Agent_Bridge::active_for( 'mad4b/content-job-create' )
+				|| MAD4B_SCP_Host_Agent_Bridge::active_for( 'mad4b/content-job-transition' ) ) ) {
+			$host = MAD4B_SCP_Host_Agent_Bridge::agent();
+			if ( is_array( $host ) && ! empty( $host['public_id'] ) )
+				return array( 'type' => 'nhi', 'id' => (string) $host['public_id'], 'nhi' => (string) $host['public_id'] );
+		}
 		$actor = array( 'type' => 'wordpress_user', 'id' => (string) get_current_user_id(), 'nhi' => '' );
 		if ( class_exists( 'MAD4B_SCP_Identity_Context' ) && class_exists( 'MAD4B_SCP_Agent_Registry' ) ) {
 			$identity = MAD4B_SCP_Identity_Context::current();
