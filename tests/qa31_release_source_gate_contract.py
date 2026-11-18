@@ -261,4 +261,64 @@ for case in ('changed_current_blob','changed_required_regression',
         chk(not reviewed_ci_only_source_successor(plugin,row['path'],
             (plugin/row['path']).read_bytes()),'host_forged_review_denied_'+case)
 
+# The visual-media successor is a third, source-only layer. It can supersede
+# exactly two older QA31 file identities without rewriting a historical review.
+media_manifest=repo/'governance/release-parity/qa31-rc129-context-media-successors-20261118.json'
+media_data=json.loads(media_manifest.read_text())
+chk(media_data['contract']=='mad4b.qa31-rc129-context-media-successors.v1'
+    and media_data['base_source_commit']=='1fe48421cbc1444bc6698f57bf589784ec4a982f'
+    and media_data['exact_source_files']==3
+    and media_data['legacy_qa31_overrides']==2
+    and media_data['source_review_only'] is True
+    and media_data['authorizing'] is False
+    and media_data['production_authorized'] is False
+    and media_data['source_promotion_approved'] is False
+    and media_data['release_gate']=='BLOCKED_SOURCE_RECONCILIATION',
+    'visual_media_source_only_review')
+media_names={e['path'] for e in media_data['entries']}
+chk(media_names=={
+    'includes/class-mad4b-scp-brand-context-builder.php',
+    'includes/class-mad4b-scp-drive-scan-continuation.php',
+    'includes/class-mad4b-scp-google-drive-context.php'},'visual_media_exact_three_sources')
+for name in media_names:
+    source_bytes=(plugin/name).read_bytes()
+    chk(reviewed_ci_only_source_successor(plugin,name,source_bytes),
+        'visual_media_source_sha_accepted_'+name)
+    chk(not reviewed_ci_only_source_successor(plugin,name,source_bytes+b'\nsvg-tainted'),
+        'visual_media_source_modified_denied_'+name)
+target_media=media_manifest.resolve()
+for case,change in (
+    ('forge_release',{'production_authorized':True}),
+    ('approve_source',{'source_promotion_approved':True}),
+    ('substitute_base',{'base_source_commit':'e'*40}),
+    ('change_legacy',{'historical_qa31_sha256':'f'*64}),
+    ('change_count',{'exact_source_files':4}),
+    ('replace_review',{'host_integration_sha256':'d'*64}),
+):
+    forged=dict(media_data);forged.update(change)
+    def corrupt(self,*args,**kwargs):
+        if self.resolve()==target_media:return json.dumps(forged)
+        return original_read(self,*args,**kwargs)
+    with mock.patch.object(Path,'read_text',corrupt):
+        chk(not reviewed_ci_only_source_successor(plugin,
+            'includes/class-mad4b-scp-google-drive-context.php',
+            (plugin/'includes/class-mad4b-scp-google-drive-context.php').read_bytes()),
+            'visual_media_manifest_denied_'+case)
+for case in ('forge_new_sha','forge_old_blob','forge_old_sha256','swap_test','forge_legacy_state'):
+    forged=json.loads(json.dumps(media_data))
+    item=next(i for i in forged['entries']
+              if i['path']=='includes/class-mad4b-scp-google-drive-context.php')
+    if case=='forge_new_sha':item['current_blob_sha']='e'*40
+    elif case=='forge_old_blob':item['parent_blob_sha']='a'*40
+    elif case=='forge_old_sha256':item['parent_sha256']='b'*64
+    elif case=='swap_test':item['required_regression']='tests/qa31_release_source_gate_contract.py'
+    else:item['legacy_qa31_state']='GITHUB_ONLY'
+    def corrupt(self,*args,**kwargs):
+        if self.resolve()==target_media:return json.dumps(forged)
+        return original_read(self,*args,**kwargs)
+    with mock.patch.object(Path,'read_text',corrupt):
+        chk(not reviewed_ci_only_source_successor(plugin,item['path'],
+            (plugin/item['path']).read_bytes()),
+            'visual_media_source_entry_denied_'+case)
+
 print('QA31_SOURCE_PARITY_NEGATIVE_REGRESSIONS: PASS (source reviewed; release blocked)')
