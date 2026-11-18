@@ -3605,6 +3605,106 @@
       "new_control_ids": [],
       "coverage_reuse_rationale": "Existing MCP admission, platform identity, security, owner-scoped administrative rights and execution-denial controls cover these staging-only authorization surfaces, without granting Production execution or public access.",
       "review_rationale": "New surface ability:mad4b/staging-write-grant-reconcile-staging is source-pinned in the W1 authority integration and assessed with hermetic owner-browser, agent REST route, Site Profile, OAuth, replay, write grant, exact mapping and negative permission fixtures. This is only CI source review, not evidence that the route is registered, usable, or authorized in Production."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-search-console.php",
+      "owner_role": "MAD4B repository source security reviewer; CI-only review, no runtime authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "DATABASE-01",
+        "PERFORMANCE-01",
+        "SECURITY-01",
+        "MCP-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-search-console-boundary-contract.py"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing security, provider-scope, data privacy, platform integrity and MCP boundary controls apply; no tenant/Production execution is authorized.",
+      "review_rationale": "Source-bounded Google Search Console connection and page-level retained evidence only. Existing encrypted Google Workspace consent, exact host/property guard, nonce, WordPress capability, G5 controls, no production writes, and hermetic negative fixtures are required. This source review does not authorize live Google collection or a production deployment."
+    },
+    {
+      "id": "ability:mad4b/search-console-status",
+      "owner_role": "MAD4B repository source security reviewer; CI-only review, no runtime authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "DATABASE-01",
+        "PERFORMANCE-01",
+        "SECURITY-01",
+        "MCP-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-search-console-boundary-contract.py"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing security, provider-scope, data privacy, platform integrity and MCP boundary controls apply; no tenant/Production execution is authorized.",
+      "review_rationale": "Source-bounded Google Search Console connection and page-level retained evidence only. Existing encrypted Google Workspace consent, exact host/property guard, nonce, WordPress capability, G5 controls, no production writes, and hermetic negative fixtures are required. This source review does not authorize live Google collection or a production deployment."
+    },
+    {
+      "id": "ability:mad4b/search-console-observations",
+      "owner_role": "MAD4B repository source security reviewer; CI-only review, no runtime authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "DATABASE-01",
+        "PERFORMANCE-01",
+        "SECURITY-01",
+        "MCP-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-search-console-boundary-contract.py"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing security, provider-scope, data privacy, platform integrity and MCP boundary controls apply; no tenant/Production execution is authorized.",
+      "review_rationale": "Source-bounded Google Search Console connection and page-level retained evidence only. Existing encrypted Google Workspace consent, exact host/property guard, nonce, WordPress capability, G5 controls, no production writes, and hermetic negative fixtures are required. This source review does not authorize live Google collection or a production deployment."
+    },
+    {
+      "id": "ability:mad4b/seo_opportunities/native_page_metrics",
+      "owner_role": "MAD4B repository source security reviewer; CI-only review, no runtime authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "DATABASE-01",
+        "PERFORMANCE-01",
+        "SECURITY-01",
+        "MCP-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-search-console-boundary-contract.py"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing security, provider-scope, data privacy, platform integrity and MCP boundary controls apply; no tenant/Production execution is authorized.",
+      "review_rationale": "Source-bounded Google Search Console connection and page-level retained evidence only. Existing encrypted Google Workspace consent, exact host/property guard, nonce, WordPress capability, G5 controls, no production writes, and hermetic negative fixtures are required. This source review does not authorize live Google collection or a production deployment."
+    },
+    {
+      "id": "adapter:seo-opportunities",
+      "owner_role": "MAD4B repository source security reviewer; CI-only review, no runtime authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-search-console-boundary-contract.py"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing security, provider-scope, data privacy, platform integrity and MCP boundary controls apply; no tenant/Production execution is authorized.",
+      "review_rationale": "Source-bounded Google Search Console connection and page-level retained evidence only. Existing encrypted Google Workspace consent, exact host/property guard, nonce, WordPress capability, G5 controls, no production writes, and hermetic negative fixtures are required. This source review does not authorize live Google collection or a production deployment."
     }
   ],
   "lifecycle": [],
@@ -11538,6 +11638,66 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "The existing original Agent Registry exact grant, Staging-only provider review, site profile, mutation gate, owner approval, checkpoint, readback and audit safeguards govern this single diagnostic, without wildcard rights.",
       "review_rationale": "Exact source review allows a core grant to be considered only for mad4b/hub-queue-site-health-enqueue when the Ability is registered on the correct central Staging site. No grant is issued merely because this provider pair appears; broad hub-bulk-enqueue remains outside the reviewed policy and Production is not enabled."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-search-console.php",
+      "source_blob_sha": "5c7083752fbd74fa43218a83947f7572a0cb3159",
+      "control_ids": [
+        "DATABASE-01",
+        "PERFORMANCE-01",
+        "SECURITY-01",
+        "MCP-01",
+        "PROVIDERS-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-search-console-boundary-contract.py"
+      ],
+      "owner_role": "MAD4B repository source security reviewer; CI-only; independent Google consent and deployment review required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing metadata/data read, provider OAuth, security and MCP policies apply without broadening global authorization.",
+      "review_rationale": "Reviewed the exact source blob for an optional native GSC read adapter and bounded admin-only page-level observations; static URL origin and scope guards, no arbitrary Google URL/redirect, no credentials exposed. The hermetic regression covers cross-origin, query-metric validation and fail-closed Google URL restrictions. Independent site-bound OAuth consent and Production deployment remain excluded."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/adapter-support-catalog.json",
+      "source_blob_sha": "0464260665584d6965d5b8cb53c0f4e0c9292649",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-search-console-boundary-contract.py"
+      ],
+      "owner_role": "MAD4B repository source security reviewer; CI-only record; deployment authorization independent",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source-package, adapter inventory, security, platform identity and scope-isolation controls already govern this read-only catalog mapping.",
+      "review_rationale": "Exact source adapter family is inventory-only with plugin_status_read permitted. All SEO metadata updates, external provider execution, Content Job creation and IndexFlow publication explicitly remain forbidden. No live permission is granted from a repository mapping."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/repository-plugin-artifacts.json",
+      "source_blob_sha": "768f2b70293e93f410c78abd3be5612849b92d38",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-search-console-boundary-contract.py"
+      ],
+      "owner_role": "MAD4B repository source security reviewer; CI-only record; deployment authorization independent",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source-package, adapter inventory, security, platform identity and scope-isolation controls already govern this read-only catalog mapping.",
+      "review_rationale": "Exact source ZIP artifact family is mapped solely to a read-only repository inventory route, not an installation, approval or publication mechanism. Existing artifact mapping remains preserved and no Production authority is inferred."
     }
   ],
   "code_change_rules": {

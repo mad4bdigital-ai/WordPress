@@ -233,6 +233,13 @@
         "wpml-string-translation.zip"
       ],
       "primary_plugin_file": "sitepress-multilingual-cms/sitepress.php"
+    },
+    "seo-opportunities": {
+      "support_mode": "family_read",
+      "mutation_scope": "none",
+      "artifacts": [
+        "mad4b-seo-opportunities.zip"
+      ]
     }
   }
 }
