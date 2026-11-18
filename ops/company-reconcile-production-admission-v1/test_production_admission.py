@@ -114,4 +114,61 @@ class Tests(unittest.TestCase):
   x=m.project(e,h,n,set(),NOW)
   self.assertEqual(len(x['scopes']),2)
   self.assertEqual({v['state'] for v in x['scopes']},{'OWNER_SITE_PROFILE_SAVE_REQUIRED'})
+ def test_already_verified_native_site_plus_production_owner_needs_signed_grant(self):
+  uuid='0c7786ba-a025-4650-9ceb-32a51d74aaec'
+  r=remote(uuid=uuid)
+  r.update({'state':'CENTRAL_SSH_NATIVE_IDENTITY_AND_OWNER_VERIFIED_WRITE_GRANT_MISSING',
+            'remote_company_site_uuid':None,'site_profile_plugin_active':True,
+            'site_profile_audit_ready':True,
+            'production_environment_assignment_state':'active',
+            'production_environment_assignment_uuid':uuid,
+            'production_environment_assignment_revision':3,
+            'production_environment_owner_operations_authorized':True,
+            'central_owner_delegation_active':False,
+            'central_assignment_matches_target_site_uuid':False,
+            'central_admin_has_exact_tenant_identity':False})
+  x=self.project({'remote_sites':[r]});one=x['scopes'][0]
+  self.assertEqual(one['state'],'ORIGINAL_REMOTE_305_GRANT_NOT_ISSUED')
+  self.assertTrue(one['exact_site_identity_verified'])
+  self.assertTrue(one['native_readonly_identity_verified'])
+  self.assertTrue(one['production_owner_scope_verified'])
+  self.assertFalse(one['native_writes_authorized'])
+  self.assertFalse(one['signed_312_job_ready'])
+  self.assertFalse(one['signed_313_execution_receipt'])
+  self.assertEqual(x['grants_created'],0)
+  # A real 305 grant can never be inferred from the read-only identity state.
+  for field,bad in [
+    ('state','REMOTE_COMPANY_IDENTITY_NOT_BOUND'),
+    ('site_profile_plugin_active',False),('site_profile_audit_ready',False),
+    ('original_grant_present',True),('production_environment_assignment_state','approved'),
+    ('production_environment_assignment_uuid','b8dffda1-db99-4789-aa72-86bf63f557cc'),
+    ('production_environment_assignment_revision',0),
+    ('production_environment_owner_operations_authorized',False),
+    ('authenticated_pinned_ssh_read',False),
+    ('wordpress_origin_environment_verified',False),
+    ('remote_site_uuid','b8dffda1-db99-4789-aa72-86bf63f557cc')]:
+   q=dict(r);q[field]=bad
+   with self.subTest(field=field):
+    output=self.project({'remote_sites':[q]})['scopes'][0]
+    self.assertFalse(output['native_readonly_identity_verified'])
+    self.assertFalse(output['native_writes_authorized'])
+    self.assertNotEqual(output['state'],'ORIGINAL_REMOTE_305_GRANT_NOT_ISSUED')
+ def test_actual_production_assignment_is_not_replaced_by_staging_company_assignment(self):
+  uuid='0384b6ce-4004-4b4e-b701-7d77cb6f6ff0'
+  r=remote(company='all-royal-egypt',uuid=uuid)
+  r.update({'central_owner_delegation_active':False,
+    'central_assignment_matches_target_site_uuid':False,
+    'central_admin_has_exact_tenant_identity':False,
+    'production_environment_assignment_state':'active',
+    'production_environment_assignment_uuid':uuid,
+    'production_environment_assignment_revision':6,
+    'production_environment_owner_operations_authorized':True})
+  x=self.project({'remote_sites':[r]});one=x['scopes'][0]
+  self.assertEqual(one['state'],'ORIGINAL_REMOTE_305_GRANT_NOT_ISSUED')
+  self.assertTrue(one['production_owner_scope_verified'])
+  self.assertFalse(one['native_readonly_identity_verified'])
+  self.assertFalse(one['native_writes_authorized'])
+  r['production_environment_assignment_uuid']='0c7786ba-a025-4650-9ceb-32a51d74aaec'
+  self.assertEqual(self.project({'remote_sites':[r]})['scopes'][0]['state'],
+                   'ORIGINAL_OWNER_DELEGATION_NOT_VERIFIED')
 if __name__=='__main__':unittest.main(verbosity=2)
