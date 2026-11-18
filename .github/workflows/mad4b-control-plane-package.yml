@@ -321,29 +321,53 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          eval "$(python3 - <<'PY'
-          import json, shlex
+          # Two source-verified CI candidates, both exact checksums.
+          # Master baseline has no source-owned resolver. Admit its old
+          # pinned-provider policy ONLY for the two independently verified
+          # git blobs. An unknown source combination fails closed.
+          resolver='tools/resolve-certified-mcp-adapter-profile.py'
+          profiles='wp-content/plugins/mad4b-site-control-plane/config/certified-provider-profiles.json'
+          policy='wp-content/plugins/mad4b-site-control-plane/config/runtime-release-policy.json'
+          if [ -f "$resolver" ]; then
+            python3 "$resolver" --profile auto-ci > /tmp/mad4b-package-adapter-profile.env
+            source /tmp/mad4b-package-adapter-profile.env
+            MCP_ADAPTER_VERSION="$TARGET_VERSION"
+            MCP_ADAPTER_SHA="$TARGET_SHA"
+            MCP_ADAPTER_BYTES="$TARGET_BYTES"
+            MCP_ADAPTER_URL="$TARGET_URL"
+            MCP_ADAPTER_ARCHIVE="mcp-adapter-$TARGET_VERSION.zip"
+          elif [ "$(git hash-object "$policy")" = 'd21faba4b7b57de0b15a251b9bdfd2881df93861' ] \
+            && [ "$(git hash-object "$profiles")" = '38c5eca1418ffb3d7903ede6ec667f757a7fdc45' ]; then
+            eval "$(python3 - <<'PY'
+          import json, re, shlex
           from pathlib import Path
           root=Path('wp-content/plugins/mad4b-site-control-plane/config')
           policy=json.loads((root/'runtime-release-policy.json').read_text(encoding='utf-8'))
           profiles=json.loads((root/'certified-provider-profiles.json').read_text(encoding='utf-8'))
           if policy.get('contract')!='mad4b.runtime-release-policy.v1':
-              raise SystemExit('runtime release policy contract mismatch')
-          version=str(policy.get('target_adapter_version') or '')
+              raise SystemExit('legacy provider policy contract invalid')
+          # The two exact baseline git blobs attest this legacy candidate's
+          # reviewed 0.7.0 identity. Never read the retired runtime-policy
+          # version field and never use this path for unknown source bytes.
+          version='0.7.0'
           profile=((profiles.get('providers') or {}).get('mcp_adapter') or {}).get(version) or {}
-          if profile.get('version')!=version:
-              raise SystemExit('target MCP Adapter profile missing')
+          if profile.get('version')!=version or not re.fullmatch(r'[0-9]+(?:\.[0-9]+){2}',version):
+              raise SystemExit('legacy exact certified adapter identity missing')
           sha=str(profile.get('archive_sha256') or '').lower()
           size=int(profile.get('archive_bytes') or 0)
           url=str(profile.get('package_url') or '')
+          if not re.fullmatch(r'[a-f0-9]{64}',sha) or size<1 or not url.startswith('https://github.com/WordPress/mcp-adapter/releases/download/v'+version+'/'):
+              raise SystemExit('legacy certified adapter profile invalid')
           archive=str(profile.get('archive') or f'mcp-adapter-{version}.zip')
-          if len(sha)!=64 or size<1 or not url.startswith('https://github.com/WordPress/mcp-adapter/releases/download/v'):
-              raise SystemExit('target MCP Adapter profile identity invalid')
-          values={'MCP_ADAPTER_VERSION':version,'MCP_ADAPTER_SHA':sha,'MCP_ADAPTER_BYTES':str(size),'MCP_ADAPTER_URL':url,'MCP_ADAPTER_ARCHIVE':archive,'MCP_ADAPTER_STAGE_PATH':'/tmp/mad4b-certified-mcp-adapter.zip'}
-          for key,value in values.items():
+          for key,value in {'MCP_ADAPTER_VERSION':version,'MCP_ADAPTER_SHA':sha,'MCP_ADAPTER_BYTES':str(size),'MCP_ADAPTER_URL':url,'MCP_ADAPTER_ARCHIVE':archive}.items():
               print(f'{key}={shlex.quote(value)}')
           PY
-          )"
+            )"
+          else
+            echo 'Unrecognized MCP Adapter resolver/source pair; refusing candidate.' >&2
+            exit 1
+          fi
+          MCP_ADAPTER_STAGE_PATH="/tmp/mad4b-certified-mcp-adapter.zip"
           {
             echo "MCP_ADAPTER_VERSION=$MCP_ADAPTER_VERSION"
             echo "MCP_ADAPTER_SHA=$MCP_ADAPTER_SHA"
