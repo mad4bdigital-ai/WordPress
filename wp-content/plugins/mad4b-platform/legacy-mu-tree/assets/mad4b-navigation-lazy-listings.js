@@ -201,9 +201,9 @@
       if (!isBranchWidget(widget)) return original.apply(this, arguments);
       if (!waiting.has(widget) && !loaded.has(widget))
         waiting.set(widget, { original, owner: this, args });
-      // Do NOT let JetEngine's zero-offset IntersectionObserver see hidden tabs.
-      // Its original method is invoked precisely when the selected tab opens.
-      drain();
+      // Native init can be mid-DOM-write. Do not force geometry reads
+      // synchronously inside JetEngine's setup call; drain next frame.
+      scheduleDrain();
     };
     engine.lazyLoadListing.__mad4bNavigationOnDemand = true;
     installed = true;
@@ -219,12 +219,17 @@
     const engine = window.JetEngine;
     if (!root || !engine || typeof engine.widgetListingGrid !== 'function' || !window.jQuery) return;
     prepare(root);
+    const visible = [];
+    // First read every root widget's geometry. Initializing JetEngine can
+    // mutate the DOM, so writing during the scan would force reflow per card.
     root.querySelectorAll(SELECTOR).forEach(widget => {
       if (isBranchWidget(widget) || rootActivated.has(widget)) return;
       const grid = widget.querySelector('.jet-listing-grid--lazy-load[data-lazy-load]');
-      if (!grid) return; // Wayfatours pre-rendered grids need no second request.
+      if (!grid) return; // Pre-rendered grids need no second request.
       const bounds = widget.getBoundingClientRect();
-      if (bounds.width < 1 || bounds.height < 1) return;
+      if (bounds.width > 0 && bounds.height > 0) visible.push(widget);
+    });
+    visible.forEach(widget => {
       rootActivated.add(widget);
       try { engine.widgetListingGrid(window.jQuery(widget)); }
       catch (_) { rootActivated.delete(widget); }
