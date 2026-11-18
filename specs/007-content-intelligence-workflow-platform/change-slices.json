@@ -4,8 +4,8 @@
   "reviewed_base_sha": "5c72e4893e36e992f056c90cfc75908b3a8f7785",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 2634,
-  "changed_paths_sha256": "42abff591bb5a1f808cea71799e3d059586419a8aa291f05ff9cec90d9a61d1c",
+  "changed_file_count": 2637,
+  "changed_paths_sha256": "7886871592816418892e14079be0363b0fec9ca4bbcc403b872aabfa075d424f",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -5363,6 +5363,17 @@
         "ops/unified-production-authority-v1/README.md",
         "ops/unified-production-authority-v1/company-native-external-enrollment-readback.py",
         "ops/unified-production-authority-v1/test_readonly_identity_parity.py"
+      ]
+    },
+    {
+      "id": "original-host-v2-readonly-scopes",
+      "semantic_unit": "Exact first-party Egypt Tour Gates and Tourism Almallah Production Host-v2 read-only enrollment: pinned origin/UUID, original signed Host policy rotation and zero content-write or grant privilege.",
+      "revert_boundary": "Revert the scoped Host-v2 read-only source, documentation and hermetic negative test together. Preserve Original305/312/313 operation grants as separate requirements; never widen allow_operator, allow_mutation, allow_production_mutation, allow_sql or allow_remote_shell.",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/original-host-v2-readonly-scope/README.md",
+        "ops/original-host-v2-readonly-scope/host_scope.py",
+        "ops/original-host-v2-readonly-scope/test_host_scope.py"
       ]
     }
   ],
