@@ -456,3 +456,50 @@ claim that all 241 are CSS certified; every admitted page still needs
 five-viewport independent Chromium tests and live readback.
 Ten hermetic service policy filter tests and two real native WP-CLI
 catalog integration checks passed.
+
+## Stable original Wayfatours Destination archive CSS (18 November)
+At 07:20 UTC the original Wayfatours source-family worker reached a
+`passed_evidence` five-viewport performance result (FCP gains 2.8-3.0s
+on mobile and LCP improvements 2.7-2.9s) for Aswan City. The exact
+public readback correctly refused a certificate: the LiteSpeed combined
+CSS name changed from `91b08c03a5f96a9b2bf43180d1813628.css`
+to `594c14ef6c26b7cc0f5bc35b0677acf1.css` between cache
+generations, while original content revision remained
+`1059bb8008b9a306bb955565`. The original two CSS files
+(3,527,902 vs 3,527,860 bytes) contain 24 different per-render
+`elementor-dcss-<id>` JetEngine selectors. This is a content-hash
+mismatch, not evidence of a market/currency error or a reason to
+weaken original critical CSS source-integrity checks.
+
+Original core WordPress categories already use MU 427 to keep those
+per-render selectors in native inline styles, not combined immutable
+LiteSpeed CSS. Instead of editing 427 and invalidating the existing
+certified Interests and Uncategorized source contracts, MU 428
+isolates *only* canonical, publicly published, cookie-free
+WordPress `destinations` taxonomy GET HTML on Wayfatours Production.
+It applies native `litespeed_optimize_css_excludes` for
+`elementor-dcss-` when LiteSpeed Combine+Minify are both enabled.
+The visible per-render selectors still reach Elementor inline style
+tags; the shared immutable bundle should no longer change due to
+per-request selectors. It requires exact `get_term_link` canonical
+path, typed `WP_Term`, anonymous user, no query parameters/cookies/
+authorization, and no REST/AJAX/admin requests. Separate opt-out
+`mad4b_public_destination_stable_css_source_v1=off` fails closed.
+Signed visitor preference HTML and checkout remain private and are
+not silently admitted into this public certificate contract.
+
+The original per-route runner fingerprints the first-party
+428 file on Wayfatours only; both `source_key` and
+`optimizer_source_key` include this SHA only when route type is
+`destinations`. All original category 427, tours, properties,
+pages, staging Source, and successful certificates retain their
+own exact original source identity. The next original event-driven
+worker run requalifies only affected destination negative claims
+and still requires full original Chromium five-viewport QA and
+published HTML readback before certification.
+
+Hermetic PHP check 10/10 (including canonical, unrelated categories,
+private/signed visitors, opt-out, invalid request and disabled hotel
+contexts). Original source-key separation 17/17. Preserve exact first-
+party source and backup before live mutation. Deployment is separate
+from testing and cannot be reported complete until host readback.

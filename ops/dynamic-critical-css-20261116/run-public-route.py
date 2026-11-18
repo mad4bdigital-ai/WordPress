@@ -84,6 +84,11 @@ echo wp_json_encode([
  // Bind the first-party optimizer file to category-only negative proof.
  "source_category_css_policy_sha"=>is_file(WPMU_PLUGIN_DIR."/427-mad4b-public-archive-css-source-v1.php")
    ?(string)hash_file("sha256",WPMU_PLUGIN_DIR."/427-mad4b-public-archive-css-source-v1.php"):null,
+ // Destination archive dynamic Elementor selectors share the first-party
+ // 427 native CSS exclusion with categories, but its negative evidence
+ // must be invalidated independently from unrelated CPT/page sources.
+ "source_destination_css_policy_sha"=>is_file(WPMU_PLUGIN_DIR."/428-mad4b-public-destination-css-source-v1.php")
+   ?(string)hash_file("sha256",WPMU_PLUGIN_DIR."/428-mad4b-public-destination-css-source-v1.php"):null,
  "global_generation"=>(int)get_option("mad4b_ccss_global_generation_v1",0),
  "listing_generation"=>(int)get_option("mad4b_ccss_listing_generation_v1",0),
  "wpml_languages"=>array_values((array)($s["active_languages"]??[])),

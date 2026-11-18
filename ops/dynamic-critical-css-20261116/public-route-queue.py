@@ -79,6 +79,9 @@ def source_key(cat,r,state,depends_on_listings=False):
             # stale archive negative proofs/cert-ready HOLDs now retry.
             deps.append('category-native-css:'+str(
                 state.get('source_category_css_policy_sha') or 'absent'))
+    if r['type']=='destinations' and cat['host']=='wayfatours.com':
+        deps.append('destination-native-css:'+str(
+            state.get('source_destination_css_policy_sha') or 'absent'))
     return hashlib.sha256('|'.join(deps).encode()).hexdigest()
 def optimizer_source_key(cat,r,state):
     """Negative browser proof for an exact Elementor+optimizer source.
@@ -123,6 +126,9 @@ def optimizer_source_key(cat,r,state):
         if cat['host']=='wayfatours.com':
             values.append('category-native-css:'+str(
                 state.get('source_category_css_policy_sha') or 'absent'))
+    if r['type']=='destinations' and cat['host']=='wayfatours.com':
+        values.append('destination-native-css:'+str(
+            state.get('source_destination_css_policy_sha') or 'absent'))
     return hashlib.sha256('|'.join(values).encode()).hexdigest()
 
 def order_key(r):
