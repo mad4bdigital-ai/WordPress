@@ -58,3 +58,10 @@ Git PR is for source review only. No bulk merge or automatic site deployment; in
 - Native public Chrome proof, CPU 4x: EN desktop approximate startup blocking sum 894ms, ES desktop 751ms, EN 390px mobile 1130ms; each loaded the pinned owner, deferred native carousel at first paint, initialized it when scrolled into view, with two native Slick arrows and zero page errors.
 - In separate canary interaction tests, EN desktop Fancybox and ES touch-mobile Fancybox opened and closed correctly. Public site remains subject to later actual Lighthouse and field INP measurement; no TBT=0 claim.
 - Production rollback snapshot path: /root/mad4b-backups/20261118-uael-gallery-view-port-v100 . The stored site option and core asset were not removed.
+
+### CI nonregression canonical navigation reconciliation
+
+- Unified Source Nonregression failed on the original PR #851 head because build-navigation-asset.py --check compared the new SHA-pinned navigation loader with the **old** canonical source JS. The release-component catalog still listed the former SHA.
+- Corrected canonical source bytes to match the immutable navigation.c9315f96239b.js and updated exactly its component catalog path.
+- Historical integration evidence is left unchanged; the former immutable hashed asset remains present for cached HTML compatibility. No minifier manifest alteration or site write is introduced by this source correction.
+- Verified read-only --check builder, navigation immutability contract, portability catalog, 7 geometry tests and 4 UAEL gallery tests. Build --write is intentionally not invoked because it would prune prior immutable assets that cached HTML can still reference.
