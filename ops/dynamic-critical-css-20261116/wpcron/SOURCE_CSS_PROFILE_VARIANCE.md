@@ -24,3 +24,35 @@ The original CPU budget and shared browser lock are unchanged. A new
 source observation or a newer independently certified manifest may
 change this status; no fake ready decision is generated. The missing
 HTTP variants have NOT been successfully recertified at this point.
+
+## Verified host-egress Chromium and enrolled v5 — 18 Nov
+
+Root cause of the different source CSS families was confirmed using an
+actual Chromium navigation from host egress. The original Docker-bridge
+browser context saw EN doc count 27 and certified CSS 1bf82405..., while
+the original first-party HTTP source saw 29 documents including JetEngine
+34644/45938 and CSS 6bb43551.... Host-egress Chromium reproduced
+the HTTP source's same CSS and both extra Elementor/JetEngine documents,
+with mobile CSS-ready 0. Host-egress EN/ES/IT CSS and Elementor document
+fingerprints all matched the independent HTTP observer exactly.
+
+Native release v5 is enrolled separately under
+/opt/mad4b-company-provisioning/releases/template-aware-css-wpcron-v5-20261118.
+Its run-site.sh supports MAD4B_SOURCE_CSS_NETWORK_PROFILE=host for source
+Staging only. All original Chromium probe, coverage capture, optional
+599px QA, and readback use the same profile. The container uses
+--network host --cap-drop ALL, bounded memory/CPU/pids and
+--security-opt=no-new-privileges. Wayfa retains Docker bridge mode.
+
+The original WordPress 900-second source first_fold ticket now dispatches
+immutable v5 with source host mode. All existing source QA gates,
+WordPress epoch, shared browser lock, original adaptive visual checks,
+SHA/Elementor original provenance, dry-run then atomic native manifest
+promotion, and verified public readback remain mandatory. A successful
+independent new source certification is keyed by CSS SHA and never
+overwrites the valid earlier Docker bridge profile certificate.
+
+This enrollment alone is NOT a source mobile CSS certificate. The
+resource-guarded manual cycle was deferred due to reserved WP-CLI
+slots; EN/ES/IT HTTP variants still require complete native browser QA.
+Existing v4 release plus a timestamped host worker backup are retained.

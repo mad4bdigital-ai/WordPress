@@ -28,6 +28,24 @@ case "$SITE" in
    ;;
  *) echo 'INVALID_SITE: allowed source or wayfa' >&2; exit 2;;
 esac
+# Source Staging has two independently proven public CSS/Elementor graphs:
+# the existing Docker-bridge Chromium context and the actual first-party
+# host-egress HTTP context. Qualify either against its own exact native
+# browser source; never reuse a previous certificate for the other.
+# Host network is restricted to the enrolled staging source, with all
+# Linux capabilities removed and no new privilege escalation.
+CSS_NETWORK_PROFILE="${MAD4B_SOURCE_CSS_NETWORK_PROFILE:-bridge}"
+BROWSER_NETWORK_ARGS=()
+case "$CSS_NETWORK_PROFILE" in
+ bridge) ;;
+ host)
+   [[ "$SITE" == source ]] ||
+     { echo "HOLD_CSS_HOST_NETWORK_SOURCE_ONLY" >&2; exit 2; }
+   BROWSER_NETWORK_ARGS=(--network host --cap-drop ALL)
+   ;;
+ *) echo "HOLD_CSS_NETWORK_PROFILE_INVALID" >&2; exit 2;;
+esac
+echo "CSS_NETWORK_PROFILE $SITE $CSS_NETWORK_PROFILE"
 mkdir -p "$OUT/$SITE"
 exec 9>"/run/lock/mad4b-critical-css-$SITE.lock"
 if ! flock -n 9;then echo "SKIP $SITE another critical-css cycle";exit 0;fi
@@ -174,7 +192,7 @@ PY
 # the last-moment source identity check, or QA can never publish safely.
 probe_public(){
  local LANGCSV="$1" DIRECTORY="$2"
- timeout 425 docker run --rm --user 0:0 --memory=1024m --cpus=1.3    --pids-limit=250 --security-opt=no-new-privileges    -v "$TOOLS/tools:/tools:ro" -v "$JOB:/out"    -e NODE_PATH=/usr/src/app/node_modules    -e "MAD4B_SOURCE_SITE=https://$HOST"    -e "MAD4B_PROBE_OUTPUT=/out/$DIRECTORY"    -e "MAD4B_PROBE_LANGS=$LANGCSV" -e "MAD4B_DEFAULT_LANG=$DEFAULT_LANG"    "$IMAGE" node /tools/probe-public.js
+ timeout 425 docker run --rm "${BROWSER_NETWORK_ARGS[@]}" --user 0:0 --memory=1024m --cpus=1.3    --pids-limit=250 --security-opt=no-new-privileges    -v "$TOOLS/tools:/tools:ro" -v "$JOB:/out"    -e NODE_PATH=/usr/src/app/node_modules    -e "MAD4B_SOURCE_SITE=https://$HOST"    -e "MAD4B_PROBE_OUTPUT=/out/$DIRECTORY"    -e "MAD4B_PROBE_LANGS=$LANGCSV" -e "MAD4B_DEFAULT_LANG=$DEFAULT_LANG"    "$IMAGE" node /tools/probe-public.js
 }
 DEFAULT_LANG=$(python3 - "$STATE" <<'LANG'
 import sys,json
@@ -308,7 +326,7 @@ fi
 echo "CAPTURE $SITE $LANGS"
 browser_step(){
  local file="$1"
- timeout 1300 docker run --rm --user 0:0 --memory=1024m --cpus=1.3 \
+ timeout 1300 docker run --rm "${BROWSER_NETWORK_ARGS[@]}" --user 0:0 --memory=1024m --cpus=1.3 \
    --pids-limit=250 --security-opt=no-new-privileges \
    -v "$TOOLS/tools:/tools:ro" -v "$JOB:/out" \
    -v "$WP/litespeed/css:/source-css:ro" \
@@ -358,7 +376,7 @@ if [[ "$SITE" == source ]];then
    SAFE_LANGS=$(cat "$JOB/safe-cap/batch.txt")
    if [[ -n "$SAFE_LANGS" ]];then
      echo "SOURCE_SAFE_CAP_599_CHROMIUM_PROBE $SAFE_LANGS"
-     if timeout 1800 docker run --rm --user 0:0        --memory=1024m --cpus=1.3 --pids-limit=250        --security-opt=no-new-privileges        -v "$TOOLS/tools:/tools:ro" -v "$JOB:/out"        -e NODE_PATH=/usr/src/app/node_modules        -e MAD4B_OUTPUT=/out/safe-cap        -e "MAD4B_SOURCE_SITE=https://$HOST"        -e "MAD4B_QA_LANGS=$SAFE_LANGS"        -e MAD4B_QA_WIDTHS=320,390,414,599,600,767,768        -e MAD4B_CSS_PRIORITY=high -e MAD4B_CSS_PRELOAD=1        -e MAD4B_CSS_ADAPTIVE_MAX=599        -e MAD4B_HERO_900_CANDIDATE=0        -e MAD4B_FIRST_CITY_DEFER_CANDIDATE=0        "$IMAGE" node /tools/verify.js > "$JOB/safe-cap-chromium-qa.log" 2>&1;then
+     if timeout 1800 docker run --rm "${BROWSER_NETWORK_ARGS[@]}" --user 0:0        --memory=1024m --cpus=1.3 --pids-limit=250        --security-opt=no-new-privileges        -v "$TOOLS/tools:/tools:ro" -v "$JOB:/out"        -e NODE_PATH=/usr/src/app/node_modules        -e MAD4B_OUTPUT=/out/safe-cap        -e "MAD4B_SOURCE_SITE=https://$HOST"        -e "MAD4B_QA_LANGS=$SAFE_LANGS"        -e MAD4B_QA_WIDTHS=320,390,414,599,600,767,768        -e MAD4B_CSS_PRIORITY=high -e MAD4B_CSS_PRELOAD=1        -e MAD4B_CSS_ADAPTIVE_MAX=599        -e MAD4B_HERO_900_CANDIDATE=0        -e MAD4B_FIRST_CITY_DEFER_CANDIDATE=0        "$IMAGE" node /tools/verify.js > "$JOB/safe-cap-chromium-qa.log" 2>&1;then
        if ! python3 "$TOOLS/safe-cap-fallback.py" merge          "$JOB/verification-primary-767.json" "$JOB/safe-cap/verification.json"          "$JOB/safe-cap/decision.json" "$JOB/verification.json"          > "$JOB/safe-cap-merge.log" 2>&1;then
          echo "HOLD source narrower fallback proof invalid; original QA restored"
          cp "$JOB/verification-primary-767.json" "$JOB/verification.json"

@@ -10,14 +10,17 @@ import json,os,re,stat,subprocess,sys,time
 from pathlib import Path
 
 ROOT=Path('/opt/mad4b-company-provisioning')
-SOURCE=ROOT/'releases/template-aware-css-wpcron-v4-20261118/ops/dynamic-critical-css-20261116'
+SOURCE=ROOT/'releases/template-aware-css-wpcron-v5-20261118/ops/dynamic-critical-css-20261116'
 REPORT=ROOT/'reports/wpcron-css-v1'
 CONTAINERS={'source':'php-wkgtkzta35wkkgouwt6ruljc',
             'wayfa':'php-guxhp9y6vgh7oouuw8plxrlr'}
 CONTRACT='mad4b.css.wpcron.dispatch.v1'
 TASKS={
  'public':lambda s:['/usr/bin/python3',str(SOURCE/'run-public-route.py'),s],
- 'first_fold':lambda s:['/usr/bin/bash',str(SOURCE/'run-site.sh'),s],
+ 'first_fold':lambda s:(
+    ['/usr/bin/env','MAD4B_SOURCE_CSS_NETWORK_PROFILE=host',
+     '/usr/bin/bash',str(SOURCE/'run-site.sh'),s] if s=='source'
+    else ['/usr/bin/bash',str(SOURCE/'run-site.sh'),s]),
  'families':lambda s:['/usr/bin/python3',str(SOURCE/'refresh-source-families.py')],
  'visual':lambda s:['/usr/bin/python3',str(SOURCE/'post-policy-visual-watch.py')],
  'audit':lambda s:['/usr/bin/python3',str(SOURCE/'health-audit.py'),'all'],
