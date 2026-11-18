@@ -376,8 +376,13 @@ class Registry:
                 and m.get("resource_kind") == "host_anchor"
                 and m.get("target_scope") == "host"
                 and m.get("job_type") == "signed_remote_hostinger_wpcli_v2"
-                and m.get("original312_contract") ==
-                    "mad4b.original312.host-principal.exact-job.v2"
+                and m.get("original312_contracts") == (
+                    ["mad4b.original312.host-principal.bootstrap-issue.v1",
+                     "mad4b.original312.host-principal.exact-job.v2"]
+                    if m.get("operation_id") ==
+                       "company.host-authority.anchor.issue" else
+                    ["mad4b.original312.host-principal.exact-job.v2"]
+                )
                 and m.get("independent313_contract") ==
                     "mad4b.original313.host-anchor-operation-proof.v1"
                 and m.get("execution_requires_signed_originals") is True

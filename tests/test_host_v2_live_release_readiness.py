@@ -42,6 +42,34 @@ class Readiness(unittest.TestCase):
         self.index.write_text(json.dumps(dict(contract="mad4b.dynamic-operation-index.v1",
           providers=[dict(manifest="dynamic-operation-registry-v1/providers/fake/manifest.json",sha256="a"*64)])))
         self.assertFalse(self.view()["checks"]["host_issue_provider_registered"])
+    def test_typed_disabled_host_providers_are_registered_but_not_issuers(self):
+        import hashlib
+        providers=[]
+        for op in (m.ISSUE,m.REVOKE):
+            path="dynamic-operation-registry-v1/providers/"+op+"/manifest.json"
+            f=self.registry/path
+            f.parent.mkdir(parents=True,exist_ok=True)
+            doc={
+                "operation_id":op,
+                "resource_kind":"host_anchor",
+                "source_family":"mad4b.original-host-authority-anchor.v2",
+                "execution_enabled":False,
+            }
+            f.write_text(json.dumps(doc))
+            providers.append({"manifest":path,"sha256":hashlib.sha256(
+                f.read_bytes()).hexdigest()})
+        self.index.write_text(json.dumps({
+            "contract":"mad4b.dynamic-operation-index.v1",
+            "providers":providers,
+        }))
+        result=self.view()
+        self.assertTrue(result["checks"]["host_issue_provider_registered"])
+        self.assertTrue(result["checks"]["host_revoke_provider_registered"])
+        self.assertFalse(result["checks"]["host_issue_original312_issuer_commissioned"])
+        self.assertFalse(result["checks"]["host_revoke_original312_issuer_commissioned"])
+        self.assertTrue(result["state"]=="BLOCKED")
+        self.assertFalse(result["anchor_issued"])
+
     def test_reviewed_v83_successor_does_not_regress_to_v82_pending(self):
         reviewed=SOURCE/"wp-content/plugins/mad4b-platform/modules/authority/318-mad4b-native-host-exact-grant.php"
         self.live.write_bytes(reviewed.read_bytes())

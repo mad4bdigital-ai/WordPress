@@ -70,13 +70,28 @@ def inspect(live318:Path=LIVE318,registry:Path=REGISTRY,
             if op in providers:raise ValueError("duplicate registry operation")
             providers[op]=manifest
         checks["installed_registry_manifest_digest_verified"]=True
-        checks["host_issue_provider_registered"]=ISSUE in providers
-        checks["host_revoke_provider_registered"]=REVOKE in providers
+        checks["host_issue_provider_registered"]=(
+            ISSUE in providers and
+            providers[ISSUE].get("resource_kind")=="host_anchor" and
+            providers[ISSUE].get("source_family")==
+                "mad4b.original-host-authority-anchor.v2" and
+            providers[ISSUE].get("execution_enabled") is False)
+        checks["host_revoke_provider_registered"]=(
+            REVOKE in providers and
+            providers[REVOKE].get("resource_kind")=="host_anchor" and
+            providers[REVOKE].get("source_family")==
+                "mad4b.original-host-authority-anchor.v2" and
+            providers[REVOKE].get("execution_enabled") is False)
     except (OSError,ValueError,TypeError,KeyError):
         providers={}
         checks["installed_registry_manifest_digest_verified"]=False
         checks["host_issue_provider_registered"]=False
         checks["host_revoke_provider_registered"]=False
+    # Registry entry != commissioned signed original312 issuer/revoker.
+    # An explicit real signed approval/receipt from independent original
+    # stores is needed to change either of these false runtime states.
+    checks["host_issue_original312_issuer_commissioned"]=False
+    checks["host_revoke_original312_issuer_commissioned"]=False
     worker_text=""
     evidence_text=""
     try:

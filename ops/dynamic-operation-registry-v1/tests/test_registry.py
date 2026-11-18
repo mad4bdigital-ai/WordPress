@@ -238,7 +238,12 @@ class HostAnchorV2TypedRegistryTests(RegistryTests):
             "resource_kind": "host_anchor",
             "target_scope": "host",
             "job_type": "signed_remote_hostinger_wpcli_v2",
-            "original312_contract": "mad4b.original312.host-principal.exact-job.v2",
+            "original312_contracts": (
+                ["mad4b.original312.host-principal.bootstrap-issue.v1",
+                 "mad4b.original312.host-principal.exact-job.v2"] if
+                operation.endswith(".issue") else
+                ["mad4b.original312.host-principal.exact-job.v2"]
+            ),
             "independent313_contract":
                 "mad4b.original313.host-anchor-operation-proof.v1",
             "execution_requires_signed_originals": True,
