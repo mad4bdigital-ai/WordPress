@@ -1,0 +1,28 @@
+[Unit]
+Description=MAD4B independent responsive visual and interaction monitor (observation only)
+Wants=network-online.target docker.service
+After=network-online.target docker.service
+ConditionPathExists=/opt/mad4b-company-provisioning/worktrees/pr814-converged-local-20261115/ops/dynamic-critical-css-20261116/post-policy-visual-watch.py
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/usr/bin/python3 /opt/mad4b-company-provisioning/worktrees/pr814-converged-local-20261115/ops/dynamic-critical-css-20261116/post-policy-visual-watch.py
+TimeoutStartSec=470
+Nice=19
+IOSchedulingClass=idle
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/mad4b-company-provisioning/reports/public-critical-css-v1
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+LockPersonality=true
+CapabilityBoundingSet=
+CPUQuota=90%
+UMask=0077
+StandardOutput=journal
+StandardError=journal

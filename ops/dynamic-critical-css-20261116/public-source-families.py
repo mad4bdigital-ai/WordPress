@@ -102,23 +102,100 @@ def load_certs(root):
         except (OSError,ValueError,KeyError,TypeError,json.JSONDecodeError):continue
     return rows
 
-def build(site,catalog,state,ledger,root=None):
+def split_observed_variants(site,catalog,state,ledger,published,rows,variant_index):
+    """Split only actual first-party Elementor DOM variants.
+
+    Light probes are scheduling observations. They are not certificates,
+    never qualify unmeasured CSS and never override original market gates.
+    An unobserved sibling remains mapping-pending, not 'QA failed'.
+    """
+    if variant_index is None:return {},{}
+    from importlib.util import spec_from_file_location,module_from_spec
+    spec=spec_from_file_location('mad4b_family_template_variant',
+                             BASE/'public-template-variant-index.py')
+    variants=module_from_spec(spec);spec.loader.exec_module(variants)
+    if (not isinstance(variant_index,dict)
+        or variant_index.get('contract')!=variants.CONTRACT
+        or variant_index.get('site')!=site or variant_index.get('host')!=catalog['host']):
+        raise ValueError('wrong-original-template-variant-index')
+    original=collections.defaultdict(list)
+    for r in rows:original[family_key(catalog,state,r)].append(r)
+    known={}
+    for fkey,members in original.items():
+        route_facts={}
+        for r in members:
+            rec=ledger['routes'].get(r['route_key'],{})
+            certified=set()
+            for (lang,path,market,currency),cert in published.items():
+                if lang!=r['language'] or path!=r['path']:continue
+                if valid_canary(Path(ROOTS[site][0]),catalog['host'],r,state,catalog,rec,cert):
+                    certified.add((cert['elementor_doc_fingerprint'],market,currency))
+            observed=variants.current_observation(
+                variant_index,catalog,r,state,ledger,now=int(time.time()))
+            if observed:
+                # If the original browser measured two different DOMs for
+                # the same exact route/market, don't accept a cheap probe
+                # as a replacement for the certified proof.
+                fact=(observed['doc_sha'],observed['market'],observed['currency'])
+                if certified and fact not in certified:observed=None
+            route_facts[r['route_key']]=(
+                sorted(certified)[0] if len(certified)==1 else
+                (observed['doc_sha'],observed['market'],observed['currency'])
+                if observed and not certified else None)
+        present={fact for fact in route_facts.values() if fact is not None}
+        if len(present)>1:
+            known[fkey]=route_facts
+    return known,original
+
+def build(site,catalog,state,ledger,root=None,variant_index=None):
     if site not in ROOTS or catalog.get('host')!=ROOTS[site][1] or ledger.get('site')!=site:
         raise ValueError('source-company-scope-mismatch')
     if state.get('site_host')!=catalog['host'] or state.get('critical_css')!='on' or not isinstance(state.get('css_epoch'),int):
         raise ValueError('source-engine-context-invalid')
     if root is None:root=Path(ROOTS[site][0])
     if str(root)!=ROOTS[site][0] or root.is_symlink():raise ValueError('untrusted-source-site-root')
-    catalogrows=queue.safe_catalog(catalog,site)
+    # Home and translated Home pages belong to a separate original CSS
+    # certifier. Never nominate them as source-family representative
+    # canaries: their native selective per-route cache release disallows
+    # Home and would otherwise waste one entire expensive Chromium slot.
+    catalogrows=[r for r in queue.safe_catalog(catalog,site)
+                 if not queue.independently_certified_home(r)]
     published=load_certs(root)
     by_route=collections.defaultdict(list)
     for (lang,path,market,currency),cert in published.items():
         by_route[(lang,path)].append((market,currency,cert))
     groups=collections.defaultdict(list)
     for r in catalogrows:groups[family_key(catalog,state,r)].append(r)
+    split_facts,_=split_observed_variants(
+        site,catalog,state,ledger,published,catalogrows,variant_index)
+    if split_facts:
+        partition=collections.defaultdict(list)
+        meta={}
+        for base_key,members in groups.items():
+            mapping=split_facts.get(base_key)
+            if not mapping:
+                partition[base_key].extend(members)
+                continue
+            for r in members:
+                fact=mapping.get(r['route_key'])
+                if fact:
+                    doc,market,currency=fact
+                    token='doc:'+doc+'|'+market+'|'+currency
+                    key=hashlib.sha256((base_key+'|'+token).encode()).hexdigest()
+                    meta[key]={'document_sha':doc,'market_country':market,
+                               'currency':currency,'mapped':True}
+                else:
+                    key=hashlib.sha256((base_key+'|unmapped-source-variant').encode()).hexdigest()
+                    meta[key]={'mapped':False}
+                partition[key].append(r)
+        groups=partition
+    else:
+        meta={}
     rows=[];qcounts=collections.Counter();qualified_routes=0
     for key,members in sorted(groups.items()):
         head=members[0];candidates=[];seen=set()
+        variant_meta=meta.get(key,{})
+        mapping_pending=variant_meta.get('mapped') is False
         for r in members:
             record=ledger['routes'].get(r['route_key'],{})
             for market,currency,cert in by_route.get((r['language'],r['path']),[]):
@@ -155,7 +232,11 @@ def build(site,catalog,state,ledger,root=None):
             rec=ledger['routes'].get(r['route_key'],{})
             if (isinstance(rec,dict) and rec.get('attempted_at')
                 and rec.get('source_key')==queue.source_key(catalog,r,state,
-                    bool(rec.get('depends_on_listings')))):
+                    bool(rec.get('depends_on_listings')))
+                # Count only unsuccessful attempts from the same exact
+                # QA implementation. Older negative proofs must not cap
+                # requalification when the original verifier changes.
+                and rec.get('qa_policy_sha')==state.get('qa_policy_sha')):
                 attempted.append(r['route_key'])
         bounded=len(set(attempted))>=4
         no_bundle=set()
@@ -185,6 +266,7 @@ def build(site,catalog,state,ledger,root=None):
                 else 'source_canary_market_partial' if proven
                 else 'source_canary_pending')
         if graph_unresolved:status='source_graph_unresolved'
+        elif mapping_pending:status='source_variant_mapping_pending'
         elif divergent:status='source_variants_need_split'
         elif not proven and len(no_bundle)>=2:
             status=('source_native_optimizer_unavailable' if not geo_dynamic
@@ -194,8 +276,8 @@ def build(site,catalog,state,ledger,root=None):
         # Different conditional Theme Builder documents are different true
         # sources even when WordPress calls them the same CPT/archive type.
         # Never spend 1,000 route QA runs chasing a false shared family.
-        if status in ('source_variants_need_split','source_graph_unresolved',
-                       'source_native_optimizer_unavailable',
+        if status in ('source_variants_need_split','source_variant_mapping_pending',
+                       'source_graph_unresolved','source_native_optimizer_unavailable',
                        'source_native_optimizer_market_partial'):
             next_route=None
         else:
@@ -216,6 +298,13 @@ def build(site,catalog,state,ledger,root=None):
             next_route=choices[0][3] if status!='source_canary_qualified' and choices else None
         qcounts[status]+=1;qualified_routes+=len(seen)
         rows.append({'family_key':key,'source_profile':source_profile(head),'route_type':head['type'],
+          # Always-on compilation and dependency scheduling are policies;
+          # Chromium outcome is a separate, post-compilation observation.
+          # A source-family status is never an activation veto.
+          'policy_state':'active',
+          'quality_checks':'observational_nonblocking_for_policy',
+          'route_css_assets_require_exact_first_party_integrity':True,
+          'observed_variant':variant_meta,
           'language':head['language'],'member_count':len(members),'canary_count':len(seen),'attempted_canary_count':len(set(attempted)),
           'native_no_bundle_canaries':len(no_bundle),
           'status':status,'source_graph_status':head.get('source_graph_status','legacy'),
@@ -253,6 +342,11 @@ def build(site,catalog,state,ledger,root=None):
       'routes_discovered':len(catalogrows),'routes_with_exact_current_certificate':qualified_routes,
       'routes_on_native_or_unproven_css':len(catalogrows)-qualified_routes,
       'source_families':rows,'next_canary_route_key':wants[0]['next_canary'] if wants else None,
+      'policy_contract':'mad4b.public-css.template-aware-policy.v1',
+      'policy_state':'active',
+      'quality_checks':'observational_nonblocking_for_policy',
+      'variant_mapping_pending_routes':sum(r['member_count'] for r in rows
+                                          if r['status']=='source_variant_mapping_pending'),
       'source_lineage_note':'Source behavior proof requires two exact five-viewport canaries (or singleton); unsampled routes do not inherit CSS assets or route-ready headers.'}
 
 

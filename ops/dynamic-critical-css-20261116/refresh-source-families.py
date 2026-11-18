@@ -23,23 +23,39 @@ def main():
             print('SKIP_SOURCE_FAMILY_REFRESH_ALREADY_RUNNING');return
         runner=load('ccss_source_refresh_runner','run-public-route.py')
         families=load('ccss_source_refresh_families','public-source-families.py')
+        variants=load('ccss_source_refresh_variants','public-template-variant-index.py')
         for site in ('source','wayfa'):
             host,php,wp,env=runner.CONFIG[site]
             # Do not ingest arbitrary URLs; WP-CLI and original site-profile
             # runtime provide the only identities. This is a pure report.
             state=runner.obs(php,host,env)
-            native=wp/'mu-plugins/422-mad4b-public-critical-css-runtime.php'
-            source=wp/'mu-plugins/421-mad4b-public-critical-css-coverage.php'
-            pinned=Path('/opt/mad4b-company-provisioning/worktrees/pr814-converged-local-20261115/wp-content/mu-plugins')
-            if native.is_symlink() or source.is_symlink() or source.read_bytes()!=(pinned/source.name).read_bytes() or native.read_bytes()!=(pinned/native.name).read_bytes():
-                raise ValueError('source_runtime_component_drift:'+site)
-            state['runtime_sha']=hashlib.sha256(native.read_bytes()).hexdigest()
+            # Use the exact original runner's per-company source admission.
+            # Source Staging 422 v1.0.1 is an approved separate release,
+            # while Wayfa Production retains original 421/422 byte parity.
+            state['runtime_sha']=runner.approved_native_runtime_sha(site,wp)
+            try:state['qa_policy_sha']=runner.qa_policy_sha()
+            except (OSError,ValueError) as exc:
+                state['qa_policy_sha']='unavailable'
+                print('OBSERVE_QA_SOURCE_MISSING_POLICY_REMAINS_ACTIVE',
+                      site,str(exc)[:150],flush=True)
             catalog=runner.catalog(php,host)
             if any('source_profile' not in item for item in catalog['routes']):
                 raise ValueError('source_catalog_not_migrated:'+site)
             root=Path('/opt/mad4b-company-provisioning/reports/public-critical-css-v1')/site
             ledger=families.queue.read_ledger(root/'route-ledger.json',site)
-            result=families.build(site,catalog,state,ledger,wp)
+            # Always-on native policy is independent of whether optional
+            # browser visual/interactivity checks pass. Observe a bounded
+            # number of original public HTML sources with plain HTTPS only.
+            # A 404/timeout never vetoes a policy or a published certificate.
+            variantpath=root/'template-variant-index.json'
+            try:
+                index=variants.refresh_file(
+                    site,catalog,state,ledger,wp,families,variantpath,budget=8)
+            except (BlockingIOError,ValueError,OSError,KeyError,TypeError) as exc:
+                print('OBSERVE_TEMPLATE_HTML_NONBLOCKING',site,str(exc)[:120],flush=True)
+                try:index=variants.read(variantpath,site)
+                except (ValueError,OSError,KeyError,TypeError):index=variants.empty(site)
+            result=families.build(site,catalog,state,ledger,wp,variant_index=index)
             result['refreshed_at_utc']=time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime())
             families.queue.atom(root/'source-families-latest.json',result)
             print('SOURCE_FAMILY_REGISTRY_REFRESH',site,'routes',result['routes_discovered'],
