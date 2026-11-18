@@ -40,3 +40,12 @@ no extra service, sitewide purge, checkout mutation or database writes.
 This bundle is a later, source-owned operational snapshot: the separate
 historical Form #6 PR remains immutable and should not overwrite the newer
 six-source reconciler during a future release.
+
+### Multilingual observation
+The Spanish translation's live Fluent Forms #6 instances were hidden from
+layout before and after rates loaded (visibility:hidden; zero client height).
+That is a separate form/readiness decision, not a rate lazy footprint jump.
+The regression measures the actual immediate next sibling of the rate listing,
+so the footprint check works on EN and ES without fabricating a visible form.
+Spanish 390px: native rates 277px to 276.6875px; next sibling delta -0.3125px.
+Do not force-show hidden language-specific booking forms based on this test.
