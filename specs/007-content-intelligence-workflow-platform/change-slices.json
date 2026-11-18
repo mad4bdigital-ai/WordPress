@@ -1,11 +1,11 @@
 {
   "contract": "mad4b.change-slices.v2",
   "authorizing": false,
-  "reviewed_base_sha": "e7f30d944c354c3a4f7346330ad401d995e768c5",
+  "reviewed_base_sha": "9f2df20a5272d0b2f5d784f442ba4e2f94629ab9",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 155,
-  "changed_paths_sha256": "ce57399585b81d4902f550cf79171a2e1b2b691dfe81c16b73333447e7ed0e19",
+  "changed_file_count": 24,
+  "changed_paths_sha256": "ea2146691e4ffde553f65f06b2b2ee9c2009510dd90b67fb0e0d9f715a35b8bf",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -264,6 +264,58 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/unified-queue-extension-hermetic.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/unified-workflow-inspect-hermetic.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/unified-admin-rest-permissions-hermetic.php"
+      ]
+    },
+    {
+      "id": "source-only-frozen-dependencies",
+      "semantic_unit": "Preserve twelve sealed original Tours.dev dependency/optional-provider source files without registering or loading them.",
+      "revert_boundary": "Remove exactly these twelve source-only PHP files, leaving the existing main bootstrap, registered abilities and company runtime unchanged.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-dfsb-adapter.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-local-brand-draft-adapter.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-interaction-ui.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-task-routing.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli-readiness.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-code-release-readiness.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-ai-governance.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-faore-staging-canary-inspection.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-guided-continuation.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-ai-governance.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-ollama-ability.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-lifecycle-rest.php"
+      ]
+    },
+    {
+      "id": "chatbotx-provider-opt-in",
+      "semantic_unit": "Retain three ChatbotX original-source successors and one explicit enrolled-site CPT allowlist regression.",
+      "revert_boundary": "Remove the three ChatbotX source-only adapter files and same-PR negative policy fixture together; no provider registration or CPT write was activated.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-governed-writes.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-provider-adapter.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-write-preflight.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-chatbotx-site-neutral-runtime.php"
+      ]
+    },
+    {
+      "id": "dfsb-admin-route-order",
+      "semantic_unit": "Keep DFSB environment policy as an unactivated successor using canonical parent-first admin menu registration.",
+      "revert_boundary": "Remove DFSB source-only class; existing Admin Route Registry and active menu definitions remain unchanged.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dfsb-environment-policy.php"
+      ]
+    },
+    {
+      "id": "hermetic-source-only-regressions",
+      "semantic_unit": "Add exact source SHA/non-boot and legacy QA31/recovery negative proofs for candidate-only abilities.",
+      "revert_boundary": "Revert these three hermetic regressions together with this source-only reconciliation without changing active WordPress behavior.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w1-authority-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
       ]
     }
   ]
