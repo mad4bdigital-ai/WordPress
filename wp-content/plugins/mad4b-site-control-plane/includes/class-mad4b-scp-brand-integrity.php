@@ -206,7 +206,11 @@ final class MAD4B_SCP_Brand_Integrity {
             return;
         }
         $text = self::clean($value);
-        if ($text !== '' && mb_strlen($text) >= 12 && !preg_match('~^(?:https?://|//)\S+$~i',$text)) {
+        // A real customer-facing link can have a short label such as
+        // "Cairo Tours" (11 chars). Text-length thresholds must not drop it.
+        $contains_anchor = preg_match('~<a\b[^>]*\bhref\s*=~i',$value)===1;
+        if ($text !== '' && (mb_strlen($text) >= 12 || $contains_anchor)
+            && !preg_match('~^(?:https?://|//)\S+$~i',$text)) {
             if (mb_strlen($text)>self::MAX_SCANNED_TEXT_CHARS)
                 self::coverage_gap($coverage,$path,'scanned_text_excerpt_limit');
             if (substr_count(strtolower($value),'<a ')>80)

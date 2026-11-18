@@ -23557,6 +23557,27 @@
       "review_rationale": "Second exact source successor closes the flat rich-HTML taxonomy term blind spot: third-party commercial tour and booking anchors in termmeta.destination_contents are reported even without a named further_reading child. Retains external scholarly citations in ordinary post prose; same-PR PHP fixture now explicitly tests external commercial HTML in an untyped term field as well as nested URL-only references. No content rewrite or external host query.",
       "coverage_reuse_rationale": "Existing AI content quality, multilingual company context, provider source attribution and security source controls apply without adding write rights or independent promotion.",
       "execution_note": "Append-only source evidence, no runtime deployment or owner attestation."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-integrity.php",
+      "source_blob_sha": "0b2814c8990538e1b4386daa2b13a5c6c7a49160",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-integrity-destination-term-links-runtime.php"
+      ],
+      "owner_role": "MAD4B Brand Integrity exact-source QA reviewer — CI evidence only, no Production deployment grant",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Correct the short-visible-anchor blind spot: the existing 12-character text threshold discarded `<a href>` whose actual anchor text was `Cairo Tours` (11 characters). Keep short strings without links excluded while retaining short rich-HTML hyperlinks for inspected term and post fields; a same-PR executable taxonomy fixture covers this exact case. No generic external citation blocking, no data mutations, and no authority bypass.",
+      "coverage_reuse_rationale": "Existing AI brand protection, localization, provider attribution and security controls apply without changing execution capabilities.",
+      "execution_note": "Source-only reviewed successor; not a verified live cleanup or deployment."
     }
   ],
   "code_change_rules": {
