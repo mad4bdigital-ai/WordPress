@@ -24,4 +24,17 @@ $x=$c::evaluate([]);expect(is_wp_error($x)&&$x->get_error_code()==='mad4b_visual
 $fields=['post_id'=>17,'media_role'=>'featured','destination_slug'=>'luxor','image_sha256'=>str_repeat('a',64),'gallery_sha256'=>str_repeat('b',64),'visual_representation'=>'photograph','observed_objects'=>['landmark'],'alt_drafts'=>['en'=>'A clearly identified photo of Luxor with verifiable historic monument context'],'market'=>'inherit'];
 $x=$c::evaluate($fields);expect(is_wp_error($x)&&$x->get_error_code()==='mad4b_visual_strategy_context_not_ready','Incomplete WPML provider audit cannot approve visual publication');
 $fields['media_role']='gallery';$x=$c::evaluate($fields);expect(is_wp_error($x)&&$x->get_error_code()==='mad4b_visual_strategy_role_not_implemented','Unsupported gallery role cannot be silently implemented');
+// PHP 7.4 compatibility is a real install boundary: keep these native
+// expressions parseable on 7.4, without changing their fail-closed result.
+$visual_source=file_get_contents(dirname(__DIR__).'/includes/class-mad4b-scp-visual-seo-strategy.php');
+expect(is_string($visual_source)&&strpos($visual_source,'match($key)')===false,'No PHP 8 match expression in the strategy');
+expect(strpos($visual_source,'str_starts_with(')===false,'No PHP 8 str_starts_with in the strategy');
+expect(strpos($visual_source,'0 !== strpos((string)get_post_mime_type($attachment),')!==false,'Image MIME prefix stays fail-closed');
+foreach(['image/jpeg'=>true,'image/png'=>true,'image/webp'=>true,'application/pdf'=>false,'image'=>false,'imagex/jpeg'=>false] as $mime=>$allowed){
+    expect((0===strpos($mime,'image/'))===$allowed,'PHP 7.4 MIME-prefix equivalence for '.$mime);
+}
+foreach(['destination_relevance','visual_truthfulness','multilingual_seo','brand_alignment','media_role','search_intent'] as $strategy){
+    expect(strpos($visual_source,"'".$strategy."'=>")!==false,'Original strategy source label retained for '.$strategy);
+}
+expect(strpos($visual_source,'WPML, WordPress, JetEngine and Rank Math configuration')!==false,'Original strategy fallback retained');
 echo "PASS: Visual SEO read-only catalog, strict identity/role/locale readiness and no alt/image write\n";
