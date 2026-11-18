@@ -89,6 +89,12 @@ def optimizer_source_key(cat,r,state):
     if (cat['host']=='tours.dev.mad4b.com'
         and state.get('source_private_css_policy_sha')):
         values.append('source-private-css:'+state['source_private_css_policy_sha'])
+    # Changing browser egress (Docker NAT -> public Host IP) alters WCML
+    # currency/market and real-world first paint. Only staging Source
+    # must discard bridge-network negative QA claims and remeasure.
+    # Existing exact market/currency certificates retain their own hashes.
+    if cat['host']=='tours.dev.mad4b.com':
+        values.append('source-browser-egress:public-host-network-v1')
     return hashlib.sha256('|'.join(values).encode()).hexdigest()
 
 def order_key(r):

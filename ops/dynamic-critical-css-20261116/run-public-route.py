@@ -124,6 +124,21 @@ def optimizer_bundle_missing(capture_index,route):
 
 def locked(file):
     f=open(file,'a+');fcntl.flock(f,fcntl.LOCK_EX|fcntl.LOCK_NB);return f
+
+def approved_browser_network(site,env,script):
+    # Original Chromium's default Docker bridge resolves WCML DE to USD,
+    # while the exact same unauthenticated public request from host/outside
+    # resolves DE to EUR. Only the staging public navigation/QA workload may
+    # use host egress; keep capabilities removed and original browser locks.
+    # All other tenant/workload combinations retain their original network.
+    if site=='tours.dev.mad4b.com' and env=='staging' and script in (
+        'capture.js','verify.js','probe-public.js'):
+        return ['--network=host','--cap-drop=ALL']
+    if (site,env) not in [
+        ('tours.dev.mad4b.com','staging'),('wayfatours.com','production')]:
+        raise ValueError('UNAPPROVED_BROWSER_SITE_ENVIRONMENT')
+    return []
+
 def browser(job,wp,site,env,script,output,extra=None,limit=1320):
     opts={
       'NODE_PATH':'/usr/src/app/node_modules',
@@ -138,6 +153,7 @@ def browser(job,wp,site,env,script,output,extra=None,limit=1320):
     args=['docker','run','--rm','--user','0:0','--memory=1024m','--cpus=1.3',
           '--pids-limit=250','--security-opt=no-new-privileges',
           '-v',str(TOOLS/'tools')+':/tools:ro','-v',str(output.parent)+':/out']
+    args+=approved_browser_network(site,env,script)
     if script=='capture.js':args+=['-v',str(wp/'litespeed/css')+':/source-css:ro']
     for k,v in opts.items():args+=['-e',k+'='+v]
     args+=[IMAGE,'node','/tools/'+script]
@@ -165,9 +181,19 @@ def run_core(site):
     # publishing or a production runtime version out of sync with Git.
     for name in ['421-mad4b-public-critical-css-coverage.php',
                  '422-mad4b-public-critical-css-runtime.php']:
-        src=ROOT/'worktrees/pr814-converged-local-20261115/wp-content/mu-plugins'/name
+        # Release-aware per-company source selection: Source now carries the
+        # audited WordPress 422 URI case canonicalization, independently of
+        # unchanged Wayfatours Production. Keep exact bytes parity; never
+        # permit arbitrary live code, ignore mismatch, or share site proof.
+        approved_source_root=(
+            ROOT/'worktrees/live-css-unified-source-20261118/wp-content/mu-plugins'
+            if site=='source' and name=='422-mad4b-public-critical-css-runtime.php'
+            else ROOT/'worktrees/pr814-converged-local-20261115/wp-content/mu-plugins')
+        src=approved_source_root/name
         dst=wp/'mu-plugins'/name
-        if not src.is_file() or not dst.is_file() or src.read_bytes()!=dst.read_bytes():
+        if (src.is_symlink() or dst.is_symlink()
+            or not src.is_file() or not dst.is_file()
+            or src.read_bytes()!=dst.read_bytes()):
             raise ValueError('SOURCE_LIVE_NATIVE_COMPONENT_DRIFT:'+name)
     # Borrow the host's existing 45-second CPU sensor instead of starting a
     # Chromium run at 51-100% guest CPU (or with two original WPCLI slots).

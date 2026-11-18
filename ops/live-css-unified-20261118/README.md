@@ -82,3 +82,22 @@ NEVER be relabelled EUR. The maintenance backlog is source certification
 per trusted market/currency, not a reason to disable the exchange guard.
 The old 425 diagnostic staging MU was deleted; no payment, Woo, WPML or
 guest HTML cache controls were changed.
+
+## Browser QA must use the actual public origin currency context
+On 18 Nov, a Source AR tour passed five independent Chromium
+FCP/LCP/CLS widths but live readback correctly withheld its DE/USD
+certificate from a DE/EUR public request. The original Chromium worker
+used Docker bridge egress. Same route, user agent, Accept and no cookies:
+- Original VPS host request: DE/EUR.
+- Original Source and Wayfa PHP container egress: DE/USD.
+- Isolated Playwright image Node fetch with only Docker network changed:
+  Docker bridge DE/USD, host DE/EUR. Both remain private/no-store.
+
+The bounded runner now uses host networking with ALL capabilities
+dropped only for Tours.dev Staging browser capture, verification and
+public readback navigation commands. Wayfatours Production and offline
+CSS assembly retain original networking. Native browser locks, CPU
+admission, no-new-privileges, market/currency partitioning and five-view
+QA remain mandatory. Source-family optimizer keys bind the versioned
+public-host egress source so old bridge-negative proofs are not reused.
+No existing DE/USD certificate is relabelled DE/EUR.
