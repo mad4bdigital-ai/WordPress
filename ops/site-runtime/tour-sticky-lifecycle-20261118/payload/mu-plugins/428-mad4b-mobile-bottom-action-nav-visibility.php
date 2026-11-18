@@ -16,7 +16,9 @@ add_action('wp_head', static function (): void {
 /* Only a genuinely OPEN Elementor mobile menu suspends floating page actions.
    Retain original Elementor dock and invisible layout spacer in the DOM.
    No page body transforms, reparenting, polling, or click interception. */
-@media (max-width:767px) {
+/* Elementor mobile-navigation toggle remains visible through tablet <=1024px.
+   No action is suspended unless this actual toggle is expanded. */
+@media (max-width:1024px) {
  /* The archive minimum belongs to the original Elementor CTA dock, which
     is portaled into body on DOM readiness. Never paint an isolated price
     outside its ready dock while that one-time portal is still pending.

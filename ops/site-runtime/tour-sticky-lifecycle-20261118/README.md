@@ -164,3 +164,39 @@ tests/archive-preportal-price.test.js with TEST_ORIGIN set to the trusted
 site origin. This addresses inconsistent dock navigation policy, not the
 unreproduced physical-Android all-click freeze or browser extension
 message-channel closure.
+
+
+## Tablet breakpoint reconciliation — 19 Nov 2026
+
+Further live browser tests found the native Elementor collapsed menu toggle
+remains available at 768, 820, 991 and 1024px, but not at 1199px.
+The original bottom-action suspension used max-width:767px and thus
+left fixed booking/inquiry docks visible while the actual collapsed
+menu was open on tablets. The source guard now uses max-width:1024px
+and still ONLY suspends actions when the native Elementor toggle has
+aria-expanded=true. This is a behavior/viewport constraint, not
+an Elementor plugin version condition. No vendor files touched.
+
+Tours.dev source browser: the destination bottom CTA was hidden after
+clicking the native collapsed menu at 768/820/991/1024; no JS errors.
+Wayfatours production: same four widths passed and at 1199 the mobile
+toggle was absent. The strengthened regression suite includes mobile and
+tablet viewports, skips the mobile-only archive dock at tablet widths,
+and uses a desktop pointer click for non-touch viewport tests.
+
+
+Verified 19 November native tablet final regression:
+- Source and Wayfatours: tour/destination at 768px and 1024px all pass
+  (**8/8**), active bottom CTA visible before menu, hidden on open and
+  restored on close, with no page JavaScript exceptions.
+- The test now distinguishes touch tap from mouse click, and explicitly
+  waits (with a bounded timeout) for native Elementor Sticky activation
+  before comparing geometry. An early test incorrectly treated an
+  uninitialized Sticky state as a failed CSS policy; the settled behavior
+  is correct.
+- The original phone regression below 768px was already proven 12/12.
+- Eight-file live-source composite SHA matched across source and Wayfa:
+  59852c7b7f77bebd2c8462e7469e7208af7451299520e61c614b1538da29528d.
+  Bounded public-route reconciliation PASS: 1,024 source and 440 Wayfa,
+  both file watchers and timers active. Canonical archive and destination
+  HTML on both hosts serves the new <=1024px CSS contract exactly once.
