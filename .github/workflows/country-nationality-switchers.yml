@@ -68,7 +68,8 @@ jobs:
 
 
   browser-smart-suggestions:
-    runs-on: ubuntu-latest
+    # Chromium for Playwright 1.56 is unsupported on the ubuntu26 image behind ubuntu-latest.
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
