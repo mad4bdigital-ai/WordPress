@@ -22,6 +22,8 @@ SHA = re.compile(r"^[a-f0-9]{40}$")
 # Each path contains exit-on-failure assertions and a positive PASS marker.
 # Other PHP files continue to require PHPUnit; unknown paths fail closed.
 STANDALONE_PHP_REGRESSIONS = frozenset((
+    # No-lease, no-grant original host/agent source regression.
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-agent-authority-source-only-runtime.php",
     # Sealed Tours.dev source-only bootstrap preservation, no activation.
     "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-chatbotx-site-neutral-runtime.php",
@@ -321,6 +323,8 @@ def self_test():
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-local-transport-boundary-runtime.php",
     ):
         assert command_for(exact) == ["php", str((ROOT / exact).resolve())]
+    # Exact background agent / host authority negative fixture, no server work.
+    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-agent-authority-source-only-runtime.php") == ["php", str((ROOT / "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-agent-authority-source-only-runtime.php").resolve())]
     # New source parity fixtures are bounded, non-mutating PHP scripts.
     for exact in (
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php",

@@ -4648,6 +4648,63 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Original site identity, authorization, provider and execution controls remain authoritative. This captured module has no new main-bootstrap include, so static discovery of identifiers does not certify runtime registration or authority.",
       "review_rationale": "This source-only Tours.dev module introduces an identifiable candidate rest:mad4b/v1/core-ai/usage. A same-PR executable regression pins the exact candidate ID to its sealed source file and checks it is not loaded in the candidate main bootstrap. Further per-ability behavior, registration and security acceptance remain prerequisites for any future activation, especially for ChatbotX write abilities."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-background-agent-admission.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-agent-authority-source-only-runtime.php"
+      ],
+      "owner_role": "Independent original-source/agent-authority reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing exact-site, agent, execution, lease/fencing, authorization and governed release controls remain mandatory; restoring source bytes creates no authority or runtime activation.",
+      "review_rationale": "Verified SHA256 byte-exact against installed Tours.dev Control Plane and independently preserved v3 995-file source archive. Imported strictly as a source-only module without main-plugin include, auto boot, new grant or background queue execution. Same-PR no-network PHP 7.4 denial fixture verifies no enrolled Site Profile or mutation permission means no lease claim/heartbeat/fencing and no host apply."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-background-agent-dispatch.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-agent-authority-source-only-runtime.php"
+      ],
+      "owner_role": "Independent original-source/agent-authority reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing exact-site, agent, execution, lease/fencing, authorization and governed release controls remain mandatory; restoring source bytes creates no authority or runtime activation.",
+      "review_rationale": "Verified SHA256 byte-exact against installed Tours.dev Control Plane and independently preserved v3 995-file source archive. Imported strictly as a source-only module without main-plugin include, auto boot, new grant or background queue execution. Same-PR no-network PHP 7.4 denial fixture verifies no enrolled Site Profile or mutation permission means no lease claim/heartbeat/fencing and no host apply."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-authority.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-agent-authority-source-only-runtime.php"
+      ],
+      "owner_role": "Independent original-source/agent-authority reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing exact-site, agent, execution, lease/fencing, authorization and governed release controls remain mandatory; restoring source bytes creates no authority or runtime activation.",
+      "review_rationale": "Verified SHA256 byte-exact against installed Tours.dev Control Plane and independently preserved v3 995-file source archive. Imported strictly as a source-only module without main-plugin include, auto boot, new grant or background queue execution. Same-PR no-network PHP 7.4 denial fixture verifies no enrolled Site Profile or mutation permission means no lease claim/heartbeat/fencing and no host apply."
     }
   ],
   "lifecycle": [],
@@ -13475,6 +13532,66 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing source provenance, site isolation, provider, execution and change-control checks remain mandatory; these files are held in unactivated source-only scope and do not introduce a new authorization surface.",
       "review_rationale": "Original frozen Tours.dev SHA256 remains recorded separately and its original review is immutable. This successor keeps the same default-deny environment policy but replaces direct admin_menu registration with the reviewed Admin Route Registry::register and schedule_submenu, enforcing parent-order and manage_options on future explicit boot. No plugin bootstrap includes this source-only file; same-PR parent-order and sealed-source regressions enforce both boundaries."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-background-agent-admission.php",
+      "source_blob_sha": "bb3f7d06966bd0814f2d277bfdda6b2cddf35a34",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-agent-authority-source-only-runtime.php"
+      ],
+      "owner_role": "Independent original-source/agent-authority reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing exact-site, agent, execution, lease/fencing, authorization and governed release controls remain mandatory; restoring source bytes creates no authority or runtime activation.",
+      "review_rationale": "Verified SHA256 byte-exact against installed Tours.dev Control Plane and independently preserved v3 995-file source archive. Imported strictly as a source-only module without main-plugin include, auto boot, new grant or background queue execution. Same-PR no-network PHP 7.4 denial fixture verifies no enrolled Site Profile or mutation permission means no lease claim/heartbeat/fencing and no host apply."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-background-agent-dispatch.php",
+      "source_blob_sha": "799c5de538f4b3b5ba9bcac05587b2ec20891227",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-agent-authority-source-only-runtime.php"
+      ],
+      "owner_role": "Independent original-source/agent-authority reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing exact-site, agent, execution, lease/fencing, authorization and governed release controls remain mandatory; restoring source bytes creates no authority or runtime activation.",
+      "review_rationale": "Verified SHA256 byte-exact against installed Tours.dev Control Plane and independently preserved v3 995-file source archive. Imported strictly as a source-only module without main-plugin include, auto boot, new grant or background queue execution. Same-PR no-network PHP 7.4 denial fixture verifies no enrolled Site Profile or mutation permission means no lease claim/heartbeat/fencing and no host apply."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-authority.php",
+      "source_blob_sha": "57c50bca84660969ee5ca5b0e7b6cc8061a7abf1",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-agent-authority-source-only-runtime.php"
+      ],
+      "owner_role": "Independent original-source/agent-authority reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing exact-site, agent, execution, lease/fencing, authorization and governed release controls remain mandatory; restoring source bytes creates no authority or runtime activation.",
+      "review_rationale": "Verified SHA256 byte-exact against installed Tours.dev Control Plane and independently preserved v3 995-file source archive. Imported strictly as a source-only module without main-plugin include, auto boot, new grant or background queue execution. Same-PR no-network PHP 7.4 denial fixture verifies no enrolled Site Profile or mutation permission means no lease claim/heartbeat/fencing and no host apply."
     }
   ],
   "code_change_rules": {
