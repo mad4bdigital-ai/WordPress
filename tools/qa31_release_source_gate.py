@@ -330,6 +330,75 @@ def reviewed_rc129_chatgpt_cimd_successor(repo:Path,path:str,contents:bytes):
             subprocess.TimeoutExpired,json.JSONDecodeError):
         return None
 
+
+def reviewed_rc129_chatbotx_cpt_successor(repo:Path,path:str,contents:bytes):
+    """Exactly three reviewed site-neutral ChatbotX files. No CPT grant:
+    this is static QA31 source evidence, not an activation or deployment."""
+    allowed={
+      'includes/adapters/class-mad4b-scp-chatbotx-governed-writes.php':
+        ('953850829b7cd20df115451be44b868510fabf1a','11ed54a15cd53d6e1a9351204791e4f8ff38d5da','0832e17160191066e8ab5de4d08d1506c009ed1a448583a7b15d0fdbefafc545'),
+      'includes/adapters/class-mad4b-scp-chatbotx-provider-adapter.php':
+        ('2bedb1739c3952c004ace0e9b37373b04220c764','b6af664ae88e3bf89571bfce239ae31a9f3a5f72','5f95b30d40b15db55a493178a30819733faf8c396f06bcb1b25f935a92395e2b'),
+      'includes/adapters/class-mad4b-scp-chatbotx-write-preflight.php':
+        ('f878ee584ab1fef1e4de2b6214621355f098b0a8','7de977116f29da225ac9624610fbdf93ce397963','9ee3139c6443786904a36ad80eb43089b4be8879b6e85c2020837c8658b12488')
+    }
+    if path not in allowed or not isinstance(contents,bytes):return None
+    manifest=repo/'governance/release-parity/qa31-rc129-chatbotx-cpt-successor-20261118.json'
+    previous=repo/'governance/release-parity/qa31-rc129-cimd-source-successor-20261118.json'
+    historical=repo/'governance/release-parity/qa31-commerce-staging-source-parity.json'
+    base='924b2051144df7af2cf409e7fc617d96e23d95d8'
+    test='wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-chatbotx-site-neutral-runtime.php'
+    oldtest='tests/chatbotx-native-adapter-surface-hermetic.php'
+    try:
+        if not manifest.is_file() or manifest.is_symlink():return None
+        m=json.loads(manifest.read_text(encoding='utf-8'))
+        old=json.loads(historical.read_text(encoding='utf-8'))
+        entries=m.get('entries')
+        names=[z.get('path') for z in entries if isinstance(z,dict)] if isinstance(entries,list) else []
+        if (m.get('contract')!='mad4b.qa31-rc129-chatbotx-site-neutral-cpt-successor.v1'
+            or m.get('base_source_commit')!=base
+            or m.get('prior_cimd_manifest')!='governance/release-parity/qa31-rc129-cimd-source-successor-20261118.json'
+            or m.get('prior_cimd_sha256')!=digest(previous)
+            or m.get('historical_qa31_ledger')!='governance/release-parity/qa31-commerce-staging-source-parity.json'
+            or m.get('historical_qa31_sha256')!=digest(historical)
+            or m.get('source_review_reference')!='https://github.com/mad4bdigital-ai/WordPress/pull/900'
+            or m.get('source_review_only') is not True
+            or m.get('authorizing') is not False
+            or m.get('production_authorized') is not False
+            or m.get('source_promotion_approved') is not False
+            or m.get('live_evidence_required') is not True
+            or m.get('is_build_provenance') is not False
+            or m.get('release_gate')!='BLOCKED_SOURCE_RECONCILIATION'
+            or m.get('exact_source_files')!=3
+            or m.get('required_regression')!=test
+            or m.get('existing_regression')!=oldtest
+            or names!=sorted(allowed)):return None
+        row=entries[names.index(path)]
+        parent_sha,source_sha,source_digest=allowed[path]
+        if (row.get('parent_blob_sha')!=parent_sha
+            or row.get('current_blob_sha')!=source_sha
+            or row.get('current_sha256')!=source_digest
+            or hashlib.sha256(contents).hexdigest()!=source_digest
+            or hashlib.sha1(b'blob '+str(len(contents)).encode('ascii')+b'\0'+contents).hexdigest()!=source_sha):return None
+        original={e['path']:e for e in old.get('source_decisions',[])}
+        if original.get(path,{}).get('state')!='STAGING_ONLY':return None
+        if not (repo/test).is_file() or (repo/test).is_symlink():return None
+        if not (repo/oldtest).is_file() or (repo/oldtest).is_symlink():return None
+        pre=subprocess.run(['git','cat-file','-e',base+'^{commit}'],
+            cwd=repo,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=8)
+        if pre.returncode==0:
+            git_parent=subprocess.check_output(['git','rev-parse',base+
+                ':wp-content/plugins/mad4b-site-control-plane/'+path],
+                cwd=repo,stderr=subprocess.DEVNULL,timeout=8).decode().strip()
+            if git_parent!=parent_sha:return None
+        elif subprocess.check_output(['git','rev-parse','--is-shallow-repository'],
+            cwd=repo,stderr=subprocess.DEVNULL,timeout=8).decode().strip()!='true':
+            return None
+        return test
+    except (OSError,ValueError,KeyError,TypeError,subprocess.CalledProcessError,
+            subprocess.TimeoutExpired,json.JSONDecodeError):
+        return None
+
 def reviewed_ci_only_source_successor(root:Path,path:str,contents:bytes)->bool:
     """Accept exact, reviewed Git blobs for CI inventory only; never parity.
     Static legacy entries remain valid; rc129 successors are independently
@@ -342,7 +411,9 @@ def reviewed_ci_only_source_successor(root:Path,path:str,contents:bytes)->bool:
     source=root/path
     if source.is_symlink() or not source.is_file() or source.read_bytes()!=contents:
         return False
-    requested=reviewed_rc129_chatgpt_cimd_successor(repo,path,contents)
+    requested=reviewed_rc129_chatbotx_cpt_successor(repo,path,contents)
+    if requested is None:
+        requested=reviewed_rc129_chatgpt_cimd_successor(repo,path,contents)
     if requested is None:
         requested=reviewed_rc129_context_media_successor(repo,path,contents)
     if requested is None:

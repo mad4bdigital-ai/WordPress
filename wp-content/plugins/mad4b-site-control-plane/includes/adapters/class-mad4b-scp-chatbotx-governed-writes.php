@@ -93,7 +93,7 @@ final class MAD4B_SCP_ChatbotX_Governed_Writes {
         $guard=self::guard();if(is_wp_error($guard))return $guard;
         $type=sanitize_key((string)($in['post_type']??''));
         $title=trim((string)($in['title']??''));
-        if(!in_array($type,array('tours-and-activities','properties','transportations'),true)
+        if(!in_array($type,MAD4B_SCP_ChatbotX_Write_Preflight::allowed_post_types(),true)
             ||$title===''||strlen($title)>240)
             return new WP_Error('cmb_invalid_draft','Supported CPT and bounded title required.');
         $obj=get_post_type_object($type);

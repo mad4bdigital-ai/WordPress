@@ -1,0 +1,39 @@
+{
+  "contract": "mad4b.qa31-rc129-chatbotx-site-neutral-cpt-successor.v1",
+  "base_source_commit": "924b2051144df7af2cf409e7fc617d96e23d95d8",
+  "prior_cimd_manifest": "governance/release-parity/qa31-rc129-cimd-source-successor-20261118.json",
+  "prior_cimd_sha256": "fd760a308b84c38eecf4355cd7cfb5c5878b2d52a82be874244d79262bc740f2",
+  "historical_qa31_ledger": "governance/release-parity/qa31-commerce-staging-source-parity.json",
+  "historical_qa31_sha256": "24f82e7898d4523bea658f4805329ea62cde807c54e63ecd0b8fe98b43fe1819",
+  "source_review_reference": "https://github.com/mad4bdigital-ai/WordPress/pull/900",
+  "source_review_only": true,
+  "authorizing": false,
+  "production_authorized": false,
+  "source_promotion_approved": false,
+  "live_evidence_required": true,
+  "is_build_provenance": false,
+  "release_gate": "BLOCKED_SOURCE_RECONCILIATION",
+  "exact_source_files": 3,
+  "required_regression": "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-chatbotx-site-neutral-runtime.php",
+  "existing_regression": "tests/chatbotx-native-adapter-surface-hermetic.php",
+  "entries": [
+    {
+      "path": "includes/adapters/class-mad4b-scp-chatbotx-governed-writes.php",
+      "parent_blob_sha": "953850829b7cd20df115451be44b868510fabf1a",
+      "current_blob_sha": "11ed54a15cd53d6e1a9351204791e4f8ff38d5da",
+      "current_sha256": "0832e17160191066e8ab5de4d08d1506c009ed1a448583a7b15d0fdbefafc545"
+    },
+    {
+      "path": "includes/adapters/class-mad4b-scp-chatbotx-provider-adapter.php",
+      "parent_blob_sha": "2bedb1739c3952c004ace0e9b37373b04220c764",
+      "current_blob_sha": "b6af664ae88e3bf89571bfce239ae31a9f3a5f72",
+      "current_sha256": "5f95b30d40b15db55a493178a30819733faf8c396f06bcb1b25f935a92395e2b"
+    },
+    {
+      "path": "includes/adapters/class-mad4b-scp-chatbotx-write-preflight.php",
+      "parent_blob_sha": "f878ee584ab1fef1e4de2b6214621355f098b0a8",
+      "current_blob_sha": "7de977116f29da225ac9624610fbdf93ce397963",
+      "current_sha256": "9ee3139c6443786904a36ad80eb43089b4be8879b6e85c2020837c8658b12488"
+    }
+  ]
+}

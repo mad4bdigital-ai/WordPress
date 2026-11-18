@@ -366,4 +366,50 @@ for case,change in (
         chk(not reviewed_ci_only_source_successor(plugin,cimd_rel,cimd_bytes),
             'cimd_entry_forgery_denied_'+case)
 
+
+# Site-neutral CPT drafts are conditional per enrolled company, not three
+# universal tourism types. Require exact source fingerprints and old tests.
+chatbotx_manifest=repo/'governance/release-parity/qa31-rc129-chatbotx-cpt-successor-20261118.json'
+chatbotx_data=json.loads(chatbotx_manifest.read_text())
+chatbotx_paths=[x['path'] for x in chatbotx_data['entries']]
+chk(chatbotx_data['contract']=='mad4b.qa31-rc129-chatbotx-site-neutral-cpt-successor.v1'
+    and chatbotx_data['base_source_commit']=='924b2051144df7af2cf409e7fc617d96e23d95d8'
+    and chatbotx_data['exact_source_files']==3
+    and chatbotx_data['production_authorized'] is False
+    and chatbotx_data['authorizing'] is False
+    and chatbotx_data['release_gate']=='BLOCKED_SOURCE_RECONCILIATION'
+    and chatbotx_paths==sorted(chatbotx_paths),'chatbotx_exact_review_non_authorizing')
+for rel in chatbotx_paths:
+    fresh=(plugin/rel).read_bytes()
+    chk(reviewed_ci_only_source_successor(plugin,rel,fresh),
+        'chatbotx_exact_cpt_source_review_'+rel)
+    chk(not reviewed_ci_only_source_successor(plugin,rel,fresh+b'\nTAMPERED'),
+        'chatbotx_cpt_tamper_denied_'+rel)
+target_chatbotx=chatbotx_manifest.resolve()
+for case,changed in (
+    ('forged_authorization',{'production_authorized':True}),
+    ('wrong_parent',{'base_source_commit':'a'*40}),
+    ('wrong_review',{'source_review_reference':'https://example.invalid/fake'}),
+    ('wrong_cimd_lineage',{'prior_cimd_sha256':'b'*64}),
+):
+    forged=dict(chatbotx_data);forged.update(changed)
+    def substituted(self,*args,**kwargs):
+        if self.resolve()==target_chatbotx:return json.dumps(forged)
+        return original_read(self,*args,**kwargs)
+    with mock.patch.object(Path,'read_text',substituted):
+        rel=chatbotx_paths[0]
+        chk(not reviewed_ci_only_source_successor(plugin,rel,(plugin/rel).read_bytes()),
+            'chatbotx_forger_denied_'+case)
+for case,field in (('source','current_blob_sha'),('parent','parent_blob_sha'),
+                   ('digest','current_sha256')):
+    forged=json.loads(json.dumps(chatbotx_data))
+    forged['entries'][0][field]='f'*(64 if field.endswith('sha256') else 40)
+    def substituted(self,*args,**kwargs):
+        if self.resolve()==target_chatbotx:return json.dumps(forged)
+        return original_read(self,*args,**kwargs)
+    with mock.patch.object(Path,'read_text',substituted):
+        rel=chatbotx_paths[0]
+        chk(not reviewed_ci_only_source_successor(plugin,rel,(plugin/rel).read_bytes()),
+            'chatbotx_forged_entry_denied_'+case)
+
 print('QA31_SOURCE_PARITY_NEGATIVE_REGRESSIONS: PASS (source reviewed; release blocked)')

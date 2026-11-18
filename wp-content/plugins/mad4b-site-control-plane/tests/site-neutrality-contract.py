@@ -21,6 +21,7 @@ commands = [
     [sys.executable, str(PLUGIN / "tests/host-agent-source-parity-contract.py")],
     [php, str(PLUGIN / "tests/host-agent-fail-closed-runtime.php")],
     [php, str(PLUGIN / "tests/tours-dev-cimd-client-security-runtime.php")],
+    [php, str(PLUGIN / "tests/tours-dev-chatbotx-site-neutral-runtime.php")],
     [php, str(PLUGIN / "tests/context-scan-media-integrity/isolated-contract.php"),
      str(PLUGIN / "includes/class-mad4b-scp-google-drive-context.php"),
      str(PLUGIN / "includes/class-mad4b-scp-drive-scan-continuation.php"),

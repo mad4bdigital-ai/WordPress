@@ -97,6 +97,8 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     # Original ChatbotX 11-read/3-write source registration and negative
     # mutation checks, using only in-memory fake WordPress / no network.
     "tests/chatbotx-native-adapter-surface-hermetic.php",
+    # Reviewed no-network per-company CPT allowlist security regression.
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-chatbotx-site-neutral-runtime.php",
     # Original site source pages and stubbed receipt denial tests only.
     # No cryptographic verification, live grant, network or site mutation.
     "tests/company-code-cryptographic-pages-hermetic.php",
