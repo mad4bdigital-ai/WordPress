@@ -602,6 +602,131 @@ final class MAD4B_SCP_Brand_Integrity {
             'object_id'=>$term_id,'mutation_performed'=>false);
     }
 
+
+    /** Bounded, source-only analysis of one JetEngine/WordPress term meta value. */
+    private static function term_value_report($term_id,$key,$raw,array $brand) {
+        $coverage=array('complete'=>true,'gap_count'=>0,'gap_samples'=>array());
+        $fields=array();
+        self::append_leaf($fields,'termmeta.'.$key.'.0',maybe_unserialize($raw),0,$coverage);
+        $issues=array();
+        foreach($fields as $path=>$leaf) {
+            foreach(self::analyze_links($leaf['html'],$path,(array)$brand['scope']) as $link) {
+                $id=hash('sha256',get_current_blog_id().'|term|'.$term_id.'|'.$path.'|'.$link['url_sha256']);
+                $issues[$id]=array('id'=>$id,
+                    'severity'=>$link['confidence']==='high'?'high':'medium',
+                    'source_evidence'=>array('field_path'=>$path,
+                        'matched_entity'=>$link['host'],
+                        'source_sha256'=>hash('sha256',$leaf['html'].'|'.$link['url_sha256'])));
+                if(count($issues)>=self::MAX_ISSUES_PER_POST) {
+                    self::coverage_gap($coverage,$path,'issue_limit_reached');
+                    break 2;
+                }
+            }
+        }
+        return array('complete'=>$coverage['complete'],
+            'gap_count'=>$coverage['gap_count'],'gap_samples'=>$coverage['gap_samples'],
+            'fields_scanned'=>count($fields),'issues'=>array_values($issues));
+    }
+
+    /**
+     * Governed Content Job / JetEngine adapters can call this BEFORE writing.
+     * No global metadata filter: WPML and editor saves remain untouched.
+     * Historical unchanged findings are allowed so content can be repaired.
+     */
+    public static function term_meta_candidate_preflight($term_id,$key,$candidate,$brand=null) {
+        $term_id=absint($term_id);
+        $term=get_term($term_id);
+        if(!($term instanceof WP_Term) || is_wp_error($term))
+            return new WP_Error('mad4b_term_link_invalid_term','Taxonomy term unavailable.');
+        if(!is_string($key) || $key==='' || strlen($key)>191)
+            return new WP_Error('mad4b_term_link_invalid_field','Invalid term meta key.');
+        if((str_starts_with($key,'_') && $key!=='_description') ||
+            preg_match('/(?:password|secret|token|private_key|api_key|nonce|license|cache|session)/i',$key))
+            return array('contract'=>self::CONTRACT,'allowed'=>true,
+                'skipped_operational_field'=>true,'mutation_performed'=>false);
+        if(!is_array($brand))
+            $brand=class_exists('MAD4B_SCP_Brand_Experience_Quality',false)
+                ? MAD4B_SCP_Brand_Experience_Quality::brand_context():array();
+        if(empty($brand['scope']['brand_name']) || empty($brand['scope']['site_uuid']))
+            return new WP_Error('mad4b_term_link_identity_missing','Site brand context missing.');
+        $before=self::term_value_report($term_id,$key,get_term_meta($term_id,$key,true),$brand);
+        $after=self::term_value_report($term_id,$key,$candidate,$brand);
+        if(!$before['complete'] || !$after['complete'])
+            return new WP_Error('mad4b_term_link_coverage_incomplete',
+                'Term field coverage incomplete.',array('term_id'=>$term_id,'meta_key'=>$key));
+        $new=self::newly_introduced_high($before,$after);
+        if($new)
+            return new WP_Error('mad4b_term_link_external_promotional_blocked',
+                'Proposed term content includes a new external promotional link.',
+                array('term_id'=>$term_id,'taxonomy'=>(string)$term->taxonomy,
+                    'new_high_confidence_issues'=>count($new),
+                    'hosts'=>array_values(array_unique(array_map(
+                        static fn($x)=>(string)$x['source_evidence']['matched_entity'],$new))),
+                    'auto_replacement_authorized'=>false));
+        return array('contract'=>self::CONTRACT,'allowed'=>true,
+            'term_id'=>$term_id,'taxonomy'=>(string)$term->taxonomy,
+            'candidate_fields_checked'=>$after['fields_scanned'],
+            'historic_issues'=>count($before['issues']),
+            'review_issues'=>count(array_filter($after['issues'],
+                static fn($i)=>$i['severity']==='medium')),
+            'mutation_performed'=>false);
+    }
+
+    /**
+     * Read-only, paginated taxonomy census. Enumerate explicit PUBLIC taxonomies;
+     * return next_offset to resume. suppress_filter requests all language IDs,
+     * never assuming the current WPML language is the complete inventory.
+     */
+    public static function scan_term_batch(array $taxonomies,$offset=0,$limit=100,$brand=null) {
+        $requested=array_values(array_unique(array_filter(array_map('sanitize_key',$taxonomies))));
+        $valid=array();
+        foreach($requested as $tax) {
+            if(!taxonomy_exists($tax)) continue;
+            $obj=get_taxonomy($tax);
+            if($obj && !empty($obj->public)) $valid[]=$tax;
+        }
+        if(!$valid || count($valid)!==count($requested))
+            return array('contract'=>self::CONTRACT,'complete'=>false,'scanned'=>0,
+                'issues'=>array(),'coverage_reason'=>'invalid_or_private_taxonomy',
+                'mutation_performed'=>false);
+        if(!is_array($brand))
+            $brand=class_exists('MAD4B_SCP_Brand_Experience_Quality',false)
+                ? MAD4B_SCP_Brand_Experience_Quality::brand_context():array();
+        if(empty($brand['scope']['brand_name']) || empty($brand['scope']['site_uuid']))
+            return array('contract'=>self::CONTRACT,'complete'=>false,'scanned'=>0,
+                'issues'=>array(),'coverage_reason'=>'brand_context_missing',
+                'mutation_performed'=>false);
+        $offset=max(0,(int)$offset);
+        $limit=min(self::MAX_BATCH,max(1,(int)$limit));
+        $ids=get_terms(array('taxonomy'=>$valid,'fields'=>'ids','hide_empty'=>false,
+            'number'=>$limit+1,'offset'=>$offset,'orderby'=>'term_id',
+            'order'=>'ASC','suppress_filter'=>true));
+        if(is_wp_error($ids) || !is_array($ids))
+            return array('contract'=>self::CONTRACT,'complete'=>false,'scanned'=>0,
+                'issues'=>array(),'coverage_reason'=>'term_query_failed',
+                'mutation_performed'=>false);
+        $more=count($ids)>$limit;
+        if($more)$ids=array_slice($ids,0,$limit);
+        $issues=array();$gaps=0;$incomplete=array();
+        foreach($ids as $entry) {
+            $id=absint($entry instanceof WP_Term?$entry->term_id:$entry);
+            $r=self::scan_term_report($id,$brand);
+            foreach((array)($r['issues']??array()) as $issue)$issues[]=$issue;
+            if(empty($r['complete'])) {
+                $gaps+=(int)($r['gap_count']??1);
+                if(count($incomplete)<20)$incomplete[]=array('term_id'=>$id,
+                    'gap_samples'=>$r['gap_samples']??array());
+            }
+        }
+        return array('contract'=>self::CONTRACT,'complete'=>!$more && $gaps===0,
+            'pagination_complete'=>!$more,'coverage_complete'=>$gaps===0,
+            'coverage_gap_count'=>$gaps,'incomplete_terms'=>$incomplete,
+            'scanned'=>count($ids),'next_offset'=>$offset+count($ids),
+            'taxonomies'=>$valid,'issues'=>$issues,
+            'site_uuid'=>(string)$brand['scope']['site_uuid'],
+            'mutation_performed'=>false);
+    }
+
     public static function scan_batch(array $types, $after_id=0, $limit=100) {
         global $wpdb;
         $types = array_values(array_unique(array_filter(array_map('sanitize_key',$types),
