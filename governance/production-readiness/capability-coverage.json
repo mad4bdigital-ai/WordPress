@@ -23214,6 +23214,26 @@
         "tests/test_dynamic_addon_release_ring_contract.py"
       ],
       "review_rationale": "Exact source-only successor of the restored Company Management add-on catalog: provider version was corrected to the actual Control Plane header 0.4.0-rc.129 and add-on version to actual Company Management header 0.4.3-company-addon. Five source contract tests and two deliberately wrong-version cases validated exact runtime-header parity; certified_pairs remains empty, unknown-site ring remains shadow, and production_authorized remains false. This CI-only review preserves every older catalog and registry source record and does not certify the 99 outstanding direct write/DB/filesystem/network call sites, add a grant, or authorize any live deployment."
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/post-merge-capability-fabric-closure.json",
+      "source_blob_sha": "6ed5d5e6a6614668299ce8ab12a33f5845778931",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/test_feature007_capfab_parent_reconciliation.py"
+      ],
+      "owner_role": "Feature 007 original source-review owner; CI-only parent provenance, independent release Owner attestation still required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing Feature 007 exact repository-parent and Capability Fabric fail-closed checks remain authoritative. This synchronizes non-authorizing source metadata without changing runtime permission, policy, task ownership or Phase 37 completion.",
+      "review_rationale": "The exact Capability Fabric ledger is rebound from historical 37858923 to its separately reviewed master parent 83cbe5ef after the 14-commit / 16-path master delta; historical Phase 37 source review remains pinned at its original parent. The same-PR negative test rejects drift in each of the three current parent mirrors, enforces the historical record and asserts no Production, shell, SQL, break-glass or deployable runtime grant.",
+      "execution_note": "Source-only CI review. No Production admission, live acceptance, package recapture, 305/312/313 original authority or owner merge authorization inferred."
     }
   ],
   "code_change_rules": {
