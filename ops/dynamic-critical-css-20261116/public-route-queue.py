@@ -77,6 +77,18 @@ def optimizer_source_key(cat,r,state):
         str(state.get('native_breakpoint')),runtime,optimizer,
         ','.join(sorted(state['enabled_currencies'])),
         str(bool(state.get('wcml_multi_currency')))]
+    # The original 378 MU file is a tour-only CSS compile contract. Its
+    # immutable SHA invalidates earlier negative browser claims only for
+    # tours, leaving other source-family certificates untouched.
+    if r['type']=='tours-and-activities' and state.get('source_tour_css_policy_sha'):
+        values.append('tour-css:'+state['source_tour_css_policy_sha'])
+    # The new first-party Source CSS bundler changes private/no-store source
+    # page compilation, including tours and public archives. Historical
+    # no-bundle proofs predate it; invalidate only for staging Source.
+    # Never let this nonce authorize publishing: actual browser QA remains.
+    if (cat['host']=='tours.dev.mad4b.com'
+        and state.get('source_private_css_policy_sha')):
+        values.append('source-private-css:'+state['source_private_css_policy_sha'])
     return hashlib.sha256('|'.join(values).encode()).hexdigest()
 
 def order_key(r):

@@ -71,6 +71,15 @@ echo wp_json_encode([
  "enabled_currencies"=>$codes,
  "base_currency"=>$base,
  "source_optimizer_sha"=>hash("sha256",wp_json_encode($css_opt_config,JSON_UNESCAPED_SLASHES)),
+ // A tour-specific CSS source veto is not part of the global LiteSpeed
+ // options. Bind its ORIGINAL file bytes to the *tour-only* optimizer
+ // negative-proof identity. After a native tour CSS repair, old
+ // source_css_bundle_unavailable evidence MUST be re-evaluated, without
+ // invalidating unrelated destinations, pages, or home certifications.
+ "source_private_css_policy_sha"=>is_file(WPMU_PLUGIN_DIR."/424-mad4b-private-html-css-bundler-v1.php")
+   ?(string)hash_file("sha256",WPMU_PLUGIN_DIR."/424-mad4b-private-html-css-bundler-v1.php"):null,
+ "source_tour_css_policy_sha"=>is_file(WPMU_PLUGIN_DIR."/378-mad4b-tour-single-css-stability.php")
+   ?(string)hash_file("sha256",WPMU_PLUGIN_DIR."/378-mad4b-tour-single-css-stability.php"):null,
  "global_generation"=>(int)get_option("mad4b_ccss_global_generation_v1",0),
  "listing_generation"=>(int)get_option("mad4b_ccss_listing_generation_v1",0),
  "wpml_languages"=>array_values((array)($s["active_languages"]??[])),
@@ -198,11 +207,33 @@ def run_core(site):
     import importlib.util
     spec=importlib.util.spec_from_file_location('source_families',TOOLS/'public-source-families.py')
     family=importlib.util.module_from_spec(spec);spec.loader.exec_module(family)
-    report=family.build(site,listing,state,
-        family.queue.read_ledger(ledger,site),wp)
+    current_ledger=family.queue.read_ledger(ledger,site)
+    # One bounded, no-cookie, content-addressed source CSS audit in each
+    # already admitted browser window. This repairs a certified route when
+    # LiteSpeed rewrites a real CSS bundle without changing post/global
+    # generations. It never bypasses independent Chromium QA or WCML scope.
+    drift_spec=importlib.util.spec_from_file_location(
+        'native_live_css_drift',TOOLS/'public-route-live-css-drift.py')
+    drift_mod=importlib.util.module_from_spec(drift_spec)
+    drift_spec.loader.exec_module(drift_mod)
+    try:
+        drift=drift_mod.scan(site,listing,state,current_ledger,wp,family,
+            base/'live-css-drift-scan-cursor.json',count=4)
+    except (OSError,ValueError,KeyError,TypeError) as exc:
+        print('HOLD_PUBLIC_CCSS_DRIFT_AUDIT',site,str(exc)[:140],flush=True)
+        drift=None
+    selected_ledger_path=ledger
+    report_ledger=current_ledger
+    if drift:
+        report_ledger=drift_mod.select_verified_repair(current_ledger,drift)
+        selected_ledger_path=jobdir/'verified-asset-drift-selection-ledger.json'
+        family.queue.atom(selected_ledger_path,report_ledger)
+        print('PUBLIC_CCSS_LIVE_ASSET_DRIFT',site,drift['path'],
+              drift['expected_css_file'],drift['css_file'],flush=True)
+    report=family.build(site,listing,state,report_ledger,wp)
     report['refreshed_at_utc']=time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime())
     family.queue.atom(base/'source-families-latest.json',report)
-    preferred=report.get('next_canary_route_key')
+    preferred=drift['route_key'] if drift else report.get('next_canary_route_key')
     print('PUBLIC_CCSS_SOURCE_FAMILIES',site,'total',report['source_groups_total'],
         'qualified',report['source_canary_qualified_groups'],
         'next',preferred[:12] if preferred else 'none',flush=True)
@@ -211,7 +242,7 @@ def run_core(site):
               'NO_UNPROVEN_TEMPLATE_CANARY_ELIGIBLE_NATIVE_PAGE_FALLBACKS_REMAIN')
         return
     run(['python3',str(TOOLS/'public-route-queue.py'),'select',site,
-        str(catfile),str(statefile),str(ledger),str(jobfile),preferred])
+        str(catfile),str(statefile),str(selected_ledger_path),str(jobfile),preferred])
     job=json.loads(jobfile.read_text())
     route=job['route']
     if route is None:
