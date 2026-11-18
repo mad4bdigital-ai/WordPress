@@ -122,6 +122,12 @@ def capture(route,tokens):
                 '_full_html_sha':hashlib.sha256(blob).hexdigest(),
                 '_cache_control':res.headers.get('Cache-Control',''),
                 '_origin_cache':res.headers.get('X-Wayfa-Origin-Cache',''),
+                '_private_css_ready':res.headers.get('X-MAD4B-Private-Mobile-CSS-Ready',''),
+                '_public_css_ready':res.headers.get('X-MAD4B-Mobile-CSS-Ready',''),
+                '_public_page':res.headers.get('X-Wayfa-Public-Page',''),
+                '_has_set_cookie':bool(res.headers.get('Set-Cookie','')),
+                '_signed_home_admitted':res.headers.get('X-MAD4B-Signed-Home-Cache-Ready',''),
+                '_accel_expiry':res.headers.get('X-Accel-Expires',''),
             }
             measurements.append(r)
     return measurements
@@ -148,6 +154,12 @@ def run(route):
       'public_listing_sha':{s['market']:s['public_listing_sha'] for s in snapshots},
       'whole_html_sha':{s['market']:s['_full_html_sha'] for s in snapshots},
       'cache_status':{s['market']:s['_origin_cache'] for s in snapshots},
+      'private_css_ready_status':{s['market']:s['_private_css_ready'] for s in snapshots},
+      'public_css_ready_status':{s['market']:s['_public_css_ready'] for s in snapshots},
+      'source_public_page_marker':{s['market']:s['_public_page'] for s in snapshots},
+      'set_cookie_observed':{s['market']:s['_has_set_cookie'] for s in snapshots},
+      'signed_home_admitted':{s['market']:s['_signed_home_admitted'] for s in snapshots},
+      'private_origin_cache_seconds':{s['market']:s['_accel_expiry'] for s in snapshots},
       'price_and_listing_decision':decisions,
       'full_html_share_authorized':False,
       'why_not_full_html':'signed country SWATCHER and private context not yet neutralized'

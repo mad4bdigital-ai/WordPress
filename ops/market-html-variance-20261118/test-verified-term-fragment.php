@@ -13,8 +13,8 @@ function wp_cache_set($key,$value,$group,$ttl=0) {
  $cache[$group][$key]=$value;
  return true;
 }
-require_once '/tmp/mad4b-public-term-card-test.php';
-require_once '/tmp/mad4b-signed-card-v3-lint.php';
+require_once '/var/www/html/wp-content/mu-plugins/mad4b-shared-render/public-term-cards.php';
+require_once '/var/www/html/wp-content/mu-plugins/429-mad4b-signed-home-destination-card-cache-v1.php';
 $adapter='MAD4B_Signed_Home_Card_Cache_V1';
 $scopeUS=str_repeat('a',64);
 $scopeDE=str_repeat('b',64);
