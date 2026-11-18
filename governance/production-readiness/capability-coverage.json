@@ -23009,7 +23009,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php",
-      "source_blob_sha": "a653235c7c9bd58d1ede7d21033e0bb0f173837a",
+      "source_blob_sha": "baa55d92c01aeaaaeb47c815c96a0c492ee49f24",
       "control_ids": [
         "GOVERNANCE-01",
         "SECURITY-01",
@@ -23029,7 +23029,7 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing bounded Drive scanner, content normalization, source checkpoint, exact Context registry, site-scoped Review and release rollback controls cover visual media extraction and application, without new write authority.",
-      "review_rationale": "Exact live normalization: SVG remains visual media requiring certified multimodal extraction; regular HTML remains normalized text, and native binary downloads cannot smuggle SVG markup into verified Context."
+      "review_rationale": "Exact live normalization: SVG remains visual media requiring certified multimodal extraction; regular HTML remains normalized text, and native binary downloads cannot smuggle SVG markup into verified Context. The exact source successor uses PHP 7.4-compatible strpos prefix checks rather than a PHP 8-only function."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-drive-scan-continuation.php",

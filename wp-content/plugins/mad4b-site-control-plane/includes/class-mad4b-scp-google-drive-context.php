@@ -3266,8 +3266,8 @@ final class MAD4B_SCP_Google_Drive_Context {
 
         // Drive metadata is sufficient to track unextractable multimedia.
         // Avoid binary download when no certified multimodal extractor exists.
-        $multimodal = str_starts_with($mime,'image/') || str_starts_with($mime,'audio/')
-            || str_starts_with($mime,'video/')
+        $multimodal = 0 === strpos($mime,'image/') || 0 === strpos($mime,'audio/')
+            || 0 === strpos($mime,'video/')
             || in_array($mime,array('application/vnd.google-apps.drawing',
                 'application/vnd.google-apps.vid','application/vnd.google-apps.photo',
                 'application/vnd.google-apps.pic','application/vnd.google-apps.audio',

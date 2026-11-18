@@ -18,6 +18,7 @@ if(count($argv)!==4){fwrite(STDERR,"usage: php isolated-contract.php drive.php c
 foreach(array_slice($argv,1) as $p){if(!is_file($p)){fwrite(STDERR,"missing module\n");exit(2);}require_once $p;}
 function check($ok,$label){echo ($ok?'PASS ':'FAIL ').$label."\n";if(!$ok)exit(3);}
 $dr=new ReflectionMethod('MAD4B_SCP_Google_Drive_Context','normalize_binary_content');
+if (PHP_VERSION_ID < 80100) $dr->setAccessible(true);
 $blank='<svg xmlns="http://www.w3.org/2000/svg" width="120" height="40"><path d="M0 0"/></svg>';
 $withText='<svg xmlns="http://www.w3.org/2000/svg"><text>Wayfa</text><path d="M0 0"/></svg>';
 foreach([['blank SVG',$blank],['text SVG',$withText]] as [$label,$svg]){
@@ -25,13 +26,15 @@ foreach([['blank SVG',$blank],['text SVG',$withText]] as [$label,$svg]){
  check(is_array($r)&&empty($r['complete'])&&($r['normalization_reason']??'')==='visual_media_extraction_required',$label.' is visually deferred, not source-authoritative text');
 }
 $html=$dr->invoke(null,'text/html','<main><h1>Editorial guidance</h1></main>','index.html');
-check(!empty($html['complete'])&&str_contains($html['content'],'Editorial guidance'),'HTML still indexes as real text');
+check(!empty($html['complete'])&&false !== strpos($html['content'],'Editorial guidance'),'HTML still indexes as real text');
 $native=new ReflectionMethod('MAD4B_SCP_Google_Drive_Context','normalize_native_download_bytes');
+if (PHP_VERSION_ID < 80100) $native->setAccessible(true);
 $nativeSvg=$native->invoke(null,$withText);
 check(is_array($nativeSvg)&&empty($nativeSvg['complete'])&&($nativeSvg['normalization_reason']??'')==='visual_media_extraction_required','SVG markup under generic Google native download is deferred');
 $png=$dr->invoke(null,'image/png','\x89PNG','sample.png');
 check(empty($png['complete']),'unextracted PNG remains deferred');
 $c=new ReflectionMethod('MAD4B_SCP_Drive_Scan_Continuation','quarantine_legacy_visual_assets');
+if (PHP_VERSION_ID < 80100) $c->setAccessible(true);
 $one=['file_id'=>'svg-empty','title'=>'wordmark.svg','mimeType'=>'image/svg+xml','normalization_reason'=>'markup_local','content_complete'=>true,'content_hash'=>hash('sha256','')];
 $two=['file_id'=>'svg-nonempty','title'=>'caption.svg','mimeType'=>'image/svg+xml','normalization_reason'=>'markup_local','content_complete'=>true,'content_hash'=>hash('sha256','Wayfa')];
 $three=['file_id'=>'drawing','title'=>'drawing','mimeType'=>'application/vnd.google-apps.drawing','normalization_reason'=>'google_drawing_svg_export','content_complete'=>true,'content_hash'=>hash('sha256','')];
@@ -45,6 +48,7 @@ foreach($fixed['deferred'] as $row)check($row['status']==='deferred_review_requi
 $repeat=$c->invoke(null,$fixed);
 check($repeat===$fixed,'quarantine is idempotent with stable identities');
 $guard=new ReflectionMethod('MAD4B_SCP_Brand_Context_Builder','legacy_visual_scan_asset');
+if (PHP_VERSION_ID < 80100) $guard->setAccessible(true);
 check($guard->invoke(null,$one)&&$guard->invoke(null,$three)&&!$guard->invoke(null,$doc)&&!$guard->invoke(null,$extract),'apply admission recognizes only unverified legacy visual markup');
 $admission=MAD4B_SCP_Brand_Context_Builder::source_scan_apply_admission(['scan_complete'=>true],['complete'=>true,'truncated'=>false,'partial_scan_requires_complete_rescan'=>false,'truncation_reasons'=>[],'assets'=>[$one]]);
 check(is_wp_error($admission)&&$admission->get_error_code()==='mad4b_context_source_scan_asset_unverified','legacy empty-hash SVG rejected by full apply');
