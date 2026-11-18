@@ -36,6 +36,7 @@ LOADER='local-presentation-fluent-projection-v1.php'
 RATE_FOOTPRINT='410-mad4b-tour-rate-lazy-footprint.php'
 STICKY_GUARD='407-mad4b-elementor-sticky-lifecycle-guard.php'
 STICKY_ASSET='mad4b-elementor-sticky-lifecycle-c77a2b2fbdc39daa.js'
+DIRECT_MENU='411-mad4b-direct-menu-link-contract.php'
 
 def verified_regular(path:Path):
  st=path.lstat()
@@ -96,9 +97,10 @@ def run(site):
  rate_footprint=content/'mu-plugins'/RATE_FOOTPRINT
  sticky_guard=content/'mu-plugins'/STICKY_GUARD
  sticky_asset=content/'mu-plugins/assets'/STICKY_ASSET
+ direct_menu=content/'mu-plugins'/DIRECT_MENU
  code=[verified_regular(f) for f in (
-  source,policy,loader,rate_footprint,sticky_guard,sticky_asset)]
- js,pl,ph,rate_php,sticky_php,sticky_js=code
+  source,policy,loader,rate_footprint,sticky_guard,sticky_asset,direct_menu)]
+ js,pl,ph,rate_php,sticky_php,sticky_js,menu_php=code
  digest=hashlib.sha256(js).hexdigest()
  composite=hashlib.sha256(b'\0'.join(code)).hexdigest()
  if b"shared.form6.stay-ui.v1" not in pl or b"shared.form6.stay-ui.v1" not in js:
@@ -109,9 +111,11 @@ def run(site):
   raise RuntimeError('RATE_LAZY_PRESENTATION_CONTRACT_MISSING')
  if b'mad4b_tour_sticky_guard_asset' not in sticky_php or b'MAD4BStickyLifecycleGuard' not in sticky_js:
   raise RuntimeError('STICKY_LIFECYCLE_CONTRACT_MISSING')
+ if b'mad4b.n-menu.direct-link.v1' not in menu_php or b'link-only' not in menu_php or b'.e-n-menu-dropdown-icon' not in menu_php:
+  raise RuntimeError('NATIVE_DIRECT_MENU_LINK_CONTRACT_MISSING')
  process(['/usr/local/bin/node','--check',str(source)])
  process(['/usr/local/bin/node','--check',str(sticky_asset)])
- for php_source in (pl,ph,rate_php,sticky_php):
+ for php_source in (pl,ph,rate_php,sticky_php,menu_php):
   process(['docker','exec','-i',php,'php','-l'],php_source)
  published=publish_asset(source,js,digest)
  state=ROOT/'reports/form6-permanent-assets'/f'{site}.json'

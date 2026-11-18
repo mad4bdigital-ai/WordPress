@@ -35,11 +35,11 @@ repeats the contract on read-only public tour pages.
 The existing source + Wayfatours Form #6 asset reconciler now fingerprints
 this rate footprint, the sticky guard and its immutable JS as well as the
 original three Form #6 sources, and existing per-site systemd.path watches all
-six sources. Any source change produces selective public-tour HTML generations;
+seven sources. Any source change produces selective public-tour HTML generations;
 no extra service, sitewide purge, checkout mutation or database writes.
 This bundle is a later, source-owned operational snapshot: the separate
 historical Form #6 PR remains immutable and should not overwrite the newer
-six-source reconciler during a future release.
+seven-source reconciler during a future release.
 
 ### Multilingual observation
 The Spanish translation's live Fluent Forms #6 instances were hidden from
@@ -68,3 +68,50 @@ observed, so do not claim that a true browser memory restore was tested.
 The extension-related closed message-channel warning is also not covered.
 No blanket touch interceptor, unsafe overlay clearing or preference deletion
 was installed in response to an unreplicated mobile symptom.
+
+
+## Native n-menu direct-link correction — live source, 18 November 2026
+
+A real first-click JavaScript failure was reproduced on Tours.dev after
+saving the visitor market (EG), opening Elementor's native mobile Mega Menu,
+and tapping a Home link with no dropdown. Elementor Pro 4.3.2
+elements-handlers.min.js onTabClick called getTabIndex(null), throwing:
+Cannot read properties of null (reading 'getAttribute').
+
+The source-owned 411-mad4b-direct-menu-link-contract.php emits an early
+head script. After DOM readiness it identifies native Elementor n-menu titles
+with a direct anchor and no submenu and marks them as link-only, an existing
+Elementor handler class. No click interception, vendor modification, fake
+dropdown or Elementor version certificate is needed. A header-scoped child-list
+observer reconciles dynamic menu changes; pageshow handles return navigation.
+
+Live browser results on Tours.dev and Wayfatours:
+- Four direct menu links marked correctly, two dropdown items untouched
+- Re-render simulation: direct to dropdown to direct automatically corrected
+- Native Home tap, Back, and first menu tap: pass with zero page JS exceptions
+- EG market saved through the actual first-party visitor preference API,
+  then direct tap, Back, reload and short idle: four out of four on each host
+
+The existing source and Wayfa source-owned reconcilers now fingerprint
+seven runtime artifacts instead of six. Same per-site systemd.path and
+five-minute timers, no new execution service. Final receipt:
+Tours.dev 1,024 public tour paths, Wayfatours 440, no private or checkout
+paths and no Wordpress order/payment writes. Public home and archive HTML
+both include the guard in the canonical page response on both hosts.
+
+Regression files: direct-menu-link-contract.test.js and
+mobile-saved-market-return.test.js (set trusted TEST_TOUR_URL).
+Neither file alters WordPress configuration or booking data; the saved-market
+test saves a temporary browser preference using the public native UI.
+
+Safety boundary: the reproduced Elementor menu exception is corrected,
+but the user's sporadic all-click freeze on physical Android Chrome is not
+claimed fully reproduced or cured. Chromium with normal no-store page
+responses did not demonstrate a true BFCache hit; the separate browser
+message-channel promise warning did not reproduce with extensions disabled.
+No global touch capture, cookie deletion or forced booking form visibility.
+
+The seven-file snapshot and host watcher copies are evidence for selective,
+source-first reconciliation. Do NOT install the old source tree wholesale or
+overwrite newer live modules. An authorized owner exact-head attestation
+and all CI gates remain separate requirements before merge.

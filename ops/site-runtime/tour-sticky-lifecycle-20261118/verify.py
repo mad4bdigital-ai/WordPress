@@ -4,7 +4,7 @@ r=Path(__file__).resolve().parent
 manifest=json.loads((r/'manifest.json').read_text())
 assert manifest['contract']=='mad4b.tour.sticky.lifecycle.v1'
 assert manifest['deployment_authority'] is False
-assert len(manifest['paths'])==6
+assert len(manifest['paths'])==7
 for rel,sha in manifest['paths'].items():
  assert rel.startswith('payload/') and '..' not in Path(rel).parts
  assert (r/rel).is_file() and hashlib.sha256((r/rel).read_bytes()).hexdigest()==sha,rel
@@ -19,13 +19,22 @@ rate=(r/'payload/mu-plugins/410-mad4b-tour-rate-lazy-footprint.php').read_text()
 watch=(r/'payload/host/bin/company-form6-asset-cache-reconciler-v1.py').read_text()
 for marker in ('mad4b-rate-lazy-footprint-v1','jet-engine-query-count','count-type-total','rateRowHeight=138.5','MutationObserver'):
  assert marker in rate,marker
-for marker in ('RATE_FOOTPRINT','STICKY_GUARD','STICKY_ASSET','code=[verified_regular(f)'):
+menu=(r/'payload/mu-plugins/411-mad4b-direct-menu-link-contract.php').read_text()
+for marker in ('mad4b.n-menu.direct-link.v1','link-only','e-n-menu-dropdown-icon',
+               'MutationObserver','pageshow'):
+ assert marker in menu,marker
+for marker in ('RATE_FOOTPRINT','STICKY_GUARD','STICKY_ASSET','DIRECT_MENU','code=[verified_regular(f)'):
  assert marker in watch,marker
 for site in ('source','wayfa'):
  unit=(r/f'payload/host/systemd/mad4b-form6-permanent-assets-{site}.path').read_text()
- for marker in ('410-mad4b-tour-rate-lazy-footprint.php','407-mad4b-elementor-sticky-lifecycle-guard.php','mad4b-elementor-sticky-lifecycle-c77a2b2fbdc39daa.js'):
+ for marker in ('410-mad4b-tour-rate-lazy-footprint.php','407-mad4b-elementor-sticky-lifecycle-guard.php','mad4b-elementor-sticky-lifecycle-c77a2b2fbdc39daa.js','411-mad4b-direct-menu-link-contract.php'):
   assert marker in unit,marker
+ assert unit.count('PathChanged=')==7
 
 if shutil.which('node'):subprocess.run(['node','--check',str(r/'payload/mu-plugins/assets'/manifest['asset'])],check=True)
-if shutil.which('php'):subprocess.run(['php','-l',str(r/'payload/mu-plugins/407-mad4b-elementor-sticky-lifecycle-guard.php')],check=True,stdout=subprocess.DEVNULL)
+if shutil.which('php'):
+ for name in ('407-mad4b-elementor-sticky-lifecycle-guard.php','410-mad4b-tour-rate-lazy-footprint.php','411-mad4b-direct-menu-link-contract.php'):
+  subprocess.run(['php','-l',str(r/'payload/mu-plugins'/name)],check=True,stdout=subprocess.DEVNULL)
+for file in ('direct-menu-link-contract.test.js','mobile-saved-market-return.test.js','mobile-interaction-resume.test.js'):
+ if shutil.which('node'):subprocess.run(['node','--check',str(r/'tests'/file)],check=True)
 print('STICKY_SOURCE_VERIFIED',len(manifest['paths']))
