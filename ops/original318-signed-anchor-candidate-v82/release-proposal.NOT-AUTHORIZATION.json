@@ -1,0 +1,20 @@
+{
+  "candidate_sha256": "56c78c0036c1e690069a2abbbbe4e84f8745bf30fec4dcc9c875835e52e442be",
+  "candidate_source": "deploy/host-authority/v82/318-mad4b-native-host-exact-grant.php",
+  "compatible_authority_classes": [
+    "legacy v1 original exact-host",
+    "signed v2 active host Anchor"
+  ],
+  "contract": "mad4b.original318.v82.governed-release-proposal.v1",
+  "direct_ssh_file_replacement_allowed": false,
+  "independent_receipt_signed": false,
+  "install_target_module": "mad4b-platform/modules/authority/318-mad4b-native-host-exact-grant.php",
+  "installed_original318_sha256": "ecfefbee1a60f52431c4688f7b5858ea1df3633812483c9794f36515c418af55",
+  "new_read_only_method": "independent_revoked_anchor_observation_v2",
+  "production_policy_changed": false,
+  "publish_executed": false,
+  "publisher_approval_granted": false,
+  "purpose": "signed non-authorizing revoked Anchor readback for independent Original313 postconditions",
+  "real_anchor_issued_or_revoked": false,
+  "requires": "governed original318 publisher approval, pinned source and preimage, backup/rollback, independent current-revision/high-water and signed Original313 receipt, first-party provider registration"
+}

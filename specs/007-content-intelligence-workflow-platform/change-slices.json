@@ -4,8 +4,8 @@
   "reviewed_base_sha": "83cbe5ef992e3c99151891a0a55561a98139b948",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 2632,
-  "changed_paths_sha256": "a189f3e6f4bd395680f34e5d8887b7529b7494a6b2d19144c179dde39ed54fe4",
+  "changed_file_count": 2637,
+  "changed_paths_sha256": "63fa97eb732f3e4734f0182ea5072a55b3f4f036a4f1cc0a651976121f33f1ec",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -5375,6 +5375,19 @@
         "ops/original-host-v2-readonly-scope/README.md",
         "ops/original-host-v2-readonly-scope/host_scope.py",
         "ops/original-host-v2-readonly-scope/test_host_scope.py"
+      ]
+    },
+    {
+      "id": "original318-v82-signed-anchor-source-candidate",
+      "semantic_unit": "Original318 v82 candidate: signed Host Authority Anchor validation, negative tests and non-authorizing release proposal. Source review only.",
+      "revert_boundary": "Revert all five Original318 v82 candidate files together; do not install or issue/revoke signed Anchors without independent Original305/312/313 authority, backup, readback and rollback.",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/original318-signed-anchor-candidate-v82/318-mad4b-native-host-exact-grant.php",
+        "ops/original318-signed-anchor-candidate-v82/README.md",
+        "ops/original318-signed-anchor-candidate-v82/original318_signed_anchor_runtime.php",
+        "ops/original318-signed-anchor-candidate-v82/release-proposal.NOT-AUTHORIZATION.json",
+        "ops/original318-signed-anchor-candidate-v82/test_original318_v82.py"
       ]
     }
   ],
