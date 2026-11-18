@@ -6,7 +6,7 @@ umask 077
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 SITE="$1"
 ROOT=/opt/mad4b-company-provisioning
-TOOLS="$ROOT/worktrees/pr814-converged-local-20261115/ops/dynamic-critical-css-20261116"
+TOOLS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OUT="$ROOT/reports/dynamic-critical-css-20261116"
 IMAGE=mad4b-firecrawl-playwright:20261107-lifecycle-v3
 case "$SITE" in

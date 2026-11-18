@@ -8,7 +8,9 @@ are re-read before publishing; safe native CSS remains for unproven contexts.
 import fcntl,hashlib,json,os,pathlib,subprocess,sys,time,re
 from pathlib import Path
 ROOT=Path('/opt/mad4b-company-provisioning')
-TOOLS=ROOT/'worktrees/pr814-converged-local-20261115/ops/dynamic-critical-css-20261116'
+# The original signed WordPress runtime identity remains verified separately.
+# Worker helpers and Chromium scripts must come from this immutable release.
+TOOLS=Path(__file__).resolve().parent
 IMAGE='mad4b-firecrawl-playwright:20261107-lifecycle-v3'
 CONFIG={
  'source':('tours.dev.mad4b.com','php-wkgtkzta35wkkgouwt6ruljc',
