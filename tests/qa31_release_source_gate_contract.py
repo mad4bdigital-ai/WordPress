@@ -179,8 +179,14 @@ for case in ('modified_sha','changed_test','changed_historical_state'):
             'forged_source_entry_denied_'+case)
 
 checked=evaluate(ledger,plugin)
-chk(set(checked['reviewed_github_successor_paths'])==reviewed_paths
-    and checked['reviewed_github_successor_count']==65
+# Preserve 65 historical successor reviews unchanged, plus the two formerly
+# non-successor ChatbotX paths now reviewed by a separate exact manifest.
+expected_reviewed_paths=reviewed_paths | {
+    'includes/adapters/class-mad4b-scp-chatbotx-governed-writes.php',
+    'includes/adapters/class-mad4b-scp-chatbotx-write-preflight.php',
+}
+chk(set(checked['reviewed_github_successor_paths'])==expected_reviewed_paths
+    and checked['reviewed_github_successor_count']==len(expected_reviewed_paths)
     and checked['unexpected_count']==0
     and checked['pending_count']==68
     and checked['version_match'] is False

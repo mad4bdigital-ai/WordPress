@@ -17461,6 +17461,25 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-provider-adapter.php",
+      "source_blob_sha": "2bedb1739c3952c004ace0e9b37373b04220c764",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/chatbotx-native-adapter-surface-hermetic.php"
+      ],
+      "owner_role": "MAD4B bundled optional provider source reviewer, no external runtime authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original platform governance/security code-change control IDs apply to exact bundled source and this newly executed native PHP regression.",
+      "review_rationale": "Reviewed native ChatbotX adapter, deny-first write preflight, and governed write callbacks. The original adapter registers only on installed and active native bridge, enumerates 11 read and 3 write tools, constrains schema and idempotency; the delegated write functions keep central mutation guard before any side effect. PHP 7.4/8.5 hermetic fixture proves negative paths, not a live provider write, OAuth consent, certification, email delivery or Production publication."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-provider-adapter.php",
       "source_blob_sha": "b6af664ae88e3bf89571bfce239ae31a9f3a5f72",
       "control_ids": [
         "MCP-01",
@@ -17481,6 +17500,25 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-governed-writes.php",
+      "source_blob_sha": "953850829b7cd20df115451be44b868510fabf1a",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/chatbotx-native-adapter-surface-hermetic.php"
+      ],
+      "owner_role": "MAD4B bundled optional provider source reviewer, no external runtime authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original platform governance/security code-change control IDs apply to exact bundled source and this newly executed native PHP regression.",
+      "review_rationale": "Reviewed native ChatbotX adapter, deny-first write preflight, and governed write callbacks. The original adapter registers only on installed and active native bridge, enumerates 11 read and 3 write tools, constrains schema and idempotency; the delegated write functions keep central mutation guard before any side effect. PHP 7.4/8.5 hermetic fixture proves negative paths, not a live provider write, OAuth consent, certification, email delivery or Production publication."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-governed-writes.php",
       "source_blob_sha": "11ed54a15cd53d6e1a9351204791e4f8ff38d5da",
       "control_ids": [
         "MCP-01",
@@ -17498,6 +17536,25 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Original platform governance/security code-change control IDs apply to exact bundled source and this newly executed native PHP regression.",
       "review_rationale": "Exact reviewed Tours.dev PR #900 site-neutral ChatbotX CPT policy replaces three tourism-specific preset CPT names with enrolled-site explicit bounded allowlist (default no CPT draft). Scope remains 11 reads / 2 support writes by default, optional third CPT-draft write only with current site allowlist, actor and mutation authority. No automatic enrollment, grant, deployment or Production authorization."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-write-preflight.php",
+      "source_blob_sha": "f878ee584ab1fef1e4de2b6214621355f098b0a8",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/chatbotx-native-adapter-surface-hermetic.php"
+      ],
+      "owner_role": "MAD4B bundled optional provider source reviewer, no external runtime authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original platform governance/security code-change control IDs apply to exact bundled source and this newly executed native PHP regression.",
+      "review_rationale": "Reviewed native ChatbotX adapter, deny-first write preflight, and governed write callbacks. The original adapter registers only on installed and active native bridge, enumerates 11 read and 3 write tools, constrains schema and idempotency; the delegated write functions keep central mutation guard before any side effect. PHP 7.4/8.5 hermetic fixture proves negative paths, not a live provider write, OAuth consent, certification, email delivery or Production publication."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-write-preflight.php",

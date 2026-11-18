@@ -64,6 +64,8 @@ abstract class MAD4B_SCP_Adapter_Base {
 $GLOBALS['cmb_configured_cpts']=array();
 $GLOBALS['cmb_origin_enrolled']=false;
 class MAD4B_SCP_Site_Profile {
+    public static function status(){return array('environment'=>'staging');}
+    public static function write_enabled(){return false;}
     public static function origin_enrolled(){return $GLOBALS['cmb_origin_enrolled'];}
     public static function site_urls_match_enrollment(){return $GLOBALS['cmb_origin_enrolled'];}
 }

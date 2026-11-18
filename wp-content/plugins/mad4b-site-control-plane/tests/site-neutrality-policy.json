@@ -282,22 +282,16 @@
   ],
   "reviewed_business_models": {
     "includes/adapters/class-mad4b-scp-chatbotx-governed-writes.php": {
-      "models": [
-        "tours-and-activities"
-      ],
-      "rationale": "Reviewed tourism-domain module or optional provider adapter, not a global site-type default. A user still needs the enrolled Site Profile and the exact WordPress/Ability operation permissions."
+      "models": [],
+      "rationale": "The formerly reviewed tourism-specific default is intentionally retired. This generic ChatbotX adapter now reads only the site's explicit enrolled custom-post-type allowlist; no fixed tourism business models, domain or write grant are assumed. Earlier reviewed exceptions remain historical evidence in Git."
     },
     "includes/adapters/class-mad4b-scp-chatbotx-provider-adapter.php": {
-      "models": [
-        "tours-and-activities"
-      ],
-      "rationale": "Reviewed tourism-domain module or optional provider adapter, not a global site-type default. A user still needs the enrolled Site Profile and the exact WordPress/Ability operation permissions."
+      "models": [],
+      "rationale": "The formerly reviewed tourism-specific default is intentionally retired. This generic ChatbotX adapter now reads only the site's explicit enrolled custom-post-type allowlist; no fixed tourism business models, domain or write grant are assumed. Earlier reviewed exceptions remain historical evidence in Git."
     },
     "includes/adapters/class-mad4b-scp-chatbotx-write-preflight.php": {
-      "models": [
-        "tours-and-activities"
-      ],
-      "rationale": "Reviewed tourism-domain module or optional provider adapter, not a global site-type default. A user still needs the enrolled Site Profile and the exact WordPress/Ability operation permissions."
+      "models": [],
+      "rationale": "The formerly reviewed tourism-specific default is intentionally retired. This generic ChatbotX adapter now reads only the site's explicit enrolled custom-post-type allowlist; no fixed tourism business models, domain or write grant are assumed. Earlier reviewed exceptions remain historical evidence in Git."
     },
     "includes/class-mad4b-scp-brand-experience-quality.php": {
       "models": [
