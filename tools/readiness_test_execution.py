@@ -22,6 +22,8 @@ SHA = re.compile(r"^[a-f0-9]{40}$")
 # Each path contains exit-on-failure assertions and a positive PASS marker.
 # Other PHP files continue to require PHPUnit; unknown paths fail closed.
 STANDALONE_PHP_REGRESSIONS = frozenset((
+    # Original content-quality source closure and company-scoped business model.
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-content-quality-dependencies-source-only-runtime.php",
     # Original Hub consumer and archived-source denial with bounded hook spy.
     "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-hub-lifecycle-source-only-runtime.php",
     # Exact preactivation source closure with permanent external-send lock.
@@ -329,6 +331,8 @@ def self_test():
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-local-transport-boundary-runtime.php",
     ):
         assert command_for(exact) == ["php", str((ROOT / exact).resolve())]
+    # Eight source-only quality dependencies with explicit per-company CPT gate.
+    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-content-quality-dependencies-source-only-runtime.php") == ["php", str((ROOT / "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-content-quality-dependencies-source-only-runtime.php").resolve())]
     # Original unactivated Hub/source lifecycle negative runtime.
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-hub-lifecycle-source-only-runtime.php") == ["php", str((ROOT / "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-hub-lifecycle-source-only-runtime.php").resolve())]
     # Parent/preparation/event classes are source-only, no mail or hooks.
