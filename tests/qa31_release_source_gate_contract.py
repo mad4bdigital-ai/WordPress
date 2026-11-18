@@ -60,6 +60,7 @@ reviewed_paths={
     'mad4b-site-control-plane.php',
     'config/cross-plugin-sources.json',
     'includes/class-mad4b-scp-server-write-catalog.php',
+    'includes/class-mad4b-scp-staging-write-grant-reconciliation.php',
 }
 for path in sorted(reviewed_paths - {'mad4b-site-control-plane.php'}):
     content=(plugin/path).read_bytes()
