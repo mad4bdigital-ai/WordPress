@@ -179,22 +179,25 @@ def run_core(site):
         print('SKIP_PUBLIC_CCSS_BROWSER_BUSY',site);return
     # Never use a staging source code that was changed concurrently with
     # publishing or a production runtime version out of sync with Git.
+    # Exact source-release identity: independent of the temporary checkout
+    # path used by PR #849. Staging Source 422 v1.0.1 was tested/deployed
+    # and committed on GitHub; the digest is its byte-for-byte identity.
+    # Any future 422 release must update this pinned expected hash with
+    # its own tested source. Never trust current live bytes just because
+    # they happen to exist or are PHP-lint clean.
+    approved_stage_422 = '254c382bb96faadda2510d75501107ac73ae80673093dd3c0a47a5f63f7f2ff6'
     for name in ['421-mad4b-public-critical-css-coverage.php',
                  '422-mad4b-public-critical-css-runtime.php']:
-        # Release-aware per-company source selection: Source now carries the
-        # audited WordPress 422 URI case canonicalization, independently of
-        # unchanged Wayfatours Production. Keep exact bytes parity; never
-        # permit arbitrary live code, ignore mismatch, or share site proof.
-        approved_source_root=(
-            ROOT/'worktrees/live-css-unified-source-20261118/wp-content/mu-plugins'
-            if site=='source' and name=='422-mad4b-public-critical-css-runtime.php'
-            else ROOT/'worktrees/pr814-converged-local-20261115/wp-content/mu-plugins')
-        src=approved_source_root/name
         dst=wp/'mu-plugins'/name
-        if (src.is_symlink() or dst.is_symlink()
-            or not src.is_file() or not dst.is_file()
-            or src.read_bytes()!=dst.read_bytes()):
+        if dst.is_symlink() or not dst.is_file():
             raise ValueError('SOURCE_LIVE_NATIVE_COMPONENT_DRIFT:'+name)
+        if site=='source' and name=='422-mad4b-public-critical-css-runtime.php':
+            if hashlib.sha256(dst.read_bytes()).hexdigest()!=approved_stage_422:
+                raise ValueError('SOURCE_LIVE_NATIVE_COMPONENT_DRIFT:'+name)
+        else:
+            src=ROOT/'worktrees/pr814-converged-local-20261115/wp-content/mu-plugins'/name
+            if src.is_symlink() or not src.is_file() or src.read_bytes()!=dst.read_bytes():
+                raise ValueError('SOURCE_LIVE_NATIVE_COMPONENT_DRIFT:'+name)
     # Borrow the host's existing 45-second CPU sensor instead of starting a
     # Chromium run at 51-100% guest CPU (or with two original WPCLI slots).
     # A deferred run never selects a route, mutates the ledger or changes a

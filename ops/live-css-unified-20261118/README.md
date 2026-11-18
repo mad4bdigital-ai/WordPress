@@ -101,3 +101,19 @@ admission, no-new-privileges, market/currency partitioning and five-view
 QA remain mandatory. Source-family optimizer keys bind the versioned
 public-host egress source so old bridge-negative proofs are not reused.
 No existing DE/USD certificate is relabelled DE/EUR.
+
+## Durable Source 422 runtime admission (no temporary Git worktree)
+The original public CSS runner required installed WordPress PHP to match
+original first-party source bytes exactly. Source 422 now has a legitimate
+different WPML URI-canonicalization release from Wayfatours 422, but
+selecting that version from a temporary PR worktree would make the runner
+fail if the worktree were cleaned. The original Source 422 source in PR 849
+has exact SHA-256 254c382bb96faadda2510d75501107ac73ae80673093dd3c0a47a5f63f7f2ff6.
+For Source 422 the runner now checks the live bytes against that exact pinned
+Git release digest. Both sites still match original 421 source bytes, and
+Wayfatours original 422 remains matched to its original audited source.
+All missing, symlink and mismatch cases still fail closed. A future
+legitimate Source 422 release must update the pinned digest with its tested
+source proof. No extra timer, grant, or operator gate was introduced.
+Hermetic tests enforce Git-content hash identity, company scope and the
+absence of any dependency on the temporary worktree.
