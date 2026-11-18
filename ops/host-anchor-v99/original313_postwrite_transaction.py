@@ -62,6 +62,45 @@ def canonical(row):
 def file_digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
+def require_enrolled_live_signers(store, broker_pub, independent_pub):
+    """Only the exact original Root signing authorities are eligible in live.
+
+    Synthetic signer keys remain usable in tests with isolated temporary
+    stores, never in the actual Original313 authority namespace.
+    """
+    if store.root != ROOT:
+        return
+    require(os.geteuid()==0,
+            "ORIGINAL313_LIVE_ROOT_PRINCIPAL_REQUIRED")
+    broker_file=Path(
+        "/opt/mad4b-company-transport/broker-v1/host-ed25519-public.base64")
+    independent_file=Path(
+        "/opt/mad4b-company-transport/native-313-independent/verifier-ed25519.pub")
+    index_file=Path(
+        "/opt/mad4b-company-transport/native-313-independent/"
+        "dynamic-operation-registry-v1/enrolled/index.json")
+    for path in (broker_file,independent_file,index_file):
+        st=path.lstat()
+        require(not path.is_symlink() and stat.S_ISREG(st.st_mode)
+                and st.st_uid==0 and st.st_gid==0 and st.st_nlink==1
+                and not st.st_mode&0o022,
+                "ORIGINAL313_LIVE_PUBLIC_SIGNER_PIN_UNTRUSTED")
+    try:
+        broker=base64.b64decode(broker_file.read_bytes().strip(),validate=True)
+        independent=independent_file.read_bytes()
+        index=json.loads(index_file.read_bytes())
+        registered=base64.b64decode(
+            index["independent_verifier_public_key_b64"],validate=True)
+    except (ValueError,KeyError,TypeError) as exc:
+        raise TransactionHeld("ORIGINAL313_PINNED_SIGNER_INDEX_INVALID") from exc
+    require(index.get("contract")=="mad4b.dynamic-operation-index.v1"
+            and index.get("installed_by_first_party") is True
+            and len(broker)==len(independent)==32
+            and independent==registered and independent!=broker
+            and broker==broker_pub and independent==independent_pub,
+            "ORIGINAL313_LIVE_SIGNER_NOT_ORIGINAL_ENROLLED_PIN")
+
+
 class PrivateStore:
     def __init__(self,root=ROOT):
         self.root=Path(root)
@@ -181,6 +220,7 @@ def reserve_signed_prewrite(job, enrollment, bootstrap, approval,
             "ORIGINAL313_REAL_FIRST_CLAIMED_JOB_REQUIRED")
     scope="all-royal-egypt--staging.json"
     store=PrivateStore() if store is None else store
+    require_enrolled_live_signers(store,broker_pub,independent_pub)
     signed_enrollment=store.read(store.path("enrollments",scope))
     require(signed_enrollment is not None and signed_enrollment==enrollment,
             "ORIGINAL313_ENROLLED_FIRST_PARTY_OWNER_PROOF_REQUIRED")
@@ -337,6 +377,7 @@ def finalize(job,broker_signed_event,wp,broker_pub,independent_private,
                 and wp.get("original313_certified") is False,
                 "ORIGINAL313_REVOKE_STATE_NOT_INDEPENDENT")
     store=PrivateStore() if store is None else store
+    require_enrolled_live_signers(store,broker_pub,independent_pub)
     lock=store.root/".original313-txn.lock"
     fd=os.open(lock,os.O_CREAT|os.O_RDWR|os.O_NOFOLLOW,0o600)
     try:

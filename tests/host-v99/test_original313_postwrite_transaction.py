@@ -280,6 +280,17 @@ class RootTransactionTests(unittest.TestCase):
             self.wp=self.make_wp(self.ledger)
             self.finalize()
 
+    def test_live_root_namespace_rejects_synthetic_signer_pins(self):
+        # Simulate selection of the protected Root namespace without
+        # modifying any real Root file, key or signing state.
+        with patch.object(m,"ROOT",self.root):
+            with self.assertRaisesRegex(
+                m.TransactionHeld,"LIVE_SIGNER_NOT_ORIGINAL_ENROLLED_PIN"):
+                m.reserve_signed_prewrite(
+                    self.job,self.enrollment,self.bootstrap,self.approval,
+                    self.brokerpub,self.independentpub,
+                    store=self.store,now=self.now)
+
     def test_exact_signed_prewrite_replay_is_idempotent(self):
         path=self.store.path("transactions",self.job["job_id"]+".json")
         original=path.read_bytes()
