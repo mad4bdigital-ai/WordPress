@@ -19,21 +19,60 @@ COUNTRIES=('US','DE','EG','GB')
 
 class PublicPage(HTMLParser):
     def __init__(self):
-        super().__init__();self.prices=[];self.items=[];self.depth=0;self.buff=[]
+        super().__init__()
+        self.prices=[];self.items=[];self.depth=0;self.buff=[]
+        self.field_depth=0;self.field_buf=[];self.fields=[]
+        self.quote_depth=0;self.quote_buf=[];self.quotes=[]
     def handle_starttag(self,tag,attrs):
         a=dict(attrs)
-        if tag=='div' and 'jet-listing-grid__item' in a.get('class',''):
-            self.items.append((a.get('data-post-id',''),a.get('class','')))
-        if self.depth:
-            self.depth+=1
-        elif tag in ('span','div','bdi') and 'woocommerce-Price-amount' in a.get('class',''):
+        classes=a.get('class','')
+        if tag=='div' and 'jet-listing-grid__item' in classes:
+            self.items.append((a.get('data-post-id',''),classes))
+        if self.depth:self.depth+=1
+        elif tag in ('span','div','bdi') and 'woocommerce-Price-amount' in classes:
             self.depth=1;self.buff=[]
+        if self.field_depth:self.field_depth+=1
+        elif tag=='div' and 'jet-listing-dynamic-field__content' in classes:
+            self.field_depth=1;self.field_buf=[]
+        if self.quote_depth:self.quote_depth+=1
+        elif tag=='span' and 'price-on-request' in classes:
+            self.quote_depth=1;self.quote_buf=[]
     def handle_data(self,data):
         if self.depth:self.buff.append(data)
+        if self.field_depth:self.field_buf.append(data)
+        if self.quote_depth:self.quote_buf.append(data)
     def handle_endtag(self,tag):
         if self.depth:
             self.depth-=1
             if not self.depth:self.prices.append(' '.join(' '.join(self.buff).split()))
+        if self.field_depth:
+            self.field_depth-=1
+            if not self.field_depth:self.fields.append(' '.join(' '.join(self.field_buf).split()))
+        if self.quote_depth:
+            self.quote_depth-=1
+            if not self.quote_depth:self.quotes.append(' '.join(' '.join(self.quote_buf).split()))
+    def displayed_prices(self,lang):
+        if lang=='en':
+            if len(self.prices)!=9:return None
+            if any(not re.fullmatch(r'\$\s*[0-9][0-9,.]*',v) for v in self.prices):
+                return None
+            return self.prices,'USD'
+        # Spanish language uses JetEngine Dynamic Field price and currency
+        # siblings. No numeric amount is admitted without an explicit
+        # observed ISO3 label on the following field.
+        if lang!='es':return None
+        rows=[];currencies=set()
+        for index,value in enumerate(self.fields):
+            if not re.fullmatch(r'Desde [0-9][0-9,.]*',value):
+                continue
+            nxt=self.fields[index+1] if index+1<len(self.fields) else ''
+            if nxt not in ('USD','EUR','EGP','GBP'):return None
+            rows.append(nxt+' '+value)
+            currencies.add(nxt)
+        if not 3<=len(rows)<=50 or len(currencies)!=1:return None
+        if any(x!='Precio a consultar' for x in self.quotes):return None
+        rows.extend(['QUOTE_ONLY']*len(self.quotes))
+        return rows,next(iter(currencies))
 
 def mint_country_tokens():
     php="""foreach(['US','DE','EG','GB'] as $country){
@@ -69,16 +108,16 @@ def capture(route,tokens):
             if len(blob)>2800000 or len(blob)<20000:raise RuntimeError('untrusted_public_html_size')
             body=blob.decode('utf-8','replace')
             parser=PublicPage();parser.feed(body)
-            if len(parser.prices)!=9 or len(parser.items)<10:
-                raise RuntimeError('public_price_or_listing_unexpected:prices='+str(len(parser.prices))+',listing='+str(len(parser.items))+',bytes='+str(len(blob)))
-            if any(not re.fullmatch(r'\$\s*[0-9][0-9,.]*',p) for p in parser.prices):
-                raise RuntimeError('unknown_price_currency')
+            proof=parser.displayed_prices(lang)
+            if proof is None or len(parser.items)<10:
+                raise RuntimeError('public_price_or_listing_schema_unverified:route='+route)
+            visible,currency=proof
             r={
                 'host':DOMAIN,'path':route,'language':lang,
-                'market':country,'currency':'USD',
+                'market':country,'currency':currency,
                 'sampled_epoch':int(time.time()),
                 'signed_market_verified':True,'trusted_origin':True,
-                'displayed_prices':parser.prices,
+                'displayed_prices':visible,
                 'public_listing_sha':hashlib.sha256(json.dumps(parser.items,sort_keys=True).encode()).hexdigest(),
                 '_full_html_sha':hashlib.sha256(blob).hexdigest(),
                 '_cache_control':res.headers.get('Cache-Control',''),
@@ -104,7 +143,7 @@ def run(route):
       'contract':'mad4b.public-route-market-output-observed.v1',
       'host':DOMAIN,'path':route,'checked_at':int(time.time()),
       'sampled_countries':list(COUNTRIES),'source_revision':origin_generation,
-      'price_count_each':len(snapshots[0]['displayed_prices']),
+      'displayed_price_item_count':{s['market']:len(s['displayed_prices']) for s in snapshots},
       'displayed_prices_sha':{s['market']:hashlib.sha256(json.dumps(s['displayed_prices']).encode()).hexdigest() for s in snapshots},
       'public_listing_sha':{s['market']:s['public_listing_sha'] for s in snapshots},
       'whole_html_sha':{s['market']:s['_full_html_sha'] for s in snapshots},

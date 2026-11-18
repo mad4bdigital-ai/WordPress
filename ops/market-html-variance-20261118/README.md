@@ -20,8 +20,11 @@ Live: Wayfatours Production, 18 November 2026.
 - English mobile home with signed US, DE, EG and GB: nine prices and public
   listings matched, while all four complete HTML hashes differed.
 - Thus this is a candidate price/listing cohort, NOT full-HTML cache authority.
-- Spanish home uses JetEngine Dynamic Field price presentation (Desde ...),
-  rather than the English Woo price elements. It remains unclassified.
+- Spanish home uses JetEngine Dynamic Field price presentation (Desde ...
+  plus an explicit sibling ISO currency), unlike the English Woo price
+  elements. These are now read independently from actual HTML. Distinct
+  public listing graphs are classified as separate content variants, not
+  as absent prices and not as shared full HTML.
 - Nginx FastCGI private bypass for the signed visitor cookie remains active;
   Woo/booking/payment and Critical CSS policies were not changed.
 

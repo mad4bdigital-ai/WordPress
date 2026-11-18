@@ -22,9 +22,10 @@ ok('separate market variant only if an observed price actually changes',
 ok('actual currency change alone makes independent variant',
    m.classify([dict(r,currency='EUR' if r['market']=='DE' else 'USD') for r in rows],
              ['US','DE','EG','GB'],now)['state']=='distinct_market_price_variants')
-ok('different public listings are not assumed to be price-only variation',
+ok('different public listings form explicit distinct-content cohorts',
    m.classify([dict(r,public_listing_sha='f'*64 if r['market']=='DE'
-              else 'b'*64) for r in rows],['US','DE','EG','GB'],now)['state']=='hold')
+              else 'b'*64) for r in rows],['US','DE','EG','GB'],now)['state']
+   =='distinct_market_public_content_variants')
 ok('missing market cannot authorize a shared shell',
    m.classify(rows[:3],['US','DE','EG','GB'],now)['state']=='hold')
 ok('old source comparison never overrides new price policies',

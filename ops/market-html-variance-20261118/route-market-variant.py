@@ -60,8 +60,7 @@ def classify(snapshots,required_markets,now=None):
             return {'state':'hold','reason':'invalid_live_pricing_or_listing_graph'}
         # Different public listing grids are not a price-only variation.
         profiles.append((row['market'],currency,digest(amounts),graph))
-    if len({p[3] for p in profiles})!=1:
-        return {'state':'hold','reason':'public_listing_graph_differs'}
+    content_differs=len({p[3] for p in profiles})!=1
     groups={}
     for market,currency,prices,graph in profiles:
         identity=digest({'host':host,'path':path,'language':lang,
@@ -69,7 +68,9 @@ def classify(snapshots,required_markets,now=None):
                          'public_listing_sha':graph,'source_revision':rev})
         groups.setdefault(identity,[]).append(market)
     return {'contract':CONTRACT,
-            'state':'shared_shell_candidate' if len(groups)==1 else 'distinct_market_price_variants',
+            'state':('shared_shell_candidate' if len(groups)==1 else
+                     'distinct_market_public_content_variants' if content_differs else
+                     'distinct_market_price_variants'),
             'host':host,'path':path,'language':lang,
             'source_revision':rev,
             'cohorts':[{'cache_identity_sha':key,'markets':sorted(markets)}
