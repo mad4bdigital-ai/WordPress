@@ -374,6 +374,8 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-oauth-loopback-guar
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-oauth-browser-canary.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-oauth-resource-bridge.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-chatgpt-auto-binding.php';
+// Shared source supports per-site signed Host WP-CLI; no key, grant, or authority is inherited.
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-host-agent-bridge.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-multi-authority-registry.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-oauth-subject-user-bridge.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-application-password-agent-bridge.php';

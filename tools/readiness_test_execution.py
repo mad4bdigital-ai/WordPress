@@ -106,6 +106,7 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "wp-content/plugins/mad4b-site-control-plane/tests/self-update-selected-head-release-trust-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/staging-source-selector-runtime.php",
     "tests/remote-execution/unified-operator-session-policy-smoke.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/host-agent-fail-closed-runtime.php",
 ))
 
 
@@ -204,6 +205,7 @@ def run_tests(impact, head, timeout):
 
 
 def self_test():
+    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/host-agent-fail-closed-runtime.php")[0] == "php"
     assert has_assertion_pass("PASS: verified real case\n")
     assert has_assertion_pass("SUMMARY pass=8 fail=0\n")
     assert has_assertion_pass("SUMMARY checks=21 failures=0\n")

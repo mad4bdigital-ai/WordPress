@@ -92,6 +92,11 @@ final class MAD4B_SCP_Artifacts {
 	}
 
 	private static function actor_ref() {
+		if ( class_exists( 'MAD4B_SCP_Host_Agent_Bridge', false )
+			&& MAD4B_SCP_Host_Agent_Bridge::active_for( 'mad4b/artifact-append' ) ) {
+			$agent = MAD4B_SCP_Host_Agent_Bridge::agent();
+			if ( is_array( $agent ) && ! empty( $agent['public_id'] ) ) return 'host-agent:' . (string) $agent['public_id'];
+		}
 		if ( class_exists( 'MAD4B_SCP_Identity_Context' ) ) {
 			$identity = MAD4B_SCP_Identity_Context::current();
 			if ( is_array( $identity ) ) {
