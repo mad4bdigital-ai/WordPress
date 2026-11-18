@@ -154,3 +154,27 @@ accidentally removes private/no-store from 403, 404 or 5xx responses.
 A real 404 and public 200 were checked after reloading the live
 bind-mounted configuration. The Nginx source contract guards this
 behavior against regression.
+
+## Live remediation follow-up: read-only JetEngine query market cohorts
+
+Installed only on Wayfatours Production at:
+wayfa-live-overlay/wp-content/mu-plugins/434-mad4b-jet-query-market-cache-v1.php
+
+This is NOT a shared full tour HTML cache or a Woo pricing cache.
+It partitions existing, independently approved JetEngine post/term query
+result object caches by original HMAC-verified market country, WPML locale,
+WCML currency, passport selection, safe filter request fingerprint and
+the MAD4B dependency guard generation. A query previously rejected by
+the original unknown-query policy at priority 105 is NOT re-enabled by
+this plugin (runs priority 120).
+
+Expires public GET query objects within 90s and safe JetSmartFilters
+query objects within 30s. Unknown cookies, Woo sessions, authenticated
+users, finance, booking, rate, price, date, stock, availability filters
+and non-JSF form POST always bypass the new object cache. Public Woo
+login/reset-password nonce values do not change safe query identity.
+Existing query hash still covers exact JetEngine query args.
+
+Original Woo and Fluent Forms checkout/quote price validation remains
+authoritative. The 19-case PHP suite and native WordPress verifier passed.
+This is not a claim of faster FastCGI HTML for all tour-detail pages.

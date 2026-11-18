@@ -312,12 +312,24 @@ def observe_source_home_without_browser():
     except (OSError,subprocess.TimeoutExpired) as error:
         print('WPCSS_SOURCE_HOME_OBSERVATION_RETRY',type(error).__name__,flush=True)
 
+def observe_source_css_profiles():
+    # Separate live HTTP and independently Chromium-certified CSS identities.
+    # Read-only observation: never certify, edit CSS, flush cache or ack WP.
+    proof=ROOT/'operations/wpcron-css-v1/source-css-profile-variance.py'
+    try:
+        result=run(['/usr/bin/python3',str(proof)],timeout=24)
+        print('WPCSS_SOURCE_PROFILE_VARIANCE',result.returncode,
+              (result.stdout+' '+result.stderr).strip()[-230:],flush=True)
+    except (OSError,subprocess.TimeoutExpired) as error:
+        print('WPCSS_SOURCE_PROFILE_VARIANCE_RETRY',type(error).__name__,flush=True)
+
 def main():
     REPORT.mkdir(parents=True,exist_ok=True,mode=0o700)
     if REPORT.is_symlink():raise ValueError('invalid_report_root')
     history=safe_state();now=int(time.time());started=time.monotonic()
     if '--inspect' not in sys.argv:
         observe_source_home_without_browser()
+        observe_source_css_profiles()
     headroom,reason=cpu_window()
     for site in ('source','wayfa'):
         state=snapshot(site)
