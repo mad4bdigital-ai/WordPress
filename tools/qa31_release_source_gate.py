@@ -153,10 +153,25 @@ def reviewed_rc129_host_integration_successor(repo:Path,path:str,contents:bytes)
             or hashlib.sha1(b'blob '+str(len(contents)).encode('ascii')+b'\0'+contents).hexdigest()!=entry['current_blob_sha']):return None
         previous_sha=entry.get('parent_sha256')
         previous_blob=entry.get('parent_blob_sha')
+        # Source-owner reviewed predecessor pairs are immutable across the
+        # shallow checkout used by GitHub Actions. Merely omitting the parent
+        # Git object must never turn a forged historical blob into approval.
+        certified_parents={
+            'includes/class-mad4b-scp-artifacts.php':
+                ('7dcbcff762053e27ab858bd2554c277fb6f39d44','27c37d078984f9ed05639a8bdffda59f0406ecb6a63b42e9f2e79e3e00666efe'),
+            'includes/class-mad4b-scp-brand-review-routing.php':
+                ('ad582bbdfe20f02166050558d0cf80fda3fc5b65','273824bd5fbdfe3343b07b7e234e43b198d73770751b5a4a8ff2870f5cd2321e'),
+            'includes/class-mad4b-scp-content-jobs.php':
+                ('6414871eaef0a7ab4e19d9ecf7cfc1200c1a76c4','cc8ed43625db6ea74cb3d20b395f06545db661267880cec5b37f94dedcca7a70'),
+            'includes/class-mad4b-scp-context-authority.php':
+                ('43e71753bfb1e43e0cb48f22690ab3522c44d695','7c0b8507a7bc6d54bb88669797f413a0e3fe2dbe139322d90149bde0a0f1ec50'),
+            'includes/class-mad4b-scp-host-agent-bridge.php':(None,None),
+            'mad4b-site-control-plane.php':
+                ('fcf54c0b6312c575c0ab34b3d751cd5168ca46fa','f613ca22a1e9158b9711d0ebd85d406b83e5d2b81bd0fbba2835d99a7200e1b9'),
+        }
+        if (previous_blob,previous_sha)!=certified_parents[path]:return None
         newfile=path=='includes/class-mad4b-scp-host-agent-bridge.php'
-        if newfile:
-            if previous_sha is not None or previous_blob is not None:return None
-        elif not SHA.fullmatch(str(previous_sha)) or not SHA40.fullmatch(str(previous_blob)):
+        if not newfile and (not SHA.fullmatch(str(previous_sha)) or not SHA40.fullmatch(str(previous_blob))):
             return None
         parent=subprocess.run(['git','cat-file','-e',base+'^{commit}'],
             cwd=repo,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=8)

@@ -245,14 +245,15 @@ for case,updates in (
             (plugin/'includes/class-mad4b-scp-context-authority.php').read_bytes()),
             'host_forged_manifest_denied_'+case)
 for case in ('changed_current_blob','changed_required_regression',
-             'changed_source_scope','changed_parent_blob'):
+             'changed_source_scope','changed_parent_blob','changed_parent_sha256'):
     forged=json.loads(json.dumps(host_data))
     row=next(e for e in forged['source_entries']
              if e['path']=='includes/class-mad4b-scp-context-authority.php')
     if case=='changed_current_blob':row['current_blob_sha']='f'*40
     elif case=='changed_required_regression':row['required_regression']='tests/qa31_rc129_bootstrap_source_contract.py'
     elif case=='changed_source_scope':row['source_record_scope']='new_or_separate_review'
-    else:row['parent_blob_sha']='a'*40
+    elif case=='changed_parent_blob':row['parent_blob_sha']='a'*40
+    else:row['parent_sha256']='b'*64
     def substituted(self,*args,**kwargs):
         if self.resolve()==target_host:return json.dumps(forged)
         return original_read(self,*args,**kwargs)
