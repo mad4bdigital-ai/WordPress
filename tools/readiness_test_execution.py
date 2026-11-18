@@ -22,6 +22,9 @@ SHA = re.compile(r"^[a-f0-9]{40}$")
 # Each path contains exit-on-failure assertions and a positive PASS marker.
 # Other PHP files continue to require PHPUnit; unknown paths fail closed.
 STANDALONE_PHP_REGRESSIONS = frozenset((
+    # Original FCP GET-only status and queue readback fixtures.
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-fcp-local-observability-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-fcp-queue-readback-runtime.php",
     # Exact source-sha sealed Tours.dev analysis / transport negative fixtures.
     "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-context-local-document-normalizer-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-provider-field-read-parity-runtime.php",
@@ -313,6 +316,12 @@ def self_test():
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-provider-field-read-parity-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-visual-seo-strategy-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-local-transport-boundary-runtime.php",
+    ):
+        assert command_for(exact) == ["php", str((ROOT / exact).resolve())]
+    # Only these explicitly reviewed GET-only original provider read fixtures.
+    for exact in (
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-fcp-local-observability-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-fcp-queue-readback-runtime.php",
     ):
         assert command_for(exact) == ["php", str((ROOT / exact).resolve())]
     # WordPress-integrated smoke cannot be silently run as bare PHPUnit or CLI.

@@ -3818,6 +3818,93 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "The existing REST/MCP/provider execution controls require a WordPress manage_options permission check, source profile binding and read-only GET semantics; introducing this source metadata inspection does not grant a new write privilege or bypass owner authority.",
       "review_rationale": "A site administrator may query registered/observed field-key metadata only. The exact GET endpoint rejects unauthenticated users, requires current_user_can(manage_options), bounds responses, filters secret/password/token key names and reveals no stored value; test verifies REST permission callback and denies writes."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-fcp-local-observability.php",
+      "control_ids": [
+        "EXECUTION-01",
+        "GOVERNANCE-01",
+        "MCP-01",
+        "PLATFORM-01",
+        "PROVIDERS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-fcp-local-observability-runtime.php"
+      ],
+      "owner_role": "Independent read-only REST / native queue reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "A GET-only route explicitly restricts WordPress permissions and immutable Site Profile; these existing controls do not certify queue writes, service dispatch or a release package.",
+      "review_rationale": "Read-only local capability observation, strict enrolled site UUID/HTTPS/environment, GET route, WordPress admin or company operations permission, private no-store, no executor grants."
+    },
+    {
+      "id": "rest:mad4b/v1/fcp/local-capabilities",
+      "control_ids": [
+        "AUTOMATION-01",
+        "EXECUTION-01",
+        "GOVERNANCE-01",
+        "MCP-01",
+        "PERFORMANCE-01",
+        "PLATFORM-01",
+        "PROVIDERS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-fcp-local-observability-runtime.php"
+      ],
+      "owner_role": "Independent read-only REST / native queue reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "A GET-only route explicitly restricts WordPress permissions and immutable Site Profile; these existing controls do not certify queue writes, service dispatch or a release package.",
+      "review_rationale": "Read-only local capability observation, strict enrolled site UUID/HTTPS/environment, GET route, WordPress admin or company operations permission, private no-store, no executor grants."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-fcp-queue-readback.php",
+      "control_ids": [
+        "AUTOMATION-01",
+        "GOVERNANCE-01",
+        "PERFORMANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-fcp-queue-readback-runtime.php"
+      ],
+      "owner_role": "Independent read-only REST / native queue reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "A GET-only route explicitly restricts WordPress permissions and immutable Site Profile; these existing controls do not certify queue writes, service dispatch or a release package.",
+      "review_rationale": "Read original bounded assistant read work by UUID only, reject write operations, enforce Site Profile and runtime identity, private no-store, no queue claim/renew/execute."
+    },
+    {
+      "id": "rest:mad4b/v1/fcp/local-queue/(?P<job_id>[a-f0-9-]{36})",
+      "control_ids": [
+        "AUTOMATION-01",
+        "EXECUTION-01",
+        "GOVERNANCE-01",
+        "MCP-01",
+        "PERFORMANCE-01",
+        "PLATFORM-01",
+        "PROVIDERS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-fcp-queue-readback-runtime.php"
+      ],
+      "owner_role": "Independent read-only REST / native queue reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "A GET-only route explicitly restricts WordPress permissions and immutable Site Profile; these existing controls do not certify queue writes, service dispatch or a release package.",
+      "review_rationale": "Read original bounded assistant read work by UUID only, reject write operations, enforce Site Profile and runtime identity, private no-store, no queue claim/renew/execute."
     }
   ],
   "lifecycle": [],
@@ -12194,6 +12281,71 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Four surgical require_once statements adjacent to existing dependencies; no plugin version replacement, security issuer, signers, write grants, remote media or WPML settings changed.",
       "review_rationale": "Only four sealed, SHA-256-confirmed source files are loaded from current Tours.dev as read-only analysis/transport guards; existing Git bootstrap logic remains unchanged and the declared GET-only provider REST route has an explicit manage_options permission callback."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-fcp-local-observability.php",
+      "source_blob_sha": "f3306b4de02e39d8a90d6355fefe48e626f772f7",
+      "control_ids": [
+        "EXECUTION-01",
+        "GOVERNANCE-01",
+        "MCP-01",
+        "PLATFORM-01",
+        "PROVIDERS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-fcp-local-observability-runtime.php"
+      ],
+      "owner_role": "Independent source/security CI reviewer, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source, authorization, MCP provider and automation read-only controls cover this original native getter. Neither source pin nor CI review grants write/claim/retry authority.",
+      "review_rationale": "Read-only local capability observation, strict enrolled site UUID/HTTPS/environment, GET route, WordPress admin or company operations permission, private no-store, no executor grants."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-fcp-queue-readback.php",
+      "source_blob_sha": "96cfa604c9d9b5ce9638a1ec63d4c7fd2b02ad1b",
+      "control_ids": [
+        "AUTOMATION-01",
+        "GOVERNANCE-01",
+        "PERFORMANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-fcp-queue-readback-runtime.php"
+      ],
+      "owner_role": "Independent source/security CI reviewer, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source, authorization, MCP provider and automation read-only controls cover this original native getter. Neither source pin nor CI review grants write/claim/retry authority.",
+      "review_rationale": "Read original bounded assistant read work by UUID only, reject write operations, enforce Site Profile and runtime identity, private no-store, no queue claim/renew/execute."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "cd47b7bc7cd8dcbbc9294698a84d39d0f0c1cc12",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "MCP-01",
+        "AUTOMATION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-fcp-local-observability-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-fcp-queue-readback-runtime.php"
+      ],
+      "owner_role": "Independent exact bootstrap reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Two exact source byte loads and their original read-only REST registration beside site capability discovery. No mutation hook, signer issuance, automatic queue processing or database update is enabled.",
+      "review_rationale": "Add only FCP local capabilities and original queue GET-only status routes, preserve all existing Git source and prevent enrollment/permission/queue write bypass."
     }
   ],
   "code_change_rules": {
