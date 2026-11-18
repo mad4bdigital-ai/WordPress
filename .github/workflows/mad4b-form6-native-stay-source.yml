@@ -1,0 +1,31 @@
+name: MAD4B Form 6 — Native Rate and Stay Source
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/mu-plugins/listing-option-selection-assets/options.js'
+      - 'wp-content/mu-plugins/shared-product-core/assets/presentation-fluent-quote-v1.js'
+      - 'wp-content/mu-plugins/shared-product-core/assets/presentation-pricing-basis-v1.css'
+      - 'ops/site-runtime/form6-native-rate-stay-20261118/**'
+      - '.github/workflows/mad4b-form6-native-stay-source.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify source SHA and behavior guardrails
+        run: python3 ops/site-runtime/form6-native-rate-stay-20261118/verify-source-contract.py
+      - name: Lint actual MU-plugin JavaScript
+        run: |
+          node --check wp-content/mu-plugins/listing-option-selection-assets/options.js
+          node --check wp-content/mu-plugins/shared-product-core/assets/presentation-fluent-quote-v1.js
