@@ -41,7 +41,7 @@ case "$CSS_NETWORK_PROFILE" in
  host)
    [[ "$SITE" == source ]] ||
      { echo "HOLD_CSS_HOST_NETWORK_SOURCE_ONLY" >&2; exit 2; }
-   BROWSER_NETWORK_ARGS=(--network host --cap-drop ALL)
+   BROWSER_NETWORK_ARGS=(--network host --cap-drop ALL --group-add 33)
    ;;
  *) echo "HOLD_CSS_NETWORK_PROFILE_INVALID" >&2; exit 2;;
 esac

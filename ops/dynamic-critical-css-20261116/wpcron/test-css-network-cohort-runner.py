@@ -12,7 +12,7 @@ check('three native browser paths get same network scope',
 check('source-only host mode',
       '"$SITE" == source' in s and 'HOLD_CSS_HOST_NETWORK_SOURCE_ONLY' in s)
 check('network never adds OS capabilities',
-      'BROWSER_NETWORK_ARGS=(--network host --cap-drop ALL)' in s
+      'BROWSER_NETWORK_ARGS=(--network host --cap-drop ALL --group-add 33)' in s
       and '--security-opt=no-new-privileges' in s)
 check('defaults original bridge profile',
       'CSS_NETWORK_PROFILE="${MAD4B_SOURCE_CSS_NETWORK_PROFILE:-bridge}"' in s)

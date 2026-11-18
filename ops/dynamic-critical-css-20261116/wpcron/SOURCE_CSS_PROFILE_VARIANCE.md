@@ -56,3 +56,23 @@ This enrollment alone is NOT a source mobile CSS certificate. The
 resource-guarded manual cycle was deferred due to reserved WP-CLI
 slots; EN/ES/IT HTTP variants still require complete native browser QA.
 Existing v4 release plus a timestamped host worker backup are retained.
+
+## V6: minimum required read access for native capture
+
+The first v5 original source host-egress capture correctly reached the
+uncertified CSS and Elementor graph, but its original capture.js could
+not read the CSS bytes through the read-only volume. The source
+litespeed/css folder is owned by www-data and group 33 with mode 0770,
+while public CSS files have mode 0644. The host-network Chromium
+container had all Linux capabilities dropped and did not belong to
+group 33, resulting in EACCES. The CSS is already publicly available
+over HTTPS and its content remains unchanged.
+
+Native v6 preserves --cap-drop ALL and the read-only mounted CSS assets,
+but adds --group-add 33 for the source host-profile container only.
+A direct read-only container proof succeeded on the real 3,161,082-byte
+EN CSS file without any filesystem chmod or broader privileges.
+The existing v5 runtime remains available as a rollback and its
+failed capture cannot issue certificates or acknowledge WP tickets.
+V6 keeps every existing original visual QA/independent SHA and
+publication gate unchanged.
