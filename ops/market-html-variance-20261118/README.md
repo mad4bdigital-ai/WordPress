@@ -144,3 +144,13 @@ The original Tours.dev CSS source observer still reports EN/ES/IT
 drift while CPU/Chromium headroom gating leaves its certificate
 queue pending; a verified Wayfa homepage CSS-ready HIT does not
 claim source-wide CSS readiness.
+
+### Error response header hardening
+
+The signed origin policy is also emitted on non-2xx PHP responses: Nginx
+now uses add_header Cache-Control with always in the FastCGI handler,
+so hiding a potentially conflicting WordPress Cache-Control never
+accidentally removes private/no-store from 403, 404 or 5xx responses.
+A real 404 and public 200 were checked after reloading the live
+bind-mounted configuration. The Nginx source contract guards this
+behavior against regression.

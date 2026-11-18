@@ -6,6 +6,8 @@ checks={
 'no stale HTML during policy or rate refresh':'fastcgi_cache_use_stale off;' in source,
 'no stale background revalidation':'fastcgi_cache_background_update off;' in source,
 'one browser cache policy owner':'fastcgi_hide_header Cache-Control;' in source,
+'error and non-2xx responses retain explicit no-store':
+    'add_header Cache-Control $wayfa_browser_html_policy always;' in source,
 'signed archive only exact canonical URI':'"/tours-and-activities/" 1;' in source,
 'no unfiltered tour route wildcard in signed allowlist':'''map $request_uri $mad4b_signed_home_path_v1 {
     default 0;
