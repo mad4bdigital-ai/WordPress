@@ -1,5 +1,6 @@
 """Fail-closed source review of selected PR813 destination parts in PR814."""
 from pathlib import Path
+from qa31_original305_source_overlay import restore_exact_original305_overlay
 import hashlib
 import json
 import unittest
@@ -97,7 +98,8 @@ class DestinationAdditiveReview(unittest.TestCase):
 
     def test_latest_pr813_private_cpt_and_readonly_reconciliation_are_additive(self):
         item = self.review["original_plugin_entry"]
-        actual = (ROOT / item["path"]).read_bytes()
+        live = (ROOT / item["path"]).read_bytes()
+        actual = restore_exact_original305_overlay(live,item)
         self.assertEqual((len(actual), hashlib.sha256(actual).hexdigest()),
                          (item["current_bytes"], item["current_sha256"]))
         lines = actual.splitlines(True)
@@ -123,7 +125,9 @@ class DestinationAdditiveReview(unittest.TestCase):
         import tempfile
         from unittest.mock import patch
         import tour_highlights_bootstrap_overlay as historical
-        current=(ROOT / historical.MAIN).read_bytes()
+        live=(ROOT / historical.MAIN).read_bytes()
+        item=self.review["original_plugin_entry"]
+        current=restore_exact_original305_overlay(live,item)
         old=historical.original_bootstrap_bytes(current)
         self.assertEqual(hashlib.sha256(old).hexdigest(),historical.BASE_SHA256)
         self.assertEqual(hashlib.sha256(current).hexdigest(),

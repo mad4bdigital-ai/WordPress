@@ -12,25 +12,113 @@ _REVIEWED_CI_ONLY_SOURCE_TESTS = {
     'includes/class-mad4b-scp-server-write-catalog.php': 'wp-content/plugins/mad4b-site-control-plane/tests/live-write-provider-snapshot-runtime.php',
 }
 
+def reviewed_rc129_pinned_successor(repo:Path,path:str,contents:bytes):
+    """Find an explicit, frozen source successor. Never infer allowlists from
+    arbitrary coverage rows, titles, runtime endpoints or production state.
+    """
+    file=repo/'governance/release-parity/qa31-rc129-reviewed-successors-20261118.json'
+    if not file.is_file() or file.is_symlink():return None
+    try:
+        manifest=json.loads(file.read_text(encoding='utf-8'))
+        legacy_path=repo/'governance/release-parity/qa31-commerce-staging-source-parity.json'
+        historical=json.loads(legacy_path.read_text(encoding='utf-8'))
+        entries=manifest.get('reviewed_entries')
+        base='ee6c57e870db6b4aada4de64b0471a953c8bdf0a'
+        if (manifest.get('contract')!='mad4b.qa31-rc129-reviewed-source-successors.v1'
+            or manifest.get('authorizing') is not False
+            or manifest.get('production_authorized') is not False
+            or manifest.get('live_evidence_required') is not True
+            or manifest.get('is_build_provenance') is not False
+            or manifest.get('reviewed_for_ci_only') is not True
+            or manifest.get('source_commit')!=base
+            or manifest.get('release_gate')!='BLOCKED_SOURCE_RECONCILIATION'
+            or manifest.get('frozen_legacy_ledger')!='governance/release-parity/qa31-commerce-staging-source-parity.json'
+            or manifest.get('frozen_legacy_ledger_sha256')!=digest(legacy_path)
+            or not isinstance(entries,list) or len(entries)!=65
+            or manifest.get('total_reviewed_successors')!=len(entries)):return None
+        names=[e.get('path') for e in entries if isinstance(e,dict)]
+        if len(names)!=len(entries) or names!=sorted(set(names)) or path not in names:return None
+        entry=entries[names.index(path)]
+        legacy={x['path']:x for x in historical.get('source_decisions',[])}
+        record=legacy.get(path)
+        if not isinstance(record,dict) or record.get('state') not in ('STAGING_ONLY','DIVERGENT'):
+            return None
+        if (entry.get('state')!=record['state']
+            or entry.get('historical_staging_sha256')!=record.get('staging_sha256')
+            or entry.get('historical_github_sha256')!=record.get('github_sha256')
+            or not SHA.fullmatch(str(entry.get('current_sha256','')))
+            or not SHA40.fullmatch(str(entry.get('current_git_blob_sha','')))
+            or hashlib.sha256(contents).hexdigest()!=entry['current_sha256']):return None
+        test=entry.get('required_regression')
+        if path.startswith('bootstrap/'):
+            if path not in (
+                'bootstrap/mad4b-mcp-adapter-mu-bootstrap.php',
+                'bootstrap/mad4b-runtime-cache-convergence-mu.php'):
+                return None
+            review=entry.get('independent_bootstrap_review')
+            controls=review.get('control_ids') if isinstance(review,dict) else None
+            known=json.loads((repo/'governance/production-readiness/controls.json').read_text())
+            known_ids={x['id'] for x in known.get('controls',[]) if isinstance(x,dict)}
+            if (not isinstance(review,dict)
+                or review.get('status')!='reviewed_for_ci_only'
+                or review.get('production_authorized') is not False
+                or review.get('live_evidence_required') is not True
+                or not review.get('owner_role')
+                or len(str(review.get('review_rationale','')))<90
+                or not isinstance(controls,list) or len(controls)<3
+                or len(controls)!=len(set(controls)) or not set(controls)<=known_ids
+                or test!='tests/qa31_rc129_bootstrap_source_contract.py'):
+                return None
+        elif entry.get('independent_bootstrap_review') is not None:
+            return None
+        if (not isinstance(test,str) or not test.startswith(('tests/','wp-content/plugins/mad4b-site-control-plane/tests/'))
+            or '..' in test.split('/') or not (repo/test).is_file()
+            or (repo/test).is_symlink()):return None
+        # CI checks out only the PR HEAD by default. If a pinned predecessor
+        # is present, verify its exact blob. Otherwise permit only a *genuine*
+        # shallow Git checkout; the current HEAD blob, reviewed registry SHA,
+        # explicit manifest SHA256 and all source gates remain mandatory.
+        parent=subprocess.run(['git','cat-file','-e',base+'^{commit}'],
+                              cwd=repo,stdout=subprocess.DEVNULL,
+                              stderr=subprocess.DEVNULL,timeout=8)
+        if parent.returncode==0:
+            exact=subprocess.check_output(
+                ['git','rev-parse',base+':wp-content/plugins/mad4b-site-control-plane/'+path],
+                cwd=repo,stderr=subprocess.DEVNULL,timeout=8).decode().strip()
+            if exact!=entry['current_git_blob_sha']:return None
+        else:
+            shallow=subprocess.check_output(
+                ['git','rev-parse','--is-shallow-repository'],
+                cwd=repo,stderr=subprocess.DEVNULL,timeout=8).decode().strip()
+            if shallow!='true':return None
+        return test
+    except (OSError,ValueError,KeyError,TypeError,subprocess.CalledProcessError,subprocess.TimeoutExpired,json.JSONDecodeError):
+        return None
+
+
 def reviewed_ci_only_source_successor(root:Path,path:str,contents:bytes)->bool:
-    """Accept only exact reviewed Git blob successors. Never certify Staging parity."""
-    expected_test=_REVIEWED_CI_ONLY_SOURCE_TESTS.get(path)
-    if expected_test is None or not isinstance(contents,bytes):
-        return False
+    """Accept exact, reviewed Git blobs for CI inventory only; never parity.
+    Static legacy entries remain valid; rc129 successors are independently
+    pinned in a frozen SHA-backed ledger with named regression evidence.
+    """
+    if not isinstance(contents,bytes):return False
     repo=Path(__file__).resolve().parents[1]
     expected=repo/'wp-content/plugins/mad4b-site-control-plane'
-    if root.resolve()!=expected.resolve():
-        return False
+    if root.resolve()!=expected.resolve():return False
     source=root/path
     if source.is_symlink() or not source.is_file() or source.read_bytes()!=contents:
         return False
+    requested=reviewed_rc129_pinned_successor(repo,path,contents)
+    if requested is None:
+        requested=_REVIEWED_CI_ONLY_SOURCE_TESTS.get(path)
+    if requested is None:return False
     try:
         registry=json.loads((repo/'governance/production-readiness/capability-coverage.json').read_text(encoding='utf-8'))
         blob=hashlib.sha1(b'blob '+str(len(contents)).encode('ascii')+b'\0'+contents).hexdigest()
         git_blob=subprocess.check_output(
             ['git','rev-parse','HEAD:wp-content/plugins/mad4b-site-control-plane/'+path],
             cwd=repo,stderr=subprocess.DEVNULL,timeout=8).decode().strip()
-        test=repo/expected_test
+        test=repo/requested
     except (OSError,ValueError,subprocess.CalledProcessError,subprocess.TimeoutExpired):
         return False
     if (blob!=git_blob or not test.is_file() or test.is_symlink()
@@ -39,6 +127,13 @@ def reviewed_ci_only_source_successor(root:Path,path:str,contents:bytes)->bool:
         or registry.get('production_promotion_from_ci') is not False):
         return False
     canonical='wp-content/plugins/mad4b-site-control-plane/'+path
+    # These two exact MU bootstrap sources are not general Control Plane
+    # runtime paths; their separate, non-authorizing, SHA-pinned QA31 review
+    # is validated in the frozen successor manifest above.
+    if (path in ('bootstrap/mad4b-mcp-adapter-mu-bootstrap.php',
+                 'bootstrap/mad4b-runtime-cache-convergence-mu.php')
+        and requested=='tests/qa31_rc129_bootstrap_source_contract.py'):
+        return True
     for row in registry.get('reviewed_changes',[]):
         if (isinstance(row,dict) and row.get('path')==canonical
             and row.get('source_blob_sha')==blob
@@ -46,7 +141,8 @@ def reviewed_ci_only_source_successor(root:Path,path:str,contents:bytes)->bool:
             and row.get('production_authorized') is False
             and row.get('live_evidence_required') is True
             and len(row.get('control_ids',[]))>=2
-            and expected_test in row.get('regression_tests',[])):
+            and isinstance(row.get('regression_tests'),list)
+            and requested in row['regression_tests']):
             return True
     return False
 
@@ -88,6 +184,9 @@ def evaluate(evidence:dict,root:Path)->dict:
             if g is not None or s is None:raise ValueError('Invalid missing-source record')
             if current==s:covered+=1
             elif current is None:pending.append(path)
+            elif reviewed_ci_only_source_successor(root,path,f.read_bytes()):
+                pending.append(path)
+                reviewed_successors.append(path)
             else:unexpected.append(path)
         elif state=='GITHUB_ONLY':
             if g is None or s is not None:raise ValueError('Invalid Git-only record')

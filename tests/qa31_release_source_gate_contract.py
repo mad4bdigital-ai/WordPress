@@ -47,44 +47,146 @@ with TemporaryDirectory() as directory:
     try:evaluate(e,p)
     except ValueError:print('PASS duplicate_source_records_rejected')
     else:raise AssertionError('duplicate source')
-# Current Git HEAD bootstrap may evolve under separate exact CI-only source
-# review without rewriting the *historical* staging/GitHub SHA256 evidence.
-# It remains PENDING, never a parity/installation/release approval.
 repo=Path(__file__).resolve().parents[1]
 plugin=repo/'wp-content/plugins/mad4b-site-control-plane'
-ledger=json.loads((repo/'governance/release-parity/qa31-commerce-staging-source-parity.json').read_text(encoding='utf-8'))
+ledger=json.loads((repo/'governance/release-parity/qa31-commerce-staging-source-parity.json').read_text())
+# The original QA31 ledger is immutable. A *separate*, finite source-commit
+# successor ledger pins rc129 Git blobs to SHA-specific, CI-only reviews.
+# These are pending Source Parity entries; never Build Provenance or release.
+import runpy
+from unittest import mock
+runpy.run_path(str(repo / 'tests/qa31_rc129_bootstrap_source_contract.py'),
+               run_name='__main__')
+review_path=repo/'governance/release-parity/qa31-rc129-reviewed-successors-20261118.json'
+successors=json.loads(review_path.read_text())
+chk(successors['contract']=='mad4b.qa31-rc129-reviewed-source-successors.v1'
+    and successors['source_commit']=='ee6c57e870db6b4aada4de64b0471a953c8bdf0a'
+    and successors['authorizing'] is False
+    and successors['production_authorized'] is False
+    and successors['is_build_provenance'] is False
+    and successors['release_gate']=='BLOCKED_SOURCE_RECONCILIATION',
+    'successor_ledger_never_authorizes_release')
+entries=successors['reviewed_entries']
+reviewed_paths={row['path'] for row in entries}
+chk(len(entries)==65 and len(reviewed_paths)==65,
+    'exact_finite_source_review_scope_65')
+chk(sorted(reviewed_paths)==[x['path'] for x in entries],
+    'ordered_unique_successor_paths')
 current=(plugin/'mad4b-site-control-plane.php').read_bytes()
 chk(reviewed_bootstrap_successor(plugin,'mad4b-site-control-plane.php',current),
-    'exact_git_reviewed_bootstrap_accepted_ci_only')
-reviewed_paths={
-    'mad4b-site-control-plane.php',
-    'config/cross-plugin-sources.json',
-    'includes/class-mad4b-scp-server-write-catalog.php',
-}
-for path in sorted(reviewed_paths - {'mad4b-site-control-plane.php'}):
-    content=(plugin/path).read_bytes()
-    chk(reviewed_ci_only_source_successor(plugin,path,content),
-        'reviewed_exact_ci_successor_'+path.rsplit('/',1)[-1])
-    chk(not reviewed_ci_only_source_successor(plugin,path,content+b'\nmodified'),
-        'tampered_ci_successor_denied_'+path.rsplit('/',1)[-1])
+    'original305_bootstrap_reviewed_exactly')
+for item in entries:
+    rel=item['path']
+    content=(plugin/rel).read_bytes()
+    chk(reviewed_ci_only_source_successor(plugin,rel,content),
+        'exact_ci_reviewed_successor_'+rel)
+    chk(not reviewed_ci_only_source_successor(plugin,rel,content+b'\nTAMPERED'),
+        'tampered_ci_successor_denied_'+rel)
 chk(not reviewed_ci_only_source_successor(plugin,'includes/unapproved.php',current),
     'unlisted_ci_successor_denied')
 with TemporaryDirectory() as foreign:
     chk(not reviewed_ci_only_source_successor(Path(foreign),
-        'config/cross-plugin-sources.json',
-        (plugin/'config/cross-plugin-sources.json').read_bytes()),
-        'foreign_ci_successor_root_denied')
+        'bootstrap/mad4b-mcp-adapter-mu-bootstrap.php',
+        (plugin/'bootstrap/mad4b-mcp-adapter-mu-bootstrap.php').read_bytes()),
+        'foreign_checkout_cannot_certify_bootstrap')
+
+# Even a locally modified review ledger is not a new permission. Its exact
+# frozen source SHA, historical ledger digest and non-authorizing flags hold.
+original=Path.read_text
+target=review_path.resolve()
+for name,change in (
+    ('unauthorized_release',{'production_authorized':True}),
+    ('unknown_source_commit',{'source_commit':'a'*40}),
+    ('forged_historical_ledger',{'frozen_legacy_ledger_sha256':'b'*64}),
+    ('wrong_reviewed_count',{'total_reviewed_successors':1}),
+    ('unsafe_release_gate',{'release_gate':'SOURCE_PARITY_CANDIDATE_UNCERTIFIED'}),
+):
+    forged=dict(successors)
+    forged.update(change)
+    def replaced(self,*args,**kwargs):
+        if self.resolve()==target:
+            return json.dumps(forged)
+        return original(self,*args,**kwargs)
+    with mock.patch.object(Path,'read_text',replaced):
+        chk(not reviewed_ci_only_source_successor(plugin,
+            'bootstrap/mad4b-runtime-cache-convergence-mu.php',
+            (plugin/'bootstrap/mad4b-runtime-cache-convergence-mu.php').read_bytes()),
+            'forged_review_ledger_denied_'+name)
+
+# Bootstrap reviews are isolated from general plugin runtime review coverage.
+# No bootstrap execution permission, control weakening or arbitrary scope can
+# be smuggled into the versioned QA31 source manifest.
+for case in ('unauthorized_bootstrap','missing_controls','wrong_review_path'):
+    forged=json.loads(json.dumps(successors))
+    row=next(x for x in forged['reviewed_entries']
+             if x['path']=='bootstrap/mad4b-mcp-adapter-mu-bootstrap.php')
+    review=row['independent_bootstrap_review']
+    if case=='unauthorized_bootstrap':review['production_authorized']=True
+    elif case=='missing_controls':review['control_ids']=[]
+    else:row['required_regression']='tests/qa31_release_source_gate_contract.py'
+    def replaced(self,*args,**kwargs):
+        if self.resolve()==target:return json.dumps(forged)
+        return original(self,*args,**kwargs)
+    with mock.patch.object(Path,'read_text',replaced):
+        chk(not reviewed_ci_only_source_successor(plugin,row['path'],
+            (plugin/row['path']).read_bytes()),
+            'bootstrap_scope_forgery_denied_'+case)
+
+# GitHub Actions default checkout is shallow. The predecessor-blob check
+# must fail closed in a full repository with a missing predecessor, while
+# allowing a true shallow clone only with full current-HEAD/digest proofs.
+import qa31_release_source_gate as qa31
+from types import SimpleNamespace
+real_run=qa31.subprocess.run
+real_output=qa31.subprocess.check_output
+def missing_parent(cmd,*args,**kwargs):
+    if cmd[:3]==['git','cat-file','-e']:
+        return SimpleNamespace(returncode=1)
+    return real_run(cmd,*args,**kwargs)
+sample='bootstrap/mad4b-runtime-cache-convergence-mu.php'
+sample_data=(plugin/sample).read_bytes()
+with mock.patch.object(qa31.subprocess,'run',side_effect=missing_parent):
+    def full_depth_without_parent(cmd,*args,**kwargs):
+        if cmd==['git','rev-parse','--is-shallow-repository']:return b'false\n'
+        return real_output(cmd,*args,**kwargs)
+    with mock.patch.object(qa31.subprocess,'check_output',side_effect=full_depth_without_parent):
+        chk(not reviewed_ci_only_source_successor(plugin,sample,sample_data),
+            'nonshallow_missing_reference_is_denied')
+    def shallow_object(cmd,*args,**kwargs):
+        if cmd==['git','rev-parse','--is-shallow-repository']:return b'true\n'
+        return real_output(cmd,*args,**kwargs)
+    with mock.patch.object(qa31.subprocess,'check_output',side_effect=shallow_object):
+        chk(reviewed_ci_only_source_successor(plugin,sample,sample_data),
+            'genuine_shallow_checkout_with_exact_digest_is_supported')
+        chk(not reviewed_ci_only_source_successor(plugin,sample,sample_data+b'\ntampered'),
+            'genuine_shallow_checkout_still_rejects_tampering')
+
+# Changing the reviewed SHA for a particular file cannot be hidden behind
+# another valid file, nor can a regression name be substituted.
+for case in ('modified_sha','changed_test','changed_historical_state'):
+    forged=json.loads(json.dumps(successors))
+    item=next(x for x in forged['reviewed_entries']
+              if x['path']=='bootstrap/mad4b-runtime-cache-convergence-mu.php')
+    if case=='modified_sha':item['current_git_blob_sha']='f'*40
+    elif case=='changed_test':item['required_regression']='tests/not-review-authorized.py'
+    else:item['state']='GITHUB_ONLY'
+    def replaced(self,*args,**kwargs):
+        if self.resolve()==target:return json.dumps(forged)
+        return original(self,*args,**kwargs)
+    with mock.patch.object(Path,'read_text',replaced):
+        chk(not reviewed_ci_only_source_successor(plugin,item['path'],
+            (plugin/item['path']).read_bytes()),
+            'forged_source_entry_denied_'+case)
+
 checked=evaluate(ledger,plugin)
 chk(set(checked['reviewed_github_successor_paths'])==reviewed_paths
-    and checked['unexpected_count']==0 and checked['pending_count']>0
-    and checked['decision']=='BLOCKED_SOURCE_RECONCILIATION',
-    'reviewed_successor_remains_pending_without_version_parity')
-chk(not reviewed_bootstrap_successor(plugin,'mad4b-site-control-plane.php',current+b'\nmodified'),
-    'tampered_bootstrap_bytes_denied')
-chk(not reviewed_bootstrap_successor(plugin,'includes/unapproved.php',current),
-    'unlisted_successor_scope_denied')
-with TemporaryDirectory() as foreign:
-    chk(not reviewed_bootstrap_successor(Path(foreign),'mad4b-site-control-plane.php',current),
-        'foreign_checkout_cannot_self_certify')
-
-print('QA31_SOURCE_PARITY_NEGATIVE_REGRESSIONS: PASS')
+    and checked['reviewed_github_successor_count']==65
+    and checked['unexpected_count']==0
+    and checked['pending_count']==68
+    and checked['version_match'] is False
+    and checked['decision']=='BLOCKED_SOURCE_RECONCILIATION'
+    and checked['authorizing'] is False and checked['production_authorized'] is False,
+    'zero_unexpected_but_historical_parity_still_blocked')
+chk(not reviewed_bootstrap_successor(plugin,'mad4b-site-control-plane.php',
+    current+b'\nmodified'), 'tampered_main_bootstrap_denied')
+print('QA31_SOURCE_PARITY_NEGATIVE_REGRESSIONS: PASS (source reviewed; release blocked)')

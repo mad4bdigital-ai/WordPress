@@ -5,6 +5,7 @@ import json
 import unittest
 import subprocess
 import xml.etree.ElementTree as ET
+from qa31_original305_source_overlay import restore_exact_original305_overlay
 from tour_highlights_bootstrap_overlay import (
     MAIN,BASE_SHA256,CANDIDATE_SHA256,ANCHOR,INSERT,
     SourceOverlayDenied,original_bootstrap_bytes,current_source_verified,
@@ -91,6 +92,7 @@ class TourHighlightsReviewedSource(unittest.TestCase):
         # exact SHA-bound additions before checking the historical certificate.
         meta=json.loads((ROOT/'docs/release-coverage/pr814-pr813-destination-preview-additive-20261114.json').read_text())['original_plugin_entry']
         self.assertEqual(meta['path'],MAIN)
+        actual=restore_exact_original305_overlay(actual,meta)
         self.assertEqual((len(actual),hashlib.sha256(actual).hexdigest()),
                          (meta['current_bytes'],meta['current_sha256']))
         lines=actual.splitlines(True)
@@ -118,6 +120,20 @@ class TourHighlightsReviewedSource(unittest.TestCase):
                         candidate.replace(INSERT,b'')):
             with self.assertRaises(SourceOverlayDenied):
                 original_bootstrap_bytes(altered)
+
+    def test_original305_additive_review_rejects_tampered_bootstrap(self):
+        meta=json.loads((ROOT/'docs/release-coverage/pr814-pr813-destination-preview-additive-20261114.json').read_text())['original_plugin_entry']
+        actual=(ROOT/MAIN).read_bytes()
+        self.assertEqual(restore_exact_original305_overlay(actual,meta),
+            self.git_source('de85fdf39169737d17be8d2473ab4f53350d1ba2',MAIN))
+        for changed in (
+            actual+b'\n',
+            actual.replace(b'Original305 incident approvals are ticket decisions only',
+                           b'Original305 tickets automatically authorize Host release'),
+            actual.replace(b'::boot();',b'::boot(); // altered',1)):
+            with self.subTest(mutated_sha256=hashlib.sha256(changed).hexdigest()):
+                with self.assertRaises(AssertionError):
+                    restore_exact_original305_overlay(changed,meta)
 
     def test_all_reviewed_source_files_retain_historical_and_exact_successor_proofs(self):
         self.assertEqual(self.review['contract'],'mad4b.pr814.tour-highlights-native-source-reconcile.v1')
