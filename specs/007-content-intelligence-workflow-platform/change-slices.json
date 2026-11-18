@@ -4,8 +4,8 @@
   "reviewed_base_sha": "5c72e4893e36e992f056c90cfc75908b3a8f7785",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 2633,
-  "changed_paths_sha256": "ec206063cbab93304355a545c60a28273e15e3ab6cdb38c8db2be95dc3f86399",
+  "changed_file_count": 2634,
+  "changed_paths_sha256": "42abff591bb5a1f808cea71799e3d059586419a8aa291f05ff9cec90d9a61d1c",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -5322,6 +5322,7 @@
       "certification": "exact_head",
       "path_globs": [
         ".github/workflows/mad4b-company-reconcile-production-admission.yml",
+        "ops/company-reconcile-production-admission-v1/NATIVE_READONLY_READBACK.md",
         "ops/company-reconcile-production-admission-v1/README.md",
         "ops/company-reconcile-production-admission-v1/company-reconcile-production-admission.py",
         "ops/company-reconcile-production-admission-v1/company-system-appearance-broker-reconcile.py",
