@@ -5,6 +5,7 @@ on:
       - 'ops/company-reconcile-production-admission-v1/**'
       - 'ops/unified-production-authority-v1/**'
       - 'ops/original-host-v2-readonly-scope/**'
+      - 'ops/host-v2-signed-identity-runtime-v1/**'
       - 'wp-content/mu-plugins/502-mad4b-production-identity-quickstart.php'
       - 'tests/mad4b-production-identity-quickstart-hermetic.php'
       - '.github/workflows/mad4b-company-reconcile-production-admission.yml'
@@ -29,6 +30,7 @@ jobs:
           python3 -m py_compile ops/company-reconcile-production-admission-v1/*.py
           python3 -B -m unittest discover -s ops/unified-production-authority-v1 -p 'test_*.py' -v
           python3 -B -m unittest discover -s ops/original-host-v2-readonly-scope -p 'test_*.py' -v
+          python3 -B -m unittest discover -s ops/host-v2-signed-identity-runtime-v1 -p 'test_*.py' -v
           python3 -B - <<'PY_INNER'
           from pathlib import Path
           for file in Path('ops/unified-production-authority-v1').glob('*.py'):
