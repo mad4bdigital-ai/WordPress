@@ -22,7 +22,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 ROOT=Path("/opt/mad4b-company-transport/native-313-independent")
 V99=ROOT/"host-authority-v99/original313_postwrite_transaction.py"
-V99_SHA="d521ed667dbac2cf3fa32b2dd11db6aec1c599a05680fd366e28a8afca564e27"
+V99_SHA="1b42065db70e224a889c969d28d9b8119e1dceba8003d43e05dc0b0111f0c00d"
 V101=ROOT/"host-authority-v101/original312_first_revoke_bundle.py"
 V101_SHA="33d6c397f4d25f5597087df4033a2456d08edd6fe69f331957a18006869c7853"
 REGISTRY=ROOT/"dynamic-operation-registry-v1/enrolled"

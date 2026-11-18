@@ -464,16 +464,49 @@ def finalize(job,broker_signed_event,wp,broker_pub,independent_private,
                     and receipt_old.get("state")==event["state"]
                     and receipt_old.get("wp_signed_message_sha256")==
                         wp["signed_anchor_message_sha256"]
-                    and receipt_old.get("checkpoint_sha256")==
-                        hashlib.sha256(gate.body(
-                            old_checkpoint,gate.C_FIELDS,
-                            "MAD4B_ORIGINAL_HOST_CHECKPOINT_V1")).hexdigest(),
+                    and type(receipt_old.get("checkpoint_sha256")) is str
+                    and HEX64.fullmatch(receipt_old["checkpoint_sha256"]) is not None,
                     "ORIGINAL313_PREVIOUS_RECEIPT_BINDING_FAILED")
             gate.sigcheck(old_checkpoint,gate.C_FIELDS,gate.CHECKPOINT,
                           "MAD4B_ORIGINAL_HOST_CHECKPOINT_V1",independent_pub,
                           now,historical=True)
             require(old_checkpoint["event_sha256"]==ledger_digest,
                     "ORIGINAL313_PREVIOUS_RECEIPT_HIGHWATER_CHANGED")
+            current_body_digest=hashlib.sha256(gate.body(
+                 old_checkpoint,gate.C_FIELDS,
+                 "MAD4B_ORIGINAL_HOST_CHECKPOINT_V1")).hexdigest()
+            if receipt_old["checkpoint_sha256"]!=current_body_digest:
+                # The independent current checkpoint may have been renewed
+                # without rewriting the immutable original313 issue receipt.
+                # Require the first signed checkpoint in a ROOT-0700,
+                # append-only history and prove both signed CPs bind the
+                # same Broker event, revision and nonce.
+                require(op==ISSUE and rev==1 and event["state"]=="ACTIVE",
+                        "ORIGINAL313_HISTORIC_CHECKPOINT_ONLY_FOR_FIRST_ISSUE")
+                folder=store.root/"checkpoint-history"
+                require(folder.is_dir() and not folder.is_symlink()
+                        and folder.stat().st_uid==0
+                        and folder.stat().st_gid==0
+                        and stat.S_IMODE(folder.stat().st_mode)==0o700,
+                        "ORIGINAL313_RENEWAL_ARCHIVE_NOT_ROOT_PROTECTED")
+                old_file=folder/(
+                    "checkpoint-"+receipt_old["checkpoint_sha256"]+".json")
+                original_checkpoint=store.read(old_file)
+                require(type(original_checkpoint) is dict,
+                        "ORIGINAL313_ISSUANCE_CHECKPOINT_ARCHIVE_MISSING")
+                gate.sigcheck(original_checkpoint,gate.C_FIELDS,
+                    gate.CHECKPOINT,"MAD4B_ORIGINAL_HOST_CHECKPOINT_V1",
+                    independent_pub,now,historical=True)
+                old_body_sha=hashlib.sha256(gate.body(
+                    original_checkpoint,gate.C_FIELDS,
+                    "MAD4B_ORIGINAL_HOST_CHECKPOINT_V1")).hexdigest()
+                require(old_body_sha==receipt_old["checkpoint_sha256"]
+                        and original_checkpoint["event_sha256"]==ledger_digest
+                        and all(original_checkpoint[k]==old_checkpoint[k]
+                            for k in ("company","environment","site_uuid",
+                                      "revision","grant_revision",
+                                      "anchor_nonce","state")),
+                        "ORIGINAL313_ISSUANCE_ARCHIVE_AND_CURRENT_DRIFT")
             from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
             from cryptography.exceptions import InvalidSignature
             try:
