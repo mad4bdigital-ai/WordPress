@@ -1,0 +1,9 @@
+[Unit]
+Description=Watch Form 6 canonical runtime changes (wayfa)
+[Path]
+PathChanged=/opt/wayfa-rebuild-20261102/site-copy/wp-content/mu-plugins/shared-product-core/assets/presentation-fluent-quote-v1.js
+PathChanged=/opt/wayfa-rebuild-20261102/site-copy/wp-content/mu-plugins/shared-product-core/adapters/presentation-form6-occupancy-policy-v1.php
+PathChanged=/opt/wayfa-rebuild-20261102/site-copy/wp-content/plugins/mad4b-commerce/modules/compat/local-presentation-fluent-projection-v1.php
+Unit=mad4b-form6-permanent-assets-wayfa.service
+[Install]
+WantedBy=multi-user.target
