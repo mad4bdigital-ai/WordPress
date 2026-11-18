@@ -7,7 +7,7 @@ w=importlib.util.module_from_spec(spec);spec.loader.exec_module(w)
 def check(name,okay):
  assert okay,name
  print('PASS',name)
-check('immutable v5 canonical worker release',
+check('immutable v6 canonical worker release',
       'template-aware-css-wpcron-v6-20261118' in str(w.SOURCE))
 check('original Source first_fold uses exact host-egress Chromium',
       w.TASKS['first_fold']('source')[:3]==[
@@ -19,4 +19,19 @@ check('Source cannot take host scope for unrelated coverage tasks',
           for k in w.TASKS if k!='first_fold'))
 check('no WordPress owned due queue changed',
       set(w.TASKS)=={'public','first_fold','families','visual','audit','retention'})
-print('SOURCE_CSS_V6_DISPATCH_SAFETY 5')
+# A previously failed original first-fold ticket can try once after a
+# new source version fixes EACCES, without deleting the WordPress ticket.
+now=100000
+pending={'pending':{'first_fold':{'id':10,'reason':'scheduled','requested_at':1}}}
+prev={'source:first_fold:10':{'last_attempt':now-15,'failures':6,
+                          'next_retry':now+2700}}
+check('new immutable release does not inherit old failure backoff',
+      len(w.available_candidates('source',pending,prev,now))==1)
+prev['source:first_fold:10']['worker_release']=str(w.SOURCE)
+check('same release respects failed-attempt backoff',
+      w.available_candidates('source',pending,prev,now)==[])
+check('source-only one-time retry does not waive Wayfa backoff',
+      w.available_candidates('wayfa',{'pending':{'first_fold':{'id':10,'reason':'scheduled','requested_at':1}}},
+        {'wayfa:first_fold:10':{'last_attempt':now-15,'failures':6,
+        'next_retry':now+2700}},now)==[])
+print('SOURCE_CSS_V6_DISPATCH_SAFETY 8')

@@ -91,3 +91,21 @@ remains pending a separately verified native browser publication.
 No manifest, CSS file, cache key, WordPress ticket, or grant is mutated
 by this purely observational change. Original and new regressions
 cover dual-profile coexistence and stale CSS epoch refusal.
+
+## Source v6 safe recovery after native browser blocker fixed
+
+The earlier source first_fold ticket had six unsuccessful original v5/v4
+attempts and a long private host retry backoff, although v6 has resolved
+the specific public CSS read permission failure. The **host worker**
+now admits exactly one earlier retry when the immutable source runner
+release identity changes; it records that release identity on the first
+real attempt and thereafter respects the full original cooldown and
+exponential backoff. The WordPress-owned ticket ID and pending record
+are never deleted or altered, and no authentication, QA, browser lock,
+CPU guard, rate/booking or manifest publication restriction is bypassed.
+The rule is exclusively scoped to Tours.dev's first_fold job and never
+applies to Wayfa or other public CSS work. Regression proves one-time
+retry, normal same-release backoff, and Wayfa isolation.
+During this rollout, the host CPU/PSI guard continued to defer Chromium
+when resources were saturated. An eligible ticket does not mean the
+CSS visual/source certificate has passed.

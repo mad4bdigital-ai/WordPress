@@ -96,6 +96,14 @@ def available_candidates(site,data,history,now):
         prior=history.get(key,0)
         next_retry=(int(prior.get('next_retry',0)) if isinstance(prior,dict)
                     else int(prior)+COOLDOWN)
+        # A newly enrolled, immutable first-party CSS runtime may repair a
+        # proven former native-browser blocker (e.g. EACCES). Its *first*
+        # source-home attempt must not inherit the previous release's
+        # hour-long failed-attempt backoff. Once attempted, store this exact
+        # release identity and respect ordinary resource/admission guards.
+        if (site=='source' and job=='first_fold' and isinstance(prior,dict)
+            and prior.get('worker_release')!=str(SOURCE)):
+            next_retry=0
         if now<next_retry:continue
         priority=0 if (rec.get('reason') in ('source_changed','home_changed')
                        or (job=='first_fold' and site=='source')) else 1
@@ -105,12 +113,18 @@ def available_candidates(site,data,history,now):
 def invoke(site,job,jid,key,history,timeout=None):
     stamp=time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime())
     prior=history.get(key,{})
-    failures=int(prior.get('failures',0)) if isinstance(prior,dict) else 0
+    release_switched=(site=='source' and job=='first_fold'
+                      and isinstance(prior,dict)
+                      and prior.get('worker_release')!=str(SOURCE))
+    failures=(0 if release_switched else
+              int(prior.get('failures',0)) if isinstance(prior,dict) else 0)
+    worker_marker=({'worker_release':str(SOURCE)}
+                   if site=='source' and job=='first_fold' else {})
     attempt_time=int(time.time())
     # A bounded retry backoff is private to the host; WP pending state stays
     # intact until exact generation is acknowledged by its original owner.
     history[key]={'last_attempt':attempt_time,'failures':failures,
-                  'next_retry':attempt_time+COOLDOWN}
+                  'next_retry':attempt_time+COOLDOWN,**worker_marker}
     save_state(history)
     command=TASKS[job](site)
     print('WPCSS_EXEC',site,job,jid,stamp,flush=True)
@@ -142,12 +156,13 @@ def invoke(site,job,jid,key,history,timeout=None):
             failures+=1
             backoff=min(3600,300*(2**min(failures,4)))
             history[key]={'last_attempt':attempt_time,'failures':failures,
-                          'next_retry':int(time.time())+backoff}
+                          'next_retry':int(time.time())+backoff,**worker_marker}
             save_state(history)
     except (OSError,subprocess.TimeoutExpired) as e:
         failures+=1
         history[key]={'last_attempt':attempt_time,'failures':failures,
-                      'next_retry':int(time.time())+min(3600,300*(2**min(failures,4)))}
+                      'next_retry':int(time.time())+min(3600,300*(2**min(failures,4))),
+                      **worker_marker}
         save_state(history)
         print('WPCSS_HEAVY_WORKER_DEFER',site,job,type(e).__name__,flush=True)
 def verified_task_outcome(site,job,returncode,stdout,stderr):
