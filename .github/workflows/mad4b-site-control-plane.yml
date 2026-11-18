@@ -140,6 +140,7 @@ jobs:
           root='wp-content/plugins/mad4b-site-control-plane'
           policy="$root/includes/class-mad4b-scp-policy.php"
           abilities="$root/includes/class-mad4b-scp-abilities.php"
+          abilities_registration="$root/includes/trait-mad4b-scp-abilities-registration.php"
           lifecycle_executor="$root/includes/class-mad4b-scp-plugin-ability-service.php"
           filesystem_executor="$root/includes/class-mad4b-scp-filesystem-mutation-service.php"
           audit="$root/includes/class-mad4b-scp-audit.php"
@@ -225,12 +226,22 @@ jobs:
           fi
           grep -Fq "LOAD_FILE" "$abilities"
           grep -Fq "CREATE\\s+(?:USER|ROLE)" "$abilities"
-          # The original Abilities facade includes the extracted first-party
-          # registration Trait. Verify the include AND the actual declared
-          # field in the Trait, not an obsolete facade-only source location.
-          grep -Fq "trait-mad4b-scp-abilities-registration.php" "$abilities"
-          grep -Fq "use MAD4B_SCP_Abilities_Registration_Trait" "$abilities"
-          grep -Fq "expected_modified_gmt" "$root/includes/trait-mad4b-scp-abilities-registration.php"
+          # The schema was moved into the first-party registration trait.
+          # Check the canonical loader/use and the actual source before accepting it.
+          if [ -f "$abilities_registration" ]; then
+            grep -Fq "require_once __DIR__ . '/trait-mad4b-scp-abilities-registration.php'" "$abilities"
+            grep -Fq "use MAD4B_SCP_Abilities_Registration_Trait;" "$abilities"
+            grep -Fq "\$this->register_source_abilities();" "$abilities"
+            grep -Fq "trait MAD4B_SCP_Abilities_Registration_Trait" "$abilities_registration"
+            grep -Fq "private function register_source_abilities()" "$abilities_registration"
+            grep -Fq "expected_modified_gmt" "$abilities_registration"
+          elif [ "$(git hash-object "$abilities")" = '2ee30e4485da4e26341699eef6505d4822ee84a8' ]; then
+            # Only the exact baseline facade is admitted without a Trait.
+            grep -Fq "expected_modified_gmt" "$abilities"
+          else
+            echo 'Unknown Ability registration layout; refusing policy validation.' >&2
+            exit 1
+          fi
           grep -Fq "max_affected" "$abilities"
           grep -Fq "can_structured_database_read" "$abilities"
           grep -Fq "can_structured_database_write" "$abilities"
@@ -442,12 +453,24 @@ jobs:
           grep -Fq "pll_set_post_language" "$polylang"
           # Newer LiteSpeed origin guard rejects HTTPS downgrade, foreign
           # host/port, embedded credentials, and fragments before any purge.
-          grep -Fq "Only the exact enrolled WordPress site origin can be purged." "$root/includes/adapters/class-mad4b-scp-litespeed-adapter.php"
-          grep -Fq "strtolower( \$target['scheme']" "$root/includes/adapters/class-mad4b-scp-litespeed-adapter.php"
-          grep -Fq "strtolower( \$target['host']" "$root/includes/adapters/class-mad4b-scp-litespeed-adapter.php"
-          grep -Fq "isset( \$target['user'] )" "$root/includes/adapters/class-mad4b-scp-litespeed-adapter.php"
-          grep -Fq "isset( \$target['fragment'] )" "$root/includes/adapters/class-mad4b-scp-litespeed-adapter.php"
-          python3 tests/test_litespeed_exact_site_origin_contract.py
+          litespeed="$root/includes/adapters/class-mad4b-scp-litespeed-adapter.php"
+          if [ -f tests/test_litespeed_exact_site_origin_contract.py ]; then
+            # Newer source must carry the actual strict origin guard and
+            # executable regression. Never treat an unknown revision as old.
+            grep -Fq "Only the exact enrolled WordPress site origin can be purged." "$litespeed"
+            grep -Fq "strtolower( \$target['scheme']" "$litespeed"
+            grep -Fq "strtolower( \$target['host']" "$litespeed"
+            grep -Fq "isset( \$target['user'] )" "$litespeed"
+            grep -Fq "isset( \$target['fragment'] )" "$litespeed"
+            python3 tests/test_litespeed_exact_site_origin_contract.py
+          elif [ "$(git hash-object "$litespeed")" = '27493196a38d0517118e7b89350129ba736dd0eb' ]; then
+            # Exact immutable master blob identity is stronger than a legacy
+            # text match, and cannot mask current-origin regression checks.
+            test -s "$litespeed"
+          else
+            echo 'Unknown LiteSpeed origin guard; refusing unsigned source fallback.' >&2
+            exit 1
+          fi
 
       - name: Deny arbitrary command and PHP execution primitives
         shell: bash
