@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Critical CSS Native WP-Cron Dispatch
  * Description: Exact-company CSS work scheduling in WordPress; never runs Chromium or a shell process inside PHP.
- * Version: 1.0.2
+ * Version: 1.0.3
  */
 defined('ABSPATH') || exit;
 if (!class_exists('MAD4B_CCSS_WPCron_Dispatch_V1', false)) {
@@ -20,9 +20,9 @@ final class MAD4B_CCSS_WPCron_Dispatch_V1 {
     }
     public static function tasks() {
         $site=self::site();
-        if ($site==='wayfa') return ['public'=>1800,'first_fold'=>21600];
+        if ($site==='wayfa') return ['public'=>1800,'first_fold'=>3600];
         if ($site==='source') return [
-            'public'=>1800, 'first_fold'=>21600, 'families'=>1800,
+            'public'=>1800, 'first_fold'=>900, 'families'=>1800,
             'visual'=>86400, 'audit'=>86400, 'retention'=>604800
         ];
         return [];

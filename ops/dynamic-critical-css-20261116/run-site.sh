@@ -105,6 +105,15 @@ if [[ "$SITE" == wayfa ]];then
  if ! timeout 65 python3 "$TOOLS/wayfa-home-source-observer.py" wayfa;then
    echo 'HOLD_WAYFA_HOME_SOURCE_SIGNAL_UNAVAILABLE; prior first-party signal preserved'
  fi
+else
+ # Source Staging previously fingerprinted only *old manifest files*.
+ # Live regenerated LiteSpeed CSS could diverge unnoticed, leaving an
+ # unchanged-healthy event gate while every public mobile route fell back
+ # to the original render-blocking bundle. Observe real first-party HTTP
+ # CSS bytes for every native WPML homepage before claiming readiness.
+ if ! timeout 155 python3 "$TOOLS/source-home-source-observer.py" source;then
+   echo 'HOLD_SOURCE_HOME_SOURCE_SIGNAL_UNAVAILABLE; original CSS preserved until exact source readback'
+ fi
 fi
 # Event-driven gate: 15-minute timer performs only cheap WP/source hash
 # checking when observed source identity is unchanged. The daily audit
@@ -265,7 +274,15 @@ import json,sys
 rows=json.load(open(sys.argv[1]))['routes']
 raise SystemExit(0 if rows and all(r['status']=='certified_active' for r in rows) else 1)
 READY
- then GATE_STATUS=ready;GATE_REASON=certified;fi
+ then
+   if [[ "$SITE" == source ]] && ! python3 "$TOOLS/source-home-delivery-admission.py"      "$OUT/source/home-current-css-source.json";then
+     echo 'HOLD source actual mobile CSS source/Elementor graph not yet fully certified'
+     GATE_STATUS=pending
+     GATE_REASON=post_publish_public_readback_pending
+   else
+     GATE_STATUS=ready;GATE_REASON=certified
+   fi
+ fi
  exit 0
 fi
 # Never measure LCP/FCP against a CPU-saturated VPS. The test browser is

@@ -16,14 +16,25 @@ are post-policy observations, not a policy activation condition.
 
 Cadence:
 - Public route: 30-minute maximum polling plus debounced original dirty hook.
-- First-fold: six-hour fallback, immediate home-dirty enqueue.
+- First-fold: source 15-minute, Wayfatours 60-minute maximum re-evaluation,
+  plus immediate original WordPress home-dirty event.
+- The real anonymous Source Staging CSS SHA and Elementor body graph for all
+  six WPML homepage languages are tracked independently of old manifest SHA.
+  A cache or plugin regeneration cannot silently preserve a ready verdict
+  when the public bundle changed.
+- Source home drift evidence can reserve a narrowly constrained one-browser
+  recovery window on an eight-vCPU VPS; public route QA, company scope,
+  421/422 native policy checks, and certificate publishing are unchanged.
+- Under any mismatch of CSS/DOM/market/locale, original full native CSS is
+  deliberately retained for visual safety until exact current source QA
+  finishes; no cross-locale or expired critical CSS is reused.
 - Source-family registry: 30-minute no-browser index refresh.
 - Visual and interactivity: daily; integrity: daily; retention: weekly.
 - Exact-ticket acknowledgement: newer source edits cannot be consumed.
 - Resource pressure: pending tickets persist and retry on the next wake.
 
 Live code snapshot:
-/opt/mad4b-company-provisioning/releases/template-aware-css-wpcron-v1-20261118
+/opt/mad4b-company-provisioning/releases/template-aware-css-wpcron-v4-20261118
 
 Inspect:
   python3 /opt/mad4b-company-provisioning/operations/wpcron-css-v1/css-wpcron-worker.py --inspect

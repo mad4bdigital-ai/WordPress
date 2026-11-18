@@ -275,6 +275,19 @@ def run_site(site,run_http=True):
     result={'site':site,'host':host,'at_utc':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),
             'status':'unknown','issues':errors,'warnings':warnings}
     result['file_parity']=attest_files(root,site)
+    if site=='source':
+        # This original first-party HTTPS source CSS observation is advisory:
+        # it cannot certify a page or deactivate an already admitted policy.
+        # Its absence/staleness must never be reported as fully stable.
+        import importlib.util
+        proof_path=D/'source-home-delivery-admission.py'
+        proof_module=load(proof_path,'ccss_source_home_delivery_admission')
+        proof=Path('/opt/mad4b-company-provisioning/reports/dynamic-critical-css-20261116/source/home-current-css-source.json')
+        stable,reason=proof_module.evaluate(proof)
+        result['home_css_source_continuity']={
+            'exact_six_locale_source_proven':stable,'reason':reason}
+        if not stable:
+            warnings.append('source_home_css_source_continuity_unverified:'+reason)
     home_runtime=root/'mu-plugins/415-mad4b-critical-css-orchestrator.php'
     if (home_runtime.is_symlink() or not home_runtime.is_file()
         or sha(home_runtime)!=HOME_SHA[site]):

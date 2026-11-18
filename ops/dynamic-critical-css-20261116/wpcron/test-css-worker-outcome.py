@@ -16,6 +16,17 @@ cases=[
  ('source','public',0,'READY_PUBLIC_CCSS_QUEUE_EMPTY source 0',True),
  ('source','public',0,'NATIVE_CSS_NONBENEFIT_MEASURED source en /foo/ FULL_NATIVE_CSS_KEPT_PENDING_INDEPENDENT_CONFIRMATION',True),
  ('wayfa','first_fold',0,'SKIP wayfa shared browser busy; retry during next timer',False),
+ ('source','first_fold',0,
+  "READY source all current public home CSS native-certified ['en']\n"
+  'HOLD_SOURCE_HOME_DELIVERY_ADMISSION unmatched_source_css_or_elementor_graph\n'
+  'HOLD source actual mobile CSS source/Elementor graph not yet fully certified\n'
+  'CRITICAL_CSS_EVENT_LEDGER_COMMITTED source pending aabbccdd',False),
+ ('source','first_fold',0,
+  "READY source all current public home CSS native-certified ['en']\n"
+  'CRITICAL_CSS_EVENT_LEDGER_COMMITTED source pending aabbccdd',False),
+ ('source','first_fold',0,
+  "READY source all current public home CSS native-certified ['en']\n"
+  'CRITICAL_CSS_EVENT_LEDGER_COMMITTED source ready aabbccdd',True),
  ('source','first_fold',0,'HOLD source CSS epoch not quiet; retry on next recurring run',False),
  ('source','first_fold',0,"READY source all current public home CSS native-certified ['en']",True),
  ('wayfa','first_fold',0,'SKIP wayfa unchanged Critical CSS sources; no Chromium',True),

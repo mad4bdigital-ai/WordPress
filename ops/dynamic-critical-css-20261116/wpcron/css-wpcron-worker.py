@@ -6,11 +6,11 @@ it calls only the already enrolled first-party CSS workers. One task per site
 per invocation. Cross-company locks, source QA and CSS integrity remain owned
 by their original consumers.
 """
-import json,os,re,subprocess,sys,time
+import json,os,re,stat,subprocess,sys,time
 from pathlib import Path
 
 ROOT=Path('/opt/mad4b-company-provisioning')
-SOURCE=ROOT/'releases/template-aware-css-wpcron-v3-20261118/ops/dynamic-critical-css-20261116'
+SOURCE=ROOT/'releases/template-aware-css-wpcron-v4-20261118/ops/dynamic-critical-css-20261116'
 REPORT=ROOT/'reports/wpcron-css-v1'
 CONTAINERS={'source':'php-wkgtkzta35wkkgouwt6ruljc',
             'wayfa':'php-guxhp9y6vgh7oouuw8plxrlr'}
@@ -29,6 +29,9 @@ PHP_CLASS='MAD4B_CCSS_WPCron_Dispatch_V1'
 TICK='mad4b_css_scheduler_tick_v1'
 DIRTY='mad4b_css_scheduler_dirty_v1'
 COOLDOWN=300
+JOB_TIMEOUT={'first_fold':1280,'public':650,'families':300,'visual':400,
+             'audit':300,'retention':300}
+HOST_WAKE_BUDGET=1380
 
 def run(cmd,timeout):
     return subprocess.run(cmd,text=True,stdout=subprocess.PIPE,
@@ -91,11 +94,12 @@ def available_candidates(site,data,history,now):
         next_retry=(int(prior.get('next_retry',0)) if isinstance(prior,dict)
                     else int(prior)+COOLDOWN)
         if now<next_retry:continue
-        priority=0 if rec.get('reason') in ('source_changed','home_changed') else 1
+        priority=0 if (rec.get('reason') in ('source_changed','home_changed')
+                       or (job=='first_fold' and site=='source')) else 1
         rows.append((priority,int(rec.get('requested_at') or 0),ordering[job],job,jid,key))
     rows.sort()
     return rows
-def invoke(site,job,jid,key,history):
+def invoke(site,job,jid,key,history,timeout=None):
     stamp=time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime())
     prior=history.get(key,{})
     failures=int(prior.get('failures',0)) if isinstance(prior,dict) else 0
@@ -108,7 +112,7 @@ def invoke(site,job,jid,key,history):
     command=TASKS[job](site)
     print('WPCSS_EXEC',site,job,jid,stamp,flush=True)
     try:
-        result=run(command,timeout=650)
+        result=run(command,timeout=timeout or JOB_TIMEOUT[job])
         output=(result.stdout+'\n'+result.stderr)[-12000:]
         success,reason=verified_task_outcome(
             site,job,result.returncode,result.stdout,result.stderr)
@@ -164,6 +168,20 @@ def verified_task_outcome(site,job,returncode,stdout,stderr):
         success=any(line.startswith(prefixes) for line in lines)
         return success,'verified_public_result' if success else 'public_source_or_browser_deferred'
     if job=='first_fold':
+        # The original first-fold runner can print a provisional READY
+        # following its browser readback and then correctly write PENDING
+        # because the real anonymous CSS/Elementor source observer caught
+        # source drift. The final event ledger outcome always wins.
+        markers=[line for line in lines
+                 if line.startswith('CRITICAL_CSS_EVENT_LEDGER_COMMITTED '+site+' ')]
+        if markers and not markers[-1].startswith(
+                'CRITICAL_CSS_EVENT_LEDGER_COMMITTED '+site+' ready '):
+            return False,'latest_home_event_gate_not_ready'
+        if any(line.startswith((
+                'HOLD_SOURCE_HOME_DELIVERY_ADMISSION',
+                'HOLD source actual mobile CSS source/Elementor graph not yet fully certified'))
+               for line in lines):
+            return False,'actual_source_home_css_drift'
         success=any(
             line.startswith(('CERTIFIED '+site+' ',
                              'READY '+site+' all current public home CSS native-certified',
@@ -214,10 +232,92 @@ def cpu_window():
     guard=run(['/usr/bin/python3',str(SOURCE/'public-route-cpu-guard.py')],timeout=8)
     return guard.returncode==0,guard.stdout.strip()[:110]
 
+def source_recovery_budget(record,drift,now=None,load=None):
+    """Separate conservative source-home recovery lane, never general QA.
+
+    The normal original CPU gate still applies to all route certification.
+    Only a confirmed first-party *live* HTML/CSS mismatch may use the
+    unused 8-vCPU recovery headroom with the same shared browser lock.
+    """
+    now=int(time.time() if now is None else now)
+    if not drift or not isinstance(record,dict):
+        return False,'no_authorized_live_css_recovery'
+    if record.get('contract')!='mad4b.host-cpu-budget.v1' or record.get('cores')!=8:
+        return False,'untrusted_host_cpu_budget'
+    sampled=record.get('sampled_epoch')
+    if not isinstance(sampled,int) or isinstance(sampled,bool) or not -5<=now-sampled<=105:
+        return False,'stale_host_resource_evidence'
+    bounds={'cpu_idle_pct':(35,100),'host_cpu_pct':(0,60),
+            'load_1m':(0,5.9),'cpu_psi_some_avg10':(0,10),
+            'cpu_steal_pct':(0,4),'wpcli_processes':(0,2)}
+    for field,(lower,upper) in bounds.items():
+        value=record.get(field)
+        if isinstance(value,bool) or not isinstance(value,(int,float)) or not lower<=value<=upper:
+            return False,'home_recovery_resource_budget_exhausted:'+field
+    if not isinstance(record.get('wpcli_processes'),int):
+        return False,'untrusted_wpcli_slot_count'
+    observed=os.getloadavg()[0] if load is None else load
+    if isinstance(observed,bool) or not isinstance(observed,(int,float)) or not 0<=observed<=5.9:
+        return False,'realtime_load_exceeds_home_recovery'
+    return True,'confirmed_source_home_css_recovery_lane'
+
+
+def source_home_recovery_window():
+    proof=ROOT/'reports/dynamic-critical-css-20261116/source/home-current-css-source.json'
+    if proof.is_symlink() or not proof.is_file() or proof.stat().st_size>16384:
+        return False,'source_html_css_proof_unavailable'
+    # This report is written by an independently validated first-party HTTPS
+    # observer. Re-check contract, provenance, six WPML scopes and recency.
+    import importlib.util
+    admission=SOURCE/'source-home-delivery-admission.py'
+    spec=importlib.util.spec_from_file_location('source_home_css_recovery_admission',admission)
+    module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+    stable,reason=module.evaluate(proof)
+    if stable or reason!='unmatched_source_css_or_elementor_graph':
+        return False,'no_confirmed_source_css_delivery_drift'
+    sensor=Path('/run/mad4b-cpu-budget/status.json')
+    if sensor.parent.is_symlink():
+        return False,'cpu_sensor_parent_untrusted'
+    try:
+        fd=os.open(sensor,os.O_RDONLY|os.O_CLOEXEC|os.O_NOFOLLOW)
+        try:
+            statbuf=os.fstat(fd)
+            if (not stat.S_ISREG(statbuf.st_mode) or statbuf.st_uid!=0
+                or statbuf.st_mode&0o022 or not 50<=statbuf.st_size<=8192):
+                return False,'cpu_sensor_not_root_attested'
+            raw=os.read(fd,8193)
+            if len(raw)!=statbuf.st_size:
+                return False,'cpu_sensor_changed_during_read'
+            return source_recovery_budget(json.loads(raw),True)
+        finally:
+            os.close(fd)
+    except (OSError,ValueError,TypeError,json.JSONDecodeError):
+        return False,'cpu_sensor_unavailable'
+
+
+def observe_source_home_without_browser():
+    # Anonymous first-party HTML+CSS fingerprint sampling has a private
+    # cooldown inside its observer. It does not require a WordPress CLI
+    # slot, browser lock or a successful CSS certificate job, and never
+    # publishes a certificate or mutates WordPress/cache.
+    command=['/usr/bin/nice','-n','18','/usr/bin/python3',
+             str(SOURCE/'source-home-source-observer.py'),'source']
+    try:
+        result=run(command,timeout=145)
+        out=(result.stdout+' '+result.stderr).strip()[-240:]
+        if result.returncode:
+            print('WPCSS_SOURCE_HOME_OBSERVATION_DEFERRED',out,flush=True)
+        else:
+            print('WPCSS_SOURCE_HOME_OBSERVED',out,flush=True)
+    except (OSError,subprocess.TimeoutExpired) as error:
+        print('WPCSS_SOURCE_HOME_OBSERVATION_RETRY',type(error).__name__,flush=True)
+
 def main():
     REPORT.mkdir(parents=True,exist_ok=True,mode=0o700)
     if REPORT.is_symlink():raise ValueError('invalid_report_root')
-    history=safe_state();now=int(time.time())
+    history=safe_state();now=int(time.time());started=time.monotonic()
+    if '--inspect' not in sys.argv:
+        observe_source_home_without_browser()
     headroom,reason=cpu_window()
     for site in ('source','wayfa'):
         state=snapshot(site)
@@ -230,10 +330,21 @@ def main():
             _,_,_,job,jid,key=pending[0]
             if '--inspect' in sys.argv:
                 print('WPCSS_INSPECT_NEXT',site,job,jid,flush=True)
-            elif not headroom:
-                print('WPCSS_CPU_QUEUE_PRESERVED',site,reason,flush=True)
             else:
-                invoke(site,job,jid,key,history)
+                admitted=headroom
+                if not admitted and site=='source' and job=='first_fold':
+                    admitted,recovery_reason=source_home_recovery_window()
+                    if admitted:
+                        print('WPCSS_CONFIRMED_HOME_RECOVERY_PRIORITY',site,
+                              recovery_reason,flush=True)
+                if not admitted:
+                    print('WPCSS_CPU_QUEUE_PRESERVED',site,reason,flush=True)
+                    continue
+                remaining=int(HOST_WAKE_BUDGET-(time.monotonic()-started))
+                if remaining<180:
+                    print('WPCSS_HOST_WAKE_BUDGET_DEFER',site,job,flush=True)
+                else:
+                    invoke(site,job,jid,key,history,timeout=min(JOB_TIMEOUT[job],remaining))
     # Avoid unlimited local worker history.
     if len(history)>1000:
         history={k:v for k,v in history.items()
