@@ -77,21 +77,43 @@ def project(external:dict,host:dict,native:dict,providers:set[str],now:dt.dateti
         if key in seen:raise RuntimeError('DUPLICATE_ENROLLMENT_SCOPE')
         seen.add(key)
         owner_path=origin+'/wp-admin/admin.php?page=mad4b-control-plane-site-profile'
-        matched=(item.get('authenticated_pinned_ssh_read') is True
+        exact_ssh_site=(item.get('authenticated_pinned_ssh_read') is True
                  and item.get('wordpress_origin_environment_verified') is True
-                 and item.get('remote_site_uuid') is not None
-                 and item.get('central_site_uuid')==item.get('remote_site_uuid')
+                 and isinstance(item.get('central_site_uuid'),str)
+                 and item.get('central_site_uuid')==item.get('remote_site_uuid'))
+        native_readonly=(env=='production' and exact_ssh_site
+                 and item.get('state')=='CENTRAL_SSH_NATIVE_IDENTITY_AND_OWNER_VERIFIED_WRITE_GRANT_MISSING'
+                 and item.get('remote_company_site_uuid') is None
+                 and item.get('site_profile_plugin_active') is True
+                 and item.get('site_profile_audit_ready') is True
+                 and item.get('original_grant_present') is False
+                 and item.get('production_environment_assignment_state')=='active'
+                 and item.get('production_environment_assignment_uuid')==item.get('central_site_uuid')
+                 and type(item.get('production_environment_assignment_revision')) is int
+                 and item['production_environment_assignment_revision']>=1
+                 and item.get('production_environment_owner_operations_authorized') is True)
+        original_identity=(exact_ssh_site
                  and item.get('remote_company_site_uuid')==item.get('central_site_uuid'))
+        matched=original_identity or native_readonly
+        # Production has an environment-specific approved assignment. A
+        # separate company-wide assignment may still refer to Staging. Don't
+        # treat that old assignment as a new Production consent requirement.
+        owner_production=(env=='production'
+                 and item.get('production_environment_assignment_state')=='active'
+                 and item.get('production_environment_assignment_uuid')==item.get('central_site_uuid')
+                 and type(item.get('production_environment_assignment_revision')) is int
+                 and item['production_environment_assignment_revision']>=1
+                 and item.get('production_environment_owner_operations_authorized') is True)
+        legacy_owner=(item.get('central_owner_delegation_active') is True
+                 and item.get('central_assignment_matches_target_site_uuid') is True
+                 and item.get('central_admin_has_exact_tenant_identity') is True
+                 and item.get('production_environment_owner_operations_authorized') is True)
         if not remote_fresh:state='REOBSERVE_REMOTE_ORIGINAL_IDENTITY'
         elif item.get('authenticated_pinned_ssh_read') is not True:state='REMOTE_SSH_IDENTITY_NOT_VERIFIED'
         elif not item.get('remote_site_uuid'):
             state='OWNER_SITE_PROFILE_SAVE_REQUIRED'
         elif not matched:state='SIGNED_EXACT_IDENTITY_ENROLLMENT_REQUIRED'
-        elif env=='production' and not (
-            item.get('central_owner_delegation_active') is True
-            and item.get('central_assignment_matches_target_site_uuid') is True
-            and item.get('central_admin_has_exact_tenant_identity') is True
-            and item.get('production_environment_owner_operations_authorized') is True):
+        elif env=='production' and not (owner_production or legacy_owner):
             state='ORIGINAL_OWNER_DELEGATION_NOT_VERIFIED'
         elif item.get('original_grant_present') is not True:
             state='ORIGINAL_REMOTE_305_GRANT_NOT_ISSUED'
@@ -100,7 +122,10 @@ def project(external:dict,host:dict,native:dict,providers:set[str],now:dt.dateti
         else:state='BOUND_REMOTE_ORIGINAL_305_STILL_REQUIRES_JOB_SCOPED_312_313'
         rows.append({'scope':key,'origin':origin,'state':state,'owner_site_profile_url':owner_path,
             'site_profile_owner_action_required':state=='OWNER_SITE_PROFILE_SAVE_REQUIRED',
-            'exact_site_identity_verified':matched,'signed_312_job_ready':False,
+            'exact_site_identity_verified':matched,
+            'native_readonly_identity_verified':native_readonly,
+            'production_owner_scope_verified':owner_production,
+            'signed_312_job_ready':False,
             'signed_313_execution_receipt':False,'native_writes_authorized':False,
             'remote_readback_fresh':remote_fresh})
     # A fresh host-only checksum is not a signed 313 or Central WordPress scan.
