@@ -224,9 +224,6 @@ def reserve_signed_prewrite(job, enrollment, bootstrap, approval,
         Ed25519PublicKey.from_public_bytes(independent_pub).verify(signed,message)
     except (ValueError,TypeError,InvalidSignature) as exc:
         raise TransactionHeld("ORIGINAL313_PREWRITE_SIGNATURE_INVALID") from exc
-    require(store.read(store.path("revisions",scope)) is None
-            and store.read(store.path("checkpoints",scope)) is None,
-            "ORIGINAL313_FIRST_REVISION_ALREADY_EXISTS")
     immutable={
        "contract":PREWRITE_CONTRACT,
        "job_id":job["job_id"],"operation_id":ISSUE,
@@ -245,10 +242,31 @@ def reserve_signed_prewrite(job, enrollment, bootstrap, approval,
        "reserved_epoch":instant,
     }
     path=store.path("transactions",job["job_id"]+".json")
-    recorded=store.read(path)
-    require(recorded is None or recorded==immutable,
-            "ORIGINAL313_PREWRITE_RESERVATION_REPLAY_CHANGED")
-    if recorded is None:store.write_new(path,immutable)
+    fd=os.open(store.root/".original313-txn.lock",
+               os.O_CREAT|os.O_RDWR|os.O_NOFOLLOW,0o600)
+    try:
+        fcntl.flock(fd,fcntl.LOCK_EX)
+        require(store.read(store.path("revisions",scope)) is None
+                and store.read(store.path("checkpoints",scope)) is None,
+                "ORIGINAL313_FIRST_REVISION_ALREADY_EXISTS")
+        # Serialize first-reservation admission across different Job IDs.
+        # Two concurrent prewrite approvals cannot both become the first.
+        others=list((store.root/"transactions").glob("*.json"))
+        require(len(others)<=256,
+                "ORIGINAL313_PENDING_FIRST_RESERVATIONS_UNBOUNDED")
+        for pending in others:
+            if pending != path:
+                row=store.read(pending)
+                require(row.get("company")!=job["company"]
+                        or row.get("environment")!=job["environment"],
+                        "ORIGINAL313_DIFFERENT_FIRST_JOB_ALREADY_RESERVED")
+        recorded=store.read(path)
+        require(recorded is None or recorded==immutable,
+                "ORIGINAL313_PREWRITE_RESERVATION_REPLAY_CHANGED")
+        if recorded is None:store.write_new(path,immutable)
+    finally:
+        fcntl.flock(fd,fcntl.LOCK_UN)
+        os.close(fd)
     return {"state":"ORIGINAL313_SIGNED_PREWRITE_RESERVED",
             "job_id":job["job_id"],"anchor_issued":False,
             "original313_certified":False}

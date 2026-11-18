@@ -280,6 +280,25 @@ class RootTransactionTests(unittest.TestCase):
             self.wp=self.make_wp(self.ledger)
             self.finalize()
 
+    def test_exact_signed_prewrite_replay_is_idempotent(self):
+        path=self.store.path("transactions",self.job["job_id"]+".json")
+        original=path.read_bytes()
+        accepted=m.reserve_signed_prewrite(
+            self.job,self.enrollment,self.bootstrap,self.approval,
+            self.brokerpub,self.independentpub,store=self.store,now=self.now)
+        self.assertEqual(accepted["state"],"ORIGINAL313_SIGNED_PREWRITE_RESERVED")
+        self.assertEqual(path.read_bytes(),original)
+
+    def test_different_pending_first_job_blocks_same_scope(self):
+        other=self.store.path("transactions","d"*32+".json")
+        self.store.write_new(other,{"contract":m.PREWRITE_CONTRACT,
+            "company":"all-royal-egypt","environment":"staging"})
+        with self.assertRaisesRegex(m.TransactionHeld,
+                                    "DIFFERENT_FIRST_JOB_ALREADY_RESERVED"):
+            m.reserve_signed_prewrite(
+                self.job,self.enrollment,self.bootstrap,self.approval,
+                self.brokerpub,self.independentpub,store=self.store,now=self.now)
+
     def test_no_prewrite_journal_no_signed_receipt(self):
         path=self.store.path("transactions",self.job["job_id"]+".json")
         path.unlink()
