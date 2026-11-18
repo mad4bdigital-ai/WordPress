@@ -5001,6 +5001,44 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Original enrolled Site Profile, policy, WordPress access, menu, draft mutation, event, email dispatch and release controls remain authoritative; this source-only preservation adds no available runtime route.",
       "review_rationale": "Frozen Tours.dev SHA256 ad8eac90e66ac695ea2ee6aab0c06ed5cb90fea2ffb7415ee6bc45d85b53a01d preserved separately. Exactly one PHP8 str_starts_with term: prefix condition is replaced with equivalent PHP7.4 strpos guard. External dispatch remains hard-locked in a new no-network regression. No existing main-plugin require, no runtime activation, no grant, no scheduled dispatch or user/external provider action."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-hub-jetengine-consumer-governance.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-hub-lifecycle-source-only-runtime.php"
+      ],
+      "owner_role": "Independent frozen-source preservation review, CI-only; no Site Owner approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing enrolled identity, Hub provider admission, site/brand, archive/recovery, execution, signing and independent release controls remain mandatory.",
+      "review_rationale": "Original installed Tours.dev JetEngine hub consumer class and independent v3 archive byte-identical SHA256: 857ccb61407c483c90e6874c9e3c3ff7d7008ebe8ae4d552dc8c04cb5ac729be Restored solely for source parity without main Bootstrap include or signed REST enrollment. Negative test denies missing/nonconforming signed plan and all unapproved source sharing. No actual WordPress site, network, queue, grant, or company source is mutated."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-source-lifecycle.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-hub-lifecycle-source-only-runtime.php"
+      ],
+      "owner_role": "Independent frozen-source preservation review, CI-only; no Site Owner approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing enrolled identity, Hub provider admission, site/brand, archive/recovery, execution, signing and independent release controls remain mandatory.",
+      "review_rationale": "Original installed Tours.dev class and independent v3 archive byte-identical SHA256: ac95b12345f26c355bbdf45df20a3740a3878eeb2cb08a2365a1ccd7ec4183e4 Restored solely for source parity, without main Bootstrap include or provider registration. Source Lifecycle has a top-level boot on file include and therefore requires explicit independent activation approval; exact no-network fixture simulates its two registered callbacks and denies archive without authorized site policy.  No actual WordPress site, network, queue, grant, or company source is mutated."
     }
   ],
   "lifecycle": [],
@@ -14072,6 +14110,46 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Original enrolled Site Profile, policy, WordPress access, menu, draft mutation, event, email dispatch and release controls remain authoritative; this source-only preservation adds no available runtime route.",
       "review_rationale": "Frozen Tours.dev SHA256 ad8eac90e66ac695ea2ee6aab0c06ed5cb90fea2ffb7415ee6bc45d85b53a01d preserved separately. Exactly one PHP8 str_starts_with term: prefix condition is replaced with equivalent PHP7.4 strpos guard. External dispatch remains hard-locked in a new no-network regression. No existing main-plugin require, no runtime activation, no grant, no scheduled dispatch or user/external provider action."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-hub-jetengine-consumer-governance.php",
+      "source_blob_sha": "cd74587278d971644cbfce3cd462ad7feaf249b3",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-hub-lifecycle-source-only-runtime.php"
+      ],
+      "owner_role": "Independent frozen-source preservation review, CI-only; no Site Owner approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing enrolled identity, Hub provider admission, site/brand, archive/recovery, execution, signing and independent release controls remain mandatory.",
+      "review_rationale": "Original installed Tours.dev JetEngine hub consumer class and independent v3 archive byte-identical SHA256: 857ccb61407c483c90e6874c9e3c3ff7d7008ebe8ae4d552dc8c04cb5ac729be Restored solely for source parity without main Bootstrap include or signed REST enrollment. Negative test denies missing/nonconforming signed plan and all unapproved source sharing. No actual WordPress site, network, queue, grant, or company source is mutated."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-source-lifecycle.php",
+      "source_blob_sha": "9629c8e13bdab4b1ff9dde6c90a7d570e13caca1",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-hub-lifecycle-source-only-runtime.php"
+      ],
+      "owner_role": "Independent frozen-source preservation review, CI-only; no Site Owner approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing enrolled identity, Hub provider admission, site/brand, archive/recovery, execution, signing and independent release controls remain mandatory.",
+      "review_rationale": "Original installed Tours.dev class and independent v3 archive byte-identical SHA256: ac95b12345f26c355bbdf45df20a3740a3878eeb2cb08a2365a1ccd7ec4183e4 Restored solely for source parity, without main Bootstrap include or provider registration. Source Lifecycle has a top-level boot on file include and therefore requires explicit independent activation approval; exact no-network fixture simulates its two registered callbacks and denies archive without authorized site policy.  No actual WordPress site, network, queue, grant, or company source is mutated."
     }
   ],
   "code_change_rules": {
