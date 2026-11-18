@@ -70,17 +70,34 @@ class Readiness(unittest.TestCase):
         self.assertTrue(result["state"]=="BLOCKED")
         self.assertFalse(result["anchor_issued"])
 
-    def test_reviewed_v83_successor_does_not_regress_to_v82_pending(self):
+    def test_reviewed_v96_successor_does_not_regress_to_v82_pending(self):
         reviewed=SOURCE/"wp-content/plugins/mad4b-platform/modules/authority/318-mad4b-native-host-exact-grant.php"
         self.live.write_bytes(reviewed.read_bytes())
         report=self.view()
         self.assertTrue(report["checks"]["original318_live_reviewed"])
         self.assertFalse(report["checks"]["original318_live_v82"])
         self.assertTrue(report["checks"]["v83_signed_current_readback_code_present"])
-        self.assertEqual(report["original318_live_reviewed_version"],"v83")
+        self.assertTrue(report["checks"]["original318_dual_signed_reconcile_present"])
+        self.assertTrue(report["checks"]["original318_revocation_binding_v96_present"])
+        self.assertEqual(report["original318_live_reviewed_version"],"v96")
         self.assertNotIn("original318_live_v82",report["pending"])
+        self.assertNotIn("original318_live_reviewed",report["pending"])
+        self.assertFalse(report["checks"]["host_issue_original312_issuer_commissioned"])
+        self.assertFalse(report["checks"]["independent_signer_and_real_receipt_certified"])
         self.assertFalse(report["original313_receipt_signed"])
         self.assertEqual(report["state"],"BLOCKED")
+
+    def test_reviewed_v83_stays_source_only_not_signing(self):
+        from unittest.mock import patch
+        self.live.write_text("<?php // v83 content is intentionally mocked")
+        with patch.object(m, "digest", side_effect=lambda p:
+             m.EXPECTED318_V83 if p == self.live else
+             m.EXPECTED318 if p == self.candidate else None):
+            report=self.view()
+        self.assertTrue(report["checks"]["original318_live_reviewed"])
+        self.assertEqual(report["original318_live_reviewed_version"],"v83")
+        self.assertFalse(report["checks"]["original318_dual_signed_reconcile_present"])
+        self.assertFalse(report["original313_receipt_signed"])
     def test_unrecognized_version_remains_denied(self):
         self.live.write_text("<?php // deliberately unreviewed")
         report=self.view()
