@@ -367,9 +367,12 @@ def run_core(site):
                        site,str(wp),str(catfile),str(jobdir/'route.json'),
                        str(statefile),str(resdir/(lang+'.headers')),
                        str(resdir/(lang+'.html')),str(proofout)],timeout=25))
+            # Resume has the same original source/QA revision gate as
+            # fresh certification. Include *all* admitted synthetic
+            # fields from initial capture before comparing revisions.
             fresh_state=obs(php,host,env)
-            fresh_state['runtime_sha']=hashlib.sha256(
-                (wp/'mu-plugins/422-mad4b-public-critical-css-runtime.php').read_bytes()).hexdigest()
+            fresh_state['runtime_sha']=approved_native_runtime_sha(site,wp)
+            fresh_state['qa_policy_sha']=qa_policy_sha()
             fresh_catalog=catalog(php,host)
             current=next((r for r in fresh_catalog['routes']
                           if r['route_key']==route['route_key']),None)
@@ -454,8 +457,13 @@ def run_core(site):
              str(statefile),str(probe/(lang+'.headers')),str(jobdir/'measured-site.json')])
         # Re-read global + route-specific revision before admission.
         fresh_state=obs(php,host,env)
-        fresh_state['runtime_sha']=hashlib.sha256(
-            (wp/'mu-plugins/422-mad4b-public-critical-css-runtime.php').read_bytes()).hexdigest()
+        # The original QA policy is part of the initial snapshot since
+        # versioned negative evidence was introduced. Recompute the same
+        # admission-bound, fail-closed fields at final readback; otherwise
+        # an unchanged page is always misclassified as revision drift.
+        # A *real* QA source change while Chromium runs still fails here.
+        fresh_state['runtime_sha']=approved_native_runtime_sha(site,wp)
+        fresh_state['qa_policy_sha']=qa_policy_sha()
         fresh_catalog=catalog(php,host)
         current=next((x for x in fresh_catalog['routes'] if x['route_key']==route['route_key']),None)
         if (fresh_state!=state or current!=route):

@@ -377,3 +377,26 @@ only, preserving the original empty capabilities, strict read-only
 site mount policy and no writes outside the report path. Both original
 WordPress site roots remain untouched. Restore by removing only
 the drop-in, daemon-reloading systemd and restarting the native timer.
+
+## QA snapshot symmetry — original issuer and existing-certificate resume
+On 18 November the first-party Source worker at 05:40 UTC reached a
+stable four-viewport CSS capture and finished verification for
+`/tours-and-activities/abu-simbel-temples-1-day-tour-from-aswan/`,
+but recorded `SOURCE_REVISIONS_CHANGED_DURING_QA`. The root cause was
+the new `qa_policy_sha` admitted at initial capture not being included
+in either *final* run-time state snapshot. Thus comparison failed even
+when WordPress source revisions were unchanged. The same bug existed
+in the resumed-certificate branch.
+
+Both original final-readback branches now compute the *same* audited
+`approved_native_runtime_sha(site,wp)` and local
+`qa_policy_sha()` as initial first-party capture. They still compare
+the full state dictionary AND exact original route, and the existing
+resume branch retains global/listing generations. A real change in
+CSS source, QA verifier, template, WPML market/currency or route still
+fails closed. This is not a waiver of QA or a blanket cache flush.
+
+The eight source-vs-wayfa state tests compare unchanged and mutated
+QA/content contracts, and assert both final branches cover all initial
+synthetic fields; historic production certificates and public HTML
+are not changed by this patch.
