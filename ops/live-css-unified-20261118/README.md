@@ -410,3 +410,49 @@ runtime and QA implementation SHA as the other two final readbacks,
 so stable negative performance evidence is not discarded incorrectly.
 No CSS, visitor preferences or commerce rules are loosened; actual
 original WordPress revision/market/QA changes still fail closed.
+
+## WordPress Service Activation is a hard public Critical CSS discovery boundary
+At 06:13 UTC on 18 November, the Wayfatours production original per-route
+worker attempted four Chromium captures for the published Akassia Swiss
+Resort `/properties/akassia-swiss-resort/`. All four returned
+`PUBLIC_CAPTURE_REQUIRES_TRUSTED_SERVER_WCML_CURRENCY_AND_MARKET`.
+Independent live HTTP requests showed 404 for both Akassia and the
+`/properties/` archive. This was **not** a missing WCML header on an
+accessible hotel page: original MU plugin
+`004-wayfa-service-visibility-elementor.php` intentionally makes
+standalone hotel/property queries return 404 when the original
+JetEngine `service-activation` controller disables the public
+standalone Properties channel (including `tour_only`).
+Published posts and `get_permalink()` are **not evidence** that a
+standalone site route is publicly accessible.
+
+The CSS worker's original WordPress CLI route inventory now reads the
+original `service_visibility_active('tours'|'properties')` functions
+**in the same first-party WP-CLI evaluation** as the catalog. It
+never interprets a user cookie, a network-provided header, post status,
+or a client-side toggle as authority to widen the public route set.
+On Wayfatours, only **disabled standalone service route types** are
+excluded from the report, source-family scheduler and expensive browser:
+- Properties: `properties`, `archive:properties`, `property-types`;
+- Tours: `tours-and-activities`, `archive:tours-and-activities`,
+  `tour-types`, `tour-categories` when tours independently disabled.
+
+Ordinary destination listings, public pages and tour-linked hotel
+options remain unchanged. Tours.dev and all six WPML languages remain
+unmodified. Missing/malformed first-party visibility policy on Wayfa
+fails closed, not to an assumed public default. If Service Activation
+is changed legitimately later, the next original WP-CLI catalog
+re-evaluates current eligible routes automatically. The existing
+published post objects, WPML links, CSS certificates, native
+WooCommerce booking behavior, user-specific cache partitioning and
+service visibility source files are **not mutated** by this scanner.
+
+Read-only original WP-CLI integration returned **241 eligible
+Wayfatours routes** (84 published Tours, 113 destinations and public
+pages), down from 846 unfiltered routes; original Source staging
+inventory still had 1,028 raw routes including 597 properties and 9
+property types. This is a visibility-aware **catalog count**, not a
+claim that all 241 are CSS certified; every admitted page still needs
+five-viewport independent Chromium tests and live readback.
+Ten hermetic service policy filter tests and two real native WP-CLI
+catalog integration checks passed.

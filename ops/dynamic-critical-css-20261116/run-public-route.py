@@ -99,14 +99,57 @@ echo wp_json_encode([
         or not re.fullmatch('[a-f0-9]{64}',str(data.get('source_optimizer_sha','')))):
         raise ValueError('SITE_ENVIRONMENT_OR_DEFAULT_POLICY_HOLD')
     return data
+def public_service_route_scope(cat,service_channels):
+    """Respect first-party Wayfa standalone service activation, never invent 200s.
+
+    A published JetEngine Properties record is not a public URL when
+    service-activation makes that channel tour-only or disabled. The
+    original 004 service visibility policy intentionally returns HTTP
+    404 to shoppers for standalone Properties. Such records must not
+    consume an expensive Chromium critical-css source-family slot.
+    """
+    if not isinstance(cat,dict):
+        raise ValueError('UNTRUSTED_SERVICE_CATALOG')
+    if cat.get('host')!='wayfatours.com':
+        return cat
+    if (not isinstance(service_channels,dict)
+        or set(service_channels)!={'tours','properties'}
+        or any(not isinstance(v,bool) for v in service_channels.values())):
+        raise ValueError('PUBLIC_SERVICE_POLICY_UNATTESTED')
+    excluded=set()
+    if not service_channels['properties']:
+        excluded.update(('properties','archive:properties','property-types'))
+    if not service_channels['tours']:
+        excluded.update(('tours-and-activities','archive:tours-and-activities',
+                         'tour-types','tour-categories'))
+    rows=cat.get('routes')
+    if not isinstance(rows,list):raise ValueError('INVALID_PUBLIC_SERVICE_CATALOG')
+    # Filter only the original WordPress CLI catalog view, not the site's
+    # public activation settings, posts, WPML translation graph or cache.
+    return {**cat,'routes':[row for row in rows
+            if isinstance(row,dict) and row.get('type') not in excluded]}
+
 def catalog(php,host):
-    out=wp_eval(php,r'''
+    admitted=wp_eval(php,r'''
 if(!class_exists("MAD4B_Public_Critical_CSS_Coverage_V1",false)) exit(3);
-echo wp_json_encode(MAD4B_Public_Critical_CSS_Coverage_V1::catalog(),JSON_UNESCAPED_SLASHES),"\n";
+$routes=MAD4B_Public_Critical_CSS_Coverage_V1::catalog();
+$service=null;
+if(($routes["host"]??"")==="wayfatours.com"){
+    // This is the first-party service visibility policy used by the
+    // site's public pre_get_posts and singular-template HTTP 404 gate.
+    // Do not infer visibility from published post status or permalink.
+    if(!function_exists("service_visibility_active"))exit(4);
+    $service=["tours"=>(bool)service_visibility_active("tours"),
+              "properties"=>(bool)service_visibility_active("properties")];
+}
+echo wp_json_encode(["catalog"=>$routes,"public_service_channels"=>$service],
+    JSON_UNESCAPED_SLASHES),"\n";
 ''',timeout=210)
-    if out.get('contract')!='mad4b.public-critical-css.routes.v1' or out.get('host')!=host:
+    if not isinstance(admitted,dict):raise ValueError('CATALOG_ADMISSION_INVALID')
+    out=admitted.get('catalog')
+    if not isinstance(out,dict) or out.get('contract')!='mad4b.public-critical-css.routes.v1' or out.get('host')!=host:
         raise ValueError('CATALOG_HOST_UNTRUSTED')
-    return out
+    return public_service_route_scope(out,admitted.get('public_service_channels'))
 def jsonsave(p,obj):
     p.write_text(json.dumps(obj,indent=2,sort_keys=True)+'\n')
 def optimizer_bundle_missing(capture_index,route):
