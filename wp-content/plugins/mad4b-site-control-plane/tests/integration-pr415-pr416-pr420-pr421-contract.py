@@ -154,11 +154,33 @@ def reviewed_source_supersedes_snapshot(path):
         direct_profile = "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-direct-profile.php"
         source = Path(direct_profile).read_bytes()
         source_blob = hashlib.sha1(b"blob " + str(len(source)).encode("ascii") + b"\0" + source).hexdigest()
-        # Reviewed successor adds the three Admin Route Registry smoke pages.
-        # Pin exact current Git blob; keep historic Feature 007 snapshots immutable.
-        return (blob_sha == "0c0c2052254a5c893a79d45aa9d985b57d8361fd"
-                and (direct_profile, source_blob) in reviewed_exact_blobs
-                and b"'mad4b-direct-access-profile' => array( 'MAD4B_SCP_Direct_Profile', 'render_page'" in data)
+        # Historic Feature 007 source remains immutable. An exact newer
+        # disposable smoke successor may be admitted ONLY with independently
+        # reviewed runtime source and negative permission/capability assertions.
+        direct_profile_reviewed = (direct_profile, source_blob) in reviewed_exact_blobs
+        direct_route_checked = (
+            b"'mad4b-direct-access-profile' => array( 'MAD4B_SCP_Direct_Profile', 'render_page'" in data
+        )
+        if not direct_profile_reviewed or not direct_route_checked:
+            return False
+        if blob_sha == "0c0c2052254a5c893a79d45aa9d985b57d8361fd":
+            return True  # Exact historic successor; never rewritten.
+        if blob_sha != "0b081f2b6a4b1f1144e1ef25590d366856558fb8":
+            return False  # No wildcard, inferred equivalence or snapshot rewrite.
+        skills_ui = "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skills-admin-ui.php"
+        skills_data = Path(skills_ui).read_bytes()
+        skills_blob = hashlib.sha1(
+            b"blob " + str(len(skills_data)).encode("ascii") + b"\0" + skills_data
+        ).hexdigest()
+        if (skills_ui, skills_blob) not in reviewed_exact_blobs:
+            return False
+        return all(marker in data for marker in (
+            b"'mad4b-skills-operations' => array( 'MAD4B_SCP_Skills_Admin_UI', 'render_operations_page'",
+            b"add_filter( 'user_has_cap', $company_operations_smoke_cap, PHP_INT_MAX, 4 )",
+            b"remove_filter( 'user_has_cap', $company_operations_smoke_cap, PHP_INT_MAX )",
+            b"Revoked actor never inherits disposable company operations authorization",
+            b"The disposable test must not persist an operator capability",
+        ))
     return (path, blob_sha) in reviewed_exact_blobs
 
 
@@ -196,4 +218,15 @@ for name in [*(f"g{x}" for x in range(1, 10)), "ui"]:
         raise SystemExit(f"INTEGRATION CONTRACT FAIL: {name} authorization escalated")
 if verified < 18:
     raise SystemExit(f"INTEGRATION CONTRACT FAIL: only {verified} evidence bindings covered")
+# The exact successor regression executes on the same Runtime Release Set CI
+# lane as this contract. Avoid a new optional workflow or disconnected test.
+import subprocess
+import sys
+negative = subprocess.run(
+    [sys.executable, str(ROOT / "tests/integration-feature007-admin-successor-contract.py")],
+    capture_output=True, text=True, timeout=30, check=False,
+)
+if negative.returncode != 0:
+    raise SystemExit("INTEGRATION CONTRACT FAIL: exact Admin successor negative test: " + negative.stderr[-500:])
+print(negative.stdout.strip())
 print(f"MAD4B_COMBINED_FEATURE_CONTRACT: PASS (evidence_bindings={verified})")
