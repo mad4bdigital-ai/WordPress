@@ -21,6 +21,15 @@ EXPECTED318 = "56c78c0036c1e690069a2abbbbe4e84f8745bf30fec4dcc9c875835e52e442be"
 # Reviewed v83 successor adds signed current/revoked Original318 snapshots.
 # Hash pin is code provenance, NEVER an issuer, signed Job or Original313 receipt.
 EXPECTED318_V83 = "1c80391b15c750238339cf43c248dfd6c4017ec80102ddc01e210b9e8ec26b0b"
+# Exact, tested and selectively installed successor code hashes.
+# Provenance alone NEVER certifies a Job, independent enrollment or release.
+EXPECTED318_V95 = "6a27f5aac43ac8b6f70b42ef2ea7c5fdfb58224902094fc576badccb19d7dee4"
+EXPECTED318_V96 = "66da81222c43ae8b609857f6d738e66d4b1ec7870cbcc12ff6303c0c6e8cbb9f"
+REVIEWED_318 = {
+    EXPECTED318: "v82", EXPECTED318_V83: "v83",
+    EXPECTED318_V95: "v95", EXPECTED318_V96: "v96",
+}
+
 
 ISSUE = "company.host-authority.anchor.issue"
 REVOKE = "company.host-authority.anchor.revoke"
@@ -40,8 +49,12 @@ def inspect(live318:Path=LIVE318,registry:Path=REGISTRY,
     vetted=digest(candidate)
     checks["original318_candidate_exact"] = vetted == EXPECTED318
     checks["original318_live_v82"] = current == EXPECTED318
-    checks["original318_live_reviewed"] = current in (EXPECTED318, EXPECTED318_V83)
-    reviewed_successor = current == EXPECTED318_V83
+    version = REVIEWED_318.get(current, "unrecognized")
+    checks["original318_live_reviewed"] = version != "unrecognized"
+    reviewed_successor = version in ("v83", "v95", "v96")
+    # These do not affect commissioning or Original313 receipt proof.
+    checks["original318_dual_signed_reconcile_present"] = version in ("v95", "v96")
+    checks["original318_revocation_binding_v96_present"] = version == "v96"
 
     try:
         candidate_text=candidate.read_text()
@@ -123,7 +136,11 @@ def inspect(live318:Path=LIVE318,registry:Path=REGISTRY,
     # signed evidence readback, never inferred from this observer.
     # A reviewed v83 successor supersedes the historical v82 byte predicate;
     # both still need real, enrolled Original306/312/313 issue/revoke proof.
-    informational={"original318_live_v82", "v83_signed_current_readback_code_present"}
+    informational={
+        "original318_live_v82", "v83_signed_current_readback_code_present",
+        "original318_dual_signed_reconcile_present",
+        "original318_revocation_binding_v96_present",
+    }
     pending=[k for k,v in checks.items()
              if not v and (k not in informational or
                  (k=="original318_live_v82" and not checks["original318_live_reviewed"]))]
@@ -132,9 +149,7 @@ def inspect(live318:Path=LIVE318,registry:Path=REGISTRY,
         "observed_utc":datetime.now(timezone.utc).isoformat(),
         "source_candidate_sha256":vetted,
         "original318_live_sha256":current,
-        "original318_live_reviewed_version":(
-            "v83" if reviewed_successor else
-            ("v82" if current == EXPECTED318 else "unrecognized")),
+        "original318_live_reviewed_version":version,
         "checks":checks,
         "pending":pending,
         "state":"BLOCKED" if pending else "SOURCE_PREFLIGHT_ONLY_NOT_A_RELEASE",
