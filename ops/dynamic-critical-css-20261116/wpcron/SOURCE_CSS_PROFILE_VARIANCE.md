@@ -136,3 +136,31 @@ Source worker v7 and previous worker backups are retained separately.
 The due original first_fold ticket can retry once after an actual
 immutable revision, then uses normal backoff; no ticket, CSS manifest,
 Woo payment, price policy or original QA rule is bypassed.
+
+## First-party CSS v8: refresh source observer after original publication
+
+After original native QA and publisher qualified all six source WPML
+languages at CSS epoch 129, the first-fold WordPress ticket was pending.
+The six-language read-only HTTP observer still held pre-publication drift
+for ES during the original 900-second cooldown. This was stale
+observability, not an unqualified CSS manifest or source HTML.
+
+Immutable v8 changes ONLY the original first-party read-only observer.
+A changed trusted source CSS manifest SHA overrides the previous
+observer cooldown and forces a new actual six-locale anonymous HTTP,
+Elementor document and CSS identity observation. The manifest SHA must
+stay unchanged throughout this sampling; the new evidence receipt pins
+its exact manifest hash. Without a manifest revision the previous
+15-minute degraded / one-hour stable resource cooldown is preserved.
+
+This does not publish CSS, issue certificates, skip native Chromium
+visual testing, update prices, change WordPress permissions or acknowledge
+its pending ticket. Original source-home-delivery-admission.py must
+still verify all six matching source CSS SHAs, Elementor graph, and epoch.
+Only the original event-gate ready receipt can authorize subsequent
+WordPress ticket acknowledgment. Wayfatours stays on its original
+Docker-bridge browser and independent company CSS settings.
+
+Native v8 is a separate immutable release. v7/v6 remain preserved.
+Unit tests cover changed-manifest immediate readback, restored source
+identity, incomplete live CSS, and no unqualified claims of readiness.

@@ -95,20 +95,30 @@ def observe(now=None,inspector=None):
     old=json.loads(target.read_text()) if target.is_file() else {}
     if old and (old.get('contract')!=CONTRACT or old.get('host')!=HOST):
         raise ValueError('source_observer_foreign_ledger')
-    # 15-minute resource-bounded sampling when previously degraded; one hour
-    # when stable. The native WP-Cron job is the sole due-time authority.
+    # The CSS manifest is an independent source of certification changes.
+    # Do not let a 15m/1h network-observer cooldown preserve a known-false
+    # drift alert immediately after an original native browser publication.
+    # A changed manifest only admits a NEW six-locale HTTP observation: it
+    # never grants readiness or modifies the certificate by itself.
+    manifest=WP/'mad4b-critical-css-v1/manifest.json'
+    if manifest.is_symlink() or not manifest.is_file() or not 80<=manifest.stat().st_size<=65536:
+        raise ValueError('source_home_manifest_untrusted')
+    manifest_bytes=manifest.read_bytes()
+    manifest_sha=hashlib.sha256(manifest_bytes).hexdigest()
+    raw=json.loads(manifest_bytes)
+    if raw.get('contract')!='mad4b.mobile-critical-css.v2' or raw.get('site')!=HOST:
+        raise ValueError('source_manifest_contract_invalid')
     ttl=900 if (old and old.get('state')=='drift') else 3600
-    if now-int(old.get('checked_at',0))<ttl:
+    if (now-int(old.get('checked_at',0))<ttl
+        and old.get('manifest_sha')==manifest_sha):
         return 'cooled',old.get('fingerprint','')
     call=inspect if inspector is None else inspector
     rows={lang:call(lang) for lang in LANGS}
     key=fingerprint(rows)
-    manifest=WP/'mad4b-critical-css-v1/manifest.json'
-    if manifest.is_symlink() or not manifest.is_file() or manifest.stat().st_size>65536:
-        raise ValueError('source_home_manifest_untrusted')
-    raw=json.loads(manifest.read_text())
-    if raw.get('contract')!='mad4b.mobile-critical-css.v2' or raw.get('site')!=HOST:
-        raise ValueError('source_manifest_contract_invalid')
+    # Native CSS QA may finish while six public pages are being fetched.
+    # Never write a matched receipt against an older manifest revision.
+    if manifest.is_symlink() or hashlib.sha256(manifest.read_bytes()).hexdigest()!=manifest_sha:
+        raise ValueError('source_manifest_changed_during_http_observation')
     missing=[]
     for lang,row in rows.items():
         entry=raw.get('entries',{}).get(row['sha256'],{})
@@ -121,7 +131,7 @@ def observe(now=None,inspector=None):
             missing.append(lang)
     state_name='drift' if missing else 'source_matched'
     atomic(target,{'contract':CONTRACT,'host':HOST,'checked_at':now,
-       'sources':rows,'fingerprint':key,'state':state_name,
+       'sources':rows,'fingerprint':key,'manifest_sha':manifest_sha,'state':state_name,
        'languages_without_exact_source_certificate':missing,
        'scope':'trigger_exact_locale_browser_QA_not_a_certificate'})
     return 'changed' if key!=old.get('fingerprint') else ('drift' if missing else 'stable'),key

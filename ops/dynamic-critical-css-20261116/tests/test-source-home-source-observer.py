@@ -59,12 +59,30 @@ with tempfile.TemporaryDirectory() as tmp:
       and status['languages_without_exact_source_certificate']==[])
   action2,_=obs.observe(now=100100)
   ok('healthy observation cooldown bounds 6 public HTML reads',action2=='cooled')
+  # Publishing a new native certificate changes the manifest even when the
+  # actual CSS graph stays unchanged. Re-sample immediately, never reuse the
+  # pre-publish drift verdict until its old TTL expires.
+  manifest_path=wp/'mad4b-critical-css-v1/manifest.json'
+  manifest_orig=manifest_path.read_text()
+  manifest_data=json.loads(manifest_orig)
+  manifest_data['entries'][got['sha256']]['variants']['/es/|es|mobile']['gate_status']='hold'
+  manifest_path.write_text(json.dumps(manifest_data))
+  action_changed,_=obs.observe(now=100101)
+  state_changed=json.loads((reports/'home-current-css-source.json').read_text())
+  ok('manifest revision forces fresh six-locale HTTP observation during cooldown',
+     action_changed=='drift' and state_changed['languages_without_exact_source_certificate']==['es'])
+  manifest_path.write_text(manifest_orig)
+  action_recovered,_=obs.observe(now=100102)
+  state_recovered=json.loads((reports/'home-current-css-source.json').read_text())
+  ok('original certificate publication clears old drift immediately',
+     action_recovered=='stable' and state_recovered['state']=='source_matched'
+     and state_recovered['languages_without_exact_source_certificate']==[])
   gate.LIVE_SOURCE_CSS=reports/'home-current-css-source.json'
   key_old=gate.observed_home_source_key('source')
   ok('first-party source observation is independently keyed',key_old==key1)
   obs.inspect=lambda lang:dict(got,route='/' if lang=='en' else '/'+lang+'/',
                         sha256='b'*64 if lang=='es' else got['sha256'])
-  action3,key2=obs.observe(now=103601)
+  action3,key2=obs.observe(now=103704)
   state=json.loads((reports/'home-current-css-source.json').read_text())
   ok('changed CSS one language marks exact missing locale',action3=='changed'
      and key2!=key1 and state['languages_without_exact_source_certificate']==['es'])
@@ -73,7 +91,7 @@ with tempfile.TemporaryDirectory() as tmp:
   obs.inspect=lambda lang:dict(got,route='/' if lang=='en' else '/'+lang+'/',
                        elementor_doc_fingerprint='c'*64 if lang=='fr'
                        else got['elementor_doc_fingerprint'])
-  action4,_=obs.observe(now=104502)
+  action4,_=obs.observe(now=104605)
   state=json.loads((reports/'home-current-css-source.json').read_text())
   ok('DOM changes invalidate a CSS certificate even when file SHA is unchanged',
      state['languages_without_exact_source_certificate']==['fr'])

@@ -7,8 +7,8 @@ w=importlib.util.module_from_spec(spec);spec.loader.exec_module(w)
 def check(name,okay):
  assert okay,name
  print('PASS',name)
-check('immutable v7 canonical worker release',
-      'template-aware-css-wpcron-v7-20261118' in str(w.SOURCE))
+check('immutable v8 canonical worker release',
+      'template-aware-css-wpcron-v8-20261118' in str(w.SOURCE))
 check('original Source first_fold uses exact host-egress Chromium',
       w.TASKS['first_fold']('source')[:3]==[
          '/usr/bin/env','MAD4B_SOURCE_CSS_NETWORK_PROFILE=host','/usr/bin/bash'])
@@ -34,4 +34,4 @@ check('source-only one-time retry does not waive Wayfa backoff',
       w.available_candidates('wayfa',{'pending':{'first_fold':{'id':10,'reason':'scheduled','requested_at':1}}},
         {'wayfa:first_fold:10':{'last_attempt':now-15,'failures':6,
         'next_retry':now+2700}},now)==[])
-print('SOURCE_CSS_V7_DISPATCH_SAFETY 8')
+print('SOURCE_CSS_V8_DISPATCH_SAFETY 8')
