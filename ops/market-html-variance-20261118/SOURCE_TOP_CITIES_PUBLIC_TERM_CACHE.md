@@ -73,3 +73,39 @@ sometimes HIT in 15–65ms and at other times MISS in ~4–6s;
 established**. Never enable shared cross-IP HTML without separate
 first-party market/consent/booking proof. No existing Nginx settings
 were modified in this follow-up.
+
+## 19 November — Source HTML cache origin conflict resolved without relaxing privacy
+
+Repeated anonymous mobile requests with the EXACT same UA, Accept and
+trusted client IP still returned MISS (4.66–5.17s). A temporary
+anonymized boolean-only origin header audit (removed immediately)
+observed X-MAD4B-Cache-Eligibility: public-static-v1 alongside an
+origin-owned PRIVATE Cache-Control even with CSS-Ready 1 and without
+Set-Cookie, private-policy or DONOTCACHEPAGE.
+
+The exact header timeline proved first-party source
+mad4b-general-public-page-origin-cache.php advertised public HTML
+admission at template_redirect:9000, then source MU plugin
+424-mad4b-private-html-css-bundler-v1.php intentionally marked
+the same response private at template_redirect:9999. The final
+mobile CSS certificate was successfully issued later and did NOT
+cause the private response. The 424 CSS-only fallback is deliberately
+private to protect current per-request JS/forms and WCML context.
+
+Source-first 424 v1.2.1 now removes the THREE contradictory public
+eligibility/browser HTML headers ONLY when its original CSS-only
+private guard is active. It keeps the original private,no-store header,
+the CSS-only delivery header, shared CSS optimizer behavior, WCML
+guards and all original WooCommerce/form/booking invariants.
+Read-only 10-case regression, PHP 8 runtime lint, live origin HTTP
+200 / CSS-Ready 1 / private,no-store / no public-static admission
+are verified. Original live 424 v1.2.0 source is backed up under
+root-owned market-html-variance reports for instant rollback.
+
+This is a correctness/safety repair, not a first-byte performance
+optimization. Never disable 424's private guard merely to produce
+a FastCGI HIT: reliable market-specific HTML price/nonce/consent
+isolation and independent browser/booking proof are still required
+before claiming safe public-shell caching. No current production
+Wayfatours files, WordPress payment policies or Nginx configuration
+changed.
