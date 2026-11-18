@@ -109,7 +109,12 @@ def build(site,catalog,state,ledger,root=None):
         raise ValueError('source-engine-context-invalid')
     if root is None:root=Path(ROOTS[site][0])
     if str(root)!=ROOTS[site][0] or root.is_symlink():raise ValueError('untrusted-source-site-root')
-    catalogrows=queue.safe_catalog(catalog,site)
+    # Home and translated Home pages belong to a separate original CSS
+    # certifier. Never nominate them as source-family representative
+    # canaries: their native selective per-route cache release disallows
+    # Home and would otherwise waste one entire expensive Chromium slot.
+    catalogrows=[r for r in queue.safe_catalog(catalog,site)
+                 if not queue.independently_certified_home(r)]
     published=load_certs(root)
     by_route=collections.defaultdict(list)
     for (lang,path,market,currency),cert in published.items():
@@ -155,7 +160,11 @@ def build(site,catalog,state,ledger,root=None):
             rec=ledger['routes'].get(r['route_key'],{})
             if (isinstance(rec,dict) and rec.get('attempted_at')
                 and rec.get('source_key')==queue.source_key(catalog,r,state,
-                    bool(rec.get('depends_on_listings')))):
+                    bool(rec.get('depends_on_listings')))
+                # Count only unsuccessful attempts from the same exact
+                # QA implementation. Older negative proofs must not cap
+                # requalification when the original verifier changes.
+                and rec.get('qa_policy_sha')==state.get('qa_policy_sha')):
                 attempted.append(r['route_key'])
         bounded=len(set(attempted))>=4
         no_bundle=set()

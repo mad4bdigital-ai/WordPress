@@ -19,7 +19,7 @@ function assertBodyIdentity(html){
    throw Error('PUBLIC_ARCHIVE_BOUND_SOURCE_DRIFT');
   return;
  }
- const idType=TERM_TYPES.includes(PUBLIC_TYPE)?'term':'(?:page-id|postid)';
+ const idType=PUBLIC_TYPE==='category'?'category':(TERM_TYPES.includes(PUBLIC_TYPE)?'term':'(?:page-id|postid)');
  const m=classes.join(' ').match(new RegExp('(?:^|\\s)'+idType+'-(\\d+)(?:\\s|$)'));
  if(!m || Number(m[1])!==PUBLIC_OBJECT_ID)throw Error('BOUND_WP_OBJECT_DRIFT');
 }

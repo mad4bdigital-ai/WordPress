@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: MAD4B Native Tour CSS Stability
- * Description: Source-owned native CSS safety for tour singles on every enrolled company and environment.
- * Version: 1.0.0
+ * Description: Source-owned CSS bundle integrity for tour singles without disabling native LiteSpeed combine/minify.
+ * Version: 1.1.0
  */
 defined('ABSPATH') || exit;
 
@@ -24,20 +24,24 @@ final class MAD4B_Tour_Single_CSS_Stability_V1 {
     }
     public static function install(): void {
         if (!self::eligible()) return;
-        // Tour pages can have volatile Elementor/JetEngine/Fluent Forms inline CSS.
-        // Keep their native source order regardless of globally enabled LiteSpeed
-        // CSS combine/minify, without changing tenant-wide performance options.
-        add_filter('litespeed_conf_load_option_optm-css_comb', [self::class, 'disable_combine'], PHP_INT_MAX);
-        add_filter('litespeed_conf_load_option_optm-css_min', [self::class, 'disable_combine'], PHP_INT_MAX);
+        // Original tour CSS-specific combine veto was proven harmful:
+        // with the site's owned global LiteSpeed CSS combine/minify ON, the
+        // veto caused 158 separate stylesheets instead of four combined ones.
+        // Retain Elementor/JetEngine native ordering inside the combined
+        // generated asset, not by blocking the primary CSS optimization.
+        // Never override the original host's private HTML/no-store policy.
+        return;
     }
-    public static function disable_combine($value): string { return '0'; }
+    public static function disable_combine($value) { return $value; } // compatibility only; unhooked
     public static function readback(): array {
         return [
             'contract' => 'mad4b.native-tour-css-stability.v1',
             'site_ready' => self::site_ready(),
             'litespeed_loaded' => defined('LSCWP_V'),
-            'native_single_route_enabled' => true,
-            'safety_hooks' => ['litespeed_conf_load_option_optm-css_comb','litespeed_conf_load_option_optm-css_min'],
+            'native_single_route_enabled' => false,
+            'site_css_bundle_policy' => 'litespeed_combine_minify_on',
+            'safety_hooks' => [],
+            'legacy_combine_veto_removed' => true,
             'global_options_mutated' => false,
         ];
     }

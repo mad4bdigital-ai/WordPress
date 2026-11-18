@@ -28,12 +28,11 @@ def main():
             # Do not ingest arbitrary URLs; WP-CLI and original site-profile
             # runtime provide the only identities. This is a pure report.
             state=runner.obs(php,host,env)
-            native=wp/'mu-plugins/422-mad4b-public-critical-css-runtime.php'
-            source=wp/'mu-plugins/421-mad4b-public-critical-css-coverage.php'
-            pinned=Path('/opt/mad4b-company-provisioning/worktrees/pr814-converged-local-20261115/wp-content/mu-plugins')
-            if native.is_symlink() or source.is_symlink() or source.read_bytes()!=(pinned/source.name).read_bytes() or native.read_bytes()!=(pinned/native.name).read_bytes():
-                raise ValueError('source_runtime_component_drift:'+site)
-            state['runtime_sha']=hashlib.sha256(native.read_bytes()).hexdigest()
+            # Use the exact original runner's per-company source admission.
+            # Source Staging 422 v1.0.1 is an approved separate release,
+            # while Wayfa Production retains original 421/422 byte parity.
+            state['runtime_sha']=runner.approved_native_runtime_sha(site,wp)
+            state['qa_policy_sha']=runner.qa_policy_sha()
             catalog=runner.catalog(php,host)
             if any('source_profile' not in item for item in catalog['routes']):
                 raise ValueError('source_catalog_not_migrated:'+site)
