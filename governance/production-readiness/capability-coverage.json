@@ -23515,6 +23515,27 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-integrity.php",
+      "source_blob_sha": "f9a1f6315783b48d6020d631724c88d17e438136",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-integrity-destination-term-links-runtime.php"
+      ],
+      "owner_role": "MAD4B exact-source Brand Integrity reviewer; CI-only, independent Production owner retains release authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Site-neutral, read-only expansion of original Brand Integrity to inspect nested WordPress taxonomy term metadata including JetEngine repeater URL-only fields. Mark further-reading and related links as first-party by default; retain ordinary external editorial source citations. Exact hermetic regression verifies external HTML and bare URLs, internal host, legitimate source citation, absent terms, and zero mutation. No domain blacklist, automatic content replacement, generic WordPress hook, term write permission, release grant or Production approval.",
+      "coverage_reuse_rationale": "Existing AI content fidelity, multilingual, provider-data trust and security source controls already govern content attribution. This amendment adds an inspect-only term field surface and no Ability, mutation path or authority.",
+      "execution_note": "Exact source review evidence only; Source CI and on-site term-meta readback remain independent requirements."
     }
   ],
   "code_change_rules": {
