@@ -30,3 +30,31 @@ Chromium desktop 1365x768 Long Tasks approximate sums:
 ## Source and release boundaries
 
 Git PR is for source review only. No bulk merge or automatic site deployment; independent review and release gates remain intact.
+
+## Native UAEL offscreen gallery viewport v1.0.0 — follow-up
+
+- New optional MU owner: 425-mad4b-uael-gallery-viewport-init.php with exact SHA-256-pinned inline JS. Runs only on public anonymous homepage with native jQuery already printed; never replaces Elementor, Slick or Fancybox.
+- Intercepts registration of only frontend/element_ready/uael-image-gallery.default. Defers carousel callbacks over 1500px outside the viewport until IntersectionObserver sees the widget approaching. Non-carousel, nearby, invisible, edit mode and unsupported browsers retain native startup.
+- Existing Elementor content, WooCommerce, booking, and translation stores remain unchanged. Original frontend hook executes when needed.
+- Feature option mad4b_perf_uael_gallery_viewport_v1: off (default for unverified sites), canary (requires cache-bypass and exact header/query), on (anonymous homepage only).
+- Disable with wp option update mad4b_perf_uael_gallery_viewport_v1 off; selectively invalidate homepage FastCGI keys to revert cached HTML.
+
+### Verified QA, 18 November 2026
+
+- Chromium A/B with CPU slowdown 4x on Wayfatours: two baseline approximate blocking sums 1095ms and 1110ms; two experimental runs 738ms and 884ms. Not Lighthouse outcomes.
+- Production native PHP canary: interception, deferred initialization, native callback on approach, Slick arrows, Fancybox open/close, no JS errors on EN Desktop and ES Mobile. Cross-language runs not presented as equivalent performance comparisons.
+- Staging EN/ES/390px: early hook installed, no galleries on those routes, zero intercepted handlers and no JS errors.
+- Four source contract tests, Node runtime semantics test and original seven geometry checks pass.
+
+### Remaining boundary
+
+- Elementor nested runReadyTrigger and handler bootstraps occupy largest remaining startup CPU samples. No indiscriminate deferral of menus, price, filters or booking widgets.
+- Desktop Critical CSS still uses native blocking stylesheet without a certified viewport-specific replacement. No CSS safety bypass or false readiness claims.
+
+### Public rollout verification — 18 November 2026
+
+- Company mode changed from canary to on for Wayfatours. Generic plugin default stays off for other unverified sites.
+- Only FastCGI anonymous EN and ES home generation file mtimes updated; no global asset or commerce cache purge.
+- Native public Chrome proof, CPU 4x: EN desktop approximate startup blocking sum 894ms, ES desktop 751ms, EN 390px mobile 1130ms; each loaded the pinned owner, deferred native carousel at first paint, initialized it when scrolled into view, with two native Slick arrows and zero page errors.
+- In separate canary interaction tests, EN desktop Fancybox and ES touch-mobile Fancybox opened and closed correctly. Public site remains subject to later actual Lighthouse and field INP measurement; no TBT=0 claim.
+- Production rollback snapshot path: /root/mad4b-backups/20261118-uael-gallery-view-port-v100 . The stored site option and core asset were not removed.
