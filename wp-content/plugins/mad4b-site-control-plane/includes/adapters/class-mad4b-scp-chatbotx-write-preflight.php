@@ -13,6 +13,32 @@ final class MAD4B_SCP_ChatbotX_Write_Preflight {
         'mad4b/chatbotx-cpt-create-draft' => 'unpublished_cpt_draft',
     );
 
+
+    /**
+     * Site-neutral, opt-in per-company CPT policy. An empty or malformed
+     * allowlist disables CPT drafts; never infer travel-only CPT slugs.
+     * The hosted site must already have an exact, enrolled Site Profile.
+     */
+    public static function allowed_post_types() {
+        if (!function_exists('apply_filters') || !function_exists('get_post_type_object')
+            || !class_exists('MAD4B_SCP_Site_Profile', false)
+            || !MAD4B_SCP_Site_Profile::origin_enrolled()
+            || !MAD4B_SCP_Site_Profile::site_urls_match_enrollment()) return array();
+
+        $configured = apply_filters('mad4b_scp_chatbotx_draft_cpt_allowlist', array());
+        if (!is_array($configured) || count($configured) > 12
+            || (count($configured) && array_keys($configured) !== range(0, count($configured) - 1))) return array();
+        $accepted = array();
+        foreach ($configured as $type) {
+            if (!is_string($type) || !preg_match('/^[a-z][a-z0-9_-]{0,19}$/D', $type)) return array();
+            $object = get_post_type_object($type);
+            if (!$object || !isset($object->_builtin) || false !== $object->_builtin
+                || !isset($object->cap->create_posts)) return array();
+            $accepted[$type] = $type;
+        }
+        return array_values($accepted);
+    }
+
     public static function assess($input) {
         $input = is_array($input) ? $input : array();
         $ability = isset($input['ability']) ? (string)$input['ability'] : '';
@@ -68,7 +94,7 @@ final class MAD4B_SCP_ChatbotX_Write_Preflight {
                 'native_agent_access_checked_at_execution','bounded_internal_note_at_execution'));
         } else {
             $type = sanitize_key((string)($input['post_type'] ?? ''));
-            $allowed = in_array($type, array('tours-and-activities','properties','transportations'), true);
+            $allowed = in_array($type, self::allowed_post_types(), true);
             $post_obj = $allowed ? get_post_type_object($type) : null;
             $can_create = $post_obj && isset($post_obj->cap->create_posts) && current_user_can($post_obj->cap->create_posts);
             if (!$can_create) $blockers[] = 'exact_cpt_create_permission_required';

@@ -60,6 +60,23 @@ abstract class MAD4B_SCP_Adapter_Base {
         return new WP_Error('mad4b_adapter_unavailable');
     }
 }
+
+$GLOBALS['cmb_configured_cpts']=array();
+$GLOBALS['cmb_origin_enrolled']=false;
+class MAD4B_SCP_Site_Profile {
+    public static function status(){return array('environment'=>'staging');}
+    public static function write_enabled(){return false;}
+    public static function origin_enrolled(){return $GLOBALS['cmb_origin_enrolled'];}
+    public static function site_urls_match_enrollment(){return $GLOBALS['cmb_origin_enrolled'];}
+}
+function apply_filters($name,$default){
+    return $name==='mad4b_scp_chatbotx_draft_cpt_allowlist' ? $GLOBALS['cmb_configured_cpts'] : $default;
+}
+function get_post_type_object($name){
+    if ($name==='custom_itinerary')return (object)array('_builtin'=>false,'cap'=>(object)array('create_posts'=>'edit_posts'));
+    if ($name==='post')return (object)array('_builtin'=>true,'cap'=>(object)array('create_posts'=>'edit_posts'));
+    return null;
+}
 require dirname(__DIR__).
     '/wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-provider-adapter.php';
 $instance=new MAD4B_SCP_ChatbotX_Provider_Adapter();
@@ -77,19 +94,18 @@ cmb_assert($instance->is_available()===true,'Native installed activation require
 $declared=$instance->ability_names();
 $reads=$declared['read'];
 $writes=$declared['write'];
-cmb_assert(count($reads)===11 && count($writes)===3
+cmb_assert(count($reads)===11 && count($writes)===2
     && !$declared['admin'] && !$declared['content'],
     'One first-party provider cannot widen the original 11/3 surface');
 $instance->register_abilities();
 $registered=array_keys($GLOBALS['cmb_registrations']);
-cmb_assert(count($registered)===14
+cmb_assert(count($registered)===13
     && !array_diff($registered,array_merge($reads,$writes))
     && !array_diff(array_merge($reads,$writes),$registered),
     'Original registration is not exactly equal to advertised abilities');
 $expected_writes=array(
     'mad4b/chatbotx-support-create-ticket',
     'mad4b/chatbotx-support-add-note',
-    'mad4b/chatbotx-cpt-create-draft',
 );
 cmb_assert($writes===$expected_writes,
     'Do not add provider writes without distinct full review');
@@ -127,4 +143,25 @@ cmb_assert($instance->support_create_ticket(array()) instanceof WP_Error
     && $instance->support_add_note(array()) instanceof WP_Error
     && $instance->cpt_create_draft(array()) instanceof WP_Error,
     'Disabled native central mutation must not write a ticket, note or CPT');
-echo "PASS: CHATBOTX_NATIVE_ADAPTER_GATES 11 read / 3 separately governed write registrations\n";
+
+$GLOBALS['cmb_origin_enrolled']=true;
+$GLOBALS['cmb_configured_cpts']=array('custom_itinerary');
+$optin=$instance->ability_names();
+cmb_assert(count($optin['read'])===11 && count($optin['write'])===3
+    && in_array('mad4b/chatbotx-cpt-create-draft',$optin['write'],true),
+    'Enrolled, configured CPT opt-in adds exactly one write');
+$GLOBALS['cmb_registrations']=array();
+$instance->register_abilities();
+cmb_assert(count($GLOBALS['cmb_registrations'])===14,'Opt-in adds exactly one ability');
+$draft=$GLOBALS['cmb_registrations']['mad4b/chatbotx-cpt-create-draft'];
+cmb_assert($draft['schema']['properties']['post_type']['enum']===array('custom_itinerary')
+    && $draft['readonly']===false && $draft['destructive']===true,
+    'CPT write schema bound to configured type');
+$pending=$instance->write_preflight(array('ability'=>'mad4b/chatbotx-cpt-create-draft','post_type'=>'custom_itinerary'));
+cmb_assert(is_array($pending) && !$pending['approved_for_execution']
+    && $pending['no_mutation_performed'] && !empty($pending['blockers']),
+    'Configured CPT is never itself a grant');
+$GLOBALS['cmb_configured_cpts']=array('post');
+cmb_assert(MAD4B_SCP_ChatbotX_Write_Preflight::allowed_post_types()===array(),
+    'Built-in post remains denied');
+echo "PASS: CHATBOTX_NATIVE_ADAPTER_GATES 11 read / 2 default + 1 opt-in writes\n";

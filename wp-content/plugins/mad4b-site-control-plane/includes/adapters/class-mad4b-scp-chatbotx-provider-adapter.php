@@ -43,6 +43,10 @@ final class MAD4B_SCP_ChatbotX_Provider_Adapter extends MAD4B_SCP_Adapter_Base {
             return array('read' => array(), 'content' => array(),
                 'write' => array(), 'admin' => array());
         }
+        $write = array('mad4b/chatbotx-support-create-ticket', 'mad4b/chatbotx-support-add-note');
+        if (MAD4B_SCP_ChatbotX_Write_Preflight::allowed_post_types()) {
+            $write[] = 'mad4b/chatbotx-cpt-create-draft';
+        }
         return array('read' => array(
             'mad4b/chatbotx-provider-snapshot',
             'mad4b/chatbotx-channels-read',
@@ -55,11 +59,7 @@ final class MAD4B_SCP_ChatbotX_Provider_Adapter extends MAD4B_SCP_Adapter_Base {
             'mad4b/chatbotx-pricing-preview',
             'mad4b/chatbotx-booking-readiness',
             'mad4b/chatbotx-presentation-context',
-        ), 'content' => array(), 'write' => array(
-            'mad4b/chatbotx-support-create-ticket',
-            'mad4b/chatbotx-support-add-note',
-            'mad4b/chatbotx-cpt-create-draft'
-        ), 'admin' => array());
+        ), 'content' => array(), 'write' => $write, 'admin' => array());
     }
     protected function mutation_requires_certification() { return true; }
 
@@ -83,7 +83,7 @@ final class MAD4B_SCP_ChatbotX_Provider_Adapter extends MAD4B_SCP_Adapter_Base {
                 'customer_id'=>array('type'=>'integer','minimum'=>1),
                 'mailbox_id'=>array('type'=>'integer','minimum'=>1),
                 'ticket_id'=>array('type'=>'integer','minimum'=>1),
-                'post_type'=>array('type'=>'string','enum'=>array('tours-and-activities','properties','transportations'))
+                'post_type'=>array('type'=>'string','enum'=>MAD4B_SCP_ChatbotX_Write_Preflight::allowed_post_types())
             ),array('ability')));
         $this->add_ability('mad4b/chatbotx-integration-inventory',
             'Read Existing Workflow, CRM, Commerce and Pricing Provider Coverage',
@@ -123,13 +123,15 @@ final class MAD4B_SCP_ChatbotX_Provider_Adapter extends MAD4B_SCP_Adapter_Base {
                 'idempotency_key'=>$idempotency
             ),array('ticket_id','content','idempotency_key')),
             'write',false,true,true);
+        if (MAD4B_SCP_ChatbotX_Write_Preflight::allowed_post_types()) {
         $this->add_ability('mad4b/chatbotx-cpt-create-draft',
             'Create Unpublished Travel CPT Draft','cpt_create_draft',$admin,$this->schema(array(
-                'post_type'=>array('type'=>'string','enum'=>array('tours-and-activities','properties','transportations')),
+                'post_type'=>array('type'=>'string','enum'=>MAD4B_SCP_ChatbotX_Write_Preflight::allowed_post_types()),
                 'title'=>array('type'=>'string','minLength'=>1,'maxLength'=>180),
                 'idempotency_key'=>$idempotency
             ),array('post_type','title','idempotency_key')),
             'write',false,true,true);
+        }
         $this->add_ability('mad4b/chatbotx-business-context',
             'Read Fluent Forms, Support and CPT WooCommerce Integration Readiness',
             'business_context', $permission, $this->schema(array()));
