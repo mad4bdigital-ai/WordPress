@@ -130,17 +130,20 @@ $response=$class::rest_read();
 check($response instanceof TestResponse,'response object');
 check(str_contains($response->headers['Cache-Control'],'no-store'),'not cached');
 ob_start();$class::render_admin();$html=ob_get_clean();
-check(str_contains($html,'Host Authority Lifecycle'),'admin heading');
+check(str_contains($html,'Current company Host Authority'),'accessible section heading');
 check(str_contains($html,'all-royal-egypt'),'actual enrolled scope');
 check(!str_contains($html,'evil&lt;script&gt;'),'malicious slot filtered');
-check(substr_count($html,' disabled ')===3,'disabled Issue/Revoke/Rollback');
-check(str_contains($html,'aria-describedby'),'accessible disable reason');
-check(str_contains($html,'Refresh status'),'functional refresh action');
+check(substr_count($html,' disabled ')===0,'no misleading disabled action buttons');
+check(str_contains($html,'Next step:'),'one clear next step');
+check(str_contains($html,'Technical evidence and exact provider states'),'technical audit collapsed');
 check(str_contains($html,'Not independently certified'),'root independence shown');
 ob_start();MAD4B_SCP_Deferred_Admin_Reports::render('operator');$top=ob_get_clean();
-check(str_contains($top,'data-report="host_authority"'),'operator check button wired');
+check(str_contains($top,'data-report="host_authority"'),'operator refresh button wired');
+check(str_contains($top,'data-auto-report="host_authority"'),'single automatic light read');
+check(str_contains($top,'<details id="mad4b-advanced-operator-checks"'),'technical diagnostics collapsed');
+check(substr_count($top,'<details')===1,'one advanced section only');
 $measured=MAD4B_SCP_Deferred_Admin_Reports::measure('host_authority');
-check($measured['state']==='MEASURED' && str_contains($measured['html'],'Host Authority Lifecycle'),
+check($measured['state']==='MEASURED' && str_contains($measured['html'],'Current company Host Authority'),
       'on-demand report renders');
 check($measured['ready']===null,'no self-certification from report');
 check($GLOBALS['mutations']===0,'no writes');

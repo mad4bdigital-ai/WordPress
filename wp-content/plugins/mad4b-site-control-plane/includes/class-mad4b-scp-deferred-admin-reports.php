@@ -18,15 +18,37 @@ final class MAD4B_SCP_Deferred_Admin_Reports {
 		$asset = defined( 'MAD4B_SCP_DIR' ) ? MAD4B_SCP_DIR . 'assets/deferred-admin-reports.js' : '';
 		$version = $asset && is_file( $asset ) ? (string) filemtime( $asset ) : MAD4B_SCP_VERSION;
 		wp_enqueue_script( 'mad4b-deferred-admin-reports', plugins_url( 'assets/deferred-admin-reports.js', MAD4B_SCP_FILE ), array(), $version, true );
-		$keys = 'chatgpt' === $surface ? array( 'chatgpt' ) : array( 'write', 'database', 'authority', 'providers', 'adaptive', 'host_authority', 'workspace' );
-		echo '<div class="wrap" data-mad4b-reports data-url="' . esc_url( admin_url( 'admin-ajax.php' ) ) . '" data-nonce="' . esc_attr( wp_create_nonce( 'mad4b_admin_report' ) ) . '">';
-		echo '<h1>' . esc_html( 'chatgpt' === $surface ? 'Connect WordPress to ChatGPT' : 'Operator Control Center' ) . '</h1>';
-		echo '<p>Not checked. Run one read-only report at a time. Local results do not certify external MCP access or authorize Production.</p>';
-		echo '<p>A timeout stops browser waiting; PHP may still be running. No automatic retry is performed.</p>';
-		foreach ( $keys as $key ) {
-			echo '<section><h2>' . esc_html( self::LABELS[ $key ] ) . '</h2><button type="button" class="button" data-report="' . esc_attr( $key ) . '">Check</button><p data-report-result="' . esc_attr( $key ) . '" role="status">Not checked</p><div data-report-content="' . esc_attr( $key ) . '"></div></section>';
+		$is_chatgpt = 'chatgpt' === $surface;
+		$keys = $is_chatgpt ? array( 'chatgpt' )
+			: array( 'write', 'database', 'authority', 'providers', 'adaptive', 'workspace' );
+		echo '<div class="wrap" data-mad4b-reports data-url="' . esc_url( admin_url( 'admin-ajax.php' ) ) .
+			'" data-nonce="' . esc_attr( wp_create_nonce( 'mad4b_admin_report' ) ) .
+			'"' . ( $is_chatgpt ? '' : ' data-auto-report="host_authority"' ) . '>';
+		echo '<h1>' . esc_html( $is_chatgpt ? 'Connect WordPress to ChatGPT' : 'Operator Control Center' ) . '</h1>';
+		if ( $is_chatgpt ) {
+			echo '<p>Connection diagnostics are read only. Run a check when needed.</p>';
+		} else {
+			echo '<p>Company connections, Host Authority and the next required action — without technical reports by default.</p>';
+			echo '<section aria-labelledby="mad4b-simple-host-title" id="mad4b-simple-host-status">';
+			echo '<h2 id="mad4b-simple-host-title">Host authority</h2>';
+			echo '<button type="button" class="button" data-report="host_authority">Refresh status</button>';
+			echo '<p data-report-result="host_authority" role="status" aria-live="polite">Loading current company status…</p>';
+			echo '<div data-report-content="host_authority"></div>';
+			echo '</section>';
+			echo '<details id="mad4b-advanced-operator-checks"><summary><strong>Advanced diagnostics and full technical report</strong></summary>';
+			echo '<p>For troubleshooting only. These checks cannot authorize a release, issue an Anchor, or approve Production.</p>';
 		}
-		echo '<p><a href="' . esc_url( admin_url( 'admin.php?page=mad4b-runtime-components&tab=diagnostics' ) ) . '">Runtime Diagnostics</a> · <a href="' . esc_url( admin_url( 'admin.php?page=mad4b-control-plane-site-profile' ) ) . '">Site Profile</a></p></div>';
+		foreach ( $keys as $key ) {
+			echo '<section><h3>' . esc_html( self::LABELS[ $key ] ) . '</h3>';
+			echo '<button type="button" class="button" data-report="' . esc_attr( $key ) . '">Check</button>';
+			echo '<p data-report-result="' . esc_attr( $key ) . '" role="status">Not checked</p>';
+			echo '<div data-report-content="' . esc_attr( $key ) . '"></div></section>';
+		}
+		if ( ! $is_chatgpt ) echo '</details>';
+		echo '<p><a href="' . esc_url( admin_url( 'admin.php?page=mad4b-runtime-components&tab=diagnostics' ) ) .
+			'">Runtime Diagnostics</a> · <a href="' .
+			esc_url( admin_url( 'admin.php?page=mad4b-control-plane-site-profile' ) ) . '">Site Profile</a></p>';
+		echo '</div>';
 	}
 
 	public static function ajax() {
@@ -272,43 +294,44 @@ final class MAD4B_SCP_Host_Authority_Lifecycle {
 	public static function render_admin() {
 		if ( ! self::can_read() ) wp_die( 'Administrator capability required.' );
 		$data = self::snapshot();
-		echo '<div class="wrap" id="mad4b-host-authority-lifecycle" aria-labelledby="mad4b-host-authority-title">';
-		echo '<h2 id="mad4b-host-authority-title">Host Authority Lifecycle</h2>';
-		echo '<p>Read-only Original305 / Original328 / Original318 status for enrolled companies. The independent Original312 issuer and Original313 signed checkpoint must be verified outside WordPress before issue or revoke can be enabled.</p>';
-		echo '<div class="notice notice-warning inline" role="status" id="mad4b-host-authority-hold"><p><strong>Signing admission on hold.</strong> Issue, Revoke and Rollback are unavailable. A registered provider or signed WordPress option is not an independent Original313 receipt.</p></div>';
+		echo '<div id="mad4b-host-authority-lifecycle" aria-labelledby="mad4b-host-authority-title">';
+		echo '<h3 id="mad4b-host-authority-title" class="screen-reader-text">Current company Host Authority</h3>';
+		echo '<p role="status"><strong>Anchor issuance is not available.</strong> The independent Original312 issuer and Original313 receipt are not certified. Existing site connections are not proof of write authority.</p>';
 		if ( empty( $data['targets'] ) ) {
-			echo '<p role="status">No verified company enrollment slots found.</p>';
+			echo '<p>No enrolled company connections were found.</p>';
 		} else {
-			echo '<div style="overflow-x:auto"><table class="widefat striped"><caption class="screen-reader-text">Current Host Authority status for enrolled companies</caption><thead><tr>';
-			foreach ( array( 'Company', 'Environment', 'Original305', 'Original328', 'WordPress Anchor', 'Revision', 'Issue provider', 'Revoke provider', 'Original313' ) as $head ) {
-				echo '<th scope="col">' . esc_html( $head ) . '</th>';
-			}
-			echo '</tr></thead><tbody>';
+			echo '<table class="widefat striped"><caption class="screen-reader-text">Company connection and Host Anchor status</caption>';
+			echo '<thead><tr><th scope="col">Company</th><th scope="col">Connection</th><th scope="col">Host Anchor</th></tr></thead><tbody>';
 			foreach ( $data['targets'] as $row ) {
-				echo '<tr>';
-				echo '<th scope="row">' . esc_html( $row['company'] ) . '</th>';
-				echo '<td>' . esc_html( $row['environment'] ) . '</td>';
-				echo '<td><code>' . esc_html( $row['original305_state'] ) . '</code></td>';
-				echo '<td>' . esc_html( $row['original328_active'] ? 'Active' : 'Not verified' ) . '</td>';
-				echo '<td><code>' . esc_html( $row['anchor_state'] ) . '</code></td>';
-				echo '<td>' . esc_html( (string) $row['anchor_revision'] ) . '</td>';
-				echo '<td>' . esc_html( $row['issue']['provider_state'] ) . '</td>';
-				echo '<td>' . esc_html( $row['revoke']['provider_state'] ) . '</td>';
-				echo '<td>Not independently certified</td></tr>';
+				$connected = 'ORIGINAL_305_PERSISTENT_PAIR_ENROLLED' === $row['original305_state']
+					&& true === $row['original328_active'];
+				$state = $connected ? 'Connected' : 'Needs verification';
+				$anchor = ( $row['wordpress_anchor_readback_verified'] ?? false )
+					? 'WordPress signature observed — independent certificate missing'
+					: 'Not issued or not verified';
+				echo '<tr><th scope="row">' . esc_html( $row['company'] . ' · ' . $row['environment'] ) . '</th>';
+				echo '<td>' . esc_html( $state ) . '</td><td>' . esc_html( $anchor ) . '</td></tr>';
 			}
-			echo '</tbody></table></div>';
+			echo '</tbody></table>';
 		}
-		echo '<h3>Lifecycle checkpoints</h3><ol>';
-		echo '<li>Owner-bound Original305/328 enrollment and exact signed Job</li>';
-		echo '<li>Purpose-specific Original312 issue or revoke with one-time reservation</li>';
-		echo '<li>Fresh WordPress Original318 readback and revision validation</li>';
-		echo '<li>Independent Original313 signed checkpoint, high-water and rollback receipt</li>';
-		echo '</ol>';
-		echo '<p><button class="button button-primary" type="button" disabled aria-describedby="mad4b-host-authority-hold">Issue Anchor</button> ';
-		echo '<button class="button" type="button" disabled aria-describedby="mad4b-host-authority-hold">Revoke Anchor</button> ';
-		echo '<button class="button" type="button" disabled aria-describedby="mad4b-host-authority-hold">Rollback</button></p>';
-		echo '<p><a class="button" href="' . esc_url( admin_url( 'admin.php?page=mad4b-operator-control-center#mad4b-host-authority-lifecycle' ) ) . '">Refresh status</a></p>';
-		echo '<p><small>WordPress has no direct access to the root-signed Original313 ledger. The API is administrator-only, GET-only, and never authorizes writes.</small></p>';
-		echo '</div>';
-	}
-}
+		echo '<p><strong>Next step:</strong> Commission the signed Original312 issue/revoke executor and independent Original313 checkpoint before enabling actions.</p>';
+		echo '<p>Issue, revoke and rollback are not shown as actions while the signed execution path is unavailable.</p>';
+		echo '<details><summary>Technical evidence and exact provider states</summary>';
+		echo '<p>This is a WordPress observation only. Root high-water and Original313 certificates are not verifiable from this page.</p>';
+		if ( ! empty( $data['targets'] ) ) {
+			echo '<table class="widefat striped"><caption class="screen-reader-text">Exact Original305, Original328, Original318 and provider readbacks</caption>';
+			echo '<thead><tr><th scope="col">Scope</th><th scope="col">Original305</th><th scope="col">Original328</th><th scope="col">Original318</th><th scope="col">Revision</th><th scope="col">Issue provider</th><th scope="col">Revoke provider</th><th scope="col">Original313</th></tr></thead><tbody>';
+			foreach ( $data['targets'] as $row ) {
+				echo '<tr><th scope="row">' . esc_html( $row['company'] . ':' . $row['environment'] ) . '</th>';
+				foreach ( array(
+					$row['original305_state'], $row['original328_active'] ? 'Active' : 'Not verified',
+					$row['anchor_state'], (string) $row['anchor_revision'],
+					$row['issue']['provider_state'], $row['revoke']['provider_state'],
+					'Not independently certified',
+				) as $value ) echo '<td><code>' . esc_html( $value ) . '</code></td>';
+				echo '</tr>';
+			}
+			echo '</tbody></table>';
+		}
+		echo '</details></div>';
+	}}
