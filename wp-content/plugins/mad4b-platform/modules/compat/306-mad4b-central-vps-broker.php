@@ -37,15 +37,72 @@ final class MAD4B_Central_VPS_Broker_V1 {
             || ($grant['operation']??'')!==($request['operation']??'')
             || (isset($grant['expires_epoch']) && (int)$grant['expires_epoch']<=time()))
             return self::deny('grant_not_active',409);
+        // A Host Anchor v2 grant is purpose-bound, NEVER the general WPCLI
+        // grant. The parent Original328 WPCLI grant establishes transport
+        // identity only. Reject all crossed operation/format combinations.
+        $hostAnchorOperation=in_array(($request['operation']??null),[
+            'company.host-authority.anchor.issue',
+            'company.host-authority.anchor.revoke'],true);
+        $hostAnchorFormat=($request['command_format']??null)==='host.anchor.ref.v2';
+        if ($hostAnchorOperation!==$hostAnchorFormat)
+            return self::deny('host_anchor_v2_operation_format_mismatch',403);
+        $hostAnchorV2=$hostAnchorOperation&&$hostAnchorFormat;
+        $bootstrapOnly=$hostAnchorV2
+            &&($grant['host_v2_bootstrap_only']??null)===true
+            &&($request['host_v2_bootstrap_only']??null)===true
+            &&($request['operation']??null)==='company.host-authority.anchor.issue'
+            &&($request['host_anchor_identity']['authority_mode']??null)==='bootstrap'
+            &&class_exists('MAD4B_Original_Native_Operation_Providers_V1',false)
+            &&MAD4B_Original_Native_Operation_Providers_V1::
+                first_anchor_bootstrap_intake_registered(
+                    $request['operation'],'host','host.anchor.ref.v2');
+        $signedOperational=$hostAnchorV2
+            &&($grant['host_v2_bootstrap_only']??false)!==true
+            &&($request['host_v2_bootstrap_only']??false)!==true
+            &&class_exists('MAD4B_Original_Native_Operation_Providers_V1',false)
+            &&MAD4B_Original_Native_Operation_Providers_V1::legacy_admitted(
+                (string)$request['operation'],'host','host.anchor.ref.v2');
+        if($hostAnchorV2&&!$bootstrapOnly&&!$signedOperational)
+            return self::deny('host_anchor_bootstrap_or_signed_issuer_required',403);
         if (($request['grant_mode']??'one_time')==='persistent') {
             $transport=get_option(MAD4B_Central_SSH_Command_Intake_V1::TRANSPORT_PREFIX.
                 (string)($request['transport_id']??''),false);
+            $anchorParentValid=false;
+            if ($hostAnchorV2 && is_array($transport)
+                && class_exists('MAD4B_Company_Native_WPCLI_Enrollment_V1',false)
+                && class_exists('MAD4B_Original_Remote_Hostinger_328_V1',false)
+                && class_exists('MAD4B_Original_Native_Operation_Providers_V1',false)) {
+                $slot=get_option(MAD4B_Company_Native_WPCLI_Enrollment_V1::SLOT.
+                    $company.'_'.(string)($request['environment']??''),false);
+                $parent=is_array($slot)
+                    ?get_option(MAD4B_Central_SSH_Command_Intake_V1::PREFIX.
+                        (string)($slot['grant_id']??''),false):false;
+                $anchorParentValid=is_array($slot)&&is_array($parent)
+                    &&($slot['transport_id']??null)===($request['transport_id']??null)
+                    &&($parent['grant_id']??null)===($grant['original328_parent_grant_id']??null)
+                    &&($parent['operation']??null)==='company.remote.wpcli.full'
+                    &&($parent['state']??null)==='CENTRAL_OPERATION_SCOPE_GRANTED'
+                    &&($parent['company']??null)===$company
+                    &&($parent['site_uuid']??null)===($request['site_uuid']??null)
+                    &&($parent['environment']??null)===($request['environment']??null)
+                    &&($parent['central_principal_id']??null)===($grant['central_principal_id']??null)
+                    &&($parent['transport_id']??null)===($request['transport_id']??null)
+                    &&($grant['principal_type']??null)==='signed_host_principal_v2'
+                    &&($grant['target_host_id']??null)===($request['target_host_id']??null)
+                    &&($request['target_scope']??null)==='host'
+                    &&($transport['state']??null)==='REMOTE_HOSTINGER_WPCLI_ACCESS_VERIFIED'
+                    &&MAD4B_Original_Remote_Hostinger_328_V1::active($transport,$parent)
+                    &&($bootstrapOnly||$signedOperational);
+            }
             if (!is_array($transport)
-                || !class_exists('MAD4B_Original_Verified_WPCLI_Transport_V1',false)
-                || !MAD4B_Original_Verified_WPCLI_Transport_V1::permitted($transport,$grant)
+                || ($hostAnchorV2 ? !$anchorParentValid
+                    : (!class_exists('MAD4B_Original_Verified_WPCLI_Transport_V1',false)
+                        || !MAD4B_Original_Verified_WPCLI_Transport_V1::permitted($transport,$grant)))
                 || ($transport['company']??'')!==$company
                 || ($transport['host_id']??'')!==($request['target_host_id']??'')
-                || ($transport['site_uuid']??'')!==($request['site_uuid']??''))
+                || ($transport['site_uuid']??'')!==($request['site_uuid']??'')
+                || ($transport['environment']??'')!==($request['environment']??'')
+                || ($transport['canonical_origin']??'')!==($request['canonical_origin']??''))
                 return self::deny('transport_revoked_or_invalid',409);
         }
         // This is the central host workload, not a customer in Company Manager.
@@ -193,6 +250,9 @@ final class MAD4B_Central_VPS_Broker_V1 {
             'authority_mode'=>$identity['authority_mode'],
             'host_anchor_issuer_commissioned'=>false,
             'original313_receipt_signed'=>false,
+            // Explicit nonauthorizing intent: the Broker only enqueues the
+            // first Bootstrap; Original312/313 still refuse execution.
+            'host_v2_bootstrap_only'=>($source['host_v2_bootstrap_only']??false)===true,
         ];
     }
 
@@ -274,8 +334,17 @@ final class MAD4B_Central_VPS_Broker_V1 {
                     || !class_exists('MAD4B_Original_Remote_Hostinger_328_V1',false)
                     || !MAD4B_Original_Remote_Hostinger_328_V1::active($transport,$parent)
                     || !class_exists('MAD4B_Original_Native_Operation_Providers_V1',false)
-                    || !MAD4B_Original_Native_Operation_Providers_V1::legacy_admitted(
-                        (string)$source['operation'],'host','host.anchor.ref.v2'))
+                    || !( (($source['host_v2_bootstrap_only']??false)===true
+                       &&($source['operation']??null)==='company.host-authority.anchor.issue'
+                       &&($source['host_anchor_identity']['authority_mode']??null)==='bootstrap'
+                       &&($grant['host_v2_bootstrap_only']??null)===true
+                       &&MAD4B_Original_Native_Operation_Providers_V1::
+                           first_anchor_bootstrap_intake_registered(
+                             (string)$source['operation'],'host','host.anchor.ref.v2'))
+                      || (($source['host_v2_bootstrap_only']??false)===false
+                        &&($grant['host_v2_bootstrap_only']??false)===false
+                        &&MAD4B_Original_Native_Operation_Providers_V1::legacy_admitted(
+                          (string)$source['operation'],'host','host.anchor.ref.v2')) ))
                     return self::deny('original_host_v2_owner_parent328_not_verified',403);
             } else {
                 // Preserve exactly the existing remote host-Shell scope.
