@@ -566,6 +566,18 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		return false;
 	}
 
+	/**
+	 * Return an exact, trusted ChatGPT client only AFTER the current bearer
+	 * was verified (RS256/issuer/audience/user/scope) and its client fingerprint
+	 * matches the same signed token's client_id claim. No arbitrary URL lookup.
+	 */
+	public static function verified_bearer_trusted_chatgpt_client_id() {
+		if ( ! self::verified_bearer_active() || ! class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) ) return '';
+		$id = isset( self::$verified_context['client_id'] ) ? self::$verified_context['client_id'] : '';
+		if ( ! MAD4B_SCP_Local_OAuth_Server::trusted_chatgpt_client_id( $id ) ) return '';
+		return self::verified_bearer_client_is( $id ) ? $id : '';
+	}
+
 	/** Reset request-local OAuth authority before a bearer is evaluated. */
 	public static function reset_verified_bearer_context( $bearer_request = false ) {
 		self::$verified_context = null;
@@ -702,6 +714,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			'subject_fingerprint' => $subject_fingerprint,
 			'issuer_fingerprint' => isset( $verified['issuer_fingerprint'] ) ? (string) $verified['issuer_fingerprint'] : '',
 			'client_fingerprint' => isset( $verified['client_fingerprint'] ) ? (string) $verified['client_fingerprint'] : '',
+			'client_id' => isset( $verified['client_id'] ) ? (string) $verified['client_id'] : '',
 			'session_fingerprint' => isset( $verified['session_fingerprint'] ) ? (string) $verified['session_fingerprint'] : '',
 			'token_scopes' => $verified['scopes'],
 			'approval_ticket_id' => '',
@@ -719,7 +732,11 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 
 	public static function filter_identity_context( $context ) {
 		if ( ! is_array( $context ) || ! is_array( self::$verified_context ) ) return $context;
-		return array_merge( $context, self::$verified_context );
+		// Keep the exact client ID request-local. Expose only its existing
+		// fingerprint through the public identity-context contract.
+		$safe_context = self::$verified_context;
+		unset( $safe_context['client_id'] );
+		return array_merge( $context, $safe_context );
 	}
 
 	/**
@@ -835,6 +852,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			'subject' => $subject,
 			'scopes' => $scopes,
 			'issuer_fingerprint' => self::issuer_fingerprint_for_issuer( $issuer ),
+			'client_id' => $client_id,
 			'client_fingerprint' => '' !== $client_id ? hash( 'sha256', 'oauth-client' . "\0" . $issuer . "\0" . $client_id ) : '',
 			'session_fingerprint' => '' !== $jti ? hash( 'sha256', 'oauth-token-instance' . "\0" . $issuer . "\0" . $jti ) : '',
 		);

@@ -72,7 +72,10 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 		if ( 'oauth2_bearer' !== ( isset( $handshake['auth_method'] ) ? (string) $handshake['auth_method'] : '' ) ) return false;
 		if ( empty( $identity['wp_user_id'] ) || empty( $handshake['wp_user_id'] ) || (int) $identity['wp_user_id'] !== (int) $handshake['wp_user_id'] ) return false;
 		if ( self::SERVER_ID !== ( isset( $handshake['server_id'] ) ? (string) $handshake['server_id'] : '' ) || self::SERVER_ID !== ( isset( $attestation['server_id'] ) ? (string) $attestation['server_id'] : '' ) ) return false;
-		if ( self::CHATGPT_CLIENT_ID !== ( isset( $handshake['client_id'] ) ? (string) $handshake['client_id'] : '' ) || self::CHATGPT_CLIENT_ID !== ( isset( $attestation['client_id'] ) ? (string) $attestation['client_id'] : '' ) ) return false;
+		if ( ! class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) ||
+			! MAD4B_SCP_Local_OAuth_Server::trusted_chatgpt_client_ids_match(
+				isset( $handshake['client_id'] ) ? $handshake['client_id'] : '',
+				isset( $attestation['client_id'] ) ? $attestation['client_id'] : '' ) ) return false;
 		$issuer = isset( $oauth['issuer'] ) ? rtrim( (string) $oauth['issuer'], '/' ) : '';
 		$resource = isset( $oauth['resource'] ) ? untrailingslashit( (string) $oauth['resource'] ) : '';
 		$handshake_issuer = isset( $handshake['issuer'] ) ? rtrim( (string) $handshake['issuer'], '/' ) : '';
@@ -148,7 +151,10 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 		$verified_at = isset( $evidence['verified_at'] ) ? sanitize_text_field( (string) $evidence['verified_at'] ) : '';
 		$server_id = isset( $evidence['server_id'] ) ? sanitize_key( (string) $evidence['server_id'] ) : '';
 		$auth_method = isset( $evidence['auth_method'] ) ? sanitize_key( (string) $evidence['auth_method'] ) : '';
-		$previously_verified = self::SERVER_ID === $server_id
+		$recorded_client_id = isset( $evidence['client_id'] ) ? (string) $evidence['client_id'] : '';
+		$previously_verified = class_exists( 'MAD4B_SCP_Local_OAuth_Server' )
+			&& MAD4B_SCP_Local_OAuth_Server::trusted_chatgpt_client_id( $recorded_client_id )
+			&& self::SERVER_ID === $server_id
 			&& 'oauth2_bearer' === $auth_method
 			&& ! empty( $evidence['wp_user_id'] )
 			&& '' !== $verified_at
@@ -322,7 +328,8 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 		$current_environment = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( class_exists( 'MAD4B_SCP_Site_Profile' ) ? sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() ) : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' ) );
 		$current_resource = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ? MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier() : '';
 		if ( ! self::environment_allowed( $current_environment ) || '' === $environment || ! hash_equals( $current_environment, $environment ) ) { $base['status'] = 'environment_mismatch'; return $base; }
-		if ( self::SERVER_ID !== $server_id || ! hash_equals( self::CHATGPT_CLIENT_ID, $client_id ) ) { $base['status'] = 'client_or_server_mismatch'; return $base; }
+		if ( self::SERVER_ID !== $server_id || ! class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) ||
+			! MAD4B_SCP_Local_OAuth_Server::trusted_chatgpt_client_id( $client_id ) ) { $base['status'] = 'client_or_server_mismatch'; return $base; }
 		if ( '' === $current_resource || ! hash_equals( $current_resource, $resource ) ) { $base['status'] = 'resource_mismatch'; return $base; }
 		if ( 'oauth2_bearer' !== $auth_method || $wp_user_id < 1 || ! $base['subject_fingerprint_present'] || ! $base['mcp_session_fingerprint_present'] ) { $base['status'] = 'subject_or_session_invalid'; return $base; }
 		if ( ! in_array( self::REQUIRED_SCOPE, $scope_set, true ) || $tool_count < 1 || '' === $issuer ) { $base['status'] = 'handshake_incomplete'; return $base; }
@@ -605,7 +612,9 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 		if ( empty( $claims['iss'] ) || ! is_string( $claims['iss'] ) || ! hash_equals( $issuer, rtrim( $claims['iss'], '/' ) ) ) return null;
 		if ( empty( $claims['resource'] ) || ! is_string( $claims['resource'] ) || ! hash_equals( $resource, untrailingslashit( $claims['resource'] ) ) ) return null;
 		$client_id = isset( $claims['client_id'] ) && is_string( $claims['client_id'] ) ? trim( $claims['client_id'] ) : '';
-		if ( ! hash_equals( self::CHATGPT_CLIENT_ID, $client_id ) ) return null;
+		if ( ! class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) ||
+			! MAD4B_SCP_Local_OAuth_Server::trusted_chatgpt_client_id( $client_id ) ||
+			! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is( $client_id ) ) return null;
 
 		return array(
 			'environment' => class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( class_exists( 'MAD4B_SCP_Site_Profile' ) ? sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() ) : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' ) ),

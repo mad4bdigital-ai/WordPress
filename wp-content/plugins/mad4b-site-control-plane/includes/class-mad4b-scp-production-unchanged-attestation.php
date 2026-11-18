@@ -264,7 +264,9 @@ final class MAD4B_SCP_Production_Unchanged_Attestation {
 		$scopes = isset( $identity['token_scopes'] ) && is_array( $identity['token_scopes'] ) ? $identity['token_scopes'] : array();
 		if ( ! in_array( 'mad4b:read', $scopes, true ) ) return false;
 		$external = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::external_handshake_attestation_status() : array();
-		return ! empty( $external['verified'] ) && ( empty( $external['client_id'] ) || 'https://chatgpt.com/oauth/client.json' === (string) $external['client_id'] );
+		return ! empty( $external['verified'] ) && class_exists( 'MAD4B_SCP_Local_OAuth_Server' )
+			&& MAD4B_SCP_Local_OAuth_Server::trusted_chatgpt_client_id( isset( $external['client_id'] ) ? $external['client_id'] : '' )
+			&& MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is( (string) $external['client_id'] );
 	}
 
 	private static function current_candidate() {
