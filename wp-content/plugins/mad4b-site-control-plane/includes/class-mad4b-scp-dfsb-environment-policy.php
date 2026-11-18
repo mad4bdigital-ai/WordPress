@@ -55,7 +55,12 @@ final class MAD4B_SCP_DFSB_Environment_Policy {
     }
 
     public static function boot() {
-        add_action( 'admin_menu', array( __CLASS__, 'menu' ) );
+        // The shared route registry owns parent-before-child scheduling.
+        // With no registered Admin route authority, no submenu is created.
+        if ( class_exists( 'MAD4B_SCP_Admin_Route_Registry', false ) ) {
+            MAD4B_SCP_Admin_Route_Registry::register( 'mad4b-dfsb-environments', 'manage_options' );
+            MAD4B_SCP_Admin_Route_Registry::schedule_submenu( array( __CLASS__, 'menu' ), 92 );
+        }
         add_action( 'admin_post_mad4b_scp_dfsb_policy_save', array( __CLASS__, 'save' ) );
     }
 

@@ -4015,7 +4015,10 @@
         "AI-01",
         "GOVERNANCE-01",
         "PLATFORM-01",
-        "SECURITY-01"
+        "SECURITY-01",
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
       ],
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
@@ -4073,7 +4076,11 @@
         "EXECUTION-01",
         "GOVERNANCE-01",
         "PLATFORM-01",
-        "SECURITY-01"
+        "SECURITY-01",
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
       ],
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
@@ -4151,7 +4158,10 @@
         "AI-01",
         "GOVERNANCE-01",
         "PLATFORM-01",
-        "SECURITY-01"
+        "SECURITY-01",
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
       ],
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
@@ -4221,6 +4231,423 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing governance checks apply, with no bootstrap, no capability admission and no write authority from source capture.",
       "review_rationale": "Original installed Tours.dev file was SHA256-verified against the 995-file frozen capture, then copied byte-identically into a new, non-bootstrapped Git source-only candidate. No module require, WordPress route registration, grants, queue claim, original execution or company install is enabled in this PR. Same-PR negative PHP fixtures confirm frozen source and unactivated bootstrap."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-booking-readiness",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent static provider/capability reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original site identity, authorization, provider and execution controls remain authoritative. This captured module has no new main-bootstrap include, so static discovery of identifiers does not certify runtime registration or authority.",
+      "review_rationale": "This source-only Tours.dev module introduces an identifiable candidate ability:mad4b/chatbotx-booking-readiness. A same-PR executable regression pins the exact candidate ID to its sealed source file and checks it is not loaded in the candidate main bootstrap. Further per-ability behavior, registration and security acceptance remain prerequisites for any future activation, especially for ChatbotX write abilities."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-business-context",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent static provider/capability reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original site identity, authorization, provider and execution controls remain authoritative. This captured module has no new main-bootstrap include, so static discovery of identifiers does not certify runtime registration or authority.",
+      "review_rationale": "This source-only Tours.dev module introduces an identifiable candidate ability:mad4b/chatbotx-business-context. A same-PR executable regression pins the exact candidate ID to its sealed source file and checks it is not loaded in the candidate main bootstrap. Further per-ability behavior, registration and security acceptance remain prerequisites for any future activation, especially for ChatbotX write abilities."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-channels-read",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent static provider/capability reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original site identity, authorization, provider and execution controls remain authoritative. This captured module has no new main-bootstrap include, so static discovery of identifiers does not certify runtime registration or authority.",
+      "review_rationale": "This source-only Tours.dev module introduces an identifiable candidate ability:mad4b/chatbotx-channels-read. A same-PR executable regression pins the exact candidate ID to its sealed source file and checks it is not loaded in the candidate main bootstrap. Further per-ability behavior, registration and security acceptance remain prerequisites for any future activation, especially for ChatbotX write abilities."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-commerce-route-plan",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent static provider/capability reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original site identity, authorization, provider and execution controls remain authoritative. This captured module has no new main-bootstrap include, so static discovery of identifiers does not certify runtime registration or authority.",
+      "review_rationale": "This source-only Tours.dev module introduces an identifiable candidate ability:mad4b/chatbotx-commerce-route-plan. A same-PR executable regression pins the exact candidate ID to its sealed source file and checks it is not loaded in the candidate main bootstrap. Further per-ability behavior, registration and security acceptance remain prerequisites for any future activation, especially for ChatbotX write abilities."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-cpt-create-draft",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent static provider/capability reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original site identity, authorization, provider and execution controls remain authoritative. This captured module has no new main-bootstrap include, so static discovery of identifiers does not certify runtime registration or authority.",
+      "review_rationale": "This source-only Tours.dev module introduces an identifiable candidate ability:mad4b/chatbotx-cpt-create-draft. A same-PR executable regression pins the exact candidate ID to its sealed source file and checks it is not loaded in the candidate main bootstrap. Further per-ability behavior, registration and security acceptance remain prerequisites for any future activation, especially for ChatbotX write abilities."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-cpt-product-source",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent static provider/capability reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original site identity, authorization, provider and execution controls remain authoritative. This captured module has no new main-bootstrap include, so static discovery of identifiers does not certify runtime registration or authority.",
+      "review_rationale": "This source-only Tours.dev module introduces an identifiable candidate ability:mad4b/chatbotx-cpt-product-source. A same-PR executable regression pins the exact candidate ID to its sealed source file and checks it is not loaded in the candidate main bootstrap. Further per-ability behavior, registration and security acceptance remain prerequisites for any future activation, especially for ChatbotX write abilities."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-integration-inventory",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent static provider/capability reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original site identity, authorization, provider and execution controls remain authoritative. This captured module has no new main-bootstrap include, so static discovery of identifiers does not certify runtime registration or authority.",
+      "review_rationale": "This source-only Tours.dev module introduces an identifiable candidate ability:mad4b/chatbotx-integration-inventory. A same-PR executable regression pins the exact candidate ID to its sealed source file and checks it is not loaded in the candidate main bootstrap. Further per-ability behavior, registration and security acceptance remain prerequisites for any future activation, especially for ChatbotX write abilities."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-presentation-context",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent static provider/capability reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original site identity, authorization, provider and execution controls remain authoritative. This captured module has no new main-bootstrap include, so static discovery of identifiers does not certify runtime registration or authority.",
+      "review_rationale": "This source-only Tours.dev module introduces an identifiable candidate ability:mad4b/chatbotx-presentation-context. A same-PR executable regression pins the exact candidate ID to its sealed source file and checks it is not loaded in the candidate main bootstrap. Further per-ability behavior, registration and security acceptance remain prerequisites for any future activation, especially for ChatbotX write abilities."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-pricing-preview",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent static provider/capability reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original site identity, authorization, provider and execution controls remain authoritative. This captured module has no new main-bootstrap include, so static discovery of identifiers does not certify runtime registration or authority.",
+      "review_rationale": "This source-only Tours.dev module introduces an identifiable candidate ability:mad4b/chatbotx-pricing-preview. A same-PR executable regression pins the exact candidate ID to its sealed source file and checks it is not loaded in the candidate main bootstrap. Further per-ability behavior, registration and security acceptance remain prerequisites for any future activation, especially for ChatbotX write abilities."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-provider-snapshot",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent static provider/capability reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original site identity, authorization, provider and execution controls remain authoritative. This captured module has no new main-bootstrap include, so static discovery of identifiers does not certify runtime registration or authority.",
+      "review_rationale": "This source-only Tours.dev module introduces an identifiable candidate ability:mad4b/chatbotx-provider-snapshot. A same-PR executable regression pins the exact candidate ID to its sealed source file and checks it is not loaded in the candidate main bootstrap. Further per-ability behavior, registration and security acceptance remain prerequisites for any future activation, especially for ChatbotX write abilities."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-remote-health",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent static provider/capability reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original site identity, authorization, provider and execution controls remain authoritative. This captured module has no new main-bootstrap include, so static discovery of identifiers does not certify runtime registration or authority.",
+      "review_rationale": "This source-only Tours.dev module introduces an identifiable candidate ability:mad4b/chatbotx-remote-health. A same-PR executable regression pins the exact candidate ID to its sealed source file and checks it is not loaded in the candidate main bootstrap. Further per-ability behavior, registration and security acceptance remain prerequisites for any future activation, especially for ChatbotX write abilities."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-support-add-note",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent static provider/capability reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original site identity, authorization, provider and execution controls remain authoritative. This captured module has no new main-bootstrap include, so static discovery of identifiers does not certify runtime registration or authority.",
+      "review_rationale": "This source-only Tours.dev module introduces an identifiable candidate ability:mad4b/chatbotx-support-add-note. A same-PR executable regression pins the exact candidate ID to its sealed source file and checks it is not loaded in the candidate main bootstrap. Further per-ability behavior, registration and security acceptance remain prerequisites for any future activation, especially for ChatbotX write abilities."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-support-create-ticket",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent static provider/capability reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original site identity, authorization, provider and execution controls remain authoritative. This captured module has no new main-bootstrap include, so static discovery of identifiers does not certify runtime registration or authority.",
+      "review_rationale": "This source-only Tours.dev module introduces an identifiable candidate ability:mad4b/chatbotx-support-create-ticket. A same-PR executable regression pins the exact candidate ID to its sealed source file and checks it is not loaded in the candidate main bootstrap. Further per-ability behavior, registration and security acceptance remain prerequisites for any future activation, especially for ChatbotX write abilities."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-write-preflight",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent static provider/capability reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original site identity, authorization, provider and execution controls remain authoritative. This captured module has no new main-bootstrap include, so static discovery of identifiers does not certify runtime registration or authority.",
+      "review_rationale": "This source-only Tours.dev module introduces an identifiable candidate ability:mad4b/chatbotx-write-preflight. A same-PR executable regression pins the exact candidate ID to its sealed source file and checks it is not loaded in the candidate main bootstrap. Further per-ability behavior, registration and security acceptance remain prerequisites for any future activation, especially for ChatbotX write abilities."
+    },
+    {
+      "id": "ability:mad4b/company-code-release-dispatch",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent static provider/capability reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original site identity, authorization, provider and execution controls remain authoritative. This captured module has no new main-bootstrap include, so static discovery of identifiers does not certify runtime registration or authority.",
+      "review_rationale": "This source-only Tours.dev module introduces an identifiable candidate ability:mad4b/company-code-release-dispatch. A same-PR executable regression pins the exact candidate ID to its sealed source file and checks it is not loaded in the candidate main bootstrap. Further per-ability behavior, registration and security acceptance remain prerequisites for any future activation, especially for ChatbotX write abilities."
+    },
+    {
+      "id": "ability:mad4b/company-code-release-readiness",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent static provider/capability reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original site identity, authorization, provider and execution controls remain authoritative. This captured module has no new main-bootstrap include, so static discovery of identifiers does not certify runtime registration or authority.",
+      "review_rationale": "This source-only Tours.dev module introduces an identifiable candidate ability:mad4b/company-code-release-readiness. A same-PR executable regression pins the exact candidate ID to its sealed source file and checks it is not loaded in the candidate main bootstrap. Further per-ability behavior, registration and security acceptance remain prerequisites for any future activation, especially for ChatbotX write abilities."
+    },
+    {
+      "id": "ability:mad4b/faore-staging-canary-plan",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent static provider/capability reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original site identity, authorization, provider and execution controls remain authoritative. This captured module has no new main-bootstrap include, so static discovery of identifiers does not certify runtime registration or authority.",
+      "review_rationale": "This source-only Tours.dev module introduces an identifiable candidate ability:mad4b/faore-staging-canary-plan. A same-PR executable regression pins the exact candidate ID to its sealed source file and checks it is not loaded in the candidate main bootstrap. Further per-ability behavior, registration and security acceptance remain prerequisites for any future activation, especially for ChatbotX write abilities."
+    },
+    {
+      "id": "ability:mad4b/faore-staging-canary-verify",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent static provider/capability reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original site identity, authorization, provider and execution controls remain authoritative. This captured module has no new main-bootstrap include, so static discovery of identifiers does not certify runtime registration or authority.",
+      "review_rationale": "This source-only Tours.dev module introduces an identifiable candidate ability:mad4b/faore-staging-canary-verify. A same-PR executable regression pins the exact candidate ID to its sealed source file and checks it is not loaded in the candidate main bootstrap. Further per-ability behavior, registration and security acceptance remain prerequisites for any future activation, especially for ChatbotX write abilities."
+    },
+    {
+      "id": "ability:mad4b/guided-continuation-run",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent static provider/capability reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original site identity, authorization, provider and execution controls remain authoritative. This captured module has no new main-bootstrap include, so static discovery of identifiers does not certify runtime registration or authority.",
+      "review_rationale": "This source-only Tours.dev module introduces an identifiable candidate ability:mad4b/guided-continuation-run. A same-PR executable regression pins the exact candidate ID to its sealed source file and checks it is not loaded in the candidate main bootstrap. Further per-ability behavior, registration and security acceptance remain prerequisites for any future activation, especially for ChatbotX write abilities."
+    },
+    {
+      "id": "ability:mad4b/runtime-convergence-status",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent static provider/capability reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original site identity, authorization, provider and execution controls remain authoritative. This captured module has no new main-bootstrap include, so static discovery of identifiers does not certify runtime registration or authority.",
+      "review_rationale": "This source-only Tours.dev module introduces an identifiable candidate ability:mad4b/runtime-convergence-status. A same-PR executable regression pins the exact candidate ID to its sealed source file and checks it is not loaded in the candidate main bootstrap. Further per-ability behavior, registration and security acceptance remain prerequisites for any future activation, especially for ChatbotX write abilities."
+    },
+    {
+      "id": "ability:mad4b/skills-runtime-certification",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent static provider/capability reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original site identity, authorization, provider and execution controls remain authoritative. This captured module has no new main-bootstrap include, so static discovery of identifiers does not certify runtime registration or authority.",
+      "review_rationale": "This source-only Tours.dev module introduces an identifiable candidate ability:mad4b/skills-runtime-certification. A same-PR executable regression pins the exact candidate ID to its sealed source file and checks it is not loaded in the candidate main bootstrap. Further per-ability behavior, registration and security acceptance remain prerequisites for any future activation, especially for ChatbotX write abilities."
+    },
+    {
+      "id": "ability:mad4b/write-runtime-certification",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent static provider/capability reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original site identity, authorization, provider and execution controls remain authoritative. This captured module has no new main-bootstrap include, so static discovery of identifiers does not certify runtime registration or authority.",
+      "review_rationale": "This source-only Tours.dev module introduces an identifiable candidate ability:mad4b/write-runtime-certification. A same-PR executable regression pins the exact candidate ID to its sealed source file and checks it is not loaded in the candidate main bootstrap. Further per-ability behavior, registration and security acceptance remain prerequisites for any future activation, especially for ChatbotX write abilities."
+    },
+    {
+      "id": "rest:mad4b/v1/core-ai/usage",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ],
+      "owner_role": "Independent static provider/capability reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original site identity, authorization, provider and execution controls remain authoritative. This captured module has no new main-bootstrap include, so static discovery of identifiers does not certify runtime registration or authority.",
+      "review_rationale": "This source-only Tours.dev module introduces an identifiable candidate rest:mad4b/v1/core-ai/usage. A same-PR executable regression pins the exact candidate ID to its sealed source file and checks it is not loaded in the candidate main bootstrap. Further per-ability behavior, registration and security acceptance remain prerequisites for any future activation, especially for ChatbotX write abilities."
     }
   ],
   "lifecycle": [],
@@ -12800,7 +13227,10 @@
         "AI-01",
         "GOVERNANCE-01",
         "PLATFORM-01",
-        "SECURITY-01"
+        "SECURITY-01",
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
       ],
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
@@ -12861,7 +13291,11 @@
         "EXECUTION-01",
         "GOVERNANCE-01",
         "PLATFORM-01",
-        "SECURITY-01"
+        "SECURITY-01",
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
       ],
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
@@ -12943,7 +13377,10 @@
         "AI-01",
         "GOVERNANCE-01",
         "PLATFORM-01",
-        "SECURITY-01"
+        "SECURITY-01",
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
       ],
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
@@ -13016,6 +13453,28 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing source provenance, site isolation, provider, execution and change-control checks remain mandatory; these files are held in unactivated source-only scope and do not introduce a new authorization surface.",
       "review_rationale": "Original installed Tours.dev file was SHA256-verified against the 995-file frozen capture, then copied byte-identically into a new, non-bootstrapped Git source-only candidate. No module require, WordPress route registration, grants, queue claim, original execution or company install is enabled in this PR. Same-PR negative PHP fixtures confirm frozen source and unactivated bootstrap."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dfsb-environment-policy.php",
+      "source_blob_sha": "df85edf5bc9e5f967ea806ea68acc5612f80db6f",
+      "control_ids": [
+        "PROVIDERS-01",
+        "PROVIDERS-02",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-route-registry-contract.py"
+      ],
+      "owner_role": "Independent source-preservation and site-neutral review — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source provenance, site isolation, provider, execution and change-control checks remain mandatory; these files are held in unactivated source-only scope and do not introduce a new authorization surface.",
+      "review_rationale": "Original frozen Tours.dev SHA256 remains recorded separately and its original review is immutable. This successor keeps the same default-deny environment policy but replaces direct admin_menu registration with the reviewed Admin Route Registry::register and schedule_submenu, enforcing parent-order and manage_options on future explicit boot. No plugin bootstrap includes this source-only file; same-PR parent-order and sealed-source regressions enforce both boundaries."
     }
   ],
   "code_change_rules": {

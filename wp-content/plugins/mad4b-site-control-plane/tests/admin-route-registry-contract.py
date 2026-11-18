@@ -130,4 +130,11 @@ for filename, slug in (
 
 if checked < 14:
     raise SystemExit('FAIL incomplete admin page inventory')
+# The source-only DFSB environment policy is not allowed to bypass the
+# canonical parent route while dormant or after a later explicit boot.
+dfsb = (root / 'includes/class-mad4b-scp-dfsb-environment-policy.php').read_text()
+assert "MAD4B_SCP_Admin_Route_Registry::register( 'mad4b-dfsb-environments', 'manage_options' );" in dfsb
+assert "MAD4B_SCP_Admin_Route_Registry::schedule_submenu( array( __CLASS__, 'menu' ), 92 );" in dfsb
+assert "add_action( 'admin_menu', array( __CLASS__, 'menu' ) );" not in dfsb
+assert "admin_post_mad4b_scp_dfsb_policy_save" in dfsb
 print(f'Admin route link contract: PASS ({checked} page declarations)')

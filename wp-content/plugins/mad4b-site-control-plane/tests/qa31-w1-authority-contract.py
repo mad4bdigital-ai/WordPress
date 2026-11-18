@@ -34,3 +34,14 @@ for filename,marker in cases.items():
         raise SystemExit('QA31_W1_CONTRACT: FAIL '+filename)
     print('PASS '+filename)
 print('QA31_W1_AUTHORITY_CONTRACT: PASS '+str(len(cases))+' executed hermetic PHP tests')
+
+
+# The original local Ollama ability remains preserved as source only: it is
+# not loaded by the candidate's main bootstrap and cannot admit native write.
+plugin=root.parent
+ollama=(plugin/'includes/class-mad4b-scp-local-ollama-ability.php').read_text()
+boot=(plugin/'mad4b-site-control-plane.php').read_text()
+assert "'mad4b/ollama-inference'" in ollama
+assert "class-mad4b-scp-local-ollama-ability.php" not in boot
+assert "MAD4B_SCP_Local_Ollama_Ability::boot();" not in boot
+print('SOURCE_ONLY_OLLAMA_NO_BOOT: PASS')
