@@ -113,4 +113,3 @@ check( false !== strpos( render( 'render_write_governance_readiness' ), 'runtime
 MAD4B_SCP_Staging_Write_Authority::$current = true;
 check( false !== strpos( render( 'render_write_governance_readiness' ), 'Governed Drive write checkpoint is current.' ), 'Current checkpoint was not rendered, or obsolete variables survived' );
 echo "Context admin recovery render/handler runtime: PASS\n";
-
