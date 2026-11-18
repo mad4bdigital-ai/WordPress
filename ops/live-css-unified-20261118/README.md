@@ -152,3 +152,21 @@ functions for archive, taxonomy, post and tour cases. Both scripts were
 reconciled to original live source, backed up and atomically deployed.
 No WCML, WPML, payment or page template data was changed. New category
 certification still requires real independent Chromium QA.
+
+## Category-only negative-proof invalidation after original browser identity repair
+Wayfatours history contained Category Interests and Uncategorized HOLD records
+from the old false term-ID body-class assertion. Their historical retry
+cooldowns blocked an immediate fresh QA pass even after the correct
+category-ID source parser had been atomically installed. The original
+public-route source_key and optimizer_source_key now include a versioned
+core-category-body-class category-id-v2 fingerprint for type category only.
+This opens one normal browser re-qualification opportunity per affected
+category source, while preserving original visit and CSS byte checks, WPML,
+WCML, dependency gates, ordinary cooldowns after the new attempt, and all
+old receipt files until Chromium certifies a replacement.
+
+Twelve focused tests prove only category historical IDs are invalidated,
+that an old historical HOLD can retry without manually deleting a ledger,
+that the original ledger stays unchanged until the browser returns, and
+that every other public route type retains its exact original source key.
+No global cache purge or category post data was edited.

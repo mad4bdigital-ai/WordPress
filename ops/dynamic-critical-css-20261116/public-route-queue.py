@@ -58,6 +58,13 @@ def source_key(cat,r,state,depends_on_listings=False):
           str(cat.get('listing_generation',0)) if (r['type'] not in ['page','post'] or depends_on_listings) else '',
           str(state.get('css_epoch')),str(state.get('native_breakpoint')),
           str(state.get('critical_css')),str(state.get('runtime_sha',''))]
+    # Original WordPress core category archive body classes use category-ID,
+    # unlike custom taxonomies (term-ID). The historical browser code
+    # rejected genuine core categories and wrote long-lived HOLD receipts.
+    # Change identity for category routes only: retest them immediately
+    # under unchanged WPML, WCML, CSS and WordPress dependency gates.
+    if r['type']=='category':
+        deps.append('core-category-body-class:category-id-v2')
     return hashlib.sha256('|'.join(deps).encode()).hexdigest()
 def optimizer_source_key(cat,r,state):
     """Negative browser proof for an exact Elementor+optimizer source.
@@ -95,6 +102,10 @@ def optimizer_source_key(cat,r,state):
     # Existing exact market/currency certificates retain their own hashes.
     if cat['host']=='tours.dev.mad4b.com':
         values.append('source-browser-egress:public-host-network-v1')
+    # Correct only the historical category browser negative-proof cohort.
+    # No destination, tour, property, post, page or archive source is dirty.
+    if r['type']=='category':
+        values.append('core-category-body-class:category-id-v2')
     return hashlib.sha256('|'.join(values).encode()).hexdigest()
 
 def order_key(r):
