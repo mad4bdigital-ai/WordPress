@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Traveller Nationality
  * Description: Passport-country selection for travellers, separate from WooCommerce market, shipping, billing and WCML currency.
- * Version: 0.5.7-stable-passport
+ * Version: 0.5.8-expiring-passport
  * Requires Plugins: woocommerce
  * License: GPL-2.0-or-later
  * Text Domain: travel-booking-traveller-nationality-switcher
@@ -68,8 +68,18 @@ final class Travel_Booking_Traveller_Nationality_Switcher {
   }
   return false;
  }
+ private const SLOT_SECONDS=7776000;
+ private const LEGACY_ZERO_EXPIRES=1803859200;
+ private static function epoch_slot():int{return intdiv(time(),self::SLOT_SECONDS)*self::SLOT_SECONDS;}
+ private static function signed_age_valid($stamp):bool{
+  if(!is_int($stamp)&&!(is_string($stamp)&&ctype_digit($stamp)))return false;
+  $t=(int)$stamp;
+  if($t===0)return time()<self::LEGACY_ZERO_EXPIRES;
+  return $t>0&&$t<=time()+60&&time()-$t<=2*self::SLOT_SECONDS;
+ }
  private static function unpack($record){
-  if(!is_array($record)||!self::matches_site($record['site_uuid']??null))return '';
+  if(!is_array($record)||!self::matches_site($record['site_uuid']??null)
+     ||!self::signed_age_valid($record['saved_at']??null))return '';
   $contract=(string)($record['contract']??'');
   if($contract!==self::CONTRACT&&!apply_filters('travel_booking/accept_legacy_nationality_contract',false,$contract))return '';
   return self::valid($record['country']??'');
@@ -99,7 +109,8 @@ final class Travel_Booking_Traveller_Nationality_Switcher {
   if(!hash_equals(hash_hmac('sha256',$encoded,wp_salt('auth')),$mac))return '';
   $json=base64_decode(strtr($encoded,'-_','+/'),true);
   $obj=is_string($json)?json_decode($json,true):null;
-  if(!is_array($obj)||($obj['contract']??'')!=='mad4b.country-switcher.v1')return '';
+  if(!is_array($obj)||($obj['contract']??'')!=='mad4b.country-switcher.v1'
+     ||!self::signed_age_valid($obj['time']??null))return '';
   $expected=class_exists('MAD4B_SCP_Market_Profiles',false)
    ?(string)MAD4B_SCP_Market_Profiles::site_uuid()
    :(defined('MAD4B_TENANT_SITE_UUID')?(string)MAD4B_TENANT_SITE_UUID:'');
@@ -147,13 +158,13 @@ final class Travel_Booking_Traveller_Nationality_Switcher {
   $iso=self::valid($country);
   if(!$iso)return '';
   $record=['contract'=>self::CONTRACT,'site_uuid'=>self::site(),
-           'country'=>$iso,'saved_at'=>0];
+           'country'=>$iso,'saved_at'=>self::epoch_slot()];
   $payload=rtrim(strtr(base64_encode(wp_json_encode($record)),'+/','-_'),'=');
   return $payload.'.'.hash_hmac('sha256',$payload,wp_salt('auth'));
  }
  public static function choose($country){
   $iso=self::valid($country);if(!$iso)return new WP_Error('travel_booking_nationality_unknown','Unsupported passport country');
-  $record=['contract'=>self::CONTRACT,'site_uuid'=>self::site(),'country'=>$iso,'saved_at'=>0];
+  $record=['contract'=>self::CONTRACT,'site_uuid'=>self::site(),'country'=>$iso,'saved_at'=>self::epoch_slot()];
   // Visitor preference is a separate signed cookie, not a WooCommerce cart.
   // Preserve existing Woo sessions, but never create a guest cart session here.
   if(function_exists('WC')&&WC()->session

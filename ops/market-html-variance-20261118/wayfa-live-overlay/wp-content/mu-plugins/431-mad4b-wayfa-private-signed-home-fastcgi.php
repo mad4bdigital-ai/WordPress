@@ -1,13 +1,14 @@
 <?php
 /**
  * Plugin Name: MAD4B Wayfa Private Signed Home FastCGI Admission
- * Version: 1.0.0
+ * Version: 1.1.0
  * Description: Short-lived origin cache only for the EXACT verified country cookie; never cross-visitor HTML sharing.
  */
 defined('ABSPATH') || exit;
 final class MAD4B_Wayfa_Signed_Home_FastCGI_V1 {
     const CONTRACT='mad4b.wayfa.signed-home-fastcgi.v1';
     const SECONDS=150;
+    const CATALOG_SECONDS=90;
 
     public static function allowed_cookie_context(string $raw): bool {
         if (strlen($raw)<80 || strlen($raw)>4096
@@ -44,11 +45,15 @@ final class MAD4B_Wayfa_Signed_Home_FastCGI_V1 {
         return $country===1 && $nationality<=1;
     }
     public static function eligible(): bool {
+        $path=(string)($_SERVER['REQUEST_URI']??'');
+        $front=in_array($path,['/','/es/'],true);
+        $catalog=$path==='/tours-and-activities/';
         if (!isset($_SERVER['REQUEST_METHOD']) || $_SERVER['REQUEST_METHOD']!=='GET'
-            || !in_array((string)($_SERVER['REQUEST_URI']??''),['/','/es/'],true)
+            || (!$front && !$catalog)
             || (string)($_SERVER['QUERY_STRING']??'')!==''
             || is_admin() || is_user_logged_in() || wp_doing_ajax()
-            || is_preview() || is_404() || !is_front_page()
+            || is_preview() || is_404()
+            || !($front ? is_front_page() : is_post_type_archive())
             || (defined('REST_REQUEST') && REST_REQUEST)
             || (defined('WP_CLI') && WP_CLI)
             || strtolower((string)wp_parse_url((string)get_option('home',''),PHP_URL_HOST))!=='wayfatours.com'
@@ -97,14 +102,17 @@ final class MAD4B_Wayfa_Signed_Home_FastCGI_V1 {
         if ($cachePolicy!==null && preg_match('/private-context|private-commerce|commerce/i',$cachePolicy))return;
         // No persistent server cache if the private country CSS certificate is
         // missing. Desktop is not using that mobile proof contract.
-        if ((string)($_SERVER['MAD4B_TRUSTED_DEVICE_CLASS']??'')==='mobile'
+        if (in_array((string)($_SERVER['REQUEST_URI']??''),['/','/es/'],true)
+            && (string)($_SERVER['MAD4B_TRUSTED_DEVICE_CLASS']??'')==='mobile'
             && self::header_value($headers,'X-MAD4B-Private-Mobile-CSS-Ready')!=='1')
             return;
         // Only Nginx has the exact-cookie cache key and no-store browser
         // headers. Direct PHP consumers must revalidate and cannot cache
         // without an explicitly enrolled upstream FastCGI contract.
         header('Cache-Control: max-age=0, must-revalidate',true);
-        header('X-Accel-Expires: '.self::SECONDS,true);
+        $seconds=(($_SERVER['REQUEST_URI']??'')==='/tours-and-activities/')
+            ?self::CATALOG_SECONDS:self::SECONDS;
+        header('X-Accel-Expires: '.$seconds,true);
         header('X-MAD4B-Signed-Home-Cache-Ready: 1',true);
     }
     public static function boot(): void {

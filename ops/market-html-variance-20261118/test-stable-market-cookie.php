@@ -23,7 +23,9 @@ insist('invalid country is not issued',$issuer::canonical_cookie('XX')==='');
 insist('HMAC remains tenant-authenticated',hash_equals($signature,hash_hmac('sha256',$payload,wp_salt('auth'))));
 $data=json_decode(base64_decode(strtr($payload,'-_','+/'),true),true);
 insist('site_uuid binds signing to enrolled tenant',($data['site_uuid']??'')==='test-first-party-tenant');
-insist('no time-based cache key churn',($data['time']??null)===0);
+$slot=7776000;
+insist('stable 90-day HMAC cohort instead of per-visit timestamp',
+    ($data['time']??null)===(intdiv(time(),$slot)*$slot));
 $old=['contract'=>$issuer::CONTRACT,'site_uuid'=>'test-first-party-tenant','country'=>'US','time'=>time()];
 $encoded=rtrim(strtr(base64_encode(wp_json_encode($old)),'+/','-_'),'=');
 $oldRaw=$encoded.'.'.hash_hmac('sha256',$encoded,wp_salt('auth'));
@@ -33,4 +35,19 @@ $_COOKIE['mad4b_country_selected_v1']=$one;
 insist('new canonical country remains readable',$issuer::saved_country()==='US');
 $_COOKIE['mad4b_country_selected_v1']=$encoded.'.'.str_repeat('f',64);
 insist('forged country signature remains untrusted',$issuer::saved_country()==='');
-echo 'STABLE_MARKET_COUNTRY_CONTRACT 9'.PHP_EOL;
+$expired=['contract'=>$issuer::CONTRACT,'site_uuid'=>'test-first-party-tenant',
+          'country'=>'US','time'=>time()-(3*$slot)];
+$e=rtrim(strtr(base64_encode(wp_json_encode($expired)),'+/','-_'),'=');
+$_COOKIE['mad4b_country_selected_v1']=$e.'.'.hash_hmac('sha256',$e,wp_salt('auth'));
+insist('signed expired market cookie rejected',$issuer::saved_country()==='');
+$future=['contract'=>$issuer::CONTRACT,'site_uuid'=>'test-first-party-tenant',
+          'country'=>'US','time'=>time()+1000];
+$e=rtrim(strtr(base64_encode(wp_json_encode($future)),'+/','-_'),'=');
+$_COOKIE['mad4b_country_selected_v1']=$e.'.'.hash_hmac('sha256',$e,wp_salt('auth'));
+insist('future signed market cookie rejected',$issuer::saved_country()==='');
+$zero=['contract'=>$issuer::CONTRACT,'site_uuid'=>'test-first-party-tenant','country'=>'US','time'=>0];
+$e=rtrim(strtr(base64_encode(wp_json_encode($zero)),'+/','-_'),'=');
+$_COOKIE['mad4b_country_selected_v1']=$e.'.'.hash_hmac('sha256',$e,wp_salt('auth'));
+insist('zero-time legacy allowed before March 2027 only',
+    $issuer::saved_country()===(time()<1803859200?'US':''));
+echo 'STABLE_MARKET_COUNTRY_CONTRACT 12'.PHP_EOL;

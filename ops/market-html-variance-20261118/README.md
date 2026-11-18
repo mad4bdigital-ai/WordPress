@@ -97,3 +97,50 @@ Wayfatours. It refuses silent drift rather than overwriting newer code.
 No WordPress data, Woo prices, orders, booking/payment settings, CSS policy
 or native certificates were modified. The Nginx binding and final config
 were tested; temporary diagnostic response header was removed.
+
+## Remediation review — 18 November 2026, 13:00 UTC
+
+The following corrections are **running on Wayfatours Production**:
+
+1. Price freshness: original Nginx FastCGI use_stale and
+   background_update are disabled. A source timeout or an expired key
+   cannot silently reuse expired market-price HTML. An unexpired HIT
+   remains fast; an expired object requires fresh rendering. This applies
+   to the site-wide PHP location.
+2. Browser caching: Nginx owns the single browser-facing Cache-Control
+   response header; upstream Cache-Control still feeds the privacy
+   veto. Signed public home and archive HTML is private/no-store
+   in the browser; anonymous public HTML retains its public policy.
+3. Signed archive canary: only canonical unfiltered English
+   /tours-and-activities/ was added beyond EN/ES home. First-party HMAC,
+   guest status, exact original path and locale, zero query parameters,
+   no Woo session/client override, is_post_type_archive, and original
+   X-Wayfa-Public-Page:1 admission remain necessary. TTL 90s, no stale.
+   US: 3729ms MISS -> 21ms HIT. DE: 3189ms MISS -> 17ms HIT.
+   Within-country HTML SHA stayed identical across repeat visits;
+   between-country SHA differed. No cross-market raw HTML sharing.
+   All JSF filter URLs, tours, bookings, rate editing, quote/payment,
+   and unrelated page archives remain outside this signed edge canary.
+4. Server-side signed preference expiry: country/passport canonical
+   HMAC bytes are stable per 90-day UTC signing slot. A signed nonzero
+   slot must not be older than 180 days nor more than 60 seconds in
+   the future. Legacy zero-time signatures are accepted only through
+   2027-02-28 and transition on the pre-existing private state AJAX.
+   Other valid old timestamp-bearing cookies are accepted within the
+   age bounds. Browser expiry is still 90 days, and these preferences
+   are not financial or authentication credentials. Old valid
+   preferences, session, and Woo settings are preserved.
+5. Tests: PHP signed archive admission 9; Nginx route/source 9;
+   native WordPress signed preferences 8; signer fixture 12; plus
+   prior market/price, card, and live fail-closed regressions and
+   byte-level overlay parity.
+
+**Not complete:** Tour-detail and JSF dynamic filter HTML lack
+independent safe public certification and must not be force-cached,
+because rates, date, accommodation and booking state can be
+commercial. Cross-country public shell requires first-party
+SWATCHER/consent hydration and trusted price updates before sharing.
+The original Tours.dev CSS source observer still reports EN/ES/IT
+drift while CPU/Chromium headroom gating leaves its certificate
+queue pending; a verified Wayfa homepage CSS-ready HIT does not
+claim source-wide CSS readiness.

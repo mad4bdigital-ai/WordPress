@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Market Country Switcher
  * Description: Site-approved country selector over configured market profiles, WPML, WooCommerce and MaxMind. No pricing or language duplication.
- * Version: 0.1.2-stable-market
+ * Version: 0.1.3-expiring-market
  * License: GPL-2.0-or-later
  * Text Domain: mad4b-country-switcher
  */
@@ -11,10 +11,20 @@ final class MAD4B_Country_Switcher {
  const CONTRACT='mad4b.country-switcher.v1';
  const SESSION='mad4b_country_selected_v1';
  const COOKIE='mad4b_country_selected_v1';
+ private const SLOT_SECONDS=7776000; // 90-day HMAC cohort; not visitor authentication.
+ private const LEGACY_ZERO_EXPIRES=1803859200; // 2027-03-01 UTC; old browser cookies already expire earlier.
+ private static function epoch_slot():int{return intdiv(time(),self::SLOT_SECONDS)*self::SLOT_SECONDS;}
+ private static function signed_age_valid($stamp):bool {
+  if(!is_int($stamp)&&!(is_string($stamp)&&ctype_digit($stamp)))return false;
+  $t=(int)$stamp;
+  if($t===0)return time()<self::LEGACY_ZERO_EXPIRES;
+  return $t>0 && $t<=time()+60 && time()-$t<=2*self::SLOT_SECONDS;
+ }
  private static function available(){return class_exists('MAD4B_SCP_Switcher_Sources')&&class_exists('MAD4B_SCP_Market_Profiles');}
  private static function uuid(){return self::available()?MAD4B_SCP_Market_Profiles::site_uuid():'';}
  private static function validated_record($a){
-  if(!is_array($a)||($a['contract']??'')!==self::CONTRACT||($a['site_uuid']??'')!==self::uuid())return '';
+  if(!is_array($a)||($a['contract']??'')!==self::CONTRACT||($a['site_uuid']??'')!==self::uuid()
+     ||!self::signed_age_valid($a['time']??null))return '';
   $iso=MAD4B_SCP_Switcher_Sources::valid_country($a['country']??'');
   // Visitor geography is not itself an approved marketing entitlement.
   return $iso&&isset(MAD4B_SCP_Switcher_Sources::countries()[$iso])?$iso:'';
@@ -53,7 +63,7 @@ final class MAD4B_Country_Switcher {
   $iso=MAD4B_SCP_Switcher_Sources::valid_country($country);
   if(!$iso || !isset(MAD4B_SCP_Switcher_Sources::countries()[$iso]))return '';
   $record=['contract'=>self::CONTRACT,'site_uuid'=>self::uuid(),
-           'country'=>$iso,'time'=>0];
+           'country'=>$iso,'time'=>self::epoch_slot()];
   $payload=rtrim(strtr(base64_encode(wp_json_encode($record)),'+/','-_'),'=');
   return $payload.'.'.hash_hmac('sha256',$payload,wp_salt('auth'));
  }
@@ -63,7 +73,7 @@ final class MAD4B_Country_Switcher {
   if(!$iso)return new WP_Error('mad4b_country_invalid','Invalid ISO2 Woo country');
   // Selecting a visitor country does not approve a Market Profile.
   // Only resolve() may grant a site-authorized market profile.
-  $record=['contract'=>self::CONTRACT,'site_uuid'=>self::uuid(),'country'=>$iso,'time'=>0];
+  $record=['contract'=>self::CONTRACT,'site_uuid'=>self::uuid(),'country'=>$iso,'time'=>self::epoch_slot()];
   // Country preference uses the existing signed tenant cookie.
   // Mirror to Woo only when a real Woo session already exists.
   if(function_exists('WC')&&WC()->session
