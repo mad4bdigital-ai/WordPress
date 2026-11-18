@@ -164,3 +164,29 @@ Docker-bridge browser and independent company CSS settings.
 Native v8 is a separate immutable release. v7/v6 remain preserved.
 Unit tests cover changed-manifest immediate readback, restored source
 identity, incomplete live CSS, and no unqualified claims of readiness.
+
+## Source-family progress under reserved native WordPress slots — v9
+
+The previously enrolled first-party read-only snapshot-variant observer
+was already installed and tested for systemd, but the WordPress-owned
+CSS worker still pointed to v8, which did not include the fallback.
+The separate systemd timer is disabled; under repeated WP-CLI slot
+contention the WordPress source-families ticket could make no progress.
+
+Native v9 composes the exact existing first-party snapshot-only code into
+the immutable WP-Cron runner. When the ORIGINAL budget guard declines
+because two WP-CLI slots are already reserved, the read-only observer may
+inspect one public template variant per site from the most recent
+root-owned and bounded original WordPress catalog (< 5400 seconds).
+Actual CPU/PSI/load pressure still blocks this lightweight path.
+It cannot execute WP-CLI, Chromium, issue a certificate, change an
+Elementor document, modify Woo pricing, or acknowledge a WordPress ticket.
+It writes only an explicitly advisory progress receipt and never treats
+snapshots as fresh current WordPress source.
+
+All heavy public CSS and original source-family certification retain
+the host budget, shared Chromium lock, source market/currency splits
+and original exact WordPress generation. On the next quiet resource window,
+the original fresh WP-CLI catalog refresh and independently tested
+per-family canaries can proceed normally; no automatic native source
+QA gate or publish requirement is relaxed.

@@ -10,7 +10,7 @@ import json,os,re,stat,subprocess,sys,time
 from pathlib import Path
 
 ROOT=Path('/opt/mad4b-company-provisioning')
-SOURCE=ROOT/'releases/template-aware-css-wpcron-v8-20261118/ops/dynamic-critical-css-20261116'
+SOURCE=ROOT/'releases/template-aware-css-wpcron-v9-20261118/ops/dynamic-critical-css-20261116'
 REPORT=ROOT/'reports/wpcron-css-v1'
 CONTAINERS={'source':'php-wkgtkzta35wkkgouwt6ruljc',
             'wayfa':'php-guxhp9y6vgh7oouuw8plxrlr'}
