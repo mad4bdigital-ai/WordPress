@@ -1,11 +1,11 @@
 {
   "contract": "mad4b.change-slices.v2",
   "authorizing": false,
-  "reviewed_base_sha": "5c72e4893e36e992f056c90cfc75908b3a8f7785",
+  "reviewed_base_sha": "83cbe5ef992e3c99151891a0a55561a98139b948",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 2635,
-  "changed_paths_sha256": "75d89e5a42e22edc316158ce50d8f8dfefe924881ae15815227867883050bbb6",
+  "changed_file_count": 2632,
+  "changed_paths_sha256": "a189f3e6f4bd395680f34e5d8887b7529b7494a6b2d19144c179dde39ed54fe4",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -93,7 +93,8 @@
         "specs/007-content-intelligence-workflow-platform/implementation-closure.json",
         "specs/007-content-intelligence-workflow-platform/implementation-closure.md",
         "specs/007-content-intelligence-workflow-platform/post-merge-capability-fabric-closure.json",
-        "specs/007-content-intelligence-workflow-platform/baseline-review-20261026.md"
+        "specs/007-content-intelligence-workflow-platform/baseline-review-20261026.md",
+        "tests/test_feature007_capfab_parent_reconciliation.py"
       ]
     },
     {
