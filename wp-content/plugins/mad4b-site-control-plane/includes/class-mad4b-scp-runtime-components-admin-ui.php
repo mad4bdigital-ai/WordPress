@@ -101,6 +101,8 @@ final class MAD4B_SCP_Runtime_Components_Admin_UI {
 		echo '<h2>' . esc_html__( 'Certified runtime update', 'mad4b-site-control-plane' ) . '</h2>';
 		echo '<p class="mad4b-scp-section-lead">' . esc_html__( 'Update MAD4B Site Control Plane and the official MCP Adapter only as one certified compatible runtime set. The operation re-plans the exact release pair before mutation and preserves the existing governed verification, rollback and readback boundaries.', 'mad4b-site-control-plane' ) . '</p>';
 		echo '<div class="notice notice-info inline"><p>' . esc_html__( 'The WordPress Plugins update channel is the stable Release-Verdict channel published from master only. Pull-request candidate builds are intentionally not offered there before merge.', 'mad4b-site-control-plane' ) . '</p></div>';
+        if ( class_exists( 'MAD4B_Release_Source_Admission' ) )
+            MAD4B_Release_Source_Admission::render_selector();
         MAD4B_SCP_Staging_Selected_Head_Admin::render();
         // A passive GET must not make outbound update-channel requests.
         // Place the read-only refresh in its own admin screen (not inside
@@ -311,7 +313,8 @@ final class MAD4B_SCP_Runtime_Components_Admin_UI {
 		echo '<div class="mad4b-scp-panel"><h2>' . esc_html__( 'Native diagnostics', 'mad4b-site-control-plane' ) . '</h2>';
 		echo '<p class="description">' . esc_html__( 'Read-only status from WordPress Site Health, the existing Query Monitor evidence bridge and a staging-only early PHP fatal recorder. No raw PHP messages, paths, cookies or credentials are displayed.', 'mad4b-site-control-plane' ) . '</p>';
 		MAD4B_SCP_Admin_Experience::cards( array(
-			array( 'label' => 'Staging enrollment', 'value' => ! empty( $status['site_profile_staging_enrolled'] ) ? 'exact' : 'not verified', 'state' => ! empty( $status['site_profile_staging_enrolled'] ) ? 'complete' : 'blocked' ),
+			array( 'label' => 'Enrolled site identity', 'value' => ! empty( $status['read_only_scope_ready'] ) ? 'verified' : 'not verified', 'state' => ! empty( $status['read_only_scope_ready'] ) ? 'complete' : 'blocked' ),
+			array( 'label' => 'Staging paired probe', 'value' => ! empty( $status['paired_probe']['available'] ) ? 'available' : 'not available in this scope', 'state' => ! empty( $status['paired_probe']['available'] ) ? 'complete' : 'pending' ),
 			array( 'label' => 'PHP incident recorder', 'value' => isset( $incidents['state'] ) ? (string) $incidents['state'] : 'unavailable', 'state' => ! empty( $incidents['recorder_loaded'] ) ? 'complete' : 'attention' ),
 			array( 'label' => 'Captured diagnostic events', 'value' => (string) (int) ( $incidents['count'] ?? 0 ), 'state' => ! empty( $incidents['count'] ) ? 'attention' : 'pending' ),
 			array( 'label' => 'Query Monitor bridge', 'value' => ! empty( $qm['existing_collector_bridge_available'] ) ? 'available' : 'not loaded', 'state' => ! empty( $qm['existing_collector_bridge_available'] ) ? 'complete' : 'attention' ),
