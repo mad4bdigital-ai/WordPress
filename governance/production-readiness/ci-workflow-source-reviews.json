@@ -8,7 +8,7 @@
   "reviews": [
     {
       "path": ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
-      "source_blob_sha": "cf4fd1e1e2cc410bab045eb03f3e2e2b5d56728a",
+      "source_blob_sha": "682aabb9dc2885067b11d55e3908c67174dfd35e",
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/integration-pr415-pr416-pr420-pr421-contract.py"
       ],
@@ -17,7 +17,7 @@
       "live_evidence_required": true,
       "root_policy_authorized": false,
       "owner_role": "MAD4B repository CI source reviewer (not owner authorization)",
-      "review_rationale": "Non-authorizing exact-source review of Feature 007 CI addition for SHA256-paginated dependency evidence verification. Historical delivery manifest hashes remain immutable. Release-critical root changes require separate governance-only PR and exact owner attestation."
+      "review_rationale": "Non-authorizing CI-only exact Git source successor review, previous blob cf4fd1e1e2cc410bab045eb03f3e2e2b5d56728a retained in Git. The Adaptive Search PHP 7.4 job may be missing the executable wp even when setup-php tools declares wp-cli. New fallback provisions an executable with a verified --info command and real WP-CLI phar, retaining the four PHP matrices, disposable WordPress installation, actual CAS UI and breaker tests, hard-failing on missing WP-CLI and preserving exact-head acceptance artifacts. Additional offline regression: tests/ci/test-feature007-adaptive-wpcli-provision-contract.py. Immutable G8 delivery manifest unchanged; this is not an owner attestation or runtime deployment approval."
     }
   ]
 }
