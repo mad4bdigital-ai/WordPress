@@ -45,7 +45,8 @@ for marker in (
     "target_not_current_governed_release:",
     "self::fetch_manifest( true )",
     "'release_channel_bound' => ! $staging_candidate",
-    "'production_allowed' => false",
+    "'production_allowed' => (bool) ( ! $staging_candidate && self::environment_allowed( true ) )",
+    "signed_source_reconciliation_preflight_required",
     "sort( $plan['blockers'], SORT_STRING );",
 ):
     expect(marker in plan, "planning missing " + marker)

@@ -108,7 +108,8 @@ trait MAD4B_SCP_Server_Core_Catalog {
         // Source Preflight is an optional first-party MU component. In a
         // plugin-only installation (e.g. CI), no MU registration exists, and
         // the MCP read server must never advertise an absent Ability.
-        if ( 'mad4b-read' === $server_id && class_exists( 'MAD4B_Release_Source_Admission', false ) )
+        if ( 'mad4b-read' === $server_id && class_exists( 'MAD4B_Release_Source_Admission', false )
+            && function_exists( 'wp_has_ability' ) && wp_has_ability( MAD4B_Release_Source_Admission::ABILITY ) )
             $map['mad4b-read'][] = MAD4B_Release_Source_Admission::ABILITY;
 		if ( 'mad4b-write' === $server_id ) return self::write_tools();
 		$tools = isset( $map[ $server_id ] ) ? $map[ $server_id ] : array();
