@@ -159,3 +159,44 @@ Real company-approved selling prices, child/occupancy capacity, verified room va
   Re-encoding or cropping those files would not be a legitimate new photo.
 - An unrelated Hilton pool/cabana partner photo does not establish that it
   depicts exact Guest Room Pool View category. The original Hilton URL 404s.
+
+## Seventh wave — relaxed visual coverage without sale authorization (19 Nov 2026)
+- Explicit owner approval was applied to exactly two eligible Draft Units on
+  Wayfatours Production through the existing JetEngine Featured Image and
+  unit_gellery fields. No additional CPT, copy of Fairmont's official asset,
+  publication, selling price, payment, booking or stock mutation.
+- Hilton Cairo Heliopolis Unit 70905: imported a partner-hosted 2000x1327
+  room image with swimming-pool view, WordPress Attachment 71413.
+  Photo source: fairmont-heliopolis.cairo-hotels-eg.com, with legacy Fairmont
+  Heliopolis naming. The exact hotel-room variant is NOT verified.
+  Source mode partner_approximate_photo, exact_room_match_unverified=true,
+  partner_provenance_not_hotel_official=true. SHA-256:
+  c36460b9f0905bfd188427090b00c4443790616bcae302d7d06f751ac3070071.
+- Fairmont Nile City Unit 70893: reused original shared official Attachment
+  71364 that is also linked to Unit 70891, rather than downloading or
+  re-encoding duplicates. Records state
+  shared_official_asset_across_room_categories=true and
+  distinct_room_photo_unavailable=true. Source SHA-256:
+  9a453bbe0dcda4c9ff3ee83d267e3c18bba9c4cd0d2ff7e535e54ce5fd8998f1.
+- Both Units preserve original source-gap observations. Independent resolution
+  receipts and _mad4b_stay_visual_coverage_v1 store before/after meta, original
+  file SHA, mode, source, and an owner use attestation. No metadata claims
+  independent verification of image copyright or license.
+- Dry-run, direct database readback, and read-only rollback-preview passed.
+  No actual rollback was performed. Fairmont's shared media is never
+  deleted during rollback. Hilton's owned attachment may be removed only
+  if unchanged and not referenced by another Unit.
+- Existing Dynamic Pricing Controls readiness now reports relaxed_visual_only,
+  filters by relaxed_images, counts relaxed_visual_coverage and adds a
+  relaxed_visual_exact_room_unverified catalog blocker. Visual completeness
+  does NOT represent exact room verification or commercial readiness.
+  The UI/logic was deployed to both Tours.dev and Wayfatours using backups.
+- Final production audit: 148 Unit records; 129 standard source-curated Draft
+  Units plus 2 relaxed visual-only Draft Units = 131 source-managed photo
+  coverages. 132 Unit Featured Images; 133 Unit native galleries.
+  Zero broken attachments or invalid relaxed receipts. Only invalid-import
+  quarantined Unit 37555 and 14 intentionally excluded QA Units have no photo.
+  Property 36260 and its Units 37553,37554,37555 remain Draft.
+  No Unit publication, published Property Rates, payment or booking activation.
+  Accommodation unmanaged stock policy and WooCommerce global stock setting
+  are unchanged (unmanaged_active and yes, respectively).
