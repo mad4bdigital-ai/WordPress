@@ -1,11 +1,11 @@
 {
   "contract": "mad4b.change-slices.v2",
   "authorizing": false,
-  "reviewed_base_sha": "5835e1b14e87c7ea18cb517b4f63dfba1269da47",
+  "reviewed_base_sha": "bd3fa88aa60465eb1a6430e086c26e1444cf3367",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 28,
-  "changed_paths_sha256": "327d30ce4ff3e51815fb5f47c851c92c3d26fe4f9e8bd00723f24ccd9ff8699c",
+  "changed_file_count": 32,
+  "changed_paths_sha256": "a609e21b445a8ba45e2c0bfe44f2b957b887929f56773b7170fc3525545e936c",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -383,6 +383,15 @@
       "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-hub-lifecycle-source-only-runtime.php"
+      ]
+    },
+    {
+      "id": "readiness-preactivation-original-source-regression",
+      "semantic_unit": "Explicit ownership of the preceding PR905 dormant Readiness Preactivation source regression and its external-send denial checks.",
+      "revert_boundary": "Revert only the hermetic preactivation regression alongside its frozen source; do not change main Bootstrap, grants, provider sends or production activation.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readiness-preactivation-source-only-runtime.php"
       ]
     }
   ]
