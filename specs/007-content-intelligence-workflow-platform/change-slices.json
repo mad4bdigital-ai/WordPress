@@ -1,11 +1,11 @@
 {
   "contract": "mad4b.change-slices.v2",
   "authorizing": false,
-  "reviewed_base_sha": "6eff0b29e1322db30a818e2f9169206ddce6671e",
+  "reviewed_base_sha": "9f2df20a5272d0b2f5d784f442ba4e2f94629ab9",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 42,
-  "changed_paths_sha256": "88ee423191c5508d92e1e7080c04e03628d10878f645373af564529df588f834",
+  "changed_file_count": 63,
+  "changed_paths_sha256": "071683eaa3c102a445ee1f5afce969f198a025dced3cb2ea1600c8295a9ddfc4",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
