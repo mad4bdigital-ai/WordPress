@@ -8,6 +8,7 @@ from pathlib import Path
 import hashlib
 import json
 import unittest
+from qa31_source_convergence_bootstrap_overlay import strip_reviewed_pr942_ollama_delta
 
 ROOT=Path(__file__).resolve().parents[1]
 MAIN='wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
@@ -18,6 +19,9 @@ def blob_sha(data):
 
 def strip_rc129_signed_host_overlay(actual):
     """Return exact Original305 predecessor or reject modifications."""
+    # Peel off only the separately exact-reviewed PR942 single-line successor,
+    # then apply the unchanged signed PR814/Original305 byte and host guards.
+    actual=strip_reviewed_pr942_ollama_delta(actual)
     guard=unittest.TestCase()
     proof=json.loads(PROOF.read_text())
     assert proof.get('contract')=='mad4b.rc129-host-agent-additive-bootstrap-source.v1'

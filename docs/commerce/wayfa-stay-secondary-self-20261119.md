@@ -57,3 +57,5 @@ Review-only source candidate preserving the live Wayfatours accommodation pricin
 - This version primes bounded Post and Property meta and defers edit-link generation until paginated results are selected.
 - It was reconciled into this candidate from the matching live sources instead of replacing either site with an older Git copy.
 - Runtime status is a read-only preview; no booking or price activation is implied.
+
+- Following integration ab3fa778, 10 source-drift scripts are exact-path registered for real execution (not considered passing or approved); negative runtime evidence remains recorded and required release scopes continue to fail on actual source drift.

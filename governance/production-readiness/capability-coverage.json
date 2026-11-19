@@ -24015,6 +24015,43 @@
       "needs_new_control": false,
       "review_rationale": "Exact Git blob review of mad4b-site-control-plane.php in PR942 against immutable PR920 source. Ten executable CI-only suites verify tenant isolation, content readiness, Core Web Vitals, admin permission, company release denial, scoped skill reads and local-only Ollama. No provider grant or Production authority is created.",
       "coverage_reuse_rationale": "Existing site-scoped Admin, Content, Security, WordPress lifecycle and source-binding controls already require authenticated evidence; no new policy control or runtime authorization is implied."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-registry.php",
+      "source_blob_sha": "1afd5fb64cdba86459d84627cad67b31a65574a0",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/source-unification-review-contract.py"
+      ],
+      "owner_role": "MAD4B exact-source Skills CI-only reviewer; release owner remains independent",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Fix genuine tenant feature opt-out: site-enrolled and same-origin Skill catalog is denied unless the company Skills flag is true. Hermetic seven-case test verifies site mismatch, unenrolled and opted-out denial, positive opted-in read, and editor/script separation. The PR942 follow-up preserves nonauthorizing source review and grants no additional runtime write scope.",
+      "coverage_reuse_rationale": "Existing site-enrollment, WordPress capability and nonce policies remain in force; no new source/provider trust, user role grant, host signer, or Production authorization."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skills-admin-ui.php",
+      "source_blob_sha": "593f78cb49b39184b48766b34bdf83e2108a75c6",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/source-unification-review-contract.py"
+      ],
+      "owner_role": "MAD4B exact-source Skills CI-only reviewer; release owner remains independent",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Restore nonce-checked administrator-only add/remove of external Skill source references and their view, lost in mechanical merge; distinct company operations read-only capability remains independently gated. Source parity test verifies all three handlers are present and WordPress Admin denial remains required. The PR942 follow-up preserves nonauthorizing source review and grants no additional runtime write scope.",
+      "coverage_reuse_rationale": "Existing site-enrollment, WordPress capability and nonce policies remain in force; no new source/provider trust, user role grant, host signer, or Production authorization."
     }
   ],
   "code_change_rules": {

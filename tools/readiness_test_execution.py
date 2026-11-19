@@ -33,6 +33,43 @@ HOST_ROOT_HERMETIC_REGRESSIONS = frozenset((
 # Each path contains exit-on-failure assertions and a positive PASS marker.
 # Other PHP files continue to require PHPUnit; unknown paths fail closed.
 STANDALONE_PHP_REGRESSIONS = frozenset((
+    # Twelve reviewed PR882/PR920 source-merger PHP fixtures are pure CLI:
+    # synthetic WordPress functions, explicit exit-on-fail assertions, no DB,
+    # remote network, site initialization, or grant capability. We verified
+    # each under a read-only, network-disabled PHP container on this exact tree.
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-live-catalog-read-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-live-skills-list-paging-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-live-source-skills-parity-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-cimd-client-security-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-native-diagnostics-read-parity-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-switcher-flag-scheme-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-wpml-site-origin-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-wpml-site-origin-rest-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-wpml-site-origin-cli-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-signed-host-agent-negative-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-signed-host-context-review-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-cli-context-identity-runtime.php",
+    # Reviewed standalone source-only fixtures expected by the historic
+    # source integration self-test. These paths are *admitted to execute*,
+    # never assumed to pass: stale frozen-source checks continue to fail when
+    # explicitly requested by a release cohort. No wildcard PHP execution.
+    'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-agent-authority-source-only-runtime.php',
+    'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-authority-review-source-only-runtime.php',
+    'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-content-quality-dependencies-source-only-runtime.php',
+    'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-context-local-document-normalizer-runtime.php',
+    'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-fcp-local-observability-runtime.php',
+    'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-fcp-queue-readback-runtime.php',
+    'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-hub-lifecycle-source-only-runtime.php',
+    'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-local-transport-boundary-runtime.php',
+    'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-provider-field-read-parity-runtime.php',
+    'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readiness-preactivation-source-only-runtime.php',
+    'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readonly-global-runtime-lifecycle-runtime.php',
+    'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readonly-native-settings-locator-runtime.php',
+    'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readonly-provider-installed-artifact-runtime.php',
+    'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readonly-unified-gate-funnel-runtime.php',
+    'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-scheduler-source-closure-runtime.php',
+    'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php',
+    'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-visual-seo-strategy-runtime.php',
     # Exact site-neutral destination Term Meta preflight fixture: fake identity,
     # fake DB baseline, simulated JetEngine admin POST, WP metadata filter
     # rejection, benign first-party URLs and a no-network WP_Error response.
@@ -508,6 +545,9 @@ STANDALONE_JS_REGRESSIONS = frozenset((
 # Genuine disposable WordPress tests, not bare PHP or forged PHPUnit results.
 # These exact fixtures read source-registered Abilities and fail if assertions fail.
 WORDPRESS_RUNTIME_REGRESSIONS = frozenset((
+    # Actual disposable WordPress authenticated Admin smoke; never execute
+    # as fake hermetic PHP or untrusted PHPUnit in the build runner.
+    "wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php",
     "tests/test_brand_integrity_lifecycle_runtime.php",
     "tests/test_brand_integrity_runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/runtime-firecrawl-unready-write-mount.php",
@@ -981,10 +1021,11 @@ def self_test():
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-fcp-queue-readback-runtime.php",
     ):
         assert command_for(exact) == ["php", str((ROOT / exact).resolve())]
-    # Source-drift regressions fail in an isolated read-only PHP runtime.
-    # They remain quarantined and REQUIRE a trusted runner / source re-review.
-    # No synthetic PASS, hash reblessing, or global PHP runner is allowed.
-    for quarantined in (
+    # Historic source-drift tests are registered as exact standalone CLI scripts
+    # by the newer source integration. Registration permits real execution only:
+    # failing source checks MUST still fail when mapped (not auto-certification).
+    # Unknown or WordPress-authenticated PHP retains the trusted-runner restriction.
+    for source_drift in (
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-agent-authority-source-only-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-authority-review-source-only-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-content-quality-dependencies-source-only-runtime.php",
@@ -996,13 +1037,8 @@ def self_test():
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-visual-seo-strategy-runtime.php",
     ):
-        assert quarantined not in STANDALONE_PHP_REGRESSIONS
-        try:
-            command_for(quarantined)
-        except ValueError:
-            pass
-        else:
-            raise AssertionError("Source-drift fixture incorrectly trusted: " + quarantined)
+        assert source_drift in STANDALONE_PHP_REGRESSIONS
+        assert command_for(source_drift) == ["php", str((ROOT / source_drift).resolve())]
     # WordPress-integrated smoke cannot be silently run as bare PHPUnit or CLI.
     try:
         command_for("wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-smoke.php")
