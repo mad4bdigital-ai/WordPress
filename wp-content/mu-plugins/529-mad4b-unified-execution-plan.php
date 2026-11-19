@@ -71,6 +71,18 @@ final class MAD4B_Unified_Execution_Plan {
             : 'explicit_change_review_backup_and_original_ticket' );
         $status = MAD4B_SCP_Staging_Write_Authority::current_status();
         $effective = MAD4B_SCP_Staging_Write_Authority::effective();
+        $reconciliation = MAD4B_SCP_Staging_Write_Authority::reconciliation_plan();
+        $candidate = MAD4B_SCP_Staging_Write_Authority::candidate_binding_status();
+        $build = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' )
+            ? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status() : array();
+        $build_ready = is_array( $build ) && ! empty( $build['manifest_present'] )
+            && ! empty( $build['manifest_valid'] ) && ! empty( $build['runtime_manifest_match'] )
+            && empty( $build['stale'] ) && empty( $build['provenance_mismatch'] );
+        $missing_grants = is_array( $reconciliation )
+            ? (int) ( $reconciliation['exact_grants_missing_count'] ?? 0 ) : -1;
+        $existing_grants = is_array( $reconciliation )
+            ? (int) ( $reconciliation['exact_grants_existing'] ?? 0 ) : -1;
+        $candidate_match = is_array( $candidate ) && ! empty( $candidate['match'] );
         $profile = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
         $environment = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::current_environment() : 'unknown';
         $gate = 'production' !== $environment || ( class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' )
@@ -78,8 +90,16 @@ final class MAD4B_Unified_Execution_Plan {
         $blockers = array();
         if ( ! $mounted ) $blockers[] = 'ability_not_mounted_on_governed_write';
         if ( empty( $profile['authority_ready'] ) || empty( $profile['write_enabled'] ) ) $blockers[] = 'exact_profile_or_write_setting_not_ready';
+        if ( ! $build_ready ) $blockers[] = 'build_provenance_not_current';
+        if ( ! $candidate_match ) $blockers[] = 'candidate_binding_not_reconciled';
+        if ( $missing_grants !== 0 ) $blockers[] = 'exact_grants_not_current';
         if ( ! $gate ) $blockers[] = 'production_mutation_gate_disabled';
         if ( ! $effective ) $blockers[] = 'effective_write_authority_not_ready';
+        $next = array();
+        if ( ! $build_ready ) $next[] = 'reconcile_source_and_certify_current_build';
+        if ( ! $candidate_match ) $next[] = 'bind_exact_current_package_candidate';
+        if ( $missing_grants !== 0 ) $next[] = 'reconcile_source_reviewed_exact_grants';
+        if ( ! $gate ) $next[] = 'enable_approved_production_mutation_gate';
         return array(
             'contract' => self::CONTRACT,
             'ability' => $ability, 'environment' => $environment,
@@ -88,8 +108,10 @@ final class MAD4B_Unified_Execution_Plan {
             'original_approval_required' => ! empty( $classification['approval_required'] ),
             'original_classification_sha256' => (string) ( $classification['classification_sha256'] ?? '' ),
             'readiness' => array( 'ability_registered' => true, 'write_mounted' => $mounted,
-                'governed_authority_effective' => $effective, 'production_gate_ready' => $gate ),
-            'blockers' => array_values( array_unique( $blockers ) ),
+                'governed_authority_effective' => $effective, 'production_gate_ready' => $gate,
+                'build_provenance_current' => $build_ready, 'candidate_binding_match' => $candidate_match,
+                'exact_grants_existing' => $existing_grants, 'exact_grants_missing' => $missing_grants ),
+            'blockers' => array_values( array_unique( $blockers ) ), 'next_steps' => $next,
             'execution_ready_to_prepare' => $mounted && $gate && $effective && empty( $blockers ),
             'execution_authorized' => false, 'approval_granted' => false,
             'grant_mutation_performed' => false, 'mutation_performed' => false,
