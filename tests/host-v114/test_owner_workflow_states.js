@@ -103,6 +103,15 @@ const dispatched={ok:true,status:202,async json(){return {
  assert(expired.calls[1].url.endsWith('/broker-dispatch'));
  assert(!expired.elements['mad4b-ha-tracker'].hidden);
  console.log('PASS expired Owner Request requires fresh consent and dispatches once');
+ const existingBroker=setup({requestId:REQUEST,requestExpired:true,
+  brokerJobExists:true,brokerJobState:'BROKER_CLAIMED_PENDING_INDEPENDENT_HOST_AUTHORITY',
+  phase:'ORIGINAL305_REQUEST_STAGED'},async()=>latest);
+ assert(!existingBroker.elements['mad4b-ha-tracker'].hidden,
+   'An existing Original306 Broker Job must not be treated as an expired unqueued request');
+ assert(existingBroker.elements['mad4b-ha-command-panel'].hidden,
+   'Never reopen owner submission when broker job already exists');
+ assert.equal(existingBroker.calls.length,0);
+ console.log('PASS expired Owner receipt with existing Broker Job cannot be renewed');
  let dispatchAttempts=0;
  const retry=setup({},async(url)=>{
    if(url.endsWith('/commands'))return accepted;

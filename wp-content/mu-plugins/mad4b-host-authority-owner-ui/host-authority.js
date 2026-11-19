@@ -39,7 +39,7 @@
 
   let grantId = validId(config.grantId) ? config.grantId : "";
   // Expired Owner Request is audit history only; it cannot be dispatched.
-  let requestExpired = config.requestExpired === true;
+  let requestExpired = config.requestExpired === true && config.brokerJobExists !== true;
   let requestId = !requestExpired && validId(config.requestId) ? config.requestId : "";
   let requestExpiresEpoch = !requestExpired && Number.isInteger(config.requestExpiresEpoch)
     ? config.requestExpiresEpoch : 0;
