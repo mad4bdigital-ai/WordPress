@@ -15,11 +15,15 @@ on:
       - 'scripts/mad4b-stay-hilton-golf-gallery-source-admission.php'
       - 'scripts/mad4b-stay-hilton-cairo-gallery-source-admission.php'
       - 'scripts/mad4b-stay-barcelo-room-source-admission.php'
+      - 'scripts/mad4b-stay-sofitel-executive-gallery-source-v2.php'
+      - 'scripts/mad4b-stay-invalid-import-quarantine-36260-cli.php'
+      - 'scripts/mad4b-stay-unresolved-official-room-photo-gaps-cli.php'
       - 'scripts/mad4b-stay-triumph-exact-room-source-admission.php'
       - 'scripts/mad4b-stay-triumph-room-gallery-cli.php'
       - 'tests/stay-unmanaged-stock-policy-contract.php'
       - 'tests/stay-commercial-readiness-contract.php'
       - 'tests/stay-owner-approved-room-media-contract.py'
+      - 'tests/stay-final-room-photo-quarantine-contract.py'
       - '.github/workflows/mad4b-stay-media-stock-policy.yml'
   push:
     branches: [master]
@@ -36,11 +40,15 @@ on:
       - 'scripts/mad4b-stay-hilton-golf-gallery-source-admission.php'
       - 'scripts/mad4b-stay-hilton-cairo-gallery-source-admission.php'
       - 'scripts/mad4b-stay-barcelo-room-source-admission.php'
+      - 'scripts/mad4b-stay-sofitel-executive-gallery-source-v2.php'
+      - 'scripts/mad4b-stay-invalid-import-quarantine-36260-cli.php'
+      - 'scripts/mad4b-stay-unresolved-official-room-photo-gaps-cli.php'
       - 'scripts/mad4b-stay-triumph-exact-room-source-admission.php'
       - 'scripts/mad4b-stay-triumph-room-gallery-cli.php'
       - 'tests/stay-unmanaged-stock-policy-contract.php'
       - 'tests/stay-commercial-readiness-contract.php'
       - 'tests/stay-owner-approved-room-media-contract.py'
+      - 'tests/stay-final-room-photo-quarantine-contract.py'
       - '.github/workflows/mad4b-stay-media-stock-policy.yml'
 
 permissions:
@@ -81,6 +89,9 @@ jobs:
           php -l scripts/mad4b-stay-hilton-golf-gallery-source-admission.php
           php -l scripts/mad4b-stay-hilton-cairo-gallery-source-admission.php
           php -l scripts/mad4b-stay-barcelo-room-source-admission.php
+          php -l scripts/mad4b-stay-sofitel-executive-gallery-source-v2.php
+          php -l scripts/mad4b-stay-invalid-import-quarantine-36260-cli.php
+          php -l scripts/mad4b-stay-unresolved-official-room-photo-gaps-cli.php
           php -l scripts/mad4b-stay-triumph-exact-room-source-admission.php
           php -l scripts/mad4b-stay-triumph-room-gallery-cli.php
       - name: Hermetic stock and readiness assertions
@@ -88,5 +99,6 @@ jobs:
           php tests/stay-unmanaged-stock-policy-contract.php
           php tests/stay-commercial-readiness-contract.php
           python3 tests/stay-owner-approved-room-media-contract.py
+          python3 tests/stay-final-room-photo-quarantine-contract.py
           python3 tests/stay-commercial-readiness-ui-check.py
           node --check wp-content/mu-plugins/mad4b-stay-readiness/admin.js
