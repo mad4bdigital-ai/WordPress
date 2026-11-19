@@ -3605,6 +3605,69 @@
       "new_control_ids": [],
       "coverage_reuse_rationale": "Existing MCP admission, platform identity, security, owner-scoped administrative rights and execution-denial controls cover these staging-only authorization surfaces, without granting Production execution or public access.",
       "review_rationale": "New surface ability:mad4b/staging-write-grant-reconcile-staging is source-pinned in the W1 authority integration and assessed with hermetic owner-browser, agent REST route, Site Profile, OAuth, replay, write grant, exact mapping and negative permission fixtures. This is only CI source review, not evidence that the route is registered, usable, or authorized in Production."
+    },
+    {
+      "id": "ability:mad4b/company-code-release-dispatch",
+      "owner_role": "Repository Release & Security CI reviewer; independently signed release authority required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/authority/test-release-source-admission-integration.py"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "The existing release provenance, independently signed Host execution, rollback, security and platform rollout controls already govern this source-only discovery; there is no new executing host capability.",
+      "review_rationale": "Review of ability:mad4b/company-code-release-dispatch. The added Company Code Release readiness file exposes only nonauthorizing Host source-preflight status. The dispatch identifier is statically mentioned but is not thereby enrolled, granted or installed. Original313 independent signer remains unchanged and must be separately updated before claiming enforcement at its mutation boundary."
+    },
+    {
+      "id": "ability:mad4b/company-code-release-readiness",
+      "owner_role": "Repository Release & Security CI reviewer; independently signed release authority required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/authority/test-release-source-admission-integration.py"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "The existing release provenance, independently signed Host execution, rollback, security and platform rollout controls already govern this source-only discovery; there is no new executing host capability.",
+      "review_rationale": "Review of ability:mad4b/company-code-release-readiness. The added Company Code Release readiness file exposes only nonauthorizing Host source-preflight status. The dispatch identifier is statically mentioned but is not thereby enrolled, granted or installed. Original313 independent signer remains unchanged and must be separately updated before claiming enforcement at its mutation boundary."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-code-release-readiness.php",
+      "owner_role": "Repository Release & Security CI reviewer; independently signed release authority required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/authority/test-release-source-admission-integration.py"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "The existing release provenance, independently signed Host execution, rollback, security and platform rollout controls already govern this source-only discovery; there is no new executing host capability.",
+      "review_rationale": "Review of service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-code-release-readiness.php. The added Company Code Release readiness file exposes only nonauthorizing Host source-preflight status. The dispatch identifier is statically mentioned but is not thereby enrolled, granted or installed. Original313 independent signer remains unchanged and must be separately updated before claiming enforcement at its mutation boundary."
     }
   ],
   "lifecycle": [],
@@ -11538,6 +11601,107 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "The existing original Agent Registry exact grant, Staging-only provider review, site profile, mutation gate, owner approval, checkpoint, readback and audit safeguards govern this single diagnostic, without wildcard rights.",
       "review_rationale": "Exact source review allows a core grant to be considered only for mad4b/hub-queue-site-health-enqueue when the Ability is registered on the correct central Staging site. No grant is issued merely because this provider pair appears; broad hub-bulk-enqueue remains outside the reviewed policy and Production is not enabled."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-code-release-readiness.php",
+      "source_blob_sha": "4f4fdbac60d0d8e9fb31339eac0430e15ea4d484",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/authority/test-release-source-admission-integration.py"
+      ],
+      "owner_role": "Release source and site security maintainer, CI-only source review; independent Host signers retain approval authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing site-bound owner approval, package identity, signed source evidence, transport catalog, update rollback and execution-denial controls cover this exact code change; no additional permission is created.",
+      "review_rationale": "Exact Git blob review of wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-code-release-readiness.php. This change introduces a nonauthorizing signed Host reconciliation prerequisite, or renders its source status, before the established certified code release paths. The existing original approval and rollback requirements remain; no Host Original313 mutation provider was enrolled and no Production write grant was issued."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-components-admin-ui.php",
+      "source_blob_sha": "c3a164049726a886b2db54812040406523956fd5",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "tests/authority/test-release-source-admission-integration.py"
+      ],
+      "owner_role": "Release source and site security maintainer, CI-only source review; independent Host signers retain approval authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing site-bound owner approval, package identity, signed source evidence, transport catalog, update rollback and execution-denial controls cover this exact code change; no additional permission is created.",
+      "review_rationale": "Exact Git blob review of wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-components-admin-ui.php. This change introduces a nonauthorizing signed Host reconciliation prerequisite, or renders its source status, before the established certified code release paths. The existing original approval and rollback requirements remain; no Host Original313 mutation provider was enrolled and no Production write grant was issued."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-selected-head-update.php",
+      "source_blob_sha": "a5dc0163a3a70d53002c458bf1f019426c6d1da2",
+      "control_ids": [
+        "UPDATES-01",
+        "SECURITY-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "tests/authority/test-release-source-admission-integration.py"
+      ],
+      "owner_role": "Release source and site security maintainer, CI-only source review; independent Host signers retain approval authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing site-bound owner approval, package identity, signed source evidence, transport catalog, update rollback and execution-denial controls cover this exact code change; no additional permission is created.",
+      "review_rationale": "Exact Git blob review of wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-selected-head-update.php. This change introduces a nonauthorizing signed Host reconciliation prerequisite, or renders its source status, before the established certified code release paths. The existing original approval and rollback requirements remain; no Host Original313 mutation provider was enrolled and no Production write grant was issued."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php",
+      "source_blob_sha": "2b415517d6629918bf2477a98b4602efabe8e108",
+      "control_ids": [
+        "UPDATES-01",
+        "SECURITY-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "tests/authority/test-release-source-admission-integration.py"
+      ],
+      "owner_role": "Release source and site security maintainer, CI-only source review; independent Host signers retain approval authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing site-bound owner approval, package identity, signed source evidence, transport catalog, update rollback and execution-denial controls cover this exact code change; no additional permission is created.",
+      "review_rationale": "Exact Git blob review of wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php. This change introduces a nonauthorizing signed Host reconciliation prerequisite, or renders its source status, before the established certified code release paths. The existing original approval and rollback requirements remain; no Host Original313 mutation provider was enrolled and no Production write grant was issued."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-core-catalog.php",
+      "source_blob_sha": "9110e889d67d15e71648da4ff5aff6a33d016762",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "tests/authority/test-optional-source-read-catalog.php"
+      ],
+      "owner_role": "Release source and site security maintainer, CI-only source review; independent Host signers retain approval authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing site-bound owner approval, package identity, signed source evidence, transport catalog, update rollback and execution-denial controls cover this exact code change; no additional permission is created.",
+      "review_rationale": "Exact Git blob review of wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-core-catalog.php. This change introduces a nonauthorizing signed Host reconciliation prerequisite, or renders its source status, before the established certified code release paths. The existing original approval and rollback requirements remain; no Host Original313 mutation provider was enrolled and no Production write grant was issued."
     }
   ],
   "code_change_rules": {
