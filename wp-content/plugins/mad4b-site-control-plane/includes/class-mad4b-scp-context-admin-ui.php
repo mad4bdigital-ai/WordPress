@@ -680,7 +680,14 @@ final class MAD4B_SCP_Context_Admin_UI {
 		if ( class_exists( 'MAD4B_SCP_Admin_Experience' ) ) MAD4B_SCP_Admin_Experience::tabs( self::PAGE_SLUG, $tabs, $tab );
 		if ( 'overview' === $tab ) self::render_overview();
 		if ( 'google-drive' === $tab ) self::render_google_drive();
-		if ( 'sources' === $tab ) self::render_sources();
+        if ( 'sources' === $tab ) {
+            $scan_source = isset( $_GET['scan_source'] ) && is_string( $_GET['scan_source'] )
+                ? strtolower( trim( sanitize_text_field( wp_unslash( $_GET['scan_source'] ) ) ) ) : '';
+            if ( preg_match( '/^[a-f0-9]{64}$/D', $scan_source ) )
+                self::render_scan_progress_page( $scan_source );
+            else
+                self::render_sources();
+        }
 		if ( 'review' === $tab ) self::render_review();
 		if ( 'assets' === $tab ) self::render_assets();
 		if ( 'quality' === $tab ) self::render_quality();
@@ -1433,6 +1440,138 @@ final class MAD4B_SCP_Context_Admin_UI {
 		echo '</form></div>';
 	}
 
+    /** A post-index scan is sealed to the PRE-APPLY registry revision.
+     * Rendering its completed result must not open that checkpoint using the
+     * new revision, restart Drive, or claim another authorization. Only exact
+     * site/source/asset/read-only Audit evidence may attest indexed status.
+     */
+    private static function indexed_scan_readback( array $source, array $progress, array $site ) {
+        $source_id=(string)($source['source_id']??'');
+        $site_uuid=(string)($site['site_uuid']??'');
+        $brand_id=(string)($source['brand_id']??'');
+        $expected=(int)($progress['verified_files']??0);
+        if (!preg_match('/^[a-f0-9]{64}$/D',$source_id)
+            ||!preg_match('/^[a-f0-9-]{36}$/D',$site_uuid)
+            ||$brand_id==='' ||(string)($source['provider']??'')!=='google_drive'
+            ||(string)($source['mode']??'')!=='governed'
+            ||(string)($source['status']??'')!=='partial_scan'
+            ||!empty($source['last_scan_complete'])
+            ||(string)($source['site_uuid']??'')!==$site_uuid
+            ||(string)($progress['source_id']??'')!==$source_id
+            ||(string)($progress['site_uuid']??'')!==$site_uuid
+            ||($progress['contract']??'')!=='mad4b.scan-ui-progress.v1'
+            ||empty($progress['inventory_complete'])
+            ||(int)($progress['queued_folders']??-1)!==0
+            ||(int)($progress['pending_files']??-1)!==0
+            ||(int)($progress['deferred_files']??0)<1
+            ||$expected<1 ||$expected!==(int)($source['asset_count']??-1)
+            ||!in_array('file_normalization_deferred',(array)($source['last_scan_truncation_reasons']??[]),true)
+            ||!preg_match('/^[a-f0-9]{64}$/D',(string)($source['last_scan_generation']??'')))return false;
+        if(!class_exists('MAD4B_SCP_Schema',false))return false;
+        $tables=MAD4B_SCP_Schema::tables();
+        $table=(string)($tables['audit_events']??'');
+        if($table==='' ||!preg_match('/^[a-zA-Z0-9_]+$/D',$table))return false;
+        global $wpdb;
+        $rows=$wpdb->get_results($wpdb->prepare(
+            "SELECT status,summary_json FROM `$table` WHERE ability=%s ORDER BY id DESC LIMIT 100",
+            'mad4b/context-source-scan'),ARRAY_A);
+        $receipt=false;
+        foreach((array)$rows as $row){
+            $audit=json_decode((string)($row['summary_json']??''),true);
+            if(!is_array($audit) ||(string)($audit['source_id']??'')!==$source_id)continue;
+            $receipt=(string)($row['status']??'')==='partial'
+                &&(string)($audit['scan_generation']??'')===(string)$source['last_scan_generation']
+                &&(string)($audit['provider']??'')==='google_drive'
+                &&(string)($audit['mode']??'')==='governed'
+                &&(int)($audit['observed_asset_count']??-1)===$expected
+                &&(int)($audit['represented_asset_count']??-1)===$expected
+                &&in_array('file_normalization_deferred',(array)($audit['truncation_reasons']??[]),true);
+            break; // The latest source-specific receipt is the only valid one.
+        }
+        if(!$receipt)return false;
+        $count=0;$stale=0;
+        foreach(MAD4B_SCP_Context_Authority::assets() as $asset){
+            if(!is_array($asset)||(string)($asset['source_id']??'')!==$source_id)continue;
+            if(!hash_equals($site_uuid,(string)($asset['site_uuid']??''))
+                ||!hash_equals($brand_id,(string)($asset['brand_id']??''))
+                ||empty($asset['content_complete'])
+                ||!preg_match('/^[a-f0-9]{64}$/D',(string)($asset['content_hash']??'')))return false;
+            ++$count;
+            if((string)($asset['classification_source']??'')==='automatic_heuristic'){
+                $fresh=MAD4B_SCP_Context_Authority::classify_asset(
+                    (string)($asset['title']??''),(string)($asset['path']??''));
+                if((string)($asset['category']??'')!==(string)$fresh['category']
+                    ||(string)($asset['authority_class']??'')!==(string)$fresh['authority_class']
+                    ||!empty($asset['required'])!==!empty($fresh['required']))++$stale;
+            }
+        }
+        if($count!==$expected)return false;
+        return array('indexed'=>$count,'deferred'=>(int)$progress['deferred_files'],
+            'checkpoint_revision'=>(int)($progress['checkpoint_revision']??0),
+            'stale_classification'=>$stale,'registry_revision'=>MAD4B_SCP_Context_Authority::registry_revision());
+    }
+
+    /** Read-only page: it never starts or applies a Drive scan on GET. */
+    private static function render_scan_progress_page( $source_id ) {
+        echo '<p><a class="button" href="' . esc_url( self::tab_url( 'sources' ) ) . '">'
+            . esc_html__( 'Back to Source Folders', 'mad4b-site-control-plane' ) . '</a></p>';
+        $source = MAD4B_SCP_Context_Authority::source( $source_id );
+        $site = MAD4B_SCP_Site_Profile::status();
+        if ( ! is_array( $source ) || ! is_array( $site )
+            || 'google_drive' !== (string) ( $source['provider'] ?? '' )
+            || ! hash_equals( (string) ( $site['site_uuid'] ?? '' ), (string) ( $source['site_uuid'] ?? '' ) ) ) {
+            echo '<div class="notice notice-error inline"><p>'
+                . esc_html__( 'The registered source is unavailable for this Site Profile.', 'mad4b-site-control-plane' )
+                . '</p></div>';
+            return;
+        }
+        require_once __DIR__ . '/class-mad4b-scp-drive-scan-continuation.php';
+        $progress = get_option(
+            MAD4B_SCP_Drive_Scan_Continuation::progress_option_name( $source_id ), array() );
+        $bound = is_array( $progress )
+            && 'mad4b.scan-ui-progress.v1' === (string) ( $progress['contract'] ?? '' )
+            && hash_equals( $source_id, (string) ( $progress['source_id'] ?? '' ) )
+            && hash_equals( (string) $site['site_uuid'], (string) ( $progress['site_uuid'] ?? '' ) )
+            && (int) ( $progress['expires_at'] ?? 0 ) > time();
+        $receipt = MAD4B_SCP_Drive_Scan_Continuation::indexed_source_receipt( $source_id );
+        if ( is_array( $receipt ) ) {
+            echo '<div class="notice notice-success inline"><p>'
+                . esc_html__( 'Verified indexed source receipt is available. Asset approval remains separate.', 'mad4b-site-control-plane' )
+                . '</p></div>';
+        }
+        if ( ! $bound ) {
+            echo '<div class="notice notice-warning inline"><p>'
+                . esc_html__( 'No current source-bound scan checkpoint exists. Open Source Folders to start an explicit scan.', 'mad4b-site-control-plane' )
+                . '</p></div>';
+            return;
+        }
+        $indexed = self::indexed_scan_readback( $source, $progress, $site );
+        if ( is_array( $indexed ) ) {
+            echo '<div class="notice notice-success inline"><p>'
+                . esc_html( sprintf(
+                    'Read-only indexed assets: %d · Deferred: %d · Registry revision: %d',
+                    $indexed['indexed'], $indexed['deferred'], $indexed['registry_revision'] ) )
+                . '</p></div>';
+        } else {
+            echo '<div class="mad4b-scp-panel"><h2>'
+                . esc_html__( 'Current scan checkpoint', 'mad4b-site-control-plane' )
+                . '</h2><p>'
+                . esc_html( sprintf(
+                    'Step %d · Verified %d · Deferred %d · Pending files %d · Pending folders %d',
+                    (int) ( $progress['checkpoint_revision'] ?? 0 ),
+                    (int) ( $progress['verified_files'] ?? 0 ),
+                    (int) ( $progress['deferred_files'] ?? 0 ),
+                    (int) ( $progress['pending_files'] ?? 0 ),
+                    (int) ( $progress['queued_folders'] ?? 0 ) ) )
+                . '</p><p>'
+                . esc_html__( 'Refreshing this page does not advance or restart the source scan.', 'mad4b-site-control-plane' )
+                . '</p></div>';
+        }
+        echo '<p><a class="button" href="' . esc_url( self::tab_url( 'review' ) ) . '">'
+            . esc_html__( 'Open Review Workspace', 'mad4b-site-control-plane' )
+            . '</a></p>';
+    }
+
 	private static function render_sources() {
 		$sources = MAD4B_SCP_Context_Authority::sources();
 		$connection = MAD4B_SCP_Google_Drive_Context::connection_status();
@@ -1491,6 +1630,12 @@ final class MAD4B_SCP_Context_Admin_UI {
 			submit_button( __( 'Scan now', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
             if ( 'google_drive' === ( $source['provider'] ?? '' ) )
 			echo ' <button class="button" name="resumable" value="1" type="submit">' . esc_html__( 'Scan in bounded steps', 'mad4b-site-control-plane' ) . '</button>';
+            if ( 'google_drive' === ( $source['provider'] ?? '' )
+                && preg_match( '/^[a-f0-9]{64}$/D', (string) $source['source_id'] ) ) {
+                echo ' <a class="button" href="' . esc_url( self::tab_url( 'sources',
+                    array( 'scan_source' => (string) $source['source_id'] ) ) ) . '">'
+                    . esc_html__( 'View scan status', 'mad4b-site-control-plane' ) . '</a>';
+            }
 			echo '</form><details class="mad4b-context-remove"><summary>' . esc_html__( 'Remove', 'mad4b-site-control-plane' ) . '</summary><form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 			wp_nonce_field( self::ACTION_REMOVE_SOURCE );
 			echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_REMOVE_SOURCE ) . '"><input type="hidden" name="source_id" value="' . esc_attr( $source['source_id'] ) . '">';

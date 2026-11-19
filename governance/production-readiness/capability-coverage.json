@@ -11538,6 +11538,27 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "The existing original Agent Registry exact grant, Staging-only provider review, site profile, mutation gate, owner approval, checkpoint, readback and audit safeguards govern this single diagnostic, without wildcard rights.",
       "review_rationale": "Exact source review allows a core grant to be considered only for mad4b/hub-queue-site-health-enqueue when the Ability is registered on the correct central Staging site. No grant is issued merely because this provider pair appears; broad hub-bulk-enqueue remains outside the reviewed policy and Production is not enabled."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-admin-ui.php",
+      "source_blob_sha": "c9b469a232fc72b51ad4577bd034613833fc41ac",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "ADMIN-01",
+        "BROWSER-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-scan-view-contract.py"
+      ],
+      "owner_role": "Repository source maintainer and CI-only Context UI reviewer; no live authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source-bound Context Authority, admin capability, prepared scan checkpoint, audit receipt, release and rollback controls cover read-only UI changes. No new content operation or grant is registered.",
+      "review_rationale": "Keep the latest central Context source lifecycle and add only Wayfa readback UI for an exact registered source. A GET never invokes Google Drive scanning, applies a partial index, resets a checkpoint, approves an asset, or grants Write. Nonexistent sources fail closed and revisions remain bound to their own audit evidence."
     }
   ],
   "code_change_rules": {
