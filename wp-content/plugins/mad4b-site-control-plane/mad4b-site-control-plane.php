@@ -695,6 +695,10 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-native-hybrid-acceptance.
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-site-capability-discovery.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-field-intelligence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-visual-seo-strategy.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-fcp-local-observability.php';
+MAD4B_SCP_FCP_Local_Observability::boot();
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-fcp-queue-readback.php';
+MAD4B_SCP_FCP_Queue_Readback::boot();
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-native-capability-browser-provider.php';
 add_filter( 'mad4b_browser_acceptance_providers', array( 'MAD4B_SCP_Native_Capability_Browser_Provider', 'register' ), 15 );
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skills-admin-ui.php';
