@@ -693,9 +693,19 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
             && in_array($operation,[
                 'company.host-authority.anchor.issue',
                 'company.host-authority.anchor.revoke'],true);
+        // Break first-Anchor enrollment circularity without opening a write
+        // route: an original logged-in owner may STAGE only an issue/bootstrap
+        // Grant against their ACTIVE enrolled Original328 parent. Full issuer
+        // readiness is still required for revoke/rotate/operational writes.
+        $hostAnchorReady=$hostAnchorV2
+            &&MAD4B_Original_Native_Operation_Providers_V1::legacy_admitted(
+                $operation,'host','host.anchor.ref.v2');
+        $bootstrapOnly=$hostAnchorV2&&!$hostAnchorReady
+            &&MAD4B_Original_Native_Operation_Providers_V1::
+                first_anchor_bootstrap_intake_registered(
+                    $operation,'host','host.anchor.ref.v2');
         if($hostAnchorV2 && (!self::host_anchor_v2_owner_session($request,$company)
-            ||!MAD4B_Original_Native_Operation_Providers_V1::legacy_admitted(
-                $operation,'host','host.anchor.ref.v2')))
+            ||(!$hostAnchorReady&&!$bootstrapOnly)))
             return self::error('host_anchor_v2_separate_signed_issuer_and_owner_required',403);
 
         $host = (string) ($input['host_id'] ?? '');
@@ -795,6 +805,9 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
             $record['principal_type']='signed_host_principal_v2';
             $record['original328_parent_grant_id']=$parent['grant_id'];
             $record['host_v2_execution_authorized']=false;
+            // A staging Grant is distinct, never a runtime capability.
+            // Even after future issuer commissioning it remains bootstrap-only.
+            $record['host_v2_bootstrap_only']=$bootstrapOnly===true;
         }
         if (!add_option(self::PREFIX . $grant_id, $record, '', false))
             return self::error('grant_persistence_failed', 503);
@@ -998,6 +1011,17 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
                 $grant,$command,$target_scope);
             if(!is_array($approved))
                 return self::error('host_anchor_original305_exact_plan_required',422);
+            $bootstrapGrant=($grant['host_v2_bootstrap_only']??null)===true;
+            $bootstrapWitness=($hostAnchor['authority_mode']??null)==='bootstrap'
+                &&($grant['operation']??null)==='company.host-authority.anchor.issue';
+            if($bootstrapGrant && (!$bootstrapWitness
+                ||!MAD4B_Original_Native_Operation_Providers_V1::
+                   first_anchor_bootstrap_intake_registered(
+                     (string)$grant['operation'],'host','host.anchor.ref.v2')))
+                return self::error('host_anchor_bootstrap_only_grant_mismatch',403);
+            if(!$bootstrapGrant && !MAD4B_Original_Native_Operation_Providers_V1::
+               legacy_admitted((string)$grant['operation'],'host','host.anchor.ref.v2'))
+                return self::error('host_anchor_signed_issuer_not_commissioned',403);
             $command_digest=$approved['command_sha256'];
             $command_byte_length=$approved['command_byte_length'];
             $command_format=$approved['format'];
@@ -1104,8 +1128,12 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
                     ($anchorParent['grant_id']??null)
                 && ($grant['principal_type']??null)==='signed_host_principal_v2'
                 && self::host_anchor_v2_owner_session($request,$company)
-                && MAD4B_Original_Native_Operation_Providers_V1::legacy_admitted(
-                    (string)$grant['operation'],'host','host.anchor.ref.v2')
+                && ($bootstrapGrant
+                    ? ($bootstrapWitness && MAD4B_Original_Native_Operation_Providers_V1::
+                        first_anchor_bootstrap_intake_registered(
+                          (string)$grant['operation'],'host','host.anchor.ref.v2'))
+                    : MAD4B_Original_Native_Operation_Providers_V1::legacy_admitted(
+                        (string)$grant['operation'],'host','host.anchor.ref.v2'))
                 && ($anchorParent['central_principal_id']??null)===self::actor_id();
             if (!is_array($transport)
                 || (!$anchorValid && ($isAnchor ||
@@ -1194,8 +1222,10 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
             $receipt['sealed_argv_transport']='host_bound_x25519_original_305';
         }
         if (is_array($hostSource)) $receipt['host_source_identity']=$hostSource;
-        if (isset($hostAnchor) && is_array($hostAnchor))
+        if (isset($hostAnchor) && is_array($hostAnchor)) {
             $receipt['host_anchor_identity']=$hostAnchor;
+            $receipt['host_v2_bootstrap_only']=($grant['host_v2_bootstrap_only']??null)===true;
+        }
         if (!add_option(self::REQUEST_PREFIX . $request_id, $receipt, '', false)) {
             self::audit('request_persistence_failed', $company, $request_id, 'FAILED');
             return self::error('request_persistence_failed', 503);

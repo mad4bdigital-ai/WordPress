@@ -113,6 +113,7 @@ class Test(unittest.TestCase):
     def test_revoke_postcondition_signed(self):
         self.job["operation_id"]="company.host-authority.anchor.revoke"
         self.ledger["revision"]=4;self.ledger["state"]="REVOKED"
+        self.ledger["event_id"]=self.job["job_id"]
         self.checkpoint["revision"]=4;self.checkpoint["state"]="REVOKED"
         self.wp.update(revision=4,state="REVOKED",
             current_anchor_eligible=False,prior_grants_ineligible=True)
@@ -121,9 +122,39 @@ class Test(unittest.TestCase):
             self.job,self.ledger,self.checkpoint,self.wp,self.pk,self.cpk,now=self.now)
         self.assertFalse(result["receipt_signed"])
         self.assertFalse(result["original313_certified"])
+    def test_revoke_postcondition_denies_cross_job_even_if_wp_same(self):
+        self.job["operation_id"]="company.host-authority.anchor.revoke"
+        self.ledger["revision"]=4;self.ledger["state"]="REVOKED"
+        self.checkpoint["revision"]=4;self.checkpoint["state"]="REVOKED"
+        self.wp.update(revision=4,state="REVOKED",
+            current_anchor_eligible=False,prior_grants_ineligible=True)
+        # A different valid signed event must never be accepted as THIS Job.
+        self.ledger["event_id"]="c"*32
+        self.sign()
+        with self.assertRaisesRegex(m.RevisionDenied,
+             "REVOCATION_NOT_INDEPENDENTLY_EFFECTIVE"):
+            m.verify_revoked_postcondition(
+                self.job,self.ledger,self.checkpoint,self.wp,
+                self.pk,self.cpk,now=self.now)
+
+    def test_revoke_valid_signed_event_does_not_need_wp_job_id(self):
+        self.job["operation_id"]="company.host-authority.anchor.revoke"
+        self.ledger["revision"]=4;self.ledger["state"]="REVOKED"
+        self.ledger["event_id"]=self.job["job_id"]
+        self.checkpoint["revision"]=4;self.checkpoint["state"]="REVOKED"
+        self.wp.update(revision=4,state="REVOKED",
+            current_anchor_eligible=False,prior_grants_ineligible=True)
+        self.wp.pop("original_reserved_job_id",None)
+        self.sign()
+        result=m.verify_revoked_postcondition(
+             self.job,self.ledger,self.checkpoint,self.wp,
+             self.pk,self.cpk,now=self.now)
+        self.assertFalse(result["original313_certified"])
+
     def test_revoke_requires_prior_grants_ineligible(self):
         self.job["operation_id"]="company.host-authority.anchor.revoke"
         self.ledger["revision"]=4;self.ledger["state"]="REVOKED"
+        self.ledger["event_id"]=self.job["job_id"]
         self.checkpoint["revision"]=4;self.checkpoint["state"]="REVOKED"
         self.wp.update(revision=4,state="REVOKED",
             current_anchor_eligible=False,prior_grants_ineligible=False)
@@ -134,6 +165,7 @@ class Test(unittest.TestCase):
     def test_revoke_after_grant_not_a_receipt(self):
         self.job["operation_id"]="company.host-authority.anchor.revoke"
         self.ledger["revision"]=4;self.ledger["state"]="REVOKED"
+        self.ledger["event_id"]=self.job["job_id"]
         self.checkpoint["revision"]=4;self.checkpoint["state"]="REVOKED"
         self.wp.update(revision=4,state="REVOKED",
             current_anchor_eligible=False,prior_grants_ineligible=True)

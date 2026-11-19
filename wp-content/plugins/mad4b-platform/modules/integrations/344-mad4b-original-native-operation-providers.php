@@ -301,6 +301,23 @@ final class MAD4B_Original_Native_Operation_Providers_V1 {
   if(!self::canonical($operation))return null;
   return self::$providers[$operation]??null;
  }
+ /** Non-authorizing first-Anchor bootstrap intake registration ONLY.
+  * This answers whether an authenticated owner can stage an exact request
+  * while the independent issuer has not been commissioned. It never
+  * authorizes execution or revocation; legacy_admitted() remains the sole
+  * operating-provider readiness check.
+  */
+ public static function first_anchor_bootstrap_intake_registered($operation,$scope,$format):bool {
+  if($operation!=='company.host-authority.anchor.issue'
+      ||$scope!=='host'||$format!=='host.anchor.ref.v2')return false;
+  $p=self::profile($operation);
+  return is_array($p)
+    &&($p['provider']??null)==='original_host_anchor_v2_issue'
+    &&($p['authority_family']??null)==='original_305'
+    &&($p['target_scope']??null)==='host'
+    &&($p['command_format']??null)==='host.anchor.ref.v2'
+    &&($p['evidence_contract']??null)==='mad4b.original-host-anchor-v2-readiness.v1';
+ }
  public static function original_305_operation_registered($operation):bool {
   $p=self::profile($operation);
   return is_array($p) && $p['authority_family']==='original_305';
