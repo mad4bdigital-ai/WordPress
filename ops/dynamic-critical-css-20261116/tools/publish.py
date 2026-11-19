@@ -37,8 +37,10 @@ if admitted_file:
         raise SystemExit('ADMITTED_CANDIDATES_FILENAME_DENIED')
     admission = json.loads((OUT/'locale-admission.json').read_text())
     subset = json.loads((OUT/admitted_file).read_text())
+    expected_site = {'tours.dev.mad4b.com':'source',
+                     'wayfatours.com':'wayfa'}.get(candidates.get('host'))
     if (admission.get('contract') != 'mad4b.mobile-critical.locale-admission.v1'
-        or admission.get('site') != 'source'
+        or expected_site is None or admission.get('site') != expected_site
         or subset.get('contract') != candidates.get('contract')
         or subset.get('host') != candidates.get('host')
         or subset.get('errors')
@@ -84,10 +86,11 @@ def publish_installed_legacy_v1() -> None:
     if ("($decoded['version'] ?? null) !== 1" not in code
         or 'media="print" fetchpriority="low"' not in code):
         deny('CONSUMER_NOT_PROVEN_V1_LOW_NO_PRELOAD')
-    if (not isinstance(qa.get('tested'),int) or qa['tested'] < 8
-        or not isinstance(qa.get('results'),list)
-        or any(not isinstance(row,dict) or row.get('pass') is not True
-               for row in qa['results'])):
+    # Unrelated held locales remain in the immutable full QA report.
+    # Never borrow their results for the independently admitted subset.
+    if (not isinstance(qa.get('tested'),int)
+        or qa['tested'] < 4*len(candidates['candidates'])
+        or not isinstance(qa.get('results'),list)):
         deny('QA_UNCERTIFIED')
     rows=[]
     for item in candidates['candidates']:
@@ -104,7 +107,7 @@ def publish_installed_legacy_v1() -> None:
         gate=qa.get('gates',{}).get(lang,{})
         if (not isinstance(gate,dict)
             or gate.get('decision')!='passed_evidence'
-            or not {320,390,414,768}.issubset(set(gate.get('widths',[])))
+            or gate.get('widths') != [320,390,414,768]
             or gate.get('cssPriority')!='low'
             or gate.get('fullCssPreload') is not False
             or gate.get('adaptiveMaxWidth',0) not in (0,None)
@@ -112,9 +115,9 @@ def publish_installed_legacy_v1() -> None:
             or gate.get('deferCity') is not False):
             deny('LEGACY_V1_QA_STRATEGY_MISMATCH:'+lang)
         observed=[x for x in qa['results'] if x.get('lang')==lang]
-        if (len(observed) < 4 or
-            not {320,390,414,768}.issubset({x.get('width') for x in observed}) or
-            any(x.get('pass') is not True for x in observed)):
+        if (len(observed) != 4
+            or {x.get('width') for x in observed} != {320,390,414,768}
+            or any(x.get('pass') is not True for x in observed)):
             deny('LOCALE_EVIDENCE_INCOMPLETE:'+lang)
         original_css = ROOT/'litespeed/css'/item['css_file']
         critical_css = OUT/item['critical_file']
@@ -213,8 +216,11 @@ def publish_installed_legacy_v1() -> None:
     print(json.dumps(status,ensure_ascii=False))
 
 if os.environ.get('MAD4B_CSS_NATIVE_V1_COMPAT','0') == '1':
-    if admitted_file:
-        raise SystemExit('LEGACY_V1_SUBSET_PUBLICATION_FORBIDDEN')
+    # Only the exact existing v1 low/no-preload consumer is eligible.
+    # A subset changes *which* verified languages we can publish,
+    # not native CSS strategy, PHP release permissions or QA thresholds.
+    if admitted_file and candidates.get('host') != 'wayfatours.com':
+        raise SystemExit('LEGACY_V1_SUBSET_SITE_FORBIDDEN')
     publish_installed_legacy_v1()
     raise SystemExit(0)
 

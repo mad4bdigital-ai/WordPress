@@ -118,3 +118,24 @@ mad4b_private_session_critical_css_v1 remain OFF.
 Native full CSS is the correct fail-closed behavior. The per-site
 automated Cron retries its existing source/route jobs without reducing
 price/checkout privacy or publishing an unproven new CSS certificate.
+
+## Fleet CSS executor inventory
+`executor_registry.py --registry /etc/mad4b/css-site-executors.json`
+returns a read-only list of registered site-owned CSS workers. Each active
+row must match the root-owned site profile, pinned immutable renderer hash
+and exact installed Cron line. A new company is held until its own backend
+renderer and host authority are enrolled; registry metadata cannot grant
+execution, mutate WordPress, install Cron or issue certificates.
+
+## Wayfatours 768px LCP
+The static-preload-only lab candidate was rejected by measured Chromium LCP.
+No WordPress hero plugin changes or performance threshold relaxations are
+part of this release. The failing tablet width remains on the native fallback
+until a separately tested adaptive CSS consumer is approved.
+
+## Immutable renderer v12 — independent Wayfa WPML locale publication
+v12 is rebuilt from checked-in code plus the exact preserved v10-only
+source deviations and the non-certifying probe patch. The site-local
+renderer manifest now uses renderer-v12-manifest.json; previous v11
+release remains available at GitHub head 3c1f399cf780 and host rollback.
+v12 SHA-256: cd4ff78aea00d5195083e81a9877df44cbcd47907c550e11c3c52aa7327fe09e

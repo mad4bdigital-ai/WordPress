@@ -452,7 +452,7 @@ publish_step(){
    MAD4B_TARGET_HOST="$HOST" MAD4B_CSS_EPOCH="$EPOCH" \
    MAD4B_CSS_LEGACY_CONSUMER_SHA256="$CONSUMER_SHA" \
    MAD4B_CSS_ADAPTIVE_CONSUMER_SHA256="$CONSUMER_SHA" \
-   MAD4B_CSS_ADMITTED_CANDIDATES="$([[ "$SITE" == source ]] && printf admitted-candidates.json)" \
+   MAD4B_CSS_ADMITTED_CANDIDATES=admitted-candidates.json \
    MAD4B_DRY_RUN="$DRY" \
    timeout 120 python3 "$TOOLS/tools/publish.py"
 }
@@ -498,7 +498,7 @@ fi
 # success alone is not sufficient: verify exact final assets are readable
 # by PHP and preserve the prior Nginx config until nginx -t passes.
 if [[ "$SITE" == wayfa ]];then
- if ! python3 "$TOOLS/wayfa-home-cache-refresh.py"     "$WP/mad4b-critical-css-v1/manifest.json"     "$JOB/candidates.json"     "/opt/wayfa-rebuild-20261102/stack/nginx.conf"     "/opt/mad4b-company-provisioning/ops/dynamic-critical-css-20261116"     > "$JOB/home-cache-release.log" 2>&1;then
+ if ! python3 "$TOOLS/wayfa-home-cache-refresh.py"     "$WP/mad4b-critical-css-v1/manifest.json"     "$JOB/admitted-candidates.json"     "/opt/wayfa-rebuild-20261102/stack/nginx.conf"     "/opt/mad4b-company-provisioning/ops/dynamic-critical-css-20261116"     > "$JOB/home-cache-release.log" 2>&1;then
   echo "HOLD wayfa: certificate published; home FastCGI cache refresh pending"
   tail -4 "$JOB/home-cache-release.log"
   exit 0
