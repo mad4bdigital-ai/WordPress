@@ -76,7 +76,7 @@ Wayfatours Production, with the same accommodation-only inventory policy deploye
   attachment preserves exact source URL/page, SHA-256, user-attested use, and
   the fact that image rights were not independently verified.
 
-## Final live inventory and unresolved exact-room sources
+## Fourth-wave inventory snapshot (before final triage)
 - 148 Units total; 127 have source-curated photos. Existing earlier media
   brings totals to 128 Featured Images and 129 native Unit galleries.
 - 5 non-QA Units remain without imagery:
@@ -95,6 +95,43 @@ Wayfatours Production, with the same accommodation-only inventory policy deploye
 - 14 QA/Test Units intentionally excluded.
 - Zero broken curated source files or missing provenance; all 127 newly
   curated Units remain Draft. No real prices or checkout were activated.
+
+## Fifth wave — final request to repair five remaining cases (Wayfatours production)
+- Sofitel Downtown #70820: the official KGE.room.html detail page has a
+  four-image room gallery; its first gallery photo (Accor Scene7
+  HCM_P_1942495) is unique and represents the Executive room. The previous
+  duplicated hero remains in v1 source metadata, while v2 stores exact room
+  page, source SHA-256 and independently-license-unverified status. The new
+  verified JPEG is 1200x800. Original JetEngine featured and gallery fields
+  were populated; Unit remains Draft.
+- Imported Property #36260 (published title #VALUE!, slug value): its
+  imported description is about Hotel Stanford, New York; its 3 linked Units
+  (#37553, #37554, #37555) contain mismatched room names. All four posts
+  were moved from Published to **Draft** without deleting/changing original
+  titles, photos, prices (including the pre-existing 100 Unit price), Unit
+  relations or metadata. Exact original states are saved in a scoped
+  rollback receipt and rollback-preview was successful. The property must
+  not be sold as Egyptian accommodation until its identity is verified.
+- Three exact-room photos remain **blocked on source verification**,
+  with persistent per-Unit _mad4b_stay_room_photo_source_gap_v1 receipts:
+  - #70905 Hilton Heliopolis pool-view: the older Hilton image URLs serve
+    HTTP 404; no second verifiable room-type image was available.
+  - #70893 Fairmont Deluxe Premier Partial Nile: the official detail image
+    duplicates an already imported room category. Do not silently crop
+    or re-encode the same picture to evade deduplication.
+  - #70873 Sonesta Tower Executive: official room API returns a single
+    photo already used by another Unit. Wait for a different exact official
+    room photo, rather than copy an unrelated image.
+- Original image references and rights status are retained. Neither published
+  rates nor WooCommerce stock globals were modified. No booking or payment
+  capability was activated.
+- After this fifth wave: **128 curated Draft Units**, **129 Featured
+  Images** and **130 native Gallery fields**, in **148 total Unit records**.
+  Four raw non-QA Units still have no imagery (3 valid-room source gaps +
+  #37555 quarantined imported room); 14 QA/Test Units also have no photo.
+  All three previously published imported Units are now Draft.
+- The 129/130 counts include historical existing images/galleries, including
+  two quarantined Units; they are NOT 129/130 commercially approved rooms.
 
 ## Commercial blocks
 Real company-approved selling prices, child/occupancy capacity, verified room variants, Rate validity, the financial ledger and booking authorization remain separate, unresolved work. Draft/QA rates cannot be published automatically.
