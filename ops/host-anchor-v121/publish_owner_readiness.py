@@ -45,8 +45,11 @@ def pinned(path,sha,label):
     require(os.geteuid()==0 and path.is_file()
        and not path.is_symlink(),label+"_MISSING")
     st=path.lstat()
+    # The original first-party Broker signer is a root-owned executable
+    # 0700. All newly installed v121 sources are root-only 0600.
+    expected_mode=0o700 if path==BROKER else 0o600
     require(st.st_uid==0 and st.st_gid==0 and st.st_nlink==1
-       and (st.st_mode & 0o777)==0o600
+       and (st.st_mode & 0o777)==expected_mode
        and digest(path.read_bytes())==sha,label+"_DRIFT")
     sp=importlib.util.spec_from_file_location(label,path)
     require(sp is not None and sp.loader is not None,
