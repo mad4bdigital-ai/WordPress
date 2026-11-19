@@ -24015,6 +24015,25 @@
       "needs_new_control": false,
       "review_rationale": "Exact Git blob review of mad4b-site-control-plane.php in PR942 against immutable PR920 source. Ten executable CI-only suites verify tenant isolation, content readiness, Core Web Vitals, admin permission, company release denial, scoped skill reads and local-only Ollama. No provider grant or Production authority is created.",
       "coverage_reuse_rationale": "Existing site-scoped Admin, Content, Security, WordPress lifecycle and source-binding controls already require authenticated evidence; no new policy control or runtime authorization is implied."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skills-admin-ui.php",
+      "source_blob_sha": "e0eec63d312afe5abaf427736a12472f9e31f72b",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/skills-external-source-admin-source-contract.py"
+      ],
+      "owner_role": "MAD4B CI-only source code reviewer; independent Production owner approval still required",
+      "review_rationale": "The exact candidate blob restores delegated External Skill Source add/remove UI under the existing affirmative Administrator manage_options page gate, delegated original nonce-validated handler, original nonadmin denial and admin-only source-list rendering. The same-PR Python regression executes the native no-network fake-WordPress PHP source fixture, confirming bounded remote discovery and no installation. There is no new WordPress Ability, role grant, OAuth, provider source trust, production runtime or external mutation. This is CI-only source review, not signed deployment proof.",
+      "coverage_reuse_rationale": "Existing Admin, Browser and Security controls remain applicable; this source review adds no privileged execution surface and cannot override live-site preflight or owner approval.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "code_change_rules": {
