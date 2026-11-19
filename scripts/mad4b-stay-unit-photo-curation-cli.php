@@ -70,7 +70,10 @@ final class MAD4B_Unit_Photo_Curation_CLI {
                 ||($review['rights_independently_verified']??true)!==false
                 ||($review['original_v1_reference_preserved']??false)!==true
                 ||(($review['verified_room_detail_h1']??false)!==true
-                    &&($review['verified_official_gallery_caption']??false)!==true)
+                    &&($review['verified_official_gallery_caption']??false)!==true
+                    &&!($unit===70873 && $property===70733
+                        &&($review['verified_partner_room_caption']??false)===true
+                        &&($review['partner_provenance_not_hotel_official']??false)===true))
                 ||!is_array($ref)
                 ||($ref['room_name']??'')!==($review['room_name']??'')
                 ||(int)($ref['property_id']??0)!==(int)($review['property_id']??0))
@@ -88,8 +91,17 @@ final class MAD4B_Unit_Photo_Curation_CLI {
             return self::error('unexpected_source_rights_status');
         $imageUrl=(string)$ref['image_url'];
         $page=(string)$ref['source_room_page'];
+        // The only partner-media exception is an exact, reviewed room image
+        // for Sonesta Tower Executive. This does NOT whitelist the imgix
+        // domain for arbitrary Units or permit an unverified photo match.
+        $sonestaPartner=($unit===70873 && $property===70733 && is_array($review)
+            &&($review['verified_partner_room_caption']??false)===true
+            &&($review['partner_provenance_not_hotel_official']??false)===true
+            &&$imageUrl==='https://roomtypestorage.imgix.net/sonseta-hotel-tower-and-casino-cairo-egypt-tower-executive-room-king-or-twin-01-1766.jpg?auto=format&fit=crop&fm=jpg&h=900&w=1400'
+            &&$page==='https://www.awayholidays.co.uk/africa/egypt/cairo/sonestacairo-hotel.aspx');
         if(wp_parse_url($imageUrl,PHP_URL_SCHEME)!=='https'
-            || !in_array(strtolower((string)wp_parse_url($imageUrl,PHP_URL_HOST)),self::HOSTS,true)
+            || (!in_array(strtolower((string)wp_parse_url($imageUrl,PHP_URL_HOST)),self::HOSTS,true)
+                && !$sonestaPartner)
             ||wp_parse_url($page,PHP_URL_SCHEME)!=='https')
             return self::error('untrusted_external_source');
         $name=(string)($row['file']??'');
@@ -138,7 +150,7 @@ final class MAD4B_Unit_Photo_Curation_CLI {
         $attachment=wp_insert_attachment([
             'post_mime_type'=>$candidate['mime'],
             'post_title'=>$candidate['parent_title'].' — '.($source['room_name']??$candidate['unit_title']),
-            'post_excerpt'=>'Room photograph. Original hotel image source: '.$source['source_room_page'],
+            'post_excerpt'=>'Room photograph source page: '.$source['source_room_page'],
             'post_content'=>'Source: '.(string)$source['image_url'],
             'post_status'=>'inherit'
         ],$file['file'],$unit,true);
@@ -167,6 +179,7 @@ final class MAD4B_Unit_Photo_Curation_CLI {
             'source_image_quality_review_required'=>$unit===70805,
             'approved_source_review_v2'=>isset($source['schema'])
                 &&$source['schema']==='mad4b.stay-photo-source-reviewed-v2',
+            'source_partner_not_official'=>($source['partner_provenance_not_hotel_official']??false)===true,
             'unit_id'=>$unit,'property_id'=>$property,
             'recorded_at'=>gmdate('c')
         ];
