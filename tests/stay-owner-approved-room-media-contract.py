@@ -7,6 +7,15 @@ p=Path(__file__).resolve().parents[1]/'scripts'
 source=(p/'mad4b-stay-unit-photo-curation-cli.php').read_text()
 rollback=(p/'mad4b-stay-unit-photo-rollback-cli.php').read_text()
 stock=(Path(__file__).resolve().parents[1]/'wp-content/mu-plugins/021-mad4b-stay-unmanaged-stock.php').read_text()
+four_seasons=(p/'mad4b-stay-fourseasons-exact-room-source-admission.php').read_text()
+assert "press.fourseasons.com" in four_seasons
+assert "www.fourseasons.com" in four_seasons
+assert "_mad4b_unit_official_room_photo_reference_v1" in four_seasons
+assert "in_array(get_post_status($property),['publish','draft'],true)" in four_seasons
+assert "get_post_status($id)!=='draft'" in four_seasons
+assert "_mad4b_official_room_photo_source_observation_v1" in four_seasons
+assert "rights_independently_verified'=>false" in four_seasons
+assert 'press.fourseasons.com' in source
 assert 'MAD4B_STAY_MEDIA_USER_APPROVED' in source
 assert 'MAD4B_STAY_MEDIA_UNIT_IDS' in source
 assert 'count($allow)>20' in source
