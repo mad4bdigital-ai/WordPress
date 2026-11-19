@@ -29,3 +29,28 @@ All authenticated and unsafe visitor HTML remains private/no-store. Certifying a
 Source Tours.dev and Wayfatours have identical component bytes. Each WordPress has its own locally confirmed public CPT allowlist; in these two installations it currently includes tours-and-activities. The production archive switch remains OFF following observed dynamic FAQ CSS cohorts and list reordering between independent requests. No private-session certificate has been issued.
 
 The shared source test suite includes two-site route, CPT, cookie and exact-manifest QA. Never reuse a passing test from one site to certify another site's CSS, prices or interactions.
+
+
+## Per-site WP-Cron CSS scheduling (429 v1.1.0)
+
+The CSS dispatcher now reads mad4b_css_wpcron_site_profile_v1
+from each WordPress instance. Its required keys are site_id,
+site_host, environment, and tasks, where the task map contains
+only approved names with bounded schedule intervals (300-604800s).
+
+An unconfigured/invalid/foreign-host/foreign-environment instance
+has no CSS dispatch identity or scheduled tasks. A CSS queue profile
+is NOT a host execution grant. The separate first-party VPS worker
+continues to execute only the original site-specific adapters it
+already knows. Existing source and wayfa queue identities and
+pending ticket IDs were retained during source-first rollout.
+
+Source profile: public 1800s; first_fold 900s; families 1800s;
+visual 86400s; audit 86400s; retention 604800s.
+Wayfa profile: public 1800s; first_fold 3600s.
+These values are site-owned WP options, not constants in the MU
+plugin, and do not imply any generic backend executor for other companies.
+
+Rollback: /opt/mad4b-company-provisioning/reports/site-scoped-css-scheduler-20261119.
+No CSS generation, certificate approval, pricing or FastCGI admission
+was changed by this scheduler reconciliation.

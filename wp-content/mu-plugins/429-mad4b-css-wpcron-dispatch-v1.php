@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Critical CSS Native WP-Cron Dispatch
  * Description: Exact-company CSS work scheduling in WordPress; never runs Chromium or a shell process inside PHP.
- * Version: 1.0.3
+ * Version: 1.1.0
  */
 defined('ABSPATH') || exit;
 if (!class_exists('MAD4B_CCSS_WPCron_Dispatch_V1', false)) {
@@ -12,20 +12,44 @@ final class MAD4B_CCSS_WPCron_Dispatch_V1 {
     const TICK='mad4b_css_scheduler_tick_v1';
     const DIRTY='mad4b_css_scheduler_dirty_v1';
     const INTERVAL='mad4b_css_every_5_minutes_v1';
-    const HOSTS=['tours.dev.mad4b.com'=>'source','wayfatours.com'=>'wayfa'];
+    // A WordPress site may enroll its OWN scheduled CSS task profile.
+    // This is NOT a host-execution grant: the original VPS worker still
+    // accepts only separately registered first-party executor adapters.
+    const PROFILE='mad4b_css_wpcron_site_profile_v1';
+    const TASK_ALLOWLIST=['public','first_fold','families','visual','audit','retention'];
+
+    public static function profile(): ?array {
+        $profile=get_option(self::PROFILE,[]);
+        if (!is_array($profile) || count($profile)!==4
+            || !isset($profile['site_id'],$profile['site_host'],
+                       $profile['environment'],$profile['tasks'])
+            || !is_string($profile['site_id'])
+            || !preg_match('/^[a-z][a-z0-9_-]{1,63}$/D',$profile['site_id'])
+            || !is_string($profile['site_host'])
+            || !preg_match('/^[a-z0-9.-]{3,253}$/D',$profile['site_host'])
+            || !is_string($profile['environment'])
+            || !in_array($profile['environment'],['staging','production'],true)
+            || $profile['environment']!==wp_get_environment_type()
+            || strtolower((string)wp_parse_url(home_url('/'),PHP_URL_HOST))!==$profile['site_host']
+            || !is_array($profile['tasks'])
+            || !$profile['tasks'] || count($profile['tasks'])>count(self::TASK_ALLOWLIST))
+            return null;
+        foreach ($profile['tasks'] as $name=>$interval) {
+            if (!is_string($name) || !in_array($name,self::TASK_ALLOWLIST,true)
+                || !is_int($interval) || $interval<300 || $interval>604800)
+                return null;
+        }
+        return $profile;
+    }
 
     public static function site() {
-        $host=strtolower((string)wp_parse_url(home_url('/'),PHP_URL_HOST));
-        return isset(self::HOSTS[$host]) ? self::HOSTS[$host] : null;
+        $profile=self::profile();
+        return $profile['site_id']??null;
     }
+
     public static function tasks() {
-        $site=self::site();
-        if ($site==='wayfa') return ['public'=>1800,'first_fold'=>3600];
-        if ($site==='source') return [
-            'public'=>1800, 'first_fold'=>900, 'families'=>1800,
-            'visual'=>86400, 'audit'=>86400, 'retention'=>604800
-        ];
-        return [];
+        $profile=self::profile();
+        return $profile['tasks']??[];
     }
     public static function schedules($schedules) {
         $schedules[self::INTERVAL]=['interval'=>300,'display'=>'MAD4B CSS queue heartbeat (5 min)'];

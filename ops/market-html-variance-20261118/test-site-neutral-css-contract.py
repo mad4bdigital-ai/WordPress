@@ -3,8 +3,15 @@ from pathlib import Path
 root=Path(__file__).resolve().parents[2]
 a=(root/'wp-content/mu-plugins/414-mad4b-stable-listing-css-identity.php').read_text()
 b=(root/'wp-content/mu-plugins/436-mad4b-private-session-critical-css-v1.php').read_text()
+c=(root/'wp-content/mu-plugins/429-mad4b-css-wpcron-dispatch-v1.php').read_text()
 checks=[
- ('no-company-domains',all(x not in a+b for x in ('wayfatours.com','tours.dev.mad4b.com'))),
+ ('no-company-domains',all(x not in a+b+c for x in ('wayfatours.com','tours.dev.mad4b.com'))),
+ ('site-owned-wpcron-profile',"mad4b_css_wpcron_site_profile_v1" in c),
+ ('site-owned-task-schedules',"return $profile['tasks']??[];" in c),
+ ('wpcron-host-and-environment-binding',"$profile['environment']!==wp_get_environment_type()" in c
+   and "wp_parse_url(home_url('/'),PHP_URL_HOST)" in c),
+ ('wpcron-task-allowlist',"const TASK_ALLOWLIST=" in c),
+ ('wpcron-no-general-host-executor-grant','shell_exec' not in c),
  ('post-types-from-site-option',"get_option('mad4b_stable_dcss_post_types_v1',[])" in a),
  ('public-type-and-canonical-archive','post_type_exists($type)' in a and 'get_post_type_archive_link($type)' in a),
  ('private-host-from-site',"get_option('home','')" in b and '$incoming!==$host' in b),
