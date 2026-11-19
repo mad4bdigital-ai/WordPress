@@ -65,6 +65,12 @@ def self_test(policy):
     assert inspect(business_path, "'tour_type'", policy)  # unreviewed new key
     assert inspect(business_path, "'https://staging.egypttourgates.com'", policy)
     assert not inspect(generic, "get_post_types(); home_url(); 'product-price';", policy)
+    # A formerly reviewed tourism-specific provider default is now retired.
+    # Keep a source-path-specific denial test, not a broad business exception.
+    provider="includes/class-mad4b-scp-provider-field-intelligence.php"
+    assert policy["reviewed_business_models"][provider]["models"] == []
+    assert not inspect(provider,"'post'; post_type_exists($subtype);",policy)
+    assert "FIXED_BUSINESS_MODEL" in inspect(provider,"'tours-and-activities'",policy)
     print("SITE_NEUTRALITY_SELF_TEST: PASS (tenant, unknown host, business model, optional boundary)")
 
 
