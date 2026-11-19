@@ -22,6 +22,8 @@ SHA = re.compile(r"^[a-f0-9]{40}$")
 # Each path contains exit-on-failure assertions and a positive PASS marker.
 # Other PHP files continue to require PHPUnit; unknown paths fail closed.
 STANDALONE_PHP_REGRESSIONS = frozenset((
+    # Source-preflight optional read projection: exact hermetic PHP fixture.
+    "tests/authority/test-optional-source-read-catalog.php",
     "tests/remote-execution/chatgpt-optional-catalog-smoke.php",
     "tests/remote-execution/developer-preparation-bridge-smoke.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/mcp-catalog-adaptive-budget.php",
@@ -56,6 +58,10 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "wp-content/plugins/mad4b-site-control-plane/tests/market-source-calendar-authority-hermetic.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/provider-setup-coverage-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/authority-setup-fields-runtime.php",
+    # CI-approved, isolated Authorization callback/trait lifetime fixture.
+    "wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-claim-context-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-remote-denial-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/authorization-replay-audit-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/background-authorization-verified-identity-hermetic.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/unified-policy-gate-hermetic.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/unified-queue-extension-hermetic.php",
@@ -230,6 +236,7 @@ def self_test():
         raise AssertionError("Unreviewed operations PHP fixture admitted")
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/staging-source-selector-runtime.php")[0] == "php"
     assert command_for("tests/production_readiness_registry_contract.py")[0] == sys.executable
+    assert command_for("tests/authority/test-optional-source-read-catalog.php")[0] == "php"
     assert command_for("tests/remote-execution/operator-grants-convergence-smoke.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/generation-snapshot-exception-runtime.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php")[0] == "php"
@@ -272,6 +279,9 @@ def self_test():
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/market-source-calendar-authority-hermetic.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/provider-setup-coverage-runtime.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/authority-setup-fields-runtime.php")[0] == "php"
+    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-claim-context-runtime.php")[0] == "php"
+    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/brand-context-remote-denial-runtime.php")[0] == "php"
+    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/authorization-replay-audit-runtime.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/background-authorization-verified-identity-hermetic.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/unified-policy-gate-hermetic.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/unified-queue-extension-hermetic.php")[0] == "php"

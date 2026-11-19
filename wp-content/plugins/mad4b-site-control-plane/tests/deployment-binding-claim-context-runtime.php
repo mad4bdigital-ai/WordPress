@@ -22,8 +22,16 @@ $claim = array(
     'approval_required' => true, 'approval_claimed' => true,
     'approval_ticket_id' => $input['_mad4b_approval_ticket_id']
 );
+$traits = ( new ReflectionClass( 'MAD4B_SCP_Authorization' ) )->getTraitNames();
+foreach ( array(
+    'MAD4B_SCP_Authorization_Claimed_Callback',
+    'MAD4B_SCP_Authorization_Observation',
+    'MAD4B_SCP_Authorization_Remote_Denial',
+) as $trait ) {
+    assertion( in_array( $trait, $traits, true ), 'Extracted Authorization trait contract missing: ' . $trait );
+}
 $invoke = new ReflectionMethod('MAD4B_SCP_Authorization', 'invoke_claimed_callback');
-$invoke->setAccessible(true);
+if ( PHP_VERSION_ID < 80100 ) $invoke->setAccessible(true);
 assertion(!MAD4B_SCP_Authorization::native_binding_callback_is_claimed($input),
     'A direct PHP invocation does not have an approved callback receipt.');
 $visited = 0;

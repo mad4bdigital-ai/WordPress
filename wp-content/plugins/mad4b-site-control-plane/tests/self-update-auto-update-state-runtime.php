@@ -38,6 +38,11 @@ function apply_filters( $hook, $value ) {
 	return $value;
 }
 final class MAD4B_SCP_Site_Profile {
+    public static function status() { return array('authority_ready' => (bool) ($GLOBALS['mad4b_profile_ready'] ?? true), 'site_uuid' => 'ci-verified-site'); }
+    public static function origin_enrolled() { return true; }
+    public static function site_urls_match_enrollment() { return true; }
+    public static function managed_runtime_enabled() { return true; }
+    public static function write_enabled() { return (bool) $GLOBALS['mad4b_profile_write_allowed']; }
 	public static function environment_resolution() {
 		return array(
 			'contract' => 'mad4b.site-profile-environment-resolution.v1',
@@ -117,10 +122,20 @@ if ( true !== $environment_allowed->invoke( null, true ) ) {
 }
 $GLOBALS['mad4b_effective_environment'] = 'production';
 $GLOBALS['mad4b_profile_write_allowed'] = false;
-if ( false !== $environment_allowed->invoke( null, false ) ) {
-	fwrite( STDERR, "Production native self-update bypassed explicit production gate\n" );
-	exit( 7 );
+// The new site-neutral governed policy allows READ/PLAN on a verified
+// Production Site Profile, but never a remote mutation with write disabled.
+if ( true !== $environment_allowed->invoke( null, false )
+    || false !== $environment_allowed->invoke( null, true ) ) {
+    fwrite( STDERR, "Production managed profile/read versus write boundary incorrect\n" );
+    exit( 7 );
 }
+$GLOBALS['mad4b_profile_ready'] = false;
+if ( false !== $environment_allowed->invoke( null, false )
+    || false !== $environment_allowed->invoke( null, true ) ) {
+    fwrite( STDERR, "Unenrolled/unauthorized profile bypassed source update environment gate\n" );
+    exit( 12 );
+}
+$GLOBALS['mad4b_profile_ready'] = true;
 
 
 /** Check/read UI remains visible to a site admin who cannot install plugins. */

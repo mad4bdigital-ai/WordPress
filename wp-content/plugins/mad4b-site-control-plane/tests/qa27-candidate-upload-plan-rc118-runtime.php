@@ -21,9 +21,15 @@ function wp_get_environment_type(){return 'staging';}
 function get_current_user_id(){return 1;}
 class MAD4B_SCP_Site_Profile {
  public static function environment_allowed($env,$op){return in_array('staging',$env,true) && $op==='write';}
+ public static function configured(){return true;}
+ public static function current_environment(){return 'staging';}
+ public static function origin_enrolled(){return true;}
+ public static function site_urls_match_enrollment(){return true;}
+ public static function managed_runtime_enabled(){return true;}
+ public static function write_enabled(){return true;}
  public static function wordpress_environment_explicit(){return true;}
  public static function user_is_enrolled($id){return $id===1;}
- public static function status(){return ['site_uuid'=>'d745d81f-6fc4-5c6a-99dd-d953c92137bf','deployment_binding_configured'=>true,'same_origin_clone_protection'=>true];}
+ public static function status(){return ['site_uuid'=>'d745d81f-6fc4-5c6a-99dd-d953c92137bf','deployment_binding_configured'=>true,'same_origin_clone_protection'=>true,'authority_ready'=>true];}
 }
 function wp_safe_remote_get($url,$args){
  if(!str_starts_with($url,'https://api.github.com/repos/mad4bdigital-ai/WordPress/git/commits/'))return new WP_Error('foreign_source');
@@ -50,7 +56,13 @@ $check=function($name,$input,$expected) {
  return $p;
 };
 try{
- $plan=$check('remote_verified_staging_exact_match',$input,true);
+ // Remote source identity can be read-verified in isolation, but the
+ // release remains ineligible without the separate signed Host preflight.
+ $plan=$check('remote_verified_staging_exact_match',$input,false);
+ if(empty($plan['candidate_source']['remote_verified']) || $plan['release_channel_bound']
+    || $plan['production_allowed']
+    || !in_array('signed_source_reconciliation_preflight_required',$plan['blockers'],true))
+  throw new Exception('unsigned_candidate_incorrectly_admitted_or_not_remote_verified');
  $unauthorized=MAD4B_SCP_Self_Update::upload_apply(array_merge($input,[
   'expected_plan_sha256'=>$plan['plan_sha256'],
   'candidate_confirmation'=>'INSTALL EXACT STAGING CANDIDATE',

@@ -75,7 +75,6 @@ required_self_update = [
     "legacy_stable_fallback",
     "mad4b_self_update_manifest_digest_mismatch",
     "release_verdict_success",
-    "MAD4B_SCP_PRODUCTION_SELF_UPDATE_ENABLED",
     "package_base64",
     "expected_plan_sha256",
     "MAD4B_SCP_Authorization::authorize_mutation",
@@ -89,7 +88,13 @@ required_self_update = [
     "rollback_on_failed_readback",
     "release_channel_bound",
     "target_not_current_governed_release",
-    "MAD4B_SCP_Site_Profile::environment_allowed( array( 'production' ), 'write' )",
+    # Production parity uses the enrolled Site Profile and scoped permission,
+    # not the deprecated single-environment release toggle.
+    "MAD4B_SCP_Site_Profile::origin_enrolled()",
+    "MAD4B_SCP_Site_Profile::site_urls_match_enrollment()",
+    "MAD4B_SCP_Site_Profile::managed_runtime_enabled()",
+    "MAD4B_SCP_Site_Profile::write_enabled()",
+    "MAD4B_Release_Source_Admission::require_for_release( $source_sha )",
     "caller_url_allowed",
     "caller_path_allowed",
     "installed_plugin_version_from_disk",
@@ -478,11 +483,18 @@ apply_schema = self_update.split("private static function apply_schema()", 1)[1]
 if "package_base64" not in apply_schema or "expected_plan_sha256" not in apply_schema:
     raise SystemExit("upload apply schema is not exact-plan plus bounded-file based")
 
-# Remote upload is Staging-only and Production native updates require an explicit constant.
-if "return 'staging' === $environment" not in self_update:
-    raise SystemExit("governed upload is not explicitly Staging-bound")
-if "defined( 'MAD4B_SCP_PRODUCTION_SELF_UPDATE_ENABLED' )" not in self_update:
-    raise SystemExit("Production native self-update opt-in gate missing")
+# Both Staging and Production use enrolled Site Profile and original
+# governed update authorization; source reconciliation is an additional gate.
+# No hostname-derived environment authority or Staging-only shortcut.
+for marker in (
+    "MAD4B_SCP_Site_Profile::origin_enrolled()",
+    "MAD4B_SCP_Site_Profile::site_urls_match_enrollment()",
+    "MAD4B_SCP_Site_Profile::managed_runtime_enabled()",
+    "MAD4B_SCP_Site_Profile::write_enabled()",
+    "MAD4B_Release_Source_Admission::require_for_release( $source_sha )",
+):
+    if marker not in self_update:
+        raise SystemExit(f"governed environment-neutral release admission missing: {marker}")
 for marker in (
     "private static function environment_resolution()",
     "MAD4B_SCP_Site_Profile::environment_resolution()",

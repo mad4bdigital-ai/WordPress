@@ -29,6 +29,7 @@ final class MAD4B_SCP_Site_Profile {
 	public static $origin_enrolled = true;
 	public static $urls_match = true;
 	public static $write_enabled = true;
+    public static function status() { return array('authority_ready' => self::$configured, 'site_uuid' => 'ci-enrolled-site'); }
 	public static function configured() { return self::$configured; }
 	public static function current_environment() { return self::$environment; }
 	public static function origin_enrolled() { return self::$origin_enrolled; }
@@ -129,6 +130,18 @@ check( true === $ready['post_update_candidate_rebind_required'], 'bootstrap must
 check( false === $ready['production_mutation_allowed'], 'bootstrap must never authorize Production mutation' );
 check( false === $ready['mutation_performed'], 'bootstrap policy must remain read-only' );
 
+// The source code now supports environment-neutral *planning*, while
+// Production mutation cannot be admitted by this read-only bootstrap policy.
+setup_clean_candidate_drift();
+MAD4B_SCP_Site_Profile::$environment = 'production';
+$production_preview = bootstrap_policy();
+check( false === $production_preview['production_mutation_allowed'],
+    'Production bootstrap preview must never create production mutation authority' );
+check( false === $production_preview['authority_mutation_allowed'],
+    'Production preview may never change authority' );
+check( false === $production_preview['mutation_performed'],
+    'Production preview must stay read-only' );
+
 $cases = array(
 	'prior authority effective' => static function () { MAD4B_SCP_Staging_Write_Authority::$effective = true; },
 	'candidate already current' => static function () { MAD4B_SCP_Staging_Write_Authority::$binding['match'] = true; },
@@ -148,7 +161,7 @@ $cases = array(
 	'checkpoint not ready' => static function () { MAD4B_SCP_Staging_Write_Authority::$checkpoint['status']['ready'] = false; },
 	'active continuation permit' => static function () { MAD4B_SCP_Post_Update_Continuation::$active = true; },
 	'breakglass active' => static function () { MAD4B_SCP_Policy::$breakglass = true; },
-	'production environment' => static function () { MAD4B_SCP_Site_Profile::$environment = 'production'; },
+	'production with write disabled' => static function () { MAD4B_SCP_Site_Profile::$environment = 'production'; MAD4B_SCP_Site_Profile::$write_enabled = false; },
 	'write profile disabled' => static function () { MAD4B_SCP_Site_Profile::$write_enabled = false; },
 	'origin drift' => static function () { MAD4B_SCP_Site_Profile::$origin_enrolled = false; },
 );
