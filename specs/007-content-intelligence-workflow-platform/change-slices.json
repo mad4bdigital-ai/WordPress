@@ -1,11 +1,11 @@
 {
   "contract": "mad4b.change-slices.v2",
   "authorizing": false,
-  "reviewed_base_sha": "9f2df20a5272d0b2f5d784f442ba4e2f94629ab9",
+  "reviewed_base_sha": "d3bf8b07244840175ab1611e2ae1b426a6542b6d",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 24,
-  "changed_paths_sha256": "ea2146691e4ffde553f65f06b2b2ee9c2009510dd90b67fb0e0d9f715a35b8bf",
+  "changed_file_count": 38,
+  "changed_paths_sha256": "0032cef94ed881eeb2360b0e5fbb945789fc6fe8d366c1b148173cb98ac84120",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -316,6 +316,96 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w1-authority-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ]
+    },
+    {
+      "id": "scheduler-source-closure",
+      "semantic_unit": "Preserve 18 original Tours.dev scheduler/operational files plus one explicit company-scoped role helper, without bootstrap activation.",
+      "revert_boundary": "Remove all 19 unactivated includes together; no previously installed site, approval, queue, cron or authority changes.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-experience-quality.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-integrity.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-completeness.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-type-roles.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-web-vitals-admin-trait.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-web-vitals.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-frontend-impact-priority.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-geo-quality.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-hub-jetengine-consumer-governance.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-locale-experience-alerts.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-presentation-browser-evidence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-presentation-integrity.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-discovery-trait.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-event-automation.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-integrations.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-preactivation.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-reconciliation-trait.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-scopes.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-team-preparation.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-workflow-options.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-source-lifecycle.php"
+      ]
+    },
+    {
+      "id": "scheduler-closure-regression",
+      "semantic_unit": "Exact source SHA, transitive dependency graph, role deny-by-default and no-start PHP 7.4 proof.",
+      "revert_boundary": "Revert the bounded PHP fixture with the scheduler-source-only closure, retaining prior test admission and permission boundaries.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-scheduler-source-closure-runtime.php"
+      ]
+    },
+    {
+      "id": "scheduler-cross-surface-existing-capability-regressions",
+      "semantic_unit": "Preserve existing adaptive interaction and hourly cron controls when original dormant Web Vitals and frontend impact source is captured.",
+      "revert_boundary": "Revert only these two negative test additions with associated source-only scheduler closure; retain historic authorization checks.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-authority-review-source-only-runtime.php"
+      ]
+    },
+    {
+      "id": "content-quality-dependencies-original-source-regression",
+      "semantic_unit": "Preserve the original PR907 content-quality source-only compatibility regression alongside the dormant scheduler source closure.",
+      "revert_boundary": "Remove this dedicated eight-file source-evidence regression only with its reviewed content-quality dependency closure; leave the parent plugin Bootstrap, owner grants and runtime authority untouched.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-content-quality-dependencies-source-only-runtime.php"
+      ]
+    },
+    {
+      "id": "hub-lifecycle-original-source-regression",
+      "semantic_unit": "Preserve the parent PR906 unactivated Hub and Source Lifecycle denial tests alongside the subsequently reviewed source-closure code.",
+      "revert_boundary": "Revert this no-boot Hub/Source Lifecycle verification only with the corresponding reviewed original source; it is not a provider approval or production execution route.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-hub-lifecycle-source-only-runtime.php"
+      ]
+    },
+    {
+      "id": "readiness-preactivation-original-source-regression",
+      "semantic_unit": "Explicit ownership of the preceding PR905 dormant Readiness Preactivation source regression and its external-send denial checks.",
+      "revert_boundary": "Revert only the hermetic preactivation regression alongside its frozen source; do not change main Bootstrap, grants, provider sends or production activation.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readiness-preactivation-source-only-runtime.php"
+      ]
+    },
+    {
+      "id": "original-authority-review-modules-from-pr900",
+      "semantic_unit": "Group six original PR900 Authority / original 305 / company source review modules, preserved for static source inspection only and not registered in main plugin Bootstrap.",
+      "revert_boundary": "Revert this six-module original-source review as a unit without enabling execution, grants, certs, provider credentials, Production promotion or site writes. PR900 and its original frozen source remain the review anchors.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-auto-reconciliation.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-reviews-bridge.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-reconcile-skill-set.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-connector-vault.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-host-source-release-review.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-original305-incident-review.php"
       ]
     }
   ]

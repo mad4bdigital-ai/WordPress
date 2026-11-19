@@ -85,4 +85,16 @@ $key='mad4b_aib_v1_'.hash('sha256',$plan['checkpoint_ref']);$GLOBALS['options'][
 chk('expired checkpoint denied',is_wp_error(MAD4B_SCP_Adaptive_Interaction_Broker::status(['checkpoint_ref'=>$plan['checkpoint_ref']])));
 $qa31_agent_source=file_get_contents(dirname(__DIR__,2).'/includes/class-mad4b-scp-agent-grant-lifecycle.php');
 chk('qa31 W1 REST grant route owner-gated',is_string($qa31_agent_source)&&strpos($qa31_agent_source,"register_rest_route('mad4b/v1'")!==false&&strpos($qa31_agent_source,"'permission_callback'=>array(__CLASS__,'owner')")!==false);
+// The new source-only CWV module may cite the existing mad4b/v1 route
+// namespace, but it must not boot or register any endpoint on this branch.
+$cwv=fopen(dirname(__DIR__,2).'/includes/class-mad4b-scp-core-web-vitals.php','r');
+$source=$cwv?stream_get_contents($cwv):'';
+if($cwv)fclose($cwv);
+$bootstrap=file_get_contents(dirname(__DIR__,2).'/mad4b-site-control-plane.php');
+chk('new source-only core-web-vitals API remains unloaded',
+    is_string($source)&&strpos($source,"$ns = 'mad4b/v1';")!==false
+    && strpos($source,'register_rest_route( $ns,')!==false
+    && strpos($source,"'permission_callback'")!==false
+    && is_string($bootstrap)
+    && strpos($bootstrap,'class-mad4b-scp-core-web-vitals.php')===false);
 echo 'SUMMARY '.$count.' passed 0 failed'."\n";
