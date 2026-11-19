@@ -41,7 +41,7 @@ function state(overrides={}) {
   request_status:'ADMITTED_PENDING_INDEPENDENT_HOST_AUTHORITY',
   request_expires_epoch:2000000000,request_expired:false,broker_job_exists:true,
   broker_job_state:'BROKER_CLAIMED_PENDING_INDEPENDENT_HOST_AUTHORITY',
-  signature_window_expired:false,
+  signature_window_expired:false,issuer_ready:false,
   plan_sha256:PLAN,plan_source:'previous_owner_request_reference',
   phase:'ORIGINAL305_REQUEST_STAGED',anchor_state:'MISSING_OR_INVALID',
   anchor_revision:0,server_epoch:1795111200
@@ -96,6 +96,32 @@ const ok = body => ({ok:true,status:200,async json(){return body;}});
  assert(denied.els['mad4b-ha-checked-at'].textContent.includes('unavailable'));
  assert.equal(denied.calls.filter(c=>c.opts.method==='POST').length,0);
  console.log('PASS REST denial cannot trigger owner mutation');
+
+ const ready=harness({
+   phase:'INDEPENDENT_SIGNATURE_WINDOW_EXPIRED',
+   signatureWindowExpired:true,requestExpired:true,
+   brokerJobExists:true,issuerReady:false
+ },async()=>ok(state({
+   request_expired:true,broker_job_exists:true,
+   signature_window_expired:true,issuer_ready:true,
+   phase:'OWNER_RENEWAL_READY'
+ })));
+ await ready.tick();
+ assert(ready.els['mad4b-ha-command-panel'].hidden===false,
+   'signed root readiness must permit new owner-confirmed request');
+ assert(ready.els['mad4b-ha-tracker'].hidden===true,
+   'the claimed expired request must be historical, never reusable');
+ assert(ready.els['mad4b-ha-command'].disabled,
+   'fresh consent checkbox must not be auto-checked');
+ assert(ready.els['mad4b-ha-plan'].value===PLAN,
+   'Root Plan identity should come from exact historical owner request');
+ assert(ready.els['mad4b-ha-overall-state'].textContent.includes('issuer ready'));
+ assert(ready.calls.filter(c=>c.opts.method==='POST').length===0);
+ ready.els['mad4b-ha-command-confirm'].checked=true;
+ await ready.event('mad4b-ha-command-confirm','change');
+ assert.equal(ready.els['mad4b-ha-command'].disabled,false,
+    'verified scoped Owner may now start one NEW Original305 POST');
+ console.log('PASS root signed readiness permits fresh owner consent without replaying old Claim');
  const stale=harness({},async()=>ok(state({
    request_expired:true,broker_job_exists:true,
    broker_job_state:'BROKER_CLAIMED_PENDING_INDEPENDENT_HOST_AUTHORITY',

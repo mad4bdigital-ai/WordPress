@@ -99,7 +99,27 @@ def module(name):
     need(spec is not None and spec.loader is not None,
          "V121_ORIGINAL_SOURCE_IMPORT_DENIED")
     value=importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(value)
+    if name=="prewrite":
+        # v119 prewrite's fallback imports first_anchor_runner by name.
+        # Force that import to resolve ONLY to the pinned original v119
+        # module while loading prewrite. Restore the prior process cache
+        # immediately: never trust or permanently replace another module.
+        first=module("v119")
+        previous=sys.modules.get("first_anchor_runner")
+        sys.modules["first_anchor_runner"]=first
+        try:
+            spec.loader.exec_module(value)
+            need(value.runner is first
+                 and digest(root_file(SOURCES["v119"][0]))==
+                         SOURCES["v119"][1],
+                 "V121_PREWRITE_MUST_BIND_PINNED_ORIGINAL_V119")
+        finally:
+            if previous is None:
+                sys.modules.pop("first_anchor_runner",None)
+            else:
+                sys.modules["first_anchor_runner"]=previous
+    else:
+        spec.loader.exec_module(value)
     return value
 
 def signed_proof_key(index):

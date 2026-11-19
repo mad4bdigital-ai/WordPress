@@ -14,7 +14,7 @@ ROOT=Path("/opt/mad4b-company-transport/native-313-independent")
 CURRENT=ROOT/"claimed-job-worker.py"
 CURRENT_SHA="35947c92db959f4ed0a1416b96b10bd65e7cbb3dd4baf8d6af3f303e6ceef5b3"
 V120_PATCH=Path(__file__).resolve().parents[1]/"host-anchor-v120/patch_firstparty_worker.py"
-V121_MODULE_SHA="834c7f9913fcaad8b5dcf43021d4b4b6d637957d8dfb43d0ea4d6faa96fa2dae"
+V121_MODULE_SHA="b5aa997abf39bdfe5027bf06da5a7e137ee1f3801dc91035c2e1f4907f0b3ba5"
 MARKER="FIRSTPARTY_HOST_V121_EXACT_ISSUER"
 NEEDLE=""" newly_claimed=claim_authorized_job(actor)
  d=cli_json(['--user='+str(actor),'mad4b','broker-authority','claimed','--limit=10'],35)
@@ -40,7 +40,7 @@ def firstparty_host_v121_module():
      or st.st_uid!=0 or st.st_gid!=0 or st.st_nlink!=1
      or stat.S_IMODE(st.st_mode)!=0o600
      or hashlib.sha256(path.read_bytes()).hexdigest()!=
-     '834c7f9913fcaad8b5dcf43021d4b4b6d637957d8dfb43d0ea4d6faa96fa2dae'):
+     'b5aa997abf39bdfe5027bf06da5a7e137ee1f3801dc91035c2e1f4907f0b3ba5'):
   raise RuntimeError('FIRSTPARTY_HOST_V121_ROOT_ISSUER_SOURCE_CHANGED')
  spec=importlib.util.spec_from_file_location(
      '_host_v121_exact_first_anchor_issuer',path)
@@ -50,6 +50,15 @@ def firstparty_host_v121_module():
  spec.loader.exec_module(mod)
  mod.root_gate()  # Only root-owned source and explicit activation permits.
  return mod
+
+def firstparty_host_v121_preclaim_commissioned():
+ try:
+  firstparty_host_v121_module()
+  return True
+ except Exception as exc:
+  print('FIRSTPARTY_HOST_V121_PRECLAIM_NOT_COMMISSIONED:'+
+        safe_capability_error(exc),file=sys.stderr)
+  return False
 
 def firstparty_host_v121_has_exact_witness(job_id):
  try:
@@ -127,6 +136,13 @@ def prepare_candidate(original):
     marker="\ndef claim_authorized_job(actor):"
     if preclaimed.count(marker)!=1:
         raise ValueError("V121_ORIGINAL306_ENTRYPOINT_CHANGED")
+    preclaim="    if not firstparty_host_v118_capture_original_queued(job):"
+    if preclaimed.count(preclaim)!=1:
+        raise ValueError("V121_FIRST_ANCHOR_PRECLAIM_GUARD_SITE_CHANGED")
+    preclaimed=preclaimed.replace(
+        preclaim,
+        "    if not firstparty_host_v121_preclaim_commissioned():\n"
+        "     continue\n"+preclaim,1)
     out=preclaimed.replace(NEEDLE,REPLACEMENT,1)
     out=out.replace(marker,"\n"+HELPER+marker,1)
     if out.count(MARKER)!=2:

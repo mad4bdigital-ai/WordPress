@@ -171,6 +171,35 @@ class RootCoordinatorTests(unittest.TestCase):
         with self.assertRaisesRegex(v121.CoordinatorHeld,'EXACT_ISSUER_ACTION'):
             v121.execute_locked('not-a-job-id','issue')
 
+    def test_all_enrolled_original_root_modules_import_under_real_runner(self):
+        # Import via the exact v121 mechanism, not via direct test paths.
+        # v119 prewrite imports sibling first_anchor_runner at runtime.
+        for name in v121.SOURCES:
+            with self.subTest(name=name):
+                mod=v121.module(name)
+                self.assertTrue(hasattr(mod,"__file__"))
+                self.assertEqual(
+                    hashlib.sha256(Path(mod.__file__).read_bytes()).hexdigest(),
+                    v121.SOURCES[name][1])
+        pre=v121.module("prewrite")
+        self.assertTrue(callable(pre.prepare_approval))
+        self.assertTrue(callable(pre.build_original318_proof))
+    def test_imported_prewrite_fails_closed_on_unpinned_runner_cache(self):
+        import sys,types
+        old=sys.modules.get("first_anchor_runner")
+        sys.modules["first_anchor_runner"]=types.SimpleNamespace(
+            __file__="/tmp/attacker-controlled-first-anchor.py")
+        try:
+            # Even a poisoned process cache cannot reach the signed
+            # approval composer. The exact pinned original is forced.
+            protected=v121.module("prewrite")
+            self.assertEqual(
+                Path(protected.runner.__file__).resolve(),
+                v121.SOURCES["v119"][0].resolve())
+        finally:
+            if old is None:sys.modules.pop("first_anchor_runner",None)
+            else:sys.modules["first_anchor_runner"]=old
+
     def test_no_original313_enrollment_created_by_module_import(self):
         self.assertFalse((self.docs/self.fx.issue.j['job_id']).exists())
         src=(ROOT/'ops/host-anchor-v121/first_anchor_coordinator.py').read_text()

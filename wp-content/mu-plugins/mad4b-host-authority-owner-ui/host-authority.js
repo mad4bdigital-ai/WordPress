@@ -53,15 +53,21 @@
     !config.restBase.includes("//") && !config.restBase.includes(":8080");
 
   let grantId = validId(config.grantId) ? config.grantId : "";
-  // Expired Owner Request is audit history only; it cannot be dispatched.
-  let requestExpired = config.requestExpired === true && config.brokerJobExists !== true;
+  let issuerReady = config.issuerReady === true;
+  let renewalReady = config.phase === "OWNER_RENEWAL_READY" && issuerReady;
+  // A claimed/expired Original306 request remains audit history, NEVER a
+  // reusable Job ID. The first-party signed Root readiness merely enables
+  // one new Owner-confirmed Original305 POST, without auto-approving it.
+  let requestExpired = renewalReady ||
+    (config.requestExpired === true && config.brokerJobExists !== true);
   let requestId = !requestExpired && validId(config.requestId) ? config.requestId : "";
   let requestExpiresEpoch = !requestExpired && Number.isInteger(config.requestExpiresEpoch)
     ? config.requestExpiresEpoch : 0;
   let brokerJobExists = !requestExpired && config.brokerJobExists === true;
   let brokerJobState = !requestExpired && typeof config.brokerJobState === "string"
     ? config.brokerJobState : "";
-  let signatureWindowExpired = config.signatureWindowExpired === true;
+  let signatureWindowExpired = config.signatureWindowExpired === true && !renewalReady;
+  let commandPostUncertain = false;
   let requestStatus = typeof config.requestStatus === "string"
     ? config.requestStatus : "ADMITTED_PENDING_INDEPENDENT_HOST_AUTHORITY";
   let busy = false;
@@ -119,6 +125,8 @@
         " · Original306 Dispatch not confirmed";
     if (headline) headline.textContent = anchorRevision > 0
       ? "Host Anchor changed — independent review required"
+      : renewalReady
+      ? "First Anchor issuer ready — fresh Owner Request required"
       : signatureWindowExpired
       ? "Original306 Claim expired — Original312/313 not issued"
       : requestId
@@ -148,10 +156,12 @@
     const hasRequest = validId(requestId);
     grantButton.disabled = busy || !exactSource || !pristine || hasGrant ||
       hasRequest || !confirmation.checked;
-    commandButton.disabled = busy || !exactSource || !pristine || !hasGrant ||
+    commandButton.disabled = busy || commandPostUncertain ||
+      !exactSource || !pristine || !hasGrant ||
       hasRequest || !commandConfirmation.checked ||
       !validDigest(planField.value.trim().toLowerCase());
-    if (refreshButton) refreshButton.disabled = busy || !hasRequest;
+    if (refreshButton) refreshButton.disabled =
+      busy || (!hasRequest && !commandPostUncertain);
     if (copyButton) copyButton.disabled = !hasRequest;
     if (dispatchButton) {
       dispatchButton.hidden = !hasRequest || brokerJobExists;
@@ -260,17 +270,22 @@
         throw new Error("Bootstrap Grant changed. Reload owner authentication.");
       }
       const formerlyExpired = requestExpired;
+      if (typeof s.issuer_ready !== "boolean") {
+        throw new Error("Root issuer readiness was not provided by Original305.");
+      }
+      issuerReady = s.issuer_ready;
+      renewalReady = s.phase === "OWNER_RENEWAL_READY" && issuerReady;
       phase = s.phase;
       anchorState = typeof s.anchor_state === "string"
         ? s.anchor_state : "UNKNOWN";
       anchorRevision = Number.isInteger(s.anchor_revision)
         ? s.anchor_revision : 0;
       if (!grantId && validId(s.grant_id)) grantId = s.grant_id;
-      brokerJobExists = s.broker_job_exists;
-      brokerJobState = typeof s.broker_job_state === "string"
+      brokerJobExists = s.broker_job_exists && !renewalReady;
+      brokerJobState = brokerJobExists && typeof s.broker_job_state === "string"
         ? s.broker_job_state : "";
-      signatureWindowExpired = s.signature_window_expired;
-      requestExpired = s.request_expired && !brokerJobExists;
+      signatureWindowExpired = s.signature_window_expired && !renewalReady;
+      requestExpired = renewalReady || (s.request_expired && !brokerJobExists);
       requestId = requestExpired ? "" : validId(s.request_id) ? s.request_id : "";
       requestStatus = typeof s.request_status === "string"
         ? s.request_status : "UNKNOWN";
@@ -280,6 +295,7 @@
         // Fresh owner consent is mandatory for a renewed Original305 POST.
         commandConfirmation.checked = false;
       }
+      if (requestId) commandPostUncertain = false;
       if (!planEdited && rootedPlan(s.plan_sha256,s.plan_source)) {
         planField.value = s.plan_sha256;
         if (planEditor) planEditor.hidden = true;
@@ -376,6 +392,9 @@
       target_host_id: config.hostId
     };
     message("Submitting the signed plan reference to Original305…");
+    // An ambiguous POST must not be sent twice automatically or by a
+    // second impatient click. Only an independent readback can resolve it.
+    commandPostUncertain = true;
     const accepted = await original305("commands", {
       grant_id: grantId,
       command: null,
@@ -395,6 +414,10 @@
     }
     requestId = accepted.request_id;
     requestStatus = accepted.status;
+    commandPostUncertain = false;
+    renewalReady = false;
+    signatureWindowExpired = false;
+    phase = "ORIGINAL305_REQUEST_STAGED";
     requestExpired = false;
     requestExpiresEpoch = Number.isInteger(accepted.expires_epoch)
       ? accepted.expires_epoch : 0;

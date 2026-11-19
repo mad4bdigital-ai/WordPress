@@ -16,6 +16,7 @@ class OneShotWorkerSource(unittest.TestCase):
         original=LIVE.read_text()
         self.assertEqual(hashlib.sha256(original.encode()).hexdigest(),M.CURRENT_SHA)
         rewritten=M.prepare_candidate(original)
+        self.assertIn('firstparty_host_v121_preclaim_commissioned()',rewritten)
         self.assertIn('firstparty_host_v118_capture_original_queued(job)',rewritten)
         self.assertIn('firstparty_host_v120_capture_original_broker_row(job)',rewritten)
         self.assertIn('firstparty_host_v121_exact_issue(newly_claimed)',rewritten)
@@ -26,7 +27,8 @@ class OneShotWorkerSource(unittest.TestCase):
         b=rewritten.index('firstparty_host_v120_capture_original_broker_row(job)')
         c=rewritten.index('return sign_existing_original_306_claim(job,entry)')
         d=rewritten.index('firstparty_host_v121_exact_issue(newly_claimed)')
-        self.assertLess(a,b);self.assertLess(b,c);self.assertLess(c,d)
+        guard=rewritten.index('firstparty_host_v121_preclaim_commissioned()')
+        self.assertLess(guard,a);self.assertLess(a,b);self.assertLess(b,c);self.assertLess(c,d)
     def test_integrated_source_does_not_touch_registry_or_grants(self):
         rewritten=M.prepare_candidate(LIVE.read_text())
         self.assertIn('mod.root_gate()',rewritten)
