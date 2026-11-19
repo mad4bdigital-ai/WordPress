@@ -12,13 +12,25 @@ QA_ROOT=Path(__file__).resolve().parent
 QA_COMMON=('run-site.sh','event-gate.py','coverage-queue.py',
            'tools/verify.js','tools/probe-public.js',
            'tools/publish.py','verify-source-revision.py')
-QA_SOURCES=QA_COMMON+('safe-cap-fallback.py','wayfa-home-preflight.py',
+QA_SOURCES=QA_COMMON+('safe-cap-fallback.py','source-home-source-observer.py','source-home-delivery-admission.py','wayfa-home-preflight.py',
                       'wayfa-home-source-observer.py','home-source-poll-policy-v2.py')
 LIVE_WAYFA_CSS=Path('/opt/mad4b-company-provisioning/reports/dynamic-critical-css-20261116/wayfa/home-current-css-source.json')
+LIVE_SOURCE_CSS=Path('/opt/mad4b-company-provisioning/reports/dynamic-critical-css-20261116/source/home-current-css-source.json')
 def observed_home_source_key(site):
     # Source-file fingerprints from cookie-free mobile HTTP are a
     # CHANGE SIGNAL only. Browser QA and published consumer checks must
     # still qualify the real Chromium/client-hints variant independently.
+    if site=='source':
+        if not LIVE_SOURCE_CSS.exists():return 'not-yet-observed'
+        if LIVE_SOURCE_CSS.is_symlink() or LIVE_SOURCE_CSS.stat().st_size>16384:
+            raise ValueError('untrusted-source-home-observation')
+        report=json.loads(LIVE_SOURCE_CSS.read_text())
+        if (report.get('contract')!='mad4b.source-home-css-change-observation.v1'
+            or report.get('host')!='tours.dev.mad4b.com'
+            or report.get('scope')!='trigger_exact_locale_browser_QA_not_a_certificate'
+            or not __import__('re').fullmatch('[a-f0-9]{64}',report.get('fingerprint',''))):
+            raise ValueError('invalid-source-home-observation')
+        return report['fingerprint']
     if site!='wayfa':return None
     if not LIVE_WAYFA_CSS.exists():return 'not-yet-observed'
     if LIVE_WAYFA_CSS.is_symlink() or LIVE_WAYFA_CSS.stat().st_size>8192:
@@ -34,7 +46,7 @@ def qa_semantics(site):
     # a HOLD for an old QA implementation might be replayed for an hour,
     # or a stale ready certificate reused for up to seven days. Only the
     # company's own strategy dependency is fingerprinted.
-    paths=QA_COMMON+('safe-cap-fallback.py',) if site=='source' else QA_COMMON+('wayfa-home-preflight.py','wayfa-home-source-observer.py','home-source-poll-policy-v2.py')
+    paths=QA_COMMON+('safe-cap-fallback.py','source-home-source-observer.py','source-home-delivery-admission.py') if site=='source' else QA_COMMON+('wayfa-home-preflight.py','wayfa-home-source-observer.py','home-source-poll-policy-v2.py')
     result={}
     for name in paths:
         path=QA_ROOT/name

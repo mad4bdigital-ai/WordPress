@@ -30,7 +30,7 @@ function boundObject(html){
    throw Error('PUBLIC_ARCHIVE_TYPE_BODY_MISMATCH');
   return 0;
  }
- const idType=TERM_TYPES.includes(ROUTE_TYPE)?'term':'(?:page-id|postid)';
+ const idType=ROUTE_TYPE==='category'?'category':(TERM_TYPES.includes(ROUTE_TYPE)?'term':'(?:page-id|postid)');
  const rx=new RegExp('(?:^|\\s)'+idType+'-(\\d+)(?:\\s|$)');
  const m=bodyClass.match(rx);const id=m?Number(m[1]):null;
  if(id!==ROUTE_ID || !Number.isInteger(id)||id<=0)

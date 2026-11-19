@@ -1,0 +1,12 @@
+[Unit]
+Description=MAD4B nonblocking daily post-policy responsive/interactivity observation
+
+[Timer]
+OnCalendar=*-*-* 03:41:00 UTC
+AccuracySec=60s
+RandomizedDelaySec=180
+Persistent=true
+Unit=mad4b-post-policy-visual-watch.service
+
+[Install]
+WantedBy=timers.target

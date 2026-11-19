@@ -6,7 +6,7 @@ umask 077
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 SITE="$1"
 ROOT=/opt/mad4b-company-provisioning
-TOOLS="$ROOT/worktrees/pr814-converged-local-20261115/ops/dynamic-critical-css-20261116"
+TOOLS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OUT="$ROOT/reports/dynamic-critical-css-20261116"
 IMAGE=mad4b-firecrawl-playwright:20261107-lifecycle-v3
 case "$SITE" in
@@ -22,12 +22,30 @@ case "$SITE" in
    HOST=wayfatours.com;ENVIRONMENT=production
    WP=/opt/wayfa-rebuild-20261102/site-copy/wp-content
    PHP=php-guxhp9y6vgh7oouuw8plxrlr;MANIFEST_VERSION=1
-   CONSUMER_SHA=cdb55bd9ab6a86df26483450e33cf0bbc91296940db51102dde082fdb839db5b
+   CONSUMER_SHA=60fc91116affa5faf539cc835e12ce3939d598be68c94a56b21a36f860c5f29e
    QA_WIDTHS=320,390,414,768
-   CSS_PRIORITY=low;CSS_PRELOAD=0;ADAPTIVE_MAX=0
+   CSS_PRIORITY=low;CSS_PRELOAD=0;ADAPTIVE_MAX=767
    ;;
  *) echo 'INVALID_SITE: allowed source or wayfa' >&2; exit 2;;
 esac
+# Source Staging has two independently proven public CSS/Elementor graphs:
+# the existing Docker-bridge Chromium context and the actual first-party
+# host-egress HTTP context. Qualify either against its own exact native
+# browser source; never reuse a previous certificate for the other.
+# Host network is restricted to the enrolled staging source, with all
+# Linux capabilities removed and no new privilege escalation.
+CSS_NETWORK_PROFILE="${MAD4B_SOURCE_CSS_NETWORK_PROFILE:-bridge}"
+BROWSER_NETWORK_ARGS=()
+case "$CSS_NETWORK_PROFILE" in
+ bridge) ;;
+ host)
+   [[ "$SITE" == source ]] ||
+     { echo "HOLD_CSS_HOST_NETWORK_SOURCE_ONLY" >&2; exit 2; }
+   BROWSER_NETWORK_ARGS=(--network host --cap-drop ALL --group-add 33)
+   ;;
+ *) echo "HOLD_CSS_NETWORK_PROFILE_INVALID" >&2; exit 2;;
+esac
+echo "CSS_NETWORK_PROFILE $SITE $CSS_NETWORK_PROFILE"
 mkdir -p "$OUT/$SITE"
 exec 9>"/run/lock/mad4b-critical-css-$SITE.lock"
 if ! flock -n 9;then echo "SKIP $SITE another critical-css cycle";exit 0;fi
@@ -105,6 +123,15 @@ if [[ "$SITE" == wayfa ]];then
  if ! timeout 65 python3 "$TOOLS/wayfa-home-source-observer.py" wayfa;then
    echo 'HOLD_WAYFA_HOME_SOURCE_SIGNAL_UNAVAILABLE; prior first-party signal preserved'
  fi
+else
+ # Source Staging previously fingerprinted only *old manifest files*.
+ # Live regenerated LiteSpeed CSS could diverge unnoticed, leaving an
+ # unchanged-healthy event gate while every public mobile route fell back
+ # to the original render-blocking bundle. Observe real first-party HTTP
+ # CSS bytes for every native WPML homepage before claiming readiness.
+ if ! timeout 155 python3 "$TOOLS/source-home-source-observer.py" source;then
+   echo 'HOLD_SOURCE_HOME_SOURCE_SIGNAL_UNAVAILABLE; original CSS preserved until exact source readback'
+ fi
 fi
 # Event-driven gate: 15-minute timer performs only cheap WP/source hash
 # checking when observed source identity is unchanged. The daily audit
@@ -165,7 +192,7 @@ PY
 # the last-moment source identity check, or QA can never publish safely.
 probe_public(){
  local LANGCSV="$1" DIRECTORY="$2"
- timeout 425 docker run --rm --user 0:0 --memory=1024m --cpus=1.3    --pids-limit=250 --security-opt=no-new-privileges    -v "$TOOLS/tools:/tools:ro" -v "$JOB:/out"    -e NODE_PATH=/usr/src/app/node_modules    -e "MAD4B_SOURCE_SITE=https://$HOST"    -e "MAD4B_PROBE_OUTPUT=/out/$DIRECTORY"    -e "MAD4B_PROBE_LANGS=$LANGCSV" -e "MAD4B_DEFAULT_LANG=$DEFAULT_LANG"    "$IMAGE" node /tools/probe-public.js
+ timeout 425 docker run --rm "${BROWSER_NETWORK_ARGS[@]}" --user 0:0 --memory=1024m --cpus=1.3    --pids-limit=250 --security-opt=no-new-privileges    -v "$TOOLS/tools:/tools:ro" -v "$JOB:/out"    -e NODE_PATH=/usr/src/app/node_modules    -e "MAD4B_SOURCE_SITE=https://$HOST"    -e "MAD4B_PROBE_OUTPUT=/out/$DIRECTORY"    -e "MAD4B_PROBE_LANGS=$LANGCSV" -e "MAD4B_DEFAULT_LANG=$DEFAULT_LANG"    "$IMAGE" node /tools/probe-public.js
 }
 DEFAULT_LANG=$(python3 - "$STATE" <<'LANG'
 import sys,json
@@ -265,7 +292,15 @@ import json,sys
 rows=json.load(open(sys.argv[1]))['routes']
 raise SystemExit(0 if rows and all(r['status']=='certified_active' for r in rows) else 1)
 READY
- then GATE_STATUS=ready;GATE_REASON=certified;fi
+ then
+   if [[ "$SITE" == source ]] && ! python3 "$TOOLS/source-home-delivery-admission.py"      "$OUT/source/home-current-css-source.json";then
+     echo 'HOLD source actual mobile CSS source/Elementor graph not yet fully certified'
+     GATE_STATUS=pending
+     GATE_REASON=post_publish_public_readback_pending
+   else
+     GATE_STATUS=ready;GATE_REASON=certified
+   fi
+ fi
  exit 0
 fi
 # Never measure LCP/FCP against a CPU-saturated VPS. The test browser is
@@ -291,7 +326,7 @@ fi
 echo "CAPTURE $SITE $LANGS"
 browser_step(){
  local file="$1"
- timeout 1300 docker run --rm --user 0:0 --memory=1024m --cpus=1.3 \
+ timeout 1300 docker run --rm "${BROWSER_NETWORK_ARGS[@]}" --user 0:0 --memory=1024m --cpus=1.3 \
    --pids-limit=250 --security-opt=no-new-privileges \
    -v "$TOOLS/tools:/tools:ro" -v "$JOB:/out" \
    -v "$WP/litespeed/css:/source-css:ro" \
@@ -341,7 +376,7 @@ if [[ "$SITE" == source ]];then
    SAFE_LANGS=$(cat "$JOB/safe-cap/batch.txt")
    if [[ -n "$SAFE_LANGS" ]];then
      echo "SOURCE_SAFE_CAP_599_CHROMIUM_PROBE $SAFE_LANGS"
-     if timeout 1800 docker run --rm --user 0:0        --memory=1024m --cpus=1.3 --pids-limit=250        --security-opt=no-new-privileges        -v "$TOOLS/tools:/tools:ro" -v "$JOB:/out"        -e NODE_PATH=/usr/src/app/node_modules        -e MAD4B_OUTPUT=/out/safe-cap        -e "MAD4B_SOURCE_SITE=https://$HOST"        -e "MAD4B_QA_LANGS=$SAFE_LANGS"        -e MAD4B_QA_WIDTHS=320,390,414,599,600,767,768        -e MAD4B_CSS_PRIORITY=high -e MAD4B_CSS_PRELOAD=1        -e MAD4B_CSS_ADAPTIVE_MAX=599        -e MAD4B_HERO_900_CANDIDATE=0        -e MAD4B_FIRST_CITY_DEFER_CANDIDATE=0        "$IMAGE" node /tools/verify.js > "$JOB/safe-cap-chromium-qa.log" 2>&1;then
+     if timeout 1800 docker run --rm "${BROWSER_NETWORK_ARGS[@]}" --user 0:0        --memory=1024m --cpus=1.3 --pids-limit=250        --security-opt=no-new-privileges        -v "$TOOLS/tools:/tools:ro" -v "$JOB:/out"        -e NODE_PATH=/usr/src/app/node_modules        -e MAD4B_OUTPUT=/out/safe-cap        -e "MAD4B_SOURCE_SITE=https://$HOST"        -e "MAD4B_QA_LANGS=$SAFE_LANGS"        -e MAD4B_QA_WIDTHS=320,390,414,599,600,767,768        -e MAD4B_CSS_PRIORITY=high -e MAD4B_CSS_PRELOAD=1        -e MAD4B_CSS_ADAPTIVE_MAX=599        -e MAD4B_HERO_900_CANDIDATE=0        -e MAD4B_FIRST_CITY_DEFER_CANDIDATE=0        "$IMAGE" node /tools/verify.js > "$JOB/safe-cap-chromium-qa.log" 2>&1;then
        if ! python3 "$TOOLS/safe-cap-fallback.py" merge          "$JOB/verification-primary-767.json" "$JOB/safe-cap/verification.json"          "$JOB/safe-cap/decision.json" "$JOB/verification.json"          > "$JOB/safe-cap-merge.log" 2>&1;then
          echo "HOLD source narrower fallback proof invalid; original QA restored"
          cp "$JOB/verification-primary-767.json" "$JOB/verification.json"
@@ -417,7 +452,7 @@ publish_step(){
    MAD4B_TARGET_HOST="$HOST" MAD4B_CSS_EPOCH="$EPOCH" \
    MAD4B_CSS_LEGACY_CONSUMER_SHA256="$CONSUMER_SHA" \
    MAD4B_CSS_ADAPTIVE_CONSUMER_SHA256="$CONSUMER_SHA" \
-   MAD4B_CSS_ADMITTED_CANDIDATES="$([[ "$SITE" == source ]] && printf admitted-candidates.json)" \
+   MAD4B_CSS_ADMITTED_CANDIDATES=admitted-candidates.json \
    MAD4B_DRY_RUN="$DRY" \
    timeout 120 python3 "$TOOLS/tools/publish.py"
 }
@@ -463,7 +498,7 @@ fi
 # success alone is not sufficient: verify exact final assets are readable
 # by PHP and preserve the prior Nginx config until nginx -t passes.
 if [[ "$SITE" == wayfa ]];then
- if ! python3 "$TOOLS/wayfa-home-cache-refresh.py"     "$WP/mad4b-critical-css-v1/manifest.json"     "$JOB/candidates.json"     "/opt/wayfa-rebuild-20261102/stack/nginx.conf"     "/opt/mad4b-company-provisioning/ops/dynamic-critical-css-20261116"     > "$JOB/home-cache-release.log" 2>&1;then
+ if ! python3 "$TOOLS/wayfa-home-cache-refresh.py"     "$WP/mad4b-critical-css-v1/manifest.json"     "$JOB/admitted-candidates.json"     "/opt/wayfa-rebuild-20261102/stack/nginx.conf"     "/opt/mad4b-company-provisioning/ops/dynamic-critical-css-20261116"     > "$JOB/home-cache-release.log" 2>&1;then
   echo "HOLD wayfa: certificate published; home FastCGI cache refresh pending"
   tail -4 "$JOB/home-cache-release.log"
   exit 0

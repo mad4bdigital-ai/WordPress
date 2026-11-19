@@ -58,4 +58,30 @@ for title,bad_site,bad_sel in [
     m.load_history(p,bad_site)
  except (ValueError,AssertionError):check(title,True)
  else:raise AssertionError(title)
+# Exact original seven-width fallback receipt, independently tested
+# and admitted for Italian only, must clear the retry history.
+seven={320,390,414,599,600,767,768}
+seven_rows=[{'lang':'it','width':w,'pass':True} for w in sorted(seven)]
+seven_gate={'decision':'passed_evidence','adaptiveMaxWidth':599,'widths':sorted(seven)}
+qa7={'gates':{'it':seven_gate},'results':seven_rows}
+step=m.record(selection,site,{'contract':'mad4b.critical-css.wpml-coverage.v1',
+    'host':site['site_host'],'attempts':{}},['it'],qa7,now)
+check('independent seven-width 599px QA clears Italian retry failures',
+      step['attempts']['it']['failures']==0 and step['attempts']['it']['retry_after']==now)
+bad_qa={'gates':{'it':seven_gate},'results':[x for x in seven_rows if x['width']!=599]}
+step=m.record(selection,site,{'contract':'mad4b.critical-css.wpml-coverage.v1',
+    'host':site['site_host'],'attempts':{}},['it'],bad_qa,now)
+check('incomplete seven-width evidence never passes',
+      step['attempts']['it']['failures']==1)
+bad_qa={'gates':{'it':seven_gate},'results':[dict(x,**({'pass':False} if x['width']==767 else {})) for x in seven_rows]}
+step=m.record(selection,site,{'contract':'mad4b.critical-css.wpml-coverage.v1',
+    'host':site['site_host'],'attempts':{}},['it'],bad_qa,now)
+check('unsafe seven-width QA cannot be promoted by queue recorder',
+      step['attempts']['it']['failures']==1)
+bad_gate={'decision':'passed_evidence','adaptiveMaxWidth':767,'widths':sorted(seven)}
+step=m.record(selection,site,{'contract':'mad4b.critical-css.wpml-coverage.v1',
+    'host':site['site_host'],'attempts':{}},['it'],
+    {'gates':{'it':bad_gate},'results':seven_rows},now)
+check('unapproved 599px adaptive mode cannot pass using seven widths',
+      step['attempts']['it']['failures']==1)
 print('PASS %d/%d WPML dynamic fair-retry invariants'%(len(checks),len(checks)))

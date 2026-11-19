@@ -57,6 +57,8 @@ def evaluate(site,batch,inventory,qa,selection):
              and len(measured)==len(measured_widths)
              and all(v.get('pass') is True and isinstance(v.get('fcpGain'),(int,float))
                      and isinstance(v.get('lcpReg'),(int,float)) for v in measured))
+        if site=='wayfa' and gate.get('adaptiveMaxWidth',0) not in (0,767):
+            good=False
         if good:accepted.append(row)
         else:held.append({'locale':lang,'decision':gate.get('decision','missing'),
                            'viewports':[v.get('width') for v in measured]})
@@ -76,9 +78,10 @@ def main():
     Path(reportfile).write_text(json.dumps(report,sort_keys=True,indent=2)+'\n')
     Path(subsetfile).write_text(json.dumps(subset,sort_keys=True,indent=2)+'\n')
     print('PER_LOCALE_QA_ADMISSION',json.dumps(report,sort_keys=True))
-    # Installed legacy v1 remains all-or-nothing within its paired batch.
-    # The v2 source publisher may independently admit a safe passing locale.
-    if not report['accepted'] or (site=='wayfa' and len(report['accepted'])!=len(batch)):
+    # Both source v2 and enrolled Wayfa v1 can now process independently
+    # certified locales. The legacy publisher still checks its exact strategy,
+    # four measured viewports, consumer SHA, assets and final source identity.
+    if not report['accepted']:
         sys.exit(3)
     return
 

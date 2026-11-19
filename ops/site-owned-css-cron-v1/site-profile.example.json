@@ -1,0 +1,8 @@
+{
+  "contract": "mad4b.css.site-owned-cron.profile.v1",
+  "site_id": "approved_site_alias",
+  "php_container": "php_approved_container",
+  "site_host": "example.test",
+  "environment": "staging",
+  "tasks": ["public", "first_fold"]
+}

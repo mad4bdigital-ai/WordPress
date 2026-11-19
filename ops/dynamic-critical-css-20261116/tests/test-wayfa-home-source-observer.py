@@ -64,7 +64,7 @@ with tempfile.TemporaryDirectory() as t:
            'critical_css':'on','native_breakpoint':767,'css_epoch':129,
            'wpml_languages':['en','es','de'],'default_language':'en'}
    source_event=g.digest(source,manifest,consumer,'source')
-   ok('source site never inherits Wayfa CSS observation',g.observed_home_source_key('source') is None)
+   ok('source site never inherits Wayfa CSS observation',g.observed_home_source_key('source')!=key)
    m.inspect=lambda l:dict(got,route='/' if l=='en' else '/es/',sha256='f'*64)
    action3,next_key=m.observe(now=104000)
    ok('new source bytes cause a new bounded QA-only dependency signal',

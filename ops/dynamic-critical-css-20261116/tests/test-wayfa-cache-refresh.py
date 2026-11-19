@@ -28,8 +28,13 @@ different=m.derive_manifest_epoch({**manifest,'entries':{**manifest['entries'],'
 checks.append(('new manifest changes epoch',revision!=different))
 try:m.derive_manifest_epoch({**manifest,'site':'example.com'},inventory)
 except ValueError:checks.append(('cross-company certificate denied',True))
-try:m.derive_manifest_epoch(manifest,{**inventory,'candidates':inventory['candidates'][:1]})
-except ValueError:checks.append(('incomplete locale certificate denied',True))
+partial={**inventory,'candidates':inventory['candidates'][:1]}
+one=m.derive_manifest_epoch(manifest,partial)
+checks.append(('independent locale promotion can rotate home cache safely',
+               len(one)==16 and one==revision))
+try:m.derive_manifest_epoch(manifest,{**inventory,'candidates':[
+    {'lang':'es','source_sha':sha,'critical_sha':csha}]})
+except ValueError:checks.append(('unmatched locale certificate denied',True))
 try:m.rewrite_home_map(conf+'\\n'+conf,revision)
 except ValueError:checks.append(('duplicate cache maps refused',True))
 for name,ok in checks:

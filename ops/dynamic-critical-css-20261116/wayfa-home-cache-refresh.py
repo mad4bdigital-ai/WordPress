@@ -24,8 +24,12 @@ def derive_manifest_epoch(manifest:dict,inventory:dict)->str:
         or inventory.get('errors')):
         raise ValueError('invalid company QA inventory')
     rows=inventory['candidates']
-    if {r['lang'] for r in rows}!={'en','es'} or len(rows)!=2:
-        raise ValueError('EN/ES exact original company routes required')
+    locales={r['lang'] for r in rows}
+    # Rotate home cache keys after each independently verified locale.
+    # Both paths share the legacy Nginx home map, but all unrelated
+    # manifest entries and original WordPress markup remain unchanged.
+    if not 1<=len(rows)<=2 or len(locales)!=len(rows) or not locales<={'en','es'}:
+        raise ValueError('EN/ES original company route subset required')
     for r in rows:
         entry=manifest['entries'].get(r['source_sha'])
         if (not isinstance(entry,dict)

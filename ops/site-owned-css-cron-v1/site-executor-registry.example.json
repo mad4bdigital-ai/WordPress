@@ -1,0 +1,17 @@
+{
+  "contract": "mad4b.css.site-executor-registry.v1",
+  "sites": [
+    {
+      "site_id": "source",
+      "site_dir": "/opt/hostinger-migrations/hosting-3/etg-commerce-staging/operations/css-cron-v1",
+      "cron_path": "/etc/cron.d/mad4b-css-site-source",
+      "offset": 0
+    },
+    {
+      "site_id": "wayfa",
+      "site_dir": "/opt/wayfa-rebuild-20261102/operations/css-cron-v1",
+      "cron_path": "/etc/cron.d/mad4b-css-site-wayfa",
+      "offset": 2
+    }
+  ]
+}

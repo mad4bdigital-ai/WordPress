@@ -1,0 +1,4 @@
+# WordPress owns actual due jobs; host cron only wakes the bounded first-party executor.
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+*/5 * * * * root /usr/bin/flock -n /run/lock/mad4b-css-wpcron-worker.lock /usr/bin/timeout -k 10s 1500s /usr/bin/nice -n 18 /usr/bin/ionice -c 3 /usr/bin/python3 /opt/mad4b-company-provisioning/operations/wpcron-css-v1/css-wpcron-worker.py >> /var/log/mad4b-css-wpcron-worker.log 2>&1
