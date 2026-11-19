@@ -1,0 +1,17 @@
+{
+  "contract": "mad4b.elementor-popup-js-compatibility-exclusions.v1",
+  "when": "only-if-litespeed-js-combine-is-enabled",
+  "reason": "Preserve Elementor Core/Pro runtime and popup class registration order outside the combined JavaScript bundle",
+  "entries": [
+    "elementor/assets/js/webpack.runtime",
+    "elementor/assets/js/frontend-modules",
+    "elementor/assets/js/frontend",
+    "elementor/assets/lib/dialog",
+    "elementor-pro/assets/js/webpack-pro.runtime",
+    "elementor-pro/assets/js/frontend",
+    "elementor-pro/assets/js/elements-handlers"
+  ],
+  "do_not_toggle_combine_or_apply_to_sites_where_combining_is_off": true,
+  "new_plugin_upgrade_required": false,
+  "original_312_313_execution_evidence_not_claimed": true
+}
