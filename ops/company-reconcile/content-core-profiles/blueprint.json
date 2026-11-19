@@ -1,0 +1,145 @@
+{
+  "contract": "mad4b.content-core-blueprint.v1",
+  "policy": {
+    "all_new_posts": "draft",
+    "content_migration_allowed": false,
+    "published_update_mode": "draft_first",
+    "role_specific_capabilities": "separate",
+    "write_grants_issued": false
+  },
+  "profiles": [
+    {
+      "creation_status": "draft",
+      "enabled": true,
+      "featured_media": true,
+      "hierarchy": true,
+      "label": "Pages",
+      "live_update_mode": "draft_first",
+      "meta_keys": [],
+      "meta_mode": "allowlist",
+      "post_type": "page",
+      "protected_meta_keys": [],
+      "slug": "page",
+      "taxonomies": [
+        "destinations",
+        "folder",
+        "translation_priority"
+      ],
+      "taxonomy_mode": "allowlist"
+    },
+    {
+      "creation_status": "draft",
+      "enabled": true,
+      "featured_media": true,
+      "hierarchy": false,
+      "label": "Posts",
+      "live_update_mode": "draft_first",
+      "meta_keys": [],
+      "meta_mode": "allowlist",
+      "post_type": "post",
+      "protected_meta_keys": [],
+      "slug": "post",
+      "taxonomies": [
+        "category",
+        "destinations",
+        "post_folder",
+        "post_format",
+        "post_tag",
+        "translation_priority"
+      ],
+      "taxonomy_mode": "allowlist"
+    },
+    {
+      "creation_status": "draft",
+      "enabled": true,
+      "featured_media": true,
+      "hierarchy": false,
+      "label": "Properties",
+      "live_update_mode": "draft_first",
+      "meta_keys": [],
+      "meta_mode": "allowlist",
+      "post_type": "properties",
+      "protected_meta_keys": [],
+      "slug": "properties",
+      "taxonomies": [
+        "amenities",
+        "board-type",
+        "destinations",
+        "good-for",
+        "guide-languages",
+        "package_levels",
+        "property-types",
+        "stars",
+        "unit-type"
+      ],
+      "taxonomy_mode": "allowlist"
+    },
+    {
+      "creation_status": "draft",
+      "enabled": true,
+      "featured_media": true,
+      "hierarchy": false,
+      "label": "Tours & Activities",
+      "live_update_mode": "draft_first",
+      "meta_keys": [
+        "excludes",
+        "includes",
+        "tour_mode",
+        "tour_sub_title"
+      ],
+      "meta_mode": "allowlist",
+      "post_type": "tours-and-activities",
+      "protected_meta_keys": [],
+      "slug": "tours-and-activities",
+      "taxonomies": [
+        "accessibility",
+        "amenities",
+        "board-type",
+        "day-times",
+        "destinations",
+        "duration-options",
+        "good-for",
+        "group-size-tiers",
+        "guide-languages",
+        "package_levels",
+        "programs",
+        "schudle-days-of-weak",
+        "season",
+        "stars",
+        "tour-styles",
+        "tour-types",
+        "tour_categories",
+        "unit-type"
+      ],
+      "taxonomy_mode": "allowlist"
+    },
+    {
+      "creation_status": "draft",
+      "enabled": true,
+      "featured_media": true,
+      "hierarchy": false,
+      "label": "Transportations",
+      "live_update_mode": "draft_first",
+      "meta_keys": [],
+      "meta_mode": "allowlist",
+      "post_type": "transportations",
+      "protected_meta_keys": [],
+      "slug": "transportations",
+      "taxonomies": [
+        "accessibility",
+        "airlines",
+        "amenities",
+        "day-times",
+        "destinations",
+        "good-for",
+        "guide-languages",
+        "schudle-days-of-weak",
+        "transport-service-type",
+        "transportation-types",
+        "unit-type",
+        "vehicle_classes"
+      ],
+      "taxonomy_mode": "allowlist"
+    }
+  ]
+}
