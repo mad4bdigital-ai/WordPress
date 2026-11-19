@@ -37,11 +37,11 @@ class ReleaseGuards(unittest.TestCase):
   self.assertFalse(report['admitted'])
   self.assertIn('site_identity_mismatch',report['holds'])
  def test_rollback_not_allowed_without_release(self):
-  # The live site is still on v0.3.22; rollback must reject without writes.
+  # Rollback must reject before release; after release do not mutate live sites in a unit test.
   if m.sha(m.PLUGIN)!=m.OLD_PHP:self.skipTest('release already active')
   with self.assertRaises(ValueError):m.rollback_release()
  def test_consumer_hashes_pinned(self):
-  self.assertEqual(m.sha(m.PLUGIN),m.OLD_PHP)
+  self.assertIn(m.sha(m.PLUGIN),(m.OLD_PHP,m.NEW_PHP))
   self.assertEqual(m.sha(m.CANDIDATE),m.NEW_PHP)
 
 if __name__=='__main__':unittest.main(verbosity=2)

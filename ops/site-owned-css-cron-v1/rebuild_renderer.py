@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build one immutable site renderer from tracked source plus exact v10 pins.
+"""Build one immutable site renderer from tracked source plus exact v14 pins.
 
 Does not install to a live location, run WordPress, generate CSS or touch Cron.
 """
@@ -9,7 +9,7 @@ HERE=Path(__file__).resolve().parent
 WORKTREE=HERE.parents[1]
 BASE=WORKTREE/'ops/dynamic-critical-css-20261116'
 OVERRIDES=HERE/'renderer-v10-overrides'
-MANIFEST=HERE/'renderer-v13-manifest.json'
+MANIFEST=HERE/'renderer-v14-manifest.json'
 
 def tree_digest(root):
     h=hashlib.sha256()
