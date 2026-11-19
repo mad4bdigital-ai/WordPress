@@ -218,12 +218,22 @@ def build(site,catalog,state,ledger,root=None,variant_index=None):
 
         permarket=collections.defaultdict(list)
         for c in candidates:permarket[c['market']+'|'+c['currency']].append(c)
-        proven={};divergent=[]
+        proven={};divergent=[];context_evidence=[]
+        required_samples=2 if shared else 1
         for market,examples in sorted(permarket.items()):
             first={v['route_key'] for v in examples}
             docs={v['doc_sha'] for v in examples}
-            if len(docs)>1:divergent.append(market)
-            elif len(first)>= (2 if shared else 1):proven[market]=len(first)
+            context_status=('divergent_source_variants' if len(docs)>1
+                            else 'canary_qualified' if len(first)>=required_samples
+                            else 'awaiting_independent_canary')
+            context_evidence.append({
+                'market_currency':market,'source_canary_status':context_status,
+                'independent_routes':len(first),'document_variants':len(docs),
+                'required_canaries':required_samples,
+                # A source-behaviour proof never grants another route's CSS.
+                'route_css_asset_transfer_authorized':False})
+            if context_status=='divergent_source_variants':divergent.append(market)
+            elif context_status=='canary_qualified':proven[market]=len(first)
         # Bound automatic sampling to a handful of independent exemplars
         # per *source generation*. A broken group with hundreds of tours
         # must not become the old page-by-page QA queue in disguise.
@@ -315,6 +325,12 @@ def build(site,catalog,state,ledger,root=None,variant_index=None):
           'market_country_scope':'dynamic_not_enumerated' if geo_dynamic else 'base',
           'market_coverage_complete':full_market_coverage,
           'proven_market_profiles':proven,'divergent_market_profiles':divergent,
+          # Market+currency canary evidence is independently reported, even
+          # when another WCML currency or geo context remains unqualified.
+          # This is observability only: no public CSS asset reuse or policy gate.
+          'source_context_evidence':context_evidence,
+          'cross_route_source_behaviour_proven':bool(shared and proven
+              and status=='source_canary_qualified'),
           'observed_source_variants':[
               {'market':market,'doc_sha':doc,
                'routes':sorted({c['route_key'] for c in candidates
@@ -337,6 +353,12 @@ def build(site,catalog,state,ledger,root=None,variant_index=None):
       'listing_generation':catalog.get('listing_generation'),
       'source_groups_total':len(rows),'source_groups_by_status':dict(sorted(qcounts.items())),
       'source_canary_qualified_groups':qcounts['source_canary_qualified'],
+      'source_context_canary_proofs':sum(len(f['proven_market_profiles']) for f in rows),
+      'source_context_divergent':sum(len(f['divergent_market_profiles']) for f in rows),
+      'source_certified_singleton_groups':sum(1 for f in rows
+          if f['member_count']==1 and f['status']=='source_canary_qualified'),
+      'source_cross_route_behaviour_qualified_groups':sum(1 for f in rows
+          if f['cross_route_source_behaviour_proven']),
       'currency_scope_required':sorted(set(state.get('enabled_currencies',[]) or [state.get('base_currency','USD')])),
       'country_market_scope':'dynamic_not_enumerated' if state.get('wcml_multi_currency') else 'base',
       'routes_discovered':len(catalogrows),'routes_with_exact_current_certificate':qualified_routes,
