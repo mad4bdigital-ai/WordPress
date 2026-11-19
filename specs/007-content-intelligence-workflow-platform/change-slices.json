@@ -4,8 +4,8 @@
   "reviewed_base_sha": "c934e0a5a3ddc924db2c7adc2dc1241785ab49ee",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 123,
-  "changed_paths_sha256": "e82fea62908203b037bda209eb3cfb3ace109ac810dfeb9b71dd556240065457",
+  "changed_file_count": 129,
+  "changed_paths_sha256": "7396ff27fe5a4ec891b54ef636e952dc5ed95084731de1fbc457c91018506ea6",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -93,7 +93,8 @@
         "specs/007-content-intelligence-workflow-platform/implementation-closure.json",
         "specs/007-content-intelligence-workflow-platform/implementation-closure.md",
         "specs/007-content-intelligence-workflow-platform/post-merge-capability-fabric-closure.json",
-        "specs/007-content-intelligence-workflow-platform/baseline-review-20261026.md"
+        "specs/007-content-intelligence-workflow-platform/baseline-review-20261026.md",
+        "specs/007-content-intelligence-workflow-platform/baseline-review-20261119.md"
       ]
     },
     {
@@ -534,11 +535,12 @@
     },
     {
       "id": "oauth-browser-workflow-supported-runner",
-      "semantic_unit": "Protected CI workflow: pin Local OAuth real-browser job to supported Ubuntu 24.04 runner without relaxing its assertions or permissions.",
+      "semantic_unit": "Review protected OAuth browser workflow using pinned Playwright Chromium on Ubuntu 24.04; enforce real-browser assertions without requiring apt mirrors.",
       "revert_boundary": "Revert only runner pin; retain full browser authority validation and protected-workflow review.",
       "certification": "exact_head",
       "path_globs": [
-        ".github/workflows/mad4b-local-oauth-standalone.yml"
+        ".github/workflows/mad4b-local-oauth-standalone.yml",
+        "tests/ci/test-local-oauth-chromium-install-contract.py"
       ]
     },
     {

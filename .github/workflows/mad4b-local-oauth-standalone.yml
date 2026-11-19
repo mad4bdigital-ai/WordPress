@@ -679,7 +679,11 @@ jobs:
           cd /tmp/mad4b-playwright
           npm init -y >/dev/null 2>&1
           npm install --no-save playwright@1.56.1
-          npx playwright install --with-deps chromium
+          # ubuntu-24.04 hosted runners already supply Chromium system libraries.
+          # --with-deps runs apt-get, which fails during mirror outages even when
+          # the application and browser assertions are healthy. Install only the
+          # pinned browser binary; an unavailable browser still fails closed.
+          npx playwright install chromium
           node ./test.mjs
 
       - name: Prove browser canary is unavailable in Production
