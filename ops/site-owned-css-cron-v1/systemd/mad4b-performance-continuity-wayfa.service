@@ -1,0 +1,16 @@
+[Unit]
+Description=MAD4B first-party Wayfatours mobile CSS readiness continuity monitor
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/wayfa-rebuild-20261102/operations/css-cron-v1/monitor/performance-continuity-mobile-adaptive-v2.py
+TimeoutStartSec=28
+Nice=17
+CPUQuota=20%
+MemoryMax=150M
+NoNewPrivileges=true
+UMask=0077
+StandardOutput=journal
+StandardError=journal
