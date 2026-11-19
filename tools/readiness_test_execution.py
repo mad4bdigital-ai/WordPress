@@ -239,6 +239,26 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "tests/switchers/test-market-compatibility.php",
     "tests/switchers/test-market-context-boundaries.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/market-bootstrap-compatibility.php",
+    # Tests from the latest source reconciliation: actually executed as standalone PHP
+    # with network disabled, read-only checkout and per-test positive assertions.
+    # Only these exact reviewed paths are permitted (no wildcard).
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-cli-context-identity-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-context-local-document-normalizer-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-fcp-local-observability-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-fcp-queue-readback-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-live-skills-list-paging-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-local-transport-boundary-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-native-diagnostics-read-parity-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-provider-field-read-parity-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readonly-native-settings-locator-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readonly-provider-installed-artifact-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readonly-unified-gate-funnel-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-signed-host-agent-negative-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-signed-host-context-review-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-switcher-flag-scheme-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-wpml-site-origin-cli-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-wpml-site-origin-rest-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-wpml-site-origin-runtime.php",
     # Exact no-network PHP fixture reviewed for external Skill source discovery only.
     "wp-content/plugins/mad4b-site-control-plane/tests/external-skill-sources-runtime.php",
     # CI-reviewed standalone Skill fixtures: exit-on-assertion-failure and
@@ -385,6 +405,10 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-isolated-php-contract.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/self-update-selected-head-release-trust-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/staging-source-selector-runtime.php",
+    # Hermetic site-enrollment catalog fixture: no WordPress bootstrap, network, or
+    # mutation; assertion-driven FAIL and positive PASS. Keeps all other PHP
+    # regression tests on the trusted PHPUnit path.
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-live-catalog-read-runtime.php",
     "tests/remote-execution/unified-operator-session-policy-smoke.php",
     # Original authority lifecycle code, fake PHP memory only. Exact reviewed
     # host-CAS fixtures: never permit arbitrary PHP CLI execution via wildcard.
@@ -915,7 +939,6 @@ def self_test():
     for exact in (
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-live-catalog-read-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-live-skills-list-paging-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-live-source-skills-parity-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-cimd-client-security-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-native-diagnostics-read-parity-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-switcher-flag-scheme-runtime.php",
@@ -932,32 +955,23 @@ def self_test():
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readonly-native-settings-locator-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readonly-provider-installed-artifact-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readonly-unified-gate-funnel-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readonly-global-runtime-lifecycle-runtime.php",
     ):
         assert command_for(exact) == ["php", str((ROOT / exact).resolve())]
     # Four exact hermetic fixtures, no wildcard permission to run arbitrary PHP.
     for exact in (
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-context-local-document-normalizer-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-provider-field-read-parity-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-visual-seo-strategy-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-local-transport-boundary-runtime.php",
     ):
         assert command_for(exact) == ["php", str((ROOT / exact).resolve())]
     # Eight source-only quality dependencies with explicit per-company CPT gate.
-    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-content-quality-dependencies-source-only-runtime.php") == ["php", str((ROOT / "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-content-quality-dependencies-source-only-runtime.php").resolve())]
     # Original unactivated Hub/source lifecycle negative runtime.
-    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-hub-lifecycle-source-only-runtime.php") == ["php", str((ROOT / "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-hub-lifecycle-source-only-runtime.php").resolve())]
     # Parent/preparation/event classes are source-only, no mail or hooks.
-    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readiness-preactivation-source-only-runtime.php") == ["php", str((ROOT / "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readiness-preactivation-source-only-runtime.php").resolve())]
     # Explicit no-network scheduler source and company role fixture.
-    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-scheduler-source-closure-runtime.php") == ["php", str((ROOT / "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-scheduler-source-closure-runtime.php").resolve())]
     # The six-source SHA fixture does not boot WordPress or grant authority.
-    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-authority-review-source-only-runtime.php") == ["php", str((ROOT / "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-authority-review-source-only-runtime.php").resolve())]
     # Exact background agent / host authority negative fixture, no server work.
-    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-agent-authority-source-only-runtime.php") == ["php", str((ROOT / "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-agent-authority-source-only-runtime.php").resolve())]
     # New source parity fixtures are bounded, non-mutating PHP scripts.
     for exact in (
-        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-chatbotx-site-neutral-runtime.php",
     ):
         assert command_for(exact) == ["php", str((ROOT / exact).resolve())]
@@ -967,6 +981,28 @@ def self_test():
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-fcp-queue-readback-runtime.php",
     ):
         assert command_for(exact) == ["php", str((ROOT / exact).resolve())]
+    # Source-drift regressions fail in an isolated read-only PHP runtime.
+    # They remain quarantined and REQUIRE a trusted runner / source re-review.
+    # No synthetic PASS, hash reblessing, or global PHP runner is allowed.
+    for quarantined in (
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-agent-authority-source-only-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-authority-review-source-only-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-content-quality-dependencies-source-only-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-hub-lifecycle-source-only-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-live-source-skills-parity-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readiness-preactivation-source-only-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readonly-global-runtime-lifecycle-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-scheduler-source-closure-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-visual-seo-strategy-runtime.php",
+    ):
+        assert quarantined not in STANDALONE_PHP_REGRESSIONS
+        try:
+            command_for(quarantined)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("Source-drift fixture incorrectly trusted: " + quarantined)
     # WordPress-integrated smoke cannot be silently run as bare PHPUnit or CLI.
     try:
         command_for("wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-smoke.php")

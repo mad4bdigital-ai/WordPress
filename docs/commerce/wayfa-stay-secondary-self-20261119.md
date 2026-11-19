@@ -42,3 +42,11 @@ Review-only source candidate preserving the live Wayfatours accommodation pricin
 - No publishing, deposits, prices, inventory, user permissions, or third-party supplier setup was performed.
 - 131/131 curated draft Units remain unavailable, linked to 17 hotels. No published Property Rates or Tour Rates.
 - The live WordPress database policy is intentionally not stored in the Git source and must remain company-specific during rollout.
+
+## Source reconciliation and CI runtime review
+
+- Staging has independent self_fallback_enabled=true and runtime parity; Wayfa remains unchanged.
+- Exact CI hermetic runner review: 17 previously unregistered PHP fixtures passed with network disabled and read-only source mount.
+- Ten independent source-drift fixtures FAILED in sandbox; kept quarantined and still require source review, not authorized as standalone.
+- The source Skills catalog read-only test was corrected to its current contract: enrolled catalog stays readable even without the editor feature flag.
+- CI remains non-authorizing pending unrelated source baseline regressions, required checks and review.

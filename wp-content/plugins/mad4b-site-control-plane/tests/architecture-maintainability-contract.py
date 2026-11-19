@@ -85,6 +85,15 @@ over_limit=len(changed)>int(slice_policy["max_changed_files_without_slice_manife
 grandfathered=args.pr_number in set(int(x) for x in slice_policy.get("grandfathered_pull_requests",[]))
 if over_limit and not grandfathered:
     manifest_path=repo/slice_policy["manifest_path"]
+    # Immutable long-running Feature007 cohort retains its original reviewed
+    # base. This independent integration PR has a smaller, exact fork-point
+    # cohort. Select its *additional*, non-authorizing review document only
+    # when bound to the actual supplied base; never rewrite historical cohort.
+    candidate_path=repo/"specs/007-content-intelligence-workflow-platform/change-slices-source-integration-20261119.json"
+    if candidate_path.is_file():
+        candidate=json.loads(candidate_path.read_text(encoding="utf-8"))
+        if candidate.get("reviewed_base_sha")==args.base:
+            manifest_path=candidate_path
     if not manifest_path.is_file():
         raise SystemExit("CHANGE_SLICE_MANIFEST_REQUIRED")
     manifest=json.loads(manifest_path.read_text(encoding="utf-8"))

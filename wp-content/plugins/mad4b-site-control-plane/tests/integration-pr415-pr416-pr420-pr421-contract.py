@@ -162,6 +162,14 @@ def reviewed_source_supersedes_snapshot(path):
         if ((direct_profile, source_blob) not in reviewed_exact_blobs or
                 b"'mad4b-direct-access-profile' => array( 'MAD4B_SCP_Direct_Profile', 'render_page'" not in data):
             return False
+        if b"'mad4b-skills-operations' =>" in data:
+            # A newly exposed operator workspace needs its own separately reviewed
+            # runtime renderer. Admin smoke alone cannot authorize Skills UI.
+            skills_path = "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skills-admin-ui.php"
+            skills_data = Path(skills_path).read_bytes()
+            skills_blob = hashlib.sha1(b"blob " + str(len(skills_data)).encode("ascii") + b"\0" + skills_data).hexdigest()
+            if (skills_path, skills_blob) not in reviewed_exact_blobs:
+                return False
         if blob_sha == expected:
             return True
         ledger_file = Path("governance/production-readiness/admin-pages-ci-source-reviews.json")

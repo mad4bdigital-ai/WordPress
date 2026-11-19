@@ -8777,6 +8777,82 @@
       "new_control_ids": [],
       "coverage_reuse_rationale": "Original signed Host CLI, site-root trust and agent binding checks, exact existing permission scopes, nonce and release gates cover this first-party generic service. It has no public REST grant and no source-inherited signer.",
       "review_rationale": "Preserve exact live generic signed Host bridge within new rc129 source. Tour media extensions remain optional, and no Host key, production signer or delegated permission is transferred."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-type-roles.php",
+      "owner_role": "MAD4B source integration CI-only reviewer; Production release needs independent owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "tests/source-unification-review-contract.py"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing source-bound Site Profile, Content Readiness, Admin, Security and provider-scope controls apply to the extracted service; no broad privilege or release mutation is introduced.",
+      "review_rationale": "Independent review of class-mad4b-scp-content-type-roles.php preserves original behavior and dependent guard checks in an executed test suite. This service is source-only until its actual enrolled runtime is separately tested."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-web-vitals-admin-trait.php",
+      "owner_role": "MAD4B source integration CI-only reviewer; Production release needs independent owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/source-unification-review-contract.py"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing source-bound Site Profile, Content Readiness, Admin, Security and provider-scope controls apply to the extracted service; no broad privilege or release mutation is introduced.",
+      "review_rationale": "Independent review of class-mad4b-scp-core-web-vitals-admin-trait.php preserves original behavior and dependent guard checks in an executed test suite. This service is source-only until its actual enrolled runtime is separately tested."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-discovery-trait.php",
+      "owner_role": "MAD4B source integration CI-only reviewer; Production release needs independent owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/source-unification-review-contract.py"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing source-bound Site Profile, Content Readiness, Admin, Security and provider-scope controls apply to the extracted service; no broad privilege or release mutation is introduced.",
+      "review_rationale": "Independent review of class-mad4b-scp-readiness-discovery-trait.php preserves original behavior and dependent guard checks in an executed test suite. This service is source-only until its actual enrolled runtime is separately tested."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-reconciliation-trait.php",
+      "owner_role": "MAD4B source integration CI-only reviewer; Production release needs independent owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/source-unification-review-contract.py"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing source-bound Site Profile, Content Readiness, Admin, Security and provider-scope controls apply to the extracted service; no broad privilege or release mutation is introduced.",
+      "review_rationale": "Independent review of class-mad4b-scp-readiness-reconciliation-trait.php preserves original behavior and dependent guard checks in an executed test suite. This service is source-only until its actual enrolled runtime is separately tested."
     }
   ],
   "lifecycle": [],
@@ -23726,6 +23802,219 @@
       "review_rationale": "Raise source-bound Content Readiness active issue cap from 3000 to a still-bounded 6000, while preserving original serialised issue ledger, non-autoload store, old-state readback, archive, hard no-data-loss upper limit and all provider admission and closure gates. No arbitrary provider trust or background task authority.",
       "coverage_reuse_rationale": "Existing Content Readiness, strict source validation, Brand Identity and Security controls. No new capability IDs or policy bypass.",
       "execution_note": "Same-PR isolated executable PHP tests persist 3050 synthetic open findings without loss, refuse 6001 with exact unchanged ledger and no automatic actions. Live Tours.dev was 2979 of 3000 (2969 open), Wayfa 1097. Both live company-specific classes updated after original-SHA CAS and PHP lint with rollback copies; deployed independently, not via GitHub PR."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-code-release-readiness.php",
+      "source_blob_sha": "4f4fdbac60d0d8e9fb31339eac0430e15ea4d484",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "tests/source-unification-review-contract.py"
+      ],
+      "owner_role": "MAD4B source integration CI-only reviewer; production owner separate",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Exact Git blob review of class-mad4b-scp-company-code-release-readiness.php in PR942 against immutable PR920 source. Ten executable CI-only suites verify tenant isolation, content readiness, Core Web Vitals, admin permission, company release denial, scoped skill reads and local-only Ollama. No provider grant or Production authority is created.",
+      "coverage_reuse_rationale": "Existing site-scoped Admin, Content, Security, WordPress lifecycle and source-binding controls already require authenticated evidence; no new policy control or runtime authorization is implied."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-master-admin.php",
+      "source_blob_sha": "f5f3dc802c4f1931b258257920b908a4f3b6bb59",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/source-unification-review-contract.py"
+      ],
+      "owner_role": "MAD4B source integration CI-only reviewer; production owner separate",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Exact Git blob review of class-mad4b-scp-company-master-admin.php in PR942 against immutable PR920 source. Ten executable CI-only suites verify tenant isolation, content readiness, Core Web Vitals, admin permission, company release denial, scoped skill reads and local-only Ollama. No provider grant or Production authority is created.",
+      "coverage_reuse_rationale": "Existing site-scoped Admin, Content, Security, WordPress lifecycle and source-binding controls already require authenticated evidence; no new policy control or runtime authorization is implied."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-type-roles.php",
+      "source_blob_sha": "0d8c35851ddd141f0df997c2d2afab2bc69e04f2",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "tests/source-unification-review-contract.py"
+      ],
+      "owner_role": "MAD4B source integration CI-only reviewer; production owner separate",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Exact Git blob review of class-mad4b-scp-content-type-roles.php in PR942 against immutable PR920 source. Ten executable CI-only suites verify tenant isolation, content readiness, Core Web Vitals, admin permission, company release denial, scoped skill reads and local-only Ollama. No provider grant or Production authority is created.",
+      "coverage_reuse_rationale": "Existing site-scoped Admin, Content, Security, WordPress lifecycle and source-binding controls already require authenticated evidence; no new policy control or runtime authorization is implied."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-web-vitals-admin-trait.php",
+      "source_blob_sha": "338a0c1b2e0611e1465adff17ec4c1210d72e0d5",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/source-unification-review-contract.py"
+      ],
+      "owner_role": "MAD4B source integration CI-only reviewer; production owner separate",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Exact Git blob review of class-mad4b-scp-core-web-vitals-admin-trait.php in PR942 against immutable PR920 source. Ten executable CI-only suites verify tenant isolation, content readiness, Core Web Vitals, admin permission, company release denial, scoped skill reads and local-only Ollama. No provider grant or Production authority is created.",
+      "coverage_reuse_rationale": "Existing site-scoped Admin, Content, Security, WordPress lifecycle and source-binding controls already require authenticated evidence; no new policy control or runtime authorization is implied."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-impact-policy.php",
+      "source_blob_sha": "65f77d2344ef212210ba92a54df797652771e162",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/source-unification-review-contract.py"
+      ],
+      "owner_role": "MAD4B source integration CI-only reviewer; production owner separate",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Exact Git blob review of class-mad4b-scp-impact-policy.php in PR942 against immutable PR920 source. Ten executable CI-only suites verify tenant isolation, content readiness, Core Web Vitals, admin permission, company release denial, scoped skill reads and local-only Ollama. No provider grant or Production authority is created.",
+      "coverage_reuse_rationale": "Existing site-scoped Admin, Content, Security, WordPress lifecycle and source-binding controls already require authenticated evidence; no new policy control or runtime authorization is implied."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-field-intelligence.php",
+      "source_blob_sha": "e3807f8e866f194a72ceae1eef73b4f53bc22544",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/source-unification-review-contract.py"
+      ],
+      "owner_role": "MAD4B source integration CI-only reviewer; production owner separate",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Exact Git blob review of class-mad4b-scp-provider-field-intelligence.php in PR942 against immutable PR920 source. Ten executable CI-only suites verify tenant isolation, content readiness, Core Web Vitals, admin permission, company release denial, scoped skill reads and local-only Ollama. No provider grant or Production authority is created.",
+      "coverage_reuse_rationale": "Existing site-scoped Admin, Content, Security, WordPress lifecycle and source-binding controls already require authenticated evidence; no new policy control or runtime authorization is implied."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-discovery-trait.php",
+      "source_blob_sha": "d9460384b8685b664bcb77ceb59dd64fdbc65aa3",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/source-unification-review-contract.py"
+      ],
+      "owner_role": "MAD4B source integration CI-only reviewer; production owner separate",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Exact Git blob review of class-mad4b-scp-readiness-discovery-trait.php in PR942 against immutable PR920 source. Ten executable CI-only suites verify tenant isolation, content readiness, Core Web Vitals, admin permission, company release denial, scoped skill reads and local-only Ollama. No provider grant or Production authority is created.",
+      "coverage_reuse_rationale": "Existing site-scoped Admin, Content, Security, WordPress lifecycle and source-binding controls already require authenticated evidence; no new policy control or runtime authorization is implied."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-reconciliation-trait.php",
+      "source_blob_sha": "6d27518934ecb8c49d7b944fb35968c2977df123",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/source-unification-review-contract.py"
+      ],
+      "owner_role": "MAD4B source integration CI-only reviewer; production owner separate",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Exact Git blob review of class-mad4b-scp-readiness-reconciliation-trait.php in PR942 against immutable PR920 source. Ten executable CI-only suites verify tenant isolation, content readiness, Core Web Vitals, admin permission, company release denial, scoped skill reads and local-only Ollama. No provider grant or Production authority is created.",
+      "coverage_reuse_rationale": "Existing site-scoped Admin, Content, Security, WordPress lifecycle and source-binding controls already require authenticated evidence; no new policy control or runtime authorization is implied."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-runtime-certification.php",
+      "source_blob_sha": "9d483a66dc0e4012ec942b05d5e9c844e64ff730",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/source-unification-review-contract.py"
+      ],
+      "owner_role": "MAD4B source integration CI-only reviewer; production owner separate",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Exact Git blob review of class-mad4b-scp-skill-runtime-certification.php in PR942 against immutable PR920 source. Ten executable CI-only suites verify tenant isolation, content readiness, Core Web Vitals, admin permission, company release denial, scoped skill reads and local-only Ollama. No provider grant or Production authority is created.",
+      "coverage_reuse_rationale": "Existing site-scoped Admin, Content, Security, WordPress lifecycle and source-binding controls already require authenticated evidence; no new policy control or runtime authorization is implied."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skills-admin-ui.php",
+      "source_blob_sha": "59b685b92c0a7e009dc8d97cf878f810fe676584",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/source-unification-review-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php"
+      ],
+      "owner_role": "MAD4B source integration CI-only reviewer; production owner separate",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Exact Git blob review of class-mad4b-scp-skills-admin-ui.php in PR942 against immutable PR920 source. Ten executable CI-only suites verify tenant isolation, content readiness, Core Web Vitals, admin permission, company release denial, scoped skill reads and local-only Ollama. No provider grant or Production authority is created.",
+      "coverage_reuse_rationale": "Existing site-scoped Admin, Content, Security, WordPress lifecycle and source-binding controls already require authenticated evidence; no new policy control or runtime authorization is implied."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "2c497ec72c57f420d1abf1eef242748be40f7bb2",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/source-unification-review-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w1-authority-contract.py"
+      ],
+      "owner_role": "MAD4B source integration CI-only reviewer; production owner separate",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Exact Git blob review of mad4b-site-control-plane.php in PR942 against immutable PR920 source. Ten executable CI-only suites verify tenant isolation, content readiness, Core Web Vitals, admin permission, company release denial, scoped skill reads and local-only Ollama. No provider grant or Production authority is created.",
+      "coverage_reuse_rationale": "Existing site-scoped Admin, Content, Security, WordPress lifecycle and source-binding controls already require authenticated evidence; no new policy control or runtime authorization is implied."
     }
   ],
   "code_change_rules": {

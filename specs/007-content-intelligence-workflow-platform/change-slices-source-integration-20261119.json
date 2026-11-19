@@ -1,0 +1,190 @@
+{
+  "contract": "mad4b.change-slices.v2",
+  "authorizing": false,
+  "reviewed_base_sha": "e1b8c8aa83fd72bea87cfe6511f8200b57420b12",
+  "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
+  "exhaustive_ownership_required": true,
+  "changed_file_count": 81,
+  "changed_paths_sha256": "3ecee888e93f96de8b3d061457c69bc625a442f4fbff4d610e5673002756f39e",
+  "slices": [
+    {
+      "id": "pr942-ci-tools-01",
+      "semantic_unit": "Review-only integration of ci-tools at the PR920/PR882 fork, with exact path custody and no Production release authority",
+      "revert_boundary": "Revert this exact set of related source paths and tests together while retaining immutable historical host, owner, and CI records",
+      "certification": "exact_head",
+      "path_globs": [
+        "tools/readiness_test_execution.py"
+      ]
+    },
+    {
+      "id": "pr942-control-plane-module-01",
+      "semantic_unit": "Review-only integration of control-plane-module at the PR920/PR882 fork, with exact path custody and no Production release authority",
+      "revert_boundary": "Revert this exact set of related source paths and tests together while retaining immutable historical host, owner, and CI records",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-code-release-readiness.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-master-admin.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-type-roles.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-web-vitals-admin-trait.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-impact-policy.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-field-intelligence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-discovery-trait.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-reconciliation-trait.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-runtime-certification.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skills-admin-ui.php"
+      ]
+    },
+    {
+      "id": "pr942-control-plane-regressions-01",
+      "semantic_unit": "Review-only integration of control-plane-regressions at the PR920/PR882 fork, with exact path custody and no Production release authority",
+      "revert_boundary": "Revert this exact set of related source paths and tests together while retaining immutable historical host, owner, and CI records",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-route-registry-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/architecture-maintainability-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/destination-term-alerts-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-feature007-admin-successor-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-pr415-pr416-pr420-pr421-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w1-authority-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/source-convergence-company-release-readiness-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/source-convergence-content-role-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/source-convergence-live-safety-regression.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-agent-authority-source-only-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-authority-review-source-only-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-cli-context-identity-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-content-quality-dependencies-source-only-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-context-local-document-normalizer-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-fcp-local-observability-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-fcp-queue-readback-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-hub-lifecycle-source-only-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-live-catalog-read-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-live-skills-list-paging-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-live-source-skills-parity-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-local-transport-boundary-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-native-diagnostics-read-parity-runtime.php"
+      ]
+    },
+    {
+      "id": "pr942-control-plane-regressions-02",
+      "semantic_unit": "Review-only integration of control-plane-regressions at the PR920/PR882 fork, with exact path custody and no Production release authority",
+      "revert_boundary": "Revert this exact set of related source paths and tests together while retaining immutable historical host, owner, and CI records",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-ooxml-namespace-neutrality-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-provider-field-read-parity-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readiness-preactivation-source-only-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readonly-global-runtime-lifecycle-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readonly-native-settings-locator-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readonly-provider-installed-artifact-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readonly-unified-gate-funnel-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-scheduler-source-closure-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-signed-host-agent-negative-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-signed-host-context-review-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-switcher-flag-scheme-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-visual-seo-strategy-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-wpml-site-origin-cli-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-wpml-site-origin-rest-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-wpml-site-origin-runtime.php"
+      ]
+    },
+    {
+      "id": "pr942-core-plugin-and-other-01",
+      "semantic_unit": "Review-only integration of core-plugin-and-other at the PR920/PR882 fork, with exact path custody and no Production release authority",
+      "revert_boundary": "Revert this exact set of related source paths and tests together while retaining immutable historical host, owner, and CI records",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php"
+      ]
+    },
+    {
+      "id": "pr942-feature007-specifications-01",
+      "semantic_unit": "Review-only integration of feature007-specifications at the PR920/PR882 fork, with exact path custody and no Production release authority",
+      "revert_boundary": "Revert this exact set of related source paths and tests together while retaining immutable historical host, owner, and CI records",
+      "certification": "exact_head",
+      "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/baseline-review-20261119.md",
+        "specs/007-content-intelligence-workflow-platform/change-slices-source-integration-20261119.json",
+        "specs/007-content-intelligence-workflow-platform/post-merge-capability-fabric-closure.json"
+      ]
+    },
+    {
+      "id": "pr942-github-ci-01",
+      "semantic_unit": "Review-only integration of github-ci at the PR920/PR882 fork, with exact path custody and no Production release authority",
+      "revert_boundary": "Revert this exact set of related source paths and tests together while retaining immutable historical host, owner, and CI records",
+      "certification": "exact_head",
+      "path_globs": [
+        ".github/workflows/country-nationality-switchers.yml",
+        ".github/workflows/mad4b-local-oauth-standalone.yml",
+        ".github/workflows/mad4b-tour-mobile-mu-source.yml"
+      ]
+    },
+    {
+      "id": "pr942-governance-evidence-01",
+      "semantic_unit": "Review-only integration of governance-evidence at the PR920/PR882 fork, with exact path custody and no Production release authority",
+      "revert_boundary": "Revert this exact set of related source paths and tests together while retaining immutable historical host, owner, and CI records",
+      "certification": "exact_head",
+      "path_globs": [
+        "governance/production-readiness/admin-pages-ci-source-reviews.json",
+        "governance/production-readiness/capability-coverage.json"
+      ]
+    },
+    {
+      "id": "pr942-mu-site-runtime-01",
+      "semantic_unit": "Review-only integration of mu-site-runtime at the PR920/PR882 fork, with exact path custody and no Production release authority",
+      "revert_boundary": "Revert this exact set of related source paths and tests together while retaining immutable historical host, owner, and CI records",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/mu-plugins/407-mad4b-elementor-sticky-lifecycle-guard.php",
+        "wp-content/mu-plugins/410-mad4b-tour-rate-lazy-footprint.php",
+        "wp-content/mu-plugins/411-mad4b-direct-menu-link-contract.php",
+        "wp-content/mu-plugins/428-mad4b-mobile-bottom-action-nav-visibility.php",
+        "wp-content/mu-plugins/assets/mad4b-elementor-sticky-lifecycle-c77a2b2fbdc39daa.js"
+      ]
+    },
+    {
+      "id": "pr942-operations-source-audits-01",
+      "semantic_unit": "Review-only integration of operations-source-audits at the PR920/PR882 fork, with exact path custody and no Production release authority",
+      "revert_boundary": "Revert this exact set of related source paths and tests together while retaining immutable historical host, owner, and CI records",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/site-runtime/tour-mobile-canonical-source-20261119/README.md",
+        "ops/site-runtime/tour-mobile-canonical-source-20261119/manifest.json",
+        "ops/site-runtime/tour-mobile-canonical-source-20261119/verify-source.py",
+        "ops/source-reconciliation/tours-dev-20261118/README.md",
+        "ops/source-reconciliation/tours-dev-20261118/check_live_source_parity.py",
+        "ops/source-reconciliation/tours-dev-20261118/full-runtime-source-hashes.json",
+        "ops/source-reconciliation/tours-dev-20261118/reviewed-slices-composite.json",
+        "ops/source-reconciliation/tours-dev-20261118/signed-host-core-boundary.md",
+        "ops/source-reconciliation/tours-dev-20261118/source-file-hashes.json",
+        "ops/source-reconciliation/tours-dev-20261118/test_live_source_parity.py"
+      ]
+    },
+    {
+      "id": "pr942-repository-regressions-01",
+      "semantic_unit": "Review-only integration of repository-regressions at the PR920/PR882 fork, with exact path custody and no Production release authority",
+      "revert_boundary": "Revert this exact set of related source paths and tests together while retaining immutable historical host, owner, and CI records",
+      "certification": "exact_head",
+      "path_globs": [
+        "tests/ci/test-feature007-adaptive-wpcli-provision-contract.py",
+        "tests/ci/test-local-oauth-chromium-install-contract.py",
+        "tests/source-unification-review-contract.py",
+        "tests/switchers/test-browser-runner-pin-contract.py"
+      ]
+    },
+    {
+      "id": "pr942-source-reconciliation-docs-01",
+      "semantic_unit": "Review-only integration of source-reconciliation-docs at the PR920/PR882 fork, with exact path custody and no Production release authority",
+      "revert_boundary": "Revert this exact set of related source paths and tests together while retaining immutable historical host, owner, and CI records",
+      "certification": "exact_head",
+      "path_globs": [
+        "docs/source-reconciliation/MAD4B-PR882-PR920-SOURCE-INTEGRATION-20261119.md",
+        "docs/source-reconciliation/merge-conflict-review-matrix-20261119.json"
+      ]
+    }
+  ],
+  "source_cohort_review_state": "non_authorizing_review_candidate",
+  "release_authorized": false
+}
