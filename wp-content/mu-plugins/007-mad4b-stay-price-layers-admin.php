@@ -197,9 +197,9 @@ final class MAD4B_Stay_Layers_Admin_V1 {
     public static function native_shortcut():void {
         if(!current_user_can('commerce_manage_pricing'))return;
         $page=sanitize_key((string)($_GET['page']??''));
-        if(!in_array($page,['dynamic-pricing-controls','etg-dynamic-pricing-controls','mad4b-pricing-workspace'],true))return;
-        echo '<div class="notice notice-info"><p><strong>Accommodation Pricing:</strong> Existing Property and Unit direct prices, plus optional Property Rates and Unit Rates. ';
-        echo '<a href="'.esc_url(admin_url('admin.php?page='.self::PAGE)).'">Open Property &amp; Unit Pricing</a></p></div>';
+        if($page!=='mad4b-pricing-workspace')return;
+        echo '<div class="notice notice-info"><p><strong>Accommodation &amp; Unit Pricing</strong> is now integrated into the native Pricing Controls page. ';
+        echo '<a href="'.esc_url(admin_url('admin.php?page=dynamic-pricing-controls')).'">Open Pricing Controls</a></p></div>';
     }
     public static function boot():void {
         add_action('admin_menu',[self::class,'menu'],105);
