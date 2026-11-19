@@ -21,9 +21,13 @@ class SurfaceRegistryTests(unittest.TestCase):
                             and not x['handler_verified'] for x in rows))
 
     def test_default_deny_read_only_contract(self):
-        self.assertIn("if ($operation !== 'read' || !is_user_logged_in()) return false",PHP)
-        self.assertIn("if (!$p || empty($p['read_caps'])) return false",PHP)
-        self.assertIn("foreach ($p['read_caps'] as $cap) if (!current_user_can($cap)) return false",PHP)
+        self.assertIn("if (!is_user_logged_in()) return false",PHP)
+        self.assertIn("if ($operation === 'read')",PHP)
+        self.assertIn("$operation === 'draft' && $slug === 'mad4b-company-content-job-draft'",PHP)
+        self.assertIn("if (!is_array($caps) || !$caps) return false",PHP)
+        self.assertIn("if (!$p) return false",PHP)
+        self.assertIn("if (!is_array($caps) || !$caps) return false",PHP)
+        self.assertIn("foreach ($caps as $cap) if (!current_user_can($cap)) return false",PHP)
         self.assertIn("'registry_write_gate']=false",PHP)
         self.assertIn("'registry_approve_gate']=false",PHP)
         self.assertIn("'handler_authorization_certified']=false",PHP)

@@ -40,19 +40,15 @@ user capabilities. Do not modify actual live Master Admin caps merely for
 a test. Site-specific root-only rollback copies are at:
  /opt/mad4b-company-provisioning/reports/master-admin-lifecycle-20261119/
 
-## Explicitly deferred: FluentCRM broad permissions compatibility
+## 19 November 2026 — FluentCRM compatibility resolved
 
-The existing 003 lifecycle file also has a FluentCRM user_permissions
-filter returning all 16 FluentCRM plugin permissions for any Master Admin.
-The actual sampled Master users currently have no stored FluentCRM
-manager_permissions meta record and no matching native fcrm_* role grants.
-Removing that filter would immediately revoke existing CRM access.
-This deployment preserves it to avoid an unapproved functional regression.
-It is a separate P1 role/tenant reconciliation requirement; use the
-FluentCRM native permission manager, approved role mapping and migration
-readback before modifying this hook. Do not claim URE fully governs
-FluentCRM until that separate policy has been reconciled.
+The previous lifecycle filter returning all sixteen rights to any Master
+Admin now delegates to the reviewed allowlisted company capability policy
+in MAD4B_Admin_Surface_Registry_V1::fluentcrm_permissions. Revocations
+of URE-owned company CRM/operations/policies caps now reduce rights, and
+native explicit per-user manager permissions also narrow them. Existing
+16/16 rights remained for the five tested Master accounts, without modifying
+the stored WordPress role/user grants or native FluentCRM manager metadata.
+The separate 501 security capability ceiling remains unchanged.
 
-The independent 501 reducing-only security policy still removes forbidden
-system grants even if URE was used to set them. That deliberate
-higher-priority security ceiling is not a role-definition editing bug.
+Evidence: /opt/mad4b-company-provisioning/reports/master-admin-policy-completion-20261119/

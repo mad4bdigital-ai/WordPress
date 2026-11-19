@@ -11,6 +11,8 @@ $class='MAD4B_Admin_Surface_Registry_V1';
 if (!$class::allowed('mad4b-company-workspaces','read')) exit(72);
 if (!$class::allowed('mad4b-company-content-jobs','read')) exit(73);
 if ($class::allowed('mad4b-company-content-jobs','write')) exit(74);
+if ($class::allowed('mad4b-company-content-job-draft','draft')) exit(78);
+if ($class::allowed('mad4b-company-content-job-draft','publish')) exit(79);
 if ($class::allowed('mad4b-company-staff-roles','approve')) exit(75);
 if ($class::allowed('unknown-plugin-global-settings','read')) exit(76);
 if (count($GLOBALS['h']['admin_menu']??[])!==1) exit(77);

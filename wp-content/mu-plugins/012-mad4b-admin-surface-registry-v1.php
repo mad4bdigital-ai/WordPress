@@ -1,22 +1,22 @@
 <?php
 /**
- * Plugin Name: MAD4B Admin Surface Registry (Read-only)
- * Description: Canonical read policies and observed admin routes, without role grants or handler overrides.
- * Version: 0.1.0
+ * Plugin Name: MAD4B Admin Surface Registry
+ * Description: Reviewed read rights and one scoped content-draft permission; no role grants or generic write bypass.
+ * Version: 0.2.0
  */
 defined('ABSPATH') || exit;
 
 /**
- * Phase 1 contract:
- * - Every registered surface must declare capabilities and scope.
- * - ONLY explicitly verified READ-only policy keys can authorize a read.
- * - Write, publish, and approve return false until first-party handlers
- *   register and enforce an independently reviewed bounded contract.
+ * Phase 2: explicit read caps and ONE review-only draft operation.
+ * - Every registered surface declares capabilities and scope.
+ * - Generic write, publish, approve and unknown actions deny.
+ * - Content Job draft still requires the separate browser nonce, native
+ *   runtime mutation gate and exact site/tenant/brand integrity check.
  * - No automatic wp_roles mutations and no bypass of WP native capabilities.
  */
 final class MAD4B_Admin_Surface_Registry_V1 {
     public const CONTRACT = 'mad4b.admin-surface-registry.readonly.v1';
-    public const VERSION = '20261119.1';
+    public const VERSION = '20261119.2';
     public const MENU_SLUG = 'mad4b-admin-surface-registry';
 
     /**
@@ -39,6 +39,14 @@ final class MAD4B_Admin_Surface_Registry_V1 {
                 'scope'=>'original_content_jobs_site_uuid_brand_id_tenant_id',
                 'handler'=>'MAD4B_Company_Workspaces_V1::jobs'
             ],
+            'mad4b-company-content-job-draft' => [
+                'label'=>'Content Job strict-review draft intake (nonce guarded)',
+                'read_caps'=>['mad4b_manage_company_operations','mad4b_work_company_tasks','mad4b_propose_company_content','edit_posts'],
+                'draft_caps'=>['mad4b_manage_company_operations','mad4b_work_company_tasks','mad4b_propose_company_content','edit_posts'],
+                'write_caps'=>null,'approve_caps'=>null,
+                'scope'=>'exact_site_brand_tenant_original_integrity_capture',
+                'handler'=>'MAD4B_Company_Content_Job_Draft_V1::page'
+            ],
             'mad4b-company-staff-roles' => [
                 'label'=>'Staff & Roles (navigation only)',
                 'read_caps'=>['mad4b_manage_company_operations','mad4b_work_company_tasks','edit_others_posts'],
@@ -60,16 +68,116 @@ final class MAD4B_Admin_Surface_Registry_V1 {
                 'scope'=>'original_pricing_handler',
                 'handler'=>'MAD4B_Pricing_Lab_V1::page'
             ],
+            'mad4b-pricing-workbench' => [
+                'label'=>'Pricing Workbench (read-only product inspector)',
+                'read_caps'=>['commerce_manage_pricing','mad4b_manage_company_operations','mad4b_work_company_tasks'],
+                'write_caps'=>null,'approve_caps'=>null,'scope'=>'current_wordpress_site',
+                'handler'=>'MAD4B_Pricing_Workbench::page'
+            ],
+            'mad4b-control-plane-content-pipeline' => [
+                'label'=>'Content Pipeline (read-only company report)',
+                'read_caps'=>['mad4b_manage_company_operations','mad4b_propose_company_content'],
+                'write_caps'=>null,'approve_caps'=>null,'scope'=>'current_wordpress_site',
+                'handler'=>'MAD4B_SCP_Dynamic_Content_Pipeline_Admin::render'
+            ],
+            'mad4b-company-content-hub' => [
+                'label'=>'Content Hub (central authority status only)',
+                'read_caps'=>['mad4b_manage_company_operations','mad4b_propose_company_content'],
+                'write_caps'=>null,'approve_caps'=>null,'scope'=>'current_wordpress_site',
+                'handler'=>'MAD4B_Company_Content_Hub_Overview_V1::page'
+            ],
+            'fluent_forms_all_entries' => [
+                'label'=>'Fluent Forms Entries (native per-form scope)',
+                'read_caps'=>['fluentform_dashboard_access','fluentform_entries_viewer'],
+                'write_caps'=>null,'approve_caps'=>null,'scope'=>'native_fluentform_form_acl',
+                'handler'=>'FluentForm\\App\\Modules\\Registerer\\Menu::renderAllEntriesAdminRoute'
+            ],
+            'fluent_forms_reports' => [
+                'label'=>'Fluent Forms Reports (native per-form scope)',
+                'read_caps'=>['fluentform_dashboard_access','fluentform_entries_viewer'],
+                'write_caps'=>null,'approve_caps'=>null,'scope'=>'native_fluentform_form_acl',
+                'handler'=>'FluentForm\\App\\Modules\\Registerer\\Menu::renderReports'
+            ],
+            'fluent_forms#add=1' => [
+                'label'=>'Fluent Forms New Form (native form manager)',
+                'read_caps'=>['fluentform_dashboard_access','fluentform_forms_manager'],
+                'write_caps'=>null,'approve_caps'=>null,'scope'=>'native_fluentform_form_acl',
+                'handler'=>'FluentForm\\App\\Modules\\Registerer\\Menu::renderAddNewFormRoute'
+            ],
         ];
     }
 
-    /** Read registry capability, not final handler authorization. */
+    /**
+     * FluentCRM v3.2 / v3.3 bridge.
+     * URE-owned existing effective company caps determine the original
+     * FluentCRM permission list; unknown/future plugin permissions deny.
+     * An explicit per-user native permission record is a further upper
+     * bound, even for Master Admin (the legacy filter ignored it).
+     */
+    public static function fluentcrm_permissions($existing,$user): array {
+        $original=is_array($existing)?array_values(array_filter($existing,'is_string')):[];
+        if (!is_object($user) || empty($user->ID)
+            || !in_array('master_admin',(array)($user->roles??[]),true)) return $original;
+        $user_id=(int)$user->ID;
+        $base=['commerce_manage_crm','mad4b_manage_company_operations'];
+        foreach($base as $cap)if(!user_can($user_id,$cap))return [];
+        $required=[
+            'fcrm_view_dashboard'=>[],
+            'fcrm_read_contacts'=>[],
+            'fcrm_manage_contacts'=>[],
+            'fcrm_manage_contacts_delete'=>['commerce_manage_operations'],
+            'fcrm_manage_contacts_export'=>['commerce_manage_operations'],
+            'fcrm_manage_contact_cats'=>[],
+            'fcrm_manage_contact_cats_delete'=>['commerce_manage_operations'],
+            'fcrm_read_emails'=>[],
+            'fcrm_manage_emails'=>[],
+            'fcrm_manage_email_delete'=>['commerce_manage_operations'],
+            'fcrm_manage_email_templates'=>[],
+            'fcrm_manage_forms'=>['mad4b_propose_company_content'],
+            'fcrm_read_funnels'=>[],
+            'fcrm_write_funnels'=>['commerce_manage_operations'],
+            'fcrm_delete_funnels'=>['commerce_manage_operations'],
+            'fcrm_manage_settings'=>['commerce_manage_operations','commerce_manage_policies'],
+        ];
+        $native=[];
+        if(class_exists('FluentCrm\App\Services\PermissionManager'))
+            $native=(array)\FluentCrm\App\Services\PermissionManager::pluginPermissions();
+        else return $original; // Degraded dependency: do not change existing grants.
+        $approved=[];
+        foreach($native as $permission){
+            if(!is_string($permission)||!array_key_exists($permission,$required))continue;
+            $ok=true;
+            foreach($required[$permission] as $cap)if(!user_can($user_id,$cap)){$ok=false;break;}
+            if($ok)$approved[]=$permission;
+        }
+        // Respect a deliberate native per-user FluentCRM manager policy.
+        // For an empty native record, an explicit revoke wins over role grants.
+        if(function_exists('fluentcrm_get_meta')){
+            $meta=fluentcrm_get_meta($user_id, \FluentCrm\App\Models\User::class,'manager_permissions');
+            if($meta!==null){
+                $explicit=is_array($meta->value??null)?$meta->value:[];
+                $approved=array_values(array_intersect($approved,$explicit));
+            }
+        }
+        return array_values(array_unique($approved));
+    }
+
+    /** Capability predicate only; never substitutes for a handler's nonce/site/tenant checks. */
     public static function allowed(string $slug,string $operation='read'): bool {
-        if ($operation !== 'read' || !is_user_logged_in()) return false;
+        if (!is_user_logged_in()) return false;
         $policies=self::policies();
         $p=$policies[$slug]??null;
-        if (!$p || empty($p['read_caps'])) return false;
-        foreach ($p['read_caps'] as $cap) if (!current_user_can($cap)) return false;
+        if (!$p) return false;
+        if ($operation === 'read') {
+            $caps=$p['read_caps']??null;
+        } elseif ($operation === 'draft' && $slug === 'mad4b-company-content-job-draft') {
+            // The ONLY explicit draft state; no generic write/publish/approve grant.
+            $caps=$p['draft_caps']??null;
+        } else {
+            return false;
+        }
+        if (!is_array($caps) || !$caps) return false;
+        foreach ($caps as $cap) if (!current_user_can($cap)) return false;
         return true;
     }
 

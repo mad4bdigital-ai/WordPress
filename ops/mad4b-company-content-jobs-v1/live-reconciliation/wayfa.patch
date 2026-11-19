@@ -1,0 +1,15 @@
+--- a/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php
++++ b/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php
+@@ -478,9 +478,11 @@
+             class_exists('MAD4B_SCP_Host_Agent_Bridge',false)
+             && MAD4B_SCP_Host_Agent_Bridge::active_for('mad4b/content-job-create');
+         if ( ! $signed_host_media_intake
+             && ( ! class_exists( 'MAD4B_SCP_Policy' )
+-                || true !== MAD4B_SCP_Policy::can_mutate() ) ) {
++                || true !== MAD4B_SCP_Policy::can_mutate() )
++            && !( class_exists('MAD4B_Company_Content_Job_Draft_V1',false)
++                && MAD4B_Company_Content_Job_Draft_V1::admitted($input,$checkpoint['scope']) ) ) {
+             return new WP_Error( 'mad4b_content_job_authorized_actor_required',
+                 'A verified administrator or governed NHI is required to create ContentJobs.',
+                 array( 'mutation_performed' => false, 'stage' => 'pre_transaction_authorization',
+                     'requires_authorized_principal' => true ) );

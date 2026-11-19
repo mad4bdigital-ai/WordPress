@@ -81,7 +81,7 @@ final class MAD4B_Lifecycle_Access {
   add_filter('wp_insert_post_empty_content',static function($empty,$data){$t=$data['post_type']??'';if(!in_array($t,['tour-rates','property-rates','transport-rates','elementor_library'],true))return $empty;$o=get_post_type_object($t);if(!$o)return true;$cap=empty($data['ID'])?$o->cap->create_posts:'edit_post';if(!current_user_can($cap,(int)($data['ID']??0)))return true;if(in_array($data['post_status']??'',['publish','future','private'],true)&&!current_user_can($o->cap->publish_posts))return true;return $empty;},10,2);
   add_action('wp_loaded',[self::class,'wpml'],1000);
   add_filter('map_meta_cap',static function($caps,$cap,$uid,$args){if($cap==='edit_post'&&!empty($args[0])&&in_array(get_post_type((int)$args[0]),['tours-and-activities','properties','units','transportations'],true)&&self::can('commerce_manage_pricing',(int)$uid))return ['commerce_manage_pricing'];return $caps;},100,4);
-  add_filter('fluent_crm/user_permissions',static function($permissions,$user){if($user&&in_array('master_admin',(array)$user->roles,true)&&class_exists(\FluentCrm\App\Services\PermissionManager::class))return \FluentCrm\App\Services\PermissionManager::pluginPermissions();return $permissions;},100,2);
+  add_filter('fluent_crm/user_permissions',static function($permissions,$user){if($user && in_array('master_admin',(array)($user->roles??[]),true) && class_exists('MAD4B_Admin_Surface_Registry_V1',false)) return MAD4B_Admin_Surface_Registry_V1::fluentcrm_permissions($permissions,$user);return $permissions;},100,2);
   // Staff role assignments do not cause automatic capability reseeding.
   foreach(['set_user_role','add_user_role','user_register'] as $hook)
    add_action($hook,[self::class,'wpml'],100);
