@@ -48,3 +48,6 @@ cimd_assert($c::verified_bearer_trusted_chatgpt_client_id()===''
     && ($GLOBALS['cimd_user_clear']??-1)===0,
     'Verified client and WordPress user identity reset together');
 echo "CIMD_SCOPED_SIGNED_BEARER_IDENTITY: PASS (legacy, scoped, mismatch, foreign, issuer, reset)\n";
+// Preserve the detailed evidence above and publish a strict machine-readable
+// success marker only after all positive and negative identity checks pass.
+echo "PASS: signed scoped CIMD bearer, legacy and foreign-client denials\n";
