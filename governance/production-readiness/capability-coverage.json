@@ -23726,6 +23726,27 @@
       "review_rationale": "Raise source-bound Content Readiness active issue cap from 3000 to a still-bounded 6000, while preserving original serialised issue ledger, non-autoload store, old-state readback, archive, hard no-data-loss upper limit and all provider admission and closure gates. No arbitrary provider trust or background task authority.",
       "coverage_reuse_rationale": "Existing Content Readiness, strict source validation, Brand Identity and Security controls. No new capability IDs or policy bypass.",
       "execution_note": "Same-PR isolated executable PHP tests persist 3050 synthetic open findings without loss, refuse 6001 with exact unchanged ledger and no automatic actions. Live Tours.dev was 2979 of 3000 (2969 open), Wayfa 1097. Both live company-specific classes updated after original-SHA CAS and PHP lint with rollback copies; deployed independently, not via GitHub PR."
+    },
+    {
+      "path": "wp-content/mu-plugins/mad4b-destination-term-save-preflight.php",
+      "source_blob_sha": "0fa987a84649eb520a1d9b599fa24a7cdc51492c",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/destination-term-save-preflight-runtime.php"
+      ],
+      "owner_role": "MAD4B site-bound Destination Term Save Preflight exact-source CI reviewer; no general grant",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Add focused fail-closed pre-write gate for JetEngine destination Term Meta: admin whole-request 422 before wp_update_term, new-term pre_insert_term refusal, and WordPress update/add term metadata filter that rejects newly introduced foreign clickable links, unstable root-relative path URLs and unsafe URI schemes. Preserve historical unchanged URLs, site-UUID and brand-bound host proof, exact public field allowlist, editorial source and media fields. No automatic content replacement, no additional admin role, no granted external writes.",
+      "coverage_reuse_rationale": "Reuses site-bound Brand Identity, WordPress nonce/capability checks, Brand Integrity domain registry and Content Readiness Alerts. No new execution provider, content job authority or external service.",
+      "execution_note": "Both live sites independently linted and installed identical MU source; real WordPress read-only admin-form simulation returned HTTP 422 for invalid link, new-term preflight denied, first-party allowed, raw term-meta unchanged; hermetic regression covers WP metadata update/add filters, nested JetEngine fields, legacy nonregression, invalid UUID and unreadable DB. Independent operator review still required before merging CI source."
     }
   ],
   "code_change_rules": {

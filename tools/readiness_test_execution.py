@@ -33,6 +33,11 @@ HOST_ROOT_HERMETIC_REGRESSIONS = frozenset((
 # Each path contains exit-on-failure assertions and a positive PASS marker.
 # Other PHP files continue to require PHPUnit; unknown paths fail closed.
 STANDALONE_PHP_REGRESSIONS = frozenset((
+    # Exact site-neutral destination Term Meta preflight fixture: fake identity,
+    # fake DB baseline, simulated JetEngine admin POST, WP metadata filter
+    # rejection, benign first-party URLs and a no-network WP_Error response.
+    # No actual site state, publishing, remote fetch, authorization or secrets.
+    "wp-content/plugins/mad4b-site-control-plane/tests/destination-term-save-preflight-runtime.php",
     # Read-only destination Term Meta alert regression: isolated synthetic DB,
     # exact CSV media URL boundaries, fake HTML readback, and negative closure
     # cases. No real WordPress, network, authorizations or production writes.
