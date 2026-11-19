@@ -10,6 +10,12 @@ final class MAD4B_Guide_Service_Composition_V1 {
     public const RATE_META = '_mad4b_guide_rate_inclusion_v1';
     public const STATES = ['unknown','full_day','half_day','none','optional'];
 
+    public static function pricingPermitted(): bool {
+        return current_user_can('manage_woocommerce') ||
+            (class_exists('MAD4B_Lifecycle_Access') &&
+             MAD4B_Lifecycle_Access::can('commerce_manage_pricing'));
+    }
+
     public static function canonical(int $id, string $kind): int {
         if ($id <= 0) return 0;
         $en = apply_filters('wpml_object_id', $id, $kind, false, 'en');
@@ -127,8 +133,29 @@ final class MAD4B_Guide_Service_Composition_V1 {
         $optional=count(array_filter($statuses,static fn($s)=>$s==='optional'));
         $factor=$record['half_day_factor']??null;
         if ($half && $factor===null) return new WP_Error('guide_half_day_policy_required');
-        // Even a zero-day plan verifies selected taxonomy language identity;
-        // no unknown/missing guide terms are quietly mapped to "other".
+        // If every day is explicitly without a mandatory guide, the cost
+        // is exactly zero. This must not require inventing an unavailable
+        // language choice; an optional guide is priced in its own quote.
+        if ($full===0 && $half===0) {
+            $zero=[
+                'contract'=>'mad4b.guide-cost-component.v1',
+                'component_key'=>'guide:'.$source['source_kind'].':'.$source['source_id'].':not_required',
+                'tour_id'=>$source['tour_id'],'program_id'=>$source['program_id'],
+                'supplier'=>'self','currency'=>'EGP',
+                'amount_type'=>'internal_cost_not_sell',
+                'language_code'=>null,'tier'=>'not_required',
+                'unit_cost'=>0,'full_days'=>0,'half_days'=>0,'half_day_factor'=>null,
+                'optional_days_excluded'=>$optional,
+                'effective_guide_days'=>0,'guide_count'=>0,'cost'=>0,
+                'source_hash'=>$source['source_hash'],
+                'source_record_revision'=>(int)($record['revision']??0),
+                'not_price_authority'=>true,'apply_to_retail_total'=>false,'checkout_ready'=>false,
+            ];
+            $zero['cost_fingerprint']=hash('sha256',wp_json_encode($zero));
+            return $zero;
+        }
+        // A service-bearing day must always verify the chosen taxonomy
+        // identity; unknown terms are never mapped into "other".
         $code=MAD4B_Guide_Daily_Base_Cost_V1::identity($language);
         if (is_wp_error($code)) return $code;
         $selected=is_int($language)
@@ -166,9 +193,135 @@ final class MAD4B_Guide_Service_Composition_V1 {
         return $receipt;
     }
 
+    /**
+     * Only an explicit, attributable, source-hash-stable owner review can
+     * classify a Tour Rate as already including Guide cost. Never infer from
+     * retail amount or free-text inclusions.
+     */
+    public static function guideLanguageOffered(int $tour,string $slug): bool {
+        if (!preg_match('/^[a-z0-9-]{2,64}$/D',$slug)) return false;
+        $source=self::tour($tour);
+        if (is_wp_error($source)) return false;
+        $term=get_term_by('slug',$slug,'guide-languages');
+        if (!($term instanceof WP_Term)) return false;
+        $canonical=self::canonical((int)$term->term_id,'guide-languages');
+        $assigned=wp_get_post_terms($source,'guide-languages',['fields'=>'ids']);
+        return !is_wp_error($assigned) &&
+            in_array($canonical,array_map(static fn($id)=>
+                self::canonical((int)$id,'guide-languages'),(array)$assigned),true);
+    }
+
+    public static function ratePricingHash(int $rate): string {
+        $snapshot=['rate_id'=>$rate,'post_status'=>get_post_status($rate)];
+        foreach (['related_tour_id','related_program_term_id','related_package_term_id',
+                  'unit_type','base_currency','single_price','double_price','triple_price',
+                  'stop_sale'] as $key) {
+            $snapshot[$key]=get_post_meta($rate,$key,true);
+        }
+        return hash('sha256',wp_json_encode($snapshot));
+    }
+    public static function rateReceipt(int $rate): array|WP_Error {
+        if (get_post_type($rate)!=='tour-rates') return new WP_Error('guide_rate_type_invalid');
+        $record=get_post_meta($rate,self::RATE_META,true);
+        if (!is_array($record)||($record['schema']??null)!==1 ||
+            !in_array($record['status']??'', ['included','excluded','partial'],true) ||
+            !is_string($record['evidence']??null) ||
+            strlen($record['evidence'])<10 || strlen($record['evidence'])>500 ||
+            (int)($record['reviewer']??0)<1) {
+            return new WP_Error('guide_rate_inclusion_unreviewed');
+        }
+        if (($record['rate_pricing_hash']??'')!==self::ratePricingHash($rate)) {
+            return new WP_Error('guide_rate_pricing_changed');
+        }
+        $tour=(int)get_post_meta($rate,'related_tour_id',true);
+        $program=(int)get_post_meta($rate,'related_program_term_id',true);
+        $source=self::source($tour,$program);
+        if (is_wp_error($source)||($record['source_hash']??null)!==$source['source_hash']) {
+            return new WP_Error('guide_rate_itinerary_changed');
+        }
+        if ($record['status']==='included') {
+            $baseline=$record['baseline_language']??'';
+            if (!is_string($baseline)||$baseline==='') {
+                return new WP_Error('guide_rate_baseline_language_required');
+            }
+            if (!class_exists('MAD4B_Guide_Daily_Base_Cost_V1',false) ||
+                is_wp_error(MAD4B_Guide_Daily_Base_Cost_V1::identity($baseline)) ||
+                !self::guideLanguageOffered($tour,$baseline)) {
+                return new WP_Error('guide_rate_baseline_language_invalid');
+            }
+        }
+        return $record;
+    }
+
+    public static function rateBox($post): void {
+        if (!($post instanceof WP_Post)) return;
+        $review=self::rateReceipt((int)$post->ID);
+        $record=is_wp_error($review)?[]:$review;
+        wp_nonce_field('mad4b_guide_rate_inclusion_save','mad4b_guide_rate_inclusion_nonce');
+        echo '<p>Does this Rate already include the Guide COST? This is an evidence record, not an instruction to change published prices.</p>';
+        echo '<p><label>Guide coverage <select name="mad4b_guide_rate_status">';
+        foreach (['unknown'=>'Not reviewed (default)','included'=>'Guide already included',
+                  'excluded'=>'Guide excluded from Rate','partial'=>'Some guide service already included'] as $value=>$label) {
+            echo '<option value="'.esc_attr($value).'"'.selected($record['status']??'unknown',$value,false).'>'.esc_html($label).'</option>';
+        }
+        echo '</select></label></p>';
+        echo '<p><label>Baseline Guide Language (required when included) <select name="mad4b_guide_rate_baseline">';
+        echo '<option value="">Choose language</option>';
+        $terms=get_terms(['taxonomy'=>'guide-languages','hide_empty'=>false]);
+        if (is_array($terms)) foreach ($terms as $term) {
+            if (!($term instanceof WP_Term)||str_starts_with($term->slug,'qa-')) continue;
+            echo '<option value="'.esc_attr($term->slug).'"'.selected($record['baseline_language']??'',$term->slug,false).'>'.esc_html($term->name).'</option>';
+        }
+        echo '</select></label></p>';
+        echo '<p><label>Evidence (supplier contract, approved cost breakdown or source):';
+        echo '<textarea name="mad4b_guide_rate_evidence" rows="3" style="display:block;width:100%">'.esc_textarea($record['evidence']??'').'</textarea></label></p>';
+        echo '<p class="description">Review is invalidated automatically when Rate prices/relations/itinerary change. Unknown or partial inclusion cannot authorize a second Guide charge.</p>';
+        if (is_wp_error($review)) {
+            echo '<p><strong>Current evidence:</strong> '.esc_html($review->get_error_code()).'</p>';
+        }
+    }
+    public static function rateBoxRegister(): void {
+        if (!self::pricingPermitted()) return;
+        add_meta_box('mad4b-rate-guide-inclusion','MAD4B · Guide Inclusion Evidence',
+            [__CLASS__,'rateBox'],'tour-rates','normal','default');
+    }
+    public static function rateSave(int $rate): void {
+        if (defined('DOING_AUTOSAVE')&&DOING_AUTOSAVE) return;
+        if (wp_is_post_revision($rate)||!self::pricingPermitted() ||
+            !current_user_can('edit_post',$rate) ||
+            !isset($_POST['mad4b_guide_rate_inclusion_nonce']) ||
+            !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['mad4b_guide_rate_inclusion_nonce'])),
+                'mad4b_guide_rate_inclusion_save')) return;
+        $state=sanitize_key((string)wp_unslash($_POST['mad4b_guide_rate_status']??'unknown'));
+        if ($state==='unknown') {
+            delete_post_meta($rate,self::RATE_META);
+            return;
+        }
+        if (!in_array($state,['included','excluded','partial'],true)) return;
+        $evidence=trim(sanitize_textarea_field(wp_unslash($_POST['mad4b_guide_rate_evidence']??'')));
+        if (strlen($evidence)<10||strlen($evidence)>500) return;
+        $tour=(int)get_post_meta($rate,'related_tour_id',true);
+        $program=(int)get_post_meta($rate,'related_program_term_id',true);
+        $source=self::source($tour,$program);
+        if (is_wp_error($source)) return;
+        $baseline=sanitize_key((string)wp_unslash($_POST['mad4b_guide_rate_baseline']??''));
+        if ($state==='included'&&($baseline==='' ||
+            !class_exists('MAD4B_Guide_Daily_Base_Cost_V1',false) ||
+            is_wp_error(MAD4B_Guide_Daily_Base_Cost_V1::identity($baseline)) ||
+            !self::guideLanguageOffered($tour,$baseline))) return;
+        $record=['schema'=>1,'status'=>$state,
+            'baseline_language'=>$state==='included'?$baseline:null,
+            'source_hash'=>$source['source_hash'],
+            'rate_pricing_hash'=>self::ratePricingHash($rate),
+            'evidence'=>$evidence,'reviewer'=>get_current_user_id(),
+            'reviewed_at'=>gmdate('c')];
+        update_post_meta($rate,self::RATE_META,$record);
+    }
+
     public static function breakdown(int $tour,string|int $language,int $program=0,int $guides=1,int $rate=0,string|int|null $baseline=null): array {
         $guide=self::guide($tour,$language,$program,$guides);
-        $baselineGuide=$baseline===null?null:self::guide($tour,$baseline,$program,$guides);
+        $baselineChoice=$baseline;
+        $rateReceipt=null;
         $rateState='not_selected';
         if ($rate) {
             $canonical=self::tour($tour);
@@ -177,22 +330,45 @@ final class MAD4B_Guide_Service_Composition_V1 {
                 self::canonical($related,'tours-and-activities')!==$canonical) {
                 $rateState='rate_tour_mismatch';
             } else {
-                $marked=get_post_meta($rate,self::RATE_META,true);
-                $rateState=is_array($marked)&&in_array($marked['status']??'', ['included','excluded','partial'],true)
-                    ?$marked['status']:'unknown';
+                $marked=self::rateReceipt($rate);
+                $rateState=is_wp_error($marked)
+                    ?'unknown:'.$marked->get_error_code():$marked['status'];
+                if (!is_wp_error($marked)) {
+                    $rateReceipt=$marked;
+                    if ($marked['status']==='included') {
+                        // The reviewed Rate's original language is the
+                        // baseline, never the client/request override.
+                        $baselineChoice=$marked['baseline_language'];
+                    }
+                }
             }
         }
+        $baselineGuide=$baselineChoice===null?null:self::guide($tour,$baselineChoice,$program,$guides);
         $ok=!is_wp_error($guide);
+        $incremental=null;$incrementalState='no_existing_rate_context';
+        if ($rate) {
+            if ($rateState==='excluded' && $ok) {
+                $incremental=$guide['cost'];
+                $incrementalState='guide_excluded_full_cost_reference';
+            } elseif ($rateState==='included' && $ok && is_array($baselineGuide)) {
+                $incremental=round($guide['cost']-$baselineGuide['cost'],2);
+                $incrementalState='guide_included_language_delta_reference';
+            } else {
+                $incrementalState='rate_inclusion_or_baseline_unverified';
+            }
+        }
         $base=[
             'contract'=>'mad4b.package-cost-breakdown.guide-shadow.v1',
             'tour_id'=>$tour,'program_id'=>$program?:null,'rate_id'=>$rate?:null,
             'guide'=>$ok?$guide:null,'guide_state'=>$ok?'cost_resolved':$guide->get_error_code(),
             'guide_cost_egp'=>$ok?$guide['cost']:null,
             'baseline_language_code'=>is_array($baselineGuide)?$baselineGuide['language_code']:null,
+            'guide_incremental_cost_reference_egp'=>$incremental,
+            'guide_incremental_cost_state'=>$incrementalState,
             'baseline_cost_egp'=>is_array($baselineGuide)?$baselineGuide['cost']:null,
             'guide_cost_delta_egp'=>($ok && is_array($baselineGuide))
                 ?round($guide['cost']-$baselineGuide['cost'],2):null,
-            'guide_delta_state'=>$baseline===null?'no_baseline_provided':
+            'guide_delta_state'=>$baselineChoice===null?'no_baseline_provided':
                 (is_wp_error($baselineGuide)?$baselineGuide->get_error_code():
                   ($ok?'internal_cost_difference_only':'guide_cost_unresolved')),
             'existing_rate_guide_inclusion'=>$rateState,
@@ -303,7 +479,7 @@ final class MAD4B_Guide_Service_Composition_V1 {
         self::form($source);
     }
     public static function register(): void {
-        if (!current_user_can('edit_posts')) return;
+        if (!self::pricingPermitted() || !current_user_can('edit_posts')) return;
         add_meta_box('mad4b-guide-itinerary-service','MAD4B · Guide Service Cost Days',
             [__CLASS__,'box'],'tours-and-activities','normal','default');
     }
@@ -342,14 +518,16 @@ final class MAD4B_Guide_Service_Composition_V1 {
     }
     public static function saveTour(int $postId): void {
         if (defined('DOING_AUTOSAVE')&&DOING_AUTOSAVE) return;
-        if (wp_is_post_revision($postId) || !current_user_can('edit_post',$postId)) return;
+        if (wp_is_post_revision($postId) || !self::pricingPermitted() ||
+            !current_user_can('edit_post',$postId)) return;
         if (self::canonical($postId,'tours-and-activities')!==$postId) return;
         $source=self::source($postId);
         if (is_wp_error($source)||$source['source_kind']!=='post') return;
         self::store($source);
     }
     public static function termEditor($term): void {
-        if (!($term instanceof WP_Term) || !current_user_can('edit_term',$term->term_id)) return;
+        if (!($term instanceof WP_Term) || !self::pricingPermitted() ||
+            !current_user_can('edit_term',$term->term_id)) return;
         if (self::canonical($term->term_id,'programs')!==(int)$term->term_id) return;
         $raw=get_term_meta($term->term_id,'program_itinerary',true);
         if (!is_array($raw)||!$raw) {
@@ -375,7 +553,7 @@ final class MAD4B_Guide_Service_Composition_V1 {
         echo '</td></tr>';
     }
     public static function saveTerm(int $termId): void {
-        if (!current_user_can('edit_term',$termId) ||
+        if (!self::pricingPermitted() || !current_user_can('edit_term',$termId) ||
             self::canonical($termId,'programs')!==$termId) return;
         $tours=get_posts(['post_type'=>'tours-and-activities','post_status'=>['publish','draft'],
             'fields'=>'ids','numberposts'=>-1,'suppress_filters'=>true]);
@@ -392,9 +570,7 @@ final class MAD4B_Guide_Service_Composition_V1 {
         register_rest_route('mad4b-guide/v1','/generation-preflight',[
             'methods'=>'GET',
             'permission_callback'=>static function(){
-                return current_user_can('manage_woocommerce') ||
-                    (class_exists('MAD4B_Lifecycle_Access') &&
-                     MAD4B_Lifecycle_Access::can('commerce_manage_pricing'));
+                return self::pricingPermitted();
             },
             'args'=>[
                 'tour_id'=>['required'=>true,'type'=>'integer','minimum'=>1],
@@ -416,9 +592,7 @@ final class MAD4B_Guide_Service_Composition_V1 {
         register_rest_route('mad4b-guide/v1','/package-cost',[
             'methods'=>'GET',
             'permission_callback'=>static function(){
-                return current_user_can('manage_woocommerce') ||
-                    (class_exists('MAD4B_Lifecycle_Access') &&
-                     MAD4B_Lifecycle_Access::can('commerce_manage_pricing'));
+                return self::pricingPermitted();
             },
             'args'=>[
                 'tour_id'=>['required'=>true,'type'=>'integer','minimum'=>1],
@@ -444,6 +618,8 @@ final class MAD4B_Guide_Service_Composition_V1 {
     }
 }
 add_action('add_meta_boxes',[MAD4B_Guide_Service_Composition_V1::class,'register'],35);
+add_action('add_meta_boxes',[MAD4B_Guide_Service_Composition_V1::class,'rateBoxRegister'],36);
+add_action('save_post_tour-rates',[MAD4B_Guide_Service_Composition_V1::class,'rateSave'],55);
 add_action('save_post_tours-and-activities',[MAD4B_Guide_Service_Composition_V1::class,'saveTour'],55);
 add_action('programs_edit_form_fields',[MAD4B_Guide_Service_Composition_V1::class,'termEditor'],35);
 add_action('edited_programs',[MAD4B_Guide_Service_Composition_V1::class,'saveTerm'],35);
