@@ -147,6 +147,10 @@ foreach($selected as $row) {
             update_post_meta($id,'_mad4b_transfer_pdf_2026_review_status','unverified_supplier_contract_draft');
             update_post_meta($id,'_mad4b_transfer_pdf_2026_editorial_language',$lang);
             update_post_meta($id,'_mad4b_transfer_pdf_2026_not_sellable',1);
+            // Trusted PDF operations are explicitly enrolled for a future
+            // regenerated Tour Rate composition. They remain Draft, so
+            // component selection and commerce stay independently gated.
+            update_post_meta($id,'trans_use_in_tour_rate_generation','1');
             // Do not set trans_start_price / trans_base_currency / trans_type:
             // each PDF row spans multiple vehicle categories; no source currency.
             $created[$lang]=($created[$lang]??0)+1;

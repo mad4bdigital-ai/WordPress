@@ -38,7 +38,8 @@ foreach($all as $id){
  if($cls::eligible((int)$id))$qualified++;
 }
 $check('all_statuses_valid',!$invalid);
-$check('all_opted_out_by_default',$enabled===0);
+$expectedPdfYes=$site==='https://wayfatours.com'?102:306;
+$check('only_pdf_source_has_yes',$enabled===$expectedPdfYes);
 $check('no_tour_components_auto_qualified',$qualified===0);
 $sourceDrafts=get_posts([
  'post_type'=>'transportations','post_status'=>'draft',
@@ -48,6 +49,18 @@ $sourceDrafts=get_posts([
 ]);
 $expectedSource=$site==='https://wayfatours.com'?102:306;
 $check('source_draft_count_unchanged',count($sourceDrafts)===$expectedSource);
+$pdfYes=0;$pdfDraftsStillDraft=true;$pdfEligible=0;
+foreach($sourceDrafts as $draft){
+ if((string)get_post_meta($draft,$cls::FIELD,true)==='1')$pdfYes++;
+ if(get_post_status($draft)!=='draft')$pdfDraftsStillDraft=false;
+ if($cls::eligible((int)$draft))$pdfEligible++;
+}
+$check('all_pdf_languages_opted_in',$pdfYes===$expectedSource);
+$check('pdf_rows_still_drafts',$pdfDraftsStillDraft);
+$check('no_unapproved_pdf_commercial_eligibility',$pdfEligible===0);
+$check('qa_only_not_auto_opted_in',
+ (string)get_post_meta(67115,$cls::FIELD,true)==='0' &&
+ (string)get_post_meta(67117,$cls::FIELD,true)==='0');
 $allCanonical=true;
 foreach($sourceDrafts as $draft)
  if((int)get_post_meta($draft,'trans_mode',true)!==568)$allCanonical=false;
@@ -126,8 +139,11 @@ $panel=MAD4B_Transport_Self_Pricing_Controls_V1::catalog('Cairo','en');
 $check('admin_source_rows_13',count($panel['items']??[])===13);
 $check('admin_payload_component_status',
  isset($panel['items'][0]['component']['reason_codes']) &&
- $panel['items'][0]['component']['opted_in']===false &&
+ $panel['items'][0]['component']['opted_in']===true &&
+ !$panel['items'][0]['component']['qualifies_as_tour_component'] &&
  $panel['tour_component_field_location']==='below_transport_description');
+$check('source_catalog_reports_yes',
+ $panel['items'][0]['component']['opted_in']===true);
 $check('no_auto_pricing_activation',!$panel['checkout_authorized'] &&
  !$panel['public_price_written']);
 $fail=array_keys(array_filter($checks,static fn($pass)=>!$pass));

@@ -470,3 +470,35 @@ unchanged. No separate pricing engine or alternate checkout was created.
 - No authenticated graphical browser was available for pixel-level,
   keyboard navigation and viewport screenshot acceptance; that remains
   separate from verified server behavior.
+
+## November 19 2026 — Owner-authorized PDF transport component opt-in
+
+The owner explicitly authorized setting Use in Tour Rate Generation = Yes
+for all transportation operations added from the trusted 2026 PDF, across
+all active WPML languages on both sites, for future regenerated Tour Rates.
+
+Tool: tools/enable-pdf-transport-tour-components.php
+
+- Tours.dev: 51 supplier operation keys × six languages = 306 Drafts Yes.
+- Wayfatours: 51 source operations × two languages = 102 Drafts Yes.
+- All 408 Draft posts were preflight-verified against the exact trusted
+  source SHA-256, company self provider, WPML translation group, canonical
+  Road mode 568, source non-sale marker, and Draft post status.
+- Each site has a persistent before-image option
+  mad4b_pdf_transport_component_yes_backup_20261119_v1 and guarded rollback.
+- The future PDF importer now sets trans_use_in_tour_rate_generation=1 on
+  newly created source Drafts. The general Transportation CPT default
+  remains No for unrelated transport services.
+- Excluded QA-only 67115/67117 and unrelated VinFast 39707: these are
+  outside the trusted PDF source; they need independent verification.
+- Eligibility is independently gated: these records are opted in but are
+  NOT commercially qualified while remaining unpublished Drafts.
+- All 408 remain Draft. No Transport Rate amount, publication status,
+  approved Market Profile, inventory, WooCommerce order, or checkout changed.
+- Read-only runtime tests after apply: 32/32 on Tours.dev and 32/32 on
+  Wayfatours, checking exact PDF language rows and source-only Yes.
+- Reversible per-site state is saved before the status changes.
+
+Future Tour Rate regeneration may now use these operations as explicit
+composition candidates, subject to publication, validated availability,
+route/type checks and native Rate approval before customer offers.
