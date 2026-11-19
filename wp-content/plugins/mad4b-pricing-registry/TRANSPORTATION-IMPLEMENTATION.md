@@ -201,3 +201,22 @@ Before commercial import/approval, obtain supplier-confirmed source currency
 vehicle-category linkage, and corrections for the two Luxor anomalies.
 Only then create deterministic per-vehicle Transport Rate CPT drafts and
 submit them to the existing Rate approval and Market Profile policies.
+
+## Operation classification proposals (source-to-rate preflight)
+
+Added a standalone proposal map for all 51 PDF source operations, keyed by
+Cairo/Aswan/Luxor plus source row number. Every classification is marked
+proposal_only, never an approved route, rate or sale price. The map uses
+existing service-kind values already registered on Transport Rates.
+
+Specific ambiguous rows are deliberately NOT converted to a single route:
+Cairo 9 (Alexandria / Sokhna), Cairo 10 (Ismailia / Fayoum), Cairo 12 and 13
+(alternative destinations), Luxor 14 and 15 (direction/return unspecified),
+and Luxor 23 (Dendera + Hurghada overland with all prices blank).
+The review table shows the proposed service type and source-specific notes.
+
+The proposal file is private PHP data guarded by ABSPATH; no new CPT posts,
+Rate prices or inventory were created. A further 3 source audit tests assert
+complete mapping coverage and preservation of ambiguous routes, bringing the
+source-audit result to 18/18. Post-deployment staging PHP lint passed,
+homepage remained HTTP 200, and unauthenticated source REST remained 401.

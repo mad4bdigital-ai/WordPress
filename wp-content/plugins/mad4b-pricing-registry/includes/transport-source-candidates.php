@@ -52,11 +52,20 @@ final class MAD4B_Transport_Source_Candidates_V1 {
 
     public static function review_rows(string $city=''): array {
         $source = require dirname(__DIR__).'/data/transportation-2026-source-candidates.php';
+        $proposals = require dirname(__DIR__).'/data/transport-2026-classification-proposals.php';
         if (!is_array($source) || !is_array($source['rows']??null)) return array();
         $allowed = array('','Cairo','Aswan','Luxor');
         if (!in_array($city,$allowed,true)) $city='';
-        return array_values(array_filter($source['rows'],static fn($r) =>
+        $selected = array_values(array_filter($source['rows'],static fn($r) =>
             $city==='' || ($r['origin_city']??'')===$city));
+        foreach ($selected as &$row) {
+            $key = (string)($row['origin_city']??'').':'.(string)($row['source_row']??'');
+            $row['classification_proposal'] = $proposals[$key]['kind'] ?? '';
+            $row['classification_note'] = $proposals[$key]['notes'] ?? 'classification_missing';
+            $row['classification_status'] = 'proposal_only';
+        }
+        unset($row);
+        return $selected;
     }
 
     public static function review_table(): void {
@@ -79,7 +88,7 @@ final class MAD4B_Transport_Source_Candidates_V1 {
         echo 'The missing H1 prices and Luxor row 23 remain blank; these are not zero prices.</p>';
         echo '<div style="max-width:100%;overflow-x:auto"><table class="widefat striped"><thead><tr>';
         foreach (array('Origin','Source row','Operation','Limousine','Luxury 7 seats / H1',
-            'Hiace','Coaster','Bus','Validation') as $head)
+            'Hiace','Coaster','Bus','Service proposal','Validation') as $head)
              echo '<th scope="col">'.esc_html($head).'</th>';
         echo '</tr></thead><tbody>';
         foreach ($rows as $r) {
@@ -93,7 +102,8 @@ final class MAD4B_Transport_Source_Candidates_V1 {
                 echo '<td>'.($v===''?'—':esc_html($v)).'</td>';
             }
             $note=(string)($r['review_note']??'');
-            echo '<td>'.esc_html($note===''?'Currency + role unconfirmed':$note).
+            echo '<td>'.esc_html($r['classification_proposal']??'').'</td>';
+            echo '<td>'.esc_html($note===''?($r['classification_note']??'Currency + role unconfirmed'):$note).
                 '</td></tr>';
         }
         echo '</tbody></table></div>';

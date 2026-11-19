@@ -17,6 +17,15 @@ $checks['no_currency_claim']=$s['source_currency_confirmed']===false;
 $checks['no_cost_or_sale_claim']=$s['commercial_role_confirmed']===false;
 $checks['no_commerce_authority']=!$s['ready_to_import']&&!$s['ready_to_publish']&&!$s['checkout_authorized'];
 $checks['no_source_write']=$s['mutation_performed']===false;
+$checks['proposal_coverage']=count(array_filter($rows,static fn($r)=>
+    !empty($r['classification_proposal'])))===51;
+$checks['proposed_only']=count(array_filter($rows,static fn($r)=>
+    ($r['classification_status']??'')==='proposal_only'))===51;
+$ambiguous=array_values(array_filter($rows,static fn($r)=>
+    ($r['origin_city']??'')==='Cairo' && (int)($r['source_row']??0)===9));
+$checks['multi_destination_not_sold_as_route']=count($ambiguous)===1 &&
+    ($ambiguous[0]['classification_proposal']??'')==='other';
+
 $checks['cairo_luxury_7_seats_header']=array_values(array_filter($rows,
     static fn($r)=>$r['origin_city']==='Cairo'&&(int)$r['source_row']===1))[0]['luxury_7_seats']==='1400';
 $checks['cairo_hiace_header']=array_values(array_filter($rows,
