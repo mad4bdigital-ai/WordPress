@@ -16,7 +16,8 @@ assert 'MAD4B_Release_Source_Admission::check(' in selfupdate
 assert 'MAD4B_Release_Source_Admission::require_for_release( $source_sha )' in selfupdate
 assert 'private static function apply_verified_archive' in selfupdate
 assert selfupdate.index('MAD4B_Release_Source_Admission::require_for_release( $source_sha )') > selfupdate.index('private static function apply_verified_archive')
-assert 'mad4b/release-source-preflight-status' in catalog
+assert "class_exists( 'MAD4B_Release_Source_Admission', false )" in catalog
+assert "$map['mad4b-read'][] = MAD4B_Release_Source_Admission::ABILITY" in catalog
 assert 'MAD4B_Release_Source_Admission::render_selector()' in ui
 assert 'MAD4B_Release_Source_Admission::check()' in company
 assert 'production_deployment_allowed' not in s or "'release_approved'=>false" in s

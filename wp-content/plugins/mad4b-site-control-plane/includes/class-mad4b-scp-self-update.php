@@ -1452,7 +1452,11 @@ final class MAD4B_SCP_Self_Update {
 	private static function native_update_ui_state( $manifest = null ) {
 		$blockers = array();
 		if ( ! current_user_can( 'update_plugins' ) ) $blockers[] = 'update_plugins_capability_required';
-		if ( ! self::environment_allowed( false ) ) $blockers[] = 'native_update_site_policy_blocked';
+        if ( ! self::environment_allowed( false ) ) {
+            $blockers[] = 'native_update_site_policy_blocked';
+            // Keep the established dual-channel CI/diagnostic reason stable.
+            $blockers[] = 'native_update_environment_policy_blocked';
+        }
 		if ( null === $manifest ) $manifest = self::fetch_manifest();
 		if ( is_wp_error( $manifest ) ) {
 			$blockers[] = sanitize_key( $manifest->get_error_code() );
