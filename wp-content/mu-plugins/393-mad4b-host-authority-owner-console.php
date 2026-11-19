@@ -200,6 +200,7 @@ final class MAD4B_Host_Authority_Owner_Console_V106 {
             'transportId'=>$status['transport_id'],
             'grantId'=>$status['grant_id'],
             'requestId'=>$status['request_id'],
+            'requestStatus'=>$status['request_status'],
             'hostId'=>$status['host_id'],
             'hostPrincipal'=>$status['host_principal'],
             'siteUuid'=>$status['site_uuid'],
@@ -221,79 +222,148 @@ final class MAD4B_Host_Authority_Owner_Console_V106 {
 
     public static function screen():void {
         if (!self::can_view()) wp_die(
-            esc_html__('Company administrator access required.','mad4b-site-control-plane'),'',array('response'=>403));
+            esc_html__('Company administrator access required.','mad4b-site-control-plane'),
+            '',array('response'=>403));
         $s=self::snapshot();
-        echo '<div class="wrap" id="mad4b-host-authority-app" style="max-width:1000px">';
-        echo '<h1>Host Authority</h1>';
-        echo '<p class="description">MAD4B Master Admin / Control Plane — authenticated owner approval for the first Anchor.</p>';
+        $owner=$s['owner_verified']===true;
+        $grant=$owner && $s['grant_id']!=='';
+        $queued=$owner && $s['request_id']!=='';
+        $review=$s['phase']==='ANCHOR_STATE_REVIEW';
+        $headline=$review?'Independent Anchor review required':
+            ($queued?'Owner request accepted':($grant?'Bootstrap Grant completed':
+            ($owner?'Owner approval required':'Owner verification required')));
+        $requestText=$s['request_status']==='ADMITTED_PENDING_INDEPENDENT_HOST_AUTHORITY'
+            ? 'Accepted — awaiting independent Host verification'
+            : (string)$s['request_status'];
+        echo '<div class="wrap" id="mad4b-host-authority-app">';
         echo '<style>
-        #mad4b-host-authority-app .mad4b-ha-card{background:#fff;border:1px solid #c3c4c7;border-radius:6px;padding:18px 22px;margin:18px 0}
-        #mad4b-host-authority-app .mad4b-ha-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(195px,1fr));gap:12px}
-        #mad4b-host-authority-app .mad4b-ha-key{font-size:12px;color:#50575e;display:block;margin-bottom:4px}
-        #mad4b-host-authority-app .mad4b-ha-value{font-size:15px;font-weight:600;overflow-wrap:anywhere}
-        #mad4b-host-authority-app .mad4b-ha-step{border-top:1px solid #e2e4e7;margin-top:20px;padding-top:20px}
-        #mad4b-host-authority-app #mad4b-ha-result{white-space:pre-wrap;overflow-wrap:anywhere}
-        #mad4b-host-authority-app .mad4b-ha-notice{background:#f6f7f7;border-left:4px solid #2271b1;padding:12px 14px;margin-top:12px}
-        #mad4b-host-authority-app input[type=text]{max-width:100%;width:490px}
-        #mad4b-host-authority-app button[disabled]{cursor:not-allowed;opacity:.6}
+        #mad4b-host-authority-app{max-width:1120px;margin-top:22px}
+        #mad4b-host-authority-app [hidden]{display:none!important}
+        #mad4b-host-authority-app .ha-top{display:flex;justify-content:space-between;gap:16px;align-items:start;margin-bottom:18px}
+        #mad4b-host-authority-app .ha-top h1{margin:0 0 5px}
+        #mad4b-host-authority-app .ha-muted{color:#50575e}
+        #mad4b-host-authority-app .ha-pill{display:inline-block;background:#f3f6fa;color:#215783;border:1px solid #a3bada;padding:8px 12px;border-radius:4px;font-weight:600}
+        #mad4b-host-authority-app .ha-panel{background:#fff;border:1px solid #c3c4c7;border-radius:6px;padding:20px 24px;margin:0 0 16px}
+        #mad4b-host-authority-app .ha-panel h2{font-size:18px;margin:0 0 9px;line-height:1.4}
+        #mad4b-host-authority-app .ha-panel p{line-height:1.6}
+        #mad4b-host-authority-app .ha-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:15px;margin-top:18px;border-top:1px solid #eee;padding-top:16px}
+        #mad4b-host-authority-app .ha-key{display:block;color:#646970;font-size:12px;margin-bottom:4px}
+        #mad4b-host-authority-app .ha-value{display:block;font-size:14px;font-weight:600;overflow-wrap:anywhere}
+        #mad4b-host-authority-app .ha-progress{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;list-style:none;padding:0;margin:0 0 16px}
+        #mad4b-host-authority-app .ha-progress li{border:1px solid #dcdcde;border-radius:5px;background:#fff;padding:13px;min-width:0}
+        #mad4b-host-authority-app .ha-progress li.is-done{background:#f3faf5;border-color:#a3d1b0}
+        #mad4b-host-authority-app .ha-progress li.is-current{border:2px solid #2271b1;padding:12px}
+        #mad4b-host-authority-app .ha-progress strong{display:block;font-size:13px}
+        #mad4b-host-authority-app .ha-progress small{display:block;color:#646970;margin-top:5px}
+        #mad4b-host-authority-app .ha-consent{display:flex;gap:9px;align-items:start;padding:12px;background:#f6f7f7;border:1px solid #e2e4e7;border-radius:4px;margin:16px 0}
+        #mad4b-host-authority-app .ha-consent input{margin-top:2px;flex-shrink:0}
+        #mad4b-host-authority-app .ha-consent label{line-height:1.5}
+        #mad4b-host-authority-app .ha-input{font-family:ui-monospace,Consolas,monospace;width:100%;max-width:670px;box-sizing:border-box;padding:8px 10px}
+        #mad4b-host-authority-app .ha-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:16px}
+        #mad4b-host-authority-app .ha-actions .button{min-height:36px}
+        #mad4b-host-authority-app .ha-note{border-left:3px solid #2271b1;background:#f6f7f7;padding:11px 13px;white-space:pre-wrap;overflow-wrap:anywhere;margin:12px 0}
+        #mad4b-host-authority-app .ha-note.is-error{border-color:#b32d2e;background:#fcf0f1}
+        #mad4b-host-authority-app .ha-id{font:600 13px/1.5 ui-monospace,Consolas,monospace;word-break:break-all}
+        #mad4b-host-authority-app .ha-next{border-top:1px solid #e2e4e7;padding-top:15px;margin-top:17px}
+        #mad4b-host-authority-app .ha-next h3{font-size:14px;margin:0 0 8px}
+        #mad4b-host-authority-app .ha-fine{font-size:12px;color:#646970}
+        #mad4b-host-authority-app button:disabled{opacity:.6;cursor:not-allowed}
+        @media(max-width:960px){#mad4b-host-authority-app .ha-grid,#mad4b-host-authority-app .ha-progress{grid-template-columns:repeat(2,minmax(0,1fr))}}
+        @media(max-width:500px){#mad4b-host-authority-app .ha-top{display:block}#mad4b-host-authority-app .ha-top .ha-pill{margin-top:12px}#mad4b-host-authority-app .ha-panel{padding:16px}#mad4b-host-authority-app .ha-progress{grid-template-columns:1fr}}
         </style>';
-        echo '<section class="mad4b-ha-card" aria-labelledby="mad4b-ha-heading">';
-        echo '<h2 id="mad4b-ha-heading">Issue First Host Authority Anchor</h2>';
-        echo '<div class="mad4b-ha-grid">';
-        foreach (array(
-            'Company'=>'All Royal Egypt',
-            'Environment'=>'Staging',
-            'Host'=>'hosting-2',
+        echo '<header class="ha-top"><div><h1>Host Authority</h1>'
+            .'<p class="ha-muted">Issue First Host Authority Anchor · All Royal Egypt / Staging</p></div>'
+            .'<span class="ha-pill" id="mad4b-ha-overall-state">'.esc_html($headline).'</span></header>';
+        echo '<section class="ha-panel" aria-labelledby="mad4b-ha-summary">';
+        echo '<h2 id="mad4b-ha-summary">'.esc_html($headline).'</h2>';
+        echo '<p class="ha-muted">'.esc_html($queued
+            ? 'Original305 has accepted your Owner Request. Independent verification must finish before a Host Anchor can be issued.'
+            :($grant
+                ? 'The non-executing Bootstrap Grant is complete. The next step is to submit the verified Root Plan.'
+                :'Verify your owner session and active Original328 connection before proceeding.')).'</p>';
+        echo '<div class="ha-grid">';
+        foreach(array(
+            'Company'=>'All Royal Egypt','Environment'=>'Staging','Host'=>'hosting-2',
             'Original328'=>$s['original328_active']?'Active':'Unavailable',
             'Anchor state'=>$s['anchor_state'],
             'Revision'=>is_int($s['anchor_revision'])?(string)$s['anchor_revision']:'Unknown',
-            'Owner session'=>$s['owner_verified']?'Verified prerequisites':'Not verified',
+            'Owner session'=>$owner?'Verified':'Not verified',
             'Workflow'=>$s['phase']
         ) as $label=>$value) {
-            echo '<div><span class="mad4b-ha-key">'.esc_html($label).'</span>'
-                .'<span class="mad4b-ha-value">'.esc_html($value).'</span></div>';
+            echo '<div><span class="ha-key">'.esc_html($label).'</span>'
+                .'<span class="ha-value">'.esc_html($value).'</span></div>';
         }
-        echo '</div><p class="mad4b-ha-notice"><strong>Scope:</strong> This page only stages a first-Anchor request via Original305. '
-            .'It does not create the Host Anchor, enable Production, sign Original313 evidence, '
-            .'or bypass the Original306/312/313 provider checks.</p>';
-        if (!$s['owner_verified']) {
+        echo '</div></section>';
+        echo '<ol class="ha-progress" aria-label="Host Authority workflow">';
+        foreach(array(
+            array('connection','Connection verified',$owner?'Complete':'Verification needed',$owner,!$owner),
+            array('grant','Bootstrap Grant',$grant?'Complete':'Owner approval',$grant,$owner&&!$grant),
+            array('request','Owner Request',$queued?'Accepted':'Not submitted',$queued,$grant&&!$queued),
+            array('verify','Independent verification','Original306 / 312 / 313',false,$queued)
+        ) as $stage) {
+            echo '<li id="mad4b-ha-step-'.esc_html($stage[0]).'" class="'
+                .($stage[3]?'is-done':($stage[4]?'is-current':'')).'">'
+                .'<strong>'.esc_html($stage[1]).'</strong>'
+                .'<small>'.esc_html($stage[2]).'</small></li>';
+        }
+        echo '</ol>';
+        if (!$owner) {
             echo '<div class="notice notice-warning inline"><p>Use the original enrolled WordPress owner account '
-                .'or a separately verified Unified Administrator principal, with the active Original328 parent transport. '
-                .'The <code>master_admin</code> company role alone is not an Original305 signing authority.</p></div>';
-        } elseif ($s['phase']==='ANCHOR_STATE_REVIEW') {
-            echo '<div class="notice notice-warning inline"><p>The signed Anchor state is no longer pristine Revision 0. '
-                .'No first-Anchor request can be staged until independently reviewed.</p></div>';
+                .'or a separately verified Unified Administrator principal. The <code>master_admin</code> role alone '
+                .'cannot grant Original305 authority.</p></div>';
+        } elseif($review) {
+            echo '<div class="notice notice-warning inline"><p>The signed Anchor is no longer pristine Revision 0. '
+                .'Independent readback is required before a new first-Anchor request.</p></div>';
         } else {
-            echo '<div class="mad4b-ha-step"><h3>1. Approve owner Bootstrap Grant</h3>';
-            echo '<p>Creates one operation-specific, non-executing Original305 Grant '
-                .'against your existing Original328 transport. This does not issue an Anchor.</p>';
-            echo '<p><label><input type="checkbox" id="mad4b-ha-owner-confirm"> '
-                .'I approve a first Host Authority bootstrap request for All Royal Egypt / Staging only.</label></p>';
-            echo '<p><button type="button" class="button button-primary" id="mad4b-ha-grant"'
-                .(($s['grant_id']!=='')?' disabled':' disabled')
-                .'>Approve Bootstrap Grant</button></p>';
-            echo '<div class="mad4b-ha-step"><h3>2. Submit the independently prepared plan</h3>';
-            echo '<p>An exact first-party Root plan SHA-256 is required. Do not invent or use a placeholder digest. '
-                .'The pending Original312 signer must independently verify that plan after the real Owner Job is claimed.</p>';
-            echo '<p><label for="mad4b-ha-plan">Verified Original312 plan SHA-256</label></p>';
-            echo '<p><input type="text" id="mad4b-ha-plan" inputmode="latin"'
+            echo '<section class="ha-panel" id="mad4b-ha-grant-panel"'
+                .($grant?' hidden':'').'>';
+            echo '<h2>1. Approve Bootstrap Grant</h2>'
+                .'<p class="ha-muted">Create one operation-specific, non-executing Original305 Grant. This does not issue an Anchor.</p>';
+            echo '<div class="ha-consent"><input type="checkbox" id="mad4b-ha-owner-confirm">'
+                .'<label for="mad4b-ha-owner-confirm">I approve a first Host Authority Bootstrap Grant for All Royal Egypt / Staging only.</label></div>';
+            echo '<div class="ha-actions"><button type="button" class="button button-primary"'
+                .' id="mad4b-ha-grant" disabled>Approve Bootstrap Grant</button></div></section>';
+
+            echo '<section class="ha-panel" id="mad4b-ha-command-panel"'
+                .((!$grant||$queued)?' hidden':'').'>';
+            echo '<h2>2. Submit verified Root Plan</h2>'
+                .'<p class="ha-muted">Bootstrap is complete. Submit an independently prepared Root Plan SHA-256 to queue an Owner Job, not an Anchor.</p>';
+            echo '<p><label for="mad4b-ha-plan"><strong>Verified Original312 plan SHA-256</strong></label></p>';
+            echo '<input class="ha-input" type="text" id="mad4b-ha-plan" inputmode="latin"'
                 .' minlength="64" maxlength="64" autocomplete="off" spellcheck="false"'
-                .' pattern="[a-f0-9]{64}" aria-describedby="mad4b-ha-plan-help"></p>';
-            echo '<p class="description" id="mad4b-ha-plan-help">Only a plan digest issued by the first-party Root plan preparer is acceptable. '
-                .'If no plan exists yet, leave this field empty; your Bootstrap Grant can remain staged.</p>';
-            echo '<p><button type="button" class="button button-secondary" '
-                .'id="mad4b-ha-command" disabled>Queue Original305 Owner Request</button></p>';
-            echo '<p><button type="button" class="button" id="mad4b-ha-refresh">Read Original305 Request Status</button></p>';
-            echo '<p role="status" aria-live="polite" id="mad4b-ha-result" class="mad4b-ha-notice"> '
-                .esc_html($s['request_id']!==''?'Original305 request already staged.':
-                  ($s['grant_id']!==''?'Existing Bootstrap Grant detected. Plan submission remains a separate step.':
-                      'Awaiting explicit owner approval.')).'</p>';
-            echo '</div></div>';
+                .' pattern="[a-f0-9]{64}" aria-describedby="mad4b-ha-plan-help"'
+                .' placeholder="64-character SHA-256">';
+            echo '<p class="ha-fine" id="mad4b-ha-plan-help">Use only the SHA-256 issued by the first-party Root Plan preparer.</p>';
+            echo '<div class="ha-consent"><input type="checkbox" id="mad4b-ha-command-confirm">'
+                .'<label for="mad4b-ha-command-confirm">I authorize submitting this Root Plan as an Owner Request for All Royal Egypt / Staging only.</label></div>';
+            echo '<div class="ha-actions"><button type="button" class="button button-primary"'
+                .' id="mad4b-ha-command" aria-label="Queue Original305 Owner Request" disabled>Submit Owner Request</button></div></section>';
+
+            echo '<section class="ha-panel" id="mad4b-ha-tracker"'
+                .(!$queued?' hidden':'').'>';
+            echo '<h2 id="mad4b-ha-tracker-title" tabindex="-1">3. Owner Request accepted</h2>';
+            echo '<p>Your owner action is complete. Original305 accepted the job but has not issued a Host Anchor.</p>';
+            echo '<p class="ha-muted">Request ID</p><p class="ha-id" id="mad4b-ha-request-id">'
+                .esc_html($queued?$s['request_id']:'').'</p>';
+            echo '<p id="mad4b-ha-tracker-status"><strong>Current status:</strong> '.esc_html($queued?$requestText:'Not submitted').'</p>';
+            echo '<div class="ha-actions"><button type="button" class="button button-primary" id="mad4b-ha-refresh"'
+                .(!$queued?' disabled':'').'>Check latest status</button>'
+                .'<button type="button" class="button" id="mad4b-ha-copy"'
+                .(!$queued?' disabled':'').'>Copy request ID</button></div>';
+            echo '<p class="ha-fine" id="mad4b-ha-checked-at">Showing last stored request status.</p>';
+            echo '<div class="ha-next"><h3>What happens next?</h3>'
+                .'<p class="ha-muted">Independent Original306 claim and Original312/313 verification are required. '
+                .'Anchor issuance must be checked separately using an authoritative readback.</p>'
+                .'<p class="ha-fine">Checking status is read-only and does not execute, sign, or approve anything.</p></div></section>';
+            echo '<p id="mad4b-ha-result" class="ha-note" role="status" aria-live="polite"'
+                .($queued?' hidden':'').'>'
+                .esc_html($grant?'Bootstrap Grant complete. Submit the verified Root Plan when authorized.':
+                    'Owner controls ready. Check the approval box to enable Bootstrap Grant.')
+                .'</p>';
         }
-        echo '<p class="description">Last local request: '
-            .esc_html($s['request_id']!==''?$s['request_status'].' (not an Anchor receipt)':'None')
-            .'. Production remains unchanged.</p>';
-        echo '</section></div>';
+        echo '<p class="ha-fine">Staging only. Production remains unchanged. '
+            .'This page cannot bypass Original306/312/313 or sign Host Anchor evidence.</p>';
+        echo '</div>';
         self::render_owner_script($s);
     }
 }
