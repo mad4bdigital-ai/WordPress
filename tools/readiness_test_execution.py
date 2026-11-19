@@ -57,6 +57,12 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     # No enrolled Host signer, no original grant, no WordPress/remote I/O.
     "wp-content/plugins/mad4b-site-control-plane/tests/host-agent-fail-closed-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/context-scan-media-integrity/isolated-contract.php",
+    # Exact Context title-only Brand Authority regression: original Context
+    # class plus synthetic titles, paths and body references. Both PHP 7.4
+    # and 8.5 execute positive classifications and stale-auto-category denial.
+    # The fixture runs without WordPress, DB, HTTP or production credentials.
+    # No other Context PHP path gains standalone execution.
+    "wp-content/plugins/mad4b-site-control-plane/tests/context-classification-title-contract.php",
     # The existing Context-document runtime has its own first-party fake WP
     # context; 7.4/8.3/8.5 exercised SVG fail-closed and regular text.
     # Explicitly review this named regression only; no generic PHP relaxation.
@@ -1067,6 +1073,13 @@ def self_test():
     else:
         raise AssertionError("Mixed-class runtime test gained untrusted standalone execution")
     assert has_assertion_pass("PASS: exact MCP descriptor routing and quarantine 19 positive-negative checks\n")
+    context_title = "wp-content/plugins/mad4b-site-control-plane/tests/context-classification-title-contract.php"
+    assert command_for(context_title) == ["php", str((ROOT / context_title).resolve())]
+    assert context_title in STANDALONE_PHP_REGRESSIONS
+    assert has_assertion_pass("mad4b.context-classification-title-contract.v1: PASS\n"
+                              "context_auto_reindex_drift_guard: PASS\n")
+    # The permission is for this exact isolated source fixture only.
+    assert "wp-content/plugins/mad4b-site-control-plane/tests/context-unknown-runtime.php" not in STANDALONE_PHP_REGRESSIONS
     assert has_assertion_pass("QA31 Live Write Provider Snapshot: PASS\n")
     assert has_assertion_pass("PASS: native plugin list retains MAD4B sidebar without heavy lifecycle\n")
     for path in ("README.md", "../secrets.py", "tests/does-not-exist.py"):
