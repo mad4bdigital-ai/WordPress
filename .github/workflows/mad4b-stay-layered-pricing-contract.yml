@@ -32,6 +32,11 @@ on:
 permissions:
   contents: read
 
+# Cancel outdated runs of the same pull request or branch.
+concurrency:
+  group: mad4b-stay-layered-pricing-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
 jobs:
   offline-contracts:
     name: Offline self-provider contracts (PHP ${{ matrix.php }})
@@ -42,6 +47,10 @@ jobs:
         php: ['7.4', '8.3', '8.5']
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Verify exact PR head checkout
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
