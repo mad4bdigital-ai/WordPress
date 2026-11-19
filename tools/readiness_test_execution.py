@@ -22,6 +22,10 @@ SHA = re.compile(r"^[a-f0-9]{40}$")
 # Each path contains exit-on-failure assertions and a positive PASS marker.
 # Other PHP files continue to require PHPUnit; unknown paths fail closed.
 STANDALONE_PHP_REGRESSIONS = frozenset((
+    # Exact inspected negative-only signed-Host source preservation fixtures.
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-signed-host-agent-negative-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-signed-host-context-review-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-cli-context-identity-runtime.php",
     "tests/remote-execution/chatgpt-optional-catalog-smoke.php",
     "tests/remote-execution/developer-preparation-bridge-smoke.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/mcp-catalog-adaptive-budget.php",
@@ -260,6 +264,10 @@ def self_test():
     ):
         exact = "wp-content/plugins/mad4b-site-control-plane/tests/" + standalone
         assert command_for(exact) == ["php", str((ROOT / exact).resolve())]
+    # No arbitrary PHP execution: these three fixtures are independently inspected.
+    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-signed-host-agent-negative-runtime.php") == ["php", str((ROOT / "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-signed-host-agent-negative-runtime.php").resolve())]
+    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-signed-host-context-review-runtime.php") == ["php", str((ROOT / "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-signed-host-context-review-runtime.php").resolve())]
+    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-cli-context-identity-runtime.php") == ["php", str((ROOT / "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-cli-context-identity-runtime.php").resolve())]
     # WordPress-integrated smoke cannot be silently run as bare PHPUnit or CLI.
     try:
         command_for("wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-smoke.php")
