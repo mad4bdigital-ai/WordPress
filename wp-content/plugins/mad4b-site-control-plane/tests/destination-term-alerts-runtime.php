@@ -50,7 +50,7 @@ function wp_remote_retrieve_response_code($res){return $res['code'];}
 function wp_remote_retrieve_body($res){return $res['body'];}
 function add_filter($hook,$cb,$priority=10,$accepted=1){return true;}
 function check($condition,$message){if(!$condition){fwrite(STDERR,"FAIL: ".$message."\n");exit(1);}}
-$plugin=$argv[1]??dirname(__DIR__).'/wp-content/mu-plugins/mad4b-destination-term-alerts.php';
+$plugin=$argv[1]??dirname(__DIR__,3).'/mu-plugins/mad4b-destination-term-alerts.php';
 check(is_file($plugin),'scanner file exists');
 require $plugin;
 $w=$GLOBALS['wpdb'];
