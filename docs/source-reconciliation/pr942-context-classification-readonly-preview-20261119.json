@@ -1,0 +1,29 @@
+{
+  "contract": "mad4b.followup.context-readonly-classification-plan-source.v1",
+  "parent_candidate_head": "ed7ae0508cd927aa89294e56840d468f9ea8233e",
+  "parent_source_blob_sha": "037d6563a3a42561a69b30e8f5d450e40a2d4a40",
+  "source_path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php",
+  "reviewed_source_blob_sha": "6d845fc71204df173643268b523ca8bd27620d23",
+  "reviewed_source_sha256": "d814a7fc21498f3ca0e4c6a606568f566b8cc0cd9727684a15d978bf5d1af609",
+  "reviewed_source_bytes": 313506,
+  "historic_qa31_path": "governance/release-parity/qa31-rc129-reviewed-successors-20261118.json",
+  "historic_qa31_sha256": "dce059a5058b66cc1cb5f6d4cd01aab24b1e6b75a8fba6a1655579de038ff821",
+  "historic_qa31_context_source_blob_sha": "43e71753bfb1e43e0cb48f22690ab3522c44d695",
+  "required_regression": "wp-content/plugins/mad4b-site-control-plane/tests/context-classification-readonly-preview-runtime.php",
+  "regressions": [
+    "wp-content/plugins/mad4b-site-control-plane/tests/context-classification-readonly-preview-runtime.php",
+    "tests/context-authority-original-review-suite.py",
+    "tests/qa31_release_source_gate_contract.py"
+  ],
+  "status": "reviewed_for_ci_only",
+  "production_authorized": false,
+  "runtime_activated": false,
+  "write_grant_issued": false,
+  "source_promotion_approved": false,
+  "historical_qa31_immutable": true,
+  "allows_application": false,
+  "allows_mail_dispatch": false,
+  "review_rationale": "The isolated Source Convergence follow-up adds only an administrator- and operational-scope-bound classification preview to the existing Context Authority class. It uses the current title/path classifier and refuses a foreign source, cross-brand asset, reviewed record or incomplete content. The original seven hermetic Context Authority tests remain mandatory. No classification_reconcile_apply, WP-CLI write path, WordPress mutation, new MCP ability or Production approval is added.",
+  "prior_host_integration_review": "governance/release-parity/qa31-rc129-host-agent-integration-successors-20261118.json",
+  "prior_host_integration_sha256": "3184e983d42404f7792c1784dca621bba33570f8b199b1a22a78c1293f16493e"
+}

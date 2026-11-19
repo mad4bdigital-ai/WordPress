@@ -33,6 +33,9 @@ HOST_ROOT_HERMETIC_REGRESSIONS = frozenset((
 # Each path contains exit-on-failure assertions and a positive PASS marker.
 # Other PHP files continue to require PHPUnit; unknown paths fail closed.
 STANDALONE_PHP_REGRESSIONS = frozenset((
+    # Exact, nonmutating Context Authority classification preview with stub
+    # WordPress options, user, source registry, and Site Profile; only reads.
+    "wp-content/plugins/mad4b-site-control-plane/tests/context-classification-readonly-preview-runtime.php",
     # PR942 exact, source-reviewed scoped CIMD compatibility fixtures.
     # All three execute under PHP 7.4 and 8.5 as isolated CLI scripts using
     # in-memory WordPress/OAuth doubles; none sends tokens, accesses a real
@@ -974,6 +977,10 @@ def self_test():
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-cli-context-identity-runtime.php",
     ):
         assert command_for(exact) == ["php", str((ROOT / exact).resolve())]
+    # Original review remains intact; only the new exact Context preview
+    # fixture is executable as isolated PHP. No generic PHP wildcard.
+    exact="wp-content/plugins/mad4b-site-control-plane/tests/context-classification-readonly-preview-runtime.php"
+    assert command_for(exact)==["php",str((ROOT/exact).resolve())]
     # Exact PR942 signed-bearer fixtures: standalone source-only regression
     # executors, not PHPUnit or WordPress runtime jobs.
     for exact in (

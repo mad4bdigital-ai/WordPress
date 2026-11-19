@@ -24142,6 +24142,30 @@
       "needs_new_control": false,
       "review_rationale": "Reconnect session repair and post-dispatch capture require the exact previously verified trusted ChatGPT client identity, not a hardcoded legacy-only client. Existing Adapter session deletion, idempotency, production-disabled repair and no-write safeguards stay unchanged. Separate SHA-pinned review admits only original signed client and exact scoped ChatGPT CIMD, with PHP7.4 and 8.5 positive/negative fixtures. It never grants new bearer scope, arbitrary redirect, session authority, plugin write or Production enrollment.",
       "coverage_reuse_rationale": "Original JWT signature, issuer, audience, Site Profile, scoped client-fingerprint and WordPress user protections stay in force. No new issuer or public REST route is accepted."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php",
+      "source_blob_sha": "6d845fc71204df173643268b523ca8bd27620d23",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "MCP-01",
+        "EXECUTION-01",
+        "ROLLOUT-01",
+        "AI-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-classification-readonly-preview-runtime.php",
+        "tests/source-unification-review-contract.py"
+      ],
+      "owner_role": "MAD4B source-convergence CI-only reviewer, not Production owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Exact source-reviewed read-only Context classification preview after PR942. The function requires site-bound administrator and an independent operational scope, denies foreign sources and mixed-brand assets, and refuses reviewed assets and incomplete content. PHP 7.4/8.5 negative tests assert no update_option, no class apply mutation, no emitted grant, stable source hash. Seven frozen original Context tests still run. The write reconciliation handler is deliberately not restored and Production remains blocked.",
+      "coverage_reuse_rationale": "Existing enrolled Site Profile, verified Operational Scope Guard and Context classification source binding apply; no new REST route, client OAuth scope, write ability or Production grant is introduced."
     }
   ],
   "code_change_rules": {

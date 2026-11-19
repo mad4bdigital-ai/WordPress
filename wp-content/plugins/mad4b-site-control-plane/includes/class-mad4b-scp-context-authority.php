@@ -4105,6 +4105,100 @@ final class MAD4B_SCP_Context_Authority {
 		);
 	}
 
+    /**
+     * Site-bound, administrator-only classification preview.
+     *
+     * Reconciles the original live-source *read-only* plan without restoring
+     * its WP-CLI mutation handler. It never approves assets, edits options,
+     * rescans Drive, schedules jobs, or grants write authority.
+     */
+    public static function classification_reconcile_plan( $requested_source_id ) {
+        if ( ! function_exists( 'current_user_can' ) || ! current_user_can( 'manage_options' ) ||
+            ! class_exists( 'MAD4B_SCP_Operational_Scope_Guard', false ) )
+            return new WP_Error( 'mad4b_reconcile_preview_admin_required',
+                'A site-scoped WordPress administrator is required for classification preview.' );
+        $site = self::site_binding();
+        if ( is_wp_error( $site ) ) return $site;
+        $scope = MAD4B_SCP_Operational_Scope_Guard::require_current();
+        if ( is_wp_error( $scope ) || ! is_array( $scope ) ||
+            empty( $scope['site_uuid'] ) || ! hash_equals( $site['site_uuid'], (string) $scope['site_uuid'] ) )
+            return new WP_Error( 'mad4b_reconcile_preview_scope_unverified',
+                'Exact site operational scope is required.' );
+        $source_id = strtolower( trim( (string) $requested_source_id ) );
+        if ( '' === $source_id || strlen( $source_id ) > 255 ||
+            ! preg_match( '/^[a-z0-9_\-\.]+$/D', $source_id ) )
+            return new WP_Error( 'mad4b_reconcile_preview_source_invalid',
+                'A bounded enrolled source identifier is required.' );
+        $source = self::source( $source_id );
+        if ( ! is_array( $source ) || 'governed' !== ( $source['mode'] ?? '' ) ||
+            'partial_scan' !== ( $source['status'] ?? '' ) ||
+            'google_drive' !== ( $source['provider'] ?? '' ) ||
+            ! hash_equals( $site['site_uuid'], (string) ( $source['site_uuid'] ?? '' ) ) ||
+            ! hash_equals( $source_id, (string) ( $source['source_id'] ?? '' ) ) )
+            return new WP_Error( 'mad4b_reconcile_source_not_eligible',
+                'Only an indexed site-owned governed Drive source may be previewed.' );
+
+        $changes = array();
+        $reviewed_count = 0;
+        $source_asset_count = 0;
+        foreach ( self::raw_assets() as $id => $asset ) {
+            if ( ! is_array( $asset ) || (string) ( $asset['source_id'] ?? '' ) !== $source_id ) continue;
+            ++$source_asset_count;
+            if ( ! hash_equals( $site['site_uuid'], (string) ( $asset['site_uuid'] ?? '' ) ) ||
+                ! hash_equals( (string) ( $source['brand_id'] ?? '' ), (string) ( $asset['brand_id'] ?? '' ) ) ||
+                'governed' !== ( $asset['source_mode'] ?? '' ) ||
+                ! MAD4B_SCP_Operational_Scope_Guard::record_metadata_matches( $asset, $scope ) )
+                return new WP_Error( 'mad4b_reconcile_asset_scope_invalid',
+                    'Classification preview does not accept foreign or unbound assets.' );
+            $fresh = self::classify_asset( (string) ( $asset['title'] ?? '' ),
+                (string) ( $asset['path'] ?? '' ) );
+            $different = (string) ( $asset['category'] ?? '' ) !== (string) $fresh['category'] ||
+                (string) ( $asset['authority_class'] ?? '' ) !== (string) $fresh['authority_class'] ||
+                (bool) ( $asset['required'] ?? false ) !== (bool) $fresh['required'] ||
+                (int) ( $asset['priority'] ?? 0 ) !== (int) $fresh['priority'];
+            if ( ! $different ) continue;
+            if ( 'automatic_heuristic' !== ( $asset['classification_source'] ?? '' ) ||
+                'unreviewed' !== ( $asset['review_status'] ?? '' ) ||
+                '' !== (string) ( $asset['reviewed_content_hash'] ?? '' ) ||
+                '' !== (string) ( $asset['reviewed_at'] ?? '' ) ||
+                empty( $asset['content_complete'] ) ||
+                ! preg_match( '/^[a-f0-9]{64}$/D', (string) ( $asset['content_hash'] ?? '' ) ) ) {
+                ++$reviewed_count;
+                continue;
+            }
+            $fields = array( 'category', 'authority_class', 'required', 'priority', 'classification_confidence' );
+            $keys = array_fill_keys( $fields, true );
+            $changes[] = array(
+                'asset_id' => (string) $id,
+                'content_hash' => (string) $asset['content_hash'],
+                'before' => array_intersect_key( $asset, $keys ),
+                'after' => array_intersect_key( $fresh, $keys ),
+            );
+        }
+        usort( $changes, static function ( $a, $b ) {
+            return strcmp( $a['asset_id'], $b['asset_id'] );
+        } );
+        $preview = array(
+            'contract' => 'mad4b.context-classification-only-reconcile.v1',
+            'source_id' => $source_id,
+            'site_uuid' => (string) $site['site_uuid'],
+            'source_generation' => (string) ( $source['last_scan_generation'] ?? '' ),
+            'registry_revision' => self::registry_revision(),
+            'manifest_sha256' => self::authority_manifest_fingerprint(),
+            'source_asset_count' => $source_asset_count,
+            'blocked_reviewed_count' => $reviewed_count,
+            'changes' => $changes,
+            'read_only' => true,
+            'mutation_authorized' => false,
+            'native_apply_available' => false,
+        );
+        $encoded = wp_json_encode( $preview, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+        if ( ! is_string( $encoded ) )
+            return new WP_Error( 'mad4b_reconcile_preview_encoding_failed', 'Preview encoding failed.' );
+        $preview['plan_sha256'] = hash( 'sha256', $encoded );
+        return $preview;
+    }
+
 	public static function score_asset( array $metadata, $content = '' ) {
 		$content = trim( (string) $content );
 		$word_count = '' === $content ? 0 : count( preg_split( '/\s+/u', $content, -1, PREG_SPLIT_NO_EMPTY ) );

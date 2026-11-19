@@ -504,4 +504,35 @@ for field,value in (('production_authorized',True),
         chk(not reviewed_ci_only_source_successor(plugin,rel,(plugin/rel).read_bytes()),
             'pr942_scoped_cimd_manifest_forgery_denied_'+field)
 
+# This standalone follow-up admits only a *read-only* Context reconciliation
+# plan. It must never inherit Original305 or Host write authority from a source
+# hash review. The parent’s QA31 record remains immutable.
+context_review_file=repo/'docs/source-reconciliation/pr942-context-classification-readonly-preview-20261119.json'
+context_review=json.loads(context_review_file.read_text(encoding='utf-8'))
+context_rel='includes/class-mad4b-scp-context-authority.php'
+context_content=(plugin/context_rel).read_bytes()
+chk(reviewed_ci_only_source_successor(plugin,context_rel,context_content),
+    'context_preview_exact_reviewed_source')
+chk(not reviewed_ci_only_source_successor(plugin,context_rel,context_content+b'\nFORGED'),
+    'context_preview_modified_source_denied')
+chk(context_review['allows_application'] is False
+    and context_review['runtime_activated'] is False
+    and context_review['production_authorized'] is False,
+    'context_preview_never_approves_apply_or_release')
+target_context_review=context_review_file.resolve()
+for field,value in (
+    ('production_authorized',True),
+    ('allows_application',True),
+    ('write_grant_issued',True),
+    ('parent_source_blob_sha','0'*40),
+    ('reviewed_source_sha256','0'*64),
+):
+    forged=dict(context_review);forged[field]=value
+    def forged_context(self,*args,**kwargs):
+        if self.resolve()==target_context_review:return json.dumps(forged)
+        return original_read(self,*args,**kwargs)
+    with mock.patch.object(Path,'read_text',forged_context):
+        chk(not reviewed_ci_only_source_successor(plugin,context_rel,context_content),
+            'context_preview_forged_review_denied_'+field)
+
 print('QA31_SOURCE_PARITY_NEGATIVE_REGRESSIONS: PASS (source reviewed; release blocked)')
