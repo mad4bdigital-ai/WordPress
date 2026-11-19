@@ -49,7 +49,7 @@ REVIEWED_EXTENSION_BLOBS = {
 
 def reviewed_blob_sha(content: str) -> str:
     blob = content.encode("utf-8")
-    return hashlib.sha1(b"blob " + str(len(blob)).encode() + b"\\0" + blob).hexdigest()
+    return hashlib.sha1(b"blob " + str(len(blob)).encode() + b"\0" + blob).hexdigest()
 
 def verify(original: str, facade: str, scan: str, recon: str) -> None:
     assert all(original.count(a) == 1 for a in (START, MIDDLE, END, ORIGINAL_REQUIRE, CLASS))
