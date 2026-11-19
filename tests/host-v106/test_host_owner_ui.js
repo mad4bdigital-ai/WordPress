@@ -37,6 +37,18 @@ function create(override = {}, responder) {
         execution_authorized:false,host_v2_execution_authorized:false,
         state:'CENTRAL_OPERATION_SCOPE_GRANTED'
       };}};
+    if (url.endsWith('/broker-dispatch')) return {
+      ok:true,status:202,async json() {return {
+        job_id:'c'.repeat(32),company:'all-royal-egypt',
+        environment:'staging',state:'QUEUED_FOR_VPS_BROKER_CLAIM',
+        host_v2_bootstrap_only:true,executed:false,
+        plan_sha256:'e'.repeat(64)
+      };}};
+    if (/\/broker-jobs\/[a-f0-9]{32}$/.test(url)) return {
+      ok:true,status:200,async json() {return {
+        job_id:'c'.repeat(32),company:'all-royal-egypt',
+        environment:'staging',state:'QUEUED_FOR_VPS_BROKER_CLAIM'
+      };}};
     if (url.endsWith('/commands')) return {
       ok:true,status:202,async json() {return {
         request_id:'c'.repeat(32),company:'all-royal-egypt',
@@ -98,7 +110,9 @@ async function test() {
     await x.event('mad4b-ha-plan','input');
     assert(!x.controls['mad4b-ha-command'].disabled);
     await x.event('mad4b-ha-command');
-    assert.equal(x.calls.length,2);
+    assert.equal(x.calls.length,3);
+    assert(x.calls[2].url.endsWith('/broker-dispatch'));
+    assert.deepEqual(JSON.parse(x.calls[2].options.body),{request_id:'c'.repeat(32)});
     const q=JSON.parse(x.calls[1].options.body);
     assert.deepEqual(Object.keys(q),
       ['grant_id','command','argv','verification','summary','correlation_id','target_scope']);
@@ -109,11 +123,11 @@ async function test() {
     assert.equal(q.argv[3],'--plan_sha256='+'e'.repeat(64));
     assert.equal(q.command,null);
     assert.equal(q.target_scope,'host');
-    assert(/NOT an issued Host Anchor/.test(x.controls['mad4b-ha-result'].textContent));
+    assert(/NO Host Anchor was issued/.test(x.controls['mad4b-ha-result'].textContent));
     assert(x.controls['mad4b-ha-command'].disabled);
     await x.event('mad4b-ha-refresh');
-    assert.equal(x.calls.length,3);
-    assert.equal(x.calls[2].options.method,'GET');
+    assert.equal(x.calls.length,4);
+    assert.equal(x.calls[3].options.method,'GET');
     console.log('PASS exact signed plan reference and safe request readback');
   }
   {
