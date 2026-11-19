@@ -11,7 +11,7 @@ final class MAD4B_Pricing_Workspace_V1 {
     public const SLUG='mad4b-pricing-workspace';
     public static function permitted():bool {
         return current_user_can('commerce_manage_pricing')
-            && current_user_can('manage_woocommerce');
+            && (current_user_can('manage_woocommerce') || (current_user_can('mad4b_manage_company_operations') && current_user_can('mad4b_work_company_tasks')));
     }
     public static function boot():void {
         if(!is_admin())return;

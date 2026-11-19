@@ -76,6 +76,20 @@ final class MAD4B_SCP_Company_Master_Admin {
         foreach((array)$u->roles as$role)if(!in_array($role,self::ALLOWED_ROLES,true))return false;
         return !empty($u->roles);
     }
+    /** Restrict legacy staff creation to roles fully contained within this operator's authority. */
+    public static function roleWithinCaller(string $role):bool {
+        if($role==='operator')return false; // Existing Operator role may include WordPress user/system authority.
+        if(!in_array($role,self::ALLOWED_ROLES,true))return false;
+        $obj=get_role($role);
+        if(!$obj)return false;
+        $forbidden=['manage_options','manage_woocommerce','activate_plugins',
+            'install_plugins','update_plugins','delete_plugins','edit_plugins',
+            'create_users','edit_users','promote_users','delete_users','remove_users',
+            'manage_network','manage_network_users','unfiltered_upload'];
+        foreach((array)$obj->capabilities as $cap=>$granted)
+            if($granted && (in_array($cap,$forbidden,true) || !current_user_can($cap)))return false;
+        return true;
+    }
     public static function managedStaff(int $userId):bool {
         $u=get_userdata($userId);if(!$u||!self::allowedStaff($u))return false;
         if(get_user_meta($userId,'mad4b_company_suspension_v1',true))return false;
@@ -89,7 +103,7 @@ final class MAD4B_SCP_Company_Master_Admin {
     public static function createStaff(array $params){
         if(!self::can())return self::forbidden();
         $role=sanitize_key((string)($params['role']??''));
-        if(!in_array($role,self::ALLOWED_ROLES,true)||!get_role($role))return self::blocked('mad4b_staff_role_denied','Only approved internal staff roles may be created.');
+        if(!self::roleWithinCaller($role))return self::blocked('mad4b_staff_role_denied','Only approved internal staff roles may be created.');
         $email=sanitize_email((string)($params['email']??''));
         if(!is_email($email)||email_exists($email))return self::blocked('mad4b_staff_email_invalid','Provide a unique valid work email.');
         $login=sanitize_user((string)($params['username']??''),true);
@@ -209,7 +223,7 @@ final class MAD4B_SCP_Company_Master_Admin {
         echo '<label>Work email <input type="email" name="email" required></label> ';
         echo '<label>Display name <input name="display_name" maxlength="80"></label> ';
         echo '<label>Role <select name="role">';
-        foreach(self::ALLOWED_ROLES as$role)if(get_role($role))echo '<option value="'.esc_attr($role).'">'.esc_html(get_role($role)->name).'</option>';
+        foreach(self::ALLOWED_ROLES as$role)if(self::roleWithinCaller($role))echo '<option value="'.esc_attr($role).'">'.esc_html(get_role($role)->name).'</option>';
         echo '</select></label> <button class="button button-primary">Create staff account</button></p>';
         echo '<p class="description">A strong random password is generated. Local Lab does not send welcome mail. Assign the new WP User under Communication &amp; Operations to include them in the internal team.</p></form>';
         echo '<h2>Registered internal team</h2><table class="widefat striped"><thead><tr><th>User ID</th><th>Name</th><th>Responsibility</th><th>WPML Translation Manager</th></tr></thead><tbody>';
