@@ -26,6 +26,17 @@ assert 'wp_delete_attachment($aid,true)' in rollback
 assert 'changed_since_import_rollback_blocked' in rollback
 assert 'MAD4B_STAY_MEDIA_ROLLBACK_OWNER_CONFIRMED' in rollback
 assert "get_post_status($id)==='draft'" in rollback
+admission=(p/'mad4b-stay-triumph-exact-room-source-admission.php').read_text()
+gallery=(p/'mad4b-stay-triumph-room-gallery-cli.php').read_text()
+assert "_mad4b_unit_official_room_photo_reference_v1" in admission
+assert "source_registered" in admission and "official_room_image_observation" not in admission
+assert "source_page_or_room_mismatch" in gallery
+assert "base_photo_or_gallery_changed" in gallery and "gallery_compare_and_swap_failed_reverted" in gallery
+assert "gallery_changed_since_apply" in gallery and "rollback_eligible" in gallery
+assert "MAD4B_STAY_GALLERY_OWNER_APPROVED" in gallery
+assert "wp_delete_attachment" in gallery and "add_option($lock" in gallery
+assert "_mad4b_unit_room_gallery_extension_v1" in gallery
+assert not re.search(r'\b(?:wp_update_post|wp_publish_post|wc_create_order|wc_reduce_stock_levels)\s*\(',admission + gallery)
 assert not re.search(r'\b(?:wp_update_post|wp_publish_post|wc_create_order|wc_reduce_stock_levels)\s*\(',source + rollback)
 assert "'accommodation_only'" in stock
 assert "'keep_occupancy_capacity_check'=>true" in stock
