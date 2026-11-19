@@ -4,7 +4,11 @@
  * Never rewrites historical Mode/Type values or legacy CCT source rows.
  */
 if (!defined('ABSPATH')||!defined('WP_CLI')||!WP_CLI) exit(2);
-if (rtrim(home_url('/'),'/')!=='https://tours.dev.mad4b.com') WP_CLI::error('staging_only');
+$site=rtrim(home_url('/'),'/');
+$staging=($site==='https://tours.dev.mad4b.com');
+$wayfa=($site==='https://wayfatours.com' && defined('MAD4B_TRANSPORT_WAYFA_PRODUCTION') &&
+    MAD4B_TRANSPORT_WAYFA_PRODUCTION===true);
+if (!$staging && !$wayfa) WP_CLI::error('site_not_allowed_or_production_guard_missing');
 $cases=array(66570=>1,66571=>2);
 $option='mad4b_transport_legacy_quarantine_backup_v1_20261119';
 $original=get_option($option,false);

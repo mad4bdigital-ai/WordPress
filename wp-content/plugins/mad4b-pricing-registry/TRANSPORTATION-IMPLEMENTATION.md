@@ -220,3 +220,100 @@ Rate prices or inventory were created. A further 3 source audit tests assert
 complete mapping coverage and preservation of ambiguous routes, bringing the
 source-audit result to 18/18. Post-deployment staging PHP lint passed,
 homepage remained HTTP 200, and unauthenticated source REST remained 401.
+
+## 19 November 2026 — PDF Transfer Enrichment Across Active Languages
+
+The original 3-page supplier file, Transportation 2026 - Sheet1 (2).pdf,
+SHA-256 c3bde2be4ac89f1b7b9671720b552d39646c93ea9fa5a786fe2a9bde8f1644cd,
+is the source of 51 operating rows (Cairo 13, Aswan 15, Luxor 23) and 210
+nonempty raw price cells. Cairo vehicle headers are Limousine, Luxury 7 seats,
+Hiace, Coaster, Bus. The Aswan/Luxor header is H1, not Luxury 7 seats, and its
+column contains no prices. Aswan/Luxor rows say before 5% discount, not an
+approved net discounted selling price. Luxor row 7 has anomalous vehicle
+price order; row 23 has all prices blank. All existing source numbers are
+preserved with their original Arabic wording, without guessing units/currency.
+
+### Actual site language matrix
+
+- Tours.dev: en, ar, fr, de, es, it, as returned by WPML live configuration.
+- Wayfatours: en, es, as returned by WPML live configuration.
+
+A data-only localized source contract is saved in
+data/transport-pdf-2026-localized.php. The reviewed editorial translations
+originate from tools/transportation-fixtures/transportation-2026-editorial-locales.tsv;
+the Arabic text is the original source statement. Edits to translations do not
+rewrite the source PDF. Every draft records city, source row key, original Arabic,
+provisional kind, route-review notes, per-vehicle source prices and flags.
+
+### Draft-only content
+
+The site-scoped, restartable WPML importer at
+tools/import-transport-pdf-operations-wpml.php created or reconciled
+51 source-operation translation groups per website:
+
+- 306 Draft Transportation posts on Tours.dev: 51 per en/ar/fr/de/es/it.
+- 102 Draft Transportation posts on Wayfatours: 51 per en/es.
+
+Every language variant has exactly one source key and one WPML translation
+group, and an appropriate localized Road term and origin-city term. Vehicle
+class-specific attachment IDs are stored as metadata, NOT promoted into a
+guaranteed featured fleet vehicle. Crucially, no public post, Transport Rate
+sale amount, starting price, WooCommerce order, or booking approval is created.
+The commercial source role and currency are unknown. No arbitrary capacity,
+origin/destination coordinates, or contract end date was invented.
+
+A temporary simultaneous importer collision created 11 duplicate Drafts
+relating to Aswan:13 and Aswan:14; they were quarantined into WordPress Trash,
+not permanently deleted. Original canonical source operation groups were
+retained. An atomic per-site WordPress option lock was added for future imports.
+A full import replay now returns 306/306 and 102/102 existing posts with zero
+new duplicates.
+
+### Vehicle class illustrations
+
+Five source-licensed Wikimedia Commons files per site were imported into
+the private image library for the PDF vehicle categories, and six logical
+vehicle classes were mapped to the five image attachments:
+Limousine, Luxury 7 seats, H1, Hiace, Coaster, Bus. Luxury 7 seats and H1 may
+share a *reference illustration*, but are separate source pricing columns.
+The photos represent the general vehicle category, not the supplier's vehicle
+make, seating, luggage or guaranteed fleet. No image is auto-attached as a
+commercial tour hero.
+
+The preserved attachment metadata includes Commons original page, creator,
+license class, license URL, resized-file hash and localized ALT text in all six
+available editorial languages. Licensed files include CC BY-SA 4.0 and CC BY
+2.0; these terms are distinct and are preserved per attachment. The existing
+photo-credit footer is now translatable in all active languages and uses
+language-specific attachment ALT text when available.
+
+### Admin review surface and API
+
+Both sites provide Tools -> 2026 Transfer Source Review, linked from the
+existing Dynamic Pricing Controls admin page. It includes locale and city
+filters, vehicle category reference imagery, origin/row, translated operation
+titles, original Arabic, source-only raw values and review flags. It links to
+the exact WPML Draft for editing, but it does not publish any price.
+
+Authenticated read-only API:
+GET /wp-json/mad4b-pricing/v1/transport-pdf-2026-review?city=Aswan&lang=es
+Commercial/admin permissions are required. Anonymous GET returned HTTP 401
+on both sites; authorized calls returned HTTP 200.
+
+### Runtime verification
+
+- Tours.dev: 381/381 assertions passed; 306 drafts, 6 languages, 51 groups.
+- Wayfatours: 141/141 assertions passed; 102 drafts, 2 languages, 51 groups.
+- In each site: 5 physical licensed images map to 6 category keys, source
+  price cells remain unverified, H1 price column stays empty, Luxor:23 is
+  unpriced, and the historical expired rates remain Draft.
+- Both public homepages returned HTTP 200 after installation.
+
+### Still requiring business data
+
+Supplier confirmation is indispensable for exact vehicle make/fleet imagery,
+seating and luggage limits, currency, cost-versus-sale amount, discounts,
+contract end dates, alternate destination choice, and any inclusions such
+as guide services, fuel, parking or entrance tickets. These cannot be inferred
+from Wikimedia photos or public web searches. Commercial pricing approval and
+publishing remain a separate governed operation.
