@@ -502,3 +502,92 @@ Tool: tools/enable-pdf-transport-tour-components.php
 Future Tour Rate regeneration may now use these operations as explicit
 composition candidates, subject to publication, validated availability,
 route/type checks and native Rate approval before customer offers.
+
+## 19 November 2026: Route-aware Transportation candidate generation
+
+### Original PDF and confidence
+The exact original Transportation 2026 - Sheet1 (2).pdf (SHA-256
+c3bde2be4ac89f1b7b9671720b552d39646c93ea9fa5a786fe2a9bde8f1644cd)
+was reopened. It contains 51 Cairo/Aswan/Luxor source operations, but does not
+identify every pickup/dropoff point or a definitive monetary currency.
+
+The 51-key evidence fixture data/transport-pdf-2026-route-evidence.php
+preserves source origin city, any explicitly named destination,
+round-trip/multi-stop evidence, and ambiguous alternatives. No supplier
+addresses, station IDs or geocodes were invented. Cairo:9 contains
+Alexandria and Ain Sokhna alternatives and is review-only. Luxor:23 remains
+unpriced and review-only. Source Luxor:7 price anomaly is preserved.
+
+### Reversible source route annotations
+The site-guarded migration tools/annotate-pdf-transport-geography.php
+annotated 306 Tours.dev and 102 Wayfatours source Drafts. Origin
+evidence, possible destination slugs, route shape, WPML COPY and
+point-confirmation flags are now stored on each localized source post.
+Single explicit destinations were grounded for 72 Tours.dev and 24
+Wayfatours records (96 translated posts). Every pickup/dropoff point
+remains marked unverified. Native pickup/dropoff allowed-destination
+fields, station IDs and existing prices were not changed. Each site
+retains a before-image under option
+mad4b_pdf_transport_route_annotations_backup_20261119_v1.
+
+The first post-write readback encountered a WordPress meta type difference
+(int expected / string returned). The idempotent retry normalized scalar
+comparisons and fully validated the already-saved annotations on both sites.
+
+### Native Tour Rate authoring
+The native JetEngine Tour Rate schema was expanded on both sites from
+46 to 52 fields immediately after Accommodation Stages:
+- has_transportations, default No;
+- transport_assignment_mode, manual or auto-suggest;
+- transport_selection_mode, simple OR or multiple stages;
+- related_transportations_id, simple alternatives;
+- transport_price_policy, Inquiry/Included/Additional;
+- _mad4b_transport_stages_v1, itinerary repeater with stable key, day,
+  origin/destination taxonomy term IDs, return flag, required flag,
+  within-stage OR/AND, category, price policy and selected transport IDs.
+
+Required stages combine as AND; alternatives within stages combine as OR,
+or as AND where two distinct services are necessary. New native metadata
+is WPML COPY; existing Tour Rates remain disabled and unchanged.
+Original Accommodation Stages and their transport_ids were not migrated,
+priced again or deleted. Per-site schema rollback option:
+mad4b_tour_rate_transport_stage_schema_backup_20261119_v1.
+
+### Admin route suggestions and API
+The read-only route engine includes/transport-tour-rate-routing.php
+implements protected POST REST route:
+  /wp-json/mad4b-pricing/v1/transport-tour-rate-candidates
+
+It requires an explicit stage origin/destination, Status Yes, self provider,
+source-grounded forward route and a validated OR/AND stage specification.
+It returns separate city-level Draft candidate and route-review queues,
+with an exact source key, localized title, reason codes, and no price
+approval or checkout grant. Reverse routes are rejected. Round trips need
+the explicit return flag. Multi-stop round trips require editor review.
+
+The companion native Tour Rate meta box under
+includes/transport-tour-rate-routing-admin.php previews stage matches
+and blockers while editors save permanent values in JetEngine's
+own Tour Rate fields. JS/CSS and REST nonce are loaded only in
+authorized Tour Rate editing pages, with HTTPS asset URLs.
+
+### Verification
+- 47/47 route/source/OR-AND/WPML/taxonomy assertions passed on Tours.dev.
+- 47/47 assertions passed on Wayfatours.
+- Aswan to Luxor returns Aswan:7 and Aswan:8; reverse direction returns
+  Luxor:18 and Luxor:19. Cairo to Hurghada returns Cairo:11.
+- Cairo to Alexandria returns Cairo:9 in review only, not automatic matches.
+- Abu Simbel round-trip requires the return flag; Edfu + Kom Ombo
+  multi-stop stays in review instead of being selected automatically.
+- All six active Tours.dev and two Wayfatours WPML languages return
+  the corresponding locale-specific posts for Aswan to Luxor.
+- Authenticated REST and native Tour Rate editor meta box, nonce,
+  stylesheet, script and HTTPS URL registration were tested on both sites.
+- No existing Tour Rate post, source price, booking, or WPML relation
+  was modified by candidate generation. 408 source Drafts remain opted in
+  Yes but unpublished and commercially unqualified.
+
+The new system is usable for draft Tour Rate stage composition. It is
+not a bulk regeneration of old Rates or commercial-price activation:
+verified pickup/dropoff points, vehicle capacities, monetary source
+currency and approved native Transport Rates remain separate requirements.
