@@ -59,3 +59,10 @@ Review-only source candidate preserving the live Wayfatours accommodation pricin
 - Runtime status is a read-only preview; no booking or price activation is implied.
 
 - Following integration ab3fa778, 10 source-drift scripts are exact-path registered for real execution (not considered passing or approved); negative runtime evidence remains recorded and required release scopes continue to fail on actual source drift.
+
+## Post-integration source regression verification
+
+- Corrected the global runtime test fixture to use a real 64-character SHA256 receipt. Added a malformed-receipt negative test: it cannot mark the predecessor verified or authorize a dependent write.
+- Corrected the Visual SEO test fixture to use a valid Site Profile UUID; verified read-only outcomes remain enforced.
+- Following integration ab3fa778, the Skills source parity test passes without a test change.
+- Updated isolated PHP verification: 3 of the 10 previously failing source tests now pass; 7 frozen-source/bootstrap source-drift cases remain failing. The latter are independent source-regression issues, not a self-pricing pass.
