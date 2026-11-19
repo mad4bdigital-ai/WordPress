@@ -50,4 +50,8 @@ $ui = file_get_contents($root . '/includes/class-mad4b-scp-skills-admin-ui.php')
 foreach (array('SCP_External_Skill_Sources::handle_admin( \'add\'','SCP_External_Skill_Sources::handle_admin( \'remove\'','SCP_External_Skill_Sources::render_admin();','mad4b_manage_company_operations','render_operations_page') as $guard ) {
     check_case( false !== strpos( $ui, $guard ), 'Existing source administration or company cap missing: '.$guard );
 }
+$native = file_get_contents($root.'/includes/class-external-skill-sources.php');
+check_case(is_string($native) && false !== strpos($native, "check_admin_referer( 'external_skill_sources'")
+ && false !== strpos($native, "current_user_can( 'manage_options' )"),
+ 'External source editor must retain its original nonce and Administrator gate');
 echo "PASS: Tours.dev Skills source parity 16+ read/auth/coverage and legacy source guards\n";

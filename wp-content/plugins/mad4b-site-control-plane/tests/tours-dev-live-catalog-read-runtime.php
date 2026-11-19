@@ -17,7 +17,9 @@ assert_it( ! MAD4B_SCP_Skill_Registry::catalog_enabled(), 'Unenrolled site must 
 MAD4B_SCP_Site_Profile::$enrolled = true;
 assert_it( ! MAD4B_SCP_Skill_Registry::catalog_enabled(), 'Mismatched home/site URL blocks catalog' );
 MAD4B_SCP_Site_Profile::$urls = true;
-assert_it( ! MAD4B_SCP_Skill_Registry::catalog_enabled(), 'Explicit Skills feature opt-out must remain effective' );
+// The enrolled company catalog is always readable. The editor and scripts
+// remain separate environment-gated capabilities, never granted by reading.
+assert_it( MAD4B_SCP_Skill_Registry::catalog_enabled(), 'Enrolled company read catalog remains available when Skill authoring is opted out' );
 MAD4B_SCP_Site_Profile::$feature = true;
 assert_it( MAD4B_SCP_Skill_Registry::catalog_enabled(), 'Enrolled, matching, opted-in company catalog can read' );
 $status = MAD4B_SCP_Skill_Registry::status();
