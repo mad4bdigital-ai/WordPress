@@ -1,11 +1,11 @@
 {
   "contract": "mad4b.change-slices.v2",
   "authorizing": false,
-  "reviewed_base_sha": "e7f30d944c354c3a4f7346330ad401d995e768c5",
+  "reviewed_base_sha": "9f2df20a5272d0b2f5d784f442ba4e2f94629ab9",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 155,
-  "changed_paths_sha256": "ce57399585b81d4902f550cf79171a2e1b2b691dfe81c16b73333447e7ed0e19",
+  "changed_file_count": 63,
+  "changed_paths_sha256": "071683eaa3c102a445ee1f5afce969f198a025dced3cb2ea1600c8295a9ddfc4",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -264,6 +264,160 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/unified-queue-extension-hermetic.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/unified-workflow-inspect-hermetic.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/unified-admin-rest-permissions-hermetic.php"
+      ]
+    },
+    {
+      "id": "source-only-frozen-dependencies",
+      "semantic_unit": "Preserve twelve sealed original Tours.dev dependency/optional-provider source files without registering or loading them.",
+      "revert_boundary": "Remove exactly these twelve source-only PHP files, leaving the existing main bootstrap, registered abilities and company runtime unchanged.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-dfsb-adapter.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-local-brand-draft-adapter.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-interaction-ui.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-task-routing.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli-readiness.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-code-release-readiness.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-ai-governance.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-faore-staging-canary-inspection.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-guided-continuation.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-ai-governance.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-ollama-ability.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-lifecycle-rest.php"
+      ]
+    },
+    {
+      "id": "chatbotx-provider-opt-in",
+      "semantic_unit": "Retain three ChatbotX original-source successors and one explicit enrolled-site CPT allowlist regression.",
+      "revert_boundary": "Remove the three ChatbotX source-only adapter files and same-PR negative policy fixture together; no provider registration or CPT write was activated.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-governed-writes.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-provider-adapter.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-write-preflight.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-chatbotx-site-neutral-runtime.php"
+      ]
+    },
+    {
+      "id": "dfsb-admin-route-order",
+      "semantic_unit": "Keep DFSB environment policy as an unactivated successor using canonical parent-first admin menu registration.",
+      "revert_boundary": "Remove DFSB source-only class; existing Admin Route Registry and active menu definitions remain unchanged.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dfsb-environment-policy.php"
+      ]
+    },
+    {
+      "id": "hermetic-source-only-regressions",
+      "semantic_unit": "Add exact source SHA/non-boot and legacy QA31/recovery negative proofs for candidate-only abilities.",
+      "revert_boundary": "Revert these three hermetic regressions together with this source-only reconciliation without changing active WordPress behavior.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w1-authority-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php"
+      ]
+    },
+    {
+      "id": "scheduler-source-closure",
+      "semantic_unit": "Preserve 18 original Tours.dev scheduler/operational files plus one explicit company-scoped role helper, without bootstrap activation.",
+      "revert_boundary": "Remove all 19 unactivated includes together; no previously installed site, approval, queue, cron or authority changes.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-experience-quality.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-integrity.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-completeness.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-type-roles.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-web-vitals-admin-trait.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-web-vitals.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-frontend-impact-priority.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-geo-quality.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-hub-jetengine-consumer-governance.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-locale-experience-alerts.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-presentation-browser-evidence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-presentation-integrity.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-discovery-trait.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-event-automation.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-integrations.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-preactivation.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-reconciliation-trait.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-scopes.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-team-preparation.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-workflow-options.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-source-lifecycle.php"
+      ]
+    },
+    {
+      "id": "scheduler-closure-regression",
+      "semantic_unit": "Exact source SHA, transitive dependency graph, role deny-by-default and no-start PHP 7.4 proof.",
+      "revert_boundary": "Revert the bounded PHP fixture with the scheduler-source-only closure, retaining prior test admission and permission boundaries.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-scheduler-source-closure-runtime.php"
+      ]
+    },
+    {
+      "id": "scheduler-cross-surface-existing-capability-regressions",
+      "semantic_unit": "Preserve existing adaptive interaction and hourly cron controls when original dormant Web Vitals and frontend impact source is captured.",
+      "revert_boundary": "Revert only these two negative test additions with associated source-only scheduler closure; retain historic authorization checks.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-authority-review-source-only-runtime.php"
+      ]
+    },
+    {
+      "id": "content-quality-dependencies-original-source-regression",
+      "semantic_unit": "Preserve the original PR907 content-quality source-only compatibility regression alongside the dormant scheduler source closure.",
+      "revert_boundary": "Remove this dedicated eight-file source-evidence regression only with its reviewed content-quality dependency closure; leave the parent plugin Bootstrap, owner grants and runtime authority untouched.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-content-quality-dependencies-source-only-runtime.php"
+      ]
+    },
+    {
+      "id": "hub-lifecycle-original-source-regression",
+      "semantic_unit": "Preserve the parent PR906 unactivated Hub and Source Lifecycle denial tests alongside the subsequently reviewed source-closure code.",
+      "revert_boundary": "Revert this no-boot Hub/Source Lifecycle verification only with the corresponding reviewed original source; it is not a provider approval or production execution route.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-hub-lifecycle-source-only-runtime.php"
+      ]
+    },
+    {
+      "id": "readiness-preactivation-original-source-regression",
+      "semantic_unit": "Explicit ownership of the preceding PR905 dormant Readiness Preactivation source regression and its external-send denial checks.",
+      "revert_boundary": "Revert only the hermetic preactivation regression alongside its frozen source; do not change main Bootstrap, grants, provider sends or production activation.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readiness-preactivation-source-only-runtime.php"
+      ]
+    },
+    {
+      "id": "original-authority-review-modules-from-pr900",
+      "semantic_unit": "Group six original PR900 Authority / original 305 / company source review modules, preserved for static source inspection only and not registered in main plugin Bootstrap.",
+      "revert_boundary": "Revert this six-module original-source review as a unit without enabling execution, grants, certs, provider credentials, Production promotion or site writes. PR900 and its original frozen source remain the review anchors.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-auto-reconciliation.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-reviews-bridge.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-reconcile-skill-set.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-connector-vault.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-host-source-release-review.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-original305-incident-review.php"
+      ]
+    },
+    {
+      "id": "original-background-agent-authority-review-from-pr898",
+      "semantic_unit": "Source-only review of PR898 frozen original Background Agent Admission, Dispatch, Execution Authority and the exact hermetic deny-by-default fixture.",
+      "revert_boundary": "These three authority source files and their hermetic fixture revert together; do not activate any agent, write grant, host certificate, scheduler, or Production action.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-background-agent-admission.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-background-agent-dispatch.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-authority.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-agent-authority-source-only-runtime.php"
       ]
     }
   ]
