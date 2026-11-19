@@ -2,7 +2,18 @@
 /** Core server catalog declarations, extracted without changing the dispatch contract. */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 trait MAD4B_SCP_Server_Core_Catalog {
+	/** Request-local recursive catalog composition gate. Never grants authority. */
+	private static $mad4b_declared_core_catalog_in_progress_v113 = array();
+
 	private static function declared_core_tools( $server_id ) {
+		$server_id = (string) $server_id;
+		// A structural read provider may query this inventory while the catalog
+		// is still being built. Returning an empty nested inventory fails closed.
+		// Without this guard the recursion exhausts the 1GiB FPM memory limit.
+		if ( isset( self::$mad4b_declared_core_catalog_in_progress_v113[ $server_id ] ) ) return array();
+		self::$mad4b_declared_core_catalog_in_progress_v113[ $server_id ] = true;
+		try {
+
         $cso_read = in_array( $server_id, array( 'mad4b-read', 'mad4b-chatgpt' ), true )
             && class_exists( 'MAD4B_SCP_CSO01_Read_Foundation', false )
             ? MAD4B_SCP_CSO01_Read_Foundation::read_ability_names() : array();
@@ -146,5 +157,8 @@ trait MAD4B_SCP_Server_Core_Catalog {
 			$tools[] = MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY;
 		}
 		return array_values( array_unique( $tools ) );
+		} finally {
+			unset( self::$mad4b_declared_core_catalog_in_progress_v113[ $server_id ] );
+		}
 	}
 }
