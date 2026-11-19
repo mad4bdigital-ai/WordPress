@@ -25,8 +25,51 @@ final class MAD4B_Host_Authority_Owner_Console_V106 {
             || current_user_can('mad4b_manage_company_operations');
     }
     public static function boot():void {
-        if (!is_admin()) return;
-        add_action('admin_menu', array(__CLASS__, 'menu'), 35);
+        // Owner-only GET; registered also for REST requests where is_admin()
+        // is false. No mutation route or new owner approval mechanism.
+        add_action('rest_api_init',array(__CLASS__,'register_read_route'),95);
+        if (is_admin()) add_action('admin_menu',array(__CLASS__,'menu'),35);
+    }
+    public static function register_read_route():void {
+        register_rest_route('mad4b/v1',
+            '/central-execution-lanes/all-royal-egypt/host-authority-owner-state',
+            array('methods'=>'GET',
+                'permission_callback'=>array(__CLASS__,'read_permission'),
+                'callback'=>array(__CLASS__,'read_state')));
+    }
+    public static function read_permission():bool {
+        if (!self::can_view()) return false;
+        $s=self::snapshot();
+        return ($s['owner_verified']===true
+            && $s['source_ready']===true);
+    }
+    public static function read_state(WP_REST_Request $request):WP_REST_Response {
+        // Route permission_callback verifies the same Original328 owner
+        // binding as the admin screen. No Grant, credential or nonce is emitted.
+        if (!self::read_permission()) {
+            return new WP_REST_Response(
+                array('error'=>'owner_read_not_authorized'),403);
+        }
+        $s=self::snapshot();
+        $body=array();
+        foreach(array(
+            'phase','owner_verified','original328_active',
+            'anchor_state','anchor_revision','grant_id',
+            'request_id','request_status','request_expires_epoch',
+            'request_expired','broker_job_exists','broker_job_state',
+            'plan_sha256','plan_source'
+        ) as $field) {
+            // grant_id is a nonsecret identifier already on the owner page;
+            // do not expose transport principal, signed payloads or credentials.
+            $body[$field]=$s[$field];
+        }
+        $body['server_epoch']=time();
+        $body['company']=self::COMPANY;
+        $body['environment']=self::ENV;
+        $response=new WP_REST_Response($body,200);
+        $response->header('Cache-Control','private, no-store, max-age=0');
+        $response->header('X-Content-Type-Options','nosniff');
+        return $response;
     }
     public static function menu():void {
         add_submenu_page(self::PARENT,
@@ -106,6 +149,9 @@ final class MAD4B_Host_Authority_Owner_Console_V106 {
             'grant_id'=>'', 'request_id'=>'','request_status'=>'',
             'request_expires_epoch'=>0,'request_expired'=>false,
             'broker_job_exists'=>false,'broker_job_state'=>'',
+            // From an exact previously submitted Original305 Root Plan
+            // reference, not a new signed Original312/313 approval.
+            'plan_sha256'=>'','plan_source'=>'',
             'phase'=>'CHECK_PREREQUISITES'
         );
         if (!$out['source_ready']) return $out;
@@ -170,6 +216,33 @@ final class MAD4B_Host_Authority_Owner_Console_V106 {
                 &&$out['request_expires_epoch']<=time();
             if($out['request_expired']&&!$out['broker_job_exists'])
                 $out['request_status']='EXPIRED_OWNER_REQUEST_RENEWAL_REQUIRED';
+            // Reuse only the exact typed Root Plan reference from the
+            // owner's previously admitted request. Expires affect authority,
+            // not the immutable plan's identity. Independent root verification
+            // is still mandatory; this is never signing evidence.
+            $identity=$request['host_anchor_identity']??null;
+            $candidate=is_array($identity)
+                ?(string)($identity['plan_sha256']??''):'';
+            if(is_array($identity)
+                &&array_keys($identity)===array(
+                    'authority_mode','operation_id','plan_sha256',
+                    'site_uuid','target_host_id')
+                &&preg_match('/^[a-f0-9]{64}$/D',$candidate)
+                &&($identity['authority_mode']??null)==='bootstrap'
+                &&($identity['operation_id']??null)===self::OP
+                &&($identity['site_uuid']??null)===$out['site_uuid']
+                &&($identity['target_host_id']??null)==='hosting-2'
+                &&($request['grant_id']??null)===$out['grant_id']
+                &&($request['transport_id']??null)===$tid
+                &&($request['command_format']??null)==='host.anchor.ref.v2'
+                &&($request['target_scope']??null)==='host'
+                &&($request['status']??null)==='ADMITTED_PENDING_INDEPENDENT_HOST_AUTHORITY'
+                &&($request['execution_performed']??null)===false
+                &&(!$out['broker_job_exists']
+                    ||($broker['plan_sha256']??null)===$candidate)) {
+                $out['plan_sha256']=$candidate;
+                $out['plan_source']='previous_owner_request_reference';
+            }
         }
         if ($out['anchor_revision']!==0
             ||$out['anchor_state']!=='MISSING_OR_INVALID') {
@@ -219,6 +292,8 @@ final class MAD4B_Host_Authority_Owner_Console_V106 {
             'grantId'=>$status['grant_id'],
             'requestId'=>$status['request_id'],
             'requestStatus'=>$status['request_status'],
+            'planSha256'=>$status['plan_sha256'],
+            'planSource'=>$status['plan_source'],
             'requestExpired'=>$status['request_expired'],
             'requestExpiresEpoch'=>$status['request_expires_epoch'],
             'brokerJobExists'=>$status['broker_job_exists'],
@@ -332,7 +407,8 @@ final class MAD4B_Host_Authority_Owner_Console_V106 {
             echo '<li id="mad4b-ha-step-'.esc_html($stage[0]).'" class="'
                 .($stage[3]?'is-done':($stage[4]?'is-current':'')).'">'
                 .'<strong>'.esc_html($stage[1]).'</strong>'
-                .'<small>'.esc_html($stage[2]).'</small></li>';
+                .'<small id="mad4b-ha-step-'.esc_html($stage[0]).'-status">'
+                .esc_html($stage[2]).'</small></li>';
         }
         echo '</ol>';
         if (!$owner) {
@@ -358,12 +434,22 @@ final class MAD4B_Host_Authority_Owner_Console_V106 {
                 .'<p class="ha-muted">'.($expired
                 ?'The previous request expired without Broker Dispatch. The Bootstrap Grant is still complete. Confirm a fresh Owner Request using the original verified Root Plan. No Anchor will be issued from this page.'
                 :'Bootstrap is complete. Submit an independently prepared Root Plan SHA-256 to queue an Owner Job, not an Anchor. The page then dispatches the accepted request to Original306.').'</p>';
-            echo '<p><label for="mad4b-ha-plan"><strong>Verified Original312 plan SHA-256</strong></label></p>';
+            echo '<p class="ha-muted" id="mad4b-ha-plan-summary" aria-live="polite">'
+                .($s['plan_sha256']!==''
+                  ?'Root Plan reference loaded automatically from the owner record. '
+                   .'Independent Original312/313 verification is still required.'
+                  :'No existing Root Plan reference was found. Enter the verified Root Plan SHA-256 manually.')
+                .'</p>';
+            echo '<div id="mad4b-ha-plan-editor"'
+                .($s['plan_sha256']!==''?' hidden':'').'>';
+            echo '<p><label for="mad4b-ha-plan"><strong>Root Plan SHA-256</strong></label></p>';
             echo '<input class="ha-input" type="text" id="mad4b-ha-plan" inputmode="latin"'
                 .' minlength="64" maxlength="64" autocomplete="off" spellcheck="false"'
                 .' pattern="[a-f0-9]{64}" aria-describedby="mad4b-ha-plan-help"'
-                .' placeholder="64-character SHA-256">';
-            echo '<p class="ha-fine" id="mad4b-ha-plan-help">Use only the SHA-256 issued by the first-party Root Plan preparer.</p>';
+                .' placeholder="64-character SHA-256" value="'.esc_attr($s['plan_sha256']).'">';
+            echo '<p class="ha-fine" id="mad4b-ha-plan-help">A Root Plan reference is not an Original312/313 signature. Only the original first-party plan is eligible.</p></div>';
+            echo '<p><button type="button" class="button" id="mad4b-ha-edit-plan"'
+                .($s['plan_sha256']===''?' hidden':'').'>Use a different verified Root Plan</button></p>';
             echo '<div class="ha-consent"><input type="checkbox" id="mad4b-ha-command-confirm">'
                 .'<label for="mad4b-ha-command-confirm">I authorize submitting this Root Plan as an Owner Request for All Royal Egypt / Staging only.</label></div>';
             echo '<div class="ha-actions"><button type="button" class="button button-primary"'
@@ -387,15 +473,15 @@ final class MAD4B_Host_Authority_Owner_Console_V106 {
                 .'<button type="button" class="button" id="mad4b-ha-dispatch"'
                 .(!$queued||$s['broker_job_exists']?' hidden disabled':'')
                 .'>Retry Original306 Broker Dispatch</button></div>';
-            echo '<p class="ha-fine" id="mad4b-ha-checked-at">Showing last stored request status.</p>';
-            if($expired)echo '<p class="ha-fine">Previous request ID: '
-                .esc_html($s['request_id']).' — expired without an Original306 Job.</p>';
+            echo '<p class="ha-fine" id="mad4b-ha-checked-at" aria-live="polite">'
+                .'Live status is loaded automatically while this tab is open.</p>';
             echo '<div class="ha-next"><h3>What happens next?</h3>'
                 .'<p class="ha-muted">Independent Original306 claim and Original312/313 verification are required. '
                 .'Anchor issuance must be checked separately using an authoritative readback.</p>'
                 .'<p class="ha-fine">Checking status is read-only and does not execute, sign, or approve anything.</p></div></section>';
-            if($expired) echo '<p class="ha-fine">Previous Owner Request expired without Broker Dispatch. '
-                .'A fresh, explicit owner confirmation is required. Previous request ID: '
+            if($expired) echo '<p class="ha-fine" id="mad4b-ha-expired-note">'
+                .'Earlier Owner Request expired without Broker Dispatch. '
+                .'Fresh owner consent is required for a new request. Previous Request ID: '
                 .esc_html($s['request_id']).'</p>';
             echo '<p id="mad4b-ha-result" class="ha-note" role="status" aria-live="polite"'
                 .($queued?' hidden':'').'>'
