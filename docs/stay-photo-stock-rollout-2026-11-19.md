@@ -54,16 +54,47 @@ Wayfatours Production, with the same accommodation-only inventory policy deploye
 - WooCommerce global `woocommerce_manage_stock` remained `yes` on Wayfatours, unchanged. Other services remain unaffected.
 - Existing accommodation quote preview already runs `availability_mode=price_only`. No active accommodation checkout exists, so the policy does **not** claim that a future booking/payment flow has been integrated or certified.
 
-## Remaining image coverage by Property (production)
-- 27 non-QA Units require photos: Tolip Gardens (4); Sheraton Cairo (3),
-  Fairmont Nile City (3), Hilton Golf 6 October (3), Sofitel Downtown Nile (3),
-  Sofitel El Gezirah (2), Hilton Grand Nile Tower (2), Ramses Hilton (2),
-  Barceló Cairo Pyramids (2), Hilton Heliopolis (1), Sonesta (1), and one
-  Unit linked to a Property with invalid `#VALUE!` name.
-- Ten of those missing Units already have legacy source references that were
-  excluded due to duplicate content, source quality or type: reusing photos
-  across different room types requires genuine photo-to-room corroboration.
-- Published Unit images and Unit QA records were not modified by this run.
+## Fourth wave — 22 additional Units on Wayfatours Production
+- Tolip Gardens: four category-specific room photographs from the hotel's
+  official accommodation page. Three meet the 800-pixel minimum; Chalet is
+  only 699x466, marked for quality review and never upscaled.
+- Fairmont Nile City / Sofitel El Gezirah / Sofitel Downtown Nile: six
+  different official Accor room photographs, source-reviewed v2 and checked
+  against exact room detail headings. Original invalid or duplicate v1
+  references are preserved.
+- Sheraton Cairo: three Marriott suite images with exact gallery captions,
+  replacing the broken Presidential-Suite SVG in a v2 record, while retaining
+  that original source record without alteration.
+- Hilton Pyramids Golf: three original hotel media assets matched to the
+  Unit category and existing Property relation.
+- Ramses Hilton and Hilton Cairo Grand Nile: four official gallery images;
+  Ramses hotel's existing title typo remains an editorial correction and
+  Twin Nile gallery photo is flagged for room-variant confirmation.
+- Barceló Cairo Pyramids: two category-specific Scene7 photos sourced from
+  the hotel's room-code SUP and DLX image components, never third-party sites.
+- No changes to Unit prices, inventory or post statuses. Every imported
+  attachment preserves exact source URL/page, SHA-256, user-attested use, and
+  the fact that image rights were not independently verified.
+
+## Final live inventory and unresolved exact-room sources
+- 148 Units total; 127 have source-curated photos. Existing earlier media
+  brings totals to 128 Featured Images and 129 native Unit galleries.
+- 5 non-QA Units remain without imagery:
+  - 70905 Hilton Cairo Heliopolis / Guest Room Pool View: publicly surfaced
+    gallery link currently 404; usable original asset not yet verified
+  - 70893 Fairmont Nile City / Deluxe Premier Partial Nile View: hotel's
+    listing uses an image shared with another category; no unique asset yet
+  - 70873 Sonesta Tower Executive King/Twin: legacy image duplicates another
+    Unit's SHA; need different, verified room photo
+  - 70820 Sofitel Downtown Executive King Club Millesime: official detail
+    uses same hero image as Deluxe King; unique image still needed
+  - 37555 Double Room With Town View: Property 36260 has published title
+    #VALUE! and description describing Hotel Stanford in New York.
+    Identity is not verified as an Egyptian hotel. Do not attach arbitrary
+    Egyptian hotel photography or allow commercial activation.
+- 14 QA/Test Units intentionally excluded.
+- Zero broken curated source files or missing provenance; all 127 newly
+  curated Units remain Draft. No real prices or checkout were activated.
 
 ## Commercial blocks
 Real company-approved selling prices, child/occupancy capacity, verified room variants, Rate validity, the financial ledger and booking authorization remain separate, unresolved work. Draft/QA rates cannot be published automatically.
