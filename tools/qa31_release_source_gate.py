@@ -451,6 +451,77 @@ def reviewed_pr942_company_master_security_successor(repo:Path,path:str,contents
         return None
 
 
+def reviewed_followup_context_readonly_plan_successor(repo:Path,path:str,contents:bytes):
+    """Only the exact reviewed Context classification preview; never Apply.
+
+    Source identity is a CI review, not an owner, Host, or production grant.
+    The existing historical QA31 source and all signed receipts stay frozen.
+    """
+    expected='includes/class-mad4b-scp-context-authority.php'
+    if path!=expected or not isinstance(contents,bytes):return None
+    review=repo/'docs/source-reconciliation/pr942-context-classification-readonly-preview-20261119.json'
+    history=repo/'governance/release-parity/qa31-rc129-reviewed-successors-20261118.json'
+    host=repo/'governance/release-parity/qa31-rc129-host-agent-integration-successors-20261118.json'
+    test='wp-content/plugins/mad4b-site-control-plane/tests/context-classification-readonly-preview-runtime.php'
+    old='037d6563a3a42561a69b30e8f5d450e40a2d4a40'
+    expected_blob='6d845fc71204df173643268b523ca8bd27620d23'
+    try:
+        if (not review.is_file() or review.is_symlink() or
+            not history.is_file() or history.is_symlink() or
+            not host.is_file() or host.is_symlink() or
+            not (repo/test).is_file() or (repo/test).is_symlink()):
+            return None
+        r=json.loads(review.read_text(encoding='utf-8'))
+        historical_text=history.read_text(encoding='utf-8')
+        host_text=host.read_text(encoding='utf-8')
+        h=json.loads(historical_text)
+        signed_host=json.loads(host_text)
+        rows=[x for x in h.get('reviewed_entries',[])
+              if isinstance(x,dict) and x.get('path')==expected]
+        blob=hashlib.sha1(b'blob '+str(len(contents)).encode('ascii')+b'\0'+contents).hexdigest()
+        if (r.get('contract')!='mad4b.followup.context-readonly-classification-plan-source.v1'
+            or r.get('parent_candidate_head')!='ed7ae0508cd927aa89294e56840d468f9ea8233e'
+            or r.get('parent_source_blob_sha')!=old
+            or r.get('source_path')!='wp-content/plugins/mad4b-site-control-plane/'+expected
+            or blob!=expected_blob
+            or r.get('reviewed_source_blob_sha')!=expected_blob
+            or r.get('reviewed_source_sha256')!=hashlib.sha256(contents).hexdigest()
+            or r.get('reviewed_source_bytes')!=len(contents)
+            or r.get('historic_qa31_path')!='governance/release-parity/qa31-rc129-reviewed-successors-20261118.json'
+            or r.get('historic_qa31_sha256')!=digest(history)
+            or digest(history)!='dce059a5058b66cc1cb5f6d4cd01aab24b1e6b75a8fba6a1655579de038ff821'
+            or hashlib.sha256(historical_text.encode('utf-8')).hexdigest()!=digest(history)
+            or r.get('prior_host_integration_review')!='governance/release-parity/qa31-rc129-host-agent-integration-successors-20261118.json'
+            or r.get('prior_host_integration_sha256')!='3184e983d42404f7792c1784dca621bba33570f8b199b1a22a78c1293f16493e'
+            or hashlib.sha256(host_text.encode('utf-8')).hexdigest()!=r['prior_host_integration_sha256']
+            or signed_host.get('production_authorized') is not False
+            or signed_host.get('release_gate')!='BLOCKED_SOURCE_RECONCILIATION'
+            or signed_host.get('exact_source_files')!=6
+            or len([x for x in signed_host.get('source_entries',[]) if
+                   isinstance(x,dict) and x.get('path')==expected and
+                   x.get('current_blob_sha')==old and
+                   x.get('required_regression')=='wp-content/plugins/mad4b-site-control-plane/tests/host-agent-source-parity-contract.py'])!=1
+            or len(rows)!=1
+            or rows[0].get('current_git_blob_sha')!='43e71753bfb1e43e0cb48f22690ab3522c44d695'
+            or r.get('historic_qa31_context_source_blob_sha')!=rows[0]['current_git_blob_sha']
+            or r.get('status')!='reviewed_for_ci_only'
+            or r.get('historical_qa31_immutable') is not True
+            or any(r.get(k) is not False for k in ('production_authorized','runtime_activated',
+                'write_grant_issued','source_promotion_approved','allows_application','allows_mail_dispatch'))
+            or r.get('required_regression')!=test
+            or not isinstance(r.get('regressions'),list)
+            or test not in r['regressions']
+            or any(not isinstance(x,str) or '..' in Path(x).parts
+                   or not (repo/x).is_file() or (repo/x).is_symlink() for x in r['regressions'])
+            or len(r.get('review_rationale',''))<200
+            or b'public static function classification_reconcile_plan' not in contents
+            or b'function classification_reconcile_apply' in contents):
+            return None
+        return test
+    except (OSError,ValueError,TypeError,KeyError,json.JSONDecodeError):
+        return None
+
+
 def reviewed_pr942_cimd_scoped_source_successor(repo:Path,path:str,contents:bytes):
     """Exact three-file CI-only restoration of signed scoped ChatGPT CIMD.
 
@@ -652,7 +723,9 @@ def reviewed_ci_only_source_successor(root:Path,path:str,contents:bytes)->bool:
     source=root/path
     if source.is_symlink() or not source.is_file() or source.read_bytes()!=contents:
         return False
-    requested=reviewed_pr942_ollama_bootstrap_successor(repo,path,contents)
+    requested=reviewed_followup_context_readonly_plan_successor(repo,path,contents)
+    if requested is None:
+        requested=reviewed_pr942_ollama_bootstrap_successor(repo,path,contents)
     if requested is None:
         requested=reviewed_pr942_cimd_scoped_source_successor(repo,path,contents)
     if requested is None:
