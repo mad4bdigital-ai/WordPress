@@ -43,3 +43,15 @@ assert handler.index('self::require_admin( self::ACTION_SCAN_SOURCE )') < handle
 assert 'source_scan_apply_admission' in handler
 authority = (includes / 'class-mad4b-scp-context-authority.php').read_text()
 assert "isset( $scan['expected_registry_revision'] ) && (int) $scan['expected_registry_revision'] !== self::registry_revision()" in authority
+
+
+# Source-only guided continuation may cite the existing recovery read Ability,
+# but must not load itself or automatically execute that route.
+guided=(includes/'class-mad4b-scp-guided-continuation.php').read_text()
+boot=(root/'mad4b-site-control-plane.php').read_text()
+assert "'mad4b/brand-core-remote-recovery-status'" in guided
+assert "MAD4B_SCP_Guided_Continuation::boot();" not in boot
+assert "class-mad4b-scp-guided-continuation.php" not in boot
+assert "true !== MAD4B_SCP_Policy::can_read()" in guided
+assert "READ_ABILITY_UNAVAILABLE" in guided
+print("SOURCE_ONLY_GUIDED_RECOVERY_BOUNDARY: PASS")
