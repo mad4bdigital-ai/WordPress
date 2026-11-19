@@ -174,6 +174,7 @@ final class MAD4B_Transport_Pricing_Readiness_V1 {
         echo ' &nbsp; <strong>Rate records:</strong> ' . esc_html((string) $snapshot['rates_count']);
         echo ' &nbsp; <strong>Rate table:</strong> ' . ($snapshot['rates_table_present'] ? 'Present' : 'Missing') . '</p>';
         MAD4B_Transport_Source_Candidates_V1::admin();
+        MAD4B_Transport_CPT_Readiness_V1::admin();
         foreach (array('transport_issues' => 'Transportation classification issues',
                       'rate_issues' => 'Rate integrity issues') as $key => $title) {
             echo '<h2>' . esc_html($title) . '</h2>';

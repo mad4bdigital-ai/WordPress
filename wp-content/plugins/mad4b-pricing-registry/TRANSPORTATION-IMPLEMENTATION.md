@@ -94,3 +94,67 @@ behavior remain unchanged.
 - Booking inventory/reservation mutations and payment activation.
 - Real-time Air/Rail fare availability and supplier contracts.
 - Company-wide CCT migration until exact source parity and authorization.
+
+## Canonical CPT promotion — completed on Tours.dev staging
+
+The **existing** JetEngine `transport-rates` CPT (definition ID 358) is canonical.
+It already existed before this work with 26 fields and 5 records; it was not
+recreated. Two of those posts already traced back to the legacy CCT via
+`source_cct_id` 1 and 2. The legacy `transport_rates` CCT remains archived
+and readable for audit/rollback. No duplicate posts were generated.
+
+`tools/promote-transport-rates-cpt.php` promotes all 11 new pricing dimension
+fields from the legacy CCT into the existing CPT, yielding 37 JetEngine CPT
+fields. Existing rate rows and historical amounts are unchanged.
+
+WPML `transport-rates` switches from translation mode **1** to **2**:
+translatable with original-language fallback when a translation is missing,
+matching the existing `property-rates` setting. All 11 operational/commercial
+fields are **COPY** in WPML; the existing Market Profile rate overrides
+(`_booking_experience_transport_market_rates_v1`) and extras catalog
+(`_booking_experience_transport_extras_v1`) are also **COPY**. The post
+title/editorial description and `note` remain language-specific; `note`
+continues to use WPML action **TRANSLATE**.
+
+The system already has a market-aware quote owner in Booking Experience:
+`transport_rate_candidates()`, `transport_rate_source()`,
+`transport_rate_eligible()`, and
+`Transport_Extras_V1::market_override()`. Their Market Profile pricing
+depends on approved market context, not UI language. This promotion does **not**
+create another market-pricing or checkout engine. The 11 newly copied fields
+are authoring/readiness metadata only until the existing source owner's
+revision-pinned rate approval/signature is explicitly extended to incorporate
+any pricing-relevant new dimensions.
+
+The new audit `/wp-json/mad4b-pricing/v1/transport-cpt-readiness` and the
+existing **Tools → Transport Pricing Readiness** page summarize CPT field
+coverage, translation configuration, market overrides, CCT migration references
+and mismatched legacy rates.
+
+As observed after migration:
+- 5 CPT records: 2 published, 3 draft.
+- 2 historic CCT records mapped to 2 existing CPT posts; zero duplicates.
+- 5 translation groups, all currently English (not yet translated into ES
+  or additional languages).
+- 1 Market Profile rule stored across existing rates.
+- 2 older CPT rows reference incompatible Mode/Type assignments and expired
+  validity; both require review, and neither has signed price approval.
+- Source CSV remains **candidate only**; currency and cost-vs-sale role remain
+  unconfirmed. No source rows were imported as commercial rates.
+
+Deployment/migration from inside the staging WordPress runtime:
+
+```bash
+wp eval-file tools/promote-transport-rates-cpt.php --allow-root
+wp eval 'define("MAD4B_TRANSPORT_CPT_APPLY",true);require "FULL_PATH/tools/promote-transport-rates-cpt.php";' --allow-root
+wp eval-file tests/transport-cpt-runtime.php --allow-root
+```
+
+The staging migration stores a before-image in the WordPress options table and
+supports `MAD4B_TRANSPORT_CPT_ROLLBACK` if the schema and WPML settings have
+not changed since migration. It leaves all rates, prices and bookings intact.
+
+**Not yet done:** production rollout, translating the 5 Rate titles/notes to
+other languages, resolving the two historical mismatched/expired rates,
+supplier data approval, activating 2026 candidate rates, and wiring new pricing
+dimensions into the signed commercial calculation path.

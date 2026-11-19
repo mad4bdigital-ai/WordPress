@@ -80,3 +80,4 @@ require_once __DIR__.'/includes/tour-preview.php';
 
 require_once __DIR__.'/includes/transport-readiness.php';
 require_once __DIR__.'/includes/transport-source-candidates.php';
+require_once __DIR__.'/includes/transport-cpt-readiness.php';
