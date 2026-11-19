@@ -24052,6 +24052,28 @@
       "needs_new_control": false,
       "review_rationale": "Restore nonce-checked administrator-only add/remove of external Skill source references and their view, lost in mechanical merge; distinct company operations read-only capability remains independently gated. Source parity test verifies all three handlers are present and WordPress Admin denial remains required. The PR942 follow-up preserves nonauthorizing source review and grants no additional runtime write scope.",
       "coverage_reuse_rationale": "Existing site-enrollment, WordPress capability and nonce policies remain in force; no new source/provider trust, user role grant, host signer, or Production authorization."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-field-intelligence.php",
+      "source_blob_sha": "20b53f6e84f219d1f49b34e592867e3d676c7133",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/provider-field-intelligence-site-readonly-php74-hermetic.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-provider-field-read-parity-runtime.php",
+        "tests/source-unification-review-contract.py"
+      ],
+      "owner_role": "MAD4B source integration CI-only reviewer; independent Production owner approval still required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Close verified cross-site field-intelligence leak: validate site UUID, exact origin, environment and deployment binding before checking foreign type existence, reading WordPress meta schemas, querying DB, or invoking JetEngine/extension providers. Locale media audit also verifies identity before querying posts. Default CLI/REST subtype is site-neutral WordPress post. Source-owned positive and negative tests execute on PHP7.4 and PHP8.5 with synthetic tables and deny all invalid company bindings.",
+      "coverage_reuse_rationale": "Existing read-only catalog, WordPress administrator, Site Profile and provider isolation controls remain in force; no new authentication role or production write rights."
     }
   ],
   "code_change_rules": {
