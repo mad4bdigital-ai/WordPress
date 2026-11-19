@@ -23641,6 +23641,69 @@
       "review_rationale": "Add bounded read-only term media origin census that parses JetEngine comma-delimited gallery URLs separately, resolves exact local uploads without rewriting raw metadata, and classifies foreign origin versus missing local file. Source-only method; no WP hooks or mutation. Real live evidence: Wayfa 181/181 legacy featured origins have local files, 16/19 ETG gallery local, Tours.dev 384/384 featured and 105/109 ETG gallery local. This independent media classification avoids false blocking in commercial-link gates.",
       "coverage_reuse_rationale": "Existing Brand Integrity, localization, source provenance and media rights controls. No new provider authority or write ability.",
       "execution_note": "Same-PR hermetic PHP fixture asserts 3 distinct URL tokens, origin classification, no mutation, and missing identity/term failures; site integration is separately required."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/trait-mad4b-scp-content-readiness-scanning.php",
+      "source_blob_sha": "ca268399e02ddd0044f9c824b8eb2067f84e006e",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/destination-term-alerts-runtime.php"
+      ],
+      "owner_role": "MAD4B exact-source Content Readiness CI-only reviewer; release authority remains independent",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing site-bound Brand Integrity, content readiness reconciliation, WPML taxonomy, provider validation and security controls; no new mutation surface or production grant.",
+      "review_rationale": "Allow only exact first-party, site-UUID-bound destination taxonomy issues in original Content Readiness intake; add eight codes already emitted by Tour Photo Quality whose absence blocked full source discovery. Preserve all existing security and provider validation.",
+      "execution_note": "Independent live Tours.dev scan complete=true on 8,354 term-meta rows; Wayfatours complete=true on 3,509; issues saved through existing guarded ledger, no content or media rewritten."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/trait-mad4b-scp-content-readiness-reconciliation.php",
+      "source_blob_sha": "5fa929c8d3daacc38fe5536d4886f0d01451d947",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/destination-term-alerts-runtime.php"
+      ],
+      "owner_role": "MAD4B exact-source Content Readiness CI-only reviewer; release authority remains independent",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing site-bound Brand Integrity, content readiness reconciliation, WPML taxonomy, provider validation and security controls; no new mutation surface or production grant.",
+      "review_rationale": "Prevent silent closure of destination taxonomy issues by enforcing a complete site-bound raw Term Meta census plus exact old-reference absence and public HTTP 200 rendered-page readback under bounded timeouts. Incomplete discovery and unavailable readbacks fail closed.",
+      "execution_note": "Isolated PHP test proves present reference, broken readback, and SQL failure retain open status; live issue reconciliation succeeded on both independent runtime copies."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php",
+      "source_blob_sha": "23a78f03901868bb6ec38b0f4651786ba52bccd7",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/destination-term-alerts-runtime.php"
+      ],
+      "owner_role": "MAD4B exact-source Content Readiness CI-only reviewer; release authority remains independent",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing site-bound Brand Integrity, content readiness reconciliation, WPML taxonomy, provider validation and security controls; no new mutation surface or production grant.",
+      "review_rationale": "Route destination Term Meta alerts from the existing REST/admin/CSV/board presentation to a taxonomy term editor, not a same-numbered WordPress Post. No new write ability or task dispatch.",
+      "execution_note": "Both live sites retain their independent installed class layouts; source split-trait class patch applies only targeted URL routing to prevent overwriting live-only components."
     }
   ],
   "code_change_rules": {
