@@ -111,6 +111,93 @@ class Readiness(unittest.TestCase):
         self.assertTrue(a["checks"]["installed_worker_has_explicit_v2_admission"])
         self.assertFalse(a["checks"]["independent_signer_and_real_receipt_certified"])
         self.assertFalse(a["original313_receipt_signed"])
+    def test_original305_no_host_job_is_precise_not_authorization(self):
+        from types import SimpleNamespace
+        reply={"contract":"mad4b.original305-306.host-job-presence.v1",
+               "scanned":{"jobs":46,"requests":48},
+               "issue_count":0,"revoke_count":0,"incomplete":False}
+        evidence=m.original305_306_host_job_probe(
+            run=lambda source: SimpleNamespace(returncode=0,
+                 stdout=json.dumps(reply)))
+        self.assertEqual(evidence["state"],"NO_HOST_AUTHORITY_JOB")
+        self.assertFalse(evidence["authorization_verified"])
+        result=m.inspect(self.live,self.registry,self.candidate,
+              owner_probe=lambda:evidence,
+              enrollment_probe=lambda:{"state":"NO_INDEPENDENT_ENROLLMENT",
+                                        "authorization_verified":False})
+        self.assertEqual(result["first_unresolved_runtime_dependency"],
+                         "ORIGINAL305_AUTHENTIC_OWNER_HOST_JOB_MISSING")
+        self.assertEqual(result["state"],"BLOCKED")
+
+    def test_present_owner_job_does_not_certify_signature(self):
+        from types import SimpleNamespace
+        reply={"contract":"mad4b.original305-306.host-job-presence.v1",
+               "scanned":{"jobs":3,"requests":4},
+               "issue_count":1,"revoke_count":0,"incomplete":False}
+        evidence=m.original305_306_host_job_probe(
+            run=lambda source:SimpleNamespace(returncode=0,
+                  stdout=json.dumps(reply)))
+        self.assertEqual(evidence["state"],"PRESENT_UNVERIFIED")
+        self.assertFalse(evidence["authorization_verified"])
+        result=m.inspect(self.live,self.registry,self.candidate,
+              owner_probe=lambda:evidence,
+              enrollment_probe=lambda:{"state":"NO_INDEPENDENT_ENROLLMENT",
+                                        "authorization_verified":False})
+        self.assertEqual(result["first_unresolved_runtime_dependency"],
+              "ORIGINAL313_INDEPENDENT_OWNER_ENROLLMENT_MISSING")
+        self.assertFalse(result["original313_receipt_signed"])
+
+    def test_paged_or_corrupt_job_count_is_not_declared_absent(self):
+        from types import SimpleNamespace
+        for record in (
+            {"contract":"mad4b.original305-306.host-job-presence.v1",
+             "scanned":{"jobs":256,"requests":12},
+             "issue_count":0,"revoke_count":0,"incomplete":False},
+            {"contract":"mad4b.original305-306.host-job-presence.v1",
+             "scanned":{"jobs":2,"requests":2},
+             "issue_count":0,"revoke_count":0,"incomplete":True},
+            {"contract":"wrong","scanned":{"jobs":0,"requests":0},
+             "issue_count":0,"revoke_count":0,"incomplete":False},
+            {"contract":"mad4b.original305-306.host-job-presence.v1",
+             "scanned":{"jobs":1,"requests":1},
+             "issue_count":False,"revoke_count":0,"incomplete":False}
+        ):
+            value=m.original305_306_host_job_probe(
+                run=lambda source:SimpleNamespace(returncode=0,
+                    stdout=json.dumps(record)))
+            self.assertNotEqual(value["state"],"NO_HOST_AUTHORITY_JOB")
+            self.assertFalse(value["authorization_verified"])
+
+    def test_wp_probe_fails_closed_without_exposing_stderr(self):
+        from types import SimpleNamespace
+        result=m.original305_306_host_job_probe(
+            run=lambda source:SimpleNamespace(
+                returncode=2,stdout="",stderr="PRIVATE_SECRET"))
+        self.assertEqual(result["state"],"UNKNOWN")
+        self.assertNotIn("PRIVATE_SECRET",json.dumps(result))
+
+    def test_independent_enrollment_proof_absent_not_invented(self):
+        root=self.root/"enrollments"
+        root.mkdir(mode=0o700)
+        evidence=m.first_enrollment_presence(root)
+        self.assertEqual(evidence["state"],"NO_INDEPENDENT_ENROLLMENT")
+        self.assertFalse(evidence["authorization_verified"])
+        entry=root/"all-royal-egypt--staging.json"
+        entry.write_text("{}")
+        entry.chmod(0o600)
+        # Current test user can be non-root; permission requirements fail closed.
+        state=m.first_enrollment_presence(root)["state"]
+        self.assertIn(state,("UNTRUSTED_FILE","PRESENT_SIGNATURE_NOT_VERIFIED"))
+        self.assertFalse(m.first_enrollment_presence(root)["authorization_verified"])
+
+    def test_enrollment_symlink_rejected(self):
+        root=self.root/"enrollments"
+        root.mkdir(mode=0o700)
+        (root/"all-royal-egypt--staging.json").symlink_to(self.index)
+        record=m.first_enrollment_presence(root)
+        self.assertNotEqual(record["state"],"PRESENT_SIGNATURE_NOT_VERIFIED")
+        self.assertFalse(record["authorization_verified"])
+
     def test_never_mutates_inputs(self):
         before=(self.live.read_bytes(),self.candidate.read_bytes(),self.index.read_bytes())
         self.view()
