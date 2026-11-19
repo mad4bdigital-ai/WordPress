@@ -50,7 +50,7 @@ function wp_remote_retrieve_response_code($res){return $res['code'];}
 function wp_remote_retrieve_body($res){return $res['body'];}
 function add_filter($hook,$cb,$priority=10,$accepted=1){return true;}
 function check($condition,$message){if(!$condition){fwrite(STDERR,"FAIL: ".$message."\n");exit(1);}}
-$plugin=$argv[1]??dirname(__DIR__,3).'/mu-plugins/mad4b-destination-term-alerts.php';
+$plugin=$argv[1]??dirname(__DIR__).'/wp-content/mu-plugins/mad4b-destination-term-alerts.php';
 check(is_file($plugin),'scanner file exists');
 require $plugin;
 $w=$GLOBALS['wpdb'];
@@ -80,6 +80,8 @@ MAD4B_Destination_Term_Alerts_V1::scan();
 check(MAD4B_Destination_Term_Alerts_V1::can_resolve($old)===true,'raw corrected and public HTML readback resolves');
 $GLOBALS['fixture_html']='<html><body>'.str_repeat('x',400).'<a href="https://another-company.test/tours/">Explore</a></body></html>';
 check(MAD4B_Destination_Term_Alerts_V1::can_resolve($old)===false,'stale public HTML prevents close');
+$GLOBALS['fixture_html']='<html><body>'.str_repeat('x',500);
+check(MAD4B_Destination_Term_Alerts_V1::can_resolve($old)===false,'truncated HTML cannot certify missing link');
 $GLOBALS['fixture_http_code']=503;
 check(MAD4B_Destination_Term_Alerts_V1::can_resolve($old)===false,'HTTP failure prevents close');
 $w->last_error='incomplete';
