@@ -22,6 +22,7 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 	const CONTRACT = 'mad4b.staging-write-grant-reconciliation.v3';
 	const ABILITY = 'mad4b/staging-write-grant-reconcile';
 	const STAGING_ALIAS = 'mad4b/staging-write-grant-reconcile-staging';
+	const PRODUCTION_ALIAS = 'mad4b/production-write-grant-reconcile';
 	const CONFIRMATION = 'RECONCILE EXACT STAGING WRITE AUTHORITY';
 	const PRODUCTION_CONFIRMATION = 'RECONCILE EXACT PRODUCTION WRITE AUTHORITY';
 
@@ -276,6 +277,7 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 		// A separate, exact Staging-only wrapper for the existing audited
 		// reconciliation executor. The production-capable original stays unchanged.
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_staging_alias' ), 12 );
+		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_production_alias' ), 12 );
 	}
 
 	public static function register_ability() {
@@ -436,6 +438,59 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 			if ( false !== $priority ) add_filter( 'wp_register_ability_args', $augment, (int) $priority, 2 );
 		}
 	}
+	/** Production enrollment parity: delegates to the existing exact, audited executor.
+	 * Staging keeps its original alias; neither alias bypasses OAuth, the exact
+	 * Site Profile, approved provider policy, package provenance or write gates.
+	 */
+	public static function register_production_alias() {
+		if ( ! function_exists( 'wp_register_ability' ) || ! function_exists( 'wp_get_ability' )
+			|| ! function_exists( 'wp_has_ability' ) || ! wp_has_ability( self::ABILITY )
+			|| wp_has_ability( self::PRODUCTION_ALIAS )
+			|| 'production' !== self::current_environment() ) return;
+		$original = wp_get_ability( self::ABILITY );
+		if ( ! is_object( $original ) || ! method_exists( $original, 'get_input_schema' ) ) return;
+		$schema = $original->get_input_schema();
+		if ( ! is_array( $schema ) || empty( $schema['required'] ) ) return;
+		$augment = array( 'MAD4B_SCP_Staging_Write_Authority', 'augment_write_ability' );
+		$priority = function_exists( 'has_filter' ) ? has_filter( 'wp_register_ability_args', $augment ) : false;
+		if ( false !== $priority ) remove_filter( 'wp_register_ability_args', $augment, (int) $priority );
+		try {
+			wp_register_ability( self::PRODUCTION_ALIAS, array(
+				'label' => 'Reconcile Exact Production Write Grants',
+				'description' => 'Production owner OAuth step-up and exact current-package, source-reviewed grants via the existing audited executor. No wildcard, Developer or Breakglass grants.',
+				'category' => 'mad4b-governance',
+				'permission_callback' => array( __CLASS__, 'can_reconcile_production' ),
+				'execute_callback' => array( __CLASS__, 'reconcile_production' ),
+				'input_schema' => $schema,
+				'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+				'meta' => array(
+					'public' => false, 'show_in_rest' => false,
+					'mcp' => array(
+						'public' => false, 'type' => 'tool', 'surface' => 'enrollment',
+						'generic_remote_admin' => false,
+						'production_mutation_allowed' => true,
+						'production_exact_confirmation_required' => true,
+						'binds_exact_package_candidate' => true,
+						'approved_stale_grant_retirement_only' => true,
+						'no_breakglass_or_developer' => true,
+					),
+					'annotations' => array( 'readonly' => false, 'destructive' => false, 'idempotent' => false ),
+				),
+			) );
+		} finally {
+			if ( false !== $priority ) add_filter( 'wp_register_ability_args', $augment, (int) $priority, 2 );
+		}
+	}
+	public static function can_reconcile_production( $input = null ) {
+		if ( 'production' !== self::current_environment() )
+			return new WP_Error( 'mad4b_grant_reconcile_alias_production_only', 'Exact Production profile required.' );
+		return self::can_execute( $input );
+	}
+	public static function reconcile_production( $input ) {
+		$guard = self::can_reconcile_production( $input );
+		return is_wp_error( $guard ) || ! $guard ? $guard : self::reconcile( $input );
+	}
+
 	public static function can_reconcile_staging( $input = null ) {
 		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' )
 			|| 'staging' !== MAD4B_SCP_Site_Profile::current_environment() )
