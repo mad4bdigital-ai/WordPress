@@ -25,7 +25,7 @@ require_once ABSPATH . 'wp-admin/includes/media.php';
 
 final class MAD4B_Unit_Photo_Curation_CLI {
     private const HOSTS=['cache.marriott.com','m.ahstatic.com','www.ahstatic.com',
-        'media.iceportal.com','pyramidsparkresort.com'];
+        'media.iceportal.com','pyramidsparkresort.com','triumphhotel.com'];
     private static function error(string $code):array {
         return ['status'=>'skipped','reason'=>$code];
     }
