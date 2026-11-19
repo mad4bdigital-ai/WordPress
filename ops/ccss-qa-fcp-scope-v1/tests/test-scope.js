@@ -1,0 +1,15 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert');
+const src=fs.readFileSync(process.argv[2],'utf8');
+const match=src.match(/function mad4bFcpGate\(width,cap,gain\)\{[\s\S]*?\n\}/);
+assert(match,'original expected FCP scope helper not present');
+const f=vm.runInNewContext('('+match[0]+')');
+assert.equal(f(390,599,150),true);
+assert.equal(f(390,599,149),false);
+assert.equal(f(599,599,-450),false);
+assert.equal(f(600,599,-380),true);
+assert.equal(f(767,599,-380),true);
+assert.equal(f(768,767,-216),true);
+assert.equal(f(390,0,-380),false);
+assert.equal(f(390,767,Number.NaN),false);
+assert.equal(f(768,767,Number.NaN),false);
+console.log('PASS: scoped FCP helper controls active/untouched breakpoints');
