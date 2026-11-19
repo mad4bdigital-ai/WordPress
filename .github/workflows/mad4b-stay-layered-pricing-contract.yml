@@ -1,0 +1,69 @@
+name: MAD4B Accommodation Layered Pricing Contract
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/mu-plugins/005-mad4b-hotel-meal-base-policy.php'
+      - 'wp-content/mu-plugins/006-mad4b-accommodation-layered-pricing.php'
+      - 'wp-content/mu-plugins/007-mad4b-stay-price-layers-admin.php'
+      - 'tests/stay-layered-pricing-contract.php'
+      - 'tests/stay-layers-admin-contract.php'
+      - 'wp-content/mu-plugins/008-mad4b-stay-pricing-controls-panel.php'
+      - 'wp-content/mu-plugins/mad4b-stay-pricing-admin/**'
+      - 'tests/stay-pricing-page-access-contract.php'
+      - 'tests/stay-pricing-panel-runtime-cli.php'
+      - 'tests/stay-pricing-panel-ui-check.py'
+      - '.github/workflows/mad4b-stay-layered-pricing-contract.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'wp-content/mu-plugins/005-mad4b-hotel-meal-base-policy.php'
+      - 'wp-content/mu-plugins/006-mad4b-accommodation-layered-pricing.php'
+      - 'wp-content/mu-plugins/007-mad4b-stay-price-layers-admin.php'
+      - 'tests/stay-layered-pricing-contract.php'
+      - 'tests/stay-layers-admin-contract.php'
+      - 'wp-content/mu-plugins/008-mad4b-stay-pricing-controls-panel.php'
+      - 'wp-content/mu-plugins/mad4b-stay-pricing-admin/**'
+      - 'tests/stay-pricing-page-access-contract.php'
+      - 'tests/stay-pricing-panel-runtime-cli.php'
+      - 'tests/stay-pricing-panel-ui-check.py'
+      - '.github/workflows/mad4b-stay-layered-pricing-contract.yml'
+
+permissions:
+  contents: read
+
+# Cancel outdated runs of the same pull request or branch.
+concurrency:
+  group: mad4b-stay-layered-pricing-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  offline-contracts:
+    name: Offline self-provider contracts (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3', '8.5']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Verify exact PR head checkout
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Syntax and in-memory pricing contracts
+        run: |
+          php -l wp-content/mu-plugins/005-mad4b-hotel-meal-base-policy.php
+          php -l wp-content/mu-plugins/006-mad4b-accommodation-layered-pricing.php
+          php -l wp-content/mu-plugins/007-mad4b-stay-price-layers-admin.php
+          php tests/stay-layered-pricing-contract.php
+          php tests/stay-layers-admin-contract.php
+          php -l wp-content/mu-plugins/008-mad4b-stay-pricing-controls-panel.php
+          php -l tests/stay-pricing-panel-runtime-cli.php
+          php tests/stay-pricing-page-access-contract.php
+          node --check wp-content/mu-plugins/mad4b-stay-pricing-admin/ui.js
+          python3 tests/stay-pricing-panel-ui-check.py
