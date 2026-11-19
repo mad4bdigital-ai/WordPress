@@ -22,6 +22,8 @@ SHA = re.compile(r"^[a-f0-9]{40}$")
 # Each path contains exit-on-failure assertions and a positive PASS marker.
 # Other PHP files continue to require PHPUnit; unknown paths fail closed.
 STANDALONE_PHP_REGRESSIONS = frozenset((
+    # Original 18-file scheduler closure, no WP hooks or executor access.
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-scheduler-source-closure-runtime.php",
     # Original content-quality source closure and company-scoped business model.
     "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-content-quality-dependencies-source-only-runtime.php",
     # Original Hub consumer and archived-source denial with bounded hook spy.
@@ -337,6 +339,8 @@ def self_test():
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-hub-lifecycle-source-only-runtime.php") == ["php", str((ROOT / "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-hub-lifecycle-source-only-runtime.php").resolve())]
     # Parent/preparation/event classes are source-only, no mail or hooks.
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readiness-preactivation-source-only-runtime.php") == ["php", str((ROOT / "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readiness-preactivation-source-only-runtime.php").resolve())]
+    # Explicit no-network scheduler source and company role fixture.
+    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-scheduler-source-closure-runtime.php") == ["php", str((ROOT / "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-scheduler-source-closure-runtime.php").resolve())]
     # The six-source SHA fixture does not boot WordPress or grant authority.
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-authority-review-source-only-runtime.php") == ["php", str((ROOT / "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-authority-review-source-only-runtime.php").resolve())]
     # Exact background agent / host authority negative fixture, no server work.

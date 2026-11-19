@@ -61,4 +61,11 @@ check_seal(false!==strpos($one,'MAD4B_SCP_Authority_Auto_Reconciliation::boot();
  'Original authority auto-boot is a known hazard and cannot be silently dropped');
 check_seal(false!==strpos($two,'MAD4B_SCP_Authority_Reviews_Bridge::boot();'),
  'Original authority bridge auto-boot is a known hazard and cannot be silently dropped');
+// Repeated cron schedules are merely literal strings in dormant source
+// until independently admitted through the installed main Bootstrap.
+$scheduled=file_get_contents($plugin.'/includes/class-mad4b-scp-frontend-impact-priority.php');
+check_seal(is_string($scheduled) && false!==strpos($scheduled,"'hourly'"),
+ 'Original hourly scheduler label retained in dormant source');
+check_seal(false===strpos($bootstrap,'class-mad4b-scp-frontend-impact-priority.php'),
+ 'No hourly site scan can start from candidate Bootstrap');
 echo "PASS: 6 original source modules, 2 inline boot hazards isolated, 0 newly loaded".PHP_EOL;

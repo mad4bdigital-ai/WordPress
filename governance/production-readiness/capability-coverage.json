@@ -5200,6 +5200,247 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing tenant Site Profile, media provenance, source, brand, WPML, content quality, execution and release controls remain required; source-only presence gives no capability.",
       "review_rationale": "Exact installed Tours.dev PHP module was verified SHA256-identical with independently sealed v3 capture: 20bb927951251ec356e2c6f1a8c135a22d1e7785c51eb9ce4f11ef8e98376159. This file remains a nonbootstrapped source-only dependency; PHP 8 str_* intrinsics in the frozen originals must receive separate PHP 7.4 runtime compatibility review before any production activation. Original Site Profile, customer/locale/brand/media, pricing, authorization and quality-review policies are not relaxed; no site write, grant, network call or publication is executed."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02",
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-scheduler-source-closure-runtime.php"
+      ],
+      "owner_role": "Independent original-source, tenant role and scheduler-risk reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original identity, registered-site profile, provider egress, scheduler, WP admin, recovery, operations and execution controls remain mandatory; source retention creates no new authority.",
+      "review_rationale": "Installed Tours.dev frozen original SHA256 48d22fac76c26a36a462d7a84aeb0e10cf00f39901f6eef5fe87fea16be9bb4b is retained in the v3 capture. This exact Git successor is independently reviewed: fixed travel-company post-type defaults replaced with an enrolled-site, explicit, fail-closed role lookup. The source-only candidate remains absent from the main Bootstrap and needs independent runtime admission before use."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-type-roles.php",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02",
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-scheduler-source-closure-runtime.php"
+      ],
+      "owner_role": "Independent original-source, tenant role and scheduler-risk reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original identity, registered-site profile, provider egress, scheduler, WP admin, recovery, operations and execution controls remain mandatory; source retention creates no new authority.",
+      "review_rationale": "New source-only role contract shared by three preserved Tours.dev services. Enrolled-site, explicit custom public CPT mapping is required; missing or invalid roles return empty. No hooks, scheduled work or external traffic."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-web-vitals.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-scheduler-source-closure-runtime.php"
+      ],
+      "owner_role": "Independent original-source, tenant role and scheduler-risk reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original identity, registered-site profile, provider egress, scheduler, WP admin, recovery, operations and execution controls remain mandatory; source retention creates no new authority.",
+      "review_rationale": "Byte-identical SHA256 source from installed Tours.dev and separately frozen v3 archive. The module is captured as reference only; inline boot, schedules, external provider calls, REST routes or writes cannot start because main Bootstrap does not include it. Future registration requires independent capability review."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-frontend-impact-priority.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-scheduler-source-closure-runtime.php"
+      ],
+      "owner_role": "Independent original-source, tenant role and scheduler-risk reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original identity, registered-site profile, provider egress, scheduler, WP admin, recovery, operations and execution controls remain mandatory; source retention creates no new authority.",
+      "review_rationale": "Installed Tours.dev frozen original SHA256 6aa06c83ae42da7b86e4afcf17373f814e34b7ca217eeecba79d3a977fdeaecd is retained in the v3 capture. This exact Git successor is independently reviewed: fixed travel-company post-type defaults replaced with an enrolled-site, explicit, fail-closed role lookup. The source-only candidate remains absent from the main Bootstrap and needs independent runtime admission before use."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-integrations.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-scheduler-source-closure-runtime.php"
+      ],
+      "owner_role": "Independent original-source, tenant role and scheduler-risk reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original identity, registered-site profile, provider egress, scheduler, WP admin, recovery, operations and execution controls remain mandatory; source retention creates no new authority.",
+      "review_rationale": "Byte-identical SHA256 source from installed Tours.dev and separately frozen v3 archive. The module is captured as reference only; inline boot, schedules, external provider calls, REST routes or writes cannot start because main Bootstrap does not include it. Future registration requires independent capability review."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-scopes.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-scheduler-source-closure-runtime.php"
+      ],
+      "owner_role": "Independent original-source, tenant role and scheduler-risk reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original identity, registered-site profile, provider egress, scheduler, WP admin, recovery, operations and execution controls remain mandatory; source retention creates no new authority.",
+      "review_rationale": "Byte-identical SHA256 source from installed Tours.dev and separately frozen v3 archive. The module is captured as reference only; inline boot, schedules, external provider calls, REST routes or writes cannot start because main Bootstrap does not include it. Future registration requires independent capability review."
+    },
+    {
+      "id": "ability:mad4b/core-web-vitals-status",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "GOVERNANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-scheduler-source-closure-runtime.php"
+      ],
+      "owner_role": "Independent scheduler/REST source-only audit — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing exact site, permission, registered provider, third-party egress, scheduler safety and execution controls remain mandatory. Static discovery does not certify ability registration or grant.",
+      "review_rationale": "Original Tours.dev source retains its audited hook or method reference. Static provider hook, namespace or scheduler identifier, no direct registered runtime admission. Same-PR regression verifies the provider remains unloaded from main Bootstrap, roles are enrolled-site bound, and no queue, HTTP or Cron action executes."
+    },
+    {
+      "id": "ability:mad4b/performance/release_verified",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-scheduler-source-closure-runtime.php"
+      ],
+      "owner_role": "Independent scheduler/REST source-only audit — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing exact site, permission, registered provider, third-party egress, scheduler safety and execution controls remain mandatory. Static discovery does not certify ability registration or grant.",
+      "review_rationale": "Original Tours.dev source retains its audited hook or method reference. Static provider hook, namespace or scheduler identifier, no direct registered runtime admission. Same-PR regression verifies the provider remains unloaded from main Bootstrap, roles are enrolled-site bound, and no queue, HTTP or Cron action executes."
+    },
+    {
+      "id": "cron:daily",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-scheduler-source-closure-runtime.php"
+      ],
+      "owner_role": "Independent scheduler/REST source-only audit — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing exact site, permission, registered provider, third-party egress, scheduler safety and execution controls remain mandatory. Static discovery does not certify ability registration or grant.",
+      "review_rationale": "Original Tours.dev source retains its audited hook or method reference. Static provider hook, namespace or scheduler identifier, no direct registered runtime admission. Same-PR regression verifies the provider remains unloaded from main Bootstrap, roles are enrolled-site bound, and no queue, HTTP or Cron action executes."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-web-vitals-admin-trait.php",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-scheduler-source-closure-runtime.php"
+      ],
+      "owner_role": "Independent scheduler/REST source-only audit — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing exact site, permission, registered provider, third-party egress, scheduler safety and execution controls remain mandatory. Static discovery does not certify ability registration or grant.",
+      "review_rationale": "Original Tours.dev source retains its audited hook or method reference. Extracted PHP Trait source, no WordPress initialization. Same-PR regression verifies the provider remains unloaded from main Bootstrap, roles are enrolled-site bound, and no queue, HTTP or Cron action executes."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-discovery-trait.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-scheduler-source-closure-runtime.php"
+      ],
+      "owner_role": "Independent scheduler/REST source-only audit — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing exact site, permission, registered provider, third-party egress, scheduler safety and execution controls remain mandatory. Static discovery does not certify ability registration or grant.",
+      "review_rationale": "Original Tours.dev source retains its audited hook or method reference. Extracted PHP Trait source, no WordPress initialization. Same-PR regression verifies the provider remains unloaded from main Bootstrap, roles are enrolled-site bound, and no queue, HTTP or Cron action executes."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-reconciliation-trait.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-scheduler-source-closure-runtime.php"
+      ],
+      "owner_role": "Independent scheduler/REST source-only audit — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing exact site, permission, registered provider, third-party egress, scheduler safety and execution controls remain mandatory. Static discovery does not certify ability registration or grant.",
+      "review_rationale": "Original Tours.dev source retains its audited hook or method reference. Extracted PHP Trait source, no WordPress initialization. Same-PR regression verifies the provider remains unloaded from main Bootstrap, roles are enrolled-site bound, and no queue, HTTP or Cron action executes."
     }
   ],
   "lifecycle": [],
@@ -14480,6 +14721,198 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing tenant Site Profile, media provenance, source, brand, WPML, content quality, execution and release controls remain required; source-only presence gives no capability.",
       "review_rationale": "Exact installed Tours.dev PHP module was verified SHA256-identical with independently sealed v3 capture: 20bb927951251ec356e2c6f1a8c135a22d1e7785c51eb9ce4f11ef8e98376159. This file remains a nonbootstrapped source-only dependency; PHP 8 str_* intrinsics in the frozen originals must receive separate PHP 7.4 runtime compatibility review before any production activation. Original Site Profile, customer/locale/brand/media, pricing, authorization and quality-review policies are not relaxed; no site write, grant, network call or publication is executed."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php",
+      "source_blob_sha": "07cb352bc79079addee08050dd5eb516ffa11b59",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02",
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-scheduler-source-closure-runtime.php"
+      ],
+      "owner_role": "Independent original-source, tenant role and scheduler-risk reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original identity, registered-site profile, provider egress, scheduler, WP admin, recovery, operations and execution controls remain mandatory; source retention creates no new authority.",
+      "review_rationale": "Installed Tours.dev frozen original SHA256 48d22fac76c26a36a462d7a84aeb0e10cf00f39901f6eef5fe87fea16be9bb4b is retained in the v3 capture. This exact Git successor is independently reviewed: fixed travel-company post-type defaults replaced with an enrolled-site, explicit, fail-closed role lookup. The source-only candidate remains absent from the main Bootstrap and needs independent runtime admission before use. The original oversized class was partitioned into two source-only PHP traits for its original discovery and reconciliation method bodies. The facade remains under the 900-line domain-service limit; original v3 bytes are preserved independently."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-type-roles.php",
+      "source_blob_sha": "0d8c35851ddd141f0df997c2d2afab2bc69e04f2",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02",
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-scheduler-source-closure-runtime.php"
+      ],
+      "owner_role": "Independent original-source, tenant role and scheduler-risk reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original identity, registered-site profile, provider egress, scheduler, WP admin, recovery, operations and execution controls remain mandatory; source retention creates no new authority.",
+      "review_rationale": "New source-only role contract shared by three preserved Tours.dev services. Enrolled-site, explicit custom public CPT mapping is required; missing or invalid roles return empty. No hooks, scheduled work or external traffic."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-web-vitals.php",
+      "source_blob_sha": "16a04428185398355498db7ce8e468ec5a103c97",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-scheduler-source-closure-runtime.php"
+      ],
+      "owner_role": "Independent original-source, tenant role and scheduler-risk reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original identity, registered-site profile, provider egress, scheduler, WP admin, recovery, operations and execution controls remain mandatory; source retention creates no new authority.",
+      "review_rationale": "Byte-identical SHA256 source from installed Tours.dev and separately frozen v3 archive. The module is captured as reference only; inline boot, schedules, external provider calls, REST routes or writes cannot start because main Bootstrap does not include it. Future registration requires independent capability review. A 48-line admin presentation method is retained byte-for-byte in an isolated PHP 7.4 trait to respect the maximum service facade size; API and source-only Bootstrap boundary are unchanged."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-frontend-impact-priority.php",
+      "source_blob_sha": "9e2ec4c39b5571a3c3e781464595668bbc07d347",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-scheduler-source-closure-runtime.php"
+      ],
+      "owner_role": "Independent original-source, tenant role and scheduler-risk reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original identity, registered-site profile, provider egress, scheduler, WP admin, recovery, operations and execution controls remain mandatory; source retention creates no new authority.",
+      "review_rationale": "Installed Tours.dev frozen original SHA256 6aa06c83ae42da7b86e4afcf17373f814e34b7ca217eeecba79d3a977fdeaecd is retained in the v3 capture. This exact Git successor is independently reviewed: fixed travel-company post-type defaults replaced with an enrolled-site, explicit, fail-closed role lookup. The source-only candidate remains absent from the main Bootstrap and needs independent runtime admission before use."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-integrations.php",
+      "source_blob_sha": "5386ac23cb8166988b4ce7cd453ab5df059d4764",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-scheduler-source-closure-runtime.php"
+      ],
+      "owner_role": "Independent original-source, tenant role and scheduler-risk reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original identity, registered-site profile, provider egress, scheduler, WP admin, recovery, operations and execution controls remain mandatory; source retention creates no new authority.",
+      "review_rationale": "Byte-identical SHA256 source from installed Tours.dev and separately frozen v3 archive. The module is captured as reference only; inline boot, schedules, external provider calls, REST routes or writes cannot start because main Bootstrap does not include it. Future registration requires independent capability review."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-scopes.php",
+      "source_blob_sha": "28108a29df3109e824bab4d29e9aa66abcb7ff90",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-scheduler-source-closure-runtime.php"
+      ],
+      "owner_role": "Independent original-source, tenant role and scheduler-risk reviewer — CI-only, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original identity, registered-site profile, provider egress, scheduler, WP admin, recovery, operations and execution controls remain mandatory; source retention creates no new authority.",
+      "review_rationale": "Byte-identical SHA256 source from installed Tours.dev and separately frozen v3 archive. The module is captured as reference only; inline boot, schedules, external provider calls, REST routes or writes cannot start because main Bootstrap does not include it. Future registration requires independent capability review."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-discovery-trait.php",
+      "source_blob_sha": "d9460384b8685b664bcb77ceb59dd64fdbc65aa3",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "AUTOMATION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-scheduler-source-closure-runtime.php"
+      ],
+      "owner_role": "Independent original-source preservation and decomposed domain API reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "These are private extracted methods of a non-bootstrapped source-only class; original origin, execution, scheduling and source checks still apply.",
+      "review_rationale": "Original Tours.dev Content Readiness function bodies extracted without semantic edits from an independently frozen source-backed candidate. Only class composition changes. Exact PHP 7.4 trait SHA and preserved public methods are checked in the same PR; no runtime activation."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-reconciliation-trait.php",
+      "source_blob_sha": "6d27518934ecb8c49d7b944fb35968c2977df123",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "AUTOMATION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-scheduler-source-closure-runtime.php"
+      ],
+      "owner_role": "Independent original-source preservation and decomposed domain API reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "These are private extracted methods of a non-bootstrapped source-only class; original origin, execution, scheduling and source checks still apply.",
+      "review_rationale": "Original Tours.dev Content Readiness function bodies extracted without semantic edits from an independently frozen source-backed candidate. Only class composition changes. Exact PHP 7.4 trait SHA and preserved public methods are checked in the same PR; no runtime activation."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-web-vitals-admin-trait.php",
+      "source_blob_sha": "338a0c1b2e0611e1465adff17ec4c1210d72e0d5",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "PERFORMANCE-01",
+        "EXECUTION-01",
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-scheduler-source-closure-runtime.php"
+      ],
+      "owner_role": "Independent Core Web Vitals source-only presentation reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original admin permission guard and provider endpoint apply unchanged. The trait is a source-only method extraction with no bootstrap or hooks.",
+      "review_rationale": "Exact original Web Vitals admin section method moved to a PHP 7.4 compatible trait, method existence and SHA pinned in same-PR hermetic regression; no WordPress deployment or runtime admission."
     }
   ],
   "code_change_rules": {
