@@ -9,6 +9,9 @@ $caps=['manage_options','activate_plugins'];
 $unified=false;
 $menus=[];
 function is_admin(){return false;}
+function add_action($hook,$callback,$priority=10){$GLOBALS['hooks'][$hook][]=$callback;}
+function esc_attr($text){return htmlspecialchars((string)$text,ENT_QUOTES);}
+function register_rest_route($ns,$route,$args){$GLOBALS['rest_routes'][$ns.$route]=$args;}
 function current_user_can($cap){return in_array($cap,$GLOBALS['caps'],true);}
 function add_submenu_page($parent,$title,$menu,$cap,$slug,$callback){
  $GLOBALS['menus'][]=['parent'=>$parent,'cap'=>$cap,'slug'=>$slug];
@@ -75,7 +78,7 @@ MAD4B_Host_Authority_Owner_Console_V106::screen();
 $page=ob_get_clean();
 if(!str_contains($page,'Issue First Host Authority Anchor')
    ||!str_contains($page,'Approve Bootstrap Grant')
-   ||!str_contains($page,'Original312 plan SHA-256')
+   ||!str_contains($page,'Root Plan SHA-256')
    ||str_contains($page,'http://tours.dev.mad4b.com:8080'))
  throw new RuntimeException('OWNER_PAGE_MISSING_REQUIRED_ACTIONS');
 // The actual admin HTML must deliver the owner script after the controls,
