@@ -73,6 +73,9 @@ chk(len(entries)==65 and len(reviewed_paths)==65,
 chk(sorted(reviewed_paths)==[x['path'] for x in entries],
     'ordered_unique_successor_paths')
 current=(plugin/'mad4b-site-control-plane.php').read_bytes()
+runpy.run_path(str(repo / 'tests/qa31_dormant_ollama_bootstrap_successor_contract.py'), run_name='__main__')
+runpy.run_path(str(repo / 'tests/qa31_wayfa_followup_source_successor_contract.py'), run_name='__main__')
+runpy.run_path(str(repo / 'tests/qa31_company_staff_ceiling_source_successor_contract.py'), run_name='__main__')
 chk(reviewed_bootstrap_successor(plugin,'mad4b-site-control-plane.php',current),
     'original305_bootstrap_reviewed_exactly')
 for item in entries:
@@ -180,18 +183,20 @@ for case in ('modified_sha','changed_test','changed_historical_state'):
 
 checked=evaluate(ledger,plugin)
 print('QA31_EXPECTED_REVIEW_COUNTS:',checked['reviewed_github_successor_count'],checked['pending_count'],checked['unexpected_count'])
-# Preserve 65 historical successor reviews unchanged, plus the two formerly
-# non-successor ChatbotX paths now reviewed by a separate exact manifest.
+# Preserve the 65 frozen successor entries unchanged. The two ChatbotX
+# paths and one company-staff ceiling path have independent SHA-pinned,
+# non-authorizing reviews. Each still needs live source parity.
 expected_reviewed_paths=reviewed_paths | {
     'includes/adapters/class-mad4b-scp-chatbotx-governed-writes.php',
     'includes/adapters/class-mad4b-scp-chatbotx-write-preflight.php',
+    'includes/class-mad4b-scp-company-master-admin.php',
 }
 chk(set(checked['reviewed_github_successor_paths'])==expected_reviewed_paths
     and checked['reviewed_github_successor_count']==len(expected_reviewed_paths)
     and checked['unexpected_count']==0
     # Two originally stage-identical ChatbotX files now have separately
     # reviewed, source-pinned successors; they remain pending as live parity.
-    and checked['pending_count']==70
+    and checked['pending_count']==71
     and checked['version_match'] is False
     and checked['decision']=='BLOCKED_SOURCE_RECONCILIATION'
     and checked['authorizing'] is False and checked['production_authorized'] is False,

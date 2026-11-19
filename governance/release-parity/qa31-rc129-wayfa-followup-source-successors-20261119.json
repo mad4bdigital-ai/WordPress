@@ -1,0 +1,46 @@
+{
+  "contract": "mad4b.qa31-rc129-wayfa-source-followup-reviews.v1",
+  "prior_review_path": "governance/release-parity/qa31-rc129-reviewed-successors-20261118.json",
+  "prior_review_sha256": "dce059a5058b66cc1cb5f6d4cd01aab24b1e6b75a8fba6a1655579de038ff821",
+  "scope": "exactly two source revisions, not build provenance",
+  "exact_source_files": 2,
+  "reviewed_entries": [
+    {
+      "path": "includes/class-mad4b-scp-content-readiness-alerts.php",
+      "parent_git_blob_sha": "7df661262c7b6592a86557babfdffab6e44cf64e",
+      "parent_sha256": "75a905625b4ff78080c7018e28a4b1f05ea4fd60404526e0afbda5219e4356cf",
+      "current_git_blob_sha": "4d6800c533ebfb769210ca71fcb121e1cc712f11",
+      "current_sha256": "5fd112b0dcdf0d0e1ebfb8107be0fff4c03727823357353d7b3cce68388c78f4",
+      "source_commit": "746e7562f99a97f1a5e11168854441464f02eeca",
+      "required_regression": "wp-content/plugins/mad4b-site-control-plane/tests/content-readiness/isolated-contract.php",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02",
+        "SECURITY-01"
+      ],
+      "review_rationale": "Raise source-bound Content Readiness active issue cap from 3000 to a still-bounded 6000, while preserving original serialised issue ledger, non-autoload store, old-state readback, archive, hard no-data-loss upper limit and all provider admission and closure gates. No arbitrary provider trust or background task authority."
+    },
+    {
+      "path": "includes/class-mad4b-scp-skills-admin-ui.php",
+      "parent_git_blob_sha": "6db5aced6e2e50179ac5415ae9e74735756e539d",
+      "parent_sha256": "4c562fd3c62a3f70d1726bab8e20db205b06e8a2ddef2547de5f1cb235f3762c",
+      "current_git_blob_sha": "e0eec63d312afe5abaf427736a12472f9e31f72b",
+      "current_sha256": "85d2b11eecaccd55b2086a635a7b3bfd4b3ef7837b851546c7b661bac7a19002",
+      "source_commit": "d4b78b7da3bad4940d921540b47649b8d4ce7b2e",
+      "required_regression": "tests/skills-external-source-admin-source-contract.py",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "review_rationale": "The exact candidate blob restores delegated External Skill Source add/remove UI under the existing affirmative Administrator manage_options page gate, delegated original nonce-validated handler, original nonadmin denial and admin-only source-list rendering. The same-PR Python regression executes the native no-network fake-WordPress PHP source fixture, confirming bounded remote discovery and no installation. There is no new WordPress Ability, role grant, OAuth, provider source trust, production runtime or external mutation. This is CI-only source review, not signed deployment proof."
+    }
+  ],
+  "authorizing": false,
+  "production_authorized": false,
+  "source_promotion_approved": false,
+  "is_build_provenance": false,
+  "live_evidence_required": true,
+  "release_gate": "BLOCKED_SOURCE_RECONCILIATION"
+}

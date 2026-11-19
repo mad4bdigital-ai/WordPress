@@ -1,0 +1,51 @@
+{
+  "contract": "mad4b.wayfa-candidate-source-subsumption-ci-only.v1",
+  "date": "2026-11-19",
+  "historical_archive_required": true,
+  "production_authorized": false,
+  "site_live_modified": false,
+  "parent_summary": "rc128-wayfa-rc129-merge-preview-20261119.json",
+  "reviewed_candidate_files": [
+    {
+      "path": "includes/adapters/class-mad4b-scp-skills-adapter.php",
+      "source_sha256": "40a17ebb06e45568e9e19a40b3a862152f054edcced66c655422686f4adba620",
+      "rationale": "Existing two live read abilities are contained in candidate read list, along with four additional bounded read abilities; candidate admin and content capability groups remain empty.",
+      "original_live_blob_may_not_be_discarded_without_final_release_review": true
+    },
+    {
+      "path": "includes/class-mad4b-scp-brand-context-builder.php",
+      "source_sha256": "a7530a45db2e018ea57a47c9752c546fe30a86db9bf279c6dffca647f892b36d",
+      "rationale": "Candidate retains foreign-brand negative evidence and adds verified source/site brand binding and exact reviewed content digest before considering assets approved.",
+      "original_live_blob_may_not_be_discarded_without_final_release_review": true
+    },
+    {
+      "path": "includes/class-mad4b-scp-content-job-structural-qa.php",
+      "source_sha256": "f0f185b17ef071fafc781e0e53623cbe8d8d45680bcb0955a2dbf5ffcd434124",
+      "rationale": "Candidate requires typed Site Profile, strict authority_ready, original write acceptance, both post ACL checks and independent operational-integrity capture; weaker live loose truthiness is not inherited.",
+      "original_live_blob_may_not_be_discarded_without_final_release_review": true
+    },
+    {
+      "path": "includes/class-mad4b-scp-research-task-bridge.php",
+      "source_sha256": "e25e3080ffe2ddaeba81a21d339aed80b56ffe80b16c7d46e572fe052e6cecc7",
+      "rationale": "Candidate requires exact enrolled Site Profile authority_ready and origin_match plus affirmative manage_options; it fails closed on exceptions, preserving the live administrator ceiling.",
+      "original_live_blob_may_not_be_discarded_without_final_release_review": true
+    },
+    {
+      "path": "includes/class-mad4b-scp-skill-registry.php",
+      "source_sha256": "b184e6962d543905e6d14937358feb03863106cb00e5ce30b39374c8a625570d",
+      "rationale": "Candidate retains company Skills read catalog but requires strict true enrollment and URL origin binding; the separate authoring and write gates remain unchanged.",
+      "original_live_blob_may_not_be_discarded_without_final_release_review": true
+    }
+  ],
+  "reviewed": 5,
+  "remaining_conflicts": 21,
+  "unit_regression": "ops/wayfa-runtime-gate-preflight-v1/tests/test_five_reviewed_source_subsumptions.py",
+  "exact_private_evidence": "955-exact-archive-three-way-diff3-v4.json",
+  "ongoing_blockers": [
+    "21 manually conflicting code files",
+    "16 unmanifested live PHP files require classification",
+    "7 prior offline source fixtures still fail",
+    "signed release build and enrolled-owner production approval absent"
+  ],
+  "not_an_authorization_receipt": true
+}

@@ -189,6 +189,16 @@ final class MAD4B_SCP_Provider_Field_Intelligence {
     public static function discover($input=[]){
         if(!is_array($input)||array_diff(array_keys($input),['object','subtype','only_media','limit']))
             return new WP_Error('mad4b_provider_fields_invalid_input','Only bounded discovery parameters allowed.');
+        // An unbound/foreign site must not discover even the existence of
+        // provider objects or field names. Verify the site before probing
+        // post_type_exists(), taxonomy_exists() or any provider registry.
+        $site=class_exists('MAD4B_SCP_Site_Profile',false)
+            ?MAD4B_SCP_Site_Profile::status():[];
+        if(!is_array($site)||empty($site['site_uuid'])
+            ||($site['origin_match']??null)!==true
+            ||($site['environment_match']??null)!==true
+            ||($site['deployment_binding_match']??null)!==true)
+            return new WP_Error('mad4b_provider_fields_site_unverified','Exact enrolled Site Profile required.');
         $object=(string)($input['object']??'post');
         // A missing explicit subtype must be tenant-neutral; callers requesting tours pass their CPT.
         $subtype=(string)($input['subtype']??'post');
@@ -198,11 +208,6 @@ final class MAD4B_SCP_Provider_Field_Intelligence {
             ||($object==='term'&&!taxonomy_exists($subtype)))
             return new WP_Error('mad4b_provider_fields_unknown_object','Exact registered object is required.');
         $limit=max(1,min(self::LIMIT,(int)($input['limit']??self::LIMIT)));
-        $site=class_exists('MAD4B_SCP_Site_Profile',false)
-            ?MAD4B_SCP_Site_Profile::status():[];
-        if(empty($site['site_uuid'])||empty($site['origin_match'])
-            ||empty($site['environment_match'])||empty($site['deployment_binding_match']))
-            return new WP_Error('mad4b_provider_fields_site_unverified','Exact enrolled Site Profile required.');
         $fields=[];
         self::core($fields,$object,$subtype);
         $jet=self::jetengine($fields,$subtype);

@@ -1,0 +1,27 @@
+{
+  "contract": "mad4b.qa31-rc129-dormant-ollama-bootstrap-review.v1",
+  "source_commit": "cba6f6547ac0700dbf4eb16c75668bb2c4d86b02",
+  "previous_review_path": "governance/release-parity/qa31-rc129-host-agent-integration-successors-20261118.json",
+  "previous_review_sha256": "3184e983d42404f7792c1784dca621bba33570f8b199b1a22a78c1293f16493e",
+  "source_path": "mad4b-site-control-plane.php",
+  "previous_git_blob_sha": "dcae0a0a32495bfcedd4300fd78a8ec765235697",
+  "previous_sha256": "9e20c4a6eb57b884bf31c5959a4bc7895717b0d9497d94def27c0e41343f7977",
+  "current_git_blob_sha": "2c497ec72c57f420d1abf1eef242748be40f7bb2",
+  "current_sha256": "5ad46a5c6028fdc2a31e74e48e16f54423e3d38666bc2276131b84a6c1c50119",
+  "exact_delta": "one-only: old Ollama require becomes a dormant source-only comment",
+  "required_regression": "tests/qa31_dormant_ollama_bootstrap_successor_contract.py",
+  "control_ids": [
+    "AI-01",
+    "GOVERNANCE-01",
+    "SECURITY-01"
+  ],
+  "owner_role": "Repository source/security reviewer, CI-only; not WordPress enrolled owner",
+  "review_rationale": "The only source change since the independently pinned Host Agent main plugin bootstrap is replacement of one unconditional local Ollama PHP require with a dormant, non-executable comment. The prior bootstrap is reconstructed byte-exactly and matched to the frozen Host review. This never grants Local AI, Host, Production or deployment authority.",
+  "reviewed_for_ci_only": true,
+  "authorizing": false,
+  "production_authorized": false,
+  "source_promotion_approved": false,
+  "live_evidence_required": true,
+  "is_build_provenance": false,
+  "release_gate": "BLOCKED_SOURCE_RECONCILIATION"
+}
