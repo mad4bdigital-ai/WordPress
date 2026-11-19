@@ -1,11 +1,11 @@
 {
   "contract": "mad4b.change-slices.v2",
   "authorizing": false,
-  "reviewed_base_sha": "d3bf8b07244840175ab1611e2ae1b426a6542b6d",
+  "reviewed_base_sha": "6eff0b29e1322db30a818e2f9169206ddce6671e",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 38,
-  "changed_paths_sha256": "0032cef94ed881eeb2360b0e5fbb945789fc6fe8d366c1b148173cb98ac84120",
+  "changed_file_count": 42,
+  "changed_paths_sha256": "88ee423191c5508d92e1e7080c04e03628d10878f645373af564529df588f834",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -406,6 +406,18 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-connector-vault.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-host-source-release-review.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-original305-incident-review.php"
+      ]
+    },
+    {
+      "id": "original-background-agent-authority-review-from-pr898",
+      "semantic_unit": "Source-only review of PR898 frozen original Background Agent Admission, Dispatch, Execution Authority and the exact hermetic deny-by-default fixture.",
+      "revert_boundary": "These three authority source files and their hermetic fixture revert together; do not activate any agent, write grant, host certificate, scheduler, or Production action.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-background-agent-admission.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-background-agent-dispatch.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-authority.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-agent-authority-source-only-runtime.php"
       ]
     }
   ]
