@@ -1,0 +1,24 @@
+{
+  "authority": "exact_live_source_backed",
+  "contract": "mad4b.form6.source-owned-permanent-stay-ui.v1",
+  "date": "2026-11-18",
+  "deployment_allowed_by_this_manifest": false,
+  "no_woocommerce_financial_writes": true,
+  "paths": {
+    "payload/host/bin/company-form6-asset-cache-reconciler-v1.py": "c99ac2ddf655b051e77c4398c46e6314ef862fba3802d449e9ead75899c44dca",
+    "payload/host/systemd/mad4b-form6-permanent-assets-source.path": "9e666e67eb7340d83d64d445f7e4a2491a0f20dd01dfad5c2c40fbc67111d2df",
+    "payload/host/systemd/mad4b-form6-permanent-assets-source.service": "dd75572b66ea4663f4fcf2da83863888e8316d42337d690258ddc6d3dc56a0d7",
+    "payload/host/systemd/mad4b-form6-permanent-assets-source.timer": "37a765a352f085921c8d67c0c67303eac3fc9c347cfb1a369cafadcc5c112c06",
+    "payload/host/systemd/mad4b-form6-permanent-assets-wayfa.path": "f7bcb7a1226ae0b54acc138fd4cef27b9af47bc3f9fcdf2b2335c9d000e1f08a",
+    "payload/host/systemd/mad4b-form6-permanent-assets-wayfa.service": "7b5fa68fcc83369023075d502208ea7dbf0377460a578306499935b8716f0f8f",
+    "payload/host/systemd/mad4b-form6-permanent-assets-wayfa.timer": "e8d3adfbe54ba9304e06b62912529cbb0b4ec5b1c4b93d380b3ea2d29a926e0b",
+    "payload/wordpress/mu-plugins/mad4b-pricing-cache-inheritance.php": "590a06a5021bcb25a3572e3a0e5564380686152cc9a090e2deedd12ad22a2dd5",
+    "payload/wordpress/mu-plugins/shared-product-core/adapters/presentation-form6-occupancy-policy-v1.php": "1432eea5c39630d7c754514f6592f11cd70759875cd1406bba589ccae67ee6f0",
+    "payload/wordpress/mu-plugins/shared-product-core/assets/presentation-fluent-quote-v1.js": "1076cadc4a383fb0216d3feaa8588302cff0908fa3172bd7be9d4b640cad214e",
+    "payload/wordpress/plugins/mad4b-commerce/modules/compat/local-presentation-fluent-projection-v1.php": "8399851cb40301ef897c1998a546cdde5017bfde4ef32db4312d8c5f7ceaf925"
+  },
+  "post_deploy_live_validation": "same selected Rate, derived Property, trusted stay catalog, and no duplicate room editor",
+  "runtime_delivery": "source_owned_immutable_SHA_asset_with_bounded_cache_generation",
+  "source_origin": "tours.dev.mad4b.com and wayfatours.com reviewed byte-for-byte",
+  "stale_browser_limit": "Existing open tabs refresh to acquire a new entrypoint; persistent cached HTML is versioned at origin"
+}
