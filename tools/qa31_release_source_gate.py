@@ -594,6 +594,68 @@ def reviewed_rc129_company_staff_ceiling_successor(repo:Path,path:str,contents:b
         return None
 
 
+def reviewed_rc129_company_email_recipient_safety_successor(repo:Path,path:str,contents:bytes):
+    """Exact non-authorizing live recipient policy hardening; no mail writes."""
+    name='includes/class-mad4b-scp-company-email-routing.php'
+    if path!=name or not isinstance(contents,bytes):return None
+    previous=repo/'governance/release-parity/qa31-rc129-reviewed-successors-20261118.json'
+    manifest=repo/'governance/release-parity/qa31-rc129-company-email-recipient-safety-successor-20261119.json'
+    old_blob='65a3e14d0738e66bf86d9268fa6ba941523ce669'
+    old_sha='094517b0cdf5e117dc6d6f1a7ea78a49d6e2cbfb4cd6c5fed473fa99051114a6'
+    new_blob='a722124f023290f6fe2f167cf04c02fb413e647d'
+    new_sha='77379941659f3a87591d7fb545309cf18f7d0ea9dfc3a1ba7bde51ffbefafe83'
+    frozen_prior_sha='dce059a5058b66cc1cb5f6d4cd01aab24b1e6b75a8fba6a1655579de038ff821'
+    regression='tests/company-email-routing-original-hermetic.php'
+    negative='tests/qa31_company_email_recipient_safety_successor_contract.py'
+    ids=['GOVERNANCE-01','PLATFORM-01','SECURITY-01','EXECUTION-01']
+    try:
+        m=json.loads(manifest.read_text(encoding='utf-8'))
+        prior_text=previous.read_text(encoding='utf-8')
+        prior=json.loads(prior_text)
+        old=next(e for e in prior['reviewed_entries'] if e.get('path')==path)
+        controls=json.loads((repo/'governance/production-readiness/controls.json').read_text())
+        known={x['id'] for x in controls.get('controls',[]) if isinstance(x,dict)}
+        if (digest(previous)!=frozen_prior_sha
+            or m.get('contract')!='mad4b.qa31-rc129-company-email-recipient-safety.v1'
+            or m.get('source_path')!=name
+            or m.get('prior_review_path')!='governance/release-parity/qa31-rc129-reviewed-successors-20261118.json'
+            or m.get('prior_review_sha256')!=frozen_prior_sha
+            or old.get('current_git_blob_sha')!=old_blob
+            or old.get('current_sha256')!=old_sha
+            or m.get('previous_source_git_blob_sha')!=old_blob
+            or m.get('previous_source_sha256')!=old_sha
+            or m.get('current_source_git_blob_sha')!=new_blob
+            or m.get('current_source_sha256')!=new_sha
+            or m.get('required_regression')!=regression
+            or m.get('qa31_negative_regression')!=negative
+            or m.get('control_ids')!=ids or not set(ids)<=known
+            or len(str(m.get('review_rationale','')))<130
+            or m.get('native_notification_writes_added') is not False
+            or m.get('authorizing') is not False or m.get('production_authorized') is not False
+            or m.get('source_promotion_approved') is not False or m.get('is_build_provenance') is not False
+            or m.get('live_evidence_required') is not True or m.get('reviewed_for_ci_only') is not True
+            or m.get('release_gate')!='BLOCKED_SOURCE_RECONCILIATION'
+            or not (repo/regression).is_file() or (repo/regression).is_symlink()
+            or not (repo/negative).is_file() or (repo/negative).is_symlink()
+            or hashlib.sha256(contents).hexdigest()!=new_sha
+            or hashlib.sha1(b'blob '+str(len(contents)).encode('ascii')+b'\0'+contents).hexdigest()!=new_blob):
+            return None
+        body=contents.decode('utf-8')
+        section=body[body.index('public static function fluent_form_recipient('):body.index('public static function readiness_issues(')]
+        needles=(
+            "['reservation_company_v1', 'company_contact_v1'], true",
+            "return $managed ? '' : $address;",
+            "if ($formId !== 6 && !$boundForm && !$managed) return $address;",
+            "if (true !== MAD4B_SCP_Company_Communication::canSend()) return '';",
+            "if (count($matched) !== 1) return '';",
+            "hash_equals((string)$binding['source_sha256']",
+        )
+        if not all(token in section for token in needles):return None
+        return regression
+    except (OSError,ValueError,KeyError,TypeError,StopIteration,UnicodeError):
+        return None
+
+
 def reviewed_rc129_context_title_authority_successor(repo:Path,path:str,contents:bytes):
     """Exact source-only Context classification hardening, no release authority."""
     name='includes/class-mad4b-scp-context-authority.php'
@@ -678,6 +740,8 @@ def reviewed_ci_only_source_successor(root:Path,path:str,contents:bytes)->bool:
     requested=reviewed_rc129_dormant_ollama_bootstrap_successor(repo,path,contents)
     if requested is None:
         requested=reviewed_rc129_wayfa_source_followup_successor(repo,path,contents)
+    if requested is None:
+        requested=reviewed_rc129_company_email_recipient_safety_successor(repo,path,contents)
     if requested is None:
         requested=reviewed_rc129_context_title_authority_successor(repo,path,contents)
     if requested is None:

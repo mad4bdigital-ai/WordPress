@@ -30,13 +30,14 @@ $wpdb=new OriginalWpDb();
 class MAD4B_SCP_Company_Communication {
  public static $send=false;
  public static $smtp=true;
+ public static $routing='enabled';
  public static function config(){return [
   'company_display_name'=>'Wayfa Tours',
   'transactional_from_email'=>'bookings@wayfatours.com',
   'traveler_reply_to'=>'traveler@wayfatours.com',
   'bookings_inbox'=>'bookings@wayfatours.com',
   'outbound_email_policy'=>'enabled',
-  'fluent_forms_routing_policy'=>'enabled',
+  'fluent_forms_routing_policy'=>self::$routing,
   'notify_traveler'=>'enabled',
  ];}
  public static function smtpConfigured(){return self::$smtp;}
@@ -126,5 +127,37 @@ $email=$c::fluent_form_recipient('outside@example.com',[
 email_assert($email==='','Changed feed hash cannot reuse historical binding');
 MAD4B_SCP_Site_Profile::$uuid='22222222-2222-4222-8222-222222222222';
 email_assert($c::bindings()===[],'Wrong company Site UUID cannot inherit existing notification binding');
+
+// Prior Wayfatours native owner stamps are never permission to reuse the
+// notification's stale stored address, even if routing was later disabled.
+MAD4B_SCP_Company_Communication::$routing='disabled';
+foreach(['reservation_company_v1','company_contact_v1'] as $owner) {
+ $managed=['mad4b_native_owner'=>$owner,'name'=>'Booking Request',
+          'sendTo'=>['type'=>'email','email'=>'old@outside.test']];
+ email_assert($c::fluent_form_recipient('old@outside.test',$managed,[],$form)==='',
+  'Disabled company routing must never fall through to persisted '.$owner.' recipient');
+ email_assert($c::fluent_form_recipient('old@outside.test',$managed,[],null)==='',
+  'Malformed native owner form must fail closed '.$owner);
+}
+email_assert($c::fluent_form_recipient('unrelated@outside.test',
+ ['name'=>'Other','sendTo'=>['type'=>'email']],[],(object)['id'=>18])==='unrelated@outside.test',
+ 'Noncompany Fluent Forms notifications must retain original address when routing disabled');
+MAD4B_SCP_Company_Communication::$routing='enabled';
+email_assert($c::fluent_form_recipient('unrelated@outside.test',
+ ['name'=>'Other','sendTo'=>['type'=>'email']],[],(object)['id'=>18])==='unrelated@outside.test',
+ 'Enabled company routing must not hijack unrelated native forms');
+email_assert($c::fluent_form_recipient('unrelated@outside.test',
+ ['name'=>'Other','sendTo'=>['type'=>'email']],[],null)==='unrelated@outside.test',
+ 'Invalid unrelated form must remain native when not company owned');
+$managed=['mad4b_native_owner'=>'reservation_company_v1',
+  'name'=>'Booking Request','sendTo'=>['type'=>'email']];
+email_assert($c::fluent_form_recipient('old@outside.test',$managed,[],$form)==='',
+ 'A managed feed on cloned/changed Site UUID must fail closed despite matching old form');
+MAD4B_SCP_Site_Profile::$uuid='11111111-1111-4111-8111-111111111111';
+$wpdb->record=$record;
+MAD4B_SCP_Company_Communication::$send=new WP_Error('denied');
+email_assert($c::fluent_form_recipient('old@outside.test',$managed,[],$form)==='',
+ 'Managed native mail cannot send when canSend returns WP_Error');
+MAD4B_SCP_Company_Communication::$send=true;
 echo 'PASS: COMPANY_EMAIL_ROUTING '.($GLOBALS['checks']??0).
  ' original cross-company and no-send preview checks'.PHP_EOL;

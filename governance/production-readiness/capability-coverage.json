@@ -24072,6 +24072,25 @@
       "live_evidence_required": true,
       "review_rationale": "Exact source update retains rc129 Context Authority while restricting inferred Brand Core, Tone and Editorial authority to explicit document titles rather than path or body references. Previously indexed automatically classified assets must be reindexed under exact registry revision before any approval. A real seven-PHP-fixture Context source contract plus source-wide Context contract and PHP 7.4/8.5 title/old-classification regressions run locally. This is a non-authorizing source review; other live Context differences remain unresolved and no Production release, owner consent, grant or site mutation is conferred. Already approved automatic records whose title-only classification drifts are excluded from ready Brand Core coverage, even when historical content hash receipts match.",
       "execution_note": "Only source-only title/reindex hardening; 21 original Wayfatours merge conflicts remain independent and no Production rollout is admitted. Prior independent Context review suites were re-run locally; this exact behavioral change maps only to the revised same-PR title-classification PHP fixture, per the immutable Readiness coverage requirement."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-email-routing.php",
+      "source_blob_sha": "a722124f023290f6fe2f167cf04c02fb413e647d",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/company-email-routing-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B source/security reviewer, CI-only; not authenticated Wayfatours Production Site Owner",
+      "review_rationale": "The prior rc129 company email router enforced exact boolean sending and site/recipient SHA binding, but lacked the live Wayfatours native owner-stamp suppression after routing was disabled and could interfere with unrelated Fluent Forms notifications. This source-only merge restores both behaviors without weakening strict boolean canSend, exact Site UUID, identity verification or feed hash readback. Hermetic PHP 7.4/8.5 now covers 21 positive/negative cases, with no real mail send. The separate 300+ line native scheduling and notification write lifecycle was explicitly withheld for independent owner-bound reconciliation.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "execution_note": "Only the existing opt-in email filter is made site/owner safe. Original Wayfatours cron and native Fluent Forms SettingsService writes are not included."
     }
   ],
   "code_change_rules": {

@@ -195,8 +195,30 @@ final class MAD4B_SCP_Company_Email_Routing {
     public static function fluent_form_recipient($address, $notification, $submitted, $form) {
         self::ensure_company_source();
         $config = MAD4B_SCP_Company_Communication::config();
-        if ($config['fluent_forms_routing_policy'] !== 'enabled') return $address;
-        if (!is_object($form) || !is_array($notification)) return '';
+        // A previously created MAD4B-owned feed must never fall back to a
+        // persisted third-party address when company routing is disabled.
+        // Unrelated forms remain governed by their own native notifications.
+        $managed = is_array($notification) && in_array(
+            (string)($notification['mad4b_native_owner'] ?? ''),
+            ['reservation_company_v1', 'company_contact_v1'], true
+        );
+        if (($config['fluent_forms_routing_policy'] ?? '') !== 'enabled')
+            return $managed ? '' : $address;
+        if (!is_object($form) || !is_array($notification))
+            return $managed ? '' : $address;
+        $formId = (int)($form->id ?? 0);
+        $entries = self::bindings();
+        $boundForm = false;
+        foreach ($entries as $entry) {
+            if (is_array($entry) && ($entry['consumer'] ?? '') === 'fluent_forms'
+                && (int)($entry['form_id'] ?? 0) === $formId) {
+                $boundForm = true;
+                break;
+            }
+        }
+        // Booking form 6 is governed even before its first binding; other
+        // explicitly linked forms are governed regardless of origin.
+        if ($formId !== 6 && !$boundForm && !$managed) return $address;
         if (true !== MAD4B_SCP_Company_Communication::canSend()) return '';
         $type = (string)($notification['sendTo']['type'] ?? '');
         if ($type !== 'email') {
@@ -204,9 +226,8 @@ final class MAD4B_SCP_Company_Email_Routing {
         }
         $name = (string)($notification['name'] ?? '');
         if ($name === '') return '';
-        $formId = (int)($form->id ?? 0);
         $matched = [];
-        foreach (self::bindings() as $entry) {
+        foreach ($entries as $entry) {
             if (!is_array($entry) || ($entry['consumer'] ?? '') !== 'fluent_forms') continue;
             if ((int)($entry['form_id'] ?? 0) !== $formId) continue;
             if (($entry['notification_name'] ?? '') !== $name) continue;
