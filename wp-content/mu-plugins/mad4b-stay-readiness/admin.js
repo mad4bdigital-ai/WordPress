@@ -46,7 +46,7 @@
       ['Priority Draft',summary.draft_published_property],
       ['Draft Property',summary.draft_draft_property],
       ['QA / Test',summary.qa],
-      ['Physical inventory set',summary.total-summary.missing_inventory],
+      ['Stock management',summary.stock_quantity_required?'Required':'Off · accommodation'],
       ['Selling price configured',summary.direct_sell_configured],
       ['Commercial ready',summary.commercially_ready]
     ];
