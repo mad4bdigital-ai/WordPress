@@ -135,3 +135,27 @@ Wayfatours Production, with the same accommodation-only inventory policy deploye
 
 ## Commercial blocks
 Real company-approved selling prices, child/occupancy capacity, verified room variants, Rate validity, the financial ledger and booking authorization remain separate, unresolved work. Draft/QA rates cannot be published automatically.
+
+## Sixth wave — Sonesta exact partner-category photo (19 November 2026)
+- Owner-directed use of a publicly reachable Sonesta Tower Executive photo
+  from a partner room-category page, NOT Sonesta's own official website.
+  Unit 70873 and relation to Property 70733 confirmed.
+- Source: AwayHolidays category page, media served by roomtypestorage.imgix.net;
+  photo 1400x900, SHA-256
+  1a9eb4f129b78714595192f85b58f466f33680e2f8aafe6b2bea750b1f139562.
+- Added an exact-URL and exact-Unit exception, not a global host allowlist.
+  Native Unit Featured Image and gallery were populated after WP-CLI preflight.
+- Attachment 71409 intact, Unit 70873 remains Draft. Original reference and
+  gap retained; a separate photo-gap-resolution record closes current gap.
+- Public visibility does not verify copyright clearance. The media source
+  is marked partner/non-official and rights_independently_verified=false.
+- Production outcome: 129 curated Draft Units, 130 Featured Images, 131 Unit
+  galleries, in 148 Unit records. Legitimate Draft Units 70905 (Hilton Cairo
+  Heliopolis) and 70893 (Fairmont Nile City) remain without imagery.
+  Quarantined bad-import Unit 37555 remains without photo, and 14 QA records
+  remain excluded.
+- Fairmont KGB's three official room gallery images were compared with KGA:
+  all three SHA-256 values duplicate KGA's images in a different ordering.
+  Re-encoding or cropping those files would not be a legitimate new photo.
+- An unrelated Hilton pool/cabana partner photo does not establish that it
+  depicts exact Guest Room Pool View category. The original Hilton URL 404s.
