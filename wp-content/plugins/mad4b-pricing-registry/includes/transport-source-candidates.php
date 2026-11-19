@@ -50,6 +50,57 @@ final class MAD4B_Transport_Source_Candidates_V1 {
             'mutation_performed' => false, 'checkout_authorized' => false);
     }
 
+    public static function review_rows(string $city=''): array {
+        $source = require dirname(__DIR__).'/data/transportation-2026-source-candidates.php';
+        if (!is_array($source) || !is_array($source['rows']??null)) return array();
+        $allowed = array('','Cairo','Aswan','Luxor');
+        if (!in_array($city,$allowed,true)) $city='';
+        return array_values(array_filter($source['rows'],static fn($r) =>
+            $city==='' || ($r['origin_city']??'')===$city));
+    }
+
+    public static function review_table(): void {
+        if (!MAD4B_Transport_Pricing_Readiness_V1::permitted()) return;
+        $city = isset($_GET['transport_city']) ?
+            sanitize_text_field(wp_unslash((string)$_GET['transport_city'])) : '';
+        if (!in_array($city,array('','Cairo','Aswan','Luxor'),true)) $city='';
+        $rows=self::review_rows($city);
+        echo '<h3>2026 source-rate matrix — verification queue</h3>';
+        echo '<form method="get" action="'.esc_url(admin_url('tools.php')).'">';
+        echo '<input type="hidden" name="page" value="mad4b-transport-pricing-readiness">';
+        echo '<label for="mad4b-transport-city">Origin city</label> ';
+        echo '<select id="mad4b-transport-city" name="transport_city">';
+        foreach (array(''=>'All origins','Cairo'=>'Cairo','Aswan'=>'Aswan','Luxor'=>'Luxor') as $key=>$label) {
+            echo '<option value="'.esc_attr($key).'" '.selected($city,$key,false).'>'.
+                esc_html($label).'</option>';
+        }
+        echo '</select> <button type="submit" class="button">Filter</button></form>';
+        echo '<p>All amounts below are copied from the supplier PDF, with no confirmed currency or cost/selling status. ';
+        echo 'The missing H1 prices and Luxor row 23 remain blank; these are not zero prices.</p>';
+        echo '<div style="max-width:100%;overflow-x:auto"><table class="widefat striped"><thead><tr>';
+        foreach (array('Origin','Source row','Operation','Limousine','Luxury 7 seats / H1',
+            'Hiace','Coaster','Bus','Validation') as $head)
+             echo '<th scope="col">'.esc_html($head).'</th>';
+        echo '</tr></thead><tbody>';
+        foreach ($rows as $r) {
+            echo '<tr><td>'.esc_html($r['origin_city']??'').'</td><td>'.
+                 esc_html((string)($r['source_row']??'')).'</td><td>'.
+                 esc_html($r['operating_statement_ar']??'').'</td>';
+            foreach (array('limousine','luxury_7_seats','hiace','coaster','bus') as $k) {
+                // H1 is unpriced in Aswan/Luxor; the CSV column is used only
+                // as a positional placeholder and is not a sellable vehicle.
+                $v=(string)($r[$k]??'');
+                echo '<td>'.($v===''?'—':esc_html($v)).'</td>';
+            }
+            $note=(string)($r['review_note']??'');
+            echo '<td>'.esc_html($note===''?'Currency + role unconfirmed':$note).
+                '</td></tr>';
+        }
+        echo '</tbody></table></div>';
+        echo '<p><em>These are vendor quotation candidates only. Commercial approval, current availability, ';
+        echo 'currency and expiry require independent confirmation.</em></p>';
+    }
+
     public static function rest(): void {
         register_rest_route('mad4b-pricing/v1','/transport-source-candidates',array(
             'methods'=>'GET', 'callback'=>static fn()=>rest_ensure_response(self::snapshot()),
@@ -78,6 +129,7 @@ final class MAD4B_Transport_Source_Candidates_V1 {
             foreach ($visible as $item) echo '<tr><td>'.esc_html($item['row']).'</td><td>'.esc_html($item['issue']).'</td></tr>';
             echo '</tbody></table>';
         }
+        self::review_table();
         echo '<p><em>Not for sale. Does not modify Transport Rates CCT or the Tour Rate Generator.</em></p>';
     }
 }

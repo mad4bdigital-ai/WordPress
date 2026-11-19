@@ -158,3 +158,46 @@ not changed since migration. It leaves all rates, prices and bookings intact.
 other languages, resolving the two historical mismatched/expired rates,
 supplier data approval, activating 2026 candidate rates, and wiring new pricing
 dimensions into the signed commercial calculation path.
+
+## Continued execution: market-aware display and supplier review (2026-11-19)
+
+- The live Tours.dev staging version of Pricing Source Registry contained an
+  extra child_ages accepted input in quote dispatch. The local branch now
+  carries that live behavior forward; the staging file was not overwritten
+  with an older Git copy.
+- A display-only adapter in includes/transport-market-display.php replaces
+  **only** the existing [transport_rate_catalog] shortcode registration.
+  It delegates to the existing BookingExperience transport_rate_candidates,
+  transport_rate_eligible, and transport_rate_preview providers, using the
+  current WPML language and approved Market Profile context.
+- The market-scoped quote is nonbinding, with one explicitly labeled price
+  unit. Unapproved, expired, ineligible or provider-invalid rates display
+  **On request**, without leaking an unapproved base amount or claiming stock.
+  The existing checkout and tax authority remain unchanged.
+- Source rates are visible as a review table under
+  Tools → Transport Pricing Readiness, with city filters for Cairo, Aswan and
+  Luxor. The source data is immutable and the table is commerce-admin only.
+- Source audit verifies SHA-256 of the PDF, 51 operations and 210 price cells,
+  Cairo column mapping (Luxury 7 seats = 1400; Hiace = 1600 on row 1),
+  blank H1 values in Aswan/Luxor, and flags Luxor row 7's anomalous
+  vehicle-price order and row 23's missing prices.
+- Source currency and cost-vs-selling status remain unidentified. **No
+  commercial rate was imported or approved from the PDF.**
+- 16/16 hermetic tests for the new display adapter and 15/15 tests for the
+  source matrix passed. PHP syntax and live staging homepage HTTP 200 passed.
+- The reversible tools/quarantine-legacy-transport-cpt-rates.php script
+  now provides strict dry-run/apply/rollback for historical rate post IDs
+  66570 and 66571. It retains old CCT originals and Mode/Type metadata,
+  and would only change published CPT status to Draft and stop_sale=true,
+  after confirming CCT IDs, parent, mismatch, and expired validity.
+- **Legacy quarantine is not applied** in this slice: staging WP-CLI
+  reported STAGING_WPCLI_BUSY because two other CLI sessions were active.
+  Do not bypass the concurrency gate or report these records as quarantined.
+
+### Remaining supplier authority
+
+Before commercial import/approval, obtain supplier-confirmed source currency
+(do not infer EGP), cost-versus-sale role, valid end dates, route and
+vehicle-category linkage, and corrections for the two Luxor anomalies.
+Only then create deterministic per-vehicle Transport Rate CPT drafts and
+submit them to the existing Rate approval and Market Profile policies.
