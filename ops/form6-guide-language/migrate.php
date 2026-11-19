@@ -38,13 +38,13 @@ foreach($terms as $term) {
 if(count($options)<2) WP_CLI::error('Not enough guide language choices');
 $template=null;
 foreach($form['fields'] as $i=>$field) {
-  if(($field['element']??'')==='select' && ($field['attributes']['name']??'')==='dropdownitenary') {
+  if(($field['element']??'')==='input_number' && ($field['attributes']['name']??'')==='no_of_adults') {
     $template=$field;
-    $insert_at=$i+1;
+    $insert_at=$i;
     break;
   }
 }
-if(!$template) WP_CLI::error('Itinerary select anchor absent');
+if(!$template) WP_CLI::error('Adults field anchor absent');
 $template['index']=count($form['fields'])+1;
 $template['attributes']=['name'=>'guide_language','value'=>'','id'=>'','class'=>''];
 $template['settings']['dynamic_default_value']='';
