@@ -1,0 +1,28 @@
+{
+  "changed_entries": 74,
+  "changed_files_different_from_toursdev": 19,
+  "changed_files_matching_one_of_six_git_refs": 28,
+  "changed_files_matching_toursdev": 55,
+  "contract": "mad4b.wayfa-production-source-preflight-summary.v1",
+  "date": "2026-11-19",
+  "declared_original_source_commit_found": false,
+  "extra_classes": {
+    "assets_or_data": 8,
+    "backup": 68,
+    "other": 7,
+    "unmanifested_php": 16
+  },
+  "extra_php_referenced_in_code": 13,
+  "live_plugin_files_modified_by_this_preflight": false,
+  "manifest_entries": 955,
+  "matching_entries": 881,
+  "missing_entries": 0,
+  "original_manifest_sha256": "38f80f590b5903555fbddf9a564270a3b8576f5c651d4687506948dcd57222b2",
+  "owner_manual_plan_error": "mad4b_runtime_gates_provenance_not_ready",
+  "production_auto_enable": false,
+  "production_mutation_enabled": false,
+  "raw_sql_gates_enabled": false,
+  "read_only": true,
+  "status": "blocked_until_reviewed_source_build_and_real_owner_approval",
+  "unmanifested_files": 99
+}
