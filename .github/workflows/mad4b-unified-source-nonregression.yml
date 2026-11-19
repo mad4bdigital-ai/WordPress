@@ -8,6 +8,8 @@ on:
     paths:
       - '.github/workflows/mad4b-unified-source-nonregression.yml'
       - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'tests/pr946_legacy_source_successor_review.py'
+      - 'docs/source-reconciliation/pr946-legacy-source-regression-triage-20261119.json'
       - 'ops/company-code-release-v1/**'
       # Keep navigation cache-busting and portable release assets from drifting.
       - 'ops/destination-demand-ranking/**'
@@ -224,6 +226,10 @@ jobs:
           php tests/guided-continuation-write-surface-denial-hermetic.php
           php tests/core-ai-governance-usage-and-admission-hermetic.php
           php tests/provider-field-intelligence-site-readonly-php74-hermetic.php
+          # Reconcile seven historical SHA/no-bootstrap probes only against
+          # exact current source + real denied-operation PHP behavior.
+          # This is CI-only; historic probes remain frozen and release blocked.
+          python3 tests/pr946_legacy_source_successor_review.py --execute
           php wp-content/plugins/mad4b-site-control-plane/tests/qa30-native-general-settings-rest-lifecycle.php
           php tests/presentation-integrity-jetengine-source-hermetic.php
           php tests/presentation-browser-evidence-local-import-hermetic.php

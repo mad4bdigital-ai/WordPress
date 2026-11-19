@@ -66,3 +66,10 @@ Review-only source candidate preserving the live Wayfatours accommodation pricin
 - Corrected the Visual SEO test fixture to use a valid Site Profile UUID; verified read-only outcomes remain enforced.
 - Following integration ab3fa778, the Skills source parity test passes without a test change.
 - Updated isolated PHP verification: 3 of the 10 previously failing source tests now pass; 7 frozen-source/bootstrap source-drift cases remain failing. The latter are independent source-regression issues, not a self-pricing pass.
+
+## PR946 historical source successor execution (CI-only, no promotion)
+
+- Seven historical SHA/no-autoboot probes remain unchanged and explicitly FAIL against current rc.129 source. Never rebaseline them silently.
+- Added tests/pr946_legacy_source_successor_review.py. It binds each current module to its reviewed live-source SHA and exact prior historical test; checks reviewed bootstrap inclusion counts; rejects tampering, and executes seven existing first-party behavioral PHP fixtures.
+- Every successor fixture passed in a fresh read-only PHP 8.5 container without network. A passing current behavior is not approval to erase frozen ancestry proofs.
+- GitHub Unified Source Nonregression runs this exact review on PHP 8.3 before proceeding; release gate stays blocked pending independent disposition of seven historical probes.
