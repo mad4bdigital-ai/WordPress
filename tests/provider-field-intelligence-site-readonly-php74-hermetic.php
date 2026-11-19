@@ -8,6 +8,11 @@ define('ABSPATH',__DIR__.'/');
 define('ARRAY_A','ARRAY_A');
 $GLOBALS['field_admin']=false;
 $GLOBALS['field_site_ready']=true;
+$GLOBALS['field_environment_ready']=true;
+$GLOBALS['field_deployment_ready']=true;
+$GLOBALS['field_uuid_ready']=true;
+$GLOBALS['field_schema_probes']=0;
+$GLOBALS['field_db_probes']=0;
 $GLOBALS['field_routes']=[];
 $GLOBALS['field_hooks']=[];
 $GLOBALS['field_values_read']=0;
@@ -25,7 +30,7 @@ function rest_ensure_response($r){return $r;}
 function wp_json_encode($data,$flags=0){return json_encode($data,$flags);}
 function absint($v){return abs((int)$v);}
 function sanitize_key($v){return preg_replace('/[^a-z0-9_-]/','',strtolower((string)$v));}
-function post_type_exists($type){return $type==='tours-and-activities';}
+function post_type_exists($type){return in_array($type,['post','tours-and-activities'],true);}
 function get_post($id){
  return (int)$id===77?(object)['ID'=>77,'post_type'=>'tours-and-activities']:null;
 }
@@ -38,7 +43,7 @@ function get_post_meta($id,$key,$single=true){
 }
 function get_attached_file($id){return '/__mad4b_nonexistent_ci_media__/image.jpg';}
 function taxonomy_exists($name){return $name==='destinations';}
-function get_registered_meta_keys($type,$name){return [
+function get_registered_meta_keys($type,$name){$GLOBALS['field_schema_probes']++;return [
  'rank_math_title'=>['type'=>'string','show_in_rest'=>false],
  '_elementor_data'=>['type'=>'string','show_in_rest'=>false],
  'hero_image'=>['type'=>'integer','show_in_rest'=>true],
@@ -88,7 +93,7 @@ class MockWPDB {
  public $posts='wp_posts';
  public $last_error='';
  public function prepare($sql,...$args){return $sql;}
- public function get_results($query,$style=null){return [
+ public function get_results($query,$style=null){$GLOBALS['field_db_probes']++;return [
   ['meta_key'=>'hero_image','c'=>'7'],
   ['meta_key'=>'wp_password','c'=>'33'],
   ['meta_key'=>'_thumbnail_id','c'=>'17'],
@@ -99,9 +104,10 @@ class MockWPDB {
 $GLOBALS['wpdb']=new MockWPDB();
 class MAD4B_SCP_Site_Profile {
  public static function status(){return [
-  'site_uuid'=>'12345678-1234-4123-8123-123456789abc',
+  'site_uuid'=>$GLOBALS['field_uuid_ready']?'12345678-1234-4123-8123-123456789abc':'',
   'origin_match'=>$GLOBALS['field_site_ready'],
-  'environment_match'=>true,'deployment_binding_match'=>true,
+  'environment_match'=>$GLOBALS['field_environment_ready'],
+  'deployment_binding_match'=>$GLOBALS['field_deployment_ready'],
   'environment'=>'production'];}
 }
 function ff_assert($cond,$message){
@@ -117,6 +123,9 @@ ff_assert(is_array($route)&&$route['methods']==='GET'
 $GLOBALS['field_admin']=true;
 ff_assert(call_user_func($route['permission_callback'])===true,
  'An authorized WordPress administrator may inspect registered field names');
+$restDefault=call_user_func($route['callback'],[]);
+ff_assert(is_array($restDefault) && $restDefault['subtype']==='post',
+ 'REST default cannot infer the company tour CPT');
 $GLOBALS['field_admin']=false;
 $bad=$c::discover(['object'=>'post','subtype'=>'foreign','limit'=>300]);
 ff_assert($bad instanceof WP_Error && $bad->get_error_code()==='mad4b_provider_fields_unknown_object',
@@ -124,12 +133,27 @@ ff_assert($bad instanceof WP_Error && $bad->get_error_code()==='mad4b_provider_f
 $unknown=$c::discover(['object'=>'post','subtype'=>'tours-and-activities','db'=>'all']);
 ff_assert($unknown instanceof WP_Error && $unknown->get_error_code()==='mad4b_provider_fields_invalid_input',
  'No arbitrary database or unsafe caller parameters accepted');
-$GLOBALS['field_site_ready']=false;
-$unbound=$c::discover();
-ff_assert($unbound instanceof WP_Error && $unbound->get_error_code()==='mad4b_provider_fields_site_unverified',
- 'Cross-site clone must not expose even provider field names');
-$GLOBALS['field_site_ready']=true;
-$r=$c::discover();
+// Every identity mismatch is rejected before any WordPress schema or database
+// discovery, including before probing an unrecognized foreign post type.
+foreach(['field_site_ready','field_environment_ready','field_deployment_ready','field_uuid_ready'] as $dimension){
+ $GLOBALS[$dimension]=false;
+ $schemaBefore=$GLOBALS['field_schema_probes'];
+ $dbBefore=$GLOBALS['field_db_probes'];
+ foreach([[],['object'=>'post','subtype'=>'foreign']] as $input){
+  $unbound=$c::discover($input);
+  ff_assert($unbound instanceof WP_Error && $unbound->get_error_code()==='mad4b_provider_fields_site_unverified',
+   'Cross-site clone must not reveal provider field names or foreign types: '.$dimension);
+ }
+ ff_assert($schemaBefore===$GLOBALS['field_schema_probes']
+    && $dbBefore===$GLOBALS['field_db_probes'],
+    'Mismatched Site Profile must not touch provider schema or database: '.$dimension);
+ $GLOBALS[$dimension]=true;
+}
+$neutral=$c::discover(['limit'=>2]);
+ff_assert(is_array($neutral)&&$neutral['subtype']==='post'
+ && $neutral['providers']['jetengine']['context_found']===false,
+ 'Default field discovery must be WordPress post, not a tour CPT');
+$r=$c::discover(['object'=>'post','subtype'=>'tours-and-activities']);
 ff_assert(is_array($r)
  && $r['discovery_read_only']===true && $r['mutations_performed']===false
  && $r['translation_changes_authorized']===false
@@ -160,7 +184,7 @@ ff_assert(in_array('hero_image',$media,true)
  && !in_array('_thumbnail_id',$media,true)
  && !in_array('banner_image',$media,true),
  'Only JetEngine-registered media fields can participate in guarded galleries');
-$limited=$c::discover(['limit'=>2,'only_media'=>true]);
+$limited=$c::discover(['object'=>'post','subtype'=>'tours-and-activities','limit'=>2,'only_media'=>true]);
 ff_assert($limited['counts']['returned']===2
  && $limited['counts']['filtered']>=2
  && $limited['enumeration_complete']===false,

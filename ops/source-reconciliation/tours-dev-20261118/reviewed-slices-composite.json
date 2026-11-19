@@ -1,0 +1,36 @@
+{
+  "contract": "mad4b.tours-dev-composed-reviewed-source.v1",
+  "base_sha": "c934e0a5a3ddc924db2c7adc2dc1241785ab49ee",
+  "source_branches": [
+    "fix/tours-dev-live-skill-source-preservation-20261118",
+    "fix/tours-dev-cimd-identity-bound-20261118",
+    "fix/oauth-browser-ci-ubuntu24-20261118",
+    "fix/tours-dev-native-diagnostics-read-parity-20261118",
+    "fix/tours-dev-wpml-flag-url-scheme-20261118",
+    "fix/tours-dev-wpml-site-origin-20261118",
+    "fix/tours-dev-signed-host-agent-core-20261118"
+  ],
+  "unique_changed_paths": 36,
+  "overlap_paths": [
+    "governance/production-readiness/capability-coverage.json",
+    "tools/readiness_test_execution.py",
+    "wp-content/plugins/mad4b-site-control-plane/tests/context-admin-recovery-runtime.php"
+  ],
+  "regression_fixtures": [
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-live-catalog-read-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-live-skills-list-paging-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-live-source-skills-parity-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-cimd-client-security-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-native-diagnostics-read-parity-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-switcher-flag-scheme-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-wpml-site-origin-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-wpml-site-origin-rest-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-wpml-site-origin-cli-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-signed-host-agent-negative-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-signed-host-context-review-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-cli-context-identity-runtime.php"
+  ],
+  "release_authorized": false,
+  "publication_authorized": false,
+  "full_plugin_source_parity_certified": false
+}

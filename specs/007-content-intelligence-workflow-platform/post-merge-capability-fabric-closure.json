@@ -944,9 +944,9 @@
   "open_priority_policy": "P0_P1_REQUIRE_EXPLICIT_DEPENDENCIES_FAIL_CLOSED_INTERIM_AND_EVIDENCE_PATH",
   "traceability_family": "CAPFAB",
   "baseline_source_review": {
-    "previous_commit": "e7f30d944c354c3a4f7346330ad401d995e768c5",
-    "reconciled_repository_parent": "3785892316d3c395ad144500fdecc6836ed2c176",
-    "scope": "PR #587 QA30/QA31 W1 exact source-only impact review from e7f30d9 to 3785892; 470 changed master paths classified and original historical successor audited. See baseline-review-20261029.md. Independent owner attestation, live staging parity, immutable package recapture and production authorization remain pending.",
+    "previous_commit": "c934e0a5a3ddc924db2c7adc2dc1241785ab49ee",
+    "reconciled_repository_parent": "07bf7b4796758167cf8dfd77114e58d4b2b3aac4",
+    "scope": "PR #882 source review rebased to current master 07bf7b47 after PR #914 added nine mobile MU canonical-source files. Combined 129-path candidate remains separately non-authorizing; Feature007 release identity is RECAPTURE_REQUIRED. No direct runtime deployment, owner attestation or master merge.",
     "authorizing": false
   }
 }

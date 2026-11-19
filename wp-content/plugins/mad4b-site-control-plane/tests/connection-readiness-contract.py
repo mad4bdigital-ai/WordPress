@@ -373,7 +373,9 @@ for marker in (
     "'runtime_integrity_transport_file_count' => 4",
     "'version_only_repair_authority_allowed' => false",
     "'runtime_integrity_gate_blocked'",
-    "verified_bearer_client_is( self::CHATGPT_CLIENT_ID )",
+    "verified_bearer_trusted_chatgpt_client_id()",
+    "'' === MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_trusted_chatgpt_client_id()",
+
     "'canonical_adapter_session_store_used_for_repair' => true",
     "'repair_uses_custom_lock' => false",
     "'empty_only_session_meta_repair_allowed' => false",

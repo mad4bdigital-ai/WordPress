@@ -484,7 +484,7 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		if ( null !== $result || ! self::governed_nonproduction_transport() || ! self::session_repair_supported_runtime() ) return $result;
 		if ( '/mcp/mad4b-chatgpt' !== self::request_route( $request ) ) return $result;
 		if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) return $result;
-		if ( ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is( self::CHATGPT_CLIENT_ID ) ) return $result;
+		if ( '' === MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_trusted_chatgpt_client_id() ) return $result;
 		$method = method_exists( $request, 'get_method' ) ? strtoupper( (string) $request->get_method() ) : 'POST';
 		$body = 'POST' === $method ? self::request_json( $request ) : array();
 		if ( 'POST' === $method && 'initialize' === ( $body['method'] ?? '' ) ) {
@@ -609,7 +609,7 @@ final class MAD4B_SCP_Reconnect_Hardening {
 	public static function capture_initialized_session( $response, $server, $request ) {
 		if ( ! self::governed_nonproduction_transport() || ! self::session_repair_supported_runtime() || '/mcp/mad4b-chatgpt' !== self::request_route( $request ) ) return $response;
 		if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) return $response;
-		if ( ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is( self::CHATGPT_CLIENT_ID ) ) return $response;
+		if ( '' === MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_trusted_chatgpt_client_id() ) return $response;
 		$body = self::request_json( $request );
 		if ( 'initialize' !== ( $body['method'] ?? '' ) ) return $response;
 		$key = self::request_scope_key( $request );

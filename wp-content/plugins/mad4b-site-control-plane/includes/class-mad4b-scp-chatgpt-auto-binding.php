@@ -26,10 +26,11 @@ final class MAD4B_SCP_ChatGPT_Auto_Binding {
         try {
             if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ||
                 ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ||
-                ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is( self::CHATGPT_CLIENT_ID ) ||
                 ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( 'mad4b:read' ) )
                 return false;
-            return self::observe_exact( self::CHATGPT_CLIENT_ID, $wp_user_id, $resource,
+            $verified_client = MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_trusted_chatgpt_client_id();
+            if ( '' === $verified_client ) return false;
+            return self::observe_exact( $verified_client, $wp_user_id, $resource,
                 array( 'mad4b:read' ) );
         } catch ( Throwable $error ) { return self::observation_failed( $error ); }
     }
@@ -86,7 +87,8 @@ final class MAD4B_SCP_ChatGPT_Auto_Binding {
     }
 
     private static function observe_exact( $client_id, $wp_user_id, $resource, $scopes ) {
-        if ( ! is_string( $client_id ) || ! hash_equals( self::CHATGPT_CLIENT_ID, $client_id ) ||
+        if ( ! class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) ||
+            ! MAD4B_SCP_Local_OAuth_Server::trusted_chatgpt_client_id( $client_id ) ||
             ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ||
             ! is_array( $scopes ) || ! in_array( 'mad4b:read', $scopes, true ) )
             return false;
@@ -121,6 +123,7 @@ final class MAD4B_SCP_ChatGPT_Auto_Binding {
             'origin' => $origin,
             'resource' => $resource,
             'client_fingerprint' => $fingerprint,
+            'client_id' => $client_id,
             'wp_user_id' => $wp_user_id,
             'environment' => $environment,
         );
@@ -159,6 +162,8 @@ final class MAD4B_SCP_ChatGPT_Auto_Binding {
             $site = self::site_binding();
             if ( ! empty( $site['identity_source'] ) &&
                 class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ) {
+                $client_id = isset( $record['client_id'] ) && is_string( $record['client_id'] )
+                    ? $record['client_id'] : self::CHATGPT_CLIENT_ID; // Legacy records predate scoped CIMD.
                 $expected = array(
                     'contract' => self::CONTRACT,
                     'identity_source' => $site['identity_source'],
@@ -166,14 +171,17 @@ final class MAD4B_SCP_ChatGPT_Auto_Binding {
                     'profile_digest' => strtolower( (string) $site['profile_digest'] ),
                     'origin' => untrailingslashit( (string) $site['origin'] ),
                     'resource' => MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier(),
-                    'client_fingerprint' => hash( 'sha256', self::CHATGPT_CLIENT_ID ),
+                    'client_fingerprint' => hash( 'sha256', $client_id ),
                     'wp_user_id' => (int) ( $record['wp_user_id'] ?? 0 ),
                     'environment' => (string) $site['environment'],
                 );
                 $user_id = (int) $expected['wp_user_id'];
                 $now = time();
                 $observed = (int) ( $record['observed_at_unix'] ?? 0 );
-                $ready = $user_id > 0 &&
+                if ( isset( $record['client_id'] ) ) $expected['client_id'] = $client_id;
+                $ready = class_exists( 'MAD4B_SCP_Local_OAuth_Server' )
+                    && MAD4B_SCP_Local_OAuth_Server::trusted_chatgpt_client_id( $client_id )
+                    && $user_id > 0 &&
                     self::subject_is_enrolled( $site['identity_source'], $user_id ) &&
                     ( $user = get_userdata( $user_id ) ) && user_can( $user, 'manage_options' ) &&
                     $observed > 0 && $observed <= $now &&
@@ -217,7 +225,9 @@ final class MAD4B_SCP_ChatGPT_Auto_Binding {
             && function_exists( 'get_current_user_id' )
             && (int) ( $record['wp_user_id'] ?? 0 ) === (int) get_current_user_id()
             && class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' )
-            && MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is( self::CHATGPT_CLIENT_ID )
+            && MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_trusted_chatgpt_client_id() !== ''
+            && hash_equals( isset( $record['client_id'] ) ? (string) $record['client_id'] : self::CHATGPT_CLIENT_ID,
+                MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_trusted_chatgpt_client_id() )
             && MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( 'mad4b:read' );
     }
 }

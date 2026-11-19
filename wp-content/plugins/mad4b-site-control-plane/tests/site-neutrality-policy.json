@@ -325,10 +325,8 @@
       "rationale": "Reviewed tourism-domain module or optional provider adapter, not a global site-type default. A user still needs the enrolled Site Profile and the exact WordPress/Ability operation permissions."
     },
     "includes/class-mad4b-scp-provider-field-intelligence.php": {
-      "models": [
-        "tours-and-activities"
-      ],
-      "rationale": "Reviewed tourism-domain module or optional provider adapter, not a global site-type default. A user still needs the enrolled Site Profile and the exact WordPress/Ability operation permissions."
+      "models": [],
+      "rationale": "PR942 removed the former implicit tourism CPT from generic Provider Field Intelligence discovery, CLI and REST routes. The default is now the WordPress post CPT; a tourism CPT is permitted only when an enrolled, bound site supplies it explicitly. The exact origin, environment and deployment bindings are verified before probing WordPress types or provider metadata, and the prior tourism exception remains visible in Git history. This record does not authorize a grant or Production deployment."
     },
     "includes/class-mad4b-scp-research-task-bridge.php": {
       "models": [

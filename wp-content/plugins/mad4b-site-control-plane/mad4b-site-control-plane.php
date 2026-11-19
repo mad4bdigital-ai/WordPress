@@ -497,7 +497,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-ai-model-router.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-ai-task-routing.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-core-ai-governance.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-ai-governance.php';
-require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-ollama-ability.php';
+// Local Ollama remains source-only until an explicit local owner activation.
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-agent-grant-lifecycle.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-core-connector-vault.php';
 MAD4B_SCP_Core_AI_Governance::boot();

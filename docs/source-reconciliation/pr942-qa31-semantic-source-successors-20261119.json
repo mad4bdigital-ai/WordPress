@@ -1,0 +1,48 @@
+{
+  "contract": "mad4b.pr942.qa31-semantic-source-successors.v1",
+  "historic_source_manifest": "governance/release-parity/qa31-rc129-reviewed-successors-20261118.json",
+  "historic_source_manifest_sha256": "dce059a5058b66cc1cb5f6d4cd01aab24b1e6b75a8fba6a1655579de038ff821",
+  "exact_source_files": 2,
+  "reviewed_entries": [
+    {
+      "path": "includes/class-mad4b-scp-content-readiness-alerts.php",
+      "qa31_prior_blob_sha": "7df661262c7b6592a86557babfdffab6e44cf64e",
+      "current_blob_sha": "4d6800c533ebfb769210ca71fcb121e1cc712f11",
+      "current_sha256": "5fd112b0dcdf0d0e1ebfb8107be0fff4c03727823357353d7b3cce68388c78f4",
+      "source_bytes": 45018,
+      "required_regression": "wp-content/plugins/mad4b-site-control-plane/tests/destination-term-alerts-runtime.php",
+      "regressions": [
+        "tests/test_content_readiness_trait_parity.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/destination-term-alerts-runtime.php"
+      ],
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "source_review_rationale": "Extends source-backed alert ledger max to 6000 and routes destination-term issues to term edit links. Fluent Boards/exports retain read-only and first-party URL constraints. Original historical QA31 source is preserved."
+    },
+    {
+      "path": "includes/class-mad4b-scp-skills-admin-ui.php",
+      "qa31_prior_blob_sha": "6db5aced6e2e50179ac5415ae9e74735756e539d",
+      "current_blob_sha": "593f78cb49b39184b48766b34bdf83e2108a75c6",
+      "current_sha256": "5252005667ac26528903c5c98b7fc8b46d6b92a4699b3fe5f3b45b3de11f4f41",
+      "source_bytes": 41815,
+      "required_regression": "tests/source-unification-review-contract.py",
+      "regressions": [
+        "tests/admin-surfaces-authorization-original-hermetic.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-live-source-skills-parity-runtime.php",
+        "tests/source-unification-review-contract.py"
+      ],
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "source_review_rationale": "Adds a company-scoped read-only operations page with an independent capability. Restores existing administrator-only, nonce-checked external Skills sources management; no default editor, script execution or company grant."
+    }
+  ],
+  "authorizing": false,
+  "production_authorized": false,
+  "source_promotion_approved": false,
+  "live_evidence_required": true,
+  "historical_source_review_immutable": true,
+  "is_build_provenance": false,
+  "release_gate": "BLOCKED_SOURCE_RECONCILIATION"
+}

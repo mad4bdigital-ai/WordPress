@@ -399,6 +399,247 @@ def reviewed_rc129_chatbotx_cpt_successor(repo:Path,path:str,contents:bytes):
             subprocess.TimeoutExpired,json.JSONDecodeError):
         return None
 
+def reviewed_pr942_company_master_security_successor(repo:Path,path:str,contents:bytes):
+    """Exact existing live security fix, with immutable QA31 stage-only source."""
+    expected='includes/class-mad4b-scp-company-master-admin.php'
+    if path!=expected or not isinstance(contents,bytes):
+        return None
+    review=repo/'docs/source-reconciliation/pr942-qa31-company-master-security-successor-20261119.json'
+    qa31=repo/'governance/release-parity/qa31-commerce-staging-source-parity.json'
+    test='tests/source-unification-review-contract.py'
+    original_stage='0cfe68ea11598587a9cdaeed2313859cb95dff893b3972d2bb6a593fd2af4e4d'
+    expected_blob='f5f3dc802c4f1931b258257920b908a4f3b6bb59'
+    try:
+        if (not review.is_file() or review.is_symlink()
+            or not qa31.is_file() or qa31.is_symlink()
+            or not (repo/test).is_file() or (repo/test).is_symlink()):
+            return None
+        v=json.loads(review.read_text(encoding='utf-8'))
+        history=json.loads(qa31.read_text(encoding='utf-8'))
+        rows=[r for r in history.get('source_decisions',[]) if r.get('path')==expected]
+        if len(rows)!=1:return None
+        row=rows[0]
+        blob=hashlib.sha1(b'blob '+str(len(contents)).encode('ascii')+b'\0'+contents).hexdigest()
+        if (v.get('contract')!='mad4b.pr942.qa31-company-master-security-successor.v1'
+            or v.get('historical_qa31_ledger')!='governance/release-parity/qa31-commerce-staging-source-parity.json'
+            or digest(qa31)!='24f82e7898d4523bea658f4805329ea62cde807c54e63ecd0b8fe98b43fe1819'
+            or v.get('historical_qa31_sha256')!=digest(qa31)
+            or v.get('historical_state')!='STAGING_ONLY'
+            or row.get('state')!='STAGING_ONLY'
+            or row.get('staging_sha256')!=original_stage
+            or v.get('historical_staging_sha256')!=original_stage
+            or v.get('path')!=expected
+            or blob!=expected_blob
+            or v.get('candidate_blob_sha')!=expected_blob
+            or v.get('candidate_sha256')!=hashlib.sha256(contents).hexdigest()
+            or v.get('candidate_bytes')!=len(contents)
+            or v.get('required_regression')!=test
+            or v.get('original_qa31_ledger_immutable') is not True
+            or v.get('live_evidence_required') is not True
+            or v.get('release_gate')!='BLOCKED_SOURCE_RECONCILIATION'
+            or len(v.get('semantic_review',''))<130
+            or any(v.get(k) is not False for k in (
+                'authorizing','production_authorized','host_grant_issued','source_promotion_approved'))
+            or not isinstance(v.get('regressions'),list)
+            or test not in v['regressions']
+            or any(not isinstance(t,str) or '..' in Path(t).parts
+                   or not (repo/t).is_file() or (repo/t).is_symlink()
+                   for t in v['regressions'])):
+            return None
+        return test
+    except (OSError,ValueError,TypeError,KeyError,json.JSONDecodeError):
+        return None
+
+
+def reviewed_pr942_cimd_scoped_source_successor(repo:Path,path:str,contents:bytes):
+    """Exact three-file CI-only restoration of signed scoped ChatGPT CIMD.
+
+    Frozen QA31 source pins and authorization remain untouched. A valid
+    review means candidate code can run source tests; it is NOT a Host grant.
+    """
+    allowed={
+      'includes/class-mad4b-scp-chatgpt-auto-binding.php':(
+         '011cc811e3211365d7c4a97ee27db9b07735e619',
+         '3cb93735d9512cc948f9dd4e609466a4c0539283'),
+      'includes/class-mad4b-scp-oauth-resource-bridge.php':(
+         '79fd146d620e99895c53b4cde9aa55350c93d9ac',
+         '4e8213162b4c9a9ac0da592ccd33e53736cc2b16'),
+      'includes/class-mad4b-scp-reconnect-hardening.php':(
+         '72b51cf7a2d6246026fa0e835fd699989457d930',
+         '388408d37737ee2bacb2b97614be3fa375b334b8'),
+    }
+    if path not in allowed or not isinstance(contents,bytes):return None
+    review=repo/'docs/source-reconciliation/pr942-cimd-scoped-source-successors-20261119.json'
+    historic=repo/'governance/release-parity/qa31-rc129-reviewed-successors-20261118.json'
+    test='tests/source-unification-review-contract.py'
+    try:
+        if (not review.is_file() or review.is_symlink()
+            or not historic.is_file() or historic.is_symlink()
+            or not (repo/test).is_file() or (repo/test).is_symlink()):
+            return None
+        doc=json.loads(review.read_text(encoding='utf-8'))
+        old=json.loads(historic.read_text(encoding='utf-8'))
+        entries=doc.get('entries')
+        names=[x.get('path') for x in entries] if isinstance(entries,list) else []
+        if (doc.get('contract')!='mad4b.pr942.cimd-scoped-source-successors.v1'
+            or doc.get('historical_qa31_manifest')!='governance/release-parity/qa31-rc129-reviewed-successors-20261118.json'
+            or digest(historic)!='dce059a5058b66cc1cb5f6d4cd01aab24b1e6b75a8fba6a1655579de038ff821'
+            or doc.get('historical_qa31_sha256')!=digest(historic)
+            or doc.get('count')!=3
+            or names!=sorted(allowed)
+            or doc.get('release_gate')!='BLOCKED_SOURCE_RECONCILIATION'
+            or doc.get('live_evidence_required') is not True
+            or any(doc.get(k) is not False for k in ('authorizing','production_authorized',
+                'source_promotion_approved','is_build_provenance','owner_attestation_provided'))):
+            return None
+        row=entries[names.index(path)]
+        previous,current=allowed[path]
+        if (row.get('prior_source_blob_sha')!=previous
+            or row.get('source_blob_sha')!=current
+            or hashlib.sha1(b'blob '+str(len(contents)).encode('ascii')+b'\0'+contents).hexdigest()!=current
+            or row.get('source_sha256')!=hashlib.sha256(contents).hexdigest()
+            or row.get('source_bytes')!=len(contents)
+            or row.get('required_regression')!=test
+            or row.get('status')!='reviewed_for_ci_only'
+            or row.get('production_authorized') is not False
+            or row.get('live_evidence_required') is not True
+            or len(row.get('semantic_review',''))<115
+            or not isinstance(row.get('regressions'),list)
+            or test not in row['regressions']
+            or any(not isinstance(t,str) or '..' in Path(t).parts
+                   or not (repo/t).is_file() or (repo/t).is_symlink()
+                   for t in row['regressions'])):
+            return None
+        if path=='includes/class-mad4b-scp-reconnect-hardening.php':
+            originals=[x for x in old.get('reviewed_entries',[])
+                        if isinstance(x,dict) and x.get('path')==path]
+            if len(originals)!=1 or originals[0].get('current_git_blob_sha')!=previous:return None
+        return test
+    except (OSError,ValueError,TypeError,KeyError,json.JSONDecodeError):
+        return None
+
+
+def reviewed_pr942_qa31_semantic_successor(repo:Path,path:str,contents:bytes):
+    """Two exact, independently tested PR942 source successors only.
+
+    Neither old QA31 source-pins nor live-production authorization are changed.
+    A source match supplies an admission to CI provenance, never a release.
+    """
+    known={
+      'includes/class-mad4b-scp-content-readiness-alerts.php':
+          ('7df661262c7b6592a86557babfdffab6e44cf64e',
+           '4d6800c533ebfb769210ca71fcb121e1cc712f11',
+           'wp-content/plugins/mad4b-site-control-plane/tests/destination-term-alerts-runtime.php'),
+      'includes/class-mad4b-scp-skills-admin-ui.php':
+          ('6db5aced6e2e50179ac5415ae9e74735756e539d',
+           '593f78cb49b39184b48766b34bdf83e2108a75c6',
+           'tests/source-unification-review-contract.py'),
+    }
+    if path not in known or not isinstance(contents,bytes):
+        return None
+    prior,current,required=known[path]
+    review=repo/'docs/source-reconciliation/pr942-qa31-semantic-source-successors-20261119.json'
+    historic=repo/'governance/release-parity/qa31-rc129-reviewed-successors-20261118.json'
+    try:
+        if (review.is_symlink() or not review.is_file()
+            or historic.is_symlink() or not historic.is_file()
+            or not (repo/required).is_file() or (repo/required).is_symlink()):
+            return None
+        v=json.loads(review.read_text(encoding='utf-8'))
+        h=json.loads(historic.read_text(encoding='utf-8'))
+        rows=v.get('reviewed_entries')
+        old_entries=h.get('reviewed_entries')
+        if (v.get('contract')!='mad4b.pr942.qa31-semantic-source-successors.v1'
+            or v.get('historic_source_manifest')!='governance/release-parity/qa31-rc129-reviewed-successors-20261118.json'
+            or digest(historic)!='dce059a5058b66cc1cb5f6d4cd01aab24b1e6b75a8fba6a1655579de038ff821'
+            or v.get('historic_source_manifest_sha256')!=digest(historic)
+            or v.get('exact_source_files')!=len(known)
+            or not isinstance(rows,list) or len(rows)!=len(known)
+            or [r.get('path') for r in rows]!=sorted(known)
+            or not isinstance(old_entries,list)
+            or v.get('historical_source_review_immutable') is not True
+            or v.get('live_evidence_required') is not True
+            or v.get('release_gate')!='BLOCKED_SOURCE_RECONCILIATION'
+            or any(v.get(k) is not False for k in (
+                'authorizing','production_authorized','source_promotion_approved','is_build_provenance'))):
+            return None
+        old_matches=[r for r in old_entries if isinstance(r,dict) and r.get('path')==path]
+        if len(old_matches)!=1 or old_matches[0].get('current_git_blob_sha')!=prior:
+            return None
+        row=rows[[r.get('path') for r in rows].index(path)]
+        observed=hashlib.sha1(b'blob '+str(len(contents)).encode('ascii')+b'\0'+contents).hexdigest()
+        if (row.get('qa31_prior_blob_sha')!=prior
+            or row.get('current_blob_sha')!=current
+            or observed!=current
+            or row.get('current_sha256')!=hashlib.sha256(contents).hexdigest()
+            or row.get('source_bytes')!=len(contents)
+            or row.get('required_regression')!=required
+            or row.get('status')!='reviewed_for_ci_only'
+            or row.get('production_authorized') is not False
+            or row.get('live_evidence_required') is not True
+            or not isinstance(row.get('regressions'),list)
+            or required not in row['regressions']
+            or any(not isinstance(r,str) or '..' in Path(r).parts
+                   or not (repo/r).is_file() or (repo/r).is_symlink()
+                   for r in row['regressions'])
+            or len(row.get('source_review_rationale',''))<100):
+            return None
+        return required
+    except (OSError,ValueError,TypeError,KeyError,json.JSONDecodeError):
+        return None
+
+
+def reviewed_pr942_ollama_bootstrap_successor(repo:Path,path:str,contents:bytes):
+    """Admit ONLY the one-line, exact-blob, source-only PR942 successor.
+
+    Immutable QA31/Original305/PR814 source proofs remain unchanged. An
+    additive source review is never a Host grant or parity/release verdict.
+    """
+    if path!='mad4b-site-control-plane.php' or not isinstance(contents,bytes):
+        return None
+    review=repo/'docs/source-reconciliation/pr942-local-ollama-no-autoboot-20261119.json'
+    historic=repo/'docs/release-coverage/pr814-rc129-host-agent-bootstrap-additive-20261118.json'
+    required='wp-content/plugins/mad4b-site-control-plane/tests/qa31-w1-authority-contract.py'
+    before=b"require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-ollama-ability.php';\n"
+    after=b'// Local Ollama remains source-only until an explicit local owner activation.\n'
+    def identity(blob):
+        return (len(blob),hashlib.sha256(blob).hexdigest(),
+                hashlib.sha1(b'blob '+str(len(blob)).encode('ascii')+b'\0'+blob).hexdigest())
+    old=(68676,'9e20c4a6eb57b884bf31c5959a4bc7895717b0d9497d94def27c0e41343f7977',
+         'dcae0a0a32495bfcedd4300fd78a8ec765235697')
+    new=(68672,'5ad46a5c6028fdc2a31e74e48e16f54423e3d38666bc2276131b84a6c1c50119',
+         '2c497ec72c57f420d1abf1eef242748be40f7bb2')
+    try:
+        if (not review.is_file() or review.is_symlink()
+            or not historic.is_file() or historic.is_symlink()
+            or not (repo/required).is_file() or (repo/required).is_symlink()):
+            return None
+        v=json.loads(review.read_text(encoding='utf-8'))
+        h=json.loads(historic.read_text(encoding='utf-8'))
+        if (digest(historic)!='bd99f7d3ad973a1f269aedfb9ecef8933ff81c094ebeaadb713edd088f5c7884'
+            or h.get('current_main_blob_sha')!=old[2]
+            or h.get('current_main_sha256')!=old[1]
+            or h.get('current_main_bytes')!=old[0]
+            or v.get('contract')!='mad4b.pr942-local-ollama-no-autoboot-additive-source.v1'
+            or v.get('main_path')!='wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
+            or v.get('original_source_review_immutable') is not True
+            or any(v.get(k) is not False for k in (
+                'authorizing','production_authorized','runtime_activated',
+                'host_grant_issued','owner_attestation_provided'))
+            or not isinstance(v.get('prior'),dict)
+            or not isinstance(v.get('reviewed_successor'),dict)
+            or tuple(v['prior'].get(k) for k in ('bytes','sha256','blob_sha'))!=old
+            or tuple(v['reviewed_successor'].get(k) for k in ('bytes','sha256','blob_sha'))!=new
+            or required not in (v.get('regressions') or [])
+            or identity(contents)!=new
+            or contents.count(after)!=1 or contents.count(before)!=0
+            or identity(contents.replace(after,before,1))!=old):
+            return None
+        return required
+    except (OSError,ValueError,TypeError,KeyError,json.JSONDecodeError):
+        return None
+
+
 def reviewed_ci_only_source_successor(root:Path,path:str,contents:bytes)->bool:
     """Accept exact, reviewed Git blobs for CI inventory only; never parity.
     Static legacy entries remain valid; rc129 successors are independently
@@ -411,7 +652,15 @@ def reviewed_ci_only_source_successor(root:Path,path:str,contents:bytes)->bool:
     source=root/path
     if source.is_symlink() or not source.is_file() or source.read_bytes()!=contents:
         return False
-    requested=reviewed_rc129_chatbotx_cpt_successor(repo,path,contents)
+    requested=reviewed_pr942_ollama_bootstrap_successor(repo,path,contents)
+    if requested is None:
+        requested=reviewed_pr942_cimd_scoped_source_successor(repo,path,contents)
+    if requested is None:
+        requested=reviewed_pr942_company_master_security_successor(repo,path,contents)
+    if requested is None:
+        requested=reviewed_pr942_qa31_semantic_successor(repo,path,contents)
+    if requested is None:
+        requested=reviewed_rc129_chatbotx_cpt_successor(repo,path,contents)
     if requested is None:
         requested=reviewed_rc129_chatgpt_cimd_successor(repo,path,contents)
     if requested is None:

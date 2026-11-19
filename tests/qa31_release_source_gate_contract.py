@@ -75,6 +75,30 @@ chk(sorted(reviewed_paths)==[x['path'] for x in entries],
 current=(plugin/'mad4b-site-control-plane.php').read_bytes()
 chk(reviewed_bootstrap_successor(plugin,'mad4b-site-control-plane.php',current),
     'original305_bootstrap_reviewed_exactly')
+chk(not reviewed_bootstrap_successor(plugin,'mad4b-site-control-plane.php',current+b'\nFORGED'),
+    'pr942_bootstrap_extra_bytes_denied')
+# Immutable historical evidence is checked by SHA, then the separate one-line
+# successor review is checked by exact blob and no-production permissions.
+source_review=repo/'docs/source-reconciliation/pr942-local-ollama-no-autoboot-20261119.json'
+source_review_data=json.loads(source_review.read_text())
+source_review_target=source_review.resolve()
+for field,mutation in (
+    ('production_authorized',True),
+    ('owner_attestation_provided',True),
+    ('prior',{'bytes':1,'sha256':'a'*64,'blob_sha':'b'*40}),
+    ('reviewed_successor',{'bytes':1,'sha256':'c'*64,'blob_sha':'d'*40}),
+    ('main_path','wp-content/plugins/mad4b-site-control-plane/includes/fake.php'),
+):
+    forged=dict(source_review_data);forged[field]=mutation
+    original_read=Path.read_text
+    def forged_source_review(self,*args,**kwargs):
+        if self.resolve()==source_review_target:
+            return json.dumps(forged)
+        return original_read(self,*args,**kwargs)
+    from unittest import mock as _source_mock
+    with _source_mock.patch.object(Path,'read_text',forged_source_review):
+        chk(not reviewed_bootstrap_successor(plugin,'mad4b-site-control-plane.php',current),
+            'pr942_bootstrap_review_forgery_denied_'+field)
 for item in entries:
     rel=item['path']
     content=(plugin/rel).read_bytes()
@@ -185,13 +209,15 @@ print('QA31_EXPECTED_REVIEW_COUNTS:',checked['reviewed_github_successor_count'],
 expected_reviewed_paths=reviewed_paths | {
     'includes/adapters/class-mad4b-scp-chatbotx-governed-writes.php',
     'includes/adapters/class-mad4b-scp-chatbotx-write-preflight.php',
+    'includes/class-mad4b-scp-company-master-admin.php',
+    'includes/class-mad4b-scp-oauth-resource-bridge.php',  # New signed scoped CIMD; previously outside this cohort.
 }
 chk(set(checked['reviewed_github_successor_paths'])==expected_reviewed_paths
     and checked['reviewed_github_successor_count']==len(expected_reviewed_paths)
     and checked['unexpected_count']==0
     # Two originally stage-identical ChatbotX files now have separately
     # reviewed, source-pinned successors; they remain pending as live parity.
-    and checked['pending_count']==70
+    and checked['pending_count']==72
     and checked['version_match'] is False
     and checked['decision']=='BLOCKED_SOURCE_RECONCILIATION'
     and checked['authorizing'] is False and checked['production_authorized'] is False,
@@ -420,5 +446,62 @@ for case,field in (('source','current_blob_sha'),('parent','parent_blob_sha'),
         rel=chatbotx_paths[0]
         chk(not reviewed_ci_only_source_successor(plugin,rel,(plugin/rel).read_bytes()),
             'chatbotx_forged_entry_denied_'+case)
+
+# PR942 source reviews are independent extensions of frozen QA31. A forged
+# release flag, SHA or parent source cannot pass, even if the current file is
+# valid and prior QA31 source evidence remains unchanged.
+for review_rel, rel, mutations in (
+    ('docs/source-reconciliation/pr942-qa31-semantic-source-successors-20261119.json',
+     'includes/class-mad4b-scp-content-readiness-alerts.php',
+     (('production_authorized',True),('historic_source_manifest_sha256','0'*64))),
+    ('docs/source-reconciliation/pr942-qa31-company-master-security-successor-20261119.json',
+     'includes/class-mad4b-scp-company-master-admin.php',
+     (('host_grant_issued',True),('historical_staging_sha256','0'*64))),
+):
+    document=repo/review_rel
+    stable=json.loads(document.read_text())
+    contents=(plugin/rel).read_bytes()
+    chk(reviewed_ci_only_source_successor(plugin,rel,contents),
+        'pr942_exact_reviewed_source_'+rel)
+    for field,wrong in mutations:
+        fake=json.loads(json.dumps(stable))
+        fake[field]=wrong
+        expected=document.resolve()
+        def forged_pr942(self,*args,**kwargs):
+            if self.resolve()==expected:return json.dumps(fake)
+            return original_read(self,*args,**kwargs)
+        with mock.patch.object(Path,'read_text',forged_pr942):
+            chk(not reviewed_ci_only_source_successor(plugin,rel,contents),
+                'pr942_source_review_forgery_denied_'+field)
+    chk(not reviewed_ci_only_source_successor(plugin,rel,contents+b'\nFORGED'),
+        'pr942_source_mutation_denied_'+rel)
+
+# The scoped-CIMD restoration has an independent exact source chain.
+# An injected URL, absent signed fingerprint, edited former source or forged
+# Production approval cannot be marked as an Original305 release.
+cimd_review_file=repo/'docs/source-reconciliation/pr942-cimd-scoped-source-successors-20261119.json'
+cimd_review=json.loads(cimd_review_file.read_text())
+cimd_target=cimd_review_file.resolve()
+chk(cimd_review['contract']=='mad4b.pr942.cimd-scoped-source-successors.v1'
+    and cimd_review['production_authorized'] is False
+    and cimd_review['release_gate']=='BLOCKED_SOURCE_RECONCILIATION',
+    'pr942_scoped_cimd_review_ci_only')
+for item in cimd_review['entries']:
+    source=(plugin/item['path']).read_bytes()
+    chk(reviewed_ci_only_source_successor(plugin,item['path'],source),
+        'pr942_scoped_cimd_exact_'+item['path'])
+    chk(not reviewed_ci_only_source_successor(plugin,item['path'],source+b'\\nFORGED'),
+        'pr942_scoped_cimd_modified_'+item['path'])
+for field,value in (('production_authorized',True),
+                    ('source_promotion_approved',True),
+                    ('historical_qa31_sha256','f'*64)):
+    fake=dict(cimd_review);fake[field]=value
+    def forged_scoped(self,*args,**kwargs):
+        if self.resolve()==cimd_target:return json.dumps(fake)
+        return original_read(self,*args,**kwargs)
+    with mock.patch.object(Path,'read_text',forged_scoped):
+        rel=cimd_review['entries'][0]['path']
+        chk(not reviewed_ci_only_source_successor(plugin,rel,(plugin/rel).read_bytes()),
+            'pr942_scoped_cimd_manifest_forgery_denied_'+field)
 
 print('QA31_SOURCE_PARITY_NEGATIVE_REGRESSIONS: PASS (source reviewed; release blocked)')

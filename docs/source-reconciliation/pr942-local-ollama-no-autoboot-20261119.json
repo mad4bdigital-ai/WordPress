@@ -1,0 +1,25 @@
+{
+  "contract": "mad4b.pr942-local-ollama-no-autoboot-additive-source.v1",
+  "authorizing": false,
+  "production_authorized": false,
+  "runtime_activated": false,
+  "host_grant_issued": false,
+  "owner_attestation_provided": false,
+  "original_source_review_immutable": true,
+  "main_path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+  "prior": {
+    "bytes": 68676,
+    "sha256": "9e20c4a6eb57b884bf31c5959a4bc7895717b0d9497d94def27c0e41343f7977",
+    "blob_sha": "dcae0a0a32495bfcedd4300fd78a8ec765235697"
+  },
+  "reviewed_successor": {
+    "bytes": 68672,
+    "sha256": "5ad46a5c6028fdc2a31e74e48e16f54423e3d38666bc2276131b84a6c1c50119",
+    "blob_sha": "2c497ec72c57f420d1abf1eef242748be40f7bb2"
+  },
+  "review_note": "One-line removal of Local-only Ollama auto inclusion in general WordPress bootstrap; original isolated source retained and QA31 local permission tests execute independently. No independent caller gains a write grant or model approval. This is not a Production permission or release proof.",
+  "regressions": [
+    "tests/test_tour_highlights_source_delta.py",
+    "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w1-authority-contract.py"
+  ]
+}
