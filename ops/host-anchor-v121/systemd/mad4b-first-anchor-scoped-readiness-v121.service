@@ -1,0 +1,24 @@
+[Unit]
+Description=MAD4B signed First Anchor Staging Owner readiness (Root v121)
+After=docker.service network-online.target
+Wants=network-online.target
+ConditionPathExists=/var/lib/mad4b/original-host-v2/.first-issue-root-commissioned-v121.json
+ConditionPathExists=/opt/mad4b-company-transport/native-313-independent/host-authority-v121/publish_owner_readiness.py
+ConditionPathExists=!/var/lib/mad4b/original-host-v2/revisions/all-royal-egypt--staging.json
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+UMask=0077
+WorkingDirectory=/opt/mad4b-company-transport/native-313-independent
+ExecStart=/usr/bin/python3 -B /opt/mad4b-company-transport/native-313-independent/host-authority-v121/publish_owner_readiness.py
+TimeoutStartSec=95
+Nice=10
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes
+ProtectSystem=full
+ReadWritePaths=/var/lib/mad4b/original-host-v2
+StandardOutput=journal
+StandardError=journal

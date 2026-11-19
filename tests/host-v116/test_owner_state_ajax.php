@@ -13,6 +13,7 @@ class WP_REST_Response {
 }
 class MAD4B_Central_VPS_Broker_V1 {
     const JOB='mad4b_test_broker_job_';
+    const PUBKEY='mad4b_test_broker_signing_public_key';
 }
 $actor=7;
 $caps=['manage_options','activate_plugins'];
