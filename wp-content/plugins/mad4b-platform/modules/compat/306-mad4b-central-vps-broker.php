@@ -140,10 +140,27 @@ final class MAD4B_Central_VPS_Broker_V1 {
             || !class_exists('MAD4B_Manager_Auto_Write_V1',false))
             return self::deny('company_policy_missing',503);
         $scope=MAD4B_Manager_Auto_Write_V1::company_target($company);
+        $registryMatches=($scope['site_uuid']??'')===($request['site_uuid']??'')
+            &&($scope['canonical_origin']??'')===($request['canonical_origin']??'')
+            &&($scope['environment']??'')===($request['environment']??'');
+        // The company registry can move to Production after a separately
+        // enrolled Staging Original328 parent was signed. Only the exact
+        // active Host v2 staging parent may coexist with that newer binding.
+        // No such exception applies to ordinary WordPress/WPCLI requests.
+        $verifiedStagingParent=$hostAnchorV2&&$anchorParentValid
+            &&is_array($transport)&&is_array($grant)
+            &&($scope['environment']??null)==='production'
+            &&($transport['environment']??null)==='staging'
+            &&($request['environment']??null)==='staging'
+            &&($grant['site_uuid']??null)===($transport['site_uuid']??null)
+            &&($grant['canonical_origin']??null)===($transport['canonical_origin']??null)
+            &&($grant['environment']??null)==='staging'
+            &&($grant['assignment_revision']??null)===($transport['assignment_revision']??null)
+            &&($request['site_uuid']??null)===($transport['site_uuid']??null)
+            &&($request['canonical_origin']??null)===($transport['canonical_origin']??null)
+            &&($request['transport_id']??null)===($transport['transport_id']??null);
         if (($scope['state']??'')!=='REGISTERED'
-            || ($scope['site_uuid']??'')!==($request['site_uuid']??'')
-            || ($scope['canonical_origin']??'')!==($request['canonical_origin']??'')
-            || ($scope['environment']??'')!==($request['environment']??''))
+            ||(!$registryMatches&&!$verifiedStagingParent))
             return self::deny('company_binding_changed',409);
         $uid=(int)($request['central_principal_id']??0);
         $manager=MAD4B_Company_Operation_Admission_V1::manager_id();
