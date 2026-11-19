@@ -71,6 +71,10 @@ jobs:
     # Playwright 1.56.0 Chromium is not available on ubuntu26.04-x64.
     # Pin only the real-browser job; keep installation and assertions intact.
     runs-on: ubuntu-24.04
+    # Runner APT sources can omit legacy Playwright font packages even on 24.04.
+    # The version-matched official Playwright image includes Chromium OS dependencies.
+    container:
+      image: mcr.microsoft.com/playwright/python:v1.56.0-noble
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -87,7 +91,9 @@ jobs:
         run: |
           npm install --prefix /tmp/travel-react --no-save --no-audit --no-fund react@18.3.1 react-dom@18.3.1
           python -m pip install playwright==1.56.0
-          python -m playwright install --with-deps chromium
+          # Browser and OS dependencies are preinstalled in the pinned image.
+          # Verify the real browser is available; never skip UI assertions.
+          python -m playwright install chromium
       - name: Real React + Checkout Blocks smart draft and review acceptance
         env:
           SWITCHER_JS: ${{ github.workspace }}/wp-content/plugins/etg-traveller-nationality-switcher/assets/checkout-blocks.js
