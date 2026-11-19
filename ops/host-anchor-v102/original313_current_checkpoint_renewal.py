@@ -97,14 +97,19 @@ def renew_current(ledger,wp,receipt,broker_pub,independent_private,*,store=None,
          and wp.get("source")=="original318_fresh_wp_readback"
          and wp.get("readback_verified") is True
          and wp.get("current_anchor_signature_verified") is True
-         and wp.get("signed_anchor_active_in_option") is True
+         and ((wp.get("state")=="ACTIVE"
+               and wp.get("signed_anchor_active_in_option") is True)
+              or (wp.get("state")=="EXPIRED"
+                  and wp.get("signed_anchor_active_in_option") is False
+                  and wp.get("prior_grants_ineligible") is True))
          and wp.get("original313_certified") is False
          and wp.get("write_authorized") is False
          and wp.get("current_anchor_eligible") is False
          and type(wp.get("observed_epoch")) is int
          and instant-15<=wp["observed_epoch"]<=instant+5
          and all(wp.get(k)==ledger[k] for k in
-              ("company","environment","site_uuid","revision","anchor_nonce","state"))
+              ("company","environment","site_uuid","revision","anchor_nonce"))
+         and ledger["state"]=="ACTIVE"
          and type(wp.get("signed_anchor_message_sha256")) is str
          and len(wp["signed_anchor_message_sha256"])==64,
          "ORIGINAL313_RENEWAL_WORDPRESS_NOT_FRESH_ACTIVE")

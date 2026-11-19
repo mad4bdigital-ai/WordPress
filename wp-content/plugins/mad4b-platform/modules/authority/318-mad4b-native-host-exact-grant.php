@@ -454,6 +454,43 @@ final class MAD4B_Native_Host_Exact_Grant_V1 {
   * write eligibility or an Original313 receipt. A restored but valid old
   * ACTIVE WordPress option is rejected by the separate root checkpoint.
   */
+ /** A signed but expired first Anchor is NOT authority for a Grant.
+  * Preserve cryptographic evidence only so Root can independently REVOKE it.
+  * The independent current Revision/313 checkpoint is never inferred here.
+  */
+ private static function expired_anchor_digest_v103(array $row,array $site,
+                                                     string $broker,int $now):?string {
+  if(array_keys($row)!==array_merge(self::DYNAMIC_ANCHOR_SIGNED_FIELDS,['signature'])
+     ||($row['contract']??null)!==self::DYNAMIC_ANCHOR_CONTRACT
+     ||($row['company']??null)!=='all-royal-egypt'
+     ||($row['environment']??null)!=='staging'
+     ||($row['site_uuid']??null)!==($site['site_uuid']??null)
+     ||($row['canonical_origin']??null)!==($site['canonical_origin']??null)
+     ||($row['profile_digest']??null)!==($site['identity_evidence']['profile_digest']??null)
+     ||($row['host_id']??null)!==self::HOST
+     ||($row['ssh_target']??null)!=='hosting-2'
+     ||($row['ssh_principal']??null)!==self::SSH_USER
+     ||($row['state']??null)!=='ACTIVE_INDEPENDENT_HOST_AUTHORITY'
+     ||($row['revoked']??null)!==false
+     ||($row['source']??null)!=='original_approved_host_authority_reconcile'
+     ||!is_int($row['revision'])||$row['revision']!==1
+     ||!is_int($row['issued'])||!is_int($row['expires'])
+     ||$row['issued']>$now+10||$row['issued']<=0
+     ||$row['expires']>=$now||$row['expires']<=$row['issued']
+     ||$row['expires']>$row['issued']+3600
+     ||!self::okhex($row['nonce']??null,32)
+     ||!wp_is_uuid((string)($row['site_uuid']??'')))return null;
+  foreach(['profile_digest','ssh_root_sha256','host_key_sha256',
+           'registry_sha256','policy_sha256'] as $field)
+    if(!self::okhex($row[$field]??null,64))return null;
+  if(strlen($broker)!==SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES)return null;
+  $signature=base64_decode((string)$row['signature'],true);
+  if(!is_string($signature)||strlen($signature)!==SODIUM_CRYPTO_SIGN_BYTES)return null;
+  $message=implode(chr(10),array_map(static fn($field)=>(string)$row[$field],
+     self::DYNAMIC_ANCHOR_SIGNED_FIELDS));
+  if(!sodium_crypto_sign_verify_detached($signature,$message,$broker))return null;
+  return hash('sha256',$message);
+ }
  public static function current_anchor_readback_v2(string $company,string $environment):array {
   $out=['contract'=>'mad4b.original318.host-anchor-current-readback.v2',
     'source'=>'original318_fresh_wp_readback',
@@ -490,6 +527,27 @@ final class MAD4B_Native_Host_Exact_Grant_V1 {
     $out['signed_anchor_active_in_option']=true;
     $out['signed_anchor_message_sha256']=hash('sha256',$message);
     return $out;
+  }
+  // Expiration never restores authority. A previously signed ACTIVE row
+  // can still be identified for a separately signed Original313 revoke.
+  // No locally stored option can certify Root high-water or a write grant.
+  if($company==='all-royal-egypt'&&$environment==='staging'
+    &&class_exists('MAD4B_Central_VPS_Broker_V1',false)) {
+    $stored=get_option(self::DYNAMIC_ANCHOR_PREFIX.$company.'_'.$environment,false);
+    $pub=base64_decode((string)get_option(MAD4B_Central_VPS_Broker_V1::PUBKEY,''),true);
+    $digest=is_array($stored)&&is_string($pub)
+      ? self::expired_anchor_digest_v103($stored,$site,$pub,time()):null;
+    if(is_string($digest)) {
+      $out['site_uuid']=$stored['site_uuid'];
+      $out['state']='EXPIRED';$out['revision']=$stored['revision'];
+      $out['anchor_nonce']=$stored['nonce'];
+      $out['readback_verified']=true;
+      $out['current_anchor_signature_verified']=true;
+      $out['signed_anchor_active_in_option']=false;
+      $out['prior_grants_ineligible']=true;
+      $out['signed_anchor_message_sha256']=$digest;
+      return $out;
+    }
   }
   $revoked=self::independent_revoked_anchor_observation_v2($company,$environment);
   if(($revoked['signed_revocation_record_observed']??false)===true

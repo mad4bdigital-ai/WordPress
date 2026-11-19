@@ -121,14 +121,47 @@ def verify_first_revoke(plan,job,ledger,checkpoint,wp,broker_pub,ind_pub,*,now=N
          "ORIGINAL312_REVOKE_EXACT_CLAIM_REQUIRED")
     projected={**job,"anchor_revision":1,"grant_revision":0,
                "ssh_principal":plan["ssh_principal"]}
-    checked=gate.verify_fresh_current(projected,ledger,checkpoint,wp,
-                                      broker_pub,ind_pub,now=instant)
+    if wp.get("state")=="EXPIRED":
+        # Expiration is not revocation. Only independent high-water plus
+        # Original318's verified signed but INELIGIBLE option can permit
+        # a narrow revoke operation. This never makes an expired Grant valid.
+        gate.sigcheck(ledger,gate.FIELDS,gate.LEDGER,
+             "MAD4B_ORIGINAL_HOST_LEDGER_V1",broker_pub,instant,historical=True)
+        gate.sigcheck(checkpoint,gate.C_FIELDS,gate.CHECKPOINT,
+             "MAD4B_ORIGINAL_HOST_CHECKPOINT_V1",ind_pub,instant)
+        event_digest=hashlib.sha256(gate.body(
+             ledger,gate.FIELDS,"MAD4B_ORIGINAL_HOST_LEDGER_V1")).hexdigest()
+        need(all(projected.get(f)==ledger.get(f) for f in
+                     ("company","environment","site_uuid",
+                      "target_host_id","ssh_principal"))
+             and all(checkpoint.get(f)==ledger.get(f) for f in
+                     ("company","environment","site_uuid","revision",
+                      "grant_revision","anchor_nonce","state"))
+             and checkpoint["event_sha256"]==event_digest
+             and wp.get("contract")=="mad4b.original318.host-anchor-current-readback.v2"
+             and wp.get("source")=="original318_fresh_wp_readback"
+             and wp.get("readback_verified") is True
+             and type(wp.get("observed_epoch")) is int
+             and instant-15<=wp["observed_epoch"]<=instant+5
+             and all(wp.get(f)==ledger.get(f) for f in
+                 ("company","environment","site_uuid","revision","anchor_nonce"))
+             and wp.get("prior_grants_ineligible") is True
+             and wp.get("signed_anchor_active_in_option") is False,
+             "ORIGINAL312_EXPIRED_ANCHOR_IS_NOT_SIGNED_CURRENT_HIGHWATER")
+        checked={"state":"CURRENT_ORIGINAL_REVISION_MATCHED__NONAUTHORIZING"}
+    else:
+        checked=gate.verify_fresh_current(projected,ledger,checkpoint,wp,
+                                          broker_pub,ind_pub,now=instant)
     need(checked.get("state")=="CURRENT_ORIGINAL_REVISION_MATCHED__NONAUTHORIZING"
          and ledger["revision"]==1 and ledger["grant_revision"]==0
          and ledger["state"]=="ACTIVE"
          and ledger["anchor_nonce"]==plan["target_anchor_nonce"]
          and plan["target_anchor_nonce"]==wp.get("anchor_nonce")
-         and wp.get("signed_anchor_active_in_option") is True
+         and (wp.get("signed_anchor_active_in_option") is True
+              if wp.get("state")=="ACTIVE" else
+              wp.get("state")=="EXPIRED"
+              and wp.get("signed_anchor_active_in_option") is False
+              and wp.get("prior_grants_ineligible") is True)
          and wp.get("current_anchor_signature_verified") is True
          and wp.get("current_anchor_eligible") is False
          and wp.get("original313_certified") is False

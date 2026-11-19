@@ -20,6 +20,7 @@ src=Path(__file__).resolve().parents[2]/"ops/host-anchor-v101"
 pre=read(src/"original313_first_revoke_prewrite.py","_v101_revoke_prewrite")
 # Pin the candidate SOURCE during hermetic tests; production expects Root copy.
 pre.V101=src/"original312_first_revoke_bundle.py"
+pre.V101_SHA=hashlib.sha256(pre.V101.read_bytes()).hexdigest()
 pre.V99=Path(__file__).resolve().parents[2]/"ops/host-anchor-v99/original313_postwrite_transaction.py"
 pre.V99_SHA=hashlib.sha256(pre.V99.read_bytes()).hexdigest()
 v99=pre.load(pre.V99,pre.V99_SHA,"_v101_v99_test")

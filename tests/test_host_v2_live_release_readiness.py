@@ -70,7 +70,7 @@ class Readiness(unittest.TestCase):
         self.assertTrue(result["state"]=="BLOCKED")
         self.assertFalse(result["anchor_issued"])
 
-    def test_reviewed_v96_successor_does_not_regress_to_v82_pending(self):
+    def test_reviewed_v103_successor_does_not_regress_to_v82_pending(self):
         reviewed=SOURCE/"wp-content/plugins/mad4b-platform/modules/authority/318-mad4b-native-host-exact-grant.php"
         self.live.write_bytes(reviewed.read_bytes())
         report=self.view()
@@ -79,7 +79,8 @@ class Readiness(unittest.TestCase):
         self.assertTrue(report["checks"]["v83_signed_current_readback_code_present"])
         self.assertTrue(report["checks"]["original318_dual_signed_reconcile_present"])
         self.assertTrue(report["checks"]["original318_revocation_binding_v96_present"])
-        self.assertEqual(report["original318_live_reviewed_version"],"v96")
+        self.assertEqual(report["original318_live_reviewed_version"],"v103")
+        self.assertTrue(report["checks"]["original318_expired_signed_readback_v103_present"])
         self.assertNotIn("original318_live_v82",report["pending"])
         self.assertNotIn("original318_live_reviewed",report["pending"])
         self.assertFalse(report["checks"]["host_issue_original312_issuer_commissioned"])
