@@ -7,7 +7,7 @@ function absint($x){return abs((int)$x);}function sanitize_title($x){return strt
 function get_post($id){return (int)$id===17?(object)['post_status'=>'publish','post_type'=>'tours-and-activities','post_title'=>'Luxor Nile Experience']:null;}
 function get_the_terms($id,$taxonomy){return [];}
 function apply_filters($hook,$default,...$args){return $default;}
-class MAD4B_SCP_Site_Profile {static $ready=false;static function status(){return ['site_uuid'=>'source-fixture','origin_match'=>self::$ready,'deployment_binding_match'=>self::$ready,'environment_match'=>self::$ready,'environment'=>'staging'];}}
+class MAD4B_SCP_Site_Profile {static $ready=false;static function status(){return ['site_uuid'=>'00000000-0000-4000-8000-000000000000','origin_match'=>self::$ready,'deployment_binding_match'=>self::$ready,'environment_match'=>self::$ready,'environment'=>'staging'];}}
 class MAD4B_SCP_Context_Authority {static function profile(){return ['brand_id'=>'brand','brand_name'=>'Tour Source'];}static function review_policy(){return ['mode'=>'human_only'];}}
 class MAD4B_SCP_Brand_Experience_Quality {static function brand_context(){return ['authority_level'=>'provisional'];}}
 class MAD4B_SCP_Provider_Field_Intelligence {static function locale_media_audit($id){return ['complete'=>false,'wpml_alt_translation_mode'=>'unconfigured'];}}

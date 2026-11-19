@@ -1,0 +1,96 @@
+<details class="mad4b-stay-panel__accordion" open>
+  <summary class="mad4b-stay-panel__summary">
+    <span class="mad4b-stay-panel__heading">
+      <small>ACCOMMODATION PRICING · EXTERNAL FIRST / SELF SECOND</small>
+      <strong>Accommodation &amp; Unit Pricing</strong>
+    </span>
+    <span class="mad4b-stay-panel__summary-note">Property · Unit · Optional Rates</span>
+  </summary>
+  <div class="mad4b-stay-panel__body">
+    <p class="mad4b-stay-panel__intro">Select a Property or Unit and inspect the native price sources. Contracted external suppliers have first consideration; the company (self) is the secondary source. Rate editing remains in native JetEngine screens, and no preview is a booking authorization.</p>
+    <div class="mad4b-stay-panel__supplier-order" aria-label="Supplier precedence">
+      <div><b>1</b><span><strong>Contracted external supplier</strong><small>First priority · verified supplier quote required</small></span></div>
+      <div><b>2</b><span><strong>Company · self</strong><small>Secondary supplier · native Property / Unit pricing</small></span></div>
+    </div>
+    <p data-stay="supplier-status" class="mad4b-stay-panel__status" role="status" aria-live="polite">Loading supplier configuration…</p>
+    <p class="mad4b-stay-panel__intro"><strong>Inside self — source order:</strong></p>
+    <div class="mad4b-stay-panel__layers" aria-label="Price source priority within self">
+      <span><b>1</b> Unit Rate</span><span><b>2</b> Unit Direct</span>
+      <span><b>3</b> Property Rate</span><span><b>4</b> Property Direct</span>
+    </div>
+    <div class="mad4b-stay-panel__layout">
+      <div class="mad4b-stay-panel__catalog">
+        <section class="mad4b-stay-panel__group" aria-labelledby="mad4b-stay-property-h">
+          <div class="mad4b-stay-panel__group-head"><span class="mad4b-stay-panel__step">1</span>
+            <h3 id="mad4b-stay-property-h">Choose a Property</h3>
+            <small data-stay="property-count"></small></div>
+          <label class="mad4b-stay-panel__field"><span>Search Properties (published or draft)</span>
+            <input data-stay="property-search" type="search" autocomplete="off" placeholder="Hotel or cruise name…" /></label>
+          <details class="mad4b-stay-panel__filters">
+            <summary>Classification filters <small>JetEngine taxonomy · AND</small></summary>
+            <div data-stay="property-filters" class="mad4b-stay-panel__filter-grid"></div>
+            <button data-stay="reset-filters" type="button" class="button">Clear filters</button>
+          </details>
+          <p data-stay="property-status" role="status" aria-live="polite" class="mad4b-stay-panel__status">Loading properties…</p>
+          <div data-stay="property-results" class="mad4b-stay-panel__results" role="list"></div>
+          <div class="mad4b-stay-panel__pager">
+            <button type="button" class="button" data-stay="property-prev">Previous</button>
+            <span data-stay="property-page"></span>
+            <button type="button" class="button" data-stay="property-next">Next</button>
+          </div>
+        </section>
+        <section class="mad4b-stay-panel__group" aria-labelledby="mad4b-stay-unit-h">
+          <div class="mad4b-stay-panel__group-head"><span class="mad4b-stay-panel__step">2</span>
+            <h3 id="mad4b-stay-unit-h">Select Unit</h3>
+            <small data-stay="unit-count"></small></div>
+          <div class="mad4b-stay-panel__unit-toolbar">
+            <label class="mad4b-stay-panel__field"><span>Room / Cabin classification</span>
+              <select data-stay="unit-type"><option value="">All unit types</option></select></label>
+            <button type="button" class="button" data-stay="use-property">Use Property pricing</button>
+          </div>
+          <p data-stay="unit-status" class="mad4b-stay-panel__status" role="status" aria-live="polite">Choose a property to load linked units.</p>
+          <div data-stay="unit-results" class="mad4b-stay-panel__results" role="list"></div>
+          <div class="mad4b-stay-panel__pager">
+            <button type="button" class="button" data-stay="unit-prev">Previous</button>
+            <span data-stay="unit-page"></span>
+            <button type="button" class="button" data-stay="unit-next">Next</button>
+          </div>
+        </section>
+      </div>
+      <aside class="mad4b-stay-panel__quote" aria-labelledby="mad4b-stay-quote-h">
+        <div class="mad4b-stay-panel__group-head"><span class="mad4b-stay-panel__step">3</span>
+          <h3 id="mad4b-stay-quote-h">Price source preview</h3></div>
+        <p data-stay="selection" class="mad4b-stay-panel__selection">Select a Property.</p>
+        <div class="mad4b-stay-panel__quote-fields">
+          <label class="mad4b-stay-panel__field"><span>Check-in</span>
+            <input data-stay="checkin" type="date" /></label>
+          <label class="mad4b-stay-panel__field"><span>Nights</span>
+            <input data-stay="nights" type="number" min="1" max="365" step="1" value="1" /></label>
+          <label class="mad4b-stay-panel__field"><span>Adults</span>
+            <input data-stay="adults" type="number" min="1" max="50" step="1" value="2" /></label>
+          <label class="mad4b-stay-panel__field"><span>Children</span>
+            <input data-stay="children" type="number" min="0" max="50" step="1" value="0" /></label>
+          <label class="mad4b-stay-panel__field mad4b-stay-panel__full"><span>Meal Plan</span>
+            <select data-stay="board"><option value="">Inherit Property / Cruise base</option></select></label>
+        </div>
+        <button type="button" class="button button-primary mad4b-stay-panel__preview-button" data-stay="preview">Preview selected price source</button>
+        <div data-stay="preview-status" role="status" aria-live="polite" class="mad4b-stay-panel__status">No source selected.</div>
+        <div data-stay="preview-result" class="mad4b-stay-panel__preview-result" hidden>
+          <div class="mad4b-stay-panel__price-label" data-stay="price-source"></div>
+          <strong data-stay="price-value" class="mad4b-stay-panel__price-value"></strong>
+          <div data-stay="price-basis" class="mad4b-stay-panel__price-basis"></div>
+          <p data-stay="price-meal" class="mad4b-stay-panel__price-meal"></p>
+          <p class="mad4b-stay-panel__warning">Indicative source amount only. Not a stay total, meal-inclusion guarantee, inventory confirmation or checkout authorization.</p>
+        </div>
+        <nav data-stay="edit-links" aria-label="Native pricing editors" class="mad4b-stay-panel__edit-links"></nav>
+      </aside>
+    </div>
+    <details class="mad4b-stay-panel__rates">
+      <summary>Existing Property / Unit Rates <small data-stay="rate-count">Choose a Property</small></summary>
+      <p class="mad4b-stay-panel__intro">Published rates participate only when native eligibility checks pass. Draft and QA rates are for editing and never selected by the resolver.</p>
+      <p data-stay="rate-status" class="mad4b-stay-panel__status" aria-live="polite"></p>
+      <div data-stay="rate-results" class="mad4b-stay-panel__rates-list"></div>
+      <a data-stay="rate-index" class="button" href="#">Open native Property Rates</a>
+    </details>
+  </div>
+</details>
