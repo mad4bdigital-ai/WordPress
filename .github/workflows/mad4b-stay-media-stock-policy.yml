@@ -9,6 +9,12 @@ on:
       - 'scripts/mad4b-stay-unit-photo-curation-cli.php'
       - 'scripts/mad4b-stay-unit-photo-rollback-cli.php'
       - 'scripts/mad4b-stay-fourseasons-exact-room-source-admission.php'
+      - 'scripts/mad4b-stay-tolip-exact-room-source-admission.php'
+      - 'scripts/mad4b-stay-accor-reviewed-room-source-v2.php'
+      - 'scripts/mad4b-stay-sheraton-gallery-room-source-admission.php'
+      - 'scripts/mad4b-stay-hilton-golf-gallery-source-admission.php'
+      - 'scripts/mad4b-stay-hilton-cairo-gallery-source-admission.php'
+      - 'scripts/mad4b-stay-barcelo-room-source-admission.php'
       - 'scripts/mad4b-stay-triumph-exact-room-source-admission.php'
       - 'scripts/mad4b-stay-triumph-room-gallery-cli.php'
       - 'tests/stay-unmanaged-stock-policy-contract.php'
@@ -24,6 +30,12 @@ on:
       - 'scripts/mad4b-stay-unit-photo-curation-cli.php'
       - 'scripts/mad4b-stay-unit-photo-rollback-cli.php'
       - 'scripts/mad4b-stay-fourseasons-exact-room-source-admission.php'
+      - 'scripts/mad4b-stay-tolip-exact-room-source-admission.php'
+      - 'scripts/mad4b-stay-accor-reviewed-room-source-v2.php'
+      - 'scripts/mad4b-stay-sheraton-gallery-room-source-admission.php'
+      - 'scripts/mad4b-stay-hilton-golf-gallery-source-admission.php'
+      - 'scripts/mad4b-stay-hilton-cairo-gallery-source-admission.php'
+      - 'scripts/mad4b-stay-barcelo-room-source-admission.php'
       - 'scripts/mad4b-stay-triumph-exact-room-source-admission.php'
       - 'scripts/mad4b-stay-triumph-room-gallery-cli.php'
       - 'tests/stay-unmanaged-stock-policy-contract.php'
@@ -63,6 +75,12 @@ jobs:
           php -l scripts/mad4b-stay-unit-photo-curation-cli.php
           php -l scripts/mad4b-stay-unit-photo-rollback-cli.php
           php -l scripts/mad4b-stay-fourseasons-exact-room-source-admission.php
+          php -l scripts/mad4b-stay-tolip-exact-room-source-admission.php
+          php -l scripts/mad4b-stay-accor-reviewed-room-source-v2.php
+          php -l scripts/mad4b-stay-sheraton-gallery-room-source-admission.php
+          php -l scripts/mad4b-stay-hilton-golf-gallery-source-admission.php
+          php -l scripts/mad4b-stay-hilton-cairo-gallery-source-admission.php
+          php -l scripts/mad4b-stay-barcelo-room-source-admission.php
           php -l scripts/mad4b-stay-triumph-exact-room-source-admission.php
           php -l scripts/mad4b-stay-triumph-room-gallery-cli.php
       - name: Hermetic stock and readiness assertions
