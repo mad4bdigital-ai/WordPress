@@ -70,7 +70,7 @@ shell tool. Both active sites are pinned to:
 
 For reproducibility, rebuild_renderer.py constructs that exact 119-file
 runtime from the tracked ops/dynamic-critical-css-20261116 source tree,
-three preserved v10-only source/test file versions, and
+five pinned renderer source/test deviations from the PR baseline, and an exact anchored insertion recorded in
 run-site-probe.patch. Its renderer-v11-manifest.json pins SHA-256 per
 file and the exact final tree hash. It does not overwrite newer
 shared-source tests or modify the installed site on its own.
