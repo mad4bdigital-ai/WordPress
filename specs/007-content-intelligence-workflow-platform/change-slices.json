@@ -1,11 +1,11 @@
 {
   "contract": "mad4b.change-slices.v2",
   "authorizing": false,
-  "reviewed_base_sha": "9f2df20a5272d0b2f5d784f442ba4e2f94629ab9",
+  "reviewed_base_sha": "bfeb2ce2373107aeaa7e71abd4d39158b82e29e5",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 63,
-  "changed_paths_sha256": "071683eaa3c102a445ee1f5afce969f198a025dced3cb2ea1600c8295a9ddfc4",
+  "changed_file_count": 65,
+  "changed_paths_sha256": "beffab36cb29e8fe38feadff8a8bc26a90b1229d28f79d2d6708048f0515a1b0",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -418,6 +418,16 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-background-agent-dispatch.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-authority.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-agent-authority-source-only-runtime.php"
+      ]
+    },
+    {
+      "id": "visual-seo-original-strategy-and-no-boot-regression",
+      "semantic_unit": "Preserve original PR890 visual SEO strategy source and its no-boot site-neutral test with explicit source-only review ownership.",
+      "revert_boundary": "Revert only the dormant visual SEO module and its no-boot regression together, without adding it to main Bootstrap or triggering site changes.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-visual-seo-strategy.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-visual-seo-strategy-runtime.php"
       ]
     }
   ]
