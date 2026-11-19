@@ -16,6 +16,31 @@ assert "get_post_status($id)!=='draft'" in four_seasons
 assert "_mad4b_official_room_photo_source_observation_v1" in four_seasons
 assert "rights_independently_verified'=>false" in four_seasons
 assert 'press.fourseasons.com' in source
+# Fourth wave: reviewed official sources and legacy-v1 preservation.
+room_scripts=[
+ 'mad4b-stay-tolip-exact-room-source-admission.php',
+ 'mad4b-stay-accor-reviewed-room-source-v2.php',
+ 'mad4b-stay-sheraton-gallery-room-source-admission.php',
+ 'mad4b-stay-hilton-golf-gallery-source-admission.php',
+ 'mad4b-stay-hilton-cairo-gallery-source-admission.php',
+ 'mad4b-stay-barcelo-room-source-admission.php',
+]
+for name in room_scripts:
+    content=(p/name).read_text()
+    assert "MAD4B_STAY_ROOM_REFERENCE_OWNER_APPROVED" in content, name
+    assert "_mad4b_unit_official_room_photo_reference_v1" in content, name
+    assert "jet_rel_default" in content, name
+    assert "get_post_status($id)!=='draft'" in content, name
+    assert "rights_independently_verified" in content, name
+    assert not re.search(r'\b(?:wp_update_post|wp_publish_post|wc_create_order|wc_reduce_stock_levels)\s*\(',content), name
+assert "_mad4b_unit_photo_source_review_v2" in source
+assert "source_review_v2_invalid" in source
+assert "reviewed_source_sha256_mismatch" in source
+assert "'static-dm.barcelo.com'" in source
+assert "'www.hilton.com'" in source
+assert "'tolipgroup.com'" in source
+assert "'source_image_quality_review_required'" in source
+assert "count($allow)>20" in source
 assert 'MAD4B_STAY_MEDIA_USER_APPROVED' in source
 assert 'MAD4B_STAY_MEDIA_UNIT_IDS' in source
 assert 'count($allow)>20' in source
