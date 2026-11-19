@@ -33,6 +33,13 @@ HOST_ROOT_HERMETIC_REGRESSIONS = frozenset((
 # Each path contains exit-on-failure assertions and a positive PASS marker.
 # Other PHP files continue to require PHPUnit; unknown paths fail closed.
 STANDALONE_PHP_REGRESSIONS = frozenset((
+    # PR942 exact, source-reviewed scoped CIMD compatibility fixtures.
+    # All three execute under PHP 7.4 and 8.5 as isolated CLI scripts using
+    # in-memory WordPress/OAuth doubles; none sends tokens, accesses a real
+    # database, or changes site state. This never widens arbitrary PHP running.
+    "wp-content/plugins/mad4b-site-control-plane/tests/cimd-scoped-bearer-identity-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-auto-binding-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/reconnect-hardening-runtime.php",
     # Twelve reviewed PR882/PR920 source-merger PHP fixtures are pure CLI:
     # synthetic WordPress functions, explicit exit-on-fail assertions, no DB,
     # remote network, site initialization, or grant capability. We verified
@@ -965,6 +972,14 @@ def self_test():
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-signed-host-agent-negative-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-signed-host-context-review-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-cli-context-identity-runtime.php",
+    ):
+        assert command_for(exact) == ["php", str((ROOT / exact).resolve())]
+    # Exact PR942 signed-bearer fixtures: standalone source-only regression
+    # executors, not PHPUnit or WordPress runtime jobs.
+    for exact in (
+        "wp-content/plugins/mad4b-site-control-plane/tests/cimd-scoped-bearer-identity-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-auto-binding-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/reconnect-hardening-runtime.php",
     ):
         assert command_for(exact) == ["php", str((ROOT / exact).resolve())]
     # Exact-path only; no ambient PHP test runner or generic allowlist wildcard.
