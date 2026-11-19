@@ -60,6 +60,22 @@ $invalid=$cls::guide(64871,'english');
 if(!is_wp_error($invalid)||$invalid->get_error_code()!=='guide_coverage_source_changed')
  WP_CLI::error('Stale itinerary was accepted');
 WP_CLI::log('PASS itinerary_hash_mismatch_blocked');
+$policy['source_hash']=$source['source_hash'];
+$policy['statuses']=array_fill_keys(array_keys($source['days']),'none');
+$policy['half_day_factor']=null;
+$GLOBALS['mad4b_guide_test_policy']=$policy;
+$noGuide=$cls::guide(64871,'');
+if(is_wp_error($noGuide)||(float)$noGuide['cost']!==0.0||
+   ($noGuide['tier']??null)!=='not_required'||($noGuide['guide_count']??null)!==0)
+ WP_CLI::error('No-guide itinerary incorrectly charged or requested a language');
+WP_CLI::log('PASS explicitly_no_guide_cost_zero_without_language');
+$policy['statuses'][$keys[0]]='optional';
+$GLOBALS['mad4b_guide_test_policy']=$policy;
+$optionalGuide=$cls::guide(64871,'');
+if(is_wp_error($optionalGuide)||(float)$optionalGuide['cost']!==0.0||
+ ($optionalGuide['optional_days_excluded']??null)!==1)
+ WP_CLI::error('Optional-only guide was included in package base');
+WP_CLI::log('PASS optional_only_guide_excluded_from_base');
 remove_all_filters('get_post_metadata',200);
 $source2=$cls::source(60433);
 if(is_wp_error($source2)||$source2['source_kind']!=='term'||count($source2['days'])!==5)
