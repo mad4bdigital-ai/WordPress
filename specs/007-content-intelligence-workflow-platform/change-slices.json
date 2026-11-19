@@ -1,11 +1,11 @@
 {
   "contract": "mad4b.change-slices.v2",
   "authorizing": false,
-  "reviewed_base_sha": "98223a4c73099fd1196190b7199e21cf9293900f",
+  "reviewed_base_sha": "fe0314a99ca507e819b124cbf6ba8c1c8f8f5d18",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 70,
-  "changed_paths_sha256": "0deb22e2c6f53c080b8e477391b7f27ba54048147fc4622e707bb99e255c4dd6",
+  "changed_file_count": 81,
+  "changed_paths_sha256": "379bc4286283aa6efe41d8a1ca7169ab440cc2afff525ab8c5e31a80c4e58b20",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -440,6 +440,56 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-fcp-queue-readback.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-fcp-local-observability-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-fcp-queue-readback-runtime.php"
+      ]
+    },
+    {
+      "id": "switcher-browser-pinned-workflow-review",
+      "semantic_unit": "Review original country/nationality switcher workflow and browser runner pin contract; do not promote or change protected CI by implication.",
+      "revert_boundary": "Revert only this exact reviewed source/evidence group; retain authorizing=false, no runtime Bootstrap change, no grants or Production writes.",
+      "certification": "exact_head",
+      "path_globs": [
+        ".github/workflows/country-nationality-switchers.yml",
+        "tests/switchers/test-browser-runner-pin-contract.py"
+      ]
+    },
+    {
+      "id": "original-context-document-normalizer-review",
+      "semantic_unit": "Review dormant local document/OOXML normalization helpers and hermetic namespace-safe read tests; no document writes or boot.",
+      "revert_boundary": "Revert only this exact reviewed source/evidence group; retain authorizing=false, no runtime Bootstrap change, no grants or Production writes.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-local-document-normalizer.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-context-local-document-normalizer-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-ooxml-namespace-neutrality-contract.py"
+      ]
+    },
+    {
+      "id": "original-local-transport-policy-review",
+      "semantic_unit": "Review dormant local transport policy and deny-by-default boundary fixture; no provider boot or external sends.",
+      "revert_boundary": "Revert only this exact reviewed source/evidence group; retain authorizing=false, no runtime Bootstrap change, no grants or Production writes.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-transport-policy.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-local-transport-boundary-runtime.php"
+      ]
+    },
+    {
+      "id": "original-provider-field-read-observation-review",
+      "semantic_unit": "Review original provider field read-only discovery and the site profile scoped negative regression, without translation/content edits.",
+      "revert_boundary": "Revert only this exact reviewed source/evidence group; retain authorizing=false, no runtime Bootstrap change, no grants or Production writes.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-field-intelligence.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-provider-field-read-parity-runtime.php"
+      ]
+    },
+    {
+      "id": "feature007-admin-successor-regression-review",
+      "semantic_unit": "Preserve existing Feature 007 admin successor compatibility test independently from the source-only provider candidate review.",
+      "revert_boundary": "Revert only this exact reviewed source/evidence group; retain authorizing=false, no runtime Bootstrap change, no grants or Production writes.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-feature007-admin-successor-contract.py"
       ]
     }
   ]
