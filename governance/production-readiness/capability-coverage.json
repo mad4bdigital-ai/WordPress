@@ -24036,22 +24036,23 @@
       "live_evidence_required": true
     },
     {
-      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
-      "source_blob_sha": "2c497ec72c57f420d1abf1eef242748be40f7bb2",
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-field-intelligence.php",
+      "source_blob_sha": "5c327e410ab39a16cd402ad118dfb38726d3338a",
       "control_ids": [
-        "AI-01",
-        "GOVERNANCE-01",
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
         "SECURITY-01"
       ],
       "regression_tests": [
-        "tests/qa31_dormant_ollama_bootstrap_successor_contract.py"
+        "tests/provider-field-intelligence-site-readonly-php74-hermetic.php"
       ],
-      "owner_role": "Repository source/security reviewer, CI-only; not WordPress enrolled owner",
+      "owner_role": "MAD4B repository source/security reviewer; CI-only review, not WordPress Site Owner or Production release authority",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true,
-      "review_rationale": "The only source change since the independently pinned Host Agent main plugin bootstrap is replacement of one unconditional local Ollama PHP require with a dormant, non-executable comment. The prior bootstrap is reconstructed byte-exactly and matched to the frozen Host review. This never grants Local AI, Host, Production or deployment authority.",
-      "execution_note": "Only one exact dormant Ollama Bootstrap successor. Independent Host and historical QA31 source records remain immutable and Production remains disabled."
+      "review_rationale": "Exact HEAD Provider Field Intelligence source now rejects cloned, foreign, unbound or invalid Site Profile evidence before post-type, taxonomy and provider field-name discovery; only affirmative site UUID, origin match, environment match and deployment binding permits the original read-only, limited registered-content inventory. Hermetic PHP 7.4 and 8.5 regressions assert a foreign provider is denied before its field names are queried and that no writes occur. This source-only review confers no provider grant, cross-site access, WordPress Site Owner identity, signed release or Production activation.",
+      "execution_note": "Required test: tests/provider-field-intelligence-site-readonly-php74-hermetic.php. Preserve prior reviewed exact source rows and frozen historical QA31 evidence."
     }
   ],
   "code_change_rules": {

@@ -23,5 +23,6 @@
   "source_promotion_approved": false,
   "live_evidence_required": true,
   "is_build_provenance": false,
-  "release_gate": "BLOCKED_SOURCE_RECONCILIATION"
+  "release_gate": "BLOCKED_SOURCE_RECONCILIATION",
+  "coverage_regression": "tests/source-unification-review-contract.py"
 }

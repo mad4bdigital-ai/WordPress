@@ -417,6 +417,7 @@ def reviewed_rc129_dormant_ollama_bootstrap_successor(repo:Path,path:str,content
     old=b"require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-ollama-ability.php';"
     replacement=b'// Local Ollama remains source-only until an explicit local owner activation.'
     test='tests/qa31_dormant_ollama_bootstrap_successor_contract.py'
+    coverage_test='tests/source-unification-review-contract.py'
     try:
         m=json.loads(manifest_path.read_text(encoding='utf-8'))
         host=json.loads(host_path.read_text(encoding='utf-8'))
@@ -436,6 +437,7 @@ def reviewed_rc129_dormant_ollama_bootstrap_successor(repo:Path,path:str,content
             or m.get('current_sha256')!=current_sha
             or m.get('exact_delta')!='one-only: old Ollama require becomes a dormant source-only comment'
             or m.get('required_regression')!=test
+            or m.get('coverage_regression')!=coverage_test
             or not isinstance(ids,list) or ids!=['AI-01','GOVERNANCE-01','SECURITY-01']
             or not set(ids)<=known or not m.get('owner_role')
             or len(str(m.get('review_rationale','')))<90
@@ -457,7 +459,10 @@ def reviewed_rc129_dormant_ollama_bootstrap_successor(repo:Path,path:str,content
             or hashlib.sha1(b'blob '+str(len(restored)).encode()+b'\0'+restored).hexdigest()!=parent_blob
             or not (repo/test).is_file() or (repo/test).is_symlink()):
             return None
-        return test
+        # The already-reviewed exact blob is registered under its immutable
+        # source-unification suite. QA31 separately runs the new strict review;
+        # do not duplicate or rewrite historical capability-coverage evidence.
+        return coverage_test
     except (OSError,ValueError,KeyError,TypeError):
         return None
 

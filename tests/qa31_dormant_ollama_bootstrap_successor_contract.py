@@ -13,7 +13,7 @@ m_path=repo/'governance/release-parity/qa31-rc129-dormant-ollama-bootstrap-succe
 m=json.loads(m_path.read_text())
 assert data.count(comment)==1 and old not in data
 assert hashlib.sha256(data).hexdigest()==m['current_sha256']
-assert qa.reviewed_rc129_dormant_ollama_bootstrap_successor(repo,'mad4b-site-control-plane.php',data)==m['required_regression']
+assert qa.reviewed_rc129_dormant_ollama_bootstrap_successor(repo,'mad4b-site-control-plane.php',data)==m['coverage_regression']
 assert qa.reviewed_rc129_dormant_ollama_bootstrap_successor(repo,'includes/class-mad4b-scp-context-authority.php',data) is None
 assert qa.reviewed_rc129_dormant_ollama_bootstrap_successor(repo,'mad4b-site-control-plane.php',data+b'\n') is None
 assert qa.reviewed_rc129_dormant_ollama_bootstrap_successor(repo,'mad4b-site-control-plane.php',data.replace(comment,old)) is None
@@ -28,6 +28,7 @@ for key,value in (
  ('previous_review_sha256','f'*64),
  ('control_ids',['AI-01']),
  ('required_regression','tests/not-reviewed.py'),
+ ('coverage_regression','tests/not-reviewed.py'),
 ):
     forged=dict(m);forged[key]=value
     def replaced(self,*a,**kw):
