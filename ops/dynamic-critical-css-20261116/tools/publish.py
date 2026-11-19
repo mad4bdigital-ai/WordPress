@@ -110,10 +110,17 @@ def publish_installed_legacy_v1() -> None:
             or gate.get('widths') != [320,390,414,768]
             or gate.get('cssPriority')!='low'
             or gate.get('fullCssPreload') is not False
-            or gate.get('adaptiveMaxWidth',0) not in (0,None)
+            or gate.get('adaptiveMaxWidth',0) not in (0,None,767)
             or gate.get('hero900') is not False
             or gate.get('deferCity') is not False):
             deny('LEGACY_V1_QA_STRATEGY_MISMATCH:'+lang)
+        cap=gate.get('adaptiveMaxWidth',0) or 0
+        if cap==767 and not all(marker in code for marker in (
+            "original-v1-renderer-exact-low-no-preload-cap767",
+            "critical_cap_px",
+            'media="(min-width:768px)" fetchpriority="auto"'
+        )):
+            deny('CAP767_NATIVE_RUNTIME_NOT_INSTALLED:'+lang)
         observed=[x for x in qa['results'] if x.get('lang')==lang]
         if (len(observed) != 4
             or {x.get('width') for x in observed} != {320,390,414,768}
@@ -146,7 +153,10 @@ def publish_installed_legacy_v1() -> None:
             'gate_status':'pass',
             'languages':[lang],
             'devices':['mobile'],
-            'coverage':'original-v1-renderer-exact-low-no-preload',
+            'coverage':('original-v1-renderer-exact-low-no-preload-cap767'
+                        if qa['gates'][lang].get('adaptiveMaxWidth')==767
+                        else 'original-v1-renderer-exact-low-no-preload'),
+            **({'critical_cap_px':767} if qa['gates'][lang].get('adaptiveMaxWidth')==767 else {}),
             'qa_evidence':'mad4b.mobile-critical.qa.v1',
             'qa_evidence_sha256':SHA(OUT/'verification.json'),
             'evidence_verified_utc':datetime.now(timezone.utc).isoformat(),

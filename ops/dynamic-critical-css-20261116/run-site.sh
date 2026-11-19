@@ -22,9 +22,9 @@ case "$SITE" in
    HOST=wayfatours.com;ENVIRONMENT=production
    WP=/opt/wayfa-rebuild-20261102/site-copy/wp-content
    PHP=php-guxhp9y6vgh7oouuw8plxrlr;MANIFEST_VERSION=1
-   CONSUMER_SHA=cdb55bd9ab6a86df26483450e33cf0bbc91296940db51102dde082fdb839db5b
+   CONSUMER_SHA=60fc91116affa5faf539cc835e12ce3939d598be68c94a56b21a36f860c5f29eb
    QA_WIDTHS=320,390,414,768
-   CSS_PRIORITY=low;CSS_PRELOAD=0;ADAPTIVE_MAX=0
+   CSS_PRIORITY=low;CSS_PRELOAD=0;ADAPTIVE_MAX=767
    ;;
  *) echo 'INVALID_SITE: allowed source or wayfa' >&2; exit 2;;
 esac

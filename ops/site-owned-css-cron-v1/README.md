@@ -139,3 +139,13 @@ source deviations and the non-certifying probe patch. The site-local
 renderer manifest now uses renderer-v12-manifest.json; previous v11
 release remains available at GitHub head 3c1f399cf780 and host rollback.
 v12 SHA-256: cd4ff78aea00d5195083e81a9877df44cbcd47907c550e11c3c52aa7327fe09e
+
+## Wayfatours native adaptive 767 — candidate release v13
+The exact Wayfa-only v0.3.23 native v1 consumer source is tracked under
+ops/dynamic-critical-css-20261116/wayfa-native-adaptive767-candidate.php.
+Its SHA is pinned in the Wayfa branch of run-site.sh. It retains legacy
+v1 certificate support, but at 768px a cap767 certificate falls back to
+original render-blocking CSS, not critical+async. The original measured
+EN four-viewport Chromium pilot must be repeated after the real release.
+Renderer v13 tree sha256: 07a31ac90fc93d09701c558727c48e1b76e9be2999d4ba599c66aa136e77c4d7
+Consumer sha256: 60fc91116affa5faf539cc835e12ce3939d598be68c94a56b21a36f860c5f29e
