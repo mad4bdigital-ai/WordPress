@@ -293,7 +293,8 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         foreach($rows as $row){
             $e=(array)($row['source_evidence']??array());
             $id=absint($row['object_id']??0);
-            $url=$id?get_edit_post_link($id,'raw'):'';
+            $url=$id?(($row['source']??'')==='mad4b-destination-term-integrity'
+                ?get_edit_term_link($id,'destinations'):get_edit_post_link($id,'raw')):'';
             $values=array($row['id']??'',$row['severity']??'',$row['status']??'',
                 $row['post_type']??'',$id,($id?html_entity_decode(wp_strip_all_tags(get_the_title($id)),ENT_QUOTES,'UTF-8'):''),$row['code']??'',$e['taxonomy']??'',
                 absint($e['term_id']??0),$e['level']??'',$row['label']??'',
@@ -409,7 +410,9 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         }
         // Native board service enforces stage membership. Source ID is the issue fingerprint.
         $subject='['.strtoupper($row['severity']).'] '.$row['code'].' #'.$row['object_id'];
-        $link=$row['object_id']?get_edit_post_link($row['object_id'],'raw'):'';
+        $link=$row['object_id']?(($row['source']??'')==='mad4b-destination-term-integrity'
+            ?get_edit_term_link((int)$row['object_id'],'destinations')
+            :get_edit_post_link($row['object_id'],'raw')):'';
         $taskChecklist='';
         if (($row['source']??'')==='mad4b-google-ttd-pricing') {
             foreach(['price','fees_and_taxes','occupancy','availability','checkout_match'] as $name) {
@@ -570,7 +573,9 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         echo '<p class="description">Showing '.($totalRows?((($issuePage-1)*100)+1):0).'-'.min($issuePage*100,$totalRows).' of '.$totalRows.' matching issues.</p>';
         echo '<table class="widefat striped"><thead><tr><th>Severity</th><th>Source</th><th>Issue</th><th>Status</th><th>Fluent Boards</th></tr></thead><tbody>';
         foreach(array_slice($rows,($issuePage-1)*100,100) as $row) {
-            $url=$row['object_id']?get_edit_post_link($row['object_id']):'';
+            $url=$row['object_id']?(($row['source']??'')==='mad4b-destination-term-integrity'
+                ?get_edit_term_link((int)$row['object_id'],'destinations')
+                :get_edit_post_link($row['object_id'])):'';
             $label=esc_html((string)$row['post_type'].' #'.(int)$row['object_id']);
             if($url)$label='<a href="'.esc_url($url).'">'.$label.'</a>';
             $evidence=(array)($row['source_evidence']??array());
