@@ -535,4 +535,35 @@ for field,value in (
         chk(not reviewed_ci_only_source_successor(plugin,context_rel,context_content),
             'context_preview_forged_review_denied_'+field)
 
+# Independently reviewed company-native-notification GET preview. Never infer
+# Fluent Forms SettingsService writes or Production mail permission from it.
+email_review_file=repo/'docs/source-reconciliation/pr961-company-email-native-notice-readonly-20261119.json'
+email_review=json.loads(email_review_file.read_text(encoding='utf-8'))
+email_rel='includes/class-mad4b-scp-company-email-routing.php'
+email_source=(plugin/email_rel).read_bytes()
+chk(reviewed_ci_only_source_successor(plugin,email_rel,email_source),
+    'company_email_native_readonly_exact_review')
+chk(not reviewed_ci_only_source_successor(plugin,email_rel,email_source+b'\nFORGED'),
+    'company_email_native_readonly_source_tamper_denied')
+chk(email_review['no_native_feed_write'] is True
+    and email_review['no_mail_send'] is True
+    and email_review['production_authorized'] is False,
+    'company_email_native_preview_non_authorizing')
+email_doc_target=email_review_file.resolve()
+for field,wrong in (
+    ('production_authorized',True),
+    ('no_mail_send',False),
+    ('no_native_feed_write',False),
+    ('previous_blob_sha','0'*40),
+    ('current_sha256','0'*64),
+    ('historical_manifest_sha256','f'*64),
+):
+    fake=dict(email_review);fake[field]=wrong
+    def forged_mail_doc(self,*args,**kwargs):
+        if self.resolve()==email_doc_target:return json.dumps(fake)
+        return original_read(self,*args,**kwargs)
+    with mock.patch.object(Path,'read_text',forged_mail_doc):
+        chk(not reviewed_ci_only_source_successor(plugin,email_rel,email_source),
+            'company_native_email_review_forgery_denied_'+field)
+
 print('QA31_SOURCE_PARITY_NEGATIVE_REGRESSIONS: PASS (source reviewed; release blocked)')

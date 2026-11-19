@@ -33,6 +33,9 @@ HOST_ROOT_HERMETIC_REGRESSIONS = frozenset((
 # Each path contains exit-on-failure assertions and a positive PASS marker.
 # Other PHP files continue to require PHPUnit; unknown paths fail closed.
 STANDALONE_PHP_REGRESSIONS = frozenset((
+    # Source-reviewed company/native Fluent Forms read-only notice preview.
+    # Fake forms, options and transports; never writes or schedules email.
+    "tests/company-email-native-notice-preview-hermetic.php",
     # Exact, nonmutating Context Authority classification preview with stub
     # WordPress options, user, source registry, and Site Profile; only reads.
     "wp-content/plugins/mad4b-site-control-plane/tests/context-classification-readonly-preview-runtime.php",
@@ -977,6 +980,10 @@ def self_test():
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-cli-context-identity-runtime.php",
     ):
         assert command_for(exact) == ["php", str((ROOT / exact).resolve())]
+    # Exact hermetic native company notice comparison, not a generic PHP runner.
+    assert command_for("tests/company-email-native-notice-preview-hermetic.php") == [
+        "php", str((ROOT / "tests/company-email-native-notice-preview-hermetic.php").resolve())
+    ]
     # Original review remains intact; only the new exact Context preview
     # fixture is executable as isolated PHP. No generic PHP wildcard.
     exact="wp-content/plugins/mad4b-site-control-plane/tests/context-classification-readonly-preview-runtime.php"
