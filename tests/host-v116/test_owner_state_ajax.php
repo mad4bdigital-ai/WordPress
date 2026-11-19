@@ -51,7 +51,7 @@ $options[MAD4B_Central_SSH_Command_Intake_V1::REQUEST_PREFIX.$q]
         ]
     ]);
 $options[MAD4B_Central_VPS_Broker_V1::JOB.$q]=[
-    'job_id'=>$q,'plan_sha256'=>$plan,
+    'job_id'=>$q,'plan_sha256'=>$plan, 'expires_epoch'=>time()+260,
     'state'=>'BROKER_CLAIMED_PENDING_INDEPENDENT_HOST_AUTHORITY'
 ];
 $before=serialize($options);
@@ -87,10 +87,16 @@ if(!str_contains($html,'"planSha256":"'.$plan.'"')
  throw new RuntimeException('AUTO_ROOT_PLAN_AND_AJAX_UX_NOT_READY');
 $options[MAD4B_Central_SSH_Command_Intake_V1::REQUEST_PREFIX.$q]['expires_epoch']=time()-60;
 $stillClaimed=MAD4B_Host_Authority_Owner_Console_V106::snapshot();
-if($stillClaimed['phase']!=='ORIGINAL305_REQUEST_STAGED'
+if($stillClaimed['phase']!=='INDEPENDENT_SIGNATURE_WINDOW_EXPIRED'
+ ||!$stillClaimed['signature_window_expired']
  ||!$stillClaimed['broker_job_exists']
  ||$stillClaimed['plan_sha256']!==$plan)
- throw new RuntimeException('CLAIMED_JOB_MUST_SURVIVE_OWNER_EXPIRY_IN_READBACK');
+ throw new RuntimeException('EXPIRED_ORIGINAL305_WINDOW_CANNOT_SIGN_ORIGINAL313');
+ob_start();MAD4B_Host_Authority_Owner_Console_V106::screen();$staleHtml=ob_get_clean();
+if(!str_contains($staleHtml,'Original306 Claim expired')
+ ||!str_contains($staleHtml,'no Original312/313 Enrollment')
+ ||!str_contains($staleHtml,'id="mad4b-ha-command-panel" hidden'))
+ throw new RuntimeException('EXPIRED_SIGNATURE_UI_MUST_FAIL_CLOSED');
 unset($options[MAD4B_Central_VPS_Broker_V1::JOB.$q]);
 $expired=MAD4B_Host_Authority_Owner_Console_V106::snapshot();
 if($expired['phase']!=='OWNER_REQUEST_EXPIRED'

@@ -57,6 +57,7 @@ final class MAD4B_Host_Authority_Owner_Console_V106 {
             'anchor_state','anchor_revision','grant_id',
             'request_id','request_status','request_expires_epoch',
             'request_expired','broker_job_exists','broker_job_state',
+            'broker_job_expires_epoch','signature_window_expired',
             'plan_sha256','plan_source'
         ) as $field) {
             // grant_id is a nonsecret identifier already on the owner page;
@@ -149,6 +150,7 @@ final class MAD4B_Host_Authority_Owner_Console_V106 {
             'grant_id'=>'', 'request_id'=>'','request_status'=>'',
             'request_expires_epoch'=>0,'request_expired'=>false,
             'broker_job_exists'=>false,'broker_job_state'=>'',
+            'broker_job_expires_epoch'=>0,'signature_window_expired'=>false,
             // From an exact previously submitted Original305 Root Plan
             // reference, not a new signed Original312/313 approval.
             'plan_sha256'=>'','plan_source'=>'',
@@ -211,6 +213,19 @@ final class MAD4B_Host_Authority_Owner_Console_V106 {
                     &&($broker['job_id']??null)===$out['request_id'];
                 $out['broker_job_state']=$out['broker_job_exists']
                     ?(string)($broker['state']??'UNKNOWN'):'';
+                if ($out['broker_job_exists']) {
+                    $out['broker_job_expires_epoch']=(int)($broker['expires_epoch']??0);
+                    $out['signature_window_expired']=
+                        $out['broker_job_expires_epoch']>0
+                        &&($out['broker_job_expires_epoch']<=time()
+                            ||($out['request_expires_epoch']>0
+                               &&$out['request_expires_epoch']<=time()))
+                        &&in_array($out['broker_job_state'],
+                            array('BROKER_CLAIMED_PENDING_INDEPENDENT_HOST_AUTHORITY',
+                                  'QUEUED_FOR_VPS_BROKER_CLAIM'),true)
+                        &&$out['anchor_revision']===0
+                        &&$out['anchor_state']==='MISSING_OR_INVALID';
+                }
             }
             $out['request_expired']=$out['request_expires_epoch']>0
                 &&$out['request_expires_epoch']<=time();
@@ -247,6 +262,10 @@ final class MAD4B_Host_Authority_Owner_Console_V106 {
         if ($out['anchor_revision']!==0
             ||$out['anchor_state']!=='MISSING_OR_INVALID') {
             $out['phase']='ANCHOR_STATE_REVIEW';
+        } elseif ($out['signature_window_expired']) {
+            // A past Original306 Claim is not a usable Original312/313
+            // admission. Do not advertise this as actively signing.
+            $out['phase']='INDEPENDENT_SIGNATURE_WINDOW_EXPIRED';
         } elseif ($out['request_expired']&&!$out['broker_job_exists']) {
             $out['phase']='OWNER_REQUEST_EXPIRED';
         } elseif ($out['request_id']!=='') {
@@ -298,6 +317,8 @@ final class MAD4B_Host_Authority_Owner_Console_V106 {
             'requestExpiresEpoch'=>$status['request_expires_epoch'],
             'brokerJobExists'=>$status['broker_job_exists'],
             'brokerJobState'=>$status['broker_job_state'],
+            'signatureWindowExpired'=>$status['signature_window_expired'],
+            'brokerJobExpiresEpoch'=>$status['broker_job_expires_epoch'],
             'hostId'=>$status['host_id'],
             'hostPrincipal'=>$status['host_principal'],
             'siteUuid'=>$status['site_uuid'],
@@ -325,12 +346,15 @@ final class MAD4B_Host_Authority_Owner_Console_V106 {
         $owner=$s['owner_verified']===true;
         $grant=$owner && $s['grant_id']!=='';
         $expired=$owner && $s['phase']==='OWNER_REQUEST_EXPIRED';
+        $signatureExpired=$owner &&
+            $s['phase']==='INDEPENDENT_SIGNATURE_WINDOW_EXPIRED';
         $queued=$owner && $s['request_id']!=='' && !$expired;
         $review=$s['phase']==='ANCHOR_STATE_REVIEW';
         $headline=$review?'Independent Anchor review required':
+            ($signatureExpired?'Original306 Claim expired — Original312/313 not issued':
             ($expired?'Owner Request expired — renewal required':
             ($queued?'Owner request accepted':($grant?'Bootstrap Grant completed':
-            ($owner?'Owner approval required':'Owner verification required'))));
+            ($owner?'Owner approval required':'Owner verification required')))));
         $requestText=$s['request_status']==='ADMITTED_PENDING_INDEPENDENT_HOST_AUTHORITY'
             ? 'Accepted — awaiting independent Host verification'
             : (string)$s['request_status'];
@@ -375,7 +399,9 @@ final class MAD4B_Host_Authority_Owner_Console_V106 {
             .'<span class="ha-pill" id="mad4b-ha-overall-state">'.esc_html($headline).'</span></header>';
         echo '<section class="ha-panel" aria-labelledby="mad4b-ha-summary">';
         echo '<h2 id="mad4b-ha-summary">'.esc_html($headline).'</h2>';
-        echo '<p class="ha-muted">'.esc_html($expired
+        echo '<p class="ha-muted">'.esc_html($signatureExpired
+            ? 'Original306 accepted the Claim, but the signing window elapsed before Original312/313 issuance. The independent First Anchor issuer has not been commissioned; do not resubmit another owner request until the signed workflow is ready.'
+            :($expired
             ? 'The previous Owner Request expired before Original306 Broker Dispatch. The Bootstrap Grant remains valid. Submit the verified Root Plan again with a fresh owner confirmation; the page will dispatch it to the existing broker immediately.'
             :($queued
             ? ($s['broker_job_exists']
@@ -383,7 +409,7 @@ final class MAD4B_Host_Authority_Owner_Console_V106 {
                 : 'Original305 accepted the request but Broker Dispatch is not confirmed. Dispatch the existing request before its window expires.')
             :($grant
                 ? 'The non-executing Bootstrap Grant is complete. The next step is to submit the verified Root Plan.'
-                :'Verify your owner session and active Original328 connection before proceeding.'))).'</p>';
+                :'Verify your owner session and active Original328 connection before proceeding.')))).'</p>';
         echo '<div class="ha-grid">';
         foreach(array(
             'Company'=>'All Royal Egypt','Environment'=>'Staging','Host'=>'hosting-2',
@@ -463,9 +489,11 @@ final class MAD4B_Host_Authority_Owner_Console_V106 {
             echo '<p class="ha-muted">Request ID</p><p class="ha-id" id="mad4b-ha-request-id">'
                 .esc_html($queued?$s['request_id']:'').'</p>';
             echo '<p id="mad4b-ha-tracker-status"><strong>Current status:</strong> '
-                .esc_html($queued?($s['broker_job_exists']
+                .esc_html($signatureExpired
+                    ?'Expired signing window. Original306 Claim is historical; no Original312/313 Enrollment or Anchor Revision 1 has been issued.'
+                    :($queued?($s['broker_job_exists']
                     ?'Original306 Broker Job: '.$s['broker_job_state']
-                    :$requestText.' · dispatch not yet confirmed'):'Not submitted').'</p>';
+                    :$requestText.' · dispatch not yet confirmed'):'Not submitted')).'</p>';
             echo '<div class="ha-actions"><button type="button" class="button button-primary" id="mad4b-ha-refresh"'
                 .(!$queued?' disabled':'').'>Check latest status</button>'
                 .'<button type="button" class="button" id="mad4b-ha-copy"'
@@ -476,8 +504,9 @@ final class MAD4B_Host_Authority_Owner_Console_V106 {
             echo '<p class="ha-fine" id="mad4b-ha-checked-at" aria-live="polite">'
                 .'Live status is loaded automatically while this tab is open.</p>';
             echo '<div class="ha-next"><h3>What happens next?</h3>'
-                .'<p class="ha-muted">Independent Original306 claim and Original312/313 verification are required. '
-                .'Anchor issuance must be checked separately using an authoritative readback.</p>'
+                .'<p class="ha-muted">'.($signatureExpired
+                    ?'The current Job cannot be signed or replayed. The first-party Original312/313 issuing worker must be commissioned and independently verified before a fresh owner-approved request is useful.'
+                    :'Independent Original306 claim and Original312/313 verification are required. Anchor issuance must be checked separately using an authoritative readback.').'</p>'
                 .'<p class="ha-fine">Checking status is read-only and does not execute, sign, or approve anything.</p></div></section>';
             if($expired) echo '<p class="ha-fine" id="mad4b-ha-expired-note">'
                 .'Earlier Owner Request expired without Broker Dispatch. '

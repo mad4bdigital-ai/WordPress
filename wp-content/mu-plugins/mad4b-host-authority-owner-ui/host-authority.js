@@ -61,6 +61,7 @@
   let brokerJobExists = !requestExpired && config.brokerJobExists === true;
   let brokerJobState = !requestExpired && typeof config.brokerJobState === "string"
     ? config.brokerJobState : "";
+  let signatureWindowExpired = config.signatureWindowExpired === true;
   let requestStatus = typeof config.requestStatus === "string"
     ? config.requestStatus : "ADMITTED_PENDING_INDEPENDENT_HOST_AUTHORITY";
   let busy = false;
@@ -110,12 +111,16 @@
     if (trackerStatus) trackerStatus.textContent = anchorRevision > 0
       ? "Host Anchor revision " + anchorRevision +
         " observed — inspect independent verification before enabling writes"
+      : signatureWindowExpired
+      ? "Original306 Claim expired. Original312/313 have not issued a signed Enrollment or Anchor."
       : brokerJobExists
       ? humanBrokerStatus(brokerJobState || "QUEUED_FOR_VPS_BROKER_CLAIM")
       : "Current status: " + humanStatus(requestStatus) +
         " · Original306 Dispatch not confirmed";
     if (headline) headline.textContent = anchorRevision > 0
       ? "Host Anchor changed — independent review required"
+      : signatureWindowExpired
+      ? "Original306 Claim expired — Original312/313 not issued"
       : requestId
       ? (brokerJobExists
         ? brokerJobState === "BROKER_CLAIMED_PENDING_INDEPENDENT_HOST_AUTHORITY"
@@ -136,6 +141,8 @@
 
   const setState = () => {
     const pristine = phase !== "ANCHOR_STATE_REVIEW" &&
+      phase !== "INDEPENDENT_SIGNATURE_WINDOW_EXPIRED" &&
+      !signatureWindowExpired &&
       anchorRevision === 0 && anchorState === "MISSING_OR_INVALID";
     const hasGrant = validId(grantId);
     const hasRequest = validId(requestId);
@@ -159,14 +166,15 @@
     if (hasRequest && "hidden" in result) result.hidden = !lastError;
     step("grant", hasGrant ? "done" : "current");
     step("request", hasRequest ? "done" : hasGrant ? "current" : "");
-    step("verify", brokerJobExists ? "current" : "");
+    step("verify", brokerJobExists && !signatureWindowExpired ? "current" : "");
     const requestStep = $("mad4b-ha-step-request-status");
     if (requestStep) requestStep.textContent = hasRequest
       ? "Accepted"
       : requestExpired ? "Expired — fresh owner approval" : "Not submitted";
     const verifyStep = $("mad4b-ha-step-verify-status");
-    if (verifyStep) verifyStep.textContent =
-      brokerJobState === "BROKER_CLAIMED_PENDING_INDEPENDENT_HOST_AUTHORITY"
+    if (verifyStep) verifyStep.textContent = signatureWindowExpired
+        ? "Expired · Original312/313 not issued"
+        : brokerJobState === "BROKER_CLAIMED_PENDING_INDEPENDENT_HOST_AUTHORITY"
         ? "Original306 claimed · 312/313 pending"
         : brokerJobExists ? "Original306 queued · 312/313 pending"
         : "Original306 / 312 / 313";
@@ -244,6 +252,7 @@
           s.owner_verified !== true || s.original328_active !== true ||
           typeof s.phase !== "string" || typeof s.request_expired !== "boolean" ||
           typeof s.broker_job_exists !== "boolean" ||
+          typeof s.signature_window_expired !== "boolean" ||
           !Number.isInteger(s.server_epoch)) {
         throw new Error("Owner state did not match the enrolled Staging identity.");
       }
@@ -260,6 +269,7 @@
       brokerJobExists = s.broker_job_exists;
       brokerJobState = typeof s.broker_job_state === "string"
         ? s.broker_job_state : "";
+      signatureWindowExpired = s.signature_window_expired;
       requestExpired = s.request_expired && !brokerJobExists;
       requestId = requestExpired ? "" : validId(s.request_id) ? s.request_id : "";
       requestStatus = typeof s.request_status === "string"
@@ -456,7 +466,9 @@
           (requestId || grantId)) {
         await refreshOwnerState(true);
       }
-      if (phase !== "ANCHOR_STATE_REVIEW" && anchorRevision === 0) {
+      if (phase !== "ANCHOR_STATE_REVIEW" &&
+          phase !== "INDEPENDENT_SIGNATURE_WINDOW_EXPIRED" &&
+          anchorRevision === 0) {
         window.setTimeout(tick, 30000);
       }
     };
