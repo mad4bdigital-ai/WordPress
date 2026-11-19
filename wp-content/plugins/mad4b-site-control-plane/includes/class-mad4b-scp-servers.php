@@ -52,7 +52,25 @@ final class MAD4B_SCP_Servers {
 
 	/** Core declarations before dynamically mounted Admin tools are added. */
 
+	/**
+	 * HOST_AUTHORITY_ADMIN_GET_CATALOG_FASTPATH_V112:
+	 * Owner page HTML does not need the MCP read tool inventory. The optional
+	 * descriptor builder can call back into core_tools() until PHP-FPM kills
+	 * the request. Fail closed to an empty READ-only catalog for this exact
+	 * admin GET. No REST, AJAX, POST, other admin pages or write transports.
+	 */
+	private static function host_authority_admin_get_without_mcp():bool {
+		if ( ! isset( $_GET['page'] ) || ! is_string( $_GET['page'] )
+			|| ! in_array( $_GET['page'], array( 'mad4b-company-host-authority', 'mad4b-host-authority' ), true )
+			|| ( $_SERVER['REQUEST_METHOD'] ?? '' ) !== 'GET'
+			|| ! function_exists( 'is_admin' ) || ! is_admin()
+			|| ( function_exists( 'wp_doing_ajax' ) && wp_doing_ajax() )
+			|| ( defined( 'REST_REQUEST' ) && REST_REQUEST ) ) return false;
+		return true;
+	}
+
 	public static function core_tools( $server_id ) {
+		if ( 'mad4b-read' === $server_id && self::host_authority_admin_get_without_mcp() ) return array();
 		$tools = self::declared_core_tools( $server_id );
 		// An isolated VPS-local stdio surface. Never attach the enqueue
 		// Ability to the public/read/ChatGPT servers or the normal write

@@ -318,6 +318,22 @@ trait MAD4B_SCP_Server_Write_Catalog {
 	public static function provider_for_capability_descriptor( $server_id, $ability_name ) {
 		$server_id = sanitize_key( (string) $server_id );
 		$ability_name = (string) $ability_name;
+		// Optional read descriptors must not recursively call core_tools('mad4b-read'):
+		// the catalog itself calls descriptor binding for these names. This is
+		// structural provider identity ONLY, never an execution authorization.
+		if ( 'mad4b-read' === $server_id ) {
+			if ( in_array( $ability_name, self::declared_core_tools( 'mad4b-read' ), true ) ) return 'core';
+			$optional_core_reads = array(
+				'mad4b/control-plane-test-route',
+				'mad4b/execution-unified-plan',
+				'mad4b/scoped-build-verification',
+			);
+			if ( in_array( $ability_name, $optional_core_reads, true )
+				&& function_exists( 'wp_has_ability' ) && wp_has_ability( $ability_name ) ) return 'core';
+			if ( class_exists( 'MAD4B_Release_Source_Admission', false )
+				&& $ability_name === MAD4B_Release_Source_Admission::ABILITY
+				&& function_exists( 'wp_has_ability' ) && wp_has_ability( $ability_name ) ) return 'core';
+		}
 		if ( 'mad4b-write' === $server_id ) {
 			if ( in_array( $ability_name, self::core_write_candidates(), true ) && self::registered_mutation_ability( $ability_name ) ) return 'core';
 			$candidates = self::registered_adapter_write_candidates();
