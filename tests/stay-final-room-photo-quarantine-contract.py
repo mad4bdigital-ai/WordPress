@@ -27,4 +27,22 @@ assert 'needs_distinct_verified_official_photo' in gaps
 assert 'original_ref_preserved' in gaps
 assert 'MAD4B_STAY_IMAGE_GAP_OWNER_APPROVED' in gaps
 assert 'wp_update_post' not in gaps and 'wp_update_post' not in sofitel
+# Sonesta replacement photo is only a per-Unit partner exception.
+source=(folder/'mad4b-stay-sonesta-partner-exact-room-source-v2.php').read_text()
+resolution=(folder/'mad4b-stay-sonesta-photo-gap-resolution-cli.php').read_text()
+curator=(folder/'mad4b-stay-unit-photo-curation-cli.php').read_text()
+assert '70873' in source and '70733' in source
+assert 'verified_partner_room_caption' in source
+assert 'partner_provenance_not_hotel_official' in source
+assert 'original_v1_reference_preserved' in source
+assert 'source_partner' in source
+assert 'rights_independently_verified' in source
+assert '70873' in curator and '70733' in curator
+assert '$sonestaPartner=' in curator and '!$sonestaPartner' in curator
+assert 'source_partner_not_official' in curator
+assert '_mad4b_stay_room_photo_gap_resolution_v1' in resolution
+assert 'original_gap_retained_for_history' in resolution
+assert 'MAD4B_STAY_PHOTO_GAP_RESOLUTION_OWNER_APPROVED' in resolution
+assert 'rights_independently_verified' in resolution
+assert 'wp_update_post' not in source+resolution
 print('PASS room-photo v2, exact invalid-import quarantine, scoped source-gap contracts')
