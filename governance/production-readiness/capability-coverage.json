@@ -11538,6 +11538,27 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "The existing original Agent Registry exact grant, Staging-only provider review, site profile, mutation gate, owner approval, checkpoint, readback and audit safeguards govern this single diagnostic, without wildcard rights.",
       "review_rationale": "Exact source review allows a core grant to be considered only for mad4b/hub-queue-site-health-enqueue when the Ability is registered on the correct central Staging site. No grant is issued merely because this provider pair appears; broad hub-bulk-enqueue remains outside the reviewed policy and Production is not enabled."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php",
+      "source_blob_sha": "4cac8b068ad58986314536a1c9879b0d49caed97",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-wpml-site-origin-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-wpml-site-origin-rest-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-wpml-site-origin-cli-runtime.php"
+      ],
+      "owner_role": "Repository exact-source WPML/identity reviewer, CI only; not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing site profile exact-origin, WPML localization, canonical host, stored-option, environment authorization and security controls apply. No native host execution or reserved UUID provisions enter this slice. Independent owner, host and runtime approvals remain required.",
+      "review_rationale": "Copy only current_origin() and site_urls_match_enrollment() methods from supplemental SHA-256 sealed Tours.dev live capture. Guard WPML language origin collapse by canonical host and scheme, stable siteurl, SitePress current locale or active nonhidden AJAX/REST locale, and prevent spoofed HTTP_HOST. WP_CLI may compare stored immutable HTTPS siteurl/home without relaxing HTTP-origin checks. Test web, REST, CLI modes with no network."
     }
   ],
   "code_change_rules": {
