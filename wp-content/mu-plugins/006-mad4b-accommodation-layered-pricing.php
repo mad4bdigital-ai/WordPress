@@ -20,11 +20,12 @@ final class MAD4B_Stay_Layered_Pricing_V1 {
         return $d&&$d->format('Y-m-d')===$v;
     }
     private static function source(int $id,string $type,int $property,int $unit) {
-        $keys=match($type){
-            'property_direct'=>['prop_start_price','prop_base_currency','prop_direct_price_unit','prop_direct_price_kind'],
-            'unit_direct'=>['unit_start_price','unit_base_currency','unit_direct_price_unit','unit_direct_price_kind'],
-            default=>['base_amount','currency','prop_price_unit','mad4b_rate_price_kind_v1']
-        };
+        if($type==='property_direct')
+            $keys=['prop_start_price','prop_base_currency','prop_direct_price_unit','prop_direct_price_kind'];
+        elseif($type==='unit_direct')
+            $keys=['unit_start_price','unit_base_currency','unit_direct_price_unit','unit_direct_price_kind'];
+        else
+            $keys=['base_amount','currency','prop_price_unit','mad4b_rate_price_kind_v1'];
         [$priceKey,$currencyKey,$basisKey,$kindKey]=$keys;
         $raw=get_post_meta($id,$priceKey,true);
         if($raw===''||$raw===false)return null;
@@ -36,6 +37,9 @@ final class MAD4B_Stay_Layered_Pricing_V1 {
         if($kind==='')$kind='sell';
         if(!preg_match('/^[A-Z]{3}$/D',$currency)||!in_array($basis,self::BASES,true)
             ||!in_array($kind,['sell','cost'],true))return new WP_Error('stay_layer_terms_missing',$type);
+        if(function_exists('get_woocommerce_currencies')
+            &&!array_key_exists($currency,(array)get_woocommerce_currencies()))
+            return new WP_Error('stay_layer_currency_unknown',$type);
         if(function_exists('abk_effective_price_units')){
             $allowed=abk_effective_price_units($property,$unit);
             if(is_wp_error($allowed))return $allowed;
@@ -71,19 +75,32 @@ final class MAD4B_Stay_Layered_Pricing_V1 {
             if($unit&&$linked===$unit&&in_array($scope,['','unit'],true))$type='unit_rate';
             elseif(!$linked&&$scope==='property')$type='property_rate';
             if(!$type)continue;
+            // Self-provider rates must not relabel supplier proposals as company prices.
+            $supplierProposal=get_post_meta($id,'_shared_generation_supplier_proposal',true);
+            $simulated=get_post_meta($id,'_mad4b_simulated_supplier_evidence',true);
+            if(($supplierProposal!==''&&$supplierProposal!==false&&$supplierProposal!==null)
+                ||($simulated!==''&&$simulated!==false&&$simulated!==null))continue;
+            $foreign=false;
+            foreach(['provider_id','supplier_id','_mad4b_provider_id'] as $ownerKey){
+                $owner=(string)get_post_meta($id,$ownerKey,true);
+                if($owner!==''&&$owner!=='self'){$foreign=true;break;}
+            }
+            if($foreign)continue;
             if(preg_match('/\bQA\s+ONLY\b/i',(string)get_the_title($id))
                 || in_array((string)get_post_meta($id,'_mad4b_is_test_data',true),['1','yes','true'],true)
                 || in_array((string)get_post_meta($id,'_booking_experience_qa_pricing_fixture',true),['1','yes','true'],true))
                 continue;
             $stop=strtolower((string)get_post_meta($id,'stop_sale',true));
-            if(!in_array($stop,['0','false','off','no'],true))continue;
+            // Match Accommodation Booking Core, which treats any non-empty value
+            // other than "0" as Stop Sale. Unknown states must not imply availability.
+            if($stop!=='0')continue;
             $from=(string)get_post_meta($id,'valid_from',true);
             $to=(string)get_post_meta($id,'valid_to',true);
             if(!self::date_valid($from)||!self::date_valid($to)||$date<$from||$date>$to)continue;
             $checkout=(new DateTimeImmutable($date,new DateTimeZone('UTC')))->modify('+'.$nights.' days');
-            // Rate is valid for every overnight covered by the interval, not just check-in.
-            $last=$checkout->modify('-1 day')->format('Y-m-d');
-            if($last>$to)continue;
+            // Native abk_accommodation_shadow_quote requires checkout <= valid_to.
+            // Do not preview a rate that the existing quote provider would reject.
+            if(!$checkout||$checkout->format('Y-m-d')>$to)continue;
             $min=(int)get_post_meta($id,'prop_min_nights',true);
             $max=(int)get_post_meta($id,'prop_max_nights',true);
             $maxAdults=(int)get_post_meta($id,'prop_max_adults',true);
@@ -108,9 +125,12 @@ final class MAD4B_Stay_Layered_Pricing_V1 {
             return new WP_Error('stay_layer_unknown_field');
         foreach($input as $value)if(!is_scalar($value)||is_bool($value))
             return new WP_Error('stay_layer_input_type_invalid');
-        $property=absint($input['property_id']??0);
-        $unit=absint($input['unit_id']??0);
-        if(!$property||get_post_type($property)!=='properties'||get_post_status($property)!=='publish')
+        $property=filter_var($input['property_id']??null,FILTER_VALIDATE_INT,
+            ['options'=>['min_range'=>1]]);
+        $unit=filter_var($input['unit_id']??0,FILTER_VALIDATE_INT,
+            ['options'=>['min_range'=>0]]);
+        if($property===false||$unit===false)return new WP_Error('stay_layer_entity_id_invalid');
+        if(get_post_type($property)!=='properties'||get_post_status($property)!=='publish')
             return new WP_Error('stay_layer_property_not_published');
         if($unit){$link=self::unit_link($property,$unit);if(is_wp_error($link))return $link;}
         $date=(string)($input['checkin']??'');
@@ -119,17 +139,21 @@ final class MAD4B_Stay_Layered_Pricing_V1 {
         $adults=filter_var($input['adults']??2,FILTER_VALIDATE_INT,['options'=>['min_range'=>1,'max_range'=>50]]);
         $children=filter_var($input['children']??0,FILTER_VALIDATE_INT,['options'=>['min_range'=>0,'max_range'=>50]]);
         if($nights===false||$adults===false||$children===false)return new WP_Error('stay_layer_occupancy_invalid');
+        if($unit){
+            $capacity=(int)get_post_meta($unit,'unit_max_occupancy',true);
+            if($capacity>0&&$adults+$children>$capacity)
+                return new WP_Error('stay_layer_unit_capacity_exceeded');
+        }
+        if(!class_exists('MAD4B_Hotel_Meal_Base_Policy_V1'))
+            return new WP_Error('stay_layer_meal_policy_unavailable');
+        $policy=MAD4B_Hotel_Meal_Base_Policy_V1::resolve($property);
+        if(is_wp_error($policy))return $policy;
+        $inheritedBoard=(string)$policy['base_board'];
         $board=(string)($input['board_type']??'');
         if($board!==''){
             if(!preg_match('/^[a-z0-9-]{2,50}$/D',$board)||!get_term_by('slug',$board,'board-type'))
                 return new WP_Error('stay_layer_board_invalid');
-        }else{
-            if(!class_exists('MAD4B_Hotel_Meal_Base_Policy_V1'))
-                return new WP_Error('stay_layer_meal_policy_unavailable');
-            $policy=MAD4B_Hotel_Meal_Base_Policy_V1::resolve($property);
-            if(is_wp_error($policy))return $policy;
-            $board=$policy['base_board'];
-        }
+        }else $board=$inheritedBoard;
         $rates=self::rate_sources($property,$unit,$date,$nights,$adults,$children,$board);
         if(is_wp_error($rates))return $rates;
         $sources=['unit_rate'=>$rates['unit_rate'],'unit_direct'=>[],
@@ -152,7 +176,8 @@ final class MAD4B_Stay_Layered_Pricing_V1 {
         return [
             'contract'=>'mad4b.stay-layered-price.v1','provider_id'=>'self',
             'property_id'=>$property,'unit_id'=>$unit?:null,'checkin'=>$date?:null,
-            'nights'=>$nights,'adults'=>$adults,'children'=>$children,'meal_base'=>$board,
+            'nights'=>$nights,'adults'=>$adults,'children'=>$children,
+            'meal_base'=>$inheritedBoard,'requested_board'=>$board,
             'selected_source'=>$chosen['source']??null,'price'=>$chosen,
             'source_counts'=>array_map('count',$sources),'source_priority'=>self::PRIORITY,
             'invalid_direct_source_diagnostics'=>$diagnostics,
