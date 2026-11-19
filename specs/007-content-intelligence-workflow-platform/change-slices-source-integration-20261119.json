@@ -4,22 +4,23 @@
   "reviewed_base_sha": "e1b8c8aa83fd72bea87cfe6511f8200b57420b12",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 86,
-  "changed_paths_sha256": "6c3dc1f5aea81492ec483c26f799fb6807486b070936f514b3a8da3e9769f383",
+  "changed_file_count": 91,
+  "changed_paths_sha256": "50736974ca2a018a73d48791807d1d49044fcee564789ae03a1a921cdcc040ad",
   "slices": [
     {
       "id": "pr942-ci-tools-01",
-      "semantic_unit": "Exact fork-point source integration of ci-tools; CI-only review, not an independent deployment or owner grant",
-      "revert_boundary": "Revert these reviewed module and test paths as one group; retain all immutable historical signed source and original Host proof",
+      "semantic_unit": "Exact fork-point source integration of ci-tools; CI-only review, not independent deployment authority",
+      "revert_boundary": "Revert these source paths together retaining immutable historical signed proof and original Host certificates",
       "certification": "exact_head",
       "path_globs": [
+        "tools/qa31_release_source_gate.py",
         "tools/readiness_test_execution.py"
       ]
     },
     {
       "id": "pr942-control-plane-module-01",
-      "semantic_unit": "Exact fork-point source integration of control-plane-module; CI-only review, not an independent deployment or owner grant",
-      "revert_boundary": "Revert these reviewed module and test paths as one group; retain all immutable historical signed source and original Host proof",
+      "semantic_unit": "Exact fork-point source integration of control-plane-module; CI-only review, not independent deployment authority",
+      "revert_boundary": "Revert these source paths together retaining immutable historical signed proof and original Host certificates",
       "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-code-release-readiness.php",
@@ -37,8 +38,8 @@
     },
     {
       "id": "pr942-control-plane-regressions-01",
-      "semantic_unit": "Exact fork-point source integration of control-plane-regressions; CI-only review, not an independent deployment or owner grant",
-      "revert_boundary": "Revert these reviewed module and test paths as one group; retain all immutable historical signed source and original Host proof",
+      "semantic_unit": "Exact fork-point source integration of control-plane-regressions; CI-only review, not independent deployment authority",
+      "revert_boundary": "Revert these source paths together retaining immutable historical signed proof and original Host certificates",
       "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php",
@@ -69,8 +70,8 @@
     },
     {
       "id": "pr942-control-plane-regressions-02",
-      "semantic_unit": "Exact fork-point source integration of control-plane-regressions; CI-only review, not an independent deployment or owner grant",
-      "revert_boundary": "Revert these reviewed module and test paths as one group; retain all immutable historical signed source and original Host proof",
+      "semantic_unit": "Exact fork-point source integration of control-plane-regressions; CI-only review, not independent deployment authority",
+      "revert_boundary": "Revert these source paths together retaining immutable historical signed proof and original Host certificates",
       "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-ooxml-namespace-neutrality-contract.py",
@@ -93,8 +94,8 @@
     },
     {
       "id": "pr942-core-plugin-and-other-01",
-      "semantic_unit": "Exact fork-point source integration of core-plugin-and-other; CI-only review, not an independent deployment or owner grant",
-      "revert_boundary": "Revert these reviewed module and test paths as one group; retain all immutable historical signed source and original Host proof",
+      "semantic_unit": "Exact fork-point source integration of core-plugin-and-other; CI-only review, not independent deployment authority",
+      "revert_boundary": "Revert these source paths together retaining immutable historical signed proof and original Host certificates",
       "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php"
@@ -102,8 +103,8 @@
     },
     {
       "id": "pr942-feature007-specifications-01",
-      "semantic_unit": "Exact fork-point source integration of feature007-specifications; CI-only review, not an independent deployment or owner grant",
-      "revert_boundary": "Revert these reviewed module and test paths as one group; retain all immutable historical signed source and original Host proof",
+      "semantic_unit": "Exact fork-point source integration of feature007-specifications; CI-only review, not independent deployment authority",
+      "revert_boundary": "Revert these source paths together retaining immutable historical signed proof and original Host certificates",
       "certification": "exact_head",
       "path_globs": [
         "specs/007-content-intelligence-workflow-platform/baseline-review-20261119.md",
@@ -113,8 +114,8 @@
     },
     {
       "id": "pr942-github-ci-01",
-      "semantic_unit": "Exact fork-point source integration of github-ci; CI-only review, not an independent deployment or owner grant",
-      "revert_boundary": "Revert these reviewed module and test paths as one group; retain all immutable historical signed source and original Host proof",
+      "semantic_unit": "Exact fork-point source integration of github-ci; CI-only review, not independent deployment authority",
+      "revert_boundary": "Revert these source paths together retaining immutable historical signed proof and original Host certificates",
       "certification": "exact_head",
       "path_globs": [
         ".github/workflows/country-nationality-switchers.yml",
@@ -124,8 +125,8 @@
     },
     {
       "id": "pr942-governance-evidence-01",
-      "semantic_unit": "Exact fork-point source integration of governance-evidence; CI-only review, not an independent deployment or owner grant",
-      "revert_boundary": "Revert these reviewed module and test paths as one group; retain all immutable historical signed source and original Host proof",
+      "semantic_unit": "Exact fork-point source integration of governance-evidence; CI-only review, not independent deployment authority",
+      "revert_boundary": "Revert these source paths together retaining immutable historical signed proof and original Host certificates",
       "certification": "exact_head",
       "path_globs": [
         "governance/production-readiness/admin-pages-ci-source-reviews.json",
@@ -134,8 +135,8 @@
     },
     {
       "id": "pr942-mu-site-runtime-01",
-      "semantic_unit": "Exact fork-point source integration of mu-site-runtime; CI-only review, not an independent deployment or owner grant",
-      "revert_boundary": "Revert these reviewed module and test paths as one group; retain all immutable historical signed source and original Host proof",
+      "semantic_unit": "Exact fork-point source integration of mu-site-runtime; CI-only review, not independent deployment authority",
+      "revert_boundary": "Revert these source paths together retaining immutable historical signed proof and original Host certificates",
       "certification": "exact_head",
       "path_globs": [
         "wp-content/mu-plugins/407-mad4b-elementor-sticky-lifecycle-guard.php",
@@ -147,8 +148,8 @@
     },
     {
       "id": "pr942-operations-source-audits-01",
-      "semantic_unit": "Exact fork-point source integration of operations-source-audits; CI-only review, not an independent deployment or owner grant",
-      "revert_boundary": "Revert these reviewed module and test paths as one group; retain all immutable historical signed source and original Host proof",
+      "semantic_unit": "Exact fork-point source integration of operations-source-audits; CI-only review, not independent deployment authority",
+      "revert_boundary": "Revert these source paths together retaining immutable historical signed proof and original Host certificates",
       "certification": "exact_head",
       "path_globs": [
         "ops/site-runtime/tour-mobile-canonical-source-20261119/README.md",
@@ -165,13 +166,15 @@
     },
     {
       "id": "pr942-repository-regressions-01",
-      "semantic_unit": "Exact fork-point source integration of repository-regressions; CI-only review, not an independent deployment or owner grant",
-      "revert_boundary": "Revert these reviewed module and test paths as one group; retain all immutable historical signed source and original Host proof",
+      "semantic_unit": "Exact fork-point source integration of repository-regressions; CI-only review, not independent deployment authority",
+      "revert_boundary": "Revert these source paths together retaining immutable historical signed proof and original Host certificates",
       "certification": "exact_head",
       "path_globs": [
         "tests/ci/test-feature007-adaptive-wpcli-provision-contract.py",
         "tests/ci/test-local-oauth-chromium-install-contract.py",
+        "tests/provider-field-intelligence-site-readonly-php74-hermetic.php",
         "tests/qa31_rc129_host_bootstrap_overlay.py",
+        "tests/qa31_release_source_gate_contract.py",
         "tests/qa31_source_convergence_bootstrap_overlay.py",
         "tests/source-unification-ollama-overlay-contract.py",
         "tests/source-unification-review-contract.py",
@@ -180,13 +183,15 @@
     },
     {
       "id": "pr942-source-reconciliation-docs-01",
-      "semantic_unit": "Exact fork-point source integration of source-reconciliation-docs; CI-only review, not an independent deployment or owner grant",
-      "revert_boundary": "Revert these reviewed module and test paths as one group; retain all immutable historical signed source and original Host proof",
+      "semantic_unit": "Exact fork-point source integration of source-reconciliation-docs; CI-only review, not independent deployment authority",
+      "revert_boundary": "Revert these source paths together retaining immutable historical signed proof and original Host certificates",
       "certification": "exact_head",
       "path_globs": [
         "docs/source-reconciliation/MAD4B-PR882-PR920-SOURCE-INTEGRATION-20261119.md",
         "docs/source-reconciliation/merge-conflict-review-matrix-20261119.json",
-        "docs/source-reconciliation/pr942-local-ollama-no-autoboot-20261119.json"
+        "docs/source-reconciliation/pr942-local-ollama-no-autoboot-20261119.json",
+        "docs/source-reconciliation/pr942-qa31-company-master-security-successor-20261119.json",
+        "docs/source-reconciliation/pr942-qa31-semantic-source-successors-20261119.json"
       ]
     }
   ],

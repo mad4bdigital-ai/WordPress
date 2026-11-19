@@ -189,8 +189,16 @@ final class MAD4B_SCP_Provider_Field_Intelligence {
     public static function discover($input=[]){
         if(!is_array($input)||array_diff(array_keys($input),['object','subtype','only_media','limit']))
             return new WP_Error('mad4b_provider_fields_invalid_input','Only bounded discovery parameters allowed.');
+        // Check the enrolled tenant before resolving even provider schemas or
+        // whether a foreign CPT/taxonomy exists. A cloned or mismatched site
+        // must not enumerate names, probe providers, or disclose source types.
+        $site=class_exists('MAD4B_SCP_Site_Profile',false)
+            ?MAD4B_SCP_Site_Profile::status():[];
+        if(!is_array($site)||empty($site['site_uuid'])||empty($site['origin_match'])
+            ||empty($site['environment_match'])||empty($site['deployment_binding_match']))
+            return new WP_Error('mad4b_provider_fields_site_unverified','Exact enrolled Site Profile required.');
         $object=(string)($input['object']??'post');
-        // A missing explicit subtype must be tenant-neutral; callers requesting tours pass their CPT.
+        // Default is WordPress post; tour CPTs must be explicit and site-owned.
         $subtype=(string)($input['subtype']??'post');
         if(!in_array($object,['post','term'],true)
             ||!preg_match('/^[a-zA-Z][a-zA-Z0-9_-]{1,65}$/D',$subtype)
@@ -198,11 +206,6 @@ final class MAD4B_SCP_Provider_Field_Intelligence {
             ||($object==='term'&&!taxonomy_exists($subtype)))
             return new WP_Error('mad4b_provider_fields_unknown_object','Exact registered object is required.');
         $limit=max(1,min(self::LIMIT,(int)($input['limit']??self::LIMIT)));
-        $site=class_exists('MAD4B_SCP_Site_Profile',false)
-            ?MAD4B_SCP_Site_Profile::status():[];
-        if(empty($site['site_uuid'])||empty($site['origin_match'])
-            ||empty($site['environment_match'])||empty($site['deployment_binding_match']))
-            return new WP_Error('mad4b_provider_fields_site_unverified','Exact enrolled Site Profile required.');
         $fields=[];
         self::core($fields,$object,$subtype);
         $jet=self::jetengine($fields,$subtype);
@@ -264,16 +267,17 @@ final class MAD4B_SCP_Provider_Field_Intelligence {
      * not merely repeat the tour keyword.
      */
     public static function locale_media_audit($post_id):array {
+        $site=class_exists('MAD4B_SCP_Site_Profile',false)
+            ?MAD4B_SCP_Site_Profile::status():[];
+        if(!is_array($site)||empty($site['site_uuid'])||empty($site['origin_match'])
+            ||empty($site['environment_match'])||empty($site['deployment_binding_match']))
+            return ['contract'=>'mad4b.locale-media-audit.v1',
+                'complete'=>false,'error'=>'site_identity_unverified'];
         $post_id=absint($post_id);
         $post=$post_id?get_post($post_id):null;
         if(!$post ||!post_type_exists($post->post_type))
             return ['contract'=>'mad4b.locale-media-audit.v1',
                 'complete'=>false,'error'=>'post_not_found'];
-        $site=class_exists('MAD4B_SCP_Site_Profile',false)
-            ?MAD4B_SCP_Site_Profile::status():[];
-        if(empty($site['site_uuid'])||empty($site['origin_match']))
-            return ['contract'=>'mad4b.locale-media-audit.v1',
-                'complete'=>false,'error'=>'site_identity_unverified'];
         $trid=apply_filters('wpml_element_trid',null,$post_id,
             'post_'.$post->post_type);
         $set=$trid?apply_filters('wpml_get_element_translations',[],$trid,
@@ -347,7 +351,7 @@ final class MAD4B_SCP_Provider_Field_Intelligence {
         if(array_diff($argkeys,['post-type','taxonomy','media-only','limit']))
             WP_CLI::error('Unsupported argument.');
         $object=isset($assoc['taxonomy'])?'term':'post';
-        $subtype=(string)($assoc['taxonomy']??$assoc['post-type']??'tours-and-activities');
+        $subtype=(string)($assoc['taxonomy']??$assoc['post-type']??'post');
         $r=self::discover(['object'=>$object,'subtype'=>$subtype,
             'only_media'=>$only_media,'limit'=>(int)($assoc['limit']??self::LIMIT)]);
         if(is_wp_error($r))WP_CLI::error($r->get_error_code());
@@ -360,7 +364,7 @@ final class MAD4B_SCP_Provider_Field_Intelligence {
             'callback'=>static function($request){
                 $r=self::discover([
                     'object'=>(string)($request['object']??'post'),
-                    'subtype'=>(string)($request['subtype']??'tours-and-activities'),
+                    'subtype'=>(string)($request['subtype']??'post'),
                     'only_media'=>filter_var($request['only_media']??false,FILTER_VALIDATE_BOOLEAN),
                     'limit'=>(int)($request['limit']??self::LIMIT),
                 ]);
