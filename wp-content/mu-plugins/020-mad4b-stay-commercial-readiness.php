@@ -67,6 +67,8 @@ final class MAD4B_Stay_Commercial_Readiness_V1 {
         $kind=(string)get_post_meta($unit,'unit_kind',true);
         $capacity=(int)get_post_meta($unit,'unit_max_occupancy',true);
         $inventory=(int)get_post_meta($unit,'unit_inventory_quantity',true);
+        $stockRequired=!class_exists('MAD4B_Stay_Unmanaged_Stock_Policy_V1',false)
+            || MAD4B_Stay_Unmanaged_Stock_Policy_V1::stock_quantity_required();
         $readiness=(string)get_post_meta($unit,'unit_readiness',true);
         $available=(string)get_post_meta($unit,'unit_available',true);
         $gallery=get_post_meta($unit,'unit_gellery',true);
@@ -83,7 +85,7 @@ final class MAD4B_Stay_Commercial_Readiness_V1 {
         if(!in_array($kind,['room','suite','cabin'],true))$catalog[]='room_kind_needs_review';
         if($capacity<1)$catalog[]='occupancy_not_verified';
         if(!$hasImage)$catalog[]='unit_images_missing';
-        if($inventory<1)$catalog[]='physical_inventory_unverified';
+        if($stockRequired && $inventory<1)$catalog[]='physical_inventory_unverified';
         if($readiness!=='validated')$catalog[]='unit_readiness_not_validated';
         $commercial=$catalog;
         if($status!=='publish')$commercial[]='unit_unpublished';
@@ -94,7 +96,7 @@ final class MAD4B_Stay_Commercial_Readiness_V1 {
             && !($propertyDirect && $propertyDirect['sell_configured']))
             $commercial[]='direct_sell_price_not_configured';
         // Unit and Property Direct prices remain indicative until a certified
-        // native rate and inventory/age/financial policy can produce a shadow quote.
+        // native rate and occupancy/age/financial policy can produce a shadow quote.
         $commercial[]='native_rate_or_booking_receipt_required';
         return [
             'unit_id'=>$unit,'title'=>html_entity_decode($title,ENT_QUOTES,'UTF-8'),'unit_status'=>$status,
@@ -105,7 +107,8 @@ final class MAD4B_Stay_Commercial_Readiness_V1 {
             'catalog_ready_for_review'=>count($catalog)===0,
             'checkout_ready'=>false,'qa_only'=>$qa,
             'unit_kind'=>$kind,'capacity_set'=>$capacity>0,
-            'inventory_set'=>$inventory>0,'unit_media_present'=>$hasImage,
+            'inventory_set'=>$inventory>0,'stock_quantity_required'=>$stockRequired,
+            'unit_media_present'=>$hasImage,
             'unit_readiness'=>$readiness,'unit_available'=>$available,
             'unit_direct'=>$unitDirect,'property_direct'=>$propertyDirect,
             'edit_unit_url'=>$withLinks && current_user_can('edit_post',$unit)
@@ -184,6 +187,11 @@ final class MAD4B_Stay_Commercial_Readiness_V1 {
                 ?get_edit_post_link($row['property_id'],''):null;
         }
         unset($row);
+        $stockPolicy=class_exists('MAD4B_Stay_Unmanaged_Stock_Policy_V1',false)
+            ?MAD4B_Stay_Unmanaged_Stock_Policy_V1::status():null;
+        $summary['stock_quantity_required']=!is_array($stockPolicy)
+            || ($stockPolicy['stock_quantity_required']??true)!==false;
+        $summary['inventory_sales_mode']=$stockPolicy['mode']??'legacy';
         $supplierPolicy=class_exists('MAD4B_Stay_Secondary_Self_Supplier_V1',false)
             ?MAD4B_Stay_Secondary_Self_Supplier_V1::status():null;
         $supplierConflict=!is_array($supplierPolicy)
