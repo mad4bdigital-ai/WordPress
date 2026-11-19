@@ -1,11 +1,11 @@
 {
   "contract": "mad4b.change-slices.v2",
   "authorizing": false,
-  "reviewed_base_sha": "a9e3b18afb94652c309fc0be5a10222feed61a1c",
+  "reviewed_base_sha": "5835e1b14e87c7ea18cb517b4f63dfba1269da47",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 25,
-  "changed_paths_sha256": "d828092479d750f1e97410e29f7f9fb2d590925468fe4f9672e18f4eb04f8613",
+  "changed_file_count": 28,
+  "changed_paths_sha256": "327d30ce4ff3e51815fb5f47c851c92c3d26fe4f9e8bd00723f24ccd9ff8699c",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -374,6 +374,15 @@
       "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-content-quality-dependencies-source-only-runtime.php"
+      ]
+    },
+    {
+      "id": "hub-lifecycle-original-source-regression",
+      "semantic_unit": "Preserve the parent PR906 unactivated Hub and Source Lifecycle denial tests alongside the subsequently reviewed source-closure code.",
+      "revert_boundary": "Revert this no-boot Hub/Source Lifecycle verification only with the corresponding reviewed original source; it is not a provider approval or production execution route.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-hub-lifecycle-source-only-runtime.php"
       ]
     }
   ]
