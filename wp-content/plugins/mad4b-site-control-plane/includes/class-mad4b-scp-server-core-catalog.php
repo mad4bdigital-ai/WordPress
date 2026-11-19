@@ -109,8 +109,16 @@ trait MAD4B_SCP_Server_Core_Catalog {
         // plugin-only installation (e.g. CI), no MU registration exists, and
         // the MCP read server must never advertise an absent Ability.
         if ( 'mad4b-read' === $server_id && class_exists( 'MAD4B_Release_Source_Admission', false )
-            && function_exists( 'wp_has_ability' ) && wp_has_ability( MAD4B_Release_Source_Admission::ABILITY ) )
-            $map['mad4b-read'][] = MAD4B_Release_Source_Admission::ABILITY;
+            && function_exists( 'wp_has_ability' ) && wp_has_ability( MAD4B_Release_Source_Admission::ABILITY )
+            && class_exists( 'MAD4B_SCP_Capability_Descriptor_Registry', false ) ) {
+            // A WordPress Ability can exist before its first-party MCP schema
+            // descriptor has been bound (especially in minimal CI installs).
+            // An optional read status must never break the required read MCP.
+            $binding = MAD4B_SCP_Capability_Descriptor_Registry::binding(
+                MAD4B_Release_Source_Admission::ABILITY, 'servers' );
+            if ( ! is_wp_error( $binding ) )
+                $map['mad4b-read'][] = MAD4B_Release_Source_Admission::ABILITY;
+        }
 		if ( 'mad4b-write' === $server_id ) return self::write_tools();
 		$tools = isset( $map[ $server_id ] ) ? $map[ $server_id ] : array();
 		// Company-only Abilities ride the existing authenticated MCP catalog.

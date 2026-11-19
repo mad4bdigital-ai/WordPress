@@ -3,6 +3,15 @@
 define('ABSPATH',__DIR__);
 class MAD4B_SCP_Admin_Remote_Parity { const ABILITY='mad4b/admin-remote-parity-status'; }
 class MAD4B_Test_MU_Admission { const ABILITY='mad4b/release-source-preflight-status'; }
+class WP_Error {}
+function is_wp_error($value){return $value instanceof WP_Error;}
+class MAD4B_SCP_Capability_Descriptor_Registry {
+    public static $ready=false;
+    public static function binding($ability,$scope){
+        return self::$ready && $ability==='mad4b/release-source-preflight-status' && $scope==='servers'
+            ? ['contract'=>'ci.exact-descriptor.v1'] : new WP_Error();
+    }
+}
 function wp_has_ability($name){return !empty($GLOBALS['source_ability_registered']) && $name==='mad4b/release-source-preflight-status';}
 require __DIR__.'/../../wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-core-catalog.php';
 class MAD4B_Optional_Source_Catalog_Test {
@@ -17,6 +26,9 @@ class_alias('MAD4B_Test_MU_Admission', 'MAD4B_Release_Source_Admission');
 $not_registered=MAD4B_Optional_Source_Catalog_Test::names('mad4b-read');
 if(in_array($name,$not_registered,true)){fwrite(STDERR,"FAIL: MU class without Ability must not be published\n");exit(1);}
 $GLOBALS['source_ability_registered']=true;
+$unbound=MAD4B_Optional_Source_Catalog_Test::names('mad4b-read');
+if(in_array($name,$unbound,true)){fwrite(STDERR,"FAIL: registered but unbound optional descriptor advertised\n");exit(1);}
+MAD4B_SCP_Capability_Descriptor_Registry::$ready=true;
 $with=MAD4B_Optional_Source_Catalog_Test::names('mad4b-read');
 if(count(array_keys($with,$name,true))!==1){fwrite(STDERR,"FAIL: installed MU not mounted once\n");exit(1);}
 $chat=MAD4B_Optional_Source_Catalog_Test::names('mad4b-chatgpt');
