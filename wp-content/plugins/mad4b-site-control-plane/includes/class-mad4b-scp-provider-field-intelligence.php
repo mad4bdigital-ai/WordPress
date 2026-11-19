@@ -190,7 +190,8 @@ final class MAD4B_SCP_Provider_Field_Intelligence {
         if(!is_array($input)||array_diff(array_keys($input),['object','subtype','only_media','limit']))
             return new WP_Error('mad4b_provider_fields_invalid_input','Only bounded discovery parameters allowed.');
         $object=(string)($input['object']??'post');
-        $subtype=(string)($input['subtype']??'tours-and-activities');
+        // A missing explicit subtype must be tenant-neutral; callers requesting tours pass their CPT.
+        $subtype=(string)($input['subtype']??'post');
         if(!in_array($object,['post','term'],true)
             ||!preg_match('/^[a-zA-Z][a-zA-Z0-9_-]{1,65}$/D',$subtype)
             ||($object==='post'&&!post_type_exists($subtype))

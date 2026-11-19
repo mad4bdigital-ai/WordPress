@@ -239,4 +239,15 @@ for name in [*(f"g{x}" for x in range(1, 10)), "ui"]:
         raise SystemExit(f"INTEGRATION CONTRACT FAIL: {name} authorization escalated")
 if verified < 18:
     raise SystemExit(f"INTEGRATION CONTRACT FAIL: only {verified} evidence bindings covered")
+# The exact successor regression executes on the same Runtime Release Set CI
+# lane as this contract. Avoid a new optional workflow or disconnected test.
+import subprocess
+import sys
+negative = subprocess.run(
+    [sys.executable, str(ROOT / "tests/integration-feature007-admin-successor-contract.py")],
+    capture_output=True, text=True, timeout=30, check=False,
+)
+if negative.returncode != 0:
+    raise SystemExit("INTEGRATION CONTRACT FAIL: exact Admin successor negative test: " + negative.stderr[-500:])
+print(negative.stdout.strip())
 print(f"MAD4B_COMBINED_FEATURE_CONTRACT: PASS (evidence_bindings={verified})")

@@ -2,6 +2,10 @@
 /** Hermetic, no WordPress bootstrap. Run: php tests/destination-term-alerts-runtime.php [scanner.php] */
 declare(strict_types=1);
 define('ABSPATH', '/fixture/');
+// WordPress normally supplies these PHP-8 string polyfills on PHP 7.4.
+// The isolated fixture intentionally runs without loading WordPress core.
+if (!function_exists('str_contains')) { function str_contains($text, $needle) { return $needle === '' || strpos((string)$text, (string)$needle) !== false; } }
+if (!function_exists('str_starts_with')) { function str_starts_with($text, $needle) { return $needle === '' || strpos((string)$text, (string)$needle) === 0; } }
 define('ARRAY_A', 'ARRAY_A');
 $GLOBALS['fixture_html']='<html><body>'.str_repeat('x',400).'<a href="https://example.test/destination/cairo/">Cairo</a></body></html>';
 $GLOBALS['fixture_http_code']=200;

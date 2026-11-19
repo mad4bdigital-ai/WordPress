@@ -1,0 +1,383 @@
+{
+  "contract": "mad4b.tours-dev-live-source-capture.v1",
+  "captured_site": "https://tours.dev.mad4b.com",
+  "captured_utc": "2026-11-18T11:04:47.760162+00:00",
+  "live_provenance_source_commit_sha": "e18c8090ad217d467296bbfa327fc238799393e0",
+  "live_provenance_archive_sha256": "6633cb1588f6ce22473a9e5591ac9bc789af1c1a8591a9af1991208ec0888fec",
+  "file_count": 62,
+  "source_files": [
+    {
+      "path": "MAD4B-BUILD-PROVENANCE.json",
+      "sha256": "8f0603408667d838a4c15d732d65c500e1407ac05ceaf6abfacd69f8c4dfd8a9",
+      "bytes": 177547,
+      "mtime_utc": "2026-11-09T00:21:42.033747+00:00"
+    },
+    {
+      "path": "config/skill-seed-manifest.json",
+      "sha256": "376eced31a0a68c21a0177662d486521e697456c2364e05c80923e3710ab080e",
+      "bytes": 4578,
+      "mtime_utc": "2026-11-12T21:30:44.196453+00:00"
+    },
+    {
+      "path": "config/staging-deployment-handoff.json",
+      "sha256": "99faacbb9439a7d3406272280352244d417592f07eea8d6396fe0cf3ced1678f",
+      "bytes": 22741,
+      "mtime_utc": "2026-11-10T23:18:17.240796+00:00"
+    },
+    {
+      "path": "config/wordpress-addon-catalog.json",
+      "sha256": "7675836ae733bbb198c1373c8ceae254d1c7a1e762e2121f8139ff5d94cdd4eb",
+      "bytes": 11467,
+      "mtime_utc": "2026-11-17T12:25:43.757682+00:00"
+    },
+    {
+      "path": "includes/adapters/class-mad4b-scp-remote-media-adapter.php",
+      "sha256": "374ca2bd8073357e77313be564748203b005db4da0cca0031a1a68a3a6b01239",
+      "bytes": 60056,
+      "mtime_utc": "2026-11-16T01:12:54.879932+00:00"
+    },
+    {
+      "path": "includes/adapters/class-mad4b-scp-skills-adapter.php",
+      "sha256": "e8589e3d9c0fef3dfaae7a2e168fd3c4ee579fecaa64fee93d8db767e089cc83",
+      "bytes": 1733,
+      "mtime_utc": "2026-11-17T10:52:09.218796+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-activity-import-review.php",
+      "sha256": "7dec46f40fdec0e5594509b07d1319bb6c2a7fa23d092aba5d65e172547cb146",
+      "bytes": 50422,
+      "mtime_utc": "2026-11-10T22:24:38.627116+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-activity-import-snapshot.php",
+      "sha256": "1518b0d581cc32dd8e39be2121230013289d85788343b0d2c4db08c02a5c938f",
+      "bytes": 26492,
+      "mtime_utc": "2026-11-10T22:31:59.529972+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-addon-registry.php",
+      "sha256": "bb62947b1927581683f74541c6f8cf2cdebe5e33b80259beae5c1eb6b88df813",
+      "bytes": 23872,
+      "mtime_utc": "2026-11-17T12:25:43.759682+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-agent-grant-lifecycle.php",
+      "sha256": "389c858945fd69e3bd9966a0995d53ffbb0d2bb13d94852ecdfc14cd281a3228",
+      "bytes": 21655,
+      "mtime_utc": "2026-11-10T22:56:00.097474+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-ai-grant-mode.php",
+      "sha256": "9babec220a1d02a990c99c5e1f5ee86990064dfb2e65820b4bf8783807459fae",
+      "bytes": 14727,
+      "mtime_utc": "2026-11-10T23:00:05.874217+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-ai-review-lifecycle.php",
+      "sha256": "155d282bb105138b1a46314bf035d4bc9f65a05cded265c123318c47829a6357",
+      "bytes": 16397,
+      "mtime_utc": "2026-11-15T23:43:57.020286+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-brand-context-builder.php",
+      "sha256": "7f32ec069ce43b0f1276a8aa240e63c305e4fd63f423fd17c3a73abd0f265330",
+      "bytes": 129300,
+      "mtime_utc": "2026-11-15T07:04:54.639341+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-company-communication.php",
+      "sha256": "431d6d1142bd84ca8e23f3d810f51648557abb0d37511a7dda7c30a4b72c3f1c",
+      "bytes": 16718,
+      "mtime_utc": "2026-11-16T03:10:48.800309+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-company-email-routing.php",
+      "sha256": "24cdaf2f83ba1e19b43eaffa3279ed3b3edf5639fe52db484cdd71ccd0ac9eef",
+      "bytes": 34618,
+      "mtime_utc": "2026-11-16T03:36:42.882353+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-company-local-wpcli.php",
+      "sha256": "673e760157b1c3a9b047c655dfe1353afc9d5d7f363f639609616a09403a57fb",
+      "bytes": 5563,
+      "mtime_utc": "2026-11-10T22:34:57.985857+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-company-migration-decisions.php",
+      "sha256": "271574aec2013c0613010afee9f7ee2c75e865b758ea2a0e71703db9f0cd1883",
+      "bytes": 30918,
+      "mtime_utc": "2026-11-10T22:29:37.760180+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-company-owner-activation.php",
+      "sha256": "4359c6322cdc5bb64dc33e36c9c9cff32062d819c6387cf3dbce3e4a1409cbc1",
+      "bytes": 15883,
+      "mtime_utc": "2026-11-10T22:29:37.747180+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-company-reconcile-skill-set.php",
+      "sha256": "75586bbcd4d89d160b079be43a4f613a7d26fa788d9b936003867a3bf12b6464",
+      "bytes": 18348,
+      "mtime_utc": "2026-11-11T18:19:25.013468+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-company-sender-policy.php",
+      "sha256": "d21213e1d2353296f18f56bcdb6e4688c59ef1404db03489fed3ea6978f885ce",
+      "bytes": 17139,
+      "mtime_utc": "2026-11-09T04:49:18.745635+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-company-tenant-migration.php",
+      "sha256": "a4dfa1ad167d3201f88e4f725986af595dcd789254ecc0ddb18a2fe131a63d02",
+      "bytes": 24935,
+      "mtime_utc": "2026-11-10T22:29:37.759180+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-content-experience-media-rights.php",
+      "sha256": "493e634dc68fe0f868860a4d865098d8482734332839fc7a1950e060357c0094",
+      "bytes": 9587,
+      "mtime_utc": "2026-11-16T01:42:06.526264+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-content-experience-media.php",
+      "sha256": "fd49c8449dd314b17f6b50708dc478ac69b650fdbd1ac236be85d284d123c08d",
+      "bytes": 27151,
+      "mtime_utc": "2026-11-16T01:41:12.312127+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-content-experience-runtime.php",
+      "sha256": "96a9a12f3dbcc6bcf780b3a9cf1f5a4a5f0145214ed8ebba534e758cc210125b",
+      "bytes": 51533,
+      "mtime_utc": "2026-11-14T21:15:38+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-content-job-structural-qa.php",
+      "sha256": "14adbf1821fd08866c633549245b57df1ae993ae6ec2a4cba7bb232992f6a715",
+      "bytes": 9622,
+      "mtime_utc": "2026-11-10T22:29:37.761180+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-content-readiness-alerts.php",
+      "sha256": "48d22fac76c26a36a462d7a84aeb0e10cf00f39901f6eef5fe87fea16be9bb4b",
+      "bytes": 126243,
+      "mtime_utc": "2026-11-14T21:15:38+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-contentjob-structural-cwa.php",
+      "sha256": "a828ea29c5421da2ecb2fc2bd2e80db65f1301253c2cb499b3d175d4c2b95929",
+      "bytes": 9381,
+      "mtime_utc": "2026-11-10T22:29:37.763180+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-context-admin-ui.php",
+      "sha256": "f0823b83afc8b2af4981344991b42830b35a9456521da7c557eeee6fd9c41517",
+      "bytes": 291999,
+      "mtime_utc": "2026-11-10T23:08:35+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-context-authority.php",
+      "sha256": "7b8d0b50f3125044aeafb3d5bf0cb43a39438150f92fb96fb8bae8d9a3d3f6e8",
+      "bytes": 308969,
+      "mtime_utc": "2026-11-15T22:08:59.602373+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-context-preflight.php",
+      "sha256": "a92840334a2f3bc2843634131a75d600bda2c375a91a36ff48b46e66c9ccedf7",
+      "bytes": 52440,
+      "mtime_utc": "2026-11-10T22:31:59.531972+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-developer-authority.php",
+      "sha256": "f98848537d910d509ea05edc4fd555fa2db1d00517efe9ad9f233820bd3dd5a4",
+      "bytes": 47084,
+      "mtime_utc": "2026-11-10T22:56:00.102474+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-developer-runtime.php",
+      "sha256": "4076bbf0297b7743bfa9d5d69d7d068d842033c78dccb79237bd6ed01bceb346",
+      "bytes": 55760,
+      "mtime_utc": "2026-11-10T22:56:00.104474+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-developer-workspace.php",
+      "sha256": "715971d6e6dd986767b68b785a31bebe118fb046a80347cd93615cab2d47f7e5",
+      "bytes": 61231,
+      "mtime_utc": "2026-11-10T22:56:00.110474+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-drive-scan-continuation.php",
+      "sha256": "2a25215548d24f4dda8aed9a860e88e47357ac480c612b019845bc31b37cbd62",
+      "bytes": 26180,
+      "mtime_utc": "2026-11-16T00:13:40.811383+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-google-drive-context.php",
+      "sha256": "9fbc48eed4aa7fb4af69842925182ee7eb6be35bd36a73e3b4a507be1dba681e",
+      "bytes": 301736,
+      "mtime_utc": "2026-11-15T23:43:57.019285+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-local-oauth-server.php",
+      "sha256": "ccd40b81e8d051807566a51557ea47b1b3fb781aec9c5f29d07e5c28a390913c",
+      "bytes": 115525,
+      "mtime_utc": "2026-11-18T11:02:07.463048+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-market-profiles.php",
+      "sha256": "1e9dd09979f8b6b329b8d640081a37f818c10cdf6aca38a233f4e91f71797e88",
+      "bytes": 18960,
+      "mtime_utc": "2026-11-10T22:24:38.621116+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-native-host-source-release-review.php",
+      "sha256": "e6d1900343d9ffd5347d7d51e916ccb918513f835136da97b7547ff6f312378a",
+      "bytes": 4655,
+      "mtime_utc": "2026-11-15T07:09:09.191313+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-native-runtime-diagnostics.php",
+      "sha256": "367c9ee747a37916ca59271dcb318faef9ba1ccf767e077f53eaf0bfc277ae2f",
+      "bytes": 11871,
+      "mtime_utc": "2026-11-10T01:29:05.288085+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-operator-grant-convergence.php",
+      "sha256": "70bd96163aa125f6e317daea7dc06632793e3b60557b373b6399a4a8761f3246",
+      "bytes": 13317,
+      "mtime_utc": "2026-11-10T22:56:00.112474+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-origin-evidence-workflow.php",
+      "sha256": "fa78965175089ed302c82006bd41f71a8fc92ac488d8953586a940253481b1c3",
+      "bytes": 6771,
+      "mtime_utc": "2026-11-13T10:25:32.844861+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-original305-incident-review.php",
+      "sha256": "142c278c4b952f334171d1bbbb81d9e655f5189bc7d87948065b7eda9d7adb6f",
+      "bytes": 30250,
+      "mtime_utc": "2026-11-16T05:07:40.363863+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-plugin.php",
+      "sha256": "64479de6b38e5b7b7c6effdb19b3d231fba1bbe0b7b95b059bede92ea3bff02a",
+      "bytes": 22960,
+      "mtime_utc": "2026-11-12T18:33:36.298316+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-readiness-event-automation.php",
+      "sha256": "ad8eac90e66ac695ea2ee6aab0c06ed5cb90fea2ffb7415ee6bc45d85b53a01d",
+      "bytes": 24936,
+      "mtime_utc": "2026-11-10T22:24:38.625117+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-reconnect-hardening.php",
+      "sha256": "d17f55fcb5e384d6f73706392732c66d61281d2736b5c329f13e2529cfa30ad3",
+      "bytes": 73603,
+      "mtime_utc": "2026-11-18T11:03:11.940238+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-remote-media-rights.php",
+      "sha256": "ab80f9d55ca2c6b96fb305023bf907a5d9da73dcb0f1abf7afe448b09b7d0a61",
+      "bytes": 12404,
+      "mtime_utc": "2026-11-16T01:12:54.879932+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-research-groups.php",
+      "sha256": "e154447d2dc0368f61997e4139b16f774344f171b4cee07a3770939bd9a891e2",
+      "bytes": 5787,
+      "mtime_utc": "2026-11-10T22:41:42.316569+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-research-intelligence.php",
+      "sha256": "dfe3bad6c16933a7c5765a0c4cd94e155aa5c5fdcafaa3dba055bdf31e3e89f0",
+      "bytes": 26538,
+      "mtime_utc": "2026-11-10T22:34:57.987858+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-research-task-bridge.php",
+      "sha256": "bb3c9a2d6db3a47bfd062a62ca27bfccc148ba21dbc7dcbe2ca6a1169b42c316",
+      "bytes": 5043,
+      "mtime_utc": "2026-11-10T22:41:42.319569+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-runtime-components-admin-ui.php",
+      "sha256": "30446ead9af26abe834f210574e20be265c4165150a130c5f6e0426c44a611f0",
+      "bytes": 37353,
+      "mtime_utc": "2026-11-10T01:29:05.288085+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-self-update.php",
+      "sha256": "b2f315db60ec7d0963923fa33ce1345c388c22f974ad5a52cbfdd2b2e274197d",
+      "bytes": 183430,
+      "mtime_utc": "2026-11-10T23:18:17.237796+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-site-lifecycle-rest.php",
+      "sha256": "0a15798fca4cb26390d5dd2b214bf7da39e9d0b7846bfed358831e4b22c5dd23",
+      "bytes": 23380,
+      "mtime_utc": "2026-11-10T01:57:22.181185+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-site-profile.php",
+      "sha256": "f257d3eab7e12868791b8d90df593235f582f0bbd5d2003ed5b0e44f3bc94990",
+      "bytes": 104473,
+      "mtime_utc": "2026-11-11T02:34:57.656171+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-skill-abilities.php",
+      "sha256": "f58ddf578579c0abd2a64e7867db0c4059fb1e10c866649a4ba2ea48fd2870ce",
+      "bytes": 42544,
+      "mtime_utc": "2026-11-18T11:03:11.940238+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-skill-provider-discovery.php",
+      "sha256": "4b3d01770beb065a9fa0a64b88c9568f9ea72b8c0c8becd9a1ae4344b32abe33",
+      "bytes": 33596,
+      "mtime_utc": "2026-11-12T18:33:36.296316+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-skill-registry.php",
+      "sha256": "bbb97df08740a4f56ed03e0cb7a8b4fc6ae4c75157f26f0a3d85e7c37ef07f76",
+      "bytes": 27136,
+      "mtime_utc": "2026-11-12T18:33:36.292316+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-skill-runtime-certification.php",
+      "sha256": "8b006251b9ec06b393c8d3e72f0e50afbe909376802029e7854fc196f325614f",
+      "bytes": 21692,
+      "mtime_utc": "2026-11-17T11:42:07.792569+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-skill-seeder.php",
+      "sha256": "f1edddaaf3ab81a5cd74a6a3be4946a23c32500752b8d3089d02514a7f8bb66a",
+      "bytes": 34018,
+      "mtime_utc": "2026-11-12T21:30:44.193453+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-skills-admin-ui.php",
+      "sha256": "840ab64e0ca448e954bdd49131bdfb6b955b053189e9ee8f01cc981f82909e50",
+      "bytes": 41452,
+      "mtime_utc": "2026-11-17T11:42:07.796570+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-switcher-sources.php",
+      "sha256": "3100ff5c698fdf5b8de9870ad0360ead67dfdcadf963b0420504c77b6a3efccf",
+      "bytes": 4229,
+      "mtime_utc": "2026-11-10T00:46:11.553190+00:00"
+    },
+    {
+      "path": "includes/class-mad4b-scp-upgrade-continuity.php",
+      "sha256": "dcf205cb4e0f9af7846cd1b9e47cd6ce820efcef5a37ab2502673d0616d4b768",
+      "bytes": 42059,
+      "mtime_utc": "2026-11-10T22:43:22.639953+00:00"
+    },
+    {
+      "path": "mad4b-site-control-plane.php",
+      "sha256": "99e859c8dec89d29c4ba6c985f858b25640aff2984123e8337c38745e2cb9ef9",
+      "bytes": 66824,
+      "mtime_utc": "2026-11-17T10:52:09.222796+00:00"
+    }
+  ],
+  "note": "Hashes of live code for independent reconciliation. Actual captured bytes are retained in restricted VPS forensic storage, not packaged into a deployable plugin."
+}

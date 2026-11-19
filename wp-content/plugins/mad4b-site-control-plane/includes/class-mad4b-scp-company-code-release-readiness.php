@@ -44,6 +44,8 @@ final class MAD4B_SCP_Company_Code_Release_Readiness {
         $invalid = !is_array($input) || count($input) !== 0;
         $registered = function_exists('wp_has_ability') &&
             wp_has_ability(self::DISPATCH);
+        $host_preflight = class_exists( 'MAD4B_Release_Source_Admission' )
+            ? MAD4B_Release_Source_Admission::check() : array();
 
         // Local WP metadata cannot independently verify original host authority,
         // source git SHA, target file digests, broker signatures or 313 receipts.
@@ -54,6 +56,8 @@ final class MAD4B_SCP_Company_Code_Release_Readiness {
             'source_of_truth' => 'git_full_commit_sha',
             'dispatch_ability' => self::DISPATCH,
             'dispatch_ability_registered' => (bool) $registered,
+            'signed_source_reconciliation_preflight' => $host_preflight,
+            'host_preflight_ready' => !empty( $host_preflight['preflight_ready'] ),
             'host_exact_target_verified' => false,
             'broker_grant_verified' => false,
             'production_release_admitted' => false,
@@ -66,6 +70,7 @@ final class MAD4B_SCP_Company_Code_Release_Readiness {
             'next_actions' => $invalid ? array('provide_empty_input_object') : array(
                 $registered ? 'verify_native_host_release_binding' :
                     'register_original_broker_dispatch_ability',
+                'verify_signed_source_reconciliation_preflight_with_original_host_broker',
                 'verify_exact_git_plan_and_target_preimage',
                 'obtain_independently_signed_exact_scope_broker_grant',
                 'execute_native_rollback_capable_release',
