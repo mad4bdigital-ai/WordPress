@@ -54,18 +54,18 @@ class MAD4B_SCP_Site_Profile {
  public static function user_is_enrolled($id):bool{return $id===59;}
 }
 class MAD4B_Company_Operation_Admission_V1 {
- public static function assess($company,$intent):array{return ['policy_delegation_admitted'=>true,'company_site_uuid'=>SITE];}
+ public static function assess($company,$intent):array{return ['policy_delegation_admitted'=>($GLOBALS['delegation_active']??true),'company_site_uuid'=>$GLOBALS['target_override']['site_uuid']??SITE];}
  public static function manager_id():string{return 'manager';}
 }
 class MAD4B_Manager_Auto_Write_V1 {
  public static function company_target($company):array{
-  return ['state'=>'REGISTERED','site_uuid'=>SITE,
+  return $GLOBALS['target_override']??['state'=>'REGISTERED','site_uuid'=>SITE,
       'canonical_origin'=>ORIGIN,'environment'=>'staging'];
  }
  public static function entitlement($manager,$company,$intent,$id):array{
-  return ['assignment_authorized'=>$id===59,
+  return ['assignment_authorized'=>$id===59 && ($GLOBALS['delegation_active']??true),
    'manager_membership_active'=>true,'company_binding_verified'=>true,
-   'assignment_revision'=>5];
+   'assignment_revision'=>$GLOBALS['revision_override']??5];
  }
 }
 class MAD4B_Company_Native_WPCLI_Enrollment_V1 {
@@ -96,7 +96,7 @@ $oldParent=[
  'site_uuid'=>SITE,'canonical_origin'=>ORIGIN,'environment'=>'staging',
  'grant_mode'=>'persistent','transport_id'=>TRANSPORT,
  'central_principal_id'=>59,'target_host_id'=>'hosting-2',
- 'target_ssh_principal'=>'u948953904',
+ 'target_ssh_principal'=>'u948953904', 'assignment_revision'=>5,
 ];
 $transport=[
  'transport_id'=>TRANSPORT,'state'=>'REMOTE_HOSTINGER_WPCLI_ACCESS_VERIFIED',
@@ -192,6 +192,58 @@ $invalid=$GLOBALS['options'][MAD4B_Central_SSH_Command_Intake_V1::REQUEST_PREFIX
 $invalid['host_v2_bootstrap_only']=false;
 $GLOBALS['options'][MAD4B_Central_SSH_Command_Intake_V1::REQUEST_PREFIX.$job_id]=$invalid;
 check($fields->invoke(null,COMPANY,$job_id) instanceof WP_Error,'tampered request marker denied');
+// Regression: company_target has since moved to a NEW Production site
+// (revision 6), but the ORIGINAL active staging Original328 is rev 5.
+// Owner/bootstrap scope must remain attached to Staging. No Production write.
+$GLOBALS['target_override']=[
+ 'state'=>'REGISTERED',
+ 'site_uuid'=>'b28cd391-b5bf-4692-b4a0-d696c8270455',
+ 'canonical_origin'=>'https://allroyalegypt.com',
+ 'environment'=>'production'
+];
+$GLOBALS['revision_override']=6;
+$stageAfterProduction=MAD4B_Central_SSH_Command_Intake_V1::issue($grantRequest);
+check($stageAfterProduction instanceof WP_REST_Response,
+ 'staging parent is not confused with newer production target');
+check($stageAfterProduction->status===201,'owner can stage new grant on prior bound staging parent');
+$staged=$stageAfterProduction->data;
+check($staged['environment']==='staging','grant cannot inherit production');
+check($staged['site_uuid']===SITE,'grant preserves original staging UUID');
+check($staged['canonical_origin']===ORIGIN,'grant preserves staging origin');
+check($staged['assignment_revision']===5,'grant pins original staging revision');
+check($staged['host_v2_bootstrap_only']===true && $staged['execution_authorized']===false,
+ 'new grant still has zero host authority');
+$command2=$commandRequest->params;
+$command2['grant_id']=$staged['grant_id'];
+$command2['correlation_id']='staging-after-production-0001';
+$accepted2=MAD4B_Central_SSH_Command_Intake_V1::accept_command(
+ new WP_REST_Request($base.'/commands','POST',['company'=>COMPANY],$command2));
+check($accepted2 instanceof WP_REST_Response,'owner command still binds Staging after Production moves');
+check($accepted2->data['environment']==='staging','queued request staging only');
+check($accepted2->data['execution_performed']===false,'no execution by Original305');
+$fields2=$fields->invoke(null,COMPANY,$accepted2->data['request_id']);
+check(is_array($fields2),'Original306 handles exact staging request despite newer production target');
+// If delegation ceases, NO new grant (even if Original328 still exists).
+$GLOBALS['delegation_active']=false;
+$revokedDelegation=MAD4B_Central_SSH_Command_Intake_V1::issue($grantRequest);
+check($revokedDelegation instanceof WP_Error,'revoked current company delegation denies owner staging');
+$GLOBALS['delegation_active']=true;
+// Production source can coexist only with Staging, not arbitrary environment.
+$GLOBALS['target_override']['environment']='development';
+$unexpected=MAD4B_Central_SSH_Command_Intake_V1::issue($grantRequest);
+check($unexpected instanceof WP_Error,'unexpected environment drift denied');
+$GLOBALS['target_override']['environment']='production';
+// Parent and transport drift must never be silently reconciled.
+$parentKey=MAD4B_Central_SSH_Command_Intake_V1::PREFIX.PARENT;
+$GLOBALS['options'][$parentKey]['canonical_origin']='https://wrong.example.test';
+$badParent=MAD4B_Central_SSH_Command_Intake_V1::issue($grantRequest);
+check($badParent instanceof WP_Error,'modified parent proof denied');
+$GLOBALS['options'][$parentKey]['canonical_origin']=ORIGIN;
+// No signed owner session, no separate Grant.
+$GLOBALS['actor']=0;
+$notOwner=MAD4B_Central_SSH_Command_Intake_V1::issue($grantRequest);
+check($notOwner instanceof WP_Error,'anonymous cannot use staging fallback');
+$GLOBALS['actor']=59;
 echo json_encode(['state'=>'PASS','checks'=>$tests,
  'preflight_grants_written_to_mock'=>1,
  'real_anchors_issued'=>0,'broker_claim_created'=>false,

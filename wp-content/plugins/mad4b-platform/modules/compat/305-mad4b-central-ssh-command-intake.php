@@ -672,6 +672,66 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
         return $parent;
     }
 
+    /**
+     * The company_target() registry can already point to Production while a
+     * distinct Original328 parent remains enrolled for Staging. For Host v2
+     * ONLY, keep the freshly authorized company entitlement from scope(),
+     * then bind the new non-executing intent to the exact already-enrolled
+     * parent transport. Never rewrite either site's assignment or identity.
+     */
+    private static function host_anchor_v2_existing_parent_scope(
+        string $company,string $operation,string $transport_id,array $scope
+    ) {
+        if(!in_array($operation,[
+            'company.host-authority.anchor.issue',
+            'company.host-authority.anchor.revoke'],true)
+            ||!preg_match('/^[a-f0-9]{32}$/D',$transport_id)
+            ||!class_exists('MAD4B_Company_Native_WPCLI_Enrollment_V1',false))
+            return self::error('host_anchor_v2_parent_scope_invalid',403);
+        $transport=get_option(self::TRANSPORT_PREFIX.$transport_id,false);
+        if(!is_array($transport)
+            ||($transport['state']??null)!=='REMOTE_HOSTINGER_WPCLI_ACCESS_VERIFIED'
+            ||!in_array(($transport['environment']??''),['staging','production'],true))
+            return self::error('host_anchor_v2_parent_transport_unavailable',403);
+        $environment=(string)$transport['environment'];
+        $slot=get_option(MAD4B_Company_Native_WPCLI_Enrollment_V1::SLOT.
+                         $company.'_'.$environment,false);
+        $parent=self::host_anchor_v2_parent_grant(
+            $company,$environment,$transport_id);
+        if(!is_array($slot)||!is_array($parent)
+            ||($slot['company']??null)!==$company
+            ||($slot['environment']??null)!==$environment
+            ||($slot['transport_id']??null)!==$transport_id
+            ||($slot['grant_id']??null)!==($parent['grant_id']??null)
+            ||($slot['site_uuid']??null)!==($transport['site_uuid']??null)
+            ||($parent['target_host_id']??null)!==($transport['host_id']??null)
+            ||($parent['target_ssh_principal']??null)!==($transport['host_principal']??null)
+            ||($transport['central_principal_id']??null)!==self::actor_id())
+            return self::error('host_anchor_v2_parent_binding_changed',403);
+        foreach(['company','environment','site_uuid','canonical_origin',
+                 'assignment_revision','central_principal_id','transport_id'] as $field) {
+            if(($parent[$field]??null)!==($transport[$field]??null))
+                return self::error('host_anchor_v2_parent_binding_changed',403);
+        }
+        $bound=[
+            'site_uuid'=>$transport['site_uuid'],
+            'canonical_origin'=>$transport['canonical_origin'],
+            'environment'=>$transport['environment'],
+            'assignment_revision'=>$transport['assignment_revision']
+        ];
+        $matches=true;
+        foreach($bound as $field=>$value) {
+            if(($scope[$field]??null)!==$value){$matches=false;break;}
+        }
+        if($matches)return $scope;
+        // Only the exact known Staging parent may coexist with a newer
+        // Production binding. All other drift continues to fail closed.
+        if($environment!=='staging'
+            ||($scope['environment']??null)!=='production')
+            return self::error('host_anchor_v2_unexpected_scope_drift',403);
+        return $bound;
+    }
+
     public static function issue(WP_REST_Request $request) {
         if (!self::permitted($request)) return self::error('owner_step_up_required');
         $company = (string) $request['company'];
@@ -760,6 +820,11 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
             return self::error('native_grant_requires_signed_client',403);
         $scope = self::scope($company, $operation);
         if (is_wp_error($scope)) return $scope;
+        if($hostAnchorV2) {
+            $scope=self::host_anchor_v2_existing_parent_scope(
+                $company,$operation,$transport_id,$scope);
+            if(is_wp_error($scope))return $scope;
+        }
         if ($mode === 'persistent' && (
             ($transport['company'] ?? '') !== $company
             || ($transport['host_id'] ?? '') !== $host
@@ -1110,6 +1175,12 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
         $scope = self::scope($company, (string) $grant['operation'],
             is_array($privateDraft)?$privateDraft['intent']:'operations.write');
         if (is_wp_error($scope)) return $scope;
+        if(($command_format??null)==='host.anchor.ref.v2') {
+            $scope=self::host_anchor_v2_existing_parent_scope(
+                $company,(string)$grant['operation'],
+                (string)($grant['transport_id']??''),$scope);
+            if(is_wp_error($scope))return $scope;
+        }
         foreach (array('site_uuid','environment','canonical_origin','assignment_revision') as $field) {
             if (($scope[$field] ?? null) !== ($grant[$field] ?? null))
                 return self::error('delegation_or_site_changed');
