@@ -85,3 +85,4 @@ require_once __DIR__ . "/includes/transport-market-display.php";
 require_once __DIR__ . '/includes/transport-enrichment-audit.php';
 require_once __DIR__ . '/includes/transport-media-credits.php';
 require_once __DIR__ . '/includes/transport-pdf-review.php';
+require_once __DIR__ . '/includes/transport-self-pricing-controls.php';

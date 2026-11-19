@@ -317,3 +317,85 @@ contract end dates, alternate destination choice, and any inclusions such
 as guide services, fuel, parking or entrance tickets. These cannot be inferred
 from Wikimedia photos or public web searches. Commercial pricing approval and
 publishing remain a separate governed operation.
+
+## 19 November 2026: trusted PDF + self provider + native transfer controls
+
+The user designated the originally uploaded Transportation 2026 - Sheet1 (2).pdf as the trusted
+operational pricing source and each website's company as its own self provider.
+
+Original PDF SHA-256:
+c3bde2be4ac89f1b7b9671720b552d39646c93ea9fa5a786fe2a9bde8f1644cd
+
+The contract preserves 51 operation rows, 210 raw source values and effective start 2026-04-01.
+The PDF does not disclose its monetary currency or the commercial nature of the amounts
+(cost versus selling price). Do not automatically use WooCommerce's default USD as source
+currency, invent an end date, or activate a payable quote from the source proof alone.
+
+Site-scoped provider assignments:
+- Tours.dev: 306 already translated source operation Drafts, all provider_id self.
+- Wayfatours: 102 already translated source operation Drafts, all provider_id self.
+- Each site independently persists the trusted self-source control policy, versioning,
+  write history and original source hash. Metadata updates do not change product prices.
+- The original source numbers, five original Transport Rate posts on Tours.dev,
+  four original Wayfatours Transport Rate posts, and existing bookings are unchanged.
+
+Native Dynamic Pricing Controls extension is loaded within:
+  /wp-admin/admin.php?page=dynamic-pricing-controls
+
+The existing Pricing Source Registry plugin enqueues the new transfer panel in JetEngine's
+native page, like the existing Accommodation Pricing accordion. This is NOT a separate
+rates engine, a duplicate JetEngine options page or an alternate checkout route.
+
+The controls include:
+- City: Cairo, Aswan, Luxor.
+- Active WPML language, localized source operation and original Arabic statement.
+- PDF source vehicle class with an illustrative licensed photo and raw input value.
+- Quantity of vehicles and a nonbinding self-source price simulation.
+- Explicit, per-site source currency and source role (reference / self cost / self selling).
+- Optional application of the PDF's 5% reduction for Aswan and Luxor only.
+- Global, per-city, and per-vehicle-class markup percentages.
+- Direct links to the native Transport Rate CPT, source Draft review and Market Profiles.
+- Read-only native Market Profile approved count. No parallel currency or market engine.
+
+Formula in preview:
+  raw * (1 - documented_discount_percentage/100)
+      * (1 + (global_markup + city_markup + vehicle_markup)/100).
+The original PDF amount is never overwritten. No source-blank cell becomes zero.
+Aswan/Luxor H1 prices remain absent; Luxor row 23 remains fully unpriced.
+Luxor row 7 original anomalous values are preserved and flagged.
+
+Server owner: MAD4B_Transport_Self_Pricing_Controls_V1 in transport-self-pricing-controls.php.
+The AJAX handler checks pricing capability and nonce. Policy saves validate bounded
+financial percentages and allowed currencies, use optimistic revision matching and
+short-lived per-site write lock, preserve a change history, and check persistence.
+The native Booking Experience and Market Profile engines retain price approval,
+currency conversion, tax, availability, and checkout authority.
+
+Wayfatours CPT parity:
+- Source Tours.dev Rate CPT had 37 JetEngine fields, Wayfatours only 26.
+- Wayfatours has no legacy transport_rates CCT. Nothing was copied from a non-existent CCT.
+- Site-specific reconciliation from Tours.dev's exact 11 field definitions moved the
+  production CPT to 37 fields without changing rate rows or price values.
+- Wayfatours Transport Rates WPML mode now 2, with 13 new technical/market metadata
+  keys set to WPML COPY across translations, matching Tours.dev.
+- A verified rollback backup was stored in the Wayfatours options table.
+
+Verification:
+- Source/self provider runtime: 35/35 on Tours.dev and 35/35 on Wayfatours.
+- Localized source matrix previously verified: 381/381 on Tours.dev and 141/141 on Wayfatours.
+- Two admin controls history readbacks succeeded, revision conflict rejected, concurrent
+  write lock rejected, original provider/source hash unchanged.
+- WordPress admin script, CSS, nonce and HTML template were found on both sites;
+  script/style URLs HTTPS, JavaScript parsed with Node.
+- Public homepages and static admin assets returned HTTP 200 on both sites.
+- Authenticated AJAX catalog returned the localized source.
+- Aswan row 1 Limousine raw 430 becomes 408.50 after the PDF's 5% reduction;
+  isolated +17% total markup simulation gave 477.95 per vehicle and 955.90 for two.
+  No stored markup was changed for this calculation.
+- Source role and currency remain explicitly unconfigured on both sites.
+- Approved native Market Profiles count was 0 on both sites when checked.
+- No commercial rate approved, no checkout authorized, no posted price or order mutated.
+
+Next commercial step: configure the PDF's actual currency and whether its values are
+company self-cost or self-selling base in the new admin panel. Those facts are not in
+the source document. Native Transport Rates require separate price approval before sale.
