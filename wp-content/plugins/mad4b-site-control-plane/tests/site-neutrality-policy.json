@@ -230,6 +230,12 @@
         "schemas.openxmlformats.org"
       ],
       "rationale": "The OOXML 2006 relationships URI in DOMDocument::getAttributeNS is a namespace identifier in offline zipped XML, not a fetchable network endpoint. Exception is limited to exactly this source path; URL/tenant, macro execution and remote transport checks remain enforced."
+    },
+    "includes/class-mad4b-scp-core-web-vitals.php": {
+      "hosts": [
+        "www.googleapis.com"
+      ],
+      "rationale": "Reviewed fixed Google PageSpeed Insights v5 runPagespeed HTTPS endpoint. URL is a literal fixed provider host; monitored page URL is separately restricted to the enrolled site's same origin; request redirects disabled and timeout bounded. No tenant origin default or generic egress permission is granted."
     }
   },
   "optional_named_tag_integrations": [
