@@ -373,26 +373,52 @@ final class MAD4B_SCP_Company_Email_Routing {
         $expected = implode(', ', $recipients);
         $base['recipient_policy_match'] = ($settings['sendTo']['type'] ?? '') === 'email'
             && hash_equals($expected, $actual);
+        // Fluent Forms may deliver to CC/BCC/field- or conditionally-routed
+        // addresses even when sendTo.email agrees with company policy.
+        // A readback cannot certify the native feed while any other delivery
+        // surface exists. Reject unexpected sendTo extensions fail-closed.
+        $sendTo = $settings['sendTo'] ?? [];
+        $allowedSendToKeys = ['type' => true, 'email' => true, 'field' => true, 'routing' => true];
+        $unexpectedSendTo = is_array($sendTo)
+            ? array_diff_key($sendTo, $allowedSendToKeys) : ['invalid' => true];
+        $extraDestinations = !empty($settings['cc']) || !empty($settings['bcc'])
+            || !empty($settings['CC']) || !empty($settings['BCC'])
+            || !empty($sendTo['field']) || !empty($sendTo['routing'])
+            || !empty($unexpectedSendTo);
+        $base['additional_destinations_absent'] = !$extraDestinations;
+        if ($extraDestinations) $base['reasons'][] = 'native_additional_destinations_present';
         $base['sender_policy_match'] =
             (string)($settings['fromName'] ?? '') === (string)($config['company_display_name'] ?? '')
             && (string)($settings['fromEmail'] ?? '') === (string)($config['transactional_from_email'] ?? '')
             && (string)($settings['replyTo'] ?? '') === (string)($config['traveler_reply_to'] ?? '');
         if (!$base['recipient_policy_match']) $base['reasons'][] = 'recipient_policy_drift';
         if (!$base['sender_policy_match']) $base['reasons'][] = 'sender_policy_drift';
-        $bound = false;
+        // bindings() deliberately bounds its public result to 200 records.
+        // A truncated registry must never certify the first matching entry:
+        // hidden later entries could contradict it.
+        $rawBindingRegistry = get_option(self::BINDINGS_OPTION, []);
+        $bindingEntries = is_array($rawBindingRegistry)
+            ? ($rawBindingRegistry['entries'] ?? null) : null;
+        if (is_array($bindingEntries) && count($bindingEntries) > 200)
+            $base['reasons'][] = 'native_binding_registry_unbounded';
+        $bindingCandidates = [];
         foreach (self::bindings() as $entry) {
             if (!is_array($entry) || ($entry['consumer'] ?? '') !== 'fluent_forms'
                 || ($entry['event'] ?? '') !== $event
-                || (int)($entry['form_id'] ?? 0) !== $form_id
-                || (int)($entry['feed_id'] ?? 0) !== $feed['feed_id']
-                || ($entry['notification_name'] ?? '') !== $name
-                || empty($entry['source_sha256'])
-                || !hash_equals((string)$entry['source_sha256'], $feed['source_sha256'])) continue;
-            $bound = true;
-            break;
+                || (int)($entry['form_id'] ?? 0) !== $form_id) continue;
+            $bindingCandidates[] = $entry;
         }
-        $base['exact_binding_verified'] = $bound;
-        if (!$bound) $base['reasons'][] = 'native_binding_missing_or_stale';
+        $base['native_binding_candidate_count'] = count($bindingCandidates);
+        $unambiguous = count($bindingCandidates) === 1;
+        $base['exact_binding_verified'] = $unambiguous
+            && (int)($bindingCandidates[0]['feed_id'] ?? 0) === $feed['feed_id']
+            && ($bindingCandidates[0]['notification_name'] ?? '') === $name
+            && !empty($bindingCandidates[0]['source_sha256'])
+            && hash_equals((string)$bindingCandidates[0]['source_sha256'], $feed['source_sha256']);
+        if (!$unambiguous && $bindingCandidates)
+            $base['reasons'][] = 'native_binding_ambiguous';
+        if (!$base['exact_binding_verified'])
+            $base['reasons'][] = 'native_binding_missing_or_stale';
         if (!$base['native_enabled']) $base['reasons'][] = 'native_editor_disabled';
         if (($config['fluent_forms_routing_policy'] ?? '') !== 'enabled')
             $base['reasons'][] = 'company_fluent_routing_disabled';

@@ -3,9 +3,9 @@
   "base_commit": "bfd207a5e9583eaee129a4447aeb124d1a05ed2e",
   "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-email-routing.php",
   "previous_blob_sha": "65a3e14d0738e66bf86d9268fa6ba941523ce669",
-  "current_blob_sha": "7b65ab55508a8566b5563e495cc18835fae23436",
-  "current_sha256": "74640c29e6494b8b9b03d0a5fa9d5f962d46d64b84027e575abc21cb0efac75a",
-  "current_bytes": 24484,
+  "current_blob_sha": "68e019f273dff89cdb71c80aed8abf1c6bd19b3e",
+  "current_sha256": "dded549d1ab294abb733b50947a8ad16c3c68f17785a74a4298bdafa84259c58",
+  "current_bytes": 26356,
   "historical_manifest": "governance/release-parity/qa31-rc129-reviewed-successors-20261118.json",
   "historical_manifest_sha256": "dce059a5058b66cc1cb5f6d4cd01aab24b1e6b75a8fba6a1655579de038ff821",
   "old_staging_sha256": "befb397659902c8ac8af948f237007e3bc48cf2a396ade42d81b2521ffe6b9ff",
@@ -34,5 +34,18 @@
   "release_authorized": false,
   "live_evidence_required": true,
   "review_state": "ci_only_source_candidate",
-  "rationale": "Existing native Fluent Forms notification settings remain untouched. The new company-admin GET readback resolves site-enrolled sender identity and current native form references. It reports exact managed feed and source hash, source/recipient drift and review blockers without revealing recipient addresses, body, subject, or traveler submissions. Read-only fixtures assert PII minimization, foreign company and stale binding denial, duplicate feed refusal, WordPress administrator-only access, no SMTP dispatch, no create/update/delete and no WordPress cron. The four existing live write/scheduler functions remain intentionally absent until separately authorized."
+  "rationale": "Existing native Fluent Forms notification settings remain untouched. The new company-admin GET readback resolves site-enrolled sender identity and current native form references. It reports exact managed feed and source hash, source/recipient drift and review blockers without revealing recipient addresses, body, subject, or traveler submissions. Read-only fixtures assert PII minimization, foreign company and stale binding denial, duplicate feed refusal, WordPress administrator-only access, no SMTP dispatch, no create/update/delete and no WordPress cron. The four existing live write/scheduler functions remain intentionally absent until separately authorized. Additional fail-closed tests reject CC/BCC, conditional and unexpected sendTo destinations; overlapping event bindings or a truncated bindings registry cannot produce a certified preview. Native delivery remains entirely disabled in this source review.",
+  "prior_reviewed_candidate_blob_sha": "7b65ab55508a8566b5563e495cc18835fae23436",
+  "readback_hardening": {
+    "no_additional_cc_bcc_or_conditional_routing": true,
+    "unrecognized_sendto_keys_fail_closed": true,
+    "exact_one_event_binding_required": true,
+    "oversized_bindings_registry_blocks_certification": true,
+    "hermetic_assertions_per_runtime": 35,
+    "supported_runtime_versions": [
+      "7.4",
+      "8.5"
+    ],
+    "release_approved": false
+  }
 }

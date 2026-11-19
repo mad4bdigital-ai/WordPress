@@ -231,6 +231,52 @@ $wpdb->formStatus[9]='draft';
 email_assert($c::native_notice_preview('contact')['reasons']===['native_form_not_published'],
  'Unpublished contact form cannot be certified');
 $wpdb->formStatus[9]='published';
+$wpdb->formStatus[9]='published';
+// A correct primary recipient must not certify a hidden BCC or a second
+// Fluent Forms routing destination; neither is visible in regular bindings.
+$withBcc=$contact;$withBcc['bcc']='external@outside.example';
+$wpdb->feeds[9]=[['id'=>45,'value'=>json_encode($withBcc)]];
+$blocked=$c::native_notice_preview('contact');
+email_assert(in_array('native_additional_destinations_present',$blocked['reasons'],true),
+ 'BCC is another delivery surface even when primary recipient matches');
+$withRoute=$contact;$withRoute['sendTo']['routing']=[['email'=>'external@outside.example']];
+$wpdb->feeds[9]=[['id'=>45,'value'=>json_encode($withRoute)]];
+$blocked=$c::native_notice_preview('contact');
+email_assert(in_array('native_additional_destinations_present',$blocked['reasons'],true),
+ 'Conditional routing must block a formerly valid feed');
+$withCC=$contact;$withCC['cc']='external@outside.example';
+$wpdb->feeds[9]=[['id'=>45,'value'=>json_encode($withCC)]];
+$blocked=$c::native_notice_preview('contact');
+email_assert(in_array('native_additional_destinations_present',$blocked['reasons'],true),
+ 'CC must not silently pass as an exact company-recipient match');
+$wpdb->feeds[9]=[['id'=>45,'value'=>$contactRaw]];
+$withUnknownDestination=$contact;
+$withUnknownDestination['sendTo']['externalRecipient']='external@outside.example';
+$wpdb->feeds[9]=[['id'=>45,'value'=>json_encode($withUnknownDestination)]];
+$blocked=$c::native_notice_preview('contact');
+email_assert(in_array('native_additional_destinations_present',$blocked['reasons'],true),
+ 'Unexpected sendTo key cannot hide another destination');
+$wpdb->feeds[9]=[['id'=>45,'value'=>$contactRaw]];
+// A duplicate or conflicting binding must not be accepted because one old
+// entry matches the present feed SHA.
+$beforeBindings=$GLOBALS['opts'][$c::BINDINGS_OPTION];
+$GLOBALS['opts'][$c::BINDINGS_OPTION]['entries'][]=[
+ 'consumer'=>'fluent_forms','form_id'=>9,'feed_id'=>999,'event'=>'traveler_support',
+ 'notification_name'=>$contactName,'source_sha256'=>str_repeat('f',64)];
+$blocked=$c::native_notice_preview('contact');
+email_assert(in_array('native_binding_ambiguous',$blocked['reasons'],true)
+ && !$blocked['exact_binding_verified'],
+ 'Multiple same event bindings must be fail-closed');
+$GLOBALS['opts'][$c::BINDINGS_OPTION]=$beforeBindings;
+for($i=0;$i<200;$i++) {
+ $GLOBALS['opts'][$c::BINDINGS_OPTION]['entries'][]=[
+  'consumer'=>'unrelated','form_id'=>900+$i,'event'=>'other'];
+}
+$blocked=$c::native_notice_preview('contact');
+email_assert(in_array('native_binding_registry_unbounded',$blocked['reasons'],true),
+ 'Oversized bindings list cannot certify truncated record set');
+$GLOBALS['opts'][$c::BINDINGS_OPTION]=$beforeBindings;
+
 call_user_func($GLOBALS['actions']['rest_api_init']);
 $route=$GLOBALS['routes']['mad4b/v1/admin/company-native-notice/preview']??[];
 email_assert(($route['methods']??'')==='GET'

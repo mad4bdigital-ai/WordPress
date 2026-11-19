@@ -459,7 +459,7 @@ def reviewed_followup_company_email_readonly_successor(repo:Path,path:str,conten
     historic=repo/'governance/release-parity/qa31-rc129-reviewed-successors-20261118.json'
     required='tests/company-email-native-notice-preview-hermetic.php'
     before='65a3e14d0738e66bf86d9268fa6ba941523ce669'
-    after='7b65ab55508a8566b5563e495cc18835fae23436'
+    after='68e019f273dff89cdb71c80aed8abf1c6bd19b3e'
     try:
         if (not review.is_file() or review.is_symlink()
             or not historic.is_file() or historic.is_symlink()
