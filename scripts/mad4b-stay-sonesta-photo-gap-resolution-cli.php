@@ -1,0 +1,53 @@
+<?php
+/**
+ * Sonesta partner-room image resolution marker, audit-preserving.
+ * Closes current editorial photo gap without deleting original official
+ * duplicate source or the rejected-photo observation.
+ */
+if(!defined('ABSPATH')||!defined('WP_CLI')||!WP_CLI)throw new RuntimeException('WP CLI only');
+$mode=getenv('MAD4B_STAY_PHOTO_GAP_RESOLUTION_MODE')?:'dry-run';
+if(!in_array($mode,['dry-run','apply'],true))WP_CLI::error('invalid_mode');
+if($mode==='apply'&&getenv('MAD4B_STAY_PHOTO_GAP_RESOLUTION_OWNER_APPROVED')!=='1')
+    WP_CLI::error('approval_required');
+$id=70873;$attachment=(int)get_post_thumbnail_id($id);
+$ref=get_post_meta($id,'_mad4b_unit_photo_source_review_v2',true);
+$gap=get_post_meta($id,'_mad4b_stay_room_photo_source_gap_v1',true);
+$provenance=get_post_meta($attachment,'_mad4b_unit_photo_provenance_v1',true);
+$expected='1a9eb4f129b78714595192f85b58f466f33680e2f8aafe6b2bea750b1f139562';
+$reason='';
+if(get_post_type($id)!=='units'||get_post_status($id)!=='draft')
+    $reason='room_not_draft';
+elseif(!$attachment||(string)get_post_meta($id,'unit_gellery',true)!==(string)$attachment
+    ||!is_file((string)get_attached_file($attachment)))
+    $reason='photo_or_gallery_not_ready';
+elseif(!is_array($ref)||!is_array($gap)||!is_array($provenance)
+    ||($gap['code']??'')!=='official_sonesta_image_duplicate_sha')
+    $reason='gap_or_photo_audit_not_found';
+elseif(($ref['image_sha256']??'')!==$expected
+    ||($provenance['image_sha256']??'')!==$expected
+    ||($provenance['source_partner_not_official']??false)!==true
+    ||($provenance['rights_independently_verified']??true)!==false
+    ||($provenance['original_image_url']??'')!==($ref['image_url']??''))
+    $reason='reviewed_source_provenance_changed';
+elseif(get_post_meta($id,'_mad4b_stay_room_photo_gap_resolution_v1',true))
+    $reason='already_resolved';
+else{
+    $resolution=[
+      'schema'=>'mad4b.stay-room-photo-gap-resolution.v1',
+      'unit_id'=>$id,'original_gap_code'=>$gap['code'],
+      'outcome'=>'source_gap_resolved_by_reviewed_partner_room_photo',
+      'source_type'=>'partner_room_category_not_hotel_official',
+      'source_page'=>$ref['source_room_page'],
+      'attachment_id'=>$attachment,'source_sha256'=>$expected,
+      'rights_independently_verified'=>false,
+      'original_gap_retained_for_history'=>true,
+      'commercial_readiness_unchanged'=>true,
+      'resolved_at'=>gmdate('c')
+    ];
+    if($mode==='apply'
+        &&!add_post_meta($id,'_mad4b_stay_room_photo_gap_resolution_v1',$resolution,true))
+        $reason='atomic_resolution_failed';
+}
+WP_CLI::line(wp_json_encode(['mode'=>$mode,'unit_id'=>$id,
+  'attachment_id'=>$attachment,
+  'outcome'=>$reason?:($mode==='apply'?'resolved':'eligible')],JSON_UNESCAPED_SLASHES));
