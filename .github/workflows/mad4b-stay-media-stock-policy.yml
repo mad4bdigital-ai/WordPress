@@ -8,6 +8,7 @@ on:
       - 'wp-content/mu-plugins/mad4b-stay-readiness/admin.js'
       - 'scripts/mad4b-stay-unit-photo-curation-cli.php'
       - 'scripts/mad4b-stay-unit-photo-rollback-cli.php'
+      - 'scripts/mad4b-stay-fourseasons-exact-room-source-admission.php'
       - 'scripts/mad4b-stay-triumph-exact-room-source-admission.php'
       - 'scripts/mad4b-stay-triumph-room-gallery-cli.php'
       - 'tests/stay-unmanaged-stock-policy-contract.php'
@@ -22,6 +23,7 @@ on:
       - 'wp-content/mu-plugins/mad4b-stay-readiness/admin.js'
       - 'scripts/mad4b-stay-unit-photo-curation-cli.php'
       - 'scripts/mad4b-stay-unit-photo-rollback-cli.php'
+      - 'scripts/mad4b-stay-fourseasons-exact-room-source-admission.php'
       - 'scripts/mad4b-stay-triumph-exact-room-source-admission.php'
       - 'scripts/mad4b-stay-triumph-room-gallery-cli.php'
       - 'tests/stay-unmanaged-stock-policy-contract.php'
@@ -60,6 +62,7 @@ jobs:
           php -l wp-content/mu-plugins/021-mad4b-stay-unmanaged-stock.php
           php -l scripts/mad4b-stay-unit-photo-curation-cli.php
           php -l scripts/mad4b-stay-unit-photo-rollback-cli.php
+          php -l scripts/mad4b-stay-fourseasons-exact-room-source-admission.php
           php -l scripts/mad4b-stay-triumph-exact-room-source-admission.php
           php -l scripts/mad4b-stay-triumph-room-gallery-cli.php
       - name: Hermetic stock and readiness assertions
