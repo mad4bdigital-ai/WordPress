@@ -30,8 +30,47 @@ def strip_rc129_signed_host_overlay(actual):
     old=(proof['base_main_bytes'],proof['base_main_sha256'],proof['base_main_blob_sha'])
     if (len(actual),hashlib.sha256(actual).hexdigest(),blob_sha(actual))==old:
         return actual
+    frozen=(proof['current_main_bytes'],proof['current_main_sha256'],
+            proof['current_main_blob_sha'])
+    if (len(actual),hashlib.sha256(actual).hexdigest(),blob_sha(actual))!=frozen:
+        # Preserve the immutable signed-Host source review. A newer rc129
+        # predecessor intentionally *removed* the Local Ollama require_once,
+        # but only a pinned, one-line dormant substitution is accepted.
+        # Reconstruct it IN MEMORY before applying the historical host guard.
+        successor=json.loads((ROOT/'docs/release-coverage/'
+            'pr951-local-ollama-dormant-bootstrap-source-successor-20261119.json').read_text())
+        guard.assertEqual(successor['contract'],
+            'mad4b.rc129-dormant-ollama-bootstrap-exact-successor.v1')
+        for field in ('authorizing','production_authorized',
+                      'new_runtime_ability_enabled','host_grant_issued'):
+            guard.assertIs(successor[field],False)
+        guard.assertIs(successor['live_evidence_required'],True)
+        guard.assertIs(successor['historical_host_source_proof_immutable'],True)
+        guard.assertEqual(successor['main_path'],MAIN)
+        guard.assertEqual(successor['historical_host_source_proof'],
+            'docs/release-coverage/pr814-rc129-host-agent-bootstrap-additive-20261118.json')
+        guard.assertEqual(successor['historical_host_proof_sha256'],
+            hashlib.sha256(PROOF.read_bytes()).hexdigest())
+        guard.assertEqual(successor['predecessor'],dict(
+            bytes=frozen[0],sha256=frozen[1],git_blob_sha=frozen[2]))
+        # An attacker changing the proof alone must not self-certify a
+        # different bootstrap blob or reenable the Local Ollama adapter.
+        guard.assertEqual(successor['successor'],dict(
+            bytes=68672,
+            sha256='5ad46a5c6028fdc2a31e74e48e16f54423e3d38666bc2276131b84a6c1c50119',
+            git_blob_sha='2c497ec72c57f420d1abf1eef242748be40f7bb2'))
+        previous=b"require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-ollama-ability.php';"
+        dormant=b'// Local Ollama remains source-only until an explicit local owner activation.'
+        guard.assertEqual(successor['exact_predecessor_bootstrap_line'],previous.decode())
+        guard.assertEqual(successor['exact_successor_dormant_comment'],dormant.decode())
+        guard.assertEqual(actual.count(previous),0)
+        guard.assertEqual(actual.count(dormant),1)
+        guard.assertEqual((len(actual),hashlib.sha256(actual).hexdigest(),blob_sha(actual)),
+            (successor['successor']['bytes'],successor['successor']['sha256'],
+             successor['successor']['git_blob_sha']))
+        actual=actual.replace(dormant,previous,1)
     guard.assertEqual((len(actual),hashlib.sha256(actual).hexdigest(),blob_sha(actual)),
-        (proof['current_main_bytes'],proof['current_main_sha256'],proof['current_main_blob_sha']))
+        frozen)
     anchor=b"require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-chatgpt-auto-binding.php';"
     added=(b"\n// Original signed Host WP-CLI transport remains dormant without per-site public trust,\n"
            b"// exact site binding, an independent enrolled NHI and each operation's grant.\n"
