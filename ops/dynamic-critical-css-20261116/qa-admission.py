@@ -57,6 +57,8 @@ def evaluate(site,batch,inventory,qa,selection):
              and len(measured)==len(measured_widths)
              and all(v.get('pass') is True and isinstance(v.get('fcpGain'),(int,float))
                      and isinstance(v.get('lcpReg'),(int,float)) for v in measured))
+        if site=='wayfa' and gate.get('adaptiveMaxWidth',0) not in (0,767):
+            good=False
         if good:accepted.append(row)
         else:held.append({'locale':lang,'decision':gate.get('decision','missing'),
                            'viewports':[v.get('width') for v in measured]})

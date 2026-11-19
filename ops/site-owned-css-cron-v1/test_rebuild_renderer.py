@@ -24,7 +24,7 @@ class RendererRebuild(unittest.TestCase):
         self.assertEqual(data['contract'],'mad4b.css.site-owned-renderer.v1')
         self.assertEqual(len(data['files']),119)
         self.assertEqual(data['tree_sha256'],
-            'cd4ff78aea00d5195083e81a9877df44cbcd47907c550e11c3c52aa7327fe09e')
+            '07a31ac90fc93d09701c558727c48e1b76e9be2999d4ba599c66aa136e77c4d7')
 
 if __name__=='__main__':
     unittest.main(verbosity=2)

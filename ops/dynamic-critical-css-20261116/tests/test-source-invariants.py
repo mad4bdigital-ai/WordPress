@@ -24,7 +24,8 @@ checks=[
   and 'required={320,390,414,599,600,767,768}' in pub
   and 'verification-primary-767.json' in run),
 
- ('Wayfa no-preload strategy preserved', 'CSS_PRIORITY=low;CSS_PRELOAD=0;ADAPTIVE_MAX=0' in run),
+ ('Wayfa 767px cap measured with low/no-preload preserved',
+  'CSS_PRIORITY=low;CSS_PRELOAD=0;ADAPTIVE_MAX=767' in run),
  ('CSS byte-level SHA', "SHA(cssfile)!=item['source_sha']" in pub and "SHA(original_css)!=item['source_sha']" in pub),
  ('CAS manifest plus rollback backup', 'CONCURRENT_MANIFEST_CHANGE' in pub and 'manifest-before-promotion.json' in pub),
  ('browser LCP/FCP/CLS/interactive checks', all(x in vfy for x in ('lcpReg','fcpGain','variant.cls','popupOpened','calendarOpened'))),
