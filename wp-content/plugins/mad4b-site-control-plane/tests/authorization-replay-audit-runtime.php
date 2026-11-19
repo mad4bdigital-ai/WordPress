@@ -35,8 +35,10 @@ function mad4b_assert( $condition, $message ) {
 	if ( ! $condition ) { fwrite( STDERR, "FAIL: {$message}\n" ); exit( 1 ); }
 }
 
+$traits = ( new ReflectionClass( 'MAD4B_SCP_Authorization' ) )->getTraitNames();
+mad4b_assert( in_array( 'MAD4B_SCP_Authorization_Remote_Denial', $traits, true ), 'Replay denial audit must remain an extracted original Authorization method.' );
 $method = new ReflectionMethod( 'MAD4B_SCP_Authorization', 'audit_execution_denial' );
-$method->setAccessible( true );
+if ( PHP_VERSION_ID < 80100 ) $method->setAccessible( true );
 $ticket = '11111111-1111-4111-8111-111111111111';
 $identity_ticket = '22222222-2222-4222-8222-222222222222';
 

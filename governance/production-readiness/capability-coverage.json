@@ -3668,6 +3668,65 @@
       "new_control_ids": [],
       "coverage_reuse_rationale": "The existing release provenance, independently signed Host execution, rollback, security and platform rollout controls already govern this source-only discovery; there is no new executing host capability.",
       "review_rationale": "Review of service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-code-release-readiness.php. The added Company Code Release readiness file exposes only nonauthorizing Host source-preflight status. The dispatch identifier is statically mentioned but is not thereby enrolled, granted or installed. Original313 independent signer remains unchanged and must be separately updated before claiming enforcement at its mutation boundary."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization-claimed-callback.php",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "MCP-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-claim-context-runtime.php"
+      ],
+      "owner_role": "MAD4B authorization security CI reviewer; independent production owner and host authority required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing decision graph, scoped ticket claim, exact execution boundary, request-local denial audit, and replay protections are reused without any new permission capability or executor.",
+      "review_rationale": "The exact Authorization method bodies and request-local state were moved verbatim into first-party traits. Existing class callback names, private operation claim lifetime, exception-safe cleanup, denial audit semantics and public MCP permission decision remain the same. The facade shrinks from 1046 to 923 lines, below the existing 950-line quality budget. The three hermetic fixtures cover ticket-bound native/Google claim and replay, request-local execution observations, remote permission denial audits; the source review creates no grant or production authority. Domain: claimed-callback."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization-observation.php",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "MCP-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-claim-context-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/authorization-replay-audit-runtime.php"
+      ],
+      "owner_role": "MAD4B authorization security CI reviewer; independent production owner and host authority required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing decision graph, scoped ticket claim, exact execution boundary, request-local denial audit, and replay protections are reused without any new permission capability or executor.",
+      "review_rationale": "The exact Authorization method bodies and request-local state were moved verbatim into first-party traits. Existing class callback names, private operation claim lifetime, exception-safe cleanup, denial audit semantics and public MCP permission decision remain the same. The facade shrinks from 1046 to 923 lines, below the existing 950-line quality budget. The three hermetic fixtures cover ticket-bound native/Google claim and replay, request-local execution observations, remote permission denial audits; the source review creates no grant or production authority. Domain: observation."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization-remote-denial.php",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "MCP-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-remote-denial-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/authorization-replay-audit-runtime.php"
+      ],
+      "owner_role": "MAD4B authorization security CI reviewer; independent production owner and host authority required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing decision graph, scoped ticket claim, exact execution boundary, request-local denial audit, and replay protections are reused without any new permission capability or executor.",
+      "review_rationale": "The exact Authorization method bodies and request-local state were moved verbatim into first-party traits. Existing class callback names, private operation claim lifetime, exception-safe cleanup, denial audit semantics and public MCP permission decision remain the same. The facade shrinks from 1046 to 923 lines, below the existing 950-line quality budget. The three hermetic fixtures cover ticket-bound native/Google claim and replay, request-local execution observations, remote permission denial audits; the source review creates no grant or production authority. Domain: remote-denial."
     }
   ],
   "lifecycle": [],
@@ -11782,6 +11841,90 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing MCP descriptor and first-party WordPress ability binding controls govern the optional live-host read-only tools. No new execution permission, grant, approval or bypass is introduced.",
       "review_rationale": "Fixes root cause seen in disposable WordPress CI: the clean plugin does not register control-plane-test-route, execution-unified-plan and scoped-build-verification, which are provided by optional live-host/site modules. The exact 3 abilities are now projected only when individually WordPress-registered and descriptor-bound, on their existing read/ChatGPT surfaces. Missing required core abilities remain fail-closed, and production operation authority remains unchanged."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization-claimed-callback.php",
+      "source_blob_sha": "9d350593bb03c745364ca6d25a432afec7275a7f",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "MCP-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-claim-context-runtime.php"
+      ],
+      "owner_role": "MAD4B authorization CI reviewer, nonauthorizing, source-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "No new authorizing action; same original private function bodies and exact authorization guards, extracted for maintainability.",
+      "review_rationale": "The exact Authorization method bodies and request-local state were moved verbatim into first-party traits. Existing class callback names, private operation claim lifetime, exception-safe cleanup, denial audit semantics and public MCP permission decision remain the same. The facade shrinks from 1046 to 923 lines, below the existing 950-line quality budget. The three hermetic fixtures cover ticket-bound native/Google claim and replay, request-local execution observations, remote permission denial audits; the source review creates no grant or production authority. Exact Git blob reviewed for claimed-callback."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization-observation.php",
+      "source_blob_sha": "9c4dd452b93bb09d30d97fd50cad1afcae33f6e1",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "MCP-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-claim-context-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/authorization-replay-audit-runtime.php"
+      ],
+      "owner_role": "MAD4B authorization CI reviewer, nonauthorizing, source-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "No new authorizing action; same original private function bodies and exact authorization guards, extracted for maintainability.",
+      "review_rationale": "The exact Authorization method bodies and request-local state were moved verbatim into first-party traits. Existing class callback names, private operation claim lifetime, exception-safe cleanup, denial audit semantics and public MCP permission decision remain the same. The facade shrinks from 1046 to 923 lines, below the existing 950-line quality budget. The three hermetic fixtures cover ticket-bound native/Google claim and replay, request-local execution observations, remote permission denial audits; the source review creates no grant or production authority. Exact Git blob reviewed for observation."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization-remote-denial.php",
+      "source_blob_sha": "7101838c3f05b6d596995cc20066af9c3df83114",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "MCP-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-remote-denial-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/authorization-replay-audit-runtime.php"
+      ],
+      "owner_role": "MAD4B authorization CI reviewer, nonauthorizing, source-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "No new authorizing action; same original private function bodies and exact authorization guards, extracted for maintainability.",
+      "review_rationale": "The exact Authorization method bodies and request-local state were moved verbatim into first-party traits. Existing class callback names, private operation claim lifetime, exception-safe cleanup, denial audit semantics and public MCP permission decision remain the same. The facade shrinks from 1046 to 923 lines, below the existing 950-line quality budget. The three hermetic fixtures cover ticket-bound native/Google claim and replay, request-local execution observations, remote permission denial audits; the source review creates no grant or production authority. Exact Git blob reviewed for remote-denial."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php",
+      "source_blob_sha": "a2ea7dd18c8dbe2326ef5c9d2f7c97bfc170f994",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "MCP-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-claim-context-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-remote-denial-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/authorization-replay-audit-runtime.php"
+      ],
+      "owner_role": "MAD4B authorization CI reviewer, nonauthorizing, source-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "No new authorizing action; same original private function bodies and exact authorization guards, extracted for maintainability.",
+      "review_rationale": "The exact Authorization method bodies and request-local state were moved verbatim into first-party traits. Existing class callback names, private operation claim lifetime, exception-safe cleanup, denial audit semantics and public MCP permission decision remain the same. The facade shrinks from 1046 to 923 lines, below the existing 950-line quality budget. The three hermetic fixtures cover ticket-bound native/Google claim and replay, request-local execution observations, remote permission denial audits; the source review creates no grant or production authority. Exact Git blob reviewed for facade."
     }
   ],
   "code_change_rules": {

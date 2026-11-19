@@ -58,6 +58,10 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "wp-content/plugins/mad4b-site-control-plane/tests/market-source-calendar-authority-hermetic.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/provider-setup-coverage-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/authority-setup-fields-runtime.php",
+    # CI-approved, isolated Authorization callback/trait lifetime fixture.
+    "wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-claim-context-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-remote-denial-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/authorization-replay-audit-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/background-authorization-verified-identity-hermetic.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/unified-policy-gate-hermetic.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/unified-queue-extension-hermetic.php",
@@ -275,6 +279,9 @@ def self_test():
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/market-source-calendar-authority-hermetic.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/provider-setup-coverage-runtime.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/authority-setup-fields-runtime.php")[0] == "php"
+    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-claim-context-runtime.php")[0] == "php"
+    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/brand-context-remote-denial-runtime.php")[0] == "php"
+    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/authorization-replay-audit-runtime.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/background-authorization-verified-identity-hermetic.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/unified-policy-gate-hermetic.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/unified-queue-extension-hermetic.php")[0] == "php"
