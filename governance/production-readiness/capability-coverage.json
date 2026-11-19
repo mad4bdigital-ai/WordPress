@@ -11742,6 +11742,26 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing signed source admission, certified package identity, MCP read projection, rollback and owner authorization safeguards remain mandatory; no new mutation permission is introduced.",
       "review_rationale": "Review of wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-core-catalog.php after restoring the fixed-channel trusted master release candidate check and requiring actual Ability registration before optional MCP exposure. The first-party Host preflight remains an additional nonauthorizing gate; live production writes are not enabled by this source-only CI review."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-core-catalog.php",
+      "source_blob_sha": "bd0c5b5cab99598b77cec950b51b70082017ea82",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "tests/authority/test-optional-source-read-catalog.php"
+      ],
+      "owner_role": "Release source security reviewer; CI-only, no Owner or Production promotion rights",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing exact MCP read descriptor, schema validation, optional registry and execution boundary controls govern this registered Ability without expanding its permissions.",
+      "review_rationale": "The optional source-preflight Ability is mounted on the read server only after WordPress registration and validated descriptor binding. This avoids fail-closed registration errors in minimal CI and preserves signed source verification on live sites. No execution grant or Production mutation is enabled."
     }
   ],
   "code_change_rules": {
