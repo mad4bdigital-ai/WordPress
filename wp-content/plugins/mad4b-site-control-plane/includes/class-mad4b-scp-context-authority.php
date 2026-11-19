@@ -3343,6 +3343,17 @@ final class MAD4B_SCP_Context_Authority {
             // Low confidence blocks approval only; AI may still document
             // defects using needs_changes or reject without changing classification.
             $requested_decision = sanitize_key( isset( $input['decision'] ) ? (string) $input['decision'] : 'approve' );
+            // A prior automatic label cannot inherit a new Brand Authority
+            // approval when the title-only classifier changes its category.
+            // Do not mutate the source here; require exact source reindex/CAS.
+            if ( 'approve' === $requested_decision
+                && 'automatic_heuristic' === $classification_source
+                && self::automatic_classification_drift( $asset ) ) {
+                return new WP_Error(
+                    'mad4b_context_auto_classification_stale_requires_reindex',
+                    'Automatic Context classification changed. Reconcile the exact source index before approval.'
+                );
+            }
             if ( $low_confidence_classification && 'approve' === $requested_decision ) {
 				$actor_type = isset( $actor['actor_type'] ) ? sanitize_key( (string) $actor['actor_type'] ) : '';
 				if ( 'ai_agent' === $actor_type ) {
@@ -3706,6 +3717,13 @@ final class MAD4B_SCP_Context_Authority {
 				$reviewed_hash = isset( $asset['reviewed_content_hash'] ) ? strtolower( trim( (string) $asset['reviewed_content_hash'] ) ) : '';
 				$review_exact = 'approved' === $review_status && preg_match( '/^[a-f0-9]{64}$/', $current_hash ) && preg_match( '/^[a-f0-9]{64}$/', $reviewed_hash ) && hash_equals( $current_hash, $reviewed_hash );
 				$reasons = array();
+                // An already-approved, historically automatic Brand asset
+                // cannot remain a ready mandatory authority merely because
+                // its old content-hash receipt still matches.
+                if ( 'automatic_heuristic' === (string) ( $asset['classification_source'] ?? '' )
+                    && self::automatic_classification_drift( $asset ) ) {
+                    $reasons[] = 'automatic_classification_stale_requires_reindex';
+                }
 				if ( 'governed' !== ( isset( $asset['source_mode'] ) ? (string) $asset['source_mode'] : '' ) ) $reasons[] = 'source_not_governed';
 				if ( 'ready' !== ( isset( $asset['status'] ) ? (string) $asset['status'] : '' ) ) $reasons[] = 'status_not_ready';
 				if ( array_key_exists( 'content_complete', $asset ) && empty( $asset['content_complete'] ) ) $reasons[] = 'content_incomplete';
@@ -4019,9 +4037,14 @@ final class MAD4B_SCP_Context_Authority {
 		);
 	}
 	public static function classify_asset( $name, $path = '', $content = '' ) {
-		$haystack = strtolower( trim( (string) $name . ' ' . (string) $path . ' ' . substr( (string) $content, 0, 6000 ) ) );
+		// Automatic category and authority come from the document's own title.
+        // Folder paths and body references are provenance/context, never a
+        // basis for required Brand Authority or a delegated approval.
+        $haystack = function_exists( 'mb_strtolower' )
+            ? mb_strtolower( trim( (string) $name ), 'UTF-8' )
+            : strtolower( trim( (string) $name ) );
 		$rules = array(
-			 'brand_strategy' => array( 'brand strategy', 'brand core', 'core brand identity', 'brand identity', 'brand plan', 'استراتيجية العلامة', 'استراتيجية البراند', 'جوهر العلامة' ),
+			 'brand_strategy' => array( 'brand strategy', 'brand core', 'core brand identity', 'brand plan', 'استراتيجية العلامة', 'استراتيجية البراند', 'جوهر العلامة' ),
 			 'brand_positioning' => array( 'positioning', 'brand position', 'تموضع العلامة', 'التموضع' ),
 			 'audience_persona' => array( 'persona', 'audience', 'customer profile', 'buyer profile', 'الجمهور', 'شخصية العميل', 'العميل المثالي' ),
 			 'tone_of_voice' => array( 'tone of voice', 'tone-of-voice', 'brand voice', 'tov', 'نبرة الصوت', 'نبرة العلامة', 'أسلوب الكتابة' ),
@@ -4043,7 +4066,11 @@ final class MAD4B_SCP_Context_Authority {
 		$best_hits = 0;
 		foreach ( $rules as $category => $needles ) {
 			$hits = 0;
-			foreach ( $needles as $needle ) if ( false !== strpos( $haystack, $needle ) ) ++$hits;
+            foreach ( $needles as $needle ) {
+                $folded = function_exists( 'mb_strtolower' )
+                    ? mb_strtolower( $needle, 'UTF-8' ) : strtolower( $needle );
+                if ( false !== strpos( $haystack, $folded ) ) ++$hits;
+            }
 			if ( $hits > $best_hits ) { $best = $category; $best_hits = $hits; }
 		}
 		// Authoritative document titles are stronger evidence of document type
@@ -4051,7 +4078,7 @@ final class MAD4B_SCP_Context_Authority {
 		// Brand Strategy and Tone of Voice without becoming a strategy asset.
 		// Use only explicit multi-word authority identifiers in title or path;
 		// do not infer Brand authority from arbitrary content mentions.
-		$title_path = strtolower( trim( (string) $name . ' ' . (string) $path ) );
+		$title_path = $haystack;
 		$named_authority_rules = array(
 			'editorial_guidelines' => array( 'editorial guideline', 'style guide', 'دليل التحرير', 'قواعد المحتوى' ),
 			'tone_of_voice' => array( 'tone of voice', 'tone-of-voice', 'نبرة الصوت', 'نبرة العلامة' ),
@@ -4059,7 +4086,8 @@ final class MAD4B_SCP_Context_Authority {
 		);
 		foreach ( $named_authority_rules as $category => $names ) {
 			foreach ( $names as $named_phrase ) {
-				if ( false === strpos( $title_path, $named_phrase ) ) continue;
+				if ( false === strpos( $title_path, function_exists( 'mb_strtolower' )
+                    ? mb_strtolower( $named_phrase, 'UTF-8' ) : strtolower( $named_phrase ) ) ) continue;
 				$best = $category;
 				$best_hits = max( 2, $best_hits );
 				break 2;
@@ -4072,10 +4100,11 @@ final class MAD4B_SCP_Context_Authority {
 		// An explicit human-classified asset is preserved by the caller and can
 		// still be reviewed via the separate Context review authority surface.
 		if ( in_array( $best, array( 'brand_strategy', 'tone_of_voice', 'editorial_guidelines' ), true ) ) {
-			$title_path = strtolower( trim( (string) $name . ' ' . (string) $path ) );
+			$title_path = $haystack;
 			$named_authority = false;
 			foreach ( $rules[ $best ] as $needle ) {
-				if ( false !== strpos( $title_path, $needle ) ) { $named_authority = true; break; }
+				if ( false !== strpos( $title_path, function_exists( 'mb_strtolower' )
+                    ? mb_strtolower( $needle, 'UTF-8' ) : strtolower( $needle ) ) ) { $named_authority = true; break; }
 			}
 			$operational_title = 1 === preg_match(
 				'/\\b(wordpress|wp-json|connector|mcp|configuration|snapshot|workflow|import|export|api|operational|operations|publish preparation|data store|database)\\b/i',
@@ -4104,6 +4133,17 @@ final class MAD4B_SCP_Context_Authority {
 			'priority' => $priority,
 		);
 	}
+
+
+    /** Old automatic authority must be reindexed after classifier correction. */
+    private static function automatic_classification_drift( array $asset ):bool {
+        $current = self::classify_asset(
+            (string) ( $asset['title'] ?? '' ), (string) ( $asset['path'] ?? '' )
+        );
+        return (string) ( $asset['category'] ?? '' ) !== (string) $current['category']
+            || (string) ( $asset['authority_class'] ?? '' ) !== (string) $current['authority_class']
+            || ! empty( $asset['required'] ) !== ! empty( $current['required'] );
+    }
 
 	public static function score_asset( array $metadata, $content = '' ) {
 		$content = trim( (string) $content );

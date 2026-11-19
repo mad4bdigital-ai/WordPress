@@ -1,0 +1,32 @@
+{
+  "contract": "mad4b.qa31-rc129-context-title-only-authority.v1",
+  "source_path": "includes/class-mad4b-scp-context-authority.php",
+  "previous_review_path": "governance/release-parity/qa31-rc129-host-agent-integration-successors-20261118.json",
+  "previous_review_sha256": "3184e983d42404f7792c1784dca621bba33570f8b199b1a22a78c1293f16493e",
+  "previous_source_git_blob_sha": "037d6563a3a42561a69b30e8f5d450e40a2d4a40",
+  "previous_source_sha256": "c7e06a51d85ae3dde944d7e38eff3a34f456f25dc2e2f0f3510c5912f8aa3398",
+  "current_source_git_blob_sha": "8d5e50c17a780ce580a18be5e3d2912a2e06920c",
+  "current_source_sha256": "ea788a5b7197991999ed2aff6a9b9e449fafc522eb4654f44d190010b795eff1",
+  "purpose": "Restore Wayfatours title-only automatic brand classification and reject outdated source classifications before approval, keeping newer rc129 Context source.",
+  "required_regression": "wp-content/plugins/mad4b-site-control-plane/tests/context-classification-title-contract.php",
+  "qa31_negative_regression": "tests/qa31_context_title_authority_successor_contract.py",
+  "additional_regression": [
+    "tests/context-authority-original-review-suite.py",
+    "wp-content/plugins/mad4b-site-control-plane/tests/context-authority-contract.py"
+  ],
+  "control_ids": [
+    "GOVERNANCE-01",
+    "SECURITY-01",
+    "MCP-01",
+    "AI-01"
+  ],
+  "owner_role": "MAD4B repository source/security reviewer, CI-only; not enrolled Wayfatours Production Site Owner",
+  "review_rationale": "Exact source update retains rc129 Context Authority while restricting inferred Brand Core, Tone and Editorial authority to explicit document titles rather than path or body references. Previously indexed automatically classified assets must be reindexed under exact registry revision before any approval. A real seven-PHP-fixture Context source contract plus source-wide Context contract and PHP 7.4/8.5 title/old-classification regressions run locally. This is a non-authorizing source review; other live Context differences remain unresolved and no Production release, owner consent, grant or site mutation is conferred. Already approved automatic records whose title-only classification drifts are excluded from ready Brand Core coverage, even when historical content hash receipts match.",
+  "authorizing": false,
+  "production_authorized": false,
+  "source_promotion_approved": false,
+  "is_build_provenance": false,
+  "live_evidence_required": true,
+  "reviewed_for_ci_only": true,
+  "release_gate": "BLOCKED_SOURCE_RECONCILIATION"
+}

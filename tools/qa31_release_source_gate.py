@@ -594,6 +594,75 @@ def reviewed_rc129_company_staff_ceiling_successor(repo:Path,path:str,contents:b
         return None
 
 
+def reviewed_rc129_context_title_authority_successor(repo:Path,path:str,contents:bytes):
+    """Exact source-only Context classification hardening, no release authority."""
+    name='includes/class-mad4b-scp-context-authority.php'
+    if path!=name or not isinstance(contents,bytes):return None
+    manifest=repo/'governance/release-parity/qa31-rc129-context-title-authority-successor-20261119.json'
+    host_path=repo/'governance/release-parity/qa31-rc129-host-agent-integration-successors-20261118.json'
+    parent_blob='037d6563a3a42561a69b30e8f5d450e40a2d4a40'
+    parent_sha='c7e06a51d85ae3dde944d7e38eff3a34f456f25dc2e2f0f3510c5912f8aa3398'
+    current_blob='8d5e50c17a780ce580a18be5e3d2912a2e06920c'
+    current_sha='ea788a5b7197991999ed2aff6a9b9e449fafc522eb4654f44d190010b795eff1'
+    frozen_host_sha='3184e983d42404f7792c1784dca621bba33570f8b199b1a22a78c1293f16493e'
+    test='wp-content/plugins/mad4b-site-control-plane/tests/context-classification-title-contract.php'
+    regression='tests/qa31_context_title_authority_successor_contract.py'
+    try:
+        m=json.loads(manifest.read_text(encoding='utf-8'))
+        frozen_host_text=host_path.read_text(encoding='utf-8')
+        host=json.loads(frozen_host_text)
+        preceding=next(x for x in host['source_entries'] if x.get('path')==path)
+        controls=json.loads((repo/'governance/production-readiness/controls.json').read_text())
+        known={x['id'] for x in controls.get('controls',[]) if isinstance(x,dict)}
+        ids=['GOVERNANCE-01','SECURITY-01','MCP-01','AI-01']
+        if (m.get('contract')!='mad4b.qa31-rc129-context-title-only-authority.v1'
+            or m.get('source_path')!=name
+            or m.get('previous_review_path')!='governance/release-parity/qa31-rc129-host-agent-integration-successors-20261118.json'
+            or m.get('previous_review_sha256')!=digest(host_path)
+            or m.get('previous_review_sha256')!=frozen_host_sha
+            or digest(host_path)!=frozen_host_sha
+            or hashlib.sha256(frozen_host_text.encode('utf-8')).hexdigest()!=frozen_host_sha
+            or m.get('previous_source_git_blob_sha')!=parent_blob
+            or m.get('previous_source_sha256')!=parent_sha
+            or preceding.get('current_blob_sha')!=parent_blob
+            or preceding.get('current_sha256')!=parent_sha
+            or m.get('current_source_git_blob_sha')!=current_blob
+            or m.get('current_source_sha256')!=current_sha
+            or m.get('required_regression')!=test
+            or m.get('qa31_negative_regression')!=regression
+            or m.get('additional_regression')!=[
+                'tests/context-authority-original-review-suite.py',
+                'wp-content/plugins/mad4b-site-control-plane/tests/context-authority-contract.py']
+            or m.get('control_ids')!=ids or not set(ids)<=known
+            or len(str(m.get('review_rationale','')))<90
+            or m.get('authorizing') is not False
+            or m.get('production_authorized') is not False
+            or m.get('source_promotion_approved') is not False
+            or m.get('is_build_provenance') is not False
+            or m.get('live_evidence_required') is not True
+            or m.get('reviewed_for_ci_only') is not True
+            or m.get('release_gate')!='BLOCKED_SOURCE_RECONCILIATION'
+            or not (repo/test).is_file() or (repo/test).is_symlink()
+            or not (repo/regression).is_file() or (repo/regression).is_symlink()
+            or hashlib.sha256(contents).hexdigest()!=current_sha
+            or hashlib.sha1(b'blob '+str(len(contents)).encode('ascii')+b'\0'+contents).hexdigest()!=current_blob):
+            return None
+        source=contents.decode('utf-8')
+        classify=source[source.index('public static function classify_asset('):source.index('public static function score_asset(')]
+        expected=(
+            'Folder paths and body references are provenance/context',
+            "$haystack = function_exists( 'mb_strtolower' )",
+            '$title_path = $haystack;',
+            'automatic_classification_drift( array $asset )',
+            'automatic_classification_stale_requires_reindex',
+            'mad4b_context_auto_classification_stale_requires_reindex',
+        )
+        if any(x not in source for x in expected) or len(classify)<1000:return None
+        return test
+    except (OSError,ValueError,KeyError,TypeError,StopIteration,UnicodeError):
+        return None
+
+
 def reviewed_ci_only_source_successor(root:Path,path:str,contents:bytes)->bool:
     """Accept exact, reviewed Git blobs for CI inventory only; never parity.
     Static legacy entries remain valid; rc129 successors are independently
@@ -609,6 +678,8 @@ def reviewed_ci_only_source_successor(root:Path,path:str,contents:bytes)->bool:
     requested=reviewed_rc129_dormant_ollama_bootstrap_successor(repo,path,contents)
     if requested is None:
         requested=reviewed_rc129_wayfa_source_followup_successor(repo,path,contents)
+    if requested is None:
+        requested=reviewed_rc129_context_title_authority_successor(repo,path,contents)
     if requested is None:
         requested=reviewed_rc129_company_staff_ceiling_successor(repo,path,contents)
     if requested is None:

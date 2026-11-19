@@ -1,0 +1,56 @@
+{
+  "contract": "mad4b.wayfa-sensitive-source-review.v1",
+  "source": "Original 955 file Production archive and exact rc129 PR951 Git candidate",
+  "snapshot": "wayfa-control-plane-live-before-reconciliation.tar.gz, captured 2026-11-19",
+  "review_scope": "four privilege-sensitive files; CI-only source reconciliation, not original WordPress runtime acceptance",
+  "original_conflict_count": 21,
+  "remaining_full_live_conflicts_uncertified": 21,
+  "production_runtime_gate": "production_runtime_gate_disabled",
+  "production_mutated": false,
+  "production_authorized": false,
+  "owner_attestation_inferred": false,
+  "requires_exact_host_preflight_before_release": true,
+  "all_other_context_hunks_still_need_review": true,
+  "rows": [
+    {
+      "path": "includes/class-mad4b-scp-context-authority.php",
+      "live_snapshot_sha256": "0b90c3175160078a9bccb713ba3032d6274cc8e7b974ddd83e366f8530a0d556",
+      "candidate_sha256": "ea788a5b7197991999ed2aff6a9b9e449fafc522eb4654f44d190010b795eff1",
+      "decision": "partial_reconciled_source_only",
+      "reason": "Title-only authority and stale-auto-approval denial applied; broader Context differences need independent review; stale historical automatic Brand Core coverage also denied until source reindex.",
+      "production_authorized": false,
+      "apply_live_over_candidate": false,
+      "automatic_merge": false
+    },
+    {
+      "path": "includes/class-mad4b-scp-site-profile.php",
+      "live_snapshot_sha256": "ae646c89a4bb6e123cbf42b85a93bce642804ad371a71a96c263ebcfd16dbf07",
+      "candidate_sha256": "889e9719141f59b5232bd1dd992190d4c7173d3cb65964437fa2b6890c9893ea",
+      "decision": "candidate_stricter_source_selected",
+      "reason": "Reserved Site UUID needs affirmative host attestation; do not revert to caller-selected UUID",
+      "production_authorized": false,
+      "apply_live_over_candidate": false,
+      "automatic_merge": false
+    },
+    {
+      "path": "includes/class-mad4b-scp-agent-grant-lifecycle.php",
+      "live_snapshot_sha256": "389c858945fd69e3bd9966a0995d53ffbb0d2bb13d94852ecdfc14cd281a3228",
+      "candidate_sha256": "7cb6010dd4e9136dae9ed3525d7a5fd63d4206994a09338508dc4dc6a22e9319",
+      "decision": "candidate_stricter_source_selected",
+      "reason": "Strict actor/scope/nonce and exact row fingerprint validation; no broad grant",
+      "production_authorized": false,
+      "apply_live_over_candidate": false,
+      "automatic_merge": false
+    },
+    {
+      "path": "includes/class-mad4b-scp-self-update.php",
+      "live_snapshot_sha256": "4613edefb196a7ee4d51e779c075be362e6c963fa7d4eed3c0e131685183f0a6",
+      "candidate_sha256": "49c500b48c7f8aea761fb51ff0645cb19a6511be6b30c2d09319e2da58197d74",
+      "decision": "blocked_host_preflight_dependency",
+      "reason": "Wayfatours live requires signed Host Source Admission; candidate lacks equivalent packaged verifier",
+      "production_authorized": false,
+      "apply_live_over_candidate": false,
+      "automatic_merge": false
+    }
+  ]
+}
