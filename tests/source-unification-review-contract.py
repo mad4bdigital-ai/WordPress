@@ -19,6 +19,9 @@ cases=(
     (["php","wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-live-skills-list-paging-runtime.php"], "Live source Skills query and bounded pagination"),
     (["php","wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-live-catalog-read-runtime.php"], "Live source profile-bound read-only Skills catalog"),
     (["php","wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-live-source-skills-parity-runtime.php"], "Tours.dev Skills source parity"),
+    (["php","wp-content/plugins/mad4b-site-control-plane/tests/cimd-scoped-bearer-identity-runtime.php"], "CIMD_SCOPED_SIGNED_BEARER_IDENTITY: PASS"),
+    (["php","wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-auto-binding-runtime.php"], "PASS: scoped CIMD client identity bound"),
+    (["php","wp-content/plugins/mad4b-site-control-plane/tests/reconnect-hardening-runtime.php"], "mad4b.reconnect-hardening.runtime.v1: PASS"),
     (["php","wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-fcp-local-observability-runtime.php"], "PASS"),
     (["python3","wp-content/plugins/mad4b-site-control-plane/tests/admin-route-registry-contract.py"], "Admin route link contract: PASS"),
     (["python3","tests/source-unification-ollama-overlay-contract.py"], "PR942_OLLAMA_BOOTSTRAP_SOURCE_REVIEW: PASS"),
@@ -29,4 +32,4 @@ for command,expected in cases:
     proc=subprocess.run(command,cwd=repo,check=False,capture_output=True,text=True,timeout=40)
     if proc.returncode or expected not in proc.stdout or 'FAIL' in proc.stdout:
         raise SystemExit(f"SOURCE_REVIEW_CONTRACT_FAIL: {command}: {proc.stdout[-500:]} {proc.stderr[-500:]}")
-print("SOURCE_UNIFICATION_CI_ONLY_REVIEW: PASS (14 executable suites, no production authority)")
+print("SOURCE_UNIFICATION_CI_ONLY_REVIEW: PASS (17 executable suites, no production authority)")

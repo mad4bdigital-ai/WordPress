@@ -73,3 +73,9 @@ Review-only source candidate preserving the live Wayfatours accommodation pricin
 - Added tests/pr946_legacy_source_successor_review.py. It binds each current module to its reviewed live-source SHA and exact prior historical test; checks reviewed bootstrap inclusion counts; rejects tampering, and executes seven existing first-party behavioral PHP fixtures.
 - Every successor fixture passed in a fresh read-only PHP 8.5 container without network. A passing current behavior is not approval to erase frozen ancestry proofs.
 - GitHub Unified Source Nonregression runs this exact review on PHP 8.3 before proceeding; release gate stays blocked pending independent disposition of seven historical probes.
+
+## Host authority CI UID discrepancy
+
+- GitHub's ordinary PHP runner uses a non-root host identity, while the real Host authority code requires effective UID 0.
+- Only authority-auto-reconcile-host-hermetic.php now runs inside an isolated root-UID Docker container with no network, no Linux capabilities, no new privileges, a read-only source mount, and no WordPress/production connections.
+- Six other reviewed PHP fixtures continue to run under unprivileged PHP in GitHub. The explicit runner self-test checks this distinction. No production authority checks were altered.

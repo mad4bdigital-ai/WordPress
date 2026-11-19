@@ -34,6 +34,9 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 
 	private static $booted = false;
 	private static $verified_context = null;
+	// A validated OAuth client_id is request-local; never promote it to a grant
+	// or expose it in the broadly merged authenticated subject context.
+	private static $verified_client_id = '';
 
 	public static function boot() {
 		if ( self::$booted ) return;
@@ -566,9 +569,23 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		return false;
 	}
 
+	/**
+	 * Return the exact signed ChatGPT CIMD client (legacy OR connector-scoped)
+	 * only after JWT, issuer, resource, subject and fingerprint verification.
+	 * The client URL is an identity, never a credential or a write grant.
+	 */
+	public static function verified_bearer_trusted_chatgpt_client_id() {
+		if ( ! self::verified_bearer_active() ||
+			! class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) ) return '';
+		$id = self::$verified_client_id;
+		if ( ! MAD4B_SCP_Local_OAuth_Server::trusted_chatgpt_client_id( $id ) ) return '';
+		return self::verified_bearer_client_is( $id ) ? $id : '';
+	}
+
 	/** Reset request-local OAuth authority before a bearer is evaluated. */
 	public static function reset_verified_bearer_context( $bearer_request = false ) {
 		self::$verified_context = null;
+		self::$verified_client_id = '';
 		if ( $bearer_request ) wp_set_current_user( 0 );
 	}
 
@@ -696,6 +713,8 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			$subject_type = 'oauth_developer';
 			$subject_fingerprint = hash( 'sha256', 'oauth-developer' . "\0" . $normal_subject_fingerprint . "\0" . $client_fingerprint );
 		}
+		self::$verified_client_id = isset( $verified['client_id'] ) &&
+			is_string( $verified['client_id'] ) ? $verified['client_id'] : '';
 		self::$verified_context = array(
 			'authenticated' => true,
 			'subject_type' => $subject_type,
@@ -835,6 +854,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			'subject' => $subject,
 			'scopes' => $scopes,
 			'issuer_fingerprint' => self::issuer_fingerprint_for_issuer( $issuer ),
+			'client_id' => $client_id,
 			'client_fingerprint' => '' !== $client_id ? hash( 'sha256', 'oauth-client' . "\0" . $issuer . "\0" . $client_id ) : '',
 			'session_fingerprint' => '' !== $jti ? hash( 'sha256', 'oauth-token-instance' . "\0" . $issuer . "\0" . $jti ) : '',
 		);

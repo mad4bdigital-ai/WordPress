@@ -44,6 +44,10 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
     public static function resource_identifier(){return rest_url('mcp/mad4b-chatgpt');}
     public static function verified_bearer_active(){return true;}
     public static function verified_bearer_client_is($id){return $id==='https://chatgpt.com/oauth/client.json';}
+    public static function verified_bearer_trusted_chatgpt_client_id(){
+        return self::verified_bearer_client_is('https://chatgpt.com/oauth/client.json')
+            ? 'https://chatgpt.com/oauth/client.json' : '';
+    }
 }
 final class MAD4B_SCP_MCP_Registration_Bridge {
     public static $status=array();

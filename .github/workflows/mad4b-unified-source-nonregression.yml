@@ -229,6 +229,7 @@ jobs:
           # Reconcile seven historical SHA/no-bootstrap probes only against
           # exact current source + real denied-operation PHP behavior.
           # This is CI-only; historic probes remain frozen and release blocked.
+          python3 tests/pr946_legacy_source_successor_review.py --self-test
           python3 tests/pr946_legacy_source_successor_review.py --execute
           php wp-content/plugins/mad4b-site-control-plane/tests/qa30-native-general-settings-rest-lifecycle.php
           php tests/presentation-integrity-jetengine-source-hermetic.php

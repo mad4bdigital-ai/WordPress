@@ -61,14 +61,61 @@ def certify_source(row: dict, payload: bytes) -> bool:
     )
 
 
+# Host reconciliation validates genuine effective UID 0. GitHub's ordinary
+# PHP CLI runs unprivileged, so run this ONE authority-positive fixture inside
+# a non-privileged, networkless root-UID container. Do not weaken source EUID,
+# owner or grant guards and do not elevate the other six PHP regressions.
+ROOT_ONLY_FIXTURE = "tests/authority-auto-reconcile-host-hermetic.php"
+
+
+def execution_command(fixture: str, docker_isolated: bool) -> list[str]:
+    if docker_isolated or fixture == ROOT_ONLY_FIXTURE:
+        return [
+            "docker", "run", "--rm", "--network", "none",
+            "--read-only", "--cap-drop", "ALL",
+            "--security-opt", "no-new-privileges",
+            "--user", "0:0",
+            "--memory", "256m", "--pids-limit", "100",
+            "--tmpfs", "/tmp:rw,size=24m",
+            "-v", f"{ROOT}:/src:ro", "-w", "/src",
+            "--entrypoint", "php", "php:8.5-cli", fixture,
+        ]
+    return ["php", str(ROOT / fixture)]
+
+
+def self_test() -> None:
+    reviewed = {case[2] for case in CASES}
+    assert len(reviewed) == 7
+    for name in reviewed:
+        container = execution_command(name, False)
+        if name == ROOT_ONLY_FIXTURE:
+            assert container[:2] == ["docker", "run"]
+            assert "--network" in container and "none" in container
+            assert "--read-only" in container
+            assert "--cap-drop" in container and "ALL" in container
+            assert "--user" in container and "0:0" in container
+            assert "no-new-privileges" in container
+            assert f"{ROOT}:/src:ro" in container
+        else:
+            assert container == ["php", str(ROOT / name)]
+        assert execution_command(name, True)[0] == "docker"
+    print("PR946_LEGACY_RUNNER_ISOLATION: PASS root-only Host authority, 6 ordinary PHP fixtures")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--execute", action="store_true",
                         help="Run all seven actual PHP behavior fixtures.")
+    parser.add_argument("--self-test", action="store_true",
+                        help="Verify exact CI runner isolation, no execution.")
     parser.add_argument("--docker-isolated", action="store_true",
                         help="Use networkless, read-only Docker rather than host PHP.")
     opts = parser.parse_args()
     assert not opts.docker_isolated or opts.execute
+    if opts.self_test:
+        assert not opts.execute and not opts.docker_isolated
+        self_test()
+        return
     evidence = json.loads(EVIDENCE.read_text())
     assert evidence["contract"] == "mad4b.pr946.legacy-source-regression-triage.v1"
     assert evidence["legacy_regression_count"] == len(CASES) == 7
@@ -135,18 +182,7 @@ def main() -> None:
                   "historical_regression_preserved": True,
                   "release_authorized": False}
         if opts.execute:
-            if opts.docker_isolated:
-                command = [
-                    "docker", "run", "--rm", "--network", "none",
-                    "--read-only", "--cap-drop", "ALL",
-                    "--security-opt", "no-new-privileges",
-                    "--memory", "256m", "--pids-limit", "100",
-                    "--tmpfs", "/tmp:rw,size=24m",
-                    "-v", f"{ROOT}:/src:ro", "-w", "/src",
-                    "--entrypoint", "php", "php:8.5-cli", fixture
-                ]
-            else:
-                command = ["php", str(behavior)]
+            command = execution_command(fixture, opts.docker_isolated)
             outcome = subprocess.run(
                 command, cwd=ROOT, capture_output=True, text=True,
                 timeout=40, check=False,
