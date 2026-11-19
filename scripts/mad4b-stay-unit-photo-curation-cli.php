@@ -26,7 +26,7 @@ require_once ABSPATH . 'wp-admin/includes/media.php';
 final class MAD4B_Unit_Photo_Curation_CLI {
     private const HOSTS=['cache.marriott.com','m.ahstatic.com','www.ahstatic.com',
         'media.iceportal.com','pyramidsparkresort.com','triumphhotel.com',
-        'press.fourseasons.com'];
+        'press.fourseasons.com','tolipgroup.com','www.hilton.com','static-dm.barcelo.com'];
     private static function error(string $code):array {
         return ['status'=>'skipped','reason'=>$code];
     }
@@ -62,6 +62,21 @@ final class MAD4B_Unit_Photo_Curation_CLI {
         if(get_post_meta($unit,'_mad4b_unit_photo_curation_v1',true))
             return self::error('already_curated_preserved');
         $ref=get_post_meta($unit,'_mad4b_unit_official_room_photo_reference_v1',true);
+        $review=get_post_meta($unit,'_mad4b_unit_photo_source_review_v2',true);
+        if($review){
+            if(!is_array($review)
+                ||($review['schema']??'')!=='mad4b.stay-photo-source-reviewed-v2'
+                ||($review['owner_attested_public_source_use']??false)!==true
+                ||($review['rights_independently_verified']??true)!==false
+                ||($review['original_v1_reference_preserved']??false)!==true
+                ||(($review['verified_room_detail_h1']??false)!==true
+                    &&($review['verified_official_gallery_caption']??false)!==true)
+                ||!is_array($ref)
+                ||($ref['room_name']??'')!==($review['room_name']??'')
+                ||(int)($ref['property_id']??0)!==(int)($review['property_id']??0))
+                return self::error('source_review_v2_invalid');
+            $ref=$review;
+        }
         if(!is_array($ref)||empty($ref['image_url'])||!is_string($ref['image_url']))
             return self::error('original_reference_missing');
         if((string)$ref['image_url'] !== (string)($row['image_url']??'')
@@ -86,6 +101,8 @@ final class MAD4B_Unit_Photo_Curation_CLI {
             ||!is_file($file) || filesize($file)>6*1024*1024)
             return self::error('invalid_local_file');
         $sha=hash_file('sha256',$file);
+        if($review && !hash_equals((string)($review['image_sha256']??''),$sha))
+            return self::error('reviewed_source_sha256_mismatch');
         if(!hash_equals((string)($row['sha256']??''),$sha))
             return self::error('photo_file_checksum_mismatch');
         if(isset($seen[$sha]))return self::error('duplicate_photo_bytes_across_units');
@@ -93,7 +110,13 @@ final class MAD4B_Unit_Photo_Curation_CLI {
         $previous=self::existing_hash($sha);
         if($previous)return self::error('image_already_imported_attachment_'.$previous);
         $m=getimagesize($file);
-        if(!$m||$m[0]<800||$m[1]<480)return self::error('insufficient_image_dimensions');
+        // Explicit exception: the official Chalet photo is 699x466.
+        // Do not artificially upscale it or change the default quality gate.
+        $limitedTolipChalet=($unit===70805
+            && $imageUrl==='https://tolipgroup.com/wp-content/uploads/2024/04/chalet-THG-acc.jpg'
+            && $property===36197 && $m && $m[0]>=650 && $m[1]>=450);
+        if(!$m || (($m[0]<800||$m[1]<480) && !$limitedTolipChalet))
+            return self::error('insufficient_image_dimensions');
         $mime=(string)($m['mime']??'');
         if(!in_array($mime,['image/jpeg','image/webp','image/png'],true)
            ||$mime!==(string)($row['mime']??''))
@@ -141,6 +164,9 @@ final class MAD4B_Unit_Photo_Curation_CLI {
             'hotel_source_page'=>(string)$source['source_room_page'],
             'original_image_url'=>(string)$source['image_url'],
             'image_sha256'=>$candidate['sha256'],
+            'source_image_quality_review_required'=>$unit===70805,
+            'approved_source_review_v2'=>isset($source['schema'])
+                &&$source['schema']==='mad4b.stay-photo-source-reviewed-v2',
             'unit_id'=>$unit,'property_id'=>$property,
             'recorded_at'=>gmdate('c')
         ];
@@ -193,7 +219,7 @@ final class MAD4B_Unit_Photo_Curation_CLI {
         if(count($allow)>20)WP_CLI::error('Unit batch limit is 20');
         $allow=array_fill_keys($allow,true);
         $seen=[];$out=[];$stats=['eligible'=>0,'applied'=>0,'skipped'=>0];
-        $rows=array_slice($manifest['records'],0,120);
+        $rows=array_slice($manifest['records'],0,180);
         foreach($rows as $row){
             $id=(int)($row['unit_id']??0);
             if($mode==='apply' && !isset($allow[$id]))continue;
