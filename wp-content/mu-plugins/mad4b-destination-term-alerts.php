@@ -216,11 +216,14 @@ final class MAD4B_Destination_Term_Alerts_V1 {
         if (self::$readback_count >= 5) return false;
         self::$readback_count++;
         $res=wp_safe_remote_get($url,array('timeout'=>12,'redirection'=>2,
-            'limit_response_size'=>1048576,'headers'=>array('Cache-Control'=>'no-cache'),
+            'limit_response_size'=>2097152,'headers'=>array('Cache-Control'=>'no-cache'),
             'user-agent'=>'MAD4B-Destination-Term-Readback/1.0'));
         if (is_wp_error($res) || (int)wp_remote_retrieve_response_code($res)!==200) return false;
         $html=(string)wp_remote_retrieve_body($res);
-        if (strlen($html)<300 || stripos($html,'<html')===false) return false;
+        // The full closing HTML document must be observed: a truncated
+        // response could hide a stale external link beyond the byte limit.
+        if (strlen($html)<300 || stripos($html,'<html')===false
+            || stripos($html,'</html>')===false) return false;
         foreach ((array)($e['sample_urls']??array()) as $old_url)
             if (is_string($old_url) && $old_url!=='' &&
                 (str_contains($html,$old_url)||str_contains(html_entity_decode($html,ENT_QUOTES|ENT_HTML5,'UTF-8'),$old_url)))
