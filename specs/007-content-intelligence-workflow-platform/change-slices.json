@@ -1,11 +1,11 @@
 {
   "contract": "mad4b.change-slices.v2",
   "authorizing": false,
-  "reviewed_base_sha": "bd3fa88aa60465eb1a6430e086c26e1444cf3367",
+  "reviewed_base_sha": "d3bf8b07244840175ab1611e2ae1b426a6542b6d",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 32,
-  "changed_paths_sha256": "a609e21b445a8ba45e2c0bfe44f2b957b887929f56773b7170fc3525545e936c",
+  "changed_file_count": 38,
+  "changed_paths_sha256": "0032cef94ed881eeb2360b0e5fbb945789fc6fe8d366c1b148173cb98ac84120",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -392,6 +392,20 @@
       "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readiness-preactivation-source-only-runtime.php"
+      ]
+    },
+    {
+      "id": "original-authority-review-modules-from-pr900",
+      "semantic_unit": "Group six original PR900 Authority / original 305 / company source review modules, preserved for static source inspection only and not registered in main plugin Bootstrap.",
+      "revert_boundary": "Revert this six-module original-source review as a unit without enabling execution, grants, certs, provider credentials, Production promotion or site writes. PR900 and its original frozen source remain the review anchors.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-auto-reconciliation.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-reviews-bridge.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-reconcile-skill-set.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-connector-vault.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-host-source-release-review.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-original305-incident-review.php"
       ]
     }
   ]
