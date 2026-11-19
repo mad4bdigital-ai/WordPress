@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Company Workspaces
  * Description: Tenant-scoped Company/Content Jobs navigation for operators. No global WordPress administrator access.
- * Version: 1.0.0
+ * Version: 1.1.0
  */
 defined('ABSPATH') || exit;
 
@@ -11,21 +11,14 @@ final class MAD4B_Company_Workspaces_V1 {
     private const SLUG = 'mad4b-company-workspaces';
     private const JOBS_SLUG = 'mad4b-company-content-jobs';
 
-    public static function boot(): void {
-        // Add only already-defined company-scoped content/pricing capabilities
-        // where the historical Master Admin role was not reconciled.
-        add_action('init', [__CLASS__, 'reconcile_scoped_caps'], 110);
-        add_action('admin_menu', [__CLASS__, 'menu'], 150);
-    }
+    // Capabilities are stored in WordPress roles and edited by User Role Editor.
+    // The historical two-capability seed is adopted once via the audited
+    // ops/company-workspaces-role-policy-v1/adopt-existing.php command.
+    // Never re-grant permissions during init or admin_menu: a URE revoke must persist.
+    public const ROLE_POLICY_VERSION = '20261119.1';
 
-    public static function reconcile_scoped_caps(): void {
-        $role = get_role('master_admin');
-        if (!$role) return;
-        foreach (['mad4b_manage_company_pricing', 'mad4b_propose_company_content'] as $cap) {
-            if (!$role->has_cap($cap)) $role->add_cap($cap, true);
-        }
-        // Do not add manage_options, manage_woocommerce, user promotion,
-        // plugin installation, Host authority or signed-release access.
+    public static function boot(): void {
+        add_action('admin_menu', [__CLASS__, 'menu'], 150);
     }
 
     private static function can_open(): bool {

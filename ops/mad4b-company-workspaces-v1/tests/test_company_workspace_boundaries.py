@@ -40,6 +40,8 @@ class WorkspacesContracts(unittest.TestCase):
         self.assertIn("public static function menu_parent()",src)
         self.assertIn("add_menu_page('MAD4B Workspaces','MAD4B'",src)
         self.assertIn("add_submenu_page($parent, 'Content Jobs'",src)
+        self.assertNotIn("reconcile_scoped_caps",src)
+        self.assertNotIn("add_action('init'",src)
         self.assertNotIn("->add_cap('manage_options'",src)
 
     def test_staff_permissions_are_subset_denied_system_and_post_nonce(self):
