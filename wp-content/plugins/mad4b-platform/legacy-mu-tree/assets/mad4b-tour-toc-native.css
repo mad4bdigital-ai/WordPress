@@ -1,0 +1,31 @@
+/* Native WPML-aware nested navigation. Elementor Kit tokens remain authoritative. */
+body.single-tours-and-activities .mad4b-tour-toc-native {
+  --mad4b-toc-surface: var(--mad4b-client-surface,#fff);
+  --mad4b-toc-ink: var(--mad4b-client-ink,var(--e-global-color-text,#24464c));
+  --mad4b-toc-accent: var(--mad4b-client-accent,var(--e-global-color-accent,#be8b43));
+  display:block;width:100%;min-width:0;color:var(--mad4b-toc-ink);
+}
+body.single-tours-and-activities .mad4b-tour-toc-native .mad4b-tour-toc__drawer {
+ background:var(--mad4b-toc-surface);color:var(--mad4b-toc-ink);
+}
+body.single-tours-and-activities .mad4b-tour-toc-native .mad4b-tour-toc__group > summary {
+ color:var(--mad4b-toc-ink);cursor:pointer;
+}
+body.single-tours-and-activities .mad4b-tour-toc-native .mad4b-tour-toc__group > summary::before {
+ color:var(--mad4b-toc-accent);
+}
+body.single-tours-and-activities .mad4b-tour-toc-native .mad4b-tour-toc__group a {
+ color:var(--mad4b-toc-ink);text-decoration:none;
+}
+body.single-tours-and-activities .mad4b-tour-toc-native .mad4b-tour-toc__group a:focus-visible {
+ outline:2px solid var(--mad4b-toc-accent);outline-offset:2px;
+}
+body.single-tours-and-activities .mad4b-tour-toc-native [hidden]{display:none!important}
+body.single-tours-and-activities .mad4b-tour-section-anchor {scroll-margin-top:96px}
+@media (min-width:768px) {
+ body.single-tours-and-activities .elementor-element-b29a19b.elementor-widget-mad4b-tour-contents {display:none!important}
+}
+@media (max-width:767px){
+ body.single-tours-and-activities .mad4b-tour-toc-native .mad4b-tour-toc__drawer>summary{min-height:48px}
+ body.single-tours-and-activities .mad4b-tour-toc-native .mad4b-tour-toc__group ul{padding-inline-start:22px;padding-inline-end:5px}
+}

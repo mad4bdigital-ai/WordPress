@@ -57,6 +57,11 @@ final class MAD4B_SCP_Plugin {
 		if ( self::$booted ) return;
 		self::$booted = true;
 
+		// Lightweight event registration only. Filesystem reconciliation runs
+		// in a scheduled company-enrollment job, never in public page serving.
+		add_action( 'mad4b_scp_site_profile_saved', array( 'MAD4B_SCP_Skill_Seeder', 'schedule_after_profile_saved' ), 20 );
+		add_action( 'mad4b_scp_auto_skill_catalog_reconcile', array( 'MAD4B_SCP_Skill_Seeder', 'auto_reconcile_enrolled' ), 20 );
+
 		// Admin navigation is presentation-only and must stay visible on every
 		// wp-admin screen, including zero-touch third-party/plugin pages. Register
 		// menu hooks before the heavy-runtime zero-touch gate; render callbacks stay
@@ -249,8 +254,15 @@ final class MAD4B_SCP_Plugin {
 			}
 		}
 		if ( ! is_admin() ) return false;
-		$pagenow = isset( $GLOBALS['pagenow'] ) ? sanitize_key( (string) $GLOBALS['pagenow'] ) : '';
-		$action = isset( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( (string) $_REQUEST['action'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- lifecycle observation only.
+		// WordPress $pagenow is a file name, not a sanitize_key() token:
+		// sanitizing as a key removes '.php' and misses update/install routes.
+		$page_source = $GLOBALS['pagenow'] ?? null;
+		$pagenow = is_string( $page_source )
+			&& 1 === preg_match( '/^[a-z0-9_-]+\.php$/D', $page_source )
+			? $page_source : '';
+		$action_source = $_REQUEST['action'] ?? null; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- classification only.
+		$action = is_string( $action_source ) && strlen( $action_source ) <= 128
+			? sanitize_key( wp_unslash( $action_source ) ) : '';
 		if ( in_array( $pagenow, array( 'update.php', 'update-core.php', 'plugin-install.php', 'plugins.php' ), true ) ) return true;
 		return in_array( $action, array( 'upload-plugin', 'install-plugin', 'update-plugin', 'activate', 'deactivate', 'delete-selected' ), true );
 	}

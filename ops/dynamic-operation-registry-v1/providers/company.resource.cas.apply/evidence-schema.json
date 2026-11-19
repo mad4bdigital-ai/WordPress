@@ -1,0 +1,20 @@
+{
+  "contract": "mad4b.dynamic-evidence-schema.v1",
+  "fields": {
+    "after_sha256": "sha256",
+    "before_sha256": "sha256",
+    "company_preservation_sha256": "sha256",
+    "expected_readback_sha256": "sha256",
+    "grant_id": "string",
+    "native_receipt_sha256": "sha256",
+    "original_313_signed": "boolean",
+    "output_sha256": "sha256",
+    "production_mutation": "boolean",
+    "readback_sha256": "sha256",
+    "resource_key": "string",
+    "result_status": "string",
+    "transport_id": "string"
+  },
+  "schema_id": "resource_cas.v1",
+  "success_state": "INDEPENDENT_TARGET_CAS_POSTIMAGE_VERIFIED_UNSIGNED"
+}

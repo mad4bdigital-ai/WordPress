@@ -550,9 +550,26 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 
 		$catalog = self::catalog();
 		$declaration = isset( $catalog['providers'][ $provider ] ) && is_array( $catalog['providers'][ $provider ] ) ? $catalog['providers'][ $provider ] : array();
-		$available = is_object( $adapter ) && method_exists( $adapter, 'is_available' ) ? (bool) $adapter->is_available() : false;
-		$runtime = class_exists( 'MAD4B_SCP_Provider_Contracts' ) ? MAD4B_SCP_Provider_Contracts::runtime_status( $provider, $available ) : array( 'status' => 'certification_authority_unavailable', 'runtime_contract_ok' => false );
-		$exact_certified = ! empty( $runtime['runtime_contract_ok'] );
+		$available = false;
+		if ( is_object( $adapter ) && ! is_wp_error( $adapter )
+			&& method_exists( $adapter, 'is_available' ) ) {
+			try {
+				$available = true === $adapter->is_available();
+			} catch ( \Throwable $error ) {
+				$available = false;
+			}
+		}
+		$runtime = array( 'status' => 'certification_authority_unavailable',
+			'runtime_contract_ok' => false );
+		if ( class_exists( 'MAD4B_SCP_Provider_Contracts' ) ) {
+			try {
+				$observed = MAD4B_SCP_Provider_Contracts::runtime_status( $provider, $available );
+				if ( is_array( $observed ) ) $runtime = $observed;
+			} catch ( \Throwable $error ) {
+				// Unknown runtime contract is never a valid source certificate.
+			}
+		}
+		$exact_certified = ( $runtime['runtime_contract_ok'] ?? null ) === true;
 		$artifact = self::artifact_evidence( $provider, $runtime, $adapter );
 		$artifact_fingerprint = isset( $artifact['runtime_artifact_fingerprint'] ) ? (string) $artifact['runtime_artifact_fingerprint'] : '';
 		$artifact_authority_bound = ! empty( $artifact['artifact_authority_bound'] );
@@ -815,6 +832,15 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 		$integrity = isset( $runtime['runtime_integrity'] ) && is_array( $runtime['runtime_integrity'] ) ? $runtime['runtime_integrity'] : array();
 		$adapter_reported_version = is_object( $adapter ) && method_exists( $adapter, 'runtime_version' ) ? trim( (string) $adapter->runtime_version() ) : '';
 		$runtime_installed_version = isset( $runtime['installed_version'] ) ? trim( (string) $runtime['installed_version'] ) : '';
+        $catalog=self::catalog();
+        $declaration=isset($catalog['providers'][$provider]) && is_array($catalog['providers'][$provider])
+            ?$catalog['providers'][$provider]:array();
+        $installed_observation=class_exists('MAD4B_SCP_Provider_Installed_Artifact')
+            ?MAD4B_SCP_Provider_Installed_Artifact::observe($provider,$declaration,$adapter,$contract)
+            :array('bound'=>false);
+        // Installed identity is only evidence, never repository certification or write permission.
+        if(''===$runtime_installed_version && !empty($installed_observation['bound']))
+            $runtime_installed_version=(string)$installed_observation['installed_version'];
 		// In-tree Google Drive Context has no separate plugin header or
 		// repository-certified external ZIP. Evaluate its exact build-bound
 		// first-party evidence instead of treating it as a missing vendor plugin.
@@ -823,6 +849,7 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 		$first_party = self::first_party_context_evidence( $provider, $adapter );
 		$artifact_authority_bound = ( ! empty( $contract ) && ( '' !== $runtime_installed_version || ! empty( $runtime['components'] ) ) )
 			|| ! empty( $first_party['bound'] );
+            $artifact_authority_bound=$artifact_authority_bound || !empty($installed_observation['bound']);
 		$component_artifacts = array();
 		if ( ! empty( $contract['components'] ) && is_array( $contract['components'] ) ) {
 			foreach ( $contract['components'] as $key => $component ) {
@@ -850,6 +877,7 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 			'adapter_reported_version' => $adapter_reported_version,
 			'artifact_authority_bound' => $artifact_authority_bound,
 			'first_party_context' => $first_party,
+            'installed_observation'=>$installed_observation,
 			'plugin_file' => isset( $contract['plugin_file'] ) ? (string) $contract['plugin_file'] : '',
 			'components' => $component_artifacts,
 			'certification_authority' => isset( $runtime['certification_authority'] ) ? (string) $runtime['certification_authority'] : '',
@@ -863,6 +891,9 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 			'artifact_authority_bound' => $artifact_authority_bound,
 			'artifact_authority_state' => $artifact_authority_bound ? 'bound' : 'missing',
 			'first_party_context_evidence' => $first_party,
+            'installed_artifact_observation'=>$installed_observation,
+            'runtime_identity_source'=>!empty($installed_observation['bound']) ? 'exact_active_wordpress_plugin' : 'original_certified_runtime',
+            'exact_repository_certified'=>!empty($runtime['runtime_contract_ok']),
 			'certified_versions' => array_values( (array) ( $runtime['certified_versions'] ?? array() ) ),
 			'certification_authority' => isset( $runtime['certification_authority'] ) ? (string) $runtime['certification_authority'] : 'repository_baseline',
 			'plugin_file' => isset( $contract['plugin_file'] ) ? (string) $contract['plugin_file'] : '',
@@ -890,11 +921,19 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 			|| ! defined( 'MAD4B_SCP_DIR' ) ) return $denied;
 		try { $status = $adapter->context_provider_contract_status(); }
 		catch ( Throwable $error ) { return $denied; }
-		if ( ! is_array( $status ) || empty( $status['ready'] ) || empty( $status['first_party'] )
-			|| 'mad4b.google-drive-context-provider.v1' !== (string) ( $status['contract'] ?? '' )
-			|| 'google_drive_context' !== (string) ( $status['provider'] ?? '' ) ) return $denied;
-		$build = strtolower( trim( (string) ( $status['control_plane_build_fingerprint'] ?? '' ) ) );
-		$observed_build = strtolower( trim( (string) MAD4B_SCP_External_Handshake_Evidence::build_fingerprint() ) );
+		if ( ! is_array( $status ) || ( $status['ready'] ?? null ) !== true
+			|| ( $status['first_party'] ?? null ) !== true
+			|| ( $status['contract'] ?? null ) !== 'mad4b.google-drive-context-provider.v1'
+			|| ( $status['provider'] ?? null ) !== 'google_drive_context'
+			|| ! is_string( $status['control_plane_build_fingerprint'] ?? null ) ) return $denied;
+		try {
+			$observed = MAD4B_SCP_External_Handshake_Evidence::build_fingerprint();
+		} catch ( \Throwable $error ) {
+			return $denied;
+		}
+		if ( ! is_string( $observed ) ) return $denied;
+		$build = strtolower( trim( $status['control_plane_build_fingerprint'] ) );
+		$observed_build = strtolower( trim( $observed ) );
 		if ( ! preg_match( '/^[a-f0-9]{64}$/D', $build )
 			|| ! hash_equals( $build, $observed_build ) ) {
 			$denied['state'] = 'first_party_build_identity_drift';
@@ -902,6 +941,7 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 		}
 		$expected_files = array(
 			'includes/adapters/class-mad4b-scp-context-adapter.php',
+			'includes/adapters/class-mad4b-scp-context-asset-read-model.php',
 			'includes/class-mad4b-scp-brand-context-builder.php',
 			'includes/class-mad4b-scp-context-authority.php',
 			'includes/class-mad4b-scp-context-preflight.php',
@@ -927,7 +967,8 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 			$denied['state'] = 'first_party_rollback_contract_drift';
 			return $denied;
 		}
-		$fingerprint = (string) ( $status['artifact_fingerprint'] ?? '' );
+		if ( ! is_string( $status['artifact_fingerprint'] ?? null ) ) return $denied;
+		$fingerprint = $status['artifact_fingerprint'];
 		if ( ! preg_match( '/^[a-f0-9]{64}$/D', $fingerprint ) ) return $denied;
 		return array(
 			'bound' => true,

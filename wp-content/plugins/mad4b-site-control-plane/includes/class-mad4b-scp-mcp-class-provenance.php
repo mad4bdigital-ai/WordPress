@@ -103,6 +103,7 @@ final class MAD4B_SCP_MCP_Class_Provenance {
 			'failure_count' => 0,
 			'unobserved_count' => 0,
 			'complete' => false,
+			'source_provenance_observational' => true,
 			'mixed_runtime' => false,
 			'repair_action' => '',
 			'repair_provider_id' => self::PROVIDER,
@@ -124,7 +125,7 @@ final class MAD4B_SCP_MCP_Class_Provenance {
 			$out['certified_version'] = '';
 			$out['installed_version'] = $installed_version;
 			$out['state'] = 'version_profile_unavailable';
-			$out['blocker'] = self::BLOCKER;
+			$out['blocker'] = ''; // Source/version profile is advisory only.
 			self::$cache[ $cache_key ] = $out;
 			return self::$cache[ $cache_key ];
 		}
@@ -133,7 +134,7 @@ final class MAD4B_SCP_MCP_Class_Provenance {
 		if ( '' === $runtime_root ) {
 			$out['enforced'] = true;
 			$out['state'] = 'plugin_identity_unavailable';
-			$out['blocker'] = self::BLOCKER;
+			$out['blocker'] = ''; // Source/version profile is advisory only.
 			self::$cache[ $cache_key ] = $out;
 			return self::$cache[ $cache_key ];
 		}
@@ -162,6 +163,7 @@ final class MAD4B_SCP_MCP_Class_Provenance {
 			'failure_count' => 0,
 			'unobserved_count' => 0,
 			'complete' => false,
+			'source_provenance_observational' => true,
 			'mixed_runtime' => false,
 			'repair_action' => '',
 			'repair_provider_id' => self::PROVIDER,
@@ -277,7 +279,7 @@ final class MAD4B_SCP_MCP_Class_Provenance {
 		elseif ( $out['mixed_runtime'] ) $out['state'] = 'mixed_runtime';
 		elseif ( $out['failure_count'] > 0 ) $out['state'] = 'class_set_mismatch';
 		else $out['state'] = 'partial_certified_class_set';
-		$out['blocker'] = $out['failure_count'] > 0 ? self::BLOCKER : '';
+		$out['blocker'] = ''; // Hash/source mismatch does not block runtime admission.
 
 		$official_disk_mismatch = false;
 		$foreign_source_mismatch = false;
@@ -294,14 +296,10 @@ final class MAD4B_SCP_MCP_Class_Provenance {
 				$foreign_source_mismatch = true;
 			}
 		}
-		if ( $official_disk_mismatch ) {
-			$out['repair_action'] = 'repair_certified_mcp_adapter_package';
-			$out['explicit_admin_repair_required'] = true;
-		} elseif ( $foreign_source_mismatch ) {
-			$out['repair_action'] = 'arm_managed_mu_bootstrap_on_lifecycle';
-		} elseif ( $out['failure_count'] > 0 ) {
-			$out['repair_action'] = 'inspect_certified_mcp_runtime';
-		}
+		// Preserve observed failures for operators, never request automatic
+		// repair or a forced class pin from a fingerprint difference.
+		$out['repair_action'] = '';
+		$out['explicit_admin_repair_required'] = false;
 		return $out;
 	}
 

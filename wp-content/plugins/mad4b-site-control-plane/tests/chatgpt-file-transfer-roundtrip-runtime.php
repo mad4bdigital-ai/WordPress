@@ -52,6 +52,10 @@ class MAD4B_SCP_Site_Profile {
  static function current_environment(){return $GLOBALS['mock_environment'] ?? 'staging';}
  static function origin_enrolled(){return true;}
  static function site_urls_match_enrollment(){return true;}
+ static function site_uuid(){return $GLOBALS['mock_uuid'] ?? 'f1111111-1111-1111-1111-111111111111';}
+ static function site_origin(){return 'https://staging.example.test';}
+ static function write_enabled(){return ($GLOBALS['mock_environment'] ?? 'staging')!=='production'
+     || !empty($GLOBALS['mock_production_write']);}
 }
 require dirname(__DIR__) . '/includes/class-mad4b-scp-chatgpt-file-transfer.php';
 function attempt($action,$params) {
@@ -66,6 +70,16 @@ try {
  $start=attempt('begin',array('filename'=>'fixture.txt','size'=>strlen($data),'sha256'=>$sha));
  check_ok(!is_wp_error($start) && strlen($start['transfer_id'])===32,'begin');
  $id=$start['transfer_id'];
+ // The same company identity, not request Host or visitor locale, owns the
+ // resumable transfer. A different registered Site UUID must never inherit it.
+ $siteRoot=sys_get_temp_dir().'/mad4b-chatgpt-transfer-v1/'.hash('sha256',
+     MAD4B_SCP_Site_Profile::site_uuid().'|'.MAD4B_SCP_Site_Profile::site_origin());
+ check_ok(is_dir($siteRoot)&&!is_link($siteRoot),'company_isolated_transfer_root');
+ $GLOBALS['mock_uuid']='b2222222-2222-2222-2222-222222222222';
+ $foreign=attempt('status',array('transfer_id'=>$id));
+ check_ok(is_wp_error($foreign)&&$foreign->get_error_code()==='mad4b_transfer_unknown',
+     'other_company_cannot_resume');
+ $GLOBALS['mock_uuid']='f1111111-1111-1111-1111-111111111111';
  $bad=attempt('chunk',array('transfer_id'=>$id,'offset'=>1,'data_base64'=>base64_encode($data)));
  check_ok(is_wp_error($bad)&&$bad->get_error_code()==='mad4b_transfer_offset','wrong_offset_rejected');
  $status=attempt('status',array('transfer_id'=>$id));
@@ -93,7 +107,7 @@ try {
  attempt('chunk',array('transfer_id'=>$id2,'offset'=>0,'data_base64'=>base64_encode($data)));
  $mismatch=attempt('finish',array('transfer_id'=>$id2));
  check_ok(is_wp_error($mismatch)&&$mismatch->get_error_code()==='mad4b_transfer_integrity','hash_mismatch_denied');
- $lockedPath=sys_get_temp_dir().'/mad4b-chatgpt-transfer-v1/'.$id2.'.part';
+ $lockedPath=$siteRoot.'/'.$id2.'.part';
  $lockHandle=fopen($lockedPath,'c+b');
  check_ok($lockHandle!==false&&flock($lockHandle,LOCK_EX|LOCK_NB),'fixture_lock_acquired');
  $busyAbort=attempt('abort',array('transfer_id'=>$id2));
@@ -102,12 +116,13 @@ try {
  $aborted=attempt('abort',array('transfer_id'=>$id2));
  check_ok(!is_wp_error($aborted)&&$aborted['aborted']===true&&!is_file($lockedPath),'abort_removes_unlocked_transfer');
  $orphanId=bin2hex(random_bytes(16));
- $orphan=sys_get_temp_dir().'/mad4b-chatgpt-transfer-v1/'.$orphanId.'.part';
+ $orphan=$siteRoot.'/'.$orphanId.'.part';
  file_put_contents($orphan,'expired disposable bytes');
  touch($orphan,time()-10000);
  $GLOBALS['mock_environment']='production';
+ $GLOBALS['mock_production_write']=false;
  $blocked=$cls::cleanup_expired();
- check_ok($blocked['cleaned']===0 && is_file($orphan),'production_cleanup_denied');
+ check_ok($blocked['cleaned']===0 && is_file($orphan),'unconfirmed_production_cleanup_denied');
  $GLOBALS['mock_environment']='staging';
  $GLOBALS['mock_kill_switch']=true;
  $blocked=$cls::cleanup_expired();
@@ -115,11 +130,22 @@ try {
  $GLOBALS['mock_kill_switch']=false;
  $result=$cls::cleanup_expired();
  check_ok($result['cleaned']>=1 && !is_file($orphan),'bounded_staging_orphan_cleanup');
+ // Confirmed Production follows the same exact site-bound cleanup contract;
+ // never grant this merely on environment name.
+ $secondOrphan=$siteRoot.'/'.bin2hex(random_bytes(16)).'.part';
+ file_put_contents($secondOrphan,'expired verified-site staging bytes');
+ touch($secondOrphan,time()-10000);
+ $GLOBALS['mock_environment']='production';
+ $GLOBALS['mock_production_write']=true;
+ $result=$cls::cleanup_expired();
+ check_ok($result['cleaned']>=1&&!is_file($secondOrphan),
+     'confirmed_production_site_bound_cleanup');
+ $GLOBALS['mock_environment']='staging';
  echo "CHATGPT_TRANSFER_ROUNDTRIP: PASS\n";
 } finally {
  foreach (array(isset($id)?$id:null,isset($id2)?$id2:null) as $localId) {
    if (is_string($localId) && preg_match('/^[a-f0-9]{32}$/',$localId)) {
-     $p=sys_get_temp_dir().'/mad4b-chatgpt-transfer-v1/'.$localId.'.part';
+     $p=$siteRoot.'/'.$localId.'.part';
      if (is_file($p) && !is_link($p)) @unlink($p);
    }
  }

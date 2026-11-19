@@ -6,7 +6,16 @@ repo = Path(__file__).resolve().parents[4]
 wp = repo / 'wp-content' / 'plugins' / 'mad4b-site-control-plane'
 
 write = (wp / 'includes' / 'class-mad4b-scp-staging-write-authority.php').read_text(encoding='utf-8')
-abilities = (wp / 'includes' / 'class-mad4b-scp-abilities.php').read_text(encoding='utf-8')
+abilities_facade = (wp / 'includes' / 'class-mad4b-scp-abilities.php').read_text(encoding='utf-8')
+abilities_registration = (wp / 'includes' / 'trait-mad4b-scp-abilities-registration.php').read_text(encoding='utf-8')
+# Source registration was extracted mechanically; do not accept an unbound
+# or duplicate registration trait as equivalent to the governed source.
+if ("require_once __DIR__ . '/trait-mad4b-scp-abilities-registration.php';" not in abilities_facade
+        or "use MAD4B_SCP_Abilities_Registration_Trait;" not in abilities_facade
+        or "trait MAD4B_SCP_Abilities_Registration_Trait" not in abilities_registration
+        or "do_action( 'mad4b_scp_abilities_registered', $this );" not in abilities_registration):
+    raise SystemExit("governed write registration trait is not bound to the canonical Ability facade")
+abilities = abilities_facade + abilities_registration
 grant_reconcile = (wp / 'includes' / 'class-mad4b-scp-staging-write-grant-reconciliation.php').read_text(encoding='utf-8')
 grant_plan = (wp / 'includes' / 'class-mad4b-scp-staging-write-grant-reconciliation-plan.php').read_text(encoding='utf-8')
 planning = (wp / 'includes' / 'class-mad4b-scp-staging-write-planning-guard.php').read_text(encoding='utf-8')
@@ -19,7 +28,15 @@ servers = (wp / 'includes' / 'class-mad4b-scp-servers.php').read_text(encoding='
 bootstrap_catalog = (wp / 'includes' / 'class-mad4b-scp-chatgpt-approval-bootstrap.php').read_text(encoding='utf-8')
 servers += (wp / 'includes' / 'class-mad4b-scp-server-core-catalog.php').read_text(encoding='utf-8')
 transport = (wp / 'includes' / 'class-mad4b-scp-transport-context.php').read_text(encoding='utf-8')
-auth = (wp / 'includes' / 'class-mad4b-scp-authorization.php').read_text(encoding='utf-8') + (Path(__file__).resolve().parents[1] / 'includes/class-mad4b-scp-authority-health-projection.php').read_text(encoding='utf-8')
+auth_facade = (wp / 'includes' / 'class-mad4b-scp-authorization.php').read_text(encoding='utf-8')
+auth_recovery = (wp / 'includes' / 'trait-mad4b-scp-authorization-recovery-state.php').read_text(encoding='utf-8')
+# Do not treat orphaned trait text as an execution guard. Require its real loader/use.
+if ("require_once __DIR__ . '/trait-mad4b-scp-authorization-recovery-state.php';" not in auth_facade
+        or "use MAD4B_SCP_Authorization_Recovery_State_Trait;" not in auth_facade
+        or "trait MAD4B_SCP_Authorization_Recovery_State_Trait" not in auth_recovery
+        or "public static function execution_attempt_state" not in auth_recovery):
+    raise SystemExit("original Authorization recovery trait is unbound or incomplete")
+auth = auth_facade + auth_recovery + (wp / 'includes' / 'class-mad4b-scp-authority-health-projection.php').read_text(encoding='utf-8')
 plugin = (wp / 'includes' / 'class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
 main = (wp / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 exporter = (wp / 'includes' / 'class-mad4b-scp-skill-exporter.php').read_text(encoding='utf-8')
@@ -747,7 +764,11 @@ if scope_body.find("if ( 'mad4b/write-execute' === (string) $ability_name )") > 
 # compatible with both its declared admin registration and resolved write grant.
 transport_resolver = transport.split("public static function resolve_server_for_ability", 1)[1].split("public static function current_server_id", 1)[0]
 for marker in [
-    "'mad4b-chatgpt' === $current && MAD4B_SCP_Servers::is_external_write_candidate( $ability_name )",
+    # The source now first validates the original candidate registry response
+    # is a *boolean*, then requires exact true before selecting the write lane.
+    "$external_write_candidate = MAD4B_SCP_Servers::is_external_write_candidate( $ability_name );",
+    "if ( ! is_bool( $external_write_candidate ) )",
+    "'mad4b-chatgpt' === $current && true === $external_write_candidate",
     "return 'mad4b-write';",
 ]:
     if marker not in transport_resolver:
@@ -911,7 +932,7 @@ for marker in [
 for marker in [
     "const CONTRACT = 'mad4b.staging-write-planning-guard.v2'",
     "const ABILITY = 'mad4b/approval-plan'",
-    "MAD4B_SCP_Authorization::authorize_mutation( self::ABILITY, 'mad4b-admin', 'core', $input )",
+    "MAD4B_SCP_Authorization::authorize_mutation( self::ABILITY, 'mad4b-write', 'core', $input )",
     "'ability:' . self::ABILITY",
     "planner_approval_exception",
     "validate_remote_plan_input",
@@ -1259,16 +1280,14 @@ if any(key in target for key in ('environment', 'origin', 'host')):
     raise SystemExit('generic deployment handoff must not embed a tenant environment/origin/host')
 if target.get('plugin_slug') != 'mad4b-site-control-plane':
     raise SystemExit('deployment handoff plugin slug mismatch')
-expected_adapter_version = str(runtime_release_policy.get('target_adapter_version') or '')
-if not expected_adapter_version:
-    raise SystemExit('runtime release policy target Adapter version is missing')
 if target.get('mcp_adapter') != {
     'slug': 'mcp-adapter',
-    'required_version': expected_adapter_version,
-    'required_version_source': 'runtime_release_policy.target_adapter_version',
-    'deployment_mode': 'require_exact_preinstalled_or_verified_bundled',
+    'deployment_mode': 'accept_compatible_installed_or_verified_release_artifact',
+    'version_gate': False,
+    'compatibility_source': 'dependency_manager.adapter_read_runtime_observation',
+    'exact_release_target_source': 'certified_runtime_release_set.mcp_adapter',
 }:
-    raise SystemExit('deployment handoff MCP Adapter dependency contract drift')
+    raise SystemExit('deployment handoff must use capability compatibility, not Adapter version pin')
 
 executor = deployment.get('executor', {})
 required_executor = {

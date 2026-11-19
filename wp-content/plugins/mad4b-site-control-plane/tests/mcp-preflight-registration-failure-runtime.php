@@ -16,13 +16,14 @@ class FixtureAdapter { public $reject = true; public $tools = null; public $erro
 class MAD4B_SCP_Capability_Descriptor_Registry {
 	const CONTRACT = 'mad4b.capability-descriptor.v2';
 	const CONSUMER_BINDING_CONTRACT = 'mad4b.capability-descriptor-consumer-binding.v1';
+	const GENERATION_CONTRACT = 'mad4b.capability-generation-roots.v1';
 	public static function binding( $name, $consumer ) {
 		$name = (string) $name;
 		return array(
 			'contract' => self::CONSUMER_BINDING_CONTRACT,
 			'consumer' => (string) $consumer,
 			'descriptor_contract' => self::CONTRACT,
-			'generation_contract' => 'mad4b.capability-generation-roots.v1',
+			'generation_contract' => self::GENERATION_CONTRACT,
 			'ability_name' => $name,
 			'input_schema_sha256' => hash( 'sha256', 'fixture-schema:' . $name ),
 			'classification_sha256' => hash( 'sha256', 'fixture-classification:' . $name ),
@@ -30,6 +31,8 @@ class MAD4B_SCP_Capability_Descriptor_Registry {
 			'descriptor_sha256' => hash( 'sha256', 'fixture-descriptor:' . $name ),
 			'generation_roots' => array( 'contract_root' => str_repeat( 'a', 64 ), 'site_root' => str_repeat( 'b', 64 ) ),
 			'authorizing' => false,
+            'authority_snapshot_is_grant' => false,
+            'authority_revalidation_required' => true,
 		);
 	}
 }
@@ -39,7 +42,7 @@ require dirname( __DIR__ ) . '/includes/class-mad4b-scp-servers.php';
 function check( $ok, $why ) { if ( ! $ok ) throw new RuntimeException( $why ); }
 $reflect = new ReflectionClass( MAD4B_SCP_Servers::class );
 $servers = $reflect->newInstanceWithoutConstructor();
-$create = $reflect->getMethod( 'create' ); $create->setAccessible( true );
+$create = $reflect->getMethod( 'create' ); if ( PHP_VERSION_ID < 80100 ) $create->setAccessible( true );
 $adapter = new FixtureAdapter();
 $invoke = static function() use ( $create, $servers, $adapter ) { $create->invoke( $servers, $adapter, 'mad4b-chatgpt', 'fixture', 'fixture', array( 'mad4b/broken' ), null, null, null, null, true ); };
 $invoke();

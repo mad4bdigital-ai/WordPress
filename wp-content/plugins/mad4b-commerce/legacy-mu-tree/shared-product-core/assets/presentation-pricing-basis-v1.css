@@ -1,0 +1,67 @@
+/* MAD4B Price Basis: a pricing choice, never an accommodation allocation.
+ * Native Form #6 styling remains scoped to the approved Tour form projection. */
+body.single-tours-and-activities form.fluent_form_6 .shared-fluent-server-quote .shared-pricing-basis-field {
+ display:block;
+ margin:12px 0;
+ color:#163c48;
+}
+body.single-tours-and-activities form.fluent_form_6 .shared-pricing-basis-field[hidden] {display:none;}
+body.single-tours-and-activities form.fluent_form_6 .shared-pricing-basis-title {
+ display:block;
+ font-size:14px;
+ font-weight:650;
+ margin-bottom:6px;
+}
+body.single-tours-and-activities form.fluent_form_6 .shared-pricing-basis-select {
+ display:block;
+ width:100%;
+ max-width:100%;
+ min-height:44px;
+ padding:8px 11px;
+ border:1px solid #d1dce3;
+ border-radius:7px;
+ background:#fff;
+ color:#163c48;
+}
+body.single-tours-and-activities form.fluent_form_6 .shared-pricing-basis-select:focus-visible {
+ outline:2px solid #b58c42;
+ outline-offset:2px;
+}
+body.single-tours-and-activities form.fluent_form_6 .shared-pricing-basis-note {
+ display:block;
+ margin-top:5px;
+ font-size:12px;
+ line-height:1.5;
+ color:#65727c;
+}
+
+/* WooCommerce is the sole tax authority; visual-only breakdown in Fluent Form 6. */
+.single-tours-and-activities .shared-fluent-server-quote .shared-woo-tax-breakdown {
+ display:grid;
+ gap:5px;
+ margin-block:10px 8px;
+ padding-block:9px;
+ border-block:1px solid rgba(92,108,115,.2);
+ font-size:13px;
+ line-height:1.5;
+}
+.single-tours-and-activities .shared-fluent-server-quote .shared-woo-tax-line {
+ display:flex;
+ flex-wrap:wrap;
+ align-items:baseline;
+ justify-content:space-between;
+ gap:6px 14px;
+}
+.single-tours-and-activities .shared-fluent-server-quote .shared-woo-tax-line strong {
+ font-weight:600;
+ font-variant-numeric:tabular-nums;
+ white-space:nowrap;
+}
+.single-tours-and-activities .shared-fluent-server-quote .shared-woo-tax-line:last-child {
+ font-weight:700;
+}
+.single-tours-and-activities .shared-fluent-server-quote .shared-price-tax-pending {
+ display:block;
+ margin-block:8px;
+ font-size:12px;
+}

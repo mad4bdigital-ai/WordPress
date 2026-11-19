@@ -1,0 +1,16 @@
+[Unit]
+Description=MAD4B source-bound, serialized native WP-Cron for %i
+After=docker.service network-online.target
+Requires=docker.service
+OnFailure=mad4b-alert-handler@%n.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/mad4b-company-provisioning/worktrees/pr814-converged-local-20261115/ops/host-aware-cron-20261117/host-local-wp-cron.py %i
+TimeoutStartSec=170
+Nice=15
+IOSchedulingClass=idle
+CPUWeight=10
+IOWeight=10
+NoNewPrivileges=yes
+UMask=0077

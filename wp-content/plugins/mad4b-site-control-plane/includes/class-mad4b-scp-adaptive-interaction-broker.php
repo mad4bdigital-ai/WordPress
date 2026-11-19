@@ -30,7 +30,8 @@ final class MAD4B_SCP_Adaptive_Interaction_Broker {
         );
     }
     public static function hint( $reason ) {
-        $item = self::catalog()[(string)$reason] ?? null;
+        if ( ! is_string($reason) ) return null;
+        $item = self::catalog()[$reason] ?? null;
         if ( ! $item ) return null;
         return array('contract'=>self::CONTRACT.'.hint.v1', 'reason_code'=>$reason,
             'state'=>$item[0], 'resolution_kind'=>$item[1],
@@ -47,21 +48,31 @@ final class MAD4B_SCP_Adaptive_Interaction_Broker {
         add_action('wp_abilities_api_init',array(__CLASS__,'abilities'),47);
     }
     public static function permitted() {
-        return wp_get_environment_type()==='local'
-            && class_exists('MAD4B_SCP_Site_Profile')
-            && class_exists('MAD4B_SCP_Policy')
-            && current_user_can('manage_options') && get_current_user_id()>0
-            && MAD4B_SCP_Policy::can_read()
-            && MAD4B_SCP_Policy::can_connect_user(get_current_user_id())
-            && !empty(MAD4B_SCP_Site_Profile::status()['origin_match'])
-            && !empty(MAD4B_SCP_Site_Profile::status()['environment_match']);
+        if ( wp_get_environment_type() !== 'local'
+            || ! class_exists('MAD4B_SCP_Site_Profile')
+            || ! class_exists('MAD4B_SCP_Policy') ) return false;
+        $actor=get_current_user_id();
+        if ( ! is_int($actor) || $actor<1
+            || true !== current_user_can('manage_options')
+            || true !== MAD4B_SCP_Policy::can_read()
+            || true !== MAD4B_SCP_Policy::can_connect_user($actor) ) return false;
+        $site=MAD4B_SCP_Site_Profile::status();
+        $revision=is_array($site)?($site['revision']??null):null;
+        $revision_ok=is_int($revision) && $revision>=0
+            || is_string($revision) && ctype_digit($revision) && strlen($revision)<=15;
+        return is_array($site)
+            && ($site['origin_match']??null)===true
+            && ($site['environment_match']??null)===true
+            && is_string($site['site_uuid']??null) && $site['site_uuid']!==''
+            && is_string($site['profile_digest']??null) && $site['profile_digest']!==''
+            && $revision_ok;
     }
     private static function deny($name) {
         return new WP_Error('mad4b_aib_'.$name,'Adaptive interaction requires verified Local site and authorized actor.',array('status'=>403,'authorizing'=>false,'plaintext_in_chat'=>false));
     }
     private static function clean($args,$fields) {
         if(!is_array($args) || array_diff(array_keys($args),$fields))return false;
-        if(class_exists('MAD4B_SCP_CSO_Scope') && !MAD4B_SCP_CSO_Scope::safe_data($args))return false;
+        if(class_exists('MAD4B_SCP_CSO_Scope') && true !== MAD4B_SCP_CSO_Scope::safe_data($args))return false;
         return true;
     }
     private static function anchor() {
@@ -88,11 +99,15 @@ final class MAD4B_SCP_Adaptive_Interaction_Broker {
         if(!self::permitted())return self::deny('actor_denied');
         if(!self::clean($args,array('reason_code','provider','ability_name')))
             return self::deny('secret_or_unknown_input');
-        $reason=(string)($args['reason_code']??'');$hint=self::hint($reason);
+        if ( ! is_string($args['reason_code']??null)
+            || ! is_string($args['provider']??'')
+            || ! is_string($args['ability_name']??'') )
+            return self::deny('source_fields_unverified');
+        $reason=$args['reason_code'];$hint=self::hint($reason);
         if(!$hint)return self::deny('unrecognized_reason');
-        $provider=(string)($args['provider']??'');
+        $provider=$args['provider']??'';
         if($provider!==''&&!preg_match('/^[a-z][a-z0-9_-]{0,63}$/D',$provider))return self::deny('provider_invalid');
-        $ability=(string)($args['ability_name']??'');
+        $ability=$args['ability_name']??'';
         if($ability!==''&&!preg_match('/^[a-z0-9._-]{1,96}\/[a-z0-9._-]{1,96}$/D',$ability))return self::deny('ability_invalid');
         // Only already-certified read abilities can ever be retried here.
         // CSO01 itself certifies which canonical READ schemas can be exposed.
@@ -106,10 +121,14 @@ final class MAD4B_SCP_Adaptive_Interaction_Broker {
         // WordPress transients expire automatically; a bounded actor quota
         // prevents unbounded credential-free checkpoint creation.
         $quota_key=self::PREFIX.'quota_'.hash('sha256',wp_json_encode(self::anchor()));
-        $quota=(int)get_transient($quota_key);
+        $raw_quota=get_transient($quota_key);
+        $quota=$raw_quota===false?0:$raw_quota;
+        if(!is_int($quota)||$quota<0)return self::deny('checkpoint_quota_unverified');
         if($quota>=32)return self::deny('checkpoint_capacity_reached');
-        if(!set_transient(self::key($ref),$p,self::TTL))return self::deny('checkpoint_not_persisted');
-        set_transient($quota_key,$quota+1,self::TTL);
+        if(true!==set_transient(self::key($ref),$p,self::TTL))
+            return self::deny('checkpoint_not_persisted');
+        if(true!==set_transient($quota_key,$quota+1,self::TTL))
+            return self::deny('checkpoint_quota_not_persisted');
         $out=self::public_record($p);
         $out['intervention']=self::intervention($p);
         return $out;
@@ -122,10 +141,20 @@ final class MAD4B_SCP_Adaptive_Interaction_Broker {
         if($kind==='fresh_nonsecret_form' && $p['ability']!=='') {
             if(class_exists('MAD4B_SCP_CSO_Forms') && MAD4B_SCP_CSO_Scope::enabled('forms')){
                 $schema=MAD4B_SCP_CSO_Forms::schema($p['ability']);
-                if(!is_wp_error($schema)){$out['ready']=true;$out['form']=$schema;}
+                if(is_array($schema)
+                    && is_string($schema['descriptor_sha256']??null)
+                    && preg_match('/^[a-f0-9]{64}$/D',$schema['descriptor_sha256'])
+                    && is_array($schema['fields']??null)){
+                    $out['ready']=true;$out['form']=$schema;
+                }
             } elseif(class_exists('MAD4B_SCP_CSO01_Read_Foundation') && MAD4B_SCP_CSO01_Read_Foundation::can_read()) {
                 $schema=MAD4B_SCP_CSO01_Read_Foundation::form_schema(array('ability_name'=>$p['ability']));
-                if(!is_wp_error($schema)){$out['ready']=true;$out['form']=$schema;}
+                if(is_array($schema)
+                    && is_string($schema['descriptor_sha256']??null)
+                    && preg_match('/^[a-f0-9]{64}$/D',$schema['descriptor_sha256'])
+                    && is_array($schema['fields']??null)){
+                    $out['ready']=true;$out['form']=$schema;
+                }
             }
         }
         if(in_array($kind,array('first_party_secret_handoff','operator_credential_resolver'),true)){
@@ -138,9 +167,12 @@ final class MAD4B_SCP_Adaptive_Interaction_Broker {
         // provider permission and exact site identity are already verified.
         if($kind==='provider_connection'&&$p['provider']!==''&&class_exists('MAD4B_SCP_Provider_Connection_Center')){
             $plan=MAD4B_SCP_Provider_Connection_Center::plan(array('provider'=>$p['provider']));
-            if(!is_wp_error($plan)){
+            if(is_array($plan)&&is_string($plan['action']??null)){
                 $out['provider_action']=$plan['action'];
-                if(($plan['consent_requires_browser']??false) && wp_parse_url(home_url(),PHP_URL_SCHEME)==='https'){
+                if(($plan['consent_requires_browser']??null)===true
+                    && is_string($plan['owner_handoff_url']??null)
+                    && wp_parse_url($plan['owner_handoff_url'],PHP_URL_SCHEME)==='https'
+                    && wp_parse_url(home_url(),PHP_URL_SCHEME)==='https'){
                     $out['owner_handoff_url']=$plan['owner_handoff_url'];$out['ready']=true;
                 }
             }
@@ -151,7 +183,12 @@ final class MAD4B_SCP_Adaptive_Interaction_Broker {
         if(!self::permitted())return self::deny('actor_denied');
         if(!self::clean($args,array('checkpoint_ref'))||!self::ref_valid($args['checkpoint_ref']??null))return self::deny('checkpoint_invalid');
         $p=get_transient(self::key($args['checkpoint_ref']));
-        if(!is_array($p)||!isset($p['scope'],$p['expires_at']))return self::deny('checkpoint_missing');
+        if(!is_array($p)
+            || !is_array($p['scope']??null)
+            || !is_int($p['expires_at']??null)
+            || !is_string($p['ref']??null)
+            || !hash_equals($args['checkpoint_ref'],$p['ref']))
+            return self::deny('checkpoint_missing');
         if($p['expires_at']<=time())return self::deny('checkpoint_expired');
         if(self::anchor()!==$p['scope'])return self::deny('checkpoint_scope_changed');
         return $p;
@@ -165,7 +202,7 @@ final class MAD4B_SCP_Adaptive_Interaction_Broker {
             || !is_array($args['values']??null)
             || !preg_match('/^[a-f0-9]{64}$/D',(string)($args['expected_descriptor_sha256']??''))
             || !class_exists('MAD4B_SCP_CSO_Scope')
-            || !MAD4B_SCP_CSO_Scope::safe_data($args['values']))
+            || true !== MAD4B_SCP_CSO_Scope::safe_data($args['values']))
             return self::deny('secret_or_invalid_values');
         $p=self::read(array('checkpoint_ref'=>$args['checkpoint_ref']??''));
         if(is_wp_error($p))return $p;
@@ -177,9 +214,12 @@ final class MAD4B_SCP_Adaptive_Interaction_Broker {
             'expected_descriptor_sha256'=>$args['expected_descriptor_sha256'],
             'values'=>$args['values']));
         if(is_wp_error($result))return $result;
-        if(empty($result['valid']))return array('contract'=>self::CONTRACT,
-            'state'=>'INPUT_INVALID','valid'=>false,'issues'=>$result['issues']??array(),
-            'field_errors'=>$result['field_errors']??array(),
+        if(!is_array($result)||!is_bool($result['valid']??null))
+            return self::deny('form_validation_unverified');
+        if($result['valid']===false)return array('contract'=>self::CONTRACT,
+            'state'=>'INPUT_INVALID','valid'=>false,
+            'issues'=>is_array($result['issues']??null)?$result['issues']:array(),
+            'field_errors'=>is_array($result['field_errors']??null)?$result['field_errors']:array(),
             'values_echoed'=>false,'mutation_authorized'=>false);
         $p['input_digest']=hash('sha256',wp_json_encode($args['values']));
         $p['schema_digest']=$args['expected_descriptor_sha256'];
@@ -204,9 +244,9 @@ final class MAD4B_SCP_Adaptive_Interaction_Broker {
         if($p['resolution_kind']==='provider_connection'&&$p['provider']!==''
             && class_exists('MAD4B_SCP_Provider_Connection_Center')){
             $plan=MAD4B_SCP_Provider_Connection_Center::plan(array('provider'=>$p['provider']));
-            if(!is_wp_error($plan)){
+            if(is_array($plan)&&is_string($plan['action']??null)){
                 $out['provider_action']=$plan['action'];
-                $out['readback_complete']=($plan['action']==='no_action');
+                $out['readback_complete']=$plan['action']==='no_action';
                 if($out['readback_complete'])$out['state']='READY_FOR_AGENT_REPLAN';
             }
         } elseif($p['resolution_kind']==='fresh_nonsecret_form' && !empty($p['input_digest'])) {
@@ -218,6 +258,14 @@ final class MAD4B_SCP_Adaptive_Interaction_Broker {
         $out['mutation_authorized']=false;
         $out['write_resume_supported']=false;
         return $out;
+    }
+    /** Native settings locator, never saves or validates credential values. */
+    public static function native_owner($args=array()){
+        if(!self::permitted() || !self::clean($args,array('target')))
+            return self::deny('owner_invalid');
+        if(!class_exists('MAD4B_SCP_Native_Settings_Locator',false))
+            return self::deny('owner_not_loaded');
+        return MAD4B_SCP_Native_Settings_Locator::status($args['target']??'');
     }
     /** Native WP registered MetaFields only. Descriptor metadata, never values.
      * JetEngine, complex relationships and WooCommerce private meta require a
@@ -264,20 +312,20 @@ final class MAD4B_SCP_Adaptive_Interaction_Broker {
         return $out;
     }
     public static function rest(){
-        foreach(array('plan'=>'POST','status'=>'POST','resolve'=>'POST','resume'=>'POST','fields'=>'POST') as $method=>$verb){
+        foreach(array('plan'=>'POST','status'=>'POST','resolve'=>'POST','resume'=>'POST','fields'=>'POST','native-owner'=>'POST') as $method=>$verb){
             register_rest_route(self::NAMESPACE_,self::ROUTE.'/'.$method,array(
                 'methods'=>$verb,'permission_callback'=>array(__CLASS__,'permitted'),
                 'callback'=>static function($request) use($method){
                     $args=$request->get_json_params();
                     if(!is_array($args))return self::deny('input_not_object');
-                    return call_user_func(array(__CLASS__,$method),$args);
+                    return call_user_func(array(__CLASS__,$method==='native-owner'?'native_owner':$method),$args);
                 },'args'=>array(),
             ));
         }
     }
     public static function abilities(){
         if(!function_exists('wp_register_ability'))return;
-        $spec=array('plan'=>array('reason_code','provider','ability_name'),'status'=>array('checkpoint_ref'),'resolve'=>array('checkpoint_ref','expected_descriptor_sha256','values'),'resume'=>array('checkpoint_ref'),'fields'=>array('object_type','object_subtype'));
+        $spec=array('plan'=>array('reason_code','provider','ability_name'),'status'=>array('checkpoint_ref'),'resolve'=>array('checkpoint_ref','expected_descriptor_sha256','values'),'resume'=>array('checkpoint_ref'),'fields'=>array('object_type','object_subtype'),'native-owner'=>array('target'));
         foreach($spec as $name=>$keys){
             $id='mad4b/adaptive-interaction-'.$name;
             if(function_exists('wp_has_ability')&&wp_has_ability($id))continue;
@@ -290,10 +338,10 @@ final class MAD4B_SCP_Adaptive_Interaction_Broker {
               'input_schema'=>array('type'=>'object','properties'=>$props,'additionalProperties'=>false),
               'output_schema'=>array('type'=>'object','additionalProperties'=>true),
               'permission_callback'=>array(__CLASS__,'permitted'),
-              'execute_callback'=>array(__CLASS__,$name),
+              'execute_callback'=>array(__CLASS__,$name==='native-owner'?'native_owner':$name),
               'meta'=>array('public'=>false,'show_in_rest'=>false,
                 'mcp'=>array('public'=>false,'type'=>'tool','surface'=>'read','non_authorizing'=>true),
-                'annotations'=>array('readonly'=>$name==='fields','destructive'=>false,'idempotent'=>$name==='fields'))));
+                'annotations'=>array('readonly'=>in_array($name,array('fields','native-owner'),true),'destructive'=>false,'idempotent'=>$name==='fields'))));
         }
     }
 }

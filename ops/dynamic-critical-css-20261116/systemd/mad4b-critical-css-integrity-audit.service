@@ -1,0 +1,28 @@
+[Unit]
+Description=MAD4B read-only daily dual-company Critical CSS runtime integrity audit
+OnFailure=mad4b-alert-handler@%n.service
+Wants=network-online.target docker.service
+After=network-online.target docker.service
+StartLimitIntervalSec=3600
+StartLimitBurst=12
+
+[Service]
+Type=oneshot
+Restart=on-failure
+RestartSec=300s
+RestartPreventExitStatus=4
+User=root
+Group=root
+ExecStart=/usr/bin/python3 /opt/mad4b-company-provisioning/worktrees/pr814-converged-local-20261115/ops/dynamic-critical-css-20261116/health-audit.py all
+Environment=PYTHONDONTWRITEBYTECODE=1
+TimeoutStartSec=900
+Nice=17
+IOSchedulingClass=idle
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/mad4b-company-provisioning/reports/critical-css-health-v1
+UMask=0077
+StandardOutput=journal
+StandardError=journal

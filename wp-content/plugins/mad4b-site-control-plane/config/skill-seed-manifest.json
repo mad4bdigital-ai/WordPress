@@ -1,78 +1,151 @@
 {
-  "contract": "mad4b.skill-seed-manifest.v1",
-  "seed_version": 13,
-  "skills": [
-    {
-      "level": "site",
-      "target": "_site",
-      "name": "wordpress-site-diagnostics",
-      "enabled": true
-    },
-    {
-      "level": "connection",
-      "target": "mad4b-chatgpt",
-      "name": "wordpress-connection-diagnostics",
-      "enabled": true
-    },
-    {
-      "level": "provider",
-      "target": "elementor",
-      "name": "elementor-dynamic-content",
-      "enabled": false
-    },
-    {
-      "level": "provider",
-      "target": "jet-engine",
-      "name": "jetengine-content-modeling",
-      "enabled": false
-    },
-    {
-      "level": "workflow",
-      "target": "archive-audit",
-      "name": "wordpress-archive-audit",
-      "enabled": true
-    },
-    {
-      "level": "workflow",
-      "target": "change-safety",
-      "name": "wordpress-change-safety",
-      "enabled": true
-    },
-    {
-      "level": "workflow",
-      "target": "extension-strategy",
-      "name": "wordpress-extension-strategy",
-      "enabled": true
-    },
-    {
-      "level": "workflow",
-      "target": "release-orchestration",
-      "name": "wordpress-release-orchestration",
-      "enabled": true
-    },
-    {
-      "level": "workflow",
-      "target": "browser-acceptance",
-      "name": "wordpress-browser-acceptance",
-      "enabled": true
-    },
-    {
-      "level": "workflow",
-      "target": "brand-context",
-      "name": "wordpress-brand-context-builder",
-      "enabled": true
-    },
-    {
-      "level": "workflow",
-      "target": "content-authoring",
-      "name": "wordpress-content-authoring",
-      "enabled": true,
-      "context_policy": {
-        "preset": "brand_core",
-        "brand_context_required": true,
-        "allow_task_context": true,
-        "allowed_mutation_abilities_source": "brand_bearing"
-      }
-    }
-  ]
+    "contract": "mad4b.skill-seed-manifest.v1",
+    "seed_version": 30,
+    "skills": [
+        {
+            "level": "site",
+            "target": "_site",
+            "name": "wordpress-site-diagnostics",
+            "enabled": true
+        },
+        {
+            "level": "connection",
+            "target": "mad4b-chatgpt",
+            "name": "wordpress-connection-diagnostics",
+            "enabled": true
+        },
+        {
+            "level": "provider",
+            "target": "elementor",
+            "name": "elementor-dynamic-content",
+            "enabled": false
+        },
+        {
+            "level": "provider",
+            "target": "jet-engine",
+            "name": "jetengine-content-modeling",
+            "enabled": false
+        },
+        {
+            "level": "workflow",
+            "target": "archive-audit",
+            "name": "wordpress-archive-audit",
+            "enabled": true
+        },
+        {
+            "level": "workflow",
+            "target": "change-safety",
+            "name": "wordpress-change-safety",
+            "enabled": true
+        },
+        {
+            "level": "workflow",
+            "target": "extension-strategy",
+            "name": "wordpress-extension-strategy",
+            "enabled": true
+        },
+        {
+            "level": "workflow",
+            "target": "release-orchestration",
+            "name": "wordpress-release-orchestration",
+            "enabled": true
+        },
+        {
+            "level": "workflow",
+            "target": "browser-acceptance",
+            "name": "wordpress-browser-acceptance",
+            "enabled": true
+        },
+        {
+            "level": "workflow",
+            "target": "brand-context",
+            "name": "wordpress-brand-context-builder",
+            "enabled": true,
+            "context_policy": {
+                "preset": "custom",
+                "brand_context_required": true,
+                "required_context_sets": [
+                    "brand_strategy"
+                ],
+                "optional_context_sets": [],
+                "allow_task_context": false,
+                "allowed_mutation_abilities": [
+                    "context/brand-draft-create",
+                    "context/brand-draft-append"
+                ]
+            }
+        },
+        {
+            "level": "workflow",
+            "target": "content-authoring",
+            "name": "wordpress-content-authoring",
+            "enabled": true,
+            "context_policy": {
+                "preset": "brand_core",
+                "brand_context_required": true,
+                "allow_task_context": true,
+                "allowed_mutation_abilities_source": "brand_bearing"
+            }
+        },
+        {
+            "level": "workflow",
+            "target": "company-reconcile",
+            "name": "content-jobs-ui-reconcile",
+            "enabled": true
+        },
+        {
+            "level": "workflow",
+            "target": "settings-lifecycle",
+            "name": "wordpress-settings-lifecycle",
+            "enabled": true
+        },
+        {
+            "level": "workflow",
+            "target": "nile-cruise-authoring",
+            "name": "nile-cruise-jetengine-lifecycle",
+            "enabled": true
+        },
+        {
+            "level": "workflow",
+            "target": "nile-cruise-publish",
+            "name": "nile-cruise-rate-readiness",
+            "enabled": true
+        },
+        {
+            "level": "workflow",
+            "target": "tour-optional-services",
+            "name": "tour-optional-services-integrity",
+            "enabled": true
+        },
+        {
+            "level": "workflow",
+            "target": "nile-cruise-classification",
+            "name": "nile-intelligent-inheritance",
+            "enabled": true
+        },
+        {
+            "level": "workflow",
+            "target": "nile-cruise-facts-extras",
+            "name": "nile-tour-facts-and-content-hub-extras",
+            "enabled": true
+        },
+        {
+            "level": "workflow",
+            "target": "mobile-css-delivery",
+            "name": "wordpress-mobile-css-delivery",
+            "enabled": true
+        },
+        {
+            "level": "workflow",
+            "target": "performance-intelligence",
+            "name": "wordpress-performance-intelligence-v2",
+            "enabled": true
+        },
+        {
+            "level": "workflow",
+            "target": "cache-performance-governor",
+            "name": "wordpress-cache-performance-governor",
+            "enabled": true
+        }
+    ]
 }

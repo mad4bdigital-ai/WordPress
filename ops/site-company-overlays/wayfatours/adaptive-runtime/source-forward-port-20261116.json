@@ -1,0 +1,23 @@
+{
+  "contract": "mad4b.adaptive-source-forward-port-ci-candidate.v1",
+  "historical_observation": "ops/site-company-overlays/wayfatours/adaptive-runtime/source-parity-20261116.json",
+  "historical_observation_git_blob_sha1": "b31be274f6e5bfa71ad80ad050498967f2fea704",
+  "historical_capture_utc": "2026-11-16T03:12:28.367578+00:00",
+  "source_delta_commit": "2ed4a8c557bc2e92d832af957a36c387c97e8753",
+  "review_scope": "current_git_candidate_only",
+  "source_delta_reason": "Queued adaptive CSS work now uses row-locked transactions and revision tokens; retained HOLD/FAILED retries, no stale worker result may certify newer content. Source parity readback was captured before this forward port.",
+  "live_source_reverified_after_delta": false,
+  "target_company_release_authorized": false,
+  "auto_promote_to_wayfatours": false,
+  "production_authorized": false,
+  "candidate_files": {
+    "wp-content/plugins/mad4b-adaptive-asset-intelligence/includes/class-mad4b-scp-adaptive-asset-intelligence.php": {
+      "git_candidate_source_sha256": "3bfee56f880102868adb4f9e50f1976dfbeec67bb990ead1a205f21030e7b180",
+      "git_candidate_blob_sha1": "e6422d6665e9733f6a20dc06ee86f667cd490e3d",
+      "observed_live_master_sha256_at_capture": "5056d164ea9f85e653c2e92936b23679d8f4bccad7b36be9d271abfcda887b35",
+      "source_regression_test": "ops/adaptive-queue-self-heal-20261116/tests/test-adaptive-queue-self-healing.php",
+      "certified_for_target": false,
+      "production_authorized": false
+    }
+  }
+}

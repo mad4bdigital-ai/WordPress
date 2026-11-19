@@ -29,6 +29,16 @@ final class MAD4B_SCP_Site_Profile {
 	public static $origin_enrolled = true;
 	public static $urls_match = true;
 	public static $write_enabled = true;
+    public static function status() {
+        return array(
+            'authority_ready' => (bool) self::$configured,
+            'site_uuid' => 'a3a7cc36-db7e-4a14-8456-b41857def05c',
+        );
+    }
+    public static function environment_allowed( $environments, $feature = '' ) {
+        return in_array( self::$environment, (array) $environments, true )
+            && ( 'write' !== $feature || self::$write_enabled );
+    }
 	public static function configured() { return self::$configured; }
 	public static function current_environment() { return self::$environment; }
 	public static function origin_enrolled() { return self::$origin_enrolled; }

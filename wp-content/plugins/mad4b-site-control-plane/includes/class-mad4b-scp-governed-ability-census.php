@@ -75,6 +75,14 @@ final class MAD4B_SCP_Governed_Ability_Census {
         }
     }
 
+    /** Read-only diagnostics for exact first-party callbacks; no raw code. */
+    private static function callback_probe( $callback ) {
+        $identity = self::callback_identity( $callback );
+        return array( 'kind' => '' !== $identity ? 'verified_first_party' : 'unavailable',
+            'callback_identity_sha256' => '' !== $identity ? hash( 'sha256', $identity ) : '',
+            'authorizing' => false );
+    }
+
     private static function callback_is_ours( $callback ) {
         return '' !== self::callback_identity( $callback );
     }
@@ -162,10 +170,27 @@ final class MAD4B_SCP_Governed_Ability_Census {
                 || false !== ( $annotations['readonly'] ?? null )
                 || ! method_exists( $ability, 'execute' )
                 || ! method_exists( $ability, 'get_input_schema' ) ) continue;
+            $policy_governed = 'registered_write_policy_v1' === ( $mcp['governed_operation_policy'] ?? '' )
+                && 'policy_governed' === ( $mcp['production_mutation_allowed'] ?? null )
+                && 'policy_governed' === ( $mcp['production_allowed'] ?? null )
+                && 'registered_operation_policy_v1' === ( $mcp['broker_dispatch_policy'] ?? '' )
+                && true === ( $mcp['owner_intent_only'] ?? null );
+            if ( $policy_governed ) {
+                if ( ! class_exists( 'MAD4B_SCP_Operation_Registry' )
+                    || ! method_exists( 'MAD4B_SCP_Operation_Registry', 'registered_write_policy' ) ) continue;
+                $registered = MAD4B_SCP_Operation_Registry::registered_write_policy( $name );
+                if ( is_wp_error( $registered ) || ! is_array( $registered ) ) continue;
+            }
             if ( 'staging' === $mode || 'projection' === $mode ) {
-                if ( false !== ( $mcp['production_mutation_allowed'] ?? null )
-                    || true === ( $mcp['production_allowed'] ?? false )
+                if ( ! $policy_governed && ( false !== ( $mcp['production_mutation_allowed'] ?? null )
+                    || true === ( $mcp['production_allowed'] ?? false ) )
                     || true === ( $mcp['direct_only_excluded_from_staging_broker'] ?? false ) ) continue;
+                // Preserve legacy Staging-only admission until each original
+                // operation is explicitly enrolled with a certified Registry
+                // policy; do not infer authorization from global environment
+                // flags or an unrelated registered operation.
+                if ( 'staging' === $mode && ! $policy_governed
+                    && 'staging' !== MAD4B_SCP_Site_Profile::current_environment() ) continue;
                 // Structural MCP presentation can include reviewed direct
                 // step-ups. The generic Enrollment broker requires independent,
                 // explicit first-party owner-review opt-in. No metadata-only
@@ -201,7 +226,8 @@ final class MAD4B_SCP_Governed_Ability_Census {
                 'callback_pair_digest' => $callback_digest,
                 'source' => 'verified_first_party_php_callbacks',
                 'authority_effect' => 'none',
-                'execution_lane' => 'staging' === $mode ? 'staging_enrollment' : ( 'projection' === $mode ? 'structural_projection' : 'direct_only' ),
+                'execution_lane' => 'staging' === $mode ? ( $policy_governed ? 'registered_governed_enrollment' : 'staging_enrollment' ) : ( 'projection' === $mode ? 'structural_projection' : 'direct_only' ),
+                'policy_governed' => $policy_governed,
             );
         }
         ksort( $result, SORT_STRING );
@@ -211,6 +237,15 @@ final class MAD4B_SCP_Governed_Ability_Census {
     public static function reviewed_broker_policy( $name, array $mcp ) {
         $policy = (string) ( $mcp['broker_dispatch_policy'] ?? '' );
         if ( 'owner_attestation_v1' === $policy ) return true === ( $mcp['owner_intent_only'] ?? null );
+        if ( 'registered_operation_policy_v1' === $policy ) {
+            if ( true !== ( $mcp['owner_intent_only'] ?? null )
+                || 'registered_write_policy_v1' !== ( $mcp['governed_operation_policy'] ?? null )
+                || 'policy_governed' !== ( $mcp['production_mutation_allowed'] ?? null )
+                || 'policy_governed' !== ( $mcp['production_allowed'] ?? null )
+                || ! class_exists( 'MAD4B_SCP_Operation_Registry' ) ) return false;
+            $row = MAD4B_SCP_Operation_Registry::registered_write_policy( $name );
+            return is_array( $row ) && ! is_wp_error( $row );
+        }
         // Exact first-party runtime maintenance only. Callback provenance,
         // target permission, enrolled subject, OAuth and plan still revalidate.
         return 'exact_runtime_release_set_v1' === $policy
@@ -219,12 +254,331 @@ final class MAD4B_SCP_Governed_Ability_Census {
             && false === ( $mcp['normal_write_authority_required'] ?? null );
     }
 
+    /**
+     * Structural evidence for ONE original, independently guarded direct
+     * Enrollment operation. This never approves execution or mints grants.
+     * Require the actual installed WP_Ability and the exact original
+     * execute/permission callback ancestry, even when wrappers are present.
+     */
+    /**
+     * Verify one original Staging Owner intent operation for the Descriptor.
+     * It does not authorize consent, create a grant, or execute the callback.
+     * All original OAuth/client/plan/confirmation checks remain due at call time.
+     */
+    public static function staging_owner_intent_original_boundary_verified( $ability ) {
+        $name = 'mad4b/staging-write-owner-attest';
+        if ( ! is_object( $ability ) || ! class_exists( 'WP_Ability', false )
+            || get_class( $ability ) !== 'WP_Ability'
+            || ! method_exists( $ability, 'get_name' )
+            || $ability->get_name() !== $name
+            || ! function_exists( 'wp_get_ability' )
+            || wp_get_ability( $name ) !== $ability
+            || ! class_exists( 'MAD4B_SCP_Staging_Write_Owner_Intent', false )
+            || MAD4B_SCP_Staging_Write_Owner_Intent::ATTEST_ABILITY !== $name
+            || ! method_exists( $ability, 'get_meta' ) ) return false;
+        $meta = $ability->get_meta();
+        $mcp = is_array( $meta ) && is_array( $meta['mcp'] ?? null )
+            ? $meta['mcp'] : array();
+        $annotations = is_array( $meta ) && is_array( $meta['annotations'] ?? null )
+            ? $meta['annotations'] : array();
+        if ( 'enrollment' !== ( $mcp['surface'] ?? null )
+            || 'owner_attestation_v1' !== ( $mcp['broker_dispatch_policy'] ?? null )
+            || true !== ( $mcp['chatgpt_direct_step_up'] ?? null )
+            || true !== ( $mcp['exact_chatgpt_client_required'] ?? null )
+            || true !== ( $mcp['governed_enrollment_broker'] ?? null )
+            || true !== ( $mcp['owner_intent_only'] ?? null )
+            || false !== ( $mcp['generic_remote_admin'] ?? null )
+            || false !== ( $mcp['production_mutation_allowed'] ?? null )
+            || false !== ( $mcp['breakglass_allowed'] ?? null )
+            || false !== ( $annotations['readonly'] ?? null ) ) return false;
+        $trusted = self::structural_step_up();
+        if ( ! isset( $trusted[ $name ] )
+            || 'verified_first_party_php_callbacks' !== ( $trusted[ $name ]['source'] ?? '' )
+            || ! preg_match( '/^[a-f0-9]{64}$/D', (string) ( $trusted[ $name ]['callback_pair_digest'] ?? '' ) ) ) return false;
+        foreach ( array(
+            'execute_callback' => 'attest',
+            'permission_callback' => 'can_remote_attest',
+        ) as $property_name => $method ) {
+            try {
+                $property = new ReflectionProperty( 'WP_Ability', $property_name );
+                if ( PHP_VERSION_ID < 80100 ) $property->setAccessible( true );
+                $identity = self::callback_identity( $property->getValue( $ability ) );
+                $suffix = 'MAD4B_SCP_Staging_Write_Owner_Intent::' . $method
+                    . '@class-mad4b-scp-staging-write-owner-intent.php';
+                if ( '' === $identity || substr( $identity, -strlen( $suffix ) ) !== $suffix )
+                    return false;
+            } catch ( Throwable $error ) { return false; }
+        }
+        return true;
+    }
+
+    /**
+     * Non-authorizing source attestation for the original Staging-only
+     * ChatGPT projection configuration operation. Tool visibility is NEVER
+     * target execution authority, consent, or a provider grant.
+     */
+    public static function chatgpt_projection_original_boundary_verified( $ability ) {
+        $name = 'mad4b/chatgpt-tool-projection-apply';
+        if ( ! is_object( $ability ) || ! class_exists( 'WP_Ability', false )
+            || get_class( $ability ) !== 'WP_Ability'
+            || ! method_exists( $ability, 'get_name' )
+            || $ability->get_name() !== $name
+            || ! function_exists( 'wp_get_ability' )
+            || wp_get_ability( $name ) !== $ability
+            || ! class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection', false )
+            || MAD4B_SCP_ChatGPT_Tool_Projection::APPLY_ABILITY !== $name
+            || ! method_exists( $ability, 'get_meta' ) ) return false;
+        $meta = $ability->get_meta();
+        $mcp = is_array( $meta ) && is_array( $meta['mcp'] ?? null )
+            ? $meta['mcp'] : array();
+        $annotations = is_array( $meta ) && is_array( $meta['annotations'] ?? null )
+            ? $meta['annotations'] : array();
+        if ( 'enrollment' !== ( $mcp['surface'] ?? null )
+            || MAD4B_SCP_ChatGPT_Tool_Projection::CONTRACT !== ( $mcp['chatgpt_tool_projection_contract'] ?? null )
+            || true !== ( $mcp['chatgpt_direct_step_up'] ?? null )
+            || true !== ( $mcp['exact_chatgpt_client_required'] ?? null )
+            || false !== ( $mcp['projection_changes_authority'] ?? null )
+            || false !== ( $mcp['production_mutation_allowed'] ?? null )
+            || false !== ( $mcp['generic_remote_admin'] ?? null )
+            || false !== ( $annotations['readonly'] ?? null )
+            || true === ( $annotations['destructive'] ?? null ) ) return false;
+        $trusted = self::structural_step_up();
+        if ( ! isset( $trusted[ $name ] )
+            || 'verified_first_party_php_callbacks' !== ( $trusted[ $name ]['source'] ?? '' )
+            || ! preg_match( '/^[a-f0-9]{64}$/D', (string) ( $trusted[ $name ]['callback_pair_digest'] ?? '' ) ) ) return false;
+        foreach ( array(
+            'execute_callback' => 'apply',
+            'permission_callback' => 'can_apply',
+        ) as $property_name => $method ) {
+            try {
+                $property = new ReflectionProperty( 'WP_Ability', $property_name );
+                if ( PHP_VERSION_ID < 80100 ) $property->setAccessible( true );
+                $identity = self::callback_identity( $property->getValue( $ability ) );
+                $suffix = 'MAD4B_SCP_ChatGPT_Tool_Projection::' . $method
+                    . '@class-mad4b-scp-chatgpt-tool-projection.php';
+                if ( '' === $identity || substr( $identity, -strlen( $suffix ) ) !== $suffix )
+                    return false;
+            } catch ( Throwable $error ) { return false; }
+        }
+        return true;
+    }
+
+    public static function operator_grant_original_boundary_verified( $ability ) {
+        $name = 'mad4b/operator-grants-converge';
+        if ( ! is_object( $ability ) || ! class_exists( 'WP_Ability', false )
+            || get_class( $ability ) !== 'WP_Ability'
+            || ! method_exists( $ability, 'get_name' )
+            || $ability->get_name() !== $name
+            || ! function_exists( 'wp_get_ability' )
+            || wp_get_ability( $name ) !== $ability
+            || ! class_exists( 'MAD4B_SCP_Operator_Grant_Convergence', false )
+            || MAD4B_SCP_Operator_Grant_Convergence::ABILITY !== $name ) return false;
+        $trusted = self::structural_step_up();
+        if ( ! isset( $trusted[ $name ] )
+            || ( $trusted[ $name ]['source'] ?? '' ) !== 'verified_first_party_php_callbacks'
+            || ( $trusted[ $name ]['policy_governed'] ?? false ) !== true
+            || ! preg_match( '/^[a-f0-9]{64}$/D', (string) ( $trusted[ $name ]['callback_pair_digest'] ?? '' ) ) ) return false;
+        foreach ( array(
+            'execute_callback' => 'execute',
+            'permission_callback' => 'can_access',
+        ) as $property_name => $method ) {
+            try {
+                $property = new ReflectionProperty( 'WP_Ability', $property_name );
+                if ( PHP_VERSION_ID < 80100 ) $property->setAccessible( true );
+                $identity = self::callback_identity( $property->getValue( $ability ) );
+                $suffix = 'MAD4B_SCP_Operator_Grant_Convergence::' . $method
+                    . '@class-mad4b-scp-operator-grant-convergence.php';
+                if ( '' === $identity || substr( $identity, -strlen( $suffix ) ) !== $suffix )
+                    return false;
+            } catch ( Throwable $error ) { return false; }
+        }
+        return true;
+    }
+
+    /**
+     * Strict structural identity for the original three ChatGPT dispatcher
+     * transports. Their callbacks only dispatch to separately authorized
+     * targets; descriptor presentation never licenses a child operation.
+     */
+    public static function original_dispatch_transport_boundary_verified( $ability ) {
+        $reviewed = array(
+            'mad4b/write-execute' => array( 'write-dispatch', 'write_execute', 'can_write_dispatch' ),
+            'mad4b/developer-execute' => array( 'developer-dispatch', 'developer_execute', 'can_developer_dispatch' ),
+            'mad4b/enrollment-execute' => array( 'enrollment', 'enrollment_execute', 'can_enrollment_dispatch' ),
+        );
+        if ( ! is_object( $ability ) || ! class_exists( 'WP_Ability', false )
+            || get_class( $ability ) !== 'WP_Ability'
+            || ! method_exists( $ability, 'get_name' ) || ! method_exists( $ability, 'get_meta' )
+            || ! function_exists( 'wp_get_ability' ) ) return false;
+        $name = (string) $ability->get_name();
+        if ( ! isset( $reviewed[ $name ] ) || wp_get_ability( $name ) !== $ability
+            || ! class_exists( 'MAD4B_SCP_Abilities', false )
+            || ! class_exists( 'MAD4B_SCP_Execution_Fence', false )
+            || ! MAD4B_SCP_Execution_Fence::final_execution_wrapper_verified( $name )
+            || ! method_exists( $ability, 'get_category' ) || 'mad4b-admin' !== $ability->get_category() )
+            return false;
+        $meta = $ability->get_meta();
+        $mcp = is_array( $meta ) && is_array( $meta['mcp'] ?? null ) ? $meta['mcp'] : array();
+        $annotations = is_array( $meta ) && is_array( $meta['annotations'] ?? null ) ? $meta['annotations'] : array();
+        if ( $reviewed[ $name ][0] !== ( $mcp['surface'] ?? null )
+            || false !== ( $mcp['generic_remote_admin'] ?? null )
+            || false !== ( $annotations['readonly'] ?? null ) ) return false;
+        if ( 'mad4b/enrollment-execute' === $name ) {
+            if ( 'per_child_registered_write_policy_v1' !== ( $mcp['conditional_enrollment_policy'] ?? null )
+                || 'policy_governed' !== ( $mcp['production_mutation_allowed'] ?? null )
+                || 'policy_governed' !== ( $mcp['production_allowed'] ?? null ) ) return false;
+        } elseif ( false !== ( $mcp['production_mutation_allowed'] ?? null )
+            || false !== ( $mcp['breakglass_allowed'] ?? null ) ) return false;
+        foreach ( array(
+            'execute_callback' => $reviewed[ $name ][1],
+            'permission_callback' => $reviewed[ $name ][2],
+        ) as $property_name => $method ) {
+            try {
+                $property = new ReflectionProperty( 'WP_Ability', $property_name );
+                if ( PHP_VERSION_ID < 80100 ) $property->setAccessible( true );
+                $identity = self::callback_identity( $property->getValue( $ability ) );
+                $suffix = 'MAD4B_SCP_Abilities::' . $method . '@class-mad4b-scp-abilities.php';
+                if ( '' === $identity || substr( $identity, -strlen( $suffix ) ) !== $suffix )
+                    return false;
+            } catch ( Throwable $error ) { return false; }
+        }
+        return true;
+    }
+
+    /** Reject foreign permission closures even if they capture a valid
+     * first-party method. The original direct permission closure is defined
+     * inside Direct_Profile::register_abilities and captures its exact mode. */
+    private static function original_direct_permission( $callback, $method, $depth = 0 ) {
+        if ( $depth > 12 || ! $callback instanceof Closure ) return false;
+        try {
+            $reflection = new ReflectionFunction( $callback );
+            $file = realpath( (string) $reflection->getFileName() );
+            $root = realpath( __DIR__ );
+            $scope = $reflection->getClosureScopeClass();
+            if ( false === $file || false === $root
+                || 0 !== strpos( $file, $root . DIRECTORY_SEPARATOR )
+                || ! $scope || ! preg_match( '/^MAD4B_SCP_[A-Za-z0-9_]+$/D', $scope->getName() ) )
+                return false;
+            if ( 'MAD4B_SCP_Direct_Profile' === $scope->getName()
+                && 'class-mad4b-scp-direct-profile.php' === basename( $file ) ) {
+                $registration = new ReflectionMethod( 'MAD4B_SCP_Direct_Profile', 'register_abilities' );
+                $vars = $reflection->getStaticVariables();
+                return $reflection->getStartLine() >= $registration->getStartLine()
+                    && $reflection->getEndLine() <= $registration->getEndLine()
+                    && ( $vars['method'] ?? null ) === $method
+                    && is_array( $vars['def'] ?? null )
+                    && false === ( $vars['def'][3] ?? null );
+            }
+            $children = array();
+            foreach ( $reflection->getStaticVariables() as $captured ) {
+                if ( $captured instanceof Closure
+                    || ( is_array( $captured ) && 2 === count( $captured ) && is_callable( $captured ) ) )
+                    $children[] = $captured;
+            }
+            return 1 === count( $children )
+                && self::original_direct_permission( $children[0], $method, $depth + 1 );
+        } catch ( Throwable $error ) { return false; }
+    }
+
+    /** Exact two Direct Profile mutations: execution and permission ancestry
+     * must both originate in the installed plugin. No mode/permission is
+     * granted by this method; Direct_Profile::permitted() runs on every call. */
+    public static function original_direct_post_boundary_verified( $ability ) {
+        $reviewed = array(
+            'mad4b/direct-create-post' => 'create_post',
+            'mad4b/direct-update-post' => 'update_post',
+        );
+        if ( ! is_object( $ability ) || ! class_exists( 'WP_Ability', false )
+            || get_class( $ability ) !== 'WP_Ability'
+            || ! method_exists( $ability, 'get_name' ) || ! method_exists( $ability, 'get_meta' )
+            || ! method_exists( $ability, 'get_category' ) || ! function_exists( 'wp_get_ability' )
+            || ! class_exists( 'MAD4B_SCP_Direct_Profile', false )
+            || ! class_exists( 'MAD4B_SCP_Execution_Fence', false ) ) return false;
+        $name = (string) $ability->get_name();
+        if ( ! isset( $reviewed[ $name ] )
+            || wp_get_ability( $name ) !== $ability
+            || ! in_array( $name, MAD4B_SCP_Direct_Profile::write_tools(), true )
+            || 'mad4b-content' !== $ability->get_category()
+            || ! MAD4B_SCP_Execution_Fence::final_execution_wrapper_verified( $name ) ) return false;
+        $meta = $ability->get_meta();
+        $mcp = is_array( $meta ) && is_array( $meta['mcp'] ?? null ) ? $meta['mcp'] : array();
+        $annotations = is_array( $meta ) && is_array( $meta['annotations'] ?? null ) ? $meta['annotations'] : array();
+        if ( 'direct' !== ( $mcp['surface'] ?? null ) || false !== ( $annotations['readonly'] ?? null )
+            || ! empty( $mcp['mad4b_governed_write_authority'] ) ) return false;
+        try {
+            $execute_property = new ReflectionProperty( 'WP_Ability', 'execute_callback' );
+            $permission_property = new ReflectionProperty( 'WP_Ability', 'permission_callback' );
+            if ( PHP_VERSION_ID < 80100 ) {
+                $execute_property->setAccessible( true );
+                $permission_property->setAccessible( true );
+            }
+            $identity = self::callback_identity( $execute_property->getValue( $ability ) );
+            $suffix = 'MAD4B_SCP_Direct_Profile::' . $reviewed[ $name ]
+                . '@class-mad4b-scp-direct-profile.php';
+            return '' !== $identity && substr( $identity, -strlen( $suffix ) ) === $suffix
+                && self::original_direct_permission( $permission_property->getValue( $ability ), $reviewed[ $name ] );
+        } catch ( Throwable $error ) { return false; }
+    }
+
+    /**
+     * The high-risk Runtime Gates Apply is deliberately excluded from the
+     * generic Staging enrollment broker. Admit its ChatGPT descriptor ONLY
+     * with the original registered first-party callbacks and exact direct-only
+     * census plus final execution fence. This grants no runtime authority.
+     */
+    public static function original_runtime_gate_direct_boundary_verified( $ability ) {
+        if ( ! is_object( $ability ) || ! class_exists( 'WP_Ability', false )
+            || get_class( $ability ) !== 'WP_Ability'
+            || ! class_exists( 'MAD4B_SCP_Governed_Runtime_Gates', false )
+            || ! class_exists( 'MAD4B_SCP_Execution_Fence', false )
+            || ! function_exists( 'wp_get_ability' )
+            || ! method_exists( $ability, 'get_name' )
+            || ! method_exists( $ability, 'get_meta' )
+            || ! method_exists( $ability, 'get_category' ) ) return false;
+        $name = (string) $ability->get_name();
+        if ( MAD4B_SCP_Governed_Runtime_Gates::APPLY_ABILITY !== $name
+            || wp_get_ability( $name ) !== $ability
+            || 'mad4b-runtime-gates' !== $ability->get_category()
+            || ! MAD4B_SCP_Execution_Fence::final_execution_wrapper_verified( $name ) )
+            return false;
+        $meta = $ability->get_meta();
+        $mcp = is_array( $meta ) && is_array( $meta['mcp'] ?? null ) ? $meta['mcp'] : array();
+        $annotations = is_array( $meta ) && is_array( $meta['annotations'] ?? null ) ? $meta['annotations'] : array();
+        if ( 'enrollment' !== ( $mcp['surface'] ?? null )
+            || MAD4B_SCP_Governed_Runtime_Gates::CONTRACT !== ( $mcp['mad4b_governed_runtime_gates'] ?? null )
+            || true !== ( $mcp['chatgpt_direct_step_up'] ?? null )
+            || true !== ( $mcp['exact_chatgpt_client_required'] ?? null )
+            || false !== ( $mcp['generic_remote_admin'] ?? null )
+            || true !== ( $mcp['direct_only_excluded_from_staging_broker'] ?? null )
+            || true !== ( $mcp['production_allowed'] ?? null )
+            || true !== ( $mcp['generic_raw_sql_breakglass_configuration'] ?? null )
+            || false !== ( $annotations['readonly'] ?? null ) ) return false;
+        $direct_only = self::direct_only();
+        if ( ! isset( $direct_only[ $name ] )
+            || 'verified_first_party_php_callbacks' !== ( $direct_only[ $name ]['source'] ?? null )
+            || ! preg_match( '/^[a-f0-9]{64}$/D', (string) ( $direct_only[ $name ]['callback_pair_digest'] ?? '' ) ) )
+            return false;
+        foreach ( array(
+            'execute_callback' => 'apply',
+            'permission_callback' => 'can_apply',
+        ) as $property_name => $method ) {
+            try {
+                $property = new ReflectionProperty( 'WP_Ability', $property_name );
+                if ( PHP_VERSION_ID < 80100 ) $property->setAccessible( true );
+                $identity = self::callback_identity( $property->getValue( $ability ) );
+                $suffix = 'MAD4B_SCP_Governed_Runtime_Gates::' . $method
+                    . '@class-mad4b-scp-governed-runtime-gates.php';
+                if ( '' === $identity || substr( $identity, -strlen( $suffix ) ) !== $suffix ) return false;
+            } catch ( Throwable $error ) { return false; }
+        }
+        return true;
+    }
+
     public static function structural_step_up() { return self::scan( 'projection' ); }
 
     public static function eligible() {
         if ( ! class_exists( 'MAD4B_SCP_Site_Profile' )
             || ! MAD4B_SCP_Site_Profile::configured()
-            || 'staging' !== (string) MAD4B_SCP_Site_Profile::current_environment()
             || ! MAD4B_SCP_Site_Profile::origin_enrolled()
             || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) return array();
         return self::scan( 'staging' );

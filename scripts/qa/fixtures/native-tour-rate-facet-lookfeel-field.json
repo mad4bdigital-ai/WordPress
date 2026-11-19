@@ -1,0 +1,28 @@
+{
+    "title": "Rate package and season presentation",
+    "name": "tour_rate_facets_display_mode",
+    "object_type": "field",
+    "type": "select",
+    "width": "100%",
+    "default_val": "adaptive_labels",
+    "options_source": "manual",
+    "description": "Only for Package and Season on the active Tour Rate list. One eligible value becomes a label in Adaptive mode; multiple values retain native JetSmartFilters. Program remains under cruise relations and JetEngine visibility.",
+    "options": [
+        {
+            "key": "adaptive_labels",
+            "value": "Adaptive: label for one value; filter for multiple (recommended)"
+        },
+        {
+            "key": "hide_redundant",
+            "value": "Hide single-choice Package and Season filters"
+        },
+        {
+            "key": "always_select",
+            "value": "Always show original Package and Season Select filters"
+        }
+    ],
+    "repeater-fields": [],
+    "show_in_rest": true,
+    "sanitize": "default",
+    "id": 2026111512
+}

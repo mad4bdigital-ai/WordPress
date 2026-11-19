@@ -1,0 +1,56 @@
+{
+  "contract": "mad4b.wayfa-manual-rights-release-source-audit.v1",
+  "observed_at_utc": "2026-11-16T02:39:35.542575+00:00",
+  "company": "wayfatours",
+  "environment": "production",
+  "manual_code_release_verified": true,
+  "signed_original305_authorization_claimed": false,
+  "signed_original313_receipt_claimed": false,
+  "original_broker_incident_hold_changed": false,
+  "media_rights_mu": {
+    "relative_path": "wp-content/mu-plugins/mad4b-media-attribution-registry.php",
+    "before": "2f069e26de321edea562ffd422fc9b5d44cd6d043b3b98f4925903ca9f8c4bc0",
+    "after": "48fe73035c4f585ca330821707204219026b5b57b70b8dff7d5bdf00edd1e4db",
+    "rollback": "/opt/mad4b-media-backups/wayfa-media-engine-hardening-20261116/manual-cct-postcommit-20261116/mad4b-media-attribution-registry.php.before"
+  },
+  "control_plane_file_sha256": {
+    "class-mad4b-scp-content-experience-media.php": {
+      "before": "ff38fbce84b55a9b9d922282c906571bd615b89d0608a54686c9f71362881e30",
+      "after": "fd49c8449dd314b17f6b50708dc478ac69b650fdbd1ac236be85d284d123c08d"
+    },
+    "class-mad4b-scp-content-experience-media-rights.php": {
+      "before": "aa32644eba4809cd3ed1c8353195a3e317458798316b377b1d11fba0c75e6966",
+      "after": "dc8e2f5914818ab0fe492970c13b58a0a205fe266942a3b99769a9ddfd9ae958"
+    },
+    "class-mad4b-scp-remote-media-rights.php": {
+      "before": "bc2ecd1a7eb0853eda947b99b10011c16db0c80d6d9f471b6a9939cc4c9e45ef",
+      "after": "c656a5da122a6844bea94a4a1444e65b7be4b392246fb0e867baaf83636d63e5"
+    },
+    "adapters/class-mad4b-scp-remote-media-adapter.php": {
+      "before": "45b554761a3d06112e7d5172197a97aa0452170bd190e8e5774c72fc78dcc672",
+      "after": "374ca2bd8073357e77313be564748203b005db4da0cca0031a1a68a3a6b01239"
+    }
+  },
+  "runtime_verified": {
+    "production_wpcli_media_policy_tests": 29,
+    "production_wpcli_company_media_tests": 13,
+    "mu_jetengine_updated_item_hook": true,
+    "mu_jetengine_pre_update_hook": false,
+    "CCT_credits_published": 4,
+    "CCT_rights_drafts": 181,
+    "no_rights_records_updated": true,
+    "company_media_overlay_matches_live": 49,
+    "company_remaining_pins": 4
+  },
+  "limitations": [
+    "This is a manual company code release, not an independently signed Original313 receipt.",
+    "Original305 historical ambiguous signed write HOLD has not been cleared.",
+    "Build Provenance remains stale; do not rewrite its hash to claim signed compliance.",
+    "Broader production_runtime_gate_disabled status may affect other publication flows; this release changes only media rights evaluation."
+  ],
+  "manual_rollback_roots": [
+    "/opt/mad4b-media-backups/wayfa-media-engine-hardening-20261116/manual-control-plane-rights-20261116/before",
+    "/opt/mad4b-media-backups/wayfa-media-engine-hardening-20261116/manual-cct-postcommit-20261116/mad4b-media-attribution-registry.php.before"
+  ],
+  "next_release_policy": "Read exact live file SHA and ownership overlay before any later central restore or company source promotion."
+}

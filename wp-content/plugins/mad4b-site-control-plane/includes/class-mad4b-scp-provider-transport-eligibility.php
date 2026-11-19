@@ -94,10 +94,14 @@ final class MAD4B_SCP_Provider_Transport_Eligibility {
 			'artifact_authority_bound' => ! empty( $status['artifact_authority_bound'] ),
 			'structural_compatible' => ! empty( $status['structural_compatible'] ),
 			'quarantined' => $quarantined,
+			'reversible_declared' => ! empty( $status['reversible'] ),
 			'static_certification_ready' => $certified,
 			'release_ring' => $ring, 'release_ring_eligible' => $ring_allowed,
 			'reason_code' => $reason,
-			'next_action' => ! $certified ? 'certify_exact_provider_capability'
+			'next_action' => ! $certified
+				? ( 'bounded_write' === (string) ( $status['risk'] ?? '' ) && empty( $status['reversible'] )
+					? 'design_real_compensation_or_review_safe_append_only_policy'
+					: 'certify_exact_provider_capability' )
 				: ( ! $ring_allowed ? 'review_exact_release_ring'
 					: 'verify_separate_write_authority_and_breaker' ),
 		) );
@@ -177,7 +181,11 @@ final class MAD4B_SCP_Provider_Transport_Eligibility {
 		}
 		$context = MAD4B_SCP_Provider_Circuit_Breaker::target_context( $surface, $target );
 		if ( is_wp_error( $context ) ) return $context;
-		if ( empty( $context['applicable'] ) ) {
+		if ( ! is_array( $context ) || ! isset( $context['applicable'] )
+			|| ! is_bool( $context['applicable'] ) )
+			return new WP_Error( 'mad4b_provider_eligibility_context_invalid',
+				'Exact original provider target applicability must be verified.' );
+		if ( false === $context['applicable'] ) {
 			return array(
 				'contract'=>self::CONTRACT,'applicable'=>false,'transport_eligible'=>true,
 				'authority_effect'=>'none','authorizing'=>false,'mutation_performed'=>false,
@@ -187,9 +195,24 @@ final class MAD4B_SCP_Provider_Transport_Eligibility {
 			return new WP_Error( 'mad4b_provider_eligibility_certification_unavailable', 'Provider capability certification is unavailable.' );
 		}
 		$provider = isset( $context['provider_id'] ) ? sanitize_key( (string) $context['provider_id'] ) : '';
+		if ( '' === $provider )
+			return new WP_Error( 'mad4b_provider_eligibility_provider_missing',
+				'Registered original provider identity is required.' );
 		$status = MAD4B_SCP_Provider_Compatibility_Certification::ability_status( $provider, $target );
+		if ( ! is_array( $status ) || ! $status )
+			return new WP_Error( 'mad4b_provider_eligibility_certification_missing',
+				'Exact first-party provider certification is unavailable.' );
 		$gate = class_exists( 'MAD4B_SCP_Policy' ) && method_exists( 'MAD4B_SCP_Policy', 'mutation_gate_status' )
 			? MAD4B_SCP_Policy::mutation_gate_status() : array();
+		if ( ! is_array( $gate ) )
+			return new WP_Error( 'mad4b_provider_eligibility_policy_unavailable',
+				'Original mutation policy status is unavailable.' );
+		try {
+			$policy_allowed = class_exists( 'MAD4B_SCP_Policy' )
+				&& true === MAD4B_SCP_Policy::can_mutate();
+		} catch ( \Throwable $error ) {
+			$policy_allowed = false;
+		}
 		$environment = isset( $gate['environment'] ) ? sanitize_key( (string) $gate['environment'] )
 			: ( class_exists( 'MAD4B_SCP_Site_Profile' ) ? sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() ) : 'unknown' );
 		$level = isset( $status['certification_level'] ) ? (string) $status['certification_level'] : '';
@@ -209,7 +232,7 @@ final class MAD4B_SCP_Provider_Transport_Eligibility {
 		$release_allowed = self::release_ring_allows_normal_mutation( $release_ring, $environment );
 		$facts = array(
 			'kill_switch_active'=>! empty( $gate['explicit_kill_switch'] ),
-			'authority_allowed'=>class_exists( 'MAD4B_SCP_Policy' ) && MAD4B_SCP_Policy::can_mutate(),
+			'authority_allowed'=>$policy_allowed,
 			'quarantined'=>$quarantined,
 			'certification_allowed'=>$certification_allowed,
 			'release_ring_allowed'=>$release_allowed,
@@ -248,7 +271,7 @@ final class MAD4B_SCP_Provider_Transport_Eligibility {
 		if ( empty( $preflight['applicable'] ) ) return $preflight;
 		$facts = isset( $preflight['facts'] ) && is_array( $preflight['facts'] ) ? $preflight['facts'] : array();
 		if ( empty( $facts ) ) return new WP_Error( 'mad4b_provider_eligibility_preflight_missing', 'Provider eligibility preflight evidence is missing.' );
-		$facts['breaker_allowed'] = ! empty( $breaker['transport_eligible'] );
+		$facts['breaker_allowed'] = ( $breaker['transport_eligible'] ?? null ) === true;
 		$resolution = self::resolve_facts( $facts );
 		if ( is_wp_error( $resolution ) ) return $resolution;
 		$resolution['applicable'] = true;

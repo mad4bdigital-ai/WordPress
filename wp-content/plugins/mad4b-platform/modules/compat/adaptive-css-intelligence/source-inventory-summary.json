@@ -1,0 +1,28 @@
+{
+  "contract": "mad4b.adaptive-css-source-summary.v1",
+  "site": "tours.dev.mad4b.com",
+  "locale": "en",
+  "route": "/",
+  "device": "mobile",
+  "created_at_utc": "2026-11-06T15:33:22Z",
+  "critical_css_relative_path": "mad4b-predictive-css-v2/5b9f09bc0c76ffbac2faaa47a96b2b1db1bddc4a7ad753906a381bf5e7a22711.css",
+  "critical_css_sha256": "5b9f09bc0c76ffbac2faaa47a96b2b1db1bddc4a7ad753906a381bf5e7a22711",
+  "manifest_sha256": "167f7a9069a5ef0945fe910db766739290ba2c41274a62ad2a93e135397d686f",
+  "sources_examined": 31,
+  "total_groups": 2562,
+  "mapped_unique": 46,
+  "ambiguous": 0,
+  "unmatched": 2516,
+  "mapped_protected": 46,
+  "mapped_unprotected": 0,
+  "source_group_counts": {
+    "frontend.css": 42,
+    "uael-frontend.min.css": 4
+  },
+  "verified_exclusion_count": 0,
+  "read_only": true,
+  "full_css_untouched": true,
+  "release_approval": false,
+  "next_action": "Collect exact source maps and first-viewport/dynamic-state coverage; run isolated matched cold/warm A/B before removing any group from critical only.",
+  "source_revalidated": "current_canary_manifest_reference_only_after_critical_and_all_mapped_sources_verified"
+}

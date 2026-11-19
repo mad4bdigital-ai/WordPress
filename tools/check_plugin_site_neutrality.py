@@ -11,7 +11,7 @@ PLUGIN = ROOT / "wp-content/plugins/mad4b-site-control-plane"
 POLICY = PLUGIN / "tests/site-neutrality-policy.json"
 URL = re.compile(r"https?://[A-Za-z0-9._-]+")
 TENANT = re.compile(r"egypttourgates\.com|allroyalegypt\.com", re.I)
-BUSINESS = re.compile(r"""['"](?:/?tours-and-activities/?|tour_type|tour_location|tour_style)['"]""")
+BUSINESS = re.compile(r"""['"](?P<key>/?tours-and-activities/?|tour_type|tour_location|tour_style)['"]""")
 NAMED_TAG = re.compile(r"""['"]etg-(?:filter-[a-z_-]+|dynamic-content-slot)['"]""")
 
 
@@ -19,8 +19,16 @@ def inspect(path, text, policy):
     errors = []
     if TENANT.search(text):
         errors.append("TENANT_DOMAIN")
-    if BUSINESS.search(text):
+    # Explicit, reviewable tourism integration boundary: not a global
+    # exception. A new file or identifier must be independently reviewed and
+    # recorded. Site/tenant domain pinning remains forbidden in every file.
+    used_models = {m.group('key').strip('/') for m in BUSINESS.finditer(text)}
+    approved = policy.get("reviewed_business_models", {}).get(path, {})
+    approved_models = set(approved.get("models", [])) if isinstance(approved, dict) else set()
+    if used_models - approved_models:
         errors.append("FIXED_BUSINESS_MODEL")
+    if approved_models - used_models:
+        errors.append("STALE_BUSINESS_REVIEW_EVIDENCE")
     if "ETG_DFSB_EXTERNAL_WAF_RATE_LIMIT_VERIFIED" in text:
         errors.append("SITE_SPECIFIC_CORE_AUTHORITY")
     allowed = policy["reviewed_literal_endpoints"].get(path, {}).get("hosts", [])
@@ -53,6 +61,9 @@ def self_test(policy):
         assert any(e.startswith(expected) for e in inspect(path, source, policy)), expected
     path = next(iter(policy["reviewed_literal_endpoints"]))
     assert inspect(path, "'https://new-tenant.biz'", policy)
+    business_path = next(iter(policy["reviewed_business_models"]))
+    assert inspect(business_path, "'tour_type'", policy)  # unreviewed new key
+    assert inspect(business_path, "'https://staging.egypttourgates.com'", policy)
     assert not inspect(generic, "get_post_types(); home_url(); 'product-price';", policy)
     print("SITE_NEUTRALITY_SELF_TEST: PASS (tenant, unknown host, business model, optional boundary)")
 

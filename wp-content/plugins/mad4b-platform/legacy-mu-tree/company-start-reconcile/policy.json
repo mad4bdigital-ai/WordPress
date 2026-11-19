@@ -1,0 +1,610 @@
+{
+  "contract": "mad4b.company-start-reconcile-completeness.v1",
+  "source_of_truth": "live:tours.dev.mad4b.com",
+  "scope": "all_company_site_environment_targets",
+  "modes": {
+    "fresh": "new_empty_site_with_new_company_data",
+    "template_clone": "approved_generic_definitions_only",
+    "tenant_migration": "same_owner_content_with_explicit_identity_continuity"
+  },
+  "evidence": {
+    "exact_binding": [
+      "company_id",
+      "environment",
+      "site_uuid",
+      "canonical_origin",
+      "profile_revision"
+    ],
+    "generation": "new_site_uuid_never_inherits_old_site_receipts",
+    "max_age_seconds": 1800,
+    "receipts_must_be_issued_by_native_provider": true,
+    "require_manifest_sha256": true,
+    "unknown_is_not_pass": true,
+    "http_200_is_transport_only": true,
+    "do_not_count_raw_source_rows_across_tenants": true
+  },
+  "stages": {
+    "bootstrap": [
+      "target_identity",
+      "source_scope",
+      "original_authority",
+      "rollback_ready"
+    ],
+    "functional": [
+      "provider_dependency_graph",
+      "plugin_activation",
+      "post_taxonomy_schema",
+      "tenant_field_mapping",
+      "eligible_content_manifest",
+      "post_term_relationships",
+      "user_verifier_continuity",
+      "wpml_translations",
+      "fluent_form_definitions",
+      "media_provenance",
+      "jetengine_queries_options",
+      "jetsmartfilters_target_index",
+      "mu_presentation_dependencies",
+      "elementor_theme_conditions",
+      "brand_kit_page_options",
+      "dynamic_tag_bindings"
+    ],
+    "presentation": [
+      "navigation_lists",
+      "frontend_shortcodes",
+      "hero_and_css_assets",
+      "desktop_visual_render",
+      "mobile_visual_render",
+      "all_public_languages_render",
+      "interactive_filters_and_forms",
+      "internal_links_brand_isolation",
+      "elementor_visual_css_source_readback",
+      "elementor_initial_ajax_css_parity"
+    ],
+    "commercial": [
+      "pricing_and_booking",
+      "payment_checkout",
+      "outbound_notifications",
+      "provider_account_connections"
+    ]
+  },
+  "provider_owners": {
+    "wpml_translations": "WPML",
+    "post_taxonomy_schema": "JetEngine + Native WordPress",
+    "post_term_relationships": "Content Relationship Graph",
+    "media_provenance": "Media",
+    "jetsmartfilters_target_index": "JetSmartFilters",
+    "elementor_theme_conditions": "Elementor Pro",
+    "brand_kit_page_options": "Elementor Kit + JetEngine Options",
+    "jetengine_queries_options": "JetEngine Query Builder",
+    "fluent_form_definitions": "Fluent Forms",
+    "navigation_lists": "Presentation + Site Menu",
+    "desktop_visual_render": "Browser Acceptance",
+    "mobile_visual_render": "Browser Acceptance",
+    "all_public_languages_render": "Browser Acceptance + WPML",
+    "hero_and_css_assets": "Elementor CSS + Media",
+    "elementor_visual_css_source_readback": "Elementor Kit + Template Custom CSS",
+    "elementor_initial_ajax_css_parity": "Elementor + JetEngine + Browser Acceptance"
+  },
+  "ownership_rules": {
+    "shareable": [
+      "provider_definitions",
+      "approved_elementor_layouts",
+      "generic_query_schemas",
+      "generic_taxonomy_schemas",
+      "unbranded_form_schemas",
+      "approved_elementor_design_system_definitions"
+    ],
+    "tenant_owned": [
+      "brand_identity",
+      "company_page_option_values",
+      "photos",
+      "links",
+      "company_text",
+      "prices",
+      "products",
+      "contacts",
+      "reviews"
+    ],
+    "site_generated": [
+      "jet_smart_filters_index",
+      "elementor_css_cache",
+      "theme_condition_cache",
+      "session_tokens",
+      "litespeed_combined_css_cache"
+    ],
+    "reconnect": [
+      "smtp",
+      "payments",
+      "analytics",
+      "seo_accounts",
+      "crm",
+      "social",
+      "licenses"
+    ],
+    "never_clone_across_tenants": [
+      "customers",
+      "orders",
+      "submissions",
+      "credentials",
+      "oauth",
+      "native_grants",
+      "audit_history",
+      "supplier_private_rates"
+    ]
+  },
+  "repair_policy": {
+    "discover": "provider_owned_semantic_diff",
+    "auto_repair_when": "exact_target_bound AND originally_authorized_executor AND certified_provider AND reversible_plan AND readback",
+    "create_content_job_on_unknown": true,
+    "retry": {
+      "max_attempts": 5,
+      "base_delay_seconds": 90,
+      "max_delay_seconds": 3600
+    },
+    "lock_scope": "company_id/site_uuid/environment",
+    "cross_company_head_of_line_blocking": false,
+    "never_forge_native_receipt": true,
+    "never_replace_admin_password_during_same_tenant_migration": true,
+    "no_unapproved_production_mutation": true
+  },
+  "readiness": {
+    "bootstrap_missing": "BLOCKED_BOOTSTRAP",
+    "functional_missing": "RECONCILING_FUNCTIONAL",
+    "presentation_missing": "BLOCKED_PUBLICATION",
+    "public_but_missing": "LIVE_WITH_GAPS_P0",
+    "commerce_only_missing": "PUBLIC_READY_COMMERCE_PENDING",
+    "all_pass": "COMPLETE_VERIFIED"
+  },
+  "css_source_policy": {
+    "contract": "mad4b.elementor-css-source.v1",
+    "source_authority": "source_site_live_elementor_settings_and_original_template_data",
+    "editable_visual_css_sources": [
+      "active_elementor_kit._elementor_page_settings.custom_css",
+      "elementor_template._elementor_page_settings.custom_css",
+      "elementor_global_colors_and_typography"
+    ],
+    "preserve_original_template_style_settings": true,
+    "provider_owned_css": "preserve_native_plugin_css_for_behavior_and_hidden_states",
+    "compiled_css_is_generated_not_migrated": [
+      "elementor._elementor_css",
+      "elementor_uploaded_post_css",
+      "litespeed_css_bundles"
+    ],
+    "reconcile_steps": [
+      "copy_authorized_kit_and_template_style_sources",
+      "resolve_target_kit_identity_and_template_mapping",
+      "regenerate_target_css_with_elementor_native_api",
+      "validate_http_200_and_stylesheet_get_200",
+      "compare_computed_styles_before_filters_after_ajax_and_after_reset",
+      "verify_rtl_mobile_and_forms",
+      "rollback_style_sources_on_failed_readback"
+    ],
+    "acceptance": "matching_target_bound_source_hashes_plus_render_parity",
+    "avoid": [
+      "hardcoded_target_company_css_overrides",
+      "copying_compiled_css_cache_as_authority",
+      "silently_activating_missing_visual_providers",
+      "removing_provider_hidden_state_rules"
+    ],
+    "unknown_or_failed": "content_alert_and_reconcile_not_silent_success",
+    "native_post_import_regeneration": {
+      "provider_contract": "mad4b.elementor-css-native-reconcile.v1",
+      "provider_cli": "wp mad4b-css reconcile",
+      "stage_after": "template_meta_and_active_kit_mapping",
+      "executor_channel": "enrolled_target_original_wpcli",
+      "required_parameters": [
+        "--origin=verified_target_canonical_origin",
+        "--ids=target_mapped_elementor_document_ids",
+        "--expected-kit-css-sha256=readback_of_target_kit_custom_css",
+        "--apply"
+      ],
+      "write_scope": "target_wordpress_local_only",
+      "original_data_sources": [
+        "active_kit._elementor_page_settings",
+        "templates._elementor_data",
+        "templates._elementor_page_settings"
+      ],
+      "never_copy": [
+        "template._elementor_css",
+        "wp-content/uploads/elementor/css",
+        "wp-content/litespeed/css"
+      ],
+      "target_acceptance": [
+        "original_target_site_identity",
+        "native_compiled_css_hash_readback",
+        "initial_vs_ajax_computed_style_parity",
+        "filter_reset_and_form_state"
+      ],
+      "skip_if_provider_not_installed": false,
+      "do_not_infer_completion_from_policy": true,
+      "target_auto_dispatch_verified": false
+    }
+  },
+  "incident_scenarios": [
+    {
+      "code": "age_policy_contract",
+      "priority": "P0",
+      "related_check": "fluent_form_definitions",
+      "target_probe_check": "age_policy_contract",
+      "owner": "Age Occupancy Registry",
+      "ownership_scope": "company_policy",
+      "repair_strategy": "compare_tour_age_bands_and_signed_form_context",
+      "acceptance": "form_age_submission_with_children_and_no_price_permission",
+      "auto_apply": false
+    },
+    {
+      "code": "fluent_to_woo_age_receipt",
+      "priority": "P0",
+      "related_check": "pricing_and_booking",
+      "target_probe_check": "age_order_metadata_bridge",
+      "owner": "Fluent Forms / WooCommerce",
+      "ownership_scope": "shared_definition",
+      "repair_strategy": "copy_verified_age_metadata_to_new_request_order_only",
+      "acceptance": "order_age_receipt_present_without_payment_block_or_final_booking",
+      "auto_apply": false
+    },
+    {
+      "code": "archive_date_locale",
+      "priority": "P1",
+      "related_check": "interactive_filters_and_forms",
+      "target_probe_check": "archive_date_shortcode",
+      "owner": "Unified Date / Elementor",
+      "ownership_scope": "shared_definition",
+      "repair_strategy": "restore_missing_archive_shortcode_per_locale",
+      "acceptance": "native_date_ajax_results_match_eligible_tours_all_enabled_languages",
+      "auto_apply": false
+    },
+    {
+      "code": "ajax_filter_intersection",
+      "priority": "P0",
+      "related_check": "jetsmartfilters_target_index",
+      "target_probe_check": "visual_ajax_acceptance",
+      "owner": "JetSmartFilters / DFSB",
+      "ownership_scope": "shared_definition",
+      "repair_strategy": "preserve_post_in_zero_and_semantic_filter_intersection",
+      "acceptance": "browser_ajax_and_or_chain_and_reset_verify_results",
+      "auto_apply": false
+    },
+    {
+      "code": "elementor_html_cache",
+      "priority": "P1",
+      "related_check": "elementor_initial_ajax_css_parity",
+      "target_probe_check": "visual_ajax_acceptance",
+      "owner": "Elementor",
+      "ownership_scope": "site_generated",
+      "repair_strategy": "invalidate_exact_changed_documents_only",
+      "acceptance": "initial_ajax_computed_style_mobile_desktop_readback",
+      "auto_apply": false
+    },
+    {
+      "code": "wpml_listing_id_relocation",
+      "priority": "P1",
+      "related_check": "wpml_translations",
+      "target_probe_check": "wpml_jet_template_translation",
+      "owner": "WPML / JetEngine",
+      "ownership_scope": "shared_definition",
+      "repair_strategy": "create_missing_translation_with_target_local_id_remap",
+      "acceptance": "translation_relation_and_target_render_check",
+      "auto_apply": false
+    },
+    {
+      "code": "archive_media_provenance",
+      "priority": "P1",
+      "related_check": "media_provenance",
+      "target_probe_check": "archive_media_local_identity",
+      "owner": "Media / Elementor",
+      "ownership_scope": "tenant_owned",
+      "repair_strategy": "map_images_by_company_local_identity_checksum",
+      "acceptance": "license_and_local_attachment_and_display_readback",
+      "auto_apply": false
+    },
+    {
+      "code": "tour_rate_neutral_defaults",
+      "priority": "P1",
+      "related_check": "pricing_and_booking",
+      "target_probe_check": null,
+      "owner": "Tour Rate / JetEngine",
+      "ownership_scope": "shared_definition",
+      "repair_strategy": "inherit_tour_terms_and_default_unspecified_to_neutral",
+      "acceptance": "no_unintended_friday_africa_afternoon_labels",
+      "auto_apply": false
+    },
+    {
+      "code": "cruise_program_taxonomy",
+      "priority": "P1",
+      "related_check": "post_taxonomy_schema",
+      "target_probe_check": null,
+      "owner": "Tour Rate / Cruise Tour",
+      "ownership_scope": "shared_definition",
+      "repair_strategy": "bind_program_to_cruise_program_taxonomy_only",
+      "acceptance": "cruise_only_program_filter_eligible_rates",
+      "auto_apply": false
+    },
+    {
+      "code": "rate_season_eligibility",
+      "priority": "P1",
+      "related_check": "jetengine_queries_options",
+      "target_probe_check": null,
+      "owner": "Rate Engine / JetSmartFilters",
+      "ownership_scope": "shared_definition",
+      "repair_strategy": "derive_active_options_from_eligible_tour_rates",
+      "acceptance": "package_season_options_match_published_valid_rates",
+      "auto_apply": false
+    },
+    {
+      "code": "draft_tour_rate_advisory",
+      "priority": "P1",
+      "related_check": "eligible_content_manifest",
+      "target_probe_check": "published_rate_draft_tour",
+      "owner": "Company Content",
+      "ownership_scope": "tenant_owned",
+      "repair_strategy": "review_unpublished_tour_without_auto_publish",
+      "acceptance": "published_rate_not_a_booking_publication_grant",
+      "auto_apply": false
+    },
+    {
+      "code": "itinerary_media_coverage",
+      "priority": "P1",
+      "related_check": "media_provenance",
+      "target_probe_check": "archive_media_local_identity",
+      "owner": "Media / Itinerary",
+      "ownership_scope": "tenant_owned",
+      "repair_strategy": "rank_local_approved_images_by_itinerary_and_destinations",
+      "acceptance": "every_story_section_covered_no_watermarks_or_unlicensed_sources",
+      "auto_apply": false
+    },
+    {
+      "code": "seo_tenant_canonical",
+      "priority": "P1",
+      "related_check": "internal_links_brand_isolation",
+      "target_probe_check": "seo_and_conversion",
+      "owner": "Rank Math / WPML",
+      "ownership_scope": "tenant_owned",
+      "repair_strategy": "verify_company_canonical_hreflang_and_own_seo_values",
+      "acceptance": "multilingual_canonical_points_only_to_tenant_origin",
+      "auto_apply": false
+    },
+    {
+      "code": "mobile_overlap_and_popups",
+      "priority": "P1",
+      "related_check": "mobile_visual_render",
+      "target_probe_check": "visual_ajax_acceptance",
+      "owner": "Elementor / Browser QA",
+      "ownership_scope": "site_generated",
+      "repair_strategy": "audit_overlay_zindex_and_visible_controls_at_breakpoints",
+      "acceptance": "mobile_320_390_768_popup_clickability_no_overlap",
+      "auto_apply": false
+    },
+    {
+      "code": "cold_ttfb_cache_vary",
+      "priority": "P2",
+      "related_check": "desktop_visual_render",
+      "target_probe_check": "visual_ajax_acceptance",
+      "owner": "WordPress / Nginx Cache",
+      "ownership_scope": "site_generated",
+      "repair_strategy": "benchmark_cold_then_warm_and_vary_by_language_device",
+      "acceptance": "no_global_cache_purge_and_no_render_blocking_regression",
+      "auto_apply": false
+    },
+    {
+      "code": "tenant_owned_preservation",
+      "priority": "P0",
+      "related_check": "brand_kit_page_options",
+      "target_probe_check": null,
+      "owner": "Company Tenant Sync",
+      "ownership_scope": "tenant_owned",
+      "repair_strategy": "preserve_company_brand_form_options_seo_payment_values",
+      "acceptance": "company_override_stable_before_and_after_reconcile",
+      "auto_apply": false
+    },
+    {
+      "code": "native_plugin_install_capability",
+      "priority": "P0",
+      "related_check": "provider_dependency_graph",
+      "target_probe_check": null,
+      "owner": "Original 305/312 Provider",
+      "ownership_scope": "never_clone",
+      "repair_strategy": "diagnose_current_signed_312_handler_readback_and_worker_scope",
+      "acceptance": "exact_target_312_preflight_then_independent_313_per_new_job",
+      "auto_apply": false
+    },
+    {
+      "code": "company_code_release_lifecycle",
+      "priority": "P0",
+      "related_check": "original_authority",
+      "target_probe_check": null,
+      "owner": "Original Company Lifecycle",
+      "ownership_scope": "never_clone",
+      "repair_strategy": "discover_original_company_code_release_provider_and_preflight",
+      "acceptance": "identity_bound_305_job_312_executor_and_independent_313_receipt",
+      "auto_apply": false
+    },
+    {
+      "code": "native_scoped_write_capability_freshness",
+      "priority": "P0",
+      "related_check": "original_authority",
+      "target_probe_check": null,
+      "owner": "Original 312 Capability Lifecycle",
+      "ownership_scope": "never_clone",
+      "repair_strategy": "audit_admission_aware_capability_renewal_interval_against_source_handler_ttl",
+      "acceptance": "three_successive_refresh_windows_with_signed_site_bound_proof_age_below_ttl_and_no_cpu_pressure",
+      "auto_apply": false
+    }
+  ],
+  "reconcile_ownership_by_check": {
+    "source_scope": "inspect_only",
+    "wpml_translations": "mixed",
+    "fluent_form_definitions": "mixed",
+    "elementor_theme_conditions": "mixed",
+    "hero_and_css_assets": "mixed",
+    "elementor_visual_css_source_readback": "mixed",
+    "brand_kit_page_options": "mixed",
+    "navigation_lists": "mixed",
+    "user_verifier_continuity": "never_clone",
+    "payment_checkout": "reconnect",
+    "outbound_notifications": "reconnect",
+    "provider_account_connections": "reconnect",
+    "elementor_initial_ajax_css_parity": "site_generated",
+    "jetsmartfilters_target_index": "site_generated"
+  },
+  "check_dependencies": {
+    "target_identity": [],
+    "source_scope": [
+      "target_identity"
+    ],
+    "original_authority": [
+      "target_identity"
+    ],
+    "rollback_ready": [
+      "target_identity",
+      "source_scope",
+      "original_authority"
+    ],
+    "provider_dependency_graph": [
+      "source_scope",
+      "target_identity"
+    ],
+    "plugin_activation": [
+      "provider_dependency_graph"
+    ],
+    "post_taxonomy_schema": [
+      "plugin_activation"
+    ],
+    "tenant_field_mapping": [
+      "post_taxonomy_schema"
+    ],
+    "eligible_content_manifest": [
+      "tenant_field_mapping"
+    ],
+    "post_term_relationships": [
+      "post_taxonomy_schema",
+      "eligible_content_manifest"
+    ],
+    "user_verifier_continuity": [
+      "target_identity"
+    ],
+    "wpml_translations": [
+      "tenant_field_mapping",
+      "post_taxonomy_schema"
+    ],
+    "fluent_form_definitions": [
+      "tenant_field_mapping",
+      "plugin_activation"
+    ],
+    "media_provenance": [
+      "eligible_content_manifest"
+    ],
+    "jetengine_queries_options": [
+      "post_taxonomy_schema"
+    ],
+    "jetsmartfilters_target_index": [
+      "jetengine_queries_options",
+      "eligible_content_manifest"
+    ],
+    "mu_presentation_dependencies": [
+      "plugin_activation"
+    ],
+    "brand_kit_page_options": [
+      "target_identity",
+      "mu_presentation_dependencies"
+    ],
+    "elementor_theme_conditions": [
+      "brand_kit_page_options",
+      "mu_presentation_dependencies"
+    ],
+    "dynamic_tag_bindings": [
+      "post_taxonomy_schema",
+      "elementor_theme_conditions"
+    ],
+    "navigation_lists": [
+      "post_term_relationships",
+      "wpml_translations"
+    ],
+    "frontend_shortcodes": [
+      "dynamic_tag_bindings",
+      "mu_presentation_dependencies"
+    ],
+    "hero_and_css_assets": [
+      "brand_kit_page_options",
+      "media_provenance"
+    ],
+    "desktop_visual_render": [
+      "navigation_lists",
+      "hero_and_css_assets",
+      "frontend_shortcodes"
+    ],
+    "mobile_visual_render": [
+      "hero_and_css_assets",
+      "frontend_shortcodes"
+    ],
+    "all_public_languages_render": [
+      "navigation_lists",
+      "wpml_translations"
+    ],
+    "interactive_filters_and_forms": [
+      "fluent_form_definitions",
+      "jetsmartfilters_target_index"
+    ],
+    "internal_links_brand_isolation": [
+      "navigation_lists",
+      "wpml_translations"
+    ],
+    "elementor_visual_css_source_readback": [
+      "hero_and_css_assets",
+      "brand_kit_page_options"
+    ],
+    "elementor_initial_ajax_css_parity": [
+      "elementor_visual_css_source_readback",
+      "interactive_filters_and_forms"
+    ],
+    "pricing_and_booking": [
+      "tenant_field_mapping",
+      "eligible_content_manifest"
+    ],
+    "payment_checkout": [
+      "pricing_and_booking",
+      "original_authority"
+    ],
+    "outbound_notifications": [
+      "fluent_form_definitions",
+      "internal_links_brand_isolation"
+    ],
+    "provider_account_connections": [
+      "original_authority"
+    ]
+  },
+  "dependency_policy_kind": "diagnostic_order_only_no_execution_grant",
+  "scenario_probe_rule": "declared_probe_not_equal_independent_receipt",
+  "evidence_levels": [
+    "NOT_OBSERVED",
+    "LOCAL_WORDPRESS_UNSIGNED",
+    "BROWSER_LOCALE_OBSERVED",
+    "ORIGINAL_PROVIDER_SIGNED_313"
+  ],
+  "incident_evidence_lanes": {
+    "age_policy_contract": "target_local",
+    "fluent_to_woo_age_receipt": "target_local",
+    "archive_date_locale": "target_local",
+    "ajax_filter_intersection": "target_local",
+    "elementor_html_cache": "target_local",
+    "wpml_listing_id_relocation": "target_local",
+    "archive_media_provenance": "target_local",
+    "tour_rate_neutral_defaults": "target_probe_design_pending",
+    "cruise_program_taxonomy": "target_probe_design_pending",
+    "rate_season_eligibility": "target_probe_design_pending",
+    "draft_tour_rate_advisory": "target_local",
+    "itinerary_media_coverage": "target_local",
+    "seo_tenant_canonical": "target_local",
+    "mobile_overlap_and_popups": "target_local",
+    "cold_ttfb_cache_vary": "target_local",
+    "tenant_owned_preservation": "company_pre_post_signed_digest",
+    "native_plugin_install_capability": "original_provider",
+    "company_code_release_lifecycle": "original_provider",
+    "native_scoped_write_capability_freshness": "original_provider"
+  },
+  "repair_job_baseline": "exact-site local hashes are advisory until corroborated by signed Original 313",
+  "repair_job_receipt": "command + resource + before/after/rollback + exact original signed proof",
+  "repair_provider_discovery_contract": "mad4b.company-repair.provider-capability.v1",
+  "repair_provider_discovery_mode": "trusted_original_registry_scoped_readback_dynamic",
+  "repair_ambiguous_provider_policy": "hold_no_auto_selection"
+}

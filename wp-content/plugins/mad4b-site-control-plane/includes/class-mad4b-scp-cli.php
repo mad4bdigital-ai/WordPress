@@ -21,6 +21,7 @@ final class MAD4B_SCP_CLI {
 		WP_CLI::add_command( 'mad4b status', array( __CLASS__, 'status' ) );
 		WP_CLI::add_command( 'mad4b diagnostics schema', array( __CLASS__, 'diagnostics_schema' ) );
 		WP_CLI::add_command( 'mad4b diagnostics runtime', array( __CLASS__, 'diagnostics_runtime' ) );
+		WP_CLI::add_command( 'mad4b diagnostics write', array( __CLASS__, 'diagnostics_write' ) );
 		WP_CLI::add_command( 'mad4b package verify', array( __CLASS__, 'package_verify' ) );
 		WP_CLI::add_command( 'mad4b operations', array( __CLASS__, 'operations' ) );
 	}
@@ -75,14 +76,58 @@ final class MAD4B_SCP_CLI {
 		) );
 	}
 
+	/**
+	 * Expose fresh, non-authorizing runtime truth. The stored authority checkpoint
+	 * can be ready while a provider is offline and five old allow grants remain.
+	 * Only bounded ability names/counts are returned; grant identities and tokens
+	 * never leave this diagnostic.
+	 */
+	public static function diagnostics_write( $args = array(), $assoc_args = array() ) {
+		unset( $args, $assoc_args );
+		$runtime = class_exists( 'MAD4B_SCP_Staging_Write_Authority' );
+		try {
+			$checkpoint = $runtime ? MAD4B_SCP_Staging_Write_Authority::persisted_status() : array();
+			$current = $runtime ? MAD4B_SCP_Staging_Write_Authority::current_execution_readiness() : array();
+			$plan = $runtime ? MAD4B_SCP_Staging_Write_Authority::reconciliation_plan() : array();
+		} catch ( \Throwable $error ) {
+			$checkpoint = $current = $plan = array();
+		}
+		if ( ! is_array( $checkpoint ) ) $checkpoint = array();
+		if ( ! is_array( $current ) ) $current = array();
+		if ( ! is_array( $plan ) ) $plan = array();
+		$stale = array();
+		foreach ( is_array( $plan['stale_allow_grants'] ?? null ) ? $plan['stale_allow_grants'] : array() as $row ) {
+			if ( is_array( $row ) && isset( $row['ability'] ) && is_string( $row['ability'] ) ) {
+				$stale[] = $row['ability'];
+			}
+		}
+		$stale = array_values( array_unique( $stale ) );
+		sort( $stale, SORT_STRING );
+		self::emit( array(
+			'contract' => 'mad4b.cli-write-diagnostic.v1',
+			'environment' => function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : '',
+			'checkpoint_ready' => ( $checkpoint['ready'] ?? null ) === true,
+			'current_execution_ready' => ( $current['ready'] ?? null ) === true,
+			'current_readiness_blockers' => array_values( (array) ( $current['blockers'] ?? array( 'write_authority_unavailable' ) ) ),
+			'write_inventory_count' => ( is_int( $plan['write_tool_count'] ?? null ) && $plan['write_tool_count'] >= 0 ? $plan['write_tool_count'] : 0 ),
+			'exact_grants_missing_count' => ( is_int( $plan['exact_grants_missing_count'] ?? null ) && $plan['exact_grants_missing_count'] >= 0 ? $plan['exact_grants_missing_count'] : 0 ),
+			'stale_allow_grants_count' => ( is_int( $plan['stale_allow_grants_count'] ?? null ) && $plan['stale_allow_grants_count'] >= 0 ? $plan['stale_allow_grants_count'] : 0 ),
+			'stale_ability_names' => $stale,
+			'candidate_binding_match' => ( $current['candidate_binding_match'] ?? null ) === true,
+			'next_reconciliation' => is_string( $current['next_reconciliation'] ?? null ) ? $current['next_reconciliation'] : 'review_current_authority',
+			'read_only' => true,
+			'production_authorized' => false,
+		) );
+	}
+
 	public static function package_verify( $args = array(), $assoc_args = array() ) {
 		unset( $args, $assoc_args );
 		$runtime = self::runtime_provenance();
-		$verified = ! empty( $runtime['manifest_present'] )
-			&& ! empty( $runtime['manifest_valid'] )
-			&& ! empty( $runtime['runtime_manifest_match'] )
-			&& empty( $runtime['stale'] )
-			&& empty( $runtime['provenance_mismatch'] );
+		$verified = ( $runtime['manifest_present'] ?? null ) === true
+			&& ( $runtime['manifest_valid'] ?? null ) === true
+			&& ( $runtime['runtime_manifest_match'] ?? null ) === true
+			&& ( $runtime['stale'] ?? null ) === false
+			&& ( $runtime['provenance_mismatch'] ?? null ) === false;
 		self::emit( array(
 			'contract' => 'mad4b.cli-package-verify.v1',
 			'verified' => (bool) $verified,
@@ -97,12 +142,19 @@ final class MAD4B_SCP_CLI {
 		self::emit( array(
 			'contract' => 'mad4b.cli-operation-catalog.v1',
 			'commands' => array(
-				array( 'command' => 'wp mad4b status', 'operation' => 'runtime.status.read', 'readonly' => true ),
-				array( 'command' => 'wp mad4b diagnostics schema', 'operation' => 'schema.diagnostics.read', 'readonly' => true ),
-				array( 'command' => 'wp mad4b diagnostics runtime', 'operation' => 'runtime.provenance.verify', 'readonly' => true ),
-				array( 'command' => 'wp mad4b package verify', 'operation' => 'package.integrity.verify', 'readonly' => true ),
+				array( 'command' => 'mad4b status', 'operation' => 'runtime.status.read', 'readonly' => true ),
+				array( 'command' => 'mad4b context inspect', 'operation' => 'runtime.context.inspect', 'readonly' => true ),
+				array( 'command' => 'mad4b context check', 'operation' => 'runtime.context.verify', 'readonly' => true ),
+				array( 'command' => 'mad4b diagnostics schema', 'operation' => 'schema.diagnostics.read', 'readonly' => true ),
+				array( 'command' => 'mad4b diagnostics runtime', 'operation' => 'runtime.provenance.verify', 'readonly' => true ),
+				array( 'command' => 'mad4b diagnostics write', 'operation' => 'authority.current-write-readiness.read', 'readonly' => true ),
+				array( 'command' => 'mad4b package verify', 'operation' => 'package.integrity.verify', 'readonly' => true ),
+				array( 'command' => 'mad4b readiness plan', 'operation' => 'content_readiness.scheduled_scan.plan', 'readonly' => true ),
+				array( 'command' => 'mad4b readiness run --expected-plan=SHA256 --confirm=CONFIRMATION', 'operation' => 'content_readiness.scheduled_scan', 'readonly' => false, 'scope' => 'site-bound_approved_local_schedule_only', 'host_vps_only' => true ),
 			),
-			'write_commands_available' => false,
+			'write_commands_available' => true,
+			'write_scope' => 'site-bound_content_readiness_scheduled_scan_only',
+			'mcp_governed_write_enabled_by_cli' => false,
 			'generic_shell_available' => false,
 			'raw_sql_available' => false,
 		) );
@@ -141,7 +193,11 @@ final class MAD4B_SCP_CLI {
 				'reason' => 'runtime_provenance_service_unavailable',
 			);
 		}
-		$value = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
+		try {
+			$value = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
+		} catch ( \Throwable $error ) {
+			$value = null;
+		}
 		return is_array( $value ) ? $value : array(
 			'available' => false,
 			'reason' => 'runtime_provenance_invalid',

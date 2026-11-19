@@ -11,7 +11,7 @@ final class MAD4B_SCP_Capability_Dependency_Planner {
     const MAX_STAGES = 64;
 
     public static function inspect( array $input ) {
-        if ( ! class_exists( 'MAD4B_SCP_Policy' ) || ! MAD4B_SCP_Policy::can_read() )
+        if ( ! class_exists( 'MAD4B_SCP_Policy' ) || true !== MAD4B_SCP_Policy::can_read() )
             return new WP_Error( 'mad4b_dependency_read_denied', 'Governed read authority is required.' );
         if ( ! class_exists( 'MAD4B_SCP_Operation_Registry' ) )
             return new WP_Error( 'mad4b_dependency_registry_unavailable', 'Canonical operation registry is unavailable.' );
@@ -43,13 +43,26 @@ final class MAD4B_SCP_Capability_Dependency_Planner {
             $seen[$id] = true;
             $binding = MAD4B_SCP_Operation_Registry::stage_binding( $id, $row );
             if ( is_wp_error( $binding ) ) return $binding;
-            $binding_type = isset( $binding['binding_type'] ) ? (string) $binding['binding_type'] : '';
+            if ( ! is_array( $binding ) || ! is_string( $binding['binding_type'] ?? null )
+                || $binding['binding_type'] === '' )
+                return new WP_Error( 'mad4b_dependency_stage_binding_unverified',
+                    'Original pipeline stage binding is unavailable.' );
+            $binding_type = (string) $binding['binding_type'];
             $ability = isset( $binding['ability'] ) ? (string) $binding['ability'] : '';
             $required = ! isset( $stage['required'] ) || true === $stage['required'];
             $condition = isset( $stage['when'] ) ? (string) $stage['when'] : '';
-            $present = '' !== $ability && function_exists( 'wp_has_ability' )
-                ? (bool) wp_has_ability( $ability ) : null;
-            if ( $required && '' !== $ability && false === $present ) $missing[] = $ability;
+            $present = null;
+            if ( '' !== $ability ) {
+                // A WP_Error, truthy scalar or throwing native Ability
+                // lookup is not registration evidence for a required stage.
+                try {
+                    $present = function_exists( 'wp_has_ability' )
+                        && true === wp_has_ability( $ability );
+                } catch ( \Throwable $error ) {
+                    $present = false;
+                }
+            }
+            if ( $required && '' !== $ability && true !== $present ) $missing[] = $ability;
             if ( '' !== $condition ) $unresolved[] = $id . ':conditional_input_required';
             if ( 'plan_bound_executor' === $binding_type ) $unresolved[] = $id . ':exact_plan_executor_required';
             if ( in_array( $binding_type, array( 'policy_boundary', 'executor_owned_verification' ), true ) )
@@ -72,11 +85,43 @@ final class MAD4B_SCP_Capability_Dependency_Planner {
         $identity = hash( 'sha256', wp_json_encode( array(
             'operation_id' => (string) ( $row['id'] ?? '' ),
             'profile_id' => $profile_id, 'nodes' => $nodes, 'edges' => $edges ) ) );
+        // Cross-domain non-blocking runtime projection on the canonical
+        // Operation Registry stages. Advisory only: the original registry,
+        // grants, execution fence and native providers retain all authority.
+        $global_lifecycle = null;
+        if ( class_exists( 'MAD4B_SCP_Global_Runtime_Lifecycle' ) ) {
+            $runtime_stages = array(); $predecessor = null;
+            foreach ( $nodes as $stage ) {
+                $runtime_id = 'stage_' . (int) $stage['position'];
+                $stage_type = (string) $stage['stage_type'];
+                $runtime_kind = in_array( $stage_type, array('authorization','executor','execution','mutation','write'), true )
+                    ? 'write' : ( 'verification' === $stage_type ? 'verify' : 'read' );
+                $runtime_stages[] = array(
+                    'id' => $runtime_id,
+                    'label' => (string) $stage['stage_id'],
+                    'kind' => $runtime_kind,
+                    'depends_on' => null === $predecessor ? array() : array( $predecessor ),
+                    'required' => ! empty( $stage['required'] ),
+                    'condition' => (string) ( $stage['condition'] ?? '' ),
+                    'condition_evaluated' => ! empty( $stage['condition_evaluated'] ),
+                    'ability_registered' => $stage['ability_registration_observed'],
+                    'requires_source_owner' => in_array( (string) $stage['binding_type'],
+                        array( 'plan_bound_executor','executor_owned_verification','policy_boundary' ), true ),
+                );
+                $predecessor = $runtime_id;
+            }
+            $global_lifecycle = MAD4B_SCP_Global_Runtime_Lifecycle::evaluate( $runtime_stages );
+            if ( is_wp_error( $global_lifecycle ) ) $global_lifecycle = null;
+        }
         return array(
             'contract' => self::CONTRACT, 'source' => MAD4B_SCP_Operation_Registry::CONTRACT,
             'operation_id' => (string) ( $row['id'] ?? '' ),
             'pipeline_profile' => $profile_id,
             'graph_sha256' => $identity, 'nodes' => $nodes, 'edges' => $edges,
+            'global_runtime_contract' => is_array( $global_lifecycle ) ? $global_lifecycle['contract'] : '',
+            'global_lifecycle_state' => is_array( $global_lifecycle ) ? $global_lifecycle['state'] : '',
+            'global_lifecycle_projection' => $global_lifecycle,
+            'routine_predecessor_wait_is_not_blocking' => is_array( $global_lifecycle ),
             'missing_registered_abilities' => $missing,
             'unresolved_dependencies' => $unresolved,
             'state' => $missing ? 'REGISTERED_DEPENDENCIES_MISSING' : 'GRAPH_PLANNED_NEEDS_LIVE_ADMISSION',

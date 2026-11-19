@@ -11,6 +11,7 @@ final class MAD4B_SCP_External_Media_Ingest {
     const KEY_META = '_mad4b_import_source_key';
     const URL_META = '_mad4b_import_source_url';
     const HASH_META = '_mad4b_import_file_sha256';
+    const OPERATOR_META = '_mad4b_media_operator_responsibility_v1';
     private static function fail( $code, $message ) { return new WP_Error( $code, $message ); }
     public static function url_allowed( $url ) {
         if ( ! is_string( $url ) || strlen( $url ) > 2048 ) return false;
@@ -19,16 +20,33 @@ final class MAD4B_SCP_External_Media_Ingest {
             || 'https' !== strtolower( (string) $parts['scheme'] ) || isset( $parts['user'] ) || isset( $parts['pass'] ) ) return false;
         if ( ! empty( $parts['user'] ) || ! empty( $parts['pass'] ) || isset( $parts['port'] ) && 443 !== (int) $parts['port'] ) return false;
         if ( preg_match( '/[?&](?:token|secret|api_?key|signature|password|access_token)=/i', $url ) ) return false;
-        return function_exists( 'wp_http_validate_url' ) && false !== wp_http_validate_url( $url );
+        if ( ! function_exists( 'wp_http_validate_url' ) ) return false;
+        // Native WordPress SSRF validation returns a safe URL, not a truthy
+        // WP_Error, integer or boolean from a provider/plugin filter.
+        try { $validated = wp_http_validate_url( $url ); }
+        catch ( \Throwable $error ) { return false; }
+        return is_string( $validated ) && $validated === $url;
     }
     public static function plan( $input = array() ) {
-        $url = isset( $input['source_url'] ) ? (string) $input['source_url'] : '';
-        $key = isset( $input['operation_key'] ) ? (string) $input['operation_key'] : '';
+        if ( ! is_array( $input )
+            || ! is_string( $input['source_url'] ?? null )
+            || ! is_string( $input['operation_key'] ?? null ) )
+            return self::fail( 'mad4b_media_plan_input_invalid', 'Source URL and operation key must be exact strings.' );
+        $url = $input['source_url'];
+        $key = $input['operation_key'];
         if ( ! self::url_allowed( $url ) ) return self::fail( 'mad4b_media_source_url_unsafe', 'Use a validated external HTTPS image source.' );
         if ( ! preg_match( '/^[A-Za-z0-9._:-]{12,128}$/', $key ) ) return self::fail( 'mad4b_media_operation_key_invalid', 'A stable idempotency operation key is required.' );
-        $target = isset( $input['parent_post_id'] ) ? absint( $input['parent_post_id'] ) : 0;
-        if ( $target && ( ! get_post( $target ) || ! current_user_can( 'edit_post', $target ) ) )
-            return self::fail( 'mad4b_media_target_denied', 'Target WordPress post is missing or cannot be edited.' );
+        $raw_post = $input['parent_post_id'] ?? null;
+        if ( null !== $raw_post && ( ! is_int( $raw_post ) || $raw_post < 0 ) )
+            return self::fail( 'mad4b_media_target_denied', 'Original WordPress parent post identity is invalid.' );
+        $target = null === $raw_post ? 0 : $raw_post;
+        if ( $target ) {
+            $post = get_post( $target );
+            if ( ! is_object( $post ) || is_wp_error( $post )
+                || ! is_int( $post->ID ?? null ) || $post->ID !== $target
+                || true !== current_user_can( 'edit_post', $target ) )
+                return self::fail( 'mad4b_media_target_denied', 'Target WordPress post is missing or cannot be edited.' );
+        }
         $scope = hash( 'sha256', home_url( '/' ) . '|' . $url . '|' . $key );
         $found = get_posts( array( 'post_type' => 'attachment', 'post_status' => 'inherit',
             'posts_per_page' => 2, 'fields' => 'ids', 'meta_key' => self::KEY_META,
@@ -42,11 +60,23 @@ final class MAD4B_SCP_External_Media_Ingest {
             'read_only' => true, 'mutation_performed' => false );
     }
     public static function apply( $input = array() ) {
-        if ( ! current_user_can( 'upload_files' ) ) return self::fail( 'mad4b_media_upload_denied', 'WordPress upload permission is required.' );
+        if ( true !== current_user_can( 'upload_files' ) )
+            return self::fail( 'mad4b_media_upload_denied', 'Verified WordPress upload permission is required.' );
+        // A license document is not required for a staging import, but the
+        // operator must own the decision and the source must remain traceable.
+        if ( ! is_array( $input ) || ( $input['operator_responsibility_accepted'] ?? null ) !== true )
+            return self::fail( 'mad4b_media_operator_attestation_required', 'Operator acknowledgement is required.' );
+        if ( wp_get_environment_type() !== 'staging'
+            || ! class_exists( 'MAD4B_SCP_Site_Profile' )
+            || true !== MAD4B_SCP_Site_Profile::user_is_enrolled( get_current_user_id() ) )
+            return self::fail( 'mad4b_media_operator_scope_denied', 'Enrolled staging operator required.' );
+        if ( ! empty( $input['known_takedown'] ) || ! empty( $input['known_legal_prohibition'] ) )
+            return self::fail( 'mad4b_media_source_restricted', 'Source is restricted.' );
         $plan = self::plan( $input );
         if ( is_wp_error( $plan ) ) return $plan;
-        $expected = isset( $input['expected_scope_sha256'] ) ? (string) $input['expected_scope_sha256'] : '';
-        if ( empty( $input['confirmed'] ) || ! preg_match( '/^[a-f0-9]{64}$/', $expected ) ||
+        $expected = is_string( $input['expected_scope_sha256'] ?? null )
+            ? $input['expected_scope_sha256'] : '';
+        if ( ( $input['confirmed'] ?? null ) !== true || ! preg_match( '/^[a-f0-9]{64}$/', $expected ) ||
             ! hash_equals( $expected, $plan['scope_sha256'] ) )
             return self::fail( 'mad4b_media_import_stale', 'Exact import plan checksum and confirmation are required.' );
         if ( ! empty( $plan['existing_attachment_id'] ) ) {
@@ -90,10 +120,21 @@ final class MAD4B_SCP_External_Media_Ingest {
         update_post_meta( $id, self::KEY_META, $plan['scope_sha256'] );
         update_post_meta( $id, self::URL_META, esc_url_raw( $plan['source_url'] ) );
         update_post_meta( $id, self::HASH_META, $sha );
+        $operator_record = array(
+            'contract' => 'mad4b.operator-media-responsibility.v1',
+            'operator_id' => get_current_user_id(),
+            'acknowledged_at' => gmdate( 'c' ),
+            'source_url' => esc_url_raw( $plan['source_url'] ),
+            'source_file_sha256' => $sha,
+            'rights_status' => 'unverified',
+            'operator_responsibility_accepted' => true,
+        );
+        if ( ! update_post_meta( $id, self::OPERATOR_META, $operator_record ) )
+            return self::fail( 'mad4b_media_operator_evidence_write_failed', 'Operator import record requires reconciliation.' );
         if ( isset( $input['alt'] ) && is_string( $input['alt'] ) )
             update_post_meta( $id, '_wp_attachment_image_alt', sanitize_text_field( $input['alt'] ) );
         $back = get_post_meta( $id, self::KEY_META, true );
-        if ( ! hash_equals( $plan['scope_sha256'], (string) $back ) )
+        if ( ! hash_equals( $plan['scope_sha256'], (string) $back ) || ! get_post_meta( $id, self::OPERATOR_META, true ) )
             return self::fail( 'mad4b_media_import_readback_failed', 'Uploaded image could not be bound to its exact source identity.' );
         update_option( $lock, array( 'completed' => true, 'attachment_id' => $id ), false );
         return array( 'contract' => self::CONTRACT, 'attachment_id' => $id,

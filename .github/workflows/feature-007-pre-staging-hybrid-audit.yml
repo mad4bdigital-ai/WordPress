@@ -146,6 +146,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # No-network negative verification of both exact official MCP Adapter
+          # distributions and pre-request redirect host boundaries.
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/test_materialize_certified_mcp_adapter_source.py
           php wp-content/plugins/mad4b-site-control-plane/tests/solution-discovery-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/assistant-solution-router-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/staging-source-selector-runtime.php
@@ -170,6 +173,20 @@ jobs:
           python3 "$ROOT/tests/unified-capability-gateway-contract.py"
           node --check "$ROOT/client/ability-catalog-client.mjs"
           node "$ROOT/tests/unified-capability-client-runtime.mjs"
+
+      - name: Verify exact Authorization recovery extraction and PHP syntax
+        run: |
+          set -euo pipefail
+          python3 tests/test_authorization_recovery_trait_nonregression.py
+          python3 tests/test_content_readiness_trait_parity.py
+          python3 tests/test_core_web_vitals_configuration_trait_parity.py
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-web-vitals.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/trait-mad4b-scp-core-web-vitals-configuration.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/trait-mad4b-scp-content-readiness-scanning.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/trait-mad4b-scp-content-readiness-reconciliation.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/trait-mad4b-scp-authorization-recovery-state.php
 
       - name: Architecture maintainability and change-slice gate
         shell: bash
@@ -860,6 +877,31 @@ jobs:
           extensions: pdo_sqlite, intl, pcntl, ctype, mysqli, mbstring
           tools: wp-cli
           coverage: none
+
+      - name: Restore verified WP-CLI when setup-php tool installation fails
+        shell: bash
+        run: |
+          set -euo pipefail
+          if command -v wp >/dev/null 2>&1 && wp --info >/dev/null 2>&1; then
+            echo 'ADAPTIVE_WPCLI_TOOL_READY: setup-php'
+            exit 0
+          fi
+          # setup-php may report success despite a failed wp-cli tool fetch.
+          # Restrict fallback to a versioned official release and verify
+          # the published SHA256 before running downloaded PHP code.
+          base='https://github.com/wp-cli/wp-cli/releases/download/v2.12.0/wp-cli-2.12.0.phar'
+          phar="$RUNNER_TEMP/mad4b-adaptive-wp-cli.phar"
+          checksum="$RUNNER_TEMP/mad4b-adaptive-wp-cli.phar.sha256"
+          curl --fail --location --retry 3 --max-time 90 --silent --show-error "$base" -o "$phar"
+          curl --fail --location --retry 3 --max-time 90 --silent --show-error "$base.sha256" -o "$checksum"
+          digest="$(awk 'NR == 1 { print $1 }' "$checksum")"
+          [[ "$digest" =~ ^[a-fA-F0-9]{64}$ ]] || { echo 'INVALID_WPCLI_CHECKSUM' >&2; exit 1; }
+          printf '%s  %s\n' "$digest" "$phar" | sha256sum -c -
+          php "$phar" --info
+          printf '#!/usr/bin/env bash\nexec php "%s" "$@"\n' "$phar" > "$RUNNER_TEMP/wp"
+          chmod 0700 "$RUNNER_TEMP/wp"
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+          echo 'ADAPTIVE_WPCLI_VERIFIED_FALLBACK: PASS'
 
       - name: Adaptive Runtime convergence safety / PHP ${{ matrix.php }}
         shell: bash

@@ -21,9 +21,10 @@
     "plugin_slug": "mad4b-site-control-plane",
     "mcp_adapter": {
       "slug": "mcp-adapter",
-      "required_version": "0.7.0",
-      "required_version_source": "runtime_release_policy.target_adapter_version",
-      "deployment_mode": "require_exact_preinstalled_or_verified_bundled"
+      "deployment_mode": "accept_compatible_installed_or_verified_release_artifact",
+      "version_gate": false,
+      "compatibility_source": "dependency_manager.adapter_read_runtime_observation",
+      "exact_release_target_source": "certified_runtime_release_set.mcp_adapter"
     }
   },
   "executor": {
@@ -362,13 +363,14 @@
         "backup_before_replace": true,
         "readback_required": true,
         "rollback_on_failed_readback": true,
-        "production_requires_explicit_opt_in": true,
+        "production_requires_explicit_opt_in": false,
         "pointer_asset": "mad4b-site-control-plane-update-pointer.json",
         "immutable_manifest_asset_template": "mad4b-site-control-plane-update-{exact_source_commit_sha}.json",
         "legacy_manifest_asset": "mad4b-site-control-plane-update.json",
         "resolution": "pointer_first_with_network_or_http_unavailable_legacy_fallback",
         "pointer_manifest_sha256_required": true,
-        "pointer_release_verdict_binding_required": true
+        "pointer_release_verdict_binding_required": true,
+        "authority_policy": "exact_enrolled_managed_site_plus_update_plugins_capability_and_manifest_readback"
       },
       "governed_file_upload": {
         "ability_plan": "mad4b/control-plane-upload-plan",
@@ -376,7 +378,7 @@
         "input_transport": "bounded_base64_zip",
         "caller_supplied_url_allowed": false,
         "caller_supplied_path_allowed": false,
-        "staging_only": true,
+        "staging_only": false,
         "exact_plan_required": true,
         "exact_one_time_approval_required": true,
         "exact_archive_sha256_required": true,
@@ -384,7 +386,8 @@
         "backup_before_replace": true,
         "readback_required": true,
         "rollback_on_failed_readback": true,
-        "production_allowed": false
+        "production_allowed": true,
+        "authority_policy": "exact_enrolled_managed_write_site_plus_original_signed_release_approval"
       },
       "governed_native_release_pull": {
         "ability_plan": "mad4b/control-plane-native-plan",
@@ -395,7 +398,7 @@
         "caller_supplied_path_allowed": false,
         "caller_package_bytes_allowed": false,
         "target_derived_from_release_manifest": true,
-        "staging_only": true,
+        "staging_only": false,
         "exact_plan_required": true,
         "exact_one_time_approval_required": true,
         "exact_archive_sha256_required": true,
@@ -404,13 +407,14 @@
         "backup_before_replace": true,
         "readback_required": true,
         "rollback_on_failed_readback": true,
-        "production_allowed": false,
+        "production_allowed": true,
         "pointer_asset": "mad4b-site-control-plane-update-pointer.json",
         "immutable_manifest_asset_template": "mad4b-site-control-plane-update-{exact_source_commit_sha}.json",
         "legacy_manifest_asset": "mad4b-site-control-plane-update.json",
         "resolution": "pointer_first_with_network_or_http_unavailable_legacy_fallback",
         "pointer_manifest_sha256_required": true,
-        "pointer_release_verdict_binding_required": true
+        "pointer_release_verdict_binding_required": true,
+        "authority_policy": "exact_enrolled_managed_write_site_plus_original_signed_release_approval"
       },
       "governed_bootstrap_release_pull": {
         "ability_apply": "mad4b/control-plane-bootstrap-apply",
@@ -418,7 +422,7 @@
         "client_binding": "exact_chatgpt_cimd_client",
         "execution_core": "governed_native_release_pull",
         "purpose": "break_candidate_binding_self_update_circular_dependency",
-        "availability": "staging_only_when_normal_write_authority_is_not_effective_and_current_exact_grants_are_clean",
+        "availability": "exact_enrolled_site_only_when_normal_write_authority_is_fail_closed_on_candidate_drift_and_exact_grants_are_clean",
         "exact_plan_required": true,
         "explicit_confirmation_required": true,
         "release_channel_bound": true,
@@ -430,11 +434,12 @@
         "developer_authority_mutation_allowed": false,
         "developer_breakglass_mutation_allowed": false,
         "generic_raw_sql_breakglass_included": false,
-        "production_allowed": false,
+        "production_allowed": true,
         "backup_before_replace": true,
         "readback_required": true,
         "rollback_on_failed_readback": true,
-        "self_disables_after_normal_write_authority_becomes_effective": true
+        "self_disables_after_normal_write_authority_becomes_effective": true,
+        "authority_policy": "exact_enrolled_owner_step_up_and_signed_candidate_drift_proof"
       }
     },
     "shared_verification": [
@@ -459,9 +464,11 @@
       "arbitrary_remote_url": true,
       "arbitrary_filesystem_path": true,
       "automatic_background_self_update": true,
-      "production_remote_file_upload": true,
+      "production_remote_file_upload": false,
       "bypass_exact_approval": true,
-      "production_remote_native_pull": true
+      "production_remote_native_pull": false,
+      "production_without_signed_release_and_original_write_authority": true,
+      "production_unpromoted_candidate_from_generic_upload": true
     }
   }
 }

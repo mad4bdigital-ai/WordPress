@@ -1,0 +1,7 @@
+.mad4b-rate-hybrid-panel{background:#f5faf7;border:1px solid #cce1d5;border-radius:9px;margin:14px 0;padding:14px;max-width:1100px}
+.mad4b-rate-hybrid-panel h3{margin:0 0 8px;font-size:15px;color:#235747}
+.mad4b-rate-hybrid-panel>p{font-size:12px;color:#46665a;line-height:1.5}
+.mad4b-rate-hybrid-panel>label{font-weight:600;font-size:12px;color:#275b4c}
+.mad4b-rate-hybrid-panel input,.mad4b-rate-hybrid-panel select{max-width:240px}
+#mad4b-rate-hybrid-results{margin:10px 0;background:#fff;border-radius:6px;padding:10px;font-size:12px;color:#31594d}
+#mad4b-rate-hybrid-results ol{margin-left:18px}

@@ -1,0 +1,5 @@
+# Native MAD4B Content Readiness plan/run, policy-driven per site.
+# Install on enrolled host as /etc/cron.d/mad4b-content-readiness-supervisor.
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+7-57/10 * * * * root /usr/bin/nice -n 10 /usr/bin/ionice -c 3 /usr/bin/python3 /opt/mad4b-company-provisioning/bin/mad4b-content-readiness-supervisor 2>&1 | /usr/bin/logger -t mad4b-content-readiness-supervisor

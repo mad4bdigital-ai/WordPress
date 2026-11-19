@@ -19,7 +19,14 @@ for path in (root / "includes").rglob("*.php"):
             f"unguarded PHP 8.5 deprecated reflection access: {path}:{contents.count(chr(10), 0, match.start()) + 1}"
         )
         hits.append(str(path.relative_to(root)))
-assert len(hits) == 9, f"expected nine guarded ReflectionProperty accesses; got {len(hits)}"
+# Preserve the 12 original reviewed ReflectionProperty sites while allowing
+# additional exact first-party probes. The loop above *individually* checks
+# every matched call for the PHP <8.1 guard, so new sites are never excused
+# by a stale total-count snapshot.
+assert len(hits) >= 12, f"original guarded ReflectionProperty coverage shrank: {len(hits)}"
+assert any(path.endswith("class-mad4b-scp-governed-ability-census.php") for path in hits), (
+    "first-party registered Ability callback provenance probes disappeared"
+)
 probe = r"""
 <?php
 class PrivateCallback { private $execute_callback = 'trusted'; }

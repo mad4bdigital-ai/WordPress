@@ -28,13 +28,11 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 	const MAX_REMOTE_IMAGE_BYTES = 15728640;
 	const MAX_REMOTE_IMAGE_PIXELS = 40000000;
 	const MAX_REMOTE_CANDIDATES = 50;
-
 	public function id() { return 'remote-media'; }
 	public function label() { return 'Remote Media'; }
 	public function is_available() { return function_exists( 'wp_safe_remote_get' ) && class_exists( 'DOMDocument' ); }
 	protected function certified_provider_key() { return 'media'; }
 	protected function mutation_requires_certification() { return false; }
-
 	public function ability_names() {
 		return array(
 			'read' => array( self::REMOTE_DISCOVER_ABILITY, self::REMOTE_INSPECT_ABILITY, self::REMOTE_IMPORT_PLAN_ABILITY, self::REMOTE_MANIFEST_PLAN_ABILITY, self::REMOTE_PROVENANCE_GET_ABILITY, self::REMOTE_RECOVERY_STATUS_ABILITY ),
@@ -42,7 +40,6 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 			'admin' => array(),
 		);
 	}
-
 	public function register_abilities() {
 		$this->add_ability(
 			self::REMOTE_DISCOVER_ABILITY, 'Discover Remote Image Candidates', 'remote_source_discover',
@@ -501,6 +498,14 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 		}
 		$rights_basis = isset( $input['rights_basis'] ) ? sanitize_key( (string) $input['rights_basis'] ) : 'unknown';
 		if ( ! in_array( $rights_basis, array( 'unknown', 'owned', 'licensed', 'permission', 'public_domain', 'creative_commons' ), true ) ) return new WP_Error( 'mad4b_remote_media_rights_basis_invalid', 'Unsupported remote media rights basis.' );
+		// A concrete CC BY / BY-SA license is NOT public domain. Preserve
+		// the license identity and original source; do not substitute a more
+		// permissive fallback when external metadata disagrees. This check
+		// does not certify that the external source actually grants the license.
+		$rights_note = sanitize_textarea_field( isset( $input['rights_note'] ) ? (string) $input['rights_note'] : '' );
+		if ( MAD4B_SCP_Remote_Media_Rights::conflicts_with_explicit_cc_license( $rights_basis, $rights_reference, $rights_note ) )
+			return new WP_Error( 'mad4b_remote_media_cc_license_not_public_domain',
+				'Explicit CC BY attribution is not public domain; preserve the specific Creative Commons license.' );
 		$duplicate_policy = isset( $input['duplicate_policy'] ) ? sanitize_key( (string) $input['duplicate_policy'] ) : 'reuse';
 		if ( ! in_array( $duplicate_policy, array( 'reuse', 'fail' ), true ) ) return new WP_Error( 'mad4b_remote_media_duplicate_policy_invalid', 'duplicate_policy must be reuse or fail.' );
 		$license_expires_on = isset( $input['license_expires_on'] ) ? trim( (string) $input['license_expires_on'] ) : '';
@@ -527,7 +532,7 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 			'source_page_sha256' => $source_page_sha256,
 			'rights_basis' => $rights_basis,
 			'capture_only' => ! empty( $input['capture_only'] ),
-			'rights_note' => sanitize_textarea_field( isset( $input['rights_note'] ) ? (string) $input['rights_note'] : '' ),
+			'rights_note' => $rights_note,
 			'rights_reference' => $rights_reference,
 			'license_expires_on' => $license_expires_on,
 			'duplicate_policy' => $duplicate_policy,

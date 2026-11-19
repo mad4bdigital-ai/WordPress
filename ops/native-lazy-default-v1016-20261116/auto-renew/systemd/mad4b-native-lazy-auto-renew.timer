@@ -1,0 +1,12 @@
+[Unit]
+Description=Check signed native Lazy certificate freshness daily
+
+[Timer]
+OnCalendar=*-*-* 23:15:00 UTC
+RandomizedDelaySec=900
+AccuracySec=120s
+Persistent=true
+Unit=mad4b-native-lazy-auto-renew.service
+
+[Install]
+WantedBy=timers.target

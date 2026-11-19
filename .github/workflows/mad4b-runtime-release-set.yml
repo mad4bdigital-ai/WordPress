@@ -132,40 +132,36 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 - <<'PY' > /tmp/mad4b-adapter.env
-          import json, shlex
-          from pathlib import Path
-          root=Path('wp-content/plugins/mad4b-site-control-plane/config')
-          policy=json.loads((root/'runtime-release-policy.json').read_text(encoding='utf-8'))
-          profiles=json.loads((root/'certified-provider-profiles.json').read_text(encoding='utf-8'))
-          version=str(policy['target_adapter_version'])
-          profile=profiles['providers']['mcp_adapter'][version]
-          for key,value in {
-              'VERSION':version,
-              'SHA':profile['archive_sha256'],
-              'BYTES':str(profile['archive_bytes']),
-              'URL':profile['package_url'],
-          }.items():
-              print(f'{key}={shlex.quote(str(value))}')
-          PY
+          # Reuse the same CI-only certified profile selector as Packaging.
+          # Runtime promotion still requires independent exact-pair approval.
+          python3 tools/resolve-certified-mcp-adapter-profile.py \
+            --profile auto-ci > /tmp/mad4b-adapter.env
           source /tmp/mad4b-adapter.env
+          export TARGET_VERSION TARGET_SHA TARGET_BYTES TARGET_URL
+          VERSION="$TARGET_VERSION"
+          SHA="$TARGET_SHA"
+          BYTES="$TARGET_BYTES"
+          URL="$TARGET_URL"
           curl --fail --location --silent --show-error "$URL" -o /tmp/mcp-adapter.zip
           test "$(stat -c '%s' /tmp/mcp-adapter.zip)" = "$BYTES"
           echo "$SHA  /tmp/mcp-adapter.zip" | sha256sum --check --strict
+          python3 tests/test_mcp_runtime_surface_source_identity.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/mcp-runtime-surface-profile.py \
             --archive /tmp/mcp-adapter.zip \
             --profile wp-content/plugins/mad4b-site-control-plane/config/certified-provider-profiles.json \
             --version "$VERSION"
           python3 wp-content/plugins/mad4b-site-control-plane/tests/mcp-adapter-protocol-matrix.py /tmp/mcp-adapter.zip
           python3 - <<'PY'
-          import hashlib, json, zipfile
+          import hashlib, json, os, zipfile
           from pathlib import Path
 
           root=Path('wp-content/plugins/mad4b-site-control-plane/config')
-          policy=json.loads((root/'runtime-release-policy.json').read_text(encoding='utf-8'))
           profiles=json.loads((root/'certified-provider-profiles.json').read_text(encoding='utf-8'))
-          version=str(policy['target_adapter_version'])
+          version=os.environ['TARGET_VERSION']
           profile=profiles['providers']['mcp_adapter'][version]
+          if (profile.get('version') != version or
+                  str(profile.get('archive_sha256','')).lower() != os.environ['TARGET_SHA']):
+              raise SystemExit('exact certified Adapter CI profile changed during archive verification')
           critical=profile.get('critical_files') or {}
           if not critical:
               raise SystemExit('critical file manifest missing')

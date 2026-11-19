@@ -1,0 +1,32 @@
+/*
+ * Local first-paint layout for the destinations JetEngine Listing Grid.
+ * Only while the slider awaits Swiper initialization. Native Swiper owns
+ * slide widths and all interactions once .swiper-initialized is present.
+ *
+ * The listing-grid widget uses 3 desktop / 2 tablet / 1 mobile columns.
+ * Keep the same widths before JavaScript is ready, so a card does not
+ * momentarily stretch across the whole slider as an oval.
+ */
+.elementor-element-b25dbff .jet-listing-grid__slider.swiper-lib:not(.swiper-initialized)
+  > .jet-listing-grid__items.jet-listing-grid--45927.swiper-wrapper
+  > .jet-listing-grid__item.swiper-slide {
+  width: 33.3333333333%;
+  flex: 0 0 33.3333333333%;
+  min-width: 0;
+}
+@media (max-width: 1023px) {
+  .elementor-element-b25dbff .jet-listing-grid__slider.swiper-lib:not(.swiper-initialized)
+    > .jet-listing-grid__items.jet-listing-grid--45927.swiper-wrapper
+    > .jet-listing-grid__item.swiper-slide {
+    width: 50%;
+    flex-basis: 50%;
+  }
+}
+@media (max-width: 767px) {
+  .elementor-element-b25dbff .jet-listing-grid__slider.swiper-lib:not(.swiper-initialized)
+    > .jet-listing-grid__items.jet-listing-grid--45927.swiper-wrapper
+    > .jet-listing-grid__item.swiper-slide {
+    width: 100%;
+    flex-basis: 100%;
+  }
+}

@@ -84,6 +84,15 @@ $result = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( array( 'fixture/missing'
 check( ! $result['ready'] && 'ability_missing' === $result['failures'][0]['error_code'] && 'ability_lookup' === $result['failures'][0]['stage'], 'Missing Ability lost its diagnostic stage' );
 $result = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( array( $required[0], 'fixture/missing' ), array( 'fixture/missing' ) );
 check( $result['ready'] && $result['degraded'], 'Missing optional Ability blocked required discovery' );
+// A required failure with other valid tools must fail the WHOLE catalog.
+// Distinguish it from the reviewed optional-failure isolation contract.
+$result = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight(
+    array( $required[0], 'fixture/missing' ), array() );
+check( ! $result['ready'] && ! $result['degraded']
+    && array() === $result['tools']
+    && 'mcp_required_tool_preflight_failed' === $result['blocker']
+    && 'fixture/missing' === $result['failures'][0]['failing_ability'],
+    'Required tool absence left a partially executable MCP catalog' );
 $GLOBALS['abilities']['fixture/schema-exception'] = new class( 'fixture/schema-exception', array() ) extends WP_Ability {
 	function get_input_schema() { throw new RuntimeException( 'PRIVATE_SCHEMA_DETAILS' ); }
 };
@@ -92,16 +101,42 @@ check( ! $result['ready'] && 'source_schema_read' === $result['failures'][0]['st
 wp_register_ability( 'fixture/invalid-utf8', array( 'description' => "\xB1\x31" ) );
 $result = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( array( 'fixture/invalid-utf8' ), array() );
 check( ! $result['ready'] && 'wire_serialization' === $result['failures'][0]['stage'], 'Invalid UTF-8 was admitted to wire catalog' );
+$result = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight(
+    array( $required[0], 'fixture/invalid-utf8' ), array() );
+check( ! $result['ready'] && ! $result['degraded']
+    && array() === $result['tools']
+    && 'mcp_required_tool_preflight_failed' === $result['blocker'],
+    'Malformed required DTO did not fail closed alongside a valid tool' );
 $GLOBALS['filters']['mcp_adapter_tool_name'] = static function() { return 'invalid tool name'; };
 $result = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( array( $required[0] ), array() );
 check( ! $result['ready'] && 'official_wire_build' === $result['failures'][0]['stage'] && 'mcp_tool_name_filter_invalid' === $result['failures'][0]['error_code'], 'Invalid third-party name filter lost precise builder evidence' );
 $GLOBALS['filters']['mcp_adapter_tool_name'] = static function() { return 'colliding-name'; };
 $result = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( array_slice( $required, 0, 2 ), array( $required[1] ) );
 check( ! $result['ready'] && 'identity' === $result['failures'][0]['stage'], 'Optional tool identity collision must fail closed' );
+check( 'mcp_catalog_identity_collision' === $result['blocker']
+    && array() === $result['tools'] && ! $result['degraded']
+    && 'mcp_identity_collision' === $result['failures'][0]['error_code'],
+    'Optional identity collision left partially executable tool catalog' );
+// Same result when both colliding Abilities are non-optional: do not
+// accidentally scope the critical collision gate to optional flags.
+$required_collision = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( array_slice( $required, 0, 2 ), array() );
+check( ! $required_collision['ready'] && 'mcp_catalog_identity_collision' === $required_collision['blocker']
+    && array() === $required_collision['tools'], 'Required wire identities were not fail-closed' );
 unset( $GLOBALS['filters']['mcp_adapter_tool_name'] );
 wp_register_ability( 'fixture/large', array( 'description' => str_repeat( 'x', 100000 ) ) );
 $result = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( array( $required[0], 'fixture/large' ), array( 'fixture/large' ) );
 check( $result['ready'] && $result['degraded'] && array( $required[0] ) === $result['tools'] && 'mcp_optional_catalog_size_excluded' === $result['failures'][0]['error_code'], 'Large optional DTO displaced required tools' );
 $result = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( array( 'fixture/large' ), array() );
 check( ! $result['ready'] && 'mcp_required_catalog_size_exceeded' === $result['failures'][0]['error_code'], 'Large required DTO exceeded wire budget' );
+// The governed Operator Grants direct step-up must have a real official
+// Adapter DTO before the OAuth catalog can bind it, even though it may
+// not execute without a separately enrolled Site Profile/owner approval.
+require $include . 'class-mad4b-scp-operator-grant-convergence.php';
+MAD4B_SCP_Operator_Grant_Convergence::register_ability();
+$operator_ability = MAD4B_SCP_Operator_Grant_Convergence::ABILITY;
+check( wp_has_ability( $operator_ability ), 'Operator Grants Ability not registered' );
+$operator_result = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( array( $operator_ability ), array( $operator_ability ) );
+check( $operator_result['ready'] && array( $operator_ability ) === $operator_result['tools'],
+ 'Operator Grants cannot project to official DTO: ' . json_encode( $operator_result ) );
+echo "PASS governed Operator Grants direct step-up official DTO\n";
 echo "PASS real DTO faults: empty input, invalid name filter, identity collision and size budgets\n";

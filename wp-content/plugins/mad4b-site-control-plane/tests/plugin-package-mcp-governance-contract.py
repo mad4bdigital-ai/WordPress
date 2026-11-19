@@ -187,6 +187,7 @@ subprocess.run(
 for fixture_name, success_marker in (
     ("package-route-resolver-runtime.php", "package-route-resolver-runtime: PASS"),
     ("plugin-package-self-update-route-runtime.php", "plugin-package-self-update-route: PASS"),
+    ("control-plane-test-router-source-hermetic.php", "CONTROL_PLANE_SELECTED_HEAD_ROUTE_HERMETIC: PASS"),
 ):
     fixture = ROOT / "tests" / fixture_name
     for args in (["php", "-l", str(fixture)], ["php", str(fixture)]):

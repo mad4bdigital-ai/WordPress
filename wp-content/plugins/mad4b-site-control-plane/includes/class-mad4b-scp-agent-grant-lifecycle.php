@@ -19,35 +19,39 @@ final class MAD4B_SCP_Agent_Grant_Lifecycle {
   add_action('rest_api_init', array(__CLASS__,'register_rest'), 65);
  }
  public static function owner() {
-  if (PHP_SAPI==='cli' || (defined('WP_CLI') && WP_CLI) || !current_user_can('manage_options')) return false;
-  $uid=(int)get_current_user_id();
-  if ($uid<1 || !class_exists('MAD4B_SCP_Site_Profile')
-    || !MAD4B_SCP_Site_Profile::configured()
-    || !MAD4B_SCP_Site_Profile::origin_enrolled()
-    || !MAD4B_SCP_Site_Profile::site_urls_match_enrollment()
-    || !MAD4B_SCP_Site_Profile::user_is_enrolled($uid)) return false;
-  $env=class_exists('MAD4B_SCP_Environment')?MAD4B_SCP_Environment::effective():wp_get_environment_type();
-  if (!in_array($env,array('local','development','staging'),true)
-      || (function_exists('wp_get_environment_type') && wp_get_environment_type()==='production')) return false;
+  if (PHP_SAPI==='cli' || (defined('WP_CLI') && WP_CLI)
+    || true!==current_user_can('manage_options')) return false;
+  $uid=get_current_user_id();
+  if (!is_int($uid)||$uid<1 || !class_exists('MAD4B_SCP_Site_Profile')
+    || true!==MAD4B_SCP_Site_Profile::configured()
+    || true!==MAD4B_SCP_Site_Profile::origin_enrolled()
+    || true!==MAD4B_SCP_Site_Profile::site_urls_match_enrollment()
+    || true!==MAD4B_SCP_Site_Profile::user_is_enrolled($uid)) return false;
+  if (true!==MAD4B_SCP_Site_Profile::managed_runtime_enabled()) return false;
   // OAuth clients need the platform-verified bearer AND existing authority
   // step-up scope. Browser admin sessions need a genuine WP REST nonce.
-  if (class_exists('MAD4B_SCP_OAuth_Resource_Bridge')
-     && MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()) {
-   return MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope(
-     MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE)
-    && class_exists('MAD4B_SCP_Local_OAuth_Server')
-    && MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is(
-     MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID);
+  if (class_exists('MAD4B_SCP_OAuth_Resource_Bridge')) {
+   $bearer=MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active();
+   if (is_wp_error($bearer)) return false;
+   if (true===$bearer) {
+    return true===MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope(
+      MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE)
+     && class_exists('MAD4B_SCP_Local_OAuth_Server')
+     && true===MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is(
+      MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID);
+   }
   }
-  $nonce=isset($_SERVER['HTTP_X_WP_NONCE'])?(string)$_SERVER['HTTP_X_WP_NONCE']:'';
-  return $nonce!=='' && (bool)wp_verify_nonce($nonce,'wp_rest');
+  $nonce=is_string($_SERVER['HTTP_X_WP_NONCE']??null)?$_SERVER['HTTP_X_WP_NONCE']:'';
+  if (''===$nonce) return false;
+  $nonce_valid=wp_verify_nonce($nonce,'wp_rest');
+  return 1===$nonce_valid || 2===$nonce_valid;
  }
  public static function register_abilities() {
   if (!function_exists('wp_register_ability')) return;
   $methods=array('status'=>true,'plan'=>true,'request'=>false,'decision'=>false,'apply'=>false,'revoke-plan'=>true,'revoke-apply'=>false);
   $properties=array(
    'agent_public_id'=>array('type'=>'string','minLength'=>36,'maxLength'=>64),
-   'scope'=>array('type'=>'string','enum'=>array('all','local','development','staging')),
+   'scope'=>array('type'=>'string','enum'=>array('all','local','development','staging','production')),
    'reason'=>array('type'=>'string','minLength'=>3,'maxLength'=>500),
    'plan_sha256'=>array('type'=>'string','minLength'=>64,'maxLength'=>64),
    'ticket_id'=>array('type'=>'string','minLength'=>36,'maxLength'=>36),
@@ -58,7 +62,7 @@ final class MAD4B_SCP_Agent_Grant_Lifecycle {
   );
   foreach($methods as $method=>$readonly) {
    $name='mad4b/agent-grant-'.$method;
-   if (function_exists('wp_has_ability') && wp_has_ability($name)) continue;
+   if (function_exists('wp_has_ability') && true===wp_has_ability($name)) continue;
    wp_register_ability($name,array(
     'label'=>'Governed Exact Agent Grant '.ucfirst($method),
     'description'=>'Owner-only plan/ticket workflow for an exact nonprivileged Ollama inference grant.',
@@ -92,57 +96,109 @@ final class MAD4B_SCP_Agent_Grant_Lifecycle {
   $out=wp_json_encode($value,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
   return is_string($out)?hash('sha256',$out):'';
  }
+ // WordPress $wpdb ARRAY_A returns decimal DB IDs as strings.
+ // Keep exact integer meaning without coercing arrays, WP_Error or fragments.
+ private static function exact_db_number($value,$allow_zero=false) {
+  if(is_int($value))return $value>=($allow_zero?0:1)?$value:null;
+  if(!is_string($value)||!preg_match('/^(?:0|[1-9][0-9]{0,15})$/D',$value))
+   return null;
+  $number=(int)$value;
+  return (string)$number===$value&&$number>=($allow_zero?0:1)?$number:null;
+ }
  private static function build($input) {
-  if (!is_array($input)) return new WP_Error('mad4b_agent_grant_invalid_input');
-  $id=trim((string)($input['agent_public_id']??''));
-  $scope=sanitize_key((string)($input['scope']??''));
-  $reason=trim((string)($input['reason']??''));
+  if (!is_array($input) || !is_string($input['agent_public_id']??null)
+    || !is_string($input['scope']??null) || !is_string($input['reason']??null))
+   return new WP_Error('mad4b_agent_grant_invalid_input');
+  $id=trim($input['agent_public_id']);
+  $scope=sanitize_key($input['scope']);
+  $reason=trim($input['reason']);
   $env=class_exists('MAD4B_SCP_Environment')?MAD4B_SCP_Environment::effective():wp_get_environment_type();
+  if (!is_string($env)||!in_array($env,array('local','development','staging','production'),true))
+   return new WP_Error('mad4b_agent_grant_environment_unverified');
   if (!preg_match('/^[a-f0-9-]{36}$/D',$id) || strlen($reason)<3 || strlen($reason)>500
    || !in_array($scope,array('all',$env),true))
    return new WP_Error('mad4b_agent_grant_input_invalid','An exact agent, reason and all/matching scope are required.');
   if (!class_exists('MAD4B_SCP_Agent_Registry') || !class_exists('MAD4B_SCP_Servers')
    || !class_exists('MAD4B_SCP_Audit') || !class_exists('MAD4B_SCP_Approval_Tickets')
-   || !MAD4B_SCP_Site_Profile::configured() || !MAD4B_SCP_Site_Profile::origin_enrolled()
-   || !MAD4B_SCP_Site_Profile::site_urls_match_enrollment()
-   || !function_exists('wp_has_ability') || !wp_has_ability(self::ABILITY)
+   || true!==MAD4B_SCP_Site_Profile::configured()
+   || true!==MAD4B_SCP_Site_Profile::origin_enrolled()
+   || true!==MAD4B_SCP_Site_Profile::site_urls_match_enrollment()
+   || !function_exists('wp_has_ability') || true!==wp_has_ability(self::ABILITY)
    || MAD4B_SCP_Servers::provider_for_ability(self::SERVER,self::ABILITY)!==self::PROVIDER)
    return new WP_Error('mad4b_agent_grant_runtime_unavailable');
   $audit=MAD4B_SCP_Audit::storage_status();
-  if(!is_array($audit) || empty($audit['ready']))
+  if(!is_array($audit) || ($audit['ready']??null)!==true)
    return new WP_Error('mad4b_agent_grant_audit_unavailable');
   $agent=MAD4B_SCP_Agent_Registry::get_agent_by_public_id($id);
   if(!is_array($agent) || ($agent['status']??'')!=='enabled'
    || ($agent['slug']??'')!==MAD4B_SCP_Site_Profile::agent_slug())
    return new WP_Error('mad4b_agent_grant_agent_invalid');
-  $subjects=MAD4B_SCP_Agent_Registry::subjects_for_agent((int)$agent['id']);
-  $has_subject=false;
-  foreach($subjects as $s)if(($s['status']??'')==='enabled')$has_subject=true;
+  $agent_id=self::exact_db_number($agent['id']??null);
+  $agent_revision=self::exact_db_number($agent['revision']??null,true);
+  if(null===$agent_id||null===$agent_revision)
+   return new WP_Error('mad4b_agent_grant_agent_identity_invalid');
+  $subjects=MAD4B_SCP_Agent_Registry::subjects_for_agent($agent_id);
+  if (!is_array($subjects)||!$subjects)
+   return new WP_Error('mad4b_agent_grant_subject_required');
+  $has_subject=false;$subject_evidence=array();
+  foreach($subjects as $subject){
+   $subject_id=is_array($subject)?self::exact_db_number($subject['id']??null):null;
+   if (null===$subject_id
+    || !is_string($subject['status']??null)
+    || !is_string($subject['subject_fingerprint']??null)
+    || !preg_match('/^[a-f0-9]{64}$/D',$subject['subject_fingerprint']))
+    return new WP_Error('mad4b_agent_grant_subject_identity_unverified');
+   if($subject['status']==='enabled')$has_subject=true;
+   $subject_evidence[]=array(
+    'id'=>$subject_id,'status'=>$subject['status'],
+    'fingerprint'=>$subject['subject_fingerprint']);
+  }
   if(!$has_subject)return new WP_Error('mad4b_agent_grant_subject_required');
-  $subject_evidence=array();
-  foreach($subjects as $subject)$subject_evidence[]=array(
-   'id'=>(int)$subject['id'],'status'=>(string)$subject['status'],
-   'fingerprint'=>(string)$subject['subject_fingerprint']);
   $ability_object=function_exists('wp_get_ability')?wp_get_ability(self::ABILITY):null;
   if(!is_object($ability_object)||!method_exists($ability_object,'get_input_schema'))
    return new WP_Error('mad4b_agent_grant_ability_schema_missing');
-  $ability_schema_sha=self::canonical($ability_object->get_input_schema());
-  $existing=MAD4B_SCP_Agent_Registry::exact_grant((int)$agent['id'],self::SERVER,self::ABILITY,self::PROVIDER);
+  try { $ability_schema=$ability_object->get_input_schema(); }
+  catch (\Throwable $error) { $ability_schema=null; }
+  if (!is_array($ability_schema)||!$ability_schema)
+   return new WP_Error('mad4b_agent_grant_ability_schema_unverified');
+  $ability_schema_sha=self::canonical($ability_schema);
+  $existing=MAD4B_SCP_Agent_Registry::exact_grant($agent_id,self::SERVER,self::ABILITY,self::PROVIDER);
   if(is_array($existing))return new WP_Error('mad4b_agent_grant_already_allowed');
   if(!is_wp_error($existing) || $existing->get_error_code()!=='mad4b_nhi_grant_missing')
    return new WP_Error('mad4b_agent_grant_explicit_deny_or_error');
-  $rows=MAD4B_SCP_Agent_Registry::grants_for_agent((int)$agent['id'],self::SERVER);
+  $rows=MAD4B_SCP_Agent_Registry::grants_for_agent($agent_id,self::SERVER);
+  if (!is_array($rows)) return new WP_Error('mad4b_agent_grant_inventory_unverified');
   $fingerprints=array();
-  foreach($rows as $r)if(($r['ability_name']??'')===self::ABILITY && ($r['provider']??'')===self::PROVIDER) {
-   $fingerprints[]=array('id'=>(int)$r['id'],'environment'=>(string)$r['environment'],'effect'=>(string)$r['effect']);
-   if(($r['effect']??'')==='allow' && ($r['environment']??'')===$scope)
-    return new WP_Error('mad4b_agent_grant_duplicate_scope');
+  foreach($rows as $r){
+   if (!is_array($r)) return new WP_Error('mad4b_agent_grant_inventory_unverified');
+   if(($r['ability_name']??'')===self::ABILITY && ($r['provider']??'')===self::PROVIDER) {
+    $grant_id=self::exact_db_number($r['id']??null);
+    $grant_env=$r['environment']??null;
+    $effect=$r['effect']??null;
+    if (null===$grant_id||!is_string($grant_env)||!is_string($effect)
+      ||!in_array($effect,array('allow','deny'),true))
+     return new WP_Error('mad4b_agent_grant_inventory_unverified');
+    $fingerprints[]=array('id'=>$grant_id,'environment'=>$grant_env,'effect'=>$effect);
+    if($effect==='allow' && $grant_env===$scope)
+     return new WP_Error('mad4b_agent_grant_duplicate_scope');
+   }
   }
-  $basis=array('contract'=>self::CONTRACT,'site_uuid'=>MAD4B_SCP_Site_Profile::site_uuid(),
-   'site_profile_revision'=>MAD4B_SCP_Site_Profile::revision(),
-   'site_profile_digest'=>MAD4B_SCP_Site_Profile::profile_digest(),
+  // The original site identity and profile revision are immutable inputs
+  // to the grant plan, not untrusted objects that JSON can stringify.
+  $site_uuid=MAD4B_SCP_Site_Profile::site_uuid();
+  $site_revision=self::exact_db_number(MAD4B_SCP_Site_Profile::revision(),true);
+  $site_digest=MAD4B_SCP_Site_Profile::profile_digest();
+  if (!is_string($site_uuid)
+    || !preg_match('/^[a-f0-9-]{36}$/D',$site_uuid)
+    || null===$site_revision
+    || !is_string($site_digest)
+    || !preg_match('/^[a-f0-9]{64}$/D',$site_digest))
+   return new WP_Error('mad4b_agent_grant_site_identity_unverified');
+  $basis=array('contract'=>self::CONTRACT,'site_uuid'=>$site_uuid,
+   'site_profile_revision'=>$site_revision,
+   'site_profile_digest'=>$site_digest,
    'effective_environment'=>$env,
-   'agent_public_id'=>$id,'agent_revision'=>(int)$agent['revision'],
+   'agent_public_id'=>$id,'agent_revision'=>$agent_revision,
    'enabled_subjects_snapshot_sha256'=>self::canonical($subject_evidence),
    'ability_input_schema_sha256'=>$ability_schema_sha,
    'server'=>self::SERVER,'ability'=>self::ABILITY,'provider'=>self::PROVIDER,
@@ -153,7 +209,7 @@ final class MAD4B_SCP_Agent_Grant_Lifecycle {
   return array('plan_sha256'=>$sha,'basis'=>$basis,'agent'=>$agent,
    'ticket_input'=>array('contract'=>self::CONTRACT,'plan_sha256'=>$sha,
     'agent_public_id'=>$id,'scope'=>$scope,
-    'agent_revision'=>(int)$agent['revision'],'site_uuid'=>MAD4B_SCP_Site_Profile::site_uuid()),
+    'agent_revision'=>$agent_revision,'site_uuid'=>$site_uuid),
    'reason'=>$reason);
  }
  public static function status($input=array()) {
@@ -163,11 +219,15 @@ final class MAD4B_SCP_Agent_Grant_Lifecycle {
    return new WP_Error('mad4b_agent_grant_agent_id_required');
   $agent=MAD4B_SCP_Agent_Registry::get_agent_by_public_id($id);
   if(!is_array($agent))return new WP_Error('mad4b_agent_grant_agent_missing');
+  $agent_id=self::exact_db_number($agent['id']??null);
+  $agent_revision=self::exact_db_number($agent['revision']??null,true);
+  if(null===$agent_id||null===$agent_revision)
+   return new WP_Error('mad4b_agent_grant_agent_identity_invalid');
   $grant=MAD4B_SCP_Agent_Registry::exact_grant(
-   (int)$agent['id'],self::SERVER,self::ABILITY,self::PROVIDER);
+   $agent_id,self::SERVER,self::ABILITY,self::PROVIDER);
   return array('contract'=>self::CONTRACT,'agent_public_id'=>$id,
    'agent_status'=>(string)$agent['status'],
-   'agent_revision'=>(int)$agent['revision'],
+   'agent_revision'=>$agent_revision,
    'ability_registered'=>function_exists('wp_has_ability')&&wp_has_ability(self::ABILITY),
    'mapped_provider'=>MAD4B_SCP_Servers::provider_for_ability(self::SERVER,self::ABILITY),
    'effective_grant'=>is_wp_error($grant)?$grant->get_error_code()

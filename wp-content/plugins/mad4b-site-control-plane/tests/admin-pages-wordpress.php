@@ -17,9 +17,16 @@ $pages = array(
 	'mad4b-control-plane' => array( 'MAD4B_SCP_Admin_UI', 'render_page', array( 'overview', 'tasks', 'controls', 'agents', 'approvals', 'mutations', 'consent', 'history', 'audit' ) ),
 	'mad4b-control-plane-security' => array( 'MAD4B_SCP_Security_Forensics', 'render', array( 'overview', 'file-integrity', 'activity-audit', 'plugin-guardian', 'threat-scanner', 'incidents', 'evidence-vault', 'policies' ) ),
 	'mad4b-control-plane-context' => array( 'MAD4B_SCP_Context_Admin_UI', 'render_page', array( 'overview', 'google-drive', 'sources', 'assets', 'quality', 'intelligence' ) ),
+	'mad4b-mcp-principal-mode' => array( 'MAD4B_SCP_Delegation_Mode', 'page', array( '' ) ),
 	'mad4b-control-plane-connection' => array( 'MAD4B_SCP_Connection_Admin_UI', 'render_page', array( 'readiness', 'oauth', 'endpoints', 'isolation', 'certification' ) ),
 	'mad4b-control-plane-chatgpt' => array( 'MAD4B_SCP_ChatGPT_Connection_Admin_UI', 'render_page', array( '' ) ),
 	'mad4b-direct-access-profile' => array( 'MAD4B_SCP_Direct_Profile', 'render_page', array( '' ) ),
+	// Source-owned read-only/admin forms introduced after the original page census.
+	// Render real handlers: do not hide newly registered pages from coverage.
+	'mad4b-content-readiness-alerts' => array( 'MAD4B_SCP_Content_Readiness_Alerts', 'render', array( '' ) ),
+	'mad4b-content-readiness-workflow' => array( 'MAD4B_SCP_Readiness_Workflow_Options', 'render', array( '' ) ),
+	'mad4b-content-completeness' => array( 'MAD4B_SCP_Content_Completeness', 'render', array( '' ) ),
+	'mad4b-frontend-impact-priority' => array( 'MAD4B_SCP_Frontend_Impact_Priority', 'admin', array( '' ) ),
 	'mad4b-control-plane-content-pipeline' => array( 'MAD4B_SCP_Dynamic_Content_Pipeline_Admin', 'render', array( '' ) ),
 	'mad4b-control-plane-site-profile' => array( 'MAD4B_SCP_Site_Profile_Admin', 'render_page', array( '' ) ),
 	'mad4b-control-plane-performance' => array( 'MAD4B_SCP_Admin_Query_Performance_UI', 'render_page', array( '' ) ),

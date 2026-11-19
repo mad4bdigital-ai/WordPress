@@ -58,18 +58,62 @@ final class MAD4B_SCP_Staging_Write_Planning_Guard {
 		$original_permission = $args['permission_callback'];
 		$args['permission_callback'] = static function ( $input = null ) use ( $original_permission ) {
 			$granted = call_user_func( $original_permission, $input );
-			if ( is_wp_error( $granted ) || ! $granted ) return $granted;
+			if ( is_wp_error( $granted ) || false === $granted ) return $granted;
+			if ( true !== $granted ) return new WP_Error( 'mad4b_planner_permission_unverified',
+				'Original approval planning permission was not an exact boolean.' );
 			if ( ! MAD4B_SCP_Staging_Write_Planning_Guard::is_remote_write_transport() ) return true;
 
 			$input = MAD4B_SCP_Staging_Write_Planning_Guard::canonicalize_remote_plan_input( $input );
 			if ( is_wp_error( $input ) ) return $input;
 			$target_guard = MAD4B_SCP_Staging_Write_Planning_Guard::validate_remote_plan_input( $input );
 			if ( is_wp_error( $target_guard ) ) return $target_guard;
-			if ( ! MAD4B_SCP_Policy::can_mutate() ) return new WP_Error( 'mad4b_mutation_disabled', 'Governed write authority is required to create an approval plan.' );
+			if ( true !== MAD4B_SCP_Policy::can_mutate() ) return new WP_Error( 'mad4b_mutation_disabled', 'Governed write authority is required to create an approval plan.' );
 			if ( ! class_exists( 'MAD4B_SCP_Authorization' ) ) return new WP_Error( 'mad4b_authorization_unavailable', 'MAD4B central authorization is unavailable.' );
 
-			$decision = MAD4B_SCP_Authorization::authorize_mutation( self::ABILITY, 'mad4b-admin', 'core', $input );
-			return is_wp_error( $decision ) ? $decision : true;
+			// A user-owned OAuth Agent may initiate a PENDING ticket only.
+			// Never substitute the governed execution Agent for the verified
+			// initiator at central mutation authorization.
+			$principal = class_exists( 'MAD4B_SCP_Identity_Context' )
+				? MAD4B_SCP_Identity_Context::current() : null;
+			if ( is_wp_error( $principal ) ) return $principal;
+			if ( is_array( $principal ) && 'oauth' === (string) ( $principal['subject_type'] ?? '' ) ) {
+				if ( 'oauth2_bearer' !== (string) ( $principal['auth_method'] ?? '' )
+					|| ! class_exists( 'MAD4B_SCP_Delegation_Mode' )
+					|| ! class_exists( 'MAD4B_SCP_Agent_Registry' ) )
+					return new WP_Error( 'mad4b_planner_initiator_unverified', 'Exact verified OAuth initiator is required.' );
+				$user = MAD4B_SCP_Delegation_Mode::authenticated_user( $principal );
+				if ( ! is_object( $user ) || is_wp_error( $user )
+					|| ! is_int( $user->ID ?? null ) || $user->ID < 1
+					|| true !== user_can( $user, 'manage_options' ) )
+					return new WP_Error( 'mad4b_planner_initiator_not_admin', 'The verified OAuth initiator must be an enrolled WordPress administrator.' );
+				$initiator = MAD4B_SCP_Agent_Registry::resolve_agent( $principal );
+				if ( is_wp_error( $initiator ) ) return $initiator;
+				if ( ! is_array( $initiator ) || ! isset( $initiator['id'] )
+					|| ! ( is_int( $initiator['id'] )
+						|| ( is_string( $initiator['id'] ) && ctype_digit( $initiator['id'] ) ) )
+					|| (int) $initiator['id'] < 1
+					|| true !== MAD4B_SCP_Staging_Write_Authority::is_exact_delegated_oauth_agent( $initiator, $user->ID ) )
+					return new WP_Error( 'mad4b_planner_delegated_agent_mismatch', 'The initiating OAuth Agent must belong to the verified WordPress user.' );
+				$permission = MAD4B_SCP_Agent_Registry::exact_grant( (int) $initiator['id'], 'mad4b-write', self::ABILITY, 'core' );
+				if ( is_wp_error( $permission ) ) return $permission;
+				if ( ! is_array( $permission ) || ( $permission['effect'] ?? null ) !== 'allow' )
+					return new WP_Error( 'mad4b_planner_delegated_grant_unverified',
+						'The exact initiating OAuth Agent must have an effective allow grant.' );
+			}
+
+			// approval-plan is mounted on the governed write lane, and the
+			// exact, environment-bound NHI entitlement lives on mad4b-write.
+			// Requiring a second mad4b-admin grant here contradicts the
+			// registered execution lane; it must never create admin authority.
+			$decision = MAD4B_SCP_Authorization::authorize_mutation( self::ABILITY, 'mad4b-write', 'core', $input );
+			if ( is_wp_error( $decision ) ) return $decision;
+			if ( ! is_array( $decision ) || ( $decision['allowed'] ?? null ) !== true
+				|| ( $decision['ability'] ?? null ) !== self::ABILITY
+				|| ( $decision['server_id'] ?? null ) !== 'mad4b-write'
+				|| ( $decision['provider'] ?? null ) !== 'core' )
+				return new WP_Error( 'mad4b_planner_authorization_unverified',
+					'Original native permission must be an exact preflight admission for this write lane.' );
+			return true;
 		};
 
 		// Only remote governed planning receives exact live-candidate binding. The
@@ -278,8 +322,10 @@ final class MAD4B_SCP_Staging_Write_Planning_Guard {
 
 	public static function add_remote_planner_scope( $context ) {
 		if ( ! is_array( $context ) ) return $context;
-		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) || ! MAD4B_SCP_Staging_Write_Authority::effective() ) return $context;
-		if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) return $context;
+		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
+			|| true !== MAD4B_SCP_Staging_Write_Authority::effective() ) return $context;
+		if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' )
+			|| true !== MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) return $context;
 		if ( ! self::is_remote_write_transport() ) return $context;
 
 		$scopes = isset( $context['token_scopes'] ) && is_array( $context['token_scopes'] ) ? $context['token_scopes'] : array();
@@ -290,8 +336,10 @@ final class MAD4B_SCP_Staging_Write_Planning_Guard {
 
 	public static function planner_approval_exception( $required, $ability_name, $provider, $input ) {
 		if ( self::ABILITY !== (string) $ability_name ) return (bool) $required;
-		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) || ! MAD4B_SCP_Staging_Write_Authority::effective() ) return (bool) $required;
-		if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) return (bool) $required;
+		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
+			|| true !== MAD4B_SCP_Staging_Write_Authority::effective() ) return (bool) $required;
+		if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' )
+			|| true !== MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) return (bool) $required;
 		if ( ! self::is_remote_write_transport() ) return (bool) $required;
 		$canonical = self::canonicalize_remote_plan_input( $input );
 		if ( is_wp_error( $canonical ) ) return (bool) $required;
@@ -315,7 +363,7 @@ final class MAD4B_SCP_Staging_Write_Planning_Guard {
 					'ready' => false,
 					'blockers' => array( 'write_current_readiness_unavailable' ),
 				);
-			if ( empty( $readiness['ready'] ) ) {
+			if ( ! is_array( $readiness ) || ( $readiness['ready'] ?? null ) !== true ) {
 				return new WP_Error(
 					'mad4b_remote_plan_authority_not_ready',
 					'Governed write authority is not current-ready for remote approval planning.',
@@ -355,7 +403,7 @@ final class MAD4B_SCP_Staging_Write_Planning_Guard {
 			if ( '' === $expected_agent || ! hash_equals( $expected_agent, $requested_agent ) ) return new WP_Error( 'mad4b_remote_plan_agent_mismatch', 'Remote approval planning is restricted to the dedicated governed write agent.' );
 			if ( 'mad4b-write' !== $server_id ) return new WP_Error( 'mad4b_remote_plan_server_denied', 'Remote approval planning may target only mad4b-write or the bounded normal Developer plane.' );
 			if ( '' === $target_ability || self::ABILITY === $target_ability || 'mad4b/database-raw-query' === $target_ability ) return new WP_Error( 'mad4b_remote_plan_target_denied', 'Remote approval planning cannot target itself or breakglass.' );
-			if ( ! MAD4B_SCP_Staging_Write_Authority::is_write_ability( $target_ability ) ) return new WP_Error( 'mad4b_remote_plan_target_not_write', 'Remote approval planning target is not in the certified governed write inventory.' );
+			if ( true !== MAD4B_SCP_Staging_Write_Authority::is_write_ability( $target_ability ) ) return new WP_Error( 'mad4b_remote_plan_target_not_write', 'Remote approval planning target is not in the certified governed write inventory.' );
 			$expected_provider = MAD4B_SCP_Servers::provider_for_ability( 'mad4b-write', $target_ability );
 			if ( null === $expected_provider ) return new WP_Error( 'mad4b_remote_plan_target_unmounted', 'Remote approval target is not mounted on mad4b-write.' );
 			if ( isset( $input['provider'] ) && '' !== trim( (string) $input['provider'] ) && sanitize_key( (string) $input['provider'] ) !== $expected_provider ) return new WP_Error( 'mad4b_remote_plan_provider_mismatch', 'Remote approval target provider does not match the certified mad4b-write mount.' );

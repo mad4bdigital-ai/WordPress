@@ -1,0 +1,49 @@
+{
+  "contract": "mad4b.adaptive-asset-site-source-reconciliation-readonly.v1",
+  "captured_at_utc": "2026-11-16T03:12:28.367578+00:00",
+  "source_master": "tours.dev.mad4b.com",
+  "company_target": "wayfatours.com",
+  "provider": "mad4b-adaptive-asset-intelligence",
+  "source_files_match_live_master": true,
+  "observed_target_drift_count": 2,
+  "files": [
+    {
+      "relative_path": "wp-content/plugins/mad4b-adaptive-asset-intelligence/includes/class-mad4b-scp-adaptive-asset-intelligence.php",
+      "canonical_source_sha256": "5056d164ea9f85e653c2e92936b23679d8f4bccad7b36be9d271abfcda887b35",
+      "tours_dev_observed_sha256": "5056d164ea9f85e653c2e92936b23679d8f4bccad7b36be9d271abfcda887b35",
+      "wayfatours_observed_sha256": "dca8dbe28945dcb781155ecaedc3f446061a36db3fcc2c2ed72800c2b9957d4e",
+      "wayfatours_parity": "older_drift_requires_governed_release",
+      "auto_promote_to_wayfatours": false
+    },
+    {
+      "relative_path": "wp-content/plugins/mad4b-adaptive-asset-intelligence/includes/class-mad4b-scp-adaptive-presentation-discovery.php",
+      "canonical_source_sha256": "bcf6e6b401dfd6f921977670af4ab433619541d9e3abc748d360f3ed4e9dcbc2",
+      "tours_dev_observed_sha256": "bcf6e6b401dfd6f921977670af4ab433619541d9e3abc748d360f3ed4e9dcbc2",
+      "wayfatours_observed_sha256": "38f591f7c167135e82cb7b2f3cf12d3e3210dfc96449f8cc0603ad43c8d659bd",
+      "wayfatours_parity": "older_drift_requires_governed_release",
+      "auto_promote_to_wayfatours": false
+    },
+    {
+      "relative_path": "wp-content/plugins/mad4b-adaptive-asset-intelligence/includes/class-mad4b-scp-theme-builder-priority-plan.php",
+      "canonical_source_sha256": "9578421171f4adb7539c24a626b7657f339bdd2ae34b762961401275816c2be8",
+      "tours_dev_observed_sha256": "9578421171f4adb7539c24a626b7657f339bdd2ae34b762961401275816c2be8",
+      "wayfatours_observed_sha256": "9578421171f4adb7539c24a626b7657f339bdd2ae34b762961401275816c2be8",
+      "wayfatours_parity": "exact",
+      "auto_promote_to_wayfatours": false
+    },
+    {
+      "relative_path": "wp-content/plugins/mad4b-adaptive-asset-intelligence/mad4b-adaptive-asset-intelligence.php",
+      "canonical_source_sha256": "6b4d8a3d65226fbd30b9e3ba080122b7867997dbb243e5bcbd4964031c9d011e",
+      "tours_dev_observed_sha256": "6b4d8a3d65226fbd30b9e3ba080122b7867997dbb243e5bcbd4964031c9d011e",
+      "wayfatours_observed_sha256": "6b4d8a3d65226fbd30b9e3ba080122b7867997dbb243e5bcbd4964031c9d011e",
+      "wayfatours_parity": "exact",
+      "auto_promote_to_wayfatours": false
+    }
+  ],
+  "target_company_runtime_replaced": false,
+  "target_company_release_authorized": false,
+  "company_override_accepted_without_review": false,
+  "legacy_shim_kept": true,
+  "status": "CANDIDATE_CANONICAL_SOURCE_RECONCILED__WAYFA_PARITY_PENDING_SIGNED_PROMOTION",
+  "note": "Only root readback source bytes and fixed evidence hashes; never a site deployment or ownership approval."
+}

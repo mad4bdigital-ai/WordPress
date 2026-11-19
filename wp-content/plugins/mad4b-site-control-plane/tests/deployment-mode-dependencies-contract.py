@@ -77,8 +77,11 @@ def inspect(plugin_root: Path, core_seed: Path|None=None, expected_wp_head=None,
             release=json.loads(release_path.read_text(encoding="utf-8"))
             releases=cfg.get("mcp_release_pair",{})
             check("mcp_release_pair_policy",
-                  releases.get("current_target_adapter_version")==release.get("target_adapter_version")
-                  and releases.get("supported_transition_versions")==release.get("supported_transition_adapter_versions")
+                  releases.get("installed_version_gate") is False
+                  and "current_target_adapter_version" not in releases
+                  and "supported_transition_versions" not in releases
+                  and releases.get("compatibility_source")==release.get("adapter_compatibility_source")
+                  and releases.get("target_source")==release.get("adapter_release_target_source")
                   and releases.get("pair_certification_required") is True)
         except (OSError,ValueError):
             check("mcp_release_pair_policy",False)

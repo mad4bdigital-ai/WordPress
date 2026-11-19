@@ -25,9 +25,14 @@ function sanitize_key( $v ){ return strtolower( preg_replace( '/[^a-z0-9_\-]/', 
 function get_option( $k, $default = false ){ return isset( $GLOBALS['opts'][ $k ] ) ? $GLOBALS['opts'][ $k ] : $default; }
 function update_option( $k, $v, $autoload = null ){ $GLOBALS['opts'][ $k ] = $v; return true; }
 function is_multisite(){ return false; }
-function is_plugin_active( $file ){ return ! empty( $GLOBALS['addon_active'] ); }
+function is_plugin_active( $file ){
+	return array_key_exists( 'plugin_active_override', $GLOBALS )
+		? $GLOBALS['plugin_active_override'] : ! empty( $GLOBALS['addon_active'] );
+}
 function is_plugin_active_for_network( $file ){ return false; }
 function get_plugins(){
+	if ( array_key_exists( 'installed_plugins_override', $GLOBALS ) )
+		return $GLOBALS['installed_plugins_override'];
 	return array(
 		'mad4b-test-addon/mad4b-test-addon.php' => array( 'Name' => 'MAD4B Test Add-on', 'Version' => $GLOBALS['addon_version'] ),
 	);
@@ -37,6 +42,8 @@ final class MAD4B_SCP_Policy { public static function can_read(){ return true; }
 final class MAD4B_SCP_Audit { public static function record( $a, array $s, $status='ok', $join=false ){ return true; } }
 final class MAD4B_SCP_Provider_Contracts {
 	public static function runtime_status( $provider ) {
+		if ( array_key_exists( 'provider_override', $GLOBALS ) )
+			return $GLOBALS['provider_override'];
 		return array(
 			'provider' => $provider,
 			'status' => ! empty( $GLOBALS['provider_certified'] ) ? 'certified' : 'version_drift',
@@ -130,6 +137,63 @@ $check( 1 === preg_match( '/^[a-f0-9]{64}$/', $binding['pair_fingerprint'] ), 'p
 $check( 1 === preg_match( '/^[a-f0-9]{64}$/', $binding['certification_fingerprint'] ), 'certification fingerprint invalid' );
 $check( false === $binding['production_authorized'], 'execution binding authorized Production' );
 
+// The original Registry must not turn error-shaped provider observations,
+// incompatible raw contract types, or a hashless exact pair into a write binding.
+$check_rejected = static function ( $name ) use ( $check ) {
+    $out = MAD4B_SCP_Addon_Registry::execution_binding( 'mad4b-test-addon' );
+    $check( is_wp_error( $out ), $name . ' must not mint an execution binding' );
+};
+foreach ( array(
+    new WP_Error( 'provider_observation_failed' ),
+    null, false, 'provider_online',
+    array( 'status' => 'certified', 'runtime_contract_ok' => new WP_Error( 'contract_unknown' ), 'installed_version' => '1.0.0' ),
+    array( 'status' => 'certified', 'runtime_contract_ok' => 1, 'installed_version' => '1.0.0' ),
+    array( 'status' => 'certified', 'runtime_contract_ok' => 'true', 'installed_version' => '1.0.0' ),
+) as $untrusted_provider ) {
+    $GLOBALS['provider_override'] = $untrusted_provider;
+    $check_rejected( 'Original provider contract with unverified source' );
+}
+unset( $GLOBALS['provider_override'] );
+foreach ( array( new WP_Error( 'plugin_activity_unknown' ), 'true', 1, null ) as $unknown ) {
+	$GLOBALS['plugin_active_override'] = $unknown;
+	$check_rejected( 'Unverified WordPress is_plugin_active source evidence' );
+}
+unset( $GLOBALS['plugin_active_override'] );
+foreach ( array( new WP_Error( 'plugin_inventory_unavailable' ), 'true', null ) as $unknown ) {
+	$GLOBALS['installed_plugins_override'] = $unknown;
+	$check_rejected( 'Unverified WordPress installed plugin inventory' );
+}
+unset( $GLOBALS['installed_plugins_override'] );
+
+$manifest_without_hash = $manifest;
+unset( $manifest_without_hash['certified_pairs'][0]['addon_main_file_sha256'] );
+file_put_contents( MAD4B_SCP_DIR . 'config/wordpress-addon-catalog.json',
+    json_encode( array( 'contract' => 'mad4b.wordpress-addon-catalog.v1',
+        'addons' => array( $manifest_without_hash ) ) ) );
+$check_rejected( 'Exact add-on pair missing installed main file SHA-256' );
+foreach ( array( new WP_Error( 'certificate_unknown' ), 1, 'true', null ) as $uncertain ) {
+    foreach ( array( 'exact_provider_version_required', 'exact_addon_version_required' ) as $flag ) {
+        $manifest_invalid = $manifest;
+        $manifest_invalid['certification'][ $flag ] = $uncertain;
+        file_put_contents( MAD4B_SCP_DIR . 'config/wordpress-addon-catalog.json',
+            json_encode( array( 'contract' => 'mad4b.wordpress-addon-catalog.v1',
+                'addons' => array( $manifest_invalid ) ) ) );
+        $check_rejected( 'Nonboolean exact provider/add-on version certification declaration' );
+    }
+    $manifest_invalid = $manifest;
+    $manifest_invalid['failure_policy']['reconcile_before_retry_after_uncertain_write'] = $uncertain;
+    file_put_contents( MAD4B_SCP_DIR . 'config/wordpress-addon-catalog.json',
+        json_encode( array( 'contract' => 'mad4b.wordpress-addon-catalog.v1',
+            'addons' => array( $manifest_invalid ) ) ) );
+    $check_rejected( 'Unverified original uncertain-write reconciliation requirement' );
+}
+file_put_contents( MAD4B_SCP_DIR . 'config/wordpress-addon-catalog.json',
+    json_encode( array( 'contract' => 'mad4b.wordpress-addon-catalog.v1',
+        'addons' => array( $manifest ) ) ) );
+
+$check( ! is_wp_error( MAD4B_SCP_Addon_Registry::execution_binding( 'mad4b-test-addon' ) ),
+    'Valid original exact provider/add-on main file pair must survive negative proof checks' );
+
 $guard = MAD4B_SCP_Addon_Registry::mutation_guard( 'mad4b-test-addon', $binding['pair_fingerprint'], $binding['certification_fingerprint'] );
 $check( true === $guard, 'exact planned fingerprints did not pass commit guard' );
 
@@ -145,6 +209,37 @@ $GLOBALS['addon_active'] = false;
 $inactive = MAD4B_SCP_Addon_Registry::execution_binding( 'mad4b-test-addon' );
 $check( is_wp_error( $inactive ) && 'mad4b_addon_pair_not_certified' === $inactive->get_error_code(), 'inactive add-on remained execution eligible' );
 
+// Unrestored original company add-on is a non-authorizing candidate,
+// never an active catalog member or a vacuously certified registry.
+$pending_catalog = array(
+	'contract' => 'mad4b.wordpress-addon-catalog.v1',
+	'addons' => array(),
+	'pending_addon_candidates' => array(
+		array(
+			'addon_id' => 'mad4b-company-management',
+			'state' => 'REVIEW_REQUIRED_SOURCE_NOT_AT_THIS_HEAD',
+			'execution_eligible' => false,
+			'production_authorized' => false,
+		),
+	),
+	'defaults' => array( 'production_authorized' => false ),
+);
+file_put_contents( MAD4B_SCP_DIR . 'config/wordpress-addon-catalog.json', json_encode( $pending_catalog ) );
+$pending_status = MAD4B_SCP_Addon_Registry::status();
+$check( $pending_status['ready'] === false
+	&& $pending_status['state'] === 'no_registered_addons'
+	&& $pending_status['count'] === 0
+	&& $pending_status['pending_candidate_count'] === 1
+	&& $pending_status['production_authorized'] === false,
+	'Empty active registry must not claim readiness for an unrestored source candidate' );
+$pending_binding = MAD4B_SCP_Addon_Registry::execution_binding( 'mad4b-company-management' );
+$check( is_wp_error( $pending_binding ) && $pending_binding->get_error_code() === 'mad4b_addon_not_cataloged',
+	'Historical candidate incorrectly received an execution binding' );
+$pending_commit = MAD4B_SCP_Addon_Registry::mutation_guard(
+	'mad4b-company-management', $binding['pair_fingerprint'], $binding['certification_fingerprint'] );
+$check( is_wp_error( $pending_commit ) && $pending_commit->get_error_code() === 'mad4b_addon_not_cataloged',
+	'Historical candidate incorrectly passed an original mutation guard' );
+
 @unlink( $addon_file );
 @unlink( MAD4B_SCP_DIR . 'config/wordpress-addon-catalog.json' );
 @rmdir( WP_PLUGIN_DIR . '/mad4b-test-addon' );
@@ -152,4 +247,4 @@ $check( is_wp_error( $inactive ) && 'mad4b_addon_pair_not_certified' === $inacti
 @rmdir( MAD4B_SCP_DIR . 'config' );
 @rmdir( MAD4B_SCP_DIR );
 
-echo "mad4b.wordpress-addon-execution-binding.v1: PASS\n";
+echo "PASS: mad4b.wordpress-addon-execution-binding.v1 original exact source assertions\n";

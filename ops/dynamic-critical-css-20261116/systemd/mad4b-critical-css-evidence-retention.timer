@@ -1,0 +1,12 @@
+[Unit]
+Description=MAD4B weekly verified compression of old Chromium evidence without deleting certificates
+
+[Timer]
+OnCalendar=Mon *-*-* 01:20:00 UTC
+RandomizedDelaySec=900
+AccuracySec=60s
+Persistent=true
+Unit=mad4b-critical-css-evidence-retention.service
+
+[Install]
+WantedBy=timers.target

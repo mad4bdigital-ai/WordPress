@@ -1,0 +1,258 @@
+{
+  "contract": "mad4b.company-experience.selective-central-source-integration.v1",
+  "assembled_utc": "2026-11-17T04:33:34.507847+00:00",
+  "central_target_branch": "integration/pr814-821-source-converged-20261115",
+  "central_parent_commit": "9a159182a58feaa7483033c1dd1ec9fbf6dfe320",
+  "source_branch": "fix/price-tag-company-reconcile-20261117",
+  "source_head_commit": "ebfaf01df37a97cb25c24432f4009f3c8b2ae74a",
+  "source_subgraph_not_merged": true,
+  "selection_policy": "exact 29 changed component paths since f8b7e08ce5; no ancestor replay",
+  "source_file_count": 29,
+  "source_files_sha_verified_except_approved_adaptation": true,
+  "files_integrated_exact": 28,
+  "files_adapted_to_prevent_partial_plugin_activation": 1,
+  "components": [
+    {
+      "original_source_path": "ops/company-reconcile/experience-unity-v1/README.md",
+      "central_staged_path": "ops/company-reconcile/experience-unity-v1/README.md",
+      "original_source_sha256": "64ef26ef16ee7d72abcc9ad02b6cc69cd6a0e0c697a947c5bb5d24bc74e37725",
+      "integrated_sha256": "64ef26ef16ee7d72abcc9ad02b6cc69cd6a0e0c697a947c5bb5d24bc74e37725",
+      "status": "source_exact"
+    },
+    {
+      "original_source_path": "ops/company-reconcile/experience-unity-v1/audit_experience.py",
+      "central_staged_path": "ops/company-reconcile/experience-unity-v1/audit_experience.py",
+      "original_source_sha256": "a13f0c0859d4cf99fb2420c50fbe66be75a5e9a44d6f6ec97f1b411831c35b7d",
+      "integrated_sha256": "a13f0c0859d4cf99fb2420c50fbe66be75a5e9a44d6f6ec97f1b411831c35b7d",
+      "status": "source_exact"
+    },
+    {
+      "original_source_path": "ops/company-reconcile/experience-unity-v1/source-target-acceptance-manifest.json",
+      "central_staged_path": "ops/company-reconcile/experience-unity-v1/source-target-acceptance-manifest.json",
+      "original_source_sha256": "ccc7b3b5462784fba2bf79c447411332b455498fcaaa743decfb743179fea923",
+      "integrated_sha256": "ccc7b3b5462784fba2bf79c447411332b455498fcaaa743decfb743179fea923",
+      "status": "source_exact"
+    },
+    {
+      "original_source_path": "ops/company-reconcile/experience-unity-v1/tests/test_experience_contract.py",
+      "central_staged_path": "ops/company-reconcile/experience-unity-v1/tests/test_experience_contract.py",
+      "original_source_sha256": "76e513de76c88ad68e85f1d3d6e04718c27e99a990005f67e197bbf2e2dac5e5",
+      "integrated_sha256": "76e513de76c88ad68e85f1d3d6e04718c27e99a990005f67e197bbf2e2dac5e5",
+      "status": "source_exact"
+    },
+    {
+      "original_source_path": "ops/company-reconcile/home-presentation-v1/README.md",
+      "central_staged_path": "ops/company-reconcile/home-presentation-v1/README.md",
+      "original_source_sha256": "9cae1f3aaa62340960c507e910f7cba1ccd751fa91cb77b3fad51e70e235c2d0",
+      "integrated_sha256": "9cae1f3aaa62340960c507e910f7cba1ccd751fa91cb77b3fad51e70e235c2d0",
+      "status": "source_exact"
+    },
+    {
+      "original_source_path": "ops/company-reconcile/home-presentation-v1/portability-manifest.json",
+      "central_staged_path": "ops/company-reconcile/home-presentation-v1/portability-manifest.json",
+      "original_source_sha256": "ed16cebe3f25c0ebc33f762d709c41c5868f3e2af9aa595bceaef27982613f38",
+      "integrated_sha256": "ed16cebe3f25c0ebc33f762d709c41c5868f3e2af9aa595bceaef27982613f38",
+      "status": "source_exact"
+    },
+    {
+      "original_source_path": "ops/company-reconcile/home-presentation-v1/tests/test_home_sections_source.py",
+      "central_staged_path": "ops/company-reconcile/home-presentation-v1/tests/test_home_sections_source.py",
+      "original_source_sha256": "4a53ac42d86d349732c120a5f18f79eacc5d2c82f5f2867afb3a6b3df275a7b8",
+      "integrated_sha256": "4a53ac42d86d349732c120a5f18f79eacc5d2c82f5f2867afb3a6b3df275a7b8",
+      "status": "source_exact"
+    },
+    {
+      "original_source_path": "ops/company-reconcile/home-presentation-v1/verify_home_sections.py",
+      "central_staged_path": "ops/company-reconcile/home-presentation-v1/verify_home_sections.py",
+      "original_source_sha256": "b2c5350c04f0c9916414cadee250648db2a404b4641849e2c1cd66d8a955cde7",
+      "integrated_sha256": "b2c5350c04f0c9916414cadee250648db2a404b4641849e2c1cd66d8a955cde7",
+      "status": "source_exact"
+    },
+    {
+      "original_source_path": "ops/company-reconcile/price-presentation-v1/README.md",
+      "central_staged_path": "ops/company-reconcile/price-presentation-v1/README.md",
+      "original_source_sha256": "dfee43b5e00114529845e90d17cedbd2b4e037a7162b3e885066fb7d0e195aec",
+      "integrated_sha256": "dfee43b5e00114529845e90d17cedbd2b4e037a7162b3e885066fb7d0e195aec",
+      "status": "source_exact"
+    },
+    {
+      "original_source_path": "ops/company-reconcile/price-presentation-v1/company-live-semantic-discovery-v1.py",
+      "central_staged_path": "ops/company-reconcile/price-presentation-v1/company-live-semantic-discovery-v1.py",
+      "original_source_sha256": "fd0bfa9b9fc999ab43bdd42dd3f67604759609a1abe2f06b45236efa566a5690",
+      "integrated_sha256": "fd0bfa9b9fc999ab43bdd42dd3f67604759609a1abe2f06b45236efa566a5690",
+      "status": "source_exact"
+    },
+    {
+      "original_source_path": "ops/company-reconcile/price-presentation-v1/company-mode-price-policy-reconcile.py",
+      "central_staged_path": "ops/company-reconcile/price-presentation-v1/company-mode-price-policy-reconcile.py",
+      "original_source_sha256": "3e10e39bedf7c5f2e4f885cdc73147dc6a3dabf38cbe4ba36b0e6e42a04267eb",
+      "integrated_sha256": "3e10e39bedf7c5f2e4f885cdc73147dc6a3dabf38cbe4ba36b0e6e42a04267eb",
+      "status": "source_exact"
+    },
+    {
+      "original_source_path": "ops/company-reconcile/price-presentation-v1/company-price-preview-reconcile-observer.py",
+      "central_staged_path": "ops/company-reconcile/price-presentation-v1/company-price-preview-reconcile-observer.py",
+      "original_source_sha256": "2d92927323ce681c2952fbf6653f34f897994bb8aaeb144fc362506642d7ed7e",
+      "integrated_sha256": "2d92927323ce681c2952fbf6653f34f897994bb8aaeb144fc362506642d7ed7e",
+      "status": "source_exact"
+    },
+    {
+      "original_source_path": "ops/company-reconcile/price-presentation-v1/company-reconcile-inventory-refresh-v1.py",
+      "central_staged_path": "ops/company-reconcile/price-presentation-v1/company-reconcile-inventory-refresh-v1.py",
+      "original_source_sha256": "0ca43249133e08a7d515959f8a74348199889eecd33d32bdc3cf04e77e0b03d8",
+      "integrated_sha256": "0ca43249133e08a7d515959f8a74348199889eecd33d32bdc3cf04e77e0b03d8",
+      "status": "source_exact"
+    },
+    {
+      "original_source_path": "ops/company-reconcile/price-presentation-v1/company-reconcile-semantic-admission.py",
+      "central_staged_path": "ops/company-reconcile/price-presentation-v1/company-reconcile-semantic-admission.py",
+      "original_source_sha256": "a01d92ccf2ebc0db8acfb8b1c1de364cee1527ce5e4a97a00b4db19afa0be158",
+      "integrated_sha256": "a01d92ccf2ebc0db8acfb8b1c1de364cee1527ce5e4a97a00b4db19afa0be158",
+      "status": "source_exact"
+    },
+    {
+      "original_source_path": "ops/company-reconcile/price-presentation-v1/country-operating-scope-source-target-receipt-20261117.json",
+      "central_staged_path": "ops/company-reconcile/price-presentation-v1/country-operating-scope-source-target-receipt-20261117.json",
+      "original_source_sha256": "7e23c77d3aea517f8760a81619f1e3ba827c64196b2c843aa3ee98aec05e624d",
+      "integrated_sha256": "7e23c77d3aea517f8760a81619f1e3ba827c64196b2c843aa3ee98aec05e624d",
+      "status": "source_exact"
+    },
+    {
+      "original_source_path": "ops/company-reconcile/price-presentation-v1/country_scope_contract.py",
+      "central_staged_path": "ops/company-reconcile/price-presentation-v1/country_scope_contract.py",
+      "original_source_sha256": "fc98701aa3d42adc7b5a28ee5f4ef92d904d316994eec1eeb223a900d47c8e39",
+      "integrated_sha256": "fc98701aa3d42adc7b5a28ee5f4ef92d904d316994eec1eeb223a900d47c8e39",
+      "status": "source_exact"
+    },
+    {
+      "original_source_path": "ops/company-reconcile/price-presentation-v1/price_tag_contract.py",
+      "central_staged_path": "ops/company-reconcile/price-presentation-v1/price_tag_contract.py",
+      "original_source_sha256": "5754bd884c68b8deb20850b5e4d34c6b5415e76a5b016cfbd031b5c450bbcb2e",
+      "integrated_sha256": "5754bd884c68b8deb20850b5e4d34c6b5415e76a5b016cfbd031b5c450bbcb2e",
+      "status": "source_exact"
+    },
+    {
+      "original_source_path": "ops/company-reconcile/price-presentation-v1/tests/test_country_scope_contract.py",
+      "central_staged_path": "ops/company-reconcile/price-presentation-v1/tests/test_country_scope_contract.py",
+      "original_source_sha256": "f6d621abefda347e52d167ddead1be2a6620e2ce6d8c90a33df0450ebbc6a661",
+      "integrated_sha256": "f6d621abefda347e52d167ddead1be2a6620e2ce6d8c90a33df0450ebbc6a661",
+      "status": "source_exact"
+    },
+    {
+      "original_source_path": "ops/company-reconcile/price-presentation-v1/tests/test_country_scope_source_integration.py",
+      "central_staged_path": "ops/company-reconcile/price-presentation-v1/tests/test_country_scope_source_integration.py",
+      "original_source_sha256": "80e8b23f81865d5821409fd07fe6bd3e515c392ca0b188409c2298224121c0b0",
+      "integrated_sha256": "80e8b23f81865d5821409fd07fe6bd3e515c392ca0b188409c2298224121c0b0",
+      "status": "source_exact"
+    },
+    {
+      "original_source_path": "ops/company-reconcile/price-presentation-v1/tests/test_country_scope_wpml_canonicalization.py",
+      "central_staged_path": "ops/company-reconcile/price-presentation-v1/tests/test_country_scope_wpml_canonicalization.py",
+      "original_source_sha256": "6de93991a5d523e88d32526de1e80e849dc4fe6cc1e28443235fec076cc38d34",
+      "integrated_sha256": "6de93991a5d523e88d32526de1e80e849dc4fe6cc1e28443235fec076cc38d34",
+      "status": "source_exact"
+    },
+    {
+      "original_source_path": "ops/company-reconcile/price-presentation-v1/tests/test_price_mode_policy_order.py",
+      "central_staged_path": "ops/company-reconcile/price-presentation-v1/tests/test_price_mode_policy_order.py",
+      "original_source_sha256": "2b834239a0bdbb2e0a02a8c6e9898586b836ef25477b57bb84d6382c65713a0a",
+      "integrated_sha256": "2b834239a0bdbb2e0a02a8c6e9898586b836ef25477b57bb84d6382c65713a0a",
+      "status": "source_exact"
+    },
+    {
+      "original_source_path": "ops/company-reconcile/price-presentation-v1/tests/test_price_tag_contract.py",
+      "central_staged_path": "ops/company-reconcile/price-presentation-v1/tests/test_price_tag_contract.py",
+      "original_source_sha256": "75f4371bd799a5adc3cc8a974e8499477e0fe1dfbea4c1a00a302c26357c60b0",
+      "integrated_sha256": "75f4371bd799a5adc3cc8a974e8499477e0fe1dfbea4c1a00a302c26357c60b0",
+      "status": "source_exact"
+    },
+    {
+      "original_source_path": "ops/company-reconcile/price-presentation-v1/tests/test_source_registration.py",
+      "central_staged_path": "ops/company-reconcile/price-presentation-v1/tests/test_source_registration.py",
+      "original_source_sha256": "681cf281cafa2c0f9317cc788a623e32507ff58b2e7136d1ccae5f131eee78c3",
+      "integrated_sha256": "972df8a273bffbc9d7987202c7ece478a2a22de230380858e6725a250c64aa9e",
+      "status": "source_registration_adapted_to_quarantined_bootstrap"
+    },
+    {
+      "original_source_path": "ops/company-reconcile/price-presentation-v1/wayfa-selective-repair-evidence-20261117.json",
+      "central_staged_path": "ops/company-reconcile/price-presentation-v1/wayfa-selective-repair-evidence-20261117.json",
+      "original_source_sha256": "433310b99b953c53b787b064b2e2eddd3ff51f7def520c8fc884b79224b62c96",
+      "integrated_sha256": "433310b99b953c53b787b064b2e2eddd3ff51f7def520c8fc884b79224b62c96",
+      "status": "source_exact"
+    },
+    {
+      "original_source_path": "wp-content/mu-plugins/020-mad4b-company-country-operating-scope-v1.php",
+      "central_staged_path": "wp-content/mu-plugins/020-mad4b-company-country-operating-scope-v1.php",
+      "original_source_sha256": "1beb1dc8f897c747f977dd469dbe0b93f45ead95a81b968c54a688329ff9b4bf",
+      "integrated_sha256": "1beb1dc8f897c747f977dd469dbe0b93f45ead95a81b968c54a688329ff9b4bf",
+      "status": "source_exact"
+    },
+    {
+      "original_source_path": "wp-content/plugins/mad4b-commerce/mad4b-commerce.php",
+      "central_staged_path": "ops/company-reconcile/price-presentation-v1/source-overlays/mad4b-commerce-bootstrap.source-candidate.php",
+      "original_source_sha256": "7850d3fac5fc7a0a116f6f34d498300e92029671db60246f45fa788732e75b76",
+      "integrated_sha256": "7850d3fac5fc7a0a116f6f34d498300e92029671db60246f45fa788732e75b76",
+      "status": "quarantined_inert_source_candidate"
+    },
+    {
+      "original_source_path": "wp-content/plugins/mad4b-commerce/modules/commerce/tour-component-structured-price-tags.php",
+      "central_staged_path": "wp-content/plugins/mad4b-commerce/modules/commerce/tour-component-structured-price-tags.php",
+      "original_source_sha256": "4e4ef66c60846d8a58365e4b7abbcd08d7314bd1af084df357be17e2ddce78a7",
+      "integrated_sha256": "4e4ef66c60846d8a58365e4b7abbcd08d7314bd1af084df357be17e2ddce78a7",
+      "status": "source_exact"
+    },
+    {
+      "original_source_path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/class-pricing-workspace.php",
+      "central_staged_path": "wp-content/plugins/mad4b-jetengine/modules/functional-modes/class-pricing-workspace.php",
+      "original_source_sha256": "851fb0c17e02d2784b62be981d5bf0cbb94d1d788679fa509c80af3974383852",
+      "integrated_sha256": "851fb0c17e02d2784b62be981d5bf0cbb94d1d788679fa509c80af3974383852",
+      "status": "source_exact"
+    },
+    {
+      "original_source_path": "wp-content/plugins/mad4b-platform/modules/operations/mad4b-central-homepage-sections.php",
+      "central_staged_path": "wp-content/plugins/mad4b-platform/modules/operations/mad4b-central-homepage-sections.php",
+      "original_source_sha256": "0f1a0cc423c2a7a8c9b761a19ae88a3417ae6dbed0112eb52014186806fef5fc",
+      "integrated_sha256": "0f1a0cc423c2a7a8c9b761a19ae88a3417ae6dbed0112eb52014186806fef5fc",
+      "status": "source_exact"
+    }
+  ],
+  "moved_to_inert_source_overlay": {
+    "wp-content/plugins/mad4b-commerce/mad4b-commerce.php": "ops/company-reconcile/price-presentation-v1/source-overlays/mad4b-commerce-bootstrap.source-candidate.php"
+  },
+  "incomplete_runtime_bootstrap_excluded_from_live_wp_plugin_root": true,
+  "commerce_missing_direct_require_once_paths": [
+    "wp-content/plugins/mad4b-commerce/modules/presentation/extra-selection-ui.php",
+    "wp-content/plugins/mad4b-commerce/modules/presentation/company-top-cities-eligibility.php",
+    "wp-content/plugins/mad4b-commerce/modules/presentation/company-listing-card-actions.php",
+    "wp-content/plugins/mad4b-commerce/modules/presentation/company-global-offer-empty-wrapper.php",
+    "wp-content/plugins/mad4b-commerce/modules/presentation/company-responsive-source-visual-v1.php",
+    "wp-content/plugins/mad4b-commerce/modules/presentation/extra-quote-readonly-runtime-v1.php",
+    "wp-content/plugins/mad4b-commerce/modules/presentation/company-presentation-form6-price-readonly-v1.php",
+    "wp-content/plugins/mad4b-commerce/modules/presentation/unified-date-presentation-v1.php",
+    "wp-content/plugins/mad4b-commerce/modules/compat/local-presentation-fluent-projection-v1.php",
+    "wp-content/plugins/mad4b-commerce/modules/presentation/company-price-preview-reconcile-provider-v1.php",
+    "wp-content/plugins/mad4b-commerce/modules/presentation/company-system-appearance-v1.php",
+    "wp-content/plugins/mad4b-commerce/modules/presentation/company-admin-ui-translation-contentjobs-v1.php",
+    "wp-content/plugins/mad4b-commerce/modules/presentation/local-presentation-selection-registry-v1.php",
+    "wp-content/plugins/mad4b-commerce/modules/commerce/374-mad4b-rail-woocommerce-settings.php",
+    "wp-content/plugins/mad4b-commerce/modules/compat/pricing-fx-auto-refresh.php",
+    "wp-content/plugins/mad4b-commerce/modules/commerce/pricing-header-switcher.php",
+    "wp-content/plugins/mad4b-commerce/modules/commerce/local-tour-public-price-v1.php",
+    "wp-content/plugins/mad4b-commerce/modules/presentation/company-mode-pricing-defaults-v1.php"
+  ],
+  "commerce_missing_direct_require_once_count": 18,
+  "source_owner_plugin_baselines_present": {
+    "mad4b-platform.full_bootstrap": false,
+    "mad4b-jetengine.full_bootstrap": false,
+    "mad4b-commerce.complete_source_loader": false
+  },
+  "runtime_release_ready": false,
+  "original313_certified": false,
+  "fleet_deployment_authorized": false,
+  "production_files_changed": false,
+  "critical_css_or_governance_overwritten": false,
+  "source_only_merge_pending_runtime_owner_reconciliation": true,
+  "read_only_live_evidence_path": "/opt/mad4b-company-provisioning/reports/company-experience-unity-20261117.json",
+  "scope_of_tests": "source fingerprint parity, component unit tests, PHP syntax, source-only admission",
+  "disclaimer": "Central source provenance acceptance is not Original313 release acceptance or runtime deploy."
+}

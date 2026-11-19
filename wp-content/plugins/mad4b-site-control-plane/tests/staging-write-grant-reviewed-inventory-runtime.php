@@ -46,8 +46,8 @@ $expected = array(
     'mad4b/runtime-release-set-apply' => 'core',
     'mad4b/staging-offline-attestor-enroll-apply' => 'core',
     'mad4b/taxonomy-update-term' => 'core',
-    'mad4b/translation-link-posts' => 'core',
-    'mad4b/translation-set-post-language' => 'core',
+    'mad4b/translation-link-posts' => 'translation',
+    'mad4b/translation-set-post-language' => 'translation',
     'media/import-external' => 'media',
     'media/remote-import-apply' => 'media',
 );
@@ -89,12 +89,33 @@ verify_grants( $allowed === array_replace( $allowed, array() )
     'Provider policy remains finite and unique.' );
 $GLOBALS['test_env'] = 'production';
 $production = $c::allowed_ability_providers();
-verify_grants( !isset( $production['jetsmartfilters/update-filter-meta'] ),
-    'The newly certified JetSmartFilters writer cannot expand Production grants.' );
+verify_grants( ( $production['jetsmartfilters/update-filter-meta'] ?? '' ) === 'jetsmartfilters',
+    'JetSmartFilters certified metadata writer must use the same source provider on Production.' );
+// Preserve the original execution purpose for exact Staging support lanes;
+ // operational content and media capabilities are environment-neutral only as
+ // reviewed provider metadata, not as grants or release authority.
+$staging_only_from_expected = array(
+    'mad4b/acceptance-target-provision',
+    'mad4b/business-activity-wpai-observation-arm',
+    'mad4b/control-plane-selected-head-apply',
+    'mad4b/deployment-binding-setup-apply',
+    'mad4b/native-recovery-cleanup',
+    'mad4b/native-recovery-start',
+    'mad4b/runtime-release-set-apply',
+    'mad4b/staging-offline-attestor-enroll-apply',
+);
 foreach ( $expected as $ability => $provider ) {
-    verify_grants( !isset( $production[ $ability ] ),
-        'New Staging-reviewed mutation cannot be included in Production: ' . $ability );
+    if ( in_array( $ability, $staging_only_from_expected, true ) ) {
+        verify_grants( ! isset( $production[ $ability ] ),
+            'Exact Staging rehearsal or source control operation must retain its own boundary: ' . $ability );
+    } else {
+        verify_grants( ( $production[ $ability ] ?? '' ) === $provider,
+            'Company operation must have the same reviewed source provider: ' . $ability );
+    }
 }
+verify_grants( ( $production['mad4b/attachment-transfer'] ?? '' ) === 'core'
+    && ( $production['mad4b/optional-governance-apply'] ?? '' ) === 'core',
+    'Scoped media transfer and exact advisory governance share one provider on both environments.' );
 verify_grants( ! isset( $production['mad4b/provider-connection-refresh'] ),
     'Provider token refresh must not be automatically granted on Production.' );
 foreach ( $native_reviewed as $ability => $provider ) {
@@ -107,4 +128,4 @@ foreach ( $expected as $ability => $provider ) {
     verify_grants( ( $retire[ $ability ] ?? '' ) === $provider,
         'Current Staging review can retire exactly its stale version: ' . $ability );
 }
-echo "PASS: 38 Feature 007 plus 3 native Staging pairs, exact core grants only; no Production expansion\n";
+echo "PASS: 38 reviewed Staging pairs classified by execution purpose; shared company providers match Production, no grants\n";

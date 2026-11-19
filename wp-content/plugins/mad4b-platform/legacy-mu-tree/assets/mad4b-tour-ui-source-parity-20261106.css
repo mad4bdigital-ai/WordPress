@@ -1,0 +1,69 @@
+/* Source-matched Fluent Form estimate panel. All selectors limited to single tours. */
+body.single-tours-and-activities .shared-fluent-server-quote {
+  display:flex!important;flex-direction:column!important;
+  padding:12px!important;margin-block:12px!important;
+  background:#fff!important;border:1px solid #d6e1ef!important;border-radius:12px!important;
+  box-sizing:border-box!important;min-width:0!important;
+}
+body.single-tours-and-activities .shared-fluent-server-quote .shared-price-title {
+  display:block!important;margin:0!important;padding:0!important;
+  color:#456b90!important;font-size:13px!important;font-weight:650!important;line-height:18px!important;
+}
+body.single-tours-and-activities .shared-fluent-server-quote .mad4b-tour-estimate-caption {
+  display:block!important;margin:3px 0 4px!important;padding:0!important;
+  color:#68768a!important;font-size:11px!important;line-height:1.4!important;
+  font-weight:400!important;letter-spacing:0!important;text-align:start!important;
+}
+body.single-tours-and-activities .shared-fluent-server-quote .shared-form6-rate-chooser {
+  display:flex!important;flex-direction:column!important;font-size:12px!important;
+  font-weight:500!important;min-width:0!important;margin-block:12px!important;
+}
+/* A Direct-price trip has no Rate to select. Honor the original hidden control. */
+body.single-tours-and-activities .shared-fluent-server-quote .shared-form6-rate-chooser[hidden] {
+  display:none!important;
+}
+body.single-tours-and-activities .shared-fluent-server-quote .shared-form6-rate-chooser > span {
+  font-size:12px!important;font-weight:600!important;line-height:1.4!important;
+}
+body.single-tours-and-activities .shared-fluent-server-quote .shared-form6-rate-selector {
+  min-height:44px!important;padding:5px 10px!important;border-radius:7px!important;
+  font-size:13px!important;max-width:100%!important;
+}
+body.single-tours-and-activities .shared-fluent-server-quote output {
+  display:flex!important;min-width:0!important;font-size:13px!important;
+  font-weight:600!important;line-height:1.4!important;margin:2px 0!important;
+}
+body.single-tours-and-activities .shared-fluent-server-quote .shared-price-note {
+  display:block!important;color:#68768a!important;font-size:10.5px!important;
+  font-weight:400!important;line-height:1.45!important;margin:0!important;
+}
+/* Original source Rate header buttons must not inherit transparent button resets. */
+body.single-tours-and-activities .elementor-48317 .jet-toggle.mad4b-rate-header-action-enabled > button.mad4b-rate-header-select {
+  background:#fffdf8!important;color:#326993!important;border:2px solid #5686b0!important;
+}
+body.single-tours-and-activities .elementor-48317 .jet-toggle.mad4b-rate-header-action-enabled > button.mad4b-rate-header-select[data-rate-tier="gold"] {
+  background:#af7b08 linear-gradient(95deg,#af7b08,#c59818)!important;
+  color:#fff!important;border:2px solid #b5850c!important;
+}
+body.single-tours-and-activities .elementor-48317 .jet-toggle.mad4b-rate-header-action-enabled > button.mad4b-rate-header-select:hover:not(:disabled) {
+  filter:brightness(.95);
+}
+body.single-tours-and-activities .elementor-48317 .jet-toggle.mad4b-rate-header-action-enabled > button.mad4b-rate-header-select:focus-visible {
+  outline:3px solid #1a659b!important;outline-offset:2px!important;
+}
+/* Sticky inquiry: body overflow-x:hidden created a scroll ancestor and broke sticky. */
+@media(min-width:1025px){
+ body.single-tours-and-activities{overflow-x:clip!important;overflow-y:visible!important;}
+ body.single-tours-and-activities .elementor-24784 .elementor-element-0ac9e6b {
+  position:sticky!important;top:24px!important;align-self:flex-start!important;
+  max-height:calc(100dvh - 48px)!important;overflow-x:hidden!important;overflow-y:auto!important;
+  scrollbar-gutter:stable;scrollbar-width:thin;scrollbar-color:#b48a46 #f5f3ef;
+  overscroll-behavior-y:contain;
+ }
+ body.single-tours-and-activities .elementor-24784 .elementor-element-0ac9e6b::-webkit-scrollbar{width:8px;}
+ body.single-tours-and-activities .elementor-24784 .elementor-element-0ac9e6b::-webkit-scrollbar-track{background:#f5f3ef;border-radius:8px;}
+ body.single-tours-and-activities .elementor-24784 .elementor-element-0ac9e6b::-webkit-scrollbar-thumb{background:#b48a46;border-radius:8px;}
+}
+@media(prefers-reduced-motion:reduce){
+ body.single-tours-and-activities .mad4b-rate-header-select{transition:none!important;}
+}

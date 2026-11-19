@@ -48,7 +48,7 @@ class StandalonePackageTests(unittest.TestCase):
         digest = builder.sha(self.adapter)
         (self.root / builder.POLICY).write_text(json.dumps({
             "contract": "mad4b.runtime-release-policy.v1",
-            "target_adapter_version": "0.7.0"}), encoding="utf-8")
+            "adapter_release_target_source": "certified_runtime_release_set.mcp_adapter"}), encoding="utf-8")
         (self.root / builder.PROFILES).write_text(json.dumps({
             "providers": {"mcp_adapter": {"0.7.0": {
                 "version": "0.7.0", "archive_sha256": digest,
@@ -124,6 +124,27 @@ class StandalonePackageTests(unittest.TestCase):
         (self.root / builder.PLUGIN / "includes/example.php").write_text("<?php echo 1;")
         with self.assertRaisesRegex(builder.BuildBlocked, "source_worktree_dirty"):
             builder.build(self.root, self.out, self.head, self.adapter)
+
+    def test_retired_fixed_adapter_target_cannot_be_resurrected(self):
+        policy_path = self.root / builder.POLICY
+        old = json.loads(policy_path.read_text())
+        old['target_adapter_version'] = '0.7.0'
+        policy_path.write_text(json.dumps(old))
+        with self.assertRaisesRegex(builder.BuildBlocked, "source_worktree_dirty"):
+            builder.build(self.root, self.out, self.head, self.adapter)
+        # Even a deliberately direct resolver call rejects this obsolete key.
+        with self.assertRaisesRegex(builder.BuildBlocked, "retired_adapter_version_floor_reintroduced"):
+            builder.certified_adapter(self.root, self.adapter)
+
+    def test_ambiguous_certified_archive_identity_denied(self):
+        profile_path = self.root / builder.PROFILES
+        catalog = json.loads(profile_path.read_text())
+        duplicate = dict(catalog['providers']['mcp_adapter']['0.7.0'])
+        duplicate['version'] = '0.7.1'
+        catalog['providers']['mcp_adapter']['0.7.1'] = duplicate
+        profile_path.write_text(json.dumps(catalog))
+        with self.assertRaisesRegex(builder.BuildBlocked, "certified_adapter_archive_identity_unmatched_or_ambiguous"):
+            builder.certified_adapter(self.root, self.adapter)
 
     def test_modified_adapter_rejected(self):
         self.adapter.write_bytes(b"tampered")

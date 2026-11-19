@@ -2,6 +2,9 @@
 /* Native policy reducer: no WP DB, network, approval or content mutations. */
 define( 'ABSPATH', dirname( __DIR__ ) . '/' );
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-brand-core-control-loop.php';
+// Real WordPress always supplies apply_filters. The default fixture must
+// preserve its unchanged value, never fabricate an alternative asset store.
+function apply_filters( $hook, $value, ...$args ) { return $value; }
 function check_loop( $truth, $message ) {
 	if ( ! $truth ) { fwrite( STDERR, "FAIL: " . $message . "\n" ); exit( 1 ); }
 }

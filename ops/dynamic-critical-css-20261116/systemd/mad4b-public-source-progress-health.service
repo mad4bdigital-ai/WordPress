@@ -1,0 +1,25 @@
+[Unit]
+Description=MAD4B autonomous source CSS progress SLO (not just timer liveness)
+OnFailure=mad4b-alert-handler@%n.service
+After=local-fs.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/usr/bin/python3 /opt/mad4b-company-provisioning/worktrees/pr814-converged-local-20261115/ops/dynamic-critical-css-20261116/source-progress-health.py
+TimeoutStartSec=45
+Nice=19
+CPUQuota=40%
+MemoryMax=128M
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/mad4b-company-provisioning/reports/critical-css-health-v1
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+LockPersonality=true
+CapabilityBoundingSet=
+UMask=0077

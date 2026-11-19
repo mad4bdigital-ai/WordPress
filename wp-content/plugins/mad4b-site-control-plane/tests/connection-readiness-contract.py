@@ -355,12 +355,19 @@ for marker in (
     "'repair_never_evicts_existing_adapter_session' => true",
     "'oauth_client_bound' => true",
     "CHATGPT_CLIENT_ID = 'https://chatgpt.com/oauth/client.json'",
-    "CERTIFIED_STATEFUL_ADAPTER_VERSION = '0.6.1'",
+    # Provider Registry is the only release-certification source. An old
+    # 0.6.1 hardcoded constant would reject valid 0.7.x ABI evidence and
+    # invite version-only changes without exact Transport checks.
+    "self::stateful_runtime_version()",
+    "'certified' === $status['status']",
+    "isset( $status['certified_version'], $status['installed_version'] )",
     "session_repair_supported_runtime()",
     "certified_adapter_runtime_integrity_ok()",
     "MAD4B_SCP_Provider_Contracts::runtime_status( 'mcp_adapter', true )",
-    "'certified_stateful_runtime' => self::session_repair_supported_runtime()",
-    "'exact_adapter_version_required' => true",
+    "'certified_stateful_runtime' => true === self::$runtime_integrity_ok",
+    "'exact_adapter_version_required' => false",
+    "hash_equals( $runtime_version, (string) $status['certified_version'] )",
+    "hash_equals( $runtime_version, (string) $status['installed_version'] )",
     "'certified_runtime_integrity_required' => true",
     "'runtime_integrity_checked_only_on_candidate_repair_paths' => true",
     "'runtime_integrity_transport_file_count' => 4",

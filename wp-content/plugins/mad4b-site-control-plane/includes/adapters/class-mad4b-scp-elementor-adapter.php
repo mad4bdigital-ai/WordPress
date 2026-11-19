@@ -1,6 +1,7 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 require_once __DIR__ . '/../integrations/class-mad4b-scp-elementor-bridge-compatibility.php';
+require_once __DIR__ . '/../class-mad4b-scp-elementor-native-template-parity.php';
 
 final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 	const ROOT_PARENT = '__root__';
@@ -420,14 +421,7 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 		$elements = $document['elements'];
 		$mutated = $this->apply_widget_settings( $elements, (string) $input['widget_id'], $settings, $remove, 0 );
 		if ( 1 !== $mutated ) return new WP_Error( 'mad4b_elementor_widget_cardinality_changed', 'Target widget must exist exactly once.' );
-		$ids = array(); $errors = array(); $this->validate_elements( $elements, $ids, $errors, 0 );
-		if ( ! empty( $errors ) ) return new WP_Error( 'mad4b_elementor_document_invalid_after_write', 'Bounded widget mutation would make the Elementor document structurally invalid.', array( 'errors' => array_slice( $errors, 0, 20 ) ) );
-		$encoded = wp_json_encode( $elements );
-		if ( false === $encoded || strlen( $encoded ) > 4194304 ) return new WP_Error( 'mad4b_elementor_encode_failed', 'Unable to encode a bounded Elementor document.' );
-		$result = update_post_meta( $id, '_elementor_data', wp_slash( $encoded ) );
-		if ( false === $result && (string) get_post_meta( $id, '_elementor_data', true ) !== $encoded ) return new WP_Error( 'mad4b_elementor_update_failed', 'Unable to update Elementor document.' );
-		$this->clear_elementor_cache();
-		$after = $this->load_document( $id );
+		$after = $this->persist_elements( $id, $elements, $document['sha256'] );
 		if ( is_wp_error( $after ) ) return $after;
 		$read_target = $this->widget_target( $after['elements'], (string) $input['widget_id'] );
 		if ( is_wp_error( $read_target ) ) return $read_target;
@@ -458,7 +452,7 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 		$elements = $target['elements'];
 		$inserted = $this->insert_element( $elements, $parent_id, $index, $source_element['element'] );
 		if ( 1 !== $inserted ) return new WP_Error( 'mad4b_elementor_clone_parent_cardinality', 'Target parent must exist exactly once.' );
-		$after = $this->persist_elements( $target_id, $elements ); if ( is_wp_error( $after ) ) return $after;
+		$after = $this->persist_elements( $target_id, $elements, $target['sha256'] ); if ( is_wp_error( $after ) ) return $after;
 		$read = $this->element_target( $after['elements'], (string) $input['source_element_id'] ); if ( is_wp_error( $read ) ) return $read;
 		if ( $parent_id !== $read['parent_id'] || $index !== (int) $read['index'] || $this->hash_value( $source_element['element'] ) !== $this->hash_value( $read['element'] ) ) return new WP_Error( 'mad4b_elementor_clone_readback_mismatch', 'Cloned subtree readback does not match the exact source and requested location.' );
 		MAD4B_SCP_Audit::record( 'elementor/clone-subtree', array( 'source_post_id' => $source_id, 'target_post_id' => $target_id, 'source_element_id' => (string) $input['source_element_id'], 'target_parent_id' => $parent_id, 'target_index' => $index, 'before_sha256' => $target['sha256'], 'after_sha256' => $after['sha256'], 'subtree_sha256' => $this->hash_value( $source_element['element'] ), 'mode' => 'certified_governed_structural_fallback' ) );
@@ -479,7 +473,7 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 		if ( 1 !== $count || ! is_array( $removed ) ) return new WP_Error( 'mad4b_elementor_move_cardinality', 'Element to move must exist exactly once.' );
 		$insert_guard = $this->validate_insert_target( $elements, $parent_id, $index ); if ( is_wp_error( $insert_guard ) ) return $insert_guard;
 		if ( 1 !== $this->insert_element( $elements, $parent_id, $index, $removed ) ) return new WP_Error( 'mad4b_elementor_move_parent_cardinality', 'Target parent must exist exactly once after removal.' );
-		$after = $this->persist_elements( $id, $elements ); if ( is_wp_error( $after ) ) return $after;
+		$after = $this->persist_elements( $id, $elements, $document['sha256'] ); if ( is_wp_error( $after ) ) return $after;
 		$read = $this->element_target( $after['elements'], (string) $input['element_id'] ); if ( is_wp_error( $read ) ) return $read;
 		if ( $parent_id !== $read['parent_id'] || $index !== (int) $read['index'] || $this->hash_value( $removed ) !== $this->hash_value( $read['element'] ) ) return new WP_Error( 'mad4b_elementor_move_readback_mismatch', 'Moved element readback does not match the requested final location.' );
 		MAD4B_SCP_Audit::record( 'elementor/move-element', array( 'post_id' => $id, 'element_id' => (string) $input['element_id'], 'from_parent_id' => $old['parent_id'], 'from_index' => $old['index'], 'target_parent_id' => $parent_id, 'target_index' => $index, 'before_sha256' => $document['sha256'], 'after_sha256' => $after['sha256'], 'mode' => 'certified_governed_structural_fallback' ) );
@@ -495,7 +489,7 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 		$elements = $document['elements']; $removed = null; $old = array();
 		$count = $this->remove_element( $elements, (string) $input['element_id'], self::ROOT_PARENT, 0, $removed, $old );
 		if ( 1 !== $count ) return new WP_Error( 'mad4b_elementor_delete_cardinality', 'Element to delete must exist exactly once.' );
-		$after = $this->persist_elements( $id, $elements ); if ( is_wp_error( $after ) ) return $after;
+		$after = $this->persist_elements( $id, $elements, $document['sha256'] ); if ( is_wp_error( $after ) ) return $after;
 		$read = $this->element_target( $after['elements'], (string) $input['element_id'] );
 		if ( ! is_wp_error( $read ) || 'mad4b_elementor_element_missing' !== $read->get_error_code() ) return new WP_Error( 'mad4b_elementor_delete_readback_mismatch', 'Deleted element is still present after mutation.' );
 		MAD4B_SCP_Audit::record( 'elementor/delete-element', array( 'post_id' => $id, 'element_id' => (string) $input['element_id'], 'from_parent_id' => $old['parent_id'], 'from_index' => $old['index'], 'before_sha256' => $document['sha256'], 'after_sha256' => $after['sha256'], 'deleted_subtree_sha256' => $this->hash_value( $removed ), 'mode' => 'certified_governed_structural_fallback' ) );
@@ -517,7 +511,7 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 		if ( 1 !== preg_match( '/^[A-Za-z0-9_-]{1,100}$/', $setting ) ) return new WP_Error( 'mad4b_elementor_dynamic_setting_invalid', 'Target dynamic setting name is invalid.' );
 		$elements = $target_doc['elements'];
 		if ( 1 !== $this->apply_dynamic_tag( $elements, (string) $input['target_element_id'], $setting, $tag, 0 ) ) return new WP_Error( 'mad4b_elementor_dynamic_target_cardinality', 'Target dynamic-tag element must exist exactly once.' );
-		$after = $this->persist_elements( $target_id, $elements ); if ( is_wp_error( $after ) ) return $after;
+		$after = $this->persist_elements( $target_id, $elements, $target_doc['sha256'] ); if ( is_wp_error( $after ) ) return $after;
 		$read = $this->element_target( $after['elements'], (string) $input['target_element_id'] ); if ( is_wp_error( $read ) ) return $read;
 		$read_tag = $this->dynamic_tag_from_source( $read['element'], $setting );
 		if ( is_wp_error( $read_tag ) || ! hash_equals( $tag, (string) $read_tag ) ) return new WP_Error( 'mad4b_elementor_dynamic_tag_readback_mismatch', 'Dynamic tag readback does not match the exact allowlisted source binding.' );
@@ -539,7 +533,7 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 		$tag = $this->build_elementor_dynamic_tag( $id, (string) $input['element_id'], $setting, $tag_name, $settings ); if ( is_wp_error( $tag ) ) return $tag;
 		$elements = $document['elements'];
 		if ( 1 !== $this->apply_dynamic_tag( $elements, (string) $input['element_id'], $setting, $tag, 0 ) ) return new WP_Error( 'mad4b_elementor_dynamic_target_cardinality', 'Target dynamic-tag element must exist exactly once.' );
-		$after = $this->persist_elements( $id, $elements ); if ( is_wp_error( $after ) ) return $after;
+		$after = $this->persist_elements( $id, $elements, $document['sha256'] ); if ( is_wp_error( $after ) ) return $after;
 		$read = $this->element_target( $after['elements'], (string) $input['element_id'] ); if ( is_wp_error( $read ) ) return $read;
 		$read_tag = $this->dynamic_tag_from_source( $read['element'], $setting );
 		if ( is_wp_error( $read_tag ) || ! hash_equals( $tag, (string) $read_tag ) ) return new WP_Error( 'mad4b_elementor_dynamic_tag_readback_mismatch', 'Optional Bridge dynamic tag readback does not match the generated Elementor binding.' );
@@ -608,13 +602,8 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 		$elements = $document['elements'];
 		$replaced = $this->replace_widget_settings( $elements, $widget_id, $state['settings'], 0 );
 		if ( 1 !== $replaced ) return new WP_Error( 'mad4b_elementor_restore_cardinality', 'Target widget must exist exactly once during restore.' );
-		$ids = array(); $errors = array(); $this->validate_elements( $elements, $ids, $errors, 0 );
-		if ( ! empty( $errors ) ) return new WP_Error( 'mad4b_elementor_restore_invalid_document', 'Rollback would create an invalid Elementor document.' );
-		$encoded = wp_json_encode( $elements ); if ( false === $encoded || strlen( $encoded ) > 4194304 ) return new WP_Error( 'mad4b_elementor_restore_encode_failed', 'Unable to encode Elementor rollback document.' );
-		$result = update_post_meta( $id, '_elementor_data', wp_slash( $encoded ) );
-		if ( false === $result && (string) get_post_meta( $id, '_elementor_data', true ) !== $encoded ) return new WP_Error( 'mad4b_elementor_restore_failed', 'Unable to restore Elementor widget settings.' );
-		$this->clear_elementor_cache();
-		return true;
+		$after = $this->persist_elements( $id, $elements, $document['sha256'] );
+		return is_wp_error( $after ) ? $after : true;
 	}
 
 
@@ -692,7 +681,7 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 		} else {
 			return new WP_Error( 'mad4b_elementor_restore_operation_invalid', 'Unknown Elementor structural rollback operation.' );
 		}
-		$after = $this->persist_elements( $post_id, $elements );
+		$after = $this->persist_elements( $post_id, $elements, $document['sha256'] );
 		return is_wp_error( $after ) ? $after : true;
 	}
 
@@ -705,7 +694,16 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 		return $document;
 	}
 
-	private function persist_elements( $post_id, array $elements ) {
+	private function persist_elements( $post_id, array $elements, $expected_sha256 ) {
+		// Re-read immediately before persistence. Do not silently replace a
+		// concurrently changed original Elementor template.
+		$before = $this->load_document( absint( $post_id ) );
+		if ( is_wp_error( $before ) ) return $before;
+		$expected = strtolower( trim( (string) $expected_sha256 ) );
+		if ( ! preg_match( '/^[a-f0-9]{64}$/', $expected ) || ! hash_equals( $before['sha256'], $expected ) )
+			return new WP_Error( 'mad4b_elementor_stale_document', 'Original Elementor document changed before persistence.', array( 'current_sha256' => $before['sha256'] ) );
+		$guard = MAD4B_SCP_Elementor_Native_Template_Parity::verify( $before['elements'], $elements );
+		if ( is_wp_error( $guard ) ) return $guard;
 		$ids = array(); $errors = array(); $this->validate_elements( $elements, $ids, $errors, 0 );
 		if ( ! empty( $errors ) ) return new WP_Error( 'mad4b_elementor_document_invalid_after_write', 'Bounded structural mutation would make the Elementor document invalid.', array( 'errors' => array_slice( $errors, 0, 20 ) ) );
 		$encoded = wp_json_encode( $elements );

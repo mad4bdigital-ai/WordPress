@@ -1,0 +1,53 @@
+{
+  "contract": "mad4b.journey-visible-text-successor-exact-source-review.v1",
+  "status": "reviewed_for_ci_only",
+  "source_only": true,
+  "authorizing": false,
+  "production_authorized": false,
+  "original313_signed_receipts_issued": false,
+  "live_evidence_required": true,
+  "historical_review_manifest": "docs/release-coverage/pr814-journey-source-successors-20261115.json",
+  "historical_manifest_sha256": "1015b2848b3fedfac763e03f0eaf5ad01b5540a04fbd0727a9c173fc69d38284",
+  "historical_source_blob_sha": "843f2456ca253a1b92fbfb083921b96597d6bd26",
+  "successor_source_commit": "424b0c9c1377eb62dad8ccdb04e5ed85fd82dd59",
+  "source_path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tour-highlights-presentation-v1.php",
+  "current_blob_sha": "1d776e1760612397ba79fb55202d6dfad92dc359",
+  "current_sha256": "1a10b7920259aa10d7e54b648b7364ff767c5a263448463c3ec69285f8275eec",
+  "current_bytes": 35222,
+  "approved_delta_scope": "read_only_tour_highlights_unicode_whitespace_display_eligibility",
+  "compatible_display_modes": [
+    "split",
+    "accordion",
+    "cards",
+    "story"
+  ],
+  "no_editorial_source_mutation": true,
+  "regression_tests": [
+    "tests/test_tour_highlights_source_delta.py",
+    "tests/test_journey_successor_no_regression.py",
+    "scripts/qa/tour-highlights-visible-text-contract.php"
+  ],
+  "live_readback": {
+    "test_type": "read_only_native_wp_cli",
+    "sites": [
+      {
+        "site": "tours.dev.mad4b.com",
+        "fixture_cases": 11,
+        "source_fields_read": 494,
+        "approved_tour_card_count": 17,
+        "stable_keys_unchanged": true,
+        "blank_cards": 0
+      },
+      {
+        "site": "wayfatours.com",
+        "fixture_cases": 11,
+        "source_fields_read": 182,
+        "approved_tour_card_count": 17,
+        "stable_keys_unchanged": true,
+        "blank_cards": 0
+      }
+    ],
+    "content_modified": false,
+    "production_release_authorized": false
+  }
+}

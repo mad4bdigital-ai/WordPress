@@ -1,0 +1,13 @@
+{
+  "contract": "mad4b.dynamic-operation-index.v1",
+  "installed_by_first_party": false,
+  "providers": [
+    {
+      "manifest": "dynamic-operation-registry-v1/providers/company.code.release/manifest.json",
+      "sha256": "d5d3768b51dee3ab3649bd9bb5a5f1056a551bf012fe95bdd263667082e89ff2"
+    }
+  ],
+  "source_preview_only": true,
+  "production_mutated": false,
+  "independent_verifier_public_key_b64": "NOT_ENROLLED_FIRST_PARTY_PUBLIC_KEY"
+}

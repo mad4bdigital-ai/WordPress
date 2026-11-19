@@ -6,7 +6,15 @@
 	}
 
 	function feedbackNode(form) {
-		return form.querySelector("[data-mad4b-settings-feedback]");
+        var node = form.querySelector("[data-mad4b-settings-feedback]");
+        if (!node) {
+            node = document.createElement("p");
+            node.setAttribute("data-mad4b-settings-feedback", "");
+            node.setAttribute("role", "status");
+            node.setAttribute("aria-live", "polite");
+            form.appendChild(node);
+        }
+        return node;
 	}
 
 	function setFeedback(form, message, ok, code) {
@@ -138,10 +146,19 @@
 	document.addEventListener("mad4b:settings-persisted", syncSensitiveConfirmations);
 	syncSensitiveConfirmations();
 
+    // On a verified unmounted AJAX action, one native, validated submission
+    // retains the original submitter, its name/value and any required fields.
+    // Never bypass native validation with HTMLFormElement.prototype.submit().
+    var nativeFallbackForms = new WeakSet();
 	document.addEventListener("submit", async function (event) {
 		var form = event.target.closest(".mad4b-settings-ajax-form");
 		if (!form) return;
+        if (nativeFallbackForms.has(form)) {
+            nativeFallbackForms.delete(form);
+            return;
+        }
 		event.preventDefault();
+        var originalSubmitter = event.submitter || null;
 		if (form.dataset.mad4bViewStale === "1") {
 			setFeedback(form, cfg().savedViewRefreshFailed || "The previous save was persisted, but this workspace is stale. Reload before saving again.", false, "mad4b_settings_view_stale");
 			return;
@@ -180,16 +197,21 @@
 			// form submission. Governance/destructive actions never opt into
 			// this shared settings form contract.
 			if (response.status === 400 && trimmedResponse === "0") {
+                if (typeof form.requestSubmit !== "function") {
+                    var noFallback = new Error("Settings action not registered; safe validated fallback unavailable.");
+                    noFallback.mad4bCode = "mad4b_settings_ajax_action_unregistered";
+                    throw noFallback;
+                }
 				controls.forEach(function (control, index) { control.disabled = priorDisabled[index]; });
 				form.removeAttribute("aria-busy");
 				delete form.dataset.mad4bBusy;
-				if (window.HTMLFormElement && window.HTMLFormElement.prototype && typeof window.HTMLFormElement.prototype.submit === "function") {
-					window.HTMLFormElement.prototype.submit.call(form);
-					return;
-				}
-				var sentinelFailure = new Error("AJAX settings action was not registered and native fallback is unavailable.");
-				sentinelFailure.mad4bCode = "mad4b_settings_ajax_action_unregistered";
-				throw sentinelFailure;
+                nativeFallbackForms.add(form);
+                try {
+                    if (originalSubmitter && originalSubmitter.form === form)
+                        form.requestSubmit(originalSubmitter);
+                    else form.requestSubmit();
+                } finally { nativeFallbackForms.delete(form); }
+                return;
 			}
 
 			var payload;

@@ -1,6 +1,7 @@
 <?php
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+require_once __DIR__ . '/../class-mad4b-scp-mutation-principal.php';
 
 if ( ! class_exists( 'MAD4B_SCP_Provider_Compatibility_Certification' ) ) {
 	require_once dirname( __DIR__ ) . '/class-mad4b-scp-provider-compatibility-certification.php';
@@ -117,12 +118,73 @@ abstract class MAD4B_SCP_Adapter_Base {
 		return '';
 	}
 
+	/**
+	 * Default native write-mount gate, shared by every reviewed Adapter.
+	 *
+	 * The original Server Write Catalog asks adapters for live eligibility
+	 * BEFORE adding content/admin/write operations to MCP. A new Adapter
+	 * without a custom guard must not inherit an executable write mount
+	 * merely because a WordPress Ability was registered. This is not a
+	 * permission or grant: certification and original authorization still run.
+	 * More restrictive provider-specific overrides take precedence.
+	 */
+	public function mutation_ability_runtime_eligibility( $ability_name ) {
+		$names = $this->ability_names();
+		foreach ( array( 'content', 'admin', 'write' ) as $surface ) {
+			if ( isset( $names[ $surface ] ) && is_array( $names[ $surface ] )
+				&& in_array( (string) $ability_name, $names[ $surface ], true ) ) {
+				return $this->is_available() ? true : $this->unavailable_error();
+			}
+		}
+		return new WP_Error( 'mad4b_adapter_mutation_not_declared',
+			'The requested native mutation is not declared by this adapter.' );
+	}
+
 	private function mutation_permission_callback( $permission, $readonly, $ability_name, $surface ) {
 		if ( $readonly ) return $permission;
 		return function ( $input = null ) use ( $permission, $ability_name, $surface ) {
+			// A trusted local WP-CLI operator explicitly selected an enrolled
+			// WordPress user. Only the exact draft-content ability may inherit
+			// that user's existing post permissions; no remote MCP request, NHI
+			// issuance, unrelated mutating ability or publish operation qualifies.
+			$native_draft = 'mad4b/content-apply-bundle' === $ability_name
+				&& class_exists( 'MAD4B_SCP_Policy' )
+				&& MAD4B_SCP_Policy::can_native_content_draft( $input );
 			$granted = call_user_func( $permission, $input );
-			if ( is_wp_error( $granted ) || ! $granted ) return $granted;
-			if ( ! MAD4B_SCP_Policy::can_mutate() ) return new WP_Error( 'mad4b_mutation_disabled', 'MAD4B mutation surfaces are disabled until the global mutation gate and a bound enabled NHI are both present.' );
+			if ( is_wp_error( $granted ) || ( ! $granted && ! $native_draft ) ) return $granted;
+			// The Write catalog is request-local and can cache a previously
+			// ready adapter. A provider that disappears after mounting must not
+			// retain permission via the already-registered WordPress Ability.
+			// Reuse the SAME provider-specific runtime gate as the mount resolver;
+			// never infer write authority from a cached descriptor or annotation.
+			$runtime_eligibility = $this->mutation_ability_runtime_eligibility( $ability_name );
+			if ( true !== $runtime_eligibility ) return is_wp_error( $runtime_eligibility )
+				? $runtime_eligibility
+				: new WP_Error( 'mad4b_adapter_runtime_eligibility_unverified',
+					'Adapter mutation is not runtime eligible.' );
+			// Direct, explicitly write-scoped OAuth content draft requests can
+			// enroll a user-owned execution actor. The existing compact ChatGPT
+			// read-scope path must instead use the signed prepared dispatcher.
+            if ( ! $native_draft && 'mad4b/content-apply-bundle' === $ability_name
+                && class_exists( 'MAD4B_SCP_Delegation_Mode' )
+				&& class_exists( 'MAD4B_SCP_Identity_Context' ) ) {
+				$subject = MAD4B_SCP_Identity_Context::current();
+				if ( is_array( $subject )
+					&& MAD4B_SCP_Delegation_Mode::DELEGATED
+						=== MAD4B_SCP_Delegation_Mode::mode_for_identity( $subject ) ) {
+					$cap = MAD4B_SCP_Delegation_Mode::authorize_ability( $subject, $ability_name, $input );
+					if ( is_wp_error( $cap ) || true !== $cap ) return $cap;
+					$actor = class_exists( 'MAD4B_SCP_Agent_Registry' )
+						? MAD4B_SCP_Agent_Registry::resolve_agent( $subject )
+						: new WP_Error( 'mad4b_delegation_registry_unavailable', 'Registry unavailable.' );
+					if ( is_wp_error( $actor ) ) {
+						$actor = MAD4B_SCP_Delegation_Mode::ensure_content_actor( $subject );
+						if ( is_wp_error( $actor ) ) return $actor;
+					}
+				}
+			}
+			if ( ! $native_draft && ! MAD4B_SCP_Policy::can_mutate() )
+				return new WP_Error( 'mad4b_mutation_disabled', 'MAD4B mutation surfaces require a governed principal or a trusted enrolled native draft operator.' );
 			if ( $this->mutation_requires_certification() ) {
 				if ( class_exists( 'MAD4B_SCP_Provider_Compatibility_Certification' ) && MAD4B_SCP_Provider_Compatibility_Certification::supports_provider( $this->provider_key() ) ) {
 					$provider_guard = MAD4B_SCP_Provider_Compatibility_Certification::mutation_guard( $this->provider_key(), $ability_name, (bool) $this->is_available(), $this );
@@ -132,6 +194,31 @@ abstract class MAD4B_SCP_Adapter_Base {
 				}
 				if ( is_wp_error( $provider_guard ) || true !== $provider_guard ) return $provider_guard;
 			}
+            // Verified WordPress user inherits native reversible adapter
+            // capability after provider certification. The journal verifies
+            // actor binding and undoes only the original user's mutation.
+            if ( class_exists( 'MAD4B_SCP_Mutation_Principal' )
+                && in_array( $ability_name,
+                    MAD4B_SCP_Mutation_Principal::allowed_native_abilities(), true )
+                && class_exists( 'MAD4B_SCP_Identity_Context' )
+                && class_exists( 'MAD4B_SCP_Delegation_Mode' ) ) {
+                $who = MAD4B_SCP_Identity_Context::current();
+                if ( is_array( $who ) &&
+                    MAD4B_SCP_Delegation_Mode::verified_wordpress_user( $who ) ) {
+                    $cap = MAD4B_SCP_Delegation_Mode::authorize_ability(
+                        $who, $ability_name, is_array( $input ) ? $input : array() );
+                    if ( is_wp_error( $cap ) || true !== $cap ) return $cap;
+                    if ( ! MAD4B_SCP_Mutation_Principal::schema_ready() )
+                        return new WP_Error( 'mad4b_native_journal_migration_pending',
+                            'Typed mutation journal migration is not ready.' );
+                    return true;
+                }
+            }
+			// Native content draft work is an already-authorized local operator
+			// action, not a remote agent operation. Provider certification and
+			// the bundle's own exact-input, journal and rollback guards still run.
+			// Never mint or reuse an agent approval ticket here.
+			if ( $native_draft ) return true;
 			if ( ! class_exists( 'MAD4B_SCP_Authorization' ) ) return new WP_Error( 'mad4b_authorization_unavailable', 'MAD4B central authorization is unavailable.' );
 			$authorization = MAD4B_SCP_Authorization::authorize_mutation( $ability_name, 'mad4b-' . sanitize_key( $surface ), $this->certified_provider_key(), $input );
 			if ( is_wp_error( $authorization ) ) return $authorization;
@@ -145,6 +232,10 @@ abstract class MAD4B_SCP_Adapter_Base {
 		$reversible_contract = $readonly ? '' : $this->reversible_contract_for( $name );
 		if ( '' !== $reversible_contract ) {
 			$execute_callback = function ( $input = array() ) use ( $name, $method ) {
+				// Exact enrolled Staging WP-CLI draft uses its own journal and compensation.
+				if ( 'mad4b/content-apply-bundle' === $name && 'dynamic-content' === $this->id()
+					&& 'apply_bundle' === $method && class_exists( 'MAD4B_SCP_Policy' )
+					&& MAD4B_SCP_Policy::can_native_content_draft( $input ) ) return $this->apply_bundle( $input );
 				if ( ! class_exists( 'MAD4B_SCP_Reversible_Adapter_Mutations' ) ) return new WP_Error( 'mad4b_reversible_adapter_manager_unavailable', 'Reversible adapter mutation manager is unavailable.' );
 				return MAD4B_SCP_Reversible_Adapter_Mutations::execute( $this, $name, $method, is_array( $input ) ? $input : array() );
 			};

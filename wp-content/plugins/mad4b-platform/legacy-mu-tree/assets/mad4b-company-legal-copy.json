@@ -1,0 +1,496 @@
+{
+  "labels": {
+    "en": {
+      "privacy": "Privacy Policy",
+      "terms": "Terms & Conditions",
+      "effective": "Last updated",
+      "entity": "Operator",
+      "jurisdiction": "Company jurisdiction",
+      "contact": "Privacy contact",
+      "unverified": "The company must confirm its legal identity and contact details before enabling live collection.",
+      "privacy_intro": "This policy describes how information is handled when people browse this website, send an enquiry, request a quotation or make an agreed payment.",
+      "terms_intro": "These terms govern website use and requests for travel services. A submitted enquiry or paid advance does not itself confirm travel services; a written booking confirmation is required.",
+      "booking": "Requests, quotations and booking confirmation",
+      "pricing": "Prices, included and excluded services",
+      "cancellation": "Changes, cancellation and refunds",
+      "children": "Children and minors",
+      "accommodation": "Hotels, cabins and other accommodation",
+      "tipping": "Tips and service charges",
+      "force_majeure": "Unavoidable disruption and travel warnings",
+      "general": "Documents and traveler responsibilities",
+      "complaint": "Complaints and service resolution",
+      "payment": "Payment records and transaction security",
+      "website": "Website use and external providers",
+      "changes": "Updates, company conditions and legal rights"
+    },
+    "es": {
+      "privacy": "Política de privacidad",
+      "terms": "Términos y condiciones",
+      "effective": "Última actualización",
+      "entity": "Operador",
+      "jurisdiction": "Jurisdicción de la empresa",
+      "contact": "Contacto de privacidad",
+      "unverified": "La empresa debe confirmar su identidad jurídica y los datos de contacto antes de habilitar cobros reales.",
+      "privacy_intro": "Esta política explica cómo se tratan los datos al visitar la web, enviar consultas, solicitar presupuestos o realizar un pago acordado.",
+      "terms_intro": "Estas condiciones regulan el uso de la web y las solicitudes de viajes. Una consulta o un anticipo no confirman por sí solos los servicios; es necesaria la confirmación escrita de la reserva.",
+      "booking": "Solicitudes, presupuestos y confirmación",
+      "pricing": "Precios, servicios incluidos y excluidos",
+      "cancellation": "Cambios, cancelaciones y reembolsos",
+      "children": "Menores y niños",
+      "accommodation": "Hoteles, camarotes y alojamiento",
+      "tipping": "Propinas y cargos por servicio",
+      "force_majeure": "Imprevistos y avisos de viaje",
+      "general": "Documentos y responsabilidades de viaje",
+      "complaint": "Reclamaciones y resolución",
+      "payment": "Pagos y seguridad de las transacciones",
+      "website": "Uso de la web y proveedores externos",
+      "changes": "Actualizaciones y derechos legales"
+    },
+    "fr": {
+      "privacy": "Politique de confidentialité",
+      "terms": "Conditions générales d’utilisation et de réservation",
+      "effective": "Dernière mise à jour",
+      "entity": "Exploitant",
+      "jurisdiction": "Juridiction de l’entreprise",
+      "contact": "Contact confidentialité",
+      "unverified": "L’entreprise doit confirmer sa raison sociale et ses coordonnées avant tout encaissement réel.",
+      "privacy_intro": "Cette politique décrit le traitement des informations lors de la navigation, des demandes de devis, des réservations et des paiements convenus.",
+      "terms_intro": "Ces conditions régissent l’utilisation du site et les demandes de voyage. Une demande ou un acompte ne confirme pas le voyage; seule une confirmation écrite de réservation fait foi.",
+      "booking": "Demandes, devis et confirmation",
+      "pricing": "Prix, prestations incluses et exclusions",
+      "cancellation": "Modifications, annulations et remboursements",
+      "children": "Enfants et mineurs",
+      "accommodation": "Hôtels, cabines et hébergement",
+      "tipping": "Pourboires et frais de service",
+      "force_majeure": "Événements exceptionnels et alertes",
+      "general": "Documents et responsabilités du voyageur",
+      "complaint": "Réclamations et résolution",
+      "payment": "Paiements et sécurité",
+      "website": "Utilisation du site et prestataires externes",
+      "changes": "Mises à jour et droits légaux"
+    },
+    "de": {
+      "privacy": "Datenschutzerklärung",
+      "terms": "Nutzungs- und Reisebedingungen",
+      "effective": "Letzte Aktualisierung",
+      "entity": "Betreiber",
+      "jurisdiction": "Rechtsordnung des Unternehmens",
+      "contact": "Datenschutzkontakt",
+      "unverified": "Vor echten Zahlungen muss das Unternehmen seine Rechtsidentität und Kontaktdaten bestätigen.",
+      "privacy_intro": "Diese Erklärung beschreibt die Verarbeitung von Daten beim Besuch der Website sowie bei Anfragen, Reiseangeboten und vereinbarten Zahlungen.",
+      "terms_intro": "Diese Bedingungen regeln die Nutzung der Website und Reiseanfragen. Eine Anfrage oder Anzahlung bestätigt keine Buchung; hierfür ist eine schriftliche Bestätigung erforderlich.",
+      "booking": "Anfragen, Angebote und Buchungsbestätigung",
+      "pricing": "Preise und Leistungsumfang",
+      "cancellation": "Änderungen, Stornierungen und Erstattungen",
+      "children": "Kinder und Minderjährige",
+      "accommodation": "Hotels, Kabinen und Unterkünfte",
+      "tipping": "Trinkgelder und Servicegebühren",
+      "force_majeure": "Außergewöhnliche Störungen und Reisewarnungen",
+      "general": "Reiseunterlagen und Pflichten",
+      "complaint": "Beschwerden und Klärung",
+      "payment": "Zahlungen und Sicherheit",
+      "website": "Websitenutzung und externe Anbieter",
+      "changes": "Änderungen und gesetzliche Rechte"
+    },
+    "it": {
+      "privacy": "Informativa sulla privacy",
+      "terms": "Termini e condizioni",
+      "effective": "Ultimo aggiornamento",
+      "entity": "Operatore",
+      "jurisdiction": "Giurisdizione dell’azienda",
+      "contact": "Contatto privacy",
+      "unverified": "L’azienda deve confermare la propria identità legale e i recapiti prima di abilitare pagamenti reali.",
+      "privacy_intro": "Questa informativa descrive il trattamento dei dati durante la navigazione, le richieste, i preventivi e i pagamenti concordati.",
+      "terms_intro": "Questi termini regolano l’uso del sito e le richieste di viaggio. Una richiesta o un acconto non conferma il viaggio; è necessaria una conferma scritta della prenotazione.",
+      "booking": "Richieste, preventivi e conferme",
+      "pricing": "Prezzi, inclusioni ed esclusioni",
+      "cancellation": "Modifiche, cancellazioni e rimborsi",
+      "children": "Bambini e minori",
+      "accommodation": "Hotel, cabine e sistemazioni",
+      "tipping": "Mance e costi di servizio",
+      "force_majeure": "Eventi straordinari e avvisi di viaggio",
+      "general": "Documenti e responsabilità",
+      "complaint": "Reclami e assistenza",
+      "payment": "Pagamenti e sicurezza",
+      "website": "Uso del sito e fornitori esterni",
+      "changes": "Aggiornamenti e diritti"
+    },
+    "ar": {
+      "privacy": "سياسة الخصوصية",
+      "terms": "شروط وأحكام الاستخدام والحجز",
+      "effective": "آخر تحديث",
+      "entity": "الجهة المشغلة",
+      "jurisdiction": "الاختصاص القانوني للشركة",
+      "contact": "التواصل بشأن الخصوصية",
+      "unverified": "يجب على الشركة تأكيد هويتها القانونية وبيانات التواصل قبل تفعيل تحصيل المدفوعات الحقيقية.",
+      "privacy_intro": "توضح هذه السياسة كيفية معالجة البيانات عند تصفح الموقع أو إرسال استفسار أو طلب عرض سعر أو إجراء دفعة متفق عليها.",
+      "terms_intro": "تنظم هذه الشروط استخدام الموقع وطلبات السفر. لا يُعد إرسال طلب أو سداد مقدم تأكيدًا للرحلة؛ ويشترط تأكيد الحجز كتابةً.",
+      "booking": "طلبات الحجز وعروض الأسعار والتأكيد",
+      "pricing": "الأسعار وما تشمله الخدمات",
+      "cancellation": "التعديل والإلغاء والاسترداد",
+      "children": "الأطفال والقُصّر",
+      "accommodation": "الفنادق والكبائن والإقامة",
+      "tipping": "الإكراميات ورسوم الخدمة",
+      "force_majeure": "الظروف الاستثنائية وتحذيرات السفر",
+      "general": "المستندات ومسؤوليات المسافر",
+      "complaint": "الشكاوى ومعالجتها",
+      "payment": "المدفوعات وأمان المعاملات",
+      "website": "استخدام الموقع والجهات الخارجية",
+      "changes": "التحديثات والحقوق القانونية"
+    }
+  },
+  "privacy": {
+    "en": [
+      [
+        "Data collected",
+        "We receive names, contact details, country or nationality, travel dates, traveler numbers, ages where needed, accommodation preferences, messages, and any details voluntarily included in enquiries. Technical logs may include IP address, browser, device, referral information and security events."
+      ],
+      [
+        "Purposes and lawful grounds",
+        "We use data to answer enquiries, prepare proposals, coordinate supplier availability, administer orders and refunds, respond to complaints, prevent fraud, protect the website and meet legal duties. Depending on applicable law, the basis may be a requested pre-contractual step, an agreement, legal obligation, legitimate interest or consent."
+      ],
+      [
+        "Payments and providers",
+        "When payment is enabled, a payment provider such as Stripe may handle card details and payment authentication. The site may retain an order reference, amount, currency, transaction status and billing details. Full card numbers are not required for travel operations."
+      ],
+      [
+        "Supplier and service sharing",
+        "Relevant travel details may be shared as needed with hotels, guides, cruises, transport suppliers, tour operators, payment providers, web hosting, email, CRM, support, accounting and professional advisers, or where legally required. Information is not published as an open booking list."
+      ],
+      [
+        "Cookies and marketing technology",
+        "Necessary cookies support security, navigation, login and forms. Optional analytics and advertising technologies may run when configured, including Google Tag Manager and connected services. Browser settings and available consent choices can limit optional tracking."
+      ],
+      [
+        "International data handling",
+        "Travel services may require sharing information across countries. Security and data-protection requirements differ by location; provider transfers are evaluated in light of applicable legal obligations."
+      ],
+      [
+        "Security and retention",
+        "Administrative and technical measures seek to protect data, though no online system is risk-free. Records are retained for service delivery, support, accounting, dispute resolution and statutory obligations, then deleted or anonymized where appropriate."
+      ],
+      [
+        "Individual rights",
+        "Depending on the applicable law, individuals may request access, correction, deletion, objection, restriction or withdrawal of consent. Some payment and legal records must be retained. Identity verification may be necessary."
+      ],
+      [
+        "Children and linked sites",
+        "A parent, guardian or authorized adult must submit details for minors. Supplier and third-party websites have separate policies; review them when leaving this website."
+      ],
+      [
+        "Contact and updates",
+        "Use the company contact channel shown below for data-related enquiries. This policy may change as services, providers and legal requirements evolve; the review date identifies the published version."
+      ]
+    ],
+    "es": [
+      [
+        "Información recopilada",
+        "Podemos recibir nombres, datos de contacto, país o nacionalidad, fechas de viaje, número de viajeros, edades cuando proceda, preferencias de alojamiento y mensajes. Los registros técnicos pueden incluir dirección IP, navegador, dispositivo y eventos de seguridad."
+      ],
+      [
+        "Finalidades y bases legales",
+        "Tratamos los datos para responder consultas, elaborar propuestas, coordinar proveedores, administrar pedidos y devoluciones, atender reclamaciones, prevenir fraudes y cumplir obligaciones legales. La base depende de la ley aplicable: medidas precontractuales, acuerdo, obligación legal, interés legítimo o consentimiento."
+      ],
+      [
+        "Pagos y proveedores",
+        "Cuando el pago esté activado, un proveedor como Stripe puede gestionar tarjetas y autenticación. El sitio puede guardar referencias, importes, moneda, estado y facturación; no necesita el número íntegro de la tarjeta para gestionar el viaje."
+      ],
+      [
+        "Comunicación de datos",
+        "Los datos necesarios pueden compartirse con hoteles, guías, cruceros, transportistas, operadores, pagos, alojamiento web, correo, CRM, soporte, contabilidad, asesores o autoridades cuando corresponda. No publicamos una lista abierta de reservas."
+      ],
+      [
+        "Cookies y marketing",
+        "Las cookies esenciales permiten seguridad, acceso y formularios. Según la configuración, puede haber analítica o publicidad, incluido Google Tag Manager y servicios conectados. El navegador y las opciones de consentimiento disponibles permiten limitar tecnologías opcionales."
+      ],
+      [
+        "Tratamientos internacionales",
+        "La organización de viajes puede requerir datos en varios países. Las normas de protección varían; los servicios se evalúan conforme a las obligaciones aplicables."
+      ],
+      [
+        "Seguridad y conservación",
+        "Aplicamos medidas técnicas y administrativas razonables, pero ningún sistema es completamente seguro. Conservamos datos para prestar servicios, atender reclamaciones, contabilidad y obligaciones legales; después se eliminan o anonimizan cuando corresponde."
+      ],
+      [
+        "Derechos personales",
+        "Según la normativa aplicable, puedes solicitar acceso, rectificación, supresión, oposición, limitación o retirada del consentimiento. Algunos registros deben conservarse. Puede ser necesario verificar tu identidad."
+      ],
+      [
+        "Menores y enlaces",
+        "Los datos de menores deben facilitarlos padres, tutores o adultos autorizados. Los sitios de proveedores y terceros aplican sus propias políticas."
+      ],
+      [
+        "Contacto y cambios",
+        "Utiliza el canal de contacto de la empresa indicado abajo para consultas de datos. La política puede actualizarse al cambiar servicios, proveedores o obligaciones legales."
+      ]
+    ],
+    "fr": [
+      [
+        "Données collectées",
+        "Les demandes peuvent contenir nom, coordonnées, pays, dates, voyageurs, âge des enfants si nécessaire, préférences et messages. Des journaux techniques peuvent inclure adresse IP, navigateur et incidents de sécurité."
+      ],
+      [
+        "Finalités et bases légales",
+        "Les données servent à répondre, établir des devis, coordonner les prestations, gérer paiements et litiges, prévenir la fraude et respecter les obligations légales. La base juridique dépend du droit applicable et peut inclure contrat, obligation, intérêt légitime ou consentement."
+      ],
+      [
+        "Paiements",
+        "Un prestataire tel que Stripe peut traiter les cartes lorsqu’un paiement est proposé. Le site peut conserver référence, montant, devise, état et facturation, mais n’a pas besoin du numéro complet de carte."
+      ],
+      [
+        "Destinataires",
+        "Les informations nécessaires peuvent être transmises aux hôtels, guides, croisières, transports, prestataires de paiement, hébergeurs, CRM, support, comptabilité, conseillers ou autorités lorsque requis."
+      ],
+      [
+        "Cookies",
+        "Les cookies essentiels assurent sécurité et formulaires. Des outils analytiques ou publicitaires, dont Google Tag Manager, peuvent fonctionner selon la configuration et les choix de consentement disponibles."
+      ],
+      [
+        "Traitements internationaux",
+        "Les voyages peuvent exiger des transferts de données entre pays soumis à des règles différentes et aux exigences légales applicables."
+      ],
+      [
+        "Sécurité et conservation",
+        "Des mesures adaptées protègent les données sans éliminer tous les risques. Les dossiers sont conservés pour le service, la comptabilité, les litiges et la loi, puis supprimés ou anonymisés si possible."
+      ],
+      [
+        "Vos droits",
+        "Selon le droit applicable, vous pouvez demander accès, correction, effacement, opposition, limitation ou retrait du consentement. Une vérification d’identité peut être nécessaire."
+      ],
+      [
+        "Mineurs et liens",
+        "Un adulte autorisé doit transmettre les informations des mineurs. Les sites tiers ont leurs propres politiques."
+      ],
+      [
+        "Contact et modifications",
+        "Utilisez les coordonnées de l’entreprise ci-dessous pour toute demande. La politique peut évoluer avec les services et les obligations."
+      ]
+    ],
+    "de": [
+      [
+        "Erhobene Daten",
+        "Anfragen können Name, Kontakt, Land, Reisedaten, Personenanzahl, gegebenenfalls Kinderalter, Wünsche und Nachrichten enthalten. Technische Protokolle können IP-Adresse, Browser und Sicherheitsereignisse erfassen."
+      ],
+      [
+        "Zwecke und Rechtsgrundlagen",
+        "Daten dienen Angeboten, Anfragen, Leistungserbringung, Zahlungsabwicklung, Support, Betrugsprävention und gesetzlichen Pflichten. Je nach anwendbarem Recht erfolgt die Verarbeitung aufgrund Vertrag, Verpflichtung, berechtigtem Interesse oder Einwilligung."
+      ],
+      [
+        "Zahlungen",
+        "Bei aktiver Zahlungsfunktion kann ein Dienst wie Stripe Kartendaten verarbeiten. Das System speichert gegebenenfalls Referenz, Betrag, Währung, Status und Rechnungsdaten, nicht notwendigerweise vollständige Kartennummern."
+      ],
+      [
+        "Empfänger",
+        "Erforderliche Angaben können an Hotels, Guides, Kreuzfahrt- und Transportanbieter, Zahlungsanbieter, Hosting, CRM, Support, Buchhaltung, Berater oder Behörden weitergegeben werden."
+      ],
+      [
+        "Cookies",
+        "Notwendige Cookies ermöglichen Sicherheit und Formulare. Optionale Analyse- und Werbedienste einschließlich Google Tag Manager können je nach Konfiguration und verfügbaren Einwilligungseinstellungen aktiv sein."
+      ],
+      [
+        "Internationale Verarbeitung",
+        "Reisedienstleistungen können Datenübermittlungen in verschiedene Länder mit unterschiedlichen Datenschutzregeln erfordern."
+      ],
+      [
+        "Sicherheit und Aufbewahrung",
+        "Angemessene Maßnahmen dienen dem Schutz; absolute Sicherheit ist nicht möglich. Daten bleiben für Leistung, Steuern, Streitfälle und gesetzliche Fristen gespeichert und werden danach soweit möglich gelöscht oder anonymisiert."
+      ],
+      [
+        "Rechte",
+        "Abhängig vom geltenden Recht bestehen Rechte auf Auskunft, Berichtigung, Löschung, Widerspruch, Einschränkung oder Widerruf. Identitätsprüfung kann erforderlich sein."
+      ],
+      [
+        "Minderjährige und Links",
+        "Angaben über Minderjährige sind durch berechtigte Erwachsene einzureichen. Externe Websites haben eigene Richtlinien."
+      ],
+      [
+        "Kontakt und Änderungen",
+        "Für Datenschutzanfragen verwenden Sie die unten genannten offiziellen Kontaktdaten. Diese Erklärung kann aktualisiert werden."
+      ]
+    ],
+    "it": [
+      [
+        "Dati raccolti",
+        "Le richieste possono includere nome, contatti, paese, date, numero di viaggiatori, età dei minori se necessaria, preferenze e messaggi. I log tecnici possono comprendere IP, browser ed eventi di sicurezza."
+      ],
+      [
+        "Finalità e basi giuridiche",
+        "Usiamo i dati per rispondere, preparare offerte, coordinare fornitori, gestire pagamenti e reclami, prevenire frodi e adempiere obblighi legali. La base dipende dalla legge: contratto, obbligo, interesse legittimo o consenso."
+      ],
+      [
+        "Pagamenti",
+        "Quando attivo, un fornitore come Stripe può elaborare i dati di carta. Possiamo conservare riferimento, importo, valuta, stato e dati di fatturazione senza usare il numero completo della carta."
+      ],
+      [
+        "Destinatari",
+        "Le informazioni necessarie possono essere condivise con hotel, guide, crociere, trasporti, fornitori di pagamento, hosting, CRM, supporto, contabilità, consulenti o autorità."
+      ],
+      [
+        "Cookie",
+        "I cookie essenziali supportano sicurezza e moduli. Analisi o pubblicità, anche tramite Google Tag Manager, possono essere attive secondo la configurazione e i controlli disponibili."
+      ],
+      [
+        "Trattamento internazionale",
+        "I viaggi possono richiedere il trasferimento di dati tra paesi con discipline differenti."
+      ],
+      [
+        "Sicurezza e conservazione",
+        "Applichiamo misure ragionevoli, senza garantire sicurezza assoluta. I dati sono conservati per servizi, contabilità, controversie e legge e poi rimossi o anonimizzati quando possibile."
+      ],
+      [
+        "Diritti",
+        "In base alla legge applicabile si possono richiedere accesso, correzione, cancellazione, opposizione, limitazione o revoca del consenso, previa eventuale verifica di identità."
+      ],
+      [
+        "Minori e link",
+        "I dati dei minori devono essere forniti da un adulto autorizzato. I siti esterni hanno policy proprie."
+      ],
+      [
+        "Contatto e modifiche",
+        "Per richieste privacy usare i contatti ufficiali sotto riportati. Questa informativa può essere aggiornata."
+      ]
+    ],
+    "ar": [
+      [
+        "البيانات التي نجمعها",
+        "قد تشمل طلبات السفر الاسم ووسائل التواصل والبلد وتواريخ السفر وعدد المسافرين وأعمار الأطفال عند الحاجة وتفضيلات الإقامة والرسائل. وقد تتضمن السجلات التقنية عنوان الإنترنت والمتصفح وأحداث الأمان."
+      ],
+      [
+        "الأغراض والأساس القانوني",
+        "نستخدم البيانات للرد على الطلبات وإعداد العروض وتنسيق الموردين وإدارة المدفوعات والشكاوى ومنع الاحتيال والوفاء بالالتزامات القانونية. ويعتمد الأساس على القانون المنطبق، مثل التعاقد أو الالتزام القانوني أو المصلحة المشروعة أو الموافقة."
+      ],
+      [
+        "المدفوعات",
+        "عند تفعيل الدفع يمكن لمزود مثل Stripe معالجة بيانات البطاقة. وقد يحتفظ الموقع بمرجع الطلب والمبلغ والعملة والحالة وبيانات الفوترة دون الحاجة لرقم البطاقة الكامل."
+      ],
+      [
+        "مشاركة البيانات",
+        "يمكن مشاركة المعلومات الضرورية مع الفنادق والمرشدين وموردي الرحلات والنقل والدفع والاستضافة وإدارة العملاء والمحاسبة والجهات المختصة عندما يقتضي القانون."
+      ],
+      [
+        "ملفات الارتباط",
+        "تساعد الملفات الضرورية على الأمان والنماذج. وقد تعمل أدوات تحليل أو إعلان مثل Google Tag Manager بحسب الإعدادات وخيارات الموافقة المتاحة."
+      ],
+      [
+        "المعالجة عبر الحدود",
+        "قد يتطلب تنظيم الرحلات مشاركة المعلومات بين دول ذات قواعد مختلفة لحماية البيانات، مع مراعاة القانون المنطبق."
+      ],
+      [
+        "الأمان والاحتفاظ",
+        "نتخذ تدابير تنظيمية وتقنية مناسبة دون ضمان أمان مطلق. نحتفظ بالسجلات لتقديم الخدمات والمحاسبة والشكاوى والالتزامات القانونية ثم نحذفها أو نجعلها مجهولة عند الإمكان."
+      ],
+      [
+        "حقوق الأفراد",
+        "قد يتيح القانون طلب الاطلاع والتصحيح والحذف والاعتراض والتقييد وسحب الموافقة، مع الاحتفاظ بالسجلات المفروضة قانونًا والتحقق من الهوية عند الحاجة."
+      ],
+      [
+        "الأطفال والروابط الخارجية",
+        "يقدم بيانات القُصّر ولي الأمر أو شخص مخول. وتخضع المواقع الخارجية لسياسات مستقلة."
+      ],
+      [
+        "التواصل والتغييرات",
+        "للاستفسارات المتعلقة بالبيانات استخدم جهة التواصل الرسمية المبينة أدناه. قد تتغير السياسة تبعًا للخدمات والقوانين."
+      ]
+    ]
+  },
+  "extras": {
+    "en": {
+      "complaint": "Report service concerns promptly through the company’s official contact channels, ideally while travel is underway so the supplier can review and correct an issue. Keep your booking reference and relevant records.",
+      "payment": "An advance is not a final trip purchase or confirmation. A payment provider may authorize or decline payments; travelers should keep receipts. The collection mode and balance deadline are set per company and may differ by tour or supplier.",
+      "website": "Use the website for legitimate information requests. Do not abuse forms, interfere with security, access unauthorized data or redistribute proprietary content. Linked supplier websites have separate conditions.",
+      "changes": "Applicable consumer rights cannot be waived by these terms. Written booking-specific terms and applicable law prevail where required. Changes to published website terms apply prospectively; the terms accepted for a transaction remain part of its record."
+    },
+    "es": {
+      "complaint": "Comunica las incidencias cuanto antes por los canales oficiales, preferiblemente durante el viaje, para permitir su revisión. Conserva tu referencia y documentación.",
+      "payment": "Un anticipo no confirma por sí solo el viaje. El proveedor de pago puede autorizar o rechazar la operación. Conserva los recibos; los importes y plazos dependen de la política de cada empresa y reserva.",
+      "website": "Utiliza la web para consultas legítimas. No abuses de formularios, vulneres la seguridad ni redistribuyas contenido protegido. Los proveedores externos tienen condiciones propias.",
+      "changes": "Se respetan los derechos irrenunciables del consumidor. Los términos específicos aceptados por escrito y la ley aplicable prevalecen cuando corresponda. Los cambios en la web se aplican a futuro."
+    },
+    "fr": {
+      "complaint": "Signalez rapidement tout problème par les canaux officiels, si possible pendant le voyage. Conservez votre référence et les justificatifs.",
+      "payment": "Un acompte ne confirme pas le voyage. Le prestataire de paiement peut autoriser ou refuser l’opération. Conservez le reçu. Les montants et échéances dépendent de l’entreprise et du voyage.",
+      "website": "Utilisez le site pour des demandes légitimes. N'abusez pas des formulaires et ne contournez pas la sécurité. Les fournisseurs externes ont leurs propres conditions.",
+      "changes": "Les droits impératifs des consommateurs demeurent applicables. Les conditions particulières acceptées par écrit et la loi applicable prévalent si nécessaire."
+    },
+    "de": {
+      "complaint": "Melden Sie Probleme frühzeitig über offizielle Kontaktwege, möglichst noch während der Reise. Bewahren Sie Buchungsreferenz und Belege auf.",
+      "payment": "Eine Anzahlung bestätigt keine Reise. Der Zahlungsdienst kann Vorgänge autorisieren oder ablehnen. Quittungen sollten aufbewahrt werden. Beträge und Fristen sind unternehmens- und reiseabhängig.",
+      "website": "Die Website darf für legitime Anfragen genutzt werden. Missbrauch, unerlaubte Zugriffe und Verbreitung geschützter Inhalte sind untersagt. Fremde Anbieter haben eigene Bedingungen.",
+      "changes": "Zwingende Verbraucherrechte bleiben unberührt. Schriftlich vereinbarte Buchungsbedingungen und geltendes Recht gehen gegebenenfalls vor."
+    },
+    "it": {
+      "complaint": "Segnala prontamente i problemi tramite i canali ufficiali, possibilmente durante il viaggio. Conserva riferimento e documenti.",
+      "payment": "Un acconto non conferma il viaggio. Il fornitore di pagamento può autorizzare o rifiutare l’operazione. Conserva le ricevute; importi e scadenze dipendono dalla società e dalla prenotazione.",
+      "website": "Usa il sito per richieste legittime. Non abusare dei moduli, non aggirare la sicurezza e non redistribuire contenuti protetti. I fornitori esterni hanno proprie condizioni.",
+      "changes": "Restano validi i diritti inderogabili dei consumatori. Condizioni specifiche accettate per iscritto e leggi applicabili prevalgono quando necessario."
+    },
+    "ar": {
+      "complaint": "يرجى الإبلاغ المبكر عن المشكلات عبر قنوات الشركة الرسمية، ويفضل أثناء الرحلة لإتاحة المعالجة. احتفظ بمرجع الحجز والمستندات.",
+      "payment": "لا يؤكد المقدم وحده الرحلة. قد يوافق مزود الدفع على العملية أو يرفضها. يجب الاحتفاظ بالإيصال، وتختلف المبالغ والمواعيد بحسب سياسة الشركة والرحلة.",
+      "website": "يُستخدم الموقع للطلبات المشروعة. يُمنع إساءة استخدام النماذج أو تجاوز الحماية أو إعادة نشر المحتوى المحمي دون تصريح. للجهات الخارجية شروطها.",
+      "changes": "لا تلغي هذه الشروط حقوق المستهلك الآمرة. تسري شروط الحجز المكتوبة والقانون المنطبق عند التعارض وفق ما يلزم."
+    }
+  },
+  "seed_policy": {
+    "en": {
+      "booking": "<p>Travel requests are reviewed before any reservation is confirmed. A representative will verify dates, itinerary, supplier availability, total price and payment stages in writing. A request or payment receipt alone does not confirm travel. Online collection is disabled unless the company explicitly enables a verified payment policy and the traveler accepts the booking-specific terms.</p>",
+      "cancellation": "<p>Cancellation and amendment requests must be sent through the company’s designated contact channel in writing. An approved, booking-specific schedule may apply, including separately disclosed peak periods. Supplier charges, refunds and no-shows require review against agreed conditions and applicable law; no automatic extra fee or refund is authorized.</p><p>Standard benchmark (only if explicitly approved for the company and booking):</p>[mad4b_cancellation_schedule]<p>Peak-season benchmark (only if its dates and applicability were expressly agreed):</p>[mad4b_peak_cancellation_schedule]",
+      "children": "<p>All children and infants must be declared when requesting a quote. Age eligibility, room occupancy, transport seats, tickets and child rates depend on the actual supplier. No child or infant amount is assumed without a verified rate.</p>",
+      "accommodation": "<p>Hotels, cabins, rooms, meal basis, bedding and upgrades must match the final written itinerary. Proposed properties and room categories remain subject to availability; changes or extra supplements require disclosure before agreement.</p>",
+      "pricing": "<p>Prices depend on currency, travelers, occupancy, dates, season, suppliers and inclusions shown in the confirmed proposal. Unless specifically included, flights, visas, insurance, optional activities, meals and personal expenses may be extra. A website preview is not an unconditional final price.</p>",
+      "tipping": "<p>Gratuities are normally voluntary and reflect satisfaction with service. A mandatory service charge applies only if clearly included in the written quotation or required under applicable rules.</p>",
+      "force_majeure": "<p>For official travel warnings, severe disruptions or other events beyond reasonable control, the company reviews safe alternatives, supplier commitments, rescheduling, refunds or travel credits case by case under agreed terms and applicable law. No automatic refund or price guarantee is assumed.</p>",
+      "general": "<p>Travelers are responsible for accurate names and dates, passport and entry requirements, appropriate insurance, their conduct and timely communication. Any issues should be reported promptly using the company’s official contact channel. Material changes must be reviewed in writing.</p>"
+    },
+    "es": {
+      "booking": "<p>Las solicitudes se revisan antes de confirmar una reserva. La empresa verificará por escrito fechas, itinerario, proveedores, precio total y etapas de pago. Una solicitud o recibo no confirma el viaje. Solo se cobra en línea si existe una política autorizada y el viajero acepta las condiciones específicas.</p>",
+      "cancellation": "<p>Las cancelaciones y modificaciones deben solicitarse por escrito a través del canal designado. Solo se aplica una escala autorizada y aceptada para la reserva, incluidas temporadas especiales declaradas. Los cargos de proveedores, devoluciones y no presentaciones requieren revisión; no se genera un cargo automático.</p><p>Escala de referencia ordinaria, solo tras aprobación:</p>[mad4b_cancellation_schedule]<p>Escala de referencia de temporada alta, solo cuando se ha acordado:</p>[mad4b_peak_cancellation_schedule]",
+      "children": "<p>Se deben declarar todos los niños y bebés. La elegibilidad, ocupación, asientos, entradas y tarifas infantiles dependen del proveedor. No se presupone ningún precio de menor sin una tarifa verificada.</p>",
+      "accommodation": "<p>Los hoteles, camarotes, categorías, camas, comidas y suplementos deben constar en el itinerario final. Las propuestas están sujetas a disponibilidad y los cambios requieren comunicación previa.</p>",
+      "pricing": "<p>Los precios dependen de moneda, viajeros, ocupación, fechas, temporada y servicios incluidos. Vuelos, visados, seguros, extras y gastos personales pueden no estar incluidos. Una vista previa no garantiza el precio definitivo.</p>",
+      "tipping": "<p>Las propinas suelen ser voluntarias. Solo se aplica un cargo obligatorio cuando esté claramente indicado o sea exigido por la normativa.</p>",
+      "force_majeure": "<p>Ante alertas oficiales o circunstancias extraordinarias se revisarán alternativas, proveedores, cambios, devoluciones o créditos de viaje, caso por caso, según la ley y las condiciones acordadas.</p>",
+      "general": "<p>Los viajeros deben facilitar nombres y fechas correctas, revisar pasaportes, visados, seguros y requisitos de entrada. Las incidencias deben comunicarse pronto por el canal oficial. Los cambios importantes se confirman por escrito.</p>"
+    },
+    "fr": {
+      "booking": "<p>Une demande est examinée avant toute confirmation. Dates, itinéraire, disponibilité, prix et échéances sont convenus par écrit. Un reçu ne confirme pas le voyage. La collecte en ligne exige une politique validée et acceptée.</p>",
+      "cancellation": "<p>Toute annulation ou modification doit être signalée par écrit. Les barèmes ne s’appliquent qu’après acceptation des conditions propres au voyage, avec examen des frais fournisseurs et des droits légaux.</p>[mad4b_cancellation_schedule]<p>Haute saison, uniquement si convenue:</p>[mad4b_peak_cancellation_schedule]",
+      "children": "<p>Déclarez tous les enfants et nourrissons. Âges, places, hébergement et tarifs dépendent du prestataire et doivent être vérifiés.</p>",
+      "accommodation": "<p>Les hébergements, catégories, repas et suppléments figurent dans l’itinéraire final sous réserve de disponibilité.</p>",
+      "pricing": "<p>Les tarifs dépendent de la devise, des dates, voyageurs, chambres, saisons et services. Les prestations non incluses restent à la charge du voyageur.</p>",
+      "tipping": "<p>Les pourboires sont généralement facultatifs sauf frais clairement convenus ou exigés.</p>",
+      "force_majeure": "<p>Les alertes officielles et perturbations graves donnent lieu à une étude des possibilités de report, remboursement ou crédit selon les fournisseurs et la loi.</p>",
+      "general": "<p>Le voyageur vérifie ses documents, visas, assurances et informations, et signale rapidement tout incident par le canal officiel.</p>"
+    },
+    "de": {
+      "booking": "<p>Reiseanfragen werden vor Bestätigung geprüft. Termine, Programm, Verfügbarkeit, Endpreis und Zahlungen werden schriftlich vereinbart. Eine Quittung bestätigt keine Reise. Onlinezahlungen erfordern eine freigegebene Richtlinie.</p>",
+      "cancellation": "<p>Änderungen und Stornierungen sind schriftlich zu melden. Gebühren gelten nur nach Vereinbarung der konkreten Bedingungen; Lieferantenkosten und gesetzliche Rechte werden geprüft.</p>[mad4b_cancellation_schedule]<p>Hochsaison nur bei ausdrücklicher Vereinbarung:</p>[mad4b_peak_cancellation_schedule]",
+      "children": "<p>Kinder und Säuglinge müssen angegeben werden. Altersgrenzen, Plätze, Unterkunft und Preise sind anbieterspezifisch und werden geprüft.</p>",
+      "accommodation": "<p>Hotels, Kabinen, Kategorien, Mahlzeiten und Zuschläge ergeben sich aus dem schriftlich bestätigten Angebot, vorbehaltlich Verfügbarkeit.</p>",
+      "pricing": "<p>Preise hängen von Währung, Datum, Reisenden, Belegung, Saison und enthaltenen Leistungen ab. Nicht genannte Extras sind gesondert zu klären.</p>",
+      "tipping": "<p>Trinkgelder sind in der Regel freiwillig, sofern keine ausdrücklich vereinbarte Pflichtgebühr besteht.</p>",
+      "force_majeure": "<p>Bei offiziellen Warnungen und schweren Störungen werden Umbuchung, Erstattung oder Guthaben anhand der Lieferantenbedingungen und geltenden Regeln geprüft.</p>",
+      "general": "<p>Reisende prüfen Namen, Reisedokumente, Visa, Versicherungen und Einreisebedingungen und melden Probleme rechtzeitig.</p>"
+    },
+    "it": {
+      "booking": "<p>Le richieste vengono esaminate prima della conferma. Date, itinerario, disponibilità, prezzo finale e pagamenti sono concordati per iscritto. Una ricevuta non conferma il viaggio. Il pagamento online richiede una politica approvata.</p>",
+      "cancellation": "<p>Modifiche e cancellazioni vanno inviate per iscritto. Le penali si applicano solo secondo le condizioni accettate per il viaggio, previa verifica di costi dei fornitori e diritti di legge.</p>[mad4b_cancellation_schedule]<p>Alta stagione solo se concordata:</p>[mad4b_peak_cancellation_schedule]",
+      "children": "<p>Dichiarare bambini e neonati. Età, posti, alloggio e prezzi dipendono dal fornitore e devono essere verificati.</p>",
+      "accommodation": "<p>Hotel, cabine, categorie, pasti e supplementi sono quelli del programma confermato, soggetti a disponibilità.</p>",
+      "pricing": "<p>Prezzi e inclusioni dipendono da valuta, date, viaggiatori, occupazione, stagione e fornitori. Gli extra non elencati richiedono conferma.</p>",
+      "tipping": "<p>Le mance sono generalmente facoltative, salvo costi obbligatori chiaramente concordati.</p>",
+      "force_majeure": "<p>In caso di avvisi ufficiali e interruzioni gravi si valutano alternative, rinvii, rimborsi o crediti nel rispetto dei fornitori e della legge.</p>",
+      "general": "<p>Il viaggiatore verifica documenti, nomi, visti, assicurazione e requisiti di ingresso e segnala prontamente i problemi.</p>"
+    },
+    "ar": {
+      "booking": "<p>تراجع الشركة الطلب قبل تأكيد أي حجز. وتؤكد كتابةً التواريخ والبرنامج والتوافر والسعر النهائي ومراحل الدفع. لا يُعد الإيصال تأكيدًا للرحلة. لا يُفعّل التحصيل الإلكتروني إلا بسياسة معتمدة وقبول واضح للشروط.</p>",
+      "cancellation": "<p>تُقدّم طلبات التعديل والإلغاء كتابةً عبر قناة الشركة. لا تطبق شرائح الرسوم إلا بعد اعتمادها وقبولها للحجز المحدد، مع مراجعة تكاليف الموردين والحقوق القانونية.</p><p>الشرائح المرجعية العادية عند الاعتماد:</p>[mad4b_cancellation_schedule]<p>موسم الذروة عند الاتفاق المسبق:</p>[mad4b_peak_cancellation_schedule]",
+      "children": "<p>يجب التصريح عن الأطفال والرضع. تخضع الأعمار والمقاعد والإقامة والتذاكر والأسعار لشروط المورد ويُمنع افتراض سعر غير موثّق.</p>",
+      "accommodation": "<p>تُحدد الفنادق والكبائن والفئات والوجبات والإضافات في البرنامج المكتوب النهائي، مع مراعاة التوافر.</p>",
+      "pricing": "<p>تعتمد الأسعار على العملة والتواريخ وأعداد المسافرين ونوع الإشغال والموسم والخدمات. لا يُعد السعر المعروض تقديرًا نهائيًا ملزمًا دون اتفاق.</p>",
+      "tipping": "<p>الإكراميات اختيارية في العادة، ما لم تُحدد رسوم إلزامية بوضوح في العرض أو يفرضها القانون.</p>",
+      "force_majeure": "<p>عند التحذيرات الرسمية أو الاضطرابات الخارجة عن السيطرة تُراجع بدائل التأجيل أو الاسترداد أو الرصيد وفق الموردين والقانون، كل حالة على حدة.</p>",
+      "general": "<p>يتحمل المسافر مسؤولية صحة الأسماء والمواعيد والجوازات والتأشيرات والتأمين ومتطلبات الدخول، وإبلاغ الشركة بالمشكلات مبكرًا.</p>"
+    }
+  }
+}

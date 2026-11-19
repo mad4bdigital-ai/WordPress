@@ -81,9 +81,12 @@ final class MAD4B_SCP_Research_Intelligence {
 		$input = is_array( $input ) ? $input : array();
 		$job_id = self::job_id( $input );
 		if ( is_wp_error( $job_id ) ) return $job_id;
-		$provider_id = isset( $input['provider_id'] ) ? sanitize_key( (string) $input['provider_id'] ) : '';
-		$request_sha = isset( $input['request_sha256'] ) ? strtolower( trim( (string) $input['request_sha256'] ) ) : '';
-		$governance_id = isset( $input['data_governance_artifact_id'] ) ? strtolower( trim( (string) $input['data_governance_artifact_id'] ) ) : '';
+		$provider_id = is_string( $input['provider_id'] ?? null )
+			? sanitize_key( $input['provider_id'] ) : '';
+		$request_sha = is_string( $input['request_sha256'] ?? null )
+			? strtolower( trim( $input['request_sha256'] ) ) : '';
+		$governance_id = is_string( $input['data_governance_artifact_id'] ?? null )
+			? strtolower( trim( $input['data_governance_artifact_id'] ) ) : '';
 		$purpose = isset( $input['purpose'] ) ? sanitize_key( (string) $input['purpose'] ) : 'research';
 		if ( '' === $provider_id || strlen( $provider_id ) > 64 ) return new WP_Error( 'mad4b_research_provider_invalid', 'Research provider identity is required.' );
 		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $request_sha ) ) return new WP_Error( 'mad4b_research_request_digest_invalid', 'Research request fingerprint is required.' );
@@ -157,6 +160,13 @@ final class MAD4B_SCP_Research_Intelligence {
 	}
 
 	public static function record_serp( $input ) {
+		// Central SERP evidence policy when Central Hub is enabled, independent of environment. Existing historical artifacts stay immutable.
+		if ( '1' === getenv( 'MAD4B_CENTRAL_HUB_ENABLED' ) ) {
+			if ( ! class_exists( 'MAD4B_SERP_Presentation_Policy' ) )
+				return new WP_Error( 'mad4b_serp_policy_unavailable', 'Central SERP evidence policy is not loaded.' );
+			$policy = MAD4B_SERP_Presentation_Policy::validate_ingest( $input );
+			if ( is_wp_error( $policy ) ) return $policy;
+		}
 		$base = self::provider_observation( $input, 'serp' );
 		if ( is_wp_error( $base ) ) return $base;
 		$records = isset( $input['results'] ) && is_array( $input['results'] ) ? $input['results'] : array();
@@ -172,6 +182,10 @@ final class MAD4B_SCP_Research_Intelligence {
 				'features' => self::canonicalize( isset( $input['features'] ) && is_array( $input['features'] ) ? $input['features'] : array() ),
 			)
 		);
+		if ( isset( $policy ) && is_array( $policy ) ) {
+			$payload['presentation_evidence_class'] = $policy['evidence_class'];
+			$payload['presentation_policy_contract'] = $policy['contract'];
+		}
 		$payload['snapshot_sha256'] = self::digest( $payload );
 		return self::persist_observation( (string) $input['job_id'], 'serp_research', 'SERP_RESEARCH', $payload, 'SERP snapshot observation' );
 	}
@@ -385,7 +399,8 @@ final class MAD4B_SCP_Research_Intelligence {
 	}
 
 	private static function job_id( $input ) {
-		$id = isset( $input['job_id'] ) ? strtolower( trim( (string) $input['job_id'] ) ) : '';
+		$id = is_array( $input ) && is_string( $input['job_id'] ?? null )
+			? strtolower( trim( $input['job_id'] ) ) : '';
 		return preg_match( '/^[a-f0-9-]{36}$/', $id ) ? $id : new WP_Error( 'mad4b_research_job_id_invalid', 'ContentJob ID is invalid.' );
 	}
 
@@ -393,7 +408,9 @@ final class MAD4B_SCP_Research_Intelligence {
 		if ( ! is_array( $value ) || count( $value ) > $max ) return new WP_Error( 'mad4b_research_artifact_list_invalid', 'Artifact reference list is invalid.' );
 		$out = array();
 		foreach ( $value as $id ) {
-			$id = strtolower( trim( (string) $id ) );
+			if ( ! is_string( $id ) )
+				return new WP_Error( 'mad4b_research_artifact_id_invalid', 'Artifact ID must be a bounded string.' );
+			$id = strtolower( trim( $id ) );
 			if ( ! preg_match( '/^[a-f0-9-]{36}$/', $id ) ) return new WP_Error( 'mad4b_research_artifact_id_invalid', 'Artifact ID is invalid.' );
 			$out[] = $id;
 		}
@@ -434,5 +451,9 @@ final class MAD4B_SCP_Research_Intelligence {
 		return $value;
 	}
 }
+
+// Catalog classification is an always-on, read-only Research Intelligence policy.
+// Load it through the existing module (not an environment-specific MU plugin).
+require_once __DIR__ . '/class-mad4b-scp-catalog-intent-policy.php';
 
 MAD4B_SCP_Research_Intelligence::boot();

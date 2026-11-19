@@ -1,0 +1,43 @@
+/* Multilingual company-owned legal pages; independent of page builder templates. */
+.mad4b-company-legal-page {
+  --mad4b-legal-ink:#153646;
+  --mad4b-legal-muted:#4f6673;
+  --mad4b-legal-line:#dfe8ec;
+  box-sizing:border-box;
+  width:min(100% - 36px, 960px);
+  margin:clamp(18px,3vw,44px) auto 62px;
+  padding:clamp(20px,4vw,52px);
+  border-radius:14px;
+  border:1px solid var(--mad4b-legal-line);
+  box-shadow:0 6px 28px rgba(15,50,65,.04);
+  background:#fff;
+  color:var(--mad4b-legal-ink);
+  line-height:1.75;
+  font-size:16px;
+  overflow-wrap:anywhere;
+}
+.mad4b-company-legal-page *, .mad4b-company-legal-page *::before, .mad4b-company-legal-page *::after {box-sizing:border-box;}
+.mad4b-company-legal-header {border-bottom:1px solid var(--mad4b-legal-line);padding:0 0 22px;margin:0 0 24px;}
+.mad4b-company-legal-kicker {font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#547582;}
+.mad4b-company-legal-page h1 {color:var(--mad4b-legal-ink);font-size:clamp(25px,3vw,36px);line-height:1.2;margin:8px 0 10px;}
+.mad4b-company-legal-page h2 {color:var(--mad4b-legal-ink);font-size:clamp(17px,1.9vw,20px);line-height:1.35;margin:0 0 14px;font-weight:700;}
+.mad4b-company-legal-page p {margin:0 0 14px;line-height:1.75;}
+.mad4b-company-legal-date {font-size:13px;color:var(--mad4b-legal-muted);}
+.mad4b-company-legal-review {background:#fff9ec;border-inline-start:4px solid #c3a05b;padding:12px 16px;font-size:14px;border-radius:4px;color:#5c491d;}
+.mad4b-company-legal-lead {font-size:17px;line-height:1.7;color:#334e5b;}
+.mad4b-company-legal-identity {margin:20px 0;}
+.mad4b-company-legal-section {border-top:1px solid var(--mad4b-legal-line);margin:22px 0 0;padding:22px 0 0;}
+.mad4b-company-legal-page a {color:#176578;text-decoration:underline;text-underline-offset:3px;}
+.mad4b-company-legal-page a:focus-visible {outline:2px solid #c0a15c;outline-offset:3px;}
+.mad4b-company-legal-page table {border-collapse:collapse;width:100%;max-width:100%;table-layout:fixed;margin:12px 0 20px;}
+.mad4b-company-legal-page table td,.mad4b-company-legal-page table th {border:1px solid var(--mad4b-legal-line);padding:10px 13px;font-size:14px;overflow-wrap:anywhere;text-align:start;}
+.mad4b-company-legal-page table th {background:#f1f6f7;font-weight:700;}
+.mad4b-company-legal-page .mad4b-customer-policy {margin:0;color:inherit;}
+.mad4b-company-legal-page .mad4b-customer-policy p {margin-bottom:12px;}
+.mad4b-company-legal-contact {background:#f5f9fa;border-radius:9px;padding:20px;margin:28px 0 0;}
+.mad4b-company-legal-page[dir=rtl] {text-align:right;}
+@media(max-width:650px) {
+ .mad4b-company-legal-page {width:calc(100% - 20px);padding:20px 16px;margin:14px auto 26px;font-size:15px;}
+ .mad4b-company-legal-page table td,.mad4b-company-legal-page table th {padding:8px 9px;font-size:12px;}
+ .mad4b-company-legal-contact {padding:15px;}
+}

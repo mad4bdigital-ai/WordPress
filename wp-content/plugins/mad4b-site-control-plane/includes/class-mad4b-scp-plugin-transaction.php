@@ -12,6 +12,9 @@ final class MAD4B_SCP_Plugin_Transaction {
 
 	public static function boot() {
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_ability' ), 34 );
+		// Central Staging validation is read-only; company staging is optional.
+		require_once __DIR__ . '/class-mad4b-scp-central-company-rollout.php';
+		MAD4B_SCP_Central_Company_Rollout::boot();
 	}
 
 	public static function register_ability() {
@@ -47,17 +50,31 @@ final class MAD4B_SCP_Plugin_Transaction {
 	}
 
 	private static function execute_planner( $ability_name, array $input ) {
-		if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) {
-			return new WP_Error( 'mad4b_plugin_transaction_planner_unavailable', 'Required governed plugin planner is not registered.', array( 'planner' => $ability_name ) );
+		try {
+			if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' )
+				|| true !== wp_has_ability( $ability_name ) )
+				return new WP_Error( 'mad4b_plugin_transaction_planner_unavailable',
+					'Required governed plugin planner is not verified as registered.', array( 'planner' => $ability_name ) );
+			$ability = wp_get_ability( $ability_name );
+			if ( ! is_object( $ability ) || is_wp_error( $ability ) || ! method_exists( $ability, 'execute' ) )
+				return new WP_Error( 'mad4b_plugin_transaction_planner_invalid', 'Required governed plugin planner cannot execute.' );
+			return $ability->execute( $input );
+		} catch ( \Throwable $error ) {
+			return new WP_Error( 'mad4b_plugin_transaction_planner_unavailable',
+				'Original governed plugin planner failed; do not infer a plan or retry an executor.' );
 		}
-		$ability = wp_get_ability( $ability_name );
-		if ( ! is_object( $ability ) || ! method_exists( $ability, 'execute' ) ) return new WP_Error( 'mad4b_plugin_transaction_planner_invalid', 'Required governed plugin planner cannot execute.' );
-		return $ability->execute( $input );
 	}
 
 	public static function plan( $input ) {
-		$input = is_array( $input ) ? $input : array();
-		$action = sanitize_key( isset( $input['action'] ) ? (string) $input['action'] : '' );
+		if ( ! is_array( $input ) )
+			return new WP_Error( 'mad4b_plugin_transaction_input_invalid', 'Original plugin transaction input must be an object.' );
+		// Schema validation also belongs here: direct native planners may be
+		// invoked without the REST schema and cannot cast WP_Error into a plugin.
+		foreach ( array( 'action', 'plugin', 'provider_id', 'component', 'activation_scope', 'reason' ) as $field ) {
+			if ( array_key_exists( $field, $input ) && ! is_string( $input[ $field ] ) )
+				return new WP_Error( 'mad4b_plugin_transaction_input_invalid', 'Plugin planning field has an invalid type.' );
+		}
+		$action = sanitize_key( $input['action'] ?? '' );
 		$plugin = isset( $input['plugin'] ) ? ltrim( wp_normalize_path( sanitize_text_field( (string) $input['plugin'] ) ), '/' ) : '';
 		$provider = sanitize_key( isset( $input['provider_id'] ) ? (string) $input['provider_id'] : '' );
 		$component = sanitize_key( isset( $input['component'] ) ? (string) $input['component'] : '' );
@@ -98,13 +115,22 @@ final class MAD4B_SCP_Plugin_Transaction {
 
 		$native_plan = self::execute_planner( $planner, $planner_input );
 		if ( is_wp_error( $native_plan ) ) return $native_plan;
+		if ( ! is_array( $native_plan ) || ! is_string( $native_plan['operation'] ?? null ) )
+			return new WP_Error( 'mad4b_plugin_transaction_native_plan_invalid',
+				'Original plugin planner did not produce a verified plan envelope.' );
 		$compatibility_blockers = array();
-		$native_operation = isset( $native_plan['operation'] ) ? sanitize_key( (string) $native_plan['operation'] ) : '';
+		$native_operation = sanitize_key( $native_plan['operation'] );
 		if ( 'install' === $action && 'install' !== $native_operation ) $compatibility_blockers[] = 'requested_install_requires_absent_plugin';
 		if ( 'replace' === $action && 'replace' !== $native_operation ) $compatibility_blockers[] = 'requested_replace_requires_installed_plugin';
 		if ( in_array( $action, array( 'activate', 'deactivate' ), true ) && $action !== $native_operation ) $compatibility_blockers[] = 'native_lifecycle_operation_mismatch';
 		if ( 'update' === $action && ! in_array( $native_operation, array( 'remote_update', 'update' ), true ) ) $compatibility_blockers[] = 'native_update_operation_mismatch';
-		$native_blockers = isset( $native_plan['blockers'] ) && is_array( $native_plan['blockers'] ) ? array_values( $native_plan['blockers'] ) : array();
+		if ( isset( $native_plan['blockers'] ) && ! is_array( $native_plan['blockers'] ) )
+			return new WP_Error( 'mad4b_plugin_transaction_blockers_invalid', 'Original plugin blockers are not readable.' );
+		$native_blockers = array_values( $native_plan['blockers'] ?? array() );
+		foreach ( $native_blockers as $reason_code ) {
+			if ( ! is_string( $reason_code ) || '' === $reason_code )
+				return new WP_Error( 'mad4b_plugin_transaction_blockers_invalid', 'Original plugin blocker is not a valid reason.' );
+		}
 		$blockers = array_values( array_unique( array_merge( $native_blockers, $compatibility_blockers ) ) );
 		sort( $blockers, SORT_STRING );
 		$impact_plugin = '' !== $plugin ? $plugin : ( isset( $native_plan['plugin_file'] ) ? (string) $native_plan['plugin_file'] : '' );
@@ -118,7 +144,7 @@ final class MAD4B_SCP_Plugin_Transaction {
 			'native_plan_contract' => isset( $native_plan['contract'] ) ? (string) $native_plan['contract'] : '',
 			'native_plan_sha256' => isset( $native_plan['plan_sha256'] ) ? (string) $native_plan['plan_sha256'] : '',
 			'native_operation' => $native_operation,
-			'eligible' => ! empty( $native_plan['eligible'] ) && empty( $compatibility_blockers ),
+			'eligible' => ( $native_plan['eligible'] ?? null ) === true && empty( $blockers ),
 			'blockers' => $blockers,
 			'dependency_impact' => $impact,
 			'native_plan' => $native_plan,

@@ -1,0 +1,22 @@
+{
+  "contract": "mad4b.admin-pages-ci-source-reviews.v1",
+  "authorizing": false,
+  "production_authorized": false,
+  "owner_attestation_provided": false,
+  "review_policy": "append_only_exact_git_blob_and_disposable_wordpress_regressions",
+  "successors": [
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php",
+      "prior_source_blob_sha": "0c0c2052254a5c893a79d45aa9d985b57d8361fd",
+      "source_blob_sha": "ae5fb3221fe82ac7629c300e2194e31465912af7",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-pr415-pr416-pr420-pr421-contract.py"
+      ],
+      "review_rationale": "Exact reviewed extension of the disposable WordPress admin-page smoke to five newly registered company pages; preserves authenticated and unauthenticated checks, malformed input checks, nonce checks and zero outbound requests. Non-authorizing source evidence only; neither historical delivery hashes nor runtime/write/Owner release policies changed."
+    }
+  ]
+}

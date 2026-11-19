@@ -1,0 +1,9 @@
+{
+  "contract": "mad4b.first-party-gtm-mu-source-restore.review.v1",
+  "live_mutated": false,
+  "matched_live_sha256": true,
+  "sha256": "f173883204ba1f0310a08330a1c7889c4606f32b9cae25421cb34c841cb4f339",
+  "source_commit": "b3e68190ce5d1d939b276119c1f6a6c6fbd4429d",
+  "source_path": "wp-content/mu-plugins/mad4b-gtm-consent-governance.php",
+  "source_release_approved": false
+}

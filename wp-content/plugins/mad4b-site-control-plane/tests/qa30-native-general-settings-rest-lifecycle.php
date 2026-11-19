@@ -43,7 +43,12 @@ $base = ['general' => ['siteurl','home','admin_email','new_admin_email','blogdes
 $out = MAD4B_SCP_Native_General_Settings_Contract::allowed_options($base);
 qa30_assert($out['general'] === ['new_admin_email','blogdescription'], 'locked_urls_and_direct_admin_mail_excluded');
 qa30_assert($out['reading'] === $base['reading'], 'unrelated_settings_unchanged');
+qa30_assert(in_array('new_admin_email',$out['general'],true),
+ 'native_admin_email_confirmation_workflow_retained');
+qa30_assert(!in_array('admin_email',$out['general'],true),
+ 'no_unconfirmed_direct_admin_email_write');
 $reflect = new ReflectionMethod('MAD4B_SCP_MCP_Peer_Governance', 'synchronize_rest_inventory_lifecycle');
+if (PHP_VERSION_ID < 80100) $reflect->setAccessible(true);
 $sync = $reflect->invoke(null);
 qa30_assert($sync instanceof WP_Error && $sync->get_error_code() === 'mcp_inventory_deferred_native_general_settings', 'mcp_deferred_during_general_save');
 qa30_assert($GLOBALS['qa30_rest_calls'] === 0, 'no_rest_bootstrap_during_general_save');
@@ -61,3 +66,5 @@ qa30_assert(MAD4B_SCP_Native_General_Settings_Contract::allowed_options($base) =
 $GLOBALS['qa30_admin'] = false;
 qa30_assert(MAD4B_SCP_Native_General_Settings_Contract::allowed_options($base) === $base, 'non_admin_context_untouched');
 echo "QA30_SOURCE_CONTRACT_REGRESSION_PASS\n";
+
+echo "QA30_SOURCE_CONTRACT: PASS\n";

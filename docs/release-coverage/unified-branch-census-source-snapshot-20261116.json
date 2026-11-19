@@ -1,0 +1,2915 @@
+{
+  "contract": "mad4b.unified-local-branch-census-readonly.v1",
+  "candidate": "4d5c22c4916dac1e555e5873589b4f3720a68e71",
+  "current_worktree_branch": "integration/unified-current-fixes-20261116",
+  "observed_utc": "2026-11-16T02:57:08.141396+00:00",
+  "counts": {
+    "other_local_refs": 161,
+    "contained_ancestors": 16,
+    "divergent_review_required": 145,
+    "recent_divergent_refs_48h": 10
+  },
+  "branches": [
+    {
+      "branch": "integration/market-cache-css-cron-20261115",
+      "tip": "02456f6d918cdd60bfadf72d55b1a7df285e7306",
+      "tip_subject": "fix(original305): reject obsolete V1 incident review requests after Supervisor V7 rollout",
+      "tip_utc": "2026-11-16T02:45:37+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 214,
+      "candidate_commits_not_on_branch": 653,
+      "tip_paths_total": 2,
+      "tip_paths_sampled": 2,
+      "tip_paths_differ": [
+        "ops/native-source-publisher-v1/original305_incident_signed_review_v1.py",
+        "tests/test_native_original305_incident_review_no_stale_cli.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/cache-lifecycle-internal-rates-20261116",
+      "tip": "f8b7e08ce59c99fafecdbd080c42b3ad7c2a9fd8",
+      "tip_subject": "fix(cache): avoid warming nonrenderable internal tour-rate URLs",
+      "tip_utc": "2026-11-16T02:45:01+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 102,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 3,
+      "tip_paths_sampled": 3,
+      "tip_paths_differ": [
+        "ops/cache-lifecycle-rate-404-20261116/README.md",
+        "ops/cache-lifecycle-rate-404-20261116/tests/test-rate-routing.php",
+        "wp-content/plugins/mad4b-cache-lifecycle/includes/runtime.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/wpml-jetengine-native-prefetch-20261115",
+      "tip": "d86501775c6ff6de379e25cb2568f96d1df20842",
+      "tip_subject": "monitor(css): preserve live adaptive/v1 certificate SHA integrity in existing company timer",
+      "tip_utc": "2026-11-16T02:14:43+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 2,
+      "candidate_commits_not_on_branch": 70,
+      "tip_paths_total": 4,
+      "tip_paths_sampled": 4,
+      "tip_paths_differ": [
+        "ops/performance-v2/performance_monitor_v2.py",
+        "ops/performance-v2/policies/source-http-policy.json",
+        "ops/performance-v2/policies/wayfatours-http-policy.json",
+        "ops/performance-v2/tests/test_critical_css_integrity.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "release/wayfa-media-rights-native-20261116",
+      "tip": "83b6000023cbd8747c54a9059f762ae5d2fb2736",
+      "tip_subject": "release(wayfa): preserve missing local rights across media normalization",
+      "tip_utc": "2026-11-16T01:26:56+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 104,
+      "candidate_commits_not_on_branch": 653,
+      "tip_paths_total": 1,
+      "tip_paths_sampled": 1,
+      "tip_paths_differ": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-media.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/registry-host-resource-compat-20261116",
+      "tip": "ccaaa8d0796e790947a4a59ad78e419e8355eaf8",
+      "tip_subject": "fix(registry): source parity with enrolled host-resource provider schema",
+      "tip_utc": "2026-11-16T01:23:09+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 102,
+      "candidate_commits_not_on_branch": 653,
+      "tip_paths_total": 2,
+      "tip_paths_sampled": 2,
+      "tip_paths_differ": [
+        "ops/dynamic-operation-registry-v1/registry.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feature/native-host-firstparty-lane-20261115",
+      "tip": "52b8690bc67e2c08b9b2ad795d74c399f7f94a6e",
+      "tip_subject": "feat(original312): root-pinned dedicated Host proof issuer with independent signer checks",
+      "tip_utc": "2026-11-15T09:56:04+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 158,
+      "candidate_commits_not_on_branch": 653,
+      "tip_paths_total": 4,
+      "tip_paths_sampled": 4,
+      "tip_paths_differ": [
+        "ops/dynamic-operation-registry-v1/tests/test_host312_original_issuer.py",
+        "ops/native-source-publisher-v1/host_source_activation_doctor.py",
+        "ops/native-source-publisher-v1/test_native_host_source_transaction.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feat/native-heavy-listings-v104-20261113",
+      "tip": "d40f9646bdf44c783b32707005a49e5aa0da6155",
+      "tip_subject": "ops(toursdev): quarantine 7 obsolete cron entries and preserve cache safety",
+      "tip_utc": "2026-11-14T23:30:10+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 124,
+      "candidate_commits_not_on_branch": 653,
+      "tip_paths_total": 2,
+      "tip_paths_sampled": 2,
+      "tip_paths_differ": [
+        "ops/company-code-release-v1/reports/toursdev-stale-cron-hold-20261115.json",
+        "ops/company-code-release-v1/tests/TOURSDEV_STALE_CRON_HOLD_AND_TTFB_20261115.md"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/wayfa-highlights-split-parity-20261114",
+      "tip": "041527798a6738f91081b74b8ee5b564529bf621",
+      "tip_subject": "test(journey): source-control original Look and Feel Split selector contract",
+      "tip_utc": "2026-11-14T21:54:16+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 5,
+      "candidate_commits_not_on_branch": 434,
+      "tip_paths_total": 2,
+      "tip_paths_sampled": 2,
+      "tip_paths_differ": [],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feature/brand-integrity-review-pr814-20261114",
+      "tip": "e474d329712771279e2c43737af1affc2ed01e67",
+      "tip_subject": "ops(content): record checked live canary hashes and rollback from local Git",
+      "tip_utc": "2026-11-14T21:34:29+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 9,
+      "candidate_commits_not_on_branch": 313,
+      "tip_paths_total": 1,
+      "tip_paths_sampled": 1,
+      "tip_paths_differ": [],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feature/mad4b-site-owner-source-governance-20261113",
+      "tip": "12d6f706f3dbb5cef8ca5c89b10627686929a941",
+      "tip_subject": "fix(ci): run hermetic signed-release receipt tests under root runner context",
+      "tip_utc": "2026-11-14T19:43:16+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 9,
+      "candidate_commits_not_on_branch": 641,
+      "tip_paths_total": 1,
+      "tip_paths_sampled": 1,
+      "tip_paths_differ": [
+        ".github/workflows/mad4b-site-owner-source-provenance.yml"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feature/dynamic-brand-integrity-20261113",
+      "tip": "064f73ff04a0c046de9e892f2e573f9de54f7b96",
+      "tip_subject": "tool(content): add revision-fenced source-field remediation operator",
+      "tip_utc": "2026-11-13T23:32:07+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 5,
+      "candidate_commits_not_on_branch": 376,
+      "tip_paths_total": 2,
+      "tip_paths_sampled": 2,
+      "tip_paths_differ": [],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/pr814-source-successor-media-local-cache-20261114",
+      "tip": "eb848d123136389934491306ae1fd7025ec7af77",
+      "tip_subject": "fix(ci): preserve Tour Highlights history, reject expired media, verify Local no-opcache MCP",
+      "tip_utc": "2026-11-13T22:08:50+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 1,
+      "candidate_commits_not_on_branch": 317,
+      "tip_paths_total": 7,
+      "tip_paths_sampled": 7,
+      "tip_paths_differ": [
+        ".github/workflows/mad4b-local-oauth-standalone.yml",
+        "governance/production-readiness/capability-coverage.json",
+        "tests/test_local_cache_free_bootstrap.py",
+        "tests/test_tour_highlights_source_delta.py",
+        "wp-content/plugins/mad4b-site-control-plane/bootstrap/mad4b-mcp-adapter-mu-bootstrap.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-content-experience-smoke.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/pr814-admin-zero-touch-highlights-20261113",
+      "tip": "8dad4d6f9f587c97b1944086af44cb7f21214e32",
+      "tip_subject": "fix(admin): keep Tour Highlights hooks behind native hook API readiness",
+      "tip_utc": "2026-11-13T21:20:33+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 1,
+      "candidate_commits_not_on_branch": 318,
+      "tip_paths_total": 4,
+      "tip_paths_sampled": 4,
+      "tip_paths_differ": [
+        "governance/production-readiness/capability-coverage.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tour-highlights-v1.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/pr814-media-rights-qa27-fixtures-20261113",
+      "tip": "ec76616f46fe449a7285163c9d26eab63e42992e",
+      "tip_subject": "fix(ci): align media rights and QA27 fixtures to native site policy",
+      "tip_utc": "2026-11-13T21:16:19+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 1,
+      "candidate_commits_not_on_branch": 319,
+      "tip_paths_total": 2,
+      "tip_paths_sampled": 2,
+      "tip_paths_differ": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa27-candidate-upload-plan-rc118-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/remote-media-rights-environment-runtime.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/pr814-oauth-cli-materialization-and-readiness-gaps-20261113",
+      "tip": "1ca96c9dab8ad00629a0dfcd1db3e84aec48197e",
+      "tip_subject": "fix(ci): scope disposable OAuth materialization and report all readiness gaps fail-closed",
+      "tip_utc": "2026-11-13T21:08:33+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 1,
+      "candidate_commits_not_on_branch": 320,
+      "tip_paths_total": 7,
+      "tip_paths_sampled": 7,
+      "tip_paths_differ": [
+        ".github/workflows/mad4b-local-oauth-standalone.yml",
+        "tests/production_readiness_registry_contract.py",
+        "tools/production_readiness_registry.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/pr814-mcp-required-inventory-isolation-20261113",
+      "tip": "c020f7ecb8eadd72f0f5e86fc180703f2a8c36b4",
+      "tip_subject": "fix(mcp): derive required transport from native registry and isolate optional DTOs",
+      "tip_utc": "2026-11-13T20:56:50+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 1,
+      "candidate_commits_not_on_branch": 321,
+      "tip_paths_total": 6,
+      "tip_paths_sampled": 6,
+      "tip_paths_differ": [
+        "governance/production-readiness/capability-coverage.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-approval-bootstrap.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-optional-materialization-runtime.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "review/company-release-unified-lifecycle-20261113",
+      "tip": "aa213c3b26d8666c406c3824e9b1c3bd73cdbc99",
+      "tip_subject": "fix(native-release): split bounded Original306 registry observation from slow Central313 status",
+      "tip_utc": "2026-11-13T20:47:28+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 123,
+      "candidate_commits_not_on_branch": 653,
+      "tip_paths_total": 4,
+      "tip_paths_sampled": 4,
+      "tip_paths_differ": [
+        "ops/company-code-release-v1/README.md",
+        "ops/company-code-release-v1/company_lifecycle_broker.py",
+        "ops/company-code-release-v1/tests/test_lifecycle_bridge.py",
+        "ops/dynamic-operation-registry-v1/providers/company.code.release/manifest.json"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/pr814-oauth-foreign-client-and-readback-path-20261113",
+      "tip": "29323bdedb94724f1d9ebc6b2ab80da7d97c2b5b",
+      "tip_subject": "fix(ci): verify OAuth foreign-client denial and portable Original job readback",
+      "tip_utc": "2026-11-13T20:36:22+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 1,
+      "candidate_commits_not_on_branch": 322,
+      "tip_paths_total": 2,
+      "tip_paths_sampled": 2,
+      "tip_paths_differ": [],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/pr814-context-and-core-snapshot-20261113",
+      "tip": "6077f11c2fdabd4f4c26724efbe38c785b8725e6",
+      "tip_subject": "fix(ci): preserve versioned shared-core source evidence and align AI grant test scope",
+      "tip_utc": "2026-11-13T20:30:36+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 1,
+      "candidate_commits_not_on_branch": 323,
+      "tip_paths_total": 8,
+      "tip_paths_sampled": 8,
+      "tip_paths_differ": [],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/pr814-followup-required-mcp-20261113",
+      "tip": "a65f795588f196aea1b50b6ebb2f8c7641469d3a",
+      "tip_subject": "fix(ci): fail closed on required MCP DTOs and isolate unreachable historical proof",
+      "tip_utc": "2026-11-13T20:21:02+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 1,
+      "candidate_commits_not_on_branch": 324,
+      "tip_paths_total": 7,
+      "tip_paths_sampled": 7,
+      "tip_paths_differ": [
+        ".github/workflows/mad4b-unified-source-nonregression.yml",
+        "governance/production-readiness/capability-coverage.json"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/pr814-ci-gates-20261113",
+      "tip": "2766630355a6afa207df159c1ae0c6ce9d8db60c",
+      "tip_subject": "fix(ci): enforce exact local MCP callback, OAuth scope denial and source evidence",
+      "tip_utc": "2026-11-13T19:49:30+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 1,
+      "candidate_commits_not_on_branch": 325,
+      "tip_paths_total": 10,
+      "tip_paths_sampled": 10,
+      "tip_paths_differ": [
+        "governance/production-readiness/capability-coverage.json",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-chatgpt-http-smoke.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/pr814-tour-site-neutral-policy-20261113",
+      "tip": "f3e483550a51b5f9c0e3f33bbc21a6e054eb7795",
+      "tip_subject": "test(ci): enforce reviewed Tour Highlights Site Neutrality in unified checks",
+      "tip_utc": "2026-11-13T17:05:00+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 2,
+      "candidate_commits_not_on_branch": 326,
+      "tip_paths_total": 1,
+      "tip_paths_sampled": 1,
+      "tip_paths_differ": [
+        ".github/workflows/mad4b-unified-source-nonregression.yml"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "review/immutable-runtime-controller-20261113",
+      "tip": "9ec7d00c049b5825669e5a927679f72a025e28b5",
+      "tip_subject": "fix(runtime): distinguish legacy mutable baseline from immutable candidate safety",
+      "tip_utc": "2026-11-13T16:59:50+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 136,
+      "candidate_commits_not_on_branch": 653,
+      "tip_paths_total": 3,
+      "tip_paths_sampled": 3,
+      "tip_paths_differ": [
+        "ops/native-source-publisher-v1/docs/IMMUTABLE_RUNTIME_ARCHITECTURE_V1.md",
+        "ops/native-source-publisher-v1/runtime_topology.py",
+        "ops/native-source-publisher-v1/tests/test_runtime_topology.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/pr814-portable-native-ci-20261113",
+      "tip": "e4ea48088b6a4b23b27aa326aedec43a97d49a6f",
+      "tip_subject": "test(ci): separate portable Native Source contracts from signed Host evidence",
+      "tip_utc": "2026-11-13T16:46:50+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 1,
+      "candidate_commits_not_on_branch": 338,
+      "tip_paths_total": 4,
+      "tip_paths_sampled": 4,
+      "tip_paths_differ": [
+        ".github/workflows/mad4b-unified-source-nonregression.yml"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/pr814-oauth-site-precedence-20261113",
+      "tip": "71a8facfb8c56fd5deb31ab9d502ffe5ab45b2ea",
+      "tip_subject": "test(oauth): accept exact unready-site fence before bearer scope without permission",
+      "tip_utc": "2026-11-13T16:02:45+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 1,
+      "candidate_commits_not_on_branch": 337,
+      "tip_paths_total": 3,
+      "tip_paths_sampled": 3,
+      "tip_paths_differ": [
+        "tests/test_local_oauth_explicit_cli_mcp_scope.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-chatgpt-http-smoke.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/pr814-local-oauth-cli-explicit-scope-20261113",
+      "tip": "779c609c0e76bc7a0fbb065aaeec9e888ac97c3f",
+      "tip_subject": "test(oauth): opt into canonical MCP runtime for one disposable WP-CLI bearer proof",
+      "tip_utc": "2026-11-13T15:50:54+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 1,
+      "candidate_commits_not_on_branch": 338,
+      "tip_paths_total": 3,
+      "tip_paths_sampled": 3,
+      "tip_paths_differ": [
+        ".github/workflows/mad4b-local-oauth-standalone.yml",
+        "tests/test_local_oauth_explicit_cli_mcp_scope.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "test/pr814-operator-grant-dto-probe-20261113",
+      "tip": "92579fd058e9ef0e8e105fc02076a1cb64a6b9f0",
+      "tip_subject": "test(oauth): bound operator grants direct-tool loss evidence to safe readback",
+      "tip_utc": "2026-11-13T15:15:44+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 1,
+      "candidate_commits_not_on_branch": 339,
+      "tip_paths_total": 3,
+      "tip_paths_sampled": 3,
+      "tip_paths_differ": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-official-required-preflight-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-chatgpt-http-smoke.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/pr814-site-neutral-env-contract-20261113",
+      "tip": "d1583f93a524769d63c476742a2d88d8ac90ec35",
+      "tip_subject": "test(site-profile): assert enrolled dynamic environment without fixed deny",
+      "tip_utc": "2026-11-13T15:10:25+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 1,
+      "candidate_commits_not_on_branch": 340,
+      "tip_paths_total": 3,
+      "tip_paths_sampled": 3,
+      "tip_paths_differ": [],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/pr814-verified-registry-root-test-20261113",
+      "tip": "4fb999f0cfd4de234c3fafdc684632cc5ee857ca",
+      "tip_subject": "test(ci): execute ephemeral original306 source registry fixture as root",
+      "tip_utc": "2026-11-13T14:54:59+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 1,
+      "candidate_commits_not_on_branch": 350,
+      "tip_paths_total": 2,
+      "tip_paths_sampled": 2,
+      "tip_paths_differ": [
+        ".github/workflows/mad4b-unified-source-nonregression.yml"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/pr814-certified-mcp-profile-workflow-20261113",
+      "tip": "992ab8cdfcc15cdd07d5ecbdc1c1a05df88c327a",
+      "tip_subject": "test(ci): resolve MCP Adapter target from certified profile and matrix",
+      "tip_utc": "2026-11-13T14:08:08+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 1,
+      "candidate_commits_not_on_branch": 351,
+      "tip_paths_total": 4,
+      "tip_paths_sampled": 4,
+      "tip_paths_differ": [
+        ".github/workflows/mad4b-local-oauth-standalone.yml",
+        "tests/test_certified_mcp_adapter_profile.py",
+        "tools/resolve-certified-mcp-adapter-profile.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "review/tenant-sync-source-reconcile-20261113",
+      "tip": "b50053eb4b5fcf236faffa7fc54f13951586ed82",
+      "tip_subject": "test(publisher): make tenant source artifact test independent of Git worktree permissions",
+      "tip_utc": "2026-11-13T14:03:07+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 122,
+      "candidate_commits_not_on_branch": 653,
+      "tip_paths_total": 1,
+      "tip_paths_sampled": 1,
+      "tip_paths_differ": [
+        "ops/company-code-release-v1/tests/test_tenant_source_lineage_candidate.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/pr814-endpoint-catalog-count-20261113",
+      "tip": "fa093dcbb180c1d929b20547cd4c94d64abe352f",
+      "tip_subject": "test(mcp): derive endpoint diagnostic Server count from canonical registry",
+      "tip_utc": "2026-11-13T14:00:09+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 1,
+      "candidate_commits_not_on_branch": 352,
+      "tip_paths_total": 2,
+      "tip_paths_sampled": 2,
+      "tip_paths_differ": [],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/pr814-mcp-catalog-identity-20261113",
+      "tip": "dee73e788d0c6cb1814e6d13d3602092a508d06f",
+      "tip_subject": "fix(mcp): fail closed entire catalog on wire identity collision",
+      "tip_utc": "2026-11-13T13:54:49+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 1,
+      "candidate_commits_not_on_branch": 353,
+      "tip_paths_total": 3,
+      "tip_paths_sampled": 3,
+      "tip_paths_differ": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-catalog-diagnostics.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-official-required-preflight-runtime.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/pr814-post-update-site-profile-fixture-20261113",
+      "tip": "96a711a19fb4b6cf68618862ba6d5efc2a009569",
+      "tip_subject": "test(ci): restore enrolled Site Profile contract in post-update continuation fixture",
+      "tip_utc": "2026-11-13T13:28:10+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 1,
+      "candidate_commits_not_on_branch": 354,
+      "tip_paths_total": 2,
+      "tip_paths_sampled": 2,
+      "tip_paths_differ": [],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/company-eligibility-ci-live-reconcile-20261113",
+      "tip": "adb575f39e59f35f591d897ab9f277a89ad6c3f0",
+      "tip_subject": "fix(ci): reconcile the 135-file source snapshot and preserve release fence",
+      "tip_utc": "2026-11-13T13:27:31+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 3,
+      "candidate_commits_not_on_branch": 641,
+      "tip_paths_total": 5,
+      "tip_paths_sampled": 5,
+      "tip_paths_differ": [
+        ".github/workflows/mad4b-commerce-suite.yml",
+        ".github/workflows/mad4b-shared-product-core-source.yml",
+        "packages/mad4b-shared-product-core/README.md",
+        "packages/mad4b-shared-product-core/release-manifest.json",
+        "packages/mad4b-shared-product-core/source-files.sha256"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/pr814-mcp-recovery-fixture-governed-20261113",
+      "tip": "b476f69b1e4a9bcd8bdf0c4037f962d0a414d64a",
+      "tip_subject": "test(ci): preserve official MCP source verification in Recovery acceptance",
+      "tip_utc": "2026-11-13T12:30:30+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 1,
+      "candidate_commits_not_on_branch": 384,
+      "tip_paths_total": 4,
+      "tip_paths_sampled": 4,
+      "tip_paths_differ": [
+        ".github/workflows/mad4b-unified-source-nonregression.yml",
+        "tests/test_unified_mad4b_behavior_invariants.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "review/company-dynamic-capability-acceptance-live-v1-20261113",
+      "tip": "c2c1e195a1af23b737d62361fdf1c41a7471cd4d",
+      "tip_subject": "test(release): make prewrite registry denial hermetic across runners",
+      "tip_utc": "2026-11-13T12:15:20+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 112,
+      "candidate_commits_not_on_branch": 653,
+      "tip_paths_total": 1,
+      "tip_paths_sampled": 1,
+      "tip_paths_differ": [],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/extra-elementor-authored-visibility-20261113",
+      "tip": "4e234e690c5fb5271cb913170a5562ee5847814b",
+      "tip_subject": "fix(transport): derive WPML mode identity from native taxonomy",
+      "tip_utc": "2026-11-13T12:03:54+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 90,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 2,
+      "tip_paths_sampled": 2,
+      "tip_paths_differ": [
+        "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/adapters/presentation-transport-context-v1.php",
+        "wp-content/plugins/mad4b-commerce/tests/transport-mode-taxonomy-authority.test.cjs"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feature/mad4b-company-term-eligibility-20261113",
+      "tip": "db2ab1c55cdb1f2c9e5dc7d7a4eb0174010f9eca",
+      "tip_subject": "fix(company): scope native Terms Query and SmartFilters to verified tour components",
+      "tip_utc": "2026-11-13T11:25:50+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 108,
+      "candidate_commits_not_on_branch": 653,
+      "tip_paths_total": 4,
+      "tip_paths_sampled": 4,
+      "tip_paths_differ": [],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feature/company-release-crash-cas-20261113",
+      "tip": "b0c9e441275b725aaeadc783e4bfef1eafc7734c",
+      "tip_subject": "fix(release): bind pending transaction overlap to native site identity",
+      "tip_utc": "2026-11-13T11:02:03+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 108,
+      "candidate_commits_not_on_branch": 653,
+      "tip_paths_total": 3,
+      "tip_paths_sampled": 3,
+      "tip_paths_differ": [
+        "ops/company-code-release-v1/company_code_release.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/pr808-developer-policy-v2-20261113",
+      "tip": "835ecf4eb8341a96c4bdfa55c9d5a4302e2e11d4",
+      "tip_subject": "feat(governance): add immutable Developer V1 policy V2 view and reconcile Skills",
+      "tip_utc": "2026-11-13T10:25:26+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 1,
+      "candidate_commits_not_on_branch": 516,
+      "tip_paths_total": 32,
+      "tip_paths_sampled": 24,
+      "tip_paths_differ": [
+        "tests/test_control_plane_developer_policy_v2_contract.py",
+        "tests/test_control_plane_policy_governed_contract.py",
+        "tests/test_control_plane_rc129_live_integrity.py",
+        "tests/test_control_plane_rc129_v29_readonly_overlay.py",
+        "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php"
+      ],
+      "tip_comparison_truncated": true,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feat/elementor-render-cache-release-20261113",
+      "tip": "d2fae01893993c330a3dc7bf3d9cd2239ec8a6f2",
+      "tip_subject": "release(elementor): enroll native derived cache module in dynamic catalog",
+      "tip_utc": "2026-11-13T10:15:16+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 102,
+      "candidate_commits_not_on_branch": 653,
+      "tip_paths_total": 2,
+      "tip_paths_sampled": 2,
+      "tip_paths_differ": [
+        "ops/company-code-release-v1/catalog/mad4b-release-components.json",
+        "wp-content/mu-plugins/mad4b-elementor-widget-css-integrity-v1.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/pr808-policy-governed-operator-20261113",
+      "tip": "344d21884f2d5603fac94e9cea246d3ec5e78f2f",
+      "tip_subject": "feat(governance): resolve Operator grants via enrolled registry and site policy",
+      "tip_utc": "2026-11-13T09:58:02+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 1,
+      "candidate_commits_not_on_branch": 517,
+      "tip_paths_total": 19,
+      "tip_paths_sampled": 19,
+      "tip_paths_differ": [
+        "tests/remote-execution/governed-write-admission-smoke.php",
+        "tests/remote-execution/operator-grants-convergence-smoke.php",
+        "tests/test_control_plane_policy_governed_contract.py",
+        "tests/test_control_plane_rc129_live_integrity.py",
+        "tests/test_control_plane_rc129_v29_readonly_overlay.py",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-grant-convergence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-registered-write-admission.php",
+        "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feature/company-release-multiaxis-hardening-20261113",
+      "tip": "4756c158cbe3d140afd473bbc347baee7e5f3f50",
+      "tip_subject": "fix(ci): keep root ledger enforcement and honor exact PR head workflow contract",
+      "tip_utc": "2026-11-13T09:44:43+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 104,
+      "candidate_commits_not_on_branch": 653,
+      "tip_paths_total": 3,
+      "tip_paths_sampled": 3,
+      "tip_paths_differ": [
+        ".github/workflows/mad4b-capability-owner-release-contract.yml",
+        "ops/company-code-release-v1/company_code_release.py",
+        "ops/company-code-release-v1/tests/test_release.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/pr808-next-ci-guards-20261113",
+      "tip": "31964573bfbae296ba26d609b65f938ea2440eee",
+      "tip_subject": "fix(ci): restore recovery source checks and bound Operator grants to nonproduction profile",
+      "tip_utc": "2026-11-13T09:11:03+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 1,
+      "candidate_commits_not_on_branch": 518,
+      "tip_paths_total": 4,
+      "tip_paths_sampled": 4,
+      "tip_paths_differ": [
+        "tests/remote-execution/operator-grants-convergence-smoke.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-grant-convergence.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feature/company-capability-owner-reconcile-20261113",
+      "tip": "d0c53308d7bff26b3d0cdbfc15aa8a5003c9f1f8",
+      "tip_subject": "feat(release): reconcile capability ownership across MU and native plugins",
+      "tip_utc": "2026-11-13T09:10:56+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 102,
+      "candidate_commits_not_on_branch": 653,
+      "tip_paths_total": 3,
+      "tip_paths_sampled": 3,
+      "tip_paths_differ": [
+        "ops/company-code-release-v1/README.md",
+        "ops/company-code-release-v1/company_code_release.py",
+        "ops/company-code-release-v1/tests/test_release.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/pr808-ci-regressions-20261113",
+      "tip": "039a865329a9c0628b782425a641b4f2701b703d",
+      "tip_subject": "fix(rc129): restore governed undo/media contracts and dynamic update tests",
+      "tip_utc": "2026-11-13T09:03:53+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 9,
+      "candidate_commits_not_on_branch": 656,
+      "tip_paths_total": 8,
+      "tip_paths_sampled": 8,
+      "tip_paths_differ": [
+        "docs/release-coverage/control-plane-rc128-live-rc129-review-candidate-20261113.json",
+        "tests/test_control_plane_rc129_live_integrity.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "review/control-plane-rc129-live-v29-20261113",
+      "tip": "32202e8b09bfd8cfe3010bcf1dadff716ba814ae",
+      "tip_subject": "test(rc129): verify exact readonly overlay from standalone Git tree",
+      "tip_utc": "2026-11-13T08:15:25+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 8,
+      "candidate_commits_not_on_branch": 656,
+      "tip_paths_total": 2,
+      "tip_paths_sampled": 2,
+      "tip_paths_differ": [
+        "tests/test_control_plane_rc129_live_integrity.py",
+        "tests/test_control_plane_rc129_v29_readonly_overlay.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feat/native-source-v29-central-readback-reconcile-20261113",
+      "tip": "16bec2fa48a19cdccaf861700e018f3dc7c632f1",
+      "tip_subject": "audit(control-plane): preserve live rc128 source before V29 governed release",
+      "tip_utc": "2026-11-13T07:25:45+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 8,
+      "candidate_commits_not_on_branch": 598,
+      "tip_paths_total": 3,
+      "tip_paths_sampled": 3,
+      "tip_paths_differ": [
+        "ops/native-source-publisher-v1/V29_LIVE_CONTROL_PLANE_RECONCILIATION_HOLD_20261113.md",
+        "ops/native-source-publisher-v1/central_job_readback_v29_delta_review.py",
+        "tests/test_native_source_central_v29_scope_review.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feat/original313-integrated-source-cas-v29-20261113",
+      "tip": "f7f182f9a5bf6bf1be8261d9f21000464f90ac6c",
+      "tip_subject": "fix(native-source): include Central 313 targets in disabled first-party enrollment scope",
+      "tip_utc": "2026-11-13T06:52:28+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 6,
+      "candidate_commits_not_on_branch": 598,
+      "tip_paths_total": 3,
+      "tip_paths_sampled": 3,
+      "tip_paths_differ": [
+        "ops/native-source-publisher-v1/catalog/policy-template.DISABLED.json",
+        "ops/native-source-publisher-v1/catalog/publisher-enrollment-proposal.json",
+        "tests/test_original313_native_source_policy_scope_v29.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feat/native-source-publisher-v1-20261112",
+      "tip": "05d7f9166e1a36a7f24acefe6daf9e335d0176e2",
+      "tip_subject": "audit(original306): require owner review of additive worker source delta",
+      "tip_utc": "2026-11-13T06:46:54+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 85,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 6,
+      "tip_paths_sampled": 6,
+      "tip_paths_differ": [
+        "ops/native-source-publisher-v1/ASSOCIATED_WORKER_INDEX_INTEGRATION_20261112.md",
+        "ops/native-source-publisher-v1/RELEASE_READINESS_AUDIT_20261112.md",
+        "ops/native-source-publisher-v1/audit_release_readiness.py",
+        "ops/native-source-publisher-v1/tracked_original306_worker_delta_review.py",
+        "tests/test_native_source_release_readiness_audit.py",
+        "tests/test_native_source_tracked_original306_delta_review.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/native-source-create-only-cas-v28-20261113",
+      "tip": "3a14dd8ffb1d2a8e58f249e2d3b34875a6fa5ebe",
+      "tip_subject": "fix(native-source): create-only targets via original exact-preimage CAS",
+      "tip_utc": "2026-11-13T06:45:57+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 4,
+      "candidate_commits_not_on_branch": 598,
+      "tip_paths_total": 3,
+      "tip_paths_sampled": 3,
+      "tip_paths_differ": [
+        "ops/native-source-publisher-v1/catalog/generated/source.code.release.manifest.json",
+        "ops/native-source-publisher-v1/native_source_publisher.py",
+        "tests/test_native_source_publisher_v1.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "review/native-source-v27-central-integration-20261113",
+      "tip": "a4865c09710a68590f2a5560c948e9944800a703",
+      "tip_subject": "feat(native-source): integrate reviewed Original313 and Central read-only APIs",
+      "tip_utc": "2026-11-13T06:17:28+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 3,
+      "candidate_commits_not_on_branch": 598,
+      "tip_paths_total": 45,
+      "tip_paths_sampled": 24,
+      "tip_paths_differ": [
+        "governance/production-readiness/capability-coverage.json",
+        "ops/dynamic-operation-registry-v1/registry.py",
+        "tests/native-original-job-readback/acceptance.php",
+        "tests/test_additive_mad4b_plugin_sources.py",
+        "tests/test_native_source_central_bridge_v21.py"
+      ],
+      "tip_comparison_truncated": true,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "review/native-source-v27-foundation-20261113",
+      "tip": "d5f40381659e34ebfae03d65a8c22c68261c4d27",
+      "tip_subject": "feat(native-source): isolate provider and exact original source dependencies",
+      "tip_utc": "2026-11-13T06:16:52+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 2,
+      "candidate_commits_not_on_branch": 598,
+      "tip_paths_total": 41,
+      "tip_paths_sampled": 24,
+      "tip_paths_differ": [
+        "ops/company-code-release-v1/company_code_release.py",
+        "ops/dynamic-operation-registry-v1/index.preview-NOT-ENROLLED.json",
+        "ops/dynamic-operation-registry-v1/providers/company.code.release/manifest.json",
+        "ops/native-source-publisher-v1/catalog/generated/source.code.release.manifest.json",
+        "ops/native-source-publisher-v1/catalog/policy-template.DISABLED.json",
+        "ops/native-source-publisher-v1/catalog/publisher-enrollment-proposal.json"
+      ],
+      "tip_comparison_truncated": true,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/uael-stage-gallery-quick-preview-interop-20261113",
+      "tip": "fa9433bd46890bb137844ae5326ac3e209a7a1da",
+      "tip_subject": "fix(code-release): validate selected Git blobs only after catalog scope admission",
+      "tip_utc": "2026-11-13T06:13:55+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 108,
+      "candidate_commits_not_on_branch": 653,
+      "tip_paths_total": 3,
+      "tip_paths_sampled": 3,
+      "tip_paths_differ": [
+        "ops/company-code-release-v1/company_code_release.py",
+        "tests/test_uael_existing_gallery_release_catalog.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "review/native-source-v27-original313-unified-20261113",
+      "tip": "2c954b5e56f987f5d5e3a609829e02bb472f7534",
+      "tip_subject": "review(native-source): bind source readback to CI-only coverage",
+      "tip_utc": "2026-11-13T05:50:30+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 3,
+      "candidate_commits_not_on_branch": 598,
+      "tip_paths_total": 2,
+      "tip_paths_sampled": 2,
+      "tip_paths_differ": [
+        "governance/production-readiness/capability-coverage.json"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/uael-code-release-independent313-status-20261113",
+      "tip": "304238f96848c26a4cdbddc71fd57267fdde8487",
+      "tip_subject": "fix(code-release): separately observe existing Central Original 313 readiness",
+      "tip_utc": "2026-11-13T01:01:50+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 104,
+      "candidate_commits_not_on_branch": 653,
+      "tip_paths_total": 3,
+      "tip_paths_sampled": 3,
+      "tip_paths_differ": [
+        "ops/company-code-release-v1/company_code_release.py",
+        "ops/company-code-release-v1/company_lifecycle_broker.py",
+        "ops/company-code-release-v1/tests/test_lifecycle_bridge.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/uael-gallery-stage-labels-approved-source-20261113",
+      "tip": "916324b226d9153cdb7ff50a0f29e805041801f4",
+      "tip_subject": "fix(company-code-release): enable Git-pinned dynamic MU release catalog with CAS",
+      "tip_utc": "2026-11-13T00:03:16+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 103,
+      "candidate_commits_not_on_branch": 653,
+      "tip_paths_total": 2,
+      "tip_paths_sampled": 2,
+      "tip_paths_differ": [
+        "ops/company-code-release-v1/company_code_release.py",
+        "tests/test_uael_existing_gallery_release_catalog.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feat/native-source-original313-finalizer-v27-20261113",
+      "tip": "52aa2a0e4bdc9525338e44b757a1edc110a6ba99",
+      "tip_subject": "feat(native-source): integrate original313 signer and finish into enrolled finalizer",
+      "tip_utc": "2026-11-12T23:59:56+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 106,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 9,
+      "tip_paths_sampled": 9,
+      "tip_paths_differ": [
+        "ops/native-source-publisher-v1/catalog/generated/source.code.release.manifest.json",
+        "tests/test_native_source_manifest_candidate.py",
+        "tests/test_native_source_original313_finalizer_v27.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "integration/full-wordpress-source-reconcile-20261111",
+      "tip": "52aa2a0e4bdc9525338e44b757a1edc110a6ba99",
+      "tip_subject": "feat(native-source): integrate original313 signer and finish into enrolled finalizer",
+      "tip_utc": "2026-11-12T23:59:56+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 106,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 9,
+      "tip_paths_sampled": 9,
+      "tip_paths_differ": [
+        "ops/native-source-publisher-v1/catalog/generated/source.code.release.manifest.json",
+        "tests/test_native_source_manifest_candidate.py",
+        "tests/test_native_source_original313_finalizer_v27.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feature/elementor-native-publisher-unified-20261112",
+      "tip": "86328c0e6ed8160f83287119ef444dcc90f7b736",
+      "tip_subject": "test(code-release): verify exact UAEL Gallery dynamic catalog CAS before signed deployment",
+      "tip_utc": "2026-11-12T23:51:01+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 84,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 2,
+      "tip_paths_sampled": 2,
+      "tip_paths_differ": [
+        "docs/release-coverage/UAEL_EXISTING_GALLERY_STAGE_TABS_20261113.md",
+        "tests/test_uael_existing_gallery_release_catalog.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/native-source-evidence-schema-v26-20261113",
+      "tip": "e413b0e8a0c93b9719d1e6943002eeba1ec544ba",
+      "tip_subject": "fix(native-source): match independent evidence to original313 dynamic schema",
+      "tip_utc": "2026-11-12T23:50:46+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 105,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 8,
+      "tip_paths_sampled": 8,
+      "tip_paths_differ": [
+        "ops/native-source-publisher-v1/catalog/generated/source.code.release.manifest.json",
+        "tests/test_native_source_manifest_candidate.py",
+        "tests/test_native_source_original313_schema_v26.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/native-source-immutable-plan-v25-20261113",
+      "tip": "b3e68190ce5d1d939b276119c1f6a6c6fbd4429d",
+      "tip_subject": "fix(native-source): rehydrate signed operation from immutable Original CAS plan",
+      "tip_utc": "2026-11-12T23:29:11+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 104,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 5,
+      "tip_paths_sampled": 5,
+      "tip_paths_differ": [
+        "ops/native-source-publisher-v1/catalog/generated/source.code.release.manifest.json",
+        "ops/native-source-publisher-v1/native_source_publisher.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feat/native-source-preclaim-v24-20261113",
+      "tip": "86dc4f8434865e45c9e8e3509fe9f511b784e03f",
+      "tip_subject": "feat(native-source): add signed Original306 preclaim candidate with immutable CAS plan",
+      "tip_utc": "2026-11-12T23:26:27+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 103,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 9,
+      "tip_paths_sampled": 9,
+      "tip_paths_differ": [
+        "ops/native-source-publisher-v1/build_enrollment_candidate.py",
+        "ops/native-source-publisher-v1/catalog/generated/source.code.release.manifest.json",
+        "ops/native-source-publisher-v1/first_party_registry_extension_preflight.py",
+        "tests/test_native_source_manifest_candidate.py",
+        "tests/test_native_source_registry_candidate.py",
+        "tests/test_native_source_registry_extension_v23.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feat/native-registry-extension-preflight-v23-20261113",
+      "tip": "8f93eb9933582ea95b435fbe14c3d84be7d4ff6e",
+      "tip_subject": "feat(native-source): preflight additive first-party registry extension safely",
+      "tip_utc": "2026-11-12T23:09:35+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 102,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 3,
+      "tip_paths_sampled": 3,
+      "tip_paths_differ": [
+        "ops/native-source-publisher-v1/first_party_registry_extension_preflight.py",
+        "tests/test_native_source_registry_extension_v23.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/uael-stage-tab-labels-existing-renderer-20261113",
+      "tip": "2fe5976291df1c339938aa35bc016dc4135151c8",
+      "tip_subject": "fix(uael-gallery): label verified visit stages as stops in existing native tabs",
+      "tip_utc": "2026-11-12T22:58:09+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 82,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 5,
+      "tip_paths_sampled": 5,
+      "tip_paths_differ": [
+        "docs/release-coverage/UAEL_EXISTING_GALLERY_STAGE_TABS_20261113.md",
+        "tests/uael-stage-gallery/test-native-category-labels.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/cache-lifecycle-forward-source-v22-20261113",
+      "tip": "ffe29d3a39d5a0c16a7499834e1013e1ba9b8d05",
+      "tip_subject": "fix(cache): forward reconcile validated live lifecycle behavior into source",
+      "tip_utc": "2026-11-12T22:57:32+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 101,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 4,
+      "tip_paths_sampled": 4,
+      "tip_paths_differ": [
+        "docs/release-coverage/CACHE_LIFECYCLE_LIVE_FORWARD_SOURCE_V22_20261113.md",
+        "tests/cache-lifecycle-forward-source-v22.php",
+        "tests/test_cache_lifecycle_forward_source_v22.py",
+        "wp-content/plugins/mad4b-cache-lifecycle/includes/runtime.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/native-source-central-bridge-v21-20261113",
+      "tip": "a05abada55acb87d112d60606b51cef8b82a4af9",
+      "tip_subject": "fix(native-source): bootstrap readonly Central bridge with live install evidence",
+      "tip_utc": "2026-11-12T22:33:34+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 100,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 9,
+      "tip_paths_sampled": 9,
+      "tip_paths_differ": [
+        "tests/test_native_source_central_bridge_v21.py",
+        "tests/test_native_source_readback_provenance.py",
+        "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/native-source-enrollment-contract-v20-20261112",
+      "tip": "467c11f348c5a19639754c940201eff8d361b768",
+      "tip_subject": "fix(native-source): align disabled enrollment contracts with v2 publisher",
+      "tip_utc": "2026-11-12T21:16:07+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 99,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 5,
+      "tip_paths_sampled": 5,
+      "tip_paths_differ": [
+        "ops/native-source-publisher-v1/build_enrollment_candidate.py",
+        "ops/native-source-publisher-v1/catalog/policy-template.DISABLED.json",
+        "ops/native-source-publisher-v1/catalog/publisher-enrollment-proposal.json"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feat/original-expiry-signature-v18-20261112",
+      "tip": "9d86163fc586e182842f2639d6734de44efc1534",
+      "tip_subject": "fix(original306): verify signed expiry before omitting plan index",
+      "tip_utc": "2026-11-12T20:12:49+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 98,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 7,
+      "tip_paths_sampled": 7,
+      "tip_paths_differ": [
+        "docs/release-coverage/ORIGINAL306_VERIFIED_EXPIRED_ASSOCIATIONS_V18_20261112.md",
+        "ops/native-source-publisher-v1/catalog/generated/source.code.release.manifest.json",
+        "tests/test_original306_signed_source_association_v15.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feat/original-signed-association-scope-v17-20261112",
+      "tip": "5da5c0445f5165fb0dc01a97745b83b635a936d4",
+      "tip_subject": "fix(original306): isolate expired plan associations from signed jobs",
+      "tip_utc": "2026-11-12T20:03:48+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 97,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 5,
+      "tip_paths_sampled": 5,
+      "tip_paths_differ": [
+        "docs/release-coverage/ORIGINAL306_PLAN_SCOPED_SIGNED_ADMISSION_V17_20261112.md",
+        "ops/dynamic-operation-registry-v1/worker_adapter.py",
+        "ops/native-source-publisher-v1/associated_worker_index.py",
+        "tests/test_original306_signed_source_association_v15.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feat/original-signed-legacy-compat-v16-20261112",
+      "tip": "44a6b274ea36aa20165e9f24deef0bc6eb9a3f5a",
+      "tip_subject": "fix(original306): retain signed legacy plans on shared source contracts",
+      "tip_utc": "2026-11-12T19:52:39+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 96,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 7,
+      "tip_paths_sampled": 7,
+      "tip_paths_differ": [
+        "docs/release-coverage/ORIGINAL306_SIGNED_LEGACY_ASSOCIATION_V16_20261112.md",
+        "ops/dynamic-operation-registry-v1/worker_adapter.py",
+        "ops/native-source-publisher-v1/associated_worker_index.py",
+        "ops/native-source-publisher-v1/audit_release_readiness.py",
+        "tests/test_native_source_associated_worker_index.py",
+        "tests/test_original306_signed_source_association_v15.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feat/original-associated-operation-v15-20261112",
+      "tip": "a5cea087c7474ff2357612a099aaaf014cbdb6eb",
+      "tip_subject": "fix(original306): enforce signed plan-operation association for dynamic source providers",
+      "tip_utc": "2026-11-12T19:39:38+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 95,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 11,
+      "tip_paths_sampled": 11,
+      "tip_paths_differ": [
+        "docs/release-coverage/ORIGINAL306_SIGNED_PLAN_ASSOCIATION_V15_20261112.md",
+        "docs/release-coverage/company-original306313-cas-v2-provenance-20261112.json",
+        "ops/dynamic-operation-registry-v1/registry.py",
+        "ops/dynamic-operation-registry-v1/tests/test_original306_association_anchor_v15.py",
+        "ops/dynamic-operation-registry-v1/tests/test_receipt_only_worker_adapter_candidate.py",
+        "ops/dynamic-operation-registry-v1/worker_adapter.py",
+        "ops/native-source-publisher-v1/build_enrollment_candidate.py",
+        "ops/native-source-publisher-v1/catalog/generated/source.code.release.manifest.json",
+        "tests/test_native_source_manifest_candidate.py",
+        "tests/test_native_source_registry_candidate.py",
+        "tests/test_original306_signed_source_association_v15.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feat/native-source-publisher-reviewed-import-20261112",
+      "tip": "5eafe2d6ee191bc5714b834ae38a392a8925b6d4",
+      "tip_subject": "feat(original): integrate source-pinned native publisher candidate without legacy UI",
+      "tip_utc": "2026-11-12T19:24:49+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 94,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 56,
+      "tip_paths_sampled": 24,
+      "tip_paths_differ": [
+        "docs/release-coverage/ORIGINAL_NATIVE_PUBLISHER_SELECTED_IMPORT_V14_20261112.md",
+        "ops/native-source-publisher-v1/associated_worker_index.py",
+        "ops/native-source-publisher-v1/audit_release_readiness.py",
+        "ops/native-source-publisher-v1/build_enrollment_candidate.py",
+        "ops/native-source-publisher-v1/catalog/evidence-schema.json",
+        "ops/native-source-publisher-v1/catalog/generated/source.code.release.manifest.json",
+        "ops/native-source-publisher-v1/catalog/policy-template.DISABLED.json",
+        "ops/native-source-publisher-v1/catalog/publisher-enrollment-proposal.json",
+        "ops/native-source-publisher-v1/control_plane_readback_provenance.py"
+      ],
+      "tip_comparison_truncated": true,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feat/original-native-schema-context-v13-20261112",
+      "tip": "ee63450756d64435a6179f9a69b9943e285da7d4",
+      "tip_subject": "fix(original): reuse native target WP-CLI system context for signed schema",
+      "tip_utc": "2026-11-12T18:58:05+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 93,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 5,
+      "tip_paths_sampled": 5,
+      "tip_paths_differ": [
+        "docs/release-coverage/ORIGINAL_NATIVE_SCHEMA_IDENTITY_V13_20261112.md",
+        "docs/release-coverage/ORIGINAL_REGISTRY_HOOKS_UNIFICATION_V12_20261112.md",
+        "ops/mad4b-faore-v1/native_operator_target.py",
+        "ops/mad4b-faore-v1/tests/test_native_schema_context_v13.py",
+        "ops/mad4b-faore-v1/tests/test_native_schema_original_contract_v13.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feat/registry-provider-hooks-unification-v12-20261112",
+      "tip": "67040a575e74a41d902529427ec4cce8c5d84fbe",
+      "tip_subject": "refactor(original): unify schema and legacy worker hooks in dynamic registry",
+      "tip_utc": "2026-11-12T18:40:42+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 92,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 9,
+      "tip_paths_sampled": 9,
+      "tip_paths_differ": [
+        "docs/release-coverage/ORIGINAL_REGISTRY_HOOKS_UNIFICATION_V12_20261112.md",
+        "docs/release-coverage/company-original306313-cas-v2-provenance-20261112.json",
+        "ops/company-reconcile/schema/schema_original_worker_gate_v11.py",
+        "ops/dynamic-operation-registry-v1/README.md",
+        "ops/dynamic-operation-registry-v1/registry.py",
+        "ops/dynamic-operation-registry-v1/tests/test_provider_hooks_unification_v12.py",
+        "ops/dynamic-operation-registry-v1/worker_adapter.py",
+        "tests/test_company_schema_original_wiring_v11.py",
+        "tests/test_company_schema_original_worker_gate_v11.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feat/company-schema-original-gate-v11-20261112",
+      "tip": "74663564f90c7dd7df630bcd8f338e40e1cd0500",
+      "tip_subject": "feat(schema): add source-pinned Original Worker admission and signed release verification",
+      "tip_utc": "2026-11-12T17:46:32+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 91,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 7,
+      "tip_paths_sampled": 7,
+      "tip_paths_differ": [
+        "docs/release-coverage/COMPANY_SCHEMA_ORIGINAL_WORKER_GATE_V11_20261112.md",
+        "ops/company-reconcile/schema/schema_original_provider_wiring_contract_v11.json",
+        "ops/company-reconcile/schema/schema_original_worker_gate_v11.py",
+        "ops/company-reconcile/schema/schema_release_grant_v11.py",
+        "tests/test_company_schema_original_wiring_v11.py",
+        "tests/test_company_schema_original_worker_gate_v11.py",
+        "tests/test_company_schema_signed_release_v11.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feat/company-schema-executor-cas-v10-20261112",
+      "tip": "1ecee2a253774173846728a642badad99eec7175",
+      "tip_subject": "feat(schema): add exact one-provider executor preimage CAS admission",
+      "tip_utc": "2026-11-12T17:25:41+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 90,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 6,
+      "tip_paths_sampled": 6,
+      "tip_paths_differ": [
+        "docs/release-coverage/COMPANY_SCHEMA_EXECUTOR_PREIMAGE_CAS_V10_20261112.md",
+        "ops/company-reconcile/schema/compile_source_schema_contract_v3.py",
+        "ops/company-reconcile/schema/schema_cas_preimage_cli_v1.py",
+        "ops/company-reconcile/schema/schema_cas_preimage_v1.py",
+        "tests/test_company_schema_preimage_cas_v1.py",
+        "tests/test_company_schema_preimage_cli_v1.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feat/company-schema-structural-v9-20261112",
+      "tip": "9021f684ee29537b07075c8d700b711f15f3b5df",
+      "tip_subject": "feat(company): validate tenant schema layouts against source-owned DDL",
+      "tip_utc": "2026-11-12T09:43:17+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 89,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 9,
+      "tip_paths_sampled": 9,
+      "tip_paths_differ": [
+        "docs/release-coverage/COMPANY_SCHEMA_STRUCTURAL_READBACK_V9_20261112.md",
+        "ops/company-reconcile/schema/compile_source_schema_contract_v3.py",
+        "ops/company-reconcile/schema/structural_v3_insert.txt",
+        "ops/company-reconcile/schema/verify_structural_schema_v3.py",
+        "ops/company-reconcile/schema/wordpress-schema-structural-readonly-v3.php",
+        "tests/company-schema-structural-v3-offline.php",
+        "tests/test_company_schema_structural_reader_source_v3.py",
+        "tests/test_company_schema_structural_v3.py",
+        "tests/test_tenant_environment_neutrality_source.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feat/tenant-dynamic-schema-catalog-20261112",
+      "tip": "d9ea1aea0b3d716ed96ef4f179a9942f07b81a80",
+      "tip_subject": "feat(tenant): replace static schema ops with trusted source provider catalog",
+      "tip_utc": "2026-11-12T09:01:13+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 88,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 12,
+      "tip_paths_sampled": 12,
+      "tip_paths_differ": [
+        "docs/release-coverage/COMPANY_REPAIR_DYNAMIC_SCHEMA_GATE_V1_20261112.md",
+        "docs/release-coverage/TENANT_SCHEMA_DYNAMIC_CATALOG_SOURCE_V8_20261112.md",
+        "tests/company-repair-dynamic-schema-gate-offline.php",
+        "tests/tenant-dynamic-schema-catalog-offline.php",
+        "tests/test_tenant_environment_neutrality_source.py",
+        "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-repair-schema-gate.php",
+        "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-company-media.php",
+        "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-operation-authority.php",
+        "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-schema-provider-catalog.php",
+        "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-sparse-store.php",
+        "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-workflow.php",
+        "wp-content/plugins/mad4b-tenant-sync/mad4b-tenant-sync.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feat/company-repair-schema-gate-v1-20261112",
+      "tip": "d13db6cc32844e5641d210caf7659d7c7ed7c0a9",
+      "tip_subject": "feat(reconcile): gate dynamic repair providers on exact tenant schema evidence",
+      "tip_utc": "2026-11-12T08:21:56+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 87,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 7,
+      "tip_paths_sampled": 7,
+      "tip_paths_differ": [
+        "docs/release-coverage/COMPANY_REPAIR_DYNAMIC_SCHEMA_GATE_V1_20261112.md",
+        "docs/release-coverage/ORIGINAL313_HISTORICAL_SOURCE_GAP_AUDIT_20261112.json",
+        "tests/company-repair-dynamic-schema-gate-offline.php",
+        "tools/audit_original313_historical_source_gaps_v1.py",
+        "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-repair-capability-discovery.php",
+        "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-repair-jobs.php",
+        "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-repair-schema-gate.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feature/elementor-company-cas-integrated-20261112",
+      "tip": "65e7ced1b612c19627e00e1fe7ae53386f70fc26",
+      "tip_subject": "docs(company-reconcile): attest merged CAS source without rewriting prior provenance",
+      "tip_utc": "2026-11-12T06:57:58+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 72,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 2,
+      "tip_paths_sampled": 2,
+      "tip_paths_differ": [
+        "docs/release-coverage/company-original306313-cas-v4-merged-provenance-20261112.json",
+        "tests/test_company_original_cas_306313_provenance.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feat/company-schema-readback-v2-20261112",
+      "tip": "042abd1f53731da8d68be67d6594153a05d57c01",
+      "tip_subject": "feat(reconcile): reuse tenant schema branch as dynamic exact-site read-only evidence",
+      "tip_utc": "2026-11-12T05:33:33+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 86,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 8,
+      "tip_paths_sampled": 8,
+      "tip_paths_differ": [
+        "docs/release-coverage/COMPANY_TENANT_SCHEMA_V2_BRANCH_REUSE_20261112.md",
+        "docs/release-coverage/LOCAL_GIT_MISSING_CONTRIBUTIONS_20261112.json",
+        "ops/company-reconcile/schema/verify_readonly_schema_evidence_v2.py",
+        "ops/company-reconcile/schema/wordpress-schema-readonly-v2.php",
+        "tests/company-schema-readonly-v2-offline.php",
+        "tests/test_company_schema_readonly_v2_evidence.py",
+        "tests/test_local_git_missing_contributions_v3.py",
+        "tools/audit_local_git_missing_contributions_v3.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/unified-date-043-visible-apply-20261112",
+      "tip": "1bf4abd4fb3d9f2ec5385787d86a1fdb4d88d69a",
+      "tip_subject": "fix(date-v043): expose native Rate Apply without adjacent JetSmartFilters selects",
+      "tip_utc": "2026-11-12T05:11:03+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 64,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 8,
+      "tip_paths_sampled": 8,
+      "tip_paths_differ": [
+        "docs/release-coverage/UNIFIED_DATE_043_VISIBLE_RATE_APPLY_20261112.md",
+        "docs/release-coverage/unified-date-043-apply-fallback-20261112.json",
+        "tests/browser/date-intent/unified-date-v043-apply-fallback-desktop.test.js",
+        "tests/browser/date-intent/unified-date-v043-apply-fallback-mobile.test.js",
+        "tests/test_unified_date_043_fallback_source.py",
+        "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.3.18.css",
+        "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.4.3.js",
+        "wp-content/plugins/mad4b-commerce/modules/presentation/unified-date-presentation-v1.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "integration/company-branch-conflict-repair-v2-20261112",
+      "tip": "0472caa0c4bc15b9bc670d4bcd9b86b8ac016cd3",
+      "tip_subject": "docs(reconcile): prove safe conflict resolutions and record remaining divergent source",
+      "tip_utc": "2026-11-12T05:10:58+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 85,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 6,
+      "tip_paths_sampled": 6,
+      "tip_paths_differ": [
+        "docs/release-coverage/COMPANY_BRANCH_CONFLICT_REPAIR_V2_20261112.md",
+        "docs/release-coverage/LOCAL_GIT_BRANCH_COVERAGE_CAS_20261112.json",
+        "docs/release-coverage/LOCAL_GIT_COMPANY_CAS_SOURCE_REVIEW_20261112.md",
+        "docs/release-coverage/LOCAL_GIT_SEMANTIC_CONFLICT_LEDGER_20261112.json",
+        "tests/test_local_git_semantic_conflict_ledger.py",
+        "tools/audit_local_git_merge_conflicts_v2.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "integration/company-cas-local-branches-20261112",
+      "tip": "b971ca281372a1f4202922efebbe87e1f7837fa1",
+      "tip_subject": "docs(release): audit every local branch and approve scoped CAS source candidate",
+      "tip_utc": "2026-11-12T04:36:54+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 63,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 3,
+      "tip_paths_sampled": 3,
+      "tip_paths_differ": [
+        "docs/release-coverage/LOCAL_GIT_BRANCH_COVERAGE_CAS_20261112.json",
+        "docs/release-coverage/LOCAL_GIT_COMPANY_CAS_SOURCE_REVIEW_20261112.md",
+        "tools/audit_local_git_branch_coverage_v1.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/company-cas-original305-intent-20261112",
+      "tip": "0c8ca35b943e0b2bd755aae7216a638bff25270f",
+      "tip_subject": "fix(original305): bind CAS to enrolled operations.write delegation lane",
+      "tip_utc": "2026-11-12T04:02:37+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 55,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 5,
+      "tip_paths_sampled": 5,
+      "tip_paths_differ": [
+        "docs/release-coverage/company-executor-time-cas-v1-provenance-20261112.json",
+        "docs/release-coverage/company-original306313-cas-v2-provenance-20261112.json"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feat/company-original-cas-306313-v1-20261112",
+      "tip": "b5eb0ecd109c91bdea6ee99b5492949ab65664c1",
+      "tip_subject": "feat(company): dynamic Original 306 CAS preclaim and independent 313 source bridge",
+      "tip_utc": "2026-11-12T03:51:01+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 54,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 23,
+      "tip_paths_sampled": 23,
+      "tip_paths_differ": [
+        "docs/release-coverage/COMPANY_ORIGINAL306_313_CAS_PROVIDER_V2_20261112.md",
+        "docs/release-coverage/company-executor-time-cas-v1-provenance-20261112.json",
+        "docs/release-coverage/company-original306313-cas-v2-provenance-20261112.json",
+        "ops/dynamic-operation-registry-v1/executor-time-cas-v1/preclaim.py",
+        "ops/dynamic-operation-registry-v1/php/313b-first-party-dynamic-v4.php",
+        "ops/dynamic-operation-registry-v1/providers/company.resource.cas.apply/manifest.json",
+        "ops/dynamic-operation-registry-v1/registry.py",
+        "ops/dynamic-operation-registry-v1/worker_adapter.py",
+        "tests/test_company_original_cas_306313_provenance.py",
+        "tests/test_company_original_cas_306_preclaim.py",
+        "tests/test_company_original_cas_dynamic313_php.py",
+        "tools/verify_company_original_cas_306313_v2.py",
+        "wp-content/plugins/mad4b-platform/modules/authority/dynamic313/class-mad4b-dynamic-313-wordpress.php",
+        "wp-content/plugins/mad4b-platform/modules/services/313b-mad4b-native-independent-verifier.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feat/company-executor-time-cas-v1-20261112",
+      "tip": "a9f4ab145555107a19855a482af04a30153be551",
+      "tip_subject": "feat(company): source-scoped executor-time CAS with original provider admission",
+      "tip_utc": "2026-11-12T03:11:22+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 53,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 12,
+      "tip_paths_sampled": 12,
+      "tip_paths_differ": [
+        "docs/release-coverage/COMPANY_EXECUTOR_TIME_CAS_PROVIDER_V1_20261112.md",
+        "docs/release-coverage/company-executor-time-cas-v1-provenance-20261112.json",
+        "ops/dynamic-operation-registry-v1/providers/company.resource.cas.apply/evidence-schema.json",
+        "ops/dynamic-operation-registry-v1/providers/company.resource.cas.apply/manifest.json",
+        "tests/company-executor-time-cas-offline.php",
+        "tests/test_company_executor_time_cas_original_adapter.py",
+        "tests/test_company_executor_time_cas_provenance.py",
+        "tools/verify_company_executor_time_cas_v1.py",
+        "wp-content/mu-plugins/mad4b-company-executor-time-cas-policy-v1.json",
+        "wp-content/mu-plugins/mad4b-company-executor-time-cas-v1.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feat/company-baseline-review-v1-20261112",
+      "tip": "b082a64ba6e9d82462b08d9e5191fd30ea90d806",
+      "tip_subject": "feat(company): review unsigned baselines and require executor CAS before preparation",
+      "tip_utc": "2026-11-12T02:34:00+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 52,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 7,
+      "tip_paths_sampled": 7,
+      "tip_paths_differ": [
+        "docs/release-coverage/COMPANY_BASELINE_CANDIDATE_CAS_V1_20261112.md",
+        "docs/release-coverage/company-baseline-review-cas-v1-provenance-20261112.json",
+        "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-repair-baseline-review.php",
+        "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-repair-jobs.php",
+        "wp-content/plugins/mad4b-company-portfolio-manager/tests/company-baseline-candidate-offline.php",
+        "wp-content/plugins/mad4b-company-portfolio-manager/tests/company-repair-admin-assets-offline.php",
+        "wp-content/plugins/mad4b-company-portfolio-manager/tests/company-repair-resource-lifecycle-offline.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feat/company-target-evidence-deep-v1-20261111",
+      "tip": "386f9e8df7958b6441e9b960abb6fd3866d54027",
+      "tip_subject": "feat(company): import real tenant resource evidence and enforce exact scoped 312 preflight",
+      "tip_utc": "2026-11-12T02:14:42+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 51,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 15,
+      "tip_paths_sampled": 15,
+      "tip_paths_differ": [
+        "docs/release-coverage/COMPANY_TARGET_RESOURCE_EVIDENCE_DEEP_V1_20261112.md",
+        "docs/release-coverage/company-target-evidence-deep-v3-provenance-20261112.json",
+        "tests/company-exact-resource-source-offline.php",
+        "tests/test_company_resource_resolver_v2_provenance.py",
+        "tools/verify_company_resource_resolver_v2.py",
+        "wp-content/mu-plugins/mad4b-company-exact-resource-evidence-v1.php",
+        "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-native-scoped-write-providers.php",
+        "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-repair-capability-discovery.php",
+        "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-repair-job-contract.php",
+        "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-repair-jobs.php",
+        "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-repair-resource-resolver.php",
+        "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-resource-snapshot-store.php",
+        "wp-content/plugins/mad4b-company-portfolio-manager/tests/company-repair-resource-resolver-offline.php",
+        "wp-content/plugins/mad4b-company-portfolio-manager/tests/company-repair-scoped-312-preflight-offline.php",
+        "wp-content/plugins/mad4b-company-portfolio-manager/tests/company-resource-snapshot-store-offline.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feat/company-resource-resolver-v2-20261111",
+      "tip": "a7ea8620e15448fe1043553170a2cb52bfecd087",
+      "tip_subject": "feat(company): exact resource resolver and immutable repair child journals",
+      "tip_utc": "2026-11-11T20:56:10+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 50,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 13,
+      "tip_paths_sampled": 13,
+      "tip_paths_differ": [
+        "docs/release-coverage/COMPANY_DYNAMIC_RESOURCE_RESOLVER_V2_20261111.md",
+        "docs/release-coverage/company-resource-resolver-v2-provenance-20261111.json",
+        "tests/test_company_resource_resolver_v2_provenance.py",
+        "tools/verify_company_resource_resolver_v2.py",
+        "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-repair-capability-discovery.php",
+        "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-repair-job-contract.php",
+        "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-repair-jobs.php",
+        "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-repair-resource-resolver.php",
+        "wp-content/plugins/mad4b-company-portfolio-manager/tests/company-repair-admin-assets-offline.php",
+        "wp-content/plugins/mad4b-company-portfolio-manager/tests/company-repair-jobs-dynamic-offline.php",
+        "wp-content/plugins/mad4b-company-portfolio-manager/tests/company-repair-queue-offline.php",
+        "wp-content/plugins/mad4b-company-portfolio-manager/tests/company-repair-resource-lifecycle-offline.php",
+        "wp-content/plugins/mad4b-company-portfolio-manager/tests/company-repair-resource-resolver-offline.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feat/company-repair-jobs-v1-20261111",
+      "tip": "7f04c928e8d412f82ca943a8393513a19b075fb8",
+      "tip_subject": "feat(company): dynamic scoped repair journals and read-only incident queue",
+      "tip_utc": "2026-11-11T20:22:18+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 49,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 13,
+      "tip_paths_sampled": 13,
+      "tip_paths_differ": [
+        "docs/release-coverage/COMPANY_REPAIR_JOBS_DYNAMIC_V1_20261111.md",
+        "docs/release-coverage/company-repair-jobs-dynamic-v1-provenance-20261111.json",
+        "ops/deployment-overlays/center/company-start-reconcile/policy.json",
+        "tests/test_company_repair_dynamic_v1_provenance.py",
+        "tools/verify_company_repair_dynamic_v1.py",
+        "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-reconcile-work-plan.php",
+        "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-repair-capability-discovery.php",
+        "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-repair-job-contract.php",
+        "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-repair-jobs.php",
+        "wp-content/plugins/mad4b-company-portfolio-manager/tests/company-repair-admin-assets-offline.php",
+        "wp-content/plugins/mad4b-company-portfolio-manager/tests/company-repair-exact-original-binding-offline.php",
+        "wp-content/plugins/mad4b-company-portfolio-manager/tests/company-repair-jobs-dynamic-offline.php",
+        "wp-content/plugins/mad4b-company-portfolio-manager/tests/company-repair-queue-offline.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feat/company-reconcile-depth-v3-20261111",
+      "tip": "6bd3f66c622b9eea61c2f1a35c6584819d174be5",
+      "tip_subject": "feat(company): audit reconcile dependency graph and exact-site evidence lanes",
+      "tip_utc": "2026-11-11T19:14:51+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 48,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 9,
+      "tip_paths_sampled": 9,
+      "tip_paths_differ": [
+        "docs/release-coverage/COMPANY_RECONCILE_DEPTH_V3_20261111.md",
+        "docs/release-coverage/company-reconcile-depth-v3-provenance-20261111.json",
+        "ops/deployment-overlays/center/company-start-reconcile/policy.json",
+        "tests/test_company_reconcile_depth_v3_provenance.py",
+        "tools/company_reconcile_probe_triage_v1.php",
+        "tools/verify_company_reconcile_depth_v3.py",
+        "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-reconcile-depth-audit.php",
+        "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-reconcile-work-plan.php",
+        "wp-content/plugins/mad4b-company-portfolio-manager/tests/company-reconcile-depth-audit-offline.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feat/company-reconcile-start-v2-20261111",
+      "tip": "f82682c7408b6ffec4f9b531fae5c5a934ccf670",
+      "tip_subject": "feat(company): strengthen Start Company and Reconcile evidence lanes",
+      "tip_utc": "2026-11-11T18:53:29+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 47,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 12,
+      "tip_paths_sampled": 12,
+      "tip_paths_differ": [
+        "docs/release-coverage/COMPANY_RECONCILE_START_V2_20261111.md",
+        "docs/release-coverage/company-reconcile-start-v2-20261111.json",
+        "ops/deployment-overlays/center-and-wayfa/mad4b-company-reconcile-target-evidence-v1.php",
+        "ops/deployment-overlays/center/company-start-reconcile/policy.json",
+        "tests/test_company_reconcile_start_v2_provenance.py",
+        "tools/verify_company_reconcile_start_v2.py",
+        "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-reconcile-operation-readiness.php",
+        "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-reconcile-work-plan.php",
+        "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-start-reconcile-completeness.php",
+        "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-vps-company-launch.php",
+        "wp-content/plugins/mad4b-company-portfolio-manager/tests/company-reconcile-start-company-v1-regression.php",
+        "wp-content/plugins/mad4b-company-portfolio-manager/tests/company-reconcile-workplan-offline-v2.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/center-wayfa-option-live-parity-20261111",
+      "tip": "6e6aa67af1aec8373b653b2942581645c61c9270",
+      "tip_subject": "fix(options): reconcile destination and pricing runtime state for Wayfa",
+      "tip_utc": "2026-11-11T18:25:30+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 46,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 13,
+      "tip_paths_sampled": 13,
+      "tip_paths_differ": [
+        "docs/release-coverage/CENTER_WAYFA_OPTIONS_LIVE_PARITY_20261111.md",
+        "docs/release-coverage/center-wayfa-options-live-parity-20261111.json",
+        "ops/deployment-overlays/wayfatours/wp-content/plugins/destinations-compatibility/includes/activation.php",
+        "tests/options_live_readback_offline.php",
+        "tests/tenant_pricing_options_parity_offline.php",
+        "tests/test_center_wayfa_options_live_parity_source.py",
+        "tools/reconcile_wayfa_pricing_options_v1.php",
+        "tools/verify_center_wayfa_options_live_parity.py",
+        "wp-content/mu-plugins/mad4b-options-live-readback-v1.php",
+        "wp-content/mu-plugins/mad4b-service-activation-live-readback-v1.php",
+        "wp-content/mu-plugins/mad4b-tenant-pricing-options-parity-v1.php",
+        "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-service-catalog.php",
+        "wp-content/plugins/mad4b-company-portfolio-manager/tests/service-catalog-contract.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/center-wayfa-native-readback-20261111",
+      "tip": "e4689660e9c8cfd22d2b1eeffe357dcecfab89ff",
+      "tip_subject": "feat(company): verify Wayfa WordPress live state via bounded host WP-CLI",
+      "tip_utc": "2026-11-11T17:31:09+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 45,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 11,
+      "tip_paths_sampled": 11,
+      "tip_paths_differ": [
+        "docs/release-coverage/CENTER_WAYFA_NATIVE_SERVICE_READBACK_20261111.md",
+        "docs/release-coverage/center-wayfa-native-service-readback-20261111.json",
+        "ops/readback/company-service-live-readback-wayfa-20261111.json",
+        "ops/systemd/mad4b-company-service-native-wayfa-readback.service",
+        "ops/systemd/mad4b-company-service-native-wayfa-readback.timer",
+        "tests/test_center_wayfa_native_service_readback_source.py",
+        "tests/test_company_service_native_readback_host.py",
+        "tools/company_service_native_wpcli_readback_v1.py",
+        "tools/verify_center_wayfa_native_service_readback.py",
+        "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-service-catalog.php",
+        "wp-content/plugins/mad4b-company-portfolio-manager/tests/service-catalog-contract.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feat/company-live-public-observation-20261111",
+      "tip": "fc40566940ced0baf270777eaad39fc1d3c11850",
+      "tip_subject": "feat(services): center Wayfa-only live observation and tenant schema parity",
+      "tip_utc": "2026-11-11T17:05:42+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 44,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 14,
+      "tip_paths_sampled": 14,
+      "tip_paths_differ": [
+        "docs/release-coverage/CENTER_WAYFA_SERVICE_PILOT_20261111.md",
+        "docs/release-coverage/center-wayfa-service-pilot-20261111.json",
+        "tests/tenant_presentation_adapter_loader_offline.php",
+        "tests/tenant_service_identity_boundary_offline.php",
+        "tests/test_center_wayfa_service_pilot_source.py",
+        "tools/verify_center_wayfa_service_pilot.py",
+        "wp-content/mu-plugins/001-mad4b-service-tenant-boundary-v1.php",
+        "wp-content/mu-plugins/mad4b-tenant-presentation-adapter-loader-v1.php",
+        "wp-content/mu-plugins/tenant-overlays/wayfatours/003-wayfa-service-channel-policy.php",
+        "wp-content/mu-plugins/tenant-overlays/wayfatours/004-wayfa-service-visibility-elementor.php",
+        "wp-content/mu-plugins/tenant-overlays/wayfatours/005-wayfa-destination-activation.php",
+        "wp-content/mu-plugins/tenant-overlays/wayfatours/090-wayfa-presentation-service-policy.php",
+        "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-service-catalog.php",
+        "wp-content/plugins/mad4b-company-portfolio-manager/tests/service-catalog-contract.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/service-activation-live-closure-20261111",
+      "tip": "c7df29c7e9db024d0c61850521a659577c5461f3",
+      "tip_subject": "fix(form6): preserve localized quote labels and secure advance guards",
+      "tip_utc": "2026-11-11T09:41:46+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 43,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 7,
+      "tip_paths_sampled": 7,
+      "tip_paths_differ": [
+        "docs/release-coverage/SERVICE_ACTIVATION_LIVE_CLOSURE_20261111.md",
+        "docs/release-coverage/service-activation-live-closure-20261111.json",
+        "tests/test_service_activation_live_closure_source.py",
+        "tools/verify_service_activation_live_closure.py",
+        "wp-content/mu-plugins/assets/mad4b-tour-form6-submission-mode-v1.js",
+        "wp-content/mu-plugins/mad4b-service-inquiry-cta-v1.php",
+        "wp-content/mu-plugins/mad4b-tour-form6-submission-mode-v1.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feature/unified-woo-fluent-brand-email-20261111",
+      "tip": "357fb39b8888677744bb7b95b51a31738ed05d2d",
+      "tip_subject": "feat(email): unify tenant brand styling across Woo and Fluent notifications",
+      "tip_utc": "2026-11-11T08:34:25+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 41,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 7,
+      "tip_paths_sampled": 7,
+      "tip_paths_differ": [
+        "docs/release-coverage/UNIFIED_WOOCOMMERCE_FLUENT_BRAND_EMAIL_20261111.md",
+        "docs/release-coverage/company-email-experience-bridge-20261111.json",
+        "tests/live_email_visual_fixture.php",
+        "tests/test_company_email_bridge_source.py",
+        "tests/unified_woo_fluent_brand_offline.php",
+        "tools/verify_company_email_bridge.py",
+        "wp-content/mu-plugins/mad4b-company-email-experience-bridge-v1.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/unified-date-v039-source-20261111",
+      "tip": "21ccf7e3117f808de45aea5a7c13880f19ef4695",
+      "tip_subject": "fix(cache): classify unified date and WCML URL selections as private",
+      "tip_utc": "2026-11-11T08:27:46+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 41,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 3,
+      "tip_paths_sampled": 3,
+      "tip_paths_differ": [
+        "tests/cache/unified-date-html-admission-readonly.php",
+        "tests/cache/unified-date-origin-context-readonly.php",
+        "wp-content/plugins/mad4b-cache-lifecycle/includes/runtime.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feature/company-branded-woocommerce-email-20261111",
+      "tip": "225bfa07b7e2041cbe331e04572960c908103263",
+      "tip_subject": "docs(email): verify six source locales and Wayfa bilingual links",
+      "tip_utc": "2026-11-11T08:04:39+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 40,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 1,
+      "tip_paths_sampled": 1,
+      "tip_paths_differ": [
+        "docs/release-coverage/COMPANY_BRANDED_CUSTOMER_EMAIL_20261111.md"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/early-benefits-mail-closure-20261111",
+      "tip": "e2f80b985402ab35ea59536870f892caa9b592d2",
+      "tip_subject": "fix(date): preserve native post__in deny-all across v0.3.5 filters",
+      "tip_utc": "2026-11-11T07:10:15+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 37,
+      "candidate_commits_not_on_branch": 520,
+      "tip_paths_total": 19,
+      "tip_paths_sampled": 19,
+      "tip_paths_differ": [
+        "docs/release-coverage/UNIFIED_DATE_035_POST_IN_SENTINEL_FAIL_CLOSED_20261111.md",
+        "docs/release-coverage/mad4b-commerce-live-source-snapshot-20261111.json",
+        "docs/release-coverage/unified-date-rate-and-reconcile-20261111.json",
+        "docs/release-coverage/unified-date-v035-postin-security-20261111.json",
+        "tests/source-unified-date-native-ajax-v035.test.js",
+        "tests/test_live_commerce_source.py",
+        "tests/test_unified_date_035_fail_closed_source.py",
+        "tests/test_unified_date_rate_facade_source.py",
+        "tests/unified_date_rate_query_offline.php",
+        "tools/verify_live_commerce_source.py",
+        "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.3.3.css",
+        "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.3.3.js",
+        "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.3.4.css",
+        "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.3.4.js",
+        "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.3.5.css",
+        "wp-content/plugins/mad4b-commerce/modules/presentation/assets/unified-date-v0.3.5.js",
+        "wp-content/plugins/mad4b-commerce/modules/presentation/unified-date-presentation-v1.php",
+        "wp-content/plugins/mad4b-commerce/tests/browser/date-intent/unified-date-cross-page.test.js",
+        "wp-content/plugins/mad4b-commerce/tests/browser/date-intent/unified-date-regression.test.js"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/early-benefits-integrated-claims-20261111",
+      "tip": "bad8e810eb40667141eb3895814823f9a73f54ae",
+      "tip_subject": "Reconcile live commerce policies and close early-payment loyalty claim lifecycle",
+      "tip_utc": "2026-11-11T06:41:16+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 111,
+      "candidate_commits_not_on_branch": 653,
+      "tip_paths_total": 7,
+      "tip_paths_sampled": 7,
+      "tip_paths_differ": [
+        "wp-content/mu-plugins/mad4b-early-payment-benefits-v1.php",
+        "wp-content/mu-plugins/mad4b-request-pay-token-visibility-v1.php",
+        "wp-content/mu-plugins/tests/mad4b-early-payment-benefits-contract.php",
+        "wp-content/plugins/commerce-composition/includes/CompanyLegalRules.php",
+        "wp-content/plugins/commerce-composition/includes/CompanyPolicyLibrary.php",
+        "wp-content/plugins/commerce-composition/includes/FluentBoardsTaskBridge.php",
+        "wp-content/plugins/commerce-composition/includes/RequestAdvancePayments.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feat/early-payment-benefits-policy-20261111",
+      "tip": "dd4449978825409ab60ba7f779ac9d10ba1b1bed",
+      "tip_subject": "Introduce opt-in company early-payment loyalty benefit policy",
+      "tip_utc": "2026-11-11T04:52:46+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 110,
+      "candidate_commits_not_on_branch": 653,
+      "tip_paths_total": 3,
+      "tip_paths_sampled": 3,
+      "tip_paths_differ": [
+        "wp-content/mu-plugins/assets/mad4b-early-payment-benefits-v1.css",
+        "wp-content/mu-plugins/mad4b-early-payment-benefits-v1.php",
+        "wp-content/mu-plugins/tests/mad4b-early-payment-benefits-contract.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feat/woo-request-email-and-thankyou-20261111",
+      "tip": "54a5cbf98cfddbc3414c3d252d5c6f312c41275f",
+      "tip_subject": "Use WooCommerce email templates for request lifecycle and post-submit optional advance",
+      "tip_utc": "2026-11-11T04:35:34+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 109,
+      "candidate_commits_not_on_branch": 653,
+      "tip_paths_total": 7,
+      "tip_paths_sampled": 7,
+      "tip_paths_differ": [
+        "wp-content/mu-plugins/assets/mad4b-tour-form6-submission-mode-v1.css",
+        "wp-content/mu-plugins/assets/mad4b-tour-form6-submission-mode-v1.js",
+        "wp-content/mu-plugins/mad4b-request-woocommerce-email-v1.php",
+        "wp-content/mu-plugins/mad4b-tour-form6-submission-mode-v1.php",
+        "wp-content/mu-plugins/templates/emails/mad4b-request-lifecycle.php",
+        "wp-content/mu-plugins/tests/mad4b-request-wc-email-confirmation-regression.php",
+        "wp-content/plugins/commerce-composition/includes/RequestLifecycle.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/wayfa-passport-inline-ajax-wpml-20261111",
+      "tip": "16a5d996e322567ff043e19d75f5f44f22bfc287",
+      "tip_subject": "Distinguish quote requests from approved advance checkout without duplicate notices",
+      "tip_utc": "2026-11-11T03:51:16+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 108,
+      "candidate_commits_not_on_branch": 653,
+      "tip_paths_total": 5,
+      "tip_paths_sampled": 5,
+      "tip_paths_differ": [
+        "wp-content/mu-plugins/assets/mad4b-tour-form6-submission-mode-v1.css",
+        "wp-content/mu-plugins/assets/mad4b-tour-form6-submission-mode-v1.js",
+        "wp-content/mu-plugins/mad4b-tour-form6-submission-mode-v1.php",
+        "wp-content/mu-plugins/shared-product-core/assets/presentation-fluent-quote-v1.js",
+        "wp-content/plugins/commerce-composition/includes/SingleFluentPaymentRouter.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/wayfa-checkout-unified-consents-20261111",
+      "tip": "88adf36d85db32170ebc4db06a84cfcc01e091ab",
+      "tip_subject": "Split per-rate pricing basis from verified accommodation assignments in Form 6",
+      "tip_utc": "2026-11-11T02:01:19+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 105,
+      "candidate_commits_not_on_branch": 653,
+      "tip_paths_total": 4,
+      "tip_paths_sampled": 4,
+      "tip_paths_differ": [
+        "wp-content/mu-plugins/shared-product-core/assets/presentation-fluent-quote-v1.js",
+        "wp-content/mu-plugins/shared-product-core/assets/presentation-pricing-basis-v1.css",
+        "wp-content/plugins/mad4b-commerce/modules/compat/local-presentation-fluent-projection-v1.php",
+        "wp-content/plugins/mad4b-commerce/tests/pricing-basis-form6-contract.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feat/original313-receipt-preclaim-20261111",
+      "tip": "6ac19b42430ca68a91457fe96007ef2afb7e5c3a",
+      "tip_subject": "feat(original313): separate receipt-only readback in signed original Worker Adapter",
+      "tip_utc": "2026-11-11T00:22:16+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 105,
+      "candidate_commits_not_on_branch": 653,
+      "tip_paths_total": 2,
+      "tip_paths_sampled": 2,
+      "tip_paths_differ": [
+        "ops/dynamic-operation-registry-v1/integrations/reviewed-source/worker_adapter_receipt_only_v1.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/gtm-consent-central-portfolio-audit-20261111",
+      "tip": "1a1be24b02926a148443d5344c71a00cc320fed9",
+      "tip_subject": "Verify consent tag rules against live GTM API and allow audited partial category gating",
+      "tip_utc": "2026-11-11T00:06:26+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 102,
+      "candidate_commits_not_on_branch": 653,
+      "tip_paths_total": 4,
+      "tip_paths_sampled": 4,
+      "tip_paths_differ": [],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/composite-media-signed-apply-20261110",
+      "tip": "2cd871eeaa0d5055f868e13cdf3b8f13e395a647",
+      "tip_subject": "fix(ci): fail closed on missing brand owner evidence and align authority fixtures",
+      "tip_utc": "2026-11-10T23:44:15+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 132,
+      "candidate_commits_not_on_branch": 653,
+      "tip_paths_total": 3,
+      "tip_paths_sampled": 3,
+      "tip_paths_differ": [
+        "tests/remote-execution/operator-grants-convergence-smoke.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-context-builder.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/tenant-environment-neutral-20261111",
+      "tip": "1ceab34b0e91c78519d5a471a0ae69fc39f90025",
+      "tip_subject": "fix(tenant): replace Staging gates with exact scoped operation authority",
+      "tip_utc": "2026-11-10T23:44:15+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 102,
+      "candidate_commits_not_on_branch": 653,
+      "tip_paths_total": 27,
+      "tip_paths_sampled": 24,
+      "tip_paths_differ": [
+        "tests/test_tenant_environment_neutrality_source.py",
+        "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-commerce-preview.php",
+        "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-company-media.php",
+        "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-consumers.php",
+        "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-effective-read.php",
+        "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-elementor-tag.php",
+        "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-field-registry.php",
+        "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-handover-inventory.php",
+        "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-operation-authority.php",
+        "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-operations-workspace.php",
+        "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-override-policy.php",
+        "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-preservation.php",
+        "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-price-engine.php",
+        "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-rejoin-preview.php",
+        "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-shadow.php",
+        "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-signed-publication.php",
+        "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-sparse-admin.php",
+        "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-sparse-store.php",
+        "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-sync-planner.php",
+        "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-typed-export.php",
+        "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-typed-schema.php",
+        "wp-content/plugins/mad4b-tenant-sync/includes/class-mad4b-tenant-workflow.php",
+        "wp-content/plugins/mad4b-tenant-sync/mad4b-tenant-sync.php",
+        "wp-content/plugins/mad4b-tenant-sync/tests/tenant-handover-acceptance.php"
+      ],
+      "tip_comparison_truncated": true,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/original313-license-preclaim-parity-20261111",
+      "tip": "b872d581dc96bade4be42278650594c691e93485",
+      "tip_subject": "fix(original313): pin current signed license worker in source guard",
+      "tip_utc": "2026-11-10T23:21:11+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 103,
+      "candidate_commits_not_on_branch": 653,
+      "tip_paths_total": 2,
+      "tip_paths_sampled": 2,
+      "tip_paths_differ": [],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feat/plugin-license-original313-v18",
+      "tip": "3e9f27ecf1dd6bf583cf4dac852e191ecb77ff72",
+      "tip_subject": "fix(company-credentials): classify delegated plugin native adapter readiness separately from vendor validity",
+      "tip_utc": "2026-11-10T23:10:39+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 111,
+      "candidate_commits_not_on_branch": 653,
+      "tip_paths_total": 1,
+      "tip_paths_sampled": 1,
+      "tip_paths_differ": [
+        "ops/plugin-license-native-operation-v1/integrations/mad4b-company-credential-manager.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/wayfa-tenant-schema-current-readback-20261111",
+      "tip": "de7df5e3ccefb83865f27fd8043034ceacf08ca2",
+      "tip_subject": "fix(tenant): use fresh exact MariaDB schema readback before migration",
+      "tip_utc": "2026-11-10T22:56:32+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 101,
+      "candidate_commits_not_on_branch": 653,
+      "tip_paths_total": 5,
+      "tip_paths_sampled": 5,
+      "tip_paths_differ": [
+        "docs/wayfatours-production-schema-readback-20261111.md",
+        "ops/company-code-release-v1/integrations/wayfa_native_schema_information_schema.py",
+        "ops/company-code-release-v1/integrations/wayfa_tenant_migration_preflight_current.py",
+        "ops/company-code-release-v1/tests/test_wayfa_native_schema_information_schema.py",
+        "ops/company-code-release-v1/tests/test_wayfa_tenant_migration_preflight_current.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feat/company-code-release-v1-20261108",
+      "tip": "92f4d6b3fdab22b31e5ff5713003b1ee9dc01f82",
+      "tip_subject": "fix(code-release): register exact dynamic plans and validate native host principals",
+      "tip_utc": "2026-11-10T21:25:31+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 101,
+      "candidate_commits_not_on_branch": 653,
+      "tip_paths_total": 4,
+      "tip_paths_sampled": 4,
+      "tip_paths_differ": [
+        "ops/company-code-release-v1/tests/test_exact_code_plan_enrollment.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/prod-native-parity-20261109",
+      "tip": "794e732af124eb4bfa2be5f00cb838e1b15f566a",
+      "tip_subject": "fix(mcp): preserve capability-based Adapter admission without any pinned version gate",
+      "tip_utc": "2026-11-09T23:20:51+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 4,
+      "candidate_commits_not_on_branch": 656,
+      "tip_paths_total": 18,
+      "tip_paths_sampled": 18,
+      "tip_paths_differ": [
+        ".github/workflows/mad4b-site-control-plane.yml",
+        "wp-content/plugins/mad4b-site-control-plane/config/staging-deployment-handoff.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-protocol-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-authority-contract.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "review/toursdev-rc129-reconciled-20261109",
+      "tip": "45e4cbdc46145092e9b9484ecb6cb47bf7ef8ee7",
+      "tip_subject": "review(control-plane): reconcile rc129 demo source without deleting master-only tests",
+      "tip_utc": "2026-11-09T18:12:11+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 1,
+      "candidate_commits_not_on_branch": 656,
+      "tip_paths_total": 274,
+      "tip_paths_sampled": 24,
+      "tip_paths_differ": [
+        "wp-content/plugins/mad4b-site-control-plane/README.md",
+        "wp-content/plugins/mad4b-site-control-plane/assets/operational-remediation-ui.js",
+        "wp-content/plugins/mad4b-site-control-plane/bootstrap/mad4b-mcp-adapter-mu-bootstrap.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/central-release-issuer-public.pem",
+        "wp-content/plugins/mad4b-site-control-plane/config/egress-policy.json",
+        "wp-content/plugins/mad4b-site-control-plane/config/mcp-protocol-profiles.json",
+        "wp-content/plugins/mad4b-site-control-plane/config/operation-registry.json",
+        "wp-content/plugins/mad4b-site-control-plane/config/runtime-release-policy.json",
+        "wp-content/plugins/mad4b-site-control-plane/config/skill-seed-manifest.json"
+      ],
+      "tip_comparison_truncated": true,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feat/mad4b-source-url-content-loop-v1-20261108",
+      "tip": "061552b74e8e3cffdde998477b353b66d2659128",
+      "tip_subject": "feat(lifecycle): build reviewed rc129 candidate and gate certified-channel resume",
+      "tip_utc": "2026-11-09T17:58:07+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 57,
+      "candidate_commits_not_on_branch": 656,
+      "tip_paths_total": 5,
+      "tip_paths_sampled": 5,
+      "tip_paths_differ": [
+        "docs/integrations/demo-rc129-reviewed-source-release-candidate-20261109.md",
+        "ops/source-release-gate/build-demo-rc129-reviewed-candidate.py",
+        "ops/source-release-gate/demo-source-release-lifecycle-checkpoint-v1.py",
+        "ops/source-release-gate/review-demo-rc129-delta.py",
+        "ops/source-release-gate/test-demo-release-lifecycle-checkpoint-v1.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feat/mad4b-fleet-adaptive-intake-v2-20261108",
+      "tip": "939c9ec21fdbe90070333b186e6f1b8a7c69201d",
+      "tip_subject": "feat(mad4b): bind owner consent to verified ChatGPT OAuth and exact native grants",
+      "tip_utc": "2026-11-09T01:51:13+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 10,
+      "candidate_commits_not_on_branch": 656,
+      "tip_paths_total": 7,
+      "tip_paths_sampled": 7,
+      "tip_paths_differ": [
+        "ops/mad4b-company-optional-authorization-v1/.gitignore",
+        "ops/mad4b-company-optional-authorization-v1/README.md",
+        "ops/mad4b-company-optional-authorization-v1/host/company-optional-authorization-worker.py",
+        "ops/mad4b-company-optional-authorization-v1/qa/optional-auth-source-contract-test.py",
+        "ops/mad4b-company-optional-authorization-v1/wordpress/mu-plugins/322-mad4b-optional-company-authorization-center.php",
+        "ops/mad4b-company-optional-authorization-v1/wordpress/mu-plugins/323-mad4b-optional-company-authorization-site.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feat/mad4b-hostinger-cdn-ssh-company-operation-20261108",
+      "tip": "3193aa9ab2f26612aa6890d5dcab9b9d622f6827",
+      "tip_subject": "feat(mad4b): bind company site identity to dual internal Hostinger SSH/API routing",
+      "tip_utc": "2026-11-08T17:41:41+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 2,
+      "candidate_commits_not_on_branch": 656,
+      "tip_paths_total": 6,
+      "tip_paths_sampled": 6,
+      "tip_paths_differ": [
+        "ops/mad4b-hostinger-cdn-ssh-v1/README.md",
+        "ops/mad4b-hostinger-cdn-ssh-v1/bin/company-hostinger-cdn-central-sync-v1.py",
+        "ops/mad4b-hostinger-cdn-ssh-v1/bin/company-hostinger-two-route-binding-v1.py",
+        "ops/mad4b-hostinger-cdn-ssh-v1/policies/company-hostinger-site-binding-map-v1.json",
+        "ops/mad4b-hostinger-cdn-ssh-v1/systemd/mad4b-company-hostinger-cdn-operation.service",
+        "ops/mad4b-hostinger-cdn-ssh-v1/wordpress/mu-plugins/316-mad4b-company-hostinger-cdn-operations.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feat/company-unified-release-coverage-v1-20261108",
+      "tip": "cd516e1a249798d1e9bb9059b2744a4d80551beb",
+      "tip_subject": "fix(reconcile): allow unsigned production snapshot scope and record source drift fence",
+      "tip_utc": "2026-11-08T14:50:23+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 40,
+      "candidate_commits_not_on_branch": 656,
+      "tip_paths_total": 3,
+      "tip_paths_sampled": 3,
+      "tip_paths_differ": [
+        "ops/company-code-release-v1/company_reconcile_native_inventory.py",
+        "ops/company-code-release-v1/docs/wave-A-original-local-inventory-ability-candidate-20261108.md",
+        "ops/company-code-release-v1/tests/test_company_reconcile_native_inventory.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "approval/lifecycle-source-reissue-pr782-20261108",
+      "tip": "d30695a8c985c922ee9fa4fb50d4af045eeddf85",
+      "tip_subject": "merge(lifecycle): locally approve reviewed PR #782 source for staged release",
+      "tip_utc": "2026-11-08T04:17:41+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 52,
+      "candidate_commits_not_on_branch": 830,
+      "tip_paths_total": 0,
+      "tip_paths_sampled": 0,
+      "tip_paths_differ": [],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/shared-product-core-live-parity-20261108",
+      "tip": "2bcca5ff949f1e44359c6005221448d45adf9cf5",
+      "tip_subject": "fix(shared-core): reconcile live Tour Rate presentation and facets into canonical source",
+      "tip_utc": "2026-11-08T00:42:15+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 1,
+      "candidate_commits_not_on_branch": 656,
+      "tip_paths_total": 7,
+      "tip_paths_sampled": 7,
+      "tip_paths_differ": [
+        ".github/workflows/mad4b-shared-product-core-source.yml",
+        "packages/mad4b-shared-product-core/README.md",
+        "packages/mad4b-shared-product-core/mu-plugins/shared-product-core/adapters/tour-rate-eligible-query.php",
+        "packages/mad4b-shared-product-core/mu-plugins/shared-product-core/adapters/tour-rate-facets-from-query.php",
+        "packages/mad4b-shared-product-core/release-manifest.json",
+        "packages/mad4b-shared-product-core/source-files.sha256",
+        "packages/mad4b-shared-product-core/tests/presentation-runtime-contract.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feat/mad4b-pricing-cache-inheritance-20261108",
+      "tip": "69f605c0426ae631b06ec1d41fa24002fb03abd6",
+      "tip_subject": "fix(mad4b): align pricing cache admin link with Tools menu",
+      "tip_utc": "2026-11-08T00:38:35+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 2,
+      "candidate_commits_not_on_branch": 656,
+      "tip_paths_total": 2,
+      "tip_paths_sampled": 2,
+      "tip_paths_differ": [
+        "ops/mad4b-pricing-cache-inheritance-v1/RELEASE-MANIFEST.json",
+        "ops/mad4b-pricing-cache-inheritance-v1/overlays/mu-plugins/mad4b-pricing-cache-inheritance.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/mad4b-runtime-policy-reconcile-v2-20261108",
+      "tip": "96a60953457ca04f2d6a73a27cf8b575c3c4e38d",
+      "tip_subject": "ci(mad4b): verify runtime-policy source after master merge",
+      "tip_utc": "2026-11-07T23:53:42+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 4,
+      "candidate_commits_not_on_branch": 656,
+      "tip_paths_total": 1,
+      "tip_paths_sampled": 1,
+      "tip_paths_differ": [
+        ".github/workflows/mad4b-runtime-policy-reconcile-v2.yml"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feat/company-policy-registry-native-rates-20261107",
+      "tip": "69048403b434551021025e29605847fa2f6c9da7",
+      "tip_subject": "fix(archive): reconcile portable filters and superseded AJAX lifecycle",
+      "tip_utc": "2026-11-07T09:01:25+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 99,
+      "candidate_commits_not_on_branch": 656,
+      "tip_paths_total": 10,
+      "tip_paths_sampled": 10,
+      "tip_paths_differ": [
+        "tests/test_mad4b_archive_abort_races.js",
+        "tests/test_mad4b_archive_runtime_profiles.php",
+        "wp-content/mu-plugins/386-mad4b-archive-runtime-profile.php",
+        "wp-content/mu-plugins/387-mad4b-archive-filter-reconciler.php",
+        "wp-content/mu-plugins/389-mad4b-archive-async-asset-epoch.php",
+        "wp-content/mu-plugins/assets/feature009-mobile-filters/mad4b-feature009-mobile-filters.css",
+        "wp-content/mu-plugins/assets/feature009-mobile-filters/mad4b-feature009-mobile-filters.js",
+        "wp-content/mu-plugins/assets/mad4b-taxonomy-faq-runtime.js",
+        "wp-content/mu-plugins/mad4b-feature009-mobile-filters.php",
+        "wp-content/plugins/dynamic-filter-seo-bridge/assets/js/ajax-filter-state.js"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/mcp-dynamic-unbounded-20261106",
+      "tip": "ba5c57f0f51dd0355a1356e400765e18253fdab5",
+      "tip_subject": "feat(distribution): add Google Things to do pricing readiness alerts",
+      "tip_utc": "2026-11-07T01:45:37+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 70,
+      "candidate_commits_not_on_branch": 656,
+      "tip_paths_total": 5,
+      "tip_paths_sampled": 5,
+      "tip_paths_differ": [
+        "tests/test_mad4b_google_things_to_do_readiness.php",
+        "tests/test_mad4b_tour_price_distribution_v1.php",
+        "wp-content/mu-plugins/mad4b-google-things-to-do-readiness.php",
+        "wp-content/mu-plugins/mad4b-tour-price-distribution-v1.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/company-operations-settings-cache-skills-live-20261106",
+      "tip": "e6d36f40961b1fa142d33be73d65ed32f18e92c2",
+      "tip_subject": "fix(company): reconcile 19 exact Staging write-provider policy pairs",
+      "tip_utc": "2026-11-07T00:19:09+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 78,
+      "candidate_commits_not_on_branch": 656,
+      "tip_paths_total": 6,
+      "tip_paths_sampled": 6,
+      "tip_paths_differ": [
+        ".github/workflows/mad4b-company-settings-source-convergence.yml",
+        "ops/mad4b-company-live-convergence-20261106/README.md",
+        "ops/mad4b-company-live-convergence-20261106/SOURCE-FINGERPRINTS.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-grant-reconciliation.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-grant-existing-parity-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-grant-reviewed-inventory-runtime.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/company-native-runtime-resolver-20261106",
+      "tip": "020cb8865ad1bbdda563fc8223fd180499c8b2f3",
+      "tip_subject": "fix(company): poll exact original 313 receipt from authenticated owner panel",
+      "tip_utc": "2026-11-06T18:33:57+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 60,
+      "candidate_commits_not_on_branch": 656,
+      "tip_paths_total": 2,
+      "tip_paths_sampled": 2,
+      "tip_paths_differ": [
+        "ops/company-readiness-workflow/host-provisioning-runtime-v1/tests/test_owner_313_receipt_projection.py",
+        "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-experience-install-owner-launch.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feat/request-advances-20261106",
+      "tip": "1318b19a8aa62f5ec12461a2b5868515f5d1d5b5",
+      "tip_subject": "docs: audit live lifecycle readiness and track commercial launch gaps",
+      "tip_utc": "2026-11-06T16:40:02+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 64,
+      "candidate_commits_not_on_branch": 656,
+      "tip_paths_total": 16,
+      "tip_paths_sampled": 16,
+      "tip_paths_differ": [
+        "ops/rate-planning-loop/CHECKLIST.md",
+        "ops/rate-planning-loop/reaudit-20261106/REVIEW.md",
+        "ops/rate-planning-loop/reaudit-20261106/binding-target.exit",
+        "ops/rate-planning-loop/reaudit-20261106/binding-target.json",
+        "ops/rate-planning-loop/reaudit-20261106/binding.php",
+        "ops/rate-planning-loop/reaudit-20261106/deep-probes.php",
+        "ops/rate-planning-loop/reaudit-20261106/deep-target.exit",
+        "ops/rate-planning-loop/reaudit-20261106/deep-target.json",
+        "ops/rate-planning-loop/reaudit-20261106/inspect.php",
+        "ops/rate-planning-loop/reaudit-20261106/pure-checks.php",
+        "ops/rate-planning-loop/reaudit-20261106/pure-target.exit",
+        "ops/rate-planning-loop/reaudit-20261106/pure-target.json",
+        "ops/rate-planning-loop/reaudit-20261106/source.exit",
+        "ops/rate-planning-loop/reaudit-20261106/source.json",
+        "ops/rate-planning-loop/reaudit-20261106/target.exit",
+        "ops/rate-planning-loop/reaudit-20261106/target.json"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/central-wpcli-scoped-discovery-20261106",
+      "tip": "0fcf4cbd0a8e282eebe96fe22b4c52684260add0",
+      "tip_subject": "refactor(313): derive enrolled company scope and allowlisted readonly digest from original job",
+      "tip_utc": "2026-11-06T15:48:42+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 77,
+      "candidate_commits_not_on_branch": 656,
+      "tip_paths_total": 1,
+      "tip_paths_sampled": 1,
+      "tip_paths_differ": [
+        "ops/mad4b-original-313-historical/class-mad4b-wpcli-historical-reconciliation.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/original-lifecycle-shortest-path-and-receipt-20261106",
+      "tip": "ab573130f1acce544aba2ad4c111ddeaa5250c8a",
+      "tip_subject": "fix(native-lifecycle): prioritize signed claimed jobs over optional capability heartbeats",
+      "tip_utc": "2026-11-06T08:07:24+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 69,
+      "candidate_commits_not_on_branch": 656,
+      "tip_paths_total": 3,
+      "tip_paths_sampled": 3,
+      "tip_paths_differ": [
+        "ops/mad4b-native-mu-deploy-v1/claimed-job-worker.py",
+        "ops/mad4b-native-mu-deploy-v1/claimed-job-worker.release.py",
+        "ops/mad4b-native-mu-deploy-v1/tests/test_worker_failure_diagnostics.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/runtime-read-write-protocol-lane-isolation-20261106",
+      "tip": "93fb634c4a4c5e037bfbccd656733b44bd78b9de",
+      "tip_subject": "fix(lifecycle): separate original 305 submission from 312-313 completion gates",
+      "tip_utc": "2026-11-06T06:34:35+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 62,
+      "candidate_commits_not_on_branch": 656,
+      "tip_paths_total": 3,
+      "tip_paths_sampled": 3,
+      "tip_paths_differ": [
+        ".github/workflows/mad4b-mu-plugin-lifecycle.yml",
+        "ops/mad4b-native-mu-lifecycle/source/298-mad4b-company-execution-resolver.php",
+        "ops/mad4b-native-mu-lifecycle/tests/original-305-lifecycle-contract.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "release/control-plane-rc121-live-20261106",
+      "tip": "60ca8859d2c2bd7e5722c1d6995a1157f28a3878",
+      "tip_subject": "release(control-plane): reconcile live Core Web Vitals and Skill reference contracts in rc121",
+      "tip_utc": "2026-11-06T04:42:52+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 54,
+      "candidate_commits_not_on_branch": 656,
+      "tip_paths_total": 12,
+      "tip_paths_sampled": 12,
+      "tip_paths_differ": [
+        "wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt",
+        "wp-content/plugins/mad4b-site-control-plane/README.md",
+        "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/skill-seed-manifest-package-contract.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/live-render-wpml-cwv-20261106",
+      "tip": "9babb46201b725e2bb913877d73006c3387f9a24",
+      "tip_subject": "perf: reconcile staged selective render, WPML permalink invalidation and CWV lifecycle",
+      "tip_utc": "2026-11-06T04:37:12+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 1,
+      "candidate_commits_not_on_branch": 656,
+      "tip_paths_total": 6,
+      "tip_paths_sampled": 6,
+      "tip_paths_differ": [
+        "docs/qa/mad4b-performance-render-20261106/README.md",
+        "wp-content/mu-plugins/414-mad4b-stable-listing-css-identity.php",
+        "wp-content/mu-plugins/mad4b-render-query-governor.php",
+        "wp-content/plugins/mad4b-platform/modules/presentation/native-listing-background-lazy.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-query-performance-ui.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "release/mcp-skills-rc120-integration-20261106",
+      "tip": "f696846fec2c2cc1b77ad5312d892e2073fcc0c5",
+      "tip_subject": "release(control-plane): prepare rc120 from rc119 and live MCP/Skills fixes",
+      "tip_utc": "2026-11-06T04:30:31+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 53,
+      "candidate_commits_not_on_branch": 656,
+      "tip_paths_total": 7,
+      "tip_paths_sampled": 7,
+      "tip_paths_differ": [
+        "wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt",
+        "wp-content/plugins/mad4b-site-control-plane/README.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-query-performance-ui.php",
+        "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-official-required-preflight-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-preflight-registration-failure-runtime.php"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/runtime-cache-overlay-fleet-20261106",
+      "tip": "76cc5d4429c7eb0f0be4c76862622f975864100a",
+      "tip_subject": "release(control-plane): rc119 unified cache, native read and adapter 0.7.1 handoff",
+      "tip_utc": "2026-11-06T01:43:46+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 48,
+      "candidate_commits_not_on_branch": 656,
+      "tip_paths_total": 9,
+      "tip_paths_sampled": 9,
+      "tip_paths_differ": [
+        "wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt",
+        "wp-content/plugins/mad4b-site-control-plane/README.md",
+        "wp-content/plugins/mad4b-site-control-plane/bootstrap/mad4b-runtime-cache-convergence-mu.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/staging-deployment-handoff.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php",
+        "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-adapter-compatibility-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-cache-local-overlay-regression.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-release-set-contract.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "feat/faore-speckit-20261105",
+      "tip": "627d370e25745fc8a3e896e9f8818a895750645d",
+      "tip_subject": "fix(mcp): forward exact ETG native host read scope over pinned SSH",
+      "tip_utc": "2026-11-06T01:15:04+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 47,
+      "candidate_commits_not_on_branch": 656,
+      "tip_paths_total": 2,
+      "tip_paths_sampled": 2,
+      "tip_paths_differ": [
+        "ops/mad4b-faore-v1/integrations/transport-runtime-v1/registry-remote-v1/mcp_stdio_client.py",
+        "ops/mad4b-faore-v1/integrations/transport-runtime-v1/registry-remote-v1/test_etg_native_site_info.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/etg-native-site-info-20261106",
+      "tip": "627d370e25745fc8a3e896e9f8818a895750645d",
+      "tip_subject": "fix(mcp): forward exact ETG native host read scope over pinned SSH",
+      "tip_utc": "2026-11-06T01:15:04+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 47,
+      "candidate_commits_not_on_branch": 656,
+      "tip_paths_total": 2,
+      "tip_paths_sampled": 2,
+      "tip_paths_differ": [
+        "ops/mad4b-faore-v1/integrations/transport-runtime-v1/registry-remote-v1/mcp_stdio_client.py",
+        "ops/mad4b-faore-v1/integrations/transport-runtime-v1/registry-remote-v1/test_etg_native_site_info.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/cross-ssh-out-of-band-recovery-20261106",
+      "tip": "23b6e5b14b5ffa7c46bf8de3f3f6fdcd4ac3cc9d",
+      "tip_subject": "fix(mcp): fail over blocked private read to exact enrolled WPCLI diagnostics",
+      "tip_utc": "2026-11-06T00:58:26+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 45,
+      "candidate_commits_not_on_branch": 656,
+      "tip_paths_total": 2,
+      "tip_paths_sampled": 2,
+      "tip_paths_differ": [
+        "ops/mad4b-faore-v1/integrations/transport-runtime-v1/registry-remote-v1/mcp_stdio_client.py",
+        "ops/mad4b-faore-v1/integrations/transport-runtime-v1/registry-remote-v1/test_resilient_inspect.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/native-mcp-permission-bridge-20261106",
+      "tip": "c57d381fc66de48841d4ed0ca1226a8d668d1e1e",
+      "tip_subject": "fix(mcp): route pinned native central stdio as read-only root operator",
+      "tip_utc": "2026-11-05T23:54:36+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 43,
+      "candidate_commits_not_on_branch": 656,
+      "tip_paths_total": 2,
+      "tip_paths_sampled": 2,
+      "tip_paths_differ": [
+        "ops/mad4b-faore-v1/integrations/transport-runtime-v1/registry-remote-v1/mcp_stdio_client.py",
+        "ops/mad4b-faore-v1/integrations/transport-runtime-v1/registry-remote-v1/test_exact_native_local_read.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/optional-native-v4-20261106",
+      "tip": "33330f349347c00f7ac569ae8373f9a2c59f53df",
+      "tip_subject": "fix(dispatch): use privileged native runtime and defer WPCLI busy safely",
+      "tip_utc": "2026-11-05T23:10:25+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 40,
+      "candidate_commits_not_on_branch": 656,
+      "tip_paths_total": 2,
+      "tip_paths_sampled": 2,
+      "tip_paths_differ": [
+        "ops/mad4b-faore-v1/integrations/transport-runtime-v1/unified-execution-router-v1/proof_renewal.py",
+        "ops/mad4b-faore-v1/integrations/transport-runtime-v1/unified-execution-router-v1/test_proof_renewal_native.py"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "reconcile/live-source-target-identity-20261105",
+      "tip": "395115c059b3333c1c7102b3734e55632b9a4c90",
+      "tip_subject": "docs(qa): record live integration tests and unresolved original authority gates",
+      "tip_utc": "2026-11-05T22:15:26+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 35,
+      "candidate_commits_not_on_branch": 656,
+      "tip_paths_total": 1,
+      "tip_paths_sampled": 1,
+      "tip_paths_differ": [
+        "ops/mad4b-faore-v1/integrations/transport-runtime-v1/ACCEPTANCE-20261105.md"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/staging-admin-settings-persistence-20261105",
+      "tip": "28fc587f2c83ac56b213881a8527315109fe92a3",
+      "tip_subject": "perf(staging): record verified live navigation and taxonomy query fixes",
+      "tip_utc": "2026-11-05T15:20:54+00:00",
+      "classification": "divergent_review_required",
+      "unique_commits": 19,
+      "candidate_commits_not_on_branch": 656,
+      "tip_paths_total": 5,
+      "tip_paths_sampled": 5,
+      "tip_paths_differ": [
+        "tools/patches/mad4b-live-staging-country-options-public-30s-20261105.patch",
+        "tools/patches/mad4b-live-staging-mega-tree-public-30s-20261105.patch",
+        "tools/patches/mad4b-live-staging-nav-term-language-request-memo-20261105.patch",
+        "tools/patches/mad4b-live-staging-product-navigation-request-memo-20261105.patch",
+        "tools/patches/mad4b-live-staging-wordpress-cold-ttfb-20261105.md"
+      ],
+      "tip_comparison_truncated": false,
+      "whole_branch_semantic_parity_unverified": true
+    },
+    {
+      "branch": "fix/highlights-unicode-empty-guard-20261115",
+      "tip": "424b0c9c1377eb62dad8ccdb04e5ed85fd82dd59",
+      "classification": "contained_ancestor",
+      "unique_commits": 0
+    },
+    {
+      "branch": "fix/host-v8-pinned-source-reconcile-20261116",
+      "tip": "ec0832ea0fef23a82bbb12333a48cb5c583f0a83",
+      "classification": "contained_ancestor",
+      "unique_commits": 0
+    },
+    {
+      "branch": "fix/media-quality-scalable-20261115",
+      "tip": "4f92fc4a12a300fe46e4d488884ba8856a06306e",
+      "classification": "contained_ancestor",
+      "unique_commits": 0
+    },
+    {
+      "branch": "fix/pr814-content-readiness-fixture-20261116",
+      "tip": "1bd294fac09a54500652b98857b3ba661ae037a0",
+      "classification": "contained_ancestor",
+      "unique_commits": 0
+    },
+    {
+      "branch": "fix/pr814-mcp-identity-collision-20261113",
+      "tip": "34c92caca339ec077f8698aea8f4e472e8d84ecc",
+      "classification": "contained_ancestor",
+      "unique_commits": 0
+    },
+    {
+      "branch": "fix/pr814-oauth-full-authority-error-shape-20261113",
+      "tip": "7428e1f2fb587e584fdff16a393f2be4aaa97c3c",
+      "classification": "contained_ancestor",
+      "unique_commits": 0
+    },
+    {
+      "branch": "fix/pr814-p0-original-review-20261116",
+      "tip": "d8b456d3c0eaf662e6ee761782d3fcaeec3451b0",
+      "classification": "contained_ancestor",
+      "unique_commits": 0
+    },
+    {
+      "branch": "fix/pr814-p1-content-readiness-20261116",
+      "tip": "7c190bb6c48424d8118b77d4d79437afb43fac64",
+      "classification": "contained_ancestor",
+      "unique_commits": 0
+    },
+    {
+      "branch": "fix/pr814-p1-final-behavior-20261116",
+      "tip": "30d80840fd102078b0a66ebef7742f403ce88a41",
+      "classification": "contained_ancestor",
+      "unique_commits": 0
+    },
+    {
+      "branch": "fix/pr814-p1-relationship-20261116",
+      "tip": "92c66e8f63af44cb7a1068fca6e014991718b4f9",
+      "classification": "contained_ancestor",
+      "unique_commits": 0
+    },
+    {
+      "branch": "fix/pr814-p1-remaining-services-20261116",
+      "tip": "7da80cfabc48297500a17f150a595d0bd74b3182",
+      "classification": "contained_ancestor",
+      "unique_commits": 0
+    },
+    {
+      "branch": "fix/rate-facet-native-lookfeel-20261115",
+      "tip": "f1506fbfe2ba2b3da74cc275104dd18119c7cf15",
+      "classification": "contained_ancestor",
+      "unique_commits": 0
+    },
+    {
+      "branch": "fix/tour-gallery-all-five-frames-20261115",
+      "tip": "896f75cccfec31685895bb84bc1af33c4dc8bcac",
+      "classification": "contained_ancestor",
+      "unique_commits": 0
+    },
+    {
+      "branch": "integration/media-rights-full-policy-20261116",
+      "tip": "06858fd104903866436728c304a7f7d1cc71ce3b",
+      "classification": "contained_ancestor",
+      "unique_commits": 0
+    },
+    {
+      "branch": "master",
+      "tip": "5c72e4893e36e992f056c90cfc75908b3a8f7785",
+      "classification": "contained_ancestor",
+      "unique_commits": 0
+    },
+    {
+      "branch": "review/host-v9-successor-source-20261116",
+      "tip": "5ccd8a574f826e9266a4b74620bc08d0fe44fb1c",
+      "classification": "contained_ancestor",
+      "unique_commits": 0
+    }
+  ],
+  "auto_merge_authorized": false,
+  "auto_delete_authorized": false,
+  "signed_release_authorized": false,
+  "source_coverage_proven_by_this_census": false,
+  "warning": "Tip byte comparison is not whole-branch semantic proof; preserve divergent refs until independently reviewed."
+}

@@ -1,0 +1,16 @@
+{
+  "contract": "mad4b.dynamic-evidence-schema.v1",
+  "schema_id": "code_release.v2",
+  "success_state": "HOST_READBACK_VERIFIED_PENDING_ORIGINAL_313",
+  "fields": {
+    "file_count": "integer",
+    "readback_sha256": "sha256",
+    "result_status": "string",
+    "native_receipt_sha256": "sha256",
+    "output_sha256": "sha256",
+    "expected_readback_sha256": "sha256",
+    "grant_id": "string",
+    "transport_id": "string",
+    "production_mutation": "boolean"
+  }
+}

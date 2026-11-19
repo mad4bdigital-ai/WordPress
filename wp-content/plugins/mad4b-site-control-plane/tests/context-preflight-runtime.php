@@ -87,6 +87,29 @@ final class MAD4B_SCP_Staging_Write_Authority {
 	}
 }
 
+// Native owner and builder test doubles. The original Brand Draft branch
+// remains under test; no real WordPress state, external evidence or writes.
+final class MAD4B_SCP_Site_Profile {
+    public static $authority_ready = true;
+    public static function status() { return array( 'authority_ready' => self::$authority_ready ); }
+}
+final class MAD4B_SCP_Brand_Context_Builder {
+    public static $quality = true;
+    public static $content_fingerprint_override = null;
+    public static $calls = 0;
+    public static function draft_preflight( $input ) {
+        ++self::$calls;
+        if ( isset( $GLOBALS['mad4b_brand_draft_fail'] ) )
+            return new WP_Error( 'mad4b_brand_draft_provider_denied', 'Simulated rejected provider evidence' );
+        $content = trim( $input['content'] );
+        return array(
+            'quality_gate_pass' => self::$quality,
+            'content_sha256' => self::$content_fingerprint_override !== null
+                ? self::$content_fingerprint_override : hash( 'sha256', $content ),
+        );
+    }
+}
+
 final class MAD4B_SCP_Audit {
 	public static $events = array();
 	public static function storage_status() { return array( 'ready' => true ); }
@@ -179,7 +202,7 @@ mad4b_context_preflight_assert( is_string( $transport_blocked_json ) && strlen( 
 MAD4B_SCP_Context_Authority::$assets['brand']['title'] = $normal_brand_title;
 
 $receipt_method = new ReflectionMethod( 'MAD4B_SCP_Context_Preflight', 'receipt' );
-$receipt_method->setAccessible( true );
+if ( PHP_VERSION_ID < 80100 ) $receipt_method->setAccessible( true );
 $oversized_receipt = $receipt_method->invoke(
 	null,
 	'site:fixture:oversized',
@@ -234,7 +257,7 @@ mad4b_context_preflight_assert( is_wp_error( $tampered_signature_result ) && 'ma
 $self_rehash = $site_union['receipt'];
 $self_rehash['task_scope'] = 'forged-client-scope';
 $digest_method = new ReflectionMethod( 'MAD4B_SCP_Context_Preflight', 'canonical_receipt_digest' );
-$digest_method->setAccessible( true );
+if ( PHP_VERSION_ID < 80100 ) $digest_method->setAccessible( true );
 $self_rehash['receipt_sha256'] = $digest_method->invoke( null, $self_rehash );
 $self_rehash_result = MAD4B_SCP_Context_Preflight::validate_receipt_binding( $self_rehash );
 mad4b_context_preflight_assert( is_wp_error( $self_rehash_result ) && 'mad4b_context_receipt_signature_invalid' === $self_rehash_result->get_error_code(), 'Client-side self-rehash must not mint a trusted Context Receipt.', $self_rehash_result );
@@ -563,5 +586,95 @@ mad4b_context_preflight_assert( is_wp_error(
         'mad4b/approval-plan', $invalid_nested ) ),
     'Approval envelope without object target input must fail closed.',
     $invalid_nested );
+
+// Original Brand Strategy bootstrap branch: only exact builder Skill receipt,
+// signed under current site/context authority, may reach native quality check.
+$brand_draft_skill = array(
+    'logical_id' => 'workflow:brand-context:wordpress-brand-context-builder',
+    'sha256' => str_repeat( 'e', 64 ),
+    'context_policy' => array(
+        'preset' => 'custom',
+        'required_context_sets' => array( 'brand_strategy' ),
+        'allowed_mutation_abilities' => array( 'context/brand-draft-create' ),
+    ),
+);
+MAD4B_SCP_Skill_Registry::$skill = $brand_draft_skill;
+$bootstrap = MAD4B_SCP_Context_Preflight::preflight_entry(
+    $brand_draft_skill, 'brand-bootstrap', 'context/brand-draft-create'
+);
+mad4b_context_preflight_assert( is_array( $bootstrap ) && ! empty( $bootstrap['ready'] ),
+    'Brand Strategy-only builder must issue its own signed preflight.', $bootstrap );
+$brand_receipt = $bootstrap['receipt'];
+mad4b_context_preflight_assert(
+    $brand_receipt['declared_required_context_sets'] === array( 'brand_strategy' ),
+    'Bootstrap receipt must declare only brand_strategy, not full Brand Core.', $brand_receipt
+);
+$brand_draft_input = array(
+    'content' => 'A reviewed exact Brand Strategy draft',
+    '_mad4b_context_receipt' => $brand_receipt,
+);
+$brand_draft_check = static function ( $input, $code, $name ) {
+    $result = MAD4B_SCP_Context_Preflight::mutation_context_guard(
+        'context/brand-draft-create', $input
+    );
+    mad4b_context_preflight_assert( is_wp_error( $result )
+        && $result->get_error_code() === $code, $name, $result );
+};
+$baseline_calls = MAD4B_SCP_Brand_Context_Builder::$calls;
+MAD4B_SCP_Site_Profile::$authority_ready = false;
+$brand_draft_check( $brand_draft_input, 'mad4b_brand_draft_bootstrap_site_unready',
+    'Unready Site Profile cannot bootstrap draft.' );
+MAD4B_SCP_Site_Profile::$authority_ready = true;
+$brand_draft_check( array( 'content' => 'No signed receipt' ),
+    'mad4b_content_context_receipt_required', 'Unbound draft cannot proceed.' );
+$wrong_scope = $brand_draft_input;
+$wrong_scope['_mad4b_context_receipt']['skill_logical_id'] = 'site:_site:blog-writer';
+$brand_draft_check( $wrong_scope, 'mad4b_brand_draft_bootstrap_receipt_scope_invalid',
+    'Unrelated Skill cannot authorize draft.' );
+$wrong_ability = $brand_draft_input;
+$wrong_ability['_mad4b_context_receipt']['intended_ability'] = 'mad4b/content-update-post';
+$brand_draft_check( $wrong_ability, 'mad4b_brand_draft_bootstrap_receipt_scope_invalid',
+    'Content mutation receipt cannot bootstrap draft.' );
+$wrong_set = $brand_draft_input;
+$wrong_set['_mad4b_context_receipt']['declared_required_context_sets'] = array(
+    'brand_strategy','tone_of_voice'
+);
+$brand_draft_check( $wrong_set, 'mad4b_brand_draft_bootstrap_receipt_scope_invalid',
+    'Broader context set cannot replace the builder scoped receipt.' );
+$wrong_signature = $brand_draft_input;
+$wrong_signature['_mad4b_context_receipt']['receipt_signature']['signature_b64url'] = 'AA';
+$brand_draft_check( $wrong_signature, 'mad4b_context_receipt_signature_invalid',
+    'Tampered signature cannot bootstrap Brand Draft.' );
+$nontext = $brand_draft_input;
+$nontext['content'] = array( 'malformed' => 'text' );
+$brand_draft_check( $nontext, 'mad4b_brand_draft_bootstrap_content_invalid',
+    'Non-text content cannot reach original Builder quality service.' );
+$empty_text = $brand_draft_input;
+$empty_text['content'] = "  ";
+$brand_draft_check( $empty_text, 'mad4b_brand_draft_bootstrap_quality_required',
+    'Empty draft text cannot reach original Builder quality service.' );
+mad4b_context_preflight_assert(
+    MAD4B_SCP_Brand_Context_Builder::$calls === $baseline_calls,
+    'All invalid preconditions must block before Builder execution.'
+);
+MAD4B_SCP_Brand_Context_Builder::$quality = false;
+$brand_draft_check( $brand_draft_input, 'mad4b_brand_draft_bootstrap_quality_required',
+    'Original Builder quality decision remains mandatory.' );
+MAD4B_SCP_Brand_Context_Builder::$quality = true;
+MAD4B_SCP_Brand_Context_Builder::$content_fingerprint_override = str_repeat( '0', 64 );
+$brand_draft_check( $brand_draft_input, 'mad4b_brand_draft_bootstrap_quality_required',
+    'Builder content fingerprint must match exact proposed draft.' );
+MAD4B_SCP_Brand_Context_Builder::$content_fingerprint_override = null;
+$GLOBALS['mad4b_brand_draft_fail'] = true;
+$brand_draft_check( $brand_draft_input, 'mad4b_brand_draft_provider_denied',
+    'Original Builder provider errors cannot be replaced with an allow.');
+unset( $GLOBALS['mad4b_brand_draft_fail'] );
+mad4b_context_preflight_assert(
+    MAD4B_SCP_Context_Preflight::mutation_context_guard(
+        'context/brand-draft-create', $brand_draft_input
+    ) === true,
+    'Current signed exact-scope receipt and quality-verified content admit the Brand Draft context guard.'
+);
+echo "PASS: BRAND_DRAFT_ORIGINAL_PREFLIGHT 12 signed boundary and quality cases\n";
 
 echo "mad4b.site-control-plane.context-preflight.runtime.v4: PASS\n";

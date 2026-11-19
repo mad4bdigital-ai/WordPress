@@ -1,0 +1,12 @@
+[Unit]
+Description=MAD4B daily low-cost company Critical CSS integrity verification
+
+[Timer]
+OnCalendar=*-*-* 02:45:00 UTC
+RandomizedDelaySec=600
+AccuracySec=60s
+Persistent=true
+Unit=mad4b-critical-css-integrity-audit.service
+
+[Install]
+WantedBy=timers.target

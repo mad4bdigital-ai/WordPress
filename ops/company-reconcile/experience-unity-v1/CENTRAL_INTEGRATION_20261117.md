@@ -1,0 +1,7 @@
+## Selective central Git source integration, 17 Nov 2026
+
+The PR814 central integration branch is historically divergent from the Wayfatours feature branch. A wholesale merge would import thousands of unrelated paths and overwrite concurrent Critical CSS/readiness work. This source convergence takes precisely the 29 component paths changed at source commit ebfaf01df37a97cb25c24432f4009f3c8b2ae74a since f8b7e08ce5, without replaying older ancestors.
+
+Source-package boundary: PR814 does not yet have the complete mad4b-commerce, mad4b-platform, or mad4b-jetengine runtime owner baselines. The original Commerce loader has 18 required files absent from this central branch. To avoid accidentally installing a broken WordPress plugin, its exact source is kept inertly in ops/company-reconcile/price-presentation-v1/source-overlays/mad4b-commerce-bootstrap.source-candidate.php and is NOT installed under the wp-content/plugins/mad4b-commerce root. One source registration unit test was adapted accordingly. The other 28 files are byte-identical to the original branch.
+
+No company deployment is authorized by this source Git merge. Activation requires a complete independently verified plugin owner baseline and an Original313 code-release candidate. Active Tours.dev/Wayfatours were verified earlier using their complete installed runtime, but the central branch's incomplete plugin tree MUST NOT be deployed directly. This integration changes no tenant database options, rates, orders, payments, country activation, or live plugin code.
