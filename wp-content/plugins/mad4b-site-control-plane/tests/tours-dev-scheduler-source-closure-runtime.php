@@ -22,9 +22,9 @@ $originals=array(
     'includes/class-mad4b-scp-presentation-browser-evidence.php'=>array('20bb927951251ec356e2c6f1a8c135a22d1e7785c51eb9ce4f11ef8e98376159','20bb927951251ec356e2c6f1a8c135a22d1e7785c51eb9ce4f11ef8e98376159',false),
     'includes/class-mad4b-scp-presentation-integrity.php'=>array('4d22f00e4a1ef2e5ef4cdf9a5ccc7f3e519891586f4982a06ed243e143b7cd6a','4d22f00e4a1ef2e5ef4cdf9a5ccc7f3e519891586f4982a06ed243e143b7cd6a',false),
     'includes/class-mad4b-scp-readiness-event-automation.php'=>array('5a18636dda2e1ec5df8ee677f8869c61ccf980c8e1b0d75cd075a6106e1ffba5','ad8eac90e66ac695ea2ee6aab0c06ed5cb90fea2ffb7415ee6bc45d85b53a01d',true),
-    'includes/class-mad4b-scp-readiness-integrations.php'=>array('5ad0e90f76843527ffaac5bcde288beb181f83d7590141a77ea59e33428f69cb','5ad0e90f76843527ffaac5bcde288beb181f83d7590141a77ea59e33428f69cb',false),
+    'includes/class-mad4b-scp-readiness-integrations.php'=>array('114faf65fb3a19c6ceb4d23a6f21f51df19b0d7e6359ae68104cf7fdc650797c','5ad0e90f76843527ffaac5bcde288beb181f83d7590141a77ea59e33428f69cb',true),
     'includes/class-mad4b-scp-readiness-preactivation.php'=>array('6042798ef0eaa09578ae9e9b014373554af36bab0dcf56c40d4b25ef0847c97b','d9a07f0e9d9105e24cd2a27ab6ef1ce8c086c8f4e8e3688724e1d23bfd74f915',true),
-    'includes/class-mad4b-scp-readiness-scopes.php'=>array('cf7943d2c8706c6a8f8812b9d95dc3a3a7dc70aa55fdf396f3faffc2f380ab2b','cf7943d2c8706c6a8f8812b9d95dc3a3a7dc70aa55fdf396f3faffc2f380ab2b',false),
+    'includes/class-mad4b-scp-readiness-scopes.php'=>array('35e158ec11006ac20271392d22d6a10c450065dca91b3631790aa38009ed782c','cf7943d2c8706c6a8f8812b9d95dc3a3a7dc70aa55fdf396f3faffc2f380ab2b',true),
     'includes/class-mad4b-scp-readiness-team-preparation.php'=>array('32ef4b54ad67d541fe1de2cd827b14dca76300cc005bc5df77164987df752615','32ef4b54ad67d541fe1de2cd827b14dca76300cc005bc5df77164987df752615',false),
     'includes/class-mad4b-scp-readiness-workflow-options.php'=>array('b99f4b8fd77c8f9578b104258dd624aa12a78eaa44857ffaf15fc00d39819e8c','b99f4b8fd77c8f9578b104258dd624aa12a78eaa44857ffaf15fc00d39819e8c',false),
     'includes/class-mad4b-scp-source-lifecycle.php'=>array('ac95b12345f26c355bbdf45df20a3740a3878eeb2cb08a2365a1ccd7ec4183e4','ac95b12345f26c355bbdf45df20a3740a3878eeb2cb08a2365a1ccd7ec4183e4',false),
@@ -59,8 +59,18 @@ foreach($originals as $rel=>$info){
         'Original optional service unexpectedly loaded by plugin Bootstrap: '.$rel);
  if($changed)$successors++;else $same++;
 }
-demand(count($originals)===18&&$same===11&&$successors===7,
-       'Exact original 11 source-identical + 7 reviewed successors including PR906 compatibility');
+demand(count($originals)===18&&$same===9&&$successors===9,
+       'Exact original 9 source-identical + 9 reviewed successors including parent-safe admin routes');
+$menuSource=file_get_contents($root.'/includes/class-mad4b-scp-readiness-integrations.php');
+demand(false!==strpos($menuSource,'MAD4B_SCP_Admin_Route_Registry::schedule_submenu(')
+       && false===strpos($menuSource,"add_action('admin_menu'")
+       && false===strpos($menuSource,'add_submenu_page('),
+       'Readiness Integrations must defer menus to canonical parent-aware owners');
+$scopeMenuSource=file_get_contents($root.'/includes/class-mad4b-scp-readiness-scopes.php');
+demand(false!==strpos($scopeMenuSource,'MAD4B_SCP_Admin_Route_Registry::schedule_submenu(')
+       && false!==strpos($scopeMenuSource,"MAD4B_SCP_Admin_Route_Registry::register(self::PAGE,'manage_options');")
+       && false===strpos($scopeMenuSource,"add_action('admin_menu'"),
+       'Readiness Scopes must use parent-safe admin route and manage_options');
 $events=file_get_contents($root.'/includes/class-mad4b-scp-readiness-event-automation.php');
 demand(false!==strpos($events,"if(0===strpos(\$type,'term:')){"), 'PR906 PHP 7.4 compatibility guard must remain');
 $preactivation=file_get_contents($root.'/includes/class-mad4b-scp-readiness-preactivation.php');
@@ -156,4 +166,4 @@ demand(false!==strpos($endpoint,"https://www.googleapis.com/pagespeedonline/v5/r
     && false!==strpos($endpoint,"'redirection' => 0")
     && false!==strpos($endpoint,'validate_monitored_url'),
     'Google PageSpeed endpoint is fixed and monitored-site URL validated');
-echo "PASS: 18 originals, 15 verified include edges, 11 frozen files, 7 reviewed successors (PR906+907 retained), no new boot, tenant policy denied by default".PHP_EOL;
+echo "PASS: 18 originals, 15 verified include edges, 9 frozen files, 9 reviewed successors (PR906+907 + admin routes retained), no new boot, tenant policy denied by default".PHP_EOL;

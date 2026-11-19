@@ -17,15 +17,30 @@ final class MAD4B_SCP_Readiness_Integrations {
     public static function boot() {
         add_action('rest_api_init',array(__CLASS__,'routes'));
         add_action('admin_bar_menu',array(__CLASS__,'admin_bar'),97);
-        add_action('admin_menu',array(__CLASS__,'company_menu'),34);
+        // Preserve parent-before-child ordering. No direct admin_menu fallback.
+        if(class_exists('MAD4B_SCP_Admin_Route_Registry',false)) {
+            MAD4B_SCP_Admin_Route_Registry::schedule_submenu(array(__CLASS__,'company_menu'),34);
+        }
     }
     public static function company_menu() {
-        add_submenu_page('mad4b-company','Content Readiness','Content Readiness',self::CAP,
-            MAD4B_SCP_Content_Readiness_Alerts::PAGE,array('MAD4B_SCP_Content_Readiness_Alerts','render'));
-        add_submenu_page('mad4b-company','Content Follow-up','Content Follow-up',self::CAP,
-            MAD4B_SCP_Readiness_Workflow_Options::PAGE,array('MAD4B_SCP_Readiness_Workflow_Options','render'));
-        add_submenu_page('mad4b-company','Completeness & SEO','Completeness & SEO',self::CAP,
-            MAD4B_SCP_Content_Completeness::PAGE,array('MAD4B_SCP_Content_Completeness','render'));
+        // Each page owner declares its own manage_options route and renders under
+        // the canonical parent. Never register a second copy of the same page.
+        if(!class_exists('MAD4B_SCP_Admin_Route_Registry',false)) return;
+        global $submenu;
+        foreach(array(
+            'MAD4B_SCP_Content_Readiness_Alerts',
+            'MAD4B_SCP_Readiness_Workflow_Options',
+            'MAD4B_SCP_Content_Completeness'
+        ) as $owner) {
+            if(!class_exists($owner,false) || !is_callable(array($owner,'menu'))) continue;
+            $page=constant($owner.'::PAGE');
+            $rows=is_array($submenu['mad4b-control-plane']??null)
+                ? $submenu['mad4b-control-plane'] : array();
+            $slugs=array();
+            foreach($rows as $row) if(is_array($row)) $slugs[]=(string)($row[2]??'');
+            if(in_array($page,$slugs,true)) continue;
+            call_user_func(array($owner,'menu'));
+        }
     }
     public static function can_manage() {
         return current_user_can('manage_options') || current_user_can(self::CAP);

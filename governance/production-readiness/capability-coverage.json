@@ -5300,7 +5300,7 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "coverage_reuse_rationale": "The original identity, registered-site profile, provider egress, scheduler, WP admin, recovery, operations and execution controls remain mandatory; source retention creates no new authority.",
-      "review_rationale": "Byte-identical SHA256 source from installed Tours.dev and separately frozen v3 archive. The module is captured as reference only; inline boot, schedules, external provider calls, REST routes or writes cannot start because main Bootstrap does not include it. Future registration requires independent capability review."
+      "review_rationale": "Frozen Tours.dev SHA256 original preserved separately; a reviewed source-only successor replaces direct admin_menu registration with Admin Route Registry's scheduled submenu and delegates to manage_options page-owner menus after the shared parent, avoiding duplicate submenu entries. New scheduler negative test asserts no direct submenu registration; no Bootstrap inclusion, runtime activation, grant or WordPress site mutation."
     },
     {
       "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-scopes.php",
@@ -5319,7 +5319,7 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "coverage_reuse_rationale": "The original identity, registered-site profile, provider egress, scheduler, WP admin, recovery, operations and execution controls remain mandatory; source retention creates no new authority.",
-      "review_rationale": "Byte-identical SHA256 source from installed Tours.dev and separately frozen v3 archive. The module is captured as reference only; inline boot, schedules, external provider calls, REST routes or writes cannot start because main Bootstrap does not include it. Future registration requires independent capability review."
+      "review_rationale": "Frozen Tours.dev original SHA256 preserved separately. Reviewed source-only successor uses canonical Admin Route Registry, post-parent scheduled submenu and manage_options. No direct admin_menu hook or weaker company operations route authorization. Immutable original and compatibility successor are protected by same-PR no-boot regression. No site deployment, runtime activation or grant."
     },
     {
       "id": "ability:mad4b/core-web-vitals-status",
@@ -14810,7 +14810,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-integrations.php",
-      "source_blob_sha": "5386ac23cb8166988b4ce7cd453ab5df059d4764",
+      "source_blob_sha": "de18da5e541191152b3399cf9ad74529ead4a297",
       "control_ids": [
         "GOVERNANCE-01",
         "PLATFORM-01",
@@ -14826,11 +14826,11 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "coverage_reuse_rationale": "The original identity, registered-site profile, provider egress, scheduler, WP admin, recovery, operations and execution controls remain mandatory; source retention creates no new authority.",
-      "review_rationale": "Byte-identical SHA256 source from installed Tours.dev and separately frozen v3 archive. The module is captured as reference only; inline boot, schedules, external provider calls, REST routes or writes cannot start because main Bootstrap does not include it. Future registration requires independent capability review."
+      "review_rationale": "Frozen Tours.dev SHA256 original preserved separately; a reviewed source-only successor replaces direct admin_menu registration with Admin Route Registry's scheduled submenu and delegates to manage_options page-owner menus after the shared parent, avoiding duplicate submenu entries. New scheduler negative test asserts no direct submenu registration; no Bootstrap inclusion, runtime activation, grant or WordPress site mutation."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-scopes.php",
-      "source_blob_sha": "28108a29df3109e824bab4d29e9aa66abcb7ff90",
+      "source_blob_sha": "bdaf2de5e4a0dc472125dd48bd4988a8df55697a",
       "control_ids": [
         "GOVERNANCE-01",
         "PLATFORM-01",
@@ -14846,7 +14846,7 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "coverage_reuse_rationale": "The original identity, registered-site profile, provider egress, scheduler, WP admin, recovery, operations and execution controls remain mandatory; source retention creates no new authority.",
-      "review_rationale": "Byte-identical SHA256 source from installed Tours.dev and separately frozen v3 archive. The module is captured as reference only; inline boot, schedules, external provider calls, REST routes or writes cannot start because main Bootstrap does not include it. Future registration requires independent capability review."
+      "review_rationale": "Frozen Tours.dev original SHA256 preserved separately. Reviewed source-only successor uses canonical Admin Route Registry, post-parent scheduled submenu and manage_options. No direct admin_menu hook or weaker company operations route authorization. Immutable original and compatibility successor are protected by same-PR no-boot regression. No site deployment, runtime activation or grant."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-discovery-trait.php",
