@@ -8,6 +8,11 @@ on:
       - 'wp-content/mu-plugins/007-mad4b-stay-price-layers-admin.php'
       - 'tests/stay-layered-pricing-contract.php'
       - 'tests/stay-layers-admin-contract.php'
+      - 'wp-content/mu-plugins/008-mad4b-stay-pricing-controls-panel.php'
+      - 'wp-content/mu-plugins/mad4b-stay-pricing-admin/**'
+      - 'tests/stay-pricing-page-access-contract.php'
+      - 'tests/stay-pricing-panel-runtime-cli.php'
+      - 'tests/stay-pricing-panel-ui-check.py'
       - '.github/workflows/mad4b-stay-layered-pricing-contract.yml'
   push:
     branches: [master]
@@ -17,6 +22,11 @@ on:
       - 'wp-content/mu-plugins/007-mad4b-stay-price-layers-admin.php'
       - 'tests/stay-layered-pricing-contract.php'
       - 'tests/stay-layers-admin-contract.php'
+      - 'wp-content/mu-plugins/008-mad4b-stay-pricing-controls-panel.php'
+      - 'wp-content/mu-plugins/mad4b-stay-pricing-admin/**'
+      - 'tests/stay-pricing-page-access-contract.php'
+      - 'tests/stay-pricing-panel-runtime-cli.php'
+      - 'tests/stay-pricing-panel-ui-check.py'
       - '.github/workflows/mad4b-stay-layered-pricing-contract.yml'
 
 permissions:
@@ -43,3 +53,8 @@ jobs:
           php -l wp-content/mu-plugins/007-mad4b-stay-price-layers-admin.php
           php tests/stay-layered-pricing-contract.php
           php tests/stay-layers-admin-contract.php
+          php -l wp-content/mu-plugins/008-mad4b-stay-pricing-controls-panel.php
+          php -l tests/stay-pricing-panel-runtime-cli.php
+          php tests/stay-pricing-page-access-contract.php
+          node --check wp-content/mu-plugins/mad4b-stay-pricing-admin/ui.js
+          python3 tests/stay-pricing-panel-ui-check.py
