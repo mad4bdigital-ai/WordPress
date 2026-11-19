@@ -78,17 +78,19 @@ if(!str_contains($page,'Issue First Host Authority Anchor')
    ||!str_contains($page,'Original312 plan SHA-256')
    ||str_contains($page,'http://tours.dev.mad4b.com:8080'))
  throw new RuntimeException('OWNER_PAGE_MISSING_REQUIRED_ACTIONS');
-$_GET['page']='mad4b-host-authority';
-MAD4B_Host_Authority_Owner_Console_V106::scripts('test');
-$before=(string)($scripts['before']??'');
-if(!preg_match('/^window\.MAD4BHostAuthorityV106=(\{.*\});$/s',$before,$matches))
- throw new RuntimeException('INLINE_SCRIPT_CONFIG_MISSING');
-$decoded=json_decode($matches[1],true,512,JSON_THROW_ON_ERROR);
-if(($scripts['src']??'missing')!==false
-  ||($decoded['nonce']??'')!=='fake-test-nonce'
+// The actual admin HTML must deliver the owner script after the controls,
+ // not merely register a source-less wp_footer script handle.
+if(!preg_match('/window\\.MAD4BHostAuthorityV106=(\\{[^\\n]+\\});/', $page,$match))
+ throw new RuntimeException('DIRECT_OWNER_JSON_CONFIG_NOT_IN_PAGE');
+$decoded=json_decode($match[1],true,512,JSON_THROW_ON_ERROR);
+if(($decoded['nonce']??'')!=='fake-test-nonce'
   ||($decoded['restBase']??'')!=='/wp-json/mad4b/v1/central-execution-lanes/all-royal-egypt/'
-  ||!str_contains($scripts['after']??'','MAD4B Host Authority v106'))
- throw new RuntimeException('ADMIN_INLINE_ASSET_OR_REST_SCOPE_INVALID');
+  ||($decoded['owner']??false)!==true
+  ||!str_contains($page,'id="mad4b-host-v108-owner-controls"')
+  ||!str_contains($page,'Owner controls ready. Check the approval box')
+  ||strpos($page,'id="mad4b-host-v108-owner-controls"') <
+    strpos($page,'id="mad4b-ha-grant"'))
+ throw new RuntimeException('DIRECT_OWNER_RUNTIME_MISSING_OR_EARLY');
 // The existing master_admin role can inspect Company pages, but cannot
 // gain Original305 authority from the role alone. A separate original
 // Unified Administrator proof may authorize the exact enrolled actor.
@@ -112,9 +114,12 @@ $companyVerified=MAD4B_Host_Authority_Owner_Console_V106::snapshot();
 if($companyVerified['owner_verified']!==true)
  throw new RuntimeException('REAL_UNIFIED_OWNER_PROOF_NOT_ACCEPTED');
 $_GET['page']='mad4b-company-host-authority';
-MAD4B_Host_Authority_Owner_Console_V106::scripts('company');
-if(!str_contains($scripts['before']??'','fake-test-nonce'))
- throw new RuntimeException('COMPANY_OWNER_JS_NOT_ENQUEUED');
+ob_start();
+MAD4B_Host_Authority_Owner_Console_V106::screen();
+$companyVerifiedHTML=ob_get_clean();
+if(!str_contains($companyVerifiedHTML,'id="mad4b-host-v108-owner-controls"')
+   ||!str_contains($companyVerifiedHTML,'fake-test-nonce'))
+ throw new RuntimeException('COMPANY_OWNER_SCRIPT_NOT_DIRECTLY_RENDERED');
 $unified=false;
 $caps=['manage_options','activate_plugins'];
 $_GET['page']='mad4b-host-authority';
@@ -126,10 +131,11 @@ ob_start();
 MAD4B_Host_Authority_Owner_Console_V106::screen();
 $readOnly=ob_get_clean();
 if(str_contains($readOnly,'id="mad4b-ha-grant"')
+   ||str_contains($readOnly,'id="mad4b-host-v108-owner-controls"')
    ||!str_contains($readOnly,'original enrolled WordPress owner'))
  throw new RuntimeException('UNVERIFIED_ADMIN_ACTION_VISIBLE');
 echo json_encode([
- 'state'=>'PASS','checks'=>11,'owner_session_required'=>true,
+ 'state'=>'PASS','checks'=>14,'owner_session_required'=>true,
  'owner_action_rendered_in_verified_fixture'=>true,
  'no_wp_option_mutations'=>true,
  'no_public_mu_plugin_asset_required'=>true,

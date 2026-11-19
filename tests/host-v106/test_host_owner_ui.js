@@ -74,6 +74,8 @@ async function test() {
     const x=create();
     const grant=x.controls['mad4b-ha-grant'];
     assert(grant.disabled,'grant must require explicit consent');
+    assert(x.controls['mad4b-ha-result'].textContent.includes('Owner controls ready'),
+      'client initializer must expose a visible health signal');
     x.controls['mad4b-ha-owner-confirm'].checked=true;
     await x.event('mad4b-ha-owner-confirm','change');
     assert(!grant.disabled);

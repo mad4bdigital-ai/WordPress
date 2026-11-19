@@ -27,7 +27,6 @@ final class MAD4B_Host_Authority_Owner_Console_V106 {
     public static function boot():void {
         if (!is_admin()) return;
         add_action('admin_menu', array(__CLASS__, 'menu'), 35);
-        add_action('admin_enqueue_scripts', array(__CLASS__, 'scripts'), 20);
     }
     public static function menu():void {
         add_submenu_page(self::PARENT,
@@ -169,45 +168,55 @@ final class MAD4B_Host_Authority_Owner_Console_V106 {
         return $out;
     }
 
-    public static function scripts($hook):void {
-        if (!isset($_GET['page']) || !is_string($_GET['page'])
-            || !in_array(sanitize_key(wp_unslash($_GET['page'])),
-                array(self::PAGE,self::COMPANY_PAGE),true)
-            || !self::can_view()) return;
-        // Nginx deliberately blocks public static files under mu-plugins.
-        // Register a source-less WordPress handle and attach the script only
-        // to this authenticated admin page. No additional public endpoint.
+    /**
+     * Render the reviewed owner script after the page controls. The v106
+     * source-less footer handle did not reliably initialize in the actual
+     * WordPress admin page: PHP kept all buttons disabled even after owner
+     * confirmation. On this protected admin page, deliver the vetted source
+     * with its JSON-encoded session binding at the point of use instead.
+     *
+     * Does not add any new REST route or perform an Owner action on GET.
+     */
+    private static function render_owner_script(array $status):void {
+        if (true!==$status['owner_verified']
+            ||$status['phase']==='ANCHOR_STATE_REVIEW') return;
         $file=__DIR__.'/mad4b-host-authority-owner-ui/host-authority.js';
-        if (!is_file($file) || !is_readable($file)) return;
-        wp_register_script('mad4b-host-v106-owner-console',false,array(),'1.0.1',true);
-        wp_enqueue_script('mad4b-host-v106-owner-console');
-        $status=self::snapshot();
-        // Restrict all mutation-capable inputs to the verified browser owner.
+        if (!is_file($file) || !is_readable($file)) {
+            echo '<p class="notice notice-error">Host Authority controls unavailable: owner script missing.</p>';
+            return;
+        }
+        $script=file_get_contents($file);
+        if (!is_string($script) || strlen($script)>=32768
+            ||!str_contains($script,'MAD4B Host Authority v106')
+            ||stripos($script,'</script')!==false) {
+            echo '<p class="notice notice-error">Host Authority controls unavailable: script validation failed.</p>';
+            return;
+        }
         $config=array(
-            'owner'=>true===$status['owner_verified'],
-            'nonce'=>true===$status['owner_verified']?wp_create_nonce('wp_rest'):'',
+            'owner'=>true,
+            'nonce'=>wp_create_nonce('wp_rest'),
             'restBase'=>wp_make_link_relative(rest_url(
                  'mad4b/v1/central-execution-lanes/'.self::COMPANY.'/')),
-            'transportId'=>true===$status['owner_verified']?$status['transport_id']:'',
-            'grantId'=>true===$status['owner_verified']?$status['grant_id']:'',
-            'requestId'=>true===$status['owner_verified']?$status['request_id']:'',
-            'hostId'=>true===$status['owner_verified']?$status['host_id']:'',
-            'hostPrincipal'=>true===$status['owner_verified']?$status['host_principal']:'',
-            'siteUuid'=>true===$status['owner_verified']?$status['site_uuid']:'',
+            'transportId'=>$status['transport_id'],
+            'grantId'=>$status['grant_id'],
+            'requestId'=>$status['request_id'],
+            'hostId'=>$status['host_id'],
+            'hostPrincipal'=>$status['host_principal'],
+            'siteUuid'=>$status['site_uuid'],
             'operation'=>self::OP,
             'phase'=>$status['phase']
         );
-        wp_add_inline_script('mad4b-host-v106-owner-console',
-            'window.MAD4BHostAuthorityV106='.wp_json_encode($config,
-                JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT).';','before');
-        // Only original, reviewed JS can run; never interpolate a user value
-        // into the script body. The config above is JSON-encoded by WP.
-        $script=file_get_contents($file);
-        if (is_string($script) && strlen($script)<32768
-            && str_contains($script,'MAD4B Host Authority v106')
-            && !str_contains($script,'</script')) {
-            wp_add_inline_script('mad4b-host-v106-owner-console',$script,'after');
-        }
+        $json=wp_json_encode($config,
+            JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT);
+        if (!is_string($json)) return;
+        // The script follows the button markup; it is not tied to whether
+        // other plugins print or defer wp_footer / WP_Scripts handles.
+        echo '<script id="mad4b-host-v108-owner-controls">';
+        echo 'window.MAD4BHostAuthorityV106=',$json,';',"
+";
+        echo $script;
+        echo "
+",'</script>';
     }
 
     public static function screen():void {
@@ -285,6 +294,7 @@ final class MAD4B_Host_Authority_Owner_Console_V106 {
             .esc_html($s['request_id']!==''?$s['request_status'].' (not an Anchor receipt)':'None')
             .'. Production remains unchanged.</p>';
         echo '</section></div>';
+        self::render_owner_script($s);
     }
 }
 MAD4B_Host_Authority_Owner_Console_V106::boot();

@@ -186,4 +186,11 @@
   else if (grantId) message("An existing owner Bootstrap Grant is available. It has no Host execution authority.");
   else if (!exactSource) message("Origin, owner nonce or Original328 binding is not ready. Do not proceed.", true);
   setState();
+  // Browser-visible proof that the real script initialized. If these words
+  // never appear, the owner page did not load the JavaScript.
+  if (exactSource && !requestId && !grantId) {
+    message(confirmation.checked
+      ? "Owner controls ready. Approve Bootstrap Grant is available."
+      : "Owner controls ready. Check the approval box to enable Bootstrap Grant.");
+  }
 })();
