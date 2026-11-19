@@ -6,12 +6,48 @@ it calls only the already enrolled first-party CSS workers. One task per site
 per invocation. Cross-company locks, source QA and CSS integrity remain owned
 by their original consumers.
 """
-import json,os,re,stat,subprocess,sys,time
+import hashlib,json,os,re,stat,subprocess,sys,time
 from pathlib import Path
 
 ROOT=Path('/opt/mad4b-company-provisioning')
-SOURCE=ROOT/'releases/template-aware-css-wpcron-v10-20261118/ops/dynamic-critical-css-20261116'
 REPORT=ROOT/'reports/wpcron-css-v1'
+
+def renderer_digest(path):
+    """Bind this site to one immutable, root-owned exact renderer tree.
+
+    Never load symlinks, writable files or source code from another site's
+    WordPress tree. Ignore Python's temporary bytecode caches.
+    """
+    root=Path(path)
+    if root.is_symlink() or not root.is_dir():
+        raise ValueError('renderer_directory_not_trusted')
+    metadata=root.stat()
+    if metadata.st_uid!=0 or metadata.st_mode&0o022:
+        raise ValueError('renderer_root_permissions')
+    paths=[]
+    for entry in root.rglob('*'):
+        if '__pycache__' in entry.parts or entry.suffix=='.pyc':
+            continue
+        if entry.is_symlink():
+            raise ValueError('renderer_file_symlink')
+        details=entry.stat()
+        if details.st_uid!=0 or details.st_mode&0o022:
+            raise ValueError('renderer_file_permissions')
+        if entry.is_file():
+            if not stat.S_ISREG(details.st_mode):
+                raise ValueError('renderer_nonregular_file')
+            paths.append(entry)
+        elif not entry.is_dir():
+            raise ValueError('renderer_unsupported_entry')
+    if not paths or len(paths)>250:
+        raise ValueError('renderer_file_count_untrusted')
+    digest=hashlib.sha256()
+    for entry in sorted(paths,key=lambda e:e.relative_to(root).as_posix()):
+        name=entry.relative_to(root).as_posix().encode()
+        data=entry.read_bytes()
+        digest.update(len(name).to_bytes(4,'big')+name)
+        digest.update(len(data).to_bytes(8,'big')+data)
+    return digest.hexdigest()
 CONTRACT='mad4b.css.wpcron.dispatch.v1'
 PROFILE_CONTRACT='mad4b.css.site-owned-cron.profile.v1'
 
@@ -45,6 +81,12 @@ def read_site_profile(path=None):
 
 PROFILE=read_site_profile()
 SITE=PROFILE['site_id']
+SOURCE=Path(__file__).resolve().parent/'renderer'
+expected=PROFILE.get('renderer_sha256')
+if not isinstance(expected,str) or not re.fullmatch('[0-9a-f]{64}',expected):
+    raise ValueError('missing_exact_site_renderer_sha256')
+if renderer_digest(SOURCE)!=expected:
+    raise ValueError('site_renderer_source_drift_or_cross_tenant_copy')
 CONTAINERS={SITE:PROFILE['php_container']}
 
 TASKS={
@@ -70,9 +112,9 @@ JOB_TIMEOUT={'first_fold':1280,'public':650,'families':300,'visual':400,
              'audit':300,'retention':300}
 HOST_WAKE_BUDGET=1380
 
-def run(cmd,timeout):
+def run(cmd,timeout,env=None):
     return subprocess.run(cmd,text=True,stdout=subprocess.PIPE,
-                          stderr=subprocess.PIPE,timeout=timeout,check=False)
+                          stderr=subprocess.PIPE,timeout=timeout,check=False,env=env)
 def cli(site,args,timeout=70):
     return run(['docker','exec',CONTAINERS[site],'wp','--allow-root',*args],timeout)
 def safe_state():
@@ -402,6 +444,46 @@ def observe_source_css_profiles():
     except (OSError,subprocess.TimeoutExpired) as error:
         print('WPCSS_SOURCE_PROFILE_VARIANCE_RETRY',type(error).__name__,flush=True)
 
+def cheap_certified_first_fold(site,job,jid,key,history,reason,now):
+    """Make original verified unchanged-certificates cheap under CPU pressure.
+
+    Never bypass source identity or cert QA. PROBE_ONLY is hard-stopped in
+    site-owned renderer immediately before Chromium/certification.
+    """
+    if site!=SITE or job!='first_fold' or reason=='central_wpcli_slots_reserved':
+        return False
+    previous=history.get(key,{})
+    if isinstance(previous,dict) and now<int(previous.get('next_cheap_probe',0)):
+        return False
+    entry=dict(previous) if isinstance(previous,dict) else {}
+    entry['next_cheap_probe']=now+900
+    history[key]=entry
+    save_state(history)
+    env=dict(os.environ)
+    env['MAD4B_CSS_PROBE_ONLY']='1'
+    try:
+        result=run(TASKS[job](site),timeout=170,env=env)
+    except (OSError,subprocess.TimeoutExpired) as exc:
+        print('WPCSS_CHEAP_PROBE_RETRY',site,type(exc).__name__,flush=True)
+        return False
+    output=result.stdout
+    # The unmodified first-party event gate must report exact unchanged
+    # source with zero exit; any changed or unproven CSS remains pending.
+    verified,original_reason=verified_task_outcome(
+        site,job,result.returncode,result.stdout,result.stderr)
+    unchanged='SKIP '+site+' unchanged Critical CSS sources; no Chromium'
+    if not verified or unchanged not in output:
+        print('WPCSS_CERTIFICATE_CHANGE_NEEDS_BROWSER',site,jid,
+              'exit',result.returncode,'reason',original_reason,flush=True)
+        return False
+    if ack(site,job,jid):
+        history.pop(key,None)
+        save_state(history)
+        print('WPCSS_UNCHANGED_CERT_NO_BROWSER_ACK',site,jid,flush=True)
+        return True
+    print('WPCSS_CHEAP_PROBE_ACK_STALE',site,jid,flush=True)
+    return False
+
 def main():
     REPORT.mkdir(parents=True,exist_ok=True,mode=0o700)
     if REPORT.is_symlink():raise ValueError('invalid_report_root')
@@ -429,6 +511,8 @@ def main():
                         print('WPCSS_CONFIRMED_HOME_RECOVERY_PRIORITY',site,
                               recovery_reason,flush=True)
                 if not admitted:
+                    if cheap_certified_first_fold(site,job,jid,key,history,reason,now):
+                        continue
                     print('WPCSS_CPU_QUEUE_PRESERVED',site,reason,flush=True)
                     continue
                 remaining=int(HOST_WAKE_BUDGET-(time.monotonic()-started))
