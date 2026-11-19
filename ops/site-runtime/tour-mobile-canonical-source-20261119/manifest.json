@@ -1,0 +1,15 @@
+{
+  "contract": "mad4b.tour-mobile-canonical-source.v1",
+  "source_only": true,
+  "auto_deploy": false,
+  "production_mutated": false,
+  "upstream_evidence_pr": 895,
+  "upstream_exact_head": "5dade4d249ba828627a7445412e1f1cf27b2ac8d",
+  "files": {
+    "wp-content/mu-plugins/407-mad4b-elementor-sticky-lifecycle-guard.php": "88a05c8b9399c1634921ca46276b05dc1bfc05091992a46c810996b2f133b6df",
+    "wp-content/mu-plugins/410-mad4b-tour-rate-lazy-footprint.php": "71c5dea784611f0ffad9b46f153e4eb46db0cd9483702b175552f6bc6478c361",
+    "wp-content/mu-plugins/411-mad4b-direct-menu-link-contract.php": "bb35fb03576583de4e5c37c19118a0b70ca872eced98d52ccd6af169d8e1e501",
+    "wp-content/mu-plugins/428-mad4b-mobile-bottom-action-nav-visibility.php": "c52cc71b411b9159dd59be6fbc55db18d8bffe20453fef88e55d4f27e32be1e7",
+    "wp-content/mu-plugins/assets/mad4b-elementor-sticky-lifecycle-c77a2b2fbdc39daa.js": "c77a2b2fbdc39daac0c7a76b873433a192a500e5bd86638874f711e3fb071c61"
+  }
+}
