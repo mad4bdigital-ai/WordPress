@@ -91,7 +91,9 @@ jobs:
 
   runtime:
     name: Local OAuth runtime (${{ matrix.wordpress }} / PHP ${{ matrix.php }} / ${{ matrix.adapter }})
-    runs-on: ubuntu-latest
+    # Browser fixture uses Playwright 1.56.1, which does not support the
+    # ubuntu26.04 GitHub runner image. Pin only the browser matrix to 24.04.
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
