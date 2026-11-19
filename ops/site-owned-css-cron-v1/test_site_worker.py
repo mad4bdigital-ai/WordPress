@@ -95,6 +95,49 @@ class SiteWorker(unittest.TestCase):
             "SKIP_PUBLIC_CCSS_UNKNOWN_SUCCESS source\n","")
         self.assertFalse(success)
 
+    def test_browser_busy_pending_is_not_failed_chromium_qa(self):
+        m=load_worker(sample('wayfa'))
+        output=(
+            'CRITICAL_CSS_EVENT_GATE {"action":"inspect","site":"wayfa"}\n'
+            'SKIP wayfa shared browser busy; retry during next timer\n'
+            'CRITICAL_CSS_EVENT_LEDGER_COMMITTED wayfa pending d457d9ff\n')
+        verified,reason=m.verified_task_outcome('wayfa','first_fold',0,output,'')
+        self.assertFalse(verified)
+        self.assertEqual(reason,'host_resource_deferred')
+        self.assertEqual(m.retry_policy(8,reason,1000),(0,1300))
+
+    def test_cpu_defer_pending_is_not_failed_chromium_qa(self):
+        m=load_worker(sample('source'))
+        output=(
+            'HOLD source CPU pressure; native CSS retained, next timer will retry\n'
+            'CRITICAL_CSS_EVENT_LEDGER_COMMITTED source pending 8842\n')
+        self.assertEqual(m.verified_task_outcome('source','first_fold',0,output,'')[1],
+                         'host_resource_deferred')
+
+    def test_browser_busy_without_pending_proof_does_not_bypass_gate(self):
+        m=load_worker(sample('wayfa'))
+        output='SKIP wayfa shared browser busy; retry during next timer\n'
+        self.assertNotEqual(m.verified_task_outcome('wayfa','first_fold',0,output,'')[1],
+                            'host_resource_deferred')
+
+    def test_real_qa_hold_remains_a_failure_even_with_busy_log(self):
+        m=load_worker(sample('wayfa'))
+        output=(
+            'QA_DECISION {"lang":"en","width":768,"pass":false}\n'
+            'SKIP wayfa shared browser busy; retry during next timer\n'
+            'CRITICAL_CSS_EVENT_LEDGER_COMMITTED wayfa pending abcd\n')
+        self.assertEqual(m.verified_task_outcome('wayfa','first_fold',0,output,'')[1],
+                         'latest_home_event_gate_not_ready')
+        self.assertGreater(m.retry_policy(8,'latest_home_event_gate_not_ready',1000)[0],0)
+
+    def test_failed_qa_hold_not_treated_as_resource_defer(self):
+        m=load_worker(sample('wayfa'))
+        output=(
+            'HOLD wayfa no fully certified language in batch; fair queue advances\n'
+            'CRITICAL_CSS_EVENT_LEDGER_COMMITTED wayfa hold ffeed\n')
+        self.assertEqual(m.verified_task_outcome('wayfa','first_fold',0,output,'')[1],
+                         'latest_home_event_gate_not_ready')
+
     def test_retry_policy_keeps_resource_holds_nonfatal(self):
         m=load_worker(sample())
         self.assertEqual(m.retry_policy(5,"host_resource_deferred",1000),(0,1300))

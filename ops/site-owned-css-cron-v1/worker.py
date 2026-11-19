@@ -293,6 +293,26 @@ def verified_task_outcome(site,job,returncode,stdout,stderr):
                  if line.startswith('CRITICAL_CSS_EVENT_LEDGER_COMMITTED '+site+' ')]
         if markers and not markers[-1].startswith(
                 'CRITICAL_CSS_EVENT_LEDGER_COMMITTED '+site+' ready '):
+            # The original host may have fully deferred *before browser QA*
+            # because another enrolled company holds the shared browser lock,
+            # or the CPU budget closed after its initial admission. The event
+            # ledger correctly remains PENDING, but this is not a failed CSS
+            # certificate: do not apply hour-long exponential QA backoff.
+            # Require both the exact original PENDING receipt and an explicit
+            # pre-QA resource marker, with no measured QA result in the run.
+            resource_prefixes=(
+                'SKIP '+site+' shared browser busy; retry during next timer',
+                'HOLD '+site+' CPU pressure; native CSS retained, next timer will retry',
+            )
+            pending=markers[-1].startswith(
+                'CRITICAL_CSS_EVENT_LEDGER_COMMITTED '+site+' pending ')
+            pre_qa_deferred=any(line.startswith(resource_prefixes) for line in lines)
+            qa_executed=any(line.startswith((
+                'QA_DECISION ', 'QA_COMPLETE ', 'CERTIFIED '+site+' ',
+                'HOLD '+site+' no fully certified language',
+            )) for line in lines)
+            if pending and pre_qa_deferred and not qa_executed:
+                return False,'host_resource_deferred'
             return False,'latest_home_event_gate_not_ready'
         if any(line.startswith((
                 'HOLD_SOURCE_HOME_DELIVERY_ADMISSION',
