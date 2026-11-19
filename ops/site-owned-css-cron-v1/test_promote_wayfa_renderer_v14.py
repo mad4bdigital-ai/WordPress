@@ -6,10 +6,18 @@ spec=importlib.util.spec_from_file_location('css_renderer_v14',pathlib.Path(__fi
 m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 class ReleaseV14(unittest.TestCase):
  def test_source_pins_and_renderer_fingerprints(self):
-  info=m.validate_pins()
-  self.assertEqual(info['site_id'],'wayfa')
-  self.assertEqual(m.tree_digest(m.ACTIVE),m.OLD)
-  self.assertEqual(m.tree_digest(m.STAGE),m.NEW)
+  # The same regression test must remain valid before and after activation.
+  current=json.loads(m.PROFILE.read_text())
+  self.assertEqual(current['site_id'],'wayfa')
+  digest=current['renderer_sha256']
+  self.assertIn(digest,(m.OLD,m.NEW))
+  self.assertEqual(m.tree_digest(m.ACTIVE),digest)
+  if digest==m.OLD:
+   info=m.validate_pins()
+   self.assertEqual(info['site_id'],'wayfa')
+   self.assertEqual(m.tree_digest(m.STAGE),m.NEW)
+  else:
+   self.assertEqual(m.tree_digest(m.BACKUP),m.OLD)
   self.assertEqual(m.sha(m.CONSUMER),m.PHP)
  def test_read_only_preflight_does_not_change_certificate(self):
   before=(m.sha(m.CSS_MANIFEST),m.sha(m.PROFILE),m.tree_digest(m.ACTIVE))
