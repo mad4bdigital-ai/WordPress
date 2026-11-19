@@ -1,0 +1,52 @@
+name: MAD4B Stay Commercial Readiness Contract
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/mu-plugins/020-mad4b-stay-commercial-readiness.php'
+      - 'wp-content/mu-plugins/mad4b-stay-readiness/**'
+      - 'tests/stay-commercial-readiness-contract.php'
+      - 'tests/stay-commercial-readiness-runtime.php'
+      - 'tests/stay-commercial-readiness-ui-check.py'
+      - '.github/workflows/mad4b-stay-commercial-readiness-contract.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'wp-content/mu-plugins/020-mad4b-stay-commercial-readiness.php'
+      - 'wp-content/mu-plugins/mad4b-stay-readiness/**'
+      - 'tests/stay-commercial-readiness-contract.php'
+      - 'tests/stay-commercial-readiness-runtime.php'
+      - 'tests/stay-commercial-readiness-ui-check.py'
+      - '.github/workflows/mad4b-stay-commercial-readiness-contract.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-stay-readiness-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3', '8.5']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Verify exact PR head
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: PHP and UI source contract
+        run: |
+          php -l wp-content/mu-plugins/020-mad4b-stay-commercial-readiness.php
+          php -l tests/stay-commercial-readiness-runtime.php
+          php tests/stay-commercial-readiness-contract.php
+          node --check wp-content/mu-plugins/mad4b-stay-readiness/admin.js
+          python3 tests/stay-commercial-readiness-ui-check.py

@@ -1,0 +1,40 @@
+<details>
+  <summary class="mad4b-stay-readiness__header">
+    <span><small>COMMERCIAL READINESS · NATIVE ENTITIES</small>
+      <strong>Property &amp; Unit Readiness</strong></span>
+    <span class="mad4b-stay-readiness__hint">Audit, verify, then activate · no auto-publish</span>
+  </summary>
+  <div class="mad4b-stay-readiness__body">
+    <p>Review every saved room/cabin and its original Property relationship.
+      Draft or QA records are not prices or bookable inventory.
+      Update missing data in the existing JetEngine editors.</p>
+    <div data-ready="metrics" class="mad4b-stay-readiness__metrics"></div>
+    <div class="mad4b-stay-readiness__toolbar">
+      <label><span>Review group</span><select data-ready="scope">
+        <option value="priority">Draft Units · published Properties (priority)</option>
+        <option value="all">All saved Units</option>
+        <option value="draft_parent">Linked to Draft Properties</option>
+        <option value="published">Published Units</option>
+        <option value="qa">QA / Test records</option>
+        <option value="missing_capacity">Missing verified capacity</option>
+        <option value="missing_images">Missing Unit images</option>
+      </select></label>
+      <label><span>Search Unit or Property</span>
+        <input type="search" data-ready="search" autocomplete="off"
+          placeholder="Room, suite, hotel…" /></label>
+      <button data-ready="refresh" type="button" class="button">Refresh audit</button>
+    </div>
+    <p data-ready="status" class="mad4b-stay-readiness__status" role="status"
+       aria-live="polite">Loading unit readiness…</p>
+    <div data-ready="items" class="mad4b-stay-readiness__items"></div>
+    <div class="mad4b-stay-readiness__pager">
+      <button type="button" class="button" data-ready="previous">Previous</button>
+      <span data-ready="page">—</span>
+      <button type="button" class="button" data-ready="next">Next</button>
+    </div>
+    <p class="mad4b-stay-readiness__footnote">
+      Commercial pricing is gated by company-approved rates, child and occupancy
+      policies, availability and the existing native accommodation shadow quote.
+      This diagnostic never publishes Posts, changes prices or enables Checkout.</p>
+  </div>
+</details>
