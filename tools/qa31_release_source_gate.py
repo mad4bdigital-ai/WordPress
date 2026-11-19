@@ -9,13 +9,23 @@ def digest(p:Path)->str:return hashlib.sha256(p.read_bytes()).hexdigest()
 _REVIEWED_CI_ONLY_SOURCE_TESTS = {
     'mad4b-site-control-plane.php': 'wp-content/plugins/mad4b-site-control-plane/tests/qa30-native-general-settings-rest-lifecycle.py',
     'config/cross-plugin-sources.json': 'wp-content/plugins/mad4b-site-control-plane/tests/dfsb-rc15-signed-review-source-pin.py',
-    'includes/class-mad4b-scp-server-write-catalog.php': 'wp-content/plugins/mad4b-site-control-plane/tests/live-write-provider-snapshot-runtime.php',
+    # Both exact reviewed successor blobs have their own SHA-bound tests;
+    # neither a generic source file nor an arbitrary PHP test is admitted.
+    'includes/class-mad4b-scp-server-write-catalog.php': (
+        'wp-content/plugins/mad4b-site-control-plane/tests/live-write-provider-snapshot-runtime.php',
+        'wp-content/plugins/mad4b-site-control-plane/tests/content-hub-site-health-write-catalog-contract.py',
+    ),
+    # The newer grant-reconciliation blob has an independently reviewed,
+    # exact SHA and a domain-specific non-authorizing source regression.
+    'includes/class-mad4b-scp-staging-write-grant-reconciliation.php': (
+        'wp-content/plugins/mad4b-site-control-plane/tests/content-hub-site-health-write-catalog-contract.py',
+    ),
 }
 
 def reviewed_ci_only_source_successor(root:Path,path:str,contents:bytes)->bool:
     """Accept only exact reviewed Git blob successors. Never certify Staging parity."""
-    expected_test=_REVIEWED_CI_ONLY_SOURCE_TESTS.get(path)
-    if expected_test is None or not isinstance(contents,bytes):
+    allowed_tests=_REVIEWED_CI_ONLY_SOURCE_TESTS.get(path)
+    if allowed_tests is None or not isinstance(contents,bytes):
         return False
     repo=Path(__file__).resolve().parents[1]
     expected=repo/'wp-content/plugins/mad4b-site-control-plane'
@@ -30,10 +40,14 @@ def reviewed_ci_only_source_successor(root:Path,path:str,contents:bytes)->bool:
         git_blob=subprocess.check_output(
             ['git','rev-parse','HEAD:wp-content/plugins/mad4b-site-control-plane/'+path],
             cwd=repo,stderr=subprocess.DEVNULL,timeout=8).decode().strip()
-        test=repo/expected_test
+        names=(allowed_tests,) if isinstance(allowed_tests,str) else allowed_tests
+        if not isinstance(names,tuple) or not names or len(set(names))!=len(names):
+            return False
+        valid_tests=tuple(name for name in names
+                          if (repo/name).is_file() and not (repo/name).is_symlink())
     except (OSError,ValueError,subprocess.CalledProcessError,subprocess.TimeoutExpired):
         return False
-    if (blob!=git_blob or not test.is_file() or test.is_symlink()
+    if (blob!=git_blob or not valid_tests
         or registry.get('contract')!='mad4b.readiness-capability-coverage.v1'
         or registry.get('authorizing') is not False
         or registry.get('production_promotion_from_ci') is not False):
@@ -46,7 +60,8 @@ def reviewed_ci_only_source_successor(root:Path,path:str,contents:bytes)->bool:
             and row.get('production_authorized') is False
             and row.get('live_evidence_required') is True
             and len(row.get('control_ids',[]))>=2
-            and expected_test in row.get('regression_tests',[])):
+            and isinstance(row.get('regression_tests'),list)
+            and any(name in row['regression_tests'] for name in valid_tests)):
             return True
     return False
 
