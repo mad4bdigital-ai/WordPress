@@ -1,11 +1,11 @@
 {
   "contract": "mad4b.change-slices.v2",
   "authorizing": false,
-  "reviewed_base_sha": "fe0314a99ca507e819b124cbf6ba8c1c8f8f5d18",
+  "reviewed_base_sha": "af7d2a995231e66d2f5333b131a84c829eed9abb",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 81,
-  "changed_paths_sha256": "379bc4286283aa6efe41d8a1ca7169ab440cc2afff525ab8c5e31a80c4e58b20",
+  "changed_file_count": 89,
+  "changed_paths_sha256": "715ca06390bb42704ca3452a34c9e2bf63eca33133f89cff8b264fb2b9a44b62",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -490,6 +490,46 @@
       "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/tests/integration-feature007-admin-successor-contract.py"
+      ]
+    },
+    {
+      "id": "original-readonly-global-runtime-lifecycle-source-review",
+      "semantic_unit": "Preserve original source-only Global Runtime Lifecycle read observability and negative no-boot test; not runtime activation",
+      "revert_boundary": "Revert exactly the dormant source module and its hermetic read-only regression without registering in main Bootstrap, changing grants, executing jobs or writing to WordPress.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-global-runtime-lifecycle.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readonly-global-runtime-lifecycle-runtime.php"
+      ]
+    },
+    {
+      "id": "original-readonly-native-settings-locator-source-review",
+      "semantic_unit": "Preserve source-only Native Settings Locator read/permission checks without modifying settings",
+      "revert_boundary": "Revert exactly the dormant source module and its hermetic read-only regression without registering in main Bootstrap, changing grants, executing jobs or writing to WordPress.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-settings-locator.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readonly-native-settings-locator-runtime.php"
+      ]
+    },
+    {
+      "id": "original-readonly-provider-installed-artifact-source-review",
+      "semantic_unit": "Preserve original source-only installed provider artifact inspection and anti-traversal checks",
+      "revert_boundary": "Revert exactly the dormant source module and its hermetic read-only regression without registering in main Bootstrap, changing grants, executing jobs or writing to WordPress.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-installed-artifact.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readonly-provider-installed-artifact-runtime.php"
+      ]
+    },
+    {
+      "id": "original-readonly-unified-gate-funnel-source-review",
+      "semantic_unit": "Preserve source-only Unified Gate Funnel diagnostic observation and negative authorization check",
+      "revert_boundary": "Revert exactly the dormant source module and its hermetic read-only regression without registering in main Bootstrap, changing grants, executing jobs or writing to WordPress.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-gate-funnel.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readonly-unified-gate-funnel-runtime.php"
       ]
     }
   ]
