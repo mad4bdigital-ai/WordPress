@@ -11702,6 +11702,46 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing site-bound owner approval, package identity, signed source evidence, transport catalog, update rollback and execution-denial controls cover this exact code change; no additional permission is created.",
       "review_rationale": "Exact Git blob review of wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-core-catalog.php. This change introduces a nonauthorizing signed Host reconciliation prerequisite, or renders its source status, before the established certified code release paths. The existing original approval and rollback requirements remain; no Host Original313 mutation provider was enrolled and no Production write grant was issued."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php",
+      "source_blob_sha": "48bbd4ecbcb1905da1fa0269cd5575aa9c452d80",
+      "control_ids": [
+        "UPDATES-01",
+        "SECURITY-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "tests/authority/test-release-source-admission-integration.py"
+      ],
+      "owner_role": "Release source security CI reviewer; exact Host signer and site owner authority stay independent",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing signed source admission, certified package identity, MCP read projection, rollback and owner authorization safeguards remain mandatory; no new mutation permission is introduced.",
+      "review_rationale": "Review of wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php after restoring the fixed-channel trusted master release candidate check and requiring actual Ability registration before optional MCP exposure. The first-party Host preflight remains an additional nonauthorizing gate; live production writes are not enabled by this source-only CI review."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-core-catalog.php",
+      "source_blob_sha": "1200a3be2fc2848880a73e0f5083e0f431d44ccd",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "tests/authority/test-optional-source-read-catalog.php"
+      ],
+      "owner_role": "Release source security CI reviewer; exact Host signer and site owner authority stay independent",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing signed source admission, certified package identity, MCP read projection, rollback and owner authorization safeguards remain mandatory; no new mutation permission is introduced.",
+      "review_rationale": "Review of wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-core-catalog.php after restoring the fixed-channel trusted master release candidate check and requiring actual Ability registration before optional MCP exposure. The first-party Host preflight remains an additional nonauthorizing gate; live production writes are not enabled by this source-only CI review."
     }
   ],
   "code_change_rules": {
