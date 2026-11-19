@@ -1,0 +1,136 @@
+--- a/wp-content/mu-plugins/shared-product-core/adapters/presentation-form6-occupancy-policy-v1.php
++++ b/wp-content/mu-plugins/shared-product-core/adapters/presentation-form6-occupancy-policy-v1.php
+@@ -24,6 +24,29 @@
+   if(!in_array($parent,array_map('intval',ETG_Tour_Rate_Display::language_ids($tour)),true)||
+      !MAD4B_Tour_Rate_Language_Policy_V1::eligible_rate($tour,$rate))return 0;
+   return $parent;
++ }
++}
++/**
++ * Permanent, source-owned presentation contract. A Rate owns its sole linked
++ * property; it does not imply a room selector or an independently priced stay.
++ * The client may open room/board controls only after the authoritative stay
++ * catalog confirms eligible unit options. This never changes chargeability.
++ */
++if(!function_exists('shared_form6_stay_ui_contract_v1')){
++ function shared_form6_stay_ui_contract_v1(string $mode,array $stage):array {
++  $ids=array_values(array_unique(array_filter(array_map('absint',
++   (array)($stage['properties']??[])))));
++  $sole=count($ids)===1;
++  $policy=(string)($stage['price_policy']??'inquiry');
++  $nights=max(0,(int)($stage['nights']??0));
++  $reviewOnlySole=$mode==='simple_or' && $sole &&
++   $policy==='inquiry' && $nights===0;
++  return [
++   'contract'=>'shared.form6.stay-ui.v1',
++   'property_selector'=>$sole?'rate_owned':(count($ids)>1?'traveler':'none'),
++   'detail_controls'=>$reviewOnlySole?'none':'verified_catalog_only',
++   'reason'=>$reviewOnlySole?'sole_rate_property_review_only':'catalog_verification_required',
++  ];
+  }
+ }
+ if(!function_exists('shared_form6_accommodation_policy_v1')){
+@@ -80,6 +103,10 @@
+       }
+    }
+    if(!$stages)continue;
++   foreach($stages as &$stage){
++    $stage['ui_contract']=shared_form6_stay_ui_contract_v1($mode,$stage);
++   }
++   unset($stage);
+    $result['rates_with_stay'][(string)$rate]=true;
+    $planRows[(string)$rate]=['mode'=>$mode,'stages'=>$stages,
+      'source'=>'BookingExperience.tour_stay_rate_plan',
+--- a/wp-content/mu-plugins/shared-product-core/assets/presentation-fluent-quote-v1.js
++++ b/wp-content/mu-plugins/shared-product-core/assets/presentation-fluent-quote-v1.js
+@@ -639,14 +639,22 @@
+   for(const row of [...existing.querySelectorAll('[data-stay-source-stage]')])
+     if(!wanted.has(row.dataset.staySourceStage))row.remove();
+   const stages=rate?selectedStays(snap,rate,state):[];
+-  setVisible(state.stayPicker,!!wanted.size||!!stages.length);
+-  const keys=new Set(stages.map(x=>rate+'|'+x.stage_key+'|'+x.property_id));
++  // Server-issued property-vs-room presentation contract; never infer an
++  // extra charge or room editor merely because the Rate links a Property.
++  const needsStayDetail=stage=>{
++    const spec=planStages.find(x=>String(x.key)===stage.stage_key);
++    return spec?.ui_contract?.contract==='shared.form6.stay-ui.v1' &&
++      spec.ui_contract.detail_controls==='verified_catalog_only';
++  };
++  const visibleStages=stages.filter(needsStayDetail);
++  setVisible(state.stayPicker,!!wanted.size||!!visibleStages.length);
++  const keys=new Set(visibleStages.map(x=>rate+'|'+x.stage_key+'|'+x.property_id));
+   for(const row of [...state.stayWrap.querySelectorAll('.shared-stay-row')])
+    if(!keys.has(row.dataset.stayToken))row.remove();
+   const option=(id,name)=>{const x=document.createElement('option');x.value=String(id);x.textContent=name;return x;};
+   const fill=(select,items,prompt)=>{select.replaceChildren(option('',prompt));
+    for(const x of items)select.append(option(x.id,x.name));};
+-  for(const stage of stages){
++  for(const stage of visibleStages){
+    const token=rate+'|'+stage.stage_key+'|'+stage.property_id;
+    if([...state.stayWrap.children].some(x=>x.dataset.stayToken===token))continue;
+    const row=document.createElement('section');row.className='shared-stay-row';row.dataset.stayToken=token;
+@@ -784,8 +792,15 @@
+      const units=data.units.filter(x=>Number.isSafeInteger(Number(x?.id))&&Number(x.id)>0);
+      fill(unit,units.map(x=>({id:x.id,
+        name:String(x.name).replace(/^QA ONLY\s*[·:-]\s*/i,'')})),'Choose room type');
+-     setVisible(row,units.length>0);
+-     setVisible(unitLabel,units.length>0);
++     if(!units.length){
++       row.remove();
++       state.stayCatalog.delete(token);
++       updatePickerVisibility();
++       return;
++     }
++     // Only validated room/board options can instantiate a real detail card.
++     setVisible(row,true);
++     setVisible(unitLabel,true);
+      if(units.some(x=>x.id===current().unit_id))unit.value=String(current().unit_id);
+      updateBoard();updatePickerVisibility();schedule(form);
+     }catch(e){if(row.isConnected){setVisible(row,false);
+--- a/wp-content/plugins/mad4b-commerce/modules/compat/local-presentation-fluent-projection-v1.php
++++ b/wp-content/plugins/mad4b-commerce/modules/compat/local-presentation-fluent-projection-v1.php
+@@ -16,7 +16,7 @@
+   'presentation-selection-state-v1.js',
+   'presentation-fluent-projection-v1.js',
+   'presentation-fluent-quote-v1.js',
+-  'presentation-fluent-quote-20261118-sole-stay-review-v2.js'
++  'presentation-fluent-quote-v1-',
+  ])));
+ },90);
+ add_filter('litespeed_optm_js_defer_exc',static function($patterns){
+@@ -25,7 +25,7 @@
+   'presentation-selection-state-v1.js',
+   'presentation-fluent-projection-v1.js',
+   'presentation-fluent-quote-v1.js',
+-  'presentation-fluent-quote-20261118-sole-stay-review-v2.js'
++  'presentation-fluent-quote-v1-',
+  ])));
+ },90);
+ add_filter('script_loader_tag',static function($tag,$handle){
+@@ -336,11 +336,22 @@
+    [],(string)filemtime($style));
+  }
+ 
+- $quotePath=WPMU_PLUGIN_DIR.'/shared-product-core/assets/presentation-fluent-quote-20261118-sole-stay-review-v2.js';
+- if(is_readable($quotePath)){
++ // Content-addressed quote JS: a new source revision always changes the
++ // URL itself. A host-owned reconciler publishes the immutable asset and
++ // versions only the public Tour HTML cache when source policy changes.
++ // No runtime write permissions or browser cache purges are required.
++ $quoteSource=WPMU_PLUGIN_DIR.'/shared-product-core/assets/presentation-fluent-quote-v1.js';
++ if(is_readable($quoteSource)){
++  $fingerprint=hash_file('sha256',$quoteSource);
++  $assetName='presentation-fluent-quote-v1-'.substr($fingerprint,0,16).'.js';
++  $quoteAsset=dirname($quoteSource).'/'.$assetName;
++  $trustedAsset=is_file($quoteAsset) && is_readable($quoteAsset) &&
++    hash_equals($fingerprint,hash_file('sha256',$quoteAsset));
++  $publicName=$trustedAsset?$assetName:'presentation-fluent-quote-v1.js';
+   $handle='shared-presentation-fluent-quote-v1';
+-  wp_register_script($handle,content_url('mu-plugins/shared-product-core/assets/presentation-fluent-quote-20261118-sole-stay-review-v2.js'),
+-   [$name],(string)filemtime($quotePath),true);
++  wp_register_script($handle,
++   content_url('mu-plugins/shared-product-core/assets/'.$publicName),
++   [$name],substr($fingerprint,0,16),true);
+   wp_enqueue_script($handle);
+  }
+  $pricingCss=WPMU_PLUGIN_DIR.'/shared-product-core/assets/presentation-pricing-basis-v1.css';

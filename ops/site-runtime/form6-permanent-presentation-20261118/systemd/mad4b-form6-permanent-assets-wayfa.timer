@@ -1,0 +1,9 @@
+[Unit]
+Description=Reconcile missed Form 6 source changes (wayfa)
+[Timer]
+OnBootSec=2min
+OnUnitInactiveSec=5min
+AccuracySec=60s
+Unit=mad4b-form6-permanent-assets-wayfa.service
+[Install]
+WantedBy=timers.target

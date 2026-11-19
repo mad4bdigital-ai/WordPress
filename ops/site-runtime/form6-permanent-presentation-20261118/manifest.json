@@ -1,0 +1,29 @@
+{
+  "contract": "mad4b.form6.permanent.presentation-source-reconciliation.v1",
+  "source_of_truth": "Tours.dev enrolled live source as of 2026-11-18, NOT older master plugin bundle",
+  "scope": "client presentation and content-addressed asset loader; zero pricing/payment/booking mutations",
+  "files": [
+    {
+      "live_path": "wp-content/mu-plugins/shared-product-core/adapters/presentation-form6-occupancy-policy-v1.php",
+      "before_sha256": "75670945a49d4b2cb8defe194656d58b2649118fc9abba8f36ad5cb67a76a471",
+      "live_sha256": "1432eea5c39630d7c754514f6592f11cd70759875cd1406bba589ccae67ee6f0"
+    },
+    {
+      "live_path": "wp-content/mu-plugins/shared-product-core/assets/presentation-fluent-quote-v1.js",
+      "before_sha256": "d4dd0b72092156b4cc248ae63da20bb22ab1ada6df3352a8a700950b9da0785f",
+      "live_sha256": "1076cadc4a383fb0216d3feaa8588302cff0908fa3172bd7be9d4b640cad214e"
+    },
+    {
+      "live_path": "wp-content/plugins/mad4b-commerce/modules/compat/local-presentation-fluent-projection-v1.php",
+      "before_sha256": "f68ba776e6a7ab2d8ed9736848ade6f6e8a8e5ec19b6c152a6acc4f919cd2863",
+      "live_sha256": "8399851cb40301ef897c1998a546cdde5017bfde4ef32db4312d8c5f7ceaf925"
+    }
+  ],
+  "patch_sha256": "9eb484261f5b774fd4fc2b8ff50e8e064c8e4fe4ebe3bfd8c8ae99265633d8f0",
+  "browser_regression": "360/390/427px; rates 60820/60830; zero phantom stay cards; zero JS exceptions",
+  "cache_version_receipts": {
+    "source": 1024,
+    "wayfa": 440
+  },
+  "note": "This PR does not authorize replacing newer production files with master copies."
+}
