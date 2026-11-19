@@ -1,11 +1,11 @@
 {
   "contract": "mad4b.change-slices.v2",
   "authorizing": false,
-  "reviewed_base_sha": "af7d2a995231e66d2f5333b131a84c829eed9abb",
+  "reviewed_base_sha": "c934e0a5a3ddc924db2c7adc2dc1241785ab49ee",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 89,
-  "changed_paths_sha256": "715ca06390bb42704ca3452a34c9e2bf63eca33133f89cff8b264fb2b9a44b62",
+  "changed_file_count": 123,
+  "changed_paths_sha256": "e82fea62908203b037bda209eb3cfb3ace109ac810dfeb9b71dd556240065457",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -530,6 +530,126 @@
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-gate-funnel.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readonly-unified-gate-funnel-runtime.php"
+      ]
+    },
+    {
+      "id": "oauth-browser-workflow-supported-runner",
+      "semantic_unit": "Protected CI workflow: pin Local OAuth real-browser job to supported Ubuntu 24.04 runner without relaxing its assertions or permissions.",
+      "revert_boundary": "Revert only runner pin; retain full browser authority validation and protected-workflow review.",
+      "certification": "exact_head",
+      "path_globs": [
+        ".github/workflows/mad4b-local-oauth-standalone.yml"
+      ]
+    },
+    {
+      "id": "source-capture-documentation-review",
+      "semantic_unit": "Describe sealed live source evidence and signed host boundary without treating installed source as an automatic release authority.",
+      "revert_boundary": "Revert documentation independently, retaining external sealed evidence and no secret publication.",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/source-reconciliation/tours-dev-20261118/README.md",
+        "ops/source-reconciliation/tours-dev-20261118/signed-host-core-boundary.md"
+      ]
+    },
+    {
+      "id": "source-hash-inventory-review",
+      "semantic_unit": "Preserve hash-only source continuity inventories and the non-authorizing composite coverage receipt.",
+      "revert_boundary": "Revert exact hash-only inventories as a unit; do not import secrets, archives or deploy WordPress.",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/source-reconciliation/tours-dev-20261118/full-runtime-source-hashes.json",
+        "ops/source-reconciliation/tours-dev-20261118/source-file-hashes.json",
+        "ops/source-reconciliation/tours-dev-20261118/reviewed-slices-composite.json"
+      ]
+    },
+    {
+      "id": "source-parity-preflight-review",
+      "semantic_unit": "Review source comparison preflight and its offline regression; report gaps without authorizing update or host writes.",
+      "revert_boundary": "Revert local parity checking only; do not alter release admission or mutation controls.",
+      "certification": "exact_head",
+      "path_globs": [
+        "ops/source-reconciliation/tours-dev-20261118/check_live_source_parity.py",
+        "ops/source-reconciliation/tours-dev-20261118/test_live_source_parity.py"
+      ]
+    },
+    {
+      "id": "cli-execution-identity-runtime-review",
+      "semantic_unit": "Review plugin-reachable CLI execution identity behavior and its site-context regression; deny cross-company identity assumptions.",
+      "revert_boundary": "Revert CLI identity module and exact fixture; no implicit shell grant or production activation.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli-execution-context.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-cli-context-identity-runtime.php"
+      ]
+    },
+    {
+      "id": "host-agent-bridge-runtime-review",
+      "semantic_unit": "Review potential plugin-reachable Host Agent Bridge and signed-host negative tests; preserve authority binding rather than activating host execution.",
+      "revert_boundary": "Revert bridge and two host authority regression fixtures as one security boundary; no Host grants, dispatch or site writes.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-agent-bridge.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-signed-host-agent-negative-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-signed-host-context-review-runtime.php"
+      ]
+    },
+    {
+      "id": "local-oauth-cimd-runtime-review",
+      "semantic_unit": "Review plugin-reachable Local OAuth server behavior and CIMD client security fixture without broadening client identity or Production capabilities.",
+      "revert_boundary": "Revert OAuth source and negative security fixture; no client enrollment or provider send.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-oauth-server.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-cimd-client-security-runtime.php"
+      ]
+    },
+    {
+      "id": "native-diagnostics-runtime-review",
+      "semantic_unit": "Review plugin-reachable Native Runtime Diagnostics and admin recovery read-only fixture compatibility.",
+      "revert_boundary": "Revert diagnostics and exact recovery tests as a unit; no recovery execution or grant changes.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-runtime-diagnostics.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-native-diagnostics-read-parity-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-recovery-status-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-admin-recovery-runtime.php"
+      ]
+    },
+    {
+      "id": "site-profile-origin-runtime-review",
+      "semantic_unit": "Review plugin-reachable Site Profile origin handling across WPML, CLI, REST and AJAX under exact canonical site identity.",
+      "revert_boundary": "Revert origin handling and three scoped regression fixtures together; never relax tenant/origin boundary.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-wpml-site-origin-cli-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-wpml-site-origin-rest-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-wpml-site-origin-runtime.php"
+      ]
+    },
+    {
+      "id": "skills-runtime-and-admin-review",
+      "semantic_unit": "Review plugin-reachable Skills Registry, Abilities, Runtime Certification and admin UI with read-only catalog and paging regressions.",
+      "revert_boundary": "Revert Skills-related runtime/admin source and three read-only fixtures together; no capability grant or production catalog write.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-abilities.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-registry.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-runtime-certification.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skills-admin-ui.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-live-catalog-read-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-live-skills-list-paging-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-live-source-skills-parity-runtime.php"
+      ]
+    },
+    {
+      "id": "switcher-sources-flag-scheme-review",
+      "semantic_unit": "Review switcher source path and emoji flag coding with site-neutral source regression.",
+      "revert_boundary": "Revert the switcher source change and exact flag scheme test only; no market or tenant defaults.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-switcher-sources.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-switcher-flag-scheme-runtime.php"
       ]
     }
   ]
