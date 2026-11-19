@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: MAD4B Verified Private-Session Critical CSS
- * Version: 0.1.0
+ * Version: 0.2.0
  * Description: Exact-bundle-only private mobile critical CSS, independent of FastCGI HTML admission. Off until separately certified.
  */
 defined('ABSPATH') || exit;
@@ -12,13 +12,45 @@ final class MAD4B_Private_Session_Critical_CSS_V1 {
     private const MAX_CSS_BYTES = 250000;
     private static bool $rewritten = false;
 
+    /** Derived from this WordPress installation, never from a shared
+     * company, template ID, visitor-supplied country or hostname header.
+     */
+    private static function context(): ?array {
+        $home=(string)get_option('home','');
+        $host=strtolower((string)wp_parse_url($home,PHP_URL_HOST));
+        $incoming=strtolower((string)($_SERVER['HTTP_HOST']??''));
+        $environment=(string)wp_get_environment_type();
+        if ($host==='' || !preg_match('/^[a-z0-9.-]{3,253}$/D',$host)
+            || $incoming!==$host
+            || !in_array($environment,['staging','production'],true))return null;
+        $locale=(string)apply_filters('wpml_current_language','');
+        if (!preg_match('/^[a-z]{2}(?:-[a-z]{2})?$/D',$locale))return null;
+        $route=(string)wp_parse_url((string)($_SERVER['REQUEST_URI']??''),PHP_URL_PATH);
+        $canonical=(string)wp_parse_url(home_url('/'),PHP_URL_PATH);
+        $frontId=function_exists('get_queried_object_id')?absint(get_queried_object_id()):0;
+        if ($frontId && function_exists('get_permalink')) {
+            $published=(string)wp_parse_url(get_permalink($frontId),PHP_URL_PATH);
+            if ($published!=='')$canonical=$published;
+        }
+        // Per-site WPML frontpage route overrides are explicit and exact.
+        // They never create a route admission unless home_view() agrees.
+        $routes=get_option('mad4b_private_session_critical_css_routes_v1',[]);
+        if (is_array($routes) && isset($routes[$locale])) {
+            if (!is_string($routes[$locale]))return null;
+            $configured=$routes[$locale];
+            if (!preg_match('~^/(?:[a-z0-9_-]+/)*$~D',$configured))return null;
+            $canonical=$configured;
+        }
+        if ($route==='' || $route!==$canonical)return null;
+        return ['host'=>$host,'environment'=>$environment,
+                'route'=>$canonical,'language'=>$locale];
+    }
+
     public static function eligible(): bool {
         if (get_option(self::OPT, 'off') !== 'on'
-            || wp_get_environment_type() !== 'production'
-            || strtolower((string)wp_parse_url((string)get_option('home', ''), PHP_URL_HOST)) !== 'wayfatours.com'
+            || self::context() === null
             || (string)($_SERVER['MAD4B_TRUSTED_DEVICE_CLASS'] ?? '') !== 'mobile'
             || (string)($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET'
-            || (string)($_SERVER['REQUEST_URI'] ?? '') !== '/'
             || !empty($_SERVER['QUERY_STRING'])
             || empty($_SERVER['HTTP_COOKIE'])
             || !is_user_logged_in()
@@ -44,12 +76,13 @@ final class MAD4B_Private_Session_Critical_CSS_V1 {
 
     private static function policy(): array {
         $path=WP_CONTENT_DIR.self::BASE.'/manifest.json';
-        if (is_link($path) || !is_file($path) || @filesize($path)>16384) return [];
+        if (is_link($path) || !is_file($path) || @filesize($path)>131072) return [];
         $data=json_decode((string)@file_get_contents($path),true);
-        if (!is_array($data)
+        $site=self::context();
+        if (!$site || !is_array($data)
             || ($data['contract']??'')!=='mad4b.private-session-critical-css.v1'
-            || ($data['site_host']??'')!=='wayfatours.com'
-            || ($data['environment']??'')!=='production'
+            || ($data['site_host']??'')!==$site['host']
+            || ($data['environment']??'')!==$site['environment']
             || !is_array($data['entries']??null)) return [];
         return $data;
     }
@@ -59,10 +92,13 @@ final class MAD4B_Private_Session_Critical_CSS_V1 {
             || !preg_match('/^[a-f0-9]{64}$/D',$sha)
             || !preg_match('/^[a-z]{2}$/D',$locale)) return null;
         $data=self::policy();
-        $key=hash('sha256','wayfatours.com|/|'.$locale.'|mobile|authenticated|'.$sha);
+        $site=self::context();
+        if (!$site || $site['language']!==$locale)return null;
+        $key=hash('sha256',$site['host'].'|'.$site['route'].'|'.$locale
+            .'|mobile|authenticated|'.$sha);
         $entry=$data['entries'][$key]??null;
         if (!is_array($entry)
-            || ($entry['route']??'')!=='/'
+            || ($entry['route']??'')!==$site['route']
             || ($entry['language']??'')!==$locale
             || ($entry['device']??'')!=='mobile'
             || ($entry['privacy_scope']??'')!=='authenticated'
@@ -97,10 +133,13 @@ final class MAD4B_Private_Session_Critical_CSS_V1 {
             if (!preg_match('~\brel=["\x27]stylesheet["\x27]~i',$tag)
                 || !preg_match('~\bhref=["\x27]([^"\x27]+)["\x27]~i',$tag,$m)) continue;
             $url=html_entity_decode($m[1],ENT_QUOTES,'UTF-8');
-            if (strcasecmp((string)wp_parse_url($url,PHP_URL_HOST),'wayfatours.com')!==0) continue;
+            $site=self::context();
+            if (!$site || strcasecmp((string)wp_parse_url($url,PHP_URL_HOST),$site['host'])!==0) continue;
             $path=(string)wp_parse_url($url,PHP_URL_PATH);
-            if (preg_match('~^/wp-content/litespeed/css/([a-f0-9]{32}\.css)$~D',$path,$name))
-                $matches[]=[$tag,$pos,$url,$name[1]];
+            $assetBase=(string)wp_parse_url(content_url('/litespeed/css/'),PHP_URL_PATH);
+            if ($assetBase!=='' && str_starts_with($path,$assetBase)
+                && preg_match('/^[a-f0-9]{32}\.css$/D',substr($path,strlen($assetBase))))
+                $matches[]=[$tag,$pos,$url,substr($path,strlen($assetBase))];
         }
         if (count($matches)!==1) return $html;
         [$originalTag,$pos,$url,$name]=$matches[0];
