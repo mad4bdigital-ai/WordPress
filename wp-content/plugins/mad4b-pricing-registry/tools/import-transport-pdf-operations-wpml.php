@@ -130,7 +130,9 @@ foreach($selected as $row) {
                 WP_CLI::error('wpml_language_assignment_failed_'.$sourceKey.'_'.$lang);
             wp_set_object_terms($id,array((int)$road),'transportation-types',false);
             wp_set_object_terms($id,array((int)$term),'destinations',false);
-            update_post_meta($id,'trans_mode',(int)$road);
+            // Native Tour Component identity requires the canonical EN mode
+            // cache; localized WPML taxonomy is stored separately.
+            update_post_meta($id,'trans_mode',568);
             update_post_meta($id,'_mad4b_transfer_pdf_2026_source_key',$sourceKey);
             update_post_meta($id,'_mad4b_transfer_pdf_2026_sha256',$data['source_sha256']);
             update_post_meta($id,'_mad4b_transfer_pdf_2026_source_ar',$row['source_ar']);

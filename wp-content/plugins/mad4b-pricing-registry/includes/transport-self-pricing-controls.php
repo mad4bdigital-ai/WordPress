@@ -129,6 +129,26 @@ final class MAD4B_Transport_Self_Pricing_Controls_V1 {
         $langs=is_array($langs)?array_keys($langs):['en'];
         if(!in_array($lang,$langs,true))$lang='en';
         $map=get_option('mad4b_transfer_pdf_2026_vehicle_media_map_v1',[]);
+        $linked=[];
+        // Batch-read all source Draft IDs before building localized catalog
+        // to avoid one WP_Query for each of the 51 vendor operations.
+        $sourcePosts=get_posts([
+            'post_type'=>'transportations',
+            'post_status'=>['draft','publish'],
+            'posts_per_page'=>600,
+            'fields'=>'ids','suppress_filters'=>true,
+            'meta_key'=>'_mad4b_transfer_pdf_2026_sha256',
+            'meta_value'=>self::SHA
+        ]);
+        foreach($sourcePosts as $id){
+            $postLang=(string)get_post_meta($id,
+                '_mad4b_transfer_pdf_2026_editorial_language',true);
+            if($postLang!==$lang)continue;
+            $sourceKey=(string)get_post_meta($id,
+                '_mad4b_transfer_pdf_2026_source_key',true);
+            if(!$sourceKey)continue;
+            $linked[$sourceKey][]=(int)$id;
+        }
         $items=[];
         foreach($source['rows'] as $r){
             if($city!==''&&$r['city']!==$city)continue;
@@ -140,7 +160,18 @@ final class MAD4B_Transport_Self_Pricing_Controls_V1 {
                     'image_id'=>$id,'image_url'=>$id?wp_get_attachment_image_url($id,'thumbnail'):null
                 ];
             }
+            $postIds=$linked[$r['source_key']]??[];
+            $postId=count($postIds)===1?$postIds[0]:0;
+            $component=$postId&&class_exists('MAD4B_Transport_Tour_Component_Eligibility_V1')
+                ?MAD4B_Transport_Tour_Component_Eligibility_V1::inspection($postId)
+                :['qualifies_as_tour_component'=>false,
+                   'reason_codes'=>['missing_or_duplicate_translation_draft'],
+                   'opted_in'=>false,'status'=>'requires_qualification',
+                   'rate_approved'=>false,'checkout_authorized'=>false];
             $items[]=[
+                'post_id'=>$postId,'translation_count'=>count($postIds),
+                'edit_url'=>$postId?get_edit_post_link($postId,'raw'):null,
+                'component'=>$component,
                 'key'=>$r['source_key'],'city'=>$r['city'],
                 'row'=>$r['source_row'],
                 'title'=>$r['titles'][$lang]??$r['titles']['en'],
@@ -160,8 +191,15 @@ final class MAD4B_Transport_Self_Pricing_Controls_V1 {
             'approved_market_profiles'=>class_exists('MAD4B_SCP_Market_Profiles')
                 ?count(MAD4B_SCP_Market_Profiles::approved_list()):0,
             'edit_drafts_url'=>admin_url('tools.php?page=mad4b-transfer-pdf-2026-review'),
+            'transportations_url'=>admin_url('edit.php?post_type=transportations'),
             'native_rates_url'=>admin_url('edit.php?post_type=transport-rates'),
             'market_url'=>admin_url('admin.php?page=mad4b-market-profiles'),
+            'tour_component_field'=>class_exists('MAD4B_Transport_Tour_Component_Eligibility_V1')
+                ?MAD4B_Transport_Tour_Component_Eligibility_V1::FIELD
+                :'trans_use_in_tour_rate_generation',
+            'tour_component_field_location'=>'below_transport_description',
+            'component_qualified_count'=>count(array_filter($items,
+                static fn($row)=>!empty($row['component']['qualifies_as_tour_component']))),
             'checkout_authorized'=>false,'public_price_written'=>false
         ];
     }

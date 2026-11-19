@@ -399,3 +399,74 @@ Verification:
 Next commercial step: configure the PDF's actual currency and whether its values are
 company self-cost or self-selling base in the new admin panel. Those facts are not in
 the source document. Native Transport Rates require separate price approval before sale.
+
+## Nov 19 2026 — Transportation Tour Component Status and Tour-style Pricing UX
+
+### Hotel parity and eligibility
+
+The Property CPT field prop_use_in_tour_rate_generation is the existing
+Yes/No Glossary 321 source for automatic Tour Rate eligibility. Transportation
+now mirrors it as trans_use_in_tour_rate_generation, a JetEngine radio field
+with default No, inserted immediately below trans_description (index 11).
+The Transportation CPT has 70 fields on Tours.dev and Wayfatours, and the
+status metadata is WPML COPY across all active languages.
+
+Existing statuses initialized to No: 345 transports on Tours.dev, 131 on
+Wayfatours. All historical rate prices, publication statuses and bookings
+remain untouched. The separate trans_available_status is unchanged.
+
+The eligibility adapter in includes/transport-tour-component-eligibility.php
+requires a Yes opt-in, published post, operational availability, company
+Tour Component channel and native mode/type verification. The resulting
+component qualification is NOT a rate, stock or checkout authorization.
+It gates native Tour Rate related options immediately before visual-options
+composition (filter priority 25), and the known native Tour transport listing
+queries 258, 259 and 260, without filtering unrelated queries. Read-only
+status and blockers are available through a permission-protected REST route.
+
+### WPML identity correction
+
+The original 2026 PDF draft importer wrote localized term IDs to trans_mode
+for non-English translations. Native Tour Components require canonical
+transport mode 568 and the original taxonomy relation. The guarded exact
+source migration normalized 255 Tours.dev and 51 Wayfatours localized Drafts,
+leaving English originals and taxonomy relations unchanged. All 408 source
+Drafts now use canonical Road mode 568. WPML trans_mode is COPY and future
+importer writes canonical 568. Both sites retain separate reversible
+metadata backups. No unverified subtype, supplier capacity or prices were
+created. Current source Drafts remain ineligible until validated.
+
+### Native UX revision
+
+The existing Dynamic Pricing Controls page now follows the Tour Rate pattern:
+1. Choose a transport (city, WPML language, searchable PDF row, Tour Component
+   qualification filter, vehicle and quantity).
+2. Configure the company self-provider source policy (currency, amount role,
+   source-specific discount and global/city/vehicle markups).
+3. Review the saved-policy price preview and qualification reasons on a
+   sticky desktop right-side rail, with an edit link straight to the native
+   Transportation Status field below Description.
+
+Draft policy edits are labeled as unsaved and preserved across city/language
+filters; previews always use persisted policy. AJAX responses are
+sequence-checked so out-of-order calls cannot show stale source selections.
+Layout stacks at tablet/mobile widths; nonce and capability checks are
+unchanged. No separate pricing engine or alternate checkout was created.
+
+### Verification and rollout boundary
+
+- Tours.dev: 27/27 new status and Tour Component tests; 381/381 existing
+  multilingual PDF-source tests; 35/35 self-price control tests.
+- Wayfatours: 27/27 new status/component tests; 141/141 existing source
+  tests; 35/35 self-price control tests.
+- Source price data and authorization were not changed.
+- JavaScript passed Node syntax checks. HTML template passed structural and
+  unique control-binding checks; registered admin assets were verified on
+  both sites. Both live sites are still serving the new UI assets.
+- The source catalog response assembled 51 rows in roughly 75–228ms
+  in CLI samples, with no internal :8080 links.
+- All 476 transportations currently retain Status No and no Tour Component
+  was autoenabled.
+- No authenticated graphical browser was available for pixel-level,
+  keyboard navigation and viewport screenshot acceptance; that remains
+  separate from verified server behavior.

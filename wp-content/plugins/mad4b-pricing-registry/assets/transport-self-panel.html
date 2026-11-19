@@ -1,77 +1,112 @@
 <details class="mad4b-ts-accordion" open>
   <summary>
     <span><small>TRANSPORTATION · COMPANY SELF PROVIDER</small><strong>Transfer Pricing Controls</strong></span>
-    <span class="mad4b-ts-muted">2026 PDF · 51 operations · 210 source amounts</span>
+    <span class="mad4b-ts-muted">2026 source · 51 operations · WPML</span>
   </summary>
   <div class="mad4b-ts-body">
-    <p class="mad4b-ts-note">The uploaded 2026 PDF is the approved original source for these transport values. The company is the primary <strong>self</strong> provider. Currency and cost/selling role are separate settings because they are not printed in the PDF. This panel cannot publish prices or authorize checkout.</p>
-    <div class="mad4b-ts-source" aria-label="Transportation source">
+    <p class="mad4b-ts-note">The original 2026 PDF is the trusted source for this company's transportation services. Prices remain a reference until their currency, commercial role and native Rate approval are confirmed. Tour Component qualification is managed per Transportation record.</p>
+    <div class="mad4b-ts-source" aria-label="Transportation source and readiness">
       <span><b>Provider</b><strong data-ts="provider">Company / self</strong></span>
-      <span><b>Source</b><strong>Transportation 2026 PDF</strong></span>
-      <span><b>Effective</b><strong>1 April 2026</strong></span>
-      <span><b>Source trust</b><strong class="mad4b-ts-positive">Approved PDF data</strong></span>
+      <span><b>Source</b><strong>2026 PDF · 1 April</strong></span>
       <span><b>Commercial status</b><strong data-ts="readiness">Reference only</strong></span>
       <span><b>Market Profiles</b><strong data-ts="markets-status">Checking…</strong></span>
     </div>
+    <div class="mad4b-ts-steps" aria-label="Tour-style pricing workflow">
+      <span><b>1</b> Select transfer</span>
+      <span><b>2</b> Configure pricing</span>
+      <span><b>3</b> Review component readiness</span>
+    </div>
     <div class="mad4b-ts-columns">
-      <section class="mad4b-ts-card" aria-label="Transfer source catalog">
-        <h3>1 · Choose a source operation</h3>
-        <div class="mad4b-ts-filters">
-          <label>Origin city<select data-ts="city"><option value="">All origins</option><option>Cairo</option><option>Aswan</option><option>Luxor</option></select></label>
-          <label>WPML language<select data-ts="lang"></select></label>
-        </div>
-        <label>PDF operation<select data-ts="operation"></select></label>
-        <p class="mad4b-ts-arabic" data-ts="source-ar" dir="rtl"></p>
-        <label>Vehicle category<select data-ts="vehicle"></select></label>
-        <div class="mad4b-ts-preview">
-          <img data-ts="photo" loading="lazy" alt="" hidden>
-          <div><strong data-ts="raw">Select a vehicle</strong>
-            <p class="mad4b-ts-muted" data-ts="source-flags"></p>
-            <small>Vehicle photos are illustrative, not a certified supplier fleet.</small>
+      <div class="mad4b-ts-stack">
+        <section class="mad4b-ts-card" aria-label="Choose transportation operation">
+          <h3>1 · Select transportation</h3>
+          <div class="mad4b-ts-filters">
+            <label>Origin city<select data-ts="city"><option value="">All origins</option><option>Cairo</option><option>Aswan</option><option>Luxor</option></select></label>
+            <label>WPML language<select data-ts="lang"></select></label>
           </div>
-        </div>
-        <div class="mad4b-ts-inline">
-          <label>Vehicle quantity<input data-ts="qty" type="number" min="1" max="30" value="1" step="1"></label>
-          <button class="button button-primary" type="button" data-ts="preview">Calculate preview</button>
-        </div>
-        <div data-ts="preview-result" class="mad4b-ts-result" role="status" aria-live="polite">Choose an operation and vehicle for an internal price preview.</div>
-        <nav class="mad4b-ts-links" aria-label="Related tools">
-          <a data-ts="drafts" href="#">Edit source drafts</a>
-          <a data-ts="rates" href="#">Transport Rates CPT</a>
-          <a data-ts="markets" href="#">Approved Market Profiles</a>
-        </nav>
-      </section>
-      <section class="mad4b-ts-card" aria-label="Self pricing policy">
-        <h3>2 · Company self pricing policy</h3>
-        <p class="mad4b-ts-muted">Per-site controls. Transport Rate approvals, market conversion and checkout continue to use their existing owners.</p>
-        <div class="mad4b-ts-filters">
-          <label>Source currency<select data-ts="currency">
-            <option value="">Select explicitly (not in PDF)</option>
-            <option value="EGP">EGP — Egyptian pound</option>
-            <option value="USD">USD — US dollar</option>
-            <option value="EUR">EUR — euro</option>
-            <option value="GBP">GBP — sterling</option>
-          </select></label>
-          <label>Source amount role<select data-ts="role">
-            <option value="reference_only">Reference value only</option>
-            <option value="self_cost">Self base cost</option>
-            <option value="self_selling">Self selling base</option>
-          </select></label>
-        </div>
-        <label class="mad4b-ts-check">
-          <input data-ts="discount" type="checkbox">
-          Apply the PDF's 5% discount to Aswan and Luxor (Cairo unchanged)
-        </label>
-        <label>Global markup (%)<input data-ts="global" type="number" step="0.25" min="0" max="200"></label>
-        <details class="mad4b-ts-extra"><summary>City-specific markup</summary><div data-ts="city-markups" class="mad4b-ts-grid"></div></details>
-        <details class="mad4b-ts-extra"><summary>Vehicle-class markup</summary><div data-ts="vehicle-markups" class="mad4b-ts-grid"></div></details>
-        <p class="mad4b-ts-muted">Preview: PDF value → documented 5% upper-Egypt discount (if enabled) → global + city + vehicle markup. No Market Profile adjustment or checkout approval is implied.</p>
-        <div class="mad4b-ts-inline">
-          <button data-ts="save" class="button button-primary" type="button">Save transport controls</button>
-          <button data-ts="reload" class="button" type="button">Reload saved policy</button>
-        </div>
-        <p class="mad4b-ts-status" data-ts="status" role="status" aria-live="polite"></p>
-      </section>
+          <label>Search operations<input data-ts="search" type="search" placeholder="City, route, service or PDF row" autocomplete="off"></label>
+          <div class="mad4b-ts-filters">
+            <label>Tour Component readiness<select data-ts="component-filter">
+              <option value="all">All statuses</option>
+              <option value="qualified">Qualified</option>
+              <option value="pending">Needs qualification</option>
+            </select></label>
+            <p class="mad4b-ts-muted mad4b-ts-count" data-ts="components-count">Checking status…</p>
+          </div>
+          <label>PDF operation<select data-ts="operation"></select></label>
+          <p class="mad4b-ts-arabic" data-ts="source-ar" dir="rtl"></p>
+          <div class="mad4b-ts-filters">
+            <label>Vehicle category<select data-ts="vehicle"></select></label>
+            <label>Vehicle quantity<input data-ts="qty" type="number" min="1" max="30" value="1" step="1"></label>
+          </div>
+          <div class="mad4b-ts-preview">
+            <img data-ts="photo" loading="lazy" alt="" hidden>
+            <div><strong data-ts="raw">Select a vehicle</strong>
+              <p class="mad4b-ts-muted" data-ts="source-flags"></p>
+              <small>Vehicle photos illustrate categories; supplier fleet and capacities remain unverified.</small>
+            </div>
+          </div>
+          <nav class="mad4b-ts-links" aria-label="Transportation administration">
+            <a data-ts="drafts" href="#">Review source drafts</a>
+            <a data-ts="transportations" href="#">All Transportation services</a>
+            <a data-ts="rates" href="#">Transport Rates CPT</a>
+            <a data-ts="markets" href="#">Market Profiles</a>
+          </nav>
+        </section>
+        <section class="mad4b-ts-card" aria-label="Edit self-provider pricing policy">
+          <h3>2 · Configure transport pricing</h3>
+          <p class="mad4b-ts-muted">Per-site controls, like Tour Rates. The original PDF numbers are never overwritten, and this panel does not convert currency or approve bookings.</p>
+          <div class="mad4b-ts-filters">
+            <label>PDF source currency<select data-ts="currency">
+              <option value="">Select explicitly — not shown in PDF</option>
+              <option value="EGP">EGP — Egyptian pound</option>
+              <option value="USD">USD — US dollar</option>
+              <option value="EUR">EUR — euro</option>
+              <option value="GBP">GBP — pound sterling</option>
+            </select></label>
+            <label>Source amount role<select data-ts="role">
+              <option value="reference_only">Reference only</option>
+              <option value="self_cost">Self cost base</option>
+              <option value="self_selling">Self selling base</option>
+            </select></label>
+          </div>
+          <label class="mad4b-ts-check">
+            <input data-ts="discount" type="checkbox">
+            Apply the PDF's 5% discount to Aswan and Luxor only
+          </label>
+          <label>Global markup (%)<input data-ts="global" type="number" step="0.25" min="0" max="200"></label>
+          <details class="mad4b-ts-extra">
+            <summary>City-specific markup</summary>
+            <div data-ts="city-markups" class="mad4b-ts-grid"></div>
+          </details>
+          <details class="mad4b-ts-extra">
+            <summary>Vehicle-class markup</summary>
+            <div data-ts="vehicle-markups" class="mad4b-ts-grid"></div>
+          </details>
+          <p class="mad4b-ts-muted">Source amount → documented discount → global + city + vehicle markup. Market conversion and commercial approval remain with the native pricing engines.</p>
+          <p class="mad4b-ts-dirty" data-ts="dirty" role="status" aria-live="polite">Saved settings are active in preview.</p>
+          <div class="mad4b-ts-inline">
+            <button data-ts="save" class="button button-primary" type="button">Save transport policy</button>
+            <button data-ts="reload" class="button" type="button">Discard changes / Reload</button>
+          </div>
+          <p class="mad4b-ts-status" data-ts="status" role="status" aria-live="polite"></p>
+        </section>
+      </div>
+      <aside class="mad4b-ts-rail" aria-label="Live pricing preview and Tour Component qualification">
+        <section class="mad4b-ts-card mad4b-ts-rail-card">
+          <h3>Live source preview</h3>
+          <p class="mad4b-ts-muted">Uses the last saved policy; unsaved changes are excluded.</p>
+          <button class="button button-primary mad4b-ts-calc" type="button" data-ts="preview">Calculate reference price</button>
+          <div data-ts="preview-result" class="mad4b-ts-result" role="status" aria-live="polite">Choose an operation and vehicle to preview.</div>
+          <div class="mad4b-ts-component">
+            <h3>3 · Tour Component status</h3>
+            <p><strong data-ts="component-state">Select an operation</strong></p>
+            <p class="mad4b-ts-muted" data-ts="component-reasons">The individual Transportation post owns its Tour Rate eligibility.</p>
+            <a data-ts="component-edit" class="button" href="#" hidden>Edit Status under Description</a>
+            <p class="mad4b-ts-muted">Yes qualifies a published, available transportation for Tour Component selection only after native identity and company-channel checks. It does not confirm an approved Rate, stock, or checkout.</p>
+          </div>
+        </section>
+      </aside>
     </div>
   </div>
 </details>
