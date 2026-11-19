@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.capability-fabric-post-merge-closure.v1",
   "phase": 37,
-  "baseline_merge_commit": "c934e0a5a3ddc924db2c7adc2dc1241785ab49ee",
+  "baseline_merge_commit": "07bf7b4796758167cf8dfd77114e58d4b2b3aac4",
   "production_authorized": false,
   "breakglass_widened": false,
   "generic_shell_authorized": false,
@@ -935,9 +935,9 @@
   "open_priority_policy": "P0_P1_REQUIRE_EXPLICIT_DEPENDENCIES_FAIL_CLOSED_INTERIM_AND_EVIDENCE_PATH",
   "traceability_family": "CAPFAB",
   "baseline_source_review": {
-    "previous_commit": "3785892316d3c395ad144500fdecc6836ed2c176",
-    "reconciled_repository_parent": "c934e0a5a3ddc924db2c7adc2dc1241785ab49ee",
-    "scope": "PR #882 exact master-parent source review c934e0a5: 123 combined source paths and 11 explicit bounded Change-Slice units. Several runtime-loaded Control Plane modules changed; this is repository-bound provenance only and does not certify installed source parity. Original prior Feature007 baseline 3785892 is preserved in baseline-review-20261029.md. No owner attestation, runtime package recapture, live Staging deployment, provider activation or master merge is authorized.",
+    "previous_commit": "c934e0a5a3ddc924db2c7adc2dc1241785ab49ee",
+    "reconciled_repository_parent": "07bf7b4796758167cf8dfd77114e58d4b2b3aac4",
+    "scope": "PR #882 source review rebased to current master 07bf7b47 after PR #914 added nine mobile MU canonical-source files. Combined 129-path candidate remains separately non-authorizing; Feature007 release identity is RECAPTURE_REQUIRED. No direct runtime deployment, owner attestation or master merge.",
     "authorizing": false
   }
 }

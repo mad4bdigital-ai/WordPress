@@ -4,9 +4,10 @@
 
 ## Identity and scope
 
-- Exact reviewed `master` PR parent: `c934e0a5a3ddc924db2c7adc2dc1241785ab49ee`.
+- Exact reviewed `master` PR parent: `07bf7b4796758167cf8dfd77114e58d4b2b3aac4`.
+- Previously reviewed PR parent: `c934e0a5a3ddc924db2c7adc2dc1241785ab49ee`; current master advanced via PR #914 with nine MU/mobile canonical-source files, preserved unchanged in this merged candidate.
 - Historical predecessor: `3785892316d3c395ad144500fdecc6836ed2c176` (preserved in `baseline-review-20261029.md`).
-- This cumulative PR's initial source review spans 123 changed files against its master parent, with non-authorizing exact-path semantic boundaries recorded in `change-slices.json`. Several Site Profile, OAuth, Host Agent and Skills modules are loaded by plugin Bootstrap; no blanket “dormant source only” assertion applies to those files.
+- This cumulative PR's initial source review spans 129 changed files against its updated master parent, with non-authorizing exact-path semantic boundaries recorded in `change-slices.json`. Several Site Profile, OAuth, Host Agent and Skills modules are loaded by plugin Bootstrap; no blanket “dormant source only” assertion applies to those files.
 - No change to historic `baseline_head_at_creation`, old immutable delivery receipts or independently certified `runtime_release_identity`.
 - Runtime release identity remains `RECAPTURE_REQUIRED`; the historical rc.59 package is not being relabeled as current source.
 
