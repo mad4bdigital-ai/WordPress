@@ -451,6 +451,74 @@ def reviewed_pr942_company_master_security_successor(repo:Path,path:str,contents
         return None
 
 
+def reviewed_pr942_cimd_scoped_source_successor(repo:Path,path:str,contents:bytes):
+    """Exact three-file CI-only restoration of signed scoped ChatGPT CIMD.
+
+    Frozen QA31 source pins and authorization remain untouched. A valid
+    review means candidate code can run source tests; it is NOT a Host grant.
+    """
+    allowed={
+      'includes/class-mad4b-scp-chatgpt-auto-binding.php':(
+         '011cc811e3211365d7c4a97ee27db9b07735e619',
+         '3cb93735d9512cc948f9dd4e609466a4c0539283'),
+      'includes/class-mad4b-scp-oauth-resource-bridge.php':(
+         '79fd146d620e99895c53b4cde9aa55350c93d9ac',
+         '4e8213162b4c9a9ac0da592ccd33e53736cc2b16'),
+      'includes/class-mad4b-scp-reconnect-hardening.php':(
+         '72b51cf7a2d6246026fa0e835fd699989457d930',
+         '388408d37737ee2bacb2b97614be3fa375b334b8'),
+    }
+    if path not in allowed or not isinstance(contents,bytes):return None
+    review=repo/'docs/source-reconciliation/pr942-cimd-scoped-source-successors-20261119.json'
+    historic=repo/'governance/release-parity/qa31-rc129-reviewed-successors-20261118.json'
+    test='tests/source-unification-review-contract.py'
+    try:
+        if (not review.is_file() or review.is_symlink()
+            or not historic.is_file() or historic.is_symlink()
+            or not (repo/test).is_file() or (repo/test).is_symlink()):
+            return None
+        doc=json.loads(review.read_text(encoding='utf-8'))
+        old=json.loads(historic.read_text(encoding='utf-8'))
+        entries=doc.get('entries')
+        names=[x.get('path') for x in entries] if isinstance(entries,list) else []
+        if (doc.get('contract')!='mad4b.pr942.cimd-scoped-source-successors.v1'
+            or doc.get('historical_qa31_manifest')!='governance/release-parity/qa31-rc129-reviewed-successors-20261118.json'
+            or digest(historic)!='dce059a5058b66cc1cb5f6d4cd01aab24b1e6b75a8fba6a1655579de038ff821'
+            or doc.get('historical_qa31_sha256')!=digest(historic)
+            or doc.get('count')!=3
+            or names!=sorted(allowed)
+            or doc.get('release_gate')!='BLOCKED_SOURCE_RECONCILIATION'
+            or doc.get('live_evidence_required') is not True
+            or any(doc.get(k) is not False for k in ('authorizing','production_authorized',
+                'source_promotion_approved','is_build_provenance','owner_attestation_provided'))):
+            return None
+        row=entries[names.index(path)]
+        previous,current=allowed[path]
+        if (row.get('prior_source_blob_sha')!=previous
+            or row.get('source_blob_sha')!=current
+            or hashlib.sha1(b'blob '+str(len(contents)).encode('ascii')+b'\0'+contents).hexdigest()!=current
+            or row.get('source_sha256')!=hashlib.sha256(contents).hexdigest()
+            or row.get('source_bytes')!=len(contents)
+            or row.get('required_regression')!=test
+            or row.get('status')!='reviewed_for_ci_only'
+            or row.get('production_authorized') is not False
+            or row.get('live_evidence_required') is not True
+            or len(row.get('semantic_review',''))<115
+            or not isinstance(row.get('regressions'),list)
+            or test not in row['regressions']
+            or any(not isinstance(t,str) or '..' in Path(t).parts
+                   or not (repo/t).is_file() or (repo/t).is_symlink()
+                   for t in row['regressions'])):
+            return None
+        if path=='includes/class-mad4b-scp-reconnect-hardening.php':
+            originals=[x for x in old.get('reviewed_entries',[])
+                        if isinstance(x,dict) and x.get('path')==path]
+            if len(originals)!=1 or originals[0].get('current_git_blob_sha')!=previous:return None
+        return test
+    except (OSError,ValueError,TypeError,KeyError,json.JSONDecodeError):
+        return None
+
+
 def reviewed_pr942_qa31_semantic_successor(repo:Path,path:str,contents:bytes):
     """Two exact, independently tested PR942 source successors only.
 
@@ -585,6 +653,8 @@ def reviewed_ci_only_source_successor(root:Path,path:str,contents:bytes)->bool:
     if source.is_symlink() or not source.is_file() or source.read_bytes()!=contents:
         return False
     requested=reviewed_pr942_ollama_bootstrap_successor(repo,path,contents)
+    if requested is None:
+        requested=reviewed_pr942_cimd_scoped_source_successor(repo,path,contents)
     if requested is None:
         requested=reviewed_pr942_company_master_security_successor(repo,path,contents)
     if requested is None:

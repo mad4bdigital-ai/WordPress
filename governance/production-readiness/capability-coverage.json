@@ -24074,6 +24074,74 @@
       "needs_new_control": false,
       "review_rationale": "Close verified cross-site field-intelligence leak: validate site UUID, exact origin, environment and deployment binding before checking foreign type existence, reading WordPress meta schemas, querying DB, or invoking JetEngine/extension providers. Locale media audit also verifies identity before querying posts. Default CLI/REST subtype is site-neutral WordPress post. Source-owned positive and negative tests execute on PHP7.4 and PHP8.5 with synthetic tables and deny all invalid company bindings.",
       "coverage_reuse_rationale": "Existing read-only catalog, WordPress administrator, Site Profile and provider isolation controls remain in force; no new authentication role or production write rights."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-auto-binding.php",
+      "source_blob_sha": "3cb93735d9512cc948f9dd4e609466a4c0539283",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "OAUTH-01",
+        "MCP-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/source-unification-review-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/cimd-scoped-bearer-identity-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-auto-binding-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/reconnect-hardening-runtime.php"
+      ],
+      "owner_role": "MAD4B CI-only OAuth source reviewer; independent Production owner and Host admission required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Legacy and per-connector ChatGPT metadata URLs are supported without conflating connections. A stored scoped ID must exactly match the current authenticated bearer, read scope, site identity and enrolled WordPress user; older legacy observations remain readable. Separate SHA-pinned review admits only original signed client and exact scoped ChatGPT CIMD, with PHP7.4 and 8.5 positive/negative fixtures. It never grants new bearer scope, arbitrary redirect, session authority, plugin write or Production enrollment.",
+      "coverage_reuse_rationale": "Original JWT signature, issuer, audience, Site Profile, scoped client-fingerprint and WordPress user protections stay in force. No new issuer or public REST route is accepted."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-resource-bridge.php",
+      "source_blob_sha": "4e8213162b4c9a9ac0da592ccd33e53736cc2b16",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/source-unification-review-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/cimd-scoped-bearer-identity-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-auto-binding-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/reconnect-hardening-runtime.php"
+      ],
+      "owner_role": "MAD4B CI-only OAuth source reviewer; independent Production owner and Host admission required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Verified OAuth client ID is recovered from already validated JWT claims, retained only request-locally, compared to issuer/client fingerprint and trusted exact ChatGPT CIMD URL. Reset clears identity with bearer. No new authorization grants. Separate SHA-pinned review admits only original signed client and exact scoped ChatGPT CIMD, with PHP7.4 and 8.5 positive/negative fixtures. It never grants new bearer scope, arbitrary redirect, session authority, plugin write or Production enrollment.",
+      "coverage_reuse_rationale": "Original JWT signature, issuer, audience, Site Profile, scoped client-fingerprint and WordPress user protections stay in force. No new issuer or public REST route is accepted."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-reconnect-hardening.php",
+      "source_blob_sha": "388408d37737ee2bacb2b97614be3fa375b334b8",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/source-unification-review-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/cimd-scoped-bearer-identity-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-auto-binding-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/reconnect-hardening-runtime.php"
+      ],
+      "owner_role": "MAD4B CI-only OAuth source reviewer; independent Production owner and Host admission required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Reconnect session repair and post-dispatch capture require the exact previously verified trusted ChatGPT client identity, not a hardcoded legacy-only client. Existing Adapter session deletion, idempotency, production-disabled repair and no-write safeguards stay unchanged. Separate SHA-pinned review admits only original signed client and exact scoped ChatGPT CIMD, with PHP7.4 and 8.5 positive/negative fixtures. It never grants new bearer scope, arbitrary redirect, session authority, plugin write or Production enrollment.",
+      "coverage_reuse_rationale": "Original JWT signature, issuer, audience, Site Profile, scoped client-fingerprint and WordPress user protections stay in force. No new issuer or public REST route is accepted."
     }
   ],
   "code_change_rules": {

@@ -1,0 +1,69 @@
+{
+  "contract": "mad4b.pr942.cimd-scoped-source-successors.v1",
+  "authorizing": false,
+  "production_authorized": false,
+  "source_promotion_approved": false,
+  "is_build_provenance": false,
+  "owner_attestation_provided": false,
+  "live_evidence_required": true,
+  "release_gate": "BLOCKED_SOURCE_RECONCILIATION",
+  "historical_qa31_manifest": "governance/release-parity/qa31-rc129-reviewed-successors-20261118.json",
+  "historical_qa31_sha256": "dce059a5058b66cc1cb5f6d4cd01aab24b1e6b75a8fba6a1655579de038ff821",
+  "count": 3,
+  "entries": [
+    {
+      "path": "includes/class-mad4b-scp-chatgpt-auto-binding.php",
+      "prior_source_blob_sha": "011cc811e3211365d7c4a97ee27db9b07735e619",
+      "source_blob_sha": "3cb93735d9512cc948f9dd4e609466a4c0539283",
+      "source_sha256": "ca3fb2228d3fc6091b6b44d64991961794c45dcb3588775ee82299160667ba6d",
+      "source_bytes": 12687,
+      "required_regression": "tests/source-unification-review-contract.py",
+      "regressions": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/cimd-scoped-bearer-identity-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-auto-binding-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/reconnect-hardening-runtime.php",
+        "tests/source-unification-review-contract.py"
+      ],
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "semantic_review": "Legacy and per-connector ChatGPT metadata URLs are supported without conflating connections. A stored scoped ID must exactly match the current authenticated bearer, read scope, site identity and enrolled WordPress user; older legacy observations remain readable."
+    },
+    {
+      "path": "includes/class-mad4b-scp-oauth-resource-bridge.php",
+      "prior_source_blob_sha": "79fd146d620e99895c53b4cde9aa55350c93d9ac",
+      "source_blob_sha": "4e8213162b4c9a9ac0da592ccd33e53736cc2b16",
+      "source_sha256": "9cf84f72f91bc26212e499524df343ac70c2428fb69ced512638ac5e000e5f81",
+      "source_bytes": 73519,
+      "required_regression": "tests/source-unification-review-contract.py",
+      "regressions": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/cimd-scoped-bearer-identity-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-auto-binding-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/reconnect-hardening-runtime.php",
+        "tests/source-unification-review-contract.py"
+      ],
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "semantic_review": "Verified OAuth client ID is recovered from already validated JWT claims, retained only request-locally, compared to issuer/client fingerprint and trusted exact ChatGPT CIMD URL. Reset clears identity with bearer. No new authorization grants."
+    },
+    {
+      "path": "includes/class-mad4b-scp-reconnect-hardening.php",
+      "prior_source_blob_sha": "72b51cf7a2d6246026fa0e835fd699989457d930",
+      "source_blob_sha": "388408d37737ee2bacb2b97614be3fa375b334b8",
+      "source_sha256": "1df0b5e9f5b21066bc04e1602ae922daf4c20d6642165bb71e45c848b34a12d8",
+      "source_bytes": 73599,
+      "required_regression": "tests/source-unification-review-contract.py",
+      "regressions": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/cimd-scoped-bearer-identity-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-auto-binding-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/reconnect-hardening-runtime.php",
+        "tests/source-unification-review-contract.py"
+      ],
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "semantic_review": "Reconnect session repair and post-dispatch capture require the exact previously verified trusted ChatGPT client identity, not a hardcoded legacy-only client. Existing Adapter session deletion, idempotency, production-disabled repair and no-write safeguards stay unchanged."
+    }
+  ]
+}
