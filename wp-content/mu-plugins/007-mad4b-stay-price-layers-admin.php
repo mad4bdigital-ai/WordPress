@@ -113,6 +113,8 @@ final class MAD4B_Stay_Layers_Admin_V1 {
         if($currency===null||$basis===null||$kind===null)return;
         $currency=strtoupper($currency);
         if($currency!==''&&!preg_match('/^[A-Z]{3}$/D',$currency))return;
+        if($currency!==''&&function_exists('get_woocommerce_currencies')
+            &&!array_key_exists($currency,(array)get_woocommerce_currencies()))return;
         if($basis!==''&&!array_key_exists($basis,self::basis()))return;
         if(!in_array($kind,['sell','cost'],true))return;
         if($post->post_type==='properties'){
@@ -181,7 +183,9 @@ final class MAD4B_Stay_Layers_Admin_V1 {
                 echo '<h2>Price source result</h2>';
                 echo '<p><strong>Selected:</strong> '.esc_html($r['selected_source']??'Unpriced').'</p>';
                 if($r['price'])echo '<p><strong>Indicative:</strong> '.esc_html($r['price']['amount'].' '.$r['price']['currency']).' / '.esc_html($r['price']['price_unit']).'</p>';
-                echo '<p><small>Checkout not authorized · '.$r['price_status'].' · Meal: '.esc_html($r['meal_base']).'</small></p>';
+                echo '<p><small>Checkout not authorized · '.esc_html($r['price_status']).' · Base meal plan: '
+                    .esc_html($r['meal_base']).' · Requested: '.esc_html($r['requested_board'])
+                    .' · Meal inclusion not independently verified</small></p>';
                 echo '<pre style="max-width:800px;overflow:auto;background:#fff;padding:12px">'.esc_html(wp_json_encode($r,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES)).'</pre>';
             }
             echo '<p><a class="button" href="'.esc_url(get_edit_post_link($pid)).'">Edit Property Direct Price</a> ';
