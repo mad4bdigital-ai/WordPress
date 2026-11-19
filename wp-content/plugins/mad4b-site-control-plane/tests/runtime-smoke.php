@@ -85,7 +85,22 @@ foreach ( $core_abilities as $ability_name ) {
 
 $servers = MAD4B_SCP_Servers::registration_status();
 foreach ( MAD4B_SCP_Servers::expected_server_ids() as $server_id ) {
-	$check( ! empty( $servers[ $server_id ]['registered'] ), 'Custom MCP server failed to register: ' . $server_id );
+    if ( empty( $servers[ $server_id ]['registered'] ) ) {
+        // CI-only bounded diagnostic. No bearer tokens, user data, package
+        // paths or full MCP schemas enter the log. Do not weaken admission.
+        $observed = $servers[ $server_id ] ?? array();
+        $descriptor = $observed['capability_descriptor_evidence'] ?? array();
+        $failure = array(
+            'server' => $server_id,
+            'error' => $observed['error'] ?? 'missing_registry_entry',
+            'requested_tools' => $observed['requested_tool_count'] ?? null,
+            'descriptor_blockers' => array_slice( $descriptor['blockers'] ?? array(), 0, 20 ),
+            'descriptor_blocker_count' => count( $descriptor['blockers'] ?? array() ),
+            'adapter_stage' => $observed['registration_failure']['stage'] ?? null,
+            'adapter_reason' => $observed['registration_failure']['reason'] ?? null,
+        );
+        throw new RuntimeException( 'Custom MCP server failed to register: ' . $server_id . ' diagnostic=' . wp_json_encode( $failure ) );
+    }
 }
 
 // Action refresh/tools-list can resolve the same write projection through
