@@ -23704,6 +23704,28 @@
       "coverage_reuse_rationale": "Existing site-bound Brand Integrity, content readiness reconciliation, WPML taxonomy, provider validation and security controls; no new mutation surface or production grant.",
       "review_rationale": "Route destination Term Meta alerts from the existing REST/admin/CSV/board presentation to a taxonomy term editor, not a same-numbered WordPress Post. No new write ability or task dispatch.",
       "execution_note": "Both live sites retain their independent installed class layouts; source split-trait class patch applies only targeted URL routing to prevent overwriting live-only components."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php",
+      "source_blob_sha": "4d6800c533ebfb769210ca71fcb121e1cc712f11",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-readiness/isolated-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/destination-term-alerts-runtime.php"
+      ],
+      "owner_role": "MAD4B source exact-run Content Readiness CI reviewer; no automatic Production promotion",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Raise source-bound Content Readiness active issue cap from 3000 to a still-bounded 6000, while preserving original serialised issue ledger, non-autoload store, old-state readback, archive, hard no-data-loss upper limit and all provider admission and closure gates. No arbitrary provider trust or background task authority.",
+      "coverage_reuse_rationale": "Existing Content Readiness, strict source validation, Brand Identity and Security controls. No new capability IDs or policy bypass.",
+      "execution_note": "Same-PR isolated executable PHP tests persist 3050 synthetic open findings without loss, refuse 6001 with exact unchanged ledger and no automatic actions. Live Tours.dev was 2979 of 3000 (2969 open), Wayfa 1097. Both live company-specific classes updated after original-SHA CAS and PHP lint with rollback copies; deployed independently, not via GitHub PR."
     }
   ],
   "code_change_rules": {

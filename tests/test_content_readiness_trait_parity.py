@@ -41,7 +41,7 @@ HEADER_RECON = (
 # generated snapshots. Any unrelated future change fails closed until its
 # semantic regression and exact source review are updated.
 REVIEWED_EXTENSION_BLOBS = {
-    "facade": "23a78f03901868bb6ec38b0f4651786ba52bccd7",
+    "facade": "4d6800c533ebfb769210ca71fcb121e1cc712f11",
     "scan": "ca268399e02ddd0044f9c824b8eb2067f84e006e",
     "recon": "5fa929c8d3daacc38fe5536d4886f0d01451d947",
 }

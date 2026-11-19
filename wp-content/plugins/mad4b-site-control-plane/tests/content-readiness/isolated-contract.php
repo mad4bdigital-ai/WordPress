@@ -437,4 +437,42 @@ yes($preReport['execution_mode']==='disabled' &&
     $preReport['side_effects']['outbound_messages']===0 &&
     $preReport['gates']['provider_tasks_enabled']===false,
     'preactivation report is read-only and execution-disabled');
+// Capacity: exact active issue ledger accepts the newly audited destination
+// census without silently discarding existing native alerts; hard cap remains.
+yes($cls::MAX_ISSUES===6000,'reviewed active issue cap is bounded at 6000');
+$GLOBALS['options'][$cls::STORE]=[];
+$GLOBALS['options'][$cls::RESOLVED_ARCHIVE]=[];
+$capacityRows=[];
+for($n=1;$n<=3050;$n++){
+    $code='isolated_capacity_'.$n;
+    $capacityRows[]=[
+        'id'=>hash('sha256','6|site|0|'.$code),
+        'post_type'=>'site','object_id'=>0,'code'=>$code,
+        'severity'=>'low','label'=>'Source-bound synthetic fixture #'.$n,
+        'source'=>'fixture-capacity',
+    ];
+}
+$capScan=['complete'=>true,'scanned'=>3050,'issues'=>$capacityRows,
+    'brand_integrity_coverage'=>[]];
+$acceptedCapacity=$cls::reconcile($capScan);
+yes(!is_wp_error($acceptedCapacity)
+    && $acceptedCapacity['open']===3050
+    && count(get_option($cls::STORE,[]))===3050,
+    '3050 open issues persist without loss above original 3000 capacity');
+$readbackBeforeOverflow=serialize(get_option($cls::STORE,[]));
+for($n=3051;$n<=6001;$n++){
+    $code='isolated_capacity_'.$n;
+    $capacityRows[]=[
+        'id'=>hash('sha256','6|site|0|'.$code),
+        'post_type'=>'site','object_id'=>0,'code'=>$code,
+        'severity'=>'low','label'=>'Source-bound synthetic fixture #'.$n,
+        'source'=>'fixture-capacity',
+    ];
+}
+$capScan['issues']=$capacityRows;
+$overflow=$cls::reconcile($capScan);
+yes(is_wp_error($overflow)
+    && $overflow->get_error_code()==='mad4b_readiness_active_capacity_exceeded'
+    && serialize(get_option($cls::STORE,[]))===$readbackBeforeOverflow,
+    '6001 active alerts fail closed and leave persisted source ledger unchanged');
 echo "ALL READINESS LEDGER CONTRACTS PASSED\n";

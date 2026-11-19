@@ -24,7 +24,9 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
     const POLICY = 'mad4b_content_readiness_rules_v1';
     const AUDIT = 'mad4b_content_readiness_audit_v1';
     const MAX_POSTS = 3000;
-    const MAX_ISSUES = 3000;
+    // Bounded headroom for high-cardinality, source-backed taxonomy alerts.
+    // Keep non-autoloaded ledger, serialized reconciliation, and archive.
+    const MAX_ISSUES = 6000;
 
     public static function boot() {
         MAD4B_SCP_Admin_Route_Registry::schedule_submenu(array(__CLASS__, 'menu'));
