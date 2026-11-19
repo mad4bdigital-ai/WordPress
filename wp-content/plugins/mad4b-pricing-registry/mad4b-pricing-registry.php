@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name: MAD4B Pricing Source Registry
+ * Plugin Name: Pricing Source Registry
  * Description: Read-only dynamic discovery and capability registry for existing pricing providers.
  * Version: 0.1.0
  */
@@ -62,7 +62,7 @@ final class MAD4B_Pricing_Quote_Dispatch {
   $handler=$handlers[$source];
   if(!is_array($handler)||!isset($handler['callback'],$handler['domain'],$handler['argument'])||!is_string($handler['callback'])||!is_callable($handler['callback'])||$handler['domain']!==$defs[$source]['domain'])return new WP_Error('pricing_registry_handler_invalid');
   if($handler['argument']==='array'){
-   if($source==='accommodation_rate'&&array_diff(array_keys($payload),['rate_id','checkin','checkout','rooms','adults','children','room_occupancy','addons']))return new WP_Error('pricing_registry_unknown_input');
+   if($source==='accommodation_rate'&&array_diff(array_keys($payload),['rate_id','checkin','checkout','rooms','adults','children','child_ages','room_occupancy','addons']))return new WP_Error('pricing_registry_unknown_input');
    $result=call_user_func($handler['callback'],$payload);
   }elseif($handler['argument']==='transport'){
    if(array_diff(array_keys($payload),['transport_id','quantities'])||!isset($payload['transport_id'])||(!empty($payload['quantities'])&&!is_array($payload['quantities'])))return new WP_Error('pricing_registry_unknown_input');
@@ -75,5 +75,14 @@ final class MAD4B_Pricing_Quote_Dispatch {
 }
 
 require_once __DIR__.'/includes/source-arbitration.php';
-
 require_once __DIR__.'/includes/tour-preview.php';
+
+require_once __DIR__ . "/includes/transport-readiness.php";
+
+require_once __DIR__ . "/includes/transport-source-candidates.php";
+require_once __DIR__ . "/includes/transport-cpt-readiness.php";
+require_once __DIR__ . "/includes/transport-market-display.php";
+require_once __DIR__ . '/includes/transport-enrichment-audit.php';
+require_once __DIR__ . '/includes/transport-media-credits.php';
+require_once __DIR__ . '/includes/transport-pdf-review.php';
+require_once __DIR__ . '/includes/transport-self-pricing-controls.php';
