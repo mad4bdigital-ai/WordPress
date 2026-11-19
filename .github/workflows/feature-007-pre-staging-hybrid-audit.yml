@@ -861,6 +861,30 @@ jobs:
           tools: wp-cli
           coverage: none
 
+      - name: Ensure WP-CLI executable for the disposable WordPress runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          if command -v wp >/dev/null 2>&1 && wp --info; then
+            echo 'WP-CLI provided by PHP setup'
+          else
+            # PHP 7.4 runners can lack the wp command even when setup-php
+            # requests tools: wp-cli. Preserve the real disposable-site tests.
+            cli_dir="$RUNNER_TEMP/asi-wp-cli-bin"
+            mkdir -p "$cli_dir"
+            curl --fail --location --retry 3 --retry-delay 2 \
+              https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar \
+              -o "$cli_dir/wp-cli.phar"
+            cat > "$cli_dir/wp" <<'SH'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          exec php "$(dirname "$0")/wp-cli.phar" "$@"
+          SH
+            chmod 0755 "$cli_dir/wp"
+            "$cli_dir/wp" --info
+            printf '%s\n' "$cli_dir" >> "$GITHUB_PATH"
+          fi
+
       - name: Adaptive Runtime convergence safety / PHP ${{ matrix.php }}
         shell: bash
         run: |

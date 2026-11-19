@@ -4,8 +4,8 @@
   "reviewed_base_sha": "07bf7b4796758167cf8dfd77114e58d4b2b3aac4",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 129,
-  "changed_paths_sha256": "7396ff27fe5a4ec891b54ef636e952dc5ed95084731de1fbc457c91018506ea6",
+  "changed_file_count": 132,
+  "changed_paths_sha256": "c4962c0a745e5297c264153f332810e9ebce78370a0fe91a990b2676b6ccd0c1",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -652,6 +652,17 @@
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-switcher-sources.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-switcher-flag-scheme-runtime.php"
+      ]
+    },
+    {
+      "id": "feature007-adaptive-php74-wpcli-provision",
+      "semantic_unit": "Provide an explicit WP-CLI executable when PHP 7.4 setup lacks the wp command, retaining the full four-version WordPress validation matrix.",
+      "revert_boundary": "The protected workflow modification and regression belong to the same review unit.",
+      "certification": "exact_head",
+      "path_globs": [
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+        "tests/ci/test-feature007-adaptive-wpcli-provision-contract.py",
+        "governance/production-readiness/ci-workflow-source-reviews.json"
       ]
     }
   ]
