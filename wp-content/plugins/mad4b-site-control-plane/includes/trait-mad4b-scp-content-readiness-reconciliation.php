@@ -466,6 +466,11 @@ trait MAD4B_SCP_Content_Readiness_Reconciliation_Trait {
         }
     }
     private static function rule_enabled_for($issue,$cfg,array $brand_coverage=array()) {
+        // Never resolve a Term Meta finding on an absent feed or source-only
+        // disappearance; require complete raw census and public render readback.
+        if (($issue['source']??'')==='mad4b-destination-term-integrity')
+            return class_exists('MAD4B_Destination_Term_Alerts_V1',false)
+                && MAD4B_Destination_Term_Alerts_V1::can_resolve($issue);
         if (($issue['source']??'')==='mad4b-presentation-integrity')
             return str_starts_with((string)($issue['code']??''),'pres_browser_')
                 ? MAD4B_SCP_Presentation_Integrity_V1::browser_covered()
