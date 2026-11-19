@@ -466,6 +466,50 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "wp-content/plugins/mad4b-site-control-plane/tests/original305-host-review-denial-runtime.php",
 ))
 
+# Only exact reviewed source-only PHP regressions, not arbitrary PHP files.
+# Content-addressed pins prevent modified scripts inheriting old runner trust.
+# Each fixture was executed with no network in a read-only PHP 8.5 container.
+IMPORTED_REVIEWED_SOURCE_PHP_SHA256 = {
+    'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-cli-context-identity-runtime.php': '7d5f71ba80a448a879954f6b971323752c627188ba186f49588fdff8cd9ef48d',
+    'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-context-local-document-normalizer-runtime.php': '0d3a24f776ea6924a2c034fe70f2085f026c70a0cf6a012e0f8361a8c43b61e1',
+    'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-fcp-local-observability-runtime.php': '395c55630647b63f6e3e7dd53c5bacdd11d7167cd16cc9b087e17b7cbf22accc',
+    'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-fcp-queue-readback-runtime.php': '67e91002df00db21df0f81c4260eb10dfb0368d4152ba70a7b93e4cf4274787e',
+    'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-live-catalog-read-runtime.php': '9bb5593f4b278bc3ce19fe2bdba57749e2ff55674fe673a3820e0ebce22378e9',
+    'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-live-skills-list-paging-runtime.php': 'bbd7054572ce028ed0eed6f23d0be888774572e515e827f35bba625c5666969a',
+    'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-live-source-skills-parity-runtime.php': 'a1aa879d7bb92d741f5b744a11f6ab2d69c9e881d0385d066749198f2db3fca5',
+    'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-local-transport-boundary-runtime.php': '01a6b040db1fab1c47acacaecf8f81282e4eee1a3caa53df7652245d7a65e0a8',
+    'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-native-diagnostics-read-parity-runtime.php': '34528079d17d22d47524cadbbddc4ad5f0ab2ac746aa41ba297be67b468ef072',
+    'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-provider-field-read-parity-runtime.php': '9d47caaeefa578507778fefb0b8f20440bd7ffdfcc3e764a349021a65e01631d',
+    'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readonly-global-runtime-lifecycle-runtime.php': 'd9b6f02f3ff905331bf5a3aa3eb4df20c956374cf87d3e9554aa0bc3e73fab9f',
+    'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readonly-native-settings-locator-runtime.php': '07f91e12f344a257254c68dee00eaef52fbc9f7c0fd14d9563e529c38ddfa152',
+    'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readonly-provider-installed-artifact-runtime.php': '6505b211cd735a99bca42d0eb2e9fc0111b90c4c5c8d2df34b70eb01515d7c05',
+    'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readonly-unified-gate-funnel-runtime.php': 'c6bad4a63457999b827b7515ce99fd4e1fab8ce9e9536499dfc71da20b54c397',
+    'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-signed-host-agent-negative-runtime.php': 'c1afbca2e1ff1436f8dd6d33c3210690f494e534b0825f805472d4003f70982c',
+    'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-signed-host-context-review-runtime.php': '5bf5b824100f31421268f998629f9eae59792c06c6b3fbbb36e724b93aa50a93',
+    'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-switcher-flag-scheme-runtime.php': 'df18bcfee03f433c0c058c2140a11691e1fd157eb643069db224fb004529f1b7',
+    'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-visual-seo-strategy-runtime.php': 'dddca599a084c1acd1fbc5c89afd7ae07c1e9a7bcfcfde1219fc32854aca1727',
+    'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-wpml-site-origin-cli-runtime.php': '772807191b05f3086032e2f4994f4aed6f4856b3c89ebf6b49f70bfa0eafacef',
+    'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-wpml-site-origin-rest-runtime.php': '23aa582f014f4b4ec693df5cc2bbc8a15418dddfd863594e0dcb4a14cd97b0e0',
+    'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-wpml-site-origin-runtime.php': '8f0c51ca6ca0c78c4eda5289732af20eb8011a717a71f793ee3f7dac99f840ab',
+}
+STANDALONE_PHP_REGRESSIONS = STANDALONE_PHP_REGRESSIONS.union(
+    IMPORTED_REVIEWED_SOURCE_PHP_SHA256
+)
+
+# Seven original source-seal fixtures no longer match this rc.129 source.
+# They remain blocked until actual source changes receive independent review.
+SOURCE_SHA_DEFERRED_TESTS = frozenset((
+    'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-agent-authority-source-only-runtime.php',
+    'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-authority-review-source-only-runtime.php',
+    'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-content-quality-dependencies-source-only-runtime.php',
+    'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-hub-lifecycle-source-only-runtime.php',
+    'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readiness-preactivation-source-only-runtime.php',
+    'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-scheduler-source-closure-runtime.php',
+    'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php',
+))
+
+
+
 
 
 def ensure(ok, message):
@@ -578,8 +622,14 @@ def command_for(test):
         if test == "wp-content/plugins/mad4b-site-control-plane/tests/mcp-official-required-preflight-runtime.php":
             ensure(not path.is_symlink(), "Official MCP test symlink denied")
             return ["php", str(path), "/tmp/mad4b-readiness-certified-mcp-adapter/mcp-adapter"]
+        if test in SOURCE_SHA_DEFERRED_TESTS:
+            raise ValueError("Unreconciled source-seal fixture denied until reviewed: " + test)
         if test in STANDALONE_PHP_REGRESSIONS:
             ensure(not path.is_symlink(), "Standalone test symlink denied " + test)
+            digest = IMPORTED_REVIEWED_SOURCE_PHP_SHA256.get(test)
+            if digest is not None:
+                ensure(hashlib.sha256(path.read_bytes()).hexdigest() == digest,
+                       "Pinned source-only regression content changed: " + test)
             return ["php", str(path)]
         # Unreviewed PHP still requires a dedicated trusted PHPUnit runner.
         runner = ROOT / "vendor/bin/phpunit"
@@ -943,24 +993,20 @@ def self_test():
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-local-transport-boundary-runtime.php",
     ):
         assert command_for(exact) == ["php", str((ROOT / exact).resolve())]
-    # Eight source-only quality dependencies with explicit per-company CPT gate.
-    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-content-quality-dependencies-source-only-runtime.php") == ["php", str((ROOT / "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-content-quality-dependencies-source-only-runtime.php").resolve())]
-    # Original unactivated Hub/source lifecycle negative runtime.
-    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-hub-lifecycle-source-only-runtime.php") == ["php", str((ROOT / "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-hub-lifecycle-source-only-runtime.php").resolve())]
-    # Parent/preparation/event classes are source-only, no mail or hooks.
-    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readiness-preactivation-source-only-runtime.php") == ["php", str((ROOT / "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-readiness-preactivation-source-only-runtime.php").resolve())]
-    # Explicit no-network scheduler source and company role fixture.
-    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-scheduler-source-closure-runtime.php") == ["php", str((ROOT / "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-scheduler-source-closure-runtime.php").resolve())]
-    # The six-source SHA fixture does not boot WordPress or grant authority.
-    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-authority-review-source-only-runtime.php") == ["php", str((ROOT / "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-authority-review-source-only-runtime.php").resolve())]
-    # Exact background agent / host authority negative fixture, no server work.
-    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-agent-authority-source-only-runtime.php") == ["php", str((ROOT / "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-agent-authority-source-only-runtime.php").resolve())]
-    # New source parity fixtures are bounded, non-mutating PHP scripts.
-    for exact in (
-        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-chatbotx-site-neutral-runtime.php",
-    ):
-        assert command_for(exact) == ["php", str((ROOT / exact).resolve())]
+    # Seven older frozen-source tests are currently incompatible with the
+    # reconciled rc.129 candidate. Retain fail-closed execution, rather than
+    # silently re-pin their expectations or treat failures as successes.
+    assert len(SOURCE_SHA_DEFERRED_TESTS) == 7
+    for exact in sorted(SOURCE_SHA_DEFERRED_TESTS):
+        assert (ROOT / exact).is_file() and exact not in STANDALONE_PHP_REGRESSIONS
+        try:
+            command_for(exact)
+        except ValueError as exc:
+            assert "Unreconciled source-seal fixture denied" in str(exc)
+        else:
+            raise AssertionError("Unreconciled source seal admitted: " + exact)
+    chatbotx = "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-chatbotx-site-neutral-runtime.php"
+    assert command_for(chatbotx) == ["php", str((ROOT / chatbotx).resolve())]
     # Only these explicitly reviewed GET-only original provider read fixtures.
     for exact in (
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-fcp-local-observability-runtime.php",
