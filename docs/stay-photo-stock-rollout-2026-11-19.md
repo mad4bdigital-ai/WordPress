@@ -33,6 +33,21 @@ Wayfatours Production, with the same accommodation-only inventory policy deploye
 - Only publicly accessible official photos were used on the basis of the user's
   attestation, not a legal conclusion that they are copyright-free.
 
+## Third wave — official Four Seasons First Residence single-room photos
+- 12 Draft Units (IDs 70878–70889) were matched to twelve room/suite names
+  at Four Seasons Cairo at The First Residence. Hotel Property 70734 remains
+  **Draft**, so photo curation explicitly allows a Draft Property only for
+  editorial image enrichment, never for commercial readiness.
+- Original room-page URLs use the official Four Seasons website; image bytes
+  were obtained from the hotel's official press image domain. Source rights
+  remain independently **unverified**, with the user's use approval recorded.
+- 12 unique JPEG photos were imported into the existing Unit Featured Image
+  and JetEngine `unit_gellery` field, leaving all twelve Units Draft.
+- Direct production audit after wave three: **105 curated Draft Units**,
+  **106 Featured Images**, **107 Unit Galleries** across the 148-unit catalog.
+  Remaining **27 editorial + 14 QA** units without photos, **41 total**.
+- Zero broken curated files and zero missing image-source provenance entries.
+
 ## Stock policy
 - `mad4b_stay_inventory_sales_policy_v1` is tenant-bound to each website and applies only to accommodation.
 - Mode: `unmanaged`. Physical allotment/stock quantity is **not** an editorial readiness prerequisite. Maximum guest occupancy, Stop Sale, date eligibility and supplier/availability confirmation remain separate checks.
@@ -40,14 +55,14 @@ Wayfatours Production, with the same accommodation-only inventory policy deploye
 - Existing accommodation quote preview already runs `availability_mode=price_only`. No active accommodation checkout exists, so the policy does **not** claim that a future booking/payment flow has been integrated or certified.
 
 ## Remaining image coverage by Property (production)
-- 39 non-QA Units still need verified room photos: Four Seasons First Residence (12),
-  Tolip Gardens (4), Sheraton Cairo (3), Fairmont Nile City (3),
-  Hilton Golf 6 October (3), Sofitel Downtown Nile (3),
-  Sofitel El Gezirah (2), Hilton Grand Nile Tower (2), Ramses Hilton records (2),
-  Barceló Cairo Pyramids (2), Hilton Cairo Heliopolis (1), Sonesta (1),
-  and one data-quality Property title requiring identity review.
-- Duplicate references for ten Units must not be reused across different room types
-  without genuine photographic corroboration.
+- 27 non-QA Units require photos: Tolip Gardens (4); Sheraton Cairo (3),
+  Fairmont Nile City (3), Hilton Golf 6 October (3), Sofitel Downtown Nile (3),
+  Sofitel El Gezirah (2), Hilton Grand Nile Tower (2), Ramses Hilton (2),
+  Barceló Cairo Pyramids (2), Hilton Heliopolis (1), Sonesta (1), and one
+  Unit linked to a Property with invalid `#VALUE!` name.
+- Ten of those missing Units already have legacy source references that were
+  excluded due to duplicate content, source quality or type: reusing photos
+  across different room types requires genuine photo-to-room corroboration.
 - Published Unit images and Unit QA records were not modified by this run.
 
 ## Commercial blocks
