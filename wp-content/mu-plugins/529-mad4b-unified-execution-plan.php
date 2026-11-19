@@ -78,6 +78,17 @@ final class MAD4B_Unified_Execution_Plan {
         $build_ready = is_array( $build ) && ! empty( $build['manifest_present'] )
             && ! empty( $build['manifest_valid'] ) && ! empty( $build['runtime_manifest_match'] )
             && empty( $build['stale'] ) && empty( $build['provenance_mismatch'] );
+        // Selective Build Verification replaces only the global package-file
+        // check for supported draft writes; it never replaces actual grants.
+        $build_scope = 'full'; $build_dependency_blockers = array();
+        if ( class_exists( 'MAD4B_SCP_Scoped_Build_Verification' )
+            && MAD4B_SCP_Scoped_Build_Verification::governs_content_write( $ability ) ) {
+            $proof = MAD4B_SCP_Scoped_Build_Verification::verify( $ability, $operation_input );
+            $build_scope = is_array( $proof ) ? (string) ( $proof['scope'] ?? 'full' ) : 'full';
+            $build_ready = is_array( $proof ) && ! empty( $proof['verification_ready'] );
+            $build_dependency_blockers = is_array( $proof ) && isset( $proof['blockers'] )
+                ? (array) $proof['blockers'] : array( 'scoped_build_verification_unavailable' );
+        }
         $missing_grants = is_array( $reconciliation )
             ? (int) ( $reconciliation['exact_grants_missing_count'] ?? 0 ) : -1;
         $existing_grants = is_array( $reconciliation )
@@ -90,13 +101,15 @@ final class MAD4B_Unified_Execution_Plan {
         $blockers = array();
         if ( ! $mounted ) $blockers[] = 'ability_not_mounted_on_governed_write';
         if ( empty( $profile['authority_ready'] ) || empty( $profile['write_enabled'] ) ) $blockers[] = 'exact_profile_or_write_setting_not_ready';
-        if ( ! $build_ready ) $blockers[] = 'build_provenance_not_current';
+        if ( ! $build_ready ) $blockers[] = 'scoped' === $build_scope
+            ? 'scoped_material_provenance_not_current' : 'build_provenance_not_current';
         if ( ! $candidate_match ) $blockers[] = 'candidate_binding_not_reconciled';
         if ( $missing_grants !== 0 ) $blockers[] = 'exact_grants_not_current';
         if ( ! $gate ) $blockers[] = 'production_mutation_gate_disabled';
         if ( ! $effective ) $blockers[] = 'effective_write_authority_not_ready';
         $next = array();
-        if ( ! $build_ready ) $next[] = 'reconcile_source_and_certify_current_build';
+        if ( ! $build_ready ) $next[] = 'scoped' === $build_scope
+            ? 'reconcile_exact_material_dependencies' : 'reconcile_source_and_certify_current_build';
         if ( ! $candidate_match ) $next[] = 'bind_exact_current_package_candidate';
         if ( $missing_grants !== 0 ) $next[] = 'reconcile_source_reviewed_exact_grants';
         if ( ! $gate ) $next[] = 'enable_approved_production_mutation_gate';
@@ -109,7 +122,9 @@ final class MAD4B_Unified_Execution_Plan {
             'original_classification_sha256' => (string) ( $classification['classification_sha256'] ?? '' ),
             'readiness' => array( 'ability_registered' => true, 'write_mounted' => $mounted,
                 'governed_authority_effective' => $effective, 'production_gate_ready' => $gate,
-                'build_provenance_current' => $build_ready, 'candidate_binding_match' => $candidate_match,
+                'build_provenance_current' => $build_ready, 'build_verification_scope' => $build_scope,
+                'material_dependency_blockers' => $build_dependency_blockers,
+                'candidate_binding_match' => $candidate_match,
                 'exact_grants_existing' => $existing_grants, 'exact_grants_missing' => $missing_grants ),
             'blockers' => array_values( array_unique( $blockers ) ), 'next_steps' => $next,
             'execution_ready_to_prepare' => $mounted && $gate && $effective && empty( $blockers ),
