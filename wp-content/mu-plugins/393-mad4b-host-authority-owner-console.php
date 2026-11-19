@@ -104,6 +104,8 @@ final class MAD4B_Host_Authority_Owner_Console_V106 {
             'host_id'=>'','host_principal'=>'',
             'site_uuid'=>'','transport_id'=>'',
             'grant_id'=>'', 'request_id'=>'','request_status'=>'',
+            'request_expires_epoch'=>0,'request_expired'=>false,
+            'broker_job_exists'=>false,'broker_job_state'=>'',
             'phase'=>'CHECK_PREREQUISITES'
         );
         if (!$out['source_ready']) return $out;
@@ -154,10 +156,26 @@ final class MAD4B_Host_Authority_Owner_Console_V106 {
         if ($request) {
             $out['request_id']=(string)$request['request_id'];
             $out['request_status']=(string)($request['status']??'UNKNOWN');
+            $out['request_expires_epoch']=(int)($request['expires_epoch']??0);
+            if (class_exists('MAD4B_Central_VPS_Broker_V1',false)
+                && preg_match('/^[a-f0-9]{32}$/D',$out['request_id'])) {
+                $broker=get_option(MAD4B_Central_VPS_Broker_V1::JOB.
+                    $out['request_id'],false);
+                $out['broker_job_exists']=is_array($broker)
+                    &&($broker['job_id']??null)===$out['request_id'];
+                $out['broker_job_state']=$out['broker_job_exists']
+                    ?(string)($broker['state']??'UNKNOWN'):'';
+            }
+            $out['request_expired']=$out['request_expires_epoch']>0
+                &&$out['request_expires_epoch']<=time();
+            if($out['request_expired']&&!$out['broker_job_exists'])
+                $out['request_status']='EXPIRED_OWNER_REQUEST_RENEWAL_REQUIRED';
         }
         if ($out['anchor_revision']!==0
             ||$out['anchor_state']!=='MISSING_OR_INVALID') {
             $out['phase']='ANCHOR_STATE_REVIEW';
+        } elseif ($out['request_expired']&&!$out['broker_job_exists']) {
+            $out['phase']='OWNER_REQUEST_EXPIRED';
         } elseif ($out['request_id']!=='') {
             $out['phase']='ORIGINAL305_REQUEST_STAGED';
         } elseif ($out['grant_id']!=='') {
@@ -201,6 +219,10 @@ final class MAD4B_Host_Authority_Owner_Console_V106 {
             'grantId'=>$status['grant_id'],
             'requestId'=>$status['request_id'],
             'requestStatus'=>$status['request_status'],
+            'requestExpired'=>$status['request_expired'],
+            'requestExpiresEpoch'=>$status['request_expires_epoch'],
+            'brokerJobExists'=>$status['broker_job_exists'],
+            'brokerJobState'=>$status['broker_job_state'],
             'hostId'=>$status['host_id'],
             'hostPrincipal'=>$status['host_principal'],
             'siteUuid'=>$status['site_uuid'],
@@ -227,11 +249,13 @@ final class MAD4B_Host_Authority_Owner_Console_V106 {
         $s=self::snapshot();
         $owner=$s['owner_verified']===true;
         $grant=$owner && $s['grant_id']!=='';
-        $queued=$owner && $s['request_id']!=='';
+        $expired=$owner && $s['phase']==='OWNER_REQUEST_EXPIRED';
+        $queued=$owner && $s['request_id']!=='' && !$expired;
         $review=$s['phase']==='ANCHOR_STATE_REVIEW';
         $headline=$review?'Independent Anchor review required':
+            ($expired?'Owner Request expired — renewal required':
             ($queued?'Owner request accepted':($grant?'Bootstrap Grant completed':
-            ($owner?'Owner approval required':'Owner verification required')));
+            ($owner?'Owner approval required':'Owner verification required'))));
         $requestText=$s['request_status']==='ADMITTED_PENDING_INDEPENDENT_HOST_AUTHORITY'
             ? 'Accepted — awaiting independent Host verification'
             : (string)$s['request_status'];
@@ -276,11 +300,15 @@ final class MAD4B_Host_Authority_Owner_Console_V106 {
             .'<span class="ha-pill" id="mad4b-ha-overall-state">'.esc_html($headline).'</span></header>';
         echo '<section class="ha-panel" aria-labelledby="mad4b-ha-summary">';
         echo '<h2 id="mad4b-ha-summary">'.esc_html($headline).'</h2>';
-        echo '<p class="ha-muted">'.esc_html($queued
-            ? 'Original305 has accepted your Owner Request. Independent verification must finish before a Host Anchor can be issued.'
+        echo '<p class="ha-muted">'.esc_html($expired
+            ? 'The previous Owner Request expired before Original306 Broker Dispatch. The Bootstrap Grant remains valid. Submit the verified Root Plan again with a fresh owner confirmation; the page will dispatch it to the existing broker immediately.'
+            :($queued
+            ? ($s['broker_job_exists']
+                ? 'Original306 Broker Job is queued. Independent verification must finish before a Host Anchor can be issued.'
+                : 'Original305 accepted the request but Broker Dispatch is not confirmed. Dispatch the existing request before its window expires.')
             :($grant
                 ? 'The non-executing Bootstrap Grant is complete. The next step is to submit the verified Root Plan.'
-                :'Verify your owner session and active Original328 connection before proceeding.')).'</p>';
+                :'Verify your owner session and active Original328 connection before proceeding.'))).'</p>';
         echo '<div class="ha-grid">';
         foreach(array(
             'Company'=>'All Royal Egypt','Environment'=>'Staging','Host'=>'hosting-2',
@@ -298,7 +326,7 @@ final class MAD4B_Host_Authority_Owner_Console_V106 {
         foreach(array(
             array('connection','Connection verified',$owner?'Complete':'Verification needed',$owner,!$owner),
             array('grant','Bootstrap Grant',$grant?'Complete':'Owner approval',$grant,$owner&&!$grant),
-            array('request','Owner Request',$queued?'Accepted':'Not submitted',$queued,$grant&&!$queued),
+            array('request','Owner Request',$expired?'Expired — renew':($queued?'Accepted':'Not submitted'),$queued,$grant&&!$queued),
             array('verify','Independent verification','Original306 / 312 / 313',false,$queued)
         ) as $stage) {
             echo '<li id="mad4b-ha-step-'.esc_html($stage[0]).'" class="'
@@ -326,8 +354,10 @@ final class MAD4B_Host_Authority_Owner_Console_V106 {
 
             echo '<section class="ha-panel" id="mad4b-ha-command-panel"'
                 .((!$grant||$queued)?' hidden':'').'>';
-            echo '<h2>2. Submit verified Root Plan</h2>'
-                .'<p class="ha-muted">Bootstrap is complete. Submit an independently prepared Root Plan SHA-256 to queue an Owner Job, not an Anchor.</p>';
+            echo '<h2>2. '.($expired?'Renew expired Owner Request':'Submit verified Root Plan').'</h2>'
+                .'<p class="ha-muted">'.($expired
+                ?'The previous request expired without Broker Dispatch. The Bootstrap Grant is still complete. Confirm a fresh Owner Request using the original verified Root Plan. No Anchor will be issued from this page.'
+                :'Bootstrap is complete. Submit an independently prepared Root Plan SHA-256 to queue an Owner Job, not an Anchor. The page then dispatches the accepted request to Original306.').'</p>';
             echo '<p><label for="mad4b-ha-plan"><strong>Verified Original312 plan SHA-256</strong></label></p>';
             echo '<input class="ha-input" type="text" id="mad4b-ha-plan" inputmode="latin"'
                 .' minlength="64" maxlength="64" autocomplete="off" spellcheck="false"'
@@ -337,7 +367,8 @@ final class MAD4B_Host_Authority_Owner_Console_V106 {
             echo '<div class="ha-consent"><input type="checkbox" id="mad4b-ha-command-confirm">'
                 .'<label for="mad4b-ha-command-confirm">I authorize submitting this Root Plan as an Owner Request for All Royal Egypt / Staging only.</label></div>';
             echo '<div class="ha-actions"><button type="button" class="button button-primary"'
-                .' id="mad4b-ha-command" aria-label="Queue Original305 Owner Request" disabled>Submit Owner Request</button></div></section>';
+                .' id="mad4b-ha-command" aria-label="Queue Original305 Owner Request" disabled>'
+                .($expired?'Renew and dispatch Owner Request':'Submit and dispatch Owner Request').'</button></div></section>';
 
             echo '<section class="ha-panel" id="mad4b-ha-tracker"'
                 .(!$queued?' hidden':'').'>';
@@ -345,16 +376,27 @@ final class MAD4B_Host_Authority_Owner_Console_V106 {
             echo '<p>Your owner action is complete. Original305 accepted the job but has not issued a Host Anchor.</p>';
             echo '<p class="ha-muted">Request ID</p><p class="ha-id" id="mad4b-ha-request-id">'
                 .esc_html($queued?$s['request_id']:'').'</p>';
-            echo '<p id="mad4b-ha-tracker-status"><strong>Current status:</strong> '.esc_html($queued?$requestText:'Not submitted').'</p>';
+            echo '<p id="mad4b-ha-tracker-status"><strong>Current status:</strong> '
+                .esc_html($queued?($s['broker_job_exists']
+                    ?'Original306 Broker Job: '.$s['broker_job_state']
+                    :$requestText.' · dispatch not yet confirmed'):'Not submitted').'</p>';
             echo '<div class="ha-actions"><button type="button" class="button button-primary" id="mad4b-ha-refresh"'
                 .(!$queued?' disabled':'').'>Check latest status</button>'
                 .'<button type="button" class="button" id="mad4b-ha-copy"'
-                .(!$queued?' disabled':'').'>Copy request ID</button></div>';
+                .(!$queued?' disabled':'').'>Copy request ID</button>'
+                .'<button type="button" class="button" id="mad4b-ha-dispatch"'
+                .(!$queued||$s['broker_job_exists']?' hidden disabled':'')
+                .'>Retry Original306 Broker Dispatch</button></div>';
             echo '<p class="ha-fine" id="mad4b-ha-checked-at">Showing last stored request status.</p>';
+            if($expired)echo '<p class="ha-fine">Previous request ID: '
+                .esc_html($s['request_id']).' — expired without an Original306 Job.</p>';
             echo '<div class="ha-next"><h3>What happens next?</h3>'
                 .'<p class="ha-muted">Independent Original306 claim and Original312/313 verification are required. '
                 .'Anchor issuance must be checked separately using an authoritative readback.</p>'
                 .'<p class="ha-fine">Checking status is read-only and does not execute, sign, or approve anything.</p></div></section>';
+            if($expired) echo '<p class="ha-fine">Previous Owner Request expired without Broker Dispatch. '
+                .'A fresh, explicit owner confirmation is required. Previous request ID: '
+                .esc_html($s['request_id']).'</p>';
             echo '<p id="mad4b-ha-result" class="ha-note" role="status" aria-live="polite"'
                 .($queued?' hidden':'').'>'
                 .esc_html($grant?'Bootstrap Grant complete. Submit the verified Root Plan when authorized.':

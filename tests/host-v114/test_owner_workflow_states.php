@@ -34,5 +34,16 @@ if(!str_contains($html,'id="mad4b-ha-tracker">')
  || !str_contains($html,$requestId)
  || !str_contains($html,'"requestStatus":"ADMITTED_PENDING_INDEPENDENT_HOST_AUTHORITY"'))
  throw new RuntimeException('PENDING_REQUEST_TRACKER_NOT_PRIMARY');
-echo json_encode(['state'=>'PASS','checks'=>12,'read_only'=>true,
+$options[MAD4B_Central_SSH_Command_Intake_V1::REQUEST_PREFIX.$requestId]['expires_epoch']=time()-10;
+$expired=MAD4B_Host_Authority_Owner_Console_V106::snapshot();
+if($expired['phase']!=='OWNER_REQUEST_EXPIRED'
+ || $expired['request_status']!=='EXPIRED_OWNER_REQUEST_RENEWAL_REQUIRED'
+ || !$expired['request_expired'])throw new RuntimeException('EXPIRED_JOB_NOT_EXPLICIT');
+ob_start();MAD4B_Host_Authority_Owner_Console_V106::screen();$old=ob_get_clean();
+if(!str_contains($old,'Renew expired Owner Request')
+ || !str_contains($old,'id="mad4b-ha-command-panel">')
+ || !str_contains($old,'id="mad4b-ha-tracker" hidden')
+ || !str_contains($old,$requestId))
+ throw new RuntimeException('EXPIRED_OWNER_REQUEST_RENEWAL_NOT_SAFE');
+echo json_encode(['state'=>'PASS','checks'=>17,'read_only'=>true,
  'pending_primary'=>true,'no_duplicate_owner_consent'=>true]).PHP_EOL;

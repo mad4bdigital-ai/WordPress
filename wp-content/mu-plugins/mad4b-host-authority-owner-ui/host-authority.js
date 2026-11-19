@@ -11,6 +11,7 @@
   const commandButton = $("mad4b-ha-command");
   const refreshButton = $("mad4b-ha-refresh");
   const copyButton = $("mad4b-ha-copy");
+  const dispatchButton = $("mad4b-ha-dispatch");
   const planField = $("mad4b-ha-plan");
   const confirmation = $("mad4b-ha-owner-confirm");
   const commandConfirmation = $("mad4b-ha-command-confirm") || confirmation;
@@ -37,7 +38,14 @@
     !config.restBase.includes("//") && !config.restBase.includes(":8080");
 
   let grantId = validId(config.grantId) ? config.grantId : "";
-  let requestId = validId(config.requestId) ? config.requestId : "";
+  // Expired Owner Request is audit history only; it cannot be dispatched.
+  let requestExpired = config.requestExpired === true;
+  let requestId = !requestExpired && validId(config.requestId) ? config.requestId : "";
+  let requestExpiresEpoch = !requestExpired && Number.isInteger(config.requestExpiresEpoch)
+    ? config.requestExpiresEpoch : 0;
+  let brokerJobExists = !requestExpired && config.brokerJobExists === true;
+  let brokerJobState = !requestExpired && typeof config.brokerJobState === "string"
+    ? config.brokerJobState : "";
   let requestStatus = typeof config.requestStatus === "string"
     ? config.requestStatus : "ADMITTED_PENDING_INDEPENDENT_HOST_AUTHORITY";
   let busy = false;
@@ -46,6 +54,9 @@
   function humanStatus(status) {
     if (status === "ADMITTED_PENDING_INDEPENDENT_HOST_AUTHORITY") {
       return "Accepted — awaiting independent Host verification";
+    }
+    if (status === "EXPIRED_OWNER_REQUEST_RENEWAL_REQUIRED") {
+      return "Expired — a fresh Owner Request is required";
     }
     if (status === "QUEUED") return "Queued — awaiting independent processing";
     // Do not convert any Original305 status into an Anchor-issued claim.
@@ -64,9 +75,14 @@
 
   function trackerUpdate() {
     if (trackerId) trackerId.textContent = requestId;
-    if (trackerStatus) trackerStatus.textContent = "Current status: " + humanStatus(requestStatus);
-    if (headline) headline.textContent = requestId ? "Owner request accepted" :
-      grantId ? "Bootstrap Grant completed" : "Owner approval required";
+    if (trackerStatus) trackerStatus.textContent = brokerJobExists
+      ? "Original306 Broker Job: " + (brokerJobState || "QUEUED_FOR_VPS_BROKER_CLAIM")
+      : "Current status: " + humanStatus(requestStatus) +
+        " · Broker Dispatch not yet confirmed";
+    if (headline) headline.textContent = requestId
+      ? (brokerJobExists ? "Owner Request queued for Original306" : "Owner Request accepted — dispatch pending")
+      : requestExpired ? "Owner Request expired — renewal required"
+      : grantId ? "Bootstrap Grant completed" : "Owner approval required";
   }
 
   function step(id, state) {
@@ -88,18 +104,24 @@
       !validDigest(planField.value.trim().toLowerCase());
     if (refreshButton) refreshButton.disabled = busy || !hasRequest;
     if (copyButton) copyButton.disabled = !hasRequest;
+    if (dispatchButton) {
+      dispatchButton.hidden = !hasRequest || brokerJobExists;
+      dispatchButton.disabled = busy || !exactSource || !hasRequest ||
+        brokerJobExists || (requestExpiresEpoch > 0 &&
+          Math.floor(Date.now()/1000) >= requestExpiresEpoch);
+    }
     if (grantPanel) grantPanel.hidden = hasGrant || hasRequest;
     if (commandPanel) commandPanel.hidden = !hasGrant || hasRequest;
     if (trackerPanel) trackerPanel.hidden = !hasRequest;
     if (hasRequest && "hidden" in result) result.hidden = !lastError;
     step("grant", hasGrant ? "done" : "current");
     step("request", hasRequest ? "done" : hasGrant ? "current" : "");
-    step("verify", hasRequest ? "current" : "");
+    step("verify", brokerJobExists ? "current" : "");
     trackerUpdate();
   };
 
   function endpoint(action) {
-    if (!/^(grants|commands|commands\/[a-f0-9]{32})$/.test(action)) {
+    if (!/^(grants|commands|commands\/[a-f0-9]{32}|broker-dispatch|broker-jobs\/[a-f0-9]{32})$/.test(action)) {
       throw new Error("Unexpected Original305 route.");
     }
     const url = new URL(config.restBase + action, window.location.origin);
@@ -130,6 +152,31 @@
       throw new Error("Original305 rejected this request: " + code);
     }
     return body;
+  }
+
+  // This is the same authenticated Original305 owner session. Original306
+  // independently rechecks its own job admission and never grants host writes.
+  async function dispatchOriginal306() {
+    if (!validId(requestId) || brokerJobExists) return;
+    if (requestExpiresEpoch > 0 &&
+        Math.floor(Date.now()/1000) >= requestExpiresEpoch) {
+      throw new Error("Original305 request expired. Refresh to renew with fresh owner consent.");
+    }
+    const receipt = await original305("broker-dispatch", {request_id: requestId});
+    if (receipt.job_id !== requestId ||
+        receipt.company !== "all-royal-egypt" ||
+        receipt.environment !== "staging" ||
+        receipt.state !== "QUEUED_FOR_VPS_BROKER_CLAIM" ||
+        receipt.host_v2_bootstrap_only !== true ||
+        receipt.executed !== false ||
+        receipt.plan_sha256 !== planField.value.trim().toLowerCase()) {
+      throw new Error("Original306 returned unexpected Broker Job. Refresh to inspect signed state.");
+    }
+    brokerJobExists = true;
+    brokerJobState = receipt.state;
+    if (checkedAt) checkedAt.textContent =
+      "Original306 Broker Job queued. Awaiting separate signed claim and verification.";
+    trackerUpdate();
   }
 
   function randomHex32() {
@@ -217,11 +264,17 @@
     }
     requestId = accepted.request_id;
     requestStatus = accepted.status;
-    if (checkedAt) checkedAt.textContent = "Request submitted. Select Check latest status for a new readback.";
-    message("Original305 Owner Job admitted. This is NOT an issued Host Anchor. Request ID: " + requestId);
-    // Show the tracking panel immediately; never repeat an Owner action.
+    requestExpired = false;
+    requestExpiresEpoch = Number.isInteger(accepted.expires_epoch)
+      ? accepted.expires_epoch : 0;
+    brokerJobExists = false;
+    // Persist the accepted request in the UI BEFORE dispatch, so a failed
+    // broker call never causes a second owner POST or silent duplicate.
     setState();
     if (trackerTitle && typeof trackerTitle.focus === "function") trackerTitle.focus();
+    message("Owner Request accepted. Submitting it to Original306 Broker…");
+    await dispatchOriginal306();
+    message("Owner Request and Original306 Broker Job queued. Original312/313 are still pending; NO Host Anchor was issued.");
   }));
 
   if (refreshButton) refreshButton.addEventListener("click", () => execute(async () => {
@@ -231,12 +284,43 @@
       throw new Error("Original305 request ID does not match the selected request.");
     }
     requestStatus = typeof receipt.status === "string" ? receipt.status : "UNKNOWN";
+    if (Number.isInteger(receipt.expires_epoch)) {
+      requestExpiresEpoch = receipt.expires_epoch;
+    }
+    if (!brokerJobExists && validId(requestId)) {
+      try {
+        const job = await original305("broker-jobs/" + requestId);
+        if (job.job_id === requestId && job.company === "all-royal-egypt" &&
+            job.environment === "staging" &&
+            job.state === "QUEUED_FOR_VPS_BROKER_CLAIM") {
+          brokerJobExists = true;
+          brokerJobState = job.state;
+        } else if (job.job_id === requestId &&
+                   typeof job.state === "string") {
+          brokerJobExists = true;
+          brokerJobState = job.state;
+        }
+      } catch (err) {
+        // Original305 readback remains available; Broker status is unconfirmed.
+      }
+    }
     lastError = false;
     if ("hidden" in result) result.hidden = true;
     trackerUpdate();
     if (checkedAt) checkedAt.textContent = "Last checked: " +
       new Date().toLocaleTimeString() + " · Original305 status only, not an Anchor receipt.";
     // Keep the active tracker visible instead of replacing it with a raw server string.
+  }));
+
+  if (dispatchButton) dispatchButton.addEventListener("click", () => execute(async () => {
+    if (requestExpiresEpoch > 0 &&
+        Math.floor(Date.now()/1000) >= requestExpiresEpoch) {
+      throw new Error("Original305 request window expired. Reload and renew with owner consent.");
+    }
+    if (brokerJobExists) return;
+    message("Retrying Original306 dispatch for the same accepted request; no new Owner Request.");
+    await dispatchOriginal306();
+    message("Original306 Broker Job queued. Awaiting independent signed Claim.");
   }));
 
   if (copyButton) copyButton.addEventListener("click", async () => {
@@ -262,7 +346,9 @@
 
   setState();
   if (!requestId && grantId) {
-    message("Bootstrap Grant completed. Enter the verified Root Plan and confirm submission.");
+    message(requestExpired
+      ? "Previous Owner Request expired before Original306 dispatch. Enter the original verified Root Plan SHA-256 and explicitly authorize a fresh request."
+      : "Bootstrap Grant completed. Enter the verified Root Plan and confirm submission.");
   } else if (!requestId && !grantId && exactSource) {
     message(confirmation.checked
       ? "Owner controls ready. Approve Bootstrap Grant is available."
