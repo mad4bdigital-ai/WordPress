@@ -50,3 +50,10 @@ Review-only source candidate preserving the live Wayfatours accommodation pricin
 - Ten independent source-drift fixtures FAILED in sandbox; kept quarantined and still require source review, not authorized as standalone.
 - The source Skills catalog read-only test was corrected to its current contract: enrolled catalog stays readable even without the editor feature flag.
 - CI remains non-authorizing pending unrelated source baseline regressions, required checks and review.
+
+## Readiness source parity recovery
+
+- Live Tours.dev and Wayfatours already have the newer 020-mad4b-stay-commercial-readiness.php.
+- This version primes bounded Post and Property meta and defers edit-link generation until paginated results are selected.
+- It was reconciled into this candidate from the matching live sources instead of replacing either site with an older Git copy.
+- Runtime status is a read-only preview; no booking or price activation is implied.

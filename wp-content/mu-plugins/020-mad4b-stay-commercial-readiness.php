@@ -59,7 +59,7 @@ final class MAD4B_Stay_Commercial_Readiness_V1 {
         foreach($rows as $row)$out[(int)$row['unit_id']][]=(int)$row['property_id'];
         return $out;
     }
-    public static function evaluate(int $unit,array $parents):array {
+    public static function evaluate(int $unit,array $parents,bool $withLinks=false):array {
         $status=get_post_status($unit);
         $parentIds=array_values(array_unique(array_map('intval',$parents)));
         $property=count($parentIds)===1?$parentIds[0]:0;
@@ -108,8 +108,9 @@ final class MAD4B_Stay_Commercial_Readiness_V1 {
             'inventory_set'=>$inventory>0,'unit_media_present'=>$hasImage,
             'unit_readiness'=>$readiness,'unit_available'=>$available,
             'unit_direct'=>$unitDirect,'property_direct'=>$propertyDirect,
-            'edit_unit_url'=>current_user_can('edit_post',$unit)?get_edit_post_link($unit,''):null,
-            'edit_property_url'=>$property&&current_user_can('edit_post',$property)
+            'edit_unit_url'=>$withLinks && current_user_can('edit_post',$unit)
+                ?get_edit_post_link($unit,''):null,
+            'edit_property_url'=>$withLinks && $property && current_user_can('edit_post',$property)
                 ?get_edit_post_link($property,''):null,
         ];
     }
@@ -123,10 +124,23 @@ final class MAD4B_Stay_Commercial_Readiness_V1 {
             ['options'=>['min_range'=>1,'max_range'=>100]]);
         if($page===false)return new WP_Error('stay_readiness_page_invalid');
         $posts=get_posts(['post_type'=>'units','post_status'=>['publish','draft'],
-            'posts_per_page'=>2001,'fields'=>'ids','orderby'=>'ID','order'=>'DESC',
+            'posts_per_page'=>2001,'fields'=>'all','orderby'=>'ID','order'=>'DESC',
             'suppress_filters'=>true]);
         if(count($posts)>2000)return new WP_Error('stay_readiness_limit_exceeded');
+        $unitIds=array_map(static function($post){return (int)$post->ID;},$posts);
+        if($unitIds)update_meta_cache('post',$unitIds);
         $rels=self::links();
+        // Prime Property objects and all their meta in a few bounded reads.
+        $parentIds=[];
+        foreach($rels as $unitId=>$parents)if(in_array((int)$unitId,$unitIds,true))
+            foreach($parents as $parentId)$parentIds[(int)$parentId]=1;
+        $propertyIds=array_keys($parentIds);
+        if($propertyIds){
+            get_posts(['post_type'=>'properties','post_status'=>['publish','draft'],
+                'post__in'=>$propertyIds,'posts_per_page'=>count($propertyIds),
+                'fields'=>'all','suppress_filters'=>true]);
+            update_meta_cache('post',$propertyIds);
+        }
         $all=[];$summary=[
             'total'=>0,'published'=>0,'draft_published_property'=>0,
             'draft_draft_property'=>0,'qa'=>0,'catalog_ready_for_review'=>0,
@@ -134,8 +148,8 @@ final class MAD4B_Stay_Commercial_Readiness_V1 {
             'missing_inventory'=>0,'direct_sell_configured'=>0,
             'commercially_ready'=>0,
         ];
-        foreach($posts as $raw){
-            $id=(int)$raw;
+        foreach($posts as $post){
+            $id=(int)$post->ID;
             if(!current_user_can('edit_post',$id))continue;
             $row=self::evaluate($id,$rels[$id]??[]);
             if($row['property_id'] && !current_user_can('edit_post',$row['property_id']))
@@ -162,6 +176,14 @@ final class MAD4B_Stay_Commercial_Readiness_V1 {
             $all[]=$row;
         }
         $found=count($all);$slice=array_slice($all,($page-1)*self::LIMIT,self::LIMIT);
+        foreach($slice as &$row){
+            $row['edit_unit_url']=current_user_can('edit_post',$row['unit_id'])
+                ?get_edit_post_link($row['unit_id'],''):null;
+            $row['edit_property_url']=$row['property_id'] &&
+                current_user_can('edit_post',$row['property_id'])
+                ?get_edit_post_link($row['property_id'],''):null;
+        }
+        unset($row);
         $supplierPolicy=class_exists('MAD4B_Stay_Secondary_Self_Supplier_V1',false)
             ?MAD4B_Stay_Secondary_Self_Supplier_V1::status():null;
         $supplierConflict=!is_array($supplierPolicy)
@@ -189,11 +211,11 @@ final class MAD4B_Stay_Commercial_Readiness_V1 {
             if(isset($input[$key]))$payload[$key]=$input[$key];
         if(!class_exists('MAD4B_Stay_Secondary_Self_Supplier_V1'))
             return ['status'=>'blocked','reason'=>'supplier_router_missing',
-                'checkout_ready'=>false,'mutation_performed'=>false];
+                'checkout_ready'=>false,'mutation_performed'=>false,'provider'=>'self'];
         $resolution=MAD4B_Stay_Secondary_Self_Supplier_V1::resolve($payload);
         if(is_wp_error($resolution))return ['status'=>'blocked',
             'reason'=>$resolution->get_error_code(),
-            'checkout_ready'=>false,'mutation_performed'=>false];
+            'checkout_ready'=>false,'mutation_performed'=>false,'provider'=>'self'];
         $quote=$resolution['quote'];
         $selected=$quote['selected_source']??null;
         $receipt=['status'=>'blocked','reason'=>'no_eligible_company_rate',
