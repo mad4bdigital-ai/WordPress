@@ -57,13 +57,26 @@ final class MAD4B_Pricing_Workbench {
     'source'=>$source,'settings'=>$settings,'alerts'=>$alerts,'checkout_ready'=>false,
     'commercially_verified'=>false];
  }
+ static function permitted():bool {
+  return current_user_can('manage_woocommerce') ||
+    (class_exists('MAD4B_Admin_Surface_Registry_V1',false)
+     && MAD4B_Admin_Surface_Registry_V1::allowed('mad4b-pricing-workbench','read'));
+ }
  static function menu(){
-  add_submenu_page('woocommerce','Pricing Workbench','Pricing Workbench','manage_woocommerce',
+  if(!self::permitted())return;
+  $native=current_user_can('manage_woocommerce');
+  $parent=$native?'woocommerce':
+    (class_exists('MAD4B_Company_Workspaces_V1',false)
+     ? MAD4B_Company_Workspaces_V1::menu_parent():'mad4b-company-workspaces');
+  $cap=$native?'manage_woocommerce':'commerce_manage_pricing';
+  add_submenu_page($parent,'Pricing Workbench','Pricing Workbench',$cap,
     'mad4b-pricing-workbench',[self::class,'page']);
  }
  static function page(){
-  if(!current_user_can('manage_woocommerce'))wp_die('Forbidden');
+  if(!self::permitted())wp_die('Pricing inspection permission required.');
   $id=absint($_GET['product_id']??0);
+  if($id>0 && !current_user_can('manage_options') && !current_user_can('edit_post',$id))
+    wp_die('Product read scope denied.');
   echo '<div class="wrap"><h1>Pricing Workbench</h1><p>Site-scoped source inspection only. No financial authority or writes.</p>';
   echo '<p><a class="button" href="'.esc_url(admin_url('admin.php?page=mad4b-pricing-simulation-presets')).'">Operational Simulation Presets (read-only)</a></p>';
   echo '<form><input type="hidden" name="page" value="mad4b-pricing-workbench">';
@@ -82,7 +95,7 @@ final class MAD4B_Pricing_Workbench {
   echo '<p><strong>Preview-only:</strong> this page cannot publish or authorize prices, markets, supplier inventory or orders.</p></div>';
  }
 }
-add_action('admin_menu',['MAD4B_Pricing_Workbench','menu']);
+add_action('admin_menu',['MAD4B_Pricing_Workbench','menu'],800);
 /** Strict native Content Readiness source. No status/authorization fields. */
 function mad4b_pricing_workbench_alerts($previous,$cfg){
  if(!is_array($previous))return $previous;

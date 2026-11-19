@@ -15,7 +15,7 @@ final class MAD4B_JetEngine_Pricing_Controls_Access_V1 {
 
     public static function authorized(): bool {
         return current_user_can(self::CAPABILITY) &&
-            current_user_can('manage_woocommerce');
+            (current_user_can('manage_woocommerce') || (current_user_can('mad4b_manage_company_operations') && current_user_can('mad4b_work_company_tasks')));
     }
     public static function boot(): void {
         if (!is_admin()) return;

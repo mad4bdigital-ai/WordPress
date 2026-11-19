@@ -1,0 +1,13 @@
+--- a/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php
++++ b/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php
+@@ -759,8 +759,10 @@
+ 		if ( is_wp_error( $publish_at ) ) return $publish_at;
+         // Reject an unidentified WP-CLI / cron actor BEFORE opening a transaction.
+         // The final integrity fence remains mandatory after all native writes.
+         if ( ( ! class_exists( 'MAD4B_SCP_Policy' ) || true !== MAD4B_SCP_Policy::can_mutate() )
++            && !( class_exists('MAD4B_Company_Content_Job_Draft_V1',false)
++                && MAD4B_Company_Content_Job_Draft_V1::admitted($input,$scope) )
+             && !( class_exists( 'MAD4B_Native_Origin_Content_Jobs_V1', false )
+                 && MAD4B_Native_Origin_Content_Jobs_V1::admitted_for( $input, $scope ) ) ) {
+             return new WP_Error( 'mad4b_content_job_authorized_actor_required',
+                 'A verified administrator or governed NHI is required to create ContentJobs.',

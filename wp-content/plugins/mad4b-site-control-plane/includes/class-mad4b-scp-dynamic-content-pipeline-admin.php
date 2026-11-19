@@ -12,13 +12,23 @@ final class MAD4B_SCP_Dynamic_Content_Pipeline_Admin {
 		add_action('admin_post_'.self::ACTION,array(__CLASS__,'save'));
 	}
 
+	private static function can_read():bool {
+		return current_user_can('manage_options') ||
+			(class_exists('MAD4B_Admin_Surface_Registry_V1',false)
+			 && MAD4B_Admin_Surface_Registry_V1::allowed(self::PAGE,'read'));
+	}
+
 	public static function menu(){
-		add_submenu_page(
-			MAD4B_SCP_Admin_UI::PAGE_SLUG,
+		$admin=current_user_can('manage_options');
+		if(!self::can_read())return;
+		$parent=$admin?MAD4B_SCP_Admin_UI::PAGE_SLUG:
+			(class_exists('MAD4B_Company_Workspaces_V1',false)?
+			 MAD4B_Company_Workspaces_V1::menu_parent():MAD4B_SCP_Admin_UI::PAGE_SLUG);
+		$cap=$admin?'manage_options':'mad4b_manage_company_operations';
+		add_submenu_page($parent,
 			__('Content Pipeline','mad4b-site-control-plane'),
 			__('Content Pipeline','mad4b-site-control-plane'),
-			'manage_options',self::PAGE,array(__CLASS__,'render')
-		);
+			$cap,self::PAGE,array(__CLASS__,'render'));
 	}
 
 	private static function error_redirect( $code ) {
@@ -72,8 +82,22 @@ final class MAD4B_SCP_Dynamic_Content_Pipeline_Admin {
 	}
 
 	public static function render(){
-		if(!current_user_can('manage_options'))wp_die(esc_html__('Administrator capability is required.','mad4b-site-control-plane'));
+		if(!self::can_read())wp_die(esc_html__('Company content read access required.','mad4b-site-control-plane'));
 		$cfg=MAD4B_SCP_Dynamic_Content_Pipeline::effective();
+		if(!current_user_can('manage_options')){
+			echo '<div class="wrap"><h1>Content Pipeline — read-only</h1>';
+			echo '<p>Company operations visibility. Editing stages, global sources and publication policy remains restricted to the original administrator.</p>';
+			echo '<p>Revision: <code>'.esc_html((string)($cfg['revision']??'')).'</code></p>';
+			echo '<table class="widefat striped"><thead><tr><th>Stage</th><th>Enabled</th><th>Phase</th></tr></thead><tbody>';
+			foreach(array_slice((array)($cfg['stages']??[]),0,80) as $stage){
+				if(!is_array($stage))continue;
+				echo '<tr><td>'.esc_html((string)($stage['id']??'')).'</td><td>'.
+					(!empty($stage['enabled'])?'Yes':'No').'</td><td>'.
+					esc_html((string)($stage['phase']??'')).'</td></tr>';
+			}
+			echo '</tbody></table></div>';
+			return;
+		}
 		MAD4B_SCP_Admin_Experience::styles();
 		echo '<div class="wrap mad4b-scp-admin-page"><h1>'.esc_html__('Dynamic Content Pipeline','mad4b-site-control-plane').'</h1>';
 		echo '<div class="mad4b-scp-panel"><h2>'.esc_html__('Validation prerequisites','mad4b-site-control-plane').'</h2><p>'.esc_html__('Source checks need approved context, SEO checks need a certified provider, and frontend checks need browser acceptance evidence. Selecting a stage does not complete these prerequisites.','mad4b-site-control-plane').'</p><p>';

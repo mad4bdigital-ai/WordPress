@@ -328,6 +328,13 @@ final class MAD4B_SCP_Content_Jobs {
 	}
 
 	private static function actor() {
+		if ( class_exists( 'MAD4B_SCP_Host_Agent_Bridge', false )
+			&& ( MAD4B_SCP_Host_Agent_Bridge::active_for( 'mad4b/content-job-create' )
+				|| MAD4B_SCP_Host_Agent_Bridge::active_for( 'mad4b/content-job-transition' ) ) ) {
+			$host = MAD4B_SCP_Host_Agent_Bridge::agent();
+			if ( is_array( $host ) && ! empty( $host['public_id'] ) )
+				return array( 'type' => 'nhi', 'id' => (string) $host['public_id'], 'nhi' => (string) $host['public_id'] );
+		}
         if ( class_exists( 'MAD4B_Native_Origin_Content_Jobs_V1', false )
             && MAD4B_Native_Origin_Content_Jobs_V1::is_admitted() )
             return MAD4B_Native_Origin_Content_Jobs_V1::actor();
@@ -753,6 +760,8 @@ final class MAD4B_SCP_Content_Jobs {
         // Reject an unidentified WP-CLI / cron actor BEFORE opening a transaction.
         // The final integrity fence remains mandatory after all native writes.
         if ( ( ! class_exists( 'MAD4B_SCP_Policy' ) || true !== MAD4B_SCP_Policy::can_mutate() )
+            && !( class_exists('MAD4B_Company_Content_Job_Draft_V1',false)
+                && MAD4B_Company_Content_Job_Draft_V1::admitted($input,$scope) )
             && !( class_exists( 'MAD4B_Native_Origin_Content_Jobs_V1', false )
                 && MAD4B_Native_Origin_Content_Jobs_V1::admitted_for( $input, $scope ) ) ) {
             return new WP_Error( 'mad4b_content_job_authorized_actor_required',
