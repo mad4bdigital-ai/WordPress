@@ -17,7 +17,6 @@ import importlib.util
 import json
 import os
 from pathlib import Path
-import secrets
 import stat
 import sys
 import time
@@ -30,6 +29,8 @@ V95=REGISTRY/"host-anchor-v95/original306_claim_only.py"
 V95_SHA="ebb3fb1efe58a1506516b7d8b76f2ff4281b3f2b0c0ee8361b606dcfa3240b64"
 V86=REGISTRY/"host-anchor-v86/original306_typed_claim.py"
 V86_SHA="84d209b40144fe04fe19d7db3ea869e7335c06694c76d286bf0b2f3e26d68b5f"
+PLAN=REGISTRY/"host-anchor-v2/operation_plan_contract.py"
+PLAN_SHA="8438e3874905d75568bfc1c5c78bf5769a982834cae06a68d6aa111d080f6130"
 V89=ROOT/"host-authority-v89/first_anchor_original312.py"
 V89_SHA="78d435b833cd91e409d2753a9086064266263eec79e431a3ffacbf7acce299f4"
 V99=ROOT/"host-authority-v99/original313_postwrite_transaction.py"
@@ -56,14 +57,27 @@ def pinned(path:Path,expected:str,name:str):
     spec.loader.exec_module(source)
     return source
 
-def signed_enrollment(*,claimed,verified_owner,verified_claim,
-                      signer,independent_pub,now,nonce=None,enrollment_id=None):
+def signed_enrollment(*,claimed,plan,verified_owner,verified_claim,
+                      signer,independent_pub,now):
     """Pure testable final envelope. Never accept this as an authorization:
     first_party_originals() is the exclusive live call path.
     """
-    need(type(claimed) is dict
+    need(type(claimed) is dict and type(plan) is dict
          and type(verified_owner) is dict and type(verified_claim) is dict,
          "ORIGINAL313_FIRST_OWNER_ORIGINAL_EVIDENCE_REQUIRED")
+    # Original312 reads enrollment_id and enrollment_nonce from the *already
+    # prepared* immutable Root plan. Never mint a second pair when signing.
+    verifier=pinned(PLAN,PLAN_SHA,"_original313_first_owner_prepared_plan")
+    verified_plan=verifier.verify_plan(plan,OPERATION)
+    need(verified_plan["first_anchor_bootstrap"] is True
+         and plan["plan_sha256"]==claimed.get("plan_sha256")
+         and plan.get("company")==claimed.get("company")
+         and plan.get("environment")==claimed.get("environment")
+         and plan.get("site_uuid")==claimed.get("site_uuid")
+         and plan.get("origin")==claimed.get("origin")
+         and plan.get("target_host_id")==claimed.get("target_host_id")
+         and plan.get("ssh_principal")==claimed.get("target_ssh_principal"),
+         "ORIGINAL313_FIRST_OWNER_SIGNED_ROOT_PLAN_JOB_MISMATCH")
     need(verified_owner.get("state")==
              "VERIFIED_ORIGINAL305_OWNER_BOOTSTRAP__CLAIM_ONLY"
          and verified_owner.get("execution_authorized") is False
@@ -102,12 +116,12 @@ def signed_enrollment(*,claimed,verified_owner,verified_claim,
     issue=now
     expires=min(now+120,claimed["expires_epoch"]-10)
     need(expires>=now+25,"ORIGINAL313_FIRST_OWNER_ENROLLMENT_WINDOW_TOO_SHORT")
-    n=secrets.token_hex(16) if nonce is None else nonce
-    enrollment=secrets.token_hex(16) if enrollment_id is None else enrollment_id
+    n=plan["enrollment_nonce"]
+    enrollment=plan["enrollment_id"]
     v89=pinned(V89,V89_SHA,"_original313_first_owner_verifier")
-    for label,value in (("nonce",n),("enrollment_id",enrollment)):
-        need(type(value) is str and v89.HEX32.fullmatch(value) is not None,
-             "ORIGINAL313_FIRST_OWNER_NONCE_OR_ID_INVALID:"+label)
+    need(v89.HEX32.fullmatch(n) is not None
+         and v89.HEX32.fullmatch(enrollment) is not None,
+         "ORIGINAL313_FIRST_OWNER_PLAN_NONCE_OR_ID_INVALID")
     fields={
        "contract":v89.CONTRACT,"source":v89.SOURCE,
        "company":claimed["company"],"environment":claimed["environment"],
@@ -232,8 +246,9 @@ def first_party_originals(index,queued,pending,claimed,claim,broker_row,
              and store.read(store.path("transactions",claimed["job_id"]+".json")) is None,
              "ORIGINAL313_FIRST_OWNER_ENROLLMENT_ALREADY_RESERVED")
         # Sign *inside* Root's exclusive lock; no state change before this.
-        signed=signed_enrollment(claimed=claimed,verified_owner=owner,
-              verified_claim=verified,signer=key,independent_pub=pub,now=instant)
+        signed=signed_enrollment(claimed=claimed,plan=plan,
+              verified_owner=owner,verified_claim=verified,
+              signer=key,independent_pub=pub,now=instant)
         store.write_new(scope,signed)
     finally:
         fcntl.flock(fd,fcntl.LOCK_UN);os.close(fd)

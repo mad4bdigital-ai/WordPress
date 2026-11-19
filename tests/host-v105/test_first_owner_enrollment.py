@@ -6,6 +6,7 @@ import importlib.util
 from pathlib import Path
 import subprocess
 import unittest
+from types import SimpleNamespace
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import Encoding,PublicFormat
 from cryptography.exceptions import InvalidSignature
@@ -14,6 +15,7 @@ source=Path(__file__).resolve().parents[2]/"ops/host-anchor-v105/original313_fir
 sp=importlib.util.spec_from_file_location("host_v105_pure_signer",source)
 m=importlib.util.module_from_spec(sp);sp.loader.exec_module(m)
 v89=m.pinned(m.V89,m.V89_SHA,"v105_test_v89")
+plan_contract=m.pinned(m.PLAN,m.PLAN_SHA,"v107_test_pinned_plan")
 
 class SignedFirstOwnerEnrollment(unittest.TestCase):
  def setUp(self):
@@ -33,6 +35,22 @@ class SignedFirstOwnerEnrollment(unittest.TestCase):
     "state":"BROKER_CLAIMED_PENDING_INDEPENDENT_HOST_AUTHORITY",
     "host_v2_bootstrap_only":True,"authority_mode":"bootstrap",
     "executed":False,"expires_epoch":self.t+120}
+  self.plan={
+   "contract":"mad4b.host-authority.anchor-issue.plan.v2",
+   "operation_id":m.OPERATION,
+   "company":self.j["company"],"environment":self.j["environment"],
+   "site_uuid":self.j["site_uuid"],"origin":self.j["origin"],
+   "target_host_id":self.j["target_host_id"],
+   "ssh_principal":self.j["target_ssh_principal"],
+   "policy_sha256":"4"*64,"profile_digest":"5"*64,
+   "host_key_sha256":"6"*64,"ssh_root_sha256":"7"*64,
+   "registry_sha256":"8"*64,
+   "authority_mode":"bootstrap","grant_revision":0,
+   "anchor_revision":0,"requested_anchor_revision":1,
+   "enrollment_id":"e"*32,"enrollment_nonce":"d"*32}
+  self.plan["plan_sha256"]=hashlib.sha256(plan_contract.canonical(
+   self.plan)).hexdigest()
+  self.j["plan_sha256"]=self.plan["plan_sha256"]
   self.owner={
     "state":"VERIFIED_ORIGINAL305_OWNER_BOOTSTRAP__CLAIM_ONLY",
     "job_id":self.j["job_id"],"plan_sha256":self.j["plan_sha256"],
@@ -44,9 +62,9 @@ class SignedFirstOwnerEnrollment(unittest.TestCase):
     "job_id":self.j["job_id"],"plan_sha256":self.j["plan_sha256"],
     "command_sha256":self.j["command_sha256"]}
  def sign(self):
-  return m.signed_enrollment(claimed=self.j,
+  return m.signed_enrollment(claimed=self.j,plan=self.plan,
       verified_owner=self.owner,verified_claim=self.claim,signer=self.key,
-      independent_pub=self.pub,now=self.t,nonce="d"*32,enrollment_id="e"*32)
+      independent_pub=self.pub,now=self.t)
  def test_signed_enrollment_matches_exact_original_v89(self):
   result=self.sign()
   self.assertEqual(list(result),list(v89.SIGNED_FIELDS)+["signature"])
@@ -54,8 +72,28 @@ class SignedFirstOwnerEnrollment(unittest.TestCase):
   self.assertTrue(result["owner_scope_authorized"])
   self.assertTrue(result["independent_issuer_verified"])
   self.assertEqual(result["expires_epoch"],self.t+110)
+  self.assertEqual(result["enrollment_id"],self.plan["enrollment_id"])
+  self.assertEqual(result["nonce"],self.plan["enrollment_nonce"])
+  self.assertEqual(result["plan_sha256"],self.plan["plan_sha256"])
   self.assertTrue(v89.verify_enrollment(result,self.pub,self.j,now=self.t)
                   ["independent_enrollment_signature_verified"])
+ def test_original312_bootstrap_uses_same_enrollment_identity(self):
+  enrollment=self.sign()
+  verified=v89.verify_enrollment(enrollment,self.pub,self.j,now=self.t)
+  broker=Ed25519PrivateKey.from_private_bytes(bytes.fromhex("44"*32))
+  brokerpub=broker.public_key().public_bytes(Encoding.Raw,PublicFormat.Raw)
+  other=Ed25519PrivateKey.generate()
+  otherpub=other.public_key().public_bytes(Encoding.Raw,PublicFormat.Raw)
+  index=SimpleNamespace(host_anchor_312_public_key=brokerpub,
+                        independent_verifier_public_key=self.pub,
+                        host_resource_312_public_key=otherpub)
+  bootstrap=v89.assemble_signed_bootstrap(
+      index,self.j,self.plan,verified,broker,now=self.t)
+  self.assertEqual(bootstrap["enrollment_id"],self.plan["enrollment_id"])
+  self.assertEqual(bootstrap["nonce"],self.plan["enrollment_nonce"])
+  self.assertEqual(bootstrap["plan_sha256"],self.plan["plan_sha256"])
+  self.assertEqual(bootstrap["command_sha256"],self.j["command_sha256"])
+  self.assertNotIn("anchor",bootstrap)
  def test_forged_signature_refused_by_original_v89(self):
   result=self.sign()
   result["signature"]=base64.b64encode(bytes(64)).decode()
@@ -89,10 +127,24 @@ class SignedFirstOwnerEnrollment(unittest.TestCase):
   self.owner["execution_authorized"]=True
   with self.assertRaises(m.EnrollmentHeld):self.sign()
  def test_nonce_collision_shape_denied(self):
-  with self.assertRaises(m.EnrollmentHeld):
-   m.signed_enrollment(claimed=self.j,verified_owner=self.owner,
-       verified_claim=self.claim,signer=self.key,
-       independent_pub=self.pub,now=self.t,nonce="z")
+  self.plan["enrollment_nonce"]="z"
+  with self.assertRaises(ValueError):self.sign()
+ def test_immutable_plan_body_mismatch_denied(self):
+  self.plan["policy_sha256"]="0"*64
+  with self.assertRaises(ValueError):self.sign()
+ def test_plan_enrollment_id_no_second_random_value(self):
+  self.plan["enrollment_id"]="b"*32
+  self.plan["plan_sha256"]=hashlib.sha256(plan_contract.canonical(
+   {k:v for k,v in self.plan.items() if k!="plan_sha256"})).hexdigest()
+  self.j["plan_sha256"]=self.plan["plan_sha256"]
+  self.owner["plan_sha256"]=self.plan["plan_sha256"]
+  self.claim["plan_sha256"]=self.plan["plan_sha256"]
+  self.assertEqual(self.sign()["enrollment_id"],"b"*32)
+ def test_signed_plan_id_changed_after_job_queued_denied(self):
+  self.plan["enrollment_id"]="b"*32
+  self.plan["plan_sha256"]=hashlib.sha256(plan_contract.canonical(
+   {k:v for k,v in self.plan.items() if k!="plan_sha256"})).hexdigest()
+  with self.assertRaises(m.EnrollmentHeld):self.sign()
  def test_first_party_root_method_accepts_no_caller_store(self):
   with self.assertRaises(m.EnrollmentHeld):
    m.first_party_originals(None,{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {},
