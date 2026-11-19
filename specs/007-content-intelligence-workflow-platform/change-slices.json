@@ -1,11 +1,11 @@
 {
   "contract": "mad4b.change-slices.v2",
   "authorizing": false,
-  "reviewed_base_sha": "26db55faf4138082669005a2eb040fda11aef09a",
+  "reviewed_base_sha": "a9e3b18afb94652c309fc0be5a10222feed61a1c",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 16,
-  "changed_paths_sha256": "d646b119d432c7e1eb8a8f88804f2eb4e2683dd3c3a67082fd83fbd13b8f1435",
+  "changed_file_count": 25,
+  "changed_paths_sha256": "d828092479d750f1e97410e29f7f9fb2d590925468fe4f9672e18f4eb04f8613",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -365,6 +365,15 @@
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-authority-review-source-only-runtime.php"
+      ]
+    },
+    {
+      "id": "content-quality-dependencies-original-source-regression",
+      "semantic_unit": "Preserve the original PR907 content-quality source-only compatibility regression alongside the dormant scheduler source closure.",
+      "revert_boundary": "Remove this dedicated eight-file source-evidence regression only with its reviewed content-quality dependency closure; leave the parent plugin Bootstrap, owner grants and runtime authority untouched.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-content-quality-dependencies-source-only-runtime.php"
       ]
     }
   ]
