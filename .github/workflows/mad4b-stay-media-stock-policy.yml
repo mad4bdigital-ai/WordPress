@@ -1,0 +1,65 @@
+name: MAD4B Stay Unit Media + Unmanaged Stock Contract
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/mu-plugins/020-mad4b-stay-commercial-readiness.php'
+      - 'wp-content/mu-plugins/021-mad4b-stay-unmanaged-stock.php'
+      - 'wp-content/mu-plugins/mad4b-stay-readiness/admin.js'
+      - 'scripts/mad4b-stay-unit-photo-curation-cli.php'
+      - 'scripts/mad4b-stay-unit-photo-rollback-cli.php'
+      - 'tests/stay-unmanaged-stock-policy-contract.php'
+      - 'tests/stay-commercial-readiness-contract.php'
+      - 'tests/stay-owner-approved-room-media-contract.py'
+      - '.github/workflows/mad4b-stay-media-stock-policy.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'wp-content/mu-plugins/020-mad4b-stay-commercial-readiness.php'
+      - 'wp-content/mu-plugins/021-mad4b-stay-unmanaged-stock.php'
+      - 'wp-content/mu-plugins/mad4b-stay-readiness/admin.js'
+      - 'scripts/mad4b-stay-unit-photo-curation-cli.php'
+      - 'scripts/mad4b-stay-unit-photo-rollback-cli.php'
+      - 'tests/stay-unmanaged-stock-policy-contract.php'
+      - 'tests/stay-commercial-readiness-contract.php'
+      - 'tests/stay-owner-approved-room-media-contract.py'
+      - '.github/workflows/mad4b-stay-media-stock-policy.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-stay-media-stock-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    name: Unit photo & stock scope (PHP ${{ matrix.php }})
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3', '8.5']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Verify exact head checkout
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Lint native policy and bounded media migration
+        run: |
+          php -l wp-content/mu-plugins/020-mad4b-stay-commercial-readiness.php
+          php -l wp-content/mu-plugins/021-mad4b-stay-unmanaged-stock.php
+          php -l scripts/mad4b-stay-unit-photo-curation-cli.php
+          php -l scripts/mad4b-stay-unit-photo-rollback-cli.php
+      - name: Hermetic stock and readiness assertions
+        run: |
+          php tests/stay-unmanaged-stock-policy-contract.php
+          php tests/stay-commercial-readiness-contract.php
+          python3 tests/stay-owner-approved-room-media-contract.py
+          python3 tests/stay-commercial-readiness-ui-check.py
+          node --check wp-content/mu-plugins/mad4b-stay-readiness/admin.js
