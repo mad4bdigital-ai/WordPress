@@ -451,6 +451,68 @@ def reviewed_pr942_company_master_security_successor(repo:Path,path:str,contents
         return None
 
 
+def reviewed_followup_company_email_readonly_successor(repo:Path,path:str,contents:bytes):
+    """Exact source review: native notice GET preview, never Fluent writes."""
+    expected='includes/class-mad4b-scp-company-email-routing.php'
+    if path!=expected or not isinstance(contents,bytes):return None
+    review=repo/'docs/source-reconciliation/pr961-company-email-native-notice-readonly-20261119.json'
+    historic=repo/'governance/release-parity/qa31-rc129-reviewed-successors-20261118.json'
+    required='tests/company-email-native-notice-preview-hermetic.php'
+    before='65a3e14d0738e66bf86d9268fa6ba941523ce669'
+    after='7b65ab55508a8566b5563e495cc18835fae23436'
+    try:
+        if (not review.is_file() or review.is_symlink()
+            or not historic.is_file() or historic.is_symlink()
+            or not (repo/required).is_file() or (repo/required).is_symlink()):
+            return None
+        v=json.loads(review.read_text(encoding='utf-8'))
+        h=json.loads(historic.read_text(encoding='utf-8'))
+        prior=[x for x in h.get('reviewed_entries',[])
+               if isinstance(x,dict) and x.get('path')==expected]
+        actual=hashlib.sha1(b'blob '+str(len(contents)).encode('ascii')+b'\0'+contents).hexdigest()
+        start=contents.find(b'public static function native_notice_preview(')
+        end=contents.find(b'public static function readiness_issues()',start)
+        body=contents[start:end] if start>=0 and end>start else b''
+        restricted=(b'update_option(',b'delete_option(',b'add_option(',
+                    b'wp_mail(',b'wp_schedule_',b'->store(',b'::store(',
+                    b'get_var(',b'GET_LOCK(',b'wp_remote_',b'do_action(')
+        if (v.get('contract')!='mad4b.followup.company-native-notice-readonly-preview-source.v1'
+            or v.get('base_commit')!='bfd207a5e9583eaee129a4447aeb124d1a05ed2e'
+            or v.get('path')!='wp-content/plugins/mad4b-site-control-plane/'+expected
+            or v.get('previous_blob_sha')!=before
+            or v.get('current_blob_sha')!=after or actual!=after
+            or v.get('current_sha256')!=hashlib.sha256(contents).hexdigest()
+            or v.get('current_bytes')!=len(contents)
+            or v.get('historical_manifest')!='governance/release-parity/qa31-rc129-reviewed-successors-20261118.json'
+            or v.get('historical_manifest_sha256')!=digest(historic)
+            or digest(historic)!='dce059a5058b66cc1cb5f6d4cd01aab24b1e6b75a8fba6a1655579de038ff821'
+            or len(prior)!=1 or prior[0].get('current_git_blob_sha')!=before
+            or prior[0].get('state')!='STAGING_ONLY'
+            or v.get('old_staging_sha256')!=prior[0].get('historical_staging_sha256')
+            or v.get('required_regression')!=required
+            or v.get('protected_notice_kinds')!=['booking','contact']
+            or v.get('new_route_method')!='GET'
+            or v.get('review_state')!='ci_only_source_candidate'
+            or any(v.get(k) is not True for k in ('no_mail_send','no_native_feed_write',
+                'no_option_write','no_cron_schedule','no_native_apply','no_new_write_authority',
+                'no_auto_activation','historical_manifest_immutable','live_evidence_required'))
+            or any(v.get(k) is not False for k in ('production_authorized','release_authorized'))
+            or len(v.get('rationale',''))<180
+            or not isinstance(v.get('regressions'),list)
+            or required not in v['regressions']
+            or any(not isinstance(x,str) or '..' in Path(x).parts
+                   or not (repo/x).is_file() or (repo/x).is_symlink() for x in v['regressions'])
+            or not body or any(x in body for x in restricted)
+            or b'function reconcile_native_booking_notice' in contents
+            or b'function reconcile_native_contact_notice' in contents
+            or b'function native_notification_scheduler' in contents
+            or b'function company_email_option_updated' in contents):
+            return None
+        return required
+    except (OSError,ValueError,TypeError,KeyError,json.JSONDecodeError):
+        return None
+
+
 def reviewed_followup_context_readonly_plan_successor(repo:Path,path:str,contents:bytes):
     """Only the exact reviewed Context classification preview; never Apply.
 
@@ -723,7 +785,9 @@ def reviewed_ci_only_source_successor(root:Path,path:str,contents:bytes)->bool:
     source=root/path
     if source.is_symlink() or not source.is_file() or source.read_bytes()!=contents:
         return False
-    requested=reviewed_followup_context_readonly_plan_successor(repo,path,contents)
+    requested=reviewed_followup_company_email_readonly_successor(repo,path,contents)
+    if requested is None:
+        requested=reviewed_followup_context_readonly_plan_successor(repo,path,contents)
     if requested is None:
         requested=reviewed_pr942_ollama_bootstrap_successor(repo,path,contents)
     if requested is None:

@@ -14,6 +14,8 @@ cases=(
     (["php","wp-content/plugins/mad4b-site-control-plane/tests/source-convergence-content-role-runtime.php"], "SOURCE_CONVERGENCE_CONTENT_TYPE_ROLE: PASS"),
     (["php","wp-content/plugins/mad4b-site-control-plane/tests/source-convergence-live-safety-regression.php"], "SOURCE_CONVERGENCE_LIVE_SAFETY_REGRESSION: PASS"),
     (["php","wp-content/plugins/mad4b-site-control-plane/tests/context-classification-readonly-preview-runtime.php"], "PASS: CONTEXT_CLASSIFICATION_READONLY_PREVIEW"),
+    (["php","tests/company-email-native-notice-preview-hermetic.php"], "PASS: COMPANY_NATIVE_NOTICE_READONLY"),
+    (["php","tests/company-email-routing-original-hermetic.php"], "PASS: COMPANY_EMAIL_ROUTING"),
     (["python3","tests/context-authority-original-review-suite.py"], "PASS: CONTEXT_AUTHORITY_ORIGINAL_REVIEW"),
     (["php","wp-content/plugins/mad4b-site-control-plane/tests/source-convergence-company-release-readiness-runtime.php"], "SOURCE_CONVERGENCE_COMPANY_RELEASE_READINESS: PASS"),
     (["php","tests/provider-field-intelligence-site-readonly-php74-hermetic.php"], "PROVIDER_FIELDS_SITE_PHP74: PASS"),
@@ -34,4 +36,4 @@ for command,expected in cases:
     proc=subprocess.run(command,cwd=repo,check=False,capture_output=True,text=True,timeout=40)
     if proc.returncode or expected not in proc.stdout or 'FAIL' in proc.stdout:
         raise SystemExit(f"SOURCE_REVIEW_CONTRACT_FAIL: {command}: {proc.stdout[-500:]} {proc.stderr[-500:]}")
-print("SOURCE_UNIFICATION_CI_ONLY_REVIEW: PASS (19 executable suites, no production authority)")
+print("SOURCE_UNIFICATION_CI_ONLY_REVIEW: PASS (21 executable suites, no production authority)")

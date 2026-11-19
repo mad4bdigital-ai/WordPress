@@ -24166,6 +24166,27 @@
       "needs_new_control": false,
       "review_rationale": "Exact source-reviewed read-only Context classification preview after PR942. The function requires site-bound administrator and an independent operational scope, denies foreign sources and mixed-brand assets, and refuses reviewed assets and incomplete content. PHP 7.4/8.5 negative tests assert no update_option, no class apply mutation, no emitted grant, stable source hash. Seven frozen original Context tests still run. The write reconciliation handler is deliberately not restored and Production remains blocked.",
       "coverage_reuse_rationale": "Existing enrolled Site Profile, verified Operational Scope Guard and Context classification source binding apply; no new REST route, client OAuth scope, write ability or Production grant is introduced."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-email-routing.php",
+      "source_blob_sha": "7b65ab55508a8566b5563e495cc18835fae23436",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/company-email-native-notice-preview-hermetic.php",
+        "tests/source-unification-review-contract.py"
+      ],
+      "owner_role": "MAD4B source convergence CI-only email preview reviewer; Production mail owner separately required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Only read-only native Fluent Forms booking/contact notice preview added. Existing company email identity, event binding, Site Profile authority and documented legacy original 12 tests remain unchanged. PHP 7.4/8.5 test cases prove 29 original and added assertions including unrelated forms, duplicate native feeds, foreign recipients, unpublished forms, unowned Contact feed, and privilege denial without any SMTP, cron or WordPress-option mutation. An administrator-only GET route returns aggregate recipient domains and hashes, no traveler fields or raw addresses. No SettingsService::store, wp_mail, update_option or Production authority is added.",
+      "coverage_reuse_rationale": "Original existing company_operations capability and verified site-bound email identity; no new roles, mail grants or native write ability."
     }
   ],
   "code_change_rules": {

@@ -1,0 +1,38 @@
+{
+  "contract": "mad4b.followup.company-native-notice-readonly-preview-source.v1",
+  "base_commit": "bfd207a5e9583eaee129a4447aeb124d1a05ed2e",
+  "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-email-routing.php",
+  "previous_blob_sha": "65a3e14d0738e66bf86d9268fa6ba941523ce669",
+  "current_blob_sha": "7b65ab55508a8566b5563e495cc18835fae23436",
+  "current_sha256": "74640c29e6494b8b9b03d0a5fa9d5f962d46d64b84027e575abc21cb0efac75a",
+  "current_bytes": 24484,
+  "historical_manifest": "governance/release-parity/qa31-rc129-reviewed-successors-20261118.json",
+  "historical_manifest_sha256": "dce059a5058b66cc1cb5f6d4cd01aab24b1e6b75a8fba6a1655579de038ff821",
+  "old_staging_sha256": "befb397659902c8ac8af948f237007e3bc48cf2a396ade42d81b2521ffe6b9ff",
+  "required_regression": "tests/company-email-native-notice-preview-hermetic.php",
+  "regressions": [
+    "tests/company-email-native-notice-preview-hermetic.php",
+    "tests/company-email-routing-original-hermetic.php",
+    "tests/qa31_release_source_gate_contract.py",
+    "tests/source-unification-review-contract.py"
+  ],
+  "protected_notice_kinds": [
+    "booking",
+    "contact"
+  ],
+  "new_route_method": "GET",
+  "source_fidelity": "Read-only preview of native booking/contact reconciliation contracts on Tours.dev. No native SettingsService writes, auto-schedule, wp_mail, option updates, user mail exposure or Form #6 mutation.",
+  "no_mail_send": true,
+  "no_native_feed_write": true,
+  "no_option_write": true,
+  "no_cron_schedule": true,
+  "no_native_apply": true,
+  "no_new_write_authority": true,
+  "no_auto_activation": true,
+  "historical_manifest_immutable": true,
+  "production_authorized": false,
+  "release_authorized": false,
+  "live_evidence_required": true,
+  "review_state": "ci_only_source_candidate",
+  "rationale": "Existing native Fluent Forms notification settings remain untouched. The new company-admin GET readback resolves site-enrolled sender identity and current native form references. It reports exact managed feed and source hash, source/recipient drift and review blockers without revealing recipient addresses, body, subject, or traveler submissions. Read-only fixtures assert PII minimization, foreign company and stale binding denial, duplicate feed refusal, WordPress administrator-only access, no SMTP dispatch, no create/update/delete and no WordPress cron. The four existing live write/scheduler functions remain intentionally absent until separately authorized."
+}
