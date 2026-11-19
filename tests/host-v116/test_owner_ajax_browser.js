@@ -14,7 +14,8 @@ function harness(overrides,responseFn) {
   hostId:'hosting-2',hostPrincipal:'u948953904',grantId:G,requestId:Q,
   requestStatus:'ADMITTED_PENDING_INDEPENDENT_HOST_AUTHORITY',
   requestExpiresEpoch:2000000000,requestExpired:false,brokerJobExists:true,
-  brokerJobState:'QUEUED_FOR_VPS_BROKER_CLAIM',phase:'ORIGINAL305_REQUEST_STAGED',
+  brokerJobState:'QUEUED_FOR_VPS_BROKER_CLAIM',signatureWindowExpired:false,
+  phase:'ORIGINAL305_REQUEST_STAGED',
   anchorState:'MISSING_OR_INVALID',anchorRevision:0,
   planSha256:PLAN,planSource:'previous_owner_request_reference'
  },overrides);
@@ -40,6 +41,7 @@ function state(overrides={}) {
   request_status:'ADMITTED_PENDING_INDEPENDENT_HOST_AUTHORITY',
   request_expires_epoch:2000000000,request_expired:false,broker_job_exists:true,
   broker_job_state:'BROKER_CLAIMED_PENDING_INDEPENDENT_HOST_AUTHORITY',
+  signature_window_expired:false,
   plan_sha256:PLAN,plan_source:'previous_owner_request_reference',
   phase:'ORIGINAL305_REQUEST_STAGED',anchor_state:'MISSING_OR_INVALID',
   anchor_revision:0,server_epoch:1795111200
@@ -94,6 +96,19 @@ const ok = body => ({ok:true,status:200,async json(){return body;}});
  assert(denied.els['mad4b-ha-checked-at'].textContent.includes('unavailable'));
  assert.equal(denied.calls.filter(c=>c.opts.method==='POST').length,0);
  console.log('PASS REST denial cannot trigger owner mutation');
+ const stale=harness({},async()=>ok(state({
+   request_expired:true,broker_job_exists:true,
+   broker_job_state:'BROKER_CLAIMED_PENDING_INDEPENDENT_HOST_AUTHORITY',
+   signature_window_expired:true,phase:'INDEPENDENT_SIGNATURE_WINDOW_EXPIRED'
+ })));
+ await stale.tick();
+ assert(stale.els['mad4b-ha-overall-state'].textContent.includes('Claim expired'));
+ assert(stale.els['mad4b-ha-tracker-status'].textContent.includes('have not issued'));
+ assert(stale.els['mad4b-ha-command'].disabled);
+ assert(stale.els['mad4b-ha-command-panel'].hidden);
+ assert.equal(stale.timers.length,0,'expired Claim must stop repeating background checks');
+ assert.equal(stale.calls.filter(x=>x.opts.method==='POST').length,0);
+ console.log('PASS expired original306 Claim blocks Original312/313 and stops polling');
 
  const changed=harness({},async()=>ok(state({
   anchor_state:'ACTIVE_INDEPENDENT_HOST_AUTHORITY',anchor_revision:1,phase:'ANCHOR_STATE_REVIEW'
