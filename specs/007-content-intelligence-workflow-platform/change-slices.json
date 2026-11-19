@@ -1,11 +1,11 @@
 {
   "contract": "mad4b.change-slices.v2",
   "authorizing": false,
-  "reviewed_base_sha": "bfeb2ce2373107aeaa7e71abd4d39158b82e29e5",
+  "reviewed_base_sha": "98223a4c73099fd1196190b7199e21cf9293900f",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 65,
-  "changed_paths_sha256": "beffab36cb29e8fe38feadff8a8bc26a90b1229d28f79d2d6708048f0515a1b0",
+  "changed_file_count": 70,
+  "changed_paths_sha256": "0deb22e2c6f53c080b8e477391b7f27ba54048147fc4622e707bb99e255c4dd6",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -428,6 +428,18 @@
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-visual-seo-strategy.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-visual-seo-strategy-runtime.php"
+      ]
+    },
+    {
+      "id": "fcp-readback-original-source-no-execution",
+      "semantic_unit": "Preserve two original FCP local observability and queue readback source services plus their hermetic read-only tests without queue execution.",
+      "revert_boundary": "Revert the original FCP status/queue readback service files and their tests as a source-only unit; never activate schedulers, process queued jobs, issue grants, or change main Bootstrap.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-fcp-local-observability.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-fcp-queue-readback.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-fcp-local-observability-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-fcp-queue-readback-runtime.php"
       ]
     }
   ]
