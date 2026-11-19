@@ -46,7 +46,15 @@ with tempfile.TemporaryDirectory() as tmp:
  test('shared source does not certify third unseen route CSS',r['routes_on_native_or_unproven_css']==1 and r['source_families'][0]['source_routes_not_individually_certified']==1)
  test('future source canary automatically avoids duplicate QA',r['next_canary_route_key'] is None)
  test('two CSS hashes may differ without copying per-route assets',r['source_families'][0]['canary_count']==2)
+ test('two independent canaries prove only source behaviour, never transfer route CSS',
+      r['source_cross_route_behaviour_qualified_groups']==1
+      and r['source_context_canary_proofs']==1
+      and r['source_families'][0]['source_context_evidence'][0]['route_css_asset_transfer_authorized'] is False)
  cert=certify(routes[1],doc='c'*64);r=m.build('wayfa',cat,state,ledger,root)
+ test('divergent DOMs are visible per market without authorizing route reuse',
+      r['source_context_divergent']==1
+      and r['source_families'][0]['source_context_evidence'][0]['source_canary_status']=='divergent_source_variants'
+      and r['source_cross_route_behaviour_qualified_groups']==0)
  test('changed Elementor graph refuses shared source promotion',r['source_families'][0]['status']=='source_variants_need_split')
  certify(routes[1]);cat['listing_generation']=4;r=m.build('wayfa',cat,state,ledger,root)
  test('tour source listing update invalidates all stale canaries',r['routes_with_exact_current_certificate']==0)
@@ -104,6 +112,12 @@ with tempfile.TemporaryDirectory() as tmp:
  partial=m.build('wayfa',cat,state,ledger,root)
  test('USD source canaries do not certify multi-currency geo market matrix',partial['source_canary_qualified_groups']==0 and partial['source_groups_by_status'].get('source_canary_market_partial')==1)
  test('market report explicitly lists missing source currencies',partial['source_families'][0]['currencies_pending']==['EGP','EUR','GBP'] and partial['country_market_scope']=='dynamic_not_enumerated')
+ test('USD source context can be proven without asserting geo or missing EUR readiness',
+      partial['source_context_canary_proofs']==1
+      and partial['source_cross_route_behaviour_qualified_groups']==0
+      and partial['source_families'][0]['source_context_evidence'][0]['market_currency']=='base|USD'
+      and partial['source_families'][0]['source_context_evidence'][0]['source_canary_status']=='canary_qualified'
+      and partial['source_families'][0]['source_context_evidence'][0]['route_css_asset_transfer_authorized'] is False)
  # Native-only eligibility is a SOURCE decision after independent
  # original-browser evidence that this template has no reusable CSS bundle.
  state['wcml_multi_currency']=False;state['enabled_currencies']=['USD']
