@@ -134,6 +134,39 @@ $assert('unit direct sale terms validated',$ready['unit_direct']['sell_configure
 $assert('unit edit uses native link',strpos($ready['edit_unit_url'],'post.php')!==false);
 $candidate=$c::evaluate(202,[100,101]);
 $assert('multiple relation blocked',in_array('property_relation_unverified',$candidate['catalog_blockers'],true));
+// A visually covered Unit is not a certified exact-room image.
+$GLOBALS['thumbnail'][202]=77;
+$GLOBALS['meta'][202]['unit_gellery']='77';
+$GLOBALS['meta'][202]['_mad4b_stay_visual_coverage_v1']=[
+ 'schema'=>'mad4b.stay-relaxed-visual-coverage.v1','unit_id'=>202,
+ 'attachment_id'=>77,'strategy'=>'shared_official_asset_across_room_categories',
+ 'exact_room_match_unverified'=>true,'rights_independently_verified'=>false
+];
+$visual=$c::evaluate(202,[100]);
+$assert('relaxed shared photo recognized as visual-only',
+    $visual['unit_media_quality_status']==='relaxed_visual_only');
+$assert('relaxed category preserved',
+    $visual['unit_media_visual_mode']==='shared_official_asset_across_room_categories');
+$assert('relaxed visual photo never grants editorial readiness',
+    in_array('relaxed_visual_exact_room_unverified',$visual['catalog_blockers'],true)
+    && !$visual['catalog_ready_for_review']);
+$assert('relaxed visual photo never grants checkout',
+    $visual['checkout_ready']===false);
+$visualAudit=$c::audit(['scope'=>'relaxed_images']);
+$assert('scoped visual filter returns one Unit',
+    $visualAudit['found']===1 && $visualAudit['items'][0]['unit_id']===202
+    && $visualAudit['summary']['relaxed_visual_coverage']===1);
+$GLOBALS['meta'][202]['_mad4b_stay_visual_coverage_v1']['strategy']='partner_nearest_room_with_pool_view';
+$partner=$c::evaluate(202,[100]);
+$assert('partner photo described as provisional',
+    $partner['unit_media_visual_mode']==='partner_nearest_room_with_pool_view');
+unset($GLOBALS['meta'][202]['_mad4b_stay_visual_coverage_v1'],
+    $GLOBALS['meta'][202]['unit_gellery']);
+$GLOBALS['thumbnail'][202]=20;
+$restored=$c::evaluate(202,[100]);
+$assert('original standard image mode unaffected',
+    $restored['unit_media_quality_status']==='standard_or_unclassified'
+    && $restored['catalog_ready_for_review']);
 $GLOBALS['allowed']=false;
 $denied=$c::audit(['scope'=>'all']);
 $assert('unprivileged audit refused',is_wp_error($denied)
