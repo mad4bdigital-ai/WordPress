@@ -408,6 +408,15 @@ trait MAD4B_SCP_Content_Readiness_Scanning_Trait {
                     'media_itinerary_geography_conflict'=>'high',
                     'media_near_duplicate_review'=>'medium',
                     'media_origin_provenance_unverified'=>'low',
+                    'media_hero_focal_review_pending'=>'medium',
+                    'media_hero_crop_geometry_review_pending'=>'medium',
+                    'media_hero_subject_review_pending'=>'medium',
+                    'media_visual_editorial_hold'=>'medium',
+                    'media_rate_property_photo_coverage_gap'=>'medium',
+                    'media_viewpoint_grid_portrait_cover_risk'=>'medium',
+                    'media_viewpoint_museum_exterior_overview_review'=>'medium',
+                    'media_viewpoint_museum_interior_scene_repeat'=>'medium',
+
                 ];
                 $photoEvidence=is_array($row['source_evidence']??null)?$row['source_evidence']:[];
                 $tourPhotoQuality=$source==='mad4b-tour-photo-quality'
@@ -444,7 +453,35 @@ trait MAD4B_SCP_Content_Readiness_Scanning_Trait {
                     && get_post_status($object_id)==='publish'
                     && class_exists('MAD4B_Nile_Intelligent_Inheritance_V1',false)
                     && MAD4B_Nile_Intelligent_Inheritance_V1::accepts_issue($row);
-                $valid=$wpmlPriorityValid && is_array($row) && ($dfsb||$localization||$performance||$pricing||$structural||$ratePlan||$gallery||$gttd||$companyPolicy||$companyTourPublication||$faqGap||$homeCopy||$elementorCopy||$mediaOrigin||$tourPhotoQuality||$storyMonitor||$nileInheritance) &&
+                // Strictly site-bound, read-only destination Term Meta provider.
+                // Taxonomy IDs are not post IDs and are admitted only by contract.
+                $dtEvidence=is_array($row['source_evidence']??null)
+                    ?$row['source_evidence']:array();
+                $dtTerm=$type==='destinations' && $object_id>0
+                    ?get_term($object_id,'destinations'):null;
+                $destinationTermAlerts=$source==='mad4b-destination-term-integrity'
+                    && class_exists('MAD4B_Destination_Term_Alerts_V1',false)
+                    && in_array($code,array(
+                        'term_external_link_attribution',
+                        'term_foreign_media_origin',
+                        'term_media_local_missing'),true)
+                    && $type==='destinations' && $object_id>0
+                    && $dtTerm && !is_wp_error($dtTerm)
+                    && ($dtEvidence['contract']??'')===MAD4B_Destination_Term_Alerts_V1::CONTRACT
+                    && ($dtEvidence['taxonomy']??'')==='destinations'
+                    && (int)($dtEvidence['term_id']??0)===$object_id
+                    && (string)($dtEvidence['site_uuid']??'')!==''
+                    && (string)($dtEvidence['site_uuid']??'')===(string)MAD4B_SCP_Site_Profile::site_uuid()
+                    && preg_match('/^[a-f0-9]{64}$/D',(string)($dtEvidence['source_sha256']??''))
+                    && ($row['severity']??'')===(
+                        $code==='term_media_local_missing'?'high':
+                        ($code==='term_foreign_media_origin'?'medium':
+                            (!empty($dtEvidence['commercial'])?'high':'medium')))
+                    && !empty($dtEvidence['fields'])
+                    && is_array($dtEvidence['fields'])
+                    && is_array($dtEvidence['sample_urls']??null)
+                    && !empty($dtEvidence['reference_count']);
+                $valid=$wpmlPriorityValid && is_array($row) && ($dfsb||$localization||$performance||$pricing||$structural||$ratePlan||$gallery||$gttd||$companyPolicy||$companyTourPublication||$faqGap||$homeCopy||$elementorCopy||$mediaOrigin||$tourPhotoQuality||$storyMonitor||$nileInheritance||$destinationTermAlerts) &&
                     hash_equals($expected,$id) &&
                     in_array($row['severity']??'',array('critical','high','medium','low'),true) &&
                     is_string($row['label']??null) &&
@@ -458,6 +495,14 @@ trait MAD4B_SCP_Content_Readiness_Scanning_Trait {
                     'severity'=>$row['severity'],'label'=>sanitize_text_field($row['label']),
                     'source'=>$source
                 );
+                if($destinationTermAlerts) {
+                    $accepted['source_evidence']=array_intersect_key($dtEvidence,array_flip(array(
+                        'contract','site_uuid','taxonomy','term_id','fields','meta_ids',
+                        'hosts','sample_urls','reference_count','source_sha256',
+                        'commercial','requires_render_readback','automatically_rewritten')));
+                    $accepted['priority']=$code==='term_media_local_missing'?96:
+                        ($code==='term_external_link_attribution'?94:72);
+                }
                 if ($homeCopy) $accepted['priority']=$row['priority'];
                 if ($elementorCopy) $accepted['priority']=$row['priority'];
                 if ($wpmlGap) {
