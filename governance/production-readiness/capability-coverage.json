@@ -8853,6 +8853,26 @@
       "new_control_ids": [],
       "coverage_reuse_rationale": "Existing source-bound Site Profile, Content Readiness, Admin, Security and provider-scope controls apply to the extracted service; no broad privilege or release mutation is introduced.",
       "review_rationale": "Independent review of class-mad4b-scp-readiness-reconciliation-trait.php preserves original behavior and dependent guard checks in an executed test suite. This service is source-only until its actual enrolled runtime is separately tested."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/trait-mad4b-scp-brand-integrity-term-meta.php",
+      "owner_role": "MAD4B source reviewer: CI-only exact-code refactor; independent Site Owner/Host signoff required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/test_brand_integrity_term_trait_exact_source.py"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Reuses existing site-bound Brand Integrity identity, Term Meta/PHP parsing, canonical destination link filtering, provider source safeguards and company-specific localization controls; this extraction does not grant writes.",
+      "review_rationale": "Separate exact body-preserving Trait carries six existing methods from unchanged PR977 base. Byte-level source reconstruction and negative tampering tests prove that both the new facade and new Trait restore the reviewed original before any release acceptance."
     }
   ],
   "lifecycle": [],
@@ -24209,6 +24229,48 @@
       "needs_new_control": false,
       "review_rationale": "Only read-only native Fluent Forms booking/contact notice preview added. Existing company email identity, event binding, Site Profile authority and documented legacy original 12 tests remain unchanged. PHP 7.4/8.5 test cases prove 29 original and added assertions including unrelated forms, duplicate native feeds, foreign recipients, unpublished forms, unowned Contact feed, and privilege denial without any SMTP, cron or WordPress-option mutation. An administrator-only GET route returns aggregate recipient domains and hashes, no traveler fields or raw addresses. No SettingsService::store, wp_mail, update_option or Production authority is added. Follow-up exact-blob source review verifies 35 PHP 7.4/8.5 negative and positive assertions including extra CC, BCC, conditional routing, unrecognized sendTo keys, duplicate conflicting event bindings and truncated oversized source registry. No mail sends, WordPress writes, native editor mutation, or release grant.",
       "coverage_reuse_rationale": "Existing verified company operations capability and site identity apply; no new write grant or editable native notice endpoint. An exact CI-only SHA is not production permission."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-integrity.php",
+      "source_blob_sha": "188c7c00411834785f3d00fcd05541d10037f12a",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/test_brand_integrity_term_trait_exact_source.py"
+      ],
+      "owner_role": "MAD4B source reviewer (CI-only); release requires independent site owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing Content Integrity policies and term scanning protections persist unchanged in exactly reconstructed source.",
+      "review_rationale": "Refactor only: original brand source SHA 9169abd2dbce76dfbe087337799dd475eced8a66 reconstructed byte-for-byte after exact loader and Trait extraction. No new REST, hooks, cron, API or live WordPress writes.",
+      "execution_note": "Hermetic PHP test checks Term Meta foreign-link denial; Python source contract validates method-body identity. No Production, Staging or Host acceptance."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/trait-mad4b-scp-brand-integrity-term-meta.php",
+      "source_blob_sha": "dedbbb99e50d819009e994ad245a412c738d5f28",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/test_brand_integrity_term_trait_exact_source.py"
+      ],
+      "owner_role": "MAD4B source reviewer (CI-only); release requires independent site owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing Content Integrity policies and term scanning protections persist unchanged in exactly reconstructed source.",
+      "review_rationale": "Refactor only: original brand source SHA 9169abd2dbce76dfbe087337799dd475eced8a66 reconstructed byte-for-byte after exact loader and Trait extraction. No new REST, hooks, cron, API or live WordPress writes.",
+      "execution_note": "Hermetic PHP test checks Term Meta foreign-link denial; Python source contract validates method-body identity. No Production, Staging or Host acceptance."
     }
   ],
   "code_change_rules": {
