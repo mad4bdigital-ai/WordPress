@@ -8,6 +8,14 @@ $tx=get_taxonomy($c::TAXONOMY);
 $test('taxonomy_registered',!!$tx);
 $test('taxonomy_not_public',$tx&&!$tx->public&&!$tx->publicly_queryable);
 $test('taxonomy_not_rest_public',$tx&&!$tx->show_in_rest);
+$protectedCaps=['manage_terms','edit_terms','delete_terms','assign_terms'];
+$test('all_term_mutation_caps_are_manage_options',$tx &&
+ array_reduce($protectedCaps,static fn($carry,$cap)=>$carry&&
+  ($tx->cap->$cap??null)==='manage_options',true));
+$editor=get_role('editor');
+$test('ordinary_editor_cannot_change_company_cost',
+ !$editor||!$editor->has_cap('manage_options'));
+$test('administrator_can_edit_vehicle_cost',current_user_can('manage_options'));
 $test('taxonomy_attached_to_transport',$tx&&in_array('transportations',$tx->object_type,true));
 $test('taxonomy_attached_to_rates',$tx&&in_array('transport-rates',$tx->object_type,true));
 $test('one_canonical_taxonomy',taxonomy_exists($c::TAXONOMY)&&
@@ -42,6 +50,36 @@ $termFields=(array)maybe_unserialize($taxRow['meta_fields']??'');
 $test('native_jetengine_ten_fields',count($termFields)===10);
 $test('deadhead_field_is_percentage',
  ($termFields[6]['title']??'')==='Empty Return Distance (%)');
+$test('wp_admin_vehicle_assets_correct_scope',
+ (function(){
+  if(!function_exists('set_current_screen'))
+   require_once ABSPATH.'wp-admin/includes/screen.php';
+  $saved=get_current_user_id();
+  $loader=null;
+  foreach($GLOBALS['wp_filter']['admin_enqueue_scripts']->callbacks??[] as $callbacks)
+   foreach($callbacks as $cb){
+    $fn=$cb['function'];
+    if(!$fn instanceof Closure)continue;
+    $ref=new ReflectionFunction($fn);
+    if(str_contains($ref->getFileName(),'transport-vehicle-term-profiles.php')){
+     $loader=$fn;break 2;
+    }
+   }
+  if(!$loader)return false;
+  set_current_screen('edit-post');
+  $loader('post.php');
+  if(wp_script_is('mad4b-vehicle-term-editor','enqueued')||
+     wp_style_is('mad4b-vehicle-term-editor','enqueued'))return false;
+  set_current_screen('edit-transport-vehicle-types');
+  wp_set_current_user(0);
+  $loader('edit-tags.php');
+  if(wp_script_is('mad4b-vehicle-term-editor','enqueued')||
+     wp_style_is('mad4b-vehicle-term-editor','enqueued'))return false;
+  wp_set_current_user($saved);
+  $loader('edit-tags.php');
+  return wp_script_is('mad4b-vehicle-term-editor','enqueued')&&
+         wp_style_is('mad4b-vehicle-term-editor','enqueued');
+ })());
 $test('vehicle_term_edit_link_permission_scoped',
  current_user_can('edit_term',$ids['hiace'])?
  !empty($policy['vehicle_term_profiles']['hiace']['edit_url']):

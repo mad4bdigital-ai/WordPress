@@ -1055,3 +1055,28 @@ No published native Transport Rates, inventory claims, Woo orders,
 checkout prices or cancellation refunds were changed by this migration.
 Authenticated Chrome visual QA and broader CPT Functional UI Mode parity
 must still be verified separately before claiming full UX certification.
+
+### Finance-sensitive Vehicle Term editor permissions (20 Nov 2026)
+
+During final production security verification, the default WordPress
+JetEngine taxonomy used manage_categories for managing/editing/deleting
+vehicle cost terms and edit_posts for assignment. That would permit
+ordinary Editors to change actual company costs. The taxonomy's four
+registration-time capabilities (manage_terms, edit_terms, delete_terms
+and assign_terms) now require manage_options, scoped exclusively to
+transport-vehicle-types via register_taxonomy_args. Native JetEngine
+terms and save paths are preserved. Administrator capability readback
+passed on both sites; Editor lacks manage_options. The progressive
+term editor CSS and JS are enqueued only for authorized site admins on
+the appropriate native term admin screen.
+
+Runtime regression now includes capability isolation and scoped
+asset loading; native vehicle term checks passed 33/33 on both sites.
+No provider price role, underlying cost value, vehicle assignment,
+Tour Rate, booking, source PDF or commerce policy was changed by this
+authorization hardening.
+
+A full parallel post-change WP-CLI regression attempt was delayed by
+pre-existing concurrent WordPress CLI work and the STAGING_WPCLI_BUSY
+concurrency guard. Do not treat the declined run as a product failure
+or claim a fresh full-matrix pass without an independent successful run.

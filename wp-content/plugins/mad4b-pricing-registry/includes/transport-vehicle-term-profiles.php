@@ -73,12 +73,27 @@ final class MAD4B_Transport_Vehicle_Term_Profiles_V1 {
   return $map;
  }
 }
+/**
+ * Term costs are finance-sensitive: editor manage_categories must not confer
+ * edit, creation, deletion or assignment of cost-bearing vehicle terms.
+ * The filter operates on only our exact taxonomy while JetEngine owns its
+ * native taxonomy registration, fields, and save workflow.
+ */
+add_filter('register_taxonomy_args',static function($args,$taxonomy){
+ if($taxonomy!==MAD4B_Transport_Vehicle_Term_Profiles_V1::TAXONOMY)
+  return $args;
+ $args['capabilities']=[
+  'manage_terms'=>'manage_options','edit_terms'=>'manage_options',
+  'delete_terms'=>'manage_options','assign_terms'=>'manage_options'
+ ];
+ return $args;
+},20,2);
 /* Progressive presentation only; native JetEngine term form owns saving. */
 add_action('admin_enqueue_scripts',static function($hook){
  if(!in_array($hook,['edit-tags.php','term.php'],true))return;
  $screen=function_exists('get_current_screen')?get_current_screen():null;
  if(!$screen||$screen->taxonomy!=='transport-vehicle-types')return;
- if(!current_user_can('manage_categories'))return;
+ if(!current_user_can('manage_options'))return;
  $root=dirname(__DIR__);
  $main=$root.'/mad4b-pricing-registry.php';
  foreach(['css'=>'style','js'=>'script'] as $ext=>$type){
