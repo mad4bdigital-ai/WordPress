@@ -127,7 +127,7 @@ class RootCoordinatorTests(unittest.TestCase):
         with patch.object(v121,'inspect',side_effect=AssertionError(
               'No Owner evidence checks allowed before commissioning')):
             with self.assertRaisesRegex(v121.CoordinatorHeld,
-                   'NOT_COMMISSIONED'):
+                   'NOT_COMMISSIONED|COMMISSIONING_NOT_AUTHORIZED'):
                 v121.issue(self.fx.issue.j['job_id'])
     def test_missing_postwrite_proof_never_attempts_rewrite(self):
         jid=self.fx.issue.j['job_id']

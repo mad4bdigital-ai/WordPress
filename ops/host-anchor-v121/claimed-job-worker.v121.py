@@ -1218,7 +1218,7 @@ def firstparty_host_v121_module():
      or st.st_uid!=0 or st.st_gid!=0 or st.st_nlink!=1
      or stat.S_IMODE(st.st_mode)!=0o600
      or hashlib.sha256(path.read_bytes()).hexdigest()!=
-     'b5aa997abf39bdfe5027bf06da5a7e137ee1f3801dc91035c2e1f4907f0b3ba5'):
+     'a4e7dad6638be30a492bf27202d99bb27d2b74a2cfc116fbe17269da4fc2a6b3'):
   raise RuntimeError('FIRSTPARTY_HOST_V121_ROOT_ISSUER_SOURCE_CHANGED')
  spec=importlib.util.spec_from_file_location(
      '_host_v121_exact_first_anchor_issuer',path)
