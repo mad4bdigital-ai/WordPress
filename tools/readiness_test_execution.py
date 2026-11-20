@@ -63,6 +63,8 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     # The fixture runs without WordPress, DB, HTTP or production credentials.
     # No other Context PHP path gains standalone execution.
     "wp-content/plugins/mad4b-site-control-plane/tests/context-classification-title-contract.php",
+    # Exact synthetic-only metadata reconciliation: neither live WordPress nor site writes.
+    "wp-content/plugins/mad4b-site-control-plane/tests/context-classification-reconcile-hermetic.php",
     # The existing Context-document runtime has its own first-party fake WP
     # context; 7.4/8.3/8.5 exercised SVG fail-closed and regular text.
     # Explicitly review this named regression only; no generic PHP relaxation.

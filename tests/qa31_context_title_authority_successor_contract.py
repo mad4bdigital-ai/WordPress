@@ -1,13 +1,20 @@
 #!/usr/bin/env python3
 """Independent exact SHA and fraud-denial review of Context title authority."""
 import json
+import hashlib
+import subprocess
 from pathlib import Path
 from unittest import mock
 import qa31_release_source_gate as qa
 root=Path(__file__).resolve().parents[1]
 name='includes/class-mad4b-scp-context-authority.php'
-p=root/'wp-content/plugins/mad4b-site-control-plane'/name
-data=p.read_bytes()
+# Check the historic source at its immutable parent, not a successor HEAD.
+# The original SHA review must stay testable after an append-only successor.
+original_head='ec422eae1706a697e2b1d379f2dc071c16ba1ceb'
+data=subprocess.check_output([
+    'git','show',original_head+':wp-content/plugins/mad4b-site-control-plane/'+name
+],cwd=root,stderr=subprocess.DEVNULL,timeout=8)
+assert hashlib.sha256(data).hexdigest()==('ea788a5b7197991999ed2aff6a9b9e449fafc522eb4654f44d190010b795eff1')
 m_path=root/'governance/release-parity/qa31-rc129-context-title-authority-successor-20261119.json'
 m=json.loads(m_path.read_text())
 assert qa.reviewed_rc129_context_title_authority_successor(root,name,data)==m['required_regression']

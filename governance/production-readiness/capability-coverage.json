@@ -24520,6 +24520,26 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php",
+      "source_blob_sha": "cd451220793dbbf3325bc5cd7c9dfcfc6a88e8e8",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "AI-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-classification-reconcile-hermetic.php"
+      ],
+      "owner_role": "MAD4B Context source integrity reviewer; independent enrolled Site Owner and signed Host approval remain required",
+      "review_rationale": "Restore only the original Wayfatours Context classification plan and an explicitly invoked local WP-CLI metadata-only reconciliation under existing canonical Site Profile, registry lock and audit controls. The pure bounded preview uses source identity and generation, site/brand binding, original content hash, manifest and registry revision. It rejects mismatched asset counts and cross-company records, and excludes any human-reviewed, incomplete, manual or changed content. The apply operation rederives the entire SHA-pinned plan within the existing registry lock and rechecks review state before writing only classification fields; it never approves, copies content, rescans Google Drive, or creates remote execution rights. Original frozen source and current source both retain independent review history, and positive/negative synthetic PHP 7.4/8.5 scenarios are required.",
+      "coverage_reuse_rationale": "Reuses existing Site Profile identity, enrolled Context Registry revision, audit, operational integrity snapshot, scoped Registry lock and local CLI administrator. No new WordPress Ability, remote executor, content write, AI approval or publication permission.",
+      "execution_note": "Hermetic positive and negative cases execute on PHP 7.4 and PHP 8.5 from an exact SHA-pinned source checkout; no live WordPress, Google API, SMTP, Host signature or Production test is implied.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "code_change_rules": {

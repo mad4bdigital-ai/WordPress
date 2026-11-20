@@ -4145,6 +4145,159 @@ final class MAD4B_SCP_Context_Authority {
             || ! empty( $asset['required'] ) !== ! empty( $current['required'] );
     }
 
+    /**
+     * Pure, bounded preview. Old automatic classifications can be changed only
+     * when unreviewed and backed by the same complete normalized content.
+     * Never change a human review, file bytes, source scope or approval receipt.
+     */
+    public static function classification_reconcile_preview(array $source, array $site,
+        array $records, $source_id, $registry_revision, $manifest_sha256) {
+        $source_id = (string) $source_id;
+        $site_uuid = (string) ($site['site_uuid'] ?? '');
+        $brand_id = (string) ($source['brand_id'] ?? '');
+        if (!preg_match('/^[a-f0-9]{64}$/D', $source_id)
+            || !preg_match('/^[a-f0-9-]{36}$/D', $site_uuid)
+            || !preg_match('/^[a-f0-9]{32}$/D', $brand_id)
+            || !hash_equals($source_id, (string) ($source['source_id'] ?? ''))
+            || !hash_equals($site_uuid, (string) ($source['site_uuid'] ?? ''))
+            || ($source['provider'] ?? '') !== 'google_drive'
+            || ($source['mode'] ?? '') !== 'governed'
+            || ($source['status'] ?? '') !== 'partial_scan'
+            || !preg_match('/^[a-f0-9]{64}$/D', (string) ($source['last_scan_generation'] ?? ''))
+            || !preg_match('/^[a-f0-9]{64}$/D', (string) $manifest_sha256))
+            return new WP_Error('mad4b_reconcile_source_not_eligible', 'An exact, indexed and site-owned governed source is required.');
+        if (count($records) > self::MAX_ASSETS)
+            return new WP_Error('mad4b_reconcile_asset_capacity', 'The bounded asset registry was exceeded.');
+        $changes = array();
+        $blocked = 0;
+        $count = 0;
+        foreach ($records as $id => $asset) {
+            if (!is_array($asset) || (string) ($asset['source_id'] ?? '') !== $source_id) continue;
+            ++$count;
+            if (!preg_match('/^[a-f0-9]{64}$/D', (string) $id)
+                || !hash_equals((string) $id, (string) ($asset['asset_id'] ?? ''))
+                || !hash_equals($site_uuid, (string) ($asset['site_uuid'] ?? ''))
+                || !hash_equals($brand_id, (string) ($asset['brand_id'] ?? '')))
+                return new WP_Error('mad4b_reconcile_asset_scope_invalid', 'Asset identity does not match this source, site and brand.');
+            $fresh = self::classify_asset((string) ($asset['title'] ?? ''), (string) ($asset['path'] ?? ''));
+            $different = (string) ($asset['category'] ?? '') !== (string) $fresh['category']
+                || (string) ($asset['authority_class'] ?? '') !== (string) $fresh['authority_class']
+                || !empty($asset['required']) !== !empty($fresh['required'])
+                || (int) ($asset['priority'] ?? 0) !== (int) $fresh['priority'];
+            if (!$different) continue;
+            if (($asset['classification_source'] ?? '') !== 'automatic_heuristic'
+                || ($asset['review_status'] ?? '') !== 'unreviewed'
+                || (string) ($asset['reviewed_content_hash'] ?? '') !== ''
+                || (string) ($asset['reviewed_at'] ?? '') !== ''
+                || empty($asset['content_complete'])
+                || !preg_match('/^[a-f0-9]{64}$/D', (string) ($asset['content_hash'] ?? ''))) {
+                ++$blocked;
+                continue;
+            }
+            $fields = array('category', 'authority_class', 'required', 'priority', 'classification_confidence');
+            $changes[] = array(
+                'asset_id' => (string) $id,
+                'content_hash' => (string) $asset['content_hash'],
+                'before' => array_intersect_key($asset, array_flip($fields)),
+                'after' => array_intersect_key($fresh, array_flip($fields)),
+            );
+        }
+        if ($count !== (int) ($source['asset_count'] ?? -1))
+            return new WP_Error('mad4b_reconcile_asset_count_invalid', 'Partial index count does not match the registered source.');
+        usort($changes, static function($a, $b) { return strcmp($a['asset_id'], $b['asset_id']); });
+        $plan = array(
+            'contract' => 'mad4b.context-classification-only-reconcile.v1',
+            'source_id' => $source_id, 'site_uuid' => $site_uuid,
+            'source_generation' => (string) $source['last_scan_generation'],
+            'registry_revision' => (int) $registry_revision,
+            'manifest_sha256' => (string) $manifest_sha256,
+            'source_asset_count' => $count, 'blocked_reviewed_count' => $blocked,
+            'changes' => $changes, 'authorizing' => false,
+        );
+        $json = wp_json_encode($plan, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        if (!is_string($json)) return new WP_Error('mad4b_reconcile_plan_failed', 'Plan encoding failed.');
+        $plan['plan_sha256'] = hash('sha256', $json);
+        return $plan;
+    }
+
+    /** The preview reads the canonical, currently enrolled Context registry. */
+    public static function classification_reconcile_plan($source_id) {
+        if (get_current_user_id() < 1 || !current_user_can('manage_options'))
+            return new WP_Error('mad4b_reconcile_native_admin_required', 'A site-local administrator is required.');
+        $site = self::site_binding();
+        if (is_wp_error($site)) return $site;
+        $source_id = trim((string) $source_id);
+        return self::classification_reconcile_preview(self::source($source_id), $site,
+            self::raw_assets(), $source_id, self::registry_revision(),
+            self::authority_manifest_fingerprint());
+    }
+
+    /** One-shot, local WP-CLI metadata-only write; never a remote ability. */
+    public static function classification_reconcile_apply(array $request) {
+        if (!defined('WP_CLI') || true !== WP_CLI
+            || (defined('REST_REQUEST') && REST_REQUEST)
+            || get_current_user_id() < 1 || !current_user_can('manage_options')
+            || !class_exists('MAD4B_SCP_Site_Profile')
+            || !MAD4B_SCP_Site_Profile::governed_write_ready()
+            || !class_exists('MAD4B_SCP_Policy'))
+            return new WP_Error('mad4b_reconcile_native_admin_required', 'A governed site-local WP-CLI administrator is required.');
+        $gate = MAD4B_SCP_Policy::mutation_gate_status();
+        if (!is_array($gate) || !empty($gate['explicit_kill_switch']))
+            return new WP_Error('mad4b_reconcile_hard_kill_switch', 'Runtime mutation policy is not available.');
+        if (empty($request['confirm_metadata_only']))
+            return new WP_Error('mad4b_reconcile_confirmation_required', 'Explicit metadata-only confirmation is required.');
+        $source_id = (string) ($request['source_id'] ?? '');
+        $expected_hash = (string) ($request['plan_sha256'] ?? '');
+        $expected_revision = (int) ($request['registry_revision'] ?? -1);
+        if (!preg_match('/^[a-f0-9]{64}$/D', $expected_hash))
+            return new WP_Error('mad4b_reconcile_plan_hash_invalid', 'A bound plan SHA-256 is required.');
+        return self::with_registry_lock('classification_reconcile', static function() use ($source_id, $expected_hash, $expected_revision) {
+            $plan = self::classification_reconcile_plan($source_id);
+            if (is_wp_error($plan)) return $plan;
+            if (!hash_equals($plan['plan_sha256'], $expected_hash)
+                || $plan['registry_revision'] !== $expected_revision)
+                return new WP_Error('mad4b_reconcile_plan_stale', 'Registry, source or classification changed.');
+            if ($plan['blocked_reviewed_count'] !== 0)
+                return new WP_Error('mad4b_reconcile_reviewed_assets', 'Reviewed assets require separate review.');
+            if (!$plan['changes']) return new WP_Error('mad4b_reconcile_no_changes', 'No eligible changes remain.');
+            $audit = self::audit_preflight();
+            if (is_wp_error($audit)) return $audit;
+            $records = self::raw_assets();
+            foreach ($plan['changes'] as $change) {
+                $id = $change['asset_id'];
+                if (!isset($records[$id])
+                    || !hash_equals($change['content_hash'], (string) ($records[$id]['content_hash'] ?? ''))
+                    || ($records[$id]['classification_source'] ?? '') !== 'automatic_heuristic'
+                    || ($records[$id]['review_status'] ?? '') !== 'unreviewed'
+                    || (string) ($records[$id]['reviewed_content_hash'] ?? '') !== ''
+                    || (string) ($records[$id]['reviewed_at'] ?? '') !== '')
+                    return new WP_Error('mad4b_reconcile_asset_changed', 'Content or review changed.');
+                foreach ($change['after'] as $field => $value) $records[$id][$field] = $value;
+            }
+            $saved = self::commit_option_changes(array(self::ASSETS_OPTION => $records),
+                'mad4b_reconcile_commit_failed', 'Classification-only reconciliation failed.');
+            if (is_wp_error($saved)) return $saved;
+            $after = self::raw_assets();
+            foreach ($plan['changes'] as $change) {
+                $id = $change['asset_id'];
+                if (!isset($after[$id]) || !hash_equals($change['content_hash'],
+                    (string) ($after[$id]['content_hash'] ?? ''))
+                    || ($after[$id]['review_status'] ?? '') !== 'unreviewed')
+                    return new WP_Error('mad4b_reconcile_readback_invalid', 'Registry readback changed the review or source evidence.');
+            }
+            return self::audited_registry_result(array(
+                'contract' => 'mad4b.context-classification-only-reconcile.v1',
+                'reclassified' => count($plan['changes']), 'approved' => 0,
+                'source_rescanned' => false, 'registry_revision_before' => $expected_revision,
+            ), 'mad4b/context-classification-only-reconcile', array(
+                'source_id' => $source_id, 'plan_sha256' => $expected_hash,
+                'registry_revision_before' => $expected_revision,
+                'reclassified' => count($plan['changes']),
+                'approval_granted' => false, 'content_modified' => false,
+            ));
+        });
+    }
+
 	public static function score_asset( array $metadata, $content = '' ) {
 		$content = trim( (string) $content );
 		$word_count = '' === $content ? 0 : count( preg_split( '/\s+/u', $content, -1, PREG_SPLIT_NO_EMPTY ) );

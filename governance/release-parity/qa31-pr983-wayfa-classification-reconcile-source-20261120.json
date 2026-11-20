@@ -1,0 +1,31 @@
+{
+  "contract": "mad4b.qa31-pr983-wayfa-classification-reconcile-source.v1",
+  "original_github_head_sha": "ec422eae1706a697e2b1d379f2dc071c16ba1ceb",
+  "previous_context_title_review_path": "governance/release-parity/qa31-rc129-context-title-authority-successor-20261119.json",
+  "previous_context_title_review_sha256": "e9b84503655589365ccab7d493cb2aca154437b2843754e44b3745c4be750e26",
+  "source_path": "includes/class-mad4b-scp-context-authority.php",
+  "original_parent_blob_sha": "8d5e50c17a780ce580a18be5e3d2912a2e06920c",
+  "original_parent_sha256": "ea788a5b7197991999ed2aff6a9b9e449fafc522eb4654f44d190010b795eff1",
+  "reviewed_blob_sha": "cd451220793dbbf3325bc5cd7c9dfcfc6a88e8e8",
+  "reviewed_sha256": "1cb4819fa531d362d4d22b64e1226ec18ac3bbdd04c43ff29f6784a0520e7727",
+  "required_regression": "wp-content/plugins/mad4b-site-control-plane/tests/context-classification-reconcile-hermetic.php",
+  "negative_contract": "tests/qa31_wayfa_classification_reconcile_source_contract.py",
+  "control_ids": [
+    "GOVERNANCE-02",
+    "SECURITY-01",
+    "AI-01",
+    "PLATFORM-01"
+  ],
+  "source_only": true,
+  "reviewed_for_ci_only": true,
+  "authorizing": false,
+  "production_authorized": false,
+  "source_promotion_approved": false,
+  "is_build_provenance": false,
+  "live_evidence_required": true,
+  "automatic_context_approval_authorized": false,
+  "remote_mutation_ability_added": false,
+  "original_human_review_mutation_authorized": false,
+  "release_gate": "BLOCKED_SOURCE_RECONCILIATION",
+  "review_rationale": "Restore only the original Wayfatours Context classification plan and an explicitly invoked local WP-CLI metadata-only reconciliation under existing canonical Site Profile, registry lock and audit controls. The pure bounded preview uses source identity and generation, site/brand binding, original content hash, manifest and registry revision. It rejects mismatched asset counts and cross-company records, and excludes any human-reviewed, incomplete, manual or changed content. The apply operation rederives the entire SHA-pinned plan within the existing registry lock and rechecks review state before writing only classification fields; it never approves, copies content, rescans Google Drive, or creates remote execution rights. Original frozen source and current source both retain independent review history, and positive/negative synthetic PHP 7.4/8.5 scenarios are required."
+}
