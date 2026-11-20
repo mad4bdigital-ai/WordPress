@@ -22,7 +22,7 @@ case "$SITE" in
    HOST=wayfatours.com;ENVIRONMENT=production
    WP=/opt/wayfa-rebuild-20261102/site-copy/wp-content
    PHP=php-guxhp9y6vgh7oouuw8plxrlr;MANIFEST_VERSION=1
-   CONSUMER_SHA=60fc91116affa5faf539cc835e12ce3939d598be68c94a56b21a36f860c5f29e
+   CONSUMER_SHA=75e305345f46af0ec4dbed36f40def63626108de85f938238853b27674c11794
    QA_WIDTHS=320,390,414,768
    CSS_PRIORITY=low;CSS_PRELOAD=0;ADAPTIVE_MAX=767
    ;;
