@@ -18,8 +18,8 @@ Snapshot date: 20 November 2026. Primary source: Tours.dev staging; target: Wayf
 | CP4 | Deterministic integer-minor-unit shadow evaluator with markup vs margin separation, fixed rule ordering, duplicate protection; full FX/passenger/provider integration separately gated | SHADOW PASS, COMMERCIAL OPEN: 7 unsafe cases rejected on both sites; actual cost, FX, occupancy/children receipts still missing |
 | CP5 | AJAX native entity selector and progressive disclosure of 16 financial fields in 21-field policy repeater; no extra Save or hidden disabled native values | SERVER+DOM PASS, BROWSER OPEN: original input and change events tested, logged-in UI Save/mobile/real repeater markup not yet certified |
 | CP6 | Native-source policy write admission with role, revision, target/refs, no writes; transactional native writer integration | READ-ONLY PREFLIGHT PASS, WRITES BLOCKED: JetEngine Options Page lacks expected-revision compare-and-swap; native writer approval and browser testing open |
-| CP7 | E2E matrix: Wayfa 84 Tours, 8 package templates, EN/ES, rate/occupancy/children/FX, mobile 320/390/768/1024/1440 and checkout gate | NOT STARTED |
-| CP8 | Local Git/GitHub/live fingerprint parity, all CI green, approval and merge/release evidence | NOT STARTED |
+| CP7 | Read-only 84-tour/197 selection matrix; 8-package full E2E, EN/ES, FX/children/occupancy and browser | MATRIX PASS, FULL E2E OPEN: 192/197 preview successes, five known blockers, certified supplier inputs missing |
+| CP8 | Git/GitHub/live SHA, new branch CI, explicit approval, merge and rollback | OPEN: pending browser, cost, transactional writes, full E2E |
 
 ## CP1 evidence
 - Imported the source preview file from both matching live WordPress MU roots; it was previously absent from the Git feature branch.
@@ -38,6 +38,13 @@ Snapshot date: 20 November 2026. Primary source: Tours.dev staging; target: Wayf
 - CP4: mad4b-price-evaluator-shadow-v1.php, acceptance ops/pricing-unified-checkpoints/tests/verify-price-evaluator-shadow.php. Integer minor-unit cost basis, mutually exclusive markup or margin and single instance per financial stage. Fixed order; synthetic 8,000 EGP cost -> 14,158.80 EGP after configured test rules and 14% test tax. Seven unsafe cases blocked. Neither FX conversion nor child/occupancy/pricing source re-verification implemented or approved.
 - CP5: mad4b-pricing-entity-picker-v1.php plus JS lookup, accessible search and results without named form controls or additional save actions. Native number input receives the actual selected term/post ID and input+change events. Taxonomy WPML canonical ID displayed for inspection, but stored ID remains the selected native ID. Native 21-field policy form gets progressive disclosure of advanced fields in visual mode only; non-default overrides start expanded. Source and production hashes matched.
 - CP5 tests: verify-entity-picker.php, verify-entity-picker-dom.js, verify-conditional-jetengine-mode.js passed. This **does not certify** that controls appear in a real admin browser: selectors and logged-in native Save still need independent test.
+
+## CP7 read-only matrix
+- Detailed evidence: QA_RESULTS_20261120.md, tests/verify-cp7-readiness-matrix.php.
+- Tours.dev: 221 published, 116 assigned package terms all blocked because source preview policy is not configured.
+- Wayfatours: 84 published, 197 package relationships, 192 preview_ok, one disabled Platinum, four missing base prices. WPML identity checks pass.
+- No Rate status or pricing option changed.
+- Authenticated Save and mobile tests, real 8-package commercial end-to-end remain open. Broader regression rerun hit STAGING_WPCLI_BUSY and was not counted as passed.
 
 ## CP6 source-aware preflight
 - New MU mad4b-pricing-policy-write-preflight-v1.php only inspects native provider state, does not call a writer.
