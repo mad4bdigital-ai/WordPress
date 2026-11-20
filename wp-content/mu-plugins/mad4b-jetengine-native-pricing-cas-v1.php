@@ -106,9 +106,13 @@ final class MAD4B_JetEngine_Native_Pricing_CAS_V1 {
     /** admin_init priority 39 occurs immediately before vendor save() at 40. */
     public static function before_native_save():void {
         if(!is_admin()||
-            ($_SERVER['REQUEST_METHOD']??'')!=='POST' ||
             (string)($_GET['page']??'')!==self::PAGE ||
             (string)($_REQUEST['action']??'')!==self::ACTION)return;
+        // JetEngine save() is dispatched by REQUEST action and has no
+        // HTTP-method check. A GET with the save action would otherwise
+        // bypass this guard and reach the vendor writer at priority 40.
+        if(($_SERVER['REQUEST_METHOD']??'')!=='POST')
+            self::deny(new WP_Error('native_pricing_cas_post_required'));
 
         $lock=self::lock();
         if(is_wp_error($lock))self::deny($lock);
