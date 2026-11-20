@@ -55,7 +55,84 @@ final class MAD4B_Public_Critical_CSS_Consumer_V2 {
         if (!$file || !str_starts_with($file,$root.'/') || !is_file($file))return null;
         return $file;
     }
-    private static function verify_deps(array $cert,array $ctx): bool {
+    /**
+     * Strict event-by-event proof that a standard day tour has not changed
+     * despite unrelated edits to Properties elsewhere on the site.
+     *
+     * The original listing-generation gate remains authoritative unless ALL
+     * intervening generations are present, exclusively Properties events,
+     * and neither a JetEngine relation nor the rendered page/post-meta
+     * references any changed Property. Unknown => invalidate.
+     */
+    private static function unrelated_property_events(array $ctx,int $old,int $now,string $html): bool {
+        if ($old<1 || $now<=$old || $now-$old>100
+            || ($ctx['type']??'')!=='tours-and-activities'
+            || !is_int($ctx['object_id']??null)
+            || $ctx['object_id']<=0
+            || $html===''
+            || !function_exists('get_post_meta')
+            || !function_exists('get_post_status')
+            || get_post_status($ctx['object_id'])!=='publish'
+            || (string)get_post_meta($ctx['object_id'],'tour_mode',true)!=='tour')
+            return false;
+        // Packages, cruises and related-rate programs may inherit Property
+        // data through unmodeled supplier relationships: fail closed.
+        foreach (['cruise_runs','tour_related_rate_plans','tour_queried_rates',
+                  'related_program_terms','tour_cruise_amenities'] as $field) {
+            $value=get_post_meta($ctx['object_id'],$field,true);
+            if ($value!=='' && $value!==null && $value!==false && $value!==[])return false;
+        }
+        $ledger=get_option('mad4b_ccss_public_dirty_v1',[]);
+        if (!is_array($ledger)||!is_array($ledger['ids']??null)
+            || (int)($ledger['generation']??0)<$now)return false;
+        $seen=[];$changed=[];
+        foreach ($ledger['ids'] as $key=>$entry) {
+            if (!is_array($entry))return false;
+            $gen=$entry['generation']??null;
+            if (!is_int($gen) || $gen<=$old || $gen>$now)continue;
+            if (!is_string($key)||!preg_match('/^post:properties:([1-9][0-9]*)$/D',$key,$match)
+                || isset($seen[$gen]))return false;
+            $seen[$gen]=true;$changed[]=(int)$match[1];
+        }
+        // The bounded ledger can coalesce multiple updates for one post.
+        // A missing intermediate generation is NOT a proof.
+        if (count($seen)!==$now-$old)return false;
+        for($n=$old+1;$n<=$now;$n++)if(!isset($seen[$n]))return false;
+        global $wpdb;
+        if (!is_object($wpdb)||!isset($wpdb->prefix)
+            || !method_exists($wpdb,'prepare')||!method_exists($wpdb,'get_var'))
+            return false;
+        $relation=$wpdb->prefix.'jet_rel_default';
+        if (!preg_match('/^[A-Za-z0-9_]+$/D',$relation))return false;
+        // Unknown JetEngine links (including indirect program links) fail
+        // closed for the target tour. Bounded query for this object only.
+        $sql=$wpdb->prepare("SELECT COUNT(*) FROM {$relation} WHERE parent_object_id=%d OR child_object_id=%d",
+                            $ctx['object_id'],$ctx['object_id']);
+        $links=$wpdb->get_var($sql);
+        // NULL means SQL failure or missing relation table, not zero links.
+        if ($links===null || !is_numeric($links) || (int)$links!==0)return false;
+        $values=get_post_meta($ctx['object_id']);
+        if (!is_array($values))return false;
+        foreach($changed as $property) {
+            $name=function_exists('get_the_title')?(string)get_the_title($property):'';
+            if (preg_match('/(?<![0-9])'.preg_quote((string)$property,'/').'(?![0-9])/',$html)
+                || ($name!=='' && stripos($html,$name)!==false))return false;
+            // Explicit Property or accommodation IDs in tour metadata
+            // are dependencies even if the page uses lazy panels.
+            foreach($values as $key=>$entries){
+                if (!is_string($key)||!preg_match('/property|hotel|cruise|accommodation|relation|rate|program|ship/i',$key))
+                    continue;
+                foreach((array)$entries as $value){
+                    if (is_scalar($value)
+                        && preg_match('/(?<![0-9])'.preg_quote((string)$property,'/').'(?![0-9])/',
+                                      (string)$value))return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    private static function verify_deps(array $cert,array $ctx,string $html): bool {
         $deps=$cert['dependencies']??null;
         if (!is_array($deps)
             || ($deps['global_generation']??null)!== (int)get_option('mad4b_ccss_global_generation_v1',0))
@@ -66,12 +143,15 @@ final class MAD4B_Public_Critical_CSS_Consumer_V2 {
         if (!empty($deps['contains_dynamic_listing']) ||
             in_array($ctx['type'],['destinations','tour-types','property-types','tour-categories',
                 'category','tours-and-activities','properties',
-                'archive:tours-and-activities','archive:properties'],true))
-            if (($deps['listing_generation']??null)!==
-                (int)get_option('mad4b_ccss_listing_generation_v1',0))return false;
+                'archive:tours-and-activities','archive:properties'],true)) {
+            $last=$deps['listing_generation']??null;
+            $now=(int)get_option('mad4b_ccss_listing_generation_v1',0);
+            if ($last!==$now && (!is_int($last)
+                || !self::unrelated_property_events($ctx,$last,$now,$html)))return false;
+        }
         return true;
     }
-    private static function certificate(array $ctx): ?array {
+    private static function certificate(array $ctx,string $html): ?array {
         if ((string)get_option('mad4b_perf_multi_css_v2','off')!=='on')return null;
         $routeKey=hash('sha256',$ctx['host'].'|'.$ctx['language'].'|'.$ctx['path']
             .'|'.$ctx['market_country'].'|'.$ctx['currency']);
@@ -90,7 +170,7 @@ final class MAD4B_Public_Critical_CSS_Consumer_V2 {
                  || time()>$cert['post_release_deadline']))
             || ($cert['runtime_sha']??null)!==hash_file('sha256',__DIR__.'/422-mad4b-public-critical-css-runtime.php')
             || ($cert['consumer_sha']??null)!==hash_file('sha256',__FILE__)
-            || !self::verify_deps($cert,$ctx))return null;
+            || !self::verify_deps($cert,$ctx,$html))return null;
         foreach (['host','path','language','type','object_id','market_country','currency','css_epoch']
                  as $field)if (($cert[$field]??null)!==($ctx[$field]??null))return null;
         if (($cert['critical_cap_px']??null)!==767
@@ -164,7 +244,7 @@ final class MAD4B_Public_Critical_CSS_Consumer_V2 {
     }
     public static function transform(string $html,array $ctx): ?string {
         self::$expected_links=0;self::$expected_styles=0;self::$provisional=false;
-        $cert=self::certificate($ctx);
+        $cert=self::certificate($ctx,$html);
         if (!$cert||str_contains($html,'data-mad4b-ccss-v2-rest='))return null;
         $body=stripos($html,'<body');
         if ($body===false)return null;
