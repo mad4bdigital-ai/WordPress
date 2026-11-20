@@ -68,7 +68,7 @@ final class MAD4B_Guide_Service_Composition_V1 {
             $owner='post';$id=$tour;$kind='tours-and-activities';
         }
         if (!is_array($raw) || !$raw || count($raw)>60) return new WP_Error('guide_itinerary_structure_unavailable');
-        $days=[];$signatures=[];
+        $days=[];$signatures=[];$explicitDays=0;
         foreach ($raw as $key=>$row) {
             if (!is_array($row)) continue;
             if ($owner==='post' && !preg_match('/^item-[0-9]+$/D',(string)$key)) continue;
@@ -78,13 +78,44 @@ final class MAD4B_Guide_Service_Composition_V1 {
             if (strlen($title)>240) $title=substr($title,0,240);
             $day=(string)$key;
             $days[$day]=['key'=>$day,'number'=>$number,'title'=>$title];
-            $signatures[]=[$day,$number,$title];
+            // Repeater row numbers are not day numbers: a one-day desert
+            // excursion may contain many hourly stops. Require an explicit
+            // "Day/Jour/Día/Tag/Giorno N" label on EVERY multi-row stage.
+            $unescaped=html_entity_decode($title,ENT_QUOTES|ENT_HTML5,'UTF-8');
+            if (preg_match('/\b(?:day|jour|d[ií]a|tag|giorno)\s*[:#\-]?\s*[0-9]{1,3}\b/iu',$unescaped)
+                || preg_match('/اليوم\s*(?:[0-9٠-٩]+|الأول|الثاني|الثالث|الرابع|الخامس|السادس|السابع|الثامن|التاسع|العاشر)/u',$unescaped)) {
+                ++$explicitDays;
+            }
+            // The classifier and a past human review both depend on the
+            // description, not just the title. Description edits invalidate.
+            $description=is_scalar($row['description']??null)
+                ?(string)$row['description']:'';
+            $signatures[]=[$day,$number,$title,
+                hash('sha256',wp_json_encode($description))];
         }
         if (!$days) return new WP_Error('guide_itinerary_days_missing');
+        $basis=count($days)>1?'explicit_day_labels':'single_itinerary_row';
+        if (count($days)>1 && $explicitDays!==count($days)) {
+            // Repeater order is not duration. Group all hourly stops as one
+            // guide day ONLY when the Tour title explicitly says one day,
+            // half day, full day, or a bounded number of hours.
+            $title=html_entity_decode(wp_strip_all_tags((string)get_the_title($tour)),
+                ENT_QUOTES|ENT_HTML5,'UTF-8');
+            $oneDay=$owner==='post' && $explicitDays===0 &&
+                preg_match('/\b(?:half[- ]day|full[- ]day|(?:1|one|single)[- ]day|(?:[1-9]|1[0-9])[- ]hours?)(?:\b|$)/iu',$title);
+            if (!$oneDay) return new WP_Error('guide_itinerary_day_units_unverified');
+            $days=['day-1'=>[
+                'key'=>'day-1','number'=>'1',
+                'title'=>'Single-day itinerary ('.count($days).' activity stages)',
+            ]];
+            $basis='explicit_one_day_aggregated_stages';
+            $signatures[]=['single_day_source_title',$title];
+        }
         return [
             'tour_id'=>$tour,'program_id'=>$program?:null,
             'source_kind'=>$owner,'source_id'=>$id,'source_taxonomy'=>$kind,
             'days'=>$days, 'source_hash'=>hash('sha256',wp_json_encode($signatures)),
+            'day_unit_basis'=>$basis,
             'source_scope'=>'canonical_en_wpml_family','program_selection_required'=>false,
         ];
     }

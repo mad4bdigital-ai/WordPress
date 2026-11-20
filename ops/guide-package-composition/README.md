@@ -46,3 +46,6 @@ Synthetic coverage in tests is intercepted by WordPress metadata filters in memo
 - No Guide kind was injected into legacy mad4b.commercial-component.shadow.v1 selling quote. Cost and retail price components are separate.
 
 Next: review real guided-day statuses; certify supplier costs from hotel/transport/extra providers; approve selling policy and inclusion/double-charge evidence; bridge signed component cost snapshots into draft-only native Rate Generator with financial QA. Never treat cleaning-era Draft Rates as supplier cost authority.
+
+## Day-count safety
+Multi-row itineraries use explicit day labels (Day/Jour/Día/Tag/Giorno N or Arabic day ordinal) on every day. Hourly or stop sequences may be aggregated into ONE guide day only when the original Tour title explicitly identifies 1-day/full-day/half-day or a bounded 1–19-hour duration. Otherwise return guide_itinerary_day_units_unverified. Seven stops in one day are NOT seven guide days. The source hash includes the text descriptions and, for aggregated stages, the duration-proving title; changes invalidate approvals. Single-row itineraries count as one day.
