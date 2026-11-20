@@ -27,4 +27,7 @@ for keyword in [
  'wc_create_order(', 'wp_create_user(',
 ]:
     assert keyword not in source,keyword
+assert "linked_units_published'] !== 134" in source
+assert '_mad4b_property_identity_verified_v3' in source
+assert 'saray_owner_identity_or_room_link_mismatch' in source
 print('PASS exact 18 published Property tier cohorts, WPML observations and no-write audit')
