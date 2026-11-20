@@ -2339,6 +2339,91 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return true;
 	}
 
+    /**
+     * Current original Google Drive evidence for AI Review. Read-only and
+     * bounded to exact Site/Brand/source/content hash. An OAuth token refresh
+     * remains a separate authorized operation, never part of this read.
+     */
+    public static function exact_review_text_evidence(array $asset, array $source) {
+        if(!class_exists('MAD4B_SCP_Context_Authority',false)
+          ||!class_exists('MAD4B_SCP_Site_Profile',false))
+            return new WP_Error('mad4b_drive_review_registry_unavailable','Original governed authority is unavailable.');
+        $id=(string)($asset['asset_id']??'');
+        $source_id=(string)($source['source_id']??'');
+        $file_id=(string)($asset['file_id']??'');
+        $hash=(string)($asset['content_hash']??'');
+        $site=MAD4B_SCP_Site_Profile::status();
+        $site_uuid=(string)($site['site_uuid']??'');
+        $registered=MAD4B_SCP_Context_Authority::asset($id);
+        $enrolled=MAD4B_SCP_Context_Authority::source($source_id);
+        if(!preg_match('/^[a-f0-9]{64}$/D',$id)
+            ||!preg_match('/^[a-f0-9]{64}$/D',$source_id)
+            ||!preg_match('/^[a-f0-9]{64}$/D',$hash)
+            ||!is_array($registered) ||!$registered
+            ||!is_array($enrolled) ||!$enrolled
+            ||$file_id===''||$site_uuid===''
+            ||$site_uuid!==(string)($asset['site_uuid']??'')
+            ||$site_uuid!==(string)($registered['site_uuid']??'')
+            ||$site_uuid!==(string)($enrolled['site_uuid']??'')
+            ||(string)($asset['source_id']??'')!==$source_id
+            ||(string)($registered['source_id']??'')!==$source_id
+            ||(string)($registered['file_id']??'')!==$file_id
+            ||!hash_equals((string)($registered['content_hash']??''),$hash)
+            ||(string)($registered['brand_id']??'')!==(string)($enrolled['brand_id']??'')
+            ||(string)($source['source_id']??'')!==$source_id
+            ||(string)($source['external_root_id']??'')!==(string)($enrolled['external_root_id']??'')
+            ||(string)($enrolled['provider']??'')!=='google_drive'
+            ||(string)($enrolled['mode']??'')!=='governed'
+            ||(string)($asset['source_mode']??'')!=='governed'
+            ||(string)($registered['source_mode']??'')!=='governed'
+            ||empty($registered['content_complete'])
+            ||!in_array((string)($registered['normalization_status']??''),['ready','reused'],true))
+            return new WP_Error('mad4b_drive_review_original_binding_invalid',
+                'Exact site, source, brand, file and indexed content hash are required.');
+        $connection=self::connection_status();
+        if(empty($connection['connected'])||empty($connection['read_available'])
+            ||empty($connection['credential_fresh'])||!empty($connection['refresh_required'])
+            ||!empty($connection['revocation_pending'])||!empty($connection['reconnect_required']))
+            return new WP_Error('mad4b_drive_review_read_grant_unavailable',
+                'An active, non-revoked read grant is required for current evidence.');
+        // Re-use the original ancestry guard; a file moved outside its
+        // selected governed source cannot be approved from a stale index.
+        $inside=self::assert_file_within_source($file_id,$enrolled);
+        if(is_wp_error($inside))return $inside;
+        $metadata=self::get_file_metadata($file_id);
+        if(is_wp_error($metadata))return $metadata;
+        if((string)($metadata['id']??'')!==$file_id
+            ||(string)($metadata['name']??'')!==(string)($registered['title']??'')
+            ||(string)($metadata['mimeType']??'')==='application/vnd.google-apps.shortcut')
+            return new WP_Error('mad4b_drive_review_remote_metadata_changed',
+                'Original file identity or name changed; rescan before review.');
+        $normal=self::fetch_text_content_record($metadata);
+        if(is_wp_error($normal))return $normal;
+        $content=(string)($normal['content']??'');
+        if(empty($normal['complete'])
+            ||!in_array((string)($normal['normalization_status']??$normal['status']??''),['ready','reused'],true)
+            ||trim($content)===''||strlen($content)>262144)
+            return new WP_Error('mad4b_drive_review_normalization_incomplete',
+                'Only bounded, fully normalized text can be reviewed.');
+        if(!hash_equals($hash,hash('sha256',$content)))
+            return new WP_Error('mad4b_drive_review_source_hash_drift',
+                'Remote source text differs from the indexed SHA-256. Rescan before review.');
+        $current=MAD4B_SCP_Context_Authority::asset($id);
+        $current_source=MAD4B_SCP_Context_Authority::source($source_id);
+        if(!is_array($current)||!is_array($current_source)
+            ||!hash_equals($hash,(string)($current['content_hash']??''))
+            ||(string)($current_source['last_scan_generation']??'')!==(string)($enrolled['last_scan_generation']??'')
+            ||!hash_equals($site_uuid,(string)($current_source['site_uuid']??''))
+            ||!hash_equals($source_id,(string)($current['source_id']??'')))
+            return new WP_Error('mad4b_drive_review_registry_changed',
+                'Registry or source generation changed during remote read.');
+        return ['contract'=>'mad4b.google-drive-exact-review-evidence.v1',
+            'asset_id'=>$id,'source_id'=>$source_id,'mime_type'=>(string)$metadata['mimeType'],
+            'normalized_text'=>$content,'content_hash'=>$hash,
+            'source_generation'=>(string)($enrolled['last_scan_generation']??''),
+            'read_only'=>true,'mutation_performed'=>false,'publication_authorized'=>false];
+    }
+
 	public static function read_context_asset( $asset_id ) {
 		$asset = class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::asset( $asset_id ) : array();
 		if ( empty( $asset ) ) return new WP_Error( 'mad4b_context_asset_not_found', 'Context asset was not found.' );
