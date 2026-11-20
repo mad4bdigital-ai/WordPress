@@ -33,6 +33,8 @@ on:
       - 'scripts/mad4b-package-eight-room-and-cruise-program-bindings-cli.php'
       - 'scripts/mad4b-package-cruise-day-sequence-audit-cli.php'
       - 'scripts/mad4b-cruise-operator-web-amenities-editorial-cli.php'
+      - 'scripts/mad4b-cruise-web-operator-amenities-batch2-cli.php'
+      - 'tests/stay-cruise-web-batch2-amenities-contract.py'
       - 'tests/stay-cruise-web-amenities-editorial-contract.py'
       - 'tests/stay-package-cruise-day-sequence-audit-contract.py'
       - 'tests/stay-package-eight-room-and-cruise-program-bindings-contract.py'
@@ -92,6 +94,8 @@ on:
       - 'scripts/mad4b-package-eight-room-and-cruise-program-bindings-cli.php'
       - 'scripts/mad4b-package-cruise-day-sequence-audit-cli.php'
       - 'scripts/mad4b-cruise-operator-web-amenities-editorial-cli.php'
+      - 'scripts/mad4b-cruise-web-operator-amenities-batch2-cli.php'
+      - 'tests/stay-cruise-web-batch2-amenities-contract.py'
       - 'tests/stay-cruise-web-amenities-editorial-contract.py'
       - 'tests/stay-package-cruise-day-sequence-audit-contract.py'
       - 'tests/stay-package-eight-room-and-cruise-program-bindings-contract.py'
@@ -174,6 +178,7 @@ jobs:
           php -l scripts/mad4b-package-eight-room-and-cruise-program-bindings-cli.php
           php -l scripts/mad4b-package-cruise-day-sequence-audit-cli.php
           php -l scripts/mad4b-cruise-operator-web-amenities-editorial-cli.php
+          php -l scripts/mad4b-cruise-web-operator-amenities-batch2-cli.php
           php -l scripts/mad4b-package-60441-bilingual-exact-dedup-cli.php
           php -l scripts/mad4b-stay-invalid-import-quarantine-36260-cli.php
           php -l scripts/mad4b-stay-unresolved-official-room-photo-gaps-cli.php
@@ -199,5 +204,6 @@ jobs:
           python3 tests/stay-package-eight-room-and-cruise-program-bindings-contract.py
           python3 tests/stay-package-cruise-day-sequence-audit-contract.py
           python3 tests/stay-cruise-web-amenities-editorial-contract.py
+          python3 tests/stay-cruise-web-batch2-amenities-contract.py
           python3 tests/stay-commercial-readiness-ui-check.py
           node --check wp-content/mu-plugins/mad4b-stay-readiness/admin.js
