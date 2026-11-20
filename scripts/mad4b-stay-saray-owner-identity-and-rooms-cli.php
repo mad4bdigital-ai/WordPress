@@ -97,6 +97,37 @@ if($mode==='apply'){
   }
   do_action('wpml_switch_language','en');
  }
+ // WPML may copy EN taxonomy links onto the newly edited ES Property.
+ // Remove only the three source-language term IDs known for this site.
+ // Recalculate native taxonomy counts in the fully registered WP runtime.
+ $esExpected=['destinations'=>[648,669],'stars'=>[655],'package_levels'=>[2991]];
+ $esUnwantedAllowed=['destinations'=>[665],'stars'=>[488,489]];
+ $rawEsTerms=$wpdb->get_results($wpdb->prepare(
+  "SELECT tt.term_taxonomy_id,tt.term_id,tt.taxonomy FROM {$wpdb->term_relationships} r
+   JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id=r.term_taxonomy_id
+   WHERE r.object_id=%d AND tt.taxonomy IN ('destinations','stars','package_levels')",$es_id),ARRAY_A);
+ $actualEs=[];
+ $removeEs=[];
+ foreach($rawEsTerms as $raw){
+  $tax=$raw['taxonomy'];$term=(int)$raw['term_id'];
+  if(in_array($term,$esExpected[$tax]??[],true)){$actualEs[$tax][]=$term;continue;}
+  if(!in_array($term,$esUnwantedAllowed[$tax]??[],true))WP_CLI::error('unexpected_es_taxonomy_link_'.$tax.'_'.$term);
+  $removeEs[]=$raw;
+ }
+ foreach($esExpected as $tax=>$ids){
+  $actual=$actualEs[$tax]??[];sort($actual);sort($ids);
+  if($actual!==$ids)WP_CLI::error('missing_required_es_terms_'.$tax);
+ }
+ foreach($removeEs as $row){
+  if($wpdb->delete($wpdb->term_relationships,['object_id'=>$es_id,
+    'term_taxonomy_id'=>(int)$row['term_taxonomy_id']],['%d','%d'])!==1)
+   WP_CLI::error('failed_to_remove_wrong_language_es_term');
+ }
+ foreach(['destinations'=>[560,648,665,669],'stars'=>[488,489,655]] as $tax=>$termIds){
+  if(!taxonomy_exists($tax))WP_CLI::error('taxonomy_unregistered_'.$tax);
+  wp_update_term_count_now($termIds,$tax);
+ }
+ clean_object_term_cache($es_id,'properties');
  foreach($rooms as $x){
   $title=$property_name.' — '.$x['name'];
   $text='<p>Officially documented room category for '.esc_html($property_name).'.</p><p><strong>Room category:</strong> '.esc_html($x['name']).'.</p><p>'.esc_html($x['desc']).'</p><p><strong>Source:</strong> <a href="'.esc_url($x['url']).'" rel="noopener">Official accommodation details</a>.</p><p>Number of beds is not proof of maximum guest occupancy. No verified inventory, contractual rates, meal-plan inclusion or licensed room photos are available. This editorial entry is not a bookable offer.</p>';
