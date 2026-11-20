@@ -88,7 +88,11 @@
     if(inputs[0]&&inputs[0].tagName==='SELECT'){
       Array.from(inputs[0].options).forEach(option=>{
         const idx=values.indexOf(option.value);
-        if(idx>=0)option.textContent=c.choices[idx];
+        // Rewriting identical option text creates a childList mutation.
+        // The short-lived body observer calls update() again, and without
+        // this guard the MutationObserver microtask queue never drains.
+        if(idx>=0&&option.textContent!==c.choices[idx])
+          option.textContent=c.choices[idx];
       });
     }
   }
