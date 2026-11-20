@@ -11,10 +11,20 @@ const el=(tag,text,cl)=>{
  return n;
 };
 const panel=el('section',undefined,'mad4b-supplier-readiness');
+panel.setAttribute('aria-label','Supplier cost readiness inspector');
+panel.id='mad4b-supplier-readiness-inspector';
+const overview=el('section',undefined,'mad4b-supplier-readiness-overview');
+overview.setAttribute('aria-label','Supplier cost readiness summary');
+const overviewText=el('div');
+overviewText.append(el('strong','Supplier costs · source readiness'),
+  el('p','Review approved supplier evidence before commercial pricing. Cost certification is still pending.'));
+const overviewAction=el('button','Review in Price Sources','button button-secondary');
+overviewAction.type='button';
+overview.append(overviewText,overviewAction);
 const heading=el('details');
 const summary=el('summary','Package supplier cost readiness — review only');
 const body=el('div',undefined,'mad4b-supplier-readiness__body');
-const hint=el('p','Check original supplier-cost evidence before generating Rates. This panel does not save settings, calculate customer prices, or enable Checkout.');
+const hint=el('p','Read-only supplier evidence for the Tour Preview selection. This panel never saves JetEngine settings, changes prices or enables Checkout.');
 body.append(hint);
 const controls=el('div',undefined,'mad4b-supplier-readiness__controls');
 const makeLabeled=(text,control)=>{
@@ -36,6 +46,13 @@ for(const item of options) {
  tour.append(option);
 }
 makeLabeled('Tour',tour);
+const tourFallbackField=tour.parentNode;
+const linkedTour=el('div',undefined,'mad4b-supplier-readiness__linked-tour');
+linkedTour.hidden=true;
+linkedTour.append(el('strong','Tour · shared with Tour Preview'));
+const linkedTitle=el('span','Waiting for Tour Preview selection…');
+linkedTour.append(linkedTitle);
+controls.append(linkedTour);
 const date=el('input');date.type='date';date.value=cfg.today||'';
 makeLabeled('Service date',date);
 const currency=el('select');
@@ -64,7 +81,81 @@ const output=el('div',undefined,'mad4b-supplier-readiness__result');
 body.append(controls,actions,status,output);
 heading.append(summary,body);
 panel.append(heading);
-nativeRoot.parentNode.insertBefore(panel,nativeRoot);
+// Workspace content is a sibling of JetEngine's original <form>, not a
+// descendant: the Inspector remains fully outside native save serialization.
+const workspaceContent=nativeRoot.querySelector('.mad4b-ws-content');
+const providerPanel=workspaceContent?.querySelector('.mad4b-ws-provider-panel');
+if(workspaceContent && providerPanel){
+  workspaceContent.insertBefore(overview,providerPanel);
+  workspaceContent.insertBefore(panel,providerPanel);
+}else{
+  // Fail safe: do not re-introduce the full-width panel before the editor.
+  // The original JetEngine form and pricing fields remain fully available.
+  nativeRoot.append(panel);
+}
+const sourcesButton=nativeRoot.querySelector('.mad4b-ws-nav-btn[data-section="sources"]');
+const sharedTour=()=>{
+ const id=Number(nativeRoot.dataset.mad4bPreviewTourId||0);
+ const match=(cfg.tours||[]).find(x=>Number(x.id)===id);
+ return id>0 && match?match:null;
+};
+let lastTourId=0;
+const syncTourContext=()=>{
+ const selected=sharedTour();
+ const id=selected?.id||0;
+ if(lastTourId!==id){
+   lastTourId=id;
+   tour.value=id?String(id):'';
+   output.replaceChildren();
+   status.textContent=id
+     ?'Tour context updated from Tour Preview. Select a date to inspect supplier evidence.'
+     :'Select a published Tour to inspect cost sources.';
+ }
+ linkedTour.hidden=!selected;
+ tourFallbackField.hidden=Boolean(selected);
+ if(selected)linkedTitle.textContent=selected.title+' (#'+selected.id+')';
+};
+const isSourcesVisible=()=>{
+ const nav=nativeRoot.querySelector('.mad4b-ws-nav-btn.is-active');
+ const search=nativeRoot.querySelector('.mad4b-ws-search');
+ return Boolean(workspaceContent && nativeRoot.classList.contains('mad4b-ws-visual')
+   && nav?.dataset.section==='sources' && !String(search?.value||'').trim());
+};
+const isOverviewVisible=()=>{
+ const nav=nativeRoot.querySelector('.mad4b-ws-nav-btn.is-active');
+ const search=nativeRoot.querySelector('.mad4b-ws-search');
+ return Boolean(workspaceContent && nativeRoot.classList.contains('mad4b-ws-visual')
+   && nav?.dataset.section==='overview' && !String(search?.value||'').trim());
+};
+const updatePlacement=()=>{
+ if(!workspaceContent)return;
+ overview.hidden=!isOverviewVisible();
+ panel.hidden=!isSourcesVisible();
+};
+const openSources=()=>{
+ if(!sourcesButton)return;
+ sourcesButton.click();
+ updatePlacement();
+ heading.open=true;
+ panel.scrollIntoView?.({behavior:'smooth',block:'start'});
+};
+overviewAction.addEventListener('click',openSources);
+nativeRoot.addEventListener('click',event=>{
+ if(event.target.closest?.('.mad4b-ws-nav-btn,.mad4b-ws-secondary'))
+   updatePlacement();
+});
+nativeRoot.addEventListener('input',event=>{
+ if(event.target.closest?.('.mad4b-ws-search'))updatePlacement();
+});
+document.addEventListener('mad4b:jetengine:mode-changed',updatePlacement);
+nativeRoot.addEventListener('mad4b:tour-preview-selection',syncTourContext);
+nativeRoot.addEventListener('mad4b:open-supplier-inspector',event=>{
+ if(event.detail?.tourId && String(event.detail.tourId)!==String(tour.value))
+   syncTourContext();
+ openSources();
+});
+syncTourContext();
+updatePlacement();
 const names={
  stay_program_binding_missing:'The itinerary has no approved accommodation stage binding.',
  stay_unit_not_selected:'A hotel room or cruise cabin has not been selected as bookable.',

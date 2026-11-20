@@ -5,6 +5,9 @@ if(!class_exists($cls,false))WP_CLI::error('Package admission not loaded');
 wp_set_current_user(1);
 set_current_screen('dashboard');
 $_GET['page']='dynamic-pricing-controls';
+// In the real admin request, Functional Modes is enqueued at priority 55,
+// before the supplier panel (priority 80). Reproduce that order in WP-CLI.
+MAD4B_JetEngine_Field_Modes_V1::enqueue();
 $cls::enqueue();
 $s=wp_scripts()->registered['mad4b-package-supplier-admission-review-v1']??null;
 $style=wp_styles()->registered['mad4b-package-supplier-admission-review-v1']??null;
@@ -12,6 +15,9 @@ if(!$s||!$style||
  !wp_script_is('mad4b-package-supplier-admission-review-v1','enqueued')||
  !wp_style_is('mad4b-package-supplier-admission-review-v1','enqueued'))
  WP_CLI::error('Authorized admin readiness UI not enqueued');
+if(!in_array('mad4b-jetengine-functional-modes',$s->deps,true)||
+   !in_array('mad4b-jetengine-published-tours',$s->deps,true))
+ WP_CLI::error('Supplier readiness panel did not follow Workspace and Tour Preview dependencies');
 if(!has_action('wp_ajax_'.$cls::AJAX)||
     has_action('wp_ajax_nopriv_'.$cls::AJAX))
  WP_CLI::error('Private admin AJAX registration invalid');
@@ -30,6 +36,8 @@ if(!is_wp_error($deny)||$deny->get_error_code()!=='package_admission_forbidden')
 echo 'SUPPLIER_ADMIN_UI_ACCEPTANCE '.wp_json_encode([
  'site'=>home_url(),'private_admin_ajax'=>true,
  'js_loaded'=>true,'css_loaded'=>true,
+ 'shared_tour_preview_dependency'=>true,
+ 'price_sources_workspace_dependency'=>true,
  'native_jetengine_save_unmodified'=>true,
  'guest_inspection_denied'=>true,
 ],JSON_UNESCAPED_UNICODE).PHP_EOL;

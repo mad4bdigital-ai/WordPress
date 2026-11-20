@@ -39,6 +39,15 @@ Snapshot date: 20 November 2026. Primary source: Tours.dev staging; target: Wayf
 - CP5: mad4b-pricing-entity-picker-v1.php plus JS lookup, accessible search and results without named form controls or additional save actions. Native number input receives the actual selected term/post ID and input+change events. Taxonomy WPML canonical ID displayed for inspection, but stored ID remains the selected native ID. Native 21-field policy form gets progressive disclosure of advanced fields in visual mode only; non-default overrides start expanded. Source and production hashes matched.
 - CP5 tests: verify-entity-picker.php, verify-entity-picker-dom.js, verify-conditional-jetengine-mode.js passed. This **does not certify** that controls appear in a real admin browser: selectors and logged-in native Save still need independent test.
 
+## Supplier Readiness UX relocation (20 Nov 2026)
+- Full read-only Supplier Cost Inspector moved from above the editor into Price Sources, inside the Functional Modes workspace but outside the original JetEngine form.
+- Overview now includes only a compact readiness summary linking to the Price Sources Inspector.
+- Published Tour Preview exposes the canonical selected Tour via root.dataset.mad4bPreviewTourId and a read-only custom event. Changing a Tour clears old inspection evidence; the independent selector is hidden when Tour Preview is available.
+- The Tour Preview has a Review supplier costs CTA that opens the same Inspector; no second native Save, form, named input, Rate mutation, or checkout path added.
+- Inspector JS depends on the registered native Functional Modes and Published Tours scripts.
+- Staging and production shipped with VPS rollback copies. Both passed native script dependency/admin security verification, actual JetEngine form render, source hash parity for four UI files and simulated DOM navigation/selection checks. Public HTTP 200.
+- Browser-authenticated click, rendering and mobile/responsive checks remain open.
+
 ## 20 November review-only supplier admin UI
 - Added an authorized lazy AJAX panel for Supplier Cost Readiness on the existing native Pricing Controls admin page. It does not wrap, replace, or submit the JetEngine form.
 - Authorized managers can inspect any selected published Tour, service date, currency (EGP/USD/EUR/GBP), adults, children and infants. Each original component source reports pending proof and accommodation stage-level blockers. The optional Tour edit link is only accepted when same-origin and authorized.

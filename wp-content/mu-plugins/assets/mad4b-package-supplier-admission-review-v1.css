@@ -1,3 +1,15 @@
+/* Supplier cost readback lives in the Price Sources workspace, not above the editor. */
+.mad4b-supplier-readiness[hidden],.mad4b-supplier-readiness-overview[hidden],.mad4b-supplier-readiness__linked-tour[hidden]{display:none!important}
+.mad4b-supplier-readiness-overview{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 14px;margin:12px 0;border:1px solid #c3d9d0;border-radius:7px;background:#f7faf8}
+.mad4b-supplier-readiness-overview strong{display:block;font-size:13px;margin-bottom:4px}
+.mad4b-supplier-readiness-overview p{margin:0;color:#50575e;font-size:12px;line-height:1.45}
+.mad4b-supplier-readiness-overview button{flex-shrink:0}
+.mad4b-supplier-readiness__linked-tour{display:flex;flex-direction:column;gap:4px;padding:7px 9px;border-radius:5px;background:#f6f7f7;min-width:0;overflow-wrap:anywhere}
+.mad4b-supplier-readiness__linked-tour strong{font-size:12px}
+.mad4b-supplier-readiness__linked-tour span{font-size:12px;color:#50575e}
+.mad4b-supplier-readiness{scroll-margin-top:75px}
+.mad4b-tour-inspector__supplier-link{display:block;width:100%;margin:8px 0 10px;text-align:center}
+@media(max-width:600px){.mad4b-supplier-readiness-overview{align-items:stretch;flex-direction:column}.mad4b-supplier-readiness-overview button{align-self:flex-start}}
 .mad4b-supplier-readiness{margin:16px 0;border:1px solid #c3c4c7;border-radius:8px;background:#fff;color:#1d2327;max-width:100%;box-sizing:border-box}
 .mad4b-supplier-readiness>details>summary{cursor:pointer;padding:14px 16px;font-weight:700;font-size:14px;line-height:1.4}
 .mad4b-supplier-readiness>details[open]>summary{border-bottom:1px solid #dcdcde}

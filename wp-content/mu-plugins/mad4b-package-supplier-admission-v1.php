@@ -62,9 +62,15 @@ final class MAD4B_Package_Supplier_Admission_V1 {
             wp_enqueue_style('mad4b-package-supplier-admission-review-v1',
                 content_url('mu-plugins/assets/mad4b-package-supplier-admission-review-v1.css'),
                 [],(string)filemtime($style));
+        // The Price Sources workspace and Tour Preview provide the ONE
+        // selected Tour context; run after both registered UI modules.
+        $deps=[];
+        foreach(['mad4b-jetengine-functional-modes',
+                 'mad4b-jetengine-published-tours'] as $handle)
+            if(wp_script_is($handle,'registered')) $deps[]=$handle;
         wp_enqueue_script('mad4b-package-supplier-admission-review-v1',
             content_url('mu-plugins/assets/mad4b-package-supplier-admission-review-v1.js'),
-            [],(string)filemtime($file),true);
+            $deps,(string)filemtime($file),true);
         wp_add_inline_script('mad4b-package-supplier-admission-review-v1',
             'window.MAD4BPackageSupplierAdmissionReview='.wp_json_encode([
                 'url'=>admin_url('admin-ajax.php'),'action'=>self::AJAX,

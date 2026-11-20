@@ -68,3 +68,8 @@ Both sites passed tests/verify-native-jetengine-form-markup.php using the real n
 - Tests/run-native-cas-request-regression.sh and tests/verify-native-pricing-cas-request.php passed on Tours.dev and Wayfatours for GET, unsigned POST, stale POST and current signed POST. All tests call only the pre-save guard, not the vendor write operation. No original pricing option changed. Live code and local Git SHA matched after the deployment.
 - A new read-only admin panel displays native supplier eligibility from original Stay, Transport Self, Guide and Extras sources. Available in Pricing Controls for authorized managers. It requires an admin nonce and never writes a Rate or source field. User can select Tour/date/currency/occupancy; blocker details and source Tour edit link are displayed on demand.
 - Files deployed with backups on both sites and accepted by tests/verify-package-supplier-admin-ui.php plus tests/verify-package-supplier-admin-ui-dom.js. This is not a completed authenticated-browser UX inspection.
+
+
+### Supplier Readiness UX placement
+
+Moved full read-only Inspector into Price Sources and reduced Overview to a compact summary. The published Tour Preview is the canonical Tour selection; its CTA opens the inspector and switching tours clears old diagnostic receipts. Original JetEngine inputs and Save remain untouched. Both sites passed backend dependency and actual form markup checks, plus standalone DOM tests. Two staging attempts were rolled back automatically: first STAGING_WPCLI_BUSY, then a WP-CLI test that needed to reproduce the real priority-55 native script enqueue. Corrected staging and Wayfatours deployments passed with matching four source hashes and HTTP 200. Authenticated graphical browser/mobile checks are pending.
